@@ -38,6 +38,7 @@ export default defineConfig({
       '@': '/src',
     },
   },
+  // @ts-expect-error - Vitest extends Vite config at runtime.
   test: {
     environment: 'happy-dom',
     setupFiles: ['./src/test/setup.ts'],
