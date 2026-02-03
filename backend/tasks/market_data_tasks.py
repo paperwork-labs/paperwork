@@ -770,10 +770,81 @@ def backfill_daily_since_date(since_date: str = "2021-01-01", batch_size: int = 
         session.close()
 
 
+# ============================= Repair Since Date (Daily + Indicators + History) =============================
+@shared_task(name="backend.tasks.market_data_tasks.repair_since_date")
+@task_run("repair_since_date", lock_key=lambda since_date, **_: f"repair_since_date:{since_date}")
+def repair_since_date(
+    since_date: str = "2021-01-01",
+    daily_batch_size: int = 25,
+    history_batch_size: int = 50,
+) -> dict:
+    """Deep repair pipeline since a given date.
+
+    Steps:
+    - Backfill daily OHLCV since date (provider fetch)
+    - Recompute indicators (MarketSnapshot) for tracked universe
+    - Backfill snapshot history since date (DB-only)
+    - Refresh coverage cache (monitor_coverage_health)
+    """
+
+    def _summarize(step: str, payload: dict | None) -> str:
+        data = payload or {}
+        if step == "backfill_daily_since_date":
+            return f"Daily since {data.get('since_date', '?')}: {data.get('bars_inserted_total', 0)} bars"
+        if step == "recompute_indicators_universe":
+            return f"Recomputed {data.get('processed', data.get('symbols', 0))} / {data.get('symbols', 0)}"
+        if step == "backfill_snapshot_history_last_n_days":
+            return (
+                f"Snapshot history: {data.get('processed_symbols', 0)} syms, "
+                f"{data.get('written_rows', 0)} rows"
+            )
+        if step == "monitor_coverage_health":
+            return f"Coverage: {data.get('daily_pct', 0)}% daily; stale={data.get('stale_daily', 0)}"
+        return data.get("status", "ok")
+
+    rollup: dict = {"steps": [], "since_date": since_date}
+
+    def _append(step_name: str, result: dict) -> None:
+        rollup["steps"].append(
+            {
+                "name": step_name,
+                "summary": _summarize(step_name, result),
+                "result": result,
+            }
+        )
+
+    _set_task_status("repair_since_date", "running", {"since_date": since_date})
+
+    res1 = backfill_daily_since_date(since_date=since_date, batch_size=int(daily_batch_size))
+    _append("backfill_daily_since_date", res1)
+
+    res2 = recompute_indicators_universe(batch_size=50)
+    _append("recompute_indicators_universe", res2)
+
+    try:
+        res3 = backfill_snapshot_history_last_n_days(
+            days=3000, since_date=since_date, batch_size=int(history_batch_size)
+        )
+    except Exception as exc:
+        res3 = {"status": "error", "error": str(exc)}
+    _append("backfill_snapshot_history_last_n_days", res3)
+
+    res4 = monitor_coverage_health()
+    _append("monitor_coverage_health", res4)
+
+    statuses = [step.get("result", {}).get("status") for step in rollup["steps"]]
+    rollup["status"] = "ok" if all(s in (None, "ok") for s in statuses) else "error"
+    rollup["overall_summary"] = "; ".join(
+        step["summary"] for step in rollup["steps"] if step.get("summary")
+    )
+    _set_task_status("repair_since_date", rollup["status"], rollup)
+    return rollup
+
+
 # ============================= Coverage Restore (Daily, Tracked Universe) =============================
 @shared_task(name="backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked")
 @task_run("bootstrap_daily_coverage_tracked", lock_key=lambda: "bootstrap_daily_coverage_tracked")
-def bootstrap_daily_coverage_tracked(history_days: int = 5, history_batch_size: int = 25) -> dict:
+def bootstrap_daily_coverage_tracked(history_days: int = 20, history_batch_size: int = 25) -> dict:
     """Restore DAILY coverage for the tracked universe (no 5m).
 
     Steps:
@@ -781,7 +852,7 @@ def bootstrap_daily_coverage_tracked(history_days: int = 5, history_batch_size: 
     - Update tracked universe cache (tracked:all)
     - Backfill last ~200 daily bars for tracked universe
     - Recompute indicators for tracked universe
-    - Backfill snapshot history (rolling window; default last 5 trading days) into MarketSnapshotHistory
+    - Backfill snapshot history (rolling window; default last 20 trading days) into MarketSnapshotHistory
     - Refresh coverage cache (monitor_coverage_health)
     """
 
@@ -946,6 +1017,50 @@ def recompute_indicators_universe(batch_size: int = 50) -> dict:
         skipped_no_data = 0
         errors = 0
         error_samples: list[dict] = []
+        warnings: list[str] = []
+
+        # Preflight: ensure benchmark (SPY) has enough daily bars for Stage/RS.
+        benchmark_symbol = "SPY"
+        required_bars = max(260, int(getattr(settings, "SNAPSHOT_DAILY_BARS_LIMIT", 400)))
+        benchmark_count = (
+            session.query(PriceData)
+            .filter(PriceData.symbol == benchmark_symbol, PriceData.interval == "1d")
+            .count()
+        )
+        benchmark_fetched = False
+        benchmark_errors = 0
+        if benchmark_count < required_bars:
+            loop = _setup_event_loop()
+            try:
+                params = daily_backfill_params(days=required_bars)
+                fetched = loop.run_until_complete(
+                    _fetch_daily_for_symbols(
+                        symbols=[benchmark_symbol],
+                        period=params.period,
+                        max_bars=params.max_bars,
+                        concurrency=1,
+                    )
+                )
+            finally:
+                loop.close()
+            persist = _persist_daily_fetch_results(
+                session=session,
+                fetched=fetched,
+                since_dt=None,
+                use_delta_after=True,
+            )
+            benchmark_fetched = True
+            benchmark_errors = int(persist.get("errors") or 0)
+            benchmark_count = (
+                session.query(PriceData)
+                .filter(PriceData.symbol == benchmark_symbol, PriceData.interval == "1d")
+                .count()
+            )
+        if benchmark_count < required_bars:
+            warnings.append(
+                f"Benchmark {benchmark_symbol} has {benchmark_count} daily bars (<{required_bars}); "
+                "Stage/RS may be UNKNOWN until benchmark history is backfilled."
+            )
 
         # Chunking by batch_size
         for i in range(0, len(ordered), max(1, batch_size)):
@@ -970,7 +1085,17 @@ def recompute_indicators_universe(batch_size: int = 50) -> dict:
             "skipped_no_data": skipped_no_data,
             "errors": errors,
             "error_samples": error_samples,
+            "benchmark": {
+                "symbol": benchmark_symbol,
+                "required_bars": required_bars,
+                "daily_bars": benchmark_count,
+                "fetched": benchmark_fetched,
+                "errors": benchmark_errors,
+                "ok": benchmark_count >= required_bars,
+            },
         }
+        if warnings:
+            res["warnings"] = warnings
         if error_samples:
             # Non-fatal, bounded summary captured into JobRun.error by task_run()
             res["error"] = "Sample errors:\n" + "\n".join(

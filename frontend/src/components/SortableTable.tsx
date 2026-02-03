@@ -11,10 +11,41 @@ import {
   Icon,
   HStack,
   Text,
+  Button,
 } from '@chakra-ui/react';
-import { FiChevronUp, FiChevronDown, FiMinus } from 'react-icons/fi';
+import { FiChevronUp, FiChevronDown, FiMinus, FiPlus, FiX } from 'react-icons/fi';
 import EmptyState from './ui/EmptyState';
 import { useUserPreferences } from '../hooks/useUserPreferences';
+
+export type FilterType = 'text' | 'number' | 'select' | 'date';
+export type FilterOperator =
+  | 'contains'
+  | 'equals'
+  | 'starts_with'
+  | 'ends_with'
+  | 'gt'
+  | 'gte'
+  | 'lt'
+  | 'lte'
+  | 'between'
+  | 'on'
+  | 'before'
+  | 'after';
+
+export type FilterRule = {
+  id: string;
+  columnKey: string;
+  operator: FilterOperator;
+  valueSource?: 'literal' | 'column';
+  valueColumnKey?: string;
+  value?: string;
+  valueTo?: string;
+};
+
+export type FilterGroup = {
+  conjunction: 'AND' | 'OR';
+  rules: FilterRule[];
+};
 
 export interface Column<T = any> {
   key: string;
@@ -25,6 +56,9 @@ export interface Column<T = any> {
   render?: (value: any, item: T) => React.ReactNode;
   width?: string;
   isNumeric?: boolean;
+  filterType?: FilterType;
+  filterOptions?: Array<{ label: string; value: string }>;
+  filterable?: boolean;
 }
 
 interface SortableTableProps<T = any> {
@@ -37,6 +71,8 @@ interface SortableTableProps<T = any> {
   showHeader?: boolean;
   emptyMessage?: string;
   maxHeight?: string;
+  filtersEnabled?: boolean;
+  filterPresets?: Array<{ label: string; filters: FilterGroup }>;
 }
 
 function SortableTable<T = any>({
@@ -49,11 +85,18 @@ function SortableTable<T = any>({
   showHeader = true,
   emptyMessage = 'No data available',
   maxHeight,
+  filtersEnabled = false,
+  filterPresets = [],
 }: SortableTableProps<T>) {
   const { tableDensity } = useUserPreferences();
   const size: 'sm' | 'md' | 'lg' = sizeProp ?? (tableDensity === 'compact' ? 'sm' : 'md');
   const [sortBy, setSortBy] = useState<string>(defaultSortBy || columns[0]?.key || '');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(defaultSortOrder);
+  const [filters, setFilters] = useState<FilterGroup>({
+    conjunction: 'AND',
+    rules: [],
+  });
+  const [filtersOpen, setFiltersOpen] = useState(true);
 
   const borderColor = 'border.subtle';
   const hoverBg = 'bg.panel';
@@ -86,13 +129,274 @@ function SortableTable<T = any>({
   // Chakra v3 table variants differ from v2. Normalize our legacy variants.
   const tableVariant: 'line' | 'outline' | undefined = variant === 'unstyled' ? undefined : 'line';
 
+  const filterableColumns = useMemo(
+    () => columns.filter((col) => col.filterable !== false),
+    [columns],
+  );
+
+  const columnMeta = useMemo(() => {
+    const meta = new Map<string, { type: FilterType; options?: Array<{ label: string; value: string }> }>();
+    columns.forEach((col) => {
+      const inferred: FilterType =
+        col.filterType ||
+        (col.sortType === 'number' ? 'number' : col.sortType === 'date' ? 'date' : 'text');
+      meta.set(col.key, { type: inferred, options: col.filterOptions });
+    });
+    return meta;
+  }, [columns]);
+
+  const filterOptionsByKey = useMemo(() => {
+    const out = new Map<string, Array<{ label: string; value: string }>>();
+    columns.forEach((col) => {
+      const meta = columnMeta.get(col.key);
+      if (meta?.type !== 'select') return;
+      if (meta?.options && meta.options.length) {
+        out.set(col.key, meta.options);
+        return;
+      }
+      const values = new Set<string>();
+      data.forEach((row) => {
+        const v = col.accessor(row);
+        if (v == null) return;
+        values.add(String(v));
+      });
+      const options = Array.from(values)
+        .slice(0, 50)
+        .map((v) => ({ label: v, value: v }));
+      out.set(col.key, options);
+    });
+    return out;
+  }, [columns, columnMeta, data]);
+
+  const operatorOptions = (type: FilterType): Array<{ label: string; value: FilterOperator }> => {
+    if (type === 'number') {
+      return [
+        { label: '>', value: 'gt' },
+        { label: '≥', value: 'gte' },
+        { label: '<', value: 'lt' },
+        { label: '≤', value: 'lte' },
+        { label: '=', value: 'equals' },
+        { label: 'Between', value: 'between' },
+      ];
+    }
+    if (type === 'date') {
+      return [
+        { label: 'On', value: 'on' },
+        { label: 'Before', value: 'before' },
+        { label: 'After', value: 'after' },
+        { label: 'Between', value: 'between' },
+      ];
+    }
+    if (type === 'select') {
+      return [{ label: 'Is', value: 'equals' }];
+    }
+    return [
+      { label: 'Contains', value: 'contains' },
+      { label: 'Equals', value: 'equals' },
+      { label: 'Starts with', value: 'starts_with' },
+      { label: 'Ends with', value: 'ends_with' },
+    ];
+  };
+
+  const addFilterRule = () => {
+    const fallbackKey = filterableColumns[0]?.key || columns[0]?.key || '';
+    if (!fallbackKey) return;
+    const meta = columnMeta.get(fallbackKey);
+    const ops = operatorOptions(meta?.type || 'text');
+    setFilters((prev) => ({
+      ...prev,
+      rules: [
+        ...prev.rules,
+        {
+          id: `f_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+          columnKey: fallbackKey,
+          operator: ops[0]?.value || 'contains',
+          valueSource: 'literal',
+          value: '',
+        },
+      ],
+    }));
+  };
+
+  const updateRule = (id: string, next: Partial<FilterRule>) => {
+    setFilters((prev) => ({
+      ...prev,
+      rules: prev.rules.map((r) => (r.id === id ? { ...r, ...next } : r)),
+    }));
+  };
+
+  const removeRule = (id: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      rules: prev.rules.filter((r) => r.id !== id),
+    }));
+  };
+
+  const clearFilters = () => {
+    setFilters((prev) => ({ ...prev, rules: [] }));
+  };
+
+  const normalizeDateKey = (value: any): string | null => {
+    if (!value) return null;
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toISOString().slice(0, 10);
+  };
+
+  const comparableColumns = (type: FilterType, excludeKey?: string) =>
+    filterableColumns.filter((col) => {
+      if (excludeKey && col.key === excludeKey) return false;
+      const meta = columnMeta.get(col.key);
+      const t = meta?.type || 'text';
+      return t === type;
+    });
+
+  const ruleIsActive = (rule: FilterRule) => {
+    if (rule.valueSource === 'column') {
+      return Boolean(rule.valueColumnKey);
+    }
+    if (rule.operator === 'between') {
+      return Boolean(rule.value) && Boolean(rule.valueTo);
+    }
+    return rule.value != null && String(rule.value).trim() !== '';
+  };
+
+  const ruleSummary = (rule: FilterRule) => {
+    if (!ruleIsActive(rule)) return null;
+    const col = columns.find((c) => c.key === rule.columnKey);
+    const label = col?.header || rule.columnKey;
+    const opLabel: Record<FilterOperator, string> = {
+      contains: 'contains',
+      equals: '=',
+      starts_with: 'starts with',
+      ends_with: 'ends with',
+      gt: '>',
+      gte: '≥',
+      lt: '<',
+      lte: '≤',
+      between: 'between',
+      on: 'on',
+      before: 'before',
+      after: 'after',
+    };
+    const operator = opLabel[rule.operator] || rule.operator;
+    const valueLabel = () => {
+      if (rule.valueSource === 'column') {
+        const other = columns.find((c) => c.key === rule.valueColumnKey);
+        return other?.header || rule.valueColumnKey || '';
+      }
+      return String(rule.value ?? '').trim();
+    };
+    if (rule.operator === 'between') {
+      return `${label} ${operator} ${rule.value ?? ''} and ${rule.valueTo ?? ''}`.trim();
+    }
+    return `${label} ${operator} ${valueLabel()}`.trim();
+  };
+
+  const filterSummary = useMemo(() => {
+    if (!filtersEnabled || filters.rules.length === 0) return '';
+    const parts = filters.rules.map(ruleSummary).filter(Boolean) as string[];
+    if (!parts.length) return '';
+    const joiner = filters.conjunction === 'OR' ? ' OR ' : '; ';
+    let summary = parts.join(joiner);
+    if (summary.length > 160) {
+      summary = `${summary.slice(0, 160)}…`;
+    }
+    return summary;
+  }, [filtersEnabled, filters, columns]);
+
+  const filteredData = useMemo(() => {
+    if (!filtersEnabled || filters.rules.length === 0) return data;
+
+    const applyRule = (row: T, rule: FilterRule) => {
+      if (!ruleIsActive(rule)) return true;
+      const col = columns.find((c) => c.key === rule.columnKey);
+      if (!col) return true;
+      const meta = columnMeta.get(rule.columnKey);
+      const type = meta?.type || 'text';
+      const raw = col.accessor(row);
+      if (raw == null) return false;
+
+      const resolveCompareValue = () => {
+        if (rule.valueSource !== 'column') return rule.value;
+        const other = columns.find((c) => c.key === rule.valueColumnKey);
+        if (!other) return undefined;
+        return other.accessor(row);
+      };
+
+      if (type === 'number') {
+        const num = Number(raw);
+        const compareValue = resolveCompareValue();
+        const val = Number(compareValue);
+        const valTo = Number(rule.valueTo);
+        if (!Number.isFinite(num) || !Number.isFinite(val)) return false;
+        switch (rule.operator) {
+          case 'gt':
+            return num > val;
+          case 'gte':
+            return num >= val;
+          case 'lt':
+            return num < val;
+          case 'lte':
+            return num <= val;
+          case 'between':
+            return Number.isFinite(valTo) ? num >= Math.min(val, valTo) && num <= Math.max(val, valTo) : true;
+          case 'equals':
+          default:
+            return num === val;
+        }
+      }
+
+      if (type === 'date') {
+        const key = normalizeDateKey(raw);
+        const compareValue = resolveCompareValue();
+        const valKey = normalizeDateKey(compareValue);
+        const valToKey = normalizeDateKey(rule.valueTo);
+        if (!key || !valKey) return false;
+        switch (rule.operator) {
+          case 'before':
+            return key < valKey;
+          case 'after':
+            return key > valKey;
+          case 'between':
+            if (!valToKey) return true;
+            return key >= (valKey < valToKey ? valKey : valToKey) && key <= (valKey > valToKey ? valKey : valToKey);
+          case 'on':
+          default:
+            return key === valKey;
+        }
+      }
+
+      const value = String(raw).toLowerCase();
+      const compareValue = resolveCompareValue();
+      const needle = String(compareValue || '').toLowerCase();
+      switch (rule.operator) {
+        case 'equals':
+          return value === needle;
+        case 'starts_with':
+          return value.startsWith(needle);
+        case 'ends_with':
+          return value.endsWith(needle);
+        case 'contains':
+        default:
+          return value.includes(needle);
+      }
+    };
+
+    const ruleResults = (row: T) => filters.rules.map((rule) => applyRule(row, rule));
+    if (filters.conjunction === 'OR') {
+      return data.filter((row) => ruleResults(row).some(Boolean));
+    }
+    return data.filter((row) => ruleResults(row).every(Boolean));
+  }, [data, filters, filtersEnabled, columns, columnMeta]);
+
   const sortedData = useMemo(() => {
-    if (!sortBy || !data.length) return data;
+    if (!sortBy || !filteredData.length) return filteredData;
 
     const column = columns.find(col => col.key === sortBy);
-    if (!column) return data;
+    if (!column) return filteredData;
 
-    return [...data].sort((a, b) => {
+    return [...filteredData].sort((a, b) => {
       const aValue = column.accessor(a);
       const bValue = column.accessor(b);
 
@@ -118,65 +422,313 @@ function SortableTable<T = any>({
 
       return sortOrder === 'asc' ? comparison : -comparison;
     });
-  }, [data, sortBy, sortOrder, columns]);
+  }, [filteredData, sortBy, sortOrder, columns]);
 
   if (!data.length) {
     return <EmptyState title={emptyMessage} />;
   }
 
   return (
-    <TableScrollArea
-      w="full"
-      maxHeight={maxHeight}
-      overflowY={maxHeight ? 'auto' : 'visible'}
-      overflowX="auto"
-    >
-      <TableRoot w="full" variant={tableVariant} size={size}>
-        {showHeader && (
-          <TableHeader>
-            <TableRow>
-              {columns.map((column) => (
-                <TableColumnHeader
-                  key={column.key}
-                  onClick={() => handleSort(column.key)}
-                  cursor={column.sortable ? 'pointer' : 'default'}
-                  _hover={column.sortable ? { bg: hoverBg } : undefined}
-                  userSelect="none"
-                  textAlign={column.isNumeric ? 'end' : 'start'}
-                  width={column.width}
-                  borderColor={borderColor}
-                >
-                  <HStack gap={2} justify={column.isNumeric ? 'flex-end' : 'flex-start'}>
-                    <Text>{column.header}</Text>
-                    {column.sortable && getSortIcon(column.key)}
-                  </HStack>
-                </TableColumnHeader>
-              ))}
-            </TableRow>
-          </TableHeader>
-        )}
-        <TableBody>
-          {sortedData.map((item, index) => (
-            <TableRow key={index} _hover={{ bg: hoverBg }}>
-              {columns.map((column) => {
-                const value = column.accessor(item);
-                const renderedValue = column.render ? column.render(value, item) : value;
+    <Box w="full">
+      {filtersEnabled && (
+        <Box px={3} py={2} borderBottomWidth="1px" borderColor={borderColor} data-testid="table-filters">
+          <HStack justify="space-between" flexWrap="wrap" gap={2}>
+            <HStack gap={2} flexWrap="wrap">
+              <Text fontSize="xs" color="fg.muted">Filters</Text>
+              <Button size="xs" variant="ghost" onClick={() => setFiltersOpen((v) => !v)}>
+                <HStack gap={1}>
+                  <Text>{filtersOpen ? 'Hide' : 'Show'}</Text>
+                </HStack>
+              </Button>
+              {filters.rules.length > 0 && (
+                <Button size="xs" variant="ghost" onClick={clearFilters}>
+                  Clear
+                </Button>
+              )}
+            </HStack>
+            <Text fontSize="xs" color="fg.muted">
+              {sortedData.length} of {data.length}
+            </Text>
+          </HStack>
 
-                return (
-                  <TableCell
-                    key={column.key}
-                    textAlign={column.isNumeric ? 'end' : 'start'}
-                    borderColor={borderColor}
-                  >
-                    {renderedValue}
-                  </TableCell>
-                );
-              })}
-            </TableRow>
-          ))}
-        </TableBody>
-      </TableRoot>
-    </TableScrollArea>
+          {!filtersOpen && filterSummary && (
+            <Text mt={1} fontSize="xs" color="fg.muted">
+              Active: {filterSummary}
+            </Text>
+          )}
+
+          {filtersOpen && (
+            <Box mt={2}>
+              <HStack gap={2} flexWrap="wrap">
+                <select
+                  value={filters.conjunction}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, conjunction: e.target.value as 'AND' | 'OR' }))}
+                  style={{
+                    fontSize: 12,
+                    padding: '6px 8px',
+                    borderRadius: 10,
+                    border: '1px solid var(--chakra-colors-border-subtle)',
+                    background: 'var(--chakra-colors-bg-input)',
+                    color: 'var(--chakra-colors-fg-default)',
+                  }}
+                >
+                  <option value="AND">Match all</option>
+                  <option value="OR">Match any</option>
+                </select>
+                <Button size="xs" variant="outline" onClick={addFilterRule}>
+                  <HStack gap={1}>
+                    <Icon as={FiPlus} />
+                    <Text>Add filter</Text>
+                  </HStack>
+                </Button>
+                {filterPresets.length > 0 && (
+                  <HStack gap={1} flexWrap="wrap">
+                    {filterPresets.map((preset) => (
+                      <Button
+                        key={preset.label}
+                        size="xs"
+                        variant="ghost"
+                        onClick={() => {
+                          setFilters(preset.filters);
+                          setFiltersOpen(true);
+                        }}
+                      >
+                        {preset.label}
+                      </Button>
+                    ))}
+                  </HStack>
+                )}
+              </HStack>
+
+              {filters.rules.length > 0 && (
+                <Box mt={2} display="flex" flexDirection="column" gap={2}>
+                  {filters.rules.map((rule) => {
+                    const meta = columnMeta.get(rule.columnKey);
+                    const type = meta?.type || 'text';
+                    const ops = operatorOptions(type);
+                    const options = filterOptionsByKey.get(rule.columnKey) || [];
+                    const compareCols = comparableColumns(type, rule.columnKey);
+                    return (
+                      <HStack key={rule.id} gap={2} flexWrap="wrap">
+                        <select
+                          value={rule.columnKey}
+                          onChange={(e) => {
+                            const nextKey = e.target.value;
+                            const nextMeta = columnMeta.get(nextKey);
+                            const nextOps = operatorOptions(nextMeta?.type || 'text');
+                            updateRule(rule.id, {
+                              columnKey: nextKey,
+                              operator: nextOps[0]?.value || 'contains',
+                              valueSource: 'literal',
+                              valueColumnKey: undefined,
+                              value: '',
+                              valueTo: '',
+                            });
+                          }}
+                          style={{
+                            fontSize: 12,
+                            padding: '6px 8px',
+                            borderRadius: 10,
+                            border: '1px solid var(--chakra-colors-border-subtle)',
+                            background: 'var(--chakra-colors-bg-input)',
+                            color: 'var(--chakra-colors-fg-default)',
+                          }}
+                        >
+                          {filterableColumns.map((col) => (
+                            <option key={col.key} value={col.key}>
+                              {col.header}
+                            </option>
+                          ))}
+                        </select>
+
+                        <select
+                          value={rule.operator}
+                          onChange={(e) => updateRule(rule.id, { operator: e.target.value as FilterOperator })}
+                          style={{
+                            fontSize: 12,
+                            padding: '6px 8px',
+                            borderRadius: 10,
+                            border: '1px solid var(--chakra-colors-border-subtle)',
+                            background: 'var(--chakra-colors-bg-input)',
+                            color: 'var(--chakra-colors-fg-default)',
+                          }}
+                        >
+                          {ops.map((op) => (
+                            <option key={op.value} value={op.value}>
+                              {op.label}
+                            </option>
+                          ))}
+                        </select>
+
+                        {compareCols.length > 0 && (
+                          <select
+                            value={rule.valueSource || 'literal'}
+                            onChange={(e) =>
+                              updateRule(rule.id, {
+                                valueSource: e.target.value as 'literal' | 'column',
+                                value: '',
+                                valueTo: '',
+                                valueColumnKey: undefined,
+                              })
+                            }
+                            style={{
+                              fontSize: 12,
+                              padding: '6px 8px',
+                              borderRadius: 10,
+                              border: '1px solid var(--chakra-colors-border-subtle)',
+                              background: 'var(--chakra-colors-bg-input)',
+                              color: 'var(--chakra-colors-fg-default)',
+                            }}
+                          >
+                            <option value="literal">Value</option>
+                            <option value="column">Column</option>
+                          </select>
+                        )}
+
+                        {rule.valueSource === 'column' ? (
+                          <select
+                            value={rule.valueColumnKey || ''}
+                            onChange={(e) => updateRule(rule.id, { valueColumnKey: e.target.value })}
+                            style={{
+                              fontSize: 12,
+                              padding: '6px 8px',
+                              borderRadius: 10,
+                              border: '1px solid var(--chakra-colors-border-subtle)',
+                              background: 'var(--chakra-colors-bg-input)',
+                              color: 'var(--chakra-colors-fg-default)',
+                            }}
+                          >
+                            <option value="">Select column…</option>
+                            {compareCols.map((col) => (
+                              <option key={col.key} value={col.key}>
+                                {col.header}
+                              </option>
+                            ))}
+                          </select>
+                        ) : type === 'select' ? (
+                          <select
+                            value={rule.value || ''}
+                            onChange={(e) => updateRule(rule.id, { value: e.target.value })}
+                            style={{
+                              fontSize: 12,
+                              padding: '6px 8px',
+                              borderRadius: 10,
+                              border: '1px solid var(--chakra-colors-border-subtle)',
+                              background: 'var(--chakra-colors-bg-input)',
+                              color: 'var(--chakra-colors-fg-default)',
+                            }}
+                          >
+                            <option value="">Select…</option>
+                            {options.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type={type === 'number' ? 'number' : type === 'date' ? 'date' : 'text'}
+                            value={rule.value || ''}
+                            onChange={(e) => updateRule(rule.id, { value: e.target.value })}
+                            placeholder="Value"
+                            style={{
+                              fontSize: 12,
+                              padding: '6px 8px',
+                              borderRadius: 10,
+                              border: '1px solid var(--chakra-colors-border-subtle)',
+                              background: 'var(--chakra-colors-bg-input)',
+                              color: 'var(--chakra-colors-fg-default)',
+                            }}
+                          />
+                        )}
+
+                        {rule.operator === 'between' && rule.valueSource !== 'column' && (
+                          <input
+                            type={type === 'number' ? 'number' : type === 'date' ? 'date' : 'text'}
+                            value={rule.valueTo || ''}
+                            onChange={(e) => updateRule(rule.id, { valueTo: e.target.value })}
+                            placeholder="And"
+                            style={{
+                              fontSize: 12,
+                              padding: '6px 8px',
+                              borderRadius: 10,
+                              border: '1px solid var(--chakra-colors-border-subtle)',
+                              background: 'var(--chakra-colors-bg-input)',
+                              color: 'var(--chakra-colors-fg-default)',
+                            }}
+                          />
+                        )}
+
+                        <Button size="xs" variant="ghost" onClick={() => removeRule(rule.id)}>
+                          <Icon as={FiX} />
+                        </Button>
+                      </HStack>
+                    );
+                  })}
+                </Box>
+              )}
+            </Box>
+          )}
+        </Box>
+      )}
+
+      {sortedData.length === 0 ? (
+        <EmptyState title="No results match filters" />
+      ) : (
+        <TableScrollArea
+          w="full"
+          maxHeight={maxHeight}
+          overflowY={maxHeight ? 'auto' : 'visible'}
+          overflowX="auto"
+        >
+          <TableRoot w="full" variant={tableVariant} size={size}>
+            {showHeader && (
+              <TableHeader>
+                <TableRow>
+                  {columns.map((column) => (
+                    <TableColumnHeader
+                      key={column.key}
+                      onClick={() => handleSort(column.key)}
+                      cursor={column.sortable ? 'pointer' : 'default'}
+                      _hover={column.sortable ? { bg: hoverBg } : undefined}
+                      userSelect="none"
+                      textAlign={column.isNumeric ? 'end' : 'start'}
+                      width={column.width}
+                      borderColor={borderColor}
+                    >
+                      <HStack gap={2} justify={column.isNumeric ? 'flex-end' : 'flex-start'}>
+                        <Text>{column.header}</Text>
+                        {column.sortable && getSortIcon(column.key)}
+                      </HStack>
+                    </TableColumnHeader>
+                  ))}
+                </TableRow>
+              </TableHeader>
+            )}
+            <TableBody>
+              {sortedData.map((item, index) => (
+                <TableRow key={index} _hover={{ bg: hoverBg }}>
+                  {columns.map((column) => {
+                    const value = column.accessor(item);
+                    const renderedValue = column.render ? column.render(value, item) : value;
+
+                    return (
+                      <TableCell
+                        key={column.key}
+                        textAlign={column.isNumeric ? 'end' : 'start'}
+                        borderColor={borderColor}
+                      >
+                        {renderedValue}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </TableBody>
+          </TableRoot>
+        </TableScrollArea>
+      )}
+    </Box>
   );
 }
 

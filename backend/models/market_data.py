@@ -100,6 +100,7 @@ class MarketSnapshot(Base):
     rsi = Column(Float)
     # Canonical consolidated MAs / ATRs
     sma_5 = Column(Float)
+    sma_10 = Column(Float)
     sma_14 = Column(Float)
     sma_21 = Column(Float)
     sma_50 = Column(Float)
@@ -183,6 +184,19 @@ class MarketSnapshot(Base):
 
     # Corporate events
     next_earnings = Column(DateTime)
+    last_earnings = Column(DateTime)
+
+    # Fundamentals (best-effort)
+    pe_ttm = Column(Float)
+    peg_ttm = Column(Float)
+    roe = Column(Float)
+    eps_growth_yoy = Column(Float)
+    eps_growth_qoq = Column(Float)
+    revenue_growth_yoy = Column(Float)
+    revenue_growth_qoq = Column(Float)
+    dividend_yield = Column(Float)
+    beta = Column(Float)
+    analyst_rating = Column(String(50))
 
     # Raw snapshot for extensibility
     raw_analysis = Column(JSON)
@@ -230,6 +244,7 @@ class MarketSnapshotHistory(Base):
     sub_industry = Column(String(100))
 
     sma_5 = Column(Float)
+    sma_10 = Column(Float)
     sma_14 = Column(Float)
     sma_21 = Column(Float)
     sma_100 = Column(Float)
@@ -258,6 +273,18 @@ class MarketSnapshotHistory(Base):
     rs_mansfield_pct = Column(Float)
     stage_label = Column(String(10))
     stage_label_5d_ago = Column(String(10))
+    last_earnings = Column(DateTime)
+    next_earnings = Column(DateTime)
+    pe_ttm = Column(Float)
+    peg_ttm = Column(Float)
+    roe = Column(Float)
+    eps_growth_yoy = Column(Float)
+    eps_growth_qoq = Column(Float)
+    revenue_growth_yoy = Column(Float)
+    revenue_growth_qoq = Column(Float)
+    dividend_yield = Column(Float)
+    beta = Column(Float)
+    analyst_rating = Column(String(50))
     stage_slope_pct = Column(Float)
     stage_dist_pct = Column(Float)
 

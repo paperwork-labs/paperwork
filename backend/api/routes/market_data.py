@@ -34,6 +34,7 @@ from backend.tasks.market_data_tasks import (
     backfill_snapshot_history_last_n_days,
     backfill_daily_since_date,
     backfill_last_bars,
+    repair_since_date,
 )
 from backend.api.dependencies import get_optional_user, get_admin_user, get_market_data_viewer
 from backend.models.index_constituent import IndexConstituent
@@ -166,6 +167,7 @@ async def admin_sanity_coverage(
     - latest daily OHLCV date + distinct symbol count on that date
     - latest snapshot-history as_of_date + distinct symbol count on that date
     - snapshot-history fill % vs tracked universe for that day (+ missing sample)
+    - benchmark (SPY) daily bar count + latest date (for Stage/RS diagnostics)
     """
     tracked = _tracked_universe_symbols(db)
     tracked_set = set(tracked)
@@ -215,6 +217,20 @@ async def admin_sanity_coverage(
             missing_sample = sorted(list(tracked_set - hist_set))[:20]
 
     pct = round((hist_count / tracked_total) * 100.0, 1) if tracked_total else 0.0
+    benchmark_symbol = "SPY"
+    benchmark_required = max(260, int(getattr(settings, "SNAPSHOT_DAILY_BARS_LIMIT", 400)))
+    benchmark_latest_dt = (
+        db.query(func.max(PriceData.date))
+        .filter(PriceData.symbol == benchmark_symbol, PriceData.interval == "1d")
+        .scalar()
+    )
+    benchmark_latest_date = benchmark_latest_dt.date().isoformat() if benchmark_latest_dt else None
+    benchmark_daily_bars = (
+        db.query(func.count(PriceData.id))
+        .filter(PriceData.symbol == benchmark_symbol, PriceData.interval == "1d")
+        .scalar()
+        or 0
+    )
     return {
         "tracked_total": tracked_total,
         "latest_daily_date": latest_daily_date,
@@ -223,6 +239,13 @@ async def admin_sanity_coverage(
         "latest_snapshot_history_symbol_count": int(hist_count),
         "latest_snapshot_history_fill_pct": pct,
         "missing_snapshot_history_sample": missing_sample,
+        "benchmark": {
+            "symbol": benchmark_symbol,
+            "latest_daily_date": benchmark_latest_date,
+            "daily_bars": int(benchmark_daily_bars),
+            "required_bars": benchmark_required,
+            "ok": int(benchmark_daily_bars) >= benchmark_required,
+        },
     }
 
 
@@ -410,12 +433,25 @@ async def get_snapshot(
         "expiry_timestamp",
         "current_price",
         "market_cap",
+        "pe_ttm",
+        "peg_ttm",
+        "roe",
+        "eps_growth_yoy",
+        "eps_growth_qoq",
+        "revenue_growth_yoy",
+        "revenue_growth_qoq",
+        "dividend_yield",
+        "beta",
+        "analyst_rating",
+        "last_earnings",
+        "next_earnings",
         "sector",
         "industry",
         "sub_industry",
         "stage_label",
         "stage_label_5d_ago",
         "rs_mansfield_pct",
+        "sma_10",
         "sma_5",
         "sma_14",
         "sma_21",
@@ -475,12 +511,25 @@ async def get_snapshots(
         "as_of_timestamp",
         "current_price",
         "market_cap",
+        "pe_ttm",
+        "peg_ttm",
+        "roe",
+        "eps_growth_yoy",
+        "eps_growth_qoq",
+        "revenue_growth_yoy",
+        "revenue_growth_qoq",
+        "dividend_yield",
+        "beta",
+        "analyst_rating",
+        "last_earnings",
+        "next_earnings",
         "sector",
         "industry",
         "sub_industry",
         "stage_label",
         "stage_label_5d_ago",
         "rs_mansfield_pct",
+        "sma_10",
         "sma_5",
         "sma_14",
         "sma_21",
@@ -504,6 +553,9 @@ async def get_snapshots(
         "rsi",
         "macd",
         "macd_signal",
+        "perf_1d",
+        "perf_5d",
+        "perf_20d",
     ]
     col_names = list(getattr(MarketSnapshot, "__table__").columns.keys())
     ordered = [k for k in preferred if k in col_names]
@@ -545,12 +597,25 @@ async def get_snapshot_history(
             "as_of_date",
             "current_price",
             "market_cap",
+            "pe_ttm",
+            "peg_ttm",
+            "roe",
+            "eps_growth_yoy",
+            "eps_growth_qoq",
+            "revenue_growth_yoy",
+            "revenue_growth_qoq",
+            "dividend_yield",
+            "beta",
+            "analyst_rating",
+            "last_earnings",
+            "next_earnings",
             "sector",
             "industry",
             "sub_industry",
             "stage_label",
             "stage_label_5d_ago",
             "rs_mansfield_pct",
+            "sma_10",
             "sma_5",
             "sma_14",
             "sma_21",
@@ -604,6 +669,22 @@ async def admin_backfill_daily_since_date(
     return _enqueue_task(backfill_daily_since_date, since_date, batch_size)
 
 
+@router.post("/admin/repair/since-date")
+async def admin_repair_since_date(
+    since_date: str = Query("2021-01-01", description="YYYY-MM-DD"),
+    daily_batch_size: int = Query(25, ge=1, le=200),
+    history_batch_size: int = Query(50, ge=1, le=200),
+    _admin: User = Depends(get_admin_user),
+) -> Dict[str, Any]:
+    """Repair daily bars + indicators + snapshot history since a given date."""
+    return _enqueue_task(
+        repair_since_date,
+        since_date,
+        daily_batch_size=daily_batch_size,
+        history_batch_size=history_batch_size,
+    )
+
+
 @router.post("/admin/backfill/daily-last-bars")
 async def admin_backfill_daily_last_bars(
     days: int = Query(200, ge=30, le=3000, description="Approx trading days (default 200)"),
@@ -633,6 +714,7 @@ async def admin_task_status(
             "refresh_index_constituents",
             "update_tracked_symbol_cache",
             "bootstrap_daily_coverage_tracked",
+            "repair_since_date",
             "backfill_last_bars",
             "recompute_indicators_universe",
             "record_daily_history",
@@ -960,6 +1042,32 @@ async def get_coverage(
             snapshot.setdefault("meta", {})["backfill_5m_enabled"] = backfill_5m_enabled
         except Exception:
             # Any failure here should fall back to the previously computed/cached snapshot.
+            pass
+
+        # Attach benchmark (SPY) health for UI diagnostics.
+        try:
+            benchmark_symbol = "SPY"
+            benchmark_required = max(260, int(getattr(settings, "SNAPSHOT_DAILY_BARS_LIMIT", 400)))
+            benchmark_latest_dt = (
+                db.query(func.max(PriceData.date))
+                .filter(PriceData.symbol == benchmark_symbol, PriceData.interval == "1d")
+                .scalar()
+            )
+            benchmark_latest_date = benchmark_latest_dt.date().isoformat() if benchmark_latest_dt else None
+            benchmark_daily_bars = (
+                db.query(func.count(PriceData.id))
+                .filter(PriceData.symbol == benchmark_symbol, PriceData.interval == "1d")
+                .scalar()
+                or 0
+            )
+            snapshot.setdefault("meta", {})["benchmark"] = {
+                "symbol": benchmark_symbol,
+                "latest_daily_date": benchmark_latest_date,
+                "daily_bars": int(benchmark_daily_bars),
+                "required_bars": benchmark_required,
+                "ok": int(benchmark_daily_bars) >= benchmark_required,
+            }
+        except Exception:
             pass
 
         status_info = _ensure_status(snapshot)
@@ -1490,10 +1598,16 @@ async def admin_refresh_coverage(
 
 @router.post("/admin/coverage/restore-daily-tracked")
 async def admin_restore_daily_tracked(
+    history_days: int = Query(20, ge=1, le=300, description="Trading days to backfill into snapshot history"),
+    history_batch_size: int = Query(25, ge=1, le=200),
     admin_user: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
     """Run the guided daily coverage restore chain for the tracked universe (no 5m)."""
-    return _enqueue_task(bootstrap_daily_coverage_tracked)
+    return _enqueue_task(
+        bootstrap_daily_coverage_tracked,
+        history_days=history_days,
+        history_batch_size=history_batch_size,
+    )
 
 
 @router.get("/coverage/{symbol}")

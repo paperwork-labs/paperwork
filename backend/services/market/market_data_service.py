@@ -177,6 +177,7 @@ class MarketDataService:
             "rsi": indicators.get("rsi"),
             # Canonical consolidated fields
             "sma_5": indicators.get("sma_5"),
+            "sma_10": indicators.get("sma_10"),
             "sma_14": indicators.get("sma_14"),
             "sma_21": indicators.get("sma_21"),
             "sma_50": sma_50,
@@ -241,11 +242,24 @@ class MarketDataService:
 
     @staticmethod
     def _needs_fundamentals(snapshot: Dict[str, Any]) -> bool:
-        return (
-            snapshot.get("sector") is None
-            and snapshot.get("industry") is None
-            and snapshot.get("market_cap") is None
-        )
+        fields = [
+            "sector",
+            "industry",
+            "market_cap",
+            "pe_ttm",
+            "peg_ttm",
+            "roe",
+            "eps_growth_yoy",
+            "eps_growth_qoq",
+            "revenue_growth_yoy",
+            "revenue_growth_qoq",
+            "dividend_yield",
+            "beta",
+            "analyst_rating",
+            "next_earnings",
+            "last_earnings",
+        ]
+        return any(snapshot.get(f) is None for f in fields)
 
 
     # ---------------------- Provider selection ----------------------
@@ -397,6 +411,21 @@ class MarketDataService:
         Returns keys: name, sector, industry, sub_industry, market_cap when available.
         """
         info: Dict[str, Any] = {}
+        def to_pct(value: Any) -> Optional[float]:
+            try:
+                if value is None:
+                    return None
+                v = float(value)
+                if -1.0 <= v <= 1.0:
+                    return v * 100.0
+                return v
+            except Exception:
+                return None
+
+        def set_if_missing(key: str, value: Any) -> None:
+            if info.get(key) is None and value is not None:
+                info[key] = value
+
         try:
             if settings.FMP_API_KEY:
                 prof = fmpsdk.company_profile(apikey=settings.FMP_API_KEY, symbol=symbol)
@@ -409,19 +438,68 @@ class MarketDataService:
                         "sub_industry": d.get("subIndustry") or d.get("sub_industry"),
                         "market_cap": d.get("mktCap"),
                     }
+                    if d.get("beta") is not None:
+                        info["beta"] = d.get("beta")
+                try:
+                    metrics = fmpsdk.key_metrics_ttm(apikey=settings.FMP_API_KEY, symbol=symbol)
+                    if metrics and isinstance(metrics[0], dict):
+                        m = metrics[0]
+                        set_if_missing("pe_ttm", m.get("peRatioTTM") or m.get("peRatio"))
+                        set_if_missing("peg_ttm", m.get("pegRatioTTM") or m.get("pegRatio"))
+                        set_if_missing("dividend_yield", to_pct(m.get("dividendYieldTTM") or m.get("dividendYield")))
+                        set_if_missing("roe", to_pct(m.get("roeTTM") or m.get("roe")))
+                        set_if_missing("beta", m.get("beta"))
+                except Exception:
+                    pass
+                try:
+                    ratios = fmpsdk.ratios_ttm(apikey=settings.FMP_API_KEY, symbol=symbol)
+                    if ratios and isinstance(ratios[0], dict):
+                        r = ratios[0]
+                        set_if_missing("pe_ttm", r.get("priceEarningsRatioTTM") or r.get("priceEarningsRatio"))
+                        set_if_missing("peg_ttm", r.get("pegRatioTTM") or r.get("pegRatio"))
+                        set_if_missing("roe", to_pct(r.get("returnOnEquityTTM") or r.get("returnOnEquity")))
+                        set_if_missing("dividend_yield", to_pct(r.get("dividendYieldTTM") or r.get("dividendYield")))
+                except Exception:
+                    pass
+                try:
+                    growth = fmpsdk.financial_growth(apikey=settings.FMP_API_KEY, symbol=symbol)
+                    if growth and isinstance(growth[0], dict):
+                        g = growth[0]
+                        set_if_missing("eps_growth_yoy", to_pct(g.get("epsGrowth") or g.get("epsgrowth")))
+                        set_if_missing("eps_growth_qoq", to_pct(g.get("epsGrowthQuarterly") or g.get("epsGrowthQoQ")))
+                        set_if_missing("revenue_growth_yoy", to_pct(g.get("revenueGrowth") or g.get("revenuegrowth")))
+                        set_if_missing("revenue_growth_qoq", to_pct(g.get("revenueGrowthQuarterly") or g.get("revenueGrowthQoQ")))
+                except Exception:
+                    pass
         except Exception:
             pass
-        if not info:
-            try:
-                y = yf.Ticker(symbol).info
-                info = {
-                    "name": y.get("shortName") or y.get("longName") or y.get("symbol"),
-                    "sector": y.get("sector"),
-                    "industry": y.get("industry"),
-                    "sub_industry": y.get("subIndustry") or y.get("industry") or None,
-                    "market_cap": y.get("marketCap"),
-                }
-            except Exception:
+        try:
+            y = yf.Ticker(symbol).info
+            if y:
+                if not info:
+                    info = {
+                        "name": y.get("shortName") or y.get("longName") or y.get("symbol"),
+                        "sector": y.get("sector"),
+                        "industry": y.get("industry"),
+                        "sub_industry": y.get("subIndustry") or y.get("industry") or None,
+                        "market_cap": y.get("marketCap"),
+                    }
+                set_if_missing("beta", y.get("beta"))
+                set_if_missing("pe_ttm", y.get("trailingPE") or y.get("forwardPE"))
+                set_if_missing("peg_ttm", y.get("pegRatio"))
+                set_if_missing("roe", to_pct(y.get("returnOnEquity")))
+                set_if_missing("dividend_yield", to_pct(y.get("dividendYield")))
+                set_if_missing("eps_growth_yoy", to_pct(y.get("earningsGrowth")))
+                set_if_missing("eps_growth_qoq", to_pct(y.get("earningsQuarterlyGrowth")))
+                set_if_missing("revenue_growth_yoy", to_pct(y.get("revenueGrowth")))
+                set_if_missing("revenue_growth_qoq", to_pct(y.get("revenueQuarterlyGrowth")))
+                set_if_missing("analyst_rating", y.get("recommendationKey"))
+                earnings = y.get("earningsDate")
+                if isinstance(earnings, (list, tuple)) and earnings:
+                    set_if_missing("next_earnings", earnings[0])
+                set_if_missing("last_earnings", y.get("lastEarningsDate"))
+        except Exception:
+            if not info:
                 info = {}
         return info
 
@@ -743,6 +821,7 @@ class MarketDataService:
             "rsi": getattr(row, "rsi", None),
             # Canonical fields
             "sma_5": getattr(row, "sma_5", None),
+            "sma_10": getattr(row, "sma_10", None),
             "sma_14": getattr(row, "sma_14", None),
             "sma_21": getattr(row, "sma_21", None),
             "sma_50": getattr(row, "sma_50", None),
@@ -765,6 +844,18 @@ class MarketDataService:
             "stage_label_5d_ago": getattr(row, "stage_label_5d_ago", None),
             "stage_slope_pct": getattr(row, "stage_slope_pct", None),
             "stage_dist_pct": getattr(row, "stage_dist_pct", None),
+            "pe_ttm": getattr(row, "pe_ttm", None),
+            "peg_ttm": getattr(row, "peg_ttm", None),
+            "roe": getattr(row, "roe", None),
+            "eps_growth_yoy": getattr(row, "eps_growth_yoy", None),
+            "eps_growth_qoq": getattr(row, "eps_growth_qoq", None),
+            "revenue_growth_yoy": getattr(row, "revenue_growth_yoy", None),
+            "revenue_growth_qoq": getattr(row, "revenue_growth_qoq", None),
+            "dividend_yield": getattr(row, "dividend_yield", None),
+            "beta": getattr(row, "beta", None),
+            "analyst_rating": getattr(row, "analyst_rating", None),
+            "last_earnings": getattr(row, "last_earnings", None),
+            "next_earnings": getattr(row, "next_earnings", None),
 
             # Backward-compat legacy keys (to be dropped after callers migrate)
             "atr_value": getattr(row, "atr_value", None),
@@ -929,20 +1020,53 @@ class MarketDataService:
                 .order_by(MarketSnapshot.analysis_timestamp.desc())
                 .first()
             )
-            if prev_row and (prev_row.sector or prev_row.industry or prev_row.market_cap):
-                if prev_row.sector is not None:
-                    snapshot["sector"] = prev_row.sector
-                if prev_row.industry is not None:
-                    snapshot["industry"] = prev_row.industry
-                if prev_row.market_cap is not None:
-                    snapshot["market_cap"] = prev_row.market_cap
+            if prev_row:
+                for key in (
+                    "sector",
+                    "industry",
+                    "sub_industry",
+                    "market_cap",
+                    "pe_ttm",
+                    "peg_ttm",
+                    "roe",
+                    "eps_growth_yoy",
+                    "eps_growth_qoq",
+                    "revenue_growth_yoy",
+                    "revenue_growth_qoq",
+                    "dividend_yield",
+                    "beta",
+                    "analyst_rating",
+                    "next_earnings",
+                    "last_earnings",
+                ):
+                    val = getattr(prev_row, key, None)
+                    if val is not None and snapshot.get(key) is None:
+                        snapshot[key] = val
         except Exception:
             pass
 
         if self._needs_fundamentals(snapshot):
             try:
                 info = self.get_fundamentals_info(symbol)
-                for k in ("name", "sector", "industry", "sub_industry", "market_cap"):
+                for k in (
+                    "name",
+                    "sector",
+                    "industry",
+                    "sub_industry",
+                    "market_cap",
+                    "pe_ttm",
+                    "peg_ttm",
+                    "roe",
+                    "eps_growth_yoy",
+                    "eps_growth_qoq",
+                    "revenue_growth_yoy",
+                    "revenue_growth_qoq",
+                    "dividend_yield",
+                    "beta",
+                    "analyst_rating",
+                    "next_earnings",
+                    "last_earnings",
+                ):
                     if info.get(k) is not None:
                         snapshot[k] = info.get(k)
             except Exception:
@@ -995,7 +1119,25 @@ class MarketDataService:
         try:
             funda = self.get_fundamentals_info(symbol)
             if funda:
-                for k in ("name", "sector", "industry", "sub_industry", "market_cap"):
+                for k in (
+                    "name",
+                    "sector",
+                    "industry",
+                    "sub_industry",
+                    "market_cap",
+                    "pe_ttm",
+                    "peg_ttm",
+                    "roe",
+                    "eps_growth_yoy",
+                    "eps_growth_qoq",
+                    "revenue_growth_yoy",
+                    "revenue_growth_qoq",
+                    "dividend_yield",
+                    "beta",
+                    "analyst_rating",
+                    "next_earnings",
+                    "last_earnings",
+                ):
                     if funda.get(k) is not None:
                         snapshot[k] = funda.get(k)
         except Exception:

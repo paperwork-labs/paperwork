@@ -26,6 +26,9 @@ const MarketCoverage: React.FC = () => {
     | Array<{ date: string; symbol_count: number; pct_of_universe: number }>
     | undefined;
   const totalSymbols = Number((coverage as any)?.symbols ?? (coverage as any)?.tracked_count ?? 0);
+  const benchmark = (coverage as any)?.meta?.benchmark;
+  const benchmarkStale = benchmark && benchmark.ok === false;
+  const benchmarkLatest = benchmark?.latest_daily_date;
 
   const dailyFillDist = React.useMemo(() => {
     const rows = (dailyFillSeries || [])
@@ -152,9 +155,16 @@ const MarketCoverage: React.FC = () => {
                         : 'No daily bars found'}
                     </Text>
                   </Box>
-                  <Badge variant="subtle" colorScheme="green">
-                    {dailyFillDist.total > 0 ? `${Math.round((dailyFillDist.newestPct || 0) * 10) / 10}% filled on newest` : '—'}
-                  </Badge>
+                  <HStack gap={2} flexWrap="wrap">
+                    {benchmarkStale ? (
+                      <Badge variant="subtle" colorScheme="red">
+                        SPY stale {benchmarkLatest ? `(${benchmarkLatest})` : ''}
+                      </Badge>
+                    ) : null}
+                    <Badge variant="subtle" colorScheme="green">
+                      {dailyFillDist.total > 0 ? `${Math.round((dailyFillDist.newestPct || 0) * 10) / 10}% filled on newest` : '—'}
+                    </Badge>
+                  </HStack>
                 </HStack>
                 {dailyHistogram}
               </Box>

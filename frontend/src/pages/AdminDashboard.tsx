@@ -36,20 +36,26 @@ const AdminDashboard: React.FC = () => {
   const [backfillingStale, setBackfillingStale] = React.useState<boolean>(false);
   const [backfillingSnapshotHistory, setBackfillingSnapshotHistory] = React.useState<boolean>(false);
   const [backfillingDailyPeriod, setBackfillingDailyPeriod] = React.useState<boolean>(false);
+  const [repairingSinceDate, setRepairingSinceDate] = React.useState<boolean>(false);
   const [snapshotHistoryPeriod, setSnapshotHistoryPeriod] = React.useState<'6mo' | '1y' | '2y' | '5y' | 'max'>('1y');
   const [advancedOpen, setAdvancedOpen] = React.useState<boolean>(false);
   const [sendingDiscord, setSendingDiscord] = React.useState<boolean>(false);
   const [sanityLoading, setSanityLoading] = React.useState<boolean>(false);
+  const [sanityData, setSanityData] = React.useState<any | null>(null);
   const [taskStatus, setTaskStatus] = React.useState<Record<string, any> | null>(null);
   const [histWindowDays, setHistWindowDays] = React.useState<number>(
     coverageHistogramWindowDays || 50,
   );
   const [sinceDate, setSinceDate] = React.useState<string>('2021-01-01');
+  const [sinceDateTouched, setSinceDateTouched] = React.useState<boolean>(false);
   const fillLookbackDays = React.useMemo(() => Math.max(90, histWindowDays * 3), [histWindowDays]);
   const { snapshot: coverage, refresh: refreshCoverage, sparkline, kpis, actions: coverageActions, hero } = useCoverageSnapshot({
     fillTradingDaysWindow: histWindowDays,
     fillLookbackDays,
   });
+  const benchmark = (coverage as any)?.meta?.benchmark ?? sanityData?.benchmark;
+  const benchmarkStale = benchmark && benchmark.ok === false;
+  const benchmarkLatest = benchmark?.latest_daily_date;
   const autoRefreshAttemptedRef = React.useRef(false);
 
   React.useEffect(() => {
@@ -125,7 +131,7 @@ const AdminDashboard: React.FC = () => {
     setRestoringDaily(true);
     try {
       // Guided orchestrator (daily only, tracked universe)
-      await triggerTaskByName('restore_daily_coverage_tracked');
+      await api.post('/market-data/admin/coverage/restore-daily-tracked');
       toast.success('Daily coverage restore queued');
       setTimeout(() => void refreshCoverage(), 1500);
       setTimeout(() => void refreshCoverage(), 4500);
@@ -218,6 +224,22 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const repairSinceDate = async () => {
+    if (repairingSinceDate) return;
+    setRepairingSinceDate(true);
+    try {
+      await api.post(`/market-data/admin/repair/since-date?since_date=${encodeURIComponent(sinceDate)}`);
+      toast.success(`Repair since ${sinceDate} queued (daily → indicators → snapshot history)`);
+      setTimeout(() => void refreshCoverage(), 1500);
+      setTimeout(() => void refreshCoverage(), 4500);
+      void loadTaskStatus();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || err?.message || 'Failed to queue repair since date');
+    } finally {
+      setRepairingSinceDate(false);
+    }
+  };
+
   const backfillSnapshotHistorySinceDate = async () => {
     try {
       await api.post(`/market-data/admin/snapshots/history/backfill-last-n-days?days=3000&since_date=${encodeURIComponent(sinceDate)}`);
@@ -275,6 +297,7 @@ const AdminDashboard: React.FC = () => {
     try {
       const res = await api.get('/market-data/admin/sanity/coverage');
       const d = res?.data || {};
+      setSanityData(d);
       toast.success(
         `Sanity: daily ${d.latest_daily_date || '—'} ${d.latest_daily_symbol_count || 0}/${d.tracked_total || 0}; ` +
         `history ${d.latest_snapshot_history_date || '—'} ${d.latest_snapshot_history_symbol_count || 0}/${d.tracked_total || 0} (${d.latest_snapshot_history_fill_pct || 0}%)`,
@@ -288,6 +311,18 @@ const AdminDashboard: React.FC = () => {
       }
     } finally {
       setSanityLoading(false);
+    }
+  };
+
+  const loadSanity = async () => {
+    try {
+      const res = await api.get('/market-data/admin/sanity/coverage');
+      setSanityData(res?.data || null);
+    } catch (err: any) {
+      const status = Number(err?.response?.status || 0);
+      if (status === 404) {
+        toast.error('Sanity check endpoint not found. Restart backend: make up');
+      }
     }
   };
 
@@ -320,6 +355,10 @@ const AdminDashboard: React.FC = () => {
     }
   }, [coverage]);
 
+  React.useEffect(() => {
+    void loadSanity();
+  }, []);
+
   const fmtLastRun = (key: string) => {
     const raw = (taskStatus || {})[key];
     const ts = raw?.ts;
@@ -334,6 +373,27 @@ const AdminDashboard: React.FC = () => {
     | undefined;
 
   const totalSymbols = Number((coverage as any)?.symbols ?? (coverage as any)?.tracked_count ?? 0);
+
+  const lastGreenSnapshotDate = React.useMemo(() => {
+    const rows = (snapshotFillSeries || [])
+      .filter((r) => r && r.date)
+      .map((r) => ({
+        date: String(r.date).slice(0, 10),
+        pct: Number(r.pct_of_universe || 0),
+      }))
+      .filter((r) => r.pct >= 95);
+    if (!rows.length) return null;
+    rows.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+    return rows[0].date;
+  }, [snapshotFillSeries]);
+
+  React.useEffect(() => {
+    if (sinceDateTouched) return;
+    if (!lastGreenSnapshotDate) return;
+    if (sinceDate === '2021-01-01' || !sinceDate) {
+      setSinceDate(lastGreenSnapshotDate);
+    }
+  }, [lastGreenSnapshotDate, sinceDateTouched]);
 
   const dailyFillDist = React.useMemo(() => {
     const rows = (dailyFillSeries || [])
@@ -526,6 +586,11 @@ const AdminDashboard: React.FC = () => {
             <HStack gap={2} flexWrap="wrap">
               <Badge variant="subtle">Source: {String(coverage?.meta?.source || '—')}</Badge>
               <Badge variant="subtle">Refreshed: {formatDateTime(coverage?.meta?.updated_at, timezone)}</Badge>
+              {benchmarkStale ? (
+                <Badge variant="subtle" colorScheme="red">
+                  SPY stale {benchmarkLatest ? `(${benchmarkLatest})` : ''}
+                </Badge>
+              ) : null}
               <Tooltip.Root openDelay={200} positioning={{ placement: 'top' }}>
                 <Tooltip.Trigger asChild>
                   <Badge variant="subtle" cursor="help">
@@ -635,7 +700,10 @@ const AdminDashboard: React.FC = () => {
                         <input
                           type="date"
                           value={sinceDate}
-                          onChange={(e) => setSinceDate(e.target.value)}
+                          onChange={(e) => {
+                            setSinceDateTouched(true);
+                            setSinceDate(e.target.value);
+                          }}
                           style={{
                             fontSize: 12,
                             padding: '6px 8px',
@@ -652,7 +720,14 @@ const AdminDashboard: React.FC = () => {
                       <Button size="xs" variant="outline" onClick={() => void backfillSnapshotHistorySinceDate()}>
                         Backfill Snapshot History (since)
                       </Button>
+                      <Button size="xs" colorScheme="brand" loading={repairingSinceDate} onClick={() => void repairSinceDate()}>
+                        Repair Since Date
+                      </Button>
                     </Box>
+                    <Text mt={2} fontSize="xs" color="fg.muted">
+                      Default since date uses last green snapshot date when available.
+                      Repair runs daily backfill → recompute indicators → snapshot history in order.
+                    </Text>
                   </Box>
 
                   <Box
@@ -729,6 +804,9 @@ const AdminDashboard: React.FC = () => {
                         Record History
                       </Button>
                     </Box>
+                    <Text mt={2} fontSize="xs" color="fg.muted">
+                      If Stage/RS look empty, run “Recompute Indicators (Market Snapshot)”.
+                    </Text>
                   </Box>
 
                   <Box
@@ -750,6 +828,12 @@ const AdminDashboard: React.FC = () => {
                         Send Snapshot Digest to Discord
                       </Button>
                     </Box>
+                    {sanityData?.benchmark?.ok === false ? (
+                      <Text mt={2} fontSize="xs" color="red.500">
+                        SPY history is missing ({sanityData?.benchmark?.daily_bars || 0}/{sanityData?.benchmark?.required_bars || 0}).
+                        Stage/RS cannot be computed until daily bars are backfilled.
+                      </Text>
+                    ) : null}
                   </Box>
                 </Box>
               </Box>

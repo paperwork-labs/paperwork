@@ -1,5 +1,5 @@
-def test_bootstrap_daily_coverage_tracked_defaults_to_rolling_5_day_history(db_session, monkeypatch):
-    """Restore Daily Coverage (Tracked) should only backfill a short rolling snapshot-history window by default."""
+def test_bootstrap_daily_coverage_tracked_defaults_to_rolling_20_day_history(db_session, monkeypatch):
+    """Restore Daily Coverage (Tracked) should backfill a short rolling snapshot-history window by default."""
     from backend.tasks import market_data_tasks
 
     # Force tasks to use pytest DB + avoid Redis side effects.
@@ -28,6 +28,6 @@ def test_bootstrap_daily_coverage_tracked_defaults_to_rolling_5_day_history(db_s
 
     res = market_data_tasks.bootstrap_daily_coverage_tracked()
     assert res["status"] == "ok"
-    assert called["days"] == 5
+    assert called["days"] == 20
 
 

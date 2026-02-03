@@ -26,10 +26,14 @@ import api from '../services/api';
 import FormField from '../components/ui/FormField';
 import { FiPlay, FiPause, FiTrash2, FiRotateCw } from 'react-icons/fi';
 import SortableTable, { type Column } from '../components/SortableTable';
+import { useUserPreferences } from '../hooks/useUserPreferences';
+import { formatDateTime } from '../utils/format';
 
 const AdminSchedules: React.FC = () => {
+  const { timezone } = useUserPreferences();
   const [loading, setLoading] = React.useState(false);
   const [data, setData] = React.useState<{ schedules: any[]; mode?: string } | null>(null);
+  const [nextRuns, setNextRuns] = React.useState<Record<string, string | null>>({});
   const [creating, setCreating] = React.useState(false);
   const [createOpen, setCreateOpen] = React.useState(false);
   const [form, setForm] = React.useState({ name: '', task: '', cron: '0 * * * *', timezone: 'UTC' });
@@ -39,6 +43,34 @@ const AdminSchedules: React.FC = () => {
     try {
       const r = await api.get('/admin/schedules');
       setData(r.data || null);
+      const schedules = (r.data?.schedules || []) as any[];
+      if (schedules.length) {
+        const previews = await Promise.all(
+          schedules.map(async (s) => {
+            const cron = String(s?.cron || '').trim();
+            const tz = String(s?.timezone || 'UTC').trim();
+            if (!cron) {
+              return { name: String(s?.name || ''), next: null };
+            }
+            try {
+              const res = await api.get('/admin/schedules/preview', {
+                params: { cron, timezone: tz, count: 1 },
+              });
+              const next = Array.isArray(res?.data?.next_runs_utc) ? res.data.next_runs_utc[0] : null;
+              return { name: String(s?.name || ''), next: next || null };
+            } catch {
+              return { name: String(s?.name || ''), next: null };
+            }
+          }),
+        );
+        const mapped: Record<string, string | null> = {};
+        previews.forEach((p) => {
+          if (p.name) mapped[p.name] = p.next;
+        });
+        setNextRuns(mapped);
+      } else {
+        setNextRuns({});
+      }
     } catch (err: any) {
       toast.error(err?.message || 'Failed to load schedules');
     } finally {
@@ -118,6 +150,33 @@ const AdminSchedules: React.FC = () => {
     load();
   }, []);
 
+  const formatCronFriendly = (cron: string, tz: string, nextUtc?: string | null) => {
+    const parts = String(cron || '').trim().split(/\s+/);
+    if (parts.length !== 5) {
+      return `Cron: ${cron || '—'}`;
+    }
+    const [min, hour, dom, mon, dow] = parts;
+    const pad = (v: string) => v.padStart(2, '0');
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const parseDow = (value: string) => {
+      if (value === '*') return 'daily';
+      const list = value.split(',').map((d) => days[Number(d)] || d);
+      return list.join(', ');
+    };
+    let base = `Cron: ${cron}`;
+    if (min !== '*' && hour === '*' && dom === '*' && mon === '*' && dow === '*') {
+      base = `Every hour at :${pad(min)} ${tz}`;
+    } else if (min !== '*' && hour !== '*' && dom === '*' && mon === '*' && dow === '*') {
+      base = `Every day at ${pad(hour)}:${pad(min)} ${tz}`;
+    } else if (min !== '*' && hour !== '*' && dom === '*' && mon === '*' && dow !== '*') {
+      base = `Weekly on ${parseDow(dow)} at ${pad(hour)}:${pad(min)} ${tz}`;
+    } else if (min !== '*' && hour !== '*' && dom !== '*' && mon === '*' && dow === '*') {
+      base = `Monthly on day ${dom} at ${pad(hour)}:${pad(min)} ${tz}`;
+    }
+    const nextLocal = nextUtc ? formatDateTime(nextUtc, timezone) : null;
+    return nextLocal ? `${base} · Next: ${nextLocal}` : base;
+  };
+
   const openPreset = (preset: { name: string; task: string; cron: string; timezone: string }) => {
     setForm(preset);
     setCreateOpen(true);
@@ -130,6 +189,9 @@ const AdminSchedules: React.FC = () => {
           <Heading size="md">Admin Schedules</Heading>
           <Text fontSize="sm" color="fg.muted">
             Manage Celery beat schedules (RedBeat). Create, pause/resume, run-now, and delete.
+          </Text>
+          <Text fontSize="xs" color="fg.muted">
+            Times shown in your timezone; cron is stored in the schedule timezone.
           </Text>
           <HStack mt={2} gap={2} flexWrap="wrap">
             <Button
@@ -207,6 +269,18 @@ const AdminSchedules: React.FC = () => {
                 sortType: 'string',
                 render: (v) => <Text fontFamily="mono" fontSize="12px" color="fg.muted">{String(v || '—')}</Text>,
                 width: '160px',
+              },
+              {
+                key: 'friendly',
+                header: 'Schedule (friendly)',
+                accessor: (s: any) => s.cron,
+                sortable: true,
+                sortType: 'string',
+                render: (_v, s) => (
+                  <Text fontSize="12px" color="fg.muted">
+                    {formatCronFriendly(String(s?.cron || ''), String(s?.timezone || 'UTC'), nextRuns[String(s?.name || '')])}
+                  </Text>
+                ),
               },
               {
                 key: 'timezone',

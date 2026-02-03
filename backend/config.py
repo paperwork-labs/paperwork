@@ -116,6 +116,16 @@ class Settings(BaseSettings):
     # - ~52-week RS computations on weekly resample
     SNAPSHOT_DAILY_BARS_LIMIT: int = 400
 
+    # Weinstein Stage thresholds (percent units)
+    # - slope thresholds are % change of 30W SMA vs 5 weeks ago
+    # - distance thresholds are % from 30W SMA
+    STAGE_SLOPE_PCT_UP: float = 0.05
+    STAGE_SLOPE_PCT_DOWN: float = -0.05
+    STAGE_SLOPE_PCT_FLAT: float = 0.05
+    STAGE_DIST_PCT_FLAT: float = 5.0
+    STAGE_DIST_PCT_STAGE2_A: float = 5.0
+    STAGE_DIST_PCT_STAGE2_B: float = 15.0
+
     # Source of truth should be runtime environment variables injected by Docker Compose
     # (`infra/env.dev` via Makefile). We keep optional env-file support only when explicitly
     # provided for non-Docker workflows (do not implicitly load a repo root `.env`).

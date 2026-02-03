@@ -66,6 +66,8 @@ def test_admin_sanity_coverage_payload(db_session, monkeypatch):
         assert data["latest_snapshot_history_symbol_count"] == 1
         assert data["latest_snapshot_history_fill_pct"] == 50.0
         assert "BBB" in data["missing_snapshot_history_sample"]
+        assert data["benchmark"]["symbol"] == "SPY"
+        assert data["benchmark"]["ok"] is False
     finally:
         app.dependency_overrides.pop(routes.get_db, None)
 

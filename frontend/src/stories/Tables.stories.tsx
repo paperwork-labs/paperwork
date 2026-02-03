@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Badge, HStack, Text } from '@chakra-ui/react';
 import { useColorMode } from '../theme/colorMode';
-import SortableTable, { type Column } from '../components/SortableTable';
+import SortableTable, { type Column, type FilterGroup } from '../components/SortableTable';
 import Pagination from '../components/ui/Pagination';
 
 export default {
@@ -35,6 +35,12 @@ export const Sortable_With_Pagination = () => {
       accessor: (r) => r.status,
       sortable: true,
       sortType: 'string',
+      filterType: 'select',
+      filterOptions: [
+        { label: 'ok', value: 'ok' },
+        { label: 'running', value: 'running' },
+        { label: 'error', value: 'error' },
+      ],
       render: (v) => (
         <Badge colorPalette={v === 'ok' ? 'green' : v === 'running' ? 'blue' : 'red'}>
           {String(v)}
@@ -61,6 +67,23 @@ export const Sortable_With_Pagination = () => {
     },
   ];
 
+  const filterPresets: Array<{ label: string; filters: FilterGroup }> = [
+    {
+      label: 'Only errors',
+      filters: {
+        conjunction: 'AND' as const,
+        rules: [
+          {
+            id: 'preset_errors',
+            columnKey: 'status',
+            operator: 'equals' as const,
+            value: 'error',
+          },
+        ],
+      },
+    },
+  ];
+
   return (
     <Box p={6}>
       <HStack justify="space-between" mb={4}>
@@ -74,7 +97,16 @@ export const Sortable_With_Pagination = () => {
       </HStack>
 
       <Box borderWidth="1px" borderColor="border.subtle" borderRadius="xl" bg="bg.card">
-        <SortableTable data={sample} columns={columns} defaultSortBy="started_at" defaultSortOrder="desc" size="sm" maxHeight="50vh" />
+        <SortableTable
+          data={sample}
+          columns={columns}
+          defaultSortBy="started_at"
+          defaultSortOrder="desc"
+          size="sm"
+          maxHeight="50vh"
+          filtersEnabled
+          filterPresets={filterPresets}
+        />
       </Box>
 
       <Box mt={3}>

@@ -4,6 +4,8 @@ from typing import Dict, Any, Optional, List
 import pandas as pd
 import numpy as np
 
+from backend.config import settings
+
 
 def compute_core_indicators(data_oldest_first: pd.DataFrame) -> Dict[str, Any]:
     """Compute core technical indicators using pandas/numpy only.
@@ -16,7 +18,7 @@ def compute_core_indicators(data_oldest_first: pd.DataFrame) -> Dict[str, Any]:
     # SMAs
     # Keep canonical names aligned with our snapshot schema: sma_5, sma_14, sma_21, sma_50, sma_100, sma_150, sma_200.
     # We also keep sma_8 (non-canonical) for MA-bucket logic and backwards compatibility in raw_analysis.
-    for n in [5, 8, 14, 21, 50, 100, 150, 200]:
+    for n in [5, 8, 10, 14, 21, 50, 100, 150, 200]:
         if len(closes) >= n:
             sma = closes.rolling(n).mean()
             if not sma.empty and not pd.isna(sma.iloc[-1]):
@@ -362,19 +364,6 @@ def compute_weinstein_stage_from_daily(
     stage_dist_pct = None
     stage_slope_pct = None
     if sma30_now:
-        up = price > sma30_now and sma30_slope > 0 and rs_slope > 0
-        down = price < sma30_now and sma30_slope < 0 and rs_slope < 0
-        if up:
-            stage = "STAGE_2_UPTREND"
-            stage_label = "2"
-        elif down:
-            stage = "STAGE_4_DOWNTREND"
-            stage_label = "4"
-        else:
-            flat = abs(sma30_slope) <= max(1e-6, sma30_now * 0.0001)
-            near = abs(price - sma30_now) <= sma30_now * 0.03
-            stage = "STAGE_1_BASE" if flat and near else "STAGE_3_DISTRIBUTION"
-            stage_label = "1" if stage == "STAGE_1_BASE" else "3"
         try:
             stage_dist_pct = float((price / sma30_now - 1.0) * 100.0) if sma30_now else None
         except Exception:
@@ -384,6 +373,38 @@ def compute_weinstein_stage_from_daily(
             stage_slope_pct = float((sma30_now / prev - 1.0) * 100.0) if (prev and sma30_now) else None
         except Exception:
             stage_slope_pct = None
+
+        slope_up = float(getattr(settings, "STAGE_SLOPE_PCT_UP", 0.05))
+        slope_down = float(getattr(settings, "STAGE_SLOPE_PCT_DOWN", -0.05))
+        slope_flat = float(getattr(settings, "STAGE_SLOPE_PCT_FLAT", 0.05))
+        dist_flat = float(getattr(settings, "STAGE_DIST_PCT_FLAT", 5.0))
+        dist_2a = float(getattr(settings, "STAGE_DIST_PCT_STAGE2_A", 5.0))
+        dist_2b = float(getattr(settings, "STAGE_DIST_PCT_STAGE2_B", 15.0))
+
+        slope_ok = stage_slope_pct is not None
+        dist_ok = stage_dist_pct is not None
+        if slope_ok and dist_ok:
+            if stage_slope_pct > slope_up and stage_dist_pct > 0:
+                stage = "STAGE_2_UPTREND"
+                stage_label = "2"
+            elif stage_slope_pct < slope_down and stage_dist_pct < 0:
+                stage = "STAGE_4_DOWNTREND"
+                stage_label = "4"
+            elif abs(stage_slope_pct) <= slope_flat and abs(stage_dist_pct) <= dist_flat:
+                stage = "STAGE_1_BASE"
+                stage_label = "1"
+            else:
+                stage = "STAGE_3_DISTRIBUTION"
+                stage_label = "3"
+
+            # Stage 2 refinement (2A/2B/2C) based on distance from 30W SMA.
+            if stage_label == "2":
+                if stage_dist_pct <= dist_2a:
+                    stage_label = "2A"
+                elif stage_dist_pct <= dist_2b:
+                    stage_label = "2B"
+                else:
+                    stage_label = "2C"
 
     # Mansfield Relative Strength (weekly RS vs 52-week SMA of RS), expressed as %
     rs_mansfield_pct = None
@@ -466,18 +487,32 @@ def compute_weinstein_stage_series_from_daily(
     stage_label[:] = "UNKNOWN"
     has_sma = ~sma30.isna()
 
-    up = has_sma & (close > sma30) & (sma30_slope > 0) & (rs_slope > 0)
-    down = has_sma & (close < sma30) & (sma30_slope < 0) & (rs_slope < 0)
+    slope_up = float(getattr(settings, "STAGE_SLOPE_PCT_UP", 0.05))
+    slope_down = float(getattr(settings, "STAGE_SLOPE_PCT_DOWN", -0.05))
+    slope_flat = float(getattr(settings, "STAGE_SLOPE_PCT_FLAT", 0.05))
+    dist_flat = float(getattr(settings, "STAGE_DIST_PCT_FLAT", 5.0))
+    dist_2a = float(getattr(settings, "STAGE_DIST_PCT_STAGE2_A", 5.0))
+    dist_2b = float(getattr(settings, "STAGE_DIST_PCT_STAGE2_B", 15.0))
+
+    up = has_sma & (stage_slope_pct > slope_up) & (stage_dist_pct > 0)
+    down = has_sma & (stage_slope_pct < slope_down) & (stage_dist_pct < 0)
     stage_label[up] = "2"
     stage_label[down] = "4"
 
     # Remaining: base/distribution
     remaining = has_sma & ~(up | down)
-    flat = remaining & (sma30_slope.abs() <= (sma30.abs() * 0.0001).fillna(0))
-    near = remaining & ((close - sma30).abs() <= (sma30.abs() * 0.03))
+    flat = remaining & (stage_slope_pct.abs() <= slope_flat)
+    near = remaining & (stage_dist_pct.abs() <= dist_flat)
     base = flat & near
     stage_label[base] = "1"
     stage_label[remaining & ~base] = "3"
+
+    # Stage 2 refinement (2A/2B/2C) based on distance from 30W SMA.
+    is_stage2 = stage_label == "2"
+    dist = stage_dist_pct.reindex(idx)
+    stage_label[is_stage2 & (dist <= dist_2a)] = "2A"
+    stage_label[is_stage2 & (dist > dist_2a) & (dist <= dist_2b)] = "2B"
+    stage_label[is_stage2 & (dist > dist_2b)] = "2C"
 
     weekly_out = pd.DataFrame(
         {
