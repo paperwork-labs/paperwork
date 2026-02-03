@@ -46,11 +46,13 @@ setup_infra_env() {
 print_urls() {
     # shellcheck disable=SC1091
     source infra/env.dev
+    LADLE_HOST_PORT="${LADLE_HOST_PORT:-61000}"
     echo ""
     echo "🌐 Access URLs:"
     echo "   • API Documentation: http://localhost:${BACKEND_HOST_PORT}/docs"
     echo "   • API Health Check: http://localhost:${BACKEND_HOST_PORT}/health"
     echo "   • Frontend: http://localhost:${WEB_HOST_PORT}"
+    echo "   • Ladle: http://localhost:${LADLE_HOST_PORT}"
     echo "   • Celery Monitor (Flower): http://localhost:${FLOWER_HOST_PORT}"
     echo "   • PostgreSQL (dev): localhost:${DB_HOST_PORT}"
     echo "   • Redis (dev): localhost:${REDIS_HOST_PORT}"

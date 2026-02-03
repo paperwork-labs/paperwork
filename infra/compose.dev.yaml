@@ -181,7 +181,7 @@ services:
       - ../frontend:/app
       - /app/node_modules
     ports:
-      - "61000:61000"
+      - "${LADLE_HOST_PORT:-61000}:61000"
     depends_on:
       - backend
     networks:

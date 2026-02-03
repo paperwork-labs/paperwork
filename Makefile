@@ -1,4 +1,4 @@
-.PHONY: up down down-reset ps logs build ladle-up ladle-down ladle-logs ladle-build \
+.PHONY: up down down-reset ps logs build health-check ladle-up ladle-down ladle-logs ladle-build \
 	test-up test test-frontend test-all test-down \
 	backend-shell frontend-shell \
 	migrate-create migrate-up migrate-down migrate-stamp-head \
@@ -16,22 +16,26 @@ COMPOSE_DEV_UI = $(DOCKER) compose --project-name $(PROJECT) --env-file $(ENV_DE
 COMPOSE_TEST = $(DOCKER) compose --project-name $(PROJECT_TEST) --env-file $(ENV_TEST) -f infra/compose.test.yaml
 
 up:
-	$(COMPOSE_DEV) up -d --build
+	$(COMPOSE_DEV_UI) up -d --build
+	$(MAKE) health-check
 
 down:
-	$(COMPOSE_DEV) down
+	$(COMPOSE_DEV_UI) down
 
 down-reset:
 	$(COMPOSE_DEV) down -v
 
 ps:
-	$(COMPOSE_DEV) ps
+	$(COMPOSE_DEV_UI) ps
 
 logs:
-	$(COMPOSE_DEV) logs --tail=200 backend celery_worker celery_beat frontend
+	$(COMPOSE_DEV_UI) logs --tail=200 backend celery_worker celery_beat frontend ladle
 
 build:
-	$(COMPOSE_DEV) build
+	$(COMPOSE_DEV_UI) build
+
+health-check:
+	./scripts/health_check.sh $(ENV_DEV)
 
 ladle-up:
 	$(COMPOSE_DEV_UI) up -d --build ladle
