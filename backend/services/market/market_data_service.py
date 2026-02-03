@@ -449,8 +449,8 @@ class MarketDataService:
                         set_if_missing("dividend_yield", to_pct(m.get("dividendYieldTTM") or m.get("dividendYield")))
                         set_if_missing("roe", to_pct(m.get("roeTTM") or m.get("roe")))
                         set_if_missing("beta", m.get("beta"))
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning("Failed to fetch FMP key metrics for %s: %s", symbol, exc)
                 try:
                     ratios = fmpsdk.ratios_ttm(apikey=settings.FMP_API_KEY, symbol=symbol)
                     if ratios and isinstance(ratios[0], dict):
@@ -459,8 +459,8 @@ class MarketDataService:
                         set_if_missing("peg_ttm", r.get("pegRatioTTM") or r.get("pegRatio"))
                         set_if_missing("roe", to_pct(r.get("returnOnEquityTTM") or r.get("returnOnEquity")))
                         set_if_missing("dividend_yield", to_pct(r.get("dividendYieldTTM") or r.get("dividendYield")))
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning("Failed to fetch FMP ratios for %s: %s", symbol, exc)
                 try:
                     growth = fmpsdk.financial_growth(apikey=settings.FMP_API_KEY, symbol=symbol)
                     if growth and isinstance(growth[0], dict):
@@ -469,10 +469,10 @@ class MarketDataService:
                         set_if_missing("eps_growth_qoq", to_pct(g.get("epsGrowthQuarterly") or g.get("epsGrowthQoQ")))
                         set_if_missing("revenue_growth_yoy", to_pct(g.get("revenueGrowth") or g.get("revenuegrowth")))
                         set_if_missing("revenue_growth_qoq", to_pct(g.get("revenueGrowthQuarterly") or g.get("revenueGrowthQoQ")))
-                except Exception:
-                    pass
-        except Exception:
-            pass
+                except Exception as exc:
+                    logger.warning("Failed to fetch or process financial growth from FMP for %s: %s", symbol, exc)
+        except Exception as exc:
+            logger.warning("Failed to fetch FMP fundamentals for %s: %s", symbol, exc)
         try:
             y = yf.Ticker(symbol).info
             if y:

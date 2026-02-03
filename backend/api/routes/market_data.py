@@ -1067,8 +1067,9 @@ async def get_coverage(
                 "required_bars": benchmark_required,
                 "ok": int(benchmark_daily_bars) >= benchmark_required,
             }
-        except Exception:
-            pass
+        except Exception as exc:
+            # Benchmark diagnostics are optional; log failures but do not break the snapshot.
+            logger.exception("Failed to attach benchmark coverage health to snapshot: %s", exc)
 
         status_info = _ensure_status(snapshot)
 
