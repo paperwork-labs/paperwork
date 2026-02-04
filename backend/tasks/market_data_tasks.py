@@ -13,12 +13,13 @@ All tasks are safe to run repeatedly (idempotent writes; ON CONFLICT for bars).
 
 from celery import shared_task
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Set, Dict, Optional
 
 from backend.database import SessionLocal
 from backend.models import PriceData
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy import func
 from backend.models.market_data import MarketSnapshotHistory, MarketSnapshot
 from backend.models import IndexConstituent
 from backend.services.market.market_data_service import (
@@ -1019,17 +1020,29 @@ def recompute_indicators_universe(batch_size: int = 50) -> dict:
         error_samples: list[dict] = []
         warnings: list[str] = []
 
-        # Preflight: ensure benchmark (SPY) has enough daily bars for Stage/RS.
+        # Preflight: ensure benchmark (SPY) has enough daily bars for Stage/RS
+        # and is not stale vs the latest daily OHLCV in the DB.
         benchmark_symbol = "SPY"
         required_bars = max(260, int(getattr(settings, "SNAPSHOT_DAILY_BARS_LIMIT", 400)))
-        benchmark_count = (
-            session.query(PriceData)
+        benchmark_count = session.query(PriceData).filter(
+            PriceData.symbol == benchmark_symbol, PriceData.interval == "1d"
+        ).count()
+        benchmark_latest_dt = (
+            session.query(func.max(PriceData.date))
             .filter(PriceData.symbol == benchmark_symbol, PriceData.interval == "1d")
-            .count()
+            .scalar()
+        )
+        latest_daily_dt = (
+            session.query(func.max(PriceData.date))
+            .filter(PriceData.interval == "1d")
+            .scalar()
         )
         benchmark_fetched = False
         benchmark_errors = 0
-        if benchmark_count < required_bars:
+        benchmark_stale = False
+        if latest_daily_dt and benchmark_latest_dt:
+            benchmark_stale = benchmark_latest_dt.date() < latest_daily_dt.date()
+        if benchmark_count < required_bars or benchmark_latest_dt is None or benchmark_stale:
             loop = _setup_event_loop()
             try:
                 params = daily_backfill_params(days=required_bars)
@@ -1051,15 +1064,23 @@ def recompute_indicators_universe(batch_size: int = 50) -> dict:
             )
             benchmark_fetched = True
             benchmark_errors = int(persist.get("errors") or 0)
-            benchmark_count = (
-                session.query(PriceData)
+            benchmark_count = session.query(PriceData).filter(
+                PriceData.symbol == benchmark_symbol, PriceData.interval == "1d"
+            ).count()
+            benchmark_latest_dt = (
+                session.query(func.max(PriceData.date))
                 .filter(PriceData.symbol == benchmark_symbol, PriceData.interval == "1d")
-                .count()
+                .scalar()
             )
         if benchmark_count < required_bars:
             warnings.append(
                 f"Benchmark {benchmark_symbol} has {benchmark_count} daily bars (<{required_bars}); "
                 "Stage/RS may be UNKNOWN until benchmark history is backfilled."
+            )
+        if latest_daily_dt and benchmark_latest_dt and benchmark_latest_dt.date() < latest_daily_dt.date():
+            warnings.append(
+                f"Benchmark {benchmark_symbol} latest date {benchmark_latest_dt.date()} "
+                f"lags latest daily {latest_daily_dt.date()}; RS may be stale."
             )
 
         # Chunking by batch_size
@@ -1260,7 +1281,7 @@ def backfill_snapshot_history_last_n_days(
 
         # Trading-day calendar:
         # Prefer SPY dates as canonical, but fall back to any symbol with 1d bars in the DB.
-        # This keeps the backfill robust even when SPY isn't present yet.
+        # This keeps the backfill robust even when SPY isn't present yet or is stale.
         calendar_symbol = "SPY"
         since_dt = None
         if since_date:
@@ -1278,9 +1299,35 @@ def backfill_snapshot_history_last_n_days(
             .all()
         )
         as_of_dates = [r[0] for r in cal_dates if r and r[0] is not None and (since_dt is None or r[0] >= since_dt)]
+        latest_daily_dt = (
+            session.query(func.max(PriceData.date))
+            .filter(PriceData.interval == "1d")
+            .scalar()
+        )
+        spy_latest_dt = (
+            session.query(func.max(PriceData.date))
+            .filter(PriceData.symbol == calendar_symbol, PriceData.interval == "1d")
+            .scalar()
+        )
+        if latest_daily_dt and (spy_latest_dt is None or spy_latest_dt.date() < latest_daily_dt.date()):
+            alt_query = session.query(PriceData.symbol).filter(
+                PriceData.interval == "1d",
+                PriceData.date == latest_daily_dt,
+            )
+            if ordered:
+                alt_query = alt_query.filter(PriceData.symbol.in_(ordered))
+            alt_symbol = alt_query.limit(1).scalar()
+            if alt_symbol and alt_symbol != calendar_symbol:
+                calendar_symbol = str(alt_symbol)
+                cal_dates = (
+                    session.query(PriceData.date)
+                    .filter(PriceData.symbol == calendar_symbol, PriceData.interval == "1d")
+                    .order_by(PriceData.date.desc())
+                    .limit(6000 if since_dt is not None else max(1, int(days)))
+                    .all()
+                )
+                as_of_dates = [r[0] for r in cal_dates if r and r[0] is not None and (since_dt is None or r[0] >= since_dt)]
         if not as_of_dates:
-            from sqlalchemy import func
-
             alt = (
                 session.query(PriceData.symbol, func.count(PriceData.date).label("n"))
                 .filter(PriceData.interval == "1d")
