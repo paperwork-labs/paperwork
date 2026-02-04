@@ -34,7 +34,10 @@ Tests (Isolated DB)
 PR Automation
 -------------
 - Dependabot PRs can auto-merge after CI passes.
-- For agent/human changes, use `scripts/open_pr.sh` (details in `docs/PR_AUTOMATION.md`).
+- Preferred flow for agent/human changes:
+  - `scripts/open_pr.sh <type> "short description"` (creates `agent/**` branch, commits, pushes, opens draft PR)
+  - Do **not** run `gh pr create` manually; `agent-auto-pr.yml` opens the bot PR on push.
+- Full details in `docs/PR_AUTOMATION.md`.
 
 Migrations
 ----------
