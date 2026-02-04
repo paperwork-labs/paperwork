@@ -1,8 +1,8 @@
 /// <reference types="vite/client" />
 import axios, { AxiosResponse, AxiosError } from 'axios';
 
-// All environments use relative API path; Vite dev proxy handles routing in development
-const API_BASE_URL = '/api/v1';
+// Prefer env-configured base URL; fallback to relative path with dev proxy support
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 // Enhanced request queue for connection optimization
 class RequestQueue {

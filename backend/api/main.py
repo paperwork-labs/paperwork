@@ -3,11 +3,18 @@ QuantMatrix V1 - Clean FastAPI Application
 Replaces the massive monolithic API routes with focused, organized endpoints.
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
+import logging.config
 from datetime import datetime
+import uuid
+
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 
 # Route imports - TEMPORARY: Only core routes for FlexQuery sync stabilization
 from backend.api.routes import (
@@ -34,7 +41,8 @@ from backend.api.routes import account_management
 # Model imports
 from backend.models import Base
 from backend.database import engine, SessionLocal
-from backend.config import settings
+from backend.config import settings, validate_production_settings, LOGGING_CONFIG
+from backend.utils.request_context import set_request_id, reset_request_id
 from backend.models.broker_account import (
     BrokerAccount,
     BrokerType,
@@ -50,6 +58,7 @@ from backend.services.clients.tastytrade_client import (
 from backend.services.portfolio.account_config_service import account_config_service
 from backend.api.routes.auth import get_password_hash
 
+logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger(__name__)
 
 # Create FastAPI app
@@ -61,20 +70,40 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+# Rate limiting (default limit applies to all routes)
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=[settings.RATE_LIMIT_DEFAULT],
+    storage_uri=settings.RATE_LIMIT_STORAGE_URL or None,
+)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://0.0.0.0:3000",
-        "https://quantmatrix.com",
-        "https://staging.quantmatrix.com",
+        origin.strip()
+        for origin in (settings.CORS_ORIGINS or "").split(",")
+        if origin.strip()
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Request-Id"],
 )
+
+
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next):
+    request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
+    token = set_request_id(request_id)
+    try:
+        response = await call_next(request)
+        response.headers["x-request-id"] = request_id
+        return response
+    finally:
+        reset_request_id(token)
 
 
 # Create database tables
@@ -82,19 +111,23 @@ app.add_middleware(
 async def startup_event():
     """Initialize database and services."""
     try:
+        validate_production_settings()
         # Apply Alembic migrations automatically on startup
         try:
             import os
             from alembic import command as _alembic_command
             from alembic.config import Config as _AlembicConfig
 
-            backend_dir = os.path.dirname(os.path.dirname(__file__))
-            alembic_ini_path = os.path.join(backend_dir, "alembic.ini")
-            cfg = _AlembicConfig(alembic_ini_path)
-            # Force script_location to absolute path to avoid '/app/alembic' resolution
-            cfg.set_main_option("script_location", os.path.join(backend_dir, "alembic"))
-            _alembic_command.upgrade(cfg, "head")
-            logger.info("✅ Alembic migrations applied (upgrade head)")
+            if settings.AUTO_MIGRATE_ON_STARTUP:
+                backend_dir = os.path.dirname(os.path.dirname(__file__))
+                alembic_ini_path = os.path.join(backend_dir, "alembic.ini")
+                cfg = _AlembicConfig(alembic_ini_path)
+                # Force script_location to absolute path to avoid '/app/alembic' resolution
+                cfg.set_main_option("script_location", os.path.join(backend_dir, "alembic"))
+                _alembic_command.upgrade(cfg, "head")
+                logger.info("✅ Alembic migrations applied (upgrade head)")
+            else:
+                logger.info("Alembic migrations skipped (AUTO_MIGRATE_ON_STARTUP=false)")
         except Exception as mig_e:
             logger.warning(f"Alembic migration skipped/failed: {mig_e}")
 

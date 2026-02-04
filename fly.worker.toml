@@ -1,0 +1,13 @@
+app = "quantmatrix-worker"
+primary_region = "iad"
+
+[build]
+  image = "ghcr.io/owner/repo/backend:sha-REPLACE"
+
+[env]
+  ENVIRONMENT = "production"
+  LOG_FORMAT = "json"
+
+[processes]
+  worker = "celery -A backend.tasks.celery_app worker --loglevel=info"
+

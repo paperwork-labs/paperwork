@@ -1,0 +1,13 @@
+app = "quantmatrix-cron"
+primary_region = "iad"
+
+[build]
+  image = "ghcr.io/owner/repo/backend:sha-REPLACE"
+
+[env]
+  ENVIRONMENT = "production"
+  LOG_FORMAT = "json"
+
+[processes]
+  cron = "python -m backend.scripts.run_task backend.tasks.market_data_tasks.monitor_coverage_health"
+

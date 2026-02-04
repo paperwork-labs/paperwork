@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "QuantMatrix Trading Platform"
     APP_VERSION: str = "2.0.0"
     DEBUG: bool = False
+    ENVIRONMENT: str = "development"  # development | staging | production
 
     # Database Configuration - using SQLite for development
     DATABASE_URL: str = "sqlite:///./quantmatrix.db"
@@ -66,6 +67,22 @@ class Settings(BaseSettings):
     ENCRYPTION_KEY: Optional[str] = None
     ENABLE_TRADING: bool = False
     SEED_ACCOUNTS_ON_STARTUP: bool = False
+    AUTO_MIGRATE_ON_STARTUP: bool = False
+
+    # API / CORS / rate limiting
+    CORS_ORIGINS: str = (
+        "http://localhost:3000,"
+        "http://127.0.0.1:3000,"
+        "http://0.0.0.0:3000,"
+        "https://quantmatrix.com,"
+        "https://staging.quantmatrix.com"
+    )
+    RATE_LIMIT_DEFAULT: str = "100/minute"
+    RATE_LIMIT_STORAGE_URL: Optional[str] = None
+
+    # Celery scheduling (disable beat in production; use provider cron)
+    ENABLE_CELERY_BEAT: bool = False
+    ENABLE_REDBEAT: bool = False
 
     # Admin seeding (development convenience)
     ADMIN_USERNAME: Optional[str] = None
@@ -81,6 +98,7 @@ class Settings(BaseSettings):
 
     # Logging Configuration
     LOG_LEVEL: str = "INFO"
+    LOG_FORMAT: str = "json"  # json | text
 
     # Market data bootstrap
     DEFAULT_PRICE_SYMBOLS: Optional[str] = (
@@ -140,6 +158,21 @@ class Settings(BaseSettings):
 settings = Settings()
 
 
+def is_production() -> bool:
+    return str(settings.ENVIRONMENT or "").lower() == "production"
+
+
+def validate_production_settings() -> None:
+    if not is_production():
+        return
+    if settings.SECRET_KEY == "your-secret-key-here-change-in-production":
+        raise RuntimeError("SECRET_KEY must be set to a secure value in production.")
+    if not settings.DATABASE_URL or "sqlite:///" in settings.DATABASE_URL:
+        raise RuntimeError("DATABASE_URL must point to Postgres in production.")
+    if not settings.REDIS_URL:
+        raise RuntimeError("REDIS_URL must be set in production.")
+
+
 # Keep settings as provided; rely on .env and docker-compose. No band-aid normalization here.
 
 # Market Data Configuration
@@ -165,15 +198,25 @@ PORTFOLIO_CONFIG = {
 LOGGING_CONFIG = {
     "version": 1,
     "disable_existing_loggers": False,
-    "formatters": {
-        "default": {
-            "format": "[%(asctime)s] %(levelname)s in %(module)s: %(message)s",
+    "filters": {
+        "request_id": {
+            "()": "backend.utils.request_context.RequestIdFilter",
         }
+    },
+    "formatters": {
+        "json": {
+            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "fmt": "%(asctime)s %(levelname)s %(name)s %(request_id)s %(message)s",
+        },
+        "text": {
+            "format": "[%(asctime)s] %(levelname)s %(name)s req=%(request_id)s: %(message)s",
+        },
     },
     "handlers": {
         "default": {
             "level": "INFO",
-            "formatter": "default",
+            "formatter": "json" if settings.LOG_FORMAT == "json" else "text",
+            "filters": ["request_id"],
             "class": "logging.StreamHandler",
             "stream": "ext://sys.stdout",
         }

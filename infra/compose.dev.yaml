@@ -154,9 +154,10 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile.frontend
+      target: dev
     container_name: quantmatrix-frontend
     environment:
-      - VITE_API_URL=http://localhost:${BACKEND_HOST_PORT}
+      - VITE_API_BASE_URL=/api/v1
       - CHOKIDAR_USEPOLLING=true
     volumes:
       - ../frontend:/app
@@ -173,9 +174,10 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile.frontend
+      target: dev
     container_name: quantmatrix-ladle
     environment:
-      - VITE_API_URL=http://localhost:${BACKEND_HOST_PORT}
+      - VITE_API_BASE_URL=/api/v1
       - CHOKIDAR_USEPOLLING=true
     volumes:
       - ../frontend:/app

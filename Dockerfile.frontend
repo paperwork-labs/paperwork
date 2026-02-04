@@ -1,18 +1,20 @@
-FROM node:20-alpine
+FROM node:20-alpine AS dev
 
-# Set working directory
 WORKDIR /app
-
-# Copy frontend source code (including lockfile) then install.
-# This avoids subtle cache/overwrite issues where package-lock.json changes
-# but an older layer-installed node_modules remains.
 COPY frontend/ .
-
-# Install dependencies (clean install)
 RUN npm ci
-
-# Expose port
 EXPOSE 3000
-
-# Start development server (compose overrides in dev, but keep a sane default)
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "3000"]
+
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+COPY frontend/ .
+RUN npm ci
+RUN npm run build
+
+FROM nginx:alpine
+COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

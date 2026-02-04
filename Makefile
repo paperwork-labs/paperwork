@@ -1,6 +1,6 @@
 .PHONY: up down down-reset ps logs build health-check ladle-up ladle-down ladle-logs ladle-build \
 	test-up test test-frontend test-all test-down \
-	backend-shell frontend-shell \
+	backend-shell frontend-shell task-run \
 	migrate-create migrate-up migrate-down migrate-stamp-head \
 	frontend-install frontend-lint frontend-typecheck frontend-test frontend-check
 
@@ -109,5 +109,15 @@ frontend-test:
 	$(COMPOSE_DEV) exec -T frontend npm run test
 
 frontend-check: frontend-install frontend-lint frontend-typecheck frontend-test
+
+# Enqueue a task via Celery (dev). Example:
+# make task-run TASK=backend.tasks.market_data_tasks.monitor_coverage_health
+# make task-run TASK=backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked TASK_KWARGS='{"history_days":5,"history_batch_size":25}'
+TASK ?=
+TASK_ARGS ?= []
+TASK_KWARGS ?= {}
+task-run:
+	@if [ -z "$(TASK)" ]; then echo "Usage: make task-run TASK=module.task"; exit 2; fi
+	$(COMPOSE_DEV) exec backend python -m backend.scripts.run_task "$(TASK)" --args '$(TASK_ARGS)' --kwargs '$(TASK_KWARGS)'
 
 

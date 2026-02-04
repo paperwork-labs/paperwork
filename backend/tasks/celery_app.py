@@ -3,7 +3,8 @@ from celery.schedules import crontab
 from backend.config import settings
 import os
 
-USE_REDBEAT = True
+ENABLE_CELERY_BEAT = bool(settings.ENABLE_CELERY_BEAT)
+USE_REDBEAT = bool(settings.ENABLE_REDBEAT)
 
 celery_app = Celery(
     "quantmatrix",
@@ -45,37 +46,38 @@ celery_app.conf.update(
 # -------------------- Bootstrap static schedules (cleanly grouped) --------------------
 # Note: These serve as defaults when RedBeat is empty (e.g., first boot). With RedBeat,
 # schedules are stored dynamically in Redis and can be created/edited via Admin UI.
-ACCOUNT_BEAT_SCHEDULE = {
-    # Nightly (UTC) – Accounts
-    "ibkr-daily-flex-sync": {
-        "task": "backend.tasks.account_sync.sync_all_ibkr_accounts",
-        "schedule": crontab(hour=2, minute=15),
-        "args": (),
-    },
-}
+if ENABLE_CELERY_BEAT:
+    ACCOUNT_BEAT_SCHEDULE = {
+        # Nightly (UTC) – Accounts
+        "ibkr-daily-flex-sync": {
+            "task": "backend.tasks.account_sync.sync_all_ibkr_accounts",
+            "schedule": crontab(hour=2, minute=15),
+            "args": (),
+        },
+    }
 
-MARKET_DATA_BEAT_SCHEDULE = {
-    # Nightly (UTC) – Market Data
-    "restore-daily-coverage-tracked": {
-        "task": "backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked",
-        "schedule": crontab(hour=3, minute=0),
-        "args": (),
-        # Nightly should be fast: keep snapshot history refresh to a small rolling window.
-        "kwargs": {"history_days": 5, "history_batch_size": 25},
-    },
-    "monitor-coverage-health-hourly": {
-        "task": "backend.tasks.market_data_tasks.monitor_coverage_health",
-        "schedule": crontab(minute=0, hour="*"),
-        "args": (),
-    },
-}
+    MARKET_DATA_BEAT_SCHEDULE = {
+        # Nightly (UTC) – Market Data
+        "restore-daily-coverage-tracked": {
+            "task": "backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked",
+            "schedule": crontab(hour=3, minute=0),
+            "args": (),
+            # Nightly should be fast: keep snapshot history refresh to a small rolling window.
+            "kwargs": {"history_days": 5, "history_batch_size": 25},
+        },
+        "monitor-coverage-health-hourly": {
+            "task": "backend.tasks.market_data_tasks.monitor_coverage_health",
+            "schedule": crontab(minute=0, hour="*"),
+            "args": (),
+        },
+    }
 
-# Merge grouped defaults into the bootstrap beat_schedule
-celery_app.conf.beat_schedule.update(ACCOUNT_BEAT_SCHEDULE)
-celery_app.conf.beat_schedule.update(MARKET_DATA_BEAT_SCHEDULE)
+    # Merge grouped defaults into the bootstrap beat_schedule
+    celery_app.conf.beat_schedule.update(ACCOUNT_BEAT_SCHEDULE)
+    celery_app.conf.beat_schedule.update(MARKET_DATA_BEAT_SCHEDULE)
 
 # -------------------- RedBeat Scheduler (dynamic schedules) --------------------
-if USE_REDBEAT:
+if ENABLE_CELERY_BEAT and USE_REDBEAT:
     # Use RedBeat scheduler backed by Redis for dynamic CRUD of schedules
     celery_app.conf.beat_scheduler = "redbeat.schedulers:RedBeatScheduler"
     # Configure RedBeat redis URL; default to CELERY_BROKER_URL or REDIS_URL
@@ -88,7 +90,7 @@ if USE_REDBEAT:
     celery_app.conf.redbeat_key_prefix = "redbeat:"
 
 # Optional: Seed RedBeat from catalog if empty
-if USE_REDBEAT:
+if ENABLE_CELERY_BEAT and USE_REDBEAT:
     try:
         from backend.tasks.job_catalog import seed_redbeat_if_empty
         seed_redbeat_if_empty(celery_app)
