@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-QuantMatrix V1 - Database & API Tests
+AxiomFolio V1 - Database & API Tests
 ====================================
 
 Tests for database operations and API endpoints after V1 rebuild.

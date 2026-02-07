@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-QuantMatrix V1 - ATR Validation Script
+AxiomFolio V1 - ATR Validation Script
 =====================================
 
 Standalone validation of ATR calculations without database dependencies.
@@ -178,7 +178,7 @@ def validate_atr_calculations():
     """Validate ATR calculations across different market scenarios."""
     calculator = StandaloneATRCalculator()
 
-    print("🧪 QuantMatrix V1 - ATR Validation Suite")
+    print("🧪 AxiomFolio V1 - ATR Validation Suite")
     print("=" * 50)
 
     scenarios = ["trending_up", "trending_down", "sideways", "volatile", "gap_up"]

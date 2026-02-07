@@ -1,5 +1,5 @@
 """
-QuantMatrix V1 - Market Data Routes
+AxiomFolio V1 - Market Data Routes
 
 Clean, service-driven endpoints for prices, snapshots, tracked universe, backfills,
 indicator recompute, and history. DB-first strategy: compute from local `price_data`.
@@ -812,7 +812,7 @@ async def admin_send_snapshot_digest_to_discord(
 
     now = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
     lines = [
-        f"QuantMatrix — MarketSnapshot digest ({now})",
+        f"AxiomFolio — MarketSnapshot digest ({now})",
         f"Universe: {have}/{total} symbols have snapshots",
     ]
     if stage_counts_sorted:

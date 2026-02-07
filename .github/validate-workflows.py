@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-QuantMatrix V2 - CI/CD Workflow Validation Script
+AxiomFolio V2 - CI/CD Workflow Validation Script
 Validates that all workflows are properly configured and ready for use.
 """
 
@@ -83,7 +83,7 @@ def validate_test_structure():
 
 def main():
     """Main validation function."""
-    print("🔍 QuantMatrix V2 - CI/CD Workflow Validation")
+    print("🔍 AxiomFolio V2 - CI/CD Workflow Validation")
     print("=" * 50)
     
     workflows_dir = Path('.github/workflows')

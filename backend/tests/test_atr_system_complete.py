@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-QuantMatrix V1 - Complete ATR System Test Suite
+AxiomFolio V1 - Complete ATR System Test Suite
 ===============================================
 
 Consolidated test suite for the entire ATR system:
@@ -474,7 +474,7 @@ async def run_discord_tests():
 
 async def run_all_tests():
     """Run the complete test suite."""
-    print("🚀 QuantMatrix V1 - Complete ATR System Test Suite")
+    print("🚀 AxiomFolio V1 - Complete ATR System Test Suite")
     print("=" * 60)
 
     try:

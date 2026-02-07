@@ -5,8 +5,8 @@
 	frontend-install frontend-lint frontend-typecheck frontend-test frontend-check
 
 DOCKER ?= docker
-PROJECT ?= quantmatrix
-PROJECT_TEST ?= quantmatrix_test
+PROJECT ?= axiomfolio
+PROJECT_TEST ?= axiomfolio_test
 
 ENV_DEV ?= infra/env.dev
 ENV_TEST ?= infra/env.test
@@ -54,7 +54,7 @@ test-up:
 
 test:
 	@# Always use a fresh isolated test DB volume to prevent migration drift.
-	@# This never touches dev DB; it only resets the quantmatrix_test project volumes.
+	@# This never touches dev DB; it only resets the axiomfolio_test project volumes.
 	-$(COMPOSE_TEST) down -v
 	$(COMPOSE_TEST) up -d postgres_test redis_test
 	$(COMPOSE_TEST) run --rm backend_test

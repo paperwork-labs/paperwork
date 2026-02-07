@@ -59,4 +59,49 @@ export const SemanticTokens = () => {
   );
 };
 
+export const AxiomFolioPalette = () => {
+  const { colorMode, toggleColorMode } = useColorMode();
+  const brandTokens = [
+    ["brand.50", "brand.50"],
+    ["brand.100", "brand.100"],
+    ["brand.200", "brand.200"],
+    ["brand.300", "brand.300"],
+    ["brand.400", "brand.400"],
+    ["brand.500", "brand.500"],
+    ["brand.600", "brand.600"],
+    ["brand.700", "brand.700"],
+    ["brand.800", "brand.800"],
+    ["brand.900", "brand.900"],
+    ["focusRing", "focusRing"],
+  ] as const;
+
+  return (
+    <Box p={6}>
+      <HStack justify="space-between" mb={5}>
+        <Box>
+          <Text fontSize="lg" fontWeight="semibold" color="fg.default">AxiomFolio palette</Text>
+          <Text fontSize="sm" color="fg.muted">Mode: {colorMode}</Text>
+        </Box>
+        <Box
+          as="button"
+          onClick={toggleColorMode}
+          style={{
+            padding: "8px 12px",
+            borderRadius: 10,
+            border: "1px solid rgba(255,255,255,0.12)",
+          }}
+        >
+          Toggle mode
+        </Box>
+      </HStack>
+
+      <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} gap={4}>
+        {brandTokens.map(([name, value]) => (
+          <Swatch key={name} name={name} value={value} />
+        ))}
+      </SimpleGrid>
+    </Box>
+  );
+};
+
 

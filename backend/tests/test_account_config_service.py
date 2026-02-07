@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-QuantMatrix V1 - Account Configuration Service Tests
+AxiomFolio V1 - Account Configuration Service Tests
 ===================================================
 
 Tests for account_config_service.py functionality:
@@ -105,14 +105,14 @@ class TestAccountConfigService:
 
         # Verify user was created
         assert user is not None
-        assert user.email == "default@quantmatrix.com"
+        assert user.email == "default@axiomfolio.com"
         assert user.username == "default_user"
-        assert user.full_name == "Default QuantMatrix User"
+        assert user.full_name == "Default AxiomFolio User"
 
         # Verify user persisted in database
         db_users = db_session.query(User).all()
         assert len(db_users) == 1
-        assert db_users[0].email == "default@quantmatrix.com"
+        assert db_users[0].email == "default@axiomfolio.com"
 
         print("✅ User creation working correctly")
 
@@ -285,7 +285,7 @@ class TestAccountConfigService:
             .first()
         )
         assert retrieved_account is not None
-        assert retrieved_account.user.email == "default@quantmatrix.com"
+        assert retrieved_account.user.email == "default@axiomfolio.com"
         assert retrieved_account.broker == BrokerType.IBKR
         assert retrieved_account.account_type == AccountType.TAXABLE
 

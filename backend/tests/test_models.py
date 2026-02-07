@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-QuantMatrix Clean Model Tests (Broker-Agnostic)
+AxiomFolio Clean Model Tests (Broker-Agnostic)
 ===============================================
 Minimal, focused checks to fail fast if someone re-introduces legacy
 `accounts` references or enum duplications.

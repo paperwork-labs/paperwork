@@ -1,8 +1,9 @@
-name: 🚀 QuantMatrix V1 - Continuous Deployment
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: 🚀 AxiomFolio V1 - Continuous Deployment
 
 "on":
   workflow_run:
-    workflows: ["🧪 QuantMatrix V1 - Continuous Integration"]
+    workflows: ["🧪 AxiomFolio V1 - Continuous Integration"]
     types:
       - completed
     branches: [main]
@@ -24,7 +25,7 @@ name: 🚀 QuantMatrix V1 - Continuous Deployment
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: quantmatrix
+  IMAGE_NAME: axiomfolio
 
 jobs:
   # Pre-deployment validation
@@ -115,7 +116,7 @@ jobs:
     if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
     environment: 
       name: staging
-      url: https://staging.quantmatrix.com
+      url: https://staging.axiomfolio.com
       
     steps:
       - name: 📥 Checkout code
@@ -170,7 +171,7 @@ jobs:
         run: |
           echo "🧪 Running staging smoke tests..."
           # Add staging validation tests here
-          curl -f https://staging.quantmatrix.com/health || exit 1
+          curl -f https://staging.axiomfolio.com/health || exit 1
           echo "✅ Staging smoke tests passed"
 
   # Deploy to production (manual approval required)
@@ -181,7 +182,7 @@ jobs:
     if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
     environment: 
       name: production
-      url: https://quantmatrix.com
+      url: https://axiomfolio.com
       
     steps:
       - name: 📥 Checkout code
@@ -236,7 +237,7 @@ jobs:
         run: |
           echo "🧪 Running production smoke tests..."
           # Add production validation tests here
-          curl -f https://quantmatrix.com/health || exit 1
+          curl -f https://axiomfolio.com/health || exit 1
           echo "✅ Production smoke tests passed"
       
       - name: 📢 Notify deployment success

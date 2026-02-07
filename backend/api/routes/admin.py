@@ -1,5 +1,5 @@
 """
-QuantMatrix V1 - Clean Admin Routes
+AxiomFolio V1 - Clean Admin Routes
 System administration endpoints.
 """
 

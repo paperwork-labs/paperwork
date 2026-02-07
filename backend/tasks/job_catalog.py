@@ -71,10 +71,10 @@ CATALOG: List[JobTemplate] = [
         display_name="Restore Daily Coverage (Tracked)",
         group="market_data",
         task="backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked",
-        description="Nightly guided chain: refresh → tracked → daily backfill → recompute → snapshot history (rolling 5d) → coverage refresh (no 5m)",
+        description="Nightly guided chain: refresh → tracked → daily backfill → recompute → snapshot history (rolling 20d) → coverage refresh (no 5m)",
         default_cron="0 3 * * *",
         default_tz="UTC",
-        kwargs={"history_days": 5, "history_batch_size": 25},
+        kwargs={"history_days": 20, "history_batch_size": 25},
     ),
     JobTemplate(
         id="record-daily-history",

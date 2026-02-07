@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: quantmatrix-postgres
+    container_name: axiomfolio-postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -14,7 +14,7 @@ services:
     ports:
       - "${DB_HOST_PORT}:5432"
     networks:
-      - quantmatrix_network
+      - axiomfolio_network
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
       interval: 10s
@@ -23,14 +23,14 @@ services:
 
   redis:
     image: redis:7.4-alpine
-    container_name: quantmatrix-redis
+    container_name: axiomfolio-redis
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
     volumes:
       - redis_data:/data
     ports:
       - "${REDIS_HOST_PORT}:6379"
     networks:
-      - quantmatrix_network
+      - axiomfolio_network
     healthcheck:
       test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "--raw", "PING" ]
       interval: 10s
@@ -41,7 +41,7 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile.backend
-    container_name: quantmatrix-backend
+    container_name: axiomfolio-backend
     env_file:
       - ./env.dev
     ports:
@@ -61,20 +61,20 @@ services:
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/0
       - NEW_RELIC_CONFIG_FILE=/app/infra/observability/newrelic.ini
-      - NEW_RELIC_APP_NAME=QuantMatrix Backend
+      - NEW_RELIC_APP_NAME=AxiomFolio Backend
       - NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}
       - NEW_RELIC_LOG=stdout
       - NEW_RELIC_LOG_LEVEL=info
     command: sh -c "cd /app && newrelic-admin run-program python -m uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --log-level info"
     networks:
-      - quantmatrix_network
+      - axiomfolio_network
     restart: unless-stopped
 
   celery_worker:
     build:
       context: ..
       dockerfile: Dockerfile.backend
-    container_name: quantmatrix-celery-worker
+    container_name: axiomfolio-celery-worker
     env_file:
       - ./env.dev
     environment:
@@ -84,7 +84,7 @@ services:
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/0
       - IBKR_HOST=${IBKR_HOST}
       - NEW_RELIC_CONFIG_FILE=/app/infra/observability/newrelic.ini
-      - NEW_RELIC_APP_NAME=QuantMatrix Celery Worker
+      - NEW_RELIC_APP_NAME=AxiomFolio Celery Worker
       - NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}
       - NEW_RELIC_LOG=stdout
       - NEW_RELIC_LOG_LEVEL=info
@@ -97,14 +97,14 @@ services:
       - redis
       - backend
     networks:
-      - quantmatrix_network
+      - axiomfolio_network
     command: bash -lc "newrelic-admin run-program celery -A backend.tasks.celery_app worker --loglevel=info"
 
   celery_beat:
     build:
       context: ..
       dockerfile: Dockerfile.backend
-    container_name: quantmatrix-celery-beat
+    container_name: axiomfolio-celery-beat
     env_file:
       - ./env.dev
     environment:
@@ -114,7 +114,7 @@ services:
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/0
       - IBKR_HOST=${IBKR_HOST}
       - NEW_RELIC_CONFIG_FILE=/app/infra/observability/newrelic.ini
-      - NEW_RELIC_APP_NAME=QuantMatrix Celery Beat
+      - NEW_RELIC_APP_NAME=AxiomFolio Celery Beat
       - NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}
       - NEW_RELIC_LOG=stdout
       - NEW_RELIC_LOG_LEVEL=info
@@ -128,14 +128,14 @@ services:
       - redis
       - backend
     networks:
-      - quantmatrix_network
+      - axiomfolio_network
     command: bash -lc "newrelic-admin run-program celery -A backend.tasks.celery_app beat --loglevel=info"
 
   flower:
     build:
       context: ..
       dockerfile: Dockerfile.backend
-    container_name: quantmatrix-flower
+    container_name: axiomfolio-flower
     env_file:
       - ./env.dev
     environment:
@@ -147,7 +147,7 @@ services:
       - redis
       - celery_worker
     networks:
-      - quantmatrix_network
+      - axiomfolio_network
     command: bash -lc "export FLOWER_UNAUTHENTICATED_API=1; celery -A backend.tasks.celery_app flower --address=0.0.0.0 --port=5555"
 
   frontend:
@@ -155,7 +155,7 @@ services:
       context: ..
       dockerfile: Dockerfile.frontend
       target: dev
-    container_name: quantmatrix-frontend
+    container_name: axiomfolio-frontend
     environment:
       - VITE_API_BASE_URL=/api/v1
       - CHOKIDAR_USEPOLLING=true
@@ -167,7 +167,7 @@ services:
     depends_on:
       - backend
     networks:
-      - quantmatrix_network
+      - axiomfolio_network
     command: npm run dev
 
   ladle:
@@ -175,7 +175,7 @@ services:
       context: ..
       dockerfile: Dockerfile.frontend
       target: dev
-    container_name: quantmatrix-ladle
+    container_name: axiomfolio-ladle
     environment:
       - VITE_API_BASE_URL=/api/v1
       - CHOKIDAR_USEPOLLING=true
@@ -187,14 +187,14 @@ services:
     depends_on:
       - backend
     networks:
-      - quantmatrix_network
+      - axiomfolio_network
     command: npm run ladle -- --host 0.0.0.0 --port 61000
     profiles:
       - ui
 
   cloudflared:
     image: cloudflare/cloudflared:latest
-    container_name: quantmatrix-cloudflared
+    container_name: axiomfolio-cloudflared
     env_file:
       - ./env.dev
     environment:
@@ -203,13 +203,13 @@ services:
     depends_on:
       - backend
     networks:
-      - quantmatrix_network
+      - axiomfolio_network
     restart: unless-stopped
     profiles:
       - tunnel
 
 networks:
-  quantmatrix_network:
+  axiomfolio_network:
     driver: bridge
 
 volumes:

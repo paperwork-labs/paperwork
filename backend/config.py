@@ -5,13 +5,13 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # Application Configuration
-    APP_NAME: str = "QuantMatrix Trading Platform"
+    APP_NAME: str = "AxiomFolio Trading Platform"
     APP_VERSION: str = "2.0.0"
     DEBUG: bool = False
     ENVIRONMENT: str = "development"  # development | staging | production
 
     # Database Configuration - using SQLite for development
-    DATABASE_URL: str = "sqlite:///./quantmatrix.db"
+    DATABASE_URL: str = "sqlite:///./axiomfolio.db"
 
     # Redis Configuration (Docker defaults; override via env in non-Docker)
     REDIS_URL: str = "redis://:redispassword@redis:6379/0"
@@ -74,8 +74,8 @@ class Settings(BaseSettings):
         "http://localhost:3000,"
         "http://127.0.0.1:3000,"
         "http://0.0.0.0:3000,"
-        "https://quantmatrix.com,"
-        "https://staging.quantmatrix.com"
+        "https://axiomfolio.com,"
+        "https://staging.axiomfolio.com"
     )
     RATE_LIMIT_DEFAULT: str = "100/minute"
     RATE_LIMIT_STORAGE_URL: Optional[str] = None

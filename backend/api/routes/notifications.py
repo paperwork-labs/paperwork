@@ -1,5 +1,5 @@
 """
-QuantMatrix V1 - Clean Notifications Routes
+AxiomFolio V1 - Clean Notifications Routes
 Handles Discord notifications and in-app alerts.
 """
 

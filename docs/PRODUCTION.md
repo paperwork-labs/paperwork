@@ -33,6 +33,23 @@ Optional:
 3. Trigger provider deploy hooks or run Fly deploys.
 4. Smoke test `/health`.
 
+## Domains
+- Frontend (static): `https://axiomfolio.com`
+- API: `https://api.axiomfolio.com`
+
+## DNS + TLS
+- Point `axiomfolio.com` to the Render static service and `api.axiomfolio.com` to the Render web service.
+- Wait for Render to issue TLS certificates before enabling production traffic.
+- Ensure `CORS_ORIGINS` includes the new frontend domain.
+
+## Database migration (rename + preserve data)
+If you are renaming the database (e.g., `old_db` → `axiomfolio`), migrate data before cutover:
+1. Create the new database in the provider (empty).
+2. Export from the old database: `pg_dump --format=custom --no-owner --no-acl "$OLD_DATABASE_URL" -f axiomfolio.dump`.
+3. Import into the new database: `pg_restore --no-owner --no-acl --dbname "$NEW_DATABASE_URL" axiomfolio.dump`.
+4. Validate row counts for key tables and keep a rollback snapshot of the old DB.
+5. Point `DATABASE_URL` and related env vars at the new DB and run migrations via CI.
+
 ## Scheduling (cron, no always-on beat)
 Use scheduled jobs to enqueue tasks:
 - `backend.tasks.account_sync.sync_all_ibkr_accounts`

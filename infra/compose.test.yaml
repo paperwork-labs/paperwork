@@ -1,7 +1,7 @@
 services:
   postgres_test:
     image: postgres:16-alpine
-    container_name: quantmatrix-test-postgres
+    container_name: axiomfolio-test-postgres
     environment:
       POSTGRES_DB: ${POSTGRES_TEST_DB}
       POSTGRES_USER: ${POSTGRES_TEST_USER}
@@ -10,7 +10,7 @@ services:
     volumes:
       - postgres_test_data:/var/lib/postgresql/data
     networks:
-      - quantmatrix_test_network
+      - axiomfolio_test_network
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_TEST_USER}" ]
       interval: 5s
@@ -19,10 +19,10 @@ services:
 
   redis_test:
     image: redis:7.4-alpine
-    container_name: quantmatrix-test-redis
+    container_name: axiomfolio-test-redis
     command: redis-server --appendonly no --requirepass ${REDIS_TEST_PASSWORD}
     networks:
-      - quantmatrix_test_network
+      - axiomfolio_test_network
     healthcheck:
       test: [ "CMD", "redis-cli", "-a", "${REDIS_TEST_PASSWORD}", "--raw", "PING" ]
       interval: 5s
@@ -33,7 +33,7 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile.backend
-    container_name: quantmatrix-test-runner
+    container_name: axiomfolio-test-runner
     env_file:
       - ./env.test
     depends_on:
@@ -47,11 +47,11 @@ services:
       - ..:/app
       - /app/backend/__pycache__
     networks:
-      - quantmatrix_test_network
+      - axiomfolio_test_network
     command: bash -lc "python -m pytest -c backend/pytest.ini backend/tests -v"
 
 networks:
-  quantmatrix_test_network:
+  axiomfolio_test_network:
     driver: bridge
 
 volumes:

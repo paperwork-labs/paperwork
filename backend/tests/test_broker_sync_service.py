@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-QuantMatrix V1 - Broker Sync Service Tests
+AxiomFolio V1 - Broker Sync Service Tests
 ==========================================
 
 Tests for broker_sync_service.py functionality:
@@ -32,7 +32,7 @@ class TestBrokerSyncService:
     def test_user(self, db_session):
         """Create test user."""
         user = User(
-            email="test@quantmatrix.com", username="testuser", full_name="Test User"
+            email="test@axiomfolio.com", username="testuser", full_name="Test User"
         )
         db_session.add(user)
         db_session.commit()

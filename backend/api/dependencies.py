@@ -1,5 +1,5 @@
 """
-QuantMatrix V1 - API Dependencies
+AxiomFolio V1 - API Dependencies
 Common dependencies for API endpoints.
 """
 

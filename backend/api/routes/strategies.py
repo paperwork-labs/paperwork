@@ -1,5 +1,5 @@
 """
-QuantMatrix V1 - Clean Strategies Routes
+AxiomFolio V1 - Clean Strategies Routes
 Integrates with StrategiesManager.tsx frontend component.
 
 Handles user requests like:

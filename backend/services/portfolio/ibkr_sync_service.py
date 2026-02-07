@@ -237,7 +237,7 @@ class IBKRSyncService:
 
                 if (
                     os.environ.get("PYTEST_CURRENT_TEST")
-                    or os.environ.get("QUANTMATRIX_TESTING") == "1"
+                    or os.environ.get("AXIOMFOLIO_TESTING") == "1"
                 ):
                     Base.metadata.create_all(bind=db.bind)
             except Exception:

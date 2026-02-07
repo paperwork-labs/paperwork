@@ -1,4 +1,4 @@
-app = "quantmatrix-api"
+app = "axiomfolio-api"
 primary_region = "iad"
 
 [build]

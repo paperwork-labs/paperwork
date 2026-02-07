@@ -1,4 +1,4 @@
-"""Alembic Environment Configuration for QuantMatrix"""
+"""Alembic Environment Configuration for AxiomFolio"""
 
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config

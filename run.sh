@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# QuantMatrix Startup Script
-echo "🚀 Starting QuantMatrix Trading Platform..."
+# AxiomFolio Startup Script
+echo "🚀 Starting AxiomFolio Trading Platform..."
 
 # This script is a thin wrapper around the canonical Makefile entrypoint.
 # We keep it for convenience/backwards compatibility.

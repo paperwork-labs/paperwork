@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: quantmatrix-api
+    name: axiomfolio-api
     env: docker
     plan: standard
     dockerfilePath: ./Dockerfile.backend
@@ -21,31 +21,31 @@ services:
         value: json
       - key: DATABASE_URL
         fromDatabase:
-          name: quantmatrix-db
+          name: axiomfolio-db
           property: connectionString
       - key: REDIS_URL
         fromService:
           type: redis
-          name: quantmatrix-redis
+          name: axiomfolio-redis
           property: connectionString
       - key: RATE_LIMIT_STORAGE_URL
         fromService:
           type: redis
-          name: quantmatrix-redis
+          name: axiomfolio-redis
           property: connectionString
       - key: CELERY_BROKER_URL
         fromService:
           type: redis
-          name: quantmatrix-redis
+          name: axiomfolio-redis
           property: connectionString
       - key: CELERY_RESULT_BACKEND
         fromService:
           type: redis
-          name: quantmatrix-redis
+          name: axiomfolio-redis
           property: connectionString
 
   - type: worker
-    name: quantmatrix-worker
+    name: axiomfolio-worker
     env: docker
     plan: standard
     dockerfilePath: ./Dockerfile.backend
@@ -57,40 +57,40 @@ services:
         value: json
       - key: DATABASE_URL
         fromDatabase:
-          name: quantmatrix-db
+          name: axiomfolio-db
           property: connectionString
       - key: REDIS_URL
         fromService:
           type: redis
-          name: quantmatrix-redis
+          name: axiomfolio-redis
           property: connectionString
       - key: CELERY_BROKER_URL
         fromService:
           type: redis
-          name: quantmatrix-redis
+          name: axiomfolio-redis
           property: connectionString
       - key: CELERY_RESULT_BACKEND
         fromService:
           type: redis
-          name: quantmatrix-redis
+          name: axiomfolio-redis
           property: connectionString
     startCommand: celery -A backend.tasks.celery_app worker --loglevel=info
 
   - type: static
-    name: quantmatrix-frontend
+    name: axiomfolio-frontend
     autoDeploy: false
     buildCommand: cd frontend && npm ci && npm run build
     publishPath: frontend/dist
     envVars:
       - key: VITE_API_BASE_URL
-        value: https://quantmatrix-api.onrender.com/api/v1
+        value: https://api.axiomfolio.com/api/v1
 
   - type: redis
-    name: quantmatrix-redis
+    name: axiomfolio-redis
     plan: starter
 
 databases:
-  - name: quantmatrix-db
+  - name: axiomfolio-db
     plan: basic-1gb
 
 cronJobs:
@@ -104,22 +104,22 @@ cronJobs:
         value: production
       - key: DATABASE_URL
         fromDatabase:
-          name: quantmatrix-db
+          name: axiomfolio-db
           property: connectionString
       - key: REDIS_URL
         fromService:
           type: redis
-          name: quantmatrix-redis
+          name: axiomfolio-redis
           property: connectionString
       - key: CELERY_BROKER_URL
         fromService:
           type: redis
-          name: quantmatrix-redis
+          name: axiomfolio-redis
           property: connectionString
       - key: CELERY_RESULT_BACKEND
         fromService:
           type: redis
-          name: quantmatrix-redis
+          name: axiomfolio-redis
           property: connectionString
     command: python -m backend.scripts.run_task backend.tasks.account_sync.sync_all_ibkr_accounts
 
@@ -133,24 +133,24 @@ cronJobs:
         value: production
       - key: DATABASE_URL
         fromDatabase:
-          name: quantmatrix-db
+          name: axiomfolio-db
           property: connectionString
       - key: REDIS_URL
         fromService:
           type: redis
-          name: quantmatrix-redis
+          name: axiomfolio-redis
           property: connectionString
       - key: CELERY_BROKER_URL
         fromService:
           type: redis
-          name: quantmatrix-redis
+          name: axiomfolio-redis
           property: connectionString
       - key: CELERY_RESULT_BACKEND
         fromService:
           type: redis
-          name: quantmatrix-redis
+          name: axiomfolio-redis
           property: connectionString
-    command: python -m backend.scripts.run_task backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked --kwargs '{"history_days": 5, "history_batch_size": 25}'
+    command: python -m backend.scripts.run_task backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked --kwargs '{"history_days": 20, "history_batch_size": 25}'
 
   - name: monitor-coverage-health-hourly
     schedule: "0 * * * *"
@@ -162,22 +162,22 @@ cronJobs:
         value: production
       - key: DATABASE_URL
         fromDatabase:
-          name: quantmatrix-db
+          name: axiomfolio-db
           property: connectionString
       - key: REDIS_URL
         fromService:
           type: redis
-          name: quantmatrix-redis
+          name: axiomfolio-redis
           property: connectionString
       - key: CELERY_BROKER_URL
         fromService:
           type: redis
-          name: quantmatrix-redis
+          name: axiomfolio-redis
           property: connectionString
       - key: CELERY_RESULT_BACKEND
         fromService:
           type: redis
-          name: quantmatrix-redis
+          name: axiomfolio-redis
           property: connectionString
     command: python -m backend.scripts.run_task backend.tasks.market_data_tasks.monitor_coverage_health
 
@@ -191,21 +191,21 @@ cronJobs:
         value: production
       - key: DATABASE_URL
         fromDatabase:
-          name: quantmatrix-db
+          name: axiomfolio-db
           property: connectionString
       - key: REDIS_URL
         fromService:
           type: redis
-          name: quantmatrix-redis
+          name: axiomfolio-redis
           property: connectionString
       - key: CELERY_BROKER_URL
         fromService:
           type: redis
-          name: quantmatrix-redis
+          name: axiomfolio-redis
           property: connectionString
       - key: CELERY_RESULT_BACKEND
         fromService:
           type: redis
-          name: quantmatrix-redis
+          name: axiomfolio-redis
           property: connectionString
     command: python -m backend.scripts.run_task backend.tasks.market_data_tasks.enforce_price_data_retention

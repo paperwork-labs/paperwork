@@ -1,5 +1,5 @@
 """
-QuantMatrix V1 - Authentication Routes
+AxiomFolio V1 - Authentication Routes
 =====================================
 
 User authentication, registration, and session management.

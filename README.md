@@ -1,7 +1,7 @@
-QuantMatrix
-===========
+AxiomFolio
+==========
 
-Monorepo for the QuantMatrix trading platform.
+Monorepo for the AxiomFolio trading platform.
 
 - Backend: FastAPI + SQLAlchemy + Alembic (Docker)
 - Frontend: React + Vite + Chakra UI (Docker)
@@ -50,6 +50,7 @@ Docs
   - Architecture: `docs/ARCHITECTURE.md`
   - Models: `docs/MODELS.md`
   - Market Data: `docs/MARKET_DATA.md`
+  - Rebrand runbook: `docs/REBRAND.md`
   - Tests: `docs/TESTS.md`, `docs/TEST_PLAN.md`
   - Roadmap/Status: `docs/ROADMAP.md`, `docs/STATUS.md`
   - Brokers: `docs/BROKERS.md`

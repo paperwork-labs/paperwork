@@ -1,5 +1,5 @@
 """
-QuantMatrix V1 - Clean Portfolio Routes
+AxiomFolio V1 - Clean Portfolio Routes
 Replaces the MASSIVE 168KB portfolio.py with focused, single-responsibility endpoints.
 
 BEFORE: 168KB file doing EVERYTHING

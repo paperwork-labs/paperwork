@@ -1,4 +1,4 @@
-app = "quantmatrix-cron"
+app = "axiomfolio-cron"
 primary_region = "iad"
 
 [build]

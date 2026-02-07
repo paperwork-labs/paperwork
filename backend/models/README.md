@@ -1,7 +1,7 @@
-# QuantMatrix Models Architecture
+# AxiomFolio Models Architecture
 ## Portfolio Data Sync & Management
 
-This document explains the data model architecture for QuantMatrix's comprehensive portfolio sync system, focused on multi-brokerage integration with IBKR FlexQuery and real-time trading.
+This document explains the data model architecture for AxiomFolio's comprehensive portfolio sync system, focused on multi-brokerage integration with IBKR FlexQuery and real-time trading.
 
 ---
 

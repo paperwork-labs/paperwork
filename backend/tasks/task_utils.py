@@ -212,7 +212,7 @@ def _emit_alerts(
     }
     alert_service.push_prometheus_metric(
         endpoint,
-        "quantmatrix_task_duration_seconds",
+        "axiomfolio_task_duration_seconds",
         float(duration_s or 0.0),
         labels,
     )

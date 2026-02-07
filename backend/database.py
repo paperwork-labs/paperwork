@@ -1,5 +1,5 @@
 """
-QuantMatrix V1 - Database Configuration
+AxiomFolio V1 - Database Configuration
 ======================================
 
 Central database configuration and session management.
@@ -16,7 +16,7 @@ from backend.utils.db_safety import check_test_database_url
 
 # Database URL from environment or default
 DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgresql://quantmatrix:quantmatrix@localhost:5432/quantmatrix"
+    "DATABASE_URL", "postgresql://axiomfolio:axiomfolio@localhost:5432/axiomfolio"
 )
 
 # Fail-closed test safety:
@@ -63,13 +63,13 @@ def _assert_test_db_guard():
     """Abort if pytest tries to use the app database.
 
     Rules:
-    - If running under pytest (PYTEST_CURRENT_TEST or QUANTMATRIX_TESTING), require TEST_DATABASE_URL.
+    - If running under pytest (PYTEST_CURRENT_TEST or AXIOMFOLIO_TESTING), require TEST_DATABASE_URL.
     - Require TEST_DATABASE_URL is an unambiguously-safe test DB (postgres_test + *_test).
     - Extra paranoia: require DATABASE_URL == TEST_DATABASE_URL so *any* accidental use of
       backend.database.engine/SessionLocal still targets the test DB.
     """
     is_testing = bool(
-        os.getenv("PYTEST_CURRENT_TEST") or os.getenv("QUANTMATRIX_TESTING")
+        os.getenv("PYTEST_CURRENT_TEST") or os.getenv("AXIOMFOLIO_TESTING")
     )
     if not is_testing:
         return

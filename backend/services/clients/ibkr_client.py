@@ -62,7 +62,7 @@ class IBKRClient:
         # Default connection params; force deterministic values in tests
         if (
             os.environ.get("PYTEST_CURRENT_TEST")
-            or os.environ.get("QUANTMATRIX_TESTING") == "1"
+            or os.environ.get("AXIOMFOLIO_TESTING") == "1"
             or "pytest" in sys.modules
         ):
             self.host = "127.0.0.1"
@@ -116,7 +116,7 @@ class IBKRClient:
 
                     if inspect.isawaitable(connect_task):
                         test_mode = (
-                            os.environ.get("QUANTMATRIX_TESTING") == "1"
+                            os.environ.get("AXIOMFOLIO_TESTING") == "1"
                             or "pytest" in sys.modules
                         )
                         timeout_s = 0.2 if test_mode else 10

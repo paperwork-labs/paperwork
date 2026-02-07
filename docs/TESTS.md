@@ -3,7 +3,9 @@ Testing Strategy
 
 Test Database Isolation (Backend)
 ---------------------------------
-- Tests run against a dedicated Postgres database in Docker (`postgres_test`).\n+- **Safety invariant:** in tests, `DATABASE_URL` **must equal** `TEST_DATABASE_URL` so any accidental use of the app engine/session still targets the isolated test DB.\n+- Pytest will **fail closed** if `TEST_DATABASE_URL` is missing or unsafe.
+- Tests run against a dedicated Postgres database in Docker (`postgres_test`).
+- **Safety invariant:** in tests, `DATABASE_URL` **must equal** `TEST_DATABASE_URL` so any accidental use of the app engine/session still targets the isolated test DB.
+- Pytest will **fail closed** if `TEST_DATABASE_URL` is missing or unsafe.
 - The test suite will:
   - Run Alembic migrations to head on the test database at session start.
   - Create a per-test transaction and roll it back after each test for isolation.
@@ -20,7 +22,10 @@ Safe Patterns (Enforced)
 
 Env Guidance
 ------------
-- Leave production `.env` untouched.\n+- Local dev uses `infra/env.dev` (untracked); tests use `infra/env.test` (untracked).\n+- CI should copy `infra/env.test.example` to `infra/env.test` for safe defaults.\n+- Do not run backend tests outside the isolated test compose stack unless you intentionally set `TEST_DATABASE_URL` to `postgres_test` and `_test` DB name.
+- Leave production `.env` untouched.
+- Local dev uses `infra/env.dev` (untracked); tests use `infra/env.test` (untracked).
+- CI should copy `infra/env.test.example` to `infra/env.test` for safe defaults.
+- Do not run backend tests outside the isolated test compose stack unless you intentionally set `TEST_DATABASE_URL` to `postgres_test` and `_test` DB name.
 
 Do/Don't
 --------
@@ -51,7 +56,7 @@ How to run
 
 - Focused (still isolated):
   - `make test-up`
-  - `docker compose --project-name quantmatrix_test --env-file infra/env.test -f infra/compose.test.yaml run --rm backend_test bash -lc "python -m pytest backend/tests/test_client_tastytrade.py -q"`
+  - `docker compose --project-name axiomfolio_test --env-file infra/env.test -f infra/compose.test.yaml run --rm backend_test bash -lc "python -m pytest backend/tests/test_client_tastytrade.py -q"`
 
 Scopes
 ------

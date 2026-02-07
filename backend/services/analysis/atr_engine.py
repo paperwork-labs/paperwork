@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-QuantMatrix V1 - SINGLE ATR Engine
+AxiomFolio V1 - SINGLE ATR Engine
 =================================
 
-THE definitive ATR calculation engine for QuantMatrix.
+THE definitive ATR calculation engine for AxiomFolio.
 Handles ALL ATR calculations with research-based enhancements:
 
 - Proper J. Welles Wilder True Range calculation
@@ -103,7 +103,7 @@ class ATRUniverseResult:
 
 class ATREngine:
     """
-    THE definitive ATR calculation engine for QuantMatrix.
+    THE definitive ATR calculation engine for AxiomFolio.
 
     Features:
     - Research-based Wilder's ATR calculation
@@ -965,7 +965,7 @@ class ATREngine:
 # GLOBAL INSTANCE - SINGLE SOURCE OF TRUTH
 # =============================================================================
 
-# THE definitive ATR engine for QuantMatrix
+# THE definitive ATR engine for AxiomFolio
 atr_engine = ATREngine()
 
 

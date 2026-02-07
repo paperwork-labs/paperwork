@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class DiscordNotifier:
-    """Discord notification service for QuantMatrix platform."""
+    """Discord notification service for AxiomFolio platform."""
 
     def __init__(self):
         # New 5-webhook setup for better organization
@@ -159,7 +159,7 @@ class DiscordNotifier:
         )
 
         embed.set_footer(
-            text="QuantMatrix • ATR Matrix Strategy • Not Financial Advice"
+            text="AxiomFolio • ATR Matrix Strategy • Not Financial Advice"
         )
         embed.set_timestamp()
 
@@ -209,7 +209,7 @@ class DiscordNotifier:
             inline=False,
         )
 
-        embed.set_footer(text="QuantMatrix • ATR Matrix Strategy")
+        embed.set_footer(text="AxiomFolio • ATR Matrix Strategy")
         embed.set_timestamp()
 
         await self._send_webhook(embed, webhook_url=self.signals_webhook)
@@ -249,7 +249,7 @@ class DiscordNotifier:
         if details:
             embed.add_embed_field(name="📝 Details", value=details, inline=False)
 
-        embed.set_footer(text="QuantMatrix • Risk Management")
+        embed.set_footer(text="AxiomFolio • Risk Management")
         embed.set_timestamp()
 
         await self._send_webhook(embed, webhook_url=self.signals_webhook)
@@ -309,7 +309,7 @@ class DiscordNotifier:
                 name="📉 Underperformers", value=worst_text, inline=True
             )
 
-        embed.set_footer(text="QuantMatrix • Portfolio Tracking")
+        embed.set_footer(text="AxiomFolio • Portfolio Tracking")
         embed.set_timestamp()
 
         await self._send_webhook(embed, webhook_url=self.portfolio_webhook)
@@ -350,7 +350,7 @@ class DiscordNotifier:
         if notes:
             embed.add_embed_field(name="📝 Notes", value=notes, inline=False)
 
-        embed.set_footer(text="QuantMatrix • Trade Execution")
+        embed.set_footer(text="AxiomFolio • Trade Execution")
         embed.set_timestamp()
 
         await self._send_webhook(embed, webhook_url=self.portfolio_webhook)
@@ -385,7 +385,7 @@ class DiscordNotifier:
             )
             embed.add_embed_field(name="🏆 Top Picks", value=picks_text, inline=False)
 
-        embed.set_footer(text="QuantMatrix • Stock Scanner")
+        embed.set_footer(text="AxiomFolio • Stock Scanner")
         embed.set_timestamp()
 
         await self._send_webhook(embed, webhook_url=self.morning_brew_webhook)
@@ -409,7 +409,7 @@ class DiscordNotifier:
             for name, value in fields.items():
                 embed.add_embed_field(name=name, value=str(value), inline=True)
 
-        embed.set_footer(text="QuantMatrix • Custom Alert")
+        embed.set_footer(text="AxiomFolio • Custom Alert")
         embed.set_timestamp()
 
         webhook_map = {
@@ -459,7 +459,7 @@ class DiscordNotifier:
     async def test_webhooks(self):
         """Test all configured webhooks."""
         test_embed = DiscordEmbed(
-            title="🧪 QuantMatrix Test",
+            title="🧪 AxiomFolio Test",
             description="Testing Discord webhook integration",
             color=0x0099FF,
         )
@@ -474,7 +474,7 @@ class DiscordNotifier:
             inline=True,
         )
 
-        test_embed.set_footer(text="QuantMatrix • Webhook Test")
+        test_embed.set_footer(text="AxiomFolio • Webhook Test")
         test_embed.set_timestamp()
 
         webhooks_to_test = [
@@ -512,7 +512,7 @@ class DiscordNotifier:
         date_str = today.strftime("%A, %B %d, %Y")  # "Thursday, July 17, 2025"
 
         embed = DiscordEmbed(
-            title="☕ QuantMatrix Morning Brew",
+            title="☕ AxiomFolio Morning Brew",
             description=f"📅 **{date_str}** - Pre-Market Intelligence\n🌅 Market opens in 2 hours 15 minutes",
             color=0x1E90FF,  # DodgerBlue
         )
@@ -616,7 +616,7 @@ class DiscordNotifier:
 
         # Trading Outlook
         embed.add_embed_field(
-            name="🔮 QuantMatrix Trading Outlook", value=trading_outlook, inline=False
+            name="🔮 AxiomFolio Trading Outlook", value=trading_outlook, inline=False
         )
 
         # Scanner Stats Footer
@@ -628,7 +628,7 @@ class DiscordNotifier:
             inline=False,
         )
 
-        embed.set_footer(text="QuantMatrix • Real Market Data • Not Financial Advice")
+        embed.set_footer(text="AxiomFolio • Real Market Data • Not Financial Advice")
         embed.set_timestamp()
 
         await self._send_webhook(embed, webhook_url=self.morning_brew_webhook)
@@ -773,7 +773,7 @@ class DiscordNotifier:
                 name="📰 Holdings News", value=news_text, inline=False
             )
 
-        embed.set_footer(text="QuantMatrix • Real-time portfolio intelligence")
+        embed.set_footer(text="AxiomFolio • Real-time portfolio intelligence")
         embed.set_timestamp()
 
         await self._send_webhook(embed, webhook_url=self.portfolio_webhook)
@@ -860,7 +860,7 @@ class DiscordNotifier:
             name="🔮 Tomorrow's Outlook", value=trading_outlook, inline=False
         )
 
-        embed.set_footer(text="QuantMatrix • Post-market intelligence")
+        embed.set_footer(text="AxiomFolio • Post-market intelligence")
         embed.set_timestamp()
 
         await self._send_webhook(embed, webhook_url=self.morning_brew_webhook)
@@ -928,7 +928,7 @@ class DiscordNotifier:
             inline=False,
         )
 
-        embed.set_footer(text="QuantMatrix • Dual portfolio tracking")
+        embed.set_footer(text="AxiomFolio • Dual portfolio tracking")
         embed.set_timestamp()
 
         await self._send_webhook(embed, webhook_url=self.portfolio_webhook)
@@ -1022,7 +1022,7 @@ class DiscordNotifier:
                 name="📰 Holdings News", value=news_text.strip(), inline=False
             )
 
-        embed.set_footer(text="QuantMatrix • Portfolio intelligence")
+        embed.set_footer(text="AxiomFolio • Portfolio intelligence")
         embed.set_timestamp()
 
         await self._send_webhook(embed, webhook_url=self.portfolio_webhook)
@@ -1182,7 +1182,7 @@ class DiscordNotifier:
             inline=False,
         )
 
-        embed.set_footer(text="QuantMatrix • Real-time dual portfolio intelligence")
+        embed.set_footer(text="AxiomFolio • Real-time dual portfolio intelligence")
         embed.set_timestamp()
 
         await self._send_webhook(embed, webhook_url=self.portfolio_webhook)

@@ -1,7 +1,7 @@
 {
-  "name": "quantmatrix-frontend",
+  "name": "axiomfolio-frontend",
   "version": "1.0.0",
-  "description": "QuantMatrix Portfolio Management Platform Frontend",
+  "description": "AxiomFolio Portfolio Management Platform Frontend",
   "private": true,
   "dependencies": {
     "@chakra-ui/react": "^3.31.0",

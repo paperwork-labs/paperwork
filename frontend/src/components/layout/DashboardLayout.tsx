@@ -247,12 +247,12 @@ const DashboardLayout: React.FC = () => {
                 mr={isSidebarOpen ? 3 : 0}
               >
                 <Text color="white" fontWeight="bold" fontSize="sm">
-                  Q
+                  A
                 </Text>
               </Box>
               {isSidebarOpen ? (
                 <Text fontSize="lg" fontWeight="bold" color="brand.500">
-                  QuantMatrix
+                  AxiomFolio
                 </Text>
               ) : null}
             </Flex>
@@ -325,11 +325,11 @@ const DashboardLayout: React.FC = () => {
                 <Flex align="center" px={6} py={4} borderBottom="1px" borderColor={borderColor}>
                   <Box w={8} h={8} bg="brand.500" borderRadius="lg" display="flex" alignItems="center" justifyContent="center" mr={3}>
                     <Text color="white" fontWeight="bold" fontSize="sm">
-                      Q
+                      A
                     </Text>
                   </Box>
                   <Text fontSize="lg" fontWeight="bold" color="brand.500">
-                    QuantMatrix
+                    AxiomFolio
                   </Text>
                 </Flex>
                 <AppDivider />

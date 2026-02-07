@@ -7,7 +7,7 @@ ENABLE_CELERY_BEAT = bool(settings.ENABLE_CELERY_BEAT)
 USE_REDBEAT = bool(settings.ENABLE_REDBEAT)
 
 celery_app = Celery(
-    "quantmatrix",
+    "axiomfolio",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
     include=[
@@ -63,7 +63,7 @@ if ENABLE_CELERY_BEAT:
             "schedule": crontab(hour=3, minute=0),
             "args": (),
             # Nightly should be fast: keep snapshot history refresh to a small rolling window.
-            "kwargs": {"history_days": 5, "history_batch_size": 25},
+            "kwargs": {"history_days": 20, "history_batch_size": 25},
         },
         "monitor-coverage-health-hourly": {
             "task": "backend.tasks.market_data_tasks.monitor_coverage_health",

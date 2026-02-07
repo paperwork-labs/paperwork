@@ -188,6 +188,9 @@ market_data/
 # Temporary files
 *.tmp
 
+# Local DB dumps
+other_assets/axiomfolio.dump
+
 # Cache
 .cache/
 cache/

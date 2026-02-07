@@ -170,7 +170,7 @@ Troubleshooting:
   - `slow` when runtime exceeds `metadata.safety.timeout_s`.
   - `success` when runs complete (opt-in by including `"success"` in `alert_on`).
 - Discord alerts render embeds with job id, duration, queue, counters, and any error snippet to the configured channels.
-- `hooks.prometheus_endpoint` can point to a Pushgateway-compatible URL. Each run writes `quantmatrix_task_duration_seconds{task="...",event="...",queue="..."} <value>` so Grafana/Prometheus alerting rules can detect spikes.
+- `hooks.prometheus_endpoint` can point to a Pushgateway-compatible URL. Each run writes `axiomfolio_task_duration_seconds{task="...",event="...",queue="..."} <value>` so Grafana/Prometheus alerting rules can detect spikes.
 - If no per-job hook is configured, failures still emit to the global `DISCORD_WEBHOOK_SYSTEM_STATUS` endpoint (when set) so regressions cannot go unnoticed.
 - Admin Schedules UI surfaces these fields under “Alerts & Observability,” allowing operators to wire Discord aliases, comma-separated channel lists, Prometheus endpoints, and opt-in events (slow/success) without touching Redis exports.
 

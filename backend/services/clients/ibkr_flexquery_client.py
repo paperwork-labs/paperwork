@@ -188,7 +188,7 @@ class IBKRFlexQueryClient:
 
         # Test-aware throttling: drastically reduce waits/attempts under pytest/CI
         is_testing = (
-            os.environ.get("QUANTMATRIX_TESTING") == "1" or "pytest" in sys.modules
+            os.environ.get("AXIOMFOLIO_TESTING") == "1" or "pytest" in sys.modules
         )
         if is_testing:
             delays = [0, 0.05, 0.1]
@@ -281,7 +281,7 @@ class IBKRFlexQueryClient:
             params["acct"] = account_id
 
         is_testing = (
-            os.environ.get("QUANTMATRIX_TESTING") == "1" or "pytest" in sys.modules
+            os.environ.get("AXIOMFOLIO_TESTING") == "1" or "pytest" in sys.modules
         )
         max_attempts = 2 if is_testing else 6  # keep runs fast in tests
         for attempt in range(max_attempts):

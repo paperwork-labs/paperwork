@@ -53,8 +53,8 @@ Ladle uses the same Chakra v3 system provider as the app:
 - Frontend dependencies live in `frontend/package.json`.
 - Chakra is pinned to v3 (`@chakra-ui/react`).
 - Upgrades should be done by updating versions and validating:
-  - `docker compose --project-name quantmatrix --env-file infra/env.dev -f infra/compose.dev.yaml exec -T frontend npm test`
-  - `docker compose --project-name quantmatrix --env-file infra/env.dev -f infra/compose.dev.yaml exec -T frontend npm run build`
+  - `docker compose --project-name axiomfolio --env-file infra/env.dev -f infra/compose.dev.yaml exec -T frontend npm test`
+  - `docker compose --project-name axiomfolio --env-file infra/env.dev -f infra/compose.dev.yaml exec -T frontend npm run build`
   - `make ladle-build`
 
 

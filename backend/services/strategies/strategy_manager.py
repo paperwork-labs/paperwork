@@ -1,5 +1,5 @@
 """
-QuantMatrix V1 - Strategy Manager Service
+AxiomFolio V1 - Strategy Manager Service
 Coordinates all strategy services and integrates with StrategiesManager.tsx.
 
 Handles user requests like:

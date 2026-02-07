@@ -1,5 +1,5 @@
 """
-Test configuration for QuantMatrix backend tests.
+Test configuration for AxiomFolio backend tests.
 """
 
 import pytest
@@ -15,9 +15,9 @@ from backend.utils.db_safety import check_test_database_url
 @pytest.fixture(autouse=True, scope="session")
 def _enable_fast_test_mode():
     """Ensure code runs in fast test mode across the suite."""
-    os.environ["QUANTMATRIX_TESTING"] = "1"
+    os.environ["AXIOMFOLIO_TESTING"] = "1"
     yield
-    os.environ.pop("QUANTMATRIX_TESTING", None)
+    os.environ.pop("AXIOMFOLIO_TESTING", None)
 
 
 # Add the backend directory to the Python path
@@ -92,7 +92,7 @@ def test_db(request):
     Base.metadata.create_all(bind=test_engine)
 
     # Canary/sentinel: prove we're on a dedicated test database (and keep it that way).
-    sentinel_marker = os.getenv("TEST_DB_SENTINEL_MARKER", "quantmatrix_pytest_sentinel_v1")
+    sentinel_marker = os.getenv("TEST_DB_SENTINEL_MARKER", "axiomfolio_pytest_sentinel_v1")
     # Use Engine.begin() to avoid clashing with SQLAlchemy's autobegin behavior.
     with test_engine.begin() as conn:
         dbname = conn.execute(text("SELECT current_database()")).scalar()
@@ -103,7 +103,7 @@ def test_db(request):
         conn.execute(
             text(
                 """
-                CREATE TABLE IF NOT EXISTS quantmatrix_test_sentinel (
+                CREATE TABLE IF NOT EXISTS axiomfolio_test_sentinel (
                   id INTEGER PRIMARY KEY,
                   marker TEXT NOT NULL,
                   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -114,7 +114,7 @@ def test_db(request):
         conn.execute(
             text(
                 """
-                INSERT INTO quantmatrix_test_sentinel (id, marker)
+                INSERT INTO axiomfolio_test_sentinel (id, marker)
                 VALUES (1, :marker)
                 ON CONFLICT (id) DO NOTHING
                 """
@@ -122,7 +122,7 @@ def test_db(request):
             {"marker": sentinel_marker},
         )
         marker = conn.execute(
-            text("SELECT marker FROM quantmatrix_test_sentinel WHERE id=1")
+            text("SELECT marker FROM axiomfolio_test_sentinel WHERE id=1")
         ).scalar()
         if marker != sentinel_marker:
             raise pytest.UsageError(

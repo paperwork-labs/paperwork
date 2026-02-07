@@ -33,7 +33,7 @@ class TestIBKRSyncService:
     @pytest.fixture
     def test_user(self, db_session):
         """Create test user."""
-        user = User(email="test@quantmatrix.com", username="testuser")
+        user = User(email="test@axiomfolio.com", username="testuser")
         db_session.add(user)
         db_session.commit()
         return user

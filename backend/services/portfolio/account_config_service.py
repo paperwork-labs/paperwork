@@ -141,9 +141,9 @@ class AccountConfigService:
                 user = User(
                     id=user_id,
                     username="default_user",
-                    email="default@quantmatrix.com",
+                    email="default@axiomfolio.com",
                     first_name="Default",
-                    last_name="QuantMatrix User",
+                    last_name="AxiomFolio User",
                     is_active=True,
                     role=UserRole.ADMIN,
                 )

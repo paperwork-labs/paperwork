@@ -1,4 +1,4 @@
-# QuantMatrix V1 - Test Suite
+# AxiomFolio V1 - Test Suite
 ============================
 
 Scope and Structure

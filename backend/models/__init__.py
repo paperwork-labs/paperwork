@@ -1,8 +1,8 @@
 """
-QuantMatrix Database Models
+AxiomFolio Database Models
 ==========================
 
-Centralized model imports for the QuantMatrix application.
+Centralized model imports for the AxiomFolio application.
 All database models are imported here for easy access.
 """
 

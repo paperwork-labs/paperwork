@@ -57,7 +57,7 @@ describe('DashboardLayout sidebar persistence', () => {
     renderWithProviders(<DashboardLayout />);
 
     // When collapsed, brand text should be hidden.
-    expect(screen.queryByText('QuantMatrix')).toBeNull();
+    expect(screen.queryByText('AxiomFolio')).toBeNull();
 
     await user.click(screen.getByRole('button', { name: /menu/i }));
 

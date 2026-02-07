@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-QuantMatrix V1 - Daily ATR Signals Cron Task
+AxiomFolio V1 - Daily ATR Signals Cron Task
 ============================================
 
 Scheduled task that runs ATR signal generation:

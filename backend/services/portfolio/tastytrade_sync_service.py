@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """TastyTrade Sync Service
 Pulls positions, transactions, balances, dividends from Tastytrade API and
-persists to QuantMatrix broker-agnostic tables.
+persists to AxiomFolio broker-agnostic tables.
 """
 
 from __future__ import annotations

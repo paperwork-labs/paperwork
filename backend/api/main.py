@@ -1,5 +1,5 @@
 """
-QuantMatrix V1 - Clean FastAPI Application
+AxiomFolio V1 - Clean FastAPI Application
 Replaces the massive monolithic API routes with focused, organized endpoints.
 """
 
@@ -63,7 +63,7 @@ logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(
-    title="QuantMatrix V1 API",
+    title="AxiomFolio V1 API",
     description="Professional Trading Platform API",
     version="2.0.0",
     docs_url="/docs",
@@ -132,7 +132,7 @@ async def startup_event():
             logger.warning(f"Alembic migration skipped/failed: {mig_e}")
 
         # Initialize services
-        logger.info("🚀 QuantMatrix V1 API starting up...")
+        logger.info("🚀 AxiomFolio V1 API starting up...")
         # Seed admin user if configured (dev only)
         try:
             if settings.DEBUG:
@@ -260,7 +260,7 @@ async def health_check():
         "status": "healthy",
         "version": "2.0.0",
         "timestamp": datetime.now().isoformat(),
-        "api": "QuantMatrix V1",
+        "api": "AxiomFolio V1",
     }
 
 
@@ -269,7 +269,7 @@ async def health_check():
 async def root():
     """API root endpoint."""
     return {
-        "message": "QuantMatrix V1 - Professional Trading Platform API",
+        "message": "AxiomFolio V1 - Professional Trading Platform API",
         "version": "2.0.0",
         "docs": "/docs",
         "health": "/health",

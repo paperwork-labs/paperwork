@@ -143,13 +143,13 @@ jobs:
         context: .
         file: Dockerfile.backend
         push: false
-        tags: quantmatrix-backend:security-scan
+        tags: axiomfolio-backend:security-scan
         load: true
         
     - name: 🔍 Trivy Vulnerability Scanner
       uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8
       with:
-        image-ref: 'quantmatrix-backend:security-scan'
+        image-ref: 'axiomfolio-backend:security-scan'
         format: 'sarif'
         output: 'trivy-results.sarif'
         
@@ -288,7 +288,7 @@ jobs:
     steps:
     - name: 📊 Overall Security Status
       run: |
-        echo "# 🔒 QuantMatrix V2 Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+        echo "# 🔒 AxiomFolio V2 Security Scan Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Scan Date:** $(date -u)" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY

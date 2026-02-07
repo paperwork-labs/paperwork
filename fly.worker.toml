@@ -1,4 +1,4 @@
-app = "quantmatrix-worker"
+app = "axiomfolio-worker"
 primary_region = "iad"
 
 [build]

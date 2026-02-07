@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-QuantMatrix V1 - SINGLE ATR Signal Generator
+AxiomFolio V1 - SINGLE ATR Signal Generator
 ===========================================
 
 CONSOLIDATES ALL ATR logic into ONE service:
@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 
 class ATRSignalGenerator:
     """
-    SINGLE ATR Signal Generator for QuantMatrix V1.
+    SINGLE ATR Signal Generator for AxiomFolio V1.
 
     Combines:
     - Sophisticated ATR calculations (from atr_calculator.py)

@@ -42,12 +42,12 @@ def test_alert_service_pushes_prometheus(monkeypatch):
     svc = AlertService(http_client=stub)
     ok = svc.push_prometheus_metric(
         "https://prom/push",
-        "quantmatrix_task_duration_seconds",
+        "axiomfolio_task_duration_seconds",
         1.5,
         labels={"task": "monitor"},
     )
     assert ok is True
     url, kwargs = stub.calls[0]
     assert url == "https://prom/push"
-    assert "quantmatrix_task_duration_seconds" in kwargs["data"]
+    assert "axiomfolio_task_duration_seconds" in kwargs["data"]
 
