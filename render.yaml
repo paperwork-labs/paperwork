@@ -79,7 +79,7 @@ services:
   - type: static_site
     name: axiomfolio-frontend
     autoDeploy: false
-    buildCommand: cd frontend && npm ci && npm run build
+    buildCommand: cd frontend && rm -rf node_modules package-lock.json && npm install && npm run build
     publishPath: frontend/dist
     envVars:
       - key: VITE_API_BASE_URL
