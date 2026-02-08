@@ -10,7 +10,7 @@ loguru==0.7.3
 alembic==1.18.3
 Mako==1.3.10
 slowapi==0.1.9
-python-json-logger==2.0.7
+python-json-logger==4.0.0
 
 # Data & Utils
 pandas==3.0.0
