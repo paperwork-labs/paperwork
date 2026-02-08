@@ -41,8 +41,8 @@ def tracked_symbols_from_db(db: Session) -> list[str]:
     return sorted(syms)
 
 
-def tracked_symbols(db: Session, *, redis_client) -> list[str]:
-    """Return the tracked universe symbols, preferring Redis tracked:all."""
+def tracked_symbols_with_source(db: Session, *, redis_client) -> tuple[list[str], bool]:
+    """Return tracked universe symbols and whether Redis was used."""
     try:
         raw = redis_client.get("tracked:all")
         if raw:
@@ -52,9 +52,14 @@ def tracked_symbols(db: Session, *, redis_client) -> list[str]:
             if isinstance(parsed, list):
                 out = _normalize_symbols(parsed)
                 if out:
-                    return out
+                    return out, True
     except Exception:
         pass
-    return tracked_symbols_from_db(db)
+    return tracked_symbols_from_db(db), False
+
+
+def tracked_symbols(db: Session, *, redis_client) -> list[str]:
+    """Return the tracked universe symbols, preferring Redis tracked:all."""
+    return tracked_symbols_with_source(db, redis_client=redis_client)[0]
 
 

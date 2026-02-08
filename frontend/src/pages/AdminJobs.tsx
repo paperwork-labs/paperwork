@@ -65,32 +65,32 @@ const AdminJobs: React.FC = () => {
     const maxDays5m = typeof params?.max_days_5m === 'number' ? params.max_days_5m : undefined;
 
     // Task-specific mappings (derived from task_name + params/counters; never hardcoded)
-    if (task.includes('backfill_5m_last_n_days')) {
-      const p = [];
-      p.push('Backfilled 5m bars');
-      if (typeof symbolsN === 'number') p.push(`for ${symbolsN} symbols`);
-      if (typeof nDays === 'number') p.push(`(${nDays} days)`);
-      return p.join(' ');
-    }
-    if (task.includes('backfill_5m_for_symbols')) {
+    if (task.includes('admin_backfill_5m_symbols')) {
       const p = [];
       p.push('Backfilled 5m for selected symbols');
       if (typeof symbolsN === 'number') p.push(`(${symbolsN} symbols)`);
       if (typeof nDays === 'number') p.push(`(${nDays} days)`);
       return p.join(' ');
     }
-    if (task.includes('backfill_last_bars')) {
+    if (task.includes('admin_backfill_5m')) {
+      const p = [];
+      p.push('Backfilled 5m bars');
+      if (typeof symbolsN === 'number') p.push(`for ${symbolsN} symbols`);
+      if (typeof nDays === 'number') p.push(`(${nDays} days)`);
+      return p.join(' ');
+    }
+    if (task.includes('admin_backfill_daily')) {
       const days = typeof counters?.days === 'number' ? Number(counters.days) : undefined;
       const label = typeof days === 'number' ? `Backfilled last ~${days} daily bars` : 'Backfilled last daily bars';
       return typeof symbolsN === 'number' ? `${label} (${symbolsN} symbols)` : label;
     }
-    if (task.includes('bootstrap_daily_coverage_tracked')) return 'Restore Daily Coverage (Tracked)';
-    if (task.includes('refresh_index_constituents')) return 'Refreshed index constituents';
-    if (task.includes('update_tracked_symbol_cache')) return 'Updated tracked symbol universe';
-    if (task.includes('recompute_indicators_universe')) return 'Recomputed indicators for universe';
-    if (task.includes('record_daily_history')) return 'Recorded daily history snapshot';
-    if (task.includes('monitor_coverage_health')) return 'Computed coverage health snapshot';
-    if (task.includes('enforce_price_data_retention')) {
+    if (task.includes('admin_coverage_restore')) return 'Restore Daily Coverage (Tracked)';
+    if (task.includes('market_indices_constituents_refresh')) return 'Refreshed index constituents';
+    if (task.includes('market_universe_tracked_refresh')) return 'Updated tracked symbol universe';
+    if (task.includes('admin_indicators_recompute_universe')) return 'Recomputed indicators for universe';
+    if (task.includes('admin_snapshots_history_record')) return 'Recorded daily history snapshot';
+    if (task.includes('admin_coverage_refresh')) return 'Computed coverage health snapshot';
+    if (task.includes('admin_retention_enforce')) {
       return typeof maxDays5m === 'number' ? `Enforced price_data retention (5m max ${maxDays5m}d)` : 'Enforced price_data retention';
     }
 

@@ -58,14 +58,14 @@ if ENABLE_CELERY_BEAT:
 
     MARKET_DATA_BEAT_SCHEDULE = {
         # Nightly (UTC) – Market Data
-        "restore-daily-coverage-tracked": {
+        "admin_coverage_restore": {
             "task": "backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked",
             "schedule": crontab(hour=3, minute=0),
             "args": (),
             # Nightly should be fast: keep snapshot history refresh to a small rolling window.
             "kwargs": {"history_days": 20, "history_batch_size": 25},
         },
-        "monitor-coverage-health-hourly": {
+        "admin_coverage_refresh": {
             "task": "backend.tasks.market_data_tasks.monitor_coverage_health",
             "schedule": crontab(minute=0, hour="*"),
             "args": (),

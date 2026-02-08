@@ -60,6 +60,10 @@ Market Data
   - Headline fields: current_price, rsi, atr_value, sma_50, macd, macd_signal
   - Fields: stored as a flat/wide table (queryable columns, no JSON payload)
 
+Market data relationships
+-------------------------
+![Market data model relationships](assets/models_market_data_erd.png)
+
 Constraints and Integrity
 - Enforced uniqueness on trades, transactions, and options to prevent brokerage dupes
 - Foreign keys point to `BrokerAccount`

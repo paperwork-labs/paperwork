@@ -88,6 +88,7 @@ class Settings(BaseSettings):
     ADMIN_USERNAME: Optional[str] = None
     ADMIN_EMAIL: Optional[str] = None
     ADMIN_PASSWORD: Optional[str] = None
+    ADMIN_SEED_ENABLED: bool = False
 
     # Application Settings
     PORT: int = 8000

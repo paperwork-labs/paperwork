@@ -40,13 +40,38 @@ Modules and Prefixes
     - GET `/summary`, `/positions`, `/performance` (auth placeholder via `get_current_user`)
 
 - `market_data.py` → `/api/v1/market-data` (tag: Market Data & Technicals)
-  - POST `/prices/refresh` – refreshes P&L for positions and tax lots
-  - GET `/technical/snapshot/{symbol}` – latest technical snapshot from `market_analysis_cache`
-  - POST `/technical/snapshot/{symbol}/refresh` – recompute + persist snapshot
-  - GET `/technical/stage/{symbol}` – Weinstein stage; prefers cached snapshot, falls back to on-demand
-  - Admin: POST `/admin/backfill/index` – backfill OHLCV for an index
-  - Admin: POST `/admin/indicators/refresh-index` – refresh indicators (MarketAnalysisCache) for index constituents
-  - Admin: POST `/admin/history/record` – record daily snapshot history
+  - GET `/admin/coverage/backfill-5m/toggle` – get 5m backfill toggle (admin)
+  - GET `/admin/coverage/sanity` – admin sanity coverage (DB only) (admin)
+  - GET `/admin/db/history` – DB history (price_data) (admin)
+  - GET `/admin/jobs` – admin jobs (admin)
+  - GET `/admin/tasks` – admin tasks (admin)
+  - GET `/admin/tasks/status` – admin tasks status (admin)
+  - GET `/coverage` – coverage summary
+  - GET `/coverage/{symbol}` – symbol coverage
+  - GET `/indices/constituents` – index constituents
+  - GET `/prices/{symbol}` – current price
+  - GET `/prices/{symbol}/history` – price history
+  - GET `/snapshots` – technical snapshots (tracked)
+  - GET `/snapshots/{symbol}` – technical snapshot (symbol)
+  - GET `/snapshots/{symbol}/history` – snapshot history (symbol)
+  - GET `/universe/tracked` – tracked universe
+  - POST `/admin/backfill/5m` – backfill 5m (admin)
+  - POST `/admin/backfill/daily` – backfill daily bars (rolling) (admin)
+  - POST `/admin/backfill/daily/since-date` – backfill daily bars since date (admin)
+  - POST `/admin/coverage/backfill-5m/toggle` – set 5m backfill toggle (admin)
+  - POST `/admin/coverage/backfill-stale` – backfill stale daily bars (admin)
+  - POST `/admin/coverage/refresh` – refresh coverage cache (admin)
+  - POST `/admin/coverage/restore` – restore daily coverage (tracked) (admin)
+  - POST `/admin/indicators/recompute-universe` – recompute indicators (universe) (admin)
+  - POST `/admin/repair/since-date` – repair since date (admin)
+  - POST `/admin/retention/enforce` – enforce retention (admin)
+  - POST `/admin/snapshots/discord-digest` – snapshot digest to Discord (admin)
+  - POST `/admin/snapshots/history/backfill` – backfill snapshot history (admin)
+  - POST `/admin/snapshots/history/record` – record snapshot history (admin)
+  - POST `/admin/tasks/run` – admin run task (admin)
+  - POST `/indices/constituents/refresh` – refresh constituents (admin)
+  - POST `/symbols/{symbol}/refresh` – refresh symbol (admin)
+  - POST `/universe/tracked/refresh` – refresh tracked universe (admin)
 
  
 
@@ -76,11 +101,6 @@ GET /api/v1/portfolio/stocks?account_id={ACCOUNT_NUMBER}
 Unified options portfolio (account filter):
 ```
 GET /api/v1/portfolio/options/unified/portfolio?account_id={ACCOUNT_NUMBER}
-```
-
-Refresh prices for current positions:
-```
-POST /api/v1/market-data/prices/refresh
 ```
 
 Conventions & Notes

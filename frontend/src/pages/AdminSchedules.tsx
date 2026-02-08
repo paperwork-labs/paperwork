@@ -199,7 +199,7 @@ const AdminSchedules: React.FC = () => {
               variant="outline"
               onClick={() =>
                 openPreset({
-                  name: 'restore-daily-coverage-tracked',
+                  name: 'admin_coverage_restore',
                   task: 'backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked',
                   cron: '0 3 * * *',
                   timezone: 'UTC',

@@ -4,6 +4,7 @@ Replaces the massive monolithic API routes with focused, organized endpoints.
 """
 
 from fastapi import FastAPI, Request
+from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
@@ -70,6 +71,40 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+
+def _method_order(method: str) -> int:
+    order = {
+        "get": 0,
+        "post": 1,
+        "put": 2,
+        "patch": 3,
+        "delete": 4,
+        "options": 5,
+        "head": 6,
+        "trace": 7,
+    }
+    return order.get(method.lower(), 99)
+
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    schema["paths"] = {
+        path: dict(sorted(ops.items(), key=lambda item: _method_order(item[0])))
+        for path, ops in sorted(schema.get("paths", {}).items(), key=lambda item: item[0])
+    }
+    app.openapi_schema = schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
+
 # Rate limiting (default limit applies to all routes)
 limiter = Limiter(
     key_func=get_remote_address,
@@ -133,9 +168,9 @@ async def startup_event():
 
         # Initialize services
         logger.info("🚀 AxiomFolio V1 API starting up...")
-        # Seed admin user if configured (dev only)
+        # Seed admin user if explicitly enabled
         try:
-            if settings.DEBUG:
+            if settings.ADMIN_SEED_ENABLED:
                 admin_user = getattr(settings, "ADMIN_USERNAME", None)
                 admin_email = getattr(settings, "ADMIN_EMAIL", None)
                 admin_password = getattr(settings, "ADMIN_PASSWORD", None)
@@ -157,12 +192,12 @@ async def startup_event():
                         )
                         db.add(u)
                         db.commit()
-                        logger.info(f"👑 Seeded admin user '{admin_user}' (dev)")
+                        logger.info(f"👑 Seeded admin user '{admin_user}'")
                     db.close()
                 else:
                     logger.info("Admin seeding skipped (ADMIN_* not set)")
             else:
-                logger.info("Admin seeding disabled in non-dev environment")
+                logger.info("Admin seeding disabled (ADMIN_SEED_ENABLED=false)")
         except Exception as se:
             logger.warning(f"Admin seeding skipped/failed: {se}")
         # Optional price bootstrap temporarily disabled until MarketDataService is stabilized

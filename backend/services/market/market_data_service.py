@@ -34,6 +34,17 @@ from backend.services.market.indicator_engine import (
     compute_trendline_counts,
     compute_weinstein_stage_from_daily,
 )
+from backend.services.market.universe import tracked_symbols_with_source
+from backend.services.market.constants import (
+    FUNDAMENTAL_FIELDS,
+    FUNDAMENTAL_FIELDS_WITH_NAME,
+    FUNDAMENTAL_FIELDS_WITH_SUB_INDUSTRY,
+)
+from backend.services.market.dataframe_utils import price_data_rows_to_dataframe
+from backend.services.market.provider_service import MarketDataProviderService
+from backend.services.market.snapshot_service import MarketSnapshotService
+from backend.services.market.coverage_service import CoverageService
+from backend.services.market.coverage_utils import compute_coverage_status
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +91,11 @@ class MarketDataService:
         except Exception:
             self.twelve_data_client = None
 
+        # Facade services for clearer responsibilities
+        self.providers = MarketDataProviderService(self)
+        self.snapshots = MarketSnapshotService(self)
+        self.coverage = CoverageService(self)
+
         if settings.FMP_API_KEY:
             logger.info("FMP API configured")
 
@@ -98,6 +114,57 @@ class MarketDataService:
                 raise RuntimeError("REDIS_URL is not configured")
             self._redis_client = redis.from_url(url)
         return self._redis_client
+
+    def is_backfill_5m_enabled(self) -> bool:
+        """Check admin toggle stored in Redis; default to enabled on errors."""
+        try:
+            raw = self.redis_client.get("coverage:backfill_5m_enabled")
+            if raw is None:
+                return True
+            if isinstance(raw, (bytes, bytearray)):
+                raw = raw.decode()
+            return str(raw).strip().lower() not in ("0", "false", "off", "disabled")
+        except Exception:
+            # Fail open if Redis unavailable so daily flows aren't blocked
+            return True
+
+    def benchmark_health(
+        self,
+        db: Session,
+        benchmark_symbol: str = "SPY",
+        required_bars: int | None = None,
+        latest_daily_dt: datetime | None = None,
+    ) -> Dict[str, Any]:
+        """Return benchmark health stats for Stage/RS diagnostics."""
+        required = required_bars or max(
+            260, int(getattr(settings, "SNAPSHOT_DAILY_BARS_LIMIT", 400))
+        )
+        latest_dt = (
+            db.query(func.max(PriceData.date))
+            .filter(PriceData.symbol == benchmark_symbol, PriceData.interval == "1d")
+            .scalar()
+        )
+        count = (
+            db.query(func.count(PriceData.id))
+            .filter(PriceData.symbol == benchmark_symbol, PriceData.interval == "1d")
+            .scalar()
+            or 0
+        )
+        stale = False
+        if latest_daily_dt and latest_dt:
+            try:
+                stale = latest_dt.date() < latest_daily_dt.date()
+            except Exception:
+                stale = False
+        return {
+            "symbol": benchmark_symbol,
+            "latest_daily_dt": latest_dt,
+            "latest_daily_date": latest_dt.date().isoformat() if latest_dt else None,
+            "daily_bars": int(count),
+            "required_bars": int(required),
+            "ok": int(count) >= int(required),
+            "stale": bool(stale),
+        }
 
     # ---------------------- Internal helpers ----------------------
     def _visibility_scope(self) -> str:
@@ -242,24 +309,7 @@ class MarketDataService:
 
     @staticmethod
     def _needs_fundamentals(snapshot: Dict[str, Any]) -> bool:
-        fields = [
-            "sector",
-            "industry",
-            "market_cap",
-            "pe_ttm",
-            "peg_ttm",
-            "roe",
-            "eps_growth_yoy",
-            "eps_growth_qoq",
-            "revenue_growth_yoy",
-            "revenue_growth_qoq",
-            "dividend_yield",
-            "beta",
-            "analyst_rating",
-            "next_earnings",
-            "last_earnings",
-        ]
-        return any(snapshot.get(f) is None for f in fields)
+        return any(snapshot.get(f) is None for f in FUNDAMENTAL_FIELDS)
 
 
     # ---------------------- Provider selection ----------------------
@@ -923,20 +973,7 @@ class MarketDataService:
         rows = q.order_by(PriceData.date.desc()).limit(limit_bars).all()
         if not rows:
             return {}
-        df = pd.DataFrame(
-            [
-                {
-                    "date": r[0],
-                    "Open": float(r[1]) if r[1] is not None else float(r[4]),
-                    "High": float(r[2]) if r[2] is not None else float(r[4]),
-                    "Low": float(r[3]) if r[3] is not None else float(r[4]),
-                    "Close": float(r[4]),
-                    "Volume": int(r[5] or 0),
-                }
-                for r in rows
-            ]
-        )
-        df.set_index("date", inplace=True)
+        df = price_data_rows_to_dataframe(rows, ascending=True)
         snapshot = self._snapshot_from_dataframe(df)
         if not snapshot:
             return {}
@@ -969,20 +1006,7 @@ class MarketDataService:
                 .all()
             )
             if bm_rows:
-                bm_df = pd.DataFrame(
-                    [
-                        {
-                            "date": r[0],
-                            "Open": float(r[1]) if r[1] is not None else float(r[4]),
-                            "High": float(r[2]) if r[2] is not None else float(r[4]),
-                            "Low": float(r[3]) if r[3] is not None else float(r[4]),
-                            "Close": float(r[4]),
-                            "Volume": int(r[5] or 0),
-                        }
-                        for r in bm_rows
-                    ]
-                )
-                bm_df.set_index("date", inplace=True)
+                bm_df = price_data_rows_to_dataframe(bm_rows, ascending=True)
                 # compute_weinstein_stage_from_daily expects newest-first
                 sym_newest = df.copy()
                 bm_newest = bm_df.copy()
@@ -1021,24 +1045,7 @@ class MarketDataService:
                 .first()
             )
             if prev_row:
-                for key in (
-                    "sector",
-                    "industry",
-                    "sub_industry",
-                    "market_cap",
-                    "pe_ttm",
-                    "peg_ttm",
-                    "roe",
-                    "eps_growth_yoy",
-                    "eps_growth_qoq",
-                    "revenue_growth_yoy",
-                    "revenue_growth_qoq",
-                    "dividend_yield",
-                    "beta",
-                    "analyst_rating",
-                    "next_earnings",
-                    "last_earnings",
-                ):
+                for key in FUNDAMENTAL_FIELDS_WITH_SUB_INDUSTRY:
                     val = getattr(prev_row, key, None)
                     if val is not None and snapshot.get(key) is None:
                         snapshot[key] = val
@@ -1048,25 +1055,7 @@ class MarketDataService:
         if self._needs_fundamentals(snapshot):
             try:
                 info = self.get_fundamentals_info(symbol)
-                for k in (
-                    "name",
-                    "sector",
-                    "industry",
-                    "sub_industry",
-                    "market_cap",
-                    "pe_ttm",
-                    "peg_ttm",
-                    "roe",
-                    "eps_growth_yoy",
-                    "eps_growth_qoq",
-                    "revenue_growth_yoy",
-                    "revenue_growth_qoq",
-                    "dividend_yield",
-                    "beta",
-                    "analyst_rating",
-                    "next_earnings",
-                    "last_earnings",
-                ):
+                for k in FUNDAMENTAL_FIELDS_WITH_NAME:
                     if info.get(k) is not None:
                         snapshot[k] = info.get(k)
             except Exception:
@@ -1119,25 +1108,7 @@ class MarketDataService:
         try:
             funda = self.get_fundamentals_info(symbol)
             if funda:
-                for k in (
-                    "name",
-                    "sector",
-                    "industry",
-                    "sub_industry",
-                    "market_cap",
-                    "pe_ttm",
-                    "peg_ttm",
-                    "roe",
-                    "eps_growth_yoy",
-                    "eps_growth_qoq",
-                    "revenue_growth_yoy",
-                    "revenue_growth_qoq",
-                    "dividend_yield",
-                    "beta",
-                    "analyst_rating",
-                    "next_earnings",
-                    "last_earnings",
-                ):
+                for k in FUNDAMENTAL_FIELDS_WITH_NAME:
                     if funda.get(k) is not None:
                         snapshot[k] = funda.get(k)
         except Exception:
@@ -1500,23 +1471,7 @@ class MarketDataService:
         if limit:
             q = q.limit(limit)
         rows = q.all()
-        if not rows:
-            return pd.DataFrame(columns=["Open", "High", "Low", "Close", "Volume"])
-        df = pd.DataFrame(
-            [
-                {
-                    "date": r[0],
-                    "Open": float(r[1]) if r[1] is not None else float(r[4]),
-                    "High": float(r[2]) if r[2] is not None else float(r[4]),
-                    "Low": float(r[3]) if r[3] is not None else float(r[4]),
-                    "Close": float(r[4]),
-                    "Volume": int(r[5] or 0),
-                }
-                for r in rows
-            ]
-        )
-        df.set_index("date", inplace=True)
-        return df
+        return price_data_rows_to_dataframe(rows, ascending=True)
 
     # ---------------------- High-level TA helpers for tests/integration ----------------------
     async def build_indicator_snapshot(self, symbol: str) -> Dict[str, Any]:
@@ -1535,6 +1490,84 @@ class MarketDataService:
     async def get_technical_analysis(self, symbol: str) -> Dict[str, Any]:
         """Compatibility wrapper expected by tests – returns the latest snapshot."""
         return await self.get_snapshot(symbol)
+
+    def get_tracked_details(self, db: Session, symbols: List[str]) -> Dict[str, Any]:
+        if not symbols:
+            return {}
+        sym_set = {s.upper() for s in symbols}
+        rows = (
+            db.query(MarketSnapshot)
+            .filter(
+                MarketSnapshot.symbol.in_(sym_set),
+                MarketSnapshot.analysis_type == "technical_snapshot",
+            )
+            .order_by(MarketSnapshot.symbol.asc(), MarketSnapshot.analysis_timestamp.desc())
+            .all()
+        )
+        price_rows = (
+            db.query(PriceData.symbol, PriceData.close_price)
+            .filter(PriceData.symbol.in_(sym_set), PriceData.interval == "1d")
+            .distinct(PriceData.symbol)
+            .order_by(PriceData.symbol.asc(), PriceData.date.desc())
+            .all()
+        )
+        price_map = {sym.upper(): close for sym, close in price_rows if sym}
+
+        details: Dict[str, Any] = {}
+        seen: set[str] = set()
+
+        def _to_float(value):
+            try:
+                return float(value) if value is not None else None
+            except Exception:
+                return None
+
+        for row in rows:
+            sym = (row.symbol or "").upper()
+            if not sym or sym in seen:
+                continue
+            seen.add(sym)
+            details[sym] = {
+                "current_price": _to_float(getattr(row, "current_price", None))
+                or _to_float(price_map.get(sym)),
+                "atr_value": _to_float(getattr(row, "atr_value", None)),
+                "stage_label": getattr(row, "stage_label", None),
+                "stage_dist_pct": _to_float(getattr(row, "stage_dist_pct", None)),
+                "stage_slope_pct": _to_float(getattr(row, "stage_slope_pct", None)),
+                "ma_bucket": getattr(row, "ma_bucket", None),
+                "sector": getattr(row, "sector", None),
+                "industry": getattr(row, "industry", None),
+                "market_cap": _to_float(getattr(row, "market_cap", None)),
+                "last_snapshot_at": getattr(
+                    row.analysis_timestamp, "isoformat", lambda: None
+                )(),
+            }
+
+        cons_rows = (
+            db.query(
+                IndexConstituent.symbol,
+                IndexConstituent.index_name,
+                IndexConstituent.sector,
+                IndexConstituent.industry,
+            )
+            .filter(IndexConstituent.symbol.in_(sym_set))
+            .all()
+        )
+        for sym, idx_name, sector, industry in cons_rows:
+            symbol = (sym or "").upper()
+            if not symbol:
+                continue
+            entry = details.setdefault(symbol, {})
+            entry.setdefault("indices", set()).add(idx_name)
+            entry.setdefault("sector", sector)
+            entry.setdefault("industry", industry)
+        for sym, entry in details.items():
+            if isinstance(entry.get("indices"), set):
+                entry["indices"] = sorted(entry["indices"])
+            # Backfill price if still missing
+            if entry.get("current_price") is None and price_map.get(sym):
+                entry["current_price"] = _to_float(price_map.get(sym))
+        return details
 
     # ---------------------- Coverage instrumentation ----------------------
     def _compute_interval_coverage_for_symbols(
@@ -1625,7 +1658,12 @@ class MarketDataService:
         }
         return section, (stale_full if return_full_stale else None)
 
-    def coverage_snapshot(self, db: Session) -> Dict[str, Any]:
+    def coverage_snapshot(
+        self,
+        db: Session,
+        *,
+        fill_lookback_days: int | None = None,
+    ) -> Dict[str, Any]:
         """Compute coverage freshness, stale lists, and tracked stats for instrumentation/UI."""
         now = datetime.utcnow()
         from backend.models.market_data import MarketSnapshotHistory
@@ -1638,23 +1676,23 @@ class MarketDataService:
                 .count()
             )
 
-        tracked_symbols: List[str] = []
-        tracked_from_redis = False
-        try:
-            raw = self.redis_client.get("tracked:all")
-            tracked_symbols = json.loads(raw) if raw else []
-        except Exception:
-            tracked_symbols = []
-        tracked_symbols = [str(s).upper() for s in tracked_symbols if s]
-        tracked_from_redis = bool(tracked_symbols)
-        tracked_total = len(set(tracked_symbols))
+        tracked_list, tracked_from_redis = tracked_symbols_with_source(
+            db, redis_client=self.redis_client
+        )
+        tracked_total = len(set(tracked_list))
         if tracked_total:
-            universe = sorted(set(tracked_symbols))
+            universe = sorted(set(tracked_list))
         else:
-            universe = sorted({str(s).upper() for (s,) in db.query(PriceData.symbol).distinct().all() if s})
+            universe = sorted(
+                {
+                    str(s).upper()
+                    for (s,) in db.query(PriceData.symbol).distinct().all()
+                    if s
+                }
+            )
         total_symbols = len(universe)
 
-        def _fill_by_date(interval: str, days: int = 60) -> List[Dict[str, Any]]:
+        def _fill_by_date(interval: str, days: int | None = None) -> List[Dict[str, Any]]:
             """Return date buckets for 'has OHLCV row on that date' coverage.
 
             Each row represents a date (UTC, derived from stored timestamps) with:
@@ -1663,7 +1701,16 @@ class MarketDataService:
             """
             if not universe or total_symbols == 0:
                 return []
-            start_dt = now - timedelta(days=days)
+            lookback = int(
+                days
+                if days is not None
+                else (
+                    int(fill_lookback_days)
+                    if fill_lookback_days is not None
+                    else getattr(settings, "COVERAGE_FILL_LOOKBACK_DAYS", 90)
+                )
+            )
+            start_dt = now - timedelta(days=lookback)
             rows = (
                 db.query(
                     func.date(PriceData.date).label("d"),
@@ -1692,11 +1739,20 @@ class MarketDataService:
                 )
             return out
 
-        def _snapshot_fill_by_date(days: int = 60) -> List[Dict[str, Any]]:
+        def _snapshot_fill_by_date(days: int | None = None) -> List[Dict[str, Any]]:
             """Per-date snapshot coverage for technical snapshots (MarketSnapshotHistory ledger)."""
             if not universe or total_symbols == 0:
                 return []
-            start_dt = now - timedelta(days=days)
+            lookback = int(
+                days
+                if days is not None
+                else (
+                    int(fill_lookback_days)
+                    if fill_lookback_days is not None
+                    else getattr(settings, "COVERAGE_FILL_LOOKBACK_DAYS", 90)
+                )
+            )
+            start_dt = now - timedelta(days=lookback)
             snap_dt = MarketSnapshotHistory.as_of_date
             rows = (
                 db.query(
@@ -1745,151 +1801,23 @@ class MarketDataService:
             "generated_at": now.isoformat(),
             "symbols": total_symbols,
             "tracked_count": tracked_total if tracked_from_redis else total_symbols,
-            "tracked_sample": tracked_symbols[:10],
+            "tracked_sample": tracked_list[:10],
             "indices": idx_counts,
             "daily": daily_section,
             "m5": m5_section,
         }
         # Daily fill series (date -> % of symbols with OHLCV on that date)
         try:
-            snapshot["daily"]["fill_by_date"] = _fill_by_date("1d", days=60)
+            snapshot["daily"]["fill_by_date"] = _fill_by_date("1d", days=None)
         except Exception:
             snapshot["daily"]["fill_by_date"] = []
         # Snapshot fill series (technical snapshots) for same period
         try:
-            snapshot["daily"]["snapshot_fill_by_date"] = _snapshot_fill_by_date(days=60)
+            snapshot["daily"]["snapshot_fill_by_date"] = _snapshot_fill_by_date(days=None)
         except Exception:
             snapshot["daily"]["snapshot_fill_by_date"] = []
         snapshot["status"] = compute_coverage_status(snapshot)
         return snapshot
-
-def compute_coverage_status(snapshot: Dict[str, Any]) -> Dict[str, Any]:
-    """Derive human-readable coverage state + KPI percentages from a raw snapshot."""
-    total_symbols = int(snapshot.get("symbols") or 0)
-    tracked = int(snapshot.get("tracked_count") or 0)
-
-    daily = snapshot.get("daily", {}) or {}
-    m5 = snapshot.get("m5", {}) or {}
-    daily_count = int(daily.get("count") or 0)
-    m5_count = int(m5.get("count") or 0)
-    # Stale counts should reflect the full universe, not just the sampled `stale` lists.
-    daily_freshness = daily.get("freshness") or {}
-    m5_freshness = m5.get("freshness") or {}
-    stale_daily = int(daily.get("stale_48h") or daily_freshness.get(">48h") or 0) + int(
-        daily.get("missing") or daily_freshness.get("none") or 0
-    )
-    stale_m5 = int(m5.get("stale_48h") or m5_freshness.get(">48h") or 0) + int(
-        m5.get("missing") or m5_freshness.get("none") or 0
-    )
-    # Fall back to list lengths only if no aggregate counts are available.
-    if stale_daily == 0 and not daily_freshness and daily.get("stale"):
-        stale_daily = len(daily.get("stale") or [])
-    if stale_m5 == 0 and not m5_freshness and m5.get("stale"):
-        stale_m5 = len(m5.get("stale") or [])
-
-    # If 5m backfill is explicitly disabled, 5m coverage should be informational only
-    # and must not drive degraded/warning states.
-    meta = snapshot.get("meta", {}) or {}
-    backfill_5m_enabled = meta.get("backfill_5m_enabled")
-    if backfill_5m_enabled is None:
-        backfill_5m_enabled = snapshot.get("backfill_5m_enabled")
-    backfill_5m_enabled = True if backfill_5m_enabled is None else bool(backfill_5m_enabled)
-
-    def pct(count: int) -> float:
-        return round((count / total_symbols) * 100.0, 1) if total_symbols else 0.0
-
-    # Trading-day aware daily %:
-    # Prefer the latest observed trading day in daily.fill_by_date (based on stored OHLCV rows),
-    # and compute % as-of that date. This avoids false "degraded" on weekends/holidays.
-    expected_daily_date = None
-    expected_daily_pct = None
-    missing_latest = None
-    try:
-        series = list(daily.get("fill_by_date") or [])
-        # entries are like: {date: "YYYY-MM-DD", symbol_count: n, pct_of_universe: x}
-        series = [r for r in series if isinstance(r, dict) and r.get("date")]
-        if series:
-            newest = max(series, key=lambda r: str(r.get("date")))
-            expected_daily_date = str(newest.get("date"))
-            expected_daily_pct = float(newest.get("pct_of_universe") or 0.0)
-            # symbol_count is distinct symbols with a 1d bar on that date
-            sc = int(newest.get("symbol_count") or 0)
-            missing_latest = max(0, int(total_symbols) - sc) if total_symbols else 0
-    except Exception:
-        expected_daily_date = None
-        expected_daily_pct = None
-        missing_latest = None
-
-    daily_pct = round(expected_daily_pct, 1) if isinstance(expected_daily_pct, (int, float)) else pct(daily_count)
-    m5_pct = pct(m5_count)
-
-    label = "ok"
-    summary = "Coverage healthy across daily + 5m intervals."
-    if total_symbols == 0:
-        label = "idle"
-        summary = "No symbols discovered yet. Run refresh + tracked tasks."
-    if total_symbols > 0 and expected_daily_date is not None and missing_latest is not None:
-        # “Green” means: everyone has the latest trading-day bar.
-        if missing_latest > 0:
-            label = "degraded"
-            summary = f"{missing_latest} symbols missing daily bar for {expected_daily_date}."
-        else:
-            # Market-hours hint (computed in NY timezone, but stored timestamps remain UTC).
-            try:
-                from zoneinfo import ZoneInfo
-                from datetime import timedelta, time as _time
-
-                ny = ZoneInfo("America/New_York")
-                now_ny = datetime.utcnow().replace(tzinfo=ZoneInfo("UTC")).astimezone(ny)
-                is_weekend = now_ny.weekday() >= 5
-                open_t = _time(hour=9, minute=30)
-                close_t = _time(hour=16, minute=0)
-                is_open = (not is_weekend) and (open_t <= now_ny.time() <= close_t)
-                close_dt = datetime.combine(now_ny.date(), close_t, tzinfo=ny)
-                within_grace = (not is_weekend) and (now_ny >= close_dt) and (now_ny <= close_dt + timedelta(hours=18))
-                if not is_open:
-                    hint = "Market closed" if not within_grace else "Market closed (within close grace)"
-                    summary = f"{hint}. Daily coverage is green (latest bar {expected_daily_date})."
-                else:
-                    summary = f"Daily coverage is green (latest bar {expected_daily_date})."
-            except Exception:
-                summary = f"Daily coverage is green (latest bar {expected_daily_date})."
-    elif total_symbols > 0 and daily_pct < 90:
-        label = "degraded"
-        summary = f"Daily coverage {daily_pct}% below 90% SLA."
-    elif stale_daily:
-        # Fallback to legacy bucket-based stale counts if fill_by_date isn't present.
-        label = "degraded"
-        none_n = int((daily.get("freshness") or {}).get("none") or daily.get("missing") or 0)
-        summary = (
-            f"{stale_daily} symbols have daily bars older than 48h."
-            if none_n == 0
-            else f"{stale_daily} symbols have daily bars older than 48h or missing."
-        )
-    elif backfill_5m_enabled:
-        if m5_pct == 0 and total_symbols:
-            label = "degraded"
-            summary = "5m coverage is 0% – run intraday backfill."
-        elif stale_m5:
-            label = "warning"
-            summary = f"{stale_m5} symbols missing 5m data."
-
-    return {
-        "label": label,
-        "summary": summary,
-        "daily_pct": daily_pct,
-        "m5_pct": m5_pct,
-        "stale_daily": int(missing_latest) if isinstance(missing_latest, int) else stale_daily,
-        "stale_m5": stale_m5,
-        "symbols": total_symbols,
-        "tracked_count": tracked,
-        "thresholds": {
-            "daily_pct": 100,
-            "m5_expectation": ">=1 refresh/day" if backfill_5m_enabled else "ignored (disabled by admin)",
-        },
-        "daily_expected_date": expected_daily_date,
-    }
-
 
 # Global instance
 market_data_service = MarketDataService()

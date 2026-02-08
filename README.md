@@ -70,6 +70,12 @@ API Map (v1)
   - MA bucket: `GET /api/v1/market-data/technical/ma-bucket/{symbol}`
   - Stage (Weinstein): `GET /api/v1/market-data/technical/stage/{symbol}`
 
+Market Data (dev vs prod)
+-------------------------
+- Dev: Docker Compose stack with optional Celery Beat/RedBeat; trigger tasks with `make task-run`.
+- Prod: Provider cron (Render/Fly) enqueues tasks via `backend/scripts/run_task.py`; workers consume from Redis.
+- Diagrams + flow details: `docs/MARKET_DATA.md`.
+
 Naming
 ------
 - Position = equities (stocks/ETFs)

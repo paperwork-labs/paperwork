@@ -54,11 +54,11 @@ describe('coverage helpers', () => {
   it('buildCoverageActions merges defaults without duplicates', () => {
     const actions = buildCoverageActions([
       { label: 'Custom', task_name: 'custom_task' },
-      { label: 'Restore Daily Coverage Override', task_name: 'restore_daily_coverage_tracked' },
+      { label: 'Restore Daily Coverage Override', task_name: 'admin_coverage_restore' },
     ]);
     expect(actions.find((a) => a.task_name === 'custom_task')).toBeTruthy();
-    expect(actions.filter((a) => a.task_name === 'restore_daily_coverage_tracked')).toHaveLength(1);
-    expect(actions.some((a) => a.task_name === 'record_daily_history')).toBe(true);
+    expect(actions.filter((a) => a.task_name === 'admin_coverage_restore')).toHaveLength(1);
+    expect(actions.some((a) => a.task_name === 'admin_snapshots_history_record')).toBe(true);
   });
 
   it('getCoverageStatusColor maps known statuses', () => {

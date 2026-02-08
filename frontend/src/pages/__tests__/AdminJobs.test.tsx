@@ -37,7 +37,7 @@ describe('AdminJobs', () => {
 
   it('loads first page with default paging params', async () => {
     apiGet.mockResolvedValueOnce({
-      data: { jobs: [{ id: 1, task_name: 'monitor_coverage_health', status: 'ok' }], total: 200 },
+      data: { jobs: [{ id: 1, task_name: 'admin_coverage_refresh', status: 'ok' }], total: 200 },
     });
 
     renderWithProviders(<AdminJobs />);
@@ -47,7 +47,7 @@ describe('AdminJobs', () => {
     });
 
     expect(await screen.findByText(/Admin Jobs/i)).toBeInTheDocument();
-    expect(screen.getByText(/monitor_coverage_health/i)).toBeInTheDocument();
+    expect(screen.getByText(/admin_coverage_refresh/i)).toBeInTheDocument();
     // Count summary is shown in pagination footer; top-level summary is intentionally omitted.
   });
 
@@ -77,7 +77,7 @@ describe('AdminJobs', () => {
         jobs: [
           {
             id: 1,
-            task_name: 'update_tracked_symbol_cache',
+            task_name: 'market_universe_tracked_refresh',
             status: 'ok',
             params: { foo: 'bar' },
             counters: { symbols_processed: 12 },
@@ -90,7 +90,7 @@ describe('AdminJobs', () => {
 
     renderWithProviders(<AdminJobs />);
 
-    expect(await screen.findByText(/update_tracked_symbol_cache/i)).toBeInTheDocument();
+    expect(await screen.findByText(/market_universe_tracked_refresh/i)).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole('button', { name: /Details/i })[0]);
     expect(await screen.findByText(/Job details/i)).toBeInTheDocument();
     expect(screen.getByText(/Params/i)).toBeInTheDocument();

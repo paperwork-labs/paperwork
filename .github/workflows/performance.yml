@@ -125,7 +125,7 @@ jobs:
             def get_market_data(self):
                 """Test market data endpoint"""
                 symbol = random.choice(["AAPL", "MSFT", "NVDA", "GOOGL"])
-                self.client.get(f"/api/v1/market-data/price/{symbol}")
+                self.client.get(f"/api/v1/market-data/prices/{symbol}")
             
             @task(1)
             def execute_strategy(self):

@@ -123,7 +123,7 @@ cronJobs:
           property: connectionString
     command: python -m backend.scripts.run_task backend.tasks.account_sync.sync_all_ibkr_accounts
 
-  - name: restore-daily-coverage-tracked
+  - name: admin_coverage_restore
     schedule: "0 3 * * *"
     env: docker
     dockerfilePath: ./Dockerfile.backend
@@ -150,9 +150,9 @@ cronJobs:
           type: redis
           name: axiomfolio-redis
           property: connectionString
-    command: python -m backend.scripts.run_task backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked --kwargs '{"history_days": 20, "history_batch_size": 25}'
+    command: 'python -m backend.scripts.run_task backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked --kwargs ''{"history_days": 20, "history_batch_size": 25}'''
 
-  - name: monitor-coverage-health-hourly
+  - name: admin_coverage_refresh
     schedule: "0 * * * *"
     env: docker
     dockerfilePath: ./Dockerfile.backend
@@ -181,7 +181,7 @@ cronJobs:
           property: connectionString
     command: python -m backend.scripts.run_task backend.tasks.market_data_tasks.monitor_coverage_health
 
-  - name: enforce-price-data-retention
+  - name: admin_retention_enforce
     schedule: "0 4 * * *"
     env: docker
     dockerfilePath: ./Dockerfile.backend

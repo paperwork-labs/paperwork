@@ -11,6 +11,10 @@ Implemented
 - TastyTrade
   - SDK with username/password (accounts, positions, trades, transactions, dividends, balances)
 
+Broker sync flow
+----------------
+![Broker sync flow](assets/brokers_sync_flow.png)
+
 Planned
 -------
 - Schwab: OAuth app required. Env: SCHWAB_CLIENT_ID, SCHWAB_CLIENT_SECRET, SCHWAB_REDIRECT_URI, ENCRYPTION_KEY. Live trading: Yes after app approval (feature-flagged).

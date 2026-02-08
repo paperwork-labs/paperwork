@@ -27,7 +27,7 @@ def test_admin_sanity_coverage_payload(db_session, monkeypatch):
     # Force route codepaths to use pytest DB session.
     app.dependency_overrides[routes.get_db] = lambda: db_session
     try:
-        monkeypatch.setattr(routes, "_tracked_universe_symbols", lambda _db: ["AAA", "BBB"])
+        monkeypatch.setattr(routes, "tracked_symbols", lambda _db, redis_client=None: ["AAA", "BBB"])
 
         # Latest daily OHLCV exists for AAA only.
         db_session.add(
@@ -55,7 +55,7 @@ def test_admin_sanity_coverage_payload(db_session, monkeypatch):
         db_session.commit()
 
         client = TestClient(app, raise_server_exceptions=False)
-        resp = client.get("/api/v1/market-data/admin/sanity/coverage")
+        resp = client.get("/api/v1/market-data/admin/coverage/sanity")
         assert resp.status_code == 200
         data = resp.json()
 

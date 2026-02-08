@@ -17,9 +17,9 @@ type JobRow = {
 };
 
 const sample: JobRow[] = [
-  { id: 1, status: 'ok', task_name: 'monitor_coverage_health', started_at: new Date().toISOString(), finished_at: new Date().toISOString() },
-  { id: 2, status: 'running', task_name: 'backfill_5m_last_n_days', started_at: new Date(Date.now() - 60_000).toISOString(), finished_at: null },
-  { id: 3, status: 'error', task_name: 'update_tracked_symbol_cache', started_at: new Date(Date.now() - 3600_000).toISOString(), finished_at: new Date(Date.now() - 3500_000).toISOString() },
+  { id: 1, status: 'ok', task_name: 'admin_coverage_refresh', started_at: new Date().toISOString(), finished_at: new Date().toISOString() },
+  { id: 2, status: 'running', task_name: 'admin_backfill_5m', started_at: new Date(Date.now() - 60_000).toISOString(), finished_at: null },
+  { id: 3, status: 'error', task_name: 'market_universe_tracked_refresh', started_at: new Date(Date.now() - 3600_000).toISOString(), finished_at: new Date(Date.now() - 3500_000).toISOString() },
 ];
 
 export const Sortable_With_Pagination = () => {
