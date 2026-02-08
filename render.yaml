@@ -1,7 +1,7 @@
 services:
   - type: web
     name: axiomfolio-api
-    env: docker
+    runtime: docker
     plan: standard
     dockerfilePath: ./Dockerfile.backend
     healthCheckPath: /health
@@ -46,7 +46,7 @@ services:
 
   - type: worker
     name: axiomfolio-worker
-    env: docker
+    runtime: docker
     plan: standard
     dockerfilePath: ./Dockerfile.backend
     autoDeploy: false
