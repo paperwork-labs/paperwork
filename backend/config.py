@@ -130,6 +130,11 @@ class Settings(BaseSettings):
     # How many *trading days* to render in the UI histogram (frontend reads this from /market-data/coverage meta).
     COVERAGE_FILL_TRADING_DAYS_WINDOW: int = 50
 
+    # Retention defaults for intraday data
+    RETENTION_MAX_DAYS_5M: int = 90
+    # Alert when retention deletes exceed this count in a run.
+    RETENTION_DELETE_WARN_THRESHOLD: int = 250000
+
     # Snapshot computation window (daily bars). Needs to be large enough for:
     # - 200D SMA
     # - ~52-week RS computations on weekly resample

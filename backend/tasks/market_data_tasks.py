@@ -57,6 +57,19 @@ def _increment_provider_usage(usage: Dict[str, int], result: dict | None) -> Non
     usage[provider] = usage.get(provider, 0) + 1
 
 
+def _classify_provider_error(error: object) -> str:
+    msg = str(error or "").lower()
+    if "429" in msg or "too many" in msg or "rate limit" in msg:
+        return "rate_limit"
+    if "timeout" in msg or "timed out" in msg:
+        return "timeout"
+    if "connection" in msg or "connect" in msg:
+        return "connection"
+    if "invalid json" in msg or "json" in msg:
+        return "bad_response"
+    return "provider_error"
+
+
 def _resolve_history_days(requested_days: int | None) -> int:
     """Resolve snapshot history window using last successful run (min 5 days)."""
     minimum_days = 5
@@ -475,7 +488,12 @@ def _persist_daily_fetch_results(
             errors += 1
             if len(error_samples) < error_samples_limit:
                 error_samples.append(
-                    {"symbol": sym, "provider": provider or "unknown", "error": "empty_response"}
+                    {
+                        "symbol": sym,
+                        "provider": provider or "unknown",
+                        "error": "empty_response",
+                        "error_type": "empty_response",
+                    }
                 )
             _increment_provider_usage(provider_usage, {"provider": provider})
             continue
@@ -527,7 +545,12 @@ def _persist_daily_fetch_results(
             session.rollback()
             if len(error_samples) < error_samples_limit:
                 error_samples.append(
-                    {"symbol": sym, "provider": provider or "unknown", "error": str(exc)}
+                    {
+                        "symbol": sym,
+                        "provider": provider or "unknown",
+                        "error": str(exc),
+                        "error_type": _classify_provider_error(exc),
+                    }
                 )
 
     return {
@@ -1907,19 +1930,116 @@ def enforce_price_data_retention(max_days_5m: int = 90) -> dict:
     try:
         from backend.models import PriceData
         from datetime import datetime, timedelta
-        cutoff = datetime.utcnow() - timedelta(days=max_days_5m)
+        from backend.services.alerts import alert_service
+
+        effective_days = int(max_days_5m or settings.RETENTION_MAX_DAYS_5M)
+        cutoff = datetime.utcnow() - timedelta(days=effective_days)
         deleted = (
             session.query(PriceData)
             .filter(PriceData.interval == "5m", PriceData.date < cutoff)
             .delete(synchronize_session=False)
         )
         session.commit()
-        return {"status": "ok", "deleted": int(deleted or 0), "cutoff": cutoff.isoformat()}
+        deleted_count = int(deleted or 0)
+        warn_threshold = int(settings.RETENTION_DELETE_WARN_THRESHOLD or 0)
+        warning = None
+        if warn_threshold and deleted_count >= warn_threshold:
+            warning = f"Retention deleted {deleted_count} rows (>= {warn_threshold})"
+            alert_service.send_discord(
+                "system_status",
+                title="Market Data Retention Spike",
+                description="5m retention deleted more rows than expected.",
+                fields={
+                    "deleted": str(deleted_count),
+                    "threshold": str(warn_threshold),
+                    "cutoff": cutoff.isoformat(),
+                },
+                severity="warning",
+            )
+        return {
+            "status": "ok",
+            "deleted": deleted_count,
+            "cutoff": cutoff.isoformat(),
+            "warning": warning,
+        }
     finally:
         session.close()
 
 
 # ============================= Coverage instrumentation =============================
+
+
+@shared_task(name="backend.tasks.market_data_tasks.audit_market_data_quality")
+@task_run("admin_market_data_audit")
+def audit_market_data_quality(sample_limit: int = 25) -> dict:
+    """Audit market data coverage and snapshot history consistency."""
+    session = SessionLocal()
+    try:
+        tracked = _get_tracked_symbols_safe(session)
+        tracked_set = set(tracked)
+        latest_daily_date = (
+            session.query(func.max(PriceData.date))
+            .filter(PriceData.interval == "1d")
+            .scalar()
+        )
+        daily_symbols = set()
+        if latest_daily_date:
+            daily_rows = (
+                session.query(PriceData.symbol)
+                .filter(
+                    PriceData.interval == "1d",
+                    PriceData.date == latest_daily_date,
+                )
+                .distinct()
+                .all()
+            )
+            daily_symbols = {str(s[0]).upper() for s in daily_rows if s and s[0]}
+        missing_latest_daily = sorted(tracked_set - daily_symbols)
+
+        latest_history_date = (
+            session.query(func.max(MarketSnapshotHistory.as_of_date)).scalar()
+        )
+        history_symbols = set()
+        if latest_history_date:
+            history_rows = (
+                session.query(MarketSnapshotHistory.symbol)
+                .filter(MarketSnapshotHistory.as_of_date == latest_history_date)
+                .distinct()
+                .all()
+            )
+            history_symbols = {str(s[0]).upper() for s in history_rows if s and s[0]}
+        missing_history = sorted(tracked_set - history_symbols)
+
+        payload = {
+            "schema_version": 1,
+            "generated_at": datetime.utcnow().isoformat(),
+            "tracked_total": len(tracked_set),
+            "latest_daily_date": latest_daily_date.isoformat()
+            if hasattr(latest_daily_date, "isoformat")
+            else str(latest_daily_date)
+            if latest_daily_date
+            else None,
+            "latest_daily_symbol_count": len(daily_symbols),
+            "missing_latest_daily_count": len(missing_latest_daily),
+            "missing_latest_daily_sample": missing_latest_daily[:sample_limit],
+            "latest_snapshot_history_date": latest_history_date.isoformat()
+            if hasattr(latest_history_date, "isoformat")
+            else str(latest_history_date)
+            if latest_history_date
+            else None,
+            "latest_snapshot_history_symbol_count": len(history_symbols),
+            "missing_snapshot_history_count": len(missing_history),
+            "missing_snapshot_history_sample": missing_history[:sample_limit],
+        }
+        try:
+            market_data_service.redis_client.set(
+                "market_audit:last", json.dumps(payload), ex=86400
+            )
+        except Exception:
+            pass
+        return payload
+    finally:
+        session.close()
 
 
 @shared_task(name="backend.tasks.market_data_tasks.monitor_coverage_health")
@@ -1938,6 +2058,7 @@ def monitor_coverage_health() -> dict:
         status_info = compute_coverage_status(snapshot)
         snapshot["status"] = status_info
         payload = {
+            "schema_version": 1,
             "snapshot": snapshot,
             "updated_at": datetime.utcnow().isoformat(),
             "status": status_info,

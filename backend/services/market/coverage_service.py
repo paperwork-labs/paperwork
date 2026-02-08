@@ -10,6 +10,7 @@ from backend.services.market.coverage_utils import compute_coverage_status
 
 logger = logging.getLogger(__name__)
 
+COVERAGE_CACHE_SCHEMA_VERSION = 1
 
 class CoverageService:
     """Coverage and health facade for MarketDataService."""
@@ -69,16 +70,28 @@ class CoverageService:
                 snap["status"] = compute_coverage_status(snap)
             return snap["status"]
 
+        def _is_valid_cached_payload(payload: Dict[str, Any]) -> bool:
+            if not isinstance(payload, dict):
+                return False
+            if payload.get("schema_version") != COVERAGE_CACHE_SCHEMA_VERSION:
+                return False
+            if not isinstance(payload.get("snapshot"), dict):
+                return False
+            if not payload.get("updated_at"):
+                return False
+            return True
+
         use_cache = fill_lookback_days is None
         if use_cache:
             try:
                 raw = self._service.redis_client.get("coverage:health:last")
                 if raw:
                     cached = json.loads(raw.decode() if isinstance(raw, (bytes, bytearray)) else raw)
-                    snapshot = cached.get("snapshot")
-                    updated_at = cached.get("updated_at")
-                    if snapshot is not None and cached.get("status"):
-                        snapshot.setdefault("status", cached["status"])
+                    if _is_valid_cached_payload(cached):
+                        snapshot = cached.get("snapshot")
+                        updated_at = cached.get("updated_at")
+                        if snapshot is not None and cached.get("status"):
+                            snapshot.setdefault("status", cached["status"])
             except Exception:
                 snapshot = None
 

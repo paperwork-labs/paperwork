@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, distinct
 from typing import List, Dict, Any, Callable, Optional
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # dependencies
 from backend.database import get_db
@@ -955,6 +955,28 @@ async def admin_restore_daily_tracked(
     )
 
 
+@router.get("/admin/coverage/restore/preview")
+async def admin_restore_daily_tracked_preview(
+    history_days: int | None = Query(
+        None, ge=1, le=300, description="Trading days to backfill into snapshot history (auto if omitted)"
+    ),
+    admin_user: User = Depends(get_admin_user),
+) -> Dict[str, Any]:
+    from backend.tasks import market_data_tasks
+
+    resolved_days = market_data_tasks._resolve_history_days(history_days)
+    end_date = datetime.utcnow().date()
+    start_date = end_date - timedelta(days=resolved_days)
+    return {
+        "requested_history_days": history_days,
+        "resolved_history_days": int(resolved_days),
+        "date_range": {
+            "start": start_date.isoformat(),
+            "end": end_date.isoformat(),
+        },
+    }
+
+
 @router.get("/coverage/{symbol}")
 async def get_symbol_coverage(
     symbol: str,
@@ -1008,6 +1030,19 @@ async def post_retention_enforce(
     admin_user: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
     return _enqueue_task(enforce_price_data_retention, max_days_5m=max_days_5m)
+
+
+@router.get("/admin/market-audit")
+async def get_market_data_audit(
+    admin_user: User = Depends(get_admin_user),
+) -> Dict[str, Any]:
+    svc = MarketDataService()
+    try:
+        raw = svc.redis_client.get("market_audit:last")
+        payload = json.loads(raw.decode() if isinstance(raw, (bytes, bytearray)) else raw) if raw else None
+    except Exception:
+        payload = None
+    return {"audit": payload}
 
 
 @router.get("/admin/jobs")

@@ -72,14 +72,16 @@ def task_run(task_name: str, *, lock_key: Optional[Callable[..., Optional[str]]]
                         pass
                 job.status = "ok"
                 job.finished_at = datetime.utcnow()
-                if counters:
+                duration = _job_duration_seconds(job)
+                if counters is not None:
+                    counters["duration_s"] = duration
+                    counters["duration_bucket"] = _duration_bucket(duration)
                     job.counters = counters
                 session.commit()
                 try:
                     _publish_status(task_name, "ok", {"id": job.id, "payload": result})
                 except Exception:
                     pass
-                duration = _job_duration_seconds(job)
                 _emit_alerts(
                     event="success",
                     task_name=task_name,
@@ -166,7 +168,26 @@ def _default_hooks() -> HookConfig | None:
 def _job_duration_seconds(job: JobRun) -> float:
     if not job.finished_at or not job.started_at:
         return 0.0
-    return max((job.finished_at - job.started_at).total_seconds(), 0.0)
+    start = job.started_at
+    end = job.finished_at
+    try:
+        if start.tzinfo and not end.tzinfo:
+            start = start.replace(tzinfo=None)
+        if end.tzinfo and not start.tzinfo:
+            end = end.replace(tzinfo=None)
+    except Exception:
+        pass
+    return max((end - start).total_seconds(), 0.0)
+
+
+def _duration_bucket(duration_s: float) -> str:
+    if duration_s < 60:
+        return "fast"
+    if duration_s < 300:
+        return "normal"
+    if duration_s < 900:
+        return "slow"
+    return "very_slow"
 
 
 def _slow_threshold(meta: ScheduleMetadata | None, hooks: HookConfig | None) -> Optional[float]:

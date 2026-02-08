@@ -209,6 +209,12 @@ class MarketSnapshot(Base):
 
     __table_args__ = (
         Index("idx_symbol_analysis_type", "symbol", "analysis_type"),
+        Index(
+            "idx_symbol_analysis_type_ts",
+            "symbol",
+            "analysis_type",
+            "analysis_timestamp",
+        ),
         Index("idx_symbol_expiry", "symbol", "expiry_timestamp"),
         Index("idx_analysis_timestamp", "analysis_timestamp"),
     )

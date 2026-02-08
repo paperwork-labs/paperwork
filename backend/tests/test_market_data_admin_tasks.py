@@ -38,3 +38,21 @@ def test_admin_tasks_payload_shape():
 def test_admin_record_history_requires_admin():
     resp = client.post("/api/v1/market-data/admin/snapshots/history/record")
     assert resp.status_code in (401, 403)
+
+
+def test_admin_coverage_restore_preview_requires_admin():
+    resp = client.get("/api/v1/market-data/admin/coverage/restore/preview")
+    assert resp.status_code in (401, 403)
+
+
+def test_admin_coverage_restore_preview_payload():
+    app.dependency_overrides[get_admin_user] = object
+    try:
+        resp = client.get("/api/v1/market-data/admin/coverage/restore/preview")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "resolved_history_days" in data
+        assert int(data["resolved_history_days"]) >= 5
+        assert "date_range" in data
+    finally:
+        app.dependency_overrides.pop(get_admin_user, None)

@@ -57,6 +57,7 @@ const AdminJobs: React.FC = () => {
     const kSymbols = pick(['symbols_processed', 'tickers_processed', 'symbols', 'tickers', 'symbols_total']);
     const kInserted = pick(['rows_inserted', 'bars_inserted', 'inserted', 'created', 'upserted']);
     const kUpdated = pick(['updated', 'rows_updated', 'bars_updated']);
+    const durationS = typeof counters?.duration_s === 'number' ? Number(counters.duration_s) : undefined;
 
     const symbolsN =
       (kSymbols ? Number(counters[kSymbols]) : undefined) ??
@@ -98,6 +99,7 @@ const AdminJobs: React.FC = () => {
     if (kSymbols) parts.push(`Processed ${counters[kSymbols]} symbols`);
     if (kInserted) parts.push(`Inserted ${counters[kInserted]}`);
     if (kUpdated) parts.push(`Updated ${counters[kUpdated]}`);
+    if (typeof durationS === 'number') parts.push(`Duration ${Math.round(durationS)}s`);
 
     // If no counters, try params
     if (parts.length === 0) {

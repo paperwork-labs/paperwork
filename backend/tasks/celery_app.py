@@ -58,6 +58,12 @@ if ENABLE_CELERY_BEAT:
 
     MARKET_DATA_BEAT_SCHEDULE = {
         # Nightly (UTC) – Market Data
+        "admin_market_data_audit": {
+            "task": "backend.tasks.market_data_tasks.audit_market_data_quality",
+            "schedule": crontab(hour=2, minute=45),
+            "args": (),
+            "kwargs": {"sample_limit": 25},
+        },
         "admin_coverage_restore": {
             "task": "backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked",
             "schedule": crontab(hour=3, minute=0),
@@ -69,6 +75,12 @@ if ENABLE_CELERY_BEAT:
             "task": "backend.tasks.market_data_tasks.monitor_coverage_health",
             "schedule": crontab(minute=0, hour="*"),
             "args": (),
+        },
+        "admin_retention_enforce": {
+            "task": "backend.tasks.market_data_tasks.enforce_price_data_retention",
+            "schedule": crontab(hour=4, minute=30),
+            "args": (),
+            "kwargs": {"max_days_5m": int(getattr(settings, "RETENTION_MAX_DAYS_5M", 90))},
         },
     }
 

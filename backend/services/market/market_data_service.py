@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import random
+import time
 from datetime import datetime
 from datetime import timedelta
 from enum import Enum
@@ -428,6 +429,40 @@ class MarketDataService:
             raise last_exc
         raise RuntimeError("provider call failed without exception")
 
+    def _call_blocking_with_retries_sync(
+        self,
+        fn,
+        *args,
+        attempts: Optional[int] = None,
+        max_delay_seconds: Optional[float] = None,
+        **kwargs,
+    ):
+        """Sync helper for provider calls with bounded exponential backoff."""
+        n = int(attempts or int(getattr(settings, "MARKET_BACKFILL_RETRY_ATTEMPTS", 6)))
+        max_delay = float(
+            max_delay_seconds
+            if max_delay_seconds is not None
+            else float(getattr(settings, "MARKET_BACKFILL_RETRY_MAX_DELAY_SECONDS", 60.0))
+        )
+        last_exc: Optional[Exception] = None
+        for i in range(max(1, n)):
+            try:
+                return fn(*args, **kwargs)
+            except Exception as exc:  # noqa: BLE001
+                last_exc = exc
+                status = self._extract_http_status(exc)
+                is_rate_limited = status == 429 or "Too Many" in str(exc)
+                is_transient = status in (429, 500, 502, 503, 504) or is_rate_limited
+                if i >= n - 1:
+                    break
+                base = 0.8 if is_transient else 0.2
+                delay = min(max_delay, base * (2**i))
+                delay = delay * (0.75 + random.random() * 0.5)
+                time.sleep(delay)
+        if last_exc:
+            raise last_exc
+        raise RuntimeError("provider call failed without exception")
+
     async def get_current_price(self, symbol: str) -> Optional[float]:
         """Get current price for a symbol with provider policy and 60s Redis cache."""
         cache_key = f"price:{symbol}"
@@ -443,10 +478,14 @@ class MarketDataService:
             try:
                 price = None
                 if provider == APIProvider.FMP:
-                    q = fmpsdk.quote(apikey=settings.FMP_API_KEY, symbol=symbol)
+                    q = await self._call_blocking_with_retries(
+                        fmpsdk.quote, apikey=settings.FMP_API_KEY, symbol=symbol
+                    )
                     price = q and len(q) > 0 and q[0].get("price")
                 elif provider == APIProvider.YFINANCE:
-                    hist = yf.Ticker(symbol).history(period="1d", interval="1m")
+                    hist = await self._call_blocking_with_retries(
+                        lambda: yf.Ticker(symbol).history(period="1d", interval="1m")
+                    )
                     price = float(hist["Close"].iloc[-1]) if not hist.empty else None
                 if price is not None:
                     self.redis_client.setex(cache_key, 60, str(price))
@@ -478,7 +517,11 @@ class MarketDataService:
 
         try:
             if settings.FMP_API_KEY:
-                prof = fmpsdk.company_profile(apikey=settings.FMP_API_KEY, symbol=symbol)
+                prof = self._call_blocking_with_retries_sync(
+                    fmpsdk.company_profile,
+                    apikey=settings.FMP_API_KEY,
+                    symbol=symbol,
+                )
                 if prof and len(prof) > 0 and isinstance(prof[0], dict):
                     d = prof[0]
                     info = {
@@ -491,7 +534,11 @@ class MarketDataService:
                     if d.get("beta") is not None:
                         info["beta"] = d.get("beta")
                 try:
-                    metrics = fmpsdk.key_metrics_ttm(apikey=settings.FMP_API_KEY, symbol=symbol)
+                    metrics = self._call_blocking_with_retries_sync(
+                        fmpsdk.key_metrics_ttm,
+                        apikey=settings.FMP_API_KEY,
+                        symbol=symbol,
+                    )
                     if metrics and isinstance(metrics[0], dict):
                         m = metrics[0]
                         set_if_missing("pe_ttm", m.get("peRatioTTM") or m.get("peRatio"))
@@ -502,7 +549,11 @@ class MarketDataService:
                 except Exception as exc:
                     logger.warning("Failed to fetch FMP key metrics for %s: %s", symbol, exc)
                 try:
-                    ratios = fmpsdk.ratios_ttm(apikey=settings.FMP_API_KEY, symbol=symbol)
+                    ratios = self._call_blocking_with_retries_sync(
+                        fmpsdk.ratios_ttm,
+                        apikey=settings.FMP_API_KEY,
+                        symbol=symbol,
+                    )
                     if ratios and isinstance(ratios[0], dict):
                         r = ratios[0]
                         set_if_missing("pe_ttm", r.get("priceEarningsRatioTTM") or r.get("priceEarningsRatio"))
@@ -512,7 +563,11 @@ class MarketDataService:
                 except Exception as exc:
                     logger.warning("Failed to fetch FMP ratios for %s: %s", symbol, exc)
                 try:
-                    growth = fmpsdk.financial_growth(apikey=settings.FMP_API_KEY, symbol=symbol)
+                    growth = self._call_blocking_with_retries_sync(
+                        fmpsdk.financial_growth,
+                        apikey=settings.FMP_API_KEY,
+                        symbol=symbol,
+                    )
                     if growth and isinstance(growth[0], dict):
                         g = growth[0]
                         set_if_missing("eps_growth_yoy", to_pct(g.get("epsGrowth") or g.get("epsgrowth")))
@@ -524,7 +579,7 @@ class MarketDataService:
         except Exception as exc:
             logger.warning("Failed to fetch FMP fundamentals for %s: %s", symbol, exc)
         try:
-            y = yf.Ticker(symbol).info
+            y = self._call_blocking_with_retries_sync(lambda: yf.Ticker(symbol).info)
             if y:
                 if not info:
                     info = {

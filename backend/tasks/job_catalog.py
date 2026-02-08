@@ -67,6 +67,16 @@ CATALOG: List[JobTemplate] = [
         default_tz="UTC",
     ),
     JobTemplate(
+        id="admin_market_data_audit",
+        display_name="Market Data Quality Audit",
+        group="market_data",
+        task="backend.tasks.market_data_tasks.audit_market_data_quality",
+        description="Audit latest daily bars and snapshot history completeness",
+        default_cron="45 2 * * *",
+        default_tz="UTC",
+        kwargs={"sample_limit": 25},
+    ),
+    JobTemplate(
         id="admin_coverage_restore",
         display_name="Restore Daily Coverage (Tracked)",
         group="market_data",
@@ -112,6 +122,16 @@ CATALOG: List[JobTemplate] = [
         description="Snapshot coverage freshness and persist stale symbol metrics",
         default_cron="0 * * * *",
         default_tz="UTC",
+    ),
+    JobTemplate(
+        id="admin_retention_enforce",
+        display_name="Enforce 5m Retention",
+        group="market_data",
+        task="backend.tasks.market_data_tasks.enforce_price_data_retention",
+        description="Delete 5m bars older than the retention window",
+        default_cron="30 4 * * *",
+        default_tz="UTC",
+        kwargs={"max_days_5m": 90},
     ),
 ]
 

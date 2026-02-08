@@ -93,7 +93,12 @@ def test_coverage_prefers_cached_snapshot(monkeypatch):
         "stale_daily": 0,
         "stale_m5": 0,
     }
-    payload = {"snapshot": cached_snapshot, "updated_at": "2025-01-01T00:00:00", "status": cached_status}
+    payload = {
+        "schema_version": 1,
+        "snapshot": cached_snapshot,
+        "updated_at": "2025-01-01T00:00:00",
+        "status": cached_status,
+    }
 
     class _RedisStub:
         def get(self, key):
@@ -214,4 +219,69 @@ def test_coverage_meta_exposes_kpis_and_sparkline(monkeypatch):
     assert len(meta["sparkline"]["m5_pct"]) >= 1
     assert len(meta["sparkline"]["labels"]) >= 1
     assert meta["sla"]["daily_pct"] == payload["status"]["thresholds"]["daily_pct"]
+
+
+def test_coverage_cache_schema_mismatch_falls_back(monkeypatch):
+    from backend.api.routes import market_data as routes
+
+    monkeypatch.setattr(settings, "MARKET_DATA_SECTION_PUBLIC", True)
+
+    cached_snapshot = {
+        "generated_at": "2025-01-01T00:00:00",
+        "symbols": 2,
+        "tracked_count": 2,
+        "daily": {"count": 2, "stale": []},
+        "m5": {"count": 1, "stale": []},
+    }
+    payload = {
+        "schema_version": 0,
+        "snapshot": cached_snapshot,
+        "updated_at": "2025-01-01T00:00:00",
+        "status": {"label": "ok"},
+    }
+    coverage_called = {"hit": False}
+
+    class _RedisStub:
+        def get(self, key):
+            if key == "coverage:health:last":
+                return json.dumps(payload)
+            return None
+
+        def lrange(self, key, start, end):
+            return []
+
+    class _StubService:
+        def __init__(self):
+            self.redis_client = _RedisStub()
+            self.coverage = CoverageService(self)
+
+        def coverage_snapshot(self, db, **_kwargs):
+            coverage_called["hit"] = True
+            return {
+                "generated_at": "2025-01-01T00:00:00",
+                "symbols": 2,
+                "tracked_count": 2,
+                "daily": {"count": 2, "stale": []},
+                "m5": {"count": 1, "stale": []},
+            }
+
+        def is_backfill_5m_enabled(self) -> bool:
+            return True
+
+        def benchmark_health(self, db, benchmark_symbol="SPY", required_bars=None, latest_daily_dt=None):
+            return {
+                "symbol": benchmark_symbol,
+                "latest_daily_dt": None,
+                "latest_daily_date": None,
+                "daily_bars": 0,
+                "required_bars": int(required_bars or 260),
+                "ok": False,
+                "stale": False,
+            }
+
+    monkeypatch.setattr(routes, "MarketDataService", _StubService)
+
+    resp = client.get("/api/v1/market-data/coverage")
+    assert resp.status_code == 200
+    assert coverage_called["hit"] is True
 
