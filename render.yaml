@@ -74,7 +74,7 @@ services:
           type: redis
           name: axiomfolio-redis
           property: connectionString
-    startCommand: celery -A backend.tasks.celery_app worker --loglevel=info
+    dockerCommand: celery -A backend.tasks.celery_app worker --loglevel=info
 
   - type: web
     name: axiomfolio-frontend
@@ -89,6 +89,7 @@ services:
   - type: redis
     name: axiomfolio-redis
     plan: starter
+    ipAllowList: []
 
   - type: cron
     name: ibkr-daily-flex-sync
@@ -118,7 +119,7 @@ services:
           type: redis
           name: axiomfolio-redis
           property: connectionString
-    startCommand: python -m backend.scripts.run_task backend.tasks.account_sync.sync_all_ibkr_accounts
+    dockerCommand: python -m backend.scripts.run_task backend.tasks.account_sync.sync_all_ibkr_accounts
 
   - type: cron
     name: admin_coverage_restore
@@ -148,7 +149,7 @@ services:
           type: redis
           name: axiomfolio-redis
           property: connectionString
-    startCommand: 'python -m backend.scripts.run_task backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked --kwargs ''{"history_days": 20, "history_batch_size": 25}'''
+    dockerCommand: 'python -m backend.scripts.run_task backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked --kwargs ''{"history_days": 20, "history_batch_size": 25}'''
 
   - type: cron
     name: admin_coverage_refresh
@@ -178,7 +179,7 @@ services:
           type: redis
           name: axiomfolio-redis
           property: connectionString
-    startCommand: python -m backend.scripts.run_task backend.tasks.market_data_tasks.monitor_coverage_health
+    dockerCommand: python -m backend.scripts.run_task backend.tasks.market_data_tasks.monitor_coverage_health
 
   - type: cron
     name: admin_retention_enforce
@@ -208,7 +209,7 @@ services:
           type: redis
           name: axiomfolio-redis
           property: connectionString
-    startCommand: python -m backend.scripts.run_task backend.tasks.market_data_tasks.enforce_price_data_retention
+    dockerCommand: python -m backend.scripts.run_task backend.tasks.market_data_tasks.enforce_price_data_retention
 
 databases:
   - name: axiomfolio-db
