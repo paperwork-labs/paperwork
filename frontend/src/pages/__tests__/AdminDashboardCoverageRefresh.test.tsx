@@ -118,7 +118,7 @@ describe('AdminDashboard coverage refresh', () => {
     await user.click(toggles[0]);
     const btn = await screen.findByRole('button', { name: /Backfill Daily Bars \(period\)/i });
     await user.click(btn);
-    expect(apiPost).toHaveBeenCalledWith('/market-data/admin/backfill/daily-last-bars?days=252');
+    expect(apiPost).toHaveBeenCalledWith('/market-data/admin/backfill/daily?days=252');
   });
 
   it('renders daily fill-by-date distribution', async () => {

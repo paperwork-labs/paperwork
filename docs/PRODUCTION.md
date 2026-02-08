@@ -26,6 +26,8 @@
 Optional:
 - `RATE_LIMIT_STORAGE_URL` (Redis-backed limiter)
 - `NEW_RELIC_LICENSE_KEY`
+- `ADMIN_SEED_ENABLED` (one-time admin bootstrap)
+- `ADMIN_USERNAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` (only if seeding)
 
 ## CI/CD (GitHub Actions)
 1. Build and push Docker images to GHCR.
@@ -51,37 +53,23 @@ If you are renaming the database (e.g., `old_db` → `axiomfolio`), migrate data
 5. Point `DATABASE_URL` and related env vars at the new DB and run migrations via CI.
 
 ## Scheduling (cron, no always-on beat)
-Use scheduled jobs to enqueue tasks:
+Use scheduled jobs to enqueue tasks (task status names shown in parentheses):
 - `backend.tasks.account_sync.sync_all_ibkr_accounts`
-- `backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked`
-- `backend.tasks.market_data_tasks.monitor_coverage_health`
-- `backend.tasks.market_data_tasks.enforce_price_data_retention`
+- `backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked` (`admin_coverage_restore`)
+- `backend.tasks.market_data_tasks.monitor_coverage_health` (`admin_coverage_refresh`)
+- `backend.tasks.market_data_tasks.enforce_price_data_retention` (`admin_retention_enforce`)
+
+Render cron defaults (UTC):
+- 02:15: IBKR daily Flex sync
+- 03:00: admin_coverage_restore
+- Hourly: admin_coverage_refresh
+- 04:00: admin_retention_enforce
 
 ### Execution flow (production)
-```mermaid
-sequenceDiagram
-  participant Cron as ProviderCron
-  participant Enqueuer as RunTaskCLI
-  participant Redis as RedisBroker
-  participant Worker as CeleryWorker
-  participant DB as Postgres
-
-  Cron->>Enqueuer: run_task backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked
-  Enqueuer->>Redis: enqueue task
-  Redis-->>Worker: task available
-  Worker->>DB: read/write data
-  Worker-->>Redis: store task result (if enabled)
-```
+![Production execution flow](assets/production_execution_flow.png)
 
 ### System flow (cron → queue → workers → DB)
-```mermaid
-flowchart LR
-  providerCron[ProviderCron] --> runTaskCLI[RunTaskCLI]
-  runTaskCLI --> redisQueue[RedisBroker]
-  redisQueue --> celeryWorker[CeleryWorker]
-  celeryWorker --> postgresDB[Postgres]
-  celeryWorker --> redisQueue
-```
+![Production system flow](assets/production_system_flow.png)
 
 ### Midnight example (UTC)
 1. Provider cron triggers a job (e.g., 03:00 UTC).
@@ -92,6 +80,14 @@ flowchart LR
 ### Dev vs prod behavior
 - **Production:** `ENABLE_CELERY_BEAT=false` and `ENABLE_REDBEAT=false` (cron-only scheduling).
 - **Development:** keep beat enabled for convenience (`ENABLE_CELERY_BEAT=true`, `ENABLE_REDBEAT=true`).
+
+## Admin access bootstrap
+To create the first admin user in production:
+1. Set `ADMIN_SEED_ENABLED=true` plus `ADMIN_USERNAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`.
+2. Deploy once; the admin user is created if it does not already exist.
+3. Set `ADMIN_SEED_ENABLED=false` (recommended) after the initial seed.
+
+Admin-only endpoints (all `/api/v1/market-data/admin/*` plus task triggers like `/market-data/indices/constituents/refresh` and `/market-data/symbols/{symbol}/refresh`) require an admin user.
 
 ## Backups
 - Postgres: enable provider backups and periodic exports.

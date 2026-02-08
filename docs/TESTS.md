@@ -16,6 +16,7 @@ Safe Patterns (Enforced)
 ------------------------
 - Single DB path: all tests must use the `db_session` fixture. Direct `SessionLocal`/`engine`/`create_engine` imports in tests are blocked.
 - Destructive tests: must be marked `@pytest.mark.destructive` and only run with `ALLOW_DESTRUCTIVE_TESTS=1` or `--allow-destructive-tests`.
+- Never truncate or drop dev/prod tables. All DB tests run in an isolated test DB with per-test transactions and rollbacks.
 - Schema guard: DB tests skip if core tables (e.g., `users`, `broker_accounts`) are missing in the test DB.
 - Misconfig guard: DB tests skip if `TEST_DATABASE_URL` is unset or equals `DATABASE_URL`.
 - Alembic: test migrations run only against `TEST_DATABASE_URL`.

@@ -39,7 +39,7 @@ class JobTemplate:
 
 CATALOG: List[JobTemplate] = [
     JobTemplate(
-        id="refresh-index-constituents",
+        id="market_indices_constituents_refresh",
         display_name="Refresh Index Constituents",
         group="market_data",
         task="backend.tasks.market_data_tasks.refresh_index_constituents",
@@ -58,7 +58,7 @@ CATALOG: List[JobTemplate] = [
         queue="account_sync",
     ),
     JobTemplate(
-        id="update-tracked-symbol-cache",
+        id="market_universe_tracked_refresh",
         display_name="Update Tracked Symbol Cache",
         group="market_data",
         task="backend.tasks.market_data_tasks.update_tracked_symbol_cache",
@@ -67,7 +67,7 @@ CATALOG: List[JobTemplate] = [
         default_tz="UTC",
     ),
     JobTemplate(
-        id="restore-daily-coverage-tracked",
+        id="admin_coverage_restore",
         display_name="Restore Daily Coverage (Tracked)",
         group="market_data",
         task="backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked",
@@ -77,7 +77,7 @@ CATALOG: List[JobTemplate] = [
         kwargs={"history_days": 20, "history_batch_size": 25},
     ),
     JobTemplate(
-        id="record-daily-history",
+        id="admin_snapshots_history_record",
         display_name="Record Daily Analysis History",
         group="market_data",
         task="backend.tasks.market_data_tasks.record_daily_history",
@@ -86,7 +86,7 @@ CATALOG: List[JobTemplate] = [
         default_tz="UTC",
     ),
     JobTemplate(
-        id="recompute-indicators-universe",
+        id="admin_indicators_recompute_universe",
         display_name="Recompute Indicators (Universe)",
         group="market_data",
         task="backend.tasks.market_data_tasks.recompute_indicators_universe",
@@ -95,7 +95,7 @@ CATALOG: List[JobTemplate] = [
         default_tz="UTC",
     ),
     JobTemplate(
-        id="backfill-5m-d1",
+        id="admin_backfill_5m",
         display_name="Backfill 5m Bars (D-1)",
         group="market_data",
         task="backend.tasks.market_data_tasks.backfill_5m_last_n_days",
@@ -105,7 +105,7 @@ CATALOG: List[JobTemplate] = [
         kwargs={"n_days": 1, "batch_size": 50},
     ),
     JobTemplate(
-        id="monitor-coverage-health",
+        id="admin_coverage_refresh",
         display_name="Monitor Coverage Health",
         group="market_data",
         task="backend.tasks.market_data_tasks.monitor_coverage_health",

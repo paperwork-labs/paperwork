@@ -21,7 +21,7 @@ const MarketTracked: React.FC = () => {
     if (loading) return;
     setLoading(true);
     try {
-      const r = await api.get('/market-data/technical/snapshots?limit=5000');
+      const r = await api.get('/market-data/snapshots?limit=5000');
       const out = (r as any)?.data?.rows;
       setRows(Array.isArray(out) ? out : []);
     } catch (err: any) {

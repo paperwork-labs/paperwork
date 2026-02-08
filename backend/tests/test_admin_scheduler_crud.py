@@ -125,8 +125,8 @@ def test_catalog_seed_persists_metadata(scheduler_env):
     result = seed_redbeat_if_empty(celery_app)
     assert result["seeded"] == len(CATALOG)
     assert len(scheduler_env["entries"]) == len(CATALOG)
-    assert "refresh-index-constituents" in scheduler_env["metadata"]
-    meta: ScheduleMetadata = scheduler_env["metadata"]["refresh-index-constituents"]
+    assert "market_indices_constituents_refresh" in scheduler_env["metadata"]
+    meta: ScheduleMetadata = scheduler_env["metadata"]["market_indices_constituents_refresh"]
     assert meta.safety.timeout_s == CATALOG[0].timeout_s
 
 
@@ -159,7 +159,7 @@ def test_create_schedule_with_windows_and_dependencies(scheduler_env):
         "timezone": "America/New_York",
         "metadata": {
             "queue": "market_data_high",
-            "dependencies": ["refresh-index-constituents"],
+            "dependencies": ["market_indices_constituents_refresh"],
             "maintenance_windows": [
                 {"start": "2025-01-01T09:00:00Z", "end": "2025-01-01T09:30:00Z", "timezone": "UTC"}
             ],
@@ -171,7 +171,7 @@ def test_create_schedule_with_windows_and_dependencies(scheduler_env):
     assert resp.status_code == 200, resp.text
     meta: ScheduleMetadata = scheduler_env["metadata"]["complex-job"]
     assert meta.queue == "market_data_high"
-    assert meta.dependencies == ["refresh-index-constituents"]
+    assert meta.dependencies == ["market_indices_constituents_refresh"]
     assert meta.preflight_checks == ["redis", "postgres"]
     assert meta.maintenance_windows[0].timezone == "UTC"
     assert "slow" in meta.hooks.alert_on

@@ -3,6 +3,7 @@ import pytest
 try:
     from fastapi.testclient import TestClient
     from backend.api.main import app
+    from backend.api.dependencies import get_admin_user
 
     FASTAPI_AVAILABLE = True
 except Exception:
@@ -60,9 +61,23 @@ def test_dividends(client):
     assert _ok(r.status_code)
 
 
-def test_market_data_refresh(client):
-    r = client.post("/api/v1/market-data/prices/refresh")
-    assert _ok(r.status_code)
+def test_market_data_refresh_requires_admin(client):
+    r = client.post("/api/v1/market-data/symbols/AAPL/refresh")
+    assert r.status_code in (401, 403)
+
+
+def test_market_data_refresh_with_admin_override(client):
+    app.dependency_overrides[get_admin_user] = object
+    try:
+        r = client.post("/api/v1/market-data/symbols/AAPL/refresh")
+        assert _ok(r.status_code)
+    finally:
+        app.dependency_overrides.pop(get_admin_user, None)
+
+
+def test_market_data_indices_refresh_requires_admin(client):
+    r = client.post("/api/v1/market-data/indices/constituents/refresh")
+    assert r.status_code in (401, 403)
 
 
 def test_market_data_moving_averages(client):
@@ -78,6 +93,36 @@ def test_market_data_ma_bucket(client):
 def test_market_data_stage(client):
     r = client.get("/api/v1/market-data/technical/stage/AAPL")
     assert _ok(r.status_code)
+
+
+def test_market_data_prices_aliases(client):
+    r_price = client.get("/api/v1/market-data/prices/AAPL")
+    r_history = client.get("/api/v1/market-data/prices/AAPL/history")
+    assert _ok(r_price.status_code)
+    assert _ok(r_history.status_code)
+
+
+def test_market_data_snapshots_aliases(client):
+    r_snapshot = client.get("/api/v1/market-data/snapshots/AAPL")
+    r_snapshots = client.get("/api/v1/market-data/snapshots")
+    r_snapshot_history = client.get("/api/v1/market-data/snapshots/AAPL/history")
+    assert _ok(r_snapshot.status_code)
+    assert _ok(r_snapshots.status_code)
+    assert _ok(r_snapshot_history.status_code)
+
+
+def test_market_data_universe_and_indices_aliases(client):
+    r_indices = client.get("/api/v1/market-data/indices/constituents")
+    r_tracked = client.get("/api/v1/market-data/universe/tracked")
+    assert _ok(r_indices.status_code)
+    assert _ok(r_tracked.status_code)
+
+
+def test_market_data_coverage_aliases(client):
+    r_coverage = client.get("/api/v1/market-data/coverage")
+    r_symbol = client.get("/api/v1/market-data/coverage/AAPL")
+    assert _ok(r_coverage.status_code)
+    assert _ok(r_symbol.status_code)
 
 
 def test_accounts_endpoints_smoke(client):

@@ -35,6 +35,20 @@ Responsibilities by layer
 - market_data_service.py: Provider access (prices/history/info), Redis caching, DB snapshot assembly from local `price_data`, enrichment (chart metrics + fundamentals), and persistence to `MarketAnalysisCache`.
 - market_data_tasks.py: Orchestration only. Builds tracked sets, backfills OHLCV, invokes service to build/enrich/persist snapshots, and records daily history.
 
+## Architecture diagrams
+
+### Data flow (requests + tasks)
+![Market data flow](assets/market_data_flow.png)
+
+### Scheduling (dev vs prod)
+![Market data scheduling](assets/market_data_scheduling.png)
+
+## Dev world (local)
+- Use `make up` (or `./run.sh start`) to start Postgres, Redis, backend, workers, and frontend.
+- Optional: enable Celery Beat / RedBeat via `ENABLE_CELERY_BEAT=true` and `ENABLE_REDBEAT=true` in `infra/env.dev` for local scheduling.
+- Trigger any task manually with `make task-run TASK=backend.tasks.market_data_tasks.<task_name>`.
+- Coverage refresh path: run `admin_coverage_refresh`, then check `/api/v1/market-data/coverage`.
+
 ## Persistence Model
 - `market_data.PriceData`: daily/intraday OHLCV with unique `(symbol, date, interval)` (constraint: `uq_symbol_date_interval`)
 - `market_data.MarketAnalysisCache`: compact latest technical snapshot per symbol with expiry (`expiry_timestamp`), including `ma_bucket`
@@ -48,7 +62,9 @@ Responsibilities by layer
 - Nightly delta backfill safety for portfolio symbols (last-200)
 - Nightly recompute indicators for full universe (from local `price_data`)
 - Nightly history recording (`market_analysis_history`)
-- Hourly coverage-health snapshot (`monitor_coverage_health`) caches freshness buckets + stale symbol lists in Redis so Admin → Coverage can render SLAs instantly and alert on drift.
+- Hourly coverage-health snapshot (`admin_coverage_refresh`) caches freshness buckets + stale symbol lists in Redis so Admin → Coverage can render SLAs instantly and alert on drift.
+  - Production: provider cron (Render/Fly) calls `backend/scripts/run_task.py`
+  - Development: optional Celery Beat/RedBeat via `ENABLE_CELERY_BEAT` and `ENABLE_REDBEAT`
 
 Paid mode operations
 --------------------
@@ -59,7 +75,7 @@ Paid mode operations
   - Backfill index OHLCV: POST `/api/v1/market-data/admin/backfill/index` (SP500/NASDAQ100/DOW30)
   - Refresh portfolio indicators: Celery task `refresh_portfolio_indicators`
   - Refresh index indicators: POST `/api/v1/market-data/admin/indicators/refresh-index`
-  - Record history: POST `/api/v1/market-data/admin/history/record`
+  - Record history: POST `/api/v1/market-data/admin/snapshots/history/record`
   - Compute chart metrics for an index: scheduled via Celery (`chart-metrics-sp500`) or call task `compute_chart_metrics_index`
   - Compute chart metrics for the universe: scheduled via Celery 
 
@@ -95,13 +111,13 @@ Notes on retention
 4) Persist snapshot
    - `MarketDataService.persist_snapshot(db, symbol, snapshot)` upserts latest into `MarketAnalysisCache` and stores `raw_analysis`
 5) History recording (optional)
-   - `record_daily_history` writes one row per `(symbol, as_of_date)` into `MarketAnalysisHistory` with headline fields + full payload
+   - `admin_snapshots_history_record` writes one row per `(symbol, as_of_date)` into `MarketAnalysisHistory` with headline fields + full payload
 6) Scheduling
    - Celery Beat triggers:
-     - nightly guided daily restore → `bootstrap_daily_coverage_tracked`
-     - hourly coverage cache refresh → `monitor_coverage_health`
-     - nightly 5m backfill → `backfill_5m_last_n_days`
-     - retention enforcement (5m) → `enforce_price_data_retention`
+     - nightly guided daily restore → `admin_coverage_restore`
+     - hourly coverage cache refresh → `admin_coverage_refresh`
+    - nightly 5m backfill → `admin_backfill_5m`
+    - retention enforcement (5m) → `admin_retention_enforce`
 
 ## Intraday (5m) Backfill and Retention
 - Persist 5m bars for tracked symbols (default lookback: 5–30 days)
@@ -113,13 +129,15 @@ Notes on retention
 - Jobs: view recent `job_run` rows with durations, counters, errors, and drill-in modal for params/counters/logs
 - Schedules: full CRUD via RedBeat with cron preview, queue/priority routing, maintenance windows, preflight hooks, export/import, pause/resume, and run-now controls (see “Scheduler Metadata & Export/Import” below)
 - Coverage: daily and 5m coverage summary, stale (>48h) lists, missing 5m table, education/hints, one-click schedule for coverage monitor
-- Tracked: view `tracked:all` and `tracked:new` (Redis), optional columns (price, ATR, stage, market cap, sector), quick actions to refresh/update/backfill
+- Tracked: view `tracked:all` and `tracked:new` (Redis), optional columns (price, ATR, stage, market cap, sector), quick actions to refresh/update/backfill (admin-only for any mutations)
 
 ## API Additions
-- `GET /api/v1/market-data/db/history?symbol=SPY&interval=1d|5m&start&end&limit`
+- `GET /api/v1/market-data/admin/db/history?symbol=SPY&interval=1d|5m&start&end&limit`
 - `GET /api/v1/market-data/coverage` and `/coverage/{symbol}`
-- `POST /api/v1/market-data/backfill/5m?n_days=5&batch_size=50` (admin)
-- `POST /api/v1/market-data/retention/enforce?max_days_5m=90` (admin)
+- `POST /api/v1/market-data/indices/constituents/refresh` (admin)
+- `POST /api/v1/market-data/symbols/{symbol}/refresh` (admin)
+- `POST /api/v1/market-data/admin/backfill/5m?n_days=5&batch_size=50` (admin)
+- `POST /api/v1/market-data/admin/retention/enforce?max_days_5m=90` (admin)
 - `GET /api/v1/market-data/admin/jobs` (admin)
 - `GET /api/v1/market-data/admin/tasks` and `POST /api/v1/market-data/admin/tasks/run` (limited set; admin)
 - `GET /api/v1/admin/schedules` / `POST|PUT|DELETE /admin/schedules` / `POST /admin/schedules/import|export|pause|resume|run-now|preview` – dynamic RedBeat management with queue routing, metadata, and import/export workflows
@@ -176,7 +194,7 @@ Troubleshooting:
 
 ## Coverage Health Monitor
 
-- Celery task `monitor_coverage_health` runs hourly (Admin schedule) and caches:
+- Celery task `admin_coverage_refresh` runs hourly (Admin schedule) and caches:
   - `generated_at`, total tracked symbols, index member counts
   - Daily + 5m coverage counts, freshness buckets, stale lists (first 50 symbols per bucket)
   - Status summary (`ok` / `degraded`) plus tracked symbols
@@ -184,7 +202,7 @@ Troubleshooting:
 
 ### Manual refresh / UI behavior
 
-- **Admin Dashboard “Refresh coverage now”** calls `POST /api/v1/market-data/admin/coverage/refresh` which enqueues `monitor_coverage_health`.
+- **Admin Dashboard “Refresh coverage now”** calls `POST /api/v1/market-data/admin/coverage/refresh` which enqueues `admin_coverage_refresh`.
 - **Auto-refresh**: Admin Dashboard will auto-trigger a refresh when the cached snapshot is missing or older than ~15 minutes, but still renders immediately using the current response.
 - **Cache vs DB**: `GET /api/v1/market-data/coverage` returns `meta.source` (`cache` or `db`) and `meta.updated_at` so you can see whether you’re looking at the last monitor run or a direct DB fallback.
 
@@ -194,14 +212,15 @@ Troubleshooting:
 
 - **Use this when**: Coverage shows `>48h` or `none` buckets, or Daily % drops.\n
 - **Primary button** (Settings → Admin → Dashboard): **Restore Daily Coverage (Tracked)**\n
-  - Enqueues: `bootstrap_daily_coverage_tracked`\n
+  - Enqueues: `admin_coverage_restore`\n
   - What it does (no 5m): refresh constituents → update tracked → backfill last-200 daily bars (tracked) → recompute indicators → record history → refresh coverage cache.\n
+  - Snapshot history window: controlled by an explicit `history_days` parameter (current API/cron default is 20 days), so the “days since last successful run” auto behavior in `bootstrap_daily_coverage_tracked` does not apply to this path unless `history_days` is omitted.\n
 
 ### Fast fix: stale-only backfill
 
 - **Use this when**: Only a subset of symbols are stale.\n
 - Click **Backfill Daily (Stale Only)**\n
-  - Calls: `POST /api/v1/market-data/admin/coverage/backfill-stale-daily` then refreshes coverage.\n
+  - Calls: `POST /api/v1/market-data/admin/coverage/backfill-stale` then refreshes coverage.\n
 
 ### Advanced: index-only vs tracked-universe
 

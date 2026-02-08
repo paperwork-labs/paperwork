@@ -28,7 +28,7 @@ def test_emit_alerts_sends_discord_when_configured(monkeypatch):
 
     _emit_alerts(
         event="failure",
-        task_name="refresh_index_constituents",
+        task_name="market_indices_constituents_refresh",
         job=_StubJob(),
         hooks=hooks,
         duration_s=42.0,
@@ -64,7 +64,7 @@ def test_emit_alerts_skips_events_not_opted_in(monkeypatch):
 
     _emit_alerts(
         event="success",
-        task_name="refresh_index_constituents",
+        task_name="market_indices_constituents_refresh",
         job=_StubJob(),
         hooks=hooks,
         duration_s=5.0,
@@ -94,7 +94,7 @@ def test_discord_mentions_appended(monkeypatch):
 
     _emit_alerts(
         event="failure",
-        task_name="update_tracked_symbol_cache",
+        task_name="market_universe_tracked_refresh",
         job=_StubJob(),
         hooks=hooks,
         duration_s=12.0,

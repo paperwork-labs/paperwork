@@ -31,7 +31,11 @@ def test_backfill_last_bars_counts_empty_as_error(db_session, monkeypatch):
             return (df, provider)
         return (None, provider)
 
-    monkeypatch.setattr(market_data_service, "get_historical_data", fake_get_historical_data)
+    monkeypatch.setattr(
+        market_data_service.providers,
+        "get_historical_data",
+        fake_get_historical_data,
+    )
 
     res = market_data_tasks.backfill_last_bars()
     assert res["tracked_total"] == 2

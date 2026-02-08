@@ -11,7 +11,7 @@ import {
 } from '@chakra-ui/react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
-import { triggerTaskByName } from '../utils/taskActions';
+import { refreshTaskActions, triggerTaskByName, type TaskAction } from '../utils/taskActions';
 import useCoverageSnapshot from '../hooks/useCoverageSnapshot';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { formatDateTime } from '../utils/format';
@@ -43,6 +43,9 @@ const AdminDashboard: React.FC = () => {
   const [sanityLoading, setSanityLoading] = React.useState<boolean>(false);
   const [sanityData, setSanityData] = React.useState<any | null>(null);
   const [taskStatus, setTaskStatus] = React.useState<Record<string, any> | null>(null);
+  const [taskActions, setTaskActions] = React.useState<TaskAction[]>([]);
+  const [taskActionsLoading, setTaskActionsLoading] = React.useState<boolean>(false);
+  const [taskActionParams, setTaskActionParams] = React.useState<Record<string, Record<string, string>>>({});
   const [histWindowDays, setHistWindowDays] = React.useState<number>(
     coverageHistogramWindowDays || 50,
   );
@@ -103,8 +106,21 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const loadTaskActions = async () => {
+    setTaskActionsLoading(true);
+    try {
+      const tasks = await refreshTaskActions();
+      setTaskActions(tasks);
+    } catch {
+      setTaskActions([]);
+    } finally {
+      setTaskActionsLoading(false);
+    }
+  };
+
   React.useEffect(() => {
     void loadTaskStatus();
+    void loadTaskActions();
   }, []);
 
   const refreshCoverageNow = async (origin: 'manual' | 'auto') => {
@@ -131,7 +147,7 @@ const AdminDashboard: React.FC = () => {
     setRestoringDaily(true);
     try {
       // Guided orchestrator (daily only, tracked universe)
-      await api.post('/market-data/admin/coverage/restore-daily-tracked');
+      await api.post('/market-data/admin/coverage/restore');
       toast.success('Daily coverage restore queued');
       setTimeout(() => void refreshCoverage(), 1500);
       setTimeout(() => void refreshCoverage(), 4500);
@@ -147,7 +163,7 @@ const AdminDashboard: React.FC = () => {
     if (backfillingStale) return;
     setBackfillingStale(true);
     try {
-      const res = await api.post('/market-data/admin/coverage/backfill-stale-daily');
+      const res = await api.post('/market-data/admin/coverage/backfill-stale');
       const staleCandidates = res?.data?.stale_candidates;
       toast.success(
         typeof staleCandidates === 'number'
@@ -181,7 +197,7 @@ const AdminDashboard: React.FC = () => {
       const days = snapshotHistoryDaysForPeriod(snapshotHistoryPeriod);
       const tracked = Number((coverage as any)?.tracked_count ?? totalSymbols ?? 0) || 0;
       const estimatedRows = tracked ? tracked * days : null;
-      await api.post(`/market-data/admin/snapshots/history/backfill-last-n-days?days=${days}`);
+      await api.post(`/market-data/admin/snapshots/history/backfill?days=${days}`);
       toast.success(
         estimatedRows
           ? `Snapshot history (${snapshotHistoryPeriod}) queued (~${estimatedRows.toLocaleString()} rows). Track progress in Admin → Jobs.`
@@ -202,7 +218,7 @@ const AdminDashboard: React.FC = () => {
     setBackfillingDailyPeriod(true);
     try {
       const days = snapshotHistoryDaysForPeriod(snapshotHistoryPeriod);
-      await api.post(`/market-data/admin/backfill/daily-last-bars?days=${days}`);
+      await api.post(`/market-data/admin/backfill/daily?days=${days}`);
       toast.success(`Daily bars (${snapshotHistoryPeriod}) queued. Track progress in Admin → Jobs.`);
       setTimeout(() => void refreshCoverage(), 1500);
       setTimeout(() => void refreshCoverage(), 4500);
@@ -216,7 +232,7 @@ const AdminDashboard: React.FC = () => {
 
   const backfillDailySinceDate = async () => {
     try {
-      await api.post(`/market-data/admin/backfill/daily-since-date?since_date=${encodeURIComponent(sinceDate)}&batch_size=25`);
+      await api.post(`/market-data/admin/backfill/daily/since-date?since_date=${encodeURIComponent(sinceDate)}&batch_size=25`);
       toast.success(`Queued daily backfill since ${sinceDate}`);
       void loadTaskStatus();
     } catch (err: any) {
@@ -242,7 +258,7 @@ const AdminDashboard: React.FC = () => {
 
   const backfillSnapshotHistorySinceDate = async () => {
     try {
-      await api.post(`/market-data/admin/snapshots/history/backfill-last-n-days?days=3000&since_date=${encodeURIComponent(sinceDate)}`);
+      await api.post(`/market-data/admin/snapshots/history/backfill?days=3000&since_date=${encodeURIComponent(sinceDate)}`);
       toast.success(`Queued snapshot history backfill since ${sinceDate}`);
       void loadTaskStatus();
     } catch (err: any) {
@@ -250,12 +266,12 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const runNamedTask = async (taskName: string, label?: string) => {
+  const runNamedTask = async (taskName: string, label?: string, params?: Record<string, string | number | boolean>) => {
     // Special-case: schedule coverage monitor as an hourly beat entry
     if (taskName === 'schedule_coverage_monitor') {
       try {
         await api.post('/admin/schedules', {
-          name: 'monitor-coverage-health',
+          name: 'admin_coverage_refresh',
           task: 'backend.tasks.market_data_tasks.monitor_coverage_health',
           cron: '0 * * * *',
           timezone: 'UTC',
@@ -268,7 +284,7 @@ const AdminDashboard: React.FC = () => {
       return;
     }
     try {
-      await triggerTaskByName(taskName);
+      await triggerTaskByName(taskName, { params });
       toast.success(label || taskName);
       await refreshCoverage();
       void loadTaskStatus();
@@ -295,7 +311,7 @@ const AdminDashboard: React.FC = () => {
     if (sanityLoading) return;
     setSanityLoading(true);
     try {
-      const res = await api.get('/market-data/admin/sanity/coverage');
+      const res = await api.get('/market-data/admin/coverage/sanity');
       const d = res?.data || {};
       setSanityData(d);
       toast.success(
@@ -316,7 +332,7 @@ const AdminDashboard: React.FC = () => {
 
   const loadSanity = async () => {
     try {
-      const res = await api.get('/market-data/admin/sanity/coverage');
+      const res = await api.get('/market-data/admin/coverage/sanity');
       setSanityData(res?.data || null);
     } catch (err: any) {
       const status = Number(err?.response?.status || 0);
@@ -331,7 +347,7 @@ const AdminDashboard: React.FC = () => {
     setToggling5m(true);
     const next = !backfill5mEnabled;
     try {
-      const res = await api.post('/market-data/admin/coverage/backfill-5m-toggle', { enabled: next });
+      const res = await api.post('/market-data/admin/coverage/backfill-5m/toggle', { enabled: next });
       const flag = res?.data?.backfill_5m_enabled ?? next;
       setBackfill5mEnabled(Boolean(flag));
       toast.success(`5m backfill ${flag ? 'enabled' : 'disabled'}`);
@@ -363,6 +379,31 @@ const AdminDashboard: React.FC = () => {
     const raw = (taskStatus || {})[key];
     const ts = raw?.ts;
     return formatDateTime(ts, timezone);
+  };
+
+  const sortedTaskActions = React.useMemo(() => {
+    return [...taskActions]
+      .filter((action) => typeof action?.task_name === 'string' && action.task_name.length > 0)
+      .sort((a, b) => String(a.task_name).localeCompare(String(b.task_name)));
+  }, [taskActions]);
+
+  const getParamValue = (taskName: string, paramName: string, fallback?: string | number | boolean) => {
+    const overrides = taskActionParams[taskName];
+    if (overrides && overrides[paramName] !== undefined) {
+      return overrides[paramName];
+    }
+    if (fallback === undefined || fallback === null) return '';
+    return String(fallback);
+  };
+
+  const setParamValue = (taskName: string, paramName: string, value: string) => {
+    setTaskActionParams((prev) => ({
+      ...prev,
+      [taskName]: {
+        ...(prev[taskName] || {}),
+        [paramName]: value,
+      },
+    }));
   };
 
   const dailyFillSeries = (coverage as any)?.daily?.fill_by_date as
@@ -601,10 +642,10 @@ const AdminDashboard: React.FC = () => {
                   <Tooltip.Content>
                     <Box>
                       <Text fontSize="xs" color="fg.muted">
-                        Monitor: {fmtLastRun('monitor_coverage_health')}
+                        Monitor: {fmtLastRun('admin_coverage_refresh')}
                       </Text>
                       <Text fontSize="xs" color="fg.muted">
-                        Restore: {fmtLastRun('bootstrap_daily_coverage_tracked')}
+                        Restore: {fmtLastRun('admin_coverage_restore')}
                       </Text>
                     </Box>
                   </Tooltip.Content>
@@ -659,6 +700,112 @@ const AdminDashboard: React.FC = () => {
                     <Box as="li">Use <b>Sanity Check (DB)</b> to verify latest daily + snapshot-history counts without relying on cache.</Box>
                   </Box>
                 </Box>
+                <Box
+                  borderWidth="1px"
+                  borderColor="border.subtle"
+                  borderRadius="md"
+                  bg="bg.card"
+                  px={3}
+                  py={2}
+                >
+                  <HStack justify="space-between" mb={2}>
+                    <Text fontSize="xs" fontWeight="semibold" color="fg.default">
+                      Task Catalog (from backend)
+                    </Text>
+                    <Button size="xs" variant="ghost" onClick={() => void loadTaskActions()}>
+                      Reload
+                    </Button>
+                  </HStack>
+                  {taskActionsLoading ? (
+                    <Text fontSize="xs" color="fg.muted">
+                      Loading task catalog…
+                    </Text>
+                  ) : sortedTaskActions.length ? (
+                    <VStack align="stretch" gap={2}>
+                      {sortedTaskActions.map((action) => (
+                        <Box key={action.task_name} borderWidth="1px" borderColor="border.subtle" borderRadius="md" p={2}>
+                          <HStack justify="space-between" align="flex-start">
+                            <Box>
+                              <HStack gap={2} align="center">
+                                <Badge size="sm" variant="subtle">
+                                  {String(action.method || 'POST').toUpperCase()}
+                                </Badge>
+                                <Text fontSize="xs" fontWeight="semibold">
+                                  {action.task_name}
+                                </Text>
+                              </HStack>
+                              {action.endpoint ? (
+                                <Text fontSize="xs" color="fg.muted">
+                                  {action.endpoint}
+                                </Text>
+                              ) : null}
+                              {action.description ? (
+                                <Text fontSize="xs" color="fg.muted">
+                                  {action.description}
+                                </Text>
+                              ) : null}
+                              <Text fontSize="xs" color="fg.muted" mt={1}>
+                                Last run: {fmtLastRun(action.status_task || action.task_name) || '—'}
+                              </Text>
+                              {Array.isArray(action.params_schema) && action.params_schema.length ? (
+                                <Box mt={2} display="flex" flexDirection="column" gap={2}>
+                                  {action.params_schema.map((param) => (
+                                    <HStack key={`${action.task_name}:${param.name}`} gap={2} align="center">
+                                      <Text fontSize="xs" color="fg.muted" minW="88px">
+                                        {param.name}
+                                      </Text>
+                                      <input
+                                        type={param.type === 'int' || param.type === 'number' ? 'number' : 'text'}
+                                        value={getParamValue(action.task_name, param.name, param.default)}
+                                        onChange={(e) => setParamValue(action.task_name, param.name, e.target.value)}
+                                        min={param.min}
+                                        max={param.max}
+                                        style={{
+                                          fontSize: 12,
+                                          padding: '4px 6px',
+                                          borderRadius: 8,
+                                          border: '1px solid var(--chakra-colors-border-subtle)',
+                                          background: 'var(--chakra-colors-bg-input)',
+                                          color: 'var(--chakra-colors-fg-default)',
+                                          width: 120,
+                                        }}
+                                      />
+                                      {param.description ? (
+                                        <Text fontSize="xs" color="fg.muted">
+                                          {param.description}
+                                        </Text>
+                                      ) : null}
+                                    </HStack>
+                                  ))}
+                                </Box>
+                              ) : null}
+                            </Box>
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              onClick={() => {
+                                const params = Array.isArray(action.params_schema)
+                                  ? action.params_schema.reduce<Record<string, string>>((acc, param) => {
+                                      const value = getParamValue(action.task_name, param.name, param.default);
+                                      if (value !== '') acc[param.name] = String(value);
+                                      return acc;
+                                    }, {})
+                                  : undefined;
+                                void runNamedTask(action.task_name, action.description || action.task_name, params);
+                              }}
+                            >
+                              Run
+                            </Button>
+                          </HStack>
+                        </Box>
+                      ))}
+                    </VStack>
+                  ) : (
+                    <Text fontSize="xs" color="fg.muted">
+                      No task actions returned by the backend.
+                    </Text>
+                  )}
+                </Box>
                 <Box mt={3} display="flex" flexDirection="column" gap={3}>
                   <Box
                     borderWidth="1px"
@@ -672,10 +819,10 @@ const AdminDashboard: React.FC = () => {
                       Universe
                     </Text>
                     <Box display="flex" gap={2} flexWrap="wrap">
-                      <Button size="xs" variant="outline" onClick={() => void runNamedTask('refresh_index_constituents', 'Refresh constituents')}>
+                      <Button size="xs" variant="outline" onClick={() => void runNamedTask('market_indices_constituents_refresh', 'Refresh constituents')}>
                         Refresh Constituents
                       </Button>
-                      <Button size="xs" variant="outline" onClick={() => void runNamedTask('update_tracked_symbol_cache', 'Update tracked')}>
+                      <Button size="xs" variant="outline" onClick={() => void runNamedTask('market_universe_tracked_refresh', 'Update tracked')}>
                         Update Tracked
                       </Button>
                     </Box>
@@ -797,10 +944,10 @@ const AdminDashboard: React.FC = () => {
                       Compute
                     </Text>
                     <Box display="flex" gap={2} flexWrap="wrap">
-                      <Button size="xs" variant="outline" onClick={() => void runNamedTask('recompute_indicators_universe', 'Recompute indicators')}>
+                      <Button size="xs" variant="outline" onClick={() => void runNamedTask('admin_indicators_recompute_universe', 'Recompute indicators')}>
                         Recompute Indicators (Market Snapshot)
                       </Button>
-                      <Button size="xs" variant="outline" onClick={() => void runNamedTask('record_daily_history', 'Record history')}>
+                      <Button size="xs" variant="outline" onClick={() => void runNamedTask('admin_snapshots_history_record', 'Record history')}>
                         Record History
                       </Button>
                     </Box>

@@ -35,12 +35,12 @@ def test_technical_snapshots_endpoint_returns_rows(monkeypatch):
         def query(self, _model):
             return _FakeQuery()
 
-    monkeypatch.setattr(routes, "_tracked_universe_symbols", lambda _db: ["AAA"])
+    monkeypatch.setattr(routes, "tracked_symbols", lambda _db, redis_client=None: ["AAA"])
 
     app.dependency_overrides[routes.get_db] = lambda: _FakeDB()
     try:
         client = TestClient(app, raise_server_exceptions=False)
-        resp = client.get("/api/v1/market-data/technical/snapshots?limit=10")
+        resp = client.get("/api/v1/market-data/snapshots?limit=10")
         assert resp.status_code == 200
         data = resp.json()
         assert data["count"] == 1

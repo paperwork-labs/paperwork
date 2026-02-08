@@ -1,4 +1,4 @@
-from backend.services.market.market_data_service import compute_coverage_status
+from backend.services.market.coverage_utils import compute_coverage_status
 
 
 def test_coverage_status_ignores_5m_when_disabled():

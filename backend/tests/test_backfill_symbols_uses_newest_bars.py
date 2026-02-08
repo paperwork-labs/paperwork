@@ -25,7 +25,11 @@ def test_backfill_symbols_passes_max_bars_to_provider(monkeypatch):
         # Return empty df so persistence is skipped; we only care about args.
         return (None, "fmp") if return_provider else None
 
-    monkeypatch.setattr(market_data_tasks.market_data_service, "get_historical_data", _stub_get_historical_data)
+    monkeypatch.setattr(
+        market_data_tasks.market_data_service.providers,
+        "get_historical_data",
+        _stub_get_historical_data,
+    )
 
     # Run with a few symbols; function is sync wrapper around event loop.
     res = market_data_tasks.backfill_symbols(["AAA", "BBB", "CCC"])

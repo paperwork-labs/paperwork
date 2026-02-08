@@ -82,28 +82,33 @@ const STATUS_COLOR_MAP: Record<string, string> = {
 const DEFAULT_COVERAGE_ACTIONS: CoverageAction[] = [
   {
     label: 'Restore Daily Coverage (Tracked)',
-    task_name: 'restore_daily_coverage_tracked',
-    description: 'Guided operator flow: refresh → tracked → daily backfill → recompute → history → refresh coverage (no 5m).',
+    task_name: 'admin_coverage_restore',
+    description:
+      'Guided operator flow: refresh → tracked → daily backfill → recompute → history → refresh coverage (no 5m). Endpoint: POST /api/v1/market-data/admin/coverage/restore',
   },
   {
     label: 'Backfill Daily (Stale Only)',
-    task_name: 'backfill_stale_daily',
-    description: 'Backfills daily bars only for symbols currently stale in coverage snapshot.',
+    task_name: 'admin_coverage_backfill_stale',
+    description:
+      'Backfills daily bars only for symbols currently stale in coverage snapshot. Endpoint: POST /api/v1/market-data/admin/coverage/backfill-stale',
   },
   {
     label: 'Refresh Coverage Cache',
-    task_name: 'monitor_coverage_health',
-    description: 'Recomputes and caches the coverage snapshot.',
+    task_name: 'admin_coverage_refresh',
+    description:
+      'Recomputes and caches the coverage snapshot. Endpoint: POST /api/v1/market-data/admin/coverage/refresh',
   },
   {
     label: 'Recompute Indicators',
-    task_name: 'recompute_indicators_universe',
-    description: 'Builds DB snapshots for the tracked universe.',
+    task_name: 'admin_indicators_recompute_universe',
+    description:
+      'Builds DB snapshots for the tracked universe. Endpoint: POST /api/v1/market-data/admin/indicators/recompute-universe',
   },
   {
     label: 'Record History',
-    task_name: 'record_daily_history',
-    description: 'Writes immutable MarketSnapshotHistory rows.',
+    task_name: 'admin_snapshots_history_record',
+    description:
+      'Writes immutable MarketSnapshotHistory rows. Endpoint: POST /api/v1/market-data/admin/snapshots/history/record',
   },
 ];
 

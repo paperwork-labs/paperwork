@@ -10,6 +10,7 @@ from backend.models.market_data import PriceData
 from backend.models.user import UserRole
 from backend.config import settings
 from backend.tasks import market_data_tasks
+from backend.services.market.coverage_service import CoverageService
 
 client = TestClient(app, raise_server_exceptions=False)
 
@@ -117,9 +118,24 @@ def test_coverage_prefers_cached_snapshot(monkeypatch):
     class _StubService:
         def __init__(self):
             self.redis_client = _RedisStub()
+            self.coverage = CoverageService(self)
 
         def coverage_snapshot(self, db):
             raise AssertionError("Should not hit DB when cache is present")
+
+        def is_backfill_5m_enabled(self) -> bool:
+            return True
+
+        def benchmark_health(self, db, benchmark_symbol="SPY", required_bars=None, latest_daily_dt=None):
+            return {
+                "symbol": benchmark_symbol,
+                "latest_daily_dt": None,
+                "latest_daily_date": None,
+                "daily_bars": 0,
+                "required_bars": int(required_bars or 260),
+                "ok": False,
+                "stale": False,
+            }
 
     monkeypatch.setattr(routes, "MarketDataService", _StubService)
 
@@ -146,8 +162,9 @@ def test_coverage_meta_exposes_kpis_and_sparkline(monkeypatch):
     class _StubService:
         def __init__(self):
             self.redis_client = _RedisStub()
+            self.coverage = CoverageService(self)
 
-        def coverage_snapshot(self, db):
+        def coverage_snapshot(self, db, **_kwargs):
             return {
                 "generated_at": "2025-01-01T00:00:00",
                 "symbols": 2,
@@ -167,6 +184,20 @@ def test_coverage_meta_exposes_kpis_and_sparkline(monkeypatch):
                     },
                     "stale": [],
                 },
+            }
+
+        def is_backfill_5m_enabled(self) -> bool:
+            return True
+
+        def benchmark_health(self, db, benchmark_symbol="SPY", required_bars=None, latest_daily_dt=None):
+            return {
+                "symbol": benchmark_symbol,
+                "latest_daily_dt": None,
+                "latest_daily_date": None,
+                "daily_bars": 0,
+                "required_bars": int(required_bars or 260),
+                "ok": False,
+                "stale": False,
             }
 
     monkeypatch.setattr(routes, "MarketDataService", _StubService)

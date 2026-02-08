@@ -10,7 +10,7 @@ const apiGet = vi.fn((url: string) => {
       data: {
         schedules: [
           {
-            name: 'monitor-coverage-health-hourly',
+            name: 'admin_coverage_refresh',
             task: 'backend.tasks.market_data_tasks.monitor_coverage_health',
             cron: '0 * * * *',
             timezone: 'UTC',

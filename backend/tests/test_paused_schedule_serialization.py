@@ -7,7 +7,7 @@ def test_paused_payload_requires_name():
 
 def test_paused_payload_to_schedule_round_trip():
     payload = {
-        "name": "monitor-coverage-health",
+        "name": "admin_coverage_refresh",
         "task": "backend.tasks.market_data_tasks.monitor_coverage_health",
         "schedule": "<crontab: 0 * * * * (m/h/dM/MY/d)>",
         "cron": "0 * * * *",

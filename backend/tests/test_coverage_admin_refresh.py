@@ -47,7 +47,7 @@ def test_admin_restore_daily_tracked_enqueues_task(monkeypatch):
     monkeypatch.setattr(routes, "bootstrap_daily_coverage_tracked", _StubTask)
 
     client = TestClient(app, raise_server_exceptions=False)
-    resp = client.post("/api/v1/market-data/admin/coverage/restore-daily-tracked")
+    resp = client.post("/api/v1/market-data/admin/coverage/restore")
     assert resp.status_code == 200
     payload = resp.json()
     assert payload.get("task_id") == "task-restore-123"

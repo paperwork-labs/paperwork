@@ -29,6 +29,10 @@ Components
 - Frontend: React SPA consuming backend APIs
 - Brokers: IBKR (FlexQuery + TWS) and TastyTrade (SDK)
 
+System overview
+---------------
+![System architecture](assets/architecture_overview.png)
+
 Scheduling Architecture
 -----------------------
 - Celery provides the workers (execution) and Beat provides periodic scheduling.

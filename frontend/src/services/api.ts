@@ -239,7 +239,7 @@ export const optionsApi = {
 // Market data endpoints
 export const marketDataApi = {
   getHistory: async (symbol: string, period: string = '1y', interval: string = '1d') => {
-    return makeOptimizedRequest(() => api.get(`/market-data/history/${encodeURIComponent(symbol)}?period=${encodeURIComponent(period)}&interval=${encodeURIComponent(interval)}`));
+    return makeOptimizedRequest(() => api.get(`/market-data/prices/${encodeURIComponent(symbol)}/history?period=${encodeURIComponent(period)}&interval=${encodeURIComponent(interval)}`));
   },
 };
 

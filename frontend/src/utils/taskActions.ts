@@ -1,37 +1,74 @@
 import api from '../services/api';
 
-type TaskName =
-  | 'refresh_index_constituents'
-  | 'update_tracked_symbol_cache'
-  | 'backfill_last_bars'
-  | 'backfill_5m_last_n_days'
-  | 'recompute_indicators_universe'
-  | 'record_daily_history'
-  | 'monitor_coverage_health'
-  | 'restore_daily_coverage_tracked'
-  | 'backfill_stale_daily'
-  | 'backfill_snapshot_history_200d';
-
-const TASK_ENDPOINTS: Record<TaskName, () => Promise<any>> = {
-  refresh_index_constituents: () => api.post('/market-data/index/constituents/refresh'),
-  update_tracked_symbol_cache: () => api.post('/market-data/tracked/update'),
-  // Default remains ~200d; backend supports ?days=500 etc.
-  backfill_last_bars: () => api.post('/market-data/admin/backfill/daily-last-bars?days=200'),
-  backfill_5m_last_n_days: () => api.post('/market-data/backfill/5m'),
-  recompute_indicators_universe: () => api.post('/market-data/indicators/recompute-universe'),
-  record_daily_history: () => api.post('/market-data/admin/history/record'),
-  monitor_coverage_health: () => api.post('/market-data/admin/coverage/refresh'),
-  restore_daily_coverage_tracked: () => api.post('/market-data/admin/coverage/restore-daily-tracked'),
-  backfill_stale_daily: () => api.post('/market-data/admin/coverage/backfill-stale-daily'),
-  backfill_snapshot_history_200d: () =>
-    api.post('/market-data/admin/snapshots/history/backfill-last-n-days?days=200'),
+export type TaskParamSchema = {
+  name: string;
+  type?: string;
+  default?: string | number | boolean;
+  min?: number;
+  max?: number;
+  description?: string;
 };
 
-export const triggerTaskByName = async (taskName: string) => {
-  const runner = TASK_ENDPOINTS[taskName as TaskName];
-  if (!runner) {
+export type TaskAction = {
+  task_name: string;
+  method: string;
+  endpoint: string;
+  description?: string;
+  status_task?: string;
+  params_schema?: TaskParamSchema[];
+};
+
+type TriggerOptions = {
+  params?: Record<string, string | number | boolean>;
+  forceRefresh?: boolean;
+};
+
+let cachedActions: TaskAction[] | null = null;
+let cachedAt = 0;
+const CACHE_TTL_MS = 60_000;
+
+const loadTaskActions = async (forceRefresh = false): Promise<TaskAction[]> => {
+  const now = Date.now();
+  if (!forceRefresh && cachedActions && now - cachedAt < CACHE_TTL_MS) {
+    return cachedActions;
+  }
+  const res = await api.get('/market-data/admin/tasks');
+  cachedActions = (res?.data?.tasks || []) as TaskAction[];
+  cachedAt = now;
+  return cachedActions;
+};
+
+const buildEndpoint = (
+  endpoint: string,
+  params?: Record<string, string | number | boolean>,
+): string => {
+  if (!params || Object.keys(params).length === 0) return endpoint;
+  const url = new URL(endpoint, window.location.origin);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') return;
+    url.searchParams.set(key, String(value));
+  });
+  return `${url.pathname}${url.search}`;
+};
+
+const runTaskAction = async (action: TaskAction, params?: Record<string, string | number | boolean>) => {
+  const method = String(action.method || 'POST').toUpperCase();
+  const endpoint = buildEndpoint(action.endpoint, params);
+  if (method === 'POST') return api.post(endpoint);
+  if (method === 'GET') return api.get(endpoint);
+  throw new Error(`Unsupported task method: ${action.method}`);
+};
+
+export const triggerTaskByName = async (taskName: string, options?: TriggerOptions) => {
+  const actions = await loadTaskActions(Boolean(options?.forceRefresh));
+  const action = actions.find((entry) => entry.task_name === taskName);
+  if (!action) {
     throw new Error(`Unsupported task: ${taskName}`);
   }
-  return runner();
+  return runTaskAction(action, options?.params);
+};
+
+export const refreshTaskActions = async (): Promise<TaskAction[]> => {
+  return loadTaskActions(true);
 };
 
