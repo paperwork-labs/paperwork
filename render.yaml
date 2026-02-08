@@ -90,14 +90,10 @@ services:
     name: axiomfolio-redis
     plan: starter
 
-databases:
-  - name: axiomfolio-db
-    plan: basic-1gb
-
-cronJobs:
-  - name: ibkr-daily-flex-sync
+  - type: cron
+    name: ibkr-daily-flex-sync
+    runtime: docker
     schedule: "15 2 * * *"
-    env: docker
     dockerfilePath: ./Dockerfile.backend
     autoDeploy: false
     envVars:
@@ -124,9 +120,10 @@ cronJobs:
           property: connectionString
     command: python -m backend.scripts.run_task backend.tasks.account_sync.sync_all_ibkr_accounts
 
-  - name: admin_coverage_restore
+  - type: cron
+    name: admin_coverage_restore
+    runtime: docker
     schedule: "0 3 * * *"
-    env: docker
     dockerfilePath: ./Dockerfile.backend
     autoDeploy: false
     envVars:
@@ -153,9 +150,10 @@ cronJobs:
           property: connectionString
     command: 'python -m backend.scripts.run_task backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked --kwargs ''{"history_days": 20, "history_batch_size": 25}'''
 
-  - name: admin_coverage_refresh
+  - type: cron
+    name: admin_coverage_refresh
+    runtime: docker
     schedule: "0 * * * *"
-    env: docker
     dockerfilePath: ./Dockerfile.backend
     autoDeploy: false
     envVars:
@@ -182,9 +180,10 @@ cronJobs:
           property: connectionString
     command: python -m backend.scripts.run_task backend.tasks.market_data_tasks.monitor_coverage_health
 
-  - name: admin_retention_enforce
+  - type: cron
+    name: admin_retention_enforce
+    runtime: docker
     schedule: "0 4 * * *"
-    env: docker
     dockerfilePath: ./Dockerfile.backend
     autoDeploy: false
     envVars:
@@ -210,3 +209,7 @@ cronJobs:
           name: axiomfolio-redis
           property: connectionString
     command: python -m backend.scripts.run_task backend.tasks.market_data_tasks.enforce_price_data_retention
+
+databases:
+  - name: axiomfolio-db
+    plan: basic-1gb
