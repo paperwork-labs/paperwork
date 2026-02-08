@@ -76,7 +76,7 @@ services:
           property: connectionString
     startCommand: celery -A backend.tasks.celery_app worker --loglevel=info
 
-  - type: static
+  - type: static_site
     name: axiomfolio-frontend
     autoDeploy: false
     buildCommand: cd frontend && npm ci && npm run build
