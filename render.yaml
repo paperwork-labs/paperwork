@@ -1,7 +1,7 @@
 services:
   - type: web
     name: axiomfolio-api
-    runtime: docker
+    env: docker
     plan: standard
     dockerfilePath: ./Dockerfile.backend
     healthCheckPath: /health
@@ -25,28 +25,28 @@ services:
           property: connectionString
       - key: REDIS_URL
         fromService:
-          type: keyvalue
+          type: redis
           name: axiomfolio-redis
           property: connectionString
       - key: RATE_LIMIT_STORAGE_URL
         fromService:
-          type: keyvalue
+          type: redis
           name: axiomfolio-redis
           property: connectionString
       - key: CELERY_BROKER_URL
         fromService:
-          type: keyvalue
+          type: redis
           name: axiomfolio-redis
           property: connectionString
       - key: CELERY_RESULT_BACKEND
         fromService:
-          type: keyvalue
+          type: redis
           name: axiomfolio-redis
           property: connectionString
 
   - type: worker
     name: axiomfolio-worker
-    runtime: docker
+    env: docker
     plan: standard
     dockerfilePath: ./Dockerfile.backend
     autoDeploy: false
@@ -61,17 +61,17 @@ services:
           property: connectionString
       - key: REDIS_URL
         fromService:
-          type: keyvalue
+          type: redis
           name: axiomfolio-redis
           property: connectionString
       - key: CELERY_BROKER_URL
         fromService:
-          type: keyvalue
+          type: redis
           name: axiomfolio-redis
           property: connectionString
       - key: CELERY_RESULT_BACKEND
         fromService:
-          type: keyvalue
+          type: redis
           name: axiomfolio-redis
           property: connectionString
     dockerCommand: celery -A backend.tasks.celery_app worker --loglevel=info
@@ -86,7 +86,7 @@ services:
       - key: VITE_API_BASE_URL
         value: https://api.axiomfolio.com/api/v1
 
-  - type: keyvalue
+  - type: redis
     name: axiomfolio-redis
     plan: starter
     ipAllowList: []
@@ -106,17 +106,17 @@ services:
           property: connectionString
       - key: REDIS_URL
         fromService:
-          type: keyvalue
+          type: redis
           name: axiomfolio-redis
           property: connectionString
       - key: CELERY_BROKER_URL
         fromService:
-          type: keyvalue
+          type: redis
           name: axiomfolio-redis
           property: connectionString
       - key: CELERY_RESULT_BACKEND
         fromService:
-          type: keyvalue
+          type: redis
           name: axiomfolio-redis
           property: connectionString
     dockerCommand: python -m backend.scripts.run_task backend.tasks.account_sync.sync_all_ibkr_accounts
@@ -136,17 +136,17 @@ services:
           property: connectionString
       - key: REDIS_URL
         fromService:
-          type: keyvalue
+          type: redis
           name: axiomfolio-redis
           property: connectionString
       - key: CELERY_BROKER_URL
         fromService:
-          type: keyvalue
+          type: redis
           name: axiomfolio-redis
           property: connectionString
       - key: CELERY_RESULT_BACKEND
         fromService:
-          type: keyvalue
+          type: redis
           name: axiomfolio-redis
           property: connectionString
     dockerCommand: 'python -m backend.scripts.run_task backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked --kwargs ''{"history_days": 20, "history_batch_size": 25}'''
@@ -166,17 +166,17 @@ services:
           property: connectionString
       - key: REDIS_URL
         fromService:
-          type: keyvalue
+          type: redis
           name: axiomfolio-redis
           property: connectionString
       - key: CELERY_BROKER_URL
         fromService:
-          type: keyvalue
+          type: redis
           name: axiomfolio-redis
           property: connectionString
       - key: CELERY_RESULT_BACKEND
         fromService:
-          type: keyvalue
+          type: redis
           name: axiomfolio-redis
           property: connectionString
     dockerCommand: python -m backend.scripts.run_task backend.tasks.market_data_tasks.monitor_coverage_health
@@ -196,17 +196,17 @@ services:
           property: connectionString
       - key: REDIS_URL
         fromService:
-          type: keyvalue
+          type: redis
           name: axiomfolio-redis
           property: connectionString
       - key: CELERY_BROKER_URL
         fromService:
-          type: keyvalue
+          type: redis
           name: axiomfolio-redis
           property: connectionString
       - key: CELERY_RESULT_BACKEND
         fromService:
-          type: keyvalue
+          type: redis
           name: axiomfolio-redis
           property: connectionString
     dockerCommand: python -m backend.scripts.run_task backend.tasks.market_data_tasks.enforce_price_data_retention
