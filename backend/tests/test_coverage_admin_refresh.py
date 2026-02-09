@@ -30,7 +30,7 @@ def test_admin_refresh_coverage_enqueues_task(monkeypatch):
     monkeypatch.setattr(routes, "monitor_coverage_health", _StubTask)
 
     client = TestClient(app, raise_server_exceptions=False)
-    resp = client.post("/api/v1/market-data/admin/coverage/refresh")
+    resp = client.post("/api/v1/market-data/admin/backfill/coverage/refresh")
     assert resp.status_code == 200
     payload = resp.json()
     assert payload.get("task_id") == "task-123"
@@ -47,7 +47,7 @@ def test_admin_restore_daily_tracked_enqueues_task(monkeypatch):
     monkeypatch.setattr(routes, "bootstrap_daily_coverage_tracked", _StubTask)
 
     client = TestClient(app, raise_server_exceptions=False)
-    resp = client.post("/api/v1/market-data/admin/coverage/restore")
+    resp = client.post("/api/v1/market-data/admin/backfill/coverage")
     assert resp.status_code == 200
     payload = resp.json()
     assert payload.get("task_id") == "task-restore-123"

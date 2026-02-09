@@ -40,15 +40,15 @@ def test_admin_record_history_requires_admin():
     assert resp.status_code in (401, 403)
 
 
-def test_admin_coverage_restore_preview_requires_admin():
-    resp = client.get("/api/v1/market-data/admin/coverage/restore/preview")
+def test_admin_coverage_backfill_preview_requires_admin():
+    resp = client.get("/api/v1/market-data/admin/backfill/coverage/preview")
     assert resp.status_code in (401, 403)
 
 
-def test_admin_coverage_restore_preview_payload():
+def test_admin_coverage_backfill_preview_payload():
     app.dependency_overrides[get_admin_user] = object
     try:
-        resp = client.get("/api/v1/market-data/admin/coverage/restore/preview")
+        resp = client.get("/api/v1/market-data/admin/backfill/coverage/preview")
         assert resp.status_code == 200
         data = resp.json()
         assert "resolved_history_days" in data

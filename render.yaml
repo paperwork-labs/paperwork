@@ -122,7 +122,7 @@ services:
     dockerCommand: python -m backend.scripts.run_task backend.tasks.account_sync.sync_all_ibkr_accounts
 
   - type: cron
-    name: admin_coverage_restore
+    name: admin_coverage_backfill
     runtime: docker
     schedule: "0 3 * * *"
     dockerfilePath: ./Dockerfile.backend

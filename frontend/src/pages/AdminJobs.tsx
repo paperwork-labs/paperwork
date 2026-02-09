@@ -85,7 +85,7 @@ const AdminJobs: React.FC = () => {
       const label = typeof days === 'number' ? `Backfilled last ~${days} daily bars` : 'Backfilled last daily bars';
       return typeof symbolsN === 'number' ? `${label} (${symbolsN} symbols)` : label;
     }
-    if (task.includes('admin_coverage_restore')) return 'Restore Daily Coverage (Tracked)';
+    if (task.includes('admin_coverage_backfill')) return 'Backfill Daily Coverage (Tracked)';
     if (task.includes('market_indices_constituents_refresh')) return 'Refreshed index constituents';
     if (task.includes('market_universe_tracked_refresh')) return 'Updated tracked symbol universe';
     if (task.includes('admin_indicators_recompute_universe')) return 'Recomputed indicators for universe';

@@ -91,7 +91,7 @@ describe('AdminDashboard coverage refresh', () => {
   it('auto-triggers coverage refresh when snapshot is stale/missing cache', async () => {
     renderWithProviders(<AdminDashboard />, { route: '/settings/admin/dashboard' });
     // Auto-refresh effect should queue a refresh
-    expect(apiPost).toHaveBeenCalledWith('/market-data/admin/coverage/refresh');
+    expect(apiPost).toHaveBeenCalledWith('/market-data/admin/backfill/coverage/refresh');
   });
 
   it('allows manual refresh via button', async () => {
@@ -99,13 +99,15 @@ describe('AdminDashboard coverage refresh', () => {
     renderWithProviders(<AdminDashboard />, { route: '/settings/admin/dashboard' });
     const btn = (await screen.findAllByRole('button', { name: /refresh coverage/i }))[0];
     await user.click(btn);
-    expect(apiPost).toHaveBeenCalledWith('/market-data/admin/coverage/refresh');
-    expect(apiPost.mock.calls.filter((c) => c[0] === '/market-data/admin/coverage/refresh').length).toBeGreaterThanOrEqual(2);
+    expect(apiPost).toHaveBeenCalledWith('/market-data/admin/backfill/coverage/refresh');
+    expect(
+      apiPost.mock.calls.filter((c) => c[0] === '/market-data/admin/backfill/coverage/refresh').length,
+    ).toBeGreaterThanOrEqual(2);
   });
 
   it('renders guided actions', async () => {
     renderWithProviders(<AdminDashboard />, { route: '/settings/admin/dashboard' });
-    const restore = await screen.findAllByRole('button', { name: /Restore Daily Coverage \(Tracked\)/i });
+    const restore = await screen.findAllByRole('button', { name: /Backfill Daily Coverage \(Tracked\)/i });
     expect(restore.length).toBeGreaterThanOrEqual(1);
     const stale = await screen.findAllByRole('button', { name: /Backfill Daily \(Stale Only\)/i });
     expect(stale.length).toBeGreaterThanOrEqual(1);

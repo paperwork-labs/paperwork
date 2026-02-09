@@ -83,7 +83,7 @@ def _resolve_history_days(requested_days: int | None) -> int:
         last_run = (
             session.query(JobRun)
             .filter(
-                JobRun.task_name == "admin_coverage_restore",
+                JobRun.task_name == "admin_coverage_backfill",
                 JobRun.status == "ok",
             )
             .order_by(
@@ -838,15 +838,15 @@ def backfill_daily_since_date(since_date: str = "2021-01-01", batch_size: int = 
         session.close()
 
 
-# ============================= Repair Since Date (Daily + Indicators + History) =============================
-@shared_task(name="backend.tasks.market_data_tasks.repair_since_date")
-@task_run("admin_repair_since_date", lock_key=lambda since_date, **_: f"admin_repair_since_date:{since_date}")
-def repair_since_date(
+# ============================= Backfill Since Date (Daily + Indicators + History) =============================
+@shared_task(name="backend.tasks.market_data_tasks.backfill_since_date")
+@task_run("admin_backfill_since_date", lock_key=lambda since_date, **_: f"admin_backfill_since_date:{since_date}")
+def backfill_since_date(
     since_date: str = "2021-01-01",
     daily_batch_size: int = 25,
     history_batch_size: int = 50,
 ) -> dict:
-    """Deep repair pipeline since a given date.
+    """Deep backfill pipeline since a given date.
 
     Steps:
     - Backfill daily OHLCV since date (provider fetch)
@@ -881,7 +881,7 @@ def repair_since_date(
             }
         )
 
-    _set_task_status("admin_repair_since_date", "running", {"since_date": since_date})
+    _set_task_status("admin_backfill_since_date", "running", {"since_date": since_date})
 
     res1 = backfill_daily_since_date(since_date=since_date, batch_size=int(daily_batch_size))
     _append("admin_backfill_daily_since_date", res1)
@@ -905,15 +905,15 @@ def repair_since_date(
     rollup["overall_summary"] = "; ".join(
         step["summary"] for step in rollup["steps"] if step.get("summary")
     )
-    _set_task_status("admin_repair_since_date", rollup["status"], rollup)
+    _set_task_status("admin_backfill_since_date", rollup["status"], rollup)
     return rollup
 
 
-# ============================= Coverage Restore (Daily, Tracked Universe) =============================
+# ============================= Coverage Backfill (Daily, Tracked Universe) =============================
 @shared_task(name="backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked")
-@task_run("admin_coverage_restore", lock_key=lambda: "admin_coverage_restore")
+@task_run("admin_coverage_backfill", lock_key=lambda: "admin_coverage_backfill")
 def bootstrap_daily_coverage_tracked(history_days: int | None = None, history_batch_size: int = 25) -> dict:
-    """Restore DAILY coverage for the tracked universe (no 5m).
+    """Backfill DAILY coverage for the tracked universe (no 5m).
 
     Steps:
     - Refresh index constituents (keeps constituents current)

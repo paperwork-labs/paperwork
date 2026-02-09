@@ -199,14 +199,14 @@ const AdminSchedules: React.FC = () => {
               variant="outline"
               onClick={() =>
                 openPreset({
-                  name: 'admin_coverage_restore',
+                  name: 'admin_coverage_backfill',
                   task: 'backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked',
                   cron: '0 3 * * *',
                   timezone: 'UTC',
                 })
               }
             >
-              Preset: Nightly Restore (Tracked) + History (5d)
+              Preset: Nightly Backfill (Tracked) + History (5d)
             </Button>
           </HStack>
         </Box>

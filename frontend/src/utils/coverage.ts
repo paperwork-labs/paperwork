@@ -81,22 +81,22 @@ const STATUS_COLOR_MAP: Record<string, string> = {
 
 const DEFAULT_COVERAGE_ACTIONS: CoverageAction[] = [
   {
-    label: 'Restore Daily Coverage (Tracked)',
-    task_name: 'admin_coverage_restore',
+    label: 'Backfill Daily Coverage (Tracked)',
+    task_name: 'admin_coverage_backfill',
     description:
-      'Guided operator flow: refresh → tracked → daily backfill → recompute → history → refresh coverage (no 5m). Endpoint: POST /api/v1/market-data/admin/coverage/restore',
+      'Guided operator flow: refresh → tracked → daily backfill → recompute → history → refresh coverage (no 5m). Endpoint: POST /api/v1/market-data/admin/backfill/coverage',
   },
   {
     label: 'Backfill Daily (Stale Only)',
     task_name: 'admin_coverage_backfill_stale',
     description:
-      'Backfills daily bars only for symbols currently stale in coverage snapshot. Endpoint: POST /api/v1/market-data/admin/coverage/backfill-stale',
+      'Backfills daily bars only for symbols currently stale in coverage snapshot. Endpoint: POST /api/v1/market-data/admin/backfill/coverage/stale',
   },
   {
     label: 'Refresh Coverage Cache',
     task_name: 'admin_coverage_refresh',
     description:
-      'Recomputes and caches the coverage snapshot. Endpoint: POST /api/v1/market-data/admin/coverage/refresh',
+      'Recomputes and caches the coverage snapshot. Endpoint: POST /api/v1/market-data/admin/backfill/coverage/refresh',
   },
   {
     label: 'Recompute Indicators',

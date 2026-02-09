@@ -85,7 +85,7 @@ def test_backfill_stale_daily_returns_full_stale_candidates(monkeypatch, db_sess
         monkeypatch.setattr(routes, "backfill_stale_daily_tracked", _StubTask)
 
         client = TestClient(app, raise_server_exceptions=False)
-        resp = client.post("/api/v1/market-data/admin/coverage/backfill-stale")
+        resp = client.post("/api/v1/market-data/admin/backfill/coverage/stale")
         assert resp.status_code == 200
         payload = resp.json()
         assert payload.get("task_id") == "task-stale-123"

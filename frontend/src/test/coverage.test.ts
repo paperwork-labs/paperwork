@@ -54,10 +54,10 @@ describe('coverage helpers', () => {
   it('buildCoverageActions merges defaults without duplicates', () => {
     const actions = buildCoverageActions([
       { label: 'Custom', task_name: 'custom_task' },
-      { label: 'Restore Daily Coverage Override', task_name: 'admin_coverage_restore' },
+      { label: 'Backfill Daily Coverage Override', task_name: 'admin_coverage_backfill' },
     ]);
     expect(actions.find((a) => a.task_name === 'custom_task')).toBeTruthy();
-    expect(actions.filter((a) => a.task_name === 'admin_coverage_restore')).toHaveLength(1);
+    expect(actions.filter((a) => a.task_name === 'admin_coverage_backfill')).toHaveLength(1);
     expect(actions.some((a) => a.task_name === 'admin_snapshots_history_record')).toBe(true);
   });
 

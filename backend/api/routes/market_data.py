@@ -36,7 +36,7 @@ from backend.tasks.market_data_tasks import (
     backfill_snapshot_history_last_n_days,
     backfill_daily_since_date,
     backfill_last_bars,
-    repair_since_date,
+    backfill_since_date,
 )
 from backend.api.dependencies import get_optional_user, get_admin_user, get_market_data_viewer
 from backend.models.index_constituent import IndexConstituent
@@ -95,23 +95,23 @@ TASK_ACTIONS: List[Dict[str, Any]] = [
     {
         "task_name": "admin_coverage_backfill_stale",
         "method": "POST",
-        "endpoint": "/market-data/admin/coverage/backfill-stale",
+        "endpoint": "/market-data/admin/backfill/coverage/stale",
         "description": "Backfill stale/missing daily bars across tracked symbols.",
         "status_task": "admin_coverage_backfill_stale",
     },
     {
         "task_name": "admin_coverage_refresh",
         "method": "POST",
-        "endpoint": "/market-data/admin/coverage/refresh",
+        "endpoint": "/market-data/admin/backfill/coverage/refresh",
         "description": "Recompute coverage health snapshot and cache.",
         "status_task": "admin_coverage_refresh",
     },
     {
-        "task_name": "admin_coverage_restore",
+        "task_name": "admin_coverage_backfill",
         "method": "POST",
-        "endpoint": "/market-data/admin/coverage/restore",
-        "description": "Guided restore: refresh → tracked → daily → recompute → history → refresh.",
-        "status_task": "admin_coverage_restore",
+        "endpoint": "/market-data/admin/backfill/coverage",
+        "description": "Guided backfill: refresh → tracked → daily → recompute → history → refresh.",
+        "status_task": "admin_coverage_backfill",
     },
     {
         "task_name": "admin_indicators_recompute_universe",
@@ -126,7 +126,7 @@ TASK_ACTIONS: List[Dict[str, Any]] = [
     {
         "task_name": "admin_snapshots_history_backfill",
         "method": "POST",
-        "endpoint": "/market-data/admin/snapshots/history/backfill",
+        "endpoint": "/market-data/admin/backfill/snapshots/history",
         "description": "Backfill snapshot history for last 200 trading days.",
         "params_schema": [
             {"name": "days", "type": "int", "default": 200, "min": 5, "max": 3000},
@@ -159,7 +159,7 @@ TASK_ACTIONS: List[Dict[str, Any]] = [
 
 def _task_status_keys() -> List[str]:
     keys = {action.get("status_task") or action["task_name"] for action in TASK_ACTIONS}
-    keys.update({"admin_repair_since_date", "admin_snapshots_history_backfill"})
+    keys.update({"admin_backfill_since_date", "admin_snapshots_history_backfill"})
     return sorted(keys)
 
 
@@ -176,19 +176,19 @@ def _coverage_actions(backfill_5m_enabled: bool = True) -> List[Dict[str, Any]]:
             "description": "Union index constituents with held symbols and publish tracked:all/new in Redis. Endpoint: POST /api/v1/market-data/universe/tracked/refresh",
         },
         {
-            "label": "Restore Daily Coverage (Tracked)",
-            "task_name": "admin_coverage_restore",
-            "description": "Guided operator flow: refresh → tracked → daily backfill → recompute → history → refresh coverage (no 5m). Endpoint: POST /api/v1/market-data/admin/coverage/restore",
+            "label": "Backfill Daily Coverage (Tracked)",
+            "task_name": "admin_coverage_backfill",
+            "description": "Guided operator flow: refresh → tracked → daily backfill → recompute → history → refresh coverage (no 5m). Endpoint: POST /api/v1/market-data/admin/backfill/coverage",
         },
         {
             "label": "Backfill Daily (Stale Only)",
             "task_name": "admin_coverage_backfill_stale",
-            "description": "Backfill daily bars only for symbols currently stale (>48h/none) in coverage snapshot. Endpoint: POST /api/v1/market-data/admin/coverage/backfill-stale",
+            "description": "Backfill daily bars only for symbols currently stale (>48h/none) in coverage snapshot. Endpoint: POST /api/v1/market-data/admin/backfill/coverage/stale",
         },
         {
             "label": "Refresh Coverage Cache",
             "task_name": "admin_coverage_refresh",
-            "description": "Recompute coverage snapshot and refresh Redis cache + history. Endpoint: POST /api/v1/market-data/admin/coverage/refresh",
+            "description": "Recompute coverage snapshot and refresh Redis cache + history. Endpoint: POST /api/v1/market-data/admin/backfill/coverage/refresh",
         },
         {
             "label": "Backfill 5m Last N Days",
@@ -211,7 +211,7 @@ def _coverage_education() -> Dict[str, Any]:
         "how_to_fix": [
             "Refresh Index Constituents to sync SP500 / NASDAQ100 / DOW30 membership.",
             "Update Tracked Symbol Cache to rebuild the Redis universe from the DB.",
-            "Restore Daily Coverage (Tracked) to backfill daily bars and recompute indicators (no 5m).",
+            "Backfill Daily Coverage (Tracked) to backfill daily bars and recompute indicators (no 5m).",
             "Backfill 5m to capture latest intraday data for freshness dashboards.",
         ],
     }
@@ -505,7 +505,7 @@ async def get_snapshot_history(
     return {"symbol": symbol.upper(), "days": int(days), "rows": out}
 
 
-@router.post("/admin/snapshots/history/backfill")
+@router.post("/admin/backfill/snapshots/history")
 async def admin_backfill_snapshot_history_last_n_days(
     days: int = Query(200, ge=1, le=3000),
     since_date: str | None = Query(None, description="Optional YYYY-MM-DD; overrides days by selecting all available trading days since date"),
@@ -525,16 +525,16 @@ async def admin_backfill_daily_since_date(
     return _enqueue_task(backfill_daily_since_date, since_date, batch_size)
 
 
-@router.post("/admin/repair/since-date")
-async def admin_repair_since_date(
+@router.post("/admin/backfill/since-date")
+async def admin_backfill_since_date(
     since_date: str = Query("2021-01-01", description="YYYY-MM-DD"),
     daily_batch_size: int = Query(25, ge=1, le=200),
     history_batch_size: int = Query(50, ge=1, le=200),
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
-    """Repair daily bars + indicators + snapshot history since a given date."""
+    """Backfill daily bars + indicators + snapshot history since a given date."""
     return _enqueue_task(
-        repair_since_date,
+        backfill_since_date,
         since_date,
         daily_batch_size=daily_batch_size,
         history_batch_size=history_batch_size,
@@ -754,9 +754,9 @@ async def post_update_tracked(
 
 ## Hard consolidation: legacy daily backfill endpoints removed.
 ## Use:
-## - POST /admin/coverage/restore
-## - POST /admin/coverage/backfill-stale
-## - POST /admin/coverage/refresh
+## - POST /admin/backfill/coverage
+## - POST /admin/backfill/coverage/stale
+## - POST /admin/backfill/coverage/refresh
 
 
 @router.post("/admin/indicators/recompute-universe")
@@ -874,7 +874,7 @@ async def get_coverage(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/admin/coverage/backfill-5m/toggle")
+@router.get("/admin/backfill/5m/toggle")
 async def get_backfill_5m_toggle(
     admin_user: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
@@ -882,7 +882,7 @@ async def get_backfill_5m_toggle(
     return {"backfill_5m_enabled": svc.coverage.is_backfill_5m_enabled()}
 
 
-@router.post("/admin/coverage/backfill-5m/toggle")
+@router.post("/admin/backfill/5m/toggle")
 async def set_backfill_5m_toggle(
     enabled: bool = Body(..., embed=True),
     admin_user: User = Depends(get_admin_user),
@@ -896,7 +896,7 @@ async def set_backfill_5m_toggle(
         raise HTTPException(status_code=500, detail="Failed to update 5m backfill toggle")
 
 
-@router.post("/admin/coverage/backfill-stale")
+@router.post("/admin/backfill/coverage/stale")
 async def backfill_stale_daily(
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
@@ -931,7 +931,7 @@ async def backfill_stale_daily(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/admin/coverage/refresh")
+@router.post("/admin/backfill/coverage/refresh")
 async def admin_refresh_coverage(
     admin_user: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
@@ -939,15 +939,15 @@ async def admin_refresh_coverage(
     return _enqueue_task(monitor_coverage_health)
 
 
-@router.post("/admin/coverage/restore")
-async def admin_restore_daily_tracked(
+@router.post("/admin/backfill/coverage")
+async def admin_backfill_daily_tracked(
     history_days: int | None = Query(
         None, ge=1, le=300, description="Trading days to backfill into snapshot history (auto if omitted)"
     ),
     history_batch_size: int = Query(25, ge=1, le=200),
     admin_user: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
-    """Run the guided daily coverage restore chain for the tracked universe (no 5m)."""
+    """Run the guided daily coverage backfill chain for the tracked universe (no 5m)."""
     return _enqueue_task(
         bootstrap_daily_coverage_tracked,
         history_days=history_days,
@@ -955,8 +955,8 @@ async def admin_restore_daily_tracked(
     )
 
 
-@router.get("/admin/coverage/restore/preview")
-async def admin_restore_daily_tracked_preview(
+@router.get("/admin/backfill/coverage/preview")
+async def admin_backfill_daily_tracked_preview(
     history_days: int | None = Query(
         None, ge=1, le=300, description="Trading days to backfill into snapshot history (auto if omitted)"
     ),

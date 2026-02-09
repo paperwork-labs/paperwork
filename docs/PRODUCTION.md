@@ -55,13 +55,13 @@ If you are renaming the database (e.g., `old_db` → `axiomfolio`), migrate data
 ## Scheduling (cron, no always-on beat)
 Use scheduled jobs to enqueue tasks (task status names shown in parentheses):
 - `backend.tasks.account_sync.sync_all_ibkr_accounts`
-- `backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked` (`admin_coverage_restore`)
+- `backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked` (`admin_coverage_backfill`, daily backfill chain)
 - `backend.tasks.market_data_tasks.monitor_coverage_health` (`admin_coverage_refresh`)
 - `backend.tasks.market_data_tasks.enforce_price_data_retention` (`admin_retention_enforce`)
 
 Render cron defaults (UTC):
 - 02:15: IBKR daily Flex sync
-- 03:00: admin_coverage_restore
+- 03:00: admin_coverage_backfill (daily backfill chain)
 - Hourly: admin_coverage_refresh
 - 04:00: admin_retention_enforce
 

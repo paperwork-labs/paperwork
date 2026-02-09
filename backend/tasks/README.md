@@ -19,7 +19,7 @@ Constituents (DB + cache)
 - update_tracked_symbol_cache (task name: `market_universe_tracked_refresh`): Build Redis `tracked:all` and `tracked:new` from DB (index_constituents ∪ portfolio).
 
 Coverage & operator flow
-- bootstrap_daily_coverage_tracked (task name: `admin_coverage_restore`): Primary operator chain (refresh → tracked → daily backfill → recompute → rolling history backfill (dynamic window based on last successful run; minimum 5 trading days, fallback 20 trading days) → coverage refresh; no 5m).
+- bootstrap_daily_coverage_tracked (task name: `admin_coverage_backfill`): Primary backfill chain (refresh → tracked → daily backfill → recompute → rolling history backfill (dynamic window based on last successful run; minimum 5 trading days, fallback 20 trading days) → coverage refresh; no 5m).
 - monitor_coverage_health (task name: `admin_coverage_refresh`): Computes and caches coverage snapshot/history in Redis.
 
 History (writes `market_analysis_history`)
@@ -28,14 +28,14 @@ History (writes `market_analysis_history`)
 Schedules (Celery Beat)
 -----------------------
 Configured in `backend/tasks/celery_app.py` (UTC):
-- admin_coverage_restore: nightly guided operator chain
+- admin_coverage_backfill: nightly guided backfill chain
 - admin_coverage_refresh: hourly coverage cache refresh
 - ibkr-daily-flex-sync: nightly comprehensive FlexQuery sync
 
 Runbooks
 --------
-Daily restore (recommended)
-1) `bootstrap_daily_coverage_tracked.delay()` (task name: `admin_coverage_restore`)
+Daily backfill (recommended)
+1) `bootstrap_daily_coverage_tracked.delay()` (task name: `admin_coverage_backfill`)
 
 Daily manual refresh
 - `recompute_indicators_universe.delay(batch_size=60)` (task name: `admin_indicators_recompute_universe`)

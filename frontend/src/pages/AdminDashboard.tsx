@@ -5,13 +5,11 @@ import {
   Button,
   Text,
   HStack,
-  VStack,
   Badge,
   Tooltip,
 } from '@chakra-ui/react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
-import { refreshTaskActions, triggerTaskByName, type TaskAction } from '../utils/taskActions';
 import useCoverageSnapshot from '../hooks/useCoverageSnapshot';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { formatDateTime } from '../utils/format';
@@ -36,16 +34,14 @@ const AdminDashboard: React.FC = () => {
   const [backfillingStale, setBackfillingStale] = React.useState<boolean>(false);
   const [backfillingSnapshotHistory, setBackfillingSnapshotHistory] = React.useState<boolean>(false);
   const [backfillingDailyPeriod, setBackfillingDailyPeriod] = React.useState<boolean>(false);
-  const [repairingSinceDate, setRepairingSinceDate] = React.useState<boolean>(false);
+  const [backfillingSinceDate, setBackfillingSinceDate] = React.useState<boolean>(false);
+  const [backfillingPeriodFlow, setBackfillingPeriodFlow] = React.useState<boolean>(false);
   const [snapshotHistoryPeriod, setSnapshotHistoryPeriod] = React.useState<'6mo' | '1y' | '2y' | '5y' | 'max'>('1y');
   const [advancedOpen, setAdvancedOpen] = React.useState<boolean>(false);
   const [sendingDiscord, setSendingDiscord] = React.useState<boolean>(false);
   const [sanityLoading, setSanityLoading] = React.useState<boolean>(false);
   const [sanityData, setSanityData] = React.useState<any | null>(null);
   const [taskStatus, setTaskStatus] = React.useState<Record<string, any> | null>(null);
-  const [taskActions, setTaskActions] = React.useState<TaskAction[]>([]);
-  const [taskActionsLoading, setTaskActionsLoading] = React.useState<boolean>(false);
-  const [taskActionParams, setTaskActionParams] = React.useState<Record<string, Record<string, string>>>({});
   const [histWindowDays, setHistWindowDays] = React.useState<number>(
     coverageHistogramWindowDays || 50,
   );
@@ -106,28 +102,15 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const loadTaskActions = async () => {
-    setTaskActionsLoading(true);
-    try {
-      const tasks = await refreshTaskActions();
-      setTaskActions(tasks);
-    } catch {
-      setTaskActions([]);
-    } finally {
-      setTaskActionsLoading(false);
-    }
-  };
-
   React.useEffect(() => {
     void loadTaskStatus();
-    void loadTaskActions();
   }, []);
 
   const refreshCoverageNow = async (origin: 'manual' | 'auto') => {
     if (refreshingCoverage) return;
     setRefreshingCoverage(true);
     try {
-      const res = await api.post('/market-data/admin/coverage/refresh');
+      const res = await api.post('/market-data/admin/backfill/coverage/refresh');
       const taskId = res?.data?.task_id;
       toast.success(origin === 'auto' ? 'Coverage refresh queued (auto)' : 'Coverage refresh queued');
       // Task may take a moment; do a couple of lightweight refreshes.
@@ -147,13 +130,13 @@ const AdminDashboard: React.FC = () => {
     setRestoringDaily(true);
     try {
       // Guided orchestrator (daily only, tracked universe)
-      await api.post('/market-data/admin/coverage/restore');
-      toast.success('Daily coverage restore queued');
+      await api.post('/market-data/admin/backfill/coverage');
+      toast.success('Daily coverage backfill queued');
       setTimeout(() => void refreshCoverage(), 1500);
       setTimeout(() => void refreshCoverage(), 4500);
       void loadTaskStatus();
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail || err?.message || 'Failed to queue daily coverage restore');
+      toast.error(err?.response?.data?.detail || err?.message || 'Failed to queue daily coverage backfill');
     } finally {
       setRestoringDaily(false);
     }
@@ -163,7 +146,7 @@ const AdminDashboard: React.FC = () => {
     if (backfillingStale) return;
     setBackfillingStale(true);
     try {
-      const res = await api.post('/market-data/admin/coverage/backfill-stale');
+      const res = await api.post('/market-data/admin/backfill/coverage/stale');
       const staleCandidates = res?.data?.stale_candidates;
       toast.success(
         typeof staleCandidates === 'number'
@@ -190,43 +173,85 @@ const AdminDashboard: React.FC = () => {
     return 3000; // max (bounded by backend)
   };
 
-  const backfillSnapshotHistoryPeriod = async () => {
-    if (backfillingSnapshotHistory) return;
+  const backfillSnapshotHistoryPeriod = async (options?: { silent?: boolean }): Promise<boolean> => {
+    if (backfillingSnapshotHistory) return false;
     setBackfillingSnapshotHistory(true);
     try {
       const days = snapshotHistoryDaysForPeriod(snapshotHistoryPeriod);
       const tracked = Number((coverage as any)?.tracked_count ?? totalSymbols ?? 0) || 0;
       const estimatedRows = tracked ? tracked * days : null;
-      await api.post(`/market-data/admin/snapshots/history/backfill?days=${days}`);
-      toast.success(
-        estimatedRows
-          ? `Snapshot history (${snapshotHistoryPeriod}) queued (~${estimatedRows.toLocaleString()} rows). Track progress in Admin → Jobs.`
-          : `Snapshot history (${snapshotHistoryPeriod}) queued. Track progress in Admin → Jobs.`,
-      );
-      setTimeout(() => void refreshCoverage(), 1500);
-      setTimeout(() => void refreshCoverage(), 4500);
-      void loadTaskStatus();
+      await api.post(`/market-data/admin/backfill/snapshots/history?days=${days}`);
+      if (!options?.silent) {
+        toast.success(
+          estimatedRows
+            ? `Snapshot history (${snapshotHistoryPeriod}) queued (~${estimatedRows.toLocaleString()} rows). Track progress in Admin → Jobs.`
+            : `Snapshot history (${snapshotHistoryPeriod}) queued. Track progress in Admin → Jobs.`,
+        );
+        setTimeout(() => void refreshCoverage(), 1500);
+        setTimeout(() => void refreshCoverage(), 4500);
+        void loadTaskStatus();
+      }
+      return true;
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail || err?.message || 'Failed to queue snapshot history backfill');
+      if (!options?.silent) {
+        toast.error(err?.response?.data?.detail || err?.message || 'Failed to queue snapshot history backfill');
+      }
+      return false;
     } finally {
       setBackfillingSnapshotHistory(false);
     }
   };
 
-  const backfillDailyBarsPeriod = async () => {
-    if (backfillingDailyPeriod) return;
+  const backfillDailyBarsPeriod = async (options?: { silent?: boolean }): Promise<boolean> => {
+    if (backfillingDailyPeriod) return false;
     setBackfillingDailyPeriod(true);
     try {
       const days = snapshotHistoryDaysForPeriod(snapshotHistoryPeriod);
       await api.post(`/market-data/admin/backfill/daily?days=${days}`);
-      toast.success(`Daily bars (${snapshotHistoryPeriod}) queued. Track progress in Admin → Jobs.`);
+      if (!options?.silent) {
+        toast.success(`Daily bars (${snapshotHistoryPeriod}) queued. Track progress in Admin → Jobs.`);
+        setTimeout(() => void refreshCoverage(), 1500);
+        setTimeout(() => void refreshCoverage(), 4500);
+        void loadTaskStatus();
+      }
+      return true;
+    } catch (err: any) {
+      if (!options?.silent) {
+        toast.error(err?.response?.data?.detail || err?.message || 'Failed to queue daily bars backfill');
+      }
+      return false;
+    } finally {
+      setBackfillingDailyPeriod(false);
+    }
+  };
+
+  const backfillPeriodFlow = async () => {
+    if (backfillingPeriodFlow) return;
+    setBackfillingPeriodFlow(true);
+    try {
+      const dailyOk = await backfillDailyBarsPeriod({ silent: true });
+      if (!dailyOk) {
+        toast.error('Failed to queue daily bars for selected period.');
+        return;
+      }
+      const indicatorsOk = await runNamedTask('admin_indicators_recompute_universe', 'Recompute indicators');
+      if (!indicatorsOk) {
+        toast.error('Failed to queue indicator recompute for selected period.');
+        return;
+      }
+      const historyOk = await backfillSnapshotHistoryPeriod({ silent: true });
+      if (!historyOk) {
+        toast.error('Failed to queue snapshot history for selected period.');
+        return;
+      }
+      toast.success(`Queued full backfill flow (${snapshotHistoryPeriod}). Track progress in Admin → Jobs.`);
       setTimeout(() => void refreshCoverage(), 1500);
       setTimeout(() => void refreshCoverage(), 4500);
       void loadTaskStatus();
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail || err?.message || 'Failed to queue daily bars backfill');
+      toast.error(err?.response?.data?.detail || err?.message || 'Failed to queue full backfill flow');
     } finally {
-      setBackfillingDailyPeriod(false);
+      setBackfillingPeriodFlow(false);
     }
   };
 
@@ -240,25 +265,25 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const repairSinceDate = async () => {
-    if (repairingSinceDate) return;
-    setRepairingSinceDate(true);
+  const backfillSinceDate = async () => {
+    if (backfillingSinceDate) return;
+    setBackfillingSinceDate(true);
     try {
-      await api.post(`/market-data/admin/repair/since-date?since_date=${encodeURIComponent(sinceDate)}`);
-      toast.success(`Repair since ${sinceDate} queued (daily → indicators → snapshot history)`);
+      await api.post(`/market-data/admin/backfill/since-date?since_date=${encodeURIComponent(sinceDate)}`);
+      toast.success(`Backfill since ${sinceDate} queued (daily → indicators → snapshot history)`);
       setTimeout(() => void refreshCoverage(), 1500);
       setTimeout(() => void refreshCoverage(), 4500);
       void loadTaskStatus();
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail || err?.message || 'Failed to queue repair since date');
+      toast.error(err?.response?.data?.detail || err?.message || 'Failed to queue backfill since date');
     } finally {
-      setRepairingSinceDate(false);
+      setBackfillingSinceDate(false);
     }
   };
 
   const backfillSnapshotHistorySinceDate = async () => {
     try {
-      await api.post(`/market-data/admin/snapshots/history/backfill?days=3000&since_date=${encodeURIComponent(sinceDate)}`);
+      await api.post(`/market-data/admin/backfill/snapshots/history?days=3000&since_date=${encodeURIComponent(sinceDate)}`);
       toast.success(`Queued snapshot history backfill since ${sinceDate}`);
       void loadTaskStatus();
     } catch (err: any) {
@@ -266,7 +291,7 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const runNamedTask = async (taskName: string, label?: string, params?: Record<string, string | number | boolean>) => {
+  const runNamedTask = async (taskName: string, label?: string): Promise<boolean> => {
     // Special-case: schedule coverage monitor as an hourly beat entry
     if (taskName === 'schedule_coverage_monitor') {
       try {
@@ -278,18 +303,43 @@ const AdminDashboard: React.FC = () => {
         });
         toast.success('Coverage monitor scheduled (hourly)');
         await refreshCoverage();
+        return true;
       } catch (err: any) {
         toast.error(err?.response?.data?.detail || err?.message || 'Failed to schedule monitor');
       }
-      return;
+      return false;
     }
     try {
-      await triggerTaskByName(taskName, { params });
+      const taskEndpoints: Record<string, { method: 'GET' | 'POST'; endpoint: string }> = {
+        market_indices_constituents_refresh: {
+          method: 'POST',
+          endpoint: '/market-data/indices/constituents/refresh',
+        },
+        market_universe_tracked_refresh: {
+          method: 'POST',
+          endpoint: '/market-data/universe/tracked/refresh',
+        },
+        admin_indicators_recompute_universe: {
+          method: 'POST',
+          endpoint: '/market-data/admin/indicators/recompute-universe',
+        },
+        admin_snapshots_history_record: {
+          method: 'POST',
+          endpoint: '/market-data/admin/snapshots/history/record',
+        },
+      };
+      const task = taskEndpoints[taskName];
+      if (!task) {
+        throw new Error(`Unsupported task: ${taskName}`);
+      }
+      await runTaskEndpoint(task.endpoint, task.method);
       toast.success(label || taskName);
       await refreshCoverage();
       void loadTaskStatus();
+      return true;
     } catch (err: any) {
-      toast.error(err?.message || `Failed to run ${label || taskName}`);
+      toast.error(err?.response?.data?.detail || err?.message || `Failed to run ${label || taskName}`);
+      return false;
     }
   };
 
@@ -347,7 +397,7 @@ const AdminDashboard: React.FC = () => {
     setToggling5m(true);
     const next = !backfill5mEnabled;
     try {
-      const res = await api.post('/market-data/admin/coverage/backfill-5m/toggle', { enabled: next });
+      const res = await api.post('/market-data/admin/backfill/5m/toggle', { enabled: next });
       const flag = res?.data?.backfill_5m_enabled ?? next;
       setBackfill5mEnabled(Boolean(flag));
       toast.success(`5m backfill ${flag ? 'enabled' : 'disabled'}`);
@@ -381,29 +431,9 @@ const AdminDashboard: React.FC = () => {
     return formatDateTime(ts, timezone);
   };
 
-  const sortedTaskActions = React.useMemo(() => {
-    return [...taskActions]
-      .filter((action) => typeof action?.task_name === 'string' && action.task_name.length > 0)
-      .sort((a, b) => String(a.task_name).localeCompare(String(b.task_name)));
-  }, [taskActions]);
-
-  const getParamValue = (taskName: string, paramName: string, fallback?: string | number | boolean) => {
-    const overrides = taskActionParams[taskName];
-    if (overrides && overrides[paramName] !== undefined) {
-      return overrides[paramName];
-    }
-    if (fallback === undefined || fallback === null) return '';
-    return String(fallback);
-  };
-
-  const setParamValue = (taskName: string, paramName: string, value: string) => {
-    setTaskActionParams((prev) => ({
-      ...prev,
-      [taskName]: {
-        ...(prev[taskName] || {}),
-        [paramName]: value,
-      },
-    }));
+  const runTaskEndpoint = async (endpoint: string, method: 'GET' | 'POST' = 'POST') => {
+    if (method === 'GET') return api.get(endpoint);
+    return api.post(endpoint);
   };
 
   const dailyFillSeries = (coverage as any)?.daily?.fill_by_date as
@@ -635,7 +665,7 @@ const AdminDashboard: React.FC = () => {
               <Tooltip.Root openDelay={200} positioning={{ placement: 'top' }}>
                 <Tooltip.Trigger asChild>
                   <Badge variant="subtle" cursor="help">
-                    Runs: monitor/restore
+                    Runs: monitor/backfill
                   </Badge>
                 </Tooltip.Trigger>
                 <Tooltip.Positioner>
@@ -645,7 +675,7 @@ const AdminDashboard: React.FC = () => {
                         Monitor: {fmtLastRun('admin_coverage_refresh')}
                       </Text>
                       <Text fontSize="xs" color="fg.muted">
-                        Restore: {fmtLastRun('admin_coverage_restore')}
+                        Backfill: {fmtLastRun('admin_coverage_backfill')}
                       </Text>
                     </Box>
                   </Tooltip.Content>
@@ -673,10 +703,10 @@ const AdminDashboard: React.FC = () => {
             </Box>
           </Box>
           <Box mt={4} display="flex" flexDirection="column" gap={2}>
-            <Text fontSize="sm" fontWeight="semibold">Guided Actions</Text>
+            <Text fontSize="sm" fontWeight="semibold">Backfill Actions</Text>
             <Box display="flex" gap={2} flexWrap="wrap">
               <Button colorScheme="brand" size="sm" loading={restoringDaily} onClick={() => void restoreDailyCoverageTracked()}>
-                Restore Daily Coverage (Tracked)
+                Backfill Daily Coverage (Tracked)
               </Button>
               <Button variant="outline" size="sm" loading={backfillingStale} onClick={() => void backfillStaleDailyOnly()}>
                 Backfill Daily (Stale Only)
@@ -690,123 +720,12 @@ const AdminDashboard: React.FC = () => {
                 <Text fontSize="xs" color="fg.muted" mb={2}>
                   Advanced controls (use when debugging). These are more granular and may be slower/noisier.
                 </Text>
-                <Box mb={2}>
-                  <Text fontSize="xs" color="fg.muted">
-                    Operator guidance:
-                  </Text>
-                  <Box as="ul" pl={4} mt={1} color="fg.muted" fontSize="xs">
-                    <Box as="li">Use <b>Restore Daily Coverage</b> after missing days (it catches up daily + recomputes indicators).</Box>
-                    <Box as="li">Use <b>Snapshot History</b> backfills for analytics/backtesting (since-date for deep repairs, period for rolling windows).</Box>
-                    <Box as="li">Use <b>Sanity Check (DB)</b> to verify latest daily + snapshot-history counts without relying on cache.</Box>
-                  </Box>
-                </Box>
                 <Box
-                  borderWidth="1px"
-                  borderColor="border.subtle"
-                  borderRadius="md"
-                  bg="bg.card"
-                  px={3}
-                  py={2}
+                  mt={3}
+                  display="grid"
+                  gridTemplateColumns={{ base: '1fr', lg: '1.1fr 0.9fr' }}
+                  gap={3}
                 >
-                  <HStack justify="space-between" mb={2}>
-                    <Text fontSize="xs" fontWeight="semibold" color="fg.default">
-                      Task Catalog (from backend)
-                    </Text>
-                    <Button size="xs" variant="ghost" onClick={() => void loadTaskActions()}>
-                      Reload
-                    </Button>
-                  </HStack>
-                  {taskActionsLoading ? (
-                    <Text fontSize="xs" color="fg.muted">
-                      Loading task catalog…
-                    </Text>
-                  ) : sortedTaskActions.length ? (
-                    <VStack align="stretch" gap={2}>
-                      {sortedTaskActions.map((action) => (
-                        <Box key={action.task_name} borderWidth="1px" borderColor="border.subtle" borderRadius="md" p={2}>
-                          <HStack justify="space-between" align="flex-start">
-                            <Box>
-                              <HStack gap={2} align="center">
-                                <Badge size="sm" variant="subtle">
-                                  {String(action.method || 'POST').toUpperCase()}
-                                </Badge>
-                                <Text fontSize="xs" fontWeight="semibold">
-                                  {action.task_name}
-                                </Text>
-                              </HStack>
-                              {action.endpoint ? (
-                                <Text fontSize="xs" color="fg.muted">
-                                  {action.endpoint}
-                                </Text>
-                              ) : null}
-                              {action.description ? (
-                                <Text fontSize="xs" color="fg.muted">
-                                  {action.description}
-                                </Text>
-                              ) : null}
-                              <Text fontSize="xs" color="fg.muted" mt={1}>
-                                Last run: {fmtLastRun(action.status_task || action.task_name) || '—'}
-                              </Text>
-                              {Array.isArray(action.params_schema) && action.params_schema.length ? (
-                                <Box mt={2} display="flex" flexDirection="column" gap={2}>
-                                  {action.params_schema.map((param) => (
-                                    <HStack key={`${action.task_name}:${param.name}`} gap={2} align="center">
-                                      <Text fontSize="xs" color="fg.muted" minW="88px">
-                                        {param.name}
-                                      </Text>
-                                      <input
-                                        type={param.type === 'int' || param.type === 'number' ? 'number' : 'text'}
-                                        value={getParamValue(action.task_name, param.name, param.default)}
-                                        onChange={(e) => setParamValue(action.task_name, param.name, e.target.value)}
-                                        min={param.min}
-                                        max={param.max}
-                                        style={{
-                                          fontSize: 12,
-                                          padding: '4px 6px',
-                                          borderRadius: 8,
-                                          border: '1px solid var(--chakra-colors-border-subtle)',
-                                          background: 'var(--chakra-colors-bg-input)',
-                                          color: 'var(--chakra-colors-fg-default)',
-                                          width: 120,
-                                        }}
-                                      />
-                                      {param.description ? (
-                                        <Text fontSize="xs" color="fg.muted">
-                                          {param.description}
-                                        </Text>
-                                      ) : null}
-                                    </HStack>
-                                  ))}
-                                </Box>
-                              ) : null}
-                            </Box>
-                            <Button
-                              size="xs"
-                              variant="outline"
-                              onClick={() => {
-                                const params = Array.isArray(action.params_schema)
-                                  ? action.params_schema.reduce<Record<string, string>>((acc, param) => {
-                                      const value = getParamValue(action.task_name, param.name, param.default);
-                                      if (value !== '') acc[param.name] = String(value);
-                                      return acc;
-                                    }, {})
-                                  : undefined;
-                                void runNamedTask(action.task_name, action.description || action.task_name, params);
-                              }}
-                            >
-                              Run
-                            </Button>
-                          </HStack>
-                        </Box>
-                      ))}
-                    </VStack>
-                  ) : (
-                    <Text fontSize="xs" color="fg.muted">
-                      No task actions returned by the backend.
-                    </Text>
-                  )}
-                </Box>
-                <Box mt={3} display="flex" flexDirection="column" gap={3}>
                   <Box
                     borderWidth="1px"
                     borderColor="border.subtle"
@@ -815,120 +734,121 @@ const AdminDashboard: React.FC = () => {
                     px={3}
                     py={2}
                   >
-                    <Text fontSize="xs" fontWeight="semibold" color="fg.default" mb={2}>
-                      Universe
-                    </Text>
-                    <Box display="flex" gap={2} flexWrap="wrap">
-                      <Button size="xs" variant="outline" onClick={() => void runNamedTask('market_indices_constituents_refresh', 'Refresh constituents')}>
-                        Refresh Constituents
-                      </Button>
-                      <Button size="xs" variant="outline" onClick={() => void runNamedTask('market_universe_tracked_refresh', 'Update tracked')}>
-                        Update Tracked
-                      </Button>
+                    <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
+                      <Text fontSize="xs" fontWeight="semibold" color="fg.default">
+                        Backfill
+                      </Text>
                     </Box>
-                  </Box>
-
-                  <Box
-                    borderWidth="1px"
-                    borderColor="border.subtle"
-                    borderRadius="md"
-                    bg="bg.card"
-                    px={3}
-                    py={2}
-                  >
-                    <Text fontSize="xs" fontWeight="semibold" color="fg.default" mb={2}>
-                      Backfills (since)
+                    <Text fontSize="xs" color="fg.muted" mb={2}>
+                      Use “Backfill Daily Coverage” for missing days. Snapshot History backfills are for analytics/backtesting.
                     </Text>
-                    <Box display="flex" gap={2} flexWrap="wrap">
-                      <HStack gap={2} flexWrap="wrap" align="center">
-                        <Text fontSize="xs" color="fg.muted">
+                    <Box display="flex" flexDirection="column" gap={3}>
+                      <Box>
+                        <Text fontSize="xs" color="fg.muted" mb={1}>
                           Since date
                         </Text>
-                        <input
-                          type="date"
-                          value={sinceDate}
-                          onChange={(e) => {
-                            setSinceDateTouched(true);
-                            setSinceDate(e.target.value);
-                          }}
-                          style={{
-                            fontSize: 12,
-                            padding: '6px 8px',
-                            borderRadius: 10,
-                            border: '1px solid var(--chakra-colors-border-subtle)',
-                            background: 'var(--chakra-colors-bg-input)',
-                            color: 'var(--chakra-colors-fg-default)',
-                          }}
-                        />
-                      </HStack>
-                      <Button size="xs" variant="outline" onClick={() => void backfillDailySinceDate()}>
-                        Backfill Daily Bars (since)
-                      </Button>
-                      <Button size="xs" variant="outline" onClick={() => void backfillSnapshotHistorySinceDate()}>
-                        Backfill Snapshot History (since)
-                      </Button>
-                      <Button size="xs" colorScheme="brand" loading={repairingSinceDate} onClick={() => void repairSinceDate()}>
-                        Repair Since Date
-                      </Button>
-                    </Box>
-                    <Text mt={2} fontSize="xs" color="fg.muted">
-                      Default since date uses last green snapshot date when available.
-                      Repair runs daily backfill → recompute indicators → snapshot history in order.
-                    </Text>
-                  </Box>
-
-                  <Box
-                    borderWidth="1px"
-                    borderColor="border.subtle"
-                    borderRadius="md"
-                    bg="bg.card"
-                    px={3}
-                    py={2}
-                  >
-                    <Text fontSize="xs" fontWeight="semibold" color="fg.default" mb={2}>
-                      Backfills (period)
-                    </Text>
-                    <Box display="flex" gap={2} flexWrap="wrap">
-                      <HStack gap={2} flexWrap="wrap">
-                        <Text fontSize="xs" color="fg.muted">
+                        <Box display="flex" gap={2} flexWrap="wrap" alignItems="center">
+                          <input
+                            type="date"
+                            value={sinceDate}
+                            onChange={(e) => {
+                              setSinceDateTouched(true);
+                              setSinceDate(e.target.value);
+                            }}
+                            style={{
+                              fontSize: 12,
+                              padding: '6px 8px',
+                              borderRadius: 10,
+                              border: '1px solid var(--chakra-colors-border-subtle)',
+                              background: 'var(--chakra-colors-bg-input)',
+                              color: 'var(--chakra-colors-fg-default)',
+                            }}
+                          />
+                          <Button size="xs" variant="outline" onClick={() => void backfillDailySinceDate()}>
+                            Backfill Daily Bars (since)
+                          </Button>
+                          <Button size="xs" variant="outline" onClick={() => void backfillSnapshotHistorySinceDate()}>
+                            Backfill Snapshot History (since)
+                          </Button>
+                        </Box>
+                        <Box mt={2} display="flex" gap={2} flexWrap="wrap" alignItems="center">
+                          <Button size="xs" colorScheme="brand" loading={backfillingSinceDate} onClick={() => void backfillSinceDate()}>
+                            Backfill Full Flow (since date)
+                          </Button>
+                          <HStack gap={1}>
+                            <Badge size="sm" variant="subtle">Daily</Badge>
+                            <Text fontSize="xs" color="fg.muted">-&gt;</Text>
+                            <Badge size="sm" variant="subtle">Indicators</Badge>
+                            <Text fontSize="xs" color="fg.muted">-&gt;</Text>
+                            <Badge size="sm" variant="subtle">History</Badge>
+                          </HStack>
+                          <Text fontSize="xs" color="fg.muted">
+                            Uses date picker (defaults to last green snapshot when available).
+                          </Text>
+                        </Box>
+                      </Box>
+                      <Box>
+                        <Text fontSize="xs" color="fg.muted" mb={1}>
                           Period
                         </Text>
-                        <select
-                          aria-label="Snapshot history period"
-                          value={snapshotHistoryPeriod}
-                          onChange={(e) => setSnapshotHistoryPeriod(e.target.value as any)}
-                          style={{
-                            fontSize: 12,
-                            padding: '6px 8px',
-                            borderRadius: 10,
-                            border: '1px solid var(--chakra-colors-border-subtle)',
-                            background: 'var(--chakra-colors-bg-input)',
-                            color: 'var(--chakra-colors-fg-default)',
-                          }}
-                        >
-                          <option value="6mo">6mo (~126d)</option>
-                          <option value="1y">1y (~252d)</option>
-                          <option value="2y">2y (~504d)</option>
-                          <option value="5y">5y (~1260d)</option>
-                          <option value="max">max (≤3000d)</option>
-                        </select>
-                        <Button
-                          size="xs"
-                          variant="outline"
-                          loading={backfillingDailyPeriod}
-                          onClick={() => void backfillDailyBarsPeriod()}
-                        >
-                          Backfill Daily Bars (period)
-                        </Button>
-                        <Button
-                          size="xs"
-                          variant="outline"
-                          loading={backfillingSnapshotHistory}
-                          onClick={() => void backfillSnapshotHistoryPeriod()}
-                        >
-                          Backfill Snapshot History (period)
-                        </Button>
-                      </HStack>
+                        <Box display="flex" gap={2} flexWrap="wrap" alignItems="center">
+                          <select
+                            aria-label="Snapshot history period"
+                            value={snapshotHistoryPeriod}
+                            onChange={(e) => setSnapshotHistoryPeriod(e.target.value as any)}
+                            style={{
+                              fontSize: 12,
+                              padding: '6px 8px',
+                              borderRadius: 10,
+                              border: '1px solid var(--chakra-colors-border-subtle)',
+                              background: 'var(--chakra-colors-bg-input)',
+                              color: 'var(--chakra-colors-fg-default)',
+                            }}
+                          >
+                            <option value="6mo">6mo (~126d)</option>
+                            <option value="1y">1y (~252d)</option>
+                            <option value="2y">2y (~504d)</option>
+                            <option value="5y">5y (~1260d)</option>
+                            <option value="max">max (≤3000d)</option>
+                          </select>
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            loading={backfillingDailyPeriod}
+                            onClick={() => void backfillDailyBarsPeriod()}
+                          >
+                            Backfill Daily Bars (period)
+                          </Button>
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            loading={backfillingSnapshotHistory}
+                            onClick={() => void backfillSnapshotHistoryPeriod()}
+                          >
+                            Backfill Snapshot History (period)
+                          </Button>
+                        </Box>
+                        <Box mt={2} display="flex" gap={2} flexWrap="wrap" alignItems="center">
+                          <Button
+                            size="xs"
+                            colorScheme="brand"
+                            loading={backfillingPeriodFlow}
+                            onClick={() => void backfillPeriodFlow()}
+                          >
+                            Backfill Full Flow (period)
+                          </Button>
+                          <HStack gap={1}>
+                            <Badge size="sm" variant="subtle">Daily</Badge>
+                            <Text fontSize="xs" color="fg.muted">-&gt;</Text>
+                            <Badge size="sm" variant="subtle">Indicators</Badge>
+                            <Text fontSize="xs" color="fg.muted">-&gt;</Text>
+                            <Badge size="sm" variant="subtle">History</Badge>
+                          </HStack>
+                          <Text fontSize="xs" color="fg.muted">
+                            Runs the full flow for the selected period.
+                          </Text>
+                        </Box>
+                      </Box>
                     </Box>
                   </Box>
 
@@ -940,47 +860,61 @@ const AdminDashboard: React.FC = () => {
                     px={3}
                     py={2}
                   >
-                    <Text fontSize="xs" fontWeight="semibold" color="fg.default" mb={2}>
-                      Compute
-                    </Text>
-                    <Box display="flex" gap={2} flexWrap="wrap">
-                      <Button size="xs" variant="outline" onClick={() => void runNamedTask('admin_indicators_recompute_universe', 'Recompute indicators')}>
-                        Recompute Indicators (Market Snapshot)
-                      </Button>
-                      <Button size="xs" variant="outline" onClick={() => void runNamedTask('admin_snapshots_history_record', 'Record history')}>
-                        Record History
-                      </Button>
-                    </Box>
-                    <Text mt={2} fontSize="xs" color="fg.muted">
-                      If Stage/RS look empty, run “Recompute Indicators (Market Snapshot)”.
-                    </Text>
-                  </Box>
-
-                  <Box
-                    borderWidth="1px"
-                    borderColor="border.subtle"
-                    borderRadius="md"
-                    bg="bg.card"
-                    px={3}
-                    py={2}
-                  >
-                    <Text fontSize="xs" fontWeight="semibold" color="fg.default" mb={2}>
-                      Diagnostics
-                    </Text>
-                    <Box display="flex" gap={2} flexWrap="wrap">
-                      <Button size="xs" variant="outline" loading={sanityLoading} onClick={() => void runSanityCheck()}>
-                        Sanity Check (DB)
-                      </Button>
-                      <Button size="xs" variant="outline" loading={sendingDiscord} onClick={() => void sendSnapshotDigestToDiscord()}>
-                        Send Snapshot Digest to Discord
-                      </Button>
-                    </Box>
-                    {sanityData?.benchmark?.ok === false ? (
-                      <Text mt={2} fontSize="xs" color="red.500">
-                        SPY history is missing ({sanityData?.benchmark?.daily_bars || 0}/{sanityData?.benchmark?.required_bars || 0}).
-                        Stage/RS cannot be computed until daily bars are backfilled.
+                    <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+                      <Text fontSize="xs" fontWeight="semibold" color="fg.default">
+                        Maintenance
                       </Text>
-                    ) : null}
+                      <Badge size="sm" variant="subtle">
+                        ops
+                      </Badge>
+                    </Box>
+                    <Box display="flex" flexDirection="column" gap={2}>
+                      <Text fontSize="xs" color="fg.muted">
+                        Universe
+                      </Text>
+                      <Box display="flex" gap={2} flexWrap="wrap">
+                        <Button size="xs" variant="outline" onClick={() => void runNamedTask('market_indices_constituents_refresh', 'Refresh constituents')}>
+                          Refresh Constituents
+                        </Button>
+                        <Button size="xs" variant="outline" onClick={() => void runNamedTask('market_universe_tracked_refresh', 'Update tracked')}>
+                          Update Tracked
+                        </Button>
+                      </Box>
+                      <Text fontSize="xs" color="fg.muted" mt={2}>
+                        Compute
+                      </Text>
+                      <Box display="flex" gap={2} flexWrap="wrap">
+                        <Button size="xs" variant="outline" onClick={() => void runNamedTask('admin_indicators_recompute_universe', 'Recompute indicators')}>
+                          Recompute Indicators (Market Snapshot)
+                        </Button>
+                        <Button size="xs" variant="outline" onClick={() => void runNamedTask('admin_snapshots_history_record', 'Record history')}>
+                          Record History
+                        </Button>
+                      </Box>
+                      <Text mt={2} fontSize="xs" color="fg.muted">
+                        Diagnostics
+                      </Text>
+                      <Text fontSize="xs" color="fg.muted">
+                        Sanity Check verifies DB counts without relying on cache.
+                      </Text>
+                      <Box display="flex" gap={2} flexWrap="wrap">
+                        <Button size="xs" variant="outline" loading={sanityLoading} onClick={() => void runSanityCheck()}>
+                          Sanity Check (DB)
+                        </Button>
+                        <Button size="xs" variant="outline" loading={sendingDiscord} onClick={() => void sendSnapshotDigestToDiscord()}>
+                          Send Snapshot Digest to Discord
+                        </Button>
+                      </Box>
+                      {sanityData?.benchmark?.ok === false ? (
+                        <Text mt={2} fontSize="xs" color="red.500">
+                          SPY history is missing ({sanityData?.benchmark?.daily_bars || 0}/{sanityData?.benchmark?.required_bars || 0}).
+                          Stage/RS cannot be computed until daily bars are backfilled.
+                        </Text>
+                      ) : null}
+                      <Text mt={2} fontSize="xs" color="fg.muted">
+                        If Stage/RS look empty, run “Recompute Indicators (Market Snapshot)”.
+                      </Text>
+                    </Box>
                   </Box>
                 </Box>
               </Box>

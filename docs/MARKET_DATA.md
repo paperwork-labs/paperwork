@@ -114,10 +114,10 @@ Notes on retention
    - `admin_snapshots_history_record` writes one row per `(symbol, as_of_date)` into `MarketAnalysisHistory` with headline fields + full payload
 6) Scheduling
    - Celery Beat triggers:
-     - nightly guided daily restore → `admin_coverage_restore`
+     - nightly guided daily backfill → `admin_coverage_backfill`
      - hourly coverage cache refresh → `admin_coverage_refresh`
-    - nightly 5m backfill → `admin_backfill_5m`
-    - retention enforcement (5m) → `admin_retention_enforce`
+     - nightly 5m backfill → `admin_backfill_5m`
+     - retention enforcement (5m) → `admin_retention_enforce`
 
 ## Intraday (5m) Backfill and Retention
 - Persist 5m bars for tracked symbols (default lookback: 5–30 days)
@@ -156,8 +156,8 @@ Notes on retention
 
 ## Universe Bootstrap Runbook
 
-This runbook has been replaced by the guided operator flow below (“Restore Daily Coverage (Tracked)”),
-which encapsulates the daily restore chain without exposing redundant backfill endpoints.
+This runbook has been replaced by the guided operator flow below (“Backfill Daily Coverage (Tracked)”),
+which encapsulates the daily backfill chain without exposing redundant backfill endpoints.
 
 Troubleshooting:
 - If Refresh fetched 0 members: check provider reachability; FMP quota; Wikipedia blocked; rerun.
@@ -202,25 +202,25 @@ Troubleshooting:
 
 ### Manual refresh / UI behavior
 
-- **Admin Dashboard “Refresh coverage now”** calls `POST /api/v1/market-data/admin/coverage/refresh` which enqueues `admin_coverage_refresh`.
+- **Admin Dashboard “Refresh coverage now”** calls `POST /api/v1/market-data/admin/backfill/coverage/refresh` which enqueues `admin_coverage_refresh`.
 - **Auto-refresh**: Admin Dashboard will auto-trigger a refresh when the cached snapshot is missing or older than ~15 minutes, but still renders immediately using the current response.
 - **Cache vs DB**: `GET /api/v1/market-data/coverage` returns `meta.source` (`cache` or `db`) and `meta.updated_at` so you can see whether you’re looking at the last monitor run or a direct DB fallback.
 
 ## Operator Runbook (recommended)
 
-### Goal: restore Daily coverage to green (tracked universe)
+### Goal: backfill Daily coverage to green (tracked universe)
 
-- **Use this when**: Coverage shows `>48h` or `none` buckets, or Daily % drops.\n
-- **Primary button** (Settings → Admin → Dashboard): **Restore Daily Coverage (Tracked)**\n
-  - Enqueues: `admin_coverage_restore`\n
-  - What it does (no 5m): refresh constituents → update tracked → backfill last-200 daily bars (tracked) → recompute indicators → record history → refresh coverage cache.\n
-  - Snapshot history window: controlled by an explicit `history_days` parameter (current API/cron default is 20 days), so the “days since last successful run” auto behavior in `bootstrap_daily_coverage_tracked` does not apply to this path unless `history_days` is omitted.\n
+- **Use this when**: Coverage shows `>48h` or `none` buckets, or Daily % drops.
+- **Primary button** (Settings → Admin → Dashboard): **Backfill Daily Coverage (Tracked)**
+  - Enqueues: `admin_coverage_backfill`
+  - What it does (no 5m): refresh constituents → update tracked → backfill last-200 daily bars (tracked) → recompute indicators → record history → refresh coverage cache.
+  - Snapshot history window: controlled by an explicit `history_days` parameter (current API/cron default is 20 days), so the “days since last successful run” auto behavior in `bootstrap_daily_coverage_tracked` does not apply to this path unless `history_days` is omitted.
 
 ### Fast fix: stale-only backfill
 
-- **Use this when**: Only a subset of symbols are stale.\n
-- Click **Backfill Daily (Stale Only)**\n
-  - Calls: `POST /api/v1/market-data/admin/coverage/backfill-stale` then refreshes coverage.\n
+- **Use this when**: Only a subset of symbols are stale.
+- Click **Backfill Daily (Stale Only)**
+  - Calls: `POST /api/v1/market-data/admin/backfill/coverage/stale` then refreshes coverage.
 
 ### Advanced: index-only vs tracked-universe
 

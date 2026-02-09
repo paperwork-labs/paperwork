@@ -64,7 +64,7 @@ if ENABLE_CELERY_BEAT:
             "args": (),
             "kwargs": {"sample_limit": 25},
         },
-        "admin_coverage_restore": {
+        "admin_coverage_backfill": {
             "task": "backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked",
             "schedule": crontab(hour=3, minute=0),
             "args": (),
