@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "AxiomFolio Portfolio Management Platform Frontend",
   "private": true,
+  "type": "module",
   "dependencies": {
     "@chakra-ui/react": "^3.32.0",
     "@emotion/react": "^11.14.0",
