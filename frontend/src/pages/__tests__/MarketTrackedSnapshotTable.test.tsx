@@ -37,7 +37,9 @@ describe('MarketTracked snapshot table', () => {
             current_price: 10,
             market_cap: 1_000_000_000,
             stage_label: '2B',
-            stage_label_5d_ago: '2A',
+            current_stage_days: 7,
+            previous_stage_label: '2A',
+            previous_stage_days: 12,
             rs_mansfield_pct: 12.3,
             sma_50: 9.5,
             ema_8: 9.9,
@@ -57,6 +59,9 @@ describe('MarketTracked snapshot table', () => {
 
     // Spot-check representative Level 1–4 headers
     expect(await screen.findByText('Stage')).toBeTruthy();
+    expect(await screen.findByText('Time in Stage')).toBeTruthy();
+    expect(await screen.findByText('Previous Stage')).toBeTruthy();
+    expect(await screen.findByText('Time in Previous Stage')).toBeTruthy();
     expect(await screen.findByText('RS (Mansfield)')).toBeTruthy();
     expect(await screen.findByText('SMA 50')).toBeTruthy();
     expect(await screen.findByText('EMA 8')).toBeTruthy();

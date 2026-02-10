@@ -30,6 +30,7 @@ from backend.services.market.constants import (
     FUNDAMENTAL_FIELDS_CORE,
     FUNDAMENTAL_FIELDS_CORE_WITH_NAME,
 )
+from backend.services.market.stage_utils import compute_stage_run_lengths
 from backend.services.market.dataframe_utils import price_data_rows_to_dataframe
 from backend.models import Position
 from backend.config import settings
@@ -1509,11 +1510,22 @@ def backfill_snapshot_history_last_n_days(
 
                     # Stage / RS (best-effort; may be NaN early if insufficient weekly history)
                     stage_daily = pd.DataFrame(index=df.index)
+                    stage_run_by_date: dict = {}
                     if not spy_df.empty:
                         stage_daily = compute_weinstein_stage_series_from_daily(
                             df.iloc[::-1].copy(),
                             spy_df.iloc[::-1].copy(),
                         )
+                        try:
+                            if not stage_daily.empty and "stage_label" in stage_daily.columns:
+                                labels = [
+                                    stage_daily.loc[d, "stage_label"] if d in stage_daily.index else None
+                                    for d in stage_daily.index
+                                ]
+                                run_info = compute_stage_run_lengths(labels)
+                                stage_run_by_date = dict(zip(stage_daily.index, run_info))
+                        except Exception:
+                            stage_run_by_date = {}
 
                     # Build per-date payload rows for last N trading days
                     wanted = [d for d in as_of_days if d in df.index]
@@ -1565,6 +1577,7 @@ def backfill_snapshot_history_last_n_days(
                         except Exception:
                             pass
 
+                        run_info = stage_run_by_date.get(d) if stage_run_by_date else None
                         payload = {
                             "symbol": sym,
                             "analysis_type": "technical_snapshot",
@@ -1595,6 +1608,9 @@ def backfill_snapshot_history_last_n_days(
                             "ma_bucket": ma_bucket,
                             "stage_label": stage_label if isinstance(stage_label, str) else None,
                             "stage_label_5d_ago": None,  # computed below
+                            "current_stage_days": run_info.get("current_stage_days") if run_info else None,
+                            "previous_stage_label": run_info.get("previous_stage_label") if run_info else None,
+                            "previous_stage_days": run_info.get("previous_stage_days") if run_info else None,
                             "stage_slope_pct": stage_slope_pct,
                             "stage_dist_pct": stage_dist_pct,
                             "rs_mansfield_pct": rs_mansfield_pct,
@@ -1626,6 +1642,27 @@ def backfill_snapshot_history_last_n_days(
                                     lbl = stage_5d.loc[d]
                                     if isinstance(lbl, str):
                                         r["stage_label_5d_ago"] = lbl
+                    except Exception:
+                        pass
+
+                    # Update latest snapshot stage duration fields from history backfill.
+                    try:
+                        if payload_rows and stage_run_by_date:
+                            latest_row = max(payload_rows, key=lambda r: r.get("as_of_date"))
+                            latest_date = latest_row.get("as_of_date")
+                            latest_info = stage_run_by_date.get(latest_date)
+                            if latest_info:
+                                session.query(MarketSnapshot).filter(
+                                    MarketSnapshot.symbol == sym,
+                                    MarketSnapshot.analysis_type == "technical_snapshot",
+                                ).update(
+                                    {
+                                        "current_stage_days": latest_info.get("current_stage_days"),
+                                        "previous_stage_label": latest_info.get("previous_stage_label"),
+                                        "previous_stage_days": latest_info.get("previous_stage_days"),
+                                    },
+                                    synchronize_session=False,
+                                )
                     except Exception:
                         pass
 
@@ -1701,6 +1738,86 @@ def backfill_snapshot_history_last_n_days(
             "ok" if errors == 0 else "error",
             res,
         )
+        return res
+    finally:
+        session.close()
+
+
+# ============================= Stage Duration Backfill =============================
+
+
+@shared_task(name="backend.tasks.market_data_tasks.backfill_stage_durations")
+@task_run("admin_backfill_stage_durations")
+def backfill_stage_durations() -> dict:
+    """Backfill stage duration fields for snapshot history + latest snapshots."""
+    _set_task_status("admin_backfill_stage_durations", "running")
+    session = SessionLocal()
+    try:
+        symbols = (
+            session.query(MarketSnapshotHistory.symbol)
+            .filter(MarketSnapshotHistory.analysis_type == "technical_snapshot")
+            .distinct()
+            .all()
+        )
+        symbol_list = [s[0] for s in symbols if s and s[0]]
+        processed = 0
+        updated_rows = 0
+
+        for sym in symbol_list:
+            rows = (
+                session.query(
+                    MarketSnapshotHistory.id,
+                    MarketSnapshotHistory.as_of_date,
+                    MarketSnapshotHistory.stage_label,
+                )
+                .filter(
+                    MarketSnapshotHistory.symbol == sym,
+                    MarketSnapshotHistory.analysis_type == "technical_snapshot",
+                )
+                .order_by(MarketSnapshotHistory.as_of_date.asc())
+                .all()
+            )
+            if not rows:
+                continue
+
+            run_info = compute_stage_run_lengths([r.stage_label for r in rows])
+            mappings = []
+            for row, info in zip(rows, run_info):
+                mappings.append(
+                    {
+                        "id": row.id,
+                        "current_stage_days": info.get("current_stage_days"),
+                        "previous_stage_label": info.get("previous_stage_label"),
+                        "previous_stage_days": info.get("previous_stage_days"),
+                    }
+                )
+            session.bulk_update_mappings(MarketSnapshotHistory, mappings)
+            updated_rows += len(mappings)
+
+            latest_info = run_info[-1] if run_info else {}
+            session.query(MarketSnapshot).filter(
+                MarketSnapshot.symbol == sym,
+                MarketSnapshot.analysis_type == "technical_snapshot",
+            ).update(
+                {
+                    "current_stage_days": latest_info.get("current_stage_days"),
+                    "previous_stage_label": latest_info.get("previous_stage_label"),
+                    "previous_stage_days": latest_info.get("previous_stage_days"),
+                },
+                synchronize_session=False,
+            )
+            processed += 1
+            if processed % 200 == 0:
+                session.commit()
+
+        session.commit()
+        res = {"status": "ok", "symbols": processed, "rows_updated": updated_rows}
+        _set_task_status("admin_backfill_stage_durations", "ok", res)
+        return res
+    except Exception as exc:
+        session.rollback()
+        res = {"status": "error", "error": str(exc)}
+        _set_task_status("admin_backfill_stage_durations", "error", res)
         return res
     finally:
         session.close()

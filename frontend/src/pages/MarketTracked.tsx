@@ -80,6 +80,9 @@ const MarketTracked: React.FC = () => {
     };
 
     // Keep default view compact. Level 1–4 fields are still sortable and visible via horizontal scroll.
+    const fmtDays = (v: any) =>
+      typeof v === 'number' && Number.isFinite(v) ? `${Math.max(0, Math.round(v))}d` : '—';
+
     return [
       { key: 'symbol', header: 'Symbol', accessor: (r) => r.symbol, sortable: true, sortType: 'string' },
       { key: 'as_of_timestamp', header: 'As of', accessor: (r) => r.as_of_timestamp || r.analysis_timestamp, sortable: true, sortType: 'date', render: (v) => fmtTs(v) },
@@ -118,12 +121,21 @@ const MarketTracked: React.FC = () => {
           { label: '4', value: '4' },
           { label: 'UNKNOWN', value: 'UNKNOWN' },
         ],
-        render: (v, r) => stageBadge(v, r.stage_label_5d_ago),
+        render: (v, r) => stageBadge(v, r.previous_stage_label),
       },
       {
-        key: 'stage_label_5d_ago',
-        header: 'Stage (5d ago)',
-        accessor: (r) => r.stage_label_5d_ago,
+        key: 'current_stage_days',
+        header: 'Time in Stage',
+        accessor: (r) => r.current_stage_days,
+        sortable: true,
+        sortType: 'number',
+        isNumeric: true,
+        render: (v) => fmtDays(v),
+      },
+      {
+        key: 'previous_stage_label',
+        header: 'Previous Stage',
+        accessor: (r) => r.previous_stage_label,
         sortable: true,
         sortType: 'string',
         filterType: 'select',
@@ -138,6 +150,15 @@ const MarketTracked: React.FC = () => {
           { label: 'UNKNOWN', value: 'UNKNOWN' },
         ],
         render: (v) => <Badge variant="subtle" colorPalette="gray">{String(v || 'UNKNOWN')}</Badge>,
+      },
+      {
+        key: 'previous_stage_days',
+        header: 'Time in Previous Stage',
+        accessor: (r) => r.previous_stage_days,
+        sortable: true,
+        sortType: 'number',
+        isNumeric: true,
+        render: (v) => fmtDays(v),
       },
 
       // Level 3

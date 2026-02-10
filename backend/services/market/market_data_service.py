@@ -1085,6 +1085,30 @@ class MarketDataService:
                             snapshot["stage_label_5d_ago"] = stage_prev.get("stage_label")
                     except Exception:
                         pass
+                # Stage duration fields (prefer latest history row if available)
+                try:
+                    from backend.models.market_data import MarketSnapshotHistory
+
+                    latest_hist = (
+                        db.query(MarketSnapshotHistory)
+                        .filter(
+                            MarketSnapshotHistory.symbol == symbol,
+                            MarketSnapshotHistory.analysis_type == "technical_snapshot",
+                        )
+                        .order_by(MarketSnapshotHistory.as_of_date.desc())
+                        .first()
+                    )
+                    if latest_hist:
+                        for key in (
+                            "current_stage_days",
+                            "previous_stage_label",
+                            "previous_stage_days",
+                        ):
+                            val = getattr(latest_hist, key, None)
+                            if val is not None:
+                                snapshot[key] = val
+                except Exception:
+                    pass
         except Exception:
             pass
         # Fundamentals enrichment (reuse from latest snapshot if present; otherwise fetch once)

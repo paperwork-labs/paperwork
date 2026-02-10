@@ -179,6 +179,9 @@ class MarketSnapshot(Base):
     # Stage analysis (Weinstein)
     stage_label = Column(String(10))  # e.g., '1', '2A', '2B', '2C', '3', '4'
     stage_label_5d_ago = Column(String(10))
+    current_stage_days = Column(Integer)
+    previous_stage_label = Column(String(10))
+    previous_stage_days = Column(Integer)
     stage_slope_pct = Column(Float)
     stage_dist_pct = Column(Float)
 
@@ -279,6 +282,9 @@ class MarketSnapshotHistory(Base):
     rs_mansfield_pct = Column(Float)
     stage_label = Column(String(10))
     stage_label_5d_ago = Column(String(10))
+    current_stage_days = Column(Integer)
+    previous_stage_label = Column(String(10))
+    previous_stage_days = Column(Integer)
     last_earnings = Column(DateTime)
     next_earnings = Column(DateTime)
     pe_ttm = Column(Float)
