@@ -5,7 +5,7 @@ services:
     plan: standard
     dockerfilePath: ./Dockerfile.backend
     healthCheckPath: /health
-    autoDeploy: false
+    autoDeploy: true
     envVars:
       - key: ENVIRONMENT
         value: production
@@ -49,7 +49,7 @@ services:
     runtime: docker
     plan: standard
     dockerfilePath: ./Dockerfile.backend
-    autoDeploy: false
+    autoDeploy: true
     envVars:
       - key: ENVIRONMENT
         value: production
@@ -79,7 +79,7 @@ services:
   - type: web
     name: axiomfolio-frontend
     runtime: static
-    autoDeploy: false
+    autoDeploy: true
     buildCommand: cd frontend && rm -rf node_modules package-lock.json && npm install && npm run build
     staticPublishPath: frontend/dist
     envVars:
