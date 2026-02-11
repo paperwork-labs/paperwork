@@ -193,8 +193,12 @@ const DashboardLayout: React.FC = () => {
   const [headerStats, setHeaderStats] = useState<{ label: string; sublabel: string }>({ label: 'Combined Portfolio', sublabel: '' });
   type NotificationItem = { id: string; title: string; summary: string; details: string; createdAt: string };
   // Placeholder data source until backend notification feed is wired.
-  const [notifications] = useState<NotificationItem[]>([]);
+  const notifications: NotificationItem[] = [];
   const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
+  const marketOnly = appSettingsReady ? Boolean(appSettings?.market_only_mode) : true;
+  const isAdmin = user?.role === 'admin';
+  const portfolioEnabled = isAdmin || (!marketOnly && Boolean(appSettings?.portfolio_enabled));
+  const strategyEnabled = isAdmin || (!marketOnly && Boolean(appSettings?.strategy_enabled));
 
   useEffect(() => {
     try {
@@ -214,8 +218,24 @@ const DashboardLayout: React.FC = () => {
     }
   }, [location.hash, location.pathname, location.search]);
 
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount || 0);
+  const formatSignedCurrency = (amount: number) => {
+    const f = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Math.abs(amount || 0));
+    return `${(amount || 0) >= 0 ? '+' : '-'}${f}`;
+  };
+
+  const sidebarWidth = isSidebarOpen ? 64 : 16;
+  const defaultTotals = { value: 0, dayPnL: 0, positions: 0 };
+  const defaultHeaderStats = { label: 'Combined Portfolio', sublabel: '' };
+
   useEffect(() => {
     const load = async () => {
+      if (!appSettingsReady || !portfolioEnabled) {
+        setTotals(defaultTotals);
+        setHeaderStats(defaultHeaderStats);
+        return;
+      }
       try {
         const res = await portfolioApi.getLive();
         const data = (res as any)?.data || res;
@@ -229,25 +249,13 @@ const DashboardLayout: React.FC = () => {
           sublabel: `${formatCurrency(value)} • ${formatSignedCurrency(dayPnL)}`,
         });
       } catch (e) {
-        // leave defaults
+        // Leave safe defaults for unavailable portfolio data.
+        setTotals(defaultTotals);
+        setHeaderStats(defaultHeaderStats);
       }
     };
     load();
-  }, []);
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount || 0);
-  const formatSignedCurrency = (amount: number) => {
-    const f = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Math.abs(amount || 0));
-    return `${(amount || 0) >= 0 ? '+' : '-'}${f}`;
-  };
-
-  const sidebarWidth = isSidebarOpen ? 64 : 16;
-
-  const marketOnly = appSettingsReady ? Boolean(appSettings?.market_only_mode) : true;
-  const isAdmin = user?.role === 'admin';
-  const portfolioEnabled = isAdmin || (!marketOnly && Boolean(appSettings?.portfolio_enabled));
-  const strategyEnabled = isAdmin || (!marketOnly && Boolean(appSettings?.strategy_enabled));
+  }, [appSettingsReady, portfolioEnabled]);
 
   const isPathActive = React.useCallback((itemPath: string) => {
     const currentPath = location.pathname || '/';
@@ -329,12 +337,6 @@ const DashboardLayout: React.FC = () => {
             {totals.positions}
           </Text>
         </HStack>
-        <HStack justify="space-between">
-          <Text fontSize="xs" color="fg.subtle">Margin Used</Text>
-          <Text fontSize="xs" fontWeight="semibold" color="orange.400">
-            23%
-          </Text>
-        </HStack>
       </VStack>
     </Box>
   );
@@ -355,7 +357,7 @@ const DashboardLayout: React.FC = () => {
           overflowY="auto"
           transition="width 0.2s ease"
         >
-          <VStack gap={0} align="stretch">
+          <VStack gap={0} align="stretch" h="full">
             {/* Logo/Brand */}
             <Flex
               align="center"
@@ -401,7 +403,9 @@ const DashboardLayout: React.FC = () => {
             {isSidebarOpen ? <AppDivider /> : null}
 
             {/* Navigation */}
-            {renderNav({ showLabel: isSidebarOpen, px: isSidebarOpen ? 4 : 2 })}
+            <Box flex={1} overflowY="auto">
+              {renderNav({ showLabel: isSidebarOpen, px: isSidebarOpen ? 4 : 2 })}
+            </Box>
 
             {/* Portfolio footer (released only when Portfolio is enabled). */}
             {isSidebarOpen ? (portfolioEnabled ? renderPortfolioFooter() : renderHiddenFooter()) : null}
