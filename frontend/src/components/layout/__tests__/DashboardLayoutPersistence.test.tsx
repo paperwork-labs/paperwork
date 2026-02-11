@@ -82,7 +82,7 @@ describe('DashboardLayout sidebar persistence', () => {
     expect(screen.getAllByText('Tracked').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Coverage').length).toBeGreaterThan(0);
     expect(screen.queryByText('PORTFOLIO')).toBeNull();
-    expect(screen.queryByText('STRATEGY (WIP)')).toBeNull();
+    expect(screen.queryByText('STRATEGY')).toBeNull();
   });
 
   it('shows portfolio and strategy sections when section flags are enabled', () => {
@@ -95,9 +95,39 @@ describe('DashboardLayout sidebar persistence', () => {
     };
     renderWithProviders(<DashboardLayout />);
     expect(screen.getByText('PORTFOLIO')).toBeInTheDocument();
-    expect(screen.getByText('STRATEGY (WIP)')).toBeInTheDocument();
+    expect(screen.getByText('STRATEGY')).toBeInTheDocument();
     expect(screen.getByText('Workspace')).toBeInTheDocument();
     expect(screen.getByText('Strategies')).toBeInTheDocument();
+  });
+
+  it('does not keep portfolio dashboard active on portfolio categories route', () => {
+    mockedAuth = {
+      user: { username: 'tester', role: 'user' },
+      logout: vi.fn(),
+      appSettings: { market_only_mode: false, portfolio_enabled: true, strategy_enabled: true },
+      appSettingsReady: true,
+      ready: true,
+    };
+    const { container } = renderWithProviders(<DashboardLayout />, { route: '/portfolio-categories' });
+    const portfolioDashboard = container.querySelector('[data-nav-path="/portfolio"]');
+    const portfolioCategories = container.querySelector('[data-nav-path="/portfolio-categories"]');
+    expect(portfolioDashboard?.getAttribute('data-active')).toBe('false');
+    expect(portfolioCategories?.getAttribute('data-active')).toBe('true');
+  });
+
+  it('does not keep strategies active on strategy manager route', () => {
+    mockedAuth = {
+      user: { username: 'tester', role: 'user' },
+      logout: vi.fn(),
+      appSettings: { market_only_mode: false, portfolio_enabled: true, strategy_enabled: true },
+      appSettingsReady: true,
+      ready: true,
+    };
+    const { container } = renderWithProviders(<DashboardLayout />, { route: '/strategies-manager' });
+    const strategyManager = container.querySelector('[data-nav-path="/strategies-manager"]');
+    const strategies = container.querySelector('[data-nav-path="/strategies"]');
+    expect(strategyManager?.getAttribute('data-active')).toBe('true');
+    expect(strategies?.getAttribute('data-active')).toBe('false');
   });
 });
 

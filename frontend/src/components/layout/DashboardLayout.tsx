@@ -75,7 +75,7 @@ interface NavItemProps {
   showLabel?: boolean;
 }
 
-const NavItem: React.FC<NavItemProps> = ({ icon: Icon, label, isActive, onClick, badge, showLabel = true }) => {
+const NavItem: React.FC<NavItemProps> = ({ icon: Icon, label, path, isActive, onClick, badge, showLabel = true }) => {
   const hoverBg = 'bg.muted';
   const activeBg = 'bg.subtle';
   const activeColor = 'fg.default';
@@ -101,6 +101,8 @@ const NavItem: React.FC<NavItemProps> = ({ icon: Icon, label, isActive, onClick,
       }}
       onClick={onClick}
       position="relative"
+      data-nav-path={path}
+      data-active={isActive ? 'true' : 'false'}
     >
       <Icon size={18} />
       {showLabel && (
@@ -205,6 +207,14 @@ const DashboardLayout: React.FC = () => {
   const portfolioEnabled = isAdmin || (!marketOnly && Boolean(appSettings?.portfolio_enabled));
   const strategyEnabled = isAdmin || (!marketOnly && Boolean(appSettings?.strategy_enabled));
 
+  const isPathActive = React.useCallback((itemPath: string) => {
+    const currentPath = location.pathname || '/';
+    if (itemPath === '/') {
+      return currentPath === '/' || currentPath === '/market/dashboard';
+    }
+    return currentPath === itemPath || currentPath.startsWith(`${itemPath}/`);
+  }, [location.pathname]);
+
   const renderSection = (title: string, items: typeof marketItems, showLabel: boolean) => (
     <Box>
       {showLabel ? (
@@ -214,10 +224,7 @@ const DashboardLayout: React.FC = () => {
       ) : null}
       <VStack gap={1} align="stretch">
         {items.map((item) => {
-          const active =
-            item.path === '/'
-              ? location.pathname === '/' || location.pathname === '/market/dashboard'
-              : location.pathname.startsWith(item.path);
+          const active = isPathActive(item.path);
           return (
             <NavItem
               key={item.path}
@@ -241,7 +248,7 @@ const DashboardLayout: React.FC = () => {
     <VStack gap={2} px={opts.px} py={4} align="stretch">
       {renderSection('MARKET', marketItems, opts.showLabel)}
       {portfolioEnabled ? renderSection('PORTFOLIO', portfolioItems, opts.showLabel) : null}
-      {strategyEnabled ? renderSection('STRATEGY (WIP)', strategyItems, opts.showLabel) : null}
+      {strategyEnabled ? renderSection('STRATEGY', strategyItems, opts.showLabel) : null}
       {isAdmin ? renderSection('SETTINGS', settingsItems, opts.showLabel) : null}
     </VStack>
   );
