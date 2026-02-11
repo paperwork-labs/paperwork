@@ -82,6 +82,10 @@ services:
     autoDeploy: true
     buildCommand: cd frontend && rm -rf node_modules package-lock.json && npm install && npm run build
     staticPublishPath: frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     envVars:
       - key: VITE_API_BASE_URL
         value: https://api.axiomfolio.com/api/v1

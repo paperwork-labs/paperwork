@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import { authApi, appSettingsApi } from '../services/api';
 import { useColorMode } from '../theme/colorMode';
 
-type User = {
+export type User = {
   id: number;
   username: string;
   email: string;
@@ -16,13 +16,13 @@ type User = {
   has_password?: boolean;
 };
 
-type AppSettings = {
+export type AppSettings = {
   market_only_mode: boolean;
   portfolio_enabled: boolean;
   strategy_enabled: boolean;
 };
 
-type AuthContextValue = {
+export type AuthContextValue = {
   user: User | null;
   token: string | null;
   ready: boolean;
@@ -35,7 +35,7 @@ type AuthContextValue = {
   refreshAppSettings: () => Promise<void>;
 };
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);

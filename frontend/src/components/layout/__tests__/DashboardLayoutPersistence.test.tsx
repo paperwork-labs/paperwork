@@ -68,8 +68,8 @@ describe('DashboardLayout sidebar persistence', () => {
 
     renderWithProviders(<DashboardLayout />);
 
-    // When collapsed, brand text should be hidden.
-    expect(screen.queryByText('AxiomFolio')).toBeNull();
+    // In collapsed desktop mode, brand moves to header-left.
+    expect(screen.getAllByText('AxiomFolio').length).toBeGreaterThan(0);
 
     await user.click(screen.getByRole('button', { name: /menu/i }));
 
@@ -83,6 +83,9 @@ describe('DashboardLayout sidebar persistence', () => {
     expect(screen.getAllByText('Coverage').length).toBeGreaterThan(0);
     expect(screen.queryByText('PORTFOLIO')).toBeNull();
     expect(screen.queryByText('STRATEGY')).toBeNull();
+    expect(screen.queryByText('Combined Portfolio')).toBeNull();
+    expect(screen.queryByText('Quick Stats')).toBeNull();
+    expect(screen.queryByRole('combobox')).toBeNull();
   });
 
   it('shows portfolio and strategy sections when section flags are enabled', () => {
@@ -98,6 +101,9 @@ describe('DashboardLayout sidebar persistence', () => {
     expect(screen.getByText('STRATEGY')).toBeInTheDocument();
     expect(screen.getByText('Workspace')).toBeInTheDocument();
     expect(screen.getByText('Strategies')).toBeInTheDocument();
+    expect(screen.getByText('Combined Portfolio')).toBeInTheDocument();
+    expect(screen.getByText('Quick Stats')).toBeInTheDocument();
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
   });
 
   it('does not keep portfolio dashboard active on portfolio categories route', () => {

@@ -65,7 +65,7 @@ services:
       - NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}
       - NEW_RELIC_LOG=stdout
       - NEW_RELIC_LOG_LEVEL=info
-    command: sh -c "cd /app && newrelic-admin run-program python -m uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --log-level info"
+    command: sh -c "cd /app && newrelic-admin run-program python -m uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --log-level info --reload --reload-dir /app/backend"
     networks:
       - axiomfolio_network
     restart: unless-stopped

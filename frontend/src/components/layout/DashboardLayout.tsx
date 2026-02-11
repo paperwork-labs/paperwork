@@ -13,9 +13,14 @@ import {
   DialogContent,
   MenuRoot,
   MenuTrigger,
+  MenuPositioner,
   MenuContent,
   MenuItem,
   Button,
+  Portal,
+  NativeSelectRoot,
+  NativeSelectField,
+  NativeSelectIndicator,
   useMediaQuery,
 } from '@chakra-ui/react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -83,18 +88,21 @@ const NavItem: React.FC<NavItemProps> = ({ icon: Icon, label, path, isActive, on
   const hoverColor = 'fg.default';
 
   return (
-    <Flex
-      align="center"
+    <Button
+      variant="ghost"
+      alignItems="center"
       px={4}
       py={3}
       cursor="pointer"
-      role="group"
       fontWeight="semibold"
       transition="all 0.2s"
       borderRadius="lg"
       justifyContent={showLabel ? 'flex-start' : 'center'}
+      w="full"
+      textAlign="left"
       bg={isActive ? activeBg : 'transparent'}
       color={isActive ? activeColor : color}
+      aria-current={isActive ? 'page' : undefined}
       _hover={{
         bg: isActive ? activeBg : hoverBg,
         color: isActive ? activeColor : hoverColor,
@@ -127,9 +135,39 @@ const NavItem: React.FC<NavItemProps> = ({ icon: Icon, label, path, isActive, on
           {badge > 99 ? '99+' : badge}
         </Badge>
       )}
-    </Flex>
+    </Button>
   );
 };
+
+interface AccountSelectorProps {
+  value: string;
+  onChange: (value: string) => void;
+  disabled: boolean;
+  accounts: Array<{ account_number: string; account_name?: string }>;
+  width?: string | number;
+}
+
+const AccountSelector: React.FC<AccountSelectorProps> = ({
+  value,
+  onChange,
+  disabled,
+  accounts,
+  width = '100%',
+}) => (
+  <NativeSelectRoot size="sm" width={width} disabled={disabled}>
+    <NativeSelectField value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="all">All Accounts</option>
+      <option value="taxable">Taxable</option>
+      <option value="ira">Tax-Deferred (IRA)</option>
+      {accounts.map((a) => (
+        <option key={a.account_number} value={a.account_number}>
+          {a.account_name || a.account_number}
+        </option>
+      ))}
+    </NativeSelectField>
+    <NativeSelectIndicator />
+  </NativeSelectRoot>
+);
 
 const DashboardLayout: React.FC = () => {
   const location = useLocation();
@@ -153,6 +191,10 @@ const DashboardLayout: React.FC = () => {
   const [isDesktop] = useMediaQuery(['(min-width: 48em)']);
   const [totals, setTotals] = useState<{ value: number; dayPnL: number; positions: number }>({ value: 0, dayPnL: 0, positions: 0 });
   const [headerStats, setHeaderStats] = useState<{ label: string; sublabel: string }>({ label: 'Combined Portfolio', sublabel: '' });
+  type NotificationItem = { id: string; title: string; summary: string; details: string; createdAt: string };
+  // Placeholder data source until backend notification feed is wired.
+  const [notifications] = useState<NotificationItem[]>([]);
+  const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
 
   useEffect(() => {
     try {
@@ -253,6 +295,52 @@ const DashboardLayout: React.FC = () => {
     </VStack>
   );
 
+  const renderPortfolioFooter = () => (
+    <Box px={4} py={4} mt="auto">
+      <VStack gap={2} align="stretch">
+        <AccountSelector
+          value={selected}
+          onChange={setSelected}
+          disabled={accountsLoading}
+          accounts={accounts}
+        />
+        <AppDivider />
+        <HStack justify="space-between">
+          <Text fontSize="xs" fontWeight="semibold" color="fg.subtle">
+            {headerStats.label}
+          </Text>
+          <Text fontSize="xs" fontWeight="semibold" color="fg.muted">
+            {headerStats.sublabel || formatSignedCurrency(totals.dayPnL)}
+          </Text>
+        </HStack>
+        <AppDivider />
+        <Text fontSize="xs" fontWeight="semibold" color="fg.subtle" textTransform="uppercase">
+          Quick Stats
+        </Text>
+        <HStack justify="space-between">
+          <Text fontSize="xs" color="fg.subtle">Day P&L</Text>
+          <Text fontSize="xs" fontWeight="semibold" color={totals.dayPnL >= 0 ? 'green.400' : 'red.400'}>
+            {formatSignedCurrency(totals.dayPnL)}
+          </Text>
+        </HStack>
+        <HStack justify="space-between">
+          <Text fontSize="xs" color="fg.subtle">Positions</Text>
+          <Text fontSize="xs" fontWeight="semibold">
+            {totals.positions}
+          </Text>
+        </HStack>
+        <HStack justify="space-between">
+          <Text fontSize="xs" color="fg.subtle">Margin Used</Text>
+          <Text fontSize="xs" fontWeight="semibold" color="orange.400">
+            23%
+          </Text>
+        </HStack>
+      </VStack>
+    </Box>
+  );
+
+  const renderHiddenFooter = () => null;
+
   return (
     <Flex h="100vh" w="100vw" bg={appBg} overflow="hidden">
       {/* Desktop rail */}
@@ -269,26 +357,45 @@ const DashboardLayout: React.FC = () => {
         >
           <VStack gap={0} align="stretch">
             {/* Logo/Brand */}
-            <Flex align="center" px={isSidebarOpen ? 6 : 3} py={4} borderBottom="1px" borderColor={borderColor}>
-              <Box
-                w={8}
-                h={8}
-                bg="brand.500"
-                borderRadius="lg"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                mr={isSidebarOpen ? 3 : 0}
-              >
-                <Text color="white" fontWeight="bold" fontSize="sm">
-                  A
-                </Text>
-              </Box>
+            <Flex
+              align="center"
+              justifyContent={isSidebarOpen ? 'flex-start' : 'center'}
+              px={isSidebarOpen ? 6 : 3}
+              py={4}
+              borderBottom="1px"
+              borderColor={borderColor}
+            >
               {isSidebarOpen ? (
-                <Text fontSize="lg" fontWeight="bold" color="brand.500">
-                  AxiomFolio
-                </Text>
+                <>
+                  <Box
+                    w={8}
+                    h={8}
+                    bg="brand.500"
+                    borderRadius="lg"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    mr={3}
+                  >
+                    <Text color="white" fontWeight="bold" fontSize="sm">
+                      A
+                    </Text>
+                  </Box>
+                  <Text fontSize="lg" fontWeight="bold" color="brand.500">
+                    AxiomFolio
+                  </Text>
+                </>
               ) : null}
+              <IconButton
+                size="sm"
+                variant="ghost"
+                aria-label="Menu"
+                ml={isSidebarOpen ? 'auto' : 0}
+                color="fg.default"
+                onClick={() => setIsSidebarOpen((v) => !v)}
+              >
+                <FiMenu />
+              </IconButton>
             </Flex>
 
             {isSidebarOpen ? <AppDivider /> : null}
@@ -296,43 +403,8 @@ const DashboardLayout: React.FC = () => {
             {/* Navigation */}
             {renderNav({ showLabel: isSidebarOpen, px: isSidebarOpen ? 4 : 2 })}
 
-            {/* Quick Stats */}
-            {isSidebarOpen && (
-              <Box px={4} py={4} mt="auto">
-                <VStack gap={2} align="stretch">
-                  <HStack justify="space-between">
-                    <Text fontSize="xs" fontWeight="semibold" color="fg.subtle">
-                      {headerStats.label}
-                    </Text>
-                    <Text fontSize="xs" fontWeight="semibold" color="fg.muted">
-                      {headerStats.sublabel || formatSignedCurrency(totals.dayPnL)}
-                    </Text>
-                  </HStack>
-                  <AppDivider />
-                  <Text fontSize="xs" fontWeight="semibold" color="fg.subtle" textTransform="uppercase">
-                    Quick Stats
-                  </Text>
-                  <HStack justify="space-between">
-                    <Text fontSize="xs" color="fg.subtle">Day P&L</Text>
-                    <Text fontSize="xs" fontWeight="semibold" color={totals.dayPnL >= 0 ? 'green.400' : 'red.400'}>
-                      {formatSignedCurrency(totals.dayPnL)}
-                    </Text>
-                  </HStack>
-                  <HStack justify="space-between">
-                    <Text fontSize="xs" color="fg.subtle">Positions</Text>
-                    <Text fontSize="xs" fontWeight="semibold">
-                      {totals.positions}
-                    </Text>
-                  </HStack>
-                  <HStack justify="space-between">
-                    <Text fontSize="xs" color="fg.subtle">Margin Used</Text>
-                    <Text fontSize="xs" fontWeight="semibold" color="orange.400">
-                      23%
-                    </Text>
-                  </HStack>
-                </VStack>
-              </Box>
-            )}
+            {/* Portfolio footer (released only when Portfolio is enabled). */}
+            {isSidebarOpen ? (portfolioEnabled ? renderPortfolioFooter() : renderHiddenFooter()) : null}
           </VStack>
         </Box>
       ) : null}
@@ -389,64 +461,121 @@ const DashboardLayout: React.FC = () => {
           borderColor={borderColor}
         >
           <HStack gap={4}>
-            <IconButton
-              size="md"
-              variant="ghost"
-              aria-label="Menu"
-              position="relative"
-              zIndex={2}
-              color="fg.default"
-              onClick={() => {
-                if (isDesktop) {
-                  setIsSidebarOpen((v) => !v);
-                } else {
-                  setIsMobileNavOpen(true);
-                }
-              }}
-            >
-              <FiMenu />
-            </IconButton>
-            {/* Global Account Selection */}
-            <select
-              value={selected}
-              onChange={(e) => setSelected(e.target.value)}
-              disabled={accountsLoading}
-              style={{
-                width: 260,
-                fontSize: 12,
-                padding: '6px 8px',
-                borderRadius: 8,
-                border: '1px solid var(--chakra-colors-border-subtle)',
-                background: 'var(--chakra-colors-bg-input)',
-                color: 'var(--chakra-colors-fg-default)',
-              }}
-            >
-              <option value="all">All Accounts</option>
-              <option value="taxable">Taxable</option>
-              <option value="ira">Tax-Deferred (IRA)</option>
-              {accounts.map((a) => (
-                <option key={a.account_number} value={a.account_number}>
-                  {a.account_name || a.account_number}
-                </option>
-              ))}
-            </select>
+            {isDesktop && !isSidebarOpen ? (
+              <>
+                <HStack gap={2}>
+                  <Box
+                    w={8}
+                    h={8}
+                    bg="brand.500"
+                    borderRadius="lg"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                  >
+                    <Text color="white" fontWeight="bold" fontSize="sm">
+                      A
+                    </Text>
+                  </Box>
+                  <Text fontSize="lg" fontWeight="bold" color="brand.500">
+                    AxiomFolio
+                  </Text>
+                </HStack>
+              </>
+            ) : null}
+            {!isDesktop ? (
+              <IconButton
+                size="md"
+                variant="ghost"
+                aria-label="Menu"
+                position="relative"
+                zIndex={2}
+                color="fg.default"
+                onClick={() => setIsMobileNavOpen(true)}
+              >
+                <FiMenu />
+              </IconButton>
+            ) : null}
+            {/* Keep account selector in header only on mobile. */}
+            {!isDesktop ? (
+              <AccountSelector
+                value={selected}
+                onChange={setSelected}
+                disabled={accountsLoading}
+                accounts={accounts}
+                width="260px"
+              />
+            ) : null}
             {/* REMOVED: Redundant page name display */}
           </HStack>
 
           <HStack gap={4}>
-            <IconButton size="md" variant="ghost" aria-label="Notifications" position="relative" color="fg.default">
-              <FiBell />
-              <Badge
-                position="absolute"
-                top="6px"
-                right="6px"
-                borderRadius="full"
-                bg="red.500"
-                w={2}
-                h={2}
-              />
-            </IconButton>
-            <MenuRoot>
+            <MenuRoot positioning={{ placement: 'bottom-end', strategy: 'fixed', gutter: 8 }}>
+              <MenuTrigger asChild>
+                <IconButton size="md" variant="ghost" aria-label="Notifications" position="relative" color="fg.default">
+                  <FiBell />
+                  {notifications.length > 0 ? (
+                    <Badge
+                      position="absolute"
+                      top="6px"
+                      right="6px"
+                      borderRadius="full"
+                      bg="red.500"
+                      w={2}
+                      h={2}
+                    />
+                  ) : null}
+                </IconButton>
+              </MenuTrigger>
+              <Portal>
+                <MenuPositioner>
+                  <MenuContent minW="340px" p={2}>
+                    <VStack align="stretch" gap={1}>
+                      <HStack justify="space-between" px={2} py={1}>
+                        <Text fontSize="sm" fontWeight="semibold">Notifications</Text>
+                        <Text fontSize="xs" color="fg.muted">{notifications.length}</Text>
+                      </HStack>
+                      <AppDivider />
+                      {notifications.length ? (
+                        notifications.slice(0, 6).map((n) => (
+                          <MenuItem
+                            key={n.id}
+                            value={`notification-${n.id}`}
+                            onClick={() => setSelectedNotification(n)}
+                          >
+                            <VStack align="stretch" gap={0} w="full">
+                              <HStack justify="space-between" w="full">
+                                <Text fontSize="sm" fontWeight="semibold" lineClamp="1">
+                                  {n.title}
+                                </Text>
+                                <Text fontSize="xs" color="fg.muted">
+                                  {n.createdAt}
+                                </Text>
+                              </HStack>
+                              <Text fontSize="xs" color="fg.muted" lineClamp="1">
+                                {n.summary}
+                              </Text>
+                            </VStack>
+                          </MenuItem>
+                        ))
+                      ) : (
+                        <Box px={2} py={3}>
+                          <Text fontSize="sm" color="fg.muted">No notifications yet.</Text>
+                          <Text fontSize="xs" color="fg.subtle" mt={1}>
+                            We will show account/system alerts here as they arrive.
+                          </Text>
+                        </Box>
+                      )}
+                      <AppDivider />
+                      <MenuItem value="notifications-center" onClick={() => navigate('/settings/notifications')}>
+                        Open Notification Center
+                      </MenuItem>
+                    </VStack>
+                  </MenuContent>
+                </MenuPositioner>
+              </Portal>
+            </MenuRoot>
+            <MenuRoot positioning={{ placement: 'bottom-end', strategy: 'fixed', gutter: 8 }}>
               <MenuTrigger asChild>
                 <Button size="sm" variant="ghost">
                   <HStack gap={2}>
@@ -459,12 +588,33 @@ const DashboardLayout: React.FC = () => {
                   </HStack>
                 </Button>
               </MenuTrigger>
-              <MenuContent>
-                <MenuItem value="settings" onClick={() => navigate('/settings')}>Account Settings</MenuItem>
-                {portfolioEnabled ? <MenuItem value="portfolio" onClick={() => navigate('/portfolio')}>Portfolio</MenuItem> : null}
-                {portfolioEnabled ? <MenuItem value="workspace" onClick={() => navigate('/workspace')}>Workspace</MenuItem> : null}
-                <MenuItem value="logout" onClick={() => { logout(); navigate('/login'); }}>Logout</MenuItem>
-              </MenuContent>
+              <Portal>
+                <MenuPositioner>
+                  <MenuContent minW="240px" p={2} borderRadius="xl">
+                    <VStack align="stretch" gap={1}>
+                      <Box px={2} py={1}>
+                        <Text fontSize="xs" color="fg.muted" textTransform="uppercase" letterSpacing="wide">
+                          Account
+                        </Text>
+                        <Text fontSize="sm" fontWeight="semibold" mt={1}>
+                          {user?.username || 'Account'}
+                        </Text>
+                      </Box>
+                      <AppDivider />
+                      <MenuItem value="profile" onClick={() => navigate('/settings/profile')}>Profile</MenuItem>
+                      <MenuItem value="preferences" onClick={() => navigate('/settings/preferences')}>Preferences</MenuItem>
+                      <MenuItem value="brokerages" onClick={() => navigate('/settings/brokerages')}>Brokerages</MenuItem>
+                      {isAdmin ? (
+                        <MenuItem value="admin-dashboard" onClick={() => navigate('/settings/admin/dashboard')}>
+                          Admin Dashboard
+                        </MenuItem>
+                      ) : null}
+                      <AppDivider />
+                      <MenuItem value="logout" onClick={() => { logout(); navigate('/login'); }}>Logout</MenuItem>
+                    </VStack>
+                  </MenuContent>
+                </MenuPositioner>
+              </Portal>
             </MenuRoot>
           </HStack>
         </Flex>
@@ -474,6 +624,46 @@ const DashboardLayout: React.FC = () => {
           <Outlet />
         </Box>
       </Box>
+      <DialogRoot
+        open={Boolean(selectedNotification)}
+        onOpenChange={(d) => {
+          if (!d.open) setSelectedNotification(null);
+        }}
+      >
+        <DialogBackdrop />
+        <DialogPositioner>
+          <DialogContent maxW="520px">
+            <Box p={5}>
+              <VStack align="stretch" gap={3}>
+                <Text fontSize="lg" fontWeight="semibold">
+                  {selectedNotification?.title || 'Notification'}
+                </Text>
+                <Text fontSize="sm" color="fg.muted">
+                  {selectedNotification?.summary || ''}
+                </Text>
+                <AppDivider />
+                <Text fontSize="sm">
+                  {selectedNotification?.details || ''}
+                </Text>
+                <HStack justify="flex-end" mt={2}>
+                  <Button variant="ghost" onClick={() => setSelectedNotification(null)}>
+                    Close
+                  </Button>
+                  <Button
+                    colorScheme="brand"
+                    onClick={() => {
+                      setSelectedNotification(null);
+                      navigate('/settings/notifications');
+                    }}
+                  >
+                    Open Notification Center
+                  </Button>
+                </HStack>
+              </VStack>
+            </Box>
+          </DialogContent>
+        </DialogPositioner>
+      </DialogRoot>
     </Flex>
   );
 };

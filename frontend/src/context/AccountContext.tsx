@@ -2,9 +2,9 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import api from '../services/api';
 import { useAuth } from './AuthContext';
 
-type SelectedAccount = 'all' | 'taxable' | 'ira' | string; // string = concrete account id like U12345678
+export type SelectedAccount = 'all' | 'taxable' | 'ira' | string; // string = concrete account id like U12345678
 
-interface BrokerAccount {
+export interface BrokerAccount {
   id: number;
   account_number: string;
   account_name?: string;
@@ -13,7 +13,7 @@ interface BrokerAccount {
   is_enabled?: boolean;
 }
 
-interface AccountContextValue {
+export interface AccountContextValue {
   accounts: BrokerAccount[];
   loading: boolean;
   error: string | null;
@@ -21,7 +21,7 @@ interface AccountContextValue {
   setSelected: (value: SelectedAccount) => void;
 }
 
-const AccountContext = createContext<AccountContextValue | undefined>(undefined);
+export const AccountContext = createContext<AccountContextValue | undefined>(undefined);
 
 const STORAGE_KEY = 'qm.selectedAccount';
 const URL_PARAM = 'account';
