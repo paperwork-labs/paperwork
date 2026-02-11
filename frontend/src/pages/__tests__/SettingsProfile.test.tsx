@@ -22,6 +22,9 @@ vi.mock('../../context/AuthContext', () => {
         has_password: true,
       },
       refreshMe,
+      appSettings: { market_only_mode: true },
+      appSettingsReady: true,
+      ready: true,
     }),
   };
 });

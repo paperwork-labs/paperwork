@@ -73,6 +73,7 @@ interface SortableTableProps<T = any> {
   maxHeight?: string;
   filtersEnabled?: boolean;
   filterPresets?: Array<{ label: string; filters: FilterGroup }>;
+  initialFilters?: FilterGroup;
 }
 
 function SortableTable<T = any>({
@@ -87,14 +88,15 @@ function SortableTable<T = any>({
   maxHeight,
   filtersEnabled = false,
   filterPresets = [],
+  initialFilters,
 }: SortableTableProps<T>) {
   const { tableDensity } = useUserPreferences();
   const size: 'sm' | 'md' | 'lg' = sizeProp ?? (tableDensity === 'compact' ? 'sm' : 'md');
   const [sortBy, setSortBy] = useState<string>(defaultSortBy || columns[0]?.key || '');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(defaultSortOrder);
   const [filters, setFilters] = useState<FilterGroup>({
-    conjunction: 'AND',
-    rules: [],
+    conjunction: initialFilters?.conjunction || 'AND',
+    rules: initialFilters?.rules || [],
   });
   const [filtersOpen, setFiltersOpen] = useState(true);
 

@@ -52,7 +52,7 @@ describe('MarketTracked snapshot table', () => {
       },
     });
 
-    renderWithProviders(<MarketTracked />, { route: '/settings/market/tracked' });
+    renderWithProviders(<MarketTracked />, { route: '/market/tracked' });
 
     expect(await screen.findByText(/Market Tracked/i)).toBeTruthy();
     expect(await screen.findByText('AAA')).toBeTruthy();

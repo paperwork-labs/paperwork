@@ -21,23 +21,20 @@ import {
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   FiHome,
-  FiPieChart,
-  FiBarChart,
-  FiTrendingUp,
-  FiSettings,
-  FiBell,
-  FiMenu,
-  FiTarget,
-  FiCalendar,
+  FiActivity,
   FiList,
-  FiDollarSign,
-  FiActivity, // Added FiActivity for the new navigation item
+  FiPieChart,
+  FiGrid,
+  FiTag,
+  FiFileText,
+  FiTarget,
+  FiSettings,
+  FiMenu,
   FiSun,
   FiMoon,
+  FiBell,
 } from 'react-icons/fi';
-import { BsGraphUp } from 'react-icons/bs';
 import { FaBrain } from 'react-icons/fa';
-import { FaChartPie } from 'react-icons/fa';
 import { portfolioApi } from '../../services/api';
 import { useAccountContext } from '../../context/AccountContext';
 import { useAuth } from '../../context/AuthContext';
@@ -46,21 +43,25 @@ import AppDivider from '../ui/AppDivider';
 const SIDEBAR_OPEN_STORAGE_KEY = 'qm.ui.sidebar_open';
 const LAST_ROUTE_STORAGE_KEY = 'qm.ui.last_route';
 
-// Navigation items inspired by Snowball Analytics
-const navigationItems = [
+const marketItems = [
   { label: 'Dashboard', icon: FiHome, path: '/' },
-  { label: 'Portfolio', icon: FiPieChart, path: '/portfolio' },
-  { label: 'Categories', icon: FaChartPie, path: '/portfolio-categories' },
-  { label: 'Stocks', icon: BsGraphUp, path: '/stocks' },
-  { label: 'Options', icon: FiTarget, path: '/options-portfolio' }, // Options Portfolio with target icon
-  { label: 'Workspace', icon: FiActivity, path: '/workspace' },
-  { label: 'Dividends', icon: FiCalendar, path: '/dividends' },
-  { label: 'Transactions', icon: FiList, path: '/transactions' },
-  { label: 'Margin', icon: FiDollarSign, path: '/margin' },
-  { label: 'Analytics', icon: FiBarChart, path: '/analytics' },
-  { label: 'Strategies', icon: FiActivity, path: '/strategies' }, // Changed icon to avoid conflict
+  { label: 'Tracked', icon: FiList, path: '/market/tracked' },
+  { label: 'Coverage', icon: FiActivity, path: '/market/coverage' },
+];
+
+const portfolioItems = [
+  { label: 'Dashboard', icon: FiPieChart, path: '/portfolio' },
+  { label: 'Workspace', icon: FiGrid, path: '/workspace' },
+  { label: 'Categories', icon: FiTag, path: '/portfolio-categories' },
+  { label: 'Transactions', icon: FiFileText, path: '/transactions' },
+];
+
+const strategyItems = [
   { label: 'Strategy Manager', icon: FaBrain, path: '/strategies-manager' },
-  { label: 'Notifications', icon: FiBell, path: '/notifications' },
+  { label: 'Strategies', icon: FiTarget, path: '/strategies' },
+];
+
+const settingsItems = [
   { label: 'Settings', icon: FiSettings, path: '/settings' },
 ];
 
@@ -136,7 +137,7 @@ const DashboardLayout: React.FC = () => {
   const borderColor = 'border.subtle';
   const appBg = 'bg.canvas';
   const { accounts, loading: accountsLoading, selected, setSelected } = useAccountContext();
-  const { user, logout } = useAuth();
+  const { user, logout, appSettings, appSettingsReady } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
     try {
       const raw = window.localStorage.getItem(SIDEBAR_OPEN_STORAGE_KEY);
@@ -199,23 +200,49 @@ const DashboardLayout: React.FC = () => {
 
   const sidebarWidth = isSidebarOpen ? 64 : 16;
 
+  const marketOnly = appSettingsReady ? Boolean(appSettings?.market_only_mode) : true;
+  const isAdmin = user?.role === 'admin';
+  const portfolioEnabled = isAdmin || (!marketOnly && Boolean(appSettings?.portfolio_enabled));
+  const strategyEnabled = isAdmin || (!marketOnly && Boolean(appSettings?.strategy_enabled));
+
+  const renderSection = (title: string, items: typeof marketItems, showLabel: boolean) => (
+    <Box>
+      {showLabel ? (
+        <Text fontSize="xs" color="fg.muted" px={3} mb={1} mt={3}>
+          {title}
+        </Text>
+      ) : null}
+      <VStack gap={1} align="stretch">
+        {items.map((item) => {
+          const active =
+            item.path === '/'
+              ? location.pathname === '/' || location.pathname === '/market/dashboard'
+              : location.pathname.startsWith(item.path);
+          return (
+            <NavItem
+              key={item.path}
+              icon={item.icon}
+              label={item.label}
+              path={item.path}
+              isActive={active}
+              onClick={() => {
+                navigate(item.path);
+                setIsMobileNavOpen(false);
+              }}
+              showLabel={showLabel}
+            />
+          );
+        })}
+      </VStack>
+    </Box>
+  );
+
   const renderNav = (opts: { showLabel: boolean; px: any }) => (
-    <VStack gap={1} px={opts.px} py={4} align="stretch">
-      {navigationItems.map((item) => (
-        <NavItem
-          key={item.path}
-          icon={item.icon}
-          label={item.label}
-          path={item.path}
-          isActive={location.pathname === item.path}
-          onClick={() => {
-            navigate(item.path);
-            setIsMobileNavOpen(false);
-          }}
-          badge={item.label === 'Notifications' ? 5 : undefined}
-          showLabel={opts.showLabel}
-        />
-      ))}
+    <VStack gap={2} px={opts.px} py={4} align="stretch">
+      {renderSection('MARKET', marketItems, opts.showLabel)}
+      {portfolioEnabled ? renderSection('PORTFOLIO', portfolioItems, opts.showLabel) : null}
+      {strategyEnabled ? renderSection('STRATEGY (WIP)', strategyItems, opts.showLabel) : null}
+      {isAdmin ? renderSection('SETTINGS', settingsItems, opts.showLabel) : null}
     </VStack>
   );
 
@@ -427,8 +454,8 @@ const DashboardLayout: React.FC = () => {
               </MenuTrigger>
               <MenuContent>
                 <MenuItem value="settings" onClick={() => navigate('/settings')}>Account Settings</MenuItem>
-                <MenuItem value="portfolio" onClick={() => navigate('/portfolio')}>Portfolio</MenuItem>
-                <MenuItem value="workspace" onClick={() => navigate('/workspace')}>Workspace</MenuItem>
+                {portfolioEnabled ? <MenuItem value="portfolio" onClick={() => navigate('/portfolio')}>Portfolio</MenuItem> : null}
+                {portfolioEnabled ? <MenuItem value="workspace" onClick={() => navigate('/workspace')}>Workspace</MenuItem> : null}
                 <MenuItem value="logout" onClick={() => { logout(); navigate('/login'); }}>Logout</MenuItem>
               </MenuContent>
             </MenuRoot>

@@ -3,17 +3,17 @@ AxiomFolio V1 - API Dependencies
 Common dependencies for API endpoints.
 """
 
-from fastapi import Depends, HTTPException, status, Security
+from fastapi import Depends, HTTPException, status, Security, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 import logging
-from typing import Optional, List
+from typing import Optional, List, Literal
 
 from backend.database import get_db
 from backend.models.user import User
 from backend.models.user import UserRole
 from backend.api.security import decode_token
-from backend.config import settings
+from backend.services.app_settings_service import get_or_create_app_settings
 
 logger = logging.getLogger(__name__)
 
@@ -123,18 +123,108 @@ async def get_market_data_viewer(
     optional_user: Optional[User] = Depends(get_optional_user),
 ) -> User:
     """
-    Return a user allowed to view market-data coverage/tracked sections.
-    - When MARKET_DATA_SECTION_PUBLIC is True, any authenticated user suffices.
-    - Otherwise require ADMIN role (same as Admin section).
+    Return a user allowed to view market-data sections.
+    Market is currently open to all authenticated users.
     """
-    if optional_user is None:
+    allowed, reason = evaluate_release_access("market", optional_user)
+    if not allowed:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required for market data visibility",
-        )
-    if not settings.MARKET_DATA_SECTION_PUBLIC and optional_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin privileges required for this section",
+            detail=reason or "Authentication required for market data visibility",
         )
     return optional_user
+
+
+SectionName = Literal["market", "portfolio", "strategy", "other"]
+
+
+def _section_from_path(path: str) -> SectionName:
+    if path.startswith("/api/v1/portfolio") or path.startswith("/api/v1/accounts"):
+        return "portfolio"
+    if path.startswith("/api/v1/strategies"):
+        return "strategy"
+    if path.startswith("/api/v1/market-data"):
+        return "market"
+    return "other"
+
+
+def _non_admin_section_decision(section: SectionName, app_settings) -> tuple[bool, Optional[str]]:
+    """
+    Centralized release-policy decision for non-admin users.
+
+    Policy:
+    - Market: available to all authenticated users.
+    - Portfolio: requires market_only_mode=false and portfolio_enabled=true.
+    - Strategy: requires market_only_mode=false and strategy_enabled=true.
+    - Other sections: unaffected by these release flags.
+    """
+    if section == "market":
+        return True, None
+
+    if section in {"portfolio", "strategy"} and bool(app_settings.market_only_mode):
+        return False, "Market-only mode: access restricted"
+
+    if section == "portfolio" and not bool(app_settings.portfolio_enabled):
+        return False, "Portfolio section is not enabled"
+
+    if section == "strategy" and not bool(app_settings.strategy_enabled):
+        return False, "Strategy section is not enabled"
+
+    return True, None
+
+
+def evaluate_release_access(
+    section: SectionName, current_user: Optional[User], app_settings=None
+) -> tuple[bool, Optional[str]]:
+    """
+    Evaluate rollout policy for a section with role-aware rules.
+
+    Notes:
+    - Unauthenticated access is left to route-level auth dependencies.
+    - Market access is allowed for any authenticated user.
+    - Portfolio/Strategy require app_settings for non-admin decisions.
+    """
+    if current_user is None:
+        return False, "Authentication required"
+    if current_user.role == UserRole.ADMIN:
+        return True, None
+    if section == "market":
+        return True, None
+    if app_settings is None:
+        return False, "App settings required for section policy"
+    return _non_admin_section_decision(section, app_settings)
+
+
+def market_visibility_scope() -> str:
+    # Release policy source of truth: market is open to authenticated users.
+    return "all_authenticated"
+
+
+def market_exposed_to_all() -> bool:
+    # Backward-compatible metadata flag used by frontend.
+    return True
+
+
+async def require_non_market_access(
+    request: Request,
+    current_user: Optional[User] = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+) -> Optional[User]:
+    """Block non-admin access when market-only mode is enabled.
+
+    When market-only mode is disabled, use per-section release flags for
+    non-admin users:
+    - portfolio/account APIs -> portfolio_enabled
+    - strategies APIs -> strategy_enabled
+    """
+    # Keep legacy/public behavior for endpoints that do not require auth.
+    # Route-specific deps (e.g. get_current_user/get_admin_user) still enforce auth.
+    if current_user is None:
+        return None
+
+    app_settings = get_or_create_app_settings(db)
+    section = _section_from_path(request.url.path or "")
+    allowed, reason = evaluate_release_access(section, current_user, app_settings)
+    if not allowed:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=reason or "Access denied")
+    return current_user

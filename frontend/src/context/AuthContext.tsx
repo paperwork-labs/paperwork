@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { authApi } from '../services/api';
+import { authApi, appSettingsApi } from '../services/api';
 import { useColorMode } from '../theme/colorMode';
 
 type User = {
@@ -16,14 +16,23 @@ type User = {
   has_password?: boolean;
 };
 
+type AppSettings = {
+  market_only_mode: boolean;
+  portfolio_enabled: boolean;
+  strategy_enabled: boolean;
+};
+
 type AuthContextValue = {
   user: User | null;
   token: string | null;
   ready: boolean;
+  appSettings: AppSettings | null;
+  appSettingsReady: boolean;
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string, full_name?: string) => Promise<void>;
   logout: () => void;
   refreshMe: () => Promise<void>;
+  refreshAppSettings: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -40,6 +49,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   });
   const [ready, setReady] = useState(false);
+  const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
+  const [appSettingsReady, setAppSettingsReady] = useState(false);
 
   useEffect(() => {
     const sync = async () => {
@@ -51,14 +62,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (pref === 'system' || pref === 'light' || pref === 'dark') {
             setColorModePreference(pref);
           }
+          try {
+            const app = await appSettingsApi.get();
+            setAppSettings(app as AppSettings);
+          } catch {
+            setAppSettings(null);
+          }
         }
       } catch {
         // invalid token -> clear
         try { localStorage.removeItem('qm_token'); } catch { }
         setToken(null);
         setUser(null);
+        setAppSettings(null);
       } finally {
         setReady(true);
+        setAppSettingsReady(true);
       }
     };
     sync();
@@ -76,6 +95,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (pref === 'system' || pref === 'light' || pref === 'dark') {
         setColorModePreference(pref);
       }
+      try {
+        const app = await appSettingsApi.get();
+        setAppSettings(app as AppSettings);
+      } catch {
+        setAppSettings(null);
+      } finally {
+        setAppSettingsReady(true);
+      }
     }
   };
 
@@ -88,6 +115,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('qm_token');
     setToken(null);
     setUser(null);
+    setAppSettings(null);
+    setAppSettingsReady(false);
   };
 
   const refreshMe = async () => {
@@ -99,9 +128,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const refreshAppSettings = async () => {
+    const app = await appSettingsApi.get();
+    setAppSettings(app as AppSettings);
+    setAppSettingsReady(true);
+  };
+
   const value = useMemo<AuthContextValue>(() => ({
-    user, token, ready, login, register, logout, refreshMe,
-  }), [user, token, ready]);
+    user,
+    token,
+    ready,
+    appSettings,
+    appSettingsReady,
+    login,
+    register,
+    logout,
+    refreshMe,
+    refreshAppSettings,
+  }), [user, token, ready, appSettings, appSettingsReady]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

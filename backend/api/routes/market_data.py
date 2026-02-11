@@ -19,6 +19,7 @@ from datetime import datetime, timedelta
 from backend.database import get_db
 from backend.models.user import User
 from backend.services.market.market_data_service import MarketDataService
+from backend.services.market.market_dashboard_service import MarketDashboardService
 from backend.services.market.universe import tracked_symbols
 from backend.services.market.constants import (
     SNAPSHOT_PREFERRED_COLUMNS,
@@ -38,7 +39,13 @@ from backend.tasks.market_data_tasks import (
     backfill_last_bars,
     backfill_since_date,
 )
-from backend.api.dependencies import get_optional_user, get_admin_user, get_market_data_viewer
+from backend.api.dependencies import (
+    get_optional_user,
+    get_admin_user,
+    get_market_data_viewer,
+    market_visibility_scope,
+    market_exposed_to_all,
+)
 from backend.models.index_constituent import IndexConstituent
 from backend.models.market_data import PriceData
 from backend.models.market_data import JobRun
@@ -57,7 +64,7 @@ router = APIRouter()
 
 
 def _visibility_scope() -> str:
-    return "all_authenticated" if settings.MARKET_DATA_SECTION_PUBLIC else "admin_only"
+    return market_visibility_scope()
 
 
 def _snapshot_preferred_columns(kind: str) -> list[str]:
@@ -727,7 +734,7 @@ async def get_tracked(
 
     meta = {
         "visibility": _visibility_scope(),
-        "exposed_to_all": settings.MARKET_DATA_SECTION_PUBLIC,
+        "exposed_to_all": market_exposed_to_all(),
         "education": _tracked_education(),
         "actions": _tracked_actions(),
     }
@@ -865,12 +872,26 @@ async def get_coverage(
         )
         meta = snapshot.setdefault("meta", {})
         meta["visibility"] = _visibility_scope()
-        meta["exposed_to_all"] = settings.MARKET_DATA_SECTION_PUBLIC
+        meta["exposed_to_all"] = market_exposed_to_all()
         meta["education"] = _coverage_education()
         meta["actions"] = _coverage_actions(meta.get("backfill_5m_enabled"))
         return snapshot
     except Exception as e:
         logger.error(f"coverage error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/dashboard")
+async def get_market_dashboard(
+    db: Session = Depends(get_db),
+    _viewer: User = Depends(get_market_data_viewer),
+) -> Dict[str, Any]:
+    """Reader-friendly market dashboard summary for momentum workflows."""
+    try:
+        dashboard = MarketDashboardService()
+        return dashboard.build_dashboard(db)
+    except Exception as e:
+        logger.error(f"market dashboard error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

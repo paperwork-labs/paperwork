@@ -120,7 +120,9 @@ class Settings(BaseSettings):
     # Provider retry/backoff (applies to transient provider failures like 429/5xx)
     MARKET_BACKFILL_RETRY_ATTEMPTS: int = 6
     MARKET_BACKFILL_RETRY_MAX_DELAY_SECONDS: float = 60.0
-    # Toggle whether Coverage/Tracked sections are visible to all authenticated users
+    # Deprecated for runtime release gating.
+    # Keep as a bootstrap env flag only for legacy deployments; DB app_settings are
+    # the authoritative source for portfolio/strategy rollout decisions.
     MARKET_DATA_SECTION_PUBLIC: bool = False
     # Coverage UI sampling only (must NOT affect correctness/backfills).
     # Number of stale symbols to include in API/UI sample lists (full counts are computed separately).

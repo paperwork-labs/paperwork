@@ -31,6 +31,7 @@ class UserRole(enum.Enum):
     ADMIN = "admin"
     USER = "user"
     READONLY = "readonly"
+    ANALYST = "analyst"
 
 
 # =============================================================================

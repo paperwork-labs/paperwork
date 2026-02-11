@@ -11,8 +11,10 @@ import api from '../services/api';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import SortableTable, { type Column, type FilterGroup } from '../components/SortableTable';
 import { formatMoney, formatDateTime } from '../utils/format';
+import { useLocation } from 'react-router-dom';
 
 const MarketTracked: React.FC = () => {
+  const location = useLocation();
   const { timezone, currency } = useUserPreferences();
   const [rows, setRows] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState<boolean>(false);
@@ -365,6 +367,58 @@ const MarketTracked: React.FC = () => {
   ],
     []);
 
+  const deepLinkFilters = React.useMemo<FilterGroup | undefined>(() => {
+    const params = new URLSearchParams(location.search || '');
+    const symbols = (params.get('symbols') || '')
+      .split(',')
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean);
+    if (symbols.length > 0) {
+      return {
+        conjunction: 'OR',
+        rules: symbols.map((sym, i) => ({
+          id: `deep_symbol_${i}_${sym}`,
+          columnKey: 'symbol',
+          operator: 'equals',
+          valueSource: 'literal',
+          value: sym,
+        })),
+      };
+    }
+
+    const sector = (params.get('sector') || '').trim();
+    if (sector) {
+      return {
+        conjunction: 'AND',
+        rules: [
+          {
+            id: 'deep_sector',
+            columnKey: 'sector',
+            operator: 'equals',
+            valueSource: 'literal',
+            value: sector,
+          },
+        ],
+      };
+    }
+
+    const preset = (params.get('preset') || '').trim();
+    if (preset) {
+      const map: Record<string, string> = {
+        momentum: 'Momentum Trend (Clean)',
+        giants: 'Giants Waking Up (Large Cap Trend)',
+        squeeze: 'Short-Term Squeeze (Range + ATR)',
+        bullish: 'Bullish Trend Day',
+      };
+      const label = map[preset];
+      if (label) {
+        const selected = filterPresets.find((p) => p.label === label);
+        if (selected) return selected.filters;
+      }
+    }
+    return undefined;
+  }, [location.search, filterPresets]);
+
   return (
     <Box p={4}>
       <HStack justify="space-between" align="end" mb={3} flexWrap="wrap" gap={2}>
@@ -382,6 +436,7 @@ const MarketTracked: React.FC = () => {
 
       <Box w="full" borderWidth="1px" borderColor="border.subtle" borderRadius="xl" bg="bg.card">
         <SortableTable
+          key={location.search || 'tracked-default'}
           data={rows}
           columns={columns}
           defaultSortBy="symbol"
@@ -389,6 +444,7 @@ const MarketTracked: React.FC = () => {
           maxHeight="70vh"
           filtersEnabled
           filterPresets={filterPresets}
+          initialFilters={deepLinkFilters}
           emptyMessage={loading ? 'Loading…' : 'No tracked symbols yet.'}
         />
       </Box>

@@ -7,12 +7,17 @@ import userEvent from '@testing-library/user-event';
 import DashboardLayout from '../DashboardLayout';
 
 // Mock Auth + Account context dependencies.
+let mockedAuth: any = {
+  user: { username: 'tester', role: 'user' },
+  logout: vi.fn(),
+  appSettings: { market_only_mode: true, portfolio_enabled: false, strategy_enabled: false },
+  appSettingsReady: true,
+  ready: true,
+};
+
 vi.mock('../../../context/AuthContext', () => {
   return {
-    useAuth: () => ({
-      user: { username: 'tester' },
-      logout: vi.fn(),
-    }),
+    useAuth: () => mockedAuth,
   };
 });
 
@@ -48,6 +53,13 @@ vi.mock('../../../services/api', () => {
 describe('DashboardLayout sidebar persistence', () => {
   beforeEach(() => {
     localStorage.removeItem('qm.ui.sidebar_open');
+    mockedAuth = {
+      user: { username: 'tester', role: 'user' },
+      logout: vi.fn(),
+      appSettings: { market_only_mode: true, portfolio_enabled: false, strategy_enabled: false },
+      appSettingsReady: true,
+      ready: true,
+    };
   });
 
   it('reads collapsed state from localStorage and persists on toggle', async () => {
@@ -62,6 +74,30 @@ describe('DashboardLayout sidebar persistence', () => {
     await user.click(screen.getByRole('button', { name: /menu/i }));
 
     expect(localStorage.getItem('qm.ui.sidebar_open')).toBe('1');
+  });
+
+  it('hides portfolio and strategy sections for non-admin market-only defaults', () => {
+    renderWithProviders(<DashboardLayout />);
+    expect(screen.getAllByText('MARKET').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Tracked').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Coverage').length).toBeGreaterThan(0);
+    expect(screen.queryByText('PORTFOLIO')).toBeNull();
+    expect(screen.queryByText('STRATEGY (WIP)')).toBeNull();
+  });
+
+  it('shows portfolio and strategy sections when section flags are enabled', () => {
+    mockedAuth = {
+      user: { username: 'tester', role: 'user' },
+      logout: vi.fn(),
+      appSettings: { market_only_mode: false, portfolio_enabled: true, strategy_enabled: true },
+      appSettingsReady: true,
+      ready: true,
+    };
+    renderWithProviders(<DashboardLayout />);
+    expect(screen.getByText('PORTFOLIO')).toBeInTheDocument();
+    expect(screen.getByText('STRATEGY (WIP)')).toBeInTheDocument();
+    expect(screen.getByText('Workspace')).toBeInTheDocument();
+    expect(screen.getByText('Strategies')).toBeInTheDocument();
   });
 });
 

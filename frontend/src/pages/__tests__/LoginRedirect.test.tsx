@@ -12,7 +12,14 @@ const navigate = vi.fn();
 var locationState: any = { state: {} };
 
 vi.mock('../../context/AuthContext', () => {
-  return { useAuth: () => ({ login }) };
+  return {
+    useAuth: () => ({
+      login,
+      ready: true,
+      appSettings: { market_only_mode: true },
+      appSettingsReady: true,
+    }),
+  };
 });
 
 vi.mock('react-router-dom', async () => {
@@ -35,7 +42,7 @@ describe('Login redirect', () => {
 
   it('redirects to saved last route after login when no state.from exists', async () => {
     const user = userEvent.setup();
-    localStorage.setItem('qm.ui.last_route', '/settings/market/coverage');
+    localStorage.setItem('qm.ui.last_route', '/market/coverage');
 
     renderWithProviders(<Login />);
 
@@ -44,13 +51,13 @@ describe('Login redirect', () => {
     await user.click(screen.getByRole('button', { name: /login/i }));
 
     await waitFor(() => expect(login).toHaveBeenCalled());
-    expect(navigate).toHaveBeenCalledWith('/settings/market/coverage', { replace: true });
+    expect(navigate).toHaveBeenCalledWith('/market/coverage', { replace: true });
   });
 
   it('prefers state.from over saved route', async () => {
     const user = userEvent.setup();
     localStorage.setItem('qm.ui.last_route', '/settings/profile');
-    locationState = { state: { from: { pathname: '/settings/market/tracked', search: '', hash: '' } } };
+    locationState = { state: { from: { pathname: '/market/tracked', search: '', hash: '' } } };
 
     renderWithProviders(<Login />);
 
@@ -59,7 +66,7 @@ describe('Login redirect', () => {
     await user.click(screen.getByRole('button', { name: /login/i }));
 
     await waitFor(() => expect(login).toHaveBeenCalled());
-    expect(navigate).toHaveBeenCalledWith('/settings/market/tracked', { replace: true });
+    expect(navigate).toHaveBeenCalledWith('/market/tracked', { replace: true });
   });
 });
 

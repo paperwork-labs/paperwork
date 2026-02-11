@@ -2,7 +2,6 @@ import React from 'react';
 import { Box, Flex, VStack, Button, Text, IconButton, TooltipRoot, TooltipTrigger, TooltipPositioner, TooltipContent, useMediaQuery } from '@chakra-ui/react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import api from '../services/api';
 import { FiBell, FiGrid, FiLock, FiSliders, FiUser, FiShield, FiActivity } from 'react-icons/fi';
 
 const MenuLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, children }) => {
@@ -31,22 +30,7 @@ const MenuLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, chi
 const SettingsShell: React.FC = () => {
   const { user } = useAuth();
   const sectionColor = 'fg.muted';
-  const [marketDataPublic, setMarketDataPublic] = React.useState(false);
   const [isDesktop] = useMediaQuery(['(min-width: 48em)']);
-
-  React.useEffect(() => {
-    const checkVisibility = async () => {
-      try {
-        const res = await api.get('/market-data/coverage');
-        setMarketDataPublic(Boolean(res.data?.meta?.exposed_to_all));
-      } catch {
-        setMarketDataPublic(false);
-      }
-    };
-    checkVisibility();
-  }, []);
-
-  const showMarketDataLinks = marketDataPublic || user?.role === 'admin';
 
   const iconNav = (to: string, label: string, icon: React.ReactNode) => (
     <NavLink to={to} style={{ textDecoration: 'none' }}>
@@ -81,17 +65,11 @@ const SettingsShell: React.FC = () => {
             <MenuLink to="/settings/brokerages">Brokerages</MenuLink>
             <MenuLink to="/settings/notifications">Notifications</MenuLink>
             <MenuLink to="/settings/security">Security</MenuLink>
-            {showMarketDataLinks && (
-              <>
-                <Text fontSize="sm" color={sectionColor} px={2} mt={4}>MARKET DATA</Text>
-                <MenuLink to="/settings/market/coverage">Coverage</MenuLink>
-                <MenuLink to="/settings/market/tracked">Tracked</MenuLink>
-              </>
-            )}
             {user?.role === 'admin' && (
               <>
                 <Text fontSize="sm" color={sectionColor} px={2} mt={4}>ADMIN</Text>
                 <MenuLink to="/settings/admin/dashboard">Dashboard</MenuLink>
+                <MenuLink to="/settings/admin/users">Users</MenuLink>
                 <MenuLink to="/settings/admin/jobs">Jobs</MenuLink>
                 <MenuLink to="/settings/admin/schedules">Schedules</MenuLink>
               </>
@@ -105,16 +83,11 @@ const SettingsShell: React.FC = () => {
             {iconNav('/settings/preferences', 'Preferences', <FiSliders />)}
             {iconNav('/settings/brokerages', 'Brokerages', <FiShield />)}
             {iconNav('/settings/notifications', 'Notifications', <FiBell />)}
-            {showMarketDataLinks ? (
-              <>
-                {iconNav('/settings/market/coverage', 'Market Coverage', <FiActivity />)}
-                {iconNav('/settings/market/tracked', 'Tracked Symbols', <FiGrid />)}
-              </>
-            ) : null}
             {iconNav('/settings/security', 'Security', <FiLock />)}
             {user?.role === 'admin' ? (
               <>
                 {iconNav('/settings/admin/dashboard', 'Admin Dashboard', <FiGrid />)}
+                {iconNav('/settings/admin/users', 'Admin Users', <FiUser />)}
                 {iconNav('/settings/admin/jobs', 'Admin Jobs', <FiActivity />)}
                 {iconNav('/settings/admin/schedules', 'Admin Schedules', <FiGrid />)}
               </>

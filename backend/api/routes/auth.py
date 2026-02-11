@@ -17,7 +17,8 @@ from passlib.context import CryptContext
 import logging
 
 from backend.database import get_db
-from backend.models.user import User
+from backend.models.user import User, UserRole
+from backend.models.user_invite import UserInvite
 from backend.config import settings
 from backend.api.security import create_access_token
 from backend.api.dependencies import get_current_user
@@ -140,6 +141,13 @@ class ChangePasswordRequest(BaseModel):
     new_password: str
 
 
+class InviteAcceptRequest(BaseModel):
+    token: str
+    username: str
+    password: str
+    full_name: Optional[str] = None
+
+
 # Authentication helper functions
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash."""
@@ -216,6 +224,68 @@ async def register_user(
 
     logger.info(f"New user registered: {user_data.username}")
 
+    return UserResponse.model_validate(db_user)
+
+
+@router.get("/invite/{token}")
+async def get_invite(token: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    invite = db.query(UserInvite).filter(UserInvite.token == token).first()
+    if not invite:
+        raise HTTPException(status_code=404, detail="Invite not found")
+    if invite.accepted_at is not None:
+        raise HTTPException(status_code=409, detail="Invite already used")
+    if invite.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=410, detail="Invite expired")
+    return {
+        "email": invite.email,
+        "role": invite.role.value,
+        "expires_at": invite.expires_at.isoformat(),
+    }
+
+
+@router.post("/invite/accept", response_model=UserResponse)
+async def accept_invite(
+    payload: InviteAcceptRequest,
+    db: Session = Depends(get_db),
+) -> UserResponse:
+    invite = db.query(UserInvite).filter(UserInvite.token == payload.token).first()
+    if not invite:
+        raise HTTPException(status_code=404, detail="Invite not found")
+    if invite.accepted_at is not None:
+        raise HTTPException(status_code=409, detail="Invite already used")
+    if invite.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=410, detail="Invite expired")
+
+    existing_user = (
+        db.query(User)
+        .filter((User.username == payload.username) | (User.email == invite.email))
+        .first()
+    )
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username or email already registered",
+        )
+
+    if not payload.password or len(payload.password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 8 characters",
+        )
+
+    db_user = User(
+        username=payload.username,
+        email=invite.email,
+        password_hash=get_password_hash(payload.password),
+        full_name=payload.full_name,
+        role=invite.role if isinstance(invite.role, UserRole) else UserRole.READONLY,
+        is_active=True,
+        is_verified=True,
+    )
+    db.add(db_user)
+    invite.accepted_at = datetime.utcnow()
+    db.commit()
+    db.refresh(db_user)
     return UserResponse.model_validate(db_user)
 
 

@@ -3,7 +3,7 @@ AxiomFolio V1 - Clean FastAPI Application
 Replaces the massive monolithic API routes with focused, organized endpoints.
 """
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -38,6 +38,8 @@ from backend.api.routes import aggregator as aggregator_routes
 
 # Import new account management routes
 from backend.api.routes import account_management
+from backend.api.routes import app_settings
+from backend.api.dependencies import require_non_market_access
 
 # Model imports
 from backend.models import Base
@@ -314,36 +316,81 @@ async def root():
 
 # Include route modules - TEMPORARY: Only core routes for FlexQuery sync stabilization
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
-app.include_router(portfolio.router, prefix="/api/v1/portfolio", tags=["Portfolio"])
 app.include_router(
-    portfolio_live.router, prefix="/api/v1/portfolio", tags=["Portfolio"]
+    portfolio.router,
+    prefix="/api/v1/portfolio",
+    tags=["Portfolio"],
+    dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(
-    portfolio_dividends.router, prefix="/api/v1/portfolio", tags=["Portfolio"]
+    portfolio_live.router,
+    prefix="/api/v1/portfolio",
+    tags=["Portfolio"],
+    dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(
-    portfolio_dashboard.router, prefix="/api/v1/portfolio", tags=["Portfolio"]
+    portfolio_dividends.router,
+    prefix="/api/v1/portfolio",
+    tags=["Portfolio"],
+    dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(
-    portfolio_stocks.router, prefix="/api/v1/portfolio", tags=["Portfolio"]
+    portfolio_dashboard.router,
+    prefix="/api/v1/portfolio",
+    tags=["Portfolio"],
+    dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(
-    portfolio_statements.router, prefix="/api/v1/portfolio", tags=["Portfolio"]
+    portfolio_stocks.router,
+    prefix="/api/v1/portfolio",
+    tags=["Portfolio"],
+    dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(
-    portfolio_options.router, prefix="/api/v1/portfolio/options", tags=["Portfolio"]
+    portfolio_statements.router,
+    prefix="/api/v1/portfolio",
+    tags=["Portfolio"],
+    dependencies=[Depends(require_non_market_access)],
+)
+app.include_router(
+    portfolio_options.router,
+    prefix="/api/v1/portfolio/options",
+    tags=["Portfolio"],
+    dependencies=[Depends(require_non_market_access)],
 )
 # app.include_router(strategies.router, prefix="/api/v1/strategies", tags=["Strategies"])  # DISABLED: Import errors
 # ATR endpoints remain disabled
 # app.include_router(notifications.router, prefix="/api/v1/notifications", tags=["Notifications"])  # DISABLED: Non-essential
 from backend.api.routes import admin
 from backend.api.routes import admin_scheduler
-app.include_router(account_management.router)
+app.include_router(
+    account_management.router, dependencies=[Depends(require_non_market_access)]
+)
+app.include_router(app_settings.router, prefix="/api/v1", tags=["App Settings"])
 app.include_router(market_data.router, prefix="/api/v1/market-data", tags=["Market Data & Technicals"])
-app.include_router(activity_routes.router, prefix="/api/v1/portfolio", tags=["Activity"])
-app.include_router(aggregator_routes.router, prefix="/api/v1/aggregator", tags=["Aggregator"])
-app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
-app.include_router(admin_scheduler.router, prefix="/api/v1/admin", tags=["Admin"])
+app.include_router(
+    activity_routes.router,
+    prefix="/api/v1/portfolio",
+    tags=["Activity"],
+    dependencies=[Depends(require_non_market_access)],
+)
+app.include_router(
+    aggregator_routes.router,
+    prefix="/api/v1/aggregator",
+    tags=["Aggregator"],
+)
+app.include_router(
+    admin.router,
+    prefix="/api/v1/admin",
+    tags=["Admin"],
+    dependencies=[Depends(require_non_market_access)],
+)
+app.include_router(
+    admin_scheduler.router,
+    prefix="/api/v1/admin",
+    tags=["Admin"],
+    dependencies=[Depends(require_non_market_access)],
+)
 
 
 # Global error handler

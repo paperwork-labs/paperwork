@@ -13,7 +13,7 @@ import api from '../services/api';
 import useCoverageSnapshot from '../hooks/useCoverageSnapshot';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { formatDateTime } from '../utils/format';
-import { authApi, handleApiError } from '../services/api';
+import { authApi, appSettingsApi, handleApiError } from '../services/api';
 import { useAuthOptional } from '../context/AuthContext';
 import {
   CoverageBucketsGrid,
@@ -26,9 +26,15 @@ const AdminDashboard: React.FC = () => {
   const auth = useAuthOptional();
   const user = auth?.user ?? null;
   const refreshMe = auth?.refreshMe;
+  const appSettings = auth?.appSettings;
+  const refreshAppSettings = auth?.refreshAppSettings;
   const { timezone, coverageHistogramWindowDays } = useUserPreferences();
   const [backfill5mEnabled, setBackfill5mEnabled] = React.useState<boolean>(true);
   const [toggling5m, setToggling5m] = React.useState<boolean>(false);
+  const [marketOnlyMode, setMarketOnlyMode] = React.useState<boolean>(true);
+  const [portfolioEnabled, setPortfolioEnabled] = React.useState<boolean>(false);
+  const [strategyEnabled, setStrategyEnabled] = React.useState<boolean>(false);
+  const [togglingMarketOnly, setTogglingMarketOnly] = React.useState<boolean>(false);
   const [refreshingCoverage, setRefreshingCoverage] = React.useState<boolean>(false);
   const [restoringDaily, setRestoringDaily] = React.useState<boolean>(false);
   const [backfillingStale, setBackfillingStale] = React.useState<boolean>(false);
@@ -92,6 +98,49 @@ const AdminDashboard: React.FC = () => {
       setBackfill5mEnabled(Boolean(coverage.meta.backfill_5m_enabled));
     }
   }, [coverage]);
+
+  React.useEffect(() => {
+    if (appSettings?.market_only_mode !== undefined) {
+      setMarketOnlyMode(Boolean(appSettings.market_only_mode));
+    }
+    if (appSettings?.portfolio_enabled !== undefined) {
+      setPortfolioEnabled(Boolean(appSettings.portfolio_enabled));
+    }
+    if (appSettings?.strategy_enabled !== undefined) {
+      setStrategyEnabled(Boolean(appSettings.strategy_enabled));
+    }
+  }, [appSettings?.market_only_mode, appSettings?.portfolio_enabled, appSettings?.strategy_enabled]);
+
+  const updateReleaseControls = async (patch: { market_only_mode?: boolean; portfolio_enabled?: boolean; strategy_enabled?: boolean }) => {
+    if (togglingMarketOnly) return;
+    setTogglingMarketOnly(true);
+    try {
+      const res: any = await appSettingsApi.update(patch);
+      setMarketOnlyMode(Boolean(res?.market_only_mode));
+      setPortfolioEnabled(Boolean(res?.portfolio_enabled));
+      setStrategyEnabled(Boolean(res?.strategy_enabled));
+      if (typeof refreshAppSettings === 'function') {
+        await refreshAppSettings();
+      }
+      toast.success('Release controls updated');
+    } catch (e) {
+      toast.error(handleApiError(e));
+    } finally {
+      setTogglingMarketOnly(false);
+    }
+  };
+
+  const toggleMarketOnlyMode = async () => {
+    await updateReleaseControls({ market_only_mode: !marketOnlyMode });
+  };
+
+  const togglePortfolioEnabled = async () => {
+    await updateReleaseControls({ portfolio_enabled: !portfolioEnabled });
+  };
+
+  const toggleStrategyEnabled = async () => {
+    await updateReleaseControls({ strategy_enabled: !strategyEnabled });
+  };
 
   const loadTaskStatus = async () => {
     try {
@@ -600,6 +649,47 @@ const AdminDashboard: React.FC = () => {
 
       {coverage && (
         <CoverageSummaryCard hero={heroEffective} status={coverage.status} showUpdated={false}>
+          <Box mb={3} borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.muted">
+            <Text fontSize="sm" fontWeight="semibold" color="fg.default" mb={1}>
+              Release Controls
+            </Text>
+            <Text fontSize="xs" color="fg.muted" mb={3}>
+              Keep market-only enabled while building. Disable market-only and enable sections when ready.
+            </Text>
+            <HStack justify="space-between" align="center" flexWrap="wrap" gap={3} mb={2}>
+              <Text fontSize="sm">Market-only mode</Text>
+              <HStack gap={2}>
+                <Badge colorScheme={marketOnlyMode ? 'green' : 'gray'} variant="subtle">
+                  {marketOnlyMode ? 'ON' : 'OFF'}
+                </Badge>
+                <Button size="xs" variant="outline" loading={togglingMarketOnly} onClick={toggleMarketOnlyMode}>
+                  {marketOnlyMode ? 'Disable' : 'Enable'}
+                </Button>
+              </HStack>
+            </HStack>
+            <HStack justify="space-between" align="center" flexWrap="wrap" gap={3} mb={2}>
+              <Text fontSize="sm">Portfolio section</Text>
+              <HStack gap={2}>
+                <Badge colorScheme={portfolioEnabled ? 'green' : 'gray'} variant="subtle">
+                  {portfolioEnabled ? 'ENABLED' : 'DISABLED'}
+                </Badge>
+                <Button size="xs" variant="outline" loading={togglingMarketOnly} onClick={togglePortfolioEnabled}>
+                  {portfolioEnabled ? 'Disable' : 'Enable'}
+                </Button>
+              </HStack>
+            </HStack>
+            <HStack justify="space-between" align="center" flexWrap="wrap" gap={3}>
+              <Text fontSize="sm">Strategy section</Text>
+              <HStack gap={2}>
+                <Badge colorScheme={strategyEnabled ? 'green' : 'gray'} variant="subtle">
+                  {strategyEnabled ? 'ENABLED' : 'DISABLED'}
+                </Badge>
+                <Button size="xs" variant="outline" loading={togglingMarketOnly} onClick={toggleStrategyEnabled}>
+                  {strategyEnabled ? 'Disable' : 'Enable'}
+                </Button>
+              </HStack>
+            </HStack>
+          </Box>
           <CoverageKpiGrid kpis={kpis} variant="stat" />
           <CoverageTrendGrid sparkline={sparkline} />
           <CoverageBucketsGrid groups={hero?.buckets || []} />

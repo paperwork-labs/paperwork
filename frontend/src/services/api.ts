@@ -241,6 +241,9 @@ export const marketDataApi = {
   getHistory: async (symbol: string, period: string = '1y', interval: string = '1d') => {
     return makeOptimizedRequest(() => api.get(`/market-data/prices/${encodeURIComponent(symbol)}/history?period=${encodeURIComponent(period)}&interval=${encodeURIComponent(interval)}`));
   },
+  getDashboard: async () => {
+    return makeOptimizedRequest(() => api.get('/market-data/dashboard'));
+  },
 };
 
 // Unified Activity endpoints
@@ -420,6 +423,28 @@ export const authApi = {
   changePassword: async (payload: { current_password?: string; new_password: string }) => {
     return makeOptimizedRequest(() => api.post('/auth/change-password', payload));
   },
+  inviteInfo: async (token: string) => {
+    return makeOptimizedRequest(() => api.get(`/auth/invite/${token}`));
+  },
+  acceptInvite: async (payload: { token: string; username: string; password: string; full_name?: string }) => {
+    return makeOptimizedRequest(() => api.post('/auth/invite/accept', payload));
+  },
+};
+
+export const appSettingsApi = {
+  get: async () => makeOptimizedRequest(() => api.get('/app-settings')),
+  update: async (payload: { market_only_mode?: boolean; portfolio_enabled?: boolean; strategy_enabled?: boolean }) =>
+    makeOptimizedRequest(() => api.patch('/admin/app-settings', payload)),
+};
+
+export const adminUsersApi = {
+  list: async (params?: { q?: string; role?: string }) =>
+    makeOptimizedRequest(() => api.get('/admin/users', { params })),
+  invites: async () => makeOptimizedRequest(() => api.get('/admin/users/invites')),
+  invite: async (payload: { email: string; role: string; expires_in_days?: number }) =>
+    makeOptimizedRequest(() => api.post('/admin/users/invite', payload)),
+  update: async (userId: number, payload: { role?: string; is_active?: boolean }) =>
+    makeOptimizedRequest(() => api.patch(`/admin/users/${userId}`, payload)),
 };
 
 // Accounts API

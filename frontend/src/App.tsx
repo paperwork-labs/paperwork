@@ -10,22 +10,16 @@ import { system } from './theme/system';
 import ErrorBoundary from './components/ErrorBoundary';
 
 import RequireAuth from './components/auth/RequireAuth';
+import RequireNonMarketAccess from './components/auth/RequireNonMarketAccess';
+import RequireAdmin from './components/auth/RequireAdmin';
 
 // Lazy-load routes so Chakra v3 migration can happen page-by-page
 const DashboardLayout = React.lazy(() => import('./components/layout/DashboardLayout'));
-const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const Portfolio = React.lazy(() => import('./pages/Portfolio'));
 const PortfolioCategories = React.lazy(() => import('./pages/PortfolioCategories'));
-const Stocks = React.lazy(() => import('./pages/Stocks'));
-const OptionsPortfolio = React.lazy(() => import('./pages/OptionsPortfolio'));
-const TaxLots = React.lazy(() => import('./pages/TaxLots'));
-const DividendsCalendar = React.lazy(() => import('./pages/DividendsCalendar'));
 const Transactions = React.lazy(() => import('./pages/Transactions'));
-const MarginAnalysis = React.lazy(() => import('./pages/MarginAnalysis'));
-const Analytics = React.lazy(() => import('./pages/Analytics'));
 const Strategies = React.lazy(() => import('./pages/Strategies'));
 const StrategiesManager = React.lazy(() => import('./pages/StrategiesManager'));
-const Notifications = React.lazy(() => import('./pages/Notifications'));
 const SettingsShell = React.lazy(() => import('./pages/SettingsShell'));
 const Settings = React.lazy(() => import('./pages/Settings'));
 const SettingsProfile = React.lazy(() => import('./pages/SettingsProfile'));
@@ -38,8 +32,11 @@ const Register = React.lazy(() => import('./pages/Register'));
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
 const AdminJobs = React.lazy(() => import('./pages/AdminJobs'));
 const AdminSchedules = React.lazy(() => import('./pages/AdminSchedules'));
+const MarketDashboard = React.lazy(() => import('./pages/MarketDashboard'));
 const MarketCoverage = React.lazy(() => import('./pages/MarketCoverage'));
 const MarketTracked = React.lazy(() => import('./pages/MarketTracked'));
+const Invite = React.lazy(() => import('./pages/Invite'));
+const SettingsUsers = React.lazy(() => import('./pages/SettingsUsers'));
 
 // Create a client for React Query
 const queryClient = new QueryClient({
@@ -68,38 +65,46 @@ function App() {
                   <Suspense fallback={<RouteFallback />}>
                     <Routes>
                       <Route path="/" element={<RequireAuth><DashboardLayout /></RequireAuth>}>
-                        <Route index element={<Dashboard />} />
-                        <Route path="portfolio" element={<Portfolio />} />
-                        <Route path="portfolio-categories" element={<PortfolioCategories />} />
-                        <Route path="stocks" element={<Stocks />} />
-                        <Route path="options-portfolio" element={<OptionsPortfolio />} />
-                        <Route path="tax-lots" element={<TaxLots />} />
-                        <Route path="dividends" element={<DividendsCalendar />} />
-                        <Route path="transactions" element={<Transactions />} />
-                        <Route path="margin" element={<MarginAnalysis />} />
-                        <Route path="analytics" element={<Analytics />} />
-                        <Route path="strategies" element={<Strategies />} />
-                        <Route path="strategies-manager" element={<StrategiesManager />} />
-                        <Route path="notifications" element={<Notifications />} />
-                        <Route path="settings" element={<SettingsShell />}>
-                          <Route index element={<Navigate to="profile" replace />} />
-                          <Route path="profile" element={<SettingsProfile />} />
-                          <Route path="preferences" element={<SettingsPreferences />} />
-                          <Route path="notifications" element={<SettingsNotifications />} />
-                          <Route path="brokerages" element={<Settings />} />
-                          <Route path="security" element={<SettingsSecurity />} />
-                          {/* Market Data (read-only) */}
-                          <Route path="market/coverage" element={<MarketCoverage />} />
-                          <Route path="market/tracked" element={<MarketTracked />} />
-                          {/* Admin under Settings */}
-                          <Route path="admin/dashboard" element={<AdminDashboard />} />
-                          <Route path="admin/jobs" element={<AdminJobs />} />
-                          <Route path="admin/schedules" element={<AdminSchedules />} />
+                        {/* Market */}
+                        <Route index element={<MarketDashboard />} />
+                        <Route path="market/dashboard" element={<MarketDashboard />} />
+                        <Route path="market/tracked" element={<MarketTracked />} />
+                        <Route path="market/coverage" element={<MarketCoverage />} />
+
+                        {/* Portfolio section */}
+                        <Route element={<RequireNonMarketAccess section="portfolio" />}>
+                          <Route path="portfolio" element={<Portfolio />} />
+                          <Route path="portfolio-categories" element={<PortfolioCategories />} />
+                          <Route path="transactions" element={<Transactions />} />
+                          <Route path="workspace" element={<PortfolioWorkspace />} />
                         </Route>
-                        <Route path="workspace" element={<PortfolioWorkspace />} />
+
+                        {/* Strategy section */}
+                        <Route element={<RequireNonMarketAccess section="strategy" />}>
+                          <Route path="strategies" element={<Strategies />} />
+                          <Route path="strategies-manager" element={<StrategiesManager />} />
+                        </Route>
+
+                        {/* Admin settings */}
+                        <Route element={<RequireNonMarketAccess section="portfolio" />}>
+                          <Route path="settings" element={<RequireAdmin><SettingsShell /></RequireAdmin>}>
+                            <Route index element={<Navigate to="profile" replace />} />
+                            <Route path="profile" element={<SettingsProfile />} />
+                            <Route path="preferences" element={<SettingsPreferences />} />
+                            <Route path="notifications" element={<SettingsNotifications />} />
+                            <Route path="brokerages" element={<Settings />} />
+                            <Route path="security" element={<SettingsSecurity />} />
+                            {/* Admin under Settings */}
+                            <Route path="admin/dashboard" element={<AdminDashboard />} />
+                            <Route path="admin/jobs" element={<AdminJobs />} />
+                            <Route path="admin/schedules" element={<AdminSchedules />} />
+                            <Route path="admin/users" element={<SettingsUsers />} />
+                          </Route>
+                        </Route>
                       </Route>
                       <Route path="/login" element={<Login />} />
                       <Route path="/register" element={<Register />} />
+                      <Route path="/invite/:token" element={<Invite />} />
                     </Routes>
                   </Suspense>
                   <Toaster

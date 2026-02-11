@@ -31,6 +31,9 @@ vi.mock('../../context/AuthContext', () => {
     useAuth: () => ({
       user: mockedUser,
       refreshMe,
+      appSettings: { market_only_mode: true },
+      appSettingsReady: true,
+      ready: true,
     }),
   };
 });
