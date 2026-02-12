@@ -31,7 +31,10 @@ export const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<SelectedAccount>('all');
-  const { token, ready, logout } = useAuth();
+  const { token, ready, user, appSettings, appSettingsReady } = useAuth();
+  const marketOnly = appSettingsReady ? Boolean(appSettings?.market_only_mode) : true;
+  const isAdmin = user?.role === 'admin';
+  const portfolioEnabled = isAdmin || (!marketOnly && Boolean(appSettings?.portfolio_enabled));
 
   // Bootstrap selected from URL or localStorage
   useEffect(() => {
@@ -63,6 +66,14 @@ export const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const load = async () => {
       if (!ready || !token) {
         setAccounts([]);
+        setError(null);
+        setLoading(false);
+        return;
+      }
+      if (!appSettingsReady || !portfolioEnabled) {
+        setAccounts([]);
+        setError(null);
+        setLoading(false);
         return;
       }
       setLoading(true);
@@ -82,17 +93,20 @@ export const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }));
         setAccounts(normalized);
       } catch (e: any) {
-        setError(e?.message || 'Failed to load accounts');
-        // If unauthorized, clear accounts
-        if (e?.status === 401 || e?.response?.status === 401) {
+        const status = e?.status || e?.response?.status;
+        // Access can be intentionally denied in market-only mode.
+        if (status === 401 || status === 403) {
           setAccounts([]);
+          setError(null);
+        } else {
+          setError(e?.message || 'Failed to load accounts');
         }
       } finally {
         setLoading(false);
       }
     };
     load();
-  }, [token, ready]);
+  }, [token, ready, appSettingsReady, portfolioEnabled]);
 
   const value = useMemo<AccountContextValue>(() => {
     return { accounts, loading, error, selected, setSelected };
