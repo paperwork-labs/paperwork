@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+from collections import Counter
 import json
 import logging
 import random
 import time
 from datetime import datetime
 from datetime import timedelta
+from datetime import timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
-from datetime import timedelta
 
 import finnhub
 import fmpsdk
@@ -23,7 +24,7 @@ from sqlalchemy import func, distinct
 from backend.config import settings
 from backend.database import SessionLocal
 from backend.models import MarketSnapshot
-from backend.models.market_data import PriceData
+from backend.models.market_data import PriceData, MarketSnapshotHistory
 from backend.models.index_constituent import IndexConstituent
 from backend.services.market.indicator_engine import (
     calculate_performance_windows,
@@ -40,12 +41,18 @@ from backend.services.market.constants import (
     FUNDAMENTAL_FIELDS,
     FUNDAMENTAL_FIELDS_WITH_NAME,
     FUNDAMENTAL_FIELDS_WITH_SUB_INDUSTRY,
+    FUNDAMENTAL_FIELDS_CORE_WITH_NAME,
 )
-from backend.services.market.dataframe_utils import price_data_rows_to_dataframe
+from backend.services.market.dataframe_utils import (
+    ensure_newest_first,
+    ensure_oldest_first,
+    price_data_rows_to_dataframe,
+)
 from backend.services.market.provider_service import MarketDataProviderService
 from backend.services.market.snapshot_service import MarketSnapshotService
 from backend.services.market.coverage_service import CoverageService
 from backend.services.market.coverage_utils import compute_coverage_status
+from backend.services.market.stage_utils import compute_stage_run_lengths
 
 logger = logging.getLogger(__name__)
 
@@ -176,18 +183,25 @@ class MarketDataService:
         if df is None or df.empty or "Close" not in df.columns:
             return {}
 
-        price = float(df["Close"].iloc[0])
-        # df is newest-first with datetime index (when sourced from DB/provider)
+        # Normalize once to keep ordering contracts explicit and stable.
+        df_newest = ensure_newest_first(df)
+        df_oldest = ensure_oldest_first(df_newest)
+
+        price = float(df_newest["Close"].iloc[0])
+        # df_newest is newest-first with datetime index.
         as_of_ts = None
         try:
-            as_of_ts = df.index[0].to_pydatetime() if hasattr(df.index[0], "to_pydatetime") else df.index[0]
+            as_of_ts = (
+                df_newest.index[0].to_pydatetime()
+                if hasattr(df_newest.index[0], "to_pydatetime")
+                else df_newest.index[0]
+            )
         except Exception:
             as_of_ts = None
-        data_for_ta = df.iloc[::-1].copy()
-        indicators = compute_core_indicators(data_for_ta)
+        indicators = compute_core_indicators(df_oldest)
         indicators["current_price"] = price
-        indicators.update(compute_atr_matrix_metrics(data_for_ta, indicators))
-        indicators.update(calculate_performance_windows(df))
+        indicators.update(compute_atr_matrix_metrics(df_oldest, indicators))
+        indicators.update(calculate_performance_windows(df_newest))
 
         sma_50 = indicators.get("sma_50")
         sma_200 = indicators.get("sma_200")
@@ -218,9 +232,9 @@ class MarketDataService:
             try:
                 if window <= 0:
                     return None
-                if len(data_for_ta) < window:
+                if len(df_oldest) < window:
                     return None
-                recent = data_for_ta.tail(window)
+                recent = df_oldest.tail(window)
                 if recent.empty:
                     return None
                 hi = float(recent["High"].max())
@@ -295,18 +309,136 @@ class MarketDataService:
 
         # Chart metrics (TD Sequential, gaps, trendlines)
         try:
-            df_newest = df.head(120).copy()
-            if not df_newest.empty:
-                td = compute_td_sequential_counts(df_newest["Close"].tolist())
+            chart_df = df_newest.head(120).copy()
+            if not chart_df.empty:
+                td = compute_td_sequential_counts(chart_df["Close"].tolist())
                 snapshot.update(td)
-                snapshot.update(compute_gap_counts(df_newest))
-                snapshot.update(compute_trendline_counts(df_newest.iloc[::-1].copy()))
+                snapshot.update(compute_gap_counts(chart_df))
+                snapshot.update(compute_trendline_counts(ensure_oldest_first(chart_df)))
         except Exception:
             pass
         for key in ("stage_label", "stage_slope_pct", "stage_dist_pct"):
             snapshot.setdefault(key, None)
 
         return snapshot
+
+    @staticmethod
+    def _normalize_stage_label(stage_label: Any) -> Optional[str]:
+        raw = str(stage_label or "").strip().upper()
+        if not raw:
+            return None
+        if "2A" in raw:
+            return "2A"
+        if "2B" in raw:
+            return "2B"
+        if "2C" in raw:
+            return "2C"
+        if raw in {"2", "STAGE 2"}:
+            return "2A"
+        if raw in {"1", "STAGE 1"} or raw.endswith(" 1"):
+            return "1"
+        if raw in {"3", "STAGE 3"} or raw.endswith(" 3"):
+            return "3"
+        if raw in {"4", "STAGE 4"} or raw.endswith(" 4"):
+            return "4"
+        return None
+
+    def _derive_stage_run_fields(
+        self,
+        *,
+        current_stage_label: Any,
+        prior_stage_labels: list[Any] | None,
+        latest_history_row: Any | None = None,
+    ) -> Dict[str, Any]:
+        """Compute per-symbol stage run metadata from stage-label history + current stage."""
+        current_norm = self._normalize_stage_label(current_stage_label)
+        if current_norm is None:
+            return {
+                "current_stage_days": None,
+                "previous_stage_label": None,
+                "previous_stage_days": None,
+            }
+
+        normalized_prior = []
+        for lbl in (prior_stage_labels or []):
+            n = self._normalize_stage_label(lbl)
+            # Ignore unknown/empty history labels so they do not erase stage runs.
+            if n is not None:
+                normalized_prior.append(n)
+        has_normalized_prior = len(normalized_prior) > 0
+        seq = normalized_prior + [current_norm]
+        run_data = compute_stage_run_lengths(seq)
+        if not run_data:
+            out = {
+                "current_stage_days": 1,
+                "previous_stage_label": None,
+                "previous_stage_days": None,
+            }
+        else:
+            last = run_data[-1]
+            out = {
+                "current_stage_days": last.get("current_stage_days"),
+                "previous_stage_label": last.get("previous_stage_label"),
+                "previous_stage_days": last.get("previous_stage_days"),
+            }
+
+        # When history depth is sparse, preserve authoritative run-length metadata
+        # from latest history rows to avoid resetting long-running stages.
+        if latest_history_row is not None:
+            latest_stage_norm = self._normalize_stage_label(
+                getattr(latest_history_row, "stage_label", None)
+            )
+            latest_days_raw = getattr(latest_history_row, "current_stage_days", None)
+            try:
+                latest_days = int(latest_days_raw) if latest_days_raw is not None else None
+            except Exception:
+                latest_days = None
+
+            if latest_stage_norm == current_norm:
+                if isinstance(latest_days, int) and latest_days > 0:
+                    out["current_stage_days"] = max(
+                        int(out.get("current_stage_days") or 0), latest_days + 1
+                    )
+                if out.get("previous_stage_label") is None:
+                    out["previous_stage_label"] = getattr(
+                        latest_history_row, "previous_stage_label", None
+                    )
+                if out.get("previous_stage_days") is None:
+                    out["previous_stage_days"] = getattr(
+                        latest_history_row, "previous_stage_days", None
+                    )
+            elif latest_stage_norm and latest_stage_norm != current_norm:
+                out["previous_stage_label"] = (
+                    out.get("previous_stage_label") or latest_stage_norm
+                )
+                if isinstance(latest_days, int) and latest_days > 0:
+                    out["previous_stage_days"] = max(
+                        int(out.get("previous_stage_days") or 0), latest_days
+                    )
+                if not out.get("current_stage_days"):
+                    out["current_stage_days"] = 1
+            elif latest_stage_norm is None and not has_normalized_prior:
+                # Some historical rows may carry UNKNOWN stage labels while still
+                # maintaining monotonic run lengths. Preserve that continuity
+                # instead of collapsing current_stage_days to 1.
+                if isinstance(latest_days, int) and latest_days > 0:
+                    out["current_stage_days"] = max(
+                        int(out.get("current_stage_days") or 0), latest_days + 1
+                    )
+                if out.get("previous_stage_label") is None:
+                    out["previous_stage_label"] = getattr(
+                        latest_history_row, "previous_stage_label", None
+                    )
+                if out.get("previous_stage_days") is None:
+                    out["previous_stage_days"] = getattr(
+                        latest_history_row, "previous_stage_days", None
+                    )
+
+        return {
+            "current_stage_days": out.get("current_stage_days"),
+            "previous_stage_label": out.get("previous_stage_label"),
+            "previous_stage_days": out.get("previous_stage_days"),
+        }
 
     @staticmethod
     def _needs_fundamentals(snapshot: Dict[str, Any]) -> bool:
@@ -515,6 +647,28 @@ class MarketDataService:
             if info.get(key) is None and value is not None:
                 info[key] = value
 
+        def call_fmp_first_available(
+            candidate_names: list[str], *, apikey: str, symbol: str
+        ) -> Any:
+            """Call the first available fmpsdk helper across SDK variants."""
+            last_exc: Exception | None = None
+            for fn_name in candidate_names:
+                fn = getattr(fmpsdk, fn_name, None)
+                if not callable(fn):
+                    continue
+                try:
+                    return self._call_blocking_with_retries_sync(
+                        fn,
+                        apikey=apikey,
+                        symbol=symbol,
+                    )
+                except Exception as exc:
+                    last_exc = exc
+                    continue
+            if last_exc is not None:
+                raise last_exc
+            return None
+
         try:
             if settings.FMP_API_KEY:
                 prof = self._call_blocking_with_retries_sync(
@@ -549,8 +703,15 @@ class MarketDataService:
                 except Exception as exc:
                     logger.warning("Failed to fetch FMP key metrics for %s: %s", symbol, exc)
                 try:
-                    ratios = self._call_blocking_with_retries_sync(
-                        fmpsdk.ratios_ttm,
+                    ratios = call_fmp_first_available(
+                        [
+                            # Newer fmpsdk naming
+                            "financial_ratios_ttm",
+                            # Older/internal naming used in some environments
+                            "ratios_ttm",
+                            # Fallback without explicit TTM suffix
+                            "financial_ratios",
+                        ],
                         apikey=settings.FMP_API_KEY,
                         symbol=symbol,
                     )
@@ -578,34 +739,45 @@ class MarketDataService:
                     logger.warning("Failed to fetch or process financial growth from FMP for %s: %s", symbol, exc)
         except Exception as exc:
             logger.warning("Failed to fetch FMP fundamentals for %s: %s", symbol, exc)
-        try:
-            y = self._call_blocking_with_retries_sync(lambda: yf.Ticker(symbol).info)
-            if y:
+        # Yahoo fundamentals fallback policy:
+        # - paid policy + FMP configured: strict FMP-only for fundamentals to avoid
+        #   Yahoo throttling storms during large universe recomputes.
+        # - free policy or no FMP: use Yahoo fallback to improve completeness.
+        policy = str(getattr(settings, "MARKET_PROVIDER_POLICY", "paid")).lower()
+        has_fmp = bool(settings.FMP_API_KEY)
+        needs_core = any(info.get(k) is None for k in FUNDAMENTAL_FIELDS_CORE_WITH_NAME)
+        needs_full = self._needs_fundamentals(info)
+        should_try_yahoo = (not has_fmp) or (policy != "paid" and (needs_full or needs_core))
+
+        if should_try_yahoo:
+            try:
+                y = self._call_blocking_with_retries_sync(lambda: yf.Ticker(symbol).info)
+                if y:
+                    if not info:
+                        info = {
+                            "name": y.get("shortName") or y.get("longName") or y.get("symbol"),
+                            "sector": y.get("sector"),
+                            "industry": y.get("industry"),
+                            "sub_industry": y.get("subIndustry") or y.get("industry") or None,
+                            "market_cap": y.get("marketCap"),
+                        }
+                    set_if_missing("beta", y.get("beta"))
+                    set_if_missing("pe_ttm", y.get("trailingPE") or y.get("forwardPE"))
+                    set_if_missing("peg_ttm", y.get("pegRatio"))
+                    set_if_missing("roe", to_pct(y.get("returnOnEquity")))
+                    set_if_missing("dividend_yield", to_pct(y.get("dividendYield")))
+                    set_if_missing("eps_growth_yoy", to_pct(y.get("earningsGrowth")))
+                    set_if_missing("eps_growth_qoq", to_pct(y.get("earningsQuarterlyGrowth")))
+                    set_if_missing("revenue_growth_yoy", to_pct(y.get("revenueGrowth")))
+                    set_if_missing("revenue_growth_qoq", to_pct(y.get("revenueQuarterlyGrowth")))
+                    set_if_missing("analyst_rating", y.get("recommendationKey"))
+                    earnings = y.get("earningsDate")
+                    if isinstance(earnings, (list, tuple)) and earnings:
+                        set_if_missing("next_earnings", earnings[0])
+                    set_if_missing("last_earnings", y.get("lastEarningsDate"))
+            except Exception:
                 if not info:
-                    info = {
-                        "name": y.get("shortName") or y.get("longName") or y.get("symbol"),
-                        "sector": y.get("sector"),
-                        "industry": y.get("industry"),
-                        "sub_industry": y.get("subIndustry") or y.get("industry") or None,
-                        "market_cap": y.get("marketCap"),
-                    }
-                set_if_missing("beta", y.get("beta"))
-                set_if_missing("pe_ttm", y.get("trailingPE") or y.get("forwardPE"))
-                set_if_missing("peg_ttm", y.get("pegRatio"))
-                set_if_missing("roe", to_pct(y.get("returnOnEquity")))
-                set_if_missing("dividend_yield", to_pct(y.get("dividendYield")))
-                set_if_missing("eps_growth_yoy", to_pct(y.get("earningsGrowth")))
-                set_if_missing("eps_growth_qoq", to_pct(y.get("earningsQuarterlyGrowth")))
-                set_if_missing("revenue_growth_yoy", to_pct(y.get("revenueGrowth")))
-                set_if_missing("revenue_growth_qoq", to_pct(y.get("revenueQuarterlyGrowth")))
-                set_if_missing("analyst_rating", y.get("recommendationKey"))
-                earnings = y.get("earningsDate")
-                if isinstance(earnings, (list, tuple)) and earnings:
-                    set_if_missing("next_earnings", earnings[0])
-                set_if_missing("last_earnings", y.get("lastEarningsDate"))
-        except Exception:
-            if not info:
-                info = {}
+                    info = {}
         return info
 
     async def get_historical_data(
@@ -641,17 +813,22 @@ class MarketDataService:
             if not self._is_provider_available(provider):
                 continue
             provider_used = provider.value
+            # Provider-specific symbol aliases for index proxies that may require
+            # caret-prefixed tickers on some APIs (e.g., Yahoo index symbols).
+            fetch_symbol = symbol
+            if provider == APIProvider.YFINANCE and str(symbol).upper() == "SOX":
+                fetch_symbol = "^SOX"
             try:
                 if provider == APIProvider.FMP:
                     # Support daily and intraday (5m) for FMP
                     if interval == "5m":
-                        df = await self._call_blocking_with_retries(self._get_historical_fmp_5m_sync, symbol, period)
+                        df = await self._call_blocking_with_retries(self._get_historical_fmp_5m_sync, fetch_symbol, period)
                     else:
-                        df = await self._call_blocking_with_retries(self._get_historical_fmp_sync, symbol, period, interval)
+                        df = await self._call_blocking_with_retries(self._get_historical_fmp_sync, fetch_symbol, period, interval)
                 elif provider == APIProvider.TWELVE_DATA:
-                    df = await self._call_blocking_with_retries(self._get_historical_twelve_data_sync, symbol, period, interval)
+                    df = await self._call_blocking_with_retries(self._get_historical_twelve_data_sync, fetch_symbol, period, interval)
                 elif provider == APIProvider.YFINANCE:
-                    df = await self._call_blocking_with_retries(self._get_historical_yfinance_sync, symbol, period, interval)
+                    df = await self._call_blocking_with_retries(self._get_historical_yfinance_sync, fetch_symbol, period, interval)
                 elif provider == APIProvider.FINNHUB:
                     df = None  # not implemented
                 else:
@@ -1028,7 +1205,8 @@ class MarketDataService:
         rows = q.order_by(PriceData.date.desc()).limit(limit_bars).all()
         if not rows:
             return {}
-        df = price_data_rows_to_dataframe(rows, ascending=True)
+        # Keep newest-first ordering for snapshot math (_snapshot_from_dataframe expects this).
+        df = price_data_rows_to_dataframe(rows, ascending=False)
         snapshot = self._snapshot_from_dataframe(df)
         if not snapshot:
             return {}
@@ -1061,7 +1239,7 @@ class MarketDataService:
                 .all()
             )
             if bm_rows:
-                bm_df = price_data_rows_to_dataframe(bm_rows, ascending=True)
+                bm_df = price_data_rows_to_dataframe(bm_rows, ascending=False)
                 # compute_weinstein_stage_from_daily expects newest-first
                 sym_newest = df.copy()
                 bm_newest = bm_df.copy()
@@ -1088,25 +1266,52 @@ class MarketDataService:
                 # Stage duration fields (prefer latest history row if available)
                 try:
                     from backend.models.market_data import MarketSnapshotHistory
+                    from datetime import datetime as _dt
 
-                    latest_hist = (
+                    snapshot_as_of = snapshot.get("as_of_timestamp")
+                    snapshot_as_of_dt = None
+                    if isinstance(snapshot_as_of, _dt):
+                        snapshot_as_of_dt = snapshot_as_of
+                    elif isinstance(snapshot_as_of, str) and snapshot_as_of.strip():
+                        try:
+                            s = snapshot_as_of.strip()
+                            if s.endswith("Z"):
+                                snapshot_as_of_dt = _dt.fromisoformat(s.replace("Z", "+00:00"))
+                            else:
+                                snapshot_as_of_dt = _dt.fromisoformat(s)
+                        except Exception:
+                            snapshot_as_of_dt = None
+
+                    hist_q = (
                         db.query(MarketSnapshotHistory)
                         .filter(
                             MarketSnapshotHistory.symbol == symbol,
                             MarketSnapshotHistory.analysis_type == "technical_snapshot",
                         )
-                        .order_by(MarketSnapshotHistory.as_of_date.desc())
-                        .first()
                     )
-                    if latest_hist:
-                        for key in (
-                            "current_stage_days",
-                            "previous_stage_label",
-                            "previous_stage_days",
-                        ):
-                            val = getattr(latest_hist, key, None)
-                            if val is not None:
-                                snapshot[key] = val
+                    # Avoid double-counting if today's history row already exists.
+                    if snapshot_as_of_dt is not None:
+                        hist_q = hist_q.filter(MarketSnapshotHistory.as_of_date < snapshot_as_of_dt)
+
+                    latest_hist = (
+                        hist_q.order_by(MarketSnapshotHistory.as_of_date.desc()).first()
+                    )
+                    recent_hist_rows = (
+                        hist_q.order_by(MarketSnapshotHistory.as_of_date.desc())
+                        .limit(400)
+                        .all()
+                    )
+                    # compute run lengths in chronological order
+                    prior_labels = [
+                        getattr(r, "stage_label", None) for r in reversed(recent_hist_rows)
+                    ]
+                    snapshot.update(
+                        self._derive_stage_run_fields(
+                            current_stage_label=snapshot.get("stage_label"),
+                            prior_stage_labels=prior_labels,
+                            latest_history_row=latest_hist,
+                        )
+                    )
                 except Exception:
                     pass
         except Exception:
@@ -1271,6 +1476,7 @@ class MarketDataService:
                 expiry_timestamp=expiry,
                 raw_analysis=snapshot_json,
             )
+            row.analysis_timestamp = datetime.utcnow()
             for k, v in snapshot.items():
                 if hasattr(row, k):
                     setattr(row, k, v)
@@ -1278,6 +1484,7 @@ class MarketDataService:
                 row.as_of_timestamp = as_of_ts
             db.add(row)
         else:
+            row.analysis_timestamp = datetime.utcnow()
             row.expiry_timestamp = expiry
             row.raw_analysis = snapshot_json
             for k, v in snapshot.items():
@@ -1299,6 +1506,7 @@ class MarketDataService:
                 .first()
             )
             if existing:
+                existing.analysis_timestamp = datetime.utcnow()
                 # Headline fields
                 existing.current_price = snapshot_json.get("current_price")
                 existing.rsi = snapshot_json.get("rsi")
@@ -1315,6 +1523,7 @@ class MarketDataService:
                     symbol=symbol,
                     analysis_type=analysis_type,
                     as_of_date=as_of_date,
+                    analysis_timestamp=datetime.utcnow(),
                     current_price=snapshot_json.get("current_price"),
                     rsi=snapshot_json.get("rsi"),
                     atr_value=snapshot_json.get("atr_value"),
@@ -1897,6 +2106,270 @@ class MarketDataService:
             snapshot["daily"]["snapshot_fill_by_date"] = []
         snapshot["status"] = compute_coverage_status(snapshot)
         return snapshot
+
+    # ---------------------- Stage quality + repair ----------------------
+    _VALID_STAGE_LABELS = {"1", "2A", "2B", "2C", "3", "4", "UNKNOWN"}
+
+    @staticmethod
+    def _as_naive_utc(ts: datetime | None) -> datetime | None:
+        if ts is None:
+            return None
+        try:
+            if ts.tzinfo is not None:
+                return ts.astimezone(timezone.utc).replace(tzinfo=None)
+        except Exception:
+            # Best effort: fall back to stripping tzinfo below if conversion fails.
+            pass
+        try:
+            return ts.replace(tzinfo=None)
+        except Exception:
+            return ts
+
+    def stage_quality_summary(
+        self,
+        db: Session,
+        *,
+        lookback_days: int = 120,
+    ) -> Dict[str, Any]:
+        lookback_days = max(7, min(int(lookback_days), 3650))
+        cutoff = datetime.utcnow() - timedelta(days=lookback_days)
+
+        rows = (
+            db.query(
+                MarketSnapshot.symbol,
+                MarketSnapshot.stage_label,
+                MarketSnapshot.current_stage_days,
+                MarketSnapshot.previous_stage_label,
+                MarketSnapshot.previous_stage_days,
+                MarketSnapshot.as_of_timestamp,
+            )
+            .filter(MarketSnapshot.analysis_type == "technical_snapshot")
+            .all()
+        )
+
+        total = len(rows)
+        stage_counter: Counter[str] = Counter()
+        invalid_stage_count = 0
+        unknown_count = 0
+        invalid_current_days_count = 0
+        invalid_previous_link_count = 0
+        stale_stage_count = 0
+
+        for _, stage_label, current_days, prev_label, prev_days, as_of_ts in rows:
+            stage_raw = str(stage_label or "").strip().upper()
+            if stage_raw in self._VALID_STAGE_LABELS:
+                stage_counter[stage_raw] += 1
+            else:
+                invalid_stage_count += 1
+
+            if stage_raw == "UNKNOWN":
+                unknown_count += 1
+            if stage_raw and stage_raw != "UNKNOWN":
+                try:
+                    d = int(current_days) if current_days is not None else 0
+                except Exception:
+                    d = 0
+                if d < 1:
+                    invalid_current_days_count += 1
+
+            has_prev_label = bool(str(prev_label or "").strip())
+            has_prev_days = prev_days is not None
+            if has_prev_label != has_prev_days:
+                invalid_previous_link_count += 1
+
+            as_of_naive = self._as_naive_utc(as_of_ts)
+            if as_of_naive is None or as_of_naive < cutoff:
+                stale_stage_count += 1
+
+        # Recent monotonicity check on history rows.
+        recent_rows = (
+            db.query(
+                MarketSnapshotHistory.symbol,
+                MarketSnapshotHistory.as_of_date,
+                MarketSnapshotHistory.stage_label,
+                MarketSnapshotHistory.current_stage_days,
+            )
+            .filter(
+                MarketSnapshotHistory.analysis_type == "technical_snapshot",
+                MarketSnapshotHistory.as_of_date >= cutoff,
+            )
+            .order_by(
+                MarketSnapshotHistory.symbol.asc(),
+                MarketSnapshotHistory.as_of_date.asc(),
+            )
+            .all()
+        )
+
+        monotonicity_issues = 0
+        by_symbol: Dict[str, List[tuple[datetime, Any, Any]]] = {}
+        for symbol, as_of_date, stage_label, current_days in recent_rows:
+            by_symbol.setdefault(str(symbol or "").upper(), []).append(
+                (as_of_date, stage_label, current_days)
+            )
+
+        for series in by_symbol.values():
+            prev_norm: Optional[str] = None
+            prev_days: Optional[int] = None
+            for _, stage_label, current_days in series:
+                norm = self._normalize_stage_label(stage_label)
+                if norm is None:
+                    continue
+                try:
+                    cur_days = int(current_days) if current_days is not None else 0
+                except Exception:
+                    cur_days = 0
+                if cur_days < 1:
+                    monotonicity_issues += 1
+                elif prev_norm is not None and prev_days is not None:
+                    if norm == prev_norm and cur_days != prev_days + 1:
+                        monotonicity_issues += 1
+                    if norm != prev_norm and cur_days != 1:
+                        monotonicity_issues += 1
+                prev_norm = norm
+                prev_days = cur_days if cur_days >= 1 else None
+
+        known_count = total - unknown_count - invalid_stage_count
+        unknown_rate = (unknown_count / total) if total else 0.0
+        known_rate = (known_count / total) if total else 0.0
+
+        warning = (
+            invalid_stage_count > 0
+            or invalid_current_days_count > 0
+            or invalid_previous_link_count > 0
+            or monotonicity_issues > 0
+            or unknown_rate > 0.35
+        )
+        status = "warning" if warning else "ok"
+
+        return {
+            "status": status,
+            "window_days": lookback_days,
+            "total_symbols": total,
+            "known_count": known_count,
+            "unknown_count": unknown_count,
+            "known_rate": round(known_rate, 4),
+            "unknown_rate": round(unknown_rate, 4),
+            "invalid_stage_count": invalid_stage_count,
+            "invalid_current_days_count": invalid_current_days_count,
+            "invalid_previous_link_count": invalid_previous_link_count,
+            "monotonicity_issues": monotonicity_issues,
+            "stale_stage_count": stale_stage_count,
+            "stage_counts": {
+                k: int(stage_counter.get(k, 0))
+                for k in sorted(self._VALID_STAGE_LABELS)
+            },
+            "checked_at": datetime.utcnow().isoformat(),
+        }
+
+    def repair_stage_history_window(
+        self,
+        db: Session,
+        *,
+        days: int = 120,
+        symbol: str | None = None,
+    ) -> Dict[str, Any]:
+        days = max(7, min(int(days), 3650))
+        target_symbol = (symbol or "").strip().upper() or None
+
+        query = db.query(MarketSnapshotHistory.symbol).filter(
+            MarketSnapshotHistory.analysis_type == "technical_snapshot"
+        )
+        if target_symbol:
+            query = query.filter(MarketSnapshotHistory.symbol == target_symbol)
+        symbols = [s for (s,) in query.distinct().order_by(MarketSnapshotHistory.symbol.asc()).all()]
+
+        touched_rows = 0
+        touched_symbols = 0
+        for idx, sym in enumerate(symbols, 1):
+            rows = (
+                db.query(MarketSnapshotHistory)
+                .filter(
+                    MarketSnapshotHistory.analysis_type == "technical_snapshot",
+                    MarketSnapshotHistory.symbol == sym,
+                )
+                .order_by(MarketSnapshotHistory.as_of_date.desc())
+                .limit(days)
+                .all()
+            )
+            if not rows:
+                continue
+            rows = list(reversed(rows))
+
+            cur_stage: Optional[str] = None
+            cur_days = 0
+            prev_stage: Optional[str] = None
+            prev_days: Optional[int] = None
+            updated_for_symbol = False
+
+            for row in rows:
+                norm = self._normalize_stage_label(getattr(row, "stage_label", None))
+                if norm is None:
+                    continue
+                if cur_stage == norm:
+                    cur_days += 1
+                else:
+                    prev_stage = cur_stage
+                    prev_days = cur_days if cur_stage is not None else None
+                    cur_stage = norm
+                    cur_days = 1
+                row.current_stage_days = cur_days
+                row.previous_stage_label = prev_stage
+                row.previous_stage_days = prev_days
+                touched_rows += 1
+                updated_for_symbol = True
+
+            if updated_for_symbol:
+                touched_symbols += 1
+                snap = (
+                    db.query(MarketSnapshot)
+                    .filter(
+                        MarketSnapshot.analysis_type == "technical_snapshot",
+                        MarketSnapshot.symbol == sym,
+                    )
+                    .first()
+                )
+                if snap is not None:
+                    # Sync snapshot run metadata from a history row that best
+                    # matches the snapshot stage label. This avoids poisoning
+                    # known snapshot stages with UNKNOWN-run metadata from the
+                    # newest history row.
+                    target_norm = self._normalize_stage_label(
+                        getattr(snap, "stage_label", None)
+                    )
+                    candidate = None
+                    if target_norm is not None:
+                        for row in reversed(rows):
+                            row_norm = self._normalize_stage_label(
+                                getattr(row, "stage_label", None)
+                            )
+                            if row_norm == target_norm:
+                                candidate = row
+                                break
+                    if candidate is None:
+                        # Fallback: latest known-stage row in window.
+                        for row in reversed(rows):
+                            if self._normalize_stage_label(
+                                getattr(row, "stage_label", None)
+                            ) is not None:
+                                candidate = row
+                                break
+                    if candidate is not None:
+                        snap.current_stage_days = getattr(candidate, "current_stage_days", None)
+                        snap.previous_stage_label = getattr(candidate, "previous_stage_label", None)
+                        snap.previous_stage_days = getattr(candidate, "previous_stage_days", None)
+
+            if idx % 50 == 0:
+                db.commit()
+
+        db.commit()
+        return {
+            "window_days": days,
+            "target_symbol": target_symbol,
+            "total_symbols": len(symbols),
+            "touched_symbols": touched_symbols,
+            "touched_rows": touched_rows,
+            "updated_at": datetime.utcnow().isoformat(),
+        }
 
 # Global instance
 market_data_service = MarketDataService()

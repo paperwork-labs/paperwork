@@ -35,6 +35,12 @@ Optional:
 3. Trigger provider deploy hooks or run Fly deploys.
 4. Smoke test `/health`.
 
+### Option A migration policy
+- Keep `AUTO_MIGRATE_ON_STARTUP=false` in production runtimes.
+- Require `DATABASE_URL_PRODUCTION` GitHub secret so the production workflow always runs:
+  - `alembic -c backend/alembic.ini upgrade head`
+- Treat missing migration secret as a hard deploy failure.
+
 ## Domains
 - Frontend (static): `https://axiomfolio.com`
 - API: `https://api.axiomfolio.com`

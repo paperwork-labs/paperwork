@@ -17,9 +17,10 @@ class MarketSnapshotService:
         limit_bars: int = 300,
         as_of_dt=None,
     ) -> Dict[str, Any]:
-        return self._service.compute_snapshot_from_db(
-            db, symbol, limit_bars=limit_bars, as_of_dt=as_of_dt
-        )
+        # `limit_bars` is intentionally retained here for call-site compatibility;
+        # MarketDataService now reads bar limits from settings.
+        _ = limit_bars
+        return self._service.compute_snapshot_from_db(db, symbol, as_of_dt=as_of_dt)
 
     async def compute_snapshot_from_providers(self, symbol: str) -> Dict[str, Any]:
         return await self._service.compute_snapshot_from_providers(symbol)

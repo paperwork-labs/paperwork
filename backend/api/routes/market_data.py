@@ -7,6 +7,7 @@ Providers are used only for OHLCV backfills (paid provider prioritized).
 """
 
 import json
+import math
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.orm import Session
@@ -14,6 +15,7 @@ from sqlalchemy import func, distinct
 from typing import List, Dict, Any, Callable, Optional
 import logging
 from datetime import datetime, timedelta
+from pydantic import BaseModel
 
 # dependencies
 from backend.database import get_db
@@ -45,10 +47,13 @@ from backend.api.dependencies import (
     get_market_data_viewer,
     market_visibility_scope,
     market_exposed_to_all,
+    require_roles,
 )
 from backend.models.index_constituent import IndexConstituent
 from backend.models.market_data import PriceData
 from backend.models.market_data import JobRun
+from backend.models.market_tracked_plan import MarketTrackedPlan
+from backend.models.user import UserRole
 from backend.api.routes.utils import serialize_job_runs
 from backend.tasks.market_data_tasks import backfill_5m_last_n_days, enforce_price_data_retention, backfill_5m_for_symbols
 from backend.tasks.market_data_tasks import monitor_coverage_health
@@ -61,6 +66,11 @@ from backend.models import Position
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+class TrackedPlanUpdateRequest(BaseModel):
+    entry_price: Optional[float] = None
+    exit_price: Optional[float] = None
 
 
 def _visibility_scope() -> str:
@@ -454,27 +464,105 @@ async def get_snapshots(
     if not tracked:
         return {"count": 0, "rows": []}
 
-    rows = (
+    base_query = (
         db.query(MarketSnapshot)
         .filter(
             MarketSnapshot.analysis_type == "technical_snapshot",
             MarketSnapshot.symbol.in_(tracked),
         )
-        .order_by(MarketSnapshot.symbol.asc())
-        .limit(limit)
-        .all()
+        .order_by(MarketSnapshot.symbol.asc(), MarketSnapshot.analysis_timestamp.desc())
     )
+    rows: list[MarketSnapshot]
+    # Postgres supports DISTINCT ON + ORDER BY, so we can fetch latest-per-symbol directly.
+    # Keep Python dedupe fallback for non-Postgres environments/tests.
+    bind = getattr(db, "bind", None)
+    dialect_name = getattr(getattr(bind, "dialect", None), "name", "")
+    if dialect_name == "postgresql" and hasattr(base_query, "distinct"):
+        rows = base_query.distinct(MarketSnapshot.symbol).limit(limit).all()
+    else:
+        raw_rows = base_query.all()
+        latest_rows: list[MarketSnapshot] = []
+        seen_symbols: set[str] = set()
+        for row in raw_rows:
+            sym = str(getattr(row, "symbol", "")).upper()
+            if not sym or sym in seen_symbols:
+                continue
+            seen_symbols.add(sym)
+            latest_rows.append(row)
+            if len(latest_rows) >= limit:
+                break
+        rows = latest_rows
 
     preferred = _snapshot_preferred_columns("list")
     col_names = list(getattr(MarketSnapshot, "__table__").columns.keys())
     ordered = [k for k in preferred if k in col_names]
     ordered.extend([k for k in col_names if k not in set(ordered) and k not in {"id"}])
 
+    plan_map: dict[str, MarketTrackedPlan] = {}
+    symbols = [str(getattr(r, "symbol", "")).upper() for r in rows if getattr(r, "symbol", None)]
+    if symbols:
+        plans = (
+            db.query(MarketTrackedPlan)
+            .filter(MarketTrackedPlan.symbol.in_(symbols))
+            .all()
+        )
+        plan_map = {str(p.symbol).upper(): p for p in plans}
+
     out: list[dict] = []
     for r in rows:
-        out.append({k: getattr(r, k) for k in ordered})
+        payload = {k: getattr(r, k) for k in ordered}
+        sym = str(payload.get("symbol") or "").upper()
+        plan = plan_map.get(sym)
+        payload["entry_price"] = getattr(plan, "entry_price", None) if plan else None
+        payload["exit_price"] = getattr(plan, "exit_price", None) if plan else None
+        out.append(payload)
 
     return {"count": len(out), "rows": out}
+
+
+@router.patch("/tracked-plan/{symbol}")
+async def upsert_tracked_plan(
+    symbol: str,
+    payload: TrackedPlanUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.ANALYST])),
+) -> Dict[str, Any]:
+    sym = symbol.upper().strip()
+    if not sym:
+        raise HTTPException(status_code=400, detail="symbol is required")
+    row = db.query(MarketTrackedPlan).filter(MarketTrackedPlan.symbol == sym).first()
+    if row is None:
+        row = MarketTrackedPlan(symbol=sym)
+        db.add(row)
+    updates = payload.model_dump(exclude_unset=True)
+    if "entry_price" in updates:
+        v = updates["entry_price"]
+        if v is not None:
+            fv = float(v)
+            if (not math.isfinite(fv)) or fv <= 0:
+                raise HTTPException(status_code=400, detail="entry_price must be a positive finite number")
+            row.entry_price = fv
+        else:
+            row.entry_price = None
+    if "exit_price" in updates:
+        v = updates["exit_price"]
+        if v is not None:
+            fv = float(v)
+            if (not math.isfinite(fv)) or fv <= 0:
+                raise HTTPException(status_code=400, detail="exit_price must be a positive finite number")
+            row.exit_price = fv
+        else:
+            row.exit_price = None
+    row.updated_by_user_id = getattr(current_user, "id", None)
+    db.commit()
+    db.refresh(row)
+    return {
+        "symbol": row.symbol,
+        "entry_price": row.entry_price,
+        "exit_price": row.exit_price,
+        "updated_by_user_id": row.updated_by_user_id,
+        "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+    }
 
 
 @router.get("/snapshots/{symbol}/history")
@@ -1066,6 +1154,27 @@ async def get_market_data_audit(
     return {"audit": payload}
 
 
+@router.get("/admin/stage-quality")
+async def get_stage_quality(
+    lookback_days: int = Query(120, ge=7, le=3650),
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    svc = MarketDataService()
+    return svc.stage_quality_summary(db, lookback_days=lookback_days)
+
+
+@router.post("/admin/stage/repair")
+async def admin_repair_stage_history(
+    days: int = Query(120, ge=7, le=3650),
+    symbol: Optional[str] = Query(None),
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    svc = MarketDataService()
+    return svc.repair_stage_history_window(db, days=days, symbol=symbol)
+
+
 @router.get("/admin/jobs")
 async def admin_get_jobs(
     limit: Optional[int] = Query(None, ge=1, le=1000),
@@ -1082,6 +1191,55 @@ async def admin_get_jobs(
     effective_limit = limit or 50
     rows = query.offset(offset).limit(effective_limit).all()
     return {"jobs": serialize_job_runs(rows), "total": total, "limit": effective_limit, "offset": offset}
+
+
+@router.get("/admin/jobs/summary")
+async def admin_get_jobs_summary(
+    lookback_hours: int = Query(24, ge=1, le=24 * 30),
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    now = datetime.utcnow()
+    since = now - timedelta(hours=lookback_hours)
+    recent_q = db.query(JobRun).filter(JobRun.started_at >= since)
+
+    total = recent_q.count()
+    ok_count = recent_q.filter(JobRun.status == "ok").count()
+    error_count = recent_q.filter(JobRun.status == "error").count()
+    running_count = recent_q.filter(JobRun.status == "running").count()
+    cancelled_count = recent_q.filter(JobRun.status == "cancelled").count()
+    completed = ok_count + error_count + cancelled_count
+    success_rate = (ok_count / completed) if completed else 0.0
+
+    latest_failed = (
+        recent_q.filter(JobRun.status == "error")
+        .order_by(JobRun.started_at.desc())
+        .first()
+    )
+
+    return {
+        "window_hours": lookback_hours,
+        "total": total,
+        "ok_count": ok_count,
+        "error_count": error_count,
+        "running_count": running_count,
+        "cancelled_count": cancelled_count,
+        "completed_count": completed,
+        "success_rate": round(success_rate, 4),
+        "latest_failed": (
+            {
+                "id": latest_failed.id,
+                "task_name": latest_failed.task_name,
+                "status": latest_failed.status,
+                "started_at": latest_failed.started_at.isoformat()
+                if latest_failed.started_at
+                else None,
+                "error": latest_failed.error,
+            }
+            if latest_failed
+            else None
+        ),
+    }
 
 
 @router.get("/admin/tasks")

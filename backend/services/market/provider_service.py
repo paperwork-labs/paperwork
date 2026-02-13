@@ -19,9 +19,14 @@ class MarketDataProviderService:
         period: str = "1y",
         interval: str = "1d",
         max_bars: int | None = None,
+        return_provider: bool = False,
     ):
         return await self._service.get_historical_data(
-            symbol, period=period, interval=interval, max_bars=max_bars
+            symbol,
+            period=period,
+            interval=interval,
+            max_bars=max_bars,
+            return_provider=return_provider,
         )
 
     def get_fundamentals_info(self, symbol: str) -> Dict[str, Any]:

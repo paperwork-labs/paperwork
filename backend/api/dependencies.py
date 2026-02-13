@@ -190,6 +190,8 @@ def evaluate_release_access(
         return True, None
     if section == "market":
         return True, None
+    if section == "other":
+        return True, None
     if app_settings is None:
         return False, "App settings required for section policy"
     return _non_admin_section_decision(section, app_settings)
@@ -222,8 +224,22 @@ async def require_non_market_access(
     if current_user is None:
         return None
 
-    app_settings = get_or_create_app_settings(db)
+    # Admin should never be blocked by release toggles, and this avoids coupling
+    # admin route availability to app_settings migration timing.
+    if current_user.role == UserRole.ADMIN:
+        return current_user
+
     section = _section_from_path(request.url.path or "")
+    app_settings = None
+    if section in {"portfolio", "strategy"}:
+        try:
+            app_settings = get_or_create_app_settings(db)
+        except Exception as e:
+            logger.error(f"❌ App settings unavailable for section policy: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="App settings are unavailable; retry shortly",
+            )
     allowed, reason = evaluate_release_access(section, current_user, app_settings)
     if not allowed:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=reason or "Access denied")

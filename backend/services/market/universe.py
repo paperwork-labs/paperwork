@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from backend.models import Position
 from backend.models.index_constituent import IndexConstituent
+from backend.services.market.constants import CURATED_MARKET_SYMBOLS
 
 
 def _normalize_symbols(symbols: Iterable[str]) -> list[str]:
@@ -38,6 +39,8 @@ def tracked_symbols_from_db(db: Session) -> list[str]:
                 syms.add(str(s).upper())
     except Exception:
         pass
+    # Always keep curated ETFs/index proxies in tracked coverage.
+    syms.update({str(s).upper() for s in CURATED_MARKET_SYMBOLS if s})
     return sorted(syms)
 
 

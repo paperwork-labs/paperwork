@@ -74,6 +74,8 @@ interface SortableTableProps<T = any> {
   filtersEnabled?: boolean;
   filterPresets?: Array<{ label: string; filters: FilterGroup }>;
   initialFilters?: FilterGroup;
+  initialFiltersOpen?: boolean;
+  collapseAfterPresetLabels?: string[];
 }
 
 function SortableTable<T = any>({
@@ -89,6 +91,8 @@ function SortableTable<T = any>({
   filtersEnabled = false,
   filterPresets = [],
   initialFilters,
+  initialFiltersOpen = true,
+  collapseAfterPresetLabels = [],
 }: SortableTableProps<T>) {
   const { tableDensity } = useUserPreferences();
   const size: 'sm' | 'md' | 'lg' = sizeProp ?? (tableDensity === 'compact' ? 'sm' : 'md');
@@ -98,7 +102,7 @@ function SortableTable<T = any>({
     conjunction: initialFilters?.conjunction || 'AND',
     rules: initialFilters?.rules || [],
   });
-  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(initialFiltersOpen);
 
   const borderColor = 'border.subtle';
   const hoverBg = 'bg.panel';
@@ -492,7 +496,7 @@ function SortableTable<T = any>({
                         variant="ghost"
                         onClick={() => {
                           setFilters(preset.filters);
-                          setFiltersOpen(true);
+                          setFiltersOpen(!collapseAfterPresetLabels.includes(preset.label));
                         }}
                       >
                         {preset.label}

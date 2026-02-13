@@ -13,6 +13,12 @@ vi.mock('../../hooks/useUserPreferences', () => ({
   }),
 }));
 
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => ({
+    user: { role: 'analyst' },
+  }),
+}));
+
 vi.mock('../../services/api', () => {
   return {
     default: {
@@ -58,9 +64,23 @@ vi.mock('../../services/api', () => {
               ema_8: 84,
               sma_21: 88,
             },
+            {
+              symbol: 'SPY',
+              current_price: 500,
+              perf_1d: 0.8,
+              perf_5d: 1.2,
+              perf_20d: 3.5,
+              sector: 'ETF',
+              sma_50: 495,
+              sma_200: 460,
+              ema_21: 497,
+              ema_8: 501,
+              sma_21: 498,
+            },
           ],
         },
       }),
+      patch: vi.fn().mockResolvedValue({ data: {} }),
     },
   };
 });
@@ -72,13 +92,19 @@ describe('MarketTracked deep-link filters', () => {
     renderWithProviders(<MarketTracked />, { route: '/market/tracked?symbols=NVDA,MSFT' });
     expect(await screen.findByText(/Market Tracked/i)).toBeInTheDocument();
     // SortableTable filter header shows filtered count.
-    expect(await screen.findByText('2 of 3')).toBeInTheDocument();
+    expect(await screen.findByText('2 of 4')).toBeInTheDocument();
   });
 
   it('applies preset deep-link filters from query params', async () => {
     renderWithProviders(<MarketTracked />, { route: '/market/tracked?preset=momentum' });
     expect(await screen.findByText(/Market Tracked/i)).toBeInTheDocument();
     // At least one row should remain under momentum rules in this fixture.
-    expect(await screen.findByText('2 of 3')).toBeInTheDocument();
+    expect(await screen.findByText('3 of 4')).toBeInTheDocument();
+  });
+
+  it('applies ETF deep-link filter from query params', async () => {
+    renderWithProviders(<MarketTracked />, { route: '/market/tracked?asset=etf' });
+    expect(await screen.findByText(/Market Tracked/i)).toBeInTheDocument();
+    expect(await screen.findByText('1 of 1')).toBeInTheDocument();
   });
 });

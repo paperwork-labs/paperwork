@@ -15,6 +15,12 @@ vi.mock('../../hooks/useUserPreferences', () => ({
   }),
 }));
 
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => ({
+    user: { role: 'analyst' },
+  }),
+}));
+
 vi.mock('../../services/api', () => {
   return {
     default: {

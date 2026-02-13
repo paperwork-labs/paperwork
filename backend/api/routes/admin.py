@@ -40,12 +40,37 @@ def _parse_role(role: str | None) -> UserRole:
         return UserRole.READONLY
     if raw == "viewer":
         return UserRole.READONLY
+    if raw == "user":
+        # Legacy alias kept for backward compatibility during migration.
+        return UserRole.READONLY
     if raw == "analyst":
         return UserRole.ANALYST
     for r in UserRole:
         if raw == r.value or raw == r.name.lower():
             return r
     raise HTTPException(status_code=400, detail=f"Invalid role: {role}")
+
+
+def _role_value(role_obj: Any) -> str:
+    """Normalize role payloads coming from enum, raw string, or legacy rows."""
+    if role_obj is None:
+        return "readonly"
+    if isinstance(role_obj, UserRole):
+        if role_obj == UserRole.USER:
+            return "readonly"
+        return role_obj.value
+    # SQLAlchemy enum columns can surface raw strings during legacy drift.
+    raw = str(role_obj).strip()
+    if not raw:
+        return "readonly"
+    lowered = raw.lower()
+    # Keep API stable even when legacy values still exist.
+    if lowered == "user":
+        return "readonly"
+    for r in UserRole:
+        if lowered == r.value or lowered == r.name.lower():
+            return r.value
+    return lowered
 
 
 @router.get("/users")
@@ -71,7 +96,7 @@ async def list_users(
                     "id": user.id,
                     "username": user.username,
                     "email": user.email,
-                    "role": user.role.value,
+                    "role": _role_value(user.role),
                     "is_active": user.is_active,
                     "is_verified": user.is_verified,
                     "last_login": user.last_login.isoformat() if user.last_login else None,
@@ -104,7 +129,7 @@ async def list_user_invites(
             {
                 "id": inv.id,
                 "email": inv.email,
-                "role": inv.role.value,
+                "role": _role_value(inv.role),
                 "expires_at": inv.expires_at.isoformat(),
                 "accepted_at": inv.accepted_at.isoformat() if inv.accepted_at else None,
                 "created_at": inv.created_at.isoformat(),
@@ -160,7 +185,7 @@ async def invite_user(
     return {
         "id": invite.id,
         "email": invite.email,
-        "role": invite.role.value,
+        "role": _role_value(invite.role),
         "token": invite.token,
         "expires_at": invite.expires_at.isoformat(),
     }
@@ -187,7 +212,7 @@ async def update_user(
         "id": user.id,
         "email": user.email,
         "username": user.username,
-        "role": user.role.value,
+        "role": _role_value(user.role),
         "is_active": user.is_active,
     }
 

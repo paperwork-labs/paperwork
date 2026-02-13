@@ -5,6 +5,9 @@ import {
   Text,
   HStack,
   Badge,
+  Input,
+  IconButton,
+  Button,
 } from '@chakra-ui/react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -12,10 +15,117 @@ import { useUserPreferences } from '../hooks/useUserPreferences';
 import SortableTable, { type Column, type FilterGroup } from '../components/SortableTable';
 import { formatMoney, formatDateTime } from '../utils/format';
 import { useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { FiCheck, FiEdit2, FiX } from 'react-icons/fi';
+
+const ETF_SYMBOLS = [
+  'COLO', 'DBA', 'DIA', 'ECH', 'EPOL', 'EPU', 'EWA', 'EWC', 'EWG', 'EWH', 'EWI', 'EWJ', 'EWM', 'EWW',
+  'EWY', 'EWZ', 'FUTY', 'FXU', 'GII', 'GLD', 'GREK', 'IDU', 'IFRA', 'IHI', 'INDA', 'ITA', 'ITB', 'IWC',
+  'IWM', 'IYR', 'IYT', 'JXI', 'MDY', 'MOO', 'NFRA', 'OIH', 'PALL', 'PAVE', 'PPLT', 'RSPU', 'SDP', 'SHLD',
+  'SOX', 'SOXX', 'SPSM', 'SPY', 'UPW', 'USO', 'UTES', 'VPU', 'XBI', 'XHB', 'XLB', 'XLC', 'XLE', 'XLF', 'XLI',
+  'XLK', 'XLP', 'XLU', 'XLV', 'XLY', 'XME', 'XOP', 'XRT',
+];
+const ETF_SYMBOL_SET = new Set(ETF_SYMBOLS.map((s) => s.toUpperCase()));
+
+type EditablePriceCellProps = {
+  symbol: string;
+  value: number | null | undefined;
+  canEdit: boolean;
+  onSave: (symbol: string, nextValue: number | null) => Promise<void>;
+};
+
+const EditablePriceCell: React.FC<EditablePriceCellProps> = ({ symbol, value, canEdit, onSave }) => {
+  const [editing, setEditing] = React.useState(false);
+  const [draft, setDraft] = React.useState<string>(value == null ? '' : String(value));
+  const [saving, setSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    setDraft(value == null ? '' : String(value));
+  }, [value]);
+
+  const startEdit = () => {
+    setDraft(value == null ? '' : String(value));
+    setEditing(true);
+  };
+
+  const cancelEdit = () => {
+    setDraft(value == null ? '' : String(value));
+    setEditing(false);
+  };
+
+  const submit = async () => {
+    const trimmed = draft.trim();
+    if (!trimmed) {
+      setSaving(true);
+      try {
+        await onSave(symbol, null);
+        setEditing(false);
+      } catch (err: any) {
+        toast.error(err?.message || 'Failed to update price');
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+    const parsed = Number(trimmed);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      toast.error('Price must be a positive number');
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSave(symbol, parsed);
+      setEditing(false);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update price');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!canEdit && value == null) return <>—</>;
+  if (!canEdit) return <>{value?.toFixed(2)}</>;
+
+  if (editing) {
+    return (
+      <HStack gap={1}>
+        <Input
+          size="xs"
+          w="88px"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="—"
+        />
+        <IconButton aria-label="Save" size="xs" variant="ghost" onClick={submit} disabled={saving}>
+          <FiCheck />
+        </IconButton>
+        <IconButton aria-label="Cancel" size="xs" variant="ghost" onClick={cancelEdit} disabled={saving}>
+          <FiX />
+        </IconButton>
+      </HStack>
+    );
+  }
+
+  return (
+    <HStack gap={1}>
+      <Text fontSize="xs">{value == null ? '—' : value.toFixed(2)}</Text>
+      <IconButton aria-label="Edit" size="xs" variant="ghost" onClick={startEdit}>
+        <FiEdit2 />
+      </IconButton>
+      {value == null ? (
+        <Button size="xs" variant="ghost" onClick={startEdit}>
+          Set
+        </Button>
+      ) : null}
+    </HStack>
+  );
+};
 
 const MarketTracked: React.FC = () => {
   const location = useLocation();
   const { timezone, currency } = useUserPreferences();
+  const { user } = useAuth();
+  const canEditPlan = user?.role === 'admin' || user?.role === 'analyst';
   const [rows, setRows] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState<boolean>(false);
 
@@ -34,6 +144,24 @@ const MarketTracked: React.FC = () => {
     }
   };
   React.useEffect(() => { load(); }, []);
+
+  const updateTrackedPlan = React.useCallback(async (
+    symbol: string,
+    patch: { entry_price?: number | null; exit_price?: number | null }
+  ) => {
+    try {
+      await api.patch(`/market-data/tracked-plan/${encodeURIComponent(symbol)}`, patch);
+      setRows((prev) =>
+        prev.map((row) => {
+          if (String(row?.symbol || '').toUpperCase() !== symbol.toUpperCase()) return row;
+          return { ...row, ...patch };
+        })
+      );
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update tracked plan');
+      throw err;
+    }
+  }, []);
 
   const columns = React.useMemo<Column<any>[]>(() => {
     const fmtNum = (v: any, digits = 2) =>
@@ -87,25 +215,44 @@ const MarketTracked: React.FC = () => {
 
     return [
       { key: 'symbol', header: 'Symbol', accessor: (r) => r.symbol, sortable: true, sortType: 'string' },
-      { key: 'as_of_timestamp', header: 'As of', accessor: (r) => r.as_of_timestamp || r.analysis_timestamp, sortable: true, sortType: 'date', render: (v) => fmtTs(v) },
+      { key: 'name', header: 'Name', accessor: (r) => r.name, sortable: true, sortType: 'string', render: (v) => String(v || '—') },
       { key: 'current_price', header: 'Price', accessor: (r) => r.current_price, sortable: true, sortType: 'number', isNumeric: true, render: (v) => (typeof v === 'number' ? formatMoney(v, currency, { maximumFractionDigits: 2 }) : '—') },
+      {
+        key: 'entry_price',
+        header: 'Entry',
+        accessor: (r) => r.entry_price,
+        sortable: true,
+        sortType: 'number',
+        isNumeric: true,
+        render: (v, r) => (
+          <EditablePriceCell
+            symbol={String(r?.symbol || '')}
+            value={typeof v === 'number' ? v : null}
+            canEdit={canEditPlan}
+            onSave={(symbol, nextValue) => updateTrackedPlan(symbol, { entry_price: nextValue })}
+          />
+        ),
+      },
+      {
+        key: 'exit_price',
+        header: 'Exit',
+        accessor: (r) => r.exit_price,
+        sortable: true,
+        sortType: 'number',
+        isNumeric: true,
+        render: (v, r) => (
+          <EditablePriceCell
+            symbol={String(r?.symbol || '')}
+            value={typeof v === 'number' ? v : null}
+            canEdit={canEditPlan}
+            onSave={(symbol, nextValue) => updateTrackedPlan(symbol, { exit_price: nextValue })}
+          />
+        ),
+      },
       { key: 'market_cap', header: 'Mkt Cap', accessor: (r) => r.market_cap, sortable: true, sortType: 'number', isNumeric: true, render: (v) => (typeof v === 'number' ? Intl.NumberFormat('en', { notation: 'compact' }).format(v) : '—') },
       { key: 'perf_1d', header: 'Change %', accessor: (r) => r.perf_1d, sortable: true, sortType: 'number', isNumeric: true, render: (v) => fmtPct(v) },
       { key: 'perf_5d', header: 'Perf 1W', accessor: (r) => r.perf_5d, sortable: true, sortType: 'number', isNumeric: true, render: (v) => fmtPct(v) },
       { key: 'perf_20d', header: 'Perf 1M', accessor: (r) => r.perf_20d, sortable: true, sortType: 'number', isNumeric: true, render: (v) => fmtPct(v) },
-      { key: 'pe_ttm', header: 'P/E', accessor: (r) => r.pe_ttm, sortable: true, sortType: 'number', isNumeric: true, render: (v) => fmtNum(v) },
-      // PEG hidden (provider coverage is inconsistent)
-      { key: 'roe', header: 'ROE %', accessor: (r) => r.roe, sortable: true, sortType: 'number', isNumeric: true, render: (v) => fmtPct(v) },
-      // EPS QoQ hidden (provider coverage is inconsistent)
-      { key: 'eps_growth_yoy', header: 'EPS YoY %', accessor: (r) => r.eps_growth_yoy, sortable: true, sortType: 'number', isNumeric: true, render: (v) => fmtPct(v) },
-      // Rev QoQ hidden (provider coverage is inconsistent)
-      { key: 'revenue_growth_yoy', header: 'Rev YoY %', accessor: (r) => r.revenue_growth_yoy, sortable: true, sortType: 'number', isNumeric: true, render: (v) => fmtPct(v) },
-      { key: 'dividend_yield', header: 'Div Yield %', accessor: (r) => r.dividend_yield, sortable: true, sortType: 'number', isNumeric: true, render: (v) => fmtPct(v) },
-      { key: 'beta', header: 'Beta', accessor: (r) => r.beta, sortable: true, sortType: 'number', isNumeric: true, render: (v) => fmtNum(v) },
-      // Analyst rating hidden (coverage is inconsistent)
-      // Earnings hidden (provider coverage is inconsistent)
-
-      // Level 4
       {
         key: 'stage_label',
         header: 'Stage',
@@ -162,6 +309,17 @@ const MarketTracked: React.FC = () => {
         isNumeric: true,
         render: (v) => fmtDays(v),
       },
+      { key: 'pe_ttm', header: 'P/E', accessor: (r) => r.pe_ttm, sortable: true, sortType: 'number', isNumeric: true, render: (v) => fmtNum(v) },
+      // PEG hidden (provider coverage is inconsistent)
+      { key: 'roe', header: 'ROE %', accessor: (r) => r.roe, sortable: true, sortType: 'number', isNumeric: true, render: (v) => fmtPct(v) },
+      // EPS QoQ hidden (provider coverage is inconsistent)
+      { key: 'eps_growth_yoy', header: 'EPS YoY %', accessor: (r) => r.eps_growth_yoy, sortable: true, sortType: 'number', isNumeric: true, render: (v) => fmtPct(v) },
+      // Rev QoQ hidden (provider coverage is inconsistent)
+      { key: 'revenue_growth_yoy', header: 'Rev YoY %', accessor: (r) => r.revenue_growth_yoy, sortable: true, sortType: 'number', isNumeric: true, render: (v) => fmtPct(v) },
+      { key: 'dividend_yield', header: 'Div Yield %', accessor: (r) => r.dividend_yield, sortable: true, sortType: 'number', isNumeric: true, render: (v) => fmtPct(v) },
+      { key: 'beta', header: 'Beta', accessor: (r) => r.beta, sortable: true, sortType: 'number', isNumeric: true, render: (v) => fmtNum(v) },
+      // Analyst rating hidden (coverage is inconsistent)
+      // Earnings hidden (provider coverage is inconsistent)
 
       // Level 3
       { key: 'rs_mansfield_pct', header: 'RS (Mansfield)', accessor: (r) => r.rs_mansfield_pct, sortable: true, sortType: 'number', isNumeric: true, render: (v) => fmtPct(v) },
@@ -202,8 +360,9 @@ const MarketTracked: React.FC = () => {
       // Context
       { key: 'sector', header: 'Sector', accessor: (r) => r.sector, sortable: true, sortType: 'string' },
       { key: 'industry', header: 'Industry', accessor: (r) => r.industry, sortable: true, sortType: 'string' },
+      { key: 'as_of_timestamp', header: 'As of', accessor: (r) => r.as_of_timestamp || r.analysis_timestamp, sortable: true, sortType: 'date', render: (v) => fmtTs(v) },
     ];
-  }, [currency, timezone]);
+  }, [currency, timezone, canEditPlan, updateTrackedPlan]);
 
   const filterPresets = React.useMemo<Array<{ label: string; filters: FilterGroup }>>(() => [
     {
@@ -403,6 +562,8 @@ const MarketTracked: React.FC = () => {
     }
 
     const preset = (params.get('preset') || '').trim();
+    const asset = (params.get('asset') || '').trim();
+    if (asset.toLowerCase() === 'etf') return undefined;
     if (preset) {
       const map: Record<string, string> = {
         momentum: 'Momentum Trend (Clean)',
@@ -419,6 +580,23 @@ const MarketTracked: React.FC = () => {
     return undefined;
   }, [location.search, filterPresets]);
 
+  const etfOnlyDeepLink = React.useMemo(() => {
+    const params = new URLSearchParams(location.search || '');
+    const asset = (params.get('asset') || '').trim().toLowerCase();
+    const preset = (params.get('preset') || '').trim().toLowerCase();
+    return asset === 'etf' || preset === 'etf';
+  }, [location.search]);
+
+  const [etfOnly, setEtfOnly] = React.useState<boolean>(etfOnlyDeepLink);
+  React.useEffect(() => {
+    setEtfOnly(etfOnlyDeepLink);
+  }, [etfOnlyDeepLink]);
+
+  const tableRows = React.useMemo(() => {
+    if (!etfOnly) return rows;
+    return rows.filter((row) => ETF_SYMBOL_SET.has(String(row?.symbol || '').toUpperCase()));
+  }, [rows, etfOnly]);
+
   return (
     <Box p={4}>
       <HStack justify="space-between" align="end" mb={3} flexWrap="wrap" gap={2}>
@@ -431,13 +609,22 @@ const MarketTracked: React.FC = () => {
             Indicators are computed from daily OHLCV and the SPY benchmark. Sector/industry come from fundamentals.
           </Text>
         </Box>
-        <Badge variant="subtle">{rows.length} rows</Badge>
+        <HStack gap={2}>
+          <Button
+            size="xs"
+            variant={etfOnly ? 'solid' : 'outline'}
+            onClick={() => setEtfOnly((prev) => !prev)}
+          >
+            ETFs Only
+          </Button>
+          <Badge variant="subtle">{tableRows.length} rows</Badge>
+        </HStack>
       </HStack>
 
       <Box w="full" borderWidth="1px" borderColor="border.subtle" borderRadius="xl" bg="bg.card">
         <SortableTable
-          key={location.search || 'tracked-default'}
-          data={rows}
+          key={`${location.search || 'tracked-default'}-${etfOnly ? 'etf' : 'all'}`}
+          data={tableRows}
           columns={columns}
           defaultSortBy="symbol"
           defaultSortOrder="asc"
@@ -445,6 +632,7 @@ const MarketTracked: React.FC = () => {
           filtersEnabled
           filterPresets={filterPresets}
           initialFilters={deepLinkFilters}
+          initialFiltersOpen={!etfOnlyDeepLink}
           emptyMessage={loading ? 'Loading…' : 'No tracked symbols yet.'}
         />
       </Box>

@@ -3,8 +3,9 @@ import uuid
 
 import pytest
 from fastapi.testclient import TestClient
+from starlette.requests import Request
 
-from backend.api.dependencies import evaluate_release_access
+from backend.api.dependencies import evaluate_release_access, require_non_market_access
 from backend.api.main import app
 from backend.models.user import UserRole
 
@@ -152,4 +153,26 @@ def test_authenticated_non_admin_market_allowed_and_portfolio_locked_by_default(
             portfolio_enabled=False,
             strategy_enabled=False,
         )
+
+
+@pytest.mark.asyncio
+async def test_require_non_market_access_admin_bypass_without_app_settings():
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/v1/admin/users",
+        "headers": [],
+        "query_string": b"",
+        "client": ("testclient", 123),
+        "server": ("testserver", 80),
+        "scheme": "http",
+    }
+    request = Request(scope)
+    admin_user = SimpleNamespace(role=UserRole.ADMIN)
+    result = await require_non_market_access(
+        request=request,
+        current_user=admin_user,
+        db=None,  # must not be dereferenced for admin bypass
+    )
+    assert result is admin_user
 

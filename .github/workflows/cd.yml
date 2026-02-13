@@ -188,6 +188,21 @@ jobs:
       - name: 📥 Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       
+      - name: ✅ Verify migration secret configured (production)
+        env:
+          DATABASE_URL_PRODUCTION: ${{ secrets.DATABASE_URL_PRODUCTION }}
+        run: |
+          if [ -z "$DATABASE_URL_PRODUCTION" ]; then
+            echo "❌ DATABASE_URL_PRODUCTION is required for production migrations."
+            exit 1
+          fi
+
+      - name: 🗄️ Run DB migrations (production)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_PRODUCTION }}
+        run: |
+          docker run --rm -e DATABASE_URL="$DATABASE_URL" "${{ needs.build.outputs.backend-image }}" alembic -c backend/alembic.ini upgrade head
+
       - name: 🎯 Deploy to production
         run: |
           echo "🎯 Deploying to production environment..."
@@ -198,13 +213,6 @@ jobs:
           # For example, kubectl, docker-compose, or cloud provider CLI commands
           
           echo "✅ Production deployment completed"
-
-      - name: 🗄️ Run DB migrations (production)
-        if: ${{ secrets.DATABASE_URL_PRODUCTION != '' }}
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL_PRODUCTION }}
-        run: |
-          docker run --rm -e DATABASE_URL="$DATABASE_URL" "${{ needs.build.outputs.backend-image }}" alembic -c backend/alembic.ini upgrade head
 
       - name: 🎯 Trigger Render deploy (production)
         if: ${{ secrets.RENDER_DEPLOY_HOOK_PRODUCTION != '' }}

@@ -48,6 +48,9 @@ const AdminDashboard: React.FC = () => {
   const [sanityLoading, setSanityLoading] = React.useState<boolean>(false);
   const [sanityData, setSanityData] = React.useState<any | null>(null);
   const [taskStatus, setTaskStatus] = React.useState<Record<string, any> | null>(null);
+  const [stageQuality, setStageQuality] = React.useState<any | null>(null);
+  const [jobsSummary, setJobsSummary] = React.useState<any | null>(null);
+  const [marketAudit, setMarketAudit] = React.useState<any | null>(null);
   const [histWindowDays, setHistWindowDays] = React.useState<number>(
     coverageHistogramWindowDays || 50,
   );
@@ -151,8 +154,38 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const loadStageQuality = async () => {
+    try {
+      const res = await api.get('/market-data/admin/stage-quality?lookback_days=120');
+      setStageQuality(res?.data || null);
+    } catch {
+      setStageQuality(null);
+    }
+  };
+
+  const loadJobsSummary = async () => {
+    try {
+      const res = await api.get('/market-data/admin/jobs/summary?lookback_hours=24');
+      setJobsSummary(res?.data || null);
+    } catch {
+      setJobsSummary(null);
+    }
+  };
+
+  const loadMarketAudit = async () => {
+    try {
+      const res = await api.get('/market-data/admin/market-audit');
+      setMarketAudit(res?.data?.audit || null);
+    } catch {
+      setMarketAudit(null);
+    }
+  };
+
   React.useEffect(() => {
     void loadTaskStatus();
+    void loadStageQuality();
+    void loadJobsSummary();
+    void loadMarketAudit();
   }, []);
 
   const refreshCoverageNow = async (origin: 'manual' | 'auto') => {
@@ -167,6 +200,7 @@ const AdminDashboard: React.FC = () => {
       setTimeout(() => void refreshCoverage(), 4500);
       void taskId;
       void loadTaskStatus();
+      void loadStageQuality();
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || err?.message || 'Failed to refresh coverage');
     } finally {
@@ -184,6 +218,7 @@ const AdminDashboard: React.FC = () => {
       setTimeout(() => void refreshCoverage(), 1500);
       setTimeout(() => void refreshCoverage(), 4500);
       void loadTaskStatus();
+      void loadStageQuality();
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || err?.message || 'Failed to queue daily coverage backfill');
     } finally {
@@ -205,6 +240,7 @@ const AdminDashboard: React.FC = () => {
       setTimeout(() => void refreshCoverage(), 1500);
       setTimeout(() => void refreshCoverage(), 4500);
       void loadTaskStatus();
+      void loadStageQuality();
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || err?.message || 'Failed to backfill stale daily');
     } finally {
@@ -558,8 +594,8 @@ const AdminDashboard: React.FC = () => {
       return `hsl(${hue}, 70%, 45%)`;
     };
 
-    const barMaxH = 36;
-    const dotH = 8; // dot + spacing below bar
+    const barMaxH = 40;
+    const markerH = 12; // snapshot marker strip + spacing below bar
     const fillMap = new Map(rows.map((r) => [normDateKey(r.date), r]));
     const snapshotPctByDate = new Map(
       (snapshotFillSeries || []).map((r) => [normDateKey(r.date), Number(r.pct_of_universe || 0)]),
@@ -593,15 +629,16 @@ const AdminDashboard: React.FC = () => {
           overflowX="auto"
           overflowY="hidden"
         >
-          <HStack align="end" gap={1} h={`${barMaxH + dotH}px`} w="full">
+          <HStack align="end" gap={1} h={`${barMaxH + markerH}px`} w="full">
             {bars.map((r) => {
               const pct = pctFor(r);
               const h = Math.max(2, Math.round((pct / 100) * barMaxH));
               const snapPct = snapshotPctByDate.get(normDateKey(r.date));
               const snapOk = typeof snapPct === 'number' && snapPct >= 95;
               const snapNone = typeof snapPct !== 'number';
-              // Dot thresholds: green = basically complete, orange = partial, red = low coverage, gray = no snapshot run recorded.
-              const dotBg =
+              // Snapshot marker thresholds: green = basically complete, orange = partial,
+              // red = low coverage, gray = no snapshot run recorded.
+              const markerBg =
                 snapNone
                   ? 'gray.400'
                   : snapOk
@@ -618,12 +655,15 @@ const AdminDashboard: React.FC = () => {
                 >
                   <Box w="full" h={`${h}px`} borderRadius="sm" bg={colorForPct(pct)} />
                   <Box
-                    mt="2px"
+                    mt="3px"
                     mx="auto"
-                    w="6px"
-                    h="6px"
-                    borderRadius="full"
-                    bg={dotBg}
+                    w="80%"
+                    h="5px"
+                    borderRadius="999px"
+                    bg={markerBg}
+                    borderWidth="1px"
+                    borderColor="bg.card"
+                    opacity={snapNone ? 0.65 : 1}
                     title={
                       snapNone
                         ? `${r.date}: snapshots —`
@@ -637,7 +677,7 @@ const AdminDashboard: React.FC = () => {
         </Box>
         <Text mt={1} fontSize="xs" color="fg.muted">
           Histogram bars (daily, last {windowDays} trading days): height + color represent % of symbols with a stored 1d OHLCV bar on that date.
-          Dot under each bar indicates technical snapshot coverage for that date (green ≥95%, orange ≥50%, red &lt;50%, gray = no snapshot run recorded).
+          Marker strip under each bar indicates technical snapshot coverage for that date (green ≥95%, orange ≥50%, red &lt;50%, gray = no snapshot run recorded).
         </Text>
       </Box>
     );
@@ -693,6 +733,91 @@ const AdminDashboard: React.FC = () => {
           <CoverageKpiGrid kpis={kpis} variant="stat" />
           <CoverageTrendGrid sparkline={sparkline} />
           <CoverageBucketsGrid groups={hero?.buckets || []} />
+          <Box
+            mt={3}
+            display="grid"
+            gridTemplateColumns={{ base: '1fr', lg: 'repeat(3, minmax(0, 1fr))' }}
+            gap={3}
+          >
+            <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
+              <HStack justify="space-between" align="center" mb={1}>
+                <Text fontSize="sm" fontWeight="semibold">Stage Quality</Text>
+                <Badge
+                  variant="subtle"
+                  colorScheme={stageQuality?.status === 'warning' ? 'orange' : 'green'}
+                >
+                  {(stageQuality?.status || 'unknown').toUpperCase()}
+                </Badge>
+              </HStack>
+              <Text fontSize="xs" color="fg.muted">
+                Unknown rate: {typeof stageQuality?.unknown_rate === 'number'
+                  ? `${(stageQuality.unknown_rate * 100).toFixed(1)}%`
+                  : '—'}
+              </Text>
+              <Text fontSize="xs" color="fg.muted">
+                Invalid rows: {stageQuality?.invalid_stage_count ?? 0}
+              </Text>
+              <Text fontSize="xs" color="fg.muted">
+                Monotonicity issues: {stageQuality?.monotonicity_issues ?? 0}
+              </Text>
+              <Text fontSize="xs" color="fg.muted">
+                Stale stage rows: {stageQuality?.stale_stage_count ?? 0}
+              </Text>
+            </Box>
+
+            <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
+              <HStack justify="space-between" align="center" mb={1}>
+                <Text fontSize="sm" fontWeight="semibold">Jobs Health (24h)</Text>
+                <Badge
+                  variant="subtle"
+                  colorScheme={Number(jobsSummary?.error_count || 0) > 0 ? 'orange' : 'green'}
+                >
+                  {Number(jobsSummary?.error_count || 0) > 0 ? 'DEGRADED' : 'OK'}
+                </Badge>
+              </HStack>
+              <Text fontSize="xs" color="fg.muted">
+                Success rate: {typeof jobsSummary?.success_rate === 'number'
+                  ? `${(jobsSummary.success_rate * 100).toFixed(1)}%`
+                  : '—'}
+              </Text>
+              <Text fontSize="xs" color="fg.muted">
+                Failed: {jobsSummary?.error_count ?? 0} / Completed: {jobsSummary?.completed_count ?? 0}
+              </Text>
+              <Text fontSize="xs" color="fg.muted">
+                Running: {jobsSummary?.running_count ?? 0}
+              </Text>
+              <Text fontSize="xs" color="fg.muted" lineClamp={1}>
+                Latest failure: {jobsSummary?.latest_failed?.task_name || '—'}
+              </Text>
+            </Box>
+
+            <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
+              <HStack justify="space-between" align="center" mb={1}>
+                <Text fontSize="sm" fontWeight="semibold">Market Audit</Text>
+                <Badge variant="subtle">
+                  {marketAudit ? 'AVAILABLE' : 'MISSING'}
+                </Badge>
+              </HStack>
+              <Text fontSize="xs" color="fg.muted">
+                Tracked total: {marketAudit?.tracked_total ?? '—'}
+              </Text>
+              <Text fontSize="xs" color="fg.muted">
+                Daily fill (latest): {typeof marketAudit?.latest_daily_fill_pct === 'number'
+                  ? `${marketAudit.latest_daily_fill_pct.toFixed(1)}%`
+                  : '—'}
+              </Text>
+              <Text fontSize="xs" color="fg.muted">
+                Snapshot fill (latest): {typeof marketAudit?.latest_snapshot_history_fill_pct === 'number'
+                  ? `${marketAudit.latest_snapshot_history_fill_pct.toFixed(1)}%`
+                  : '—'}
+              </Text>
+              <Text fontSize="xs" color="fg.muted" lineClamp={1}>
+                Missing sample: {Array.isArray(marketAudit?.missing_snapshot_history_sample)
+                  ? (marketAudit.missing_snapshot_history_sample.slice(0, 3).join(', ') || '—')
+                  : '—'}
+              </Text>
+            </Box>
+          </Box>
           {dailyFillDist.total > 0 ? (
             <Box mt={3} borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.muted">
               <HStack justify="space-between" align="start" flexWrap="wrap" gap={3}>

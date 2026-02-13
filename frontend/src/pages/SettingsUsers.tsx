@@ -45,7 +45,6 @@ type InviteRow = {
 const ROLE_OPTIONS = [
   { label: 'Viewer', value: 'readonly' },
   { label: 'Analyst', value: 'analyst' },
-  { label: 'Analyst (legacy)', value: 'user' },
   { label: 'Admin', value: 'admin' },
 ];
 

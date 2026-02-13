@@ -1,8 +1,22 @@
 from __future__ import annotations
 
-from typing import Iterable, Sequence
+from typing import Sequence
 
 import pandas as pd
+
+
+def ensure_newest_first(df: pd.DataFrame) -> pd.DataFrame:
+    """Return a copy sorted by index descending (newest->oldest)."""
+    if df is None or df.empty:
+        return df
+    return df.sort_index(ascending=False)
+
+
+def ensure_oldest_first(df: pd.DataFrame) -> pd.DataFrame:
+    """Return a copy sorted by index ascending (oldest->newest)."""
+    if df is None or df.empty:
+        return df
+    return df.sort_index(ascending=True)
 
 
 def price_data_rows_to_dataframe(
@@ -45,6 +59,5 @@ def price_data_rows_to_dataframe(
     df = pd.DataFrame(out_rows)
     if not df.empty:
         df.set_index("date", inplace=True)
-        if ascending:
-            df.sort_index(inplace=True)
+        df = ensure_oldest_first(df) if ascending else ensure_newest_first(df)
     return df

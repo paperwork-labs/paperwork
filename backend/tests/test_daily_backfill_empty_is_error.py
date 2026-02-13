@@ -53,7 +53,7 @@ def test_record_daily_history_defaults_to_tracked_universe(db_session, monkeypat
 
     monkeypatch.setattr(market_data_tasks, "SessionLocal", lambda: db_session)
     monkeypatch.setattr(market_data_tasks, "_set_task_status", lambda *args, **kwargs: None)
-    monkeypatch.setattr(market_data_tasks, "_get_tracked_universe_from_db", lambda _session: ["AAA"])
+    monkeypatch.setattr(market_data_tasks, "_get_tracked_symbols_safe", lambda _session: ["AAA"])
 
     # Ensure we have a snapshot row for the symbol
     snap = MarketSnapshot(

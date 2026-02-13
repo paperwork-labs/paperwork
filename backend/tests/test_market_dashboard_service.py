@@ -21,6 +21,9 @@ class _FakeQuery:
     def order_by(self, *args, **kwargs):
         return self
 
+    def distinct(self, *args, **kwargs):
+        return self
+
     def all(self):
         return self._rows
 
@@ -94,7 +97,7 @@ def test_fetch_rows_dedupes_to_latest_snapshot_per_symbol(monkeypatch):
     ]
 
     service = MarketDashboardService()
-    tracked, out = service._fetch_rows(_FakeDB(rows))
+    tracked, out, _plan_map = service._fetch_rows(_FakeDB(rows))
 
     assert tracked == ["AAPL", "MSFT"]
     assert len(out) == 2
@@ -167,7 +170,7 @@ def test_build_dashboard_sorts_leaders_and_pullbacks_by_momentum_score(monkeypat
     ]
 
     service = MarketDashboardService()
-    monkeypatch.setattr(service, "_fetch_rows", lambda db: (["AAA", "BBB", "ZZZ"], rows))
+    monkeypatch.setattr(service, "_fetch_rows", lambda db: (["AAA", "BBB", "ZZZ"], rows, {}))
 
     payload = service.build_dashboard(db=None)  # type: ignore[arg-type]
 
@@ -177,3 +180,89 @@ def test_build_dashboard_sorts_leaders_and_pullbacks_by_momentum_score(monkeypat
     # Pullback list is now ranked by momentum score, not source/alphabetical ordering.
     pullbacks = payload["setups"]["pullback_candidates"]
     assert [p["symbol"] for p in pullbacks] == ["BBB", "AAA"]
+
+
+def test_build_dashboard_sector_etfs_use_configured_list_and_order(monkeypatch):
+    class _Coverage:
+        @staticmethod
+        def build_coverage_response(*args, **kwargs):
+            return {
+                "status": "healthy",
+                "daily": {"coverage": {"pct": 100.0, "stale_count": 0}},
+                "m5": {"coverage": {"pct": 100.0, "stale_count": 0}},
+            }
+
+    class _FakeMDS:
+        def __init__(self):
+            self.redis_client = None
+            self.coverage = _Coverage()
+
+    monkeypatch.setattr(mds_module, "MarketDataService", _FakeMDS)
+
+    rows = [
+        _SummaryRow(symbol="XLE", stage_label="2A", current_stage_days=12, perf_1d=1.2, sector="Energy"),
+        _SummaryRow(symbol="XLF", stage_label="3", current_stage_days=8, perf_1d=-0.4, sector="Financial Services"),
+        _SummaryRow(symbol="SOXX", stage_label="2B", current_stage_days=5, perf_1d=2.3, sector="Technology"),
+        _SummaryRow(symbol="XBI", stage_label="2C", current_stage_days=3, perf_1d=4.0, sector="Biotech"),
+    ]
+
+    service = MarketDashboardService()
+    monkeypatch.setattr(service, "_fetch_rows", lambda db: ([r.symbol for r in rows], rows, {}))
+
+    payload = service.build_dashboard(db=None)  # type: ignore[arg-type]
+    table = payload["sector_etf_table"]
+
+    assert [r["symbol"] for r in table] == service._SECTOR_ETF_SYMBOLS_ORDER
+    assert all(r["symbol"] != "XBI" for r in table)
+
+    by_symbol = {r["symbol"]: r for r in table}
+    assert by_symbol["XLE"]["sector_name"] == "Energy"
+    assert by_symbol["XLE"]["change_1d"] == 1.2
+    assert by_symbol["SOX"]["change_1d"] == 2.3
+    assert by_symbol["SOX"]["stage_label"] == "2B"
+
+
+def test_build_dashboard_entering_stage_2a_is_not_truncated(monkeypatch):
+    class _Coverage:
+        @staticmethod
+        def build_coverage_response(*args, **kwargs):
+            return {
+                "status": "healthy",
+                "daily": {"coverage": {"pct": 100.0, "stale_count": 0}},
+                "m5": {"coverage": {"pct": 100.0, "stale_count": 0}},
+            }
+
+    class _FakeMDS:
+        def __init__(self):
+            self.redis_client = None
+            self.coverage = _Coverage()
+
+    monkeypatch.setattr(mds_module, "MarketDataService", _FakeMDS)
+
+    rows = [
+        _SummaryRow(
+            symbol=f"S{i:02d}",
+            stage_label="2A",
+            previous_stage_label="1",
+            current_price=100.0 + i,
+            perf_1d=0.1,
+            perf_5d=0.2,
+            perf_20d=0.3,
+            rs_mansfield_pct=0.4,
+            sector="Tech",
+            industry="Software",
+            sma_50=95.0,
+            sma_200=90.0,
+        )
+        for i in range(30)
+    ]
+
+    service = MarketDashboardService()
+    monkeypatch.setattr(service, "_fetch_rows", lambda db: ([r.symbol for r in rows], rows, {}))
+
+    payload = service.build_dashboard(db=None)  # type: ignore[arg-type]
+    entering = payload["entering_stage_2a"]
+
+    assert len(entering) == 30
+    assert entering[0]["symbol"] == "S00"
+    assert entering[-1]["symbol"] == "S29"
