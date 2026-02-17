@@ -37,20 +37,62 @@ def _persist_metadata(name: str, meta: ScheduleMetadata | None) -> None:
 
 
 def _parse_cron_and_tz(schedule: Any) -> tuple[Optional[str], Optional[str]]:
-    cron_expr = None
-    tz = None
-    try:
-        raw = str(schedule)
-        if raw.startswith("<crontab:"):
-            cron_expr = raw.split("<crontab:")[1].split("(")[0].strip()
-    except Exception:
-        cron_expr = None
+    """Extract a 5-field cron expression and timezone from various schedule representations.
+
+    Handles:
+    - Celery ``crontab`` objects (local or RedBeat-deserialized)
+    - RedBeat JSON schedule dicts (``{"__type__": "crontab", "minute": ...}``)
+    - String representations (``<crontab: m h dom mon dow ...>``)
+    """
+    cron_expr: Optional[str] = None
+    tz: Optional[str] = None
+
+    # --- 1. RedBeat JSON dict (comes from Redis definition.schedule) ---
+    if isinstance(schedule, dict) and schedule.get("__type__") == "crontab":
+        parts = [
+            str(schedule.get("minute", "*")),
+            str(schedule.get("hour", "*")),
+            str(schedule.get("day_of_month", "*")),
+            str(schedule.get("month_of_year", "*")),
+            str(schedule.get("day_of_week", "*")),
+        ]
+        cron_expr = " ".join(parts)
+        tz = schedule.get("timezone") or schedule.get("tz")
+        if tz:
+            tz = str(tz)
+        return cron_expr, tz
+
+    # --- 2. Celery crontab object (has _orig_* attrs from constructor) ---
+    if hasattr(schedule, "_orig_minute"):
+        try:
+            parts = [
+                str(getattr(schedule, "_orig_minute", "*")),
+                str(getattr(schedule, "_orig_hour", "*")),
+                str(getattr(schedule, "_orig_day_of_month", "*")),
+                str(getattr(schedule, "_orig_month_of_year", "*")),
+                str(getattr(schedule, "_orig_day_of_week", "*")),
+            ]
+            cron_expr = " ".join(parts)
+        except Exception:
+            cron_expr = None
+
+    # --- 3. Fallback: parse the ``<crontab: ...>`` string ---
+    if not cron_expr:
+        try:
+            raw = str(schedule)
+            if "<crontab:" in raw:
+                cron_expr = raw.split("<crontab:")[1].split("(")[0].strip()
+        except Exception:
+            pass
+
+    # --- Timezone ---
     try:
         tz_obj = getattr(schedule, "timezone", None) or getattr(schedule, "tz", None)
         if tz_obj:
             tz = str(tz_obj)
     except Exception:
-        tz = None
+        pass
+
     return cron_expr, tz
 
 
@@ -96,94 +138,162 @@ class ScheduleUpdate(BaseModel):
     metadata: Optional[ScheduleMetadataPatch] = None
 
 
+def _last_run_for_task(dotted_task: str) -> Dict[str, Any] | None:
+    """Look up the most recent JobRun row for a dotted task path."""
+    try:
+        simple = dotted_task.split(".")[-1]
+        from backend.database import SessionLocal
+        from backend.models.market_data import JobRun
+        db = SessionLocal()
+        try:
+            row = (
+                db.query(JobRun)
+                .filter(JobRun.task_name == simple)
+                .order_by(JobRun.started_at.desc())
+                .first()
+            )
+            if not row:
+                return None
+            return {
+                "task_name": row.task_name,
+                "status": row.status,
+                "started_at": getattr(row.started_at, "isoformat", lambda: None)(),
+                "finished_at": getattr(row.finished_at, "isoformat", lambda: None)(),
+            }
+        finally:
+            db.close()
+    except Exception:
+        return None
+
+
+def _read_redbeat_entries() -> List[Dict[str, Any]]:
+    """Read active and paused RedBeat entries directly from Redis.
+
+    Uses the ``redbeat::schedule`` sorted set (active entries) and
+    ``redbeat:paused:*`` keys (paused entries).  This avoids relying on
+    ``RedBeatScheduler.rdb`` which may not exist in all redbeat versions.
+    """
+    r = _get_redis()
+    out: List[Dict[str, Any]] = []
+
+    # --- Active entries from the sorted set ---
+    schedule_keys = r.zrange("redbeat::schedule", 0, -1)
+    for raw_key in schedule_keys or []:
+        key = raw_key.decode() if isinstance(raw_key, bytes) else raw_key
+        try:
+            defn_raw = r.hget(key, "definition")
+            meta_raw = r.hget(key, "meta")
+            if not defn_raw:
+                continue
+            defn = json.loads(defn_raw.decode() if isinstance(defn_raw, bytes) else defn_raw)
+            meta_json = json.loads(meta_raw.decode() if isinstance(meta_raw, bytes) else meta_raw) if meta_raw else {}
+
+            sched = defn.get("schedule") or {}
+            cron_expr, tz = _parse_cron_and_tz(sched)
+            task_path = defn.get("task", "")
+            name = defn.get("name", key.replace("redbeat:", ""))
+
+            last_run_at_raw = meta_json.get("last_run_at")
+            last_run_at = None
+            if isinstance(last_run_at_raw, dict):
+                try:
+                    from datetime import datetime as _dt
+                    last_run_at = _dt(
+                        year=last_run_at_raw.get("year", 1970),
+                        month=last_run_at_raw.get("month", 1),
+                        day=last_run_at_raw.get("day", 1),
+                        hour=last_run_at_raw.get("hour", 0),
+                        minute=last_run_at_raw.get("minute", 0),
+                        second=last_run_at_raw.get("second", 0),
+                    ).isoformat() + "Z"
+                except Exception:
+                    pass
+
+            sched_meta = load_schedule_metadata(name)
+            out.append(
+                {
+                    "name": name,
+                    "task": task_path,
+                    "schedule": str(sched) if sched else None,
+                    "cron": cron_expr,
+                    "timezone": tz or "UTC",
+                    "args": defn.get("args") or [],
+                    "kwargs": defn.get("kwargs") or {},
+                    "enabled": defn.get("enabled", True),
+                    "source": "redbeat",
+                    "last_run": _last_run_for_task(task_path),
+                    "last_run_at": last_run_at,
+                    "total_run_count": meta_json.get("total_run_count", 0),
+                    "metadata": sched_meta.model_dump() if sched_meta else None,
+                    "status": "active" if defn.get("enabled", True) else "disabled",
+                }
+            )
+        except Exception:
+            continue
+
+    # --- Paused entries ---
+    for pkey in r.scan_iter(match="redbeat:paused:*"):
+        try:
+            praw = r.get(pkey)
+            if not praw:
+                continue
+            data = json.loads(praw)
+            paused_entry = _paused_payload_to_schedule(data)
+            if paused_entry:
+                out.append(paused_entry)
+        except Exception:
+            continue
+
+    return out
+
+
 @router.get("/schedules")
 async def list_schedules(
     admin_user: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
-    """List schedules from RedBeat if available; fallback to static config."""
-    try:
-        from redbeat import schedulers as rb
-        scheduler = rb.RedBeatScheduler(app=celery_app)
-        entries = list(scheduler.rdb.scan_iter(match="redbeat:*:task"))
-        out: List[Dict[str, Any]] = []
-        # Helper to fetch last run for a given dotted task path
-        def _last_run_for_task(dotted_task: str) -> Dict[str, Any] | None:
-            try:
-                simple = dotted_task.split(".")[-1]
-                from backend.database import SessionLocal
-                from backend.models.market_data import JobRun
-                db = SessionLocal()
-                try:
-                    row = db.query(JobRun).filter(JobRun.task_name == simple).order_by(JobRun.started_at.desc()).first()
-                    if not row:
-                        return None
-                    return {
-                        "task_name": row.task_name,
-                        "status": row.status,
-                        "started_at": getattr(row.started_at, "isoformat", lambda: None)(),
-                        "finished_at": getattr(row.finished_at, "isoformat", lambda: None)(),
-                    }
-                finally:
-                    db.close()
-            except Exception:
-                return None
-        for key in entries:
-            try:
-                e = rb.RedBeatSchedulerEntry.from_key(key.decode() if isinstance(key, bytes) else key, app=celery_app)
-                cron_expr, tz = _parse_cron_and_tz(e.schedule)
-                meta = load_schedule_metadata(e.name)
-                out.append(
-                    {
-                        "name": e.name,
-                        "task": e.task,
-                        "schedule": str(e.schedule),
-                        "cron": cron_expr,
-                        "timezone": tz,
-                        "args": e.args or [],
-                        "kwargs": e.kwargs or {},
-                        "enabled": True,
-                        "source": "redbeat",
-                        "last_run": _last_run_for_task(e.task),
-                        "metadata": meta.model_dump() if meta else None,
-                        "status": "active",
-                    }
-                )
-            except Exception:
-                continue
+    """List schedules from RedBeat (Redis) if available; fallback to static config."""
+    out: List[Dict[str, Any]] = []
+    mode = "static"
 
-        try:
-            r = _get_redis()
-            for key in r.scan_iter(match="redbeat:paused:*"):
-                raw = r.get(key)
-                if not raw:
-                    continue
-                data = json.loads(raw)
-                paused_entry = _paused_payload_to_schedule(data)
-                if paused_entry:
-                    out.append(paused_entry)
-        except Exception:
-            pass
-        return {"schedules": out, "mode": "redbeat"}
+    # --- Try RedBeat (reads directly from Redis) ---
+    try:
+        redbeat_entries = _read_redbeat_entries()
+        if redbeat_entries:
+            out.extend(redbeat_entries)
+            mode = "redbeat"
     except Exception:
-        # Fallback to static config
-        schedules = celery_app.conf.beat_schedule or {}
-        out: List[Dict[str, Any]] = []
-        for name, spec in schedules.items():
-            out.append(
-                {
-                    "name": name,
-                    "task": spec.get("task"),
-                    "schedule": str(spec.get("schedule")),
-                    "cron": None,
-                    "timezone": "UTC",
-                    "args": spec.get("args") or [],
-                    "kwargs": spec.get("kwargs") or {},
-                    "enabled": True,
-                    "source": "static",
-                    "metadata": None,
-                }
-            )
-        return {"schedules": out, "mode": "static"}
+        pass
+
+    # --- Merge static beat_schedule entries not already covered ---
+    existing_tasks = {entry["task"] for entry in out if entry.get("task")}
+    existing_names = {entry["name"] for entry in out if entry.get("name")}
+    static_schedules = celery_app.conf.beat_schedule or {}
+    for name, spec in static_schedules.items():
+        task_path = spec.get("task", "")
+        if task_path in existing_tasks or name in existing_names:
+            continue
+        sched_obj = spec.get("schedule")
+        cron_expr, tz = _parse_cron_and_tz(sched_obj) if sched_obj else (None, None)
+        out.append(
+            {
+                "name": name,
+                "task": task_path,
+                "schedule": str(sched_obj) if sched_obj else None,
+                "cron": cron_expr,
+                "timezone": tz or "UTC",
+                "args": spec.get("args") or [],
+                "kwargs": spec.get("kwargs") or {},
+                "enabled": True,
+                "source": "static",
+                "last_run": _last_run_for_task(task_path),
+                "last_run_at": None,
+                "total_run_count": None,
+                "metadata": None,
+                "status": "active",
+            }
+        )
+
+    return {"schedules": out, "mode": mode}
 
 
 @router.post("/schedules")

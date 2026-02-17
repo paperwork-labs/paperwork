@@ -35,20 +35,21 @@ describe('AdminJobs', () => {
     apiGet.mockReset();
   });
 
-  it('loads first page with default paging params', async () => {
+  it('loads first page with default paging params and coverage filter', async () => {
     apiGet.mockResolvedValueOnce({
-      data: { jobs: [{ id: 1, task_name: 'admin_coverage_refresh', status: 'ok' }], total: 200 },
+      data: { jobs: [{ id: 1, task_name: 'admin_backfill_daily', status: 'ok' }], total: 200 },
     });
 
     renderWithProviders(<AdminJobs />);
 
     await waitFor(() => {
-      expect(apiGet).toHaveBeenCalledWith('/market-data/admin/jobs', { params: { limit: 25, offset: 0 } });
+      expect(apiGet).toHaveBeenCalledWith('/market-data/admin/jobs', {
+        params: { limit: 25, offset: 0, exclude_task: 'admin_coverage_refresh' },
+      });
     });
 
     expect(await screen.findByText(/Admin Jobs/i)).toBeInTheDocument();
-    expect(screen.getByText(/admin_coverage_refresh/i)).toBeInTheDocument();
-    // Count summary is shown in pagination footer; top-level summary is intentionally omitted.
+    expect(screen.getByText(/admin_backfill_daily/i)).toBeInTheDocument();
   });
 
   it('changes page size via pagination menu and refetches', async () => {
@@ -59,7 +60,9 @@ describe('AdminJobs', () => {
     renderWithProviders(<AdminJobs />);
 
     await waitFor(() => {
-      expect(apiGet).toHaveBeenCalledWith('/market-data/admin/jobs', { params: { limit: 25, offset: 0 } });
+      expect(apiGet).toHaveBeenCalledWith('/market-data/admin/jobs', {
+        params: { limit: 25, offset: 0, exclude_task: 'admin_coverage_refresh' },
+      });
     });
 
     const user = userEvent.setup();
@@ -67,7 +70,9 @@ describe('AdminJobs', () => {
     await user.click(screen.getByRole('menuitem', { name: /50 per page/i }));
 
     await waitFor(() => {
-      expect(apiGet).toHaveBeenLastCalledWith('/market-data/admin/jobs', { params: { limit: 50, offset: 0 } });
+      expect(apiGet).toHaveBeenLastCalledWith('/market-data/admin/jobs', {
+        params: { limit: 50, offset: 0, exclude_task: 'admin_coverage_refresh' },
+      });
     });
   });
 

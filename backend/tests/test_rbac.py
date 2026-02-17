@@ -35,7 +35,7 @@ def test_me_includes_role(client):
 def test_admin_guard_blocks_non_admin(client):
     u = f"user_{uuid.uuid4().hex[:6]}"
     token = _register_and_login(client, u, "Passw0rd!", f"{u}@example.com")
-    r = client.get("/api/v1/admin/system/status", headers={"Authorization": f"Bearer {token}"})
+    r = client.get("/api/v1/admin/users", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code in (401, 403)
 
 

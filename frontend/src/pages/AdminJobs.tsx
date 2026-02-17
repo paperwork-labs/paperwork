@@ -36,6 +36,7 @@ const AdminJobs: React.FC = () => {
   const [detailsOpen, setDetailsOpen] = React.useState(false);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(25);
+  const [hideCoverageRefresh, setHideCoverageRefresh] = React.useState(true);
 
   const statusPalette = (raw: any) => {
     const s = String(raw || '').toLowerCase();
@@ -116,10 +117,15 @@ const AdminJobs: React.FC = () => {
     setLoading(true);
     try {
       const offset = (page - 1) * pageSize;
-      const r = await api.get('/market-data/admin/jobs', { params: { limit: pageSize, offset } });
+      const params: Record<string, unknown> = { limit: pageSize, offset };
+      if (hideCoverageRefresh) {
+        params.exclude_task = 'admin_coverage_refresh';
+      }
+      const r = await api.get('/market-data/admin/jobs', { params });
       setData(r.data || null);
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to load admin jobs');
+    } catch (err: unknown) {
+      const axiosErr = err as { message?: string } | undefined;
+      toast.error(axiosErr?.message || 'Failed to load admin jobs');
     } finally {
       setLoading(false);
     }
@@ -127,7 +133,7 @@ const AdminJobs: React.FC = () => {
 
   React.useEffect(() => {
     load();
-  }, [page, pageSize]);
+  }, [page, pageSize, hideCoverageRefresh]);
 
   return (
     <Box p={0}>
@@ -138,9 +144,23 @@ const AdminJobs: React.FC = () => {
             Recent job runs recorded by the backend (task name, status, timings, and errors).
           </Text>
         </Box>
-        <Button size="sm" onClick={load} loading={loading}>
-          Reload
-        </Button>
+        <HStack gap={2}>
+          <Badge
+            variant="subtle"
+            colorPalette={hideCoverageRefresh ? 'blue' : 'gray'}
+            cursor="pointer"
+            onClick={() => {
+              setHideCoverageRefresh((v) => !v);
+              setPage(1);
+            }}
+            userSelect="none"
+          >
+            {hideCoverageRefresh ? 'Coverage refresh hidden' : 'Showing all jobs'}
+          </Badge>
+          <Button size="sm" onClick={load} loading={loading}>
+            Reload
+          </Button>
+        </HStack>
       </HStack>
       <Box
         w="full"

@@ -111,13 +111,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await login(username, password);
   };
 
-  const logout = () => {
-    localStorage.removeItem('qm_token');
+  const logout = React.useCallback(() => {
+    try { localStorage.removeItem('qm_token'); } catch { /* ignore */ }
     setToken(null);
     setUser(null);
     setAppSettings(null);
     setAppSettingsReady(false);
-  };
+  }, []);
+
+  // Listen for forced logout from the API interceptor (e.g. 401 on expired token)
+  useEffect(() => {
+    const handler = () => logout();
+    window.addEventListener('auth:logout', handler);
+    return () => window.removeEventListener('auth:logout', handler);
+  }, [logout]);
 
   const refreshMe = async () => {
     const me: any = await authApi.me();

@@ -25,7 +25,6 @@ const SettingsBrokerages = React.lazy(() => import('./pages/SettingsBrokerages')
 const SettingsProfile = React.lazy(() => import('./pages/SettingsProfile'));
 const SettingsPreferences = React.lazy(() => import('./pages/SettingsPreferences'));
 const SettingsNotifications = React.lazy(() => import('./pages/SettingsNotifications'));
-const SettingsSecurity = React.lazy(() => import('./pages/SettingsSecurity'));
 const PortfolioWorkspace = React.lazy(() => import('./pages/PortfolioWorkspace'));
 const Login = React.lazy(() => import('./pages/Login'));
 const Register = React.lazy(() => import('./pages/Register'));
@@ -85,16 +84,15 @@ function App() {
                           <Route path="strategies-manager" element={<StrategiesManager />} />
                         </Route>
 
-                        {/* Admin settings */}
-                        <Route element={<RequireNonMarketAccess section="portfolio" />}>
-                          <Route path="settings" element={<RequireAdmin><SettingsShell /></RequireAdmin>}>
-                            <Route index element={<Navigate to="profile" replace />} />
-                            <Route path="profile" element={<SettingsProfile />} />
-                            <Route path="preferences" element={<SettingsPreferences />} />
-                            <Route path="notifications" element={<SettingsNotifications />} />
-                            <Route path="brokerages" element={<SettingsBrokerages />} />
-                            <Route path="security" element={<SettingsSecurity />} />
-                            {/* Admin under Settings */}
+                        {/* Settings (open to all authenticated users) */}
+                        <Route path="settings" element={<SettingsShell />}>
+                          <Route index element={<Navigate to="profile" replace />} />
+                          <Route path="profile" element={<SettingsProfile />} />
+                          <Route path="preferences" element={<SettingsPreferences />} />
+                          <Route path="notifications" element={<SettingsNotifications />} />
+                          <Route path="brokerages" element={<SettingsBrokerages />} />
+                          {/* Admin-only routes under Settings */}
+                          <Route element={<RequireAdmin />}>
                             <Route path="admin/dashboard" element={<AdminDashboard />} />
                             <Route path="admin/jobs" element={<AdminJobs />} />
                             <Route path="admin/schedules" element={<AdminSchedules />} />

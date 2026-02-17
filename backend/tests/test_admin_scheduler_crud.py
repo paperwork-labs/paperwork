@@ -101,6 +101,8 @@ def scheduler_env(monkeypatch):
     monkeypatch.setattr(routes, "delete_schedule_metadata", _delete_meta)
 
     class MemoryRedis:
+        """In-memory stub that supports both old scan_iter and new sorted-set / hash patterns."""
+
         def set(self, key, value):
             store["paused"][key] = value
 
@@ -115,6 +117,44 @@ def scheduler_env(monkeypatch):
                 for key in list(store["paused"].keys()):
                     yield key
             return []
+
+        # --- sorted set & hash support for _read_redbeat_entries ---
+        def zrange(self, key, start, end):
+            """Return keys of active RedBeat entries from the in-memory store."""
+            if key == "redbeat::schedule":
+                return [
+                    entry.key.replace(":task", "").encode()
+                    for entry in store["entries"].values()
+                ]
+            return []
+
+        def hget(self, key, field):
+            """Return definition/meta JSON for a RedBeat entry."""
+            decoded_key = key.decode() if isinstance(key, bytes) else key
+            task_key = f"{decoded_key}:task"
+            entry = store["entries"].get(task_key)
+            if not entry:
+                return None
+            if field == "definition":
+                sched = entry.schedule
+                sched_dict = {"__type__": "crontab"}
+                for attr in ("_orig_minute", "_orig_hour", "_orig_day_of_month",
+                             "_orig_month_of_year", "_orig_day_of_week"):
+                    short = attr.replace("_orig_", "")
+                    sched_dict[short] = str(getattr(sched, attr, "*"))
+                defn = {
+                    "name": entry.name,
+                    "task": entry.task,
+                    "args": list(entry.args or []),
+                    "kwargs": dict(entry.kwargs or {}),
+                    "options": entry.options or {},
+                    "schedule": sched_dict,
+                    "enabled": True,
+                }
+                return json.dumps(defn).encode()
+            if field == "meta":
+                return json.dumps({"total_run_count": 0}).encode()
+            return None
 
     monkeypatch.setattr(routes, "_get_redis", lambda: MemoryRedis())
     yield store

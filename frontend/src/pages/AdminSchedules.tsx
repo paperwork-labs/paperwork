@@ -29,6 +29,27 @@ import SortableTable, { type Column } from '../components/SortableTable';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { formatDateTime } from '../utils/format';
 
+/** Relative time string, e.g. "3 min ago", "2h ago", "5d ago". */
+const timeAgo = (iso: string | null | undefined): string => {
+  if (!iso) return '—';
+  const diff = Date.now() - new Date(iso).getTime();
+  if (diff < 0) return 'just now';
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+};
+
+/** Extract the short function name from a dotted task path. */
+const shortTask = (task: string): string => {
+  if (!task) return '—';
+  const parts = task.split('.');
+  return parts[parts.length - 1];
+};
+
 const AdminSchedules: React.FC = () => {
   const { timezone } = useUserPreferences();
   const [loading, setLoading] = React.useState(false);
@@ -150,11 +171,9 @@ const AdminSchedules: React.FC = () => {
     load();
   }, []);
 
-  const formatCronFriendly = (cron: string, tz: string, nextUtc?: string | null) => {
+  const formatCronFriendly = (cron: string, tz: string) => {
     const parts = String(cron || '').trim().split(/\s+/);
-    if (parts.length !== 5) {
-      return `Cron: ${cron || '—'}`;
-    }
+    if (parts.length !== 5) return cron || '—';
     const [min, hour, dom, mon, dow] = parts;
     const pad = (v: string) => v.padStart(2, '0');
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -163,18 +182,19 @@ const AdminSchedules: React.FC = () => {
       const list = value.split(',').map((d) => days[Number(d)] || d);
       return list.join(', ');
     };
-    let base = `Cron: ${cron}`;
     if (min !== '*' && hour === '*' && dom === '*' && mon === '*' && dow === '*') {
-      base = `Every hour at :${pad(min)} ${tz}`;
-    } else if (min !== '*' && hour !== '*' && dom === '*' && mon === '*' && dow === '*') {
-      base = `Every day at ${pad(hour)}:${pad(min)} ${tz}`;
-    } else if (min !== '*' && hour !== '*' && dom === '*' && mon === '*' && dow !== '*') {
-      base = `Weekly on ${parseDow(dow)} at ${pad(hour)}:${pad(min)} ${tz}`;
-    } else if (min !== '*' && hour !== '*' && dom !== '*' && mon === '*' && dow === '*') {
-      base = `Monthly on day ${dom} at ${pad(hour)}:${pad(min)} ${tz}`;
+      return `Every hour at :${pad(min)} ${tz}`;
     }
-    const nextLocal = nextUtc ? formatDateTime(nextUtc, timezone) : null;
-    return nextLocal ? `${base} · Next: ${nextLocal}` : base;
+    if (min !== '*' && hour !== '*' && dom === '*' && mon === '*' && dow === '*') {
+      return `Daily at ${pad(hour)}:${pad(min)} ${tz}`;
+    }
+    if (min !== '*' && hour !== '*' && dom === '*' && mon === '*' && dow !== '*') {
+      return `${parseDow(dow)} at ${pad(hour)}:${pad(min)} ${tz}`;
+    }
+    if (min !== '*' && hour !== '*' && dom !== '*' && mon === '*' && dow === '*') {
+      return `Monthly day ${dom} at ${pad(hour)}:${pad(min)} ${tz}`;
+    }
+    return cron;
   };
 
   const openPreset = (preset: { name: string; task: string; cron: string; timezone: string }) => {
@@ -182,16 +202,20 @@ const AdminSchedules: React.FC = () => {
     setCreateOpen(true);
   };
 
+  const mode = data?.mode || 'loading';
+
   return (
     <Box p={0}>
-      <HStack justify="space-between" mb={3}>
+      <HStack justify="space-between" mb={3} align="start">
         <Box>
-          <Heading size="md">Admin Schedules</Heading>
-          <Text fontSize="sm" color="fg.muted">
-            Manage Celery beat schedules (RedBeat). Create, pause/resume, run-now, and delete.
-          </Text>
-          <Text fontSize="xs" color="fg.muted">
-            Times shown in your timezone; cron is stored in the schedule timezone.
+          <HStack gap={2} align="center">
+            <Heading size="md">Schedules</Heading>
+            <Badge colorPalette={mode === 'redbeat' ? 'green' : mode === 'static' ? 'orange' : 'gray'} size="sm">
+              {mode === 'redbeat' ? 'RedBeat' : mode === 'static' ? 'Static' : '…'}
+            </Badge>
+          </HStack>
+          <Text fontSize="sm" color="fg.muted" mt={1}>
+            Recurring background jobs managed by Celery Beat. Create, pause, run, or delete schedules.
           </Text>
           <HStack mt={2} gap={2} flexWrap="wrap">
             <Button
@@ -210,7 +234,7 @@ const AdminSchedules: React.FC = () => {
             </Button>
           </HStack>
         </Box>
-        <HStack gap={2}>
+        <HStack gap={2} flexShrink={0}>
           <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)}>
             New schedule
           </Button>
@@ -233,71 +257,112 @@ const AdminSchedules: React.FC = () => {
           columns={
             [
               {
-                key: 'status',
-                header: 'Status',
-                accessor: (s: any) => String(s.status || (s.enabled ? 'active' : 'paused')),
-                sortable: true,
-                sortType: 'string',
-                render: (v) => {
-                  const status = String(v || '');
-                  const palette = status === 'active' ? 'green' : status === 'paused' ? 'orange' : 'gray';
-                  return <Badge colorPalette={palette}>{status}</Badge>;
-                },
-                width: '140px',
-              },
-              {
                 key: 'name',
-                header: 'Name',
+                header: 'Job',
                 accessor: (s: any) => s.name,
                 sortable: true,
                 sortType: 'string',
-                render: (v) => <Text fontWeight="medium">{String(v || '')}</Text>,
+                render: (_v, s) => {
+                  const status = String(s.status || (s.enabled ? 'active' : 'paused'));
+                  const palette = status === 'active' ? 'green' : status === 'paused' ? 'orange' : 'gray';
+                  return (
+                    <Box>
+                      <HStack gap={2} align="center">
+                        <Badge colorPalette={palette} size="sm" variant="subtle">
+                          {status}
+                        </Badge>
+                        <Text fontWeight="medium" fontSize="13px">{String(s.name || '')}</Text>
+                      </HStack>
+                      <TooltipRoot>
+                        <TooltipTrigger asChild>
+                          <Text fontFamily="mono" fontSize="11px" color="fg.muted" truncate maxW="280px">
+                            {shortTask(String(s.task || ''))}
+                          </Text>
+                        </TooltipTrigger>
+                        <TooltipPositioner>
+                          <TooltipContent>{String(s.task || '')}</TooltipContent>
+                        </TooltipPositioner>
+                      </TooltipRoot>
+                    </Box>
+                  );
+                },
+                width: '260px',
               },
               {
-                key: 'task',
-                header: 'Task',
-                accessor: (s: any) => s.task,
+                key: 'schedule',
+                header: 'Schedule',
+                accessor: (s: any) => s.cron || '',
                 sortable: true,
                 sortType: 'string',
-                render: (v) => <Text fontFamily="mono" fontSize="12px">{String(v || '')}</Text>,
+                render: (_v, s) => {
+                  const cron = String(s?.cron || '');
+                  const tz = String(s?.timezone || 'UTC');
+                  const friendly = cron ? formatCronFriendly(cron, tz) : '—';
+                  const nextUtc = nextRuns[String(s?.name || '')];
+                  const nextLocal = nextUtc ? formatDateTime(nextUtc, timezone) : null;
+                  return (
+                    <Box>
+                      <Text fontSize="12px" fontWeight="medium">{friendly}</Text>
+                      {cron && (
+                        <Text fontFamily="mono" fontSize="11px" color="fg.muted">{cron}</Text>
+                      )}
+                      {nextLocal && (
+                        <Text fontSize="11px" color="fg.subtle">Next: {nextLocal}</Text>
+                      )}
+                    </Box>
+                  );
+                },
               },
               {
-                key: 'cron',
-                header: 'Cron',
-                accessor: (s: any) => s.cron,
+                key: 'last_run',
+                header: 'Last Run',
+                accessor: (s: any) => s.last_run_at || s.last_run?.started_at || '',
                 sortable: true,
                 sortType: 'string',
-                render: (v) => <Text fontFamily="mono" fontSize="12px" color="fg.muted">{String(v || '—')}</Text>,
-                width: '160px',
-              },
-              {
-                key: 'friendly',
-                header: 'Schedule (friendly)',
-                accessor: (s: any) => s.cron,
-                sortable: true,
-                sortType: 'string',
-                render: (_v, s) => (
-                  <Text fontSize="12px" color="fg.muted">
-                    {formatCronFriendly(String(s?.cron || ''), String(s?.timezone || 'UTC'), nextRuns[String(s?.name || '')])}
-                  </Text>
-                ),
-              },
-              {
-                key: 'timezone',
-                header: 'Timezone',
-                accessor: (s: any) => s.timezone || 'UTC',
-                sortable: true,
-                sortType: 'string',
-                render: (v) => <Text fontSize="12px" color="fg.muted">{String(v || 'UTC')}</Text>,
+                render: (_v, s) => {
+                  const beatAt = s.last_run_at as string | undefined;
+                  const jobRun = s.last_run as { status?: string; started_at?: string } | undefined;
+                  const ts = beatAt || jobRun?.started_at;
+                  const jobStatus = jobRun?.status;
+                  const statusPalette = jobStatus === 'success' ? 'green' : jobStatus === 'failed' ? 'red' : 'gray';
+                  return (
+                    <Box>
+                      <TooltipRoot>
+                        <TooltipTrigger asChild>
+                          <Text fontSize="12px" color="fg.default">{timeAgo(ts)}</Text>
+                        </TooltipTrigger>
+                        {ts && (
+                          <TooltipPositioner>
+                            <TooltipContent>{formatDateTime(ts, timezone)}</TooltipContent>
+                          </TooltipPositioner>
+                        )}
+                      </TooltipRoot>
+                      {jobStatus && (
+                        <Badge colorPalette={statusPalette} size="sm" variant="subtle" mt="2px">
+                          {jobStatus}
+                        </Badge>
+                      )}
+                    </Box>
+                  );
+                },
                 width: '120px',
               },
               {
+                key: 'runs',
+                header: 'Runs',
+                accessor: (s: any) => s.total_run_count ?? 0,
+                sortable: true,
+                sortType: 'number',
+                render: (v) => <Text fontSize="12px" color="fg.muted">{v != null ? String(v) : '—'}</Text>,
+                width: '70px',
+              },
+              {
                 key: 'actions',
-                header: 'Actions',
+                header: '',
                 accessor: () => null,
                 sortable: false,
                 isNumeric: true,
-                width: '140px',
+                width: '120px',
                 render: (_v, s) => {
                   const status = String(s.status || (s.enabled ? 'active' : 'paused'));
                   return (
@@ -404,5 +469,3 @@ const AdminSchedules: React.FC = () => {
 };
 
 export default AdminSchedules;
-
-

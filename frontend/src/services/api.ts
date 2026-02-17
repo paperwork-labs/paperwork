@@ -98,6 +98,19 @@ api.interceptors.response.use(
       data: error.response?.data
     });
 
+    // 401 Unauthorized — token expired or invalid.
+    // Clear the stored token and notify AuthContext so the app redirects to /login.
+    // Skip for login/register endpoints (those return 401 for bad credentials, not expired tokens).
+    if (
+      error.response?.status === 401 &&
+      originalRequest?.url &&
+      !originalRequest.url.includes('/auth/login') &&
+      !originalRequest.url.includes('/auth/register')
+    ) {
+      try { localStorage.removeItem('qm_token'); } catch { /* ignore */ }
+      window.dispatchEvent(new Event('auth:logout'));
+    }
+
     // Retry logic for network errors (skip when _noRetry is set)
     if ((error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK') && originalRequest && !(originalRequest as any)._noRetry) {
       if (!(originalRequest as any)._retry) {

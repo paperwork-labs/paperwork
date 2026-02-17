@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, Flex, VStack, Button, Text, IconButton, TooltipRoot, TooltipTrigger, TooltipPositioner, TooltipContent, useMediaQuery } from '@chakra-ui/react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FiBell, FiGrid, FiLock, FiSliders, FiUser, FiShield, FiActivity } from 'react-icons/fi';
+import { FiBell, FiGrid, FiSliders, FiUser, FiShield, FiActivity } from 'react-icons/fi';
 
 const MenuLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, children }) => {
   const activeBg = 'bg.muted';
@@ -64,7 +64,6 @@ const SettingsShell: React.FC = () => {
             <MenuLink to="/settings/preferences">Preferences</MenuLink>
             <MenuLink to="/settings/brokerages">Brokerages</MenuLink>
             <MenuLink to="/settings/notifications">Notifications</MenuLink>
-            <MenuLink to="/settings/security">Security</MenuLink>
             {user?.role === 'admin' && (
               <>
                 <Text fontSize="sm" color={sectionColor} px={2} mt={4}>ADMIN</Text>
@@ -83,7 +82,6 @@ const SettingsShell: React.FC = () => {
             {iconNav('/settings/preferences', 'Preferences', <FiSliders />)}
             {iconNav('/settings/brokerages', 'Brokerages', <FiShield />)}
             {iconNav('/settings/notifications', 'Notifications', <FiBell />)}
-            {iconNav('/settings/security', 'Security', <FiLock />)}
             {user?.role === 'admin' ? (
               <>
                 {iconNav('/settings/admin/dashboard', 'Admin Dashboard', <FiGrid />)}

@@ -62,6 +62,7 @@ from backend.tasks.market_data_tasks import backfill_stale_daily_tracked
 from backend.config import settings
 from backend.services.notifications.discord_bot import discord_bot_client
 from backend.models import Position
+from backend.services.market.admin_health_service import AdminHealthService
 
 logger = logging.getLogger(__name__)
 
@@ -174,11 +175,6 @@ TASK_ACTIONS: List[Dict[str, Any]] = [
 ]
 
 
-def _task_status_keys() -> List[str]:
-    keys = {action.get("status_task") or action["task_name"] for action in TASK_ACTIONS}
-    keys.update({"admin_backfill_since_date", "admin_snapshots_history_backfill"})
-    return sorted(keys)
-
 
 def _coverage_actions(backfill_5m_enabled: bool = True) -> List[Dict[str, Any]]:
     actions: List[Dict[str, Any]] = [
@@ -258,6 +254,20 @@ def _enqueue_task(task_fn: Callable, *args, **kwargs) -> Dict[str, Any]:
     """Standardize task enqueue responses."""
     result = task_fn.delay(*args, **kwargs)
     return {"task_id": result.id}
+
+@router.get("/admin/health")
+async def admin_composite_health(
+    _admin: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Composite health check across coverage, stage quality, jobs, and audit.
+
+    Returns strict composite status (green/yellow/red), per-dimension detail,
+    task-run timestamps, and tunable thresholds -- all in one response.
+    """
+    svc = AdminHealthService()
+    return svc.get_composite_health(db)
+
 
 @router.get("/admin/coverage/sanity")
 async def admin_sanity_coverage(
@@ -647,35 +657,6 @@ async def admin_backfill_daily_last_bars(
 
 # Removed duplicate refresh; use POST /symbols/{symbol}/refresh instead
 
-
-@router.get("/admin/tasks/status")
-async def admin_task_status(
-    _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
-    """Return last-run status for key market-data tasks from Redis.
-
-    This endpoint intentionally returns a clean, task-name keyed payload (not raw Redis keys),
-    so UIs can render friendly labels without leaking storage details.
-    """
-    try:
-        from backend.services.market.market_data_service import market_data_service
-
-        r = market_data_service.redis_client
-        tasks = _task_status_keys()
-        out: Dict[str, Any] = {}
-        import json as _json
-
-        for task_name in tasks:
-            try:
-                key = f"taskstatus:{task_name}:last"
-                raw = r.get(key)
-                out[task_name] = _json.loads(raw) if raw else None
-            except Exception:
-                out[task_name] = None
-        return out
-    except Exception as e:
-        logger.error(f"task status error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 # =============================================================================
@@ -1141,27 +1122,6 @@ async def post_retention_enforce(
     return _enqueue_task(enforce_price_data_retention, max_days_5m=max_days_5m)
 
 
-@router.get("/admin/market-audit")
-async def get_market_data_audit(
-    admin_user: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
-    svc = MarketDataService()
-    try:
-        raw = svc.redis_client.get("market_audit:last")
-        payload = json.loads(raw.decode() if isinstance(raw, (bytes, bytearray)) else raw) if raw else None
-    except Exception:
-        payload = None
-    return {"audit": payload}
-
-
-@router.get("/admin/stage-quality")
-async def get_stage_quality(
-    lookback_days: int = Query(120, ge=7, le=3650),
-    admin_user: User = Depends(get_admin_user),
-    db: Session = Depends(get_db),
-) -> Dict[str, Any]:
-    svc = MarketDataService()
-    return svc.stage_quality_summary(db, lookback_days=lookback_days)
 
 
 @router.post("/admin/stage/repair")
@@ -1180,11 +1140,17 @@ async def admin_get_jobs(
     limit: Optional[int] = Query(None, ge=1, le=1000),
     offset: int = Query(0, ge=0, le=100000),
     all: bool = Query(False),
+    exclude_task: Optional[str] = Query(None, description="Comma-separated task names to exclude"),
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
-    total = db.query(JobRun).count()
-    query = db.query(JobRun).order_by(JobRun.started_at.desc())
+    base_query = db.query(JobRun)
+    if exclude_task:
+        excluded = [t.strip() for t in exclude_task.split(",") if t.strip()]
+        if excluded:
+            base_query = base_query.filter(JobRun.task_name.notin_(excluded))
+    total = base_query.count()
+    query = base_query.order_by(JobRun.started_at.desc())
     if all:
         rows = query.all()
         return {"jobs": serialize_job_runs(rows), "total": total, "limit": total, "offset": 0}
@@ -1192,54 +1158,6 @@ async def admin_get_jobs(
     rows = query.offset(offset).limit(effective_limit).all()
     return {"jobs": serialize_job_runs(rows), "total": total, "limit": effective_limit, "offset": offset}
 
-
-@router.get("/admin/jobs/summary")
-async def admin_get_jobs_summary(
-    lookback_hours: int = Query(24, ge=1, le=24 * 30),
-    admin_user: User = Depends(get_admin_user),
-    db: Session = Depends(get_db),
-) -> Dict[str, Any]:
-    now = datetime.utcnow()
-    since = now - timedelta(hours=lookback_hours)
-    recent_q = db.query(JobRun).filter(JobRun.started_at >= since)
-
-    total = recent_q.count()
-    ok_count = recent_q.filter(JobRun.status == "ok").count()
-    error_count = recent_q.filter(JobRun.status == "error").count()
-    running_count = recent_q.filter(JobRun.status == "running").count()
-    cancelled_count = recent_q.filter(JobRun.status == "cancelled").count()
-    completed = ok_count + error_count + cancelled_count
-    success_rate = (ok_count / completed) if completed else 0.0
-
-    latest_failed = (
-        recent_q.filter(JobRun.status == "error")
-        .order_by(JobRun.started_at.desc())
-        .first()
-    )
-
-    return {
-        "window_hours": lookback_hours,
-        "total": total,
-        "ok_count": ok_count,
-        "error_count": error_count,
-        "running_count": running_count,
-        "cancelled_count": cancelled_count,
-        "completed_count": completed,
-        "success_rate": round(success_rate, 4),
-        "latest_failed": (
-            {
-                "id": latest_failed.id,
-                "task_name": latest_failed.task_name,
-                "status": latest_failed.status,
-                "started_at": latest_failed.started_at.isoformat()
-                if latest_failed.started_at
-                else None,
-                "error": latest_failed.error,
-            }
-            if latest_failed
-            else None
-        ),
-    }
 
 
 @router.get("/admin/tasks")

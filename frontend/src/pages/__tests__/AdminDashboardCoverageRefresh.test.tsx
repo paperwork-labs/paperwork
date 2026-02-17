@@ -73,6 +73,31 @@ vi.mock('../../hooks/useCoverageSnapshot', () => {
   };
 });
 
+vi.mock('../../hooks/useAdminHealth', () => {
+  return {
+    default: () => ({
+      health: {
+        composite_status: 'yellow',
+        composite_reason: 'Degraded: jobs.',
+        dimensions: {
+          coverage: { status: 'green', daily_pct: 98, m5_pct: 90, stale_daily: 0, stale_m5: 0, tracked_count: 500, expected_date: '2026-01-08', summary: '' },
+          stage_quality: { status: 'green', unknown_rate: 0.1, invalid_count: 0, monotonicity_issues: 0, stale_stage_count: 0, total_symbols: 500, stage_counts: {} },
+          jobs: { status: 'red', window_hours: 24, total: 10, ok_count: 8, error_count: 2, running_count: 0, cancelled_count: 0, completed_count: 10, success_rate: 0.8, latest_failed: null },
+          audit: { status: 'green', tracked_total: 500, daily_fill_pct: 98, snapshot_fill_pct: 95, missing_sample: [] },
+        },
+        task_runs: {
+          admin_coverage_refresh: { ts: '2026-01-07T08:50:00Z' },
+          admin_coverage_backfill: { ts: '2026-01-07T07:00:00Z' },
+        },
+        thresholds: {},
+        checked_at: '2026-01-08T00:00:00Z',
+      },
+      loading: false,
+      refresh: vi.fn(),
+    }),
+  };
+});
+
 vi.mock('../../components/coverage/CoverageSummaryCard', () => {
   return {
     CoverageSummaryCard: ({ children }: any) => <div>{children}</div>,
@@ -123,14 +148,13 @@ describe('AdminDashboard coverage refresh', () => {
     expect(apiPost).toHaveBeenCalledWith('/market-data/admin/backfill/daily?days=252');
   });
 
-  it('renders daily fill-by-date distribution', async () => {
+  it('renders daily fill-by-date distribution with coverage health strip', async () => {
     renderWithProviders(<AdminDashboard />, { route: '/settings/admin/dashboard' });
     const blocks = await screen.findAllByText(/Daily fill by date/i);
     expect(blocks.length).toBeGreaterThanOrEqual(1);
     const newest = await screen.findAllByText(/Newest date: 2026-01-08/i);
     expect(newest.length).toBeGreaterThanOrEqual(1);
-    // Tooltip-only details: ensure hint is present.
-    expect(document.body.textContent || '').toContain('Hover a bar to see date');
+    expect(document.body.textContent || '').toContain('Coverage strip');
   });
 });
 

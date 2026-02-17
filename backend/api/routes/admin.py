@@ -216,14 +216,3 @@ async def update_user(
         "is_active": user.is_active,
     }
 
-@router.get("/system/status")
-async def get_system_status(
-    admin_user: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
-    """Get system status (admin only)."""
-    return {
-        "status": "healthy",
-        "version": "2.0.0",
-        "uptime": "placeholder",
-        "timestamp": datetime.now().isoformat(),
-    }
