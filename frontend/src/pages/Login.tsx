@@ -92,7 +92,7 @@ const Login: React.FC = () => {
             Login
           </Button>
           <Text fontSize="sm" color="fg.muted">
-            No account? <Link to="/register" style={{ color: '#2A79F0' }}>Register</Link>
+            No account? <Link to="/register" style={{ color: 'var(--chakra-colors-brand-700)' }}>Register</Link>
           </Text>
         </VStack>
       </AppCard>

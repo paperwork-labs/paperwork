@@ -63,8 +63,8 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
 
     const effectiveTheme = theme ?? (colorMode === 'dark' ? 'dark' : 'light');
     const toolbarBg = effectiveTheme === 'dark'
-      ? getCssColor('bg.panel', '#0b1220')
-      : '#f1f3f6';
+      ? getCssColor('bg.panel', '#1E293B')
+      : getCssColor('bg.canvas', '#F8FAFC');
 
     const config = {
       autosize: autosize,

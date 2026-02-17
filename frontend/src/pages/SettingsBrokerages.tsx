@@ -1,19 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Text,
-  CardRoot,
-  CardBody,
   VStack,
   HStack,
   Input,
   Button,
   Badge,
-  Link as CLink,
-  TooltipRoot,
-  TooltipTrigger,
-  TooltipPositioner,
-  TooltipContent,
   SimpleGrid,
   useDisclosure,
   InputGroup,
@@ -34,7 +27,13 @@ import {
   DialogFooter,
   DialogTitle,
   DialogDescription,
+  TooltipRoot,
+  TooltipTrigger,
+  TooltipPositioner,
+  TooltipContent,
 } from '@chakra-ui/react';
+import AppCard from '../components/ui/AppCard';
+import { PageHeader } from '../components/ui/Page';
 import hotToast from 'react-hot-toast';
 import { accountsApi, aggregatorApi, handleApiError } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -43,13 +42,7 @@ import SchwabLogo from '../assets/logos/schwab.svg';
 import TastytradeLogo from '../assets/logos/tastytrade.svg';
 import IbkrLogo from '../assets/logos/interactive-brokers.svg';
 
-// Chakra v3 migration shims (dark-first for now).
-const useColorModeValue = <T,>(_light: T, dark: T) => dark;
-const useColorMode = () => ({ colorMode: 'dark' as const, toggleColorMode: () => { } });
-
-const Settings: React.FC = () => {
-  const cardBg = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+const SettingsBrokerages: React.FC = () => {
   // Temporary shim: preserve legacy `useToast()` call sites while migrating to `react-hot-toast`.
   const toast = (args: { title: string; description?: string; status?: 'success' | 'error' | 'info' | 'warning' }) => {
     const msg = args.description ? `${args.title}: ${args.description}` : args.title;
@@ -94,7 +87,6 @@ const Settings: React.FC = () => {
   const LogoTile: React.FC<{ label: string; srcs: string[]; selected: boolean; onClick: () => void; wide?: boolean }> =
     ({ label, srcs, selected, onClick, wide }) => {
       const [idx, setIdx] = React.useState(0);
-      const { colorMode } = useColorMode();
       const src = srcs[Math.min(idx, srcs.length - 1)];
       return (
         <Box
@@ -120,7 +112,6 @@ const Settings: React.FC = () => {
             height={wide ? "40px" : "56px"}
             width={wide ? "150px" : "56px"}
             objectFit="contain"
-            filter={colorMode === 'dark' ? undefined : undefined}
             onError={() => {
               if (idx < srcs.length - 1) setIdx(idx + 1);
             }}
@@ -358,28 +349,23 @@ const Settings: React.FC = () => {
   };
 
   return (
-    <Box p={2}>
-      <CardRoot bg={cardBg} border="1px" borderColor={borderColor} mb={6}>
-        <CardBody>
-          <VStack align="stretch" gap={4}>
+    <Box w="full">
+      <Box w="full" maxW="960px" mx="auto">
+        <PageHeader
+          title="Brokerages"
+          subtitle="Use the wizard to add new connections. Connected portfolios appear below."
+          actions={<Button onClick={startWizard}>+ New connection</Button>}
+        />
+        <VStack align="stretch" gap={4}>
+          <AppCard>
+            <VStack align="stretch" gap={4}>
             <HStack justify="space-between">
-              <Text fontWeight="bold">Brokerages</Text>
-              <Button onClick={startWizard}>+ New connection</Button>
-            </HStack>
-            <Text color="gray.500" fontSize="sm">Use the wizard to add new connections. Connected portfolios appear below.</Text>
-          </VStack>
-        </CardBody>
-      </CardRoot>
-      <CardRoot bg={cardBg} border="1px" borderColor={borderColor}>
-        <CardBody>
-          <VStack align="stretch" gap={4}>
-            <HStack justify="space-between">
-              <Text fontWeight="bold">Linked Accounts</Text>
+              <Text fontWeight="semibold">Linked Accounts</Text>
               <Button size="sm" onClick={loadAccounts}>Refresh</Button>
             </HStack>
             {accounts.length === 0 && (
-              <Box border="1px dashed" borderColor={borderColor} p={6} borderRadius="md" textAlign="center">
-                <Text fontSize="sm" color="gray.500">No accounts yet. Add a brokerage account to get started.</Text>
+              <Box border="1px dashed" borderColor="border.subtle" p={6} borderRadius="md" textAlign="center">
+                <Text fontSize="sm" color="fg.muted">No accounts yet. Add a brokerage account to get started.</Text>
               </Box>
             )}
             <TableScrollArea>
@@ -456,9 +442,10 @@ const Settings: React.FC = () => {
                 </TableBody>
               </TableRoot>
             </TableScrollArea>
-          </VStack>
-        </CardBody>
-      </CardRoot>
+            </VStack>
+          </AppCard>
+        </VStack>
+      </Box>
       <DialogRoot
         open={isDeleteOpen}
         onOpenChange={(d) => {
@@ -512,24 +499,24 @@ const Settings: React.FC = () => {
           <DialogBody>
             {step === 1 && (
               <VStack align="stretch" gap={4}>
-                <Text color="gray.500">Choose a broker to connect</Text>
+                <Text color="fg.muted">Choose a broker to connect</Text>
                 <SimpleGrid columns={{ base: 3, md: 3 }} gap={6}>
                   <LogoTile label="Charles Schwab" srcs={[SchwabLogo]} selected={broker === 'SCHWAB'} onClick={() => setBroker('SCHWAB')} wide />
                   <LogoTile label="Tastytrade" srcs={[TastytradeLogo]} selected={broker === 'TASTYTRADE'} onClick={() => setBroker('TASTYTRADE')} wide />
                   <LogoTile label="Interactive Brokers" srcs={[IbkrLogo]} selected={broker === 'IBKR'} onClick={() => setBroker('IBKR')} wide />
                 </SimpleGrid>
-                <Text fontSize="sm" color="gray.500">More brokers coming soon (Fidelity, Robinhood, Public)</Text>
+                <Text fontSize="sm" color="fg.muted">More brokers coming soon (Fidelity, Robinhood, Public)</Text>
               </VStack>
             )}
             {step === 2 && broker === 'SCHWAB' && (
               <VStack align="stretch" gap={3}>
                 <Text fontWeight="semibold">Schwab OAuth</Text>
-                <Text fontSize="sm" color="gray.500">We’ll create a placeholder account and send you to Schwab to authorize. Ensure your redirect URI matches the portal exactly.</Text>
+                <Text fontSize="sm" color="fg.muted">We’ll create a placeholder account and send you to Schwab to authorize. Ensure your redirect URI matches the portal exactly.</Text>
                 <HStack>
                   <Input placeholder="Account Number (optional)" value={schwabForm.account_number} onChange={(e) => setSchwabForm({ ...schwabForm, account_number: e.target.value })} />
                   <Input placeholder="Account Name (optional)" value={schwabForm.account_name} onChange={(e) => setSchwabForm({ ...schwabForm, account_name: e.target.value })} />
                 </HStack>
-                {cfg?.redirect && <Text fontSize="xs" color="gray.500">Redirect: {cfg.redirect}</Text>}
+                {cfg?.redirect && <Text fontSize="xs" color="fg.muted">Redirect: {cfg.redirect}</Text>}
               </VStack>
             )}
             {step === 2 && broker === 'TASTYTRADE' && (
@@ -553,7 +540,7 @@ const Settings: React.FC = () => {
                   </InputGroup>
                 </HStack>
                 <Input placeholder="MFA Code (if prompted)" value={ttForm.mfa_code} onChange={(e) => setTtForm({ ...ttForm, mfa_code: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') submitWizard(); }} />
-                <Text fontSize="xs" color="gray.500">We never store plain credentials; secrets are encrypted.</Text>
+                <Text fontSize="xs" color="fg.muted">We never store plain credentials; secrets are encrypted.</Text>
               </VStack>
             )}
             {step === 2 && broker === 'IBKR' && (
@@ -561,7 +548,7 @@ const Settings: React.FC = () => {
                 <Text fontWeight="semibold">IBKR Flex Query</Text>
                 <Input placeholder="Flex Token" value={ibkrForm.flex_token} onChange={(e) => setIbkrForm({ ...ibkrForm, flex_token: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') submitWizard(); }} />
                 <Input placeholder="Query ID" value={ibkrForm.query_id} onChange={(e) => setIbkrForm({ ...ibkrForm, query_id: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') submitWizard(); }} />
-                <Text fontSize="xs" color="gray.500">Use FlexQuery token and query ID for read-only import.</Text>
+                <Text fontSize="xs" color="fg.muted">Use FlexQuery token and query ID for read-only import.</Text>
               </VStack>
             )}
           </DialogBody>
@@ -578,4 +565,4 @@ const Settings: React.FC = () => {
   );
 };
 
-export default Settings; 
+export default SettingsBrokerages; 

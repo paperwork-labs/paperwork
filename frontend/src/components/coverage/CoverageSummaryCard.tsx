@@ -87,7 +87,7 @@ export const CoverageKpiGrid: React.FC<CoverageKpiGridProps> = ({ kpis }) => {
       <Box display="grid" gridTemplateColumns="repeat(auto-fit, minmax(160px, 1fr))" gap={3}>
         {kpis.map((kpi) => (
           <Box key={kpi.id} borderWidth="1px" borderRadius="md" p={3}>
-            <Text fontSize="xs" color="gray.400">
+            <Text fontSize="xs" color="fg.subtle">
               {kpi.label}
             </Text>
             <Text fontSize="lg" fontWeight="semibold">
@@ -95,7 +95,7 @@ export const CoverageKpiGrid: React.FC<CoverageKpiGridProps> = ({ kpis }) => {
               {kpi.unit ? ` ${kpi.unit}` : ''}
             </Text>
             {kpi.help ? (
-              <Text fontSize="xs" color="gray.500">
+              <Text fontSize="xs" color="fg.muted">
                 {kpi.help}
               </Text>
             ) : null}
@@ -121,7 +121,7 @@ export const CoverageTrendGrid: React.FC<CoverageTrendGridProps> = ({ sparkline 
       </Heading>
       <Box display="grid" gridTemplateColumns="repeat(auto-fit, minmax(160px, 1fr))" gap={3}>
         <Box borderWidth="1px" borderRadius="md" p={3}>
-          <Text fontSize="xs" color="gray.400">
+          <Text fontSize="xs" color="fg.subtle">
             Daily coverage %
           </Text>
           <Text fontSize="lg" fontWeight="semibold">
@@ -129,7 +129,7 @@ export const CoverageTrendGrid: React.FC<CoverageTrendGridProps> = ({ sparkline 
           </Text>
         </Box>
         <Box borderWidth="1px" borderRadius="md" p={3}>
-          <Text fontSize="xs" color="gray.400">
+          <Text fontSize="xs" color="fg.subtle">
             5m coverage %
           </Text>
           <Text fontSize="lg" fontWeight="semibold">
@@ -160,7 +160,7 @@ export const CoverageBucketsGrid: React.FC<CoverageBucketsGridProps> = ({ groups
             <Stack gap={1}>
               {group.buckets.map((b) => (
                 <Box key={b.label} display="flex" justifyContent="space-between">
-                  <Text fontSize="sm" color="gray.400">
+                  <Text fontSize="sm" color="fg.subtle">
                     {b.label}
                   </Text>
                   <Text fontSize="sm" fontWeight="semibold">
@@ -205,7 +205,7 @@ export const CoverageActionsList: React.FC<CoverageActionsListProps> = ({
             <Box>
               <Text fontWeight="semibold">{action.label}</Text>
               {action.description ? (
-                <Text fontSize="sm" color="gray.400">
+                <Text fontSize="sm" color="fg.subtle">
                   {action.description}
                 </Text>
               ) : null}

@@ -10,7 +10,7 @@ type SparklineProps = {
 
 const Sparkline: React.FC<SparklineProps> = ({ values = [], max, color = 'brand.400', height = 32 }) => {
   if (!values.length) {
-    return <Box fontSize="xs" color="gray.500">No samples</Box>;
+    return <Box fontSize="xs" color="fg.muted">No samples</Box>;
   }
   const safeMax = typeof max === 'number' ? max : Math.max(...values, 1);
   return (

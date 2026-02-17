@@ -124,12 +124,12 @@ function SortableTable<T = any>({
     if (!column?.sortable) return <Icon as={FiMinus} color="transparent" />;
 
     if (sortBy !== columnKey) {
-      return <Icon as={FiMinus} color="gray.400" />;
+      return <Icon as={FiMinus} color="fg.subtle" />;
     }
 
     return sortOrder === 'asc'
-      ? <Icon as={FiChevronUp} color="blue.500" />
-      : <Icon as={FiChevronDown} color="blue.500" />;
+      ? <Icon as={FiChevronUp} color="brand.500" />
+      : <Icon as={FiChevronDown} color="brand.500" />;
   };
 
   // Chakra v3 table variants differ from v2. Normalize our legacy variants.

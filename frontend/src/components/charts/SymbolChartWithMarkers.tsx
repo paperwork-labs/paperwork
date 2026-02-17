@@ -78,9 +78,9 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
       }
       if (!ref.current) return;
 
-      const bg = isDark ? getCssColor('bg.canvas', '#070B12') : '#FFFFFF';
-      const text = isDark ? getCssColor('fg.default', '#E5E7EB') : '#0B1220';
-      const grid = isDark ? getCssColor('border.subtle', '#1F2937') : '#E5E7EB';
+      const bg = isDark ? getCssColor('bg.canvas', '#0F172A') : '#FFFFFF';
+      const text = isDark ? getCssColor('fg.default', '#E5E7EB') : '#111827';
+      const grid = isDark ? getCssColor('border.subtle', '#1E293B') : '#E5E7EB';
 
       ref.current.innerHTML = '';
       chart = window.LightweightCharts.createChart(ref.current, {

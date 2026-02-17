@@ -640,12 +640,12 @@ const AdminDashboard: React.FC = () => {
               // red = low coverage, gray = no snapshot run recorded.
               const markerBg =
                 snapNone
-                  ? 'gray.400'
+                  ? 'fg.subtle'
                   : snapOk
-                    ? 'green.500'
+                    ? 'status.success'
                     : (snapPct || 0) >= 50
-                      ? 'orange.500'
-                      : 'red.500';
+                      ? 'status.warning'
+                      : 'status.danger';
               return (
                 <Box
                   key={r.date}
@@ -912,7 +912,7 @@ const AdminDashboard: React.FC = () => {
               <Text fontSize="sm" fontWeight="medium">
                 5m Backfill {backfill5mEnabled ? 'Enabled' : 'Disabled'}
               </Text>
-              <Text fontSize="xs" color="gray.400">
+              <Text fontSize="xs" color="fg.subtle">
                 Daily coverage is the primary SLA. When disabled, 5m is informational-only (ignored for status).
               </Text>
             </Box>
@@ -1121,7 +1121,7 @@ const AdminDashboard: React.FC = () => {
                         </Button>
                       </Box>
                       {sanityData?.benchmark?.ok === false ? (
-                        <Text mt={2} fontSize="xs" color="red.500">
+                        <Text mt={2} fontSize="xs" color="status.danger">
                           SPY history is missing ({sanityData?.benchmark?.daily_bars || 0}/{sanityData?.benchmark?.required_bars || 0}).
                           Stage/RS cannot be computed until daily bars are backfilled.
                         </Text>

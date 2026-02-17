@@ -28,6 +28,10 @@ export const SemanticTokens = () => {
     ["fg.subtle", "fg.subtle"],
     ["border.subtle", "border.subtle"],
     ["border.strong", "border.strong"],
+    ["status.success", "status.success"],
+    ["status.warning", "status.warning"],
+    ["status.danger", "status.danger"],
+    ["status.info", "status.info"],
   ] as const;
 
   return (
@@ -66,10 +70,10 @@ export const AxiomFolioPalette = () => {
     ["brand.100", "brand.100"],
     ["brand.200", "brand.200"],
     ["brand.300", "brand.300"],
-    ["brand.400", "brand.400"],
+    ["brand.400 (dark primary)", "brand.400"],
     ["brand.500", "brand.500"],
-    ["brand.600", "brand.600"],
-    ["brand.700", "brand.700"],
+    ["brand.600 (secondary)", "brand.600"],
+    ["brand.700 (light primary)", "brand.700"],
     ["brand.800", "brand.800"],
     ["brand.900", "brand.900"],
     ["focusRing", "focusRing"],
@@ -103,5 +107,3 @@ export const AxiomFolioPalette = () => {
     </Box>
   );
 };
-
-

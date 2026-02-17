@@ -82,7 +82,7 @@ const AccountSelector: React.FC<AccountSelectorProps> = ({
 
   const getChangeColor = (value: number | undefined) => {
     if (value === undefined || value === null || Number.isNaN(value)) return 'fg.subtle';
-    return value >= 0 ? 'green.500' : 'red.500';
+    return value >= 0 ? 'status.success' : 'status.danger';
   };
 
   const selectedAccountData = accounts.find((acc) => acc.account_id === selectedAccount);

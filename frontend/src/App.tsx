@@ -21,7 +21,7 @@ const Transactions = React.lazy(() => import('./pages/Transactions'));
 const Strategies = React.lazy(() => import('./pages/Strategies'));
 const StrategiesManager = React.lazy(() => import('./pages/StrategiesManager'));
 const SettingsShell = React.lazy(() => import('./pages/SettingsShell'));
-const Settings = React.lazy(() => import('./pages/Settings'));
+const SettingsBrokerages = React.lazy(() => import('./pages/SettingsBrokerages'));
 const SettingsProfile = React.lazy(() => import('./pages/SettingsProfile'));
 const SettingsPreferences = React.lazy(() => import('./pages/SettingsPreferences'));
 const SettingsNotifications = React.lazy(() => import('./pages/SettingsNotifications'));
@@ -92,7 +92,7 @@ function App() {
                             <Route path="profile" element={<SettingsProfile />} />
                             <Route path="preferences" element={<SettingsPreferences />} />
                             <Route path="notifications" element={<SettingsNotifications />} />
-                            <Route path="brokerages" element={<Settings />} />
+                            <Route path="brokerages" element={<SettingsBrokerages />} />
                             <Route path="security" element={<SettingsSecurity />} />
                             {/* Admin under Settings */}
                             <Route path="admin/dashboard" element={<AdminDashboard />} />

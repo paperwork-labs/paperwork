@@ -15,7 +15,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, actions, right
         <VStack align="flex-start" gap={1}>
           <Heading size="lg">{title}</Heading>
           {subtitle && (
-            <Text color="gray.500" fontSize="sm">
+            <Text color="fg.muted" fontSize="sm">
               {subtitle}
             </Text>
           )}

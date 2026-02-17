@@ -94,7 +94,7 @@ const MarketCoverage: React.FC = () => {
               const snapOk = typeof snapPct === 'number' && snapPct >= 95;
               const snapNone = typeof snapPct !== 'number';
               const dotBg =
-                snapNone ? 'gray.400' : snapOk ? 'green.500' : (snapPct || 0) >= 50 ? 'orange.500' : 'red.500';
+                snapNone ? 'fg.subtle' : snapOk ? 'status.success' : (snapPct || 0) >= 50 ? 'status.warning' : 'status.danger';
               return (
                 <Box
                   key={r.date}

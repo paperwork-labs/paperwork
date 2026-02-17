@@ -167,7 +167,7 @@ const MarketDashboard: React.FC = () => {
     return (
       <Box p={4}>
         <Heading size="md" mb={2}>Market Dashboard</Heading>
-        <Text color="red.400">{error}</Text>
+        <Text color="status.danger">{error}</Text>
       </Box>
     );
   }

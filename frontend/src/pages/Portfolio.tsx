@@ -92,7 +92,7 @@ const Portfolio: React.FC = () => {
       sortType: 'number',
       isNumeric: true,
       render: (v) => (
-        <Text fontSize="12px" color={Number(v || 0) >= 0 ? 'green.500' : 'red.500'}>
+        <Text fontSize="12px" color={Number(v || 0) >= 0 ? 'status.success' : 'status.danger'}>
           {formatMoney(Number(v || 0), currency, { maximumFractionDigits: 0 })}
         </Text>
       ),

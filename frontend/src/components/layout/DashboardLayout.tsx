@@ -44,6 +44,7 @@ import { portfolioApi } from '../../services/api';
 import { useAccountContext } from '../../context/AccountContext';
 import { useAuth } from '../../context/AuthContext';
 import AppDivider from '../ui/AppDivider';
+import AppLogo from '../ui/AppLogo';
 
 const SIDEBAR_OPEN_STORAGE_KEY = 'qm.ui.sidebar_open';
 const LAST_ROUTE_STORAGE_KEY = 'qm.ui.last_route';
@@ -327,7 +328,7 @@ const DashboardLayout: React.FC = () => {
         </Text>
         <HStack justify="space-between">
           <Text fontSize="xs" color="fg.subtle">Day P&L</Text>
-          <Text fontSize="xs" fontWeight="semibold" color={totals.dayPnL >= 0 ? 'green.400' : 'red.400'}>
+          <Text fontSize="xs" fontWeight="semibold" color={totals.dayPnL >= 0 ? 'status.success' : 'status.danger'}>
             {formatSignedCurrency(totals.dayPnL)}
           </Text>
         </HStack>
@@ -362,31 +363,16 @@ const DashboardLayout: React.FC = () => {
             <Flex
               align="center"
               justifyContent={isSidebarOpen ? 'flex-start' : 'center'}
-              px={isSidebarOpen ? 6 : 3}
+              px={isSidebarOpen ? 5 : 3}
               py={4}
               borderBottom="1px"
               borderColor={borderColor}
             >
               {isSidebarOpen ? (
-                <>
-                  <Box
-                    w={8}
-                    h={8}
-                    bg="brand.500"
-                    borderRadius="lg"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    mr={3}
-                  >
-                    <Text color="white" fontWeight="bold" fontSize="sm">
-                      A
-                    </Text>
-                  </Box>
-                  <Text fontSize="lg" fontWeight="bold" color="brand.500">
-                    AxiomFolio
-                  </Text>
-                </>
+                <HStack gap="10px" align="center">
+                  <AppLogo size={52} />
+                  <Text fontSize="md" fontWeight="semibold" color="fg.default" letterSpacing="-0.01em">AxiomFolio</Text>
+                </HStack>
               ) : null}
               <IconButton
                 size="sm"
@@ -432,15 +418,11 @@ const DashboardLayout: React.FC = () => {
               m={0}
             >
               <VStack gap={0} align="stretch" h="full">
-                <Flex align="center" px={6} py={4} borderBottom="1px" borderColor={borderColor}>
-                  <Box w={8} h={8} bg="brand.500" borderRadius="lg" display="flex" alignItems="center" justifyContent="center" mr={3}>
-                    <Text color="white" fontWeight="bold" fontSize="sm">
-                      A
-                    </Text>
-                  </Box>
-                  <Text fontSize="lg" fontWeight="bold" color="brand.500">
-                    AxiomFolio
-                  </Text>
+                <Flex align="center" px={5} py={4} borderBottom="1px" borderColor={borderColor}>
+                  <HStack gap="10px" align="center">
+                    <AppLogo size={52} />
+                    <Text fontSize="md" fontWeight="semibold" color="fg.default" letterSpacing="-0.01em">AxiomFolio</Text>
+                  </HStack>
                 </Flex>
                 <AppDivider />
                 <Box flex={1} overflowY="auto">
@@ -466,26 +448,10 @@ const DashboardLayout: React.FC = () => {
         >
           <HStack gap={4}>
             {isDesktop && !isSidebarOpen ? (
-              <>
-                <HStack gap={2}>
-                  <Box
-                    w={8}
-                    h={8}
-                    bg="brand.500"
-                    borderRadius="lg"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                  >
-                    <Text color="white" fontWeight="bold" fontSize="sm">
-                      A
-                    </Text>
-                  </Box>
-                  <Text fontSize="lg" fontWeight="bold" color="brand.500">
-                    AxiomFolio
-                  </Text>
-                </HStack>
-              </>
+              <HStack gap="10px" align="center">
+                <AppLogo size={36} />
+                <Text fontSize="md" fontWeight="semibold" color="fg.default" letterSpacing="-0.01em">AxiomFolio</Text>
+              </HStack>
             ) : null}
             {!isDesktop ? (
               <IconButton
@@ -524,7 +490,7 @@ const DashboardLayout: React.FC = () => {
                       top="6px"
                       right="6px"
                       borderRadius="full"
-                      bg="red.500"
+                      bg="status.danger"
                       w={2}
                       h={2}
                     />

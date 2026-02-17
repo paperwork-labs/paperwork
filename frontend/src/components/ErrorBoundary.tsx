@@ -162,7 +162,7 @@ const ErrorFallback: React.FC<{
           </Box>
         )}
 
-        <Text fontSize="sm" color="gray.500" textAlign="center">
+        <Text fontSize="sm" color="fg.muted" textAlign="center">
           If this error persists, please{' '}
           <Text as="span" color="blue.500" cursor="pointer" textDecoration="underline">
             report it to our support team

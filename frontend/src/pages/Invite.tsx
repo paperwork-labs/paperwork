@@ -69,7 +69,7 @@ const Invite: React.FC = () => {
             <Input placeholder="Full name (optional)" value={fullName} onChange={(e) => setFullName(e.target.value)} />
             <Input placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
             <Input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-            <Text fontSize="xs" color={passwordTooShort ? 'red.400' : 'fg.muted'}>
+            <Text fontSize="xs" color={passwordTooShort ? 'status.danger' : 'fg.muted'}>
               Password must be at least 8 characters.
             </Text>
             <Button

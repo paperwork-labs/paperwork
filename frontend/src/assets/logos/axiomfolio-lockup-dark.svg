@@ -1,0 +1,20 @@
+<svg width="540" height="150" viewBox="0 0 540 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Star icon (dark-mode palette) -->
+  <svg x="5" y="5" width="140" height="140" viewBox="12 12 104 104">
+    <path d="M64,14 C69,28 75,37 75,44 C75,50 70,55 64,55 C58,55 53,50 53,44 C53,37 59,28 64,14Z" fill="#3274F0"/>
+    <path d="M114,64 C100,69 91,75 84,75 C78,75 73,70 73,64 C73,58 78,53 84,53 C91,53 100,59 114,64Z" fill="#3274F0"/>
+    <path d="M64,114 C59,100 53,91 53,84 C53,78 58,73 64,73 C70,73 75,78 75,84 C75,91 69,100 64,114Z" fill="#3274F0"/>
+    <path d="M14,64 C28,59 37,53 44,53 C50,53 55,58 55,64 C55,70 50,75 44,75 C37,75 28,69 14,64Z" fill="#3274F0"/>
+    <circle cx="64" cy="64" r="6" fill="#F59E0B"/>
+  </svg>
+  <!-- Wordmark (light text for dark backgrounds) -->
+  <text
+    x="158"
+    y="100"
+    fill="#E5E7EB"
+    font-size="68"
+    font-weight="600"
+    letter-spacing="0.3"
+    font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+  >AxiomFolio</text>
+</svg>

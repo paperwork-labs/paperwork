@@ -45,19 +45,19 @@ export const system = createSystem(
       tokens: {
         colors: {
           brand: {
-            50: { value: "#E6F1FF" },
-            100: { value: "#C2DBFF" },
-            200: { value: "#9AC4FF" },
-            300: { value: "#73AAFF" },
-            400: { value: "#4F91FF" },
-            500: { value: "#2A79F0" },
-            600: { value: "#1B5DC3" },
-            700: { value: "#124397" },
-            800: { value: "#0A2B6A" },
-            900: { value: "#041840" },
+            50: { value: "#EFF6FF" },
+            100: { value: "#DBEAFE" },
+            200: { value: "#BFDBFE" },
+            300: { value: "#93C5FD" },
+            400: { value: "#60A5FA" },
+            500: { value: "#3B82F6" },
+            600: { value: "#2563EB" },
+            700: { value: "#1D4ED8" },
+            800: { value: "#1E40AF" },
+            900: { value: "#1E3A8A" },
           },
           // Used for focus ring in recipes.
-          focusRing: { value: "rgba(42,121,240,0.22)" },
+          focusRing: { value: "rgba(29,78,216,0.22)" },
         },
         fonts: {
           heading: {
@@ -77,15 +77,15 @@ export const system = createSystem(
         colors: {
           "bg.canvas": {
             value: {
-              _light: "#F6F7FB",
-              _dark: "#070B12",
+              _light: "#F8FAFC",
+              _dark: "#0F172A",
             },
           },
           // Slightly elevated surface behind cards/tables.
           "bg.panel": {
             value: {
               _light: "white",
-              _dark: "#0B1220",
+              _dark: "#1E293B",
             },
           },
           "bg.card": {
@@ -111,13 +111,13 @@ export const system = createSystem(
           "bg.header": {
             value: {
               _light: "white",
-              _dark: "#0B1220",
+              _dark: "#1E293B",
             },
           },
           "bg.sidebar": {
             value: {
               _light: "white",
-              _dark: "#0B1220",
+              _dark: "#1E293B",
             },
           },
           "bg.input": {
@@ -128,7 +128,7 @@ export const system = createSystem(
           },
           "fg.default": {
             value: {
-              _light: "#0B1220",
+              _light: "#111827",
               _dark: "rgba(255,255,255,0.92)",
             },
           },
@@ -154,6 +154,30 @@ export const system = createSystem(
             value: {
               _light: "rgba(15,23,42,0.18)",
               _dark: "rgba(255,255,255,0.18)",
+            },
+          },
+          "status.success": {
+            value: {
+              _light: "#16A34A",
+              _dark: "#34D399",
+            },
+          },
+          "status.warning": {
+            value: {
+              _light: "#D97706",
+              _dark: "#F59E0B",
+            },
+          },
+          "status.danger": {
+            value: {
+              _light: "#DC2626",
+              _dark: "#F87171",
+            },
+          },
+          "status.info": {
+            value: {
+              _light: "#0EA5E9",
+              _dark: "#38BDF8",
             },
           },
         },

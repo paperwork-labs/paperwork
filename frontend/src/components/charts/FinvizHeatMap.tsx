@@ -51,7 +51,7 @@ const CustomTooltip = ({ active, payload }: any) => {
           {data.name}
         </Text>
         <Text color="fg.muted">Value: ${data.value.toLocaleString()}</Text>
-        <Text color={data.change >= 0 ? 'green.500' : 'red.500'}>
+        <Text color={data.change >= 0 ? 'status.success' : 'status.danger'}>
           Change: {data.change >= 0 ? '+' : ''}
           {data.change.toFixed(2)}%
         </Text>

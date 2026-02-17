@@ -81,7 +81,7 @@ const Register: React.FC = () => {
             Register
           </Button>
           <Text fontSize="sm" color="fg.muted">
-            Already have an account? <Link to="/login" style={{ color: '#2A79F0' }}>Log in</Link>
+            Already have an account? <Link to="/login" style={{ color: 'var(--chakra-colors-brand-700)' }}>Log in</Link>
           </Text>
         </VStack>
       </AppCard>

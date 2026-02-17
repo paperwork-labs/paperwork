@@ -7,7 +7,7 @@ interface ToolbarProps {
 
 const Toolbar: React.FC<ToolbarProps> = ({ children }) => {
   return (
-    <Box border="1px" borderColor="gray.600" borderRadius="md" p={3} bg="gray.800">
+    <Box border="1px" borderColor="border.subtle" borderRadius="md" p={3} bg="bg.panel">
       <Flex wrap="wrap" gap={4} align="center">
         {children}
       </Flex>
