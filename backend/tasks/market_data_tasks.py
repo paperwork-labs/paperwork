@@ -11,32 +11,34 @@ Sections:
 All tasks are safe to run repeatedly (idempotent writes; ON CONFLICT for bars).
 """
 
-from celery import shared_task
 import asyncio
+import json
+import logging
 from datetime import datetime, timedelta
 from typing import List, Set, Dict, Optional
 
-from backend.database import SessionLocal
-from backend.models import PriceData
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from celery import shared_task
 from sqlalchemy import func
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+from backend.config import settings
+from backend.database import SessionLocal
+from backend.models import IndexConstituent, Position, PriceData
 from backend.models.market_data import MarketSnapshotHistory, MarketSnapshot, JobRun
-from backend.models import IndexConstituent
-from backend.services.market.market_data_service import market_data_service
-from backend.services.market.coverage_utils import compute_coverage_status
 from backend.services.market.backfill_params import daily_backfill_params
-from backend.services.market.universe import tracked_symbols, tracked_symbols_from_db
 from backend.services.market.constants import (
     FUNDAMENTAL_FIELDS_CORE,
     FUNDAMENTAL_FIELDS_CORE_WITH_NAME,
+    WEINSTEIN_WARMUP_CALENDAR_DAYS,
 )
-from backend.services.market.stage_utils import compute_stage_run_lengths
+from backend.services.market.coverage_utils import compute_coverage_status
 from backend.services.market.dataframe_utils import price_data_rows_to_dataframe
-from backend.models import Position
-from backend.config import settings
+from backend.services.market.market_data_service import market_data_service
+from backend.services.market.stage_utils import compute_stage_run_lengths
+from backend.services.market.universe import tracked_symbols, tracked_symbols_from_db
 from .task_utils import task_run
 
-import json
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -1416,7 +1418,9 @@ def backfill_snapshot_history_last_n_days(
         errors = 0
         error_samples: list[dict] = []
 
-        # Preload calendar bars covering the window (+ buffer for weekly stage)
+        warmup_start = start_dt - timedelta(days=WEINSTEIN_WARMUP_CALENDAR_DAYS)
+
+        # Preload calendar bars covering the window (+ warmup buffer for weekly stage)
         spy_rows = (
             session.query(
                 PriceData.date,
@@ -1426,7 +1430,7 @@ def backfill_snapshot_history_last_n_days(
                 PriceData.close_price,
                 PriceData.volume,
             )
-            .filter(PriceData.symbol == calendar_symbol, PriceData.interval == "1d", PriceData.date >= start_dt)
+            .filter(PriceData.symbol == calendar_symbol, PriceData.interval == "1d", PriceData.date >= warmup_start)
             .order_by(PriceData.date.asc())
             .all()
         )
@@ -1462,7 +1466,7 @@ def backfill_snapshot_history_last_n_days(
                             PriceData.close_price,
                             PriceData.volume,
                         )
-                        .filter(PriceData.symbol == sym, PriceData.interval == "1d", PriceData.date >= start_dt)
+                        .filter(PriceData.symbol == sym, PriceData.interval == "1d", PriceData.date >= warmup_start)
                         .order_by(PriceData.date.asc())
                         .all()
                     )
@@ -1646,12 +1650,20 @@ def backfill_snapshot_history_last_n_days(
                         pass
 
                     # Update latest snapshot stage duration fields from history backfill.
+                    # Only write if the latest backfill row has a recognized (non-UNKNOWN)
+                    # stage; otherwise we'd overwrite the live snapshot's correct values.
                     try:
                         if payload_rows and stage_run_by_date:
                             latest_row = max(payload_rows, key=lambda r: r.get("as_of_date"))
                             latest_date = latest_row.get("as_of_date")
+                            latest_stage = latest_row.get("stage_label")
                             latest_info = stage_run_by_date.get(latest_date)
-                            if latest_info:
+                            is_known_stage = (
+                                isinstance(latest_stage, str)
+                                and latest_stage.strip()
+                                and latest_stage.strip().upper() != "UNKNOWN"
+                            )
+                            if latest_info and is_known_stage:
                                 session.query(MarketSnapshot).filter(
                                     MarketSnapshot.symbol == sym,
                                     MarketSnapshot.analysis_type == "technical_snapshot",
@@ -1663,8 +1675,19 @@ def backfill_snapshot_history_last_n_days(
                                     },
                                     synchronize_session=False,
                                 )
+                            elif latest_info and not is_known_stage:
+                                logger.debug(
+                                    "Skipping snapshot stage update for %s: "
+                                    "latest backfill stage is '%s' (UNKNOWN/empty)",
+                                    sym,
+                                    latest_stage,
+                                )
                     except Exception:
-                        pass
+                        logger.warning(
+                            "Failed to update snapshot stage fields for %s",
+                            sym,
+                            exc_info=True,
+                        )
 
                     stmt = pg_insert(MarketSnapshotHistory).values(payload_rows)
                     stmt = stmt.on_conflict_do_update(

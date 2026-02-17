@@ -25,7 +25,7 @@ const SettingsPreferences: React.FC = () => {
 
   const [themePref, setThemePref] = React.useState<'system' | 'light' | 'dark'>('system');
   const [tableDensity, setTableDensity] = React.useState<'comfortable' | 'compact'>('comfortable');
-  const [timezone, setTimezone] = React.useState<string>(user?.timezone || 'UTC');
+  const [timezone, setTimezone] = React.useState<string>(user?.timezone || 'America/Los_Angeles');
   const [currency, setCurrency] = React.useState<string>((user?.currency_preference || 'USD').toUpperCase());
   const [saveStatus, setSaveStatus] = React.useState<SaveStatus>('idle');
   const saveTimeoutRef = React.useRef<ReturnType<typeof setTimeout>>();
@@ -59,7 +59,7 @@ const SettingsPreferences: React.FC = () => {
     }
     const td = user?.ui_preferences?.table_density;
     if (td === 'comfortable' || td === 'compact') setTableDensity(td);
-    setTimezone(user?.timezone || 'UTC');
+    setTimezone(user?.timezone || 'America/Los_Angeles');
     setCurrency((user?.currency_preference || 'USD').toUpperCase());
   }, [
     user?.timezone,

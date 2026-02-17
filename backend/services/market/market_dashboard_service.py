@@ -9,6 +9,11 @@ from sqlalchemy.orm import Session
 
 from backend.models.market_data import MarketSnapshot, MarketSnapshotHistory
 from backend.models.market_tracked_plan import MarketTrackedPlan
+from backend.services.market.constants import (
+    SECTOR_ETF_DISPLAY_NAMES,
+    SECTOR_ETF_PROXY_SYMBOLS,
+    SECTOR_ETF_SYMBOLS_ORDER,
+)
 from backend.services.market.market_data_service import MarketDataService
 from backend.services.market.universe import tracked_symbols
 
@@ -36,43 +41,6 @@ class _SummaryRow:
 
 class MarketDashboardService:
     """Build read-only market dashboard summaries from tracked snapshots."""
-
-    _SECTOR_ETF_SYMBOLS_ORDER = [
-        "XLE",
-        "XLK",
-        "XLC",
-        "XLB",
-        "XLF",
-        "XLI",
-        "XLP",
-        "XRT",
-        "XLV",
-        "XLU",
-        "XLY",
-        "XME",
-        "XHB",
-        "SOX",
-    ]
-    _SECTOR_ETF_DISPLAY_NAMES = {
-        "XLE": "Energy",
-        "XLK": "Technology",
-        "XLC": "Communication Services",
-        "XLB": "Materials",
-        "XLF": "Financial Services",
-        "XLI": "Industrials",
-        "XLP": "Consumer Staples",
-        "XRT": "Retail",
-        "XLV": "Healthcare",
-        "XLU": "Utilities",
-        "XLY": "Consumer Discretionary",
-        "XME": "Metals & Mining",
-        "XHB": "Homebuilders",
-        "SOX": "Semiconductors",
-    }
-    _SECTOR_ETF_PROXY_SYMBOLS = {
-        # SOX index is not consistently present in all providers; use SOXX as fallback.
-        "SOX": ["SOX", "SOXX"],
-    }
 
     def _fetch_rows(self, db: Session) -> tuple[list[str], list[_SummaryRow], dict[str, MarketTrackedPlan]]:
         def _coalesce(primary, secondary):
@@ -458,8 +426,8 @@ class MarketDashboardService:
 
         row_by_symbol = {r.symbol: r for r in rows}
         sector_etf_table: list[dict[str, Any]] = []
-        for configured_symbol in self._SECTOR_ETF_SYMBOLS_ORDER:
-            candidate_symbols = self._SECTOR_ETF_PROXY_SYMBOLS.get(
+        for configured_symbol in SECTOR_ETF_SYMBOLS_ORDER:
+            candidate_symbols = SECTOR_ETF_PROXY_SYMBOLS.get(
                 configured_symbol,
                 [configured_symbol],
             )
@@ -467,7 +435,7 @@ class MarketDashboardService:
             sector_etf_table.append(
                 {
                     "symbol": configured_symbol,
-                    "sector_name": self._SECTOR_ETF_DISPLAY_NAMES.get(configured_symbol, configured_symbol),
+                    "sector_name": SECTOR_ETF_DISPLAY_NAMES.get(configured_symbol, configured_symbol),
                     "change_1d": row.perf_1d if row else None,
                     "stage_label": row.stage_label if row else None,
                     "days_in_stage": row.current_stage_days if row else None,

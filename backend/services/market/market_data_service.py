@@ -417,6 +417,13 @@ class MarketDataService:
                     )
                 if not out.get("current_stage_days"):
                     out["current_stage_days"] = 1
+            elif latest_stage_norm is None and has_normalized_prior:
+                # Latest history row is UNKNOWN but we have known prior labels.
+                # The run-length from normalized_prior + current is already correct
+                # (UNKNOWN gaps are filtered out). Trust the computed `out` as-is;
+                # it already reflects the proper previous_stage from the known
+                # sequence and current_stage_days = 1 for a fresh stage entry.
+                pass
             elif latest_stage_norm is None and not has_normalized_prior:
                 # Some historical rows may carry UNKNOWN stage labels while still
                 # maintaining monotonic run lengths. Preserve that continuity

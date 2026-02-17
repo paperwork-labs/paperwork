@@ -14,7 +14,7 @@ export function useUserPreferences(): {
 
   return useMemo(() => {
     const currency = (user?.currency_preference || "USD").toUpperCase();
-    const timezone = user?.timezone || "UTC";
+    const timezone = user?.timezone || "America/Los_Angeles";
     const td = user?.ui_preferences?.table_density;
     const tableDensity: TableDensity = td === "compact" ? "compact" : "comfortable";
     const raw = Number(user?.ui_preferences?.coverage_histogram_window_days);

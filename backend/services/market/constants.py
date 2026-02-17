@@ -1,3 +1,8 @@
+# The 30-week SMA needs ~150 trading days and the 10-week slope shift
+# needs ~50 more.  We load 250+ trading days (≈400 calendar days) before
+# the backfill start so Weinstein stages are valid from the first row.
+WEINSTEIN_WARMUP_CALENDAR_DAYS: int = 400
+
 FUNDAMENTAL_FIELDS = (
     "sector",
     "industry",
@@ -371,3 +376,44 @@ CURATED_MARKET_SYMBOLS = [
     "XOP",
     "XRT",
 ]
+
+# Sector ETF mapping for the market dashboard sector-rotation table.
+SECTOR_ETF_SYMBOLS_ORDER: list[str] = [
+    "XLE",
+    "XLK",
+    "XLC",
+    "XLB",
+    "XLF",
+    "XLI",
+    "XLP",
+    "XRT",
+    "XLV",
+    "XLU",
+    "XLY",
+    "XME",
+    "XHB",
+    "SOX",
+]
+
+SECTOR_ETF_DISPLAY_NAMES: dict[str, str] = {
+    "XLE": "Energy",
+    "XLK": "Technology",
+    "XLC": "Communication Services",
+    "XLB": "Materials",
+    "XLF": "Financial Services",
+    "XLI": "Industrials",
+    "XLP": "Consumer Staples",
+    "XRT": "Retail",
+    "XLV": "Healthcare",
+    "XLU": "Utilities",
+    "XLY": "Consumer Discretionary",
+    "XME": "Metals & Mining",
+    "XHB": "Homebuilders",
+    "SOX": "Semiconductors",
+}
+
+# Some index symbols aren't available from all providers; map them to
+# tradable ETF proxies so the dashboard always has data to show.
+SECTOR_ETF_PROXY_SYMBOLS: dict[str, list[str]] = {
+    "SOX": ["SOX", "SOXX"],
+}

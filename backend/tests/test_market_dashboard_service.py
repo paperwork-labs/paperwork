@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from backend.services.market import market_dashboard_service as mds_module
+from backend.services.market.constants import SECTOR_ETF_SYMBOLS_ORDER
 from backend.services.market.market_dashboard_service import MarketDashboardService, _SummaryRow
 
 pytestmark = pytest.mark.no_db
@@ -212,7 +213,7 @@ def test_build_dashboard_sector_etfs_use_configured_list_and_order(monkeypatch):
     payload = service.build_dashboard(db=None)  # type: ignore[arg-type]
     table = payload["sector_etf_table"]
 
-    assert [r["symbol"] for r in table] == service._SECTOR_ETF_SYMBOLS_ORDER
+    assert [r["symbol"] for r in table] == SECTOR_ETF_SYMBOLS_ORDER
     assert all(r["symbol"] != "XBI" for r in table)
 
     by_symbol = {r["symbol"]: r for r in table}

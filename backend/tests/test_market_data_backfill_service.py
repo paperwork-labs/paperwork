@@ -334,3 +334,52 @@ def test_derive_stage_run_fields_sparse_history_same_stage_advances_days():
     assert out["previous_stage_label"] == "1"
     assert out["previous_stage_days"] == 3
 
+
+def test_derive_stage_run_fields_unknown_latest_with_known_priors_trusts_computed():
+    """When latest history row is UNKNOWN but we have known prior labels,
+    the elif branch should trust the computed run-length from the known
+    sequence rather than inheriting fields from the UNKNOWN row."""
+
+    class _Row:
+        stage_label = "UNKNOWN"
+        current_stage_days = 50
+        previous_stage_label = "3"
+        previous_stage_days = 20
+
+    out = market_data_service._derive_stage_run_fields(
+        current_stage_label="2A",
+        prior_stage_labels=["1", "1", "1", "2A", "2A", "UNKNOWN"],
+        latest_history_row=_Row(),
+    )
+    # The known prior sequence is [1, 1, 1, 2A, 2A] + current 2A.
+    # compute_stage_run_lengths on [1, 1, 1, 2A, 2A, 2A] gives:
+    #   current_stage_days=3, previous_stage_label="1", previous_stage_days=3
+    # The elif branch should NOT overwrite with the UNKNOWN row's values.
+    assert out["current_stage_days"] == 3
+    assert out["previous_stage_label"] == "1"
+    assert out["previous_stage_days"] == 3
+
+
+def test_derive_stage_run_fields_unknown_latest_with_known_priors_new_stage():
+    """When latest history is UNKNOWN, priors have known labels, and the
+    current stage is different from the latest known prior, the computed
+    run-length should reflect a stage transition."""
+
+    class _Row:
+        stage_label = "UNKNOWN"
+        current_stage_days = 30
+        previous_stage_label = "1"
+        previous_stage_days = 10
+
+    out = market_data_service._derive_stage_run_fields(
+        current_stage_label="3",
+        prior_stage_labels=["1", "2A", "2A", "UNKNOWN"],
+        latest_history_row=_Row(),
+    )
+    # Known priors: [1, 2A, 2A] + current 3.
+    # compute_stage_run_lengths on [1, 2A, 2A, 3]:
+    #   current_stage_days=1, previous_stage_label="2A", previous_stage_days=2
+    assert out["current_stage_days"] == 1
+    assert out["previous_stage_label"] == "2A"
+    assert out["previous_stage_days"] == 2
+
