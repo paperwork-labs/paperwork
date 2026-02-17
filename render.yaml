@@ -4,6 +4,7 @@ services:
     runtime: docker
     plan: standard
     dockerfilePath: ./Dockerfile.backend
+    preDeployCommand: alembic -c backend/alembic.ini upgrade head
     healthCheckPath: /health
     autoDeploy: true
     envVars:
