@@ -4,7 +4,7 @@ services:
     runtime: docker
     plan: standard
     dockerfilePath: ./Dockerfile.backend
-    preDeployCommand: "cd /app && alembic -c backend/alembic.ini upgrade head"
+    preDeployCommand: "python -m alembic -c backend/alembic.ini upgrade head"
     healthCheckPath: /health
     autoDeploy: true
     envVars:
