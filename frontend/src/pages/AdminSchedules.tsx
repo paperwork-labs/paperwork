@@ -630,7 +630,7 @@ const AdminSchedules: React.FC = () => {
   // Render
   // ---------------------------------------------------------------------------
   return (
-    <Box p={0}>
+    <Box px={{ base: 4, md: 6, xl: 8 }} py={2} maxW="1600px" mx="auto">
       {/* Header */}
       <HStack justify="space-between" mb={3} align="start">
         <Box>
@@ -697,7 +697,7 @@ const AdminSchedules: React.FC = () => {
       </HStack>
 
       {/* Content */}
-      <Box w="full" borderWidth="1px" borderColor="border.subtle" borderRadius="lg" bg="bg.card" overflow="hidden">
+      <Box w="full" borderWidth="1px" borderColor="border.subtle" borderRadius="lg" bg="bg.card" overflow="hidden" mt={1}>
         {view === 'schedules' && (
           <SortableTable
             data={schedules}

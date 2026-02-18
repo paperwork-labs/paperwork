@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { render } from '@testing-library/react';
 
 import { system } from '../theme/system';
+import { ColorModeProvider } from '../theme/colorMode';
 
 export type RenderWithProvidersOptions = {
   route?: string;
@@ -13,7 +14,9 @@ export type RenderWithProvidersOptions = {
 function Providers({ children, route = '/' }: PropsWithChildren<{ route?: string }>) {
   return (
     <ChakraProvider value={system}>
-      <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+      <ColorModeProvider>
+        <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+      </ColorModeProvider>
     </ChakraProvider>
   );
 }

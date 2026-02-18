@@ -1,9 +1,11 @@
 import React from 'react';
-import { Box, Text } from '@chakra-ui/react';
+import { Box, Text, HStack } from '@chakra-ui/react';
 import { useColorMode } from '../theme/colorMode';
 import FinvizHeatMap from '../components/charts/FinvizHeatMap';
 import TradingViewChart from '../components/charts/TradingViewChart';
 import SymbolChartWithMarkers from '../components/charts/SymbolChartWithMarkers';
+import BarHistogram, { TimeSeriesBar } from '../components/charts/BarHistogram';
+import { ChartContext, SymbolLink, ChartSlidePanel } from '../components/market/SymbolChartUI';
 
 export default {
   title: 'DesignSystem/Charts',
@@ -45,6 +47,27 @@ export const TradingViewChart_Example = () => {
   );
 };
 
+export const SymbolLink_AndChartPanel = () => {
+  const [chartSymbol, setChartSymbol] = React.useState<string | null>(null);
+  const openChart = React.useCallback((sym: string) => setChartSymbol(sym), []);
+  return (
+    <ChartContext.Provider value={openChart}>
+      <Box p={6}>
+        <Text fontSize="sm" color="fg.muted" mb={3}>
+          Hover a symbol for sparkline; click to open the TradingView chart panel.
+        </Text>
+        <HStack gap={4} flexWrap="wrap">
+          <SymbolLink symbol="AAPL" />
+          <SymbolLink symbol="MSFT" />
+          <SymbolLink symbol="NVDA" />
+          <SymbolLink symbol="SPY" />
+        </HStack>
+      </Box>
+      <ChartSlidePanel symbol={chartSymbol} onClose={() => setChartSymbol(null)} />
+    </ChartContext.Provider>
+  );
+};
+
 export const SymbolChartWithMarkers_Example = () => {
   const now = Date.now();
   const day = 86400_000;
@@ -69,4 +92,49 @@ export const SymbolChartWithMarkers_Example = () => {
   );
 };
 
+export const BarHistogram_52WeekRange = () => {
+  const bins = [
+    { label: '0-10', value: 33, zone: 'danger' as const },
+    { label: '10-20', value: 21, zone: 'danger' as const },
+    { label: '20-30', value: 42, zone: 'neutral' as const },
+    { label: '30-40', value: 39, zone: 'neutral' as const },
+    { label: '40-50', value: 44, zone: 'neutral' as const },
+    { label: '50-60', value: 38, zone: 'neutral' as const },
+    { label: '60-70', value: 39, zone: 'neutral' as const },
+    { label: '70-80', value: 43, zone: 'neutral' as const },
+    { label: '80-90', value: 101, zone: 'success' as const },
+    { label: '90-95', value: 171, zone: 'success' as const },
+  ];
+  return (
+    <Box p={6} maxW="500px">
+      <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={4} bg="bg.card">
+        <BarHistogram bins={bins} height={180} title="52-Week Range Distribution" subtitle="Left-skew = capitulation · Right-skew = euphoria" />
+      </Box>
+    </Box>
+  );
+};
 
+export const TimeSeriesBar_Breadth = () => {
+  const data = Array.from({ length: 30 }, (_, i) => ({
+    date: `2026-01-${String(i + 1).padStart(2, '0')}`,
+    values: [
+      { value: 40 + Math.sin(i / 3) * 20 + Math.random() * 10, color: 'var(--chakra-colors-status-success)', label: '>50DMA' },
+      { value: 30 + Math.cos(i / 4) * 15 + Math.random() * 8, color: 'var(--chakra-colors-brand-500)', label: '>200DMA' },
+    ],
+  }));
+  return (
+    <Box p={6} maxW="500px">
+      <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={4} bg="bg.card">
+        <TimeSeriesBar
+          data={data}
+          height={160}
+          title="Breadth Over Time (60d)"
+          legend={[
+            { color: 'var(--chakra-colors-status-success)', label: '% > 50DMA' },
+            { color: 'var(--chakra-colors-brand-500)', label: '% > 200DMA' },
+          ]}
+        />
+      </Box>
+    </Box>
+  );
+};

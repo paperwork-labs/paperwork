@@ -6,8 +6,9 @@ services:
     dockerfilePath: ./Dockerfile.backend
     healthCheckPath: /health
     autoDeploy: true
-    # Migrations/seed/sync run at API startup (AUTO_MIGRATE_ON_STARTUP); preDeployCommand
-    # is unreliable for Docker services on Render (env vars often not injected).
+    # Render Docker services don't reliably inject env vars (fromDatabase/fromService)
+    # for preDeployCommand, so migrations run at API startup instead. Alembic upgrade
+    # is idempotent — if already at head it's a no-op.
     envVars:
       - key: ENVIRONMENT
         value: production

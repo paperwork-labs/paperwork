@@ -15,11 +15,20 @@ import {
   TableCell,
   TableScrollArea,
 } from '@chakra-ui/react';
+import { Link as RouterLink } from 'react-router-dom';
+import { useColorMode } from '../theme/colorMode';
 import { marketDataApi } from '../services/api';
+import { ChartContext, SymbolLink, ChartSlidePanel } from '../components/market/SymbolChartUI';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, Cell,
+  ScatterChart, Scatter, ZAxis, CartesianGrid, ReferenceLine, ReferenceArea, Legend,
+  ComposedChart, Area,
+} from 'recharts';
 
 type SetupItem = {
   symbol: string;
   stage_label?: string;
+  previous_stage_label?: string;
   perf_1d?: number;
   perf_5d?: number;
   perf_20d?: number;
@@ -55,6 +64,15 @@ type SectorMomentumItem = {
   avg_rs_mansfield_pct?: number;
 };
 
+type RangeHistogramBin = { bin: string; count: number };
+type BreadthPoint = { date: string; above_sma50_pct: number; above_sma200_pct: number; total: number };
+type RRGSector = { symbol: string; name: string; rs_ratio: number; rs_momentum: number };
+type EarningsItem = { symbol: string; next_earnings: string; stage_label?: string; rs_mansfield_pct?: number; sector?: string };
+type FundamentalLeader = { symbol: string; eps_growth_yoy: number; rs_mansfield_pct: number; pe_ttm?: number | null; stage_label?: string; sector?: string; composite_score: number };
+type RSIDivergenceItem = { symbol: string; perf_20d: number; rsi: number; stage_label?: string; sector?: string };
+type TDSignalItem = { symbol: string; signals: string[]; stage_label?: string; perf_1d?: number; sector?: string };
+type GapLeader = { symbol: string; gaps_up: number; gaps_down: number; total_gaps: number; stage_label?: string; sector?: string };
+
 type DashboardPayload = {
   tracked_count?: number;
   snapshot_count?: number;
@@ -83,6 +101,14 @@ type DashboardPayload = {
   entering_stage_4?: StageTransitionItem[];
   top10_matrix?: Record<string, Array<{ symbol: string; value: number }>>;
   bottom10_matrix?: Record<string, Array<{ symbol: string; value: number }>>;
+  range_histogram?: RangeHistogramBin[];
+  breadth_series?: BreadthPoint[];
+  rrg_sectors?: RRGSector[];
+  upcoming_earnings?: EarningsItem[];
+  fundamental_leaders?: FundamentalLeader[];
+  rsi_divergences?: { bearish?: RSIDivergenceItem[]; bullish?: RSIDivergenceItem[] };
+  td_signals?: TDSignalItem[];
+  gap_leaders?: GapLeader[];
 };
 
 const METRIC_ORDER = [
@@ -190,60 +216,81 @@ const StageBar: React.FC<{ counts: Record<string, number>; total: number }> = ({
   );
 };
 
-const SetupCard: React.FC<{ title: string; items: SetupItem[]; showScore?: boolean }> = ({ title, items, showScore }) => (
+const SetupCard: React.FC<{ title: string; items: SetupItem[]; showScore?: boolean; linkPreset?: string }> = ({ title, items, showScore, linkPreset }) => (
   <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card" flex="1" minW="220px">
-    <Text fontSize="sm" fontWeight="semibold" mb={2}>{title}</Text>
+    <HStack justify="space-between" align="center" mb={2}>
+      {linkPreset ? (
+        <RouterLink to={`/market/tracked?preset=${linkPreset}`} style={{ textDecoration: 'none' }}>
+          <Text fontSize="sm" fontWeight="semibold" _hover={{ textDecoration: 'underline' }} cursor="pointer">{title}</Text>
+        </RouterLink>
+      ) : (
+        <Text fontSize="sm" fontWeight="semibold">{title}</Text>
+      )}
+      {items.length > 0 && <Badge variant="subtle" size="sm">{items.length}</Badge>}
+    </HStack>
     {items.length === 0 ? (
       <Text fontSize="xs" color="fg.muted">None found</Text>
     ) : (
-      <Box display="flex" flexDirection="column" gap={1}>
-        {items.slice(0, 8).map((item) => (
-          <HStack key={item.symbol} justify="space-between" fontSize="xs">
-            <HStack gap={1}>
-              <Text fontWeight="medium">{item.symbol}</Text>
-              <Badge size="sm" variant="subtle" colorPalette={STAGE_COLORS[item.stage_label || ''] || 'gray'}>
-                {item.stage_label || '?'}
-              </Badge>
+      <Box maxH="260px" overflowY="auto" pr={1}>
+        <Box display="flex" flexDirection="column" gap={1}>
+          {items.map((item) => (
+            <HStack key={item.symbol} justify="space-between" fontSize="xs">
+              <HStack gap={1}>
+                <SymbolLink symbol={item.symbol} />
+                <Badge size="sm" variant="subtle" colorPalette={STAGE_COLORS[item.stage_label || ''] || 'gray'}>
+                  {item.stage_label || '?'}
+                </Badge>
+              </HStack>
+              <HStack gap={2} flexShrink={0}>
+                {showScore && item.momentum_score != null && (
+                  <Text color="fg.muted">{item.momentum_score.toFixed(1)}</Text>
+                )}
+                <Text color={heatColor(item.perf_20d)}>{fmtPct(item.perf_20d)}</Text>
+                <Text color={heatColor(item.rs_mansfield_pct)}>RS {fmtPct(item.rs_mansfield_pct)}</Text>
+              </HStack>
             </HStack>
-            <HStack gap={2}>
-              {showScore && item.momentum_score != null && (
-                <Text color="fg.muted">{item.momentum_score.toFixed(1)}</Text>
-              )}
-              <Text color={heatColor(item.perf_20d)}>{fmtPct(item.perf_20d)}</Text>
-              <Text color={heatColor(item.rs_mansfield_pct)}>RS {fmtPct(item.rs_mansfield_pct)}</Text>
-            </HStack>
-          </HStack>
-        ))}
+          ))}
+        </Box>
       </Box>
     )}
   </Box>
 );
 
-const TransitionList: React.FC<{ title: string; items: StageTransitionItem[]; colorPalette: string }> = ({ title, items, colorPalette }) => (
-  <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card" flex="1" minW="220px">
-    <HStack justify="space-between" align="center" mb={2}>
-      <Text fontSize="sm" fontWeight="semibold">{title}</Text>
-      <Badge variant="subtle" colorPalette={colorPalette}>{items.length}</Badge>
-    </HStack>
-    <Box maxH="280px" overflowY="auto" pr={1}>
-      <Stack gap={1}>
-        {items.length ? items.map((r) => (
-          <HStack key={`trans-${r.symbol}`} justify="space-between" fontSize="xs">
-            <Text fontWeight="medium">{r.symbol}</Text>
-            <HStack gap={1}>
-              <Badge variant="subtle" size="sm">
-                {r.previous_stage_label || '—'} → {r.stage_label || '?'}
-              </Badge>
-              {r.current_stage_days != null && (
-                <Text color="fg.muted">{r.current_stage_days}d</Text>
-              )}
+const TransitionList: React.FC<{ title: string; items: StageTransitionItem[]; colorPalette: string }> = ({ title, items, colorPalette }) => {
+  const symbolsParam = items.map((r) => r.symbol).join(',');
+  const titleLink = symbolsParam ? `/market/tracked?symbols=${encodeURIComponent(symbolsParam)}` : undefined;
+  return (
+    <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card" flex="1" minW="220px">
+      <HStack justify="space-between" align="center" mb={2}>
+        {titleLink ? (
+          <RouterLink to={titleLink} style={{ textDecoration: 'none' }}>
+            <Text fontSize="sm" fontWeight="semibold" _hover={{ textDecoration: 'underline' }} cursor="pointer">{title}</Text>
+          </RouterLink>
+        ) : (
+          <Text fontSize="sm" fontWeight="semibold">{title}</Text>
+        )}
+        <Badge variant="subtle" colorPalette={colorPalette}>{items.length}</Badge>
+      </HStack>
+      <Box maxH="280px" overflowY="auto" pr={1}>
+        <Stack gap={1}>
+          {items.length ? items.map((r) => (
+            <HStack key={`trans-${r.symbol}`} justify="space-between" fontSize="xs">
+              <SymbolLink symbol={r.symbol} />
+              <HStack gap={1}>
+                <Badge variant="subtle" size="sm">
+                  {r.previous_stage_label || '—'} → {r.stage_label || '?'}
+                </Badge>
+                {r.current_stage_days != null && (
+                  <Text color="fg.muted">{r.current_stage_days}d</Text>
+                )}
+              </HStack>
             </HStack>
-          </HStack>
-        )) : <Text fontSize="xs" color="fg.muted">No recent entries.</Text>}
-      </Stack>
+          )) : <Text fontSize="xs" color="fg.muted">No recent entries.</Text>}
+        </Stack>
+      </Box>
     </Box>
-  </Box>
-);
+  );
+};
 
 const RankMatrix: React.FC<{ title: string; data?: Record<string, Array<{ symbol: string; value: number }>> }> = ({ title, data }) => {
   const matrixRows = React.useMemo(() => {
@@ -295,6 +342,7 @@ const RankMatrix: React.FC<{ title: string; data?: Record<string, Array<{ symbol
                   return (
                     <TableCell key={`${m.key}-${idx}`}>
                       <Text
+                        as="span"
                         fontWeight={hasRepeat ? 'bold' : undefined}
                         color={hasRepeat ? repeatSymbolColor(symbol) : undefined}
                         data-testid={
@@ -303,7 +351,7 @@ const RankMatrix: React.FC<{ title: string; data?: Record<string, Array<{ symbol
                             : undefined
                         }
                       >
-                        {`${item.symbol} (${fmtValue(item.value, m.key)})`}
+                        <SymbolLink symbol={item.symbol} /> <Text as="span" fontSize="xs" color="fg.muted">({fmtValue(item.value, m.key)})</Text>
                       </Text>
                     </TableCell>
                   );
@@ -317,12 +365,289 @@ const RankMatrix: React.FC<{ title: string; data?: Record<string, Array<{ symbol
   );
 };
 
+const CHART_FALLBACKS: Record<string, [string, string]> = {
+  'chart.danger': ['#DC2626', '#F87171'],
+  'chart.success': ['#16A34A', '#4ADE80'],
+  'chart.neutral': ['#3B82F6', '#60A5FA'],
+  'chart.area1': ['#16A34A', '#34D399'],
+  'chart.area2': ['#2563EB', '#60A5FA'],
+  'chart.grid': ['rgba(15,23,42,0.08)', 'rgba(255,255,255,0.08)'],
+  'chart.axis': ['rgba(15,23,42,0.4)', 'rgba(255,255,255,0.45)'],
+  'chart.refLine': ['rgba(15,23,42,0.2)', 'rgba(255,255,255,0.2)'],
+  'chart.warning': ['#D97706', '#FBBF24'],
+  'fg.muted': ['#64748B', '#94A3B8'],
+  'fg.subtle': ['#94A3B8', '#64748B'],
+  'border.subtle': ['#E2E8F0', '#334155'],
+  'brand.500': ['#6366F1', '#818CF8'],
+  'brand.400': ['#818CF8', '#A5B4FC'],
+  'brand.700': ['#4338CA', '#4F46E5'],
+};
+
+const useChartColors = () => {
+  const { colorMode } = useColorMode();
+  const isDark = colorMode === 'dark';
+  return React.useMemo(() => {
+    const root = typeof document !== 'undefined' ? document.documentElement : null;
+    const get = (token: string) => {
+      const fb = CHART_FALLBACKS[token];
+      const fallback = fb ? (isDark ? fb[1] : fb[0]) : token;
+      if (!root) return fallback;
+      const v = getComputedStyle(root).getPropertyValue(`--chakra-colors-${token.replace(/\./g, '-')}`).trim();
+      return v || fallback;
+    };
+    return {
+      danger: get('chart.danger'),
+      success: get('chart.success'),
+      neutral: get('chart.neutral'),
+      area1: get('chart.area1'),
+      area2: get('chart.area2'),
+      grid: get('chart.grid'),
+      axis: get('chart.axis'),
+      refLine: get('chart.refLine'),
+      muted: get('fg.muted'),
+      subtle: get('fg.subtle'),
+      border: get('border.subtle'),
+      brand500: get('brand.500'),
+      brand400: get('brand.400'),
+      brand700: get('brand.700'),
+      warning: get('chart.warning'),
+    };
+  }, [isDark]);
+};
+
+const RangeHistogram: React.FC<{ bins: RangeHistogramBin[] }> = ({ bins }) => {
+  const cc = useChartColors();
+  const data = bins.map((b) => {
+    const isLow = b.bin.startsWith('0-') || b.bin.startsWith('10-');
+    const isHigh = b.bin.startsWith('80-') || b.bin.startsWith('90-');
+    return {
+      name: b.bin.replace('%', ''),
+      count: b.count,
+      fill: isLow ? cc.danger : isHigh ? cc.success : cc.neutral,
+    };
+  });
+  return (
+    <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={4} bg="bg.card">
+      <Text fontSize="sm" fontWeight="semibold" mb={2}>52-Week Range Distribution</Text>
+      <ResponsiveContainer width="100%" height={200}>
+        <BarChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
+          <XAxis
+            dataKey="name"
+            tick={{ fontSize: 9, fill: cc.muted }}
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={(v) => `${v}%`}
+          />
+          <YAxis hide />
+          <RTooltip
+            contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${cc.border}` }}
+            formatter={(value) => [`${value} symbols`, 'Count']}
+          />
+          <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={36}>
+            {data.map((entry, i) => (
+              <Cell key={i} fill={entry.fill} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+      <Text fontSize="xs" color="fg.muted" textAlign="center" mt={1}>Left-skew = capitulation · Right-skew = euphoria</Text>
+    </Box>
+  );
+};
+
+const BreadthChart: React.FC<{ series: BreadthPoint[] }> = ({ series }) => {
+  const cc = useChartColors();
+  if (!series.length) return null;
+  const fmtDate = (raw: string) => {
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return raw.slice(5, 10);
+    return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const data = series.map((pt) => ({
+    date: fmtDate(pt.date),
+    sma50: pt.above_sma50_pct,
+    sma200: pt.above_sma200_pct,
+  }));
+
+  const latest50 = data.length ? data[data.length - 1].sma50 : null;
+  const latest200 = data.length ? data[data.length - 1].sma200 : null;
+
+  return (
+    <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={4} bg="bg.card">
+      <HStack justify="space-between" align="baseline" mb={2}>
+        <Text fontSize="sm" fontWeight="semibold">Breadth Over Time</Text>
+        <HStack gap={3}>
+          {latest50 != null && (
+            <HStack gap={1}>
+              <Box w="8px" h="3px" borderRadius="full" bg={cc.area1} />
+              <Text fontSize="10px" color="fg.muted">&gt;50DMA <Text as="span" fontWeight="semibold" color="fg.default">{latest50.toFixed(0)}%</Text></Text>
+            </HStack>
+          )}
+          {latest200 != null && (
+            <HStack gap={1}>
+              <Box w="8px" h="3px" borderRadius="full" bg={cc.area2} />
+              <Text fontSize="10px" color="fg.muted">&gt;200DMA <Text as="span" fontWeight="semibold" color="fg.default">{latest200.toFixed(0)}%</Text></Text>
+            </HStack>
+          )}
+        </HStack>
+      </HStack>
+      <ResponsiveContainer width="100%" height={200}>
+        <ComposedChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+          <defs>
+            <linearGradient id="grad50" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={cc.area1} stopOpacity={0.25} />
+              <stop offset="95%" stopColor={cc.area1} stopOpacity={0.02} />
+            </linearGradient>
+            <linearGradient id="grad200" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={cc.area2} stopOpacity={0.2} />
+              <stop offset="95%" stopColor={cc.area2} stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          <XAxis
+            dataKey="date"
+            tick={{ fontSize: 9, fill: cc.muted }}
+            tickLine={false}
+            axisLine={false}
+            interval={Math.max(0, Math.floor(data.length / 5))}
+          />
+          <YAxis hide domain={[0, 100]} />
+          <ReferenceLine y={50} stroke={cc.refLine} strokeDasharray="4 3" label={{ value: '50%', position: 'insideTopLeft', fontSize: 9, fill: cc.muted }} />
+          <RTooltip
+            contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${cc.border}` }}
+            formatter={(value, name) => [`${Number(value).toFixed(1)}%`, String(name) === 'sma50' ? '% > 50DMA' : '% > 200DMA']}
+          />
+          <Area type="monotone" dataKey="sma200" fill="url(#grad200)" stroke={cc.area2} strokeWidth={1.5} />
+          <Area type="monotone" dataKey="sma50" fill="url(#grad50)" stroke={cc.area1} strokeWidth={2} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </Box>
+  );
+};
+
+const SECTOR_PALETTE = [
+  'var(--chakra-colors-brand-600)',
+  'var(--chakra-colors-red-500)',
+  'var(--chakra-colors-green-500)',
+  'var(--chakra-colors-orange-500)',
+  'var(--chakra-colors-purple-500)',
+  'var(--chakra-colors-teal-500)',
+  'var(--chakra-colors-pink-500)',
+  'var(--chakra-colors-cyan-600)',
+  'var(--chakra-colors-yellow-600)',
+  'var(--chakra-colors-brand-400)',
+  'var(--chakra-colors-red-400)',
+  'var(--chakra-colors-green-600)',
+  'var(--chakra-colors-orange-600)',
+  'var(--chakra-colors-purple-400)',
+];
+
+const RRGCustomTooltip: React.FC<any> = ({ active, payload }) => {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  const quad = d.rs_ratio >= 0
+    ? d.rs_momentum >= 0 ? 'Leading' : 'Weakening'
+    : d.rs_momentum >= 0 ? 'Improving' : 'Lagging';
+  return (
+    <Box bg="bg.panel" borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} shadow="md" minW="160px">
+      <HStack gap={2} mb={1}>
+        <Box w="10px" h="10px" borderRadius="full" bg={SECTOR_PALETTE[d._idx % SECTOR_PALETTE.length]} />
+        <Text fontSize="sm" fontWeight="bold">{d.name}</Text>
+      </HStack>
+      <Text fontSize="xs" color="fg.muted">{d.symbol}</Text>
+      <Box mt={2} display="flex" flexDirection="column" gap={1}>
+        <HStack justify="space-between" fontSize="xs">
+          <Text color="fg.muted">RS-Ratio</Text>
+          <Text fontWeight="medium">{d.rs_ratio.toFixed(2)}</Text>
+        </HStack>
+        <HStack justify="space-between" fontSize="xs">
+          <Text color="fg.muted">RS-Momentum</Text>
+          <Text fontWeight="medium">{d.rs_momentum.toFixed(2)}</Text>
+        </HStack>
+        <HStack justify="space-between" fontSize="xs">
+          <Text color="fg.muted">Quadrant</Text>
+          <Text fontWeight="medium">{quad}</Text>
+        </HStack>
+      </Box>
+    </Box>
+  );
+};
+
+const RRGChart: React.FC<{ sectors: RRGSector[] }> = ({ sectors }) => {
+  const cc = useChartColors();
+  if (!sectors.length) return null;
+  const data = sectors.map((s, i) => ({
+    ...s,
+    z: 200,
+    _idx: i,
+  }));
+
+  const maxAbs = Math.max(
+    ...sectors.map((s) => Math.abs(s.rs_ratio)),
+    ...sectors.map((s) => Math.abs(s.rs_momentum)),
+    1,
+  );
+  const pad = Math.ceil(maxAbs * 1.15) || 5;
+
+  return (
+    <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={4} bg="bg.card">
+      <Text fontSize="sm" fontWeight="semibold" mb={1}>Relative Rotation Graph (Sectors)</Text>
+      <Text fontSize="xs" color="fg.muted" mb={2}>Hover each dot to see sector details</Text>
+      <ResponsiveContainer width="100%" height={380}>
+        <ScatterChart margin={{ top: 20, right: 20, bottom: 16, left: 16 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={cc.grid} />
+          <XAxis
+            type="number"
+            dataKey="rs_ratio"
+            name="RS-Ratio"
+            domain={[-pad, pad]}
+            tick={false}
+            tickLine={false}
+            axisLine={{ stroke: cc.grid }}
+          />
+          <YAxis
+            type="number"
+            dataKey="rs_momentum"
+            name="RS-Momentum"
+            domain={[-pad, pad]}
+            tick={false}
+            tickLine={false}
+            axisLine={{ stroke: cc.grid }}
+          />
+          <ZAxis type="number" dataKey="z" range={[160, 160]} />
+          <ReferenceArea x1={0} x2={pad} y1={0} y2={pad} fill={cc.success} fillOpacity={0.05} label={{ value: 'Leading ↗', position: 'insideTopRight', fontSize: 11, fill: cc.success, fontWeight: 600 }} />
+          <ReferenceArea x1={-pad} x2={0} y1={0} y2={pad} fill={cc.area2} fillOpacity={0.05} label={{ value: '↖ Improving', position: 'insideTopLeft', fontSize: 11, fill: cc.neutral, fontWeight: 600 }} />
+          <ReferenceArea x1={-pad} x2={0} y1={-pad} y2={0} fill={cc.danger} fillOpacity={0.05} label={{ value: '↙ Lagging', position: 'insideBottomLeft', fontSize: 11, fill: cc.danger, fontWeight: 600 }} />
+          <ReferenceArea x1={0} x2={pad} y1={-pad} y2={0} fill={cc.warning} fillOpacity={0.05} label={{ value: 'Weakening ↘', position: 'insideBottomRight', fontSize: 11, fill: cc.warning, fontWeight: 600 }} />
+          <ReferenceLine x={0} stroke={cc.refLine} strokeWidth={1.5} />
+          <ReferenceLine y={0} stroke={cc.refLine} strokeWidth={1.5} />
+          <RTooltip content={<RRGCustomTooltip />} cursor={false} />
+          <Scatter data={data}>
+            {data.map((entry, i) => (
+              <Cell key={i} fill={SECTOR_PALETTE[i % SECTOR_PALETTE.length]} stroke="white" strokeWidth={1.5} />
+            ))}
+          </Scatter>
+        </ScatterChart>
+      </ResponsiveContainer>
+      <Box display="grid" gridTemplateColumns="repeat(auto-fill, minmax(130px, 1fr))" gap="3px" mt={2} px={1}>
+        {data.map((s, i) => (
+          <HStack key={s.symbol} gap={1}>
+            <Box w="8px" h="8px" borderRadius="full" flexShrink={0} bg={SECTOR_PALETTE[i % SECTOR_PALETTE.length]} />
+            <Text fontSize="10px" truncate color="fg.muted">{s.name}</Text>
+          </HStack>
+        ))}
+      </Box>
+    </Box>
+  );
+};
+
 /* ===== Main Component ===== */
 
 const MarketDashboard: React.FC = () => {
   const [payload, setPayload] = React.useState<DashboardPayload | null>(null);
   const [loading, setLoading] = React.useState<boolean>(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [chartSymbol, setChartSymbol] = React.useState<string | null>(null);
+  const openChart = React.useCallback((sym: string) => setChartSymbol(sym), []);
 
   React.useEffect(() => {
     const load = async () => {
@@ -381,10 +706,13 @@ const MarketDashboard: React.FC = () => {
   const entryRows = payload?.entry_proximity_top || [];
   const exitRows = payload?.exit_proximity_top || [];
 
+  const actionQueue = payload?.action_queue || [];
+
   const regimeLabel = Number(pctAbove50) >= 60 ? 'Bullish' : Number(pctAbove50) <= 40 ? 'Bearish' : 'Neutral';
   const regimePalette = regimeLabel === 'Bullish' ? 'green' : regimeLabel === 'Bearish' ? 'red' : 'yellow';
 
   return (
+    <ChartContext.Provider value={openChart}>
     <Box p={4}>
       <Stack gap={4}>
         <HStack justify="space-between" align="end" flexWrap="wrap">
@@ -414,6 +742,48 @@ const MarketDashboard: React.FC = () => {
           </Box>
           <StageBar counts={stageCounts} total={snapshotCount} />
         </Box>
+
+        {/* Action Queue */}
+        {actionQueue.length > 0 && (
+          <Box>
+            <HStack mb={2} gap={2} align="center">
+              <Text fontSize="sm" fontWeight="semibold">Action Queue</Text>
+              <Badge variant="subtle" size="sm">{actionQueue.length}</Badge>
+            </HStack>
+            <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card" maxH="340px" overflowY="auto">
+              <Box display="grid" gridTemplateColumns={{ base: '1fr', xl: '1fr 1fr' }} gap={1} columnGap={4}>
+                {actionQueue.map((item) => {
+                  const reasons: string[] = [];
+                  if (item.previous_stage_label && item.previous_stage_label !== item.stage_label) {
+                    reasons.push(`${item.previous_stage_label} → ${item.stage_label}`);
+                  }
+                  if (typeof item.perf_1d === 'number' && Math.abs(item.perf_1d) >= 3) {
+                    reasons.push(`1D ${item.perf_1d > 0 ? '+' : ''}${item.perf_1d.toFixed(1)}%`);
+                  }
+                  if (typeof item.rs_mansfield_pct === 'number' && Math.abs(item.rs_mansfield_pct) >= 6) {
+                    reasons.push(`RS ${item.rs_mansfield_pct > 0 ? '+' : ''}${item.rs_mansfield_pct.toFixed(1)}%`);
+                  }
+                  return (
+                    <HStack key={`aq-${item.symbol}`} justify="space-between" fontSize="xs" py="2px" borderBottomWidth="1px" borderColor="border.subtle">
+                      <HStack gap={1} minW="80px">
+                        <SymbolLink symbol={item.symbol} />
+                        <Badge size="sm" variant="subtle" colorPalette={STAGE_COLORS[item.stage_label || ''] || 'gray'}>
+                          {item.stage_label || '?'}
+                        </Badge>
+                      </HStack>
+                      <HStack gap={1} flexShrink={0}>
+                        {reasons.map((r, i) => (
+                          <Text key={i} fontSize="xs" color="fg.muted">{r}</Text>
+                        ))}
+                        {item.sector && <Text color="fg.subtle" fontSize="xs" truncate maxW="100px">{item.sector}</Text>}
+                      </HStack>
+                    </HStack>
+                  );
+                })}
+              </Box>
+            </Box>
+          </Box>
+        )}
 
         {/* Section 2: Sector Rotation */}
         <Box>
@@ -480,18 +850,18 @@ const MarketDashboard: React.FC = () => {
         {/* Section 3: Trading Setups */}
         <Box>
           <Text fontSize="sm" fontWeight="semibold" mb={2}>Trading Setups</Text>
-          <Box display="flex" gap={3} flexWrap="wrap">
-            <SetupCard title="Breakout Candidates" items={breakoutCandidates} />
-            <SetupCard title="Pullback Buys" items={pullbackCandidates} />
-            <SetupCard title="RS Leaders" items={rsLeaders} />
-            <SetupCard title="Momentum Leaders" items={leaders} showScore />
+          <Box display="grid" gridTemplateColumns={{ base: '1fr', md: '1fr 1fr', xl: '1fr 1fr 1fr 1fr' }} gap={3}>
+            <SetupCard title="Breakout Candidates" items={breakoutCandidates} linkPreset="breakout" />
+            <SetupCard title="Pullback Buys" items={pullbackCandidates} linkPreset="pullback" />
+            <SetupCard title="RS Leaders" items={rsLeaders} linkPreset="rs_leaders" />
+            <SetupCard title="Momentum Leaders" items={leaders} showScore linkPreset="momentum" />
           </Box>
         </Box>
 
         {/* Section 4: Stage Transitions */}
         <Box>
           <Text fontSize="sm" fontWeight="semibold" mb={2}>Stage Transitions</Text>
-          <Box display="flex" gap={3} flexWrap="wrap">
+          <Box display="grid" gridTemplateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={3}>
             <TransitionList title="Entering Stage 2A (Bullish)" items={enteringStage2a} colorPalette="green" />
             <TransitionList title="Entering Stage 3/4 (Warning)" items={entering34} colorPalette="red" />
           </Box>
@@ -590,8 +960,182 @@ const MarketDashboard: React.FC = () => {
             </Box>
           </Box>
         </Box>
+        {/* Market Insights */}
+        <Box>
+          <Text fontSize="sm" fontWeight="semibold" mb={2}>Market Insights</Text>
+          <Box display="grid" gridTemplateColumns={{ base: '1fr', lg: '1fr 1fr' }} gap={3}>
+            <Box display="flex" flexDirection="column" gap={3}>
+              {(payload?.range_histogram || []).length > 0 && (
+                <RangeHistogram bins={payload!.range_histogram!} />
+              )}
+              {(payload?.breadth_series || []).length > 0 && (
+                <BreadthChart series={payload!.breadth_series!} />
+              )}
+            </Box>
+            {(payload?.rrg_sectors || []).length > 0 && (
+              <RRGChart sectors={payload!.rrg_sectors!} />
+            )}
+          </Box>
+        </Box>
+
+        {/* Signals & Divergences */}
+        <Box>
+          <Text fontSize="sm" fontWeight="semibold" mb={2}>Signals & Divergences</Text>
+          <Box display="grid" gridTemplateColumns={{ base: '1fr', lg: '1fr 1fr 1fr' }} gap={3}>
+            <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
+              <Text fontSize="xs" fontWeight="semibold" mb={2}>Divergence Watch</Text>
+              {((payload?.rsi_divergences?.bearish || []).length + (payload?.rsi_divergences?.bullish || []).length) === 0 ? (
+                <Text fontSize="xs" color="fg.muted">No divergences detected</Text>
+              ) : (
+                <Box maxH="300px" overflowY="auto" pr={1}>
+                  <Box display="flex" flexDirection="column" gap={2}>
+                    {(payload?.rsi_divergences?.bearish || []).length > 0 && (
+                      <Box>
+                        <Badge size="sm" variant="subtle" colorPalette="red" mb={1}>Bearish ({payload!.rsi_divergences!.bearish!.length})</Badge>
+                        {payload!.rsi_divergences!.bearish!.map((d) => (
+                          <HStack key={`div-b-${d.symbol}`} justify="space-between" fontSize="xs" py="1px">
+                            <SymbolLink symbol={d.symbol} />
+                            <HStack gap={2}>
+                              <Text color="green.400">+{d.perf_20d}%</Text>
+                              <Text color="red.400">RSI {d.rsi}</Text>
+                            </HStack>
+                          </HStack>
+                        ))}
+                      </Box>
+                    )}
+                    {(payload?.rsi_divergences?.bullish || []).length > 0 && (
+                      <Box>
+                        <Badge size="sm" variant="subtle" colorPalette="green" mb={1}>Bullish ({payload!.rsi_divergences!.bullish!.length})</Badge>
+                        {payload!.rsi_divergences!.bullish!.map((d) => (
+                          <HStack key={`div-l-${d.symbol}`} justify="space-between" fontSize="xs" py="1px">
+                            <SymbolLink symbol={d.symbol} />
+                            <HStack gap={2}>
+                              <Text color="red.400">{d.perf_20d}%</Text>
+                              <Text color="green.400">RSI {d.rsi}</Text>
+                            </HStack>
+                          </HStack>
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
+                </Box>
+              )}
+            </Box>
+
+            <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
+              <HStack justify="space-between" mb={1}>
+                <Text fontSize="xs" fontWeight="semibold">TD Sequential Signals</Text>
+                {(payload?.td_signals || []).length > 0 && <Badge variant="subtle" size="sm">{payload!.td_signals!.length}</Badge>}
+              </HStack>
+              <Text fontSize="xs" color="fg.muted" mb={2}>Setup 9 = potential reversal. Countdown 13 = exhaustion confirmed.</Text>
+              {(payload?.td_signals || []).length === 0 ? (
+                <Text fontSize="xs" color="fg.muted">No active signals</Text>
+              ) : (
+                <Box maxH="300px" overflowY="auto">
+                  <Box display="grid" gridTemplateColumns={{ base: '1fr', xl: '1fr 1fr' }} gap={1} columnGap={3}>
+                    {payload!.td_signals!.map((s) => (
+                      <HStack key={`td-${s.symbol}`} justify="space-between" fontSize="xs" py="1px" borderBottomWidth="1px" borderColor="border.subtle">
+                        <HStack gap={1}>
+                          <SymbolLink symbol={s.symbol} />
+                          <Badge size="sm" variant="subtle" colorPalette={STAGE_COLORS[s.stage_label || ''] || 'gray'}>{s.stage_label || '?'}</Badge>
+                        </HStack>
+                        <HStack gap={1} flexShrink={0}>
+                          {s.signals.map((sig, i) => (
+                            <Badge key={i} size="sm" variant="outline" colorPalette={sig.includes('Buy') ? 'green' : 'red'}>{sig}</Badge>
+                          ))}
+                        </HStack>
+                      </HStack>
+                    ))}
+                  </Box>
+                </Box>
+              )}
+            </Box>
+
+            <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
+              <HStack justify="space-between" mb={2}>
+                <Text fontSize="xs" fontWeight="semibold">Open Gaps</Text>
+                {(payload?.gap_leaders || []).length > 0 && <Badge variant="subtle" size="sm">{payload!.gap_leaders!.length}</Badge>}
+              </HStack>
+              <Text fontSize="xs" color="fg.muted" mb={2}>Symbols with unfilled price gaps (potential support/resistance).</Text>
+              {(payload?.gap_leaders || []).length === 0 ? (
+                <Text fontSize="xs" color="fg.subtle">No unfilled gaps detected. Gap data populates after indicator computation runs.</Text>
+              ) : (
+                <Box maxH="300px" overflowY="auto">
+                  <Box display="flex" flexDirection="column" gap={1}>
+                    {payload!.gap_leaders!.map((g) => (
+                      <HStack key={`gap-${g.symbol}`} justify="space-between" fontSize="xs" py="1px" borderBottomWidth="1px" borderColor="border.subtle">
+                        <HStack gap={1}>
+                          <SymbolLink symbol={g.symbol} />
+                          <Badge size="sm" variant="subtle" colorPalette={STAGE_COLORS[g.stage_label || ''] || 'gray'}>{g.stage_label || '?'}</Badge>
+                        </HStack>
+                        <HStack gap={2} flexShrink={0}>
+                          <Text color="green.400">{g.gaps_up}↑</Text>
+                          <Text color="red.400">{g.gaps_down}↓</Text>
+                        </HStack>
+                      </HStack>
+                    ))}
+                  </Box>
+                </Box>
+              )}
+            </Box>
+          </Box>
+        </Box>
+
+        {/* Earnings & Fundamentals */}
+        <Box>
+          <Text fontSize="sm" fontWeight="semibold" mb={2}>Earnings & Fundamentals</Text>
+          <Box display="grid" gridTemplateColumns={{ base: '1fr', lg: '1fr 1fr' }} gap={3}>
+            <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
+              <Text fontSize="xs" fontWeight="semibold" mb={2}>Upcoming Earnings (7d)</Text>
+              {(payload?.upcoming_earnings || []).length === 0 ? (
+                <Text fontSize="xs" color="fg.muted">No upcoming earnings</Text>
+              ) : (
+                <Box maxH="260px" overflowY="auto" pr={1}>
+                  <Box display="flex" flexDirection="column" gap={1}>
+                    {payload!.upcoming_earnings!.map((e) => (
+                      <HStack key={`earn-${e.symbol}`} justify="space-between" fontSize="xs">
+                        <HStack gap={1}>
+                          <SymbolLink symbol={e.symbol} />
+                          <Badge size="sm" variant="subtle" colorPalette={STAGE_COLORS[e.stage_label || ''] || 'gray'}>{e.stage_label || '?'}</Badge>
+                        </HStack>
+                        <Text color="fg.muted">{new Date(e.next_earnings).toLocaleDateString()}</Text>
+                      </HStack>
+                    ))}
+                  </Box>
+                </Box>
+              )}
+            </Box>
+
+            <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
+              <Text fontSize="xs" fontWeight="semibold" mb={2}>Fundamental Leaders</Text>
+              {(payload?.fundamental_leaders || []).length === 0 ? (
+                <Text fontSize="xs" color="fg.muted">Insufficient data</Text>
+              ) : (
+                <Box maxH="260px" overflowY="auto" pr={1}>
+                  <Box display="flex" flexDirection="column" gap={1}>
+                    {payload!.fundamental_leaders!.map((f) => (
+                      <HStack key={`fund-${f.symbol}`} justify="space-between" fontSize="xs">
+                        <HStack gap={1}>
+                          <SymbolLink symbol={f.symbol} />
+                          <Badge size="sm" variant="subtle" colorPalette={STAGE_COLORS[f.stage_label || ''] || 'gray'}>{f.stage_label || '?'}</Badge>
+                        </HStack>
+                        <HStack gap={2} flexShrink={0}>
+                          <Text>EPS {f.eps_growth_yoy > 0 ? '+' : ''}{f.eps_growth_yoy}%</Text>
+                          <Text color={heatColor(f.rs_mansfield_pct)}>RS {fmtPct(f.rs_mansfield_pct)}</Text>
+                          {f.pe_ttm != null && <Text color="fg.muted">PE {f.pe_ttm}</Text>}
+                        </HStack>
+                      </HStack>
+                    ))}
+                  </Box>
+                </Box>
+              )}
+            </Box>
+          </Box>
+        </Box>
       </Stack>
+      <ChartSlidePanel symbol={chartSymbol} onClose={() => setChartSymbol(null)} />
     </Box>
+    </ChartContext.Provider>
   );
 };
 

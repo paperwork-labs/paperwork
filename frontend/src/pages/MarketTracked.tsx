@@ -17,6 +17,7 @@ import { formatMoney, formatDateTime } from '../utils/format';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FiCheck, FiEdit2, FiX } from 'react-icons/fi';
+import { ChartContext, SymbolLink, ChartSlidePanel } from '../components/market/SymbolChartUI';
 
 const ETF_SYMBOLS = [
   'COLO', 'DBA', 'DIA', 'ECH', 'EPOL', 'EPU', 'EWA', 'EWC', 'EWG', 'EWH', 'EWI', 'EWJ', 'EWM', 'EWW',
@@ -128,6 +129,8 @@ const MarketTracked: React.FC = () => {
   const canEditPlan = user?.role === 'admin' || user?.role === 'analyst';
   const [rows, setRows] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState<boolean>(false);
+  const [chartSymbol, setChartSymbol] = React.useState<string | null>(null);
+  const openChart = React.useCallback((sym: string) => setChartSymbol(sym), []);
 
   const load = async () => {
     if (loading) return;
@@ -214,7 +217,7 @@ const MarketTracked: React.FC = () => {
       typeof v === 'number' && Number.isFinite(v) ? `${Math.max(0, Math.round(v))}d` : '—';
 
     return [
-      { key: 'symbol', header: 'Symbol', accessor: (r) => r.symbol, sortable: true, sortType: 'string' },
+      { key: 'symbol', header: 'Symbol', accessor: (r) => r.symbol, sortable: true, sortType: 'string', render: (_v, r) => <SymbolLink symbol={String(r?.symbol || '')} /> },
       { key: 'name', header: 'Name', accessor: (r) => r.name, sortable: true, sortType: 'string', render: (v) => String(v || '—') },
       { key: 'current_price', header: 'Price', accessor: (r) => r.current_price, sortable: true, sortType: 'number', isNumeric: true, render: (v) => (typeof v === 'number' ? formatMoney(v, currency, { maximumFractionDigits: 2 }) : '—') },
       {
@@ -370,48 +373,12 @@ const MarketTracked: React.FC = () => {
       filters: {
         conjunction: 'AND' as const,
         rules: [
-          {
-            id: 'momentum_price_gt_sma50',
-            columnKey: 'current_price',
-            operator: 'gt' as const,
-            valueSource: 'column' as const,
-            valueColumnKey: 'sma_50',
-          },
-          {
-            id: 'momentum_price_gt_sma200',
-            columnKey: 'current_price',
-            operator: 'gt' as const,
-            valueSource: 'column' as const,
-            valueColumnKey: 'sma_200',
-          },
-          {
-            id: 'momentum_price_gt_ema21',
-            columnKey: 'current_price',
-            operator: 'gt' as const,
-            valueSource: 'column' as const,
-            valueColumnKey: 'ema_21',
-          },
-          {
-            id: 'momentum_ema8_gt_ema21',
-            columnKey: 'ema_8',
-            operator: 'gt' as const,
-            valueSource: 'column' as const,
-            valueColumnKey: 'ema_21',
-          },
-          {
-            id: 'momentum_sma21_gt_sma50',
-            columnKey: 'sma_21',
-            operator: 'gt' as const,
-            valueSource: 'column' as const,
-            valueColumnKey: 'sma_50',
-          },
-          {
-            id: 'momentum_sma50_gt_sma200',
-            columnKey: 'sma_50',
-            operator: 'gt' as const,
-            valueSource: 'column' as const,
-            valueColumnKey: 'sma_200',
-          },
+          { id: 'momentum_price_gt_sma50', columnKey: 'current_price', operator: 'gt' as const, valueSource: 'column' as const, valueColumnKey: 'sma_50' },
+          { id: 'momentum_price_gt_sma200', columnKey: 'current_price', operator: 'gt' as const, valueSource: 'column' as const, valueColumnKey: 'sma_200' },
+          { id: 'momentum_price_gt_ema21', columnKey: 'current_price', operator: 'gt' as const, valueSource: 'column' as const, valueColumnKey: 'ema_21' },
+          { id: 'momentum_ema8_gt_ema21', columnKey: 'ema_8', operator: 'gt' as const, valueSource: 'column' as const, valueColumnKey: 'ema_21' },
+          { id: 'momentum_sma21_gt_sma50', columnKey: 'sma_21', operator: 'gt' as const, valueSource: 'column' as const, valueColumnKey: 'sma_50' },
+          { id: 'momentum_sma50_gt_sma200', columnKey: 'sma_50', operator: 'gt' as const, valueSource: 'column' as const, valueColumnKey: 'sma_200' },
         ],
       },
     },
@@ -420,41 +387,11 @@ const MarketTracked: React.FC = () => {
       filters: {
         conjunction: 'AND' as const,
         rules: [
-          {
-            id: 'giant_mcap_gt_50b',
-            columnKey: 'market_cap',
-            operator: 'gt' as const,
-            valueSource: 'literal' as const,
-            value: '50000000000',
-          },
-          {
-            id: 'giant_stage_2',
-            columnKey: 'stage_label',
-            operator: 'equals' as const,
-            valueSource: 'literal' as const,
-            value: '2',
-          },
-          {
-            id: 'giant_price_gt_sma200',
-            columnKey: 'current_price',
-            operator: 'gt' as const,
-            valueSource: 'column' as const,
-            valueColumnKey: 'sma_200',
-          },
-          {
-            id: 'giant_ema21_gt_sma50',
-            columnKey: 'ema_21',
-            operator: 'gt' as const,
-            valueSource: 'column' as const,
-            valueColumnKey: 'sma_50',
-          },
-          {
-            id: 'giant_rs_positive',
-            columnKey: 'rs_mansfield_pct',
-            operator: 'gt' as const,
-            valueSource: 'literal' as const,
-            value: '0',
-          },
+          { id: 'giant_mcap_gt_50b', columnKey: 'market_cap', operator: 'gt' as const, valueSource: 'literal' as const, value: '50000000000' },
+          { id: 'giant_stage_2x', columnKey: 'stage_label', operator: 'starts_with' as const, valueSource: 'literal' as const, value: '2' },
+          { id: 'giant_price_gt_sma200', columnKey: 'current_price', operator: 'gt' as const, valueSource: 'column' as const, valueColumnKey: 'sma_200' },
+          { id: 'giant_ema21_gt_sma50', columnKey: 'ema_21', operator: 'gt' as const, valueSource: 'column' as const, valueColumnKey: 'sma_50' },
+          { id: 'giant_rs_positive', columnKey: 'rs_mansfield_pct', operator: 'gt' as const, valueSource: 'literal' as const, value: '0' },
         ],
       },
     },
@@ -463,68 +400,79 @@ const MarketTracked: React.FC = () => {
       filters: {
         conjunction: 'AND' as const,
         rules: [
-          {
-            id: 'squeeze_range_20d_gt_80',
-            columnKey: 'range_pos_20d',
-            operator: 'gt' as const,
-            valueSource: 'literal' as const,
-            value: '80',
-          },
-          {
-            id: 'squeeze_atrp14_gt_3',
-            columnKey: 'atrp_14',
-            operator: 'gt' as const,
-            valueSource: 'literal' as const,
-            value: '3',
-          },
-          {
-            id: 'squeeze_price_gt_ema8',
-            columnKey: 'current_price',
-            operator: 'gt' as const,
-            valueSource: 'column' as const,
-            valueColumnKey: 'ema_8',
-          },
-          {
-            id: 'squeeze_ema8_gt_ema21',
-            columnKey: 'ema_8',
-            operator: 'gt' as const,
-            valueSource: 'column' as const,
-            valueColumnKey: 'ema_21',
-          },
+          { id: 'squeeze_range_20d_gt_80', columnKey: 'range_pos_20d', operator: 'gt' as const, valueSource: 'literal' as const, value: '80' },
+          { id: 'squeeze_atrp14_gt_3', columnKey: 'atrp_14', operator: 'gt' as const, valueSource: 'literal' as const, value: '3' },
+          { id: 'squeeze_price_gt_ema8', columnKey: 'current_price', operator: 'gt' as const, valueSource: 'column' as const, valueColumnKey: 'ema_8' },
+          { id: 'squeeze_ema8_gt_ema21', columnKey: 'ema_8', operator: 'gt' as const, valueSource: 'column' as const, valueColumnKey: 'ema_21' },
         ],
       },
     },
     {
-      label: 'Bullish Trend Day',
+      label: 'Breakout Watch',
       filters: {
         conjunction: 'AND' as const,
         rules: [
-          {
-            id: 'bull_price_gt_sma50',
-            columnKey: 'current_price',
-            operator: 'gt' as const,
-            valueSource: 'column' as const,
-            valueColumnKey: 'sma_50',
-          },
-          {
-            id: 'bull_sma50_gt_sma200',
-            columnKey: 'sma_50',
-            operator: 'gt' as const,
-            valueSource: 'column' as const,
-            valueColumnKey: 'sma_200',
-          },
-          {
-            id: 'bull_rs_positive',
-            columnKey: 'rs_mansfield_pct',
-            operator: 'gt' as const,
-            valueSource: 'literal' as const,
-            value: '0',
-          },
+          { id: 'bkout_stage_2x', columnKey: 'stage_label', operator: 'starts_with' as const, valueSource: 'literal' as const, value: '2' },
+          { id: 'bkout_perf5d_pos', columnKey: 'perf_5d', operator: 'gt' as const, valueSource: 'literal' as const, value: '0' },
+          { id: 'bkout_rs_pos', columnKey: 'rs_mansfield_pct', operator: 'gt' as const, valueSource: 'literal' as const, value: '0' },
+          { id: 'bkout_price_gt_sma50', columnKey: 'current_price', operator: 'gt' as const, valueSource: 'column' as const, valueColumnKey: 'sma_50' },
         ],
       },
     },
-  ],
-    []);
+    {
+      label: 'Pullback Buy Zone',
+      filters: {
+        conjunction: 'AND' as const,
+        rules: [
+          { id: 'pull_stage_2x', columnKey: 'stage_label', operator: 'starts_with' as const, valueSource: 'literal' as const, value: '2' },
+          { id: 'pull_perf5d_range', columnKey: 'perf_5d', operator: 'between' as const, valueSource: 'literal' as const, value: '-4', valueTo: '2' },
+          { id: 'pull_rs_pos', columnKey: 'rs_mansfield_pct', operator: 'gt' as const, valueSource: 'literal' as const, value: '0' },
+          { id: 'pull_price_gt_sma50', columnKey: 'current_price', operator: 'gt' as const, valueSource: 'column' as const, valueColumnKey: 'sma_50' },
+        ],
+      },
+    },
+    {
+      label: 'RS Leaders',
+      filters: {
+        conjunction: 'AND' as const,
+        rules: [
+          { id: 'rsl_rs_gt_3', columnKey: 'rs_mansfield_pct', operator: 'gt' as const, valueSource: 'literal' as const, value: '3' },
+          { id: 'rsl_price_gt_sma200', columnKey: 'current_price', operator: 'gt' as const, valueSource: 'column' as const, valueColumnKey: 'sma_200' },
+        ],
+      },
+    },
+    {
+      label: 'Stage 1 Base Building',
+      filters: {
+        conjunction: 'AND' as const,
+        rules: [
+          { id: 'base_stage_1', columnKey: 'stage_label', operator: 'equals' as const, valueSource: 'literal' as const, value: '1' },
+          { id: 'base_range52w_lt_30', columnKey: 'range_pos_52w', operator: 'lt' as const, valueSource: 'literal' as const, value: '30' },
+        ],
+      },
+    },
+    {
+      label: 'Distribution Warning',
+      filters: {
+        conjunction: 'AND' as const,
+        rules: [
+          { id: 'dist_stage_3', columnKey: 'stage_label', operator: 'equals' as const, valueSource: 'literal' as const, value: '3' },
+          { id: 'dist_rs_neg', columnKey: 'rs_mansfield_pct', operator: 'lt' as const, valueSource: 'literal' as const, value: '0' },
+        ],
+      },
+    },
+    {
+      label: 'Stage 4 Decline',
+      filters: {
+        conjunction: 'AND' as const,
+        rules: [
+          { id: 'decl_stage_4', columnKey: 'stage_label', operator: 'equals' as const, valueSource: 'literal' as const, value: '4' },
+          { id: 'decl_price_lt_sma50', columnKey: 'current_price', operator: 'lt' as const, valueSource: 'column' as const, valueColumnKey: 'sma_50' },
+          { id: 'decl_price_lt_sma200', columnKey: 'current_price', operator: 'lt' as const, valueSource: 'column' as const, valueColumnKey: 'sma_200' },
+        ],
+      },
+    },
+  ], []);
 
   const deepLinkFilters = React.useMemo<FilterGroup | undefined>(() => {
     const params = new URLSearchParams(location.search || '');
@@ -569,7 +517,12 @@ const MarketTracked: React.FC = () => {
         momentum: 'Momentum Trend (Clean)',
         giants: 'Giants Waking Up (Large Cap Trend)',
         squeeze: 'Short-Term Squeeze (Range + ATR)',
-        bullish: 'Bullish Trend Day',
+        breakout: 'Breakout Watch',
+        pullback: 'Pullback Buy Zone',
+        rs_leaders: 'RS Leaders',
+        base: 'Stage 1 Base Building',
+        distribution: 'Distribution Warning',
+        decline: 'Stage 4 Decline',
       };
       const label = map[preset];
       if (label) {
@@ -598,45 +551,48 @@ const MarketTracked: React.FC = () => {
   }, [rows, etfOnly]);
 
   return (
-    <Box p={4}>
-      <HStack justify="space-between" align="end" mb={3} flexWrap="wrap" gap={2}>
-        <Box>
-          <Heading size="md">Market Tracked</Heading>
-          <Text color="fg.muted" fontSize="sm">
-            Tracked symbols with technical indicators. Use presets or custom filters to find setups.
-          </Text>
-          <Text color="fg.muted" fontSize="xs">
-            Indicators are computed from daily OHLCV and the SPY benchmark. Sector/industry come from fundamentals.
-          </Text>
-        </Box>
-        <HStack gap={2}>
-          <Button
-            size="xs"
-            variant={etfOnly ? 'solid' : 'outline'}
-            onClick={() => setEtfOnly((prev) => !prev)}
-          >
-            ETFs Only
-          </Button>
-          <Badge variant="subtle">{tableRows.length} rows</Badge>
+    <ChartContext.Provider value={openChart}>
+      <Box p={4}>
+        <HStack justify="space-between" align="end" mb={3} flexWrap="wrap" gap={2}>
+          <Box>
+            <Heading size="md">Market Tracked</Heading>
+            <Text color="fg.muted" fontSize="sm">
+              Tracked symbols with technical indicators. Use presets or custom filters to find setups.
+            </Text>
+            <Text color="fg.muted" fontSize="xs">
+              Indicators are computed from daily OHLCV and the SPY benchmark. Sector/industry come from fundamentals.
+            </Text>
+          </Box>
+          <HStack gap={2}>
+            <Button
+              size="xs"
+              variant={etfOnly ? 'solid' : 'outline'}
+              onClick={() => setEtfOnly((prev) => !prev)}
+            >
+              ETFs Only
+            </Button>
+            <Badge variant="subtle">{tableRows.length} rows</Badge>
+          </HStack>
         </HStack>
-      </HStack>
 
-      <Box w="full" borderWidth="1px" borderColor="border.subtle" borderRadius="xl" bg="bg.card">
-        <SortableTable
-          key={`${location.search || 'tracked-default'}-${etfOnly ? 'etf' : 'all'}`}
-          data={tableRows}
-          columns={columns}
-          defaultSortBy="symbol"
-          defaultSortOrder="asc"
-          maxHeight="70vh"
-          filtersEnabled
-          filterPresets={filterPresets}
-          initialFilters={deepLinkFilters}
-          initialFiltersOpen={!etfOnlyDeepLink}
-          emptyMessage={loading ? 'Loading…' : 'No tracked symbols yet.'}
-        />
+        <Box w="full" borderWidth="1px" borderColor="border.subtle" borderRadius="xl" bg="bg.card">
+          <SortableTable
+            key={`${location.search || 'tracked-default'}-${etfOnly ? 'etf' : 'all'}`}
+            data={tableRows}
+            columns={columns}
+            defaultSortBy="symbol"
+            defaultSortOrder="asc"
+            maxHeight="70vh"
+            filtersEnabled
+            filterPresets={filterPresets}
+            initialFilters={deepLinkFilters}
+            initialFiltersOpen={!etfOnlyDeepLink}
+            emptyMessage={loading ? 'Loading…' : 'No tracked symbols yet.'}
+          />
+        </Box>
       </Box>
-    </Box>
+      <ChartSlidePanel symbol={chartSymbol} onClose={() => setChartSymbol(null)} />
+    </ChartContext.Provider>
   );
 };
 

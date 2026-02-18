@@ -37,6 +37,20 @@ class _SummaryRow:
     sma_200: float | None = None
     atrx_sma_21: float | None = None
     atrx_sma_50: float | None = None
+    range_pos_52w: float | None = None
+    rsi: float | None = None
+    pe_ttm: float | None = None
+    eps_growth_yoy: float | None = None
+    revenue_growth_yoy: float | None = None
+    next_earnings: datetime | None = None
+    td_buy_setup: int | None = None
+    td_sell_setup: int | None = None
+    td_buy_countdown: int | None = None
+    td_sell_countdown: int | None = None
+    td_perfect_buy: bool | None = None
+    td_perfect_sell: bool | None = None
+    gaps_unfilled_up: int | None = None
+    gaps_unfilled_down: int | None = None
 
 
 class MarketDashboardService:
@@ -114,6 +128,20 @@ class MarketDashboardService:
                     sma_200=_coalesce(getattr(r, "sma_200", None), getattr(h, "sma_200", None)),
                     atrx_sma_21=_coalesce(getattr(r, "atrx_sma_21", None), getattr(h, "atrx_sma_21", None)),
                     atrx_sma_50=_coalesce(getattr(r, "atrx_sma_50", None), getattr(h, "atrx_sma_50", None)),
+                    range_pos_52w=_coalesce(getattr(r, "range_pos_52w", None), getattr(h, "range_pos_52w", None)),
+                    rsi=getattr(r, "rsi", None),
+                    pe_ttm=getattr(r, "pe_ttm", None),
+                    eps_growth_yoy=getattr(r, "eps_growth_yoy", None),
+                    revenue_growth_yoy=getattr(r, "revenue_growth_yoy", None),
+                    next_earnings=getattr(r, "next_earnings", None),
+                    td_buy_setup=getattr(r, "td_buy_setup", None),
+                    td_sell_setup=getattr(r, "td_sell_setup", None),
+                    td_buy_countdown=getattr(r, "td_buy_countdown", None),
+                    td_sell_countdown=getattr(r, "td_sell_countdown", None),
+                    td_perfect_buy=getattr(r, "td_perfect_buy", None),
+                    td_perfect_sell=getattr(r, "td_perfect_sell", None),
+                    gaps_unfilled_up=getattr(r, "gaps_unfilled_up", None),
+                    gaps_unfilled_down=getattr(r, "gaps_unfilled_down", None),
                 )
             )
         return tracked, out, plan_map
@@ -200,6 +228,208 @@ class MarketDashboardService:
             return None
         return (float(current_price) - float(sma)) / float(atr)
 
+    def _build_range_histogram(self, rows: list[_SummaryRow]) -> list[dict[str, Any]]:
+        bins = [0] * 10
+        for r in rows:
+            v = r.range_pos_52w
+            if not isinstance(v, (int, float)):
+                continue
+            idx = min(int(float(v) / 10), 9)
+            idx = max(0, idx)
+            bins[idx] += 1
+        return [
+            {"bin": f"{i * 10}-{(i + 1) * 10}%", "count": bins[i]}
+            for i in range(10)
+        ]
+
+    def _build_breadth_series(self, db: Session, tracked: list[str]) -> list[dict[str, Any]]:
+        from datetime import timedelta
+
+        if not tracked:
+            return []
+
+        cutoff = datetime.utcnow() - timedelta(days=120)
+        history = (
+            db.query(
+                MarketSnapshotHistory.as_of_date,
+                MarketSnapshotHistory.symbol,
+                MarketSnapshotHistory.current_price,
+                MarketSnapshotHistory.sma_50,
+                MarketSnapshotHistory.sma_200,
+            )
+            .filter(
+                MarketSnapshotHistory.analysis_type == "technical_snapshot",
+                MarketSnapshotHistory.symbol.in_(tracked),
+                MarketSnapshotHistory.as_of_date >= cutoff.date(),
+            )
+            .order_by(MarketSnapshotHistory.as_of_date.asc())
+            .all()
+        )
+
+        from collections import defaultdict as _dd
+        by_date: dict[str, list[tuple]] = _dd(list)
+        for row in history:
+            dt_str = str(row.as_of_date)
+            by_date[dt_str].append((row.current_price, row.sma_50, row.sma_200))
+
+        series = []
+        for dt_str in sorted(by_date.keys()):
+            entries = by_date[dt_str]
+            total = len(entries)
+            above_50 = sum(
+                1 for p, s50, _ in entries
+                if isinstance(p, (int, float)) and isinstance(s50, (int, float)) and p > s50
+            )
+            above_200 = sum(
+                1 for p, _, s200 in entries
+                if isinstance(p, (int, float)) and isinstance(s200, (int, float)) and p > s200
+            )
+            series.append({
+                "date": dt_str,
+                "above_sma50_pct": round(above_50 / total * 100, 1) if total else 0,
+                "above_sma200_pct": round(above_200 / total * 100, 1) if total else 0,
+                "total": total,
+            })
+        return series
+
+    def _build_rrg_sectors(self, rows: list[_SummaryRow]) -> list[dict[str, Any]]:
+        row_by_symbol = {r.symbol: r for r in rows}
+        result = []
+        for sym in SECTOR_ETF_SYMBOLS_ORDER:
+            candidates = SECTOR_ETF_PROXY_SYMBOLS.get(sym, [sym])
+            row = next((row_by_symbol.get(c) for c in candidates if row_by_symbol.get(c)), None)
+            if not row:
+                continue
+            rs = row.rs_mansfield_pct
+            perf5 = row.perf_5d
+            if not isinstance(rs, (int, float)):
+                continue
+            rs_ratio = float(rs)
+            rs_momentum = float(perf5) if isinstance(perf5, (int, float)) else 0.0
+            result.append({
+                "symbol": sym,
+                "name": SECTOR_ETF_DISPLAY_NAMES.get(sym, sym),
+                "rs_ratio": round(rs_ratio, 2),
+                "rs_momentum": round(rs_momentum, 2),
+            })
+        return result
+
+    def _build_upcoming_earnings(self, rows: list[_SummaryRow]) -> list[dict[str, Any]]:
+        from datetime import timedelta
+        now = datetime.utcnow()
+        horizon = now + timedelta(days=7)
+        result = []
+        for r in rows:
+            if not isinstance(r.next_earnings, datetime):
+                continue
+            if now <= r.next_earnings <= horizon:
+                result.append({
+                    "symbol": r.symbol,
+                    "next_earnings": r.next_earnings.isoformat(),
+                    "stage_label": r.stage_label,
+                    "rs_mansfield_pct": r.rs_mansfield_pct,
+                    "sector": r.sector,
+                })
+        return sorted(result, key=lambda x: x["next_earnings"])
+
+    def _build_fundamental_leaders(self, rows: list[_SummaryRow]) -> list[dict[str, Any]]:
+        scored = []
+        for r in rows:
+            eps = r.eps_growth_yoy
+            rs = r.rs_mansfield_pct
+            if not isinstance(eps, (int, float)) or not isinstance(rs, (int, float)):
+                continue
+            composite = round(0.5 * float(eps) + 0.5 * float(rs), 2)
+            scored.append({
+                "symbol": r.symbol,
+                "eps_growth_yoy": round(float(eps), 2),
+                "rs_mansfield_pct": round(float(rs), 2),
+                "pe_ttm": round(float(r.pe_ttm), 2) if isinstance(r.pe_ttm, (int, float)) else None,
+                "stage_label": r.stage_label,
+                "sector": r.sector,
+                "composite_score": composite,
+            })
+        return sorted(scored, key=lambda x: x["composite_score"], reverse=True)[:10]
+
+    def _build_rsi_divergences(self, rows: list[_SummaryRow]) -> dict[str, list[dict[str, Any]]]:
+        bearish = []
+        bullish = []
+        for r in rows:
+            perf20 = r.perf_20d
+            rsi = r.rsi
+            if not isinstance(perf20, (int, float)) or not isinstance(rsi, (int, float)):
+                continue
+            if float(perf20) > 5 and float(rsi) < 50:
+                bearish.append({
+                    "symbol": r.symbol,
+                    "perf_20d": round(float(perf20), 1),
+                    "rsi": round(float(rsi), 1),
+                    "stage_label": r.stage_label,
+                    "sector": r.sector,
+                })
+            elif float(perf20) < -5 and float(rsi) > 50:
+                bullish.append({
+                    "symbol": r.symbol,
+                    "perf_20d": round(float(perf20), 1),
+                    "rsi": round(float(rsi), 1),
+                    "stage_label": r.stage_label,
+                    "sector": r.sector,
+                })
+        bearish.sort(key=lambda x: x["perf_20d"], reverse=True)
+        bullish.sort(key=lambda x: x["perf_20d"])
+        return {"bearish": bearish[:10], "bullish": bullish[:10]}
+
+    def _build_td_signals(self, rows: list[_SummaryRow]) -> list[dict[str, Any]]:
+        result = []
+        for r in rows:
+            signals = []
+            if isinstance(r.td_buy_setup, int) and r.td_buy_setup >= 9:
+                signals.append("Buy Setup 9")
+            if isinstance(r.td_sell_setup, int) and r.td_sell_setup >= 9:
+                signals.append("Sell Setup 9")
+            if isinstance(r.td_buy_countdown, int) and r.td_buy_countdown >= 13:
+                signals.append("Buy Countdown 13")
+            if isinstance(r.td_sell_countdown, int) and r.td_sell_countdown >= 13:
+                signals.append("Sell Countdown 13")
+            if r.td_perfect_buy:
+                signals.append("Perfect Buy")
+            if r.td_perfect_sell:
+                signals.append("Perfect Sell")
+            if signals:
+                result.append({
+                    "symbol": r.symbol,
+                    "signals": signals,
+                    "stage_label": r.stage_label,
+                    "perf_1d": r.perf_1d,
+                    "sector": r.sector,
+                })
+        result.sort(
+            key=lambda x: (
+                len(x["signals"]),
+                abs(float(x.get("perf_1d") or 0)),
+            ),
+            reverse=True,
+        )
+        return result[:30]
+
+    def _build_gap_leaders(self, rows: list[_SummaryRow]) -> list[dict[str, Any]]:
+        result = []
+        for r in rows:
+            up = r.gaps_unfilled_up if isinstance(r.gaps_unfilled_up, int) else 0
+            down = r.gaps_unfilled_down if isinstance(r.gaps_unfilled_down, int) else 0
+            total = up + down
+            if total <= 0:
+                continue
+            result.append({
+                "symbol": r.symbol,
+                "gaps_up": up,
+                "gaps_down": down,
+                "total_gaps": total,
+                "stage_label": r.stage_label,
+                "sector": r.sector,
+            })
+        return sorted(result, key=lambda x: x["total_gaps"], reverse=True)[:10]
+
     def _build_metric_rankings(self, rows: list[_SummaryRow]) -> dict[str, dict[str, list[dict[str, Any]]]]:
         def _entries(metric_name: str, value_getter) -> list[dict[str, Any]]:
             values = []
@@ -235,26 +465,35 @@ class MarketDashboardService:
         tracked_count = len(tracked)
         snapshot_count = len(rows)
 
+        empty_payload: dict[str, Any] = {
+            "generated_at": datetime.utcnow().isoformat(),
+            "tracked_count": 0,
+            "snapshot_count": 0,
+            "coverage": None,
+            "regime": {},
+            "leaders": [],
+            "setups": {"breakout_candidates": [], "pullback_candidates": [], "rs_leaders": []},
+            "sector_momentum": [],
+            "action_queue": [],
+            "entry_proximity_top": [],
+            "exit_proximity_top": [],
+            "sector_etf_table": [],
+            "entering_stage_2a": [],
+            "entering_stage_3": [],
+            "entering_stage_4": [],
+            "top10_matrix": {},
+            "bottom10_matrix": {},
+            "range_histogram": [],
+            "breadth_series": [],
+            "rrg_sectors": [],
+            "upcoming_earnings": [],
+            "fundamental_leaders": [],
+            "rsi_divergences": {"bearish": [], "bullish": []},
+            "td_signals": [],
+            "gap_leaders": [],
+        }
         if tracked_count == 0:
-            return {
-                "generated_at": datetime.utcnow().isoformat(),
-                "tracked_count": 0,
-                "snapshot_count": 0,
-                "coverage": None,
-                "regime": {},
-                "leaders": [],
-                "setups": {"breakout_candidates": [], "pullback_candidates": [], "rs_leaders": []},
-                "sector_momentum": [],
-                "action_queue": [],
-                "entry_proximity_top": [],
-                "exit_proximity_top": [],
-                "sector_etf_table": [],
-                "entering_stage_2a": [],
-                "entering_stage_3": [],
-                "entering_stage_4": [],
-                "top10_matrix": {},
-                "bottom10_matrix": {},
-            }
+            return empty_payload
 
         stage_counts: dict[str, int] = defaultdict(int)
         up_1d = 0
@@ -349,13 +588,24 @@ class MarketDashboardService:
             reverse=True,
         )[:10]
 
-        action_queue = [
-            self._to_item(r)
-            for r in rows
+        def _aq_urgency(r: _SummaryRow) -> float:
+            score = 0.0
+            if r.previous_stage_label and r.previous_stage_label != r.stage_label:
+                score += 10.0
+            if self._is_num(r.perf_1d):
+                score += abs(float(r.perf_1d or 0.0))
+            if self._is_num(r.rs_mansfield_pct):
+                score += abs(float(r.rs_mansfield_pct or 0.0)) * 0.5
+            return score
+
+        aq_candidates = [
+            r for r in rows
             if (r.previous_stage_label and r.previous_stage_label != r.stage_label)
             or (self._is_num(r.perf_1d) and abs(float(r.perf_1d or 0.0)) >= 3.0)
             or (self._is_num(r.rs_mansfield_pct) and abs(float(r.rs_mansfield_pct or 0.0)) >= 6.0)
-        ][:20]
+        ]
+        aq_candidates.sort(key=_aq_urgency, reverse=True)
+        action_queue = [self._to_item(r) for r in aq_candidates[:30]]
 
         stage_counts_normalized = {
             "1": 0,
@@ -476,6 +726,15 @@ class MarketDashboardService:
 
         matrix = self._build_metric_rankings(rows)
 
+        range_histogram = self._build_range_histogram(rows)
+        breadth_series = self._build_breadth_series(db, tracked)
+        rrg_sectors = self._build_rrg_sectors(rows)
+        upcoming_earnings = self._build_upcoming_earnings(rows)
+        fundamental_leaders = self._build_fundamental_leaders(rows)
+        rsi_divergences = self._build_rsi_divergences(rows)
+        td_signals = self._build_td_signals(rows)
+        gap_leaders = self._build_gap_leaders(rows)
+
         md_svc = MarketDataService()
         coverage = md_svc.coverage.build_coverage_response(
             db,
@@ -519,4 +778,12 @@ class MarketDashboardService:
             "entering_stage_4": entering_stage_4,
             "top10_matrix": {k: v.get("top", []) for k, v in matrix.items()},
             "bottom10_matrix": {k: v.get("bottom", []) for k, v in matrix.items()},
+            "range_histogram": range_histogram,
+            "breadth_series": breadth_series,
+            "rrg_sectors": rrg_sectors,
+            "upcoming_earnings": upcoming_earnings,
+            "fundamental_leaders": fundamental_leaders,
+            "rsi_divergences": rsi_divergences,
+            "td_signals": td_signals,
+            "gap_leaders": gap_leaders,
         }

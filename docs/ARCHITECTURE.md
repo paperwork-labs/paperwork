@@ -35,15 +35,14 @@ System overview
 
 Scheduling Architecture
 -----------------------
-- Celery provides the workers (execution) and Beat provides periodic scheduling.
-- RedBeat is a Redis-backed scheduler for Celery Beat – it does not replace Celery. It replaces the static, code-defined Beat schedule with a dynamic schedule persisted in Redis.
-- We keep a small bootstrap `beat_schedule` in code (defaults) so a new environment has a sensible starting schedule; on startup the system can seed RedBeat from a job catalog when the store is empty.
-- Admin UI (Settings → Admin → Schedules) interacts with an admin API to list/create/delete schedules in RedBeat with timezone-aware cron strings.
-- Execution path:
-  1. A schedule entry (RedBeat) triggers a task at the specified cron time (in its timezone).
-  2. Celery routes the task to the appropriate worker queue.
-  3. Tasks write a `JobRun` row and Redis last-run status; failures/slow runs can notify Discord and surface in KPIs.
-- Market data jobs are universal (update tracked, backfills, indicators, history); account jobs (IBKR/TastyTrade syncs) are separate. Code defaults are grouped for clarity and UI displays them by group.
+- **Source of truth**: The `cron_schedule` table in PostgreSQL holds all schedule definitions. On first access, schedules are auto-seeded from `backend/tasks/job_catalog.py` which defines default jobs (market data, accounts, maintenance groups).
+- **Admin CRUD**: The Admin UI (Admin → Schedules) provides full create/read/update/delete operations on schedules, including inline cron editing, pause/resume toggles, and a history audit trail (`cron_schedule_audit` table).
+- **Render API Sync**: In production, the "Sync to Render" action (also run automatically on deploy) calls the Render REST API to create/update/delete Render Cron Jobs to match the DB state. The `render.yaml` only defines the web service, worker, and database — cron jobs are managed dynamically.
+- **Execution path**:
+  1. Render Cron Jobs invoke the task HTTP trigger at scheduled times.
+  2. Celery routes the task to the worker queue.
+  3. Tasks write a `JobRun` row and Redis last-run status; failures surface in Admin Dashboard health KPIs.
+- **Job groups**: Market data (update tracked, backfills, indicators, snapshots), accounts (IBKR/TastyTrade syncs), and maintenance (audit, cleanup). The UI displays them by group with friendly labels.
 
 Broker Data Strategy
 --------------------
@@ -57,7 +56,8 @@ Data Flow
 1) Startup: create tables; optional account seeding (env-driven only).
 2) Sync: FlexQuery comprehensive sync writes authoritative rows; live overlay updates prices/positions only.
 3) Market data: provider-prioritized OHLCV fetch (FMP→TwelveData→yfinance), Redis caching, local indicator compute (pandas/numpy), snapshot persistence, scheduled backfills and history.
-4) API: backend serves portfolio endpoints; frontend is read-only except trade execution paths.
+4) Market Dashboard pipeline: `MarketDashboardService.build_dashboard()` aggregates `MarketSnapshot` rows into regime analysis, sector ETF table, breadth time series, Relative Rotation Graph (RRG), 52-week range histogram, trading setups, TD Sequential signals, RSI divergences, gap analysis, fundamental leaders, upcoming earnings, and a ranked action queue. All data is read-only and computed on each request.
+5) API: backend serves portfolio and market data endpoints; frontend is read-only except trade execution paths.
 
 Security
 --------

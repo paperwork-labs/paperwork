@@ -180,6 +180,33 @@ export const system = createSystem(
               _dark: "#38BDF8",
             },
           },
+          "chart.danger": {
+            value: { _light: "#DC2626", _dark: "#F87171" },
+          },
+          "chart.success": {
+            value: { _light: "#16A34A", _dark: "#4ADE80" },
+          },
+          "chart.neutral": {
+            value: { _light: "#3B82F6", _dark: "#60A5FA" },
+          },
+          "chart.area1": {
+            value: { _light: "#16A34A", _dark: "#34D399" },
+          },
+          "chart.area2": {
+            value: { _light: "#2563EB", _dark: "#60A5FA" },
+          },
+          "chart.grid": {
+            value: { _light: "rgba(15,23,42,0.08)", _dark: "rgba(255,255,255,0.08)" },
+          },
+          "chart.axis": {
+            value: { _light: "rgba(15,23,42,0.4)", _dark: "rgba(255,255,255,0.45)" },
+          },
+          "chart.refLine": {
+            value: { _light: "rgba(15,23,42,0.2)", _dark: "rgba(255,255,255,0.2)" },
+          },
+          "chart.warning": {
+            value: { _light: "#D97706", _dark: "#FBBF24" },
+          },
         },
       },
       recipes: {

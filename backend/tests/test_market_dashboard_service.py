@@ -173,7 +173,7 @@ def test_build_dashboard_sorts_leaders_and_pullbacks_by_momentum_score(monkeypat
     service = MarketDashboardService()
     monkeypatch.setattr(service, "_fetch_rows", lambda db: (["AAA", "BBB", "ZZZ"], rows, {}))
 
-    payload = service.build_dashboard(db=None)  # type: ignore[arg-type]
+    payload = service.build_dashboard(db=_FakeDB([]))
 
     assert payload["tracked_count"] == 3
     assert payload["leaders"][0]["symbol"] == "ZZZ"
@@ -210,7 +210,7 @@ def test_build_dashboard_sector_etfs_use_configured_list_and_order(monkeypatch):
     service = MarketDashboardService()
     monkeypatch.setattr(service, "_fetch_rows", lambda db: ([r.symbol for r in rows], rows, {}))
 
-    payload = service.build_dashboard(db=None)  # type: ignore[arg-type]
+    payload = service.build_dashboard(db=_FakeDB([]))
     table = payload["sector_etf_table"]
 
     assert [r["symbol"] for r in table] == SECTOR_ETF_SYMBOLS_ORDER
@@ -261,7 +261,7 @@ def test_build_dashboard_entering_stage_2a_is_not_truncated(monkeypatch):
     service = MarketDashboardService()
     monkeypatch.setattr(service, "_fetch_rows", lambda db: ([r.symbol for r in rows], rows, {}))
 
-    payload = service.build_dashboard(db=None)  # type: ignore[arg-type]
+    payload = service.build_dashboard(db=_FakeDB([]))
     entering = payload["entering_stage_2a"]
 
     assert len(entering) == 30

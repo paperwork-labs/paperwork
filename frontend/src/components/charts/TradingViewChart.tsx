@@ -55,11 +55,8 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
   useEffect(() => {
     if (!chartRef.current) return;
 
-    chartRef.current.innerHTML = '';
-
-    const script = document.createElement('script');
-    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-    script.async = true;
+    const container = chartRef.current;
+    container.innerHTML = '';
 
     const effectiveTheme = theme ?? (colorMode === 'dark' ? 'dark' : 'light');
     const toolbarBg = effectiveTheme === 'dark'
@@ -70,7 +67,7 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
       autosize: autosize,
       width: autosize ? undefined : '100%',
       height: autosize ? undefined : height - (showHeader ? 60 : 0),
-      symbol: `NASDAQ:${symbol}`,
+      symbol: symbol,
       interval: interval,
       timezone: 'America/New_York',
       theme: effectiveTheme,
@@ -78,32 +75,44 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
       locale: 'en',
       enable_publishing: false,
       allow_symbol_change: !hideSymbolSearch,
-      calendar: false,
+      calendar: true,
       support_host: 'https://www.tradingview.com',
       show_popup_button: true,
       popup_width: '1000',
       popup_height: '650',
-      details: false,
-      hotlist: false,
-      studies: [],
+      details: true,
+      hotlist: true,
       toolbar_bg: toolbarBg,
       withdateranges: true,
       hide_side_toolbar: false,
-      datafeed: 'prod',
-      customer: import.meta.env?.VITE_TRADINGVIEW_CUSTOMER || undefined,
-      tradingview_customer: import.meta.env?.VITE_TRADINGVIEW_CUSTOMER || undefined,
     };
 
-    script.innerHTML = JSON.stringify(config);
-    chartRef.current.appendChild(script);
+    const wrapper = document.createElement('div');
+    wrapper.className = 'tradingview-widget-container';
+    wrapper.style.height = '100%';
+    wrapper.style.width = '100%';
+    const widgetDiv = document.createElement('div');
+    widgetDiv.className = 'tradingview-widget-container__widget';
+    widgetDiv.style.height = '100%';
+    widgetDiv.style.width = '100%';
+    wrapper.appendChild(widgetDiv);
+
+    const script = document.createElement('script');
+    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+    script.async = true;
+    script.type = 'text/javascript';
+    script.textContent = JSON.stringify(config);
+    wrapper.appendChild(script);
+
+    container.appendChild(wrapper);
 
     return () => {
-      if (chartRef.current) chartRef.current.innerHTML = '';
+      container.innerHTML = '';
     };
   }, [symbol, height, showHeader, interval, theme, style, hideSymbolSearch, autosize, colorMode]);
 
   const openInTradingView = () => {
-    const url = `https://www.tradingview.com/chart/?symbol=NASDAQ:${symbol}`;
+    const url = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(symbol)}`;
     window.open(url, '_blank', 'width=1200,height=800');
   };
 
