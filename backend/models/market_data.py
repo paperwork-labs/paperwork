@@ -365,3 +365,52 @@ class JobRun(Base):
         Index("idx_jobrun_status_time", "status", "started_at"),
     )
 
+
+class CronSchedule(Base):
+    """Persistent schedule definitions — single source of truth for cron jobs.
+
+    UI CRUD operates on this table; a Render API sync layer mirrors
+    enabled rows to Render cron-job services in production.
+    """
+
+    __tablename__ = "cron_schedule"
+
+    id = Column(String(100), primary_key=True)
+    display_name = Column(String(200), nullable=False)
+    group = Column(String(50), nullable=False)
+    task = Column(String(300), nullable=False)
+    description = Column(Text)
+    cron = Column(String(100), nullable=False)
+    timezone = Column(String(50), default="UTC", nullable=False)
+    args_json = Column(JSON, default=list)
+    kwargs_json = Column(JSON, default=dict)
+    enabled = Column(Boolean, default=True, nullable=False)
+
+    timeout_s = Column(Integer, default=3600)
+    singleflight = Column(Boolean, default=True)
+
+    render_service_id = Column(String(100))
+    render_synced_at = Column(DateTime(timezone=True))
+    render_sync_error = Column(Text)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(String(200))
+
+
+class CronScheduleAudit(Base):
+    """Immutable audit trail for schedule mutations."""
+
+    __tablename__ = "cron_schedule_audit"
+
+    id = Column(Integer, primary_key=True, index=True)
+    schedule_id = Column(String(100), nullable=False, index=True)
+    action = Column(String(30), nullable=False)  # created | updated | paused | resumed | deleted
+    actor = Column(String(200), nullable=False)
+    changes = Column(JSON)  # {field: {old, new}} for updates; full snapshot for create/delete
+    timestamp = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        Index("idx_audit_schedule_time", "schedule_id", "timestamp"),
+    )
+

@@ -45,8 +45,8 @@ Responsibilities by layer
 
 ## Dev world (local)
 - Use `make up` (or `./run.sh start`) to start Postgres, Redis, backend, workers, and frontend.
-- Optional: enable Celery Beat / RedBeat via `ENABLE_CELERY_BEAT=true` and `ENABLE_REDBEAT=true` in `infra/env.dev` for local scheduling.
 - Trigger any task manually with `make task-run TASK=backend.tasks.market_data_tasks.<task_name>`.
+- Use Admin > Schedules in the UI to create/edit/pause/resume schedules and trigger tasks via "Run Now".
 - Coverage refresh path: run `admin_coverage_refresh`, then check `/api/v1/market-data/coverage`.
 
 ## Persistence Model
@@ -63,8 +63,14 @@ Responsibilities by layer
 - Nightly recompute indicators for full universe (from local `price_data`)
 - Nightly history recording (`market_analysis_history`)
 - Hourly coverage-health snapshot (`admin_coverage_refresh`) caches freshness buckets + stale symbol lists in Redis so Admin → Coverage can render SLAs instantly and alert on drift.
-  - Production: provider cron (Render/Fly) calls `backend/scripts/run_task.py`
-  - Development: optional Celery Beat/RedBeat via `ENABLE_CELERY_BEAT` and `ENABLE_REDBEAT`
+
+### Schedule Management (DB + Render API)
+
+Schedules are stored in the `cron_schedule` PostgreSQL table as the single source of truth. Default schedules are defined in `backend/tasks/job_catalog.py` and seeded into the DB on deploy. The Admin > Schedules UI provides full CRUD (create, edit cron, pause, resume, delete).
+
+In production, a Render API sync layer mirrors enabled DB rows to Render cron-job services. On each deploy, the pre-deploy command runs: `seed_schedules` (insert new catalog entries) then `sync_render_crons` (create/update/delete Render cron jobs to match DB state). Changes made in the UI are synced to Render immediately.
+
+Required env vars for Render sync: `RENDER_API_KEY` and `RENDER_OWNER_ID` (set in Render Dashboard on the API service). When these are not set (local dev), the sync is a no-op.
 
 Paid mode operations
 --------------------
@@ -127,7 +133,7 @@ Notes on retention
 ## Admin Area (RBAC: admin)
 - Dashboard: freshness KPIs, last task statuses, quick actions (tracked update, backfills, recompute, record history, coverage monitor)
 - Jobs: view recent `job_run` rows with durations, counters, errors, and drill-in modal for params/counters/logs
-- Schedules: full CRUD via RedBeat with cron preview, queue/priority routing, maintenance windows, preflight hooks, export/import, pause/resume, and run-now controls (see “Scheduler Metadata & Export/Import” below)
+- Schedules: full CRUD via DB-backed API with Render API sync. Inline cron editing, pause/resume, delete, run-now, and Sync to Render button. Default jobs seeded from `job_catalog.py`.
 - Coverage: daily and 5m coverage summary, stale (>48h) lists, missing 5m table, education/hints, one-click schedule for coverage monitor
 - Tracked: view `tracked:all` and `tracked:new` (Redis), optional columns (price, ATR, stage, market cap, sector), quick actions to refresh/update/backfill (admin-only for any mutations)
 
@@ -140,7 +146,7 @@ Notes on retention
 - `POST /api/v1/market-data/admin/retention/enforce?max_days_5m=90` (admin)
 - `GET /api/v1/market-data/admin/jobs` (admin)
 - `GET /api/v1/market-data/admin/tasks` and `POST /api/v1/market-data/admin/tasks/run` (limited set; admin)
-- `GET /api/v1/admin/schedules` / `POST|PUT|DELETE /admin/schedules` / `POST /admin/schedules/import|export|pause|resume|run-now|preview` – dynamic RedBeat management with queue routing, metadata, and import/export workflows
+- `GET /api/v1/admin/schedules` / `POST|PUT|DELETE /admin/schedules/{id}` / `POST /admin/schedules/{id}/pause|resume` / `POST /admin/schedules/sync|run-now` / `GET /admin/schedules/preview` -- DB-backed schedule CRUD with Render API sync
 
 ## Coverage & Freshness (SLA)
 
@@ -170,15 +176,15 @@ Troubleshooting:
 - JobRun.counters per index include: fetched, inserted, reactivated, inactivated, provider_used, fallback_used
 - Redis meta: `index_constituents:{INDEX}:meta` stores {provider_used, fallback_used, count} for 24h
 
-## Scheduler Metadata & Export/Import
+## Schedule Architecture
 
-- `ScheduleMetadata` is persisted per RedBeat entry (`redbeat:meta:{name}`) and includes:
-  - `queue` / `priority` → passed into Celery `apply_async` for routing and QoS
-  - `dependencies`, `maintenance_windows`, `preflight_checks`, `safety` (single-flight, max concurrency, timeout, retry/backoff), `hooks` (Discord webhooks, Prometheus endpoints), audit fields (`created_by/at`, `updated_by/at`)
-- API payloads accept a `metadata` object (`ScheduleMetadataPatch`) on create/update/import; Admin UI surfaces editable fields alongside cron/args.
-- Pausing a schedule snapshots args/kwargs/metadata to `redbeat:paused:{name}`; resuming requires cron but restores the saved metadata automatically.
-- Export returns an array of schedules (name/task/cron/tz/args/kwargs/metadata) that can be versioned in git; import replays that list with audit stamping.
-- Catalog seeding writes metadata defaults for every template (e.g., `account_sync` jobs route to their queue, market-data jobs enforce single-flight + timeouts) so new environments get consistent guard rails without hand editing Redis.
+- Schedules are stored in the `cron_schedule` PostgreSQL table (single source of truth).
+- Default schedule definitions live in `backend/tasks/job_catalog.py` (`CATALOG` list) and are seeded into the DB on deploy via `backend/scripts/seed_schedules.py`.
+- The Admin Schedules UI provides full CRUD: create, inline-edit cron expressions, pause/resume, delete, and "Run Now".
+- In production, `backend/services/render_sync_service.py` mirrors enabled DB rows to Render cron-job services via the Render REST API.
+- Pre-deploy command chain: `alembic upgrade head` -> `seed_schedules` -> `sync_render_crons`.
+- Each `CronSchedule` row tracks `render_service_id`, `render_synced_at`, and `render_sync_error` for observability.
+- Pausing a schedule sets `enabled=False` in DB and suspends the Render cron service. Resuming reverses this.
 
 ### Scheduler Alerts & Prometheus Hooks
 
@@ -190,7 +196,7 @@ Troubleshooting:
 - Discord alerts render embeds with job id, duration, queue, counters, and any error snippet to the configured channels.
 - `hooks.prometheus_endpoint` can point to a Pushgateway-compatible URL. Each run writes `axiomfolio_task_duration_seconds{task="...",event="...",queue="..."} <value>` so Grafana/Prometheus alerting rules can detect spikes.
 - If no per-job hook is configured, failures still emit to the global `DISCORD_WEBHOOK_SYSTEM_STATUS` endpoint (when set) so regressions cannot go unnoticed.
-- Admin Schedules UI surfaces these fields under “Alerts & Observability,” allowing operators to wire Discord aliases, comma-separated channel lists, Prometheus endpoints, and opt-in events (slow/success) without touching Redis exports.
+- Admin Schedules UI surfaces these fields under Alerts & Observability, allowing operators to wire Discord aliases, comma-separated channel lists, Prometheus endpoints, and opt-in events (slow/success) directly in the DB-backed schedule editor.
 
 ## Coverage Health Monitor
 
@@ -221,6 +227,29 @@ Troubleshooting:
 - **Use this when**: Only a subset of symbols are stale.
 - Click **Backfill Daily (Stale Only)**
   - Calls: `POST /api/v1/market-data/admin/backfill/coverage/stale` then refreshes coverage.
+
+### Fill Missing Fundamentals
+
+- **Use this when**: Symbols in `market_snapshot` have NULL `name`, `sector`, or `industry`. This typically happens when FMP rate-limits during `recompute_indicators_universe`.
+- Click **Fill Missing Fundamentals** under Show Advanced > Maintenance.
+  - Calls: `POST /api/v1/market-data/admin/fundamentals/fill-missing`
+  - Safe to re-run; idempotent. Logs `updated`/`skipped`/`errors` counters to Admin > Jobs.
+  - If FMP rate-limits again, simply re-trigger later.
+
+### Repair Stage History
+
+- **Use this when**: Stage quality health shows monotonicity violations, or `current_stage_days`/`previous_stage_label`/`previous_stage_days` look wrong in history.
+- Click **Repair Stage History** under Show Advanced > Maintenance.
+  - Calls: `POST /api/v1/market-data/admin/stage/repair?days=120`
+  - Recomputes `current_stage_days`, `previous_stage_label`, `previous_stage_days` for the last 120 days of `market_snapshot_history`.
+  - Also syncs the latest stage run metadata to the corresponding `market_snapshot` row.
+
+### Schedule Visibility
+
+- **All environments**: Schedules are stored in the `cron_schedule` DB table. The Admin > Schedules page provides full CRUD.
+- **Production**: DB rows are synced to Render cron-job services via the Render API. The "Sync to Render" button triggers a manual sync; deploys sync automatically.
+- **Local / Dev**: Render sync is a no-op (no `RENDER_API_KEY`). Use "Run Now" to trigger tasks via Celery.
+- Default schedules (10 jobs including `audit_market_data_quality` at 02:45 UTC) are seeded from `job_catalog.py`.
 
 ### Advanced: index-only vs tracked-universe
 

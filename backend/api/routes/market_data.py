@@ -57,6 +57,7 @@ from backend.models.user import UserRole
 from backend.api.routes.utils import serialize_job_runs
 from backend.tasks.market_data_tasks import backfill_5m_last_n_days, enforce_price_data_retention, backfill_5m_for_symbols
 from backend.tasks.market_data_tasks import monitor_coverage_health
+from backend.tasks.market_data_tasks import fill_missing_snapshot_fundamentals
 from backend.tasks.market_data_tasks import bootstrap_daily_coverage_tracked
 from backend.tasks.market_data_tasks import backfill_stale_daily_tracked
 from backend.config import settings
@@ -1133,6 +1134,13 @@ async def admin_repair_stage_history(
 ) -> Dict[str, Any]:
     svc = MarketDataService()
     return svc.repair_stage_history_window(db, days=days, symbol=symbol)
+
+
+@router.post("/admin/fundamentals/fill-missing")
+async def admin_fill_missing_fundamentals(
+    admin_user: User = Depends(get_admin_user),
+) -> Dict[str, Any]:
+    return _enqueue_task(fill_missing_snapshot_fundamentals)
 
 
 @router.get("/admin/jobs")

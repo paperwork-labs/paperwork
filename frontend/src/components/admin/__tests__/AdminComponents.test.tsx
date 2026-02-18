@@ -200,18 +200,63 @@ describe('AdminRunbook', () => {
     expect(screen.getByText(/All systems healthy/)).toBeTruthy();
   });
 
-  it('shows remediation for RED dimensions', async () => {
+  it('shows remediation steps for RED dimensions', async () => {
     const user = userEvent.setup();
     renderWithProviders(<AdminRunbook health={MOCK_HEALTH} />);
     const header = screen.getByText(/Runbook.*1 issue/);
     expect(header).toBeTruthy();
     await user.click(header);
     expect(screen.getByText(/One or more background jobs have failed/)).toBeTruthy();
-    expect(screen.getByText(/Settings > Admin > Jobs/)).toBeTruthy();
+    expect(screen.getByText(/Admin > Jobs/)).toBeTruthy();
   });
 
   it('renders nothing when health is null', () => {
     renderWithProviders(<AdminRunbook health={null} />);
     expect(screen.queryByText(/Runbook/)).toBeNull();
+  });
+
+  it('shows contextual "Repair Stage History" step when monotonicity is red', async () => {
+    const user = userEvent.setup();
+    const stageRedHealth: AdminHealthResponse = {
+      ...MOCK_HEALTH,
+      dimensions: {
+        ...MOCK_HEALTH.dimensions,
+        jobs: { ...MOCK_HEALTH.dimensions.jobs, status: 'green' },
+        stage_quality: {
+          ...MOCK_HEALTH.dimensions.stage_quality,
+          status: 'red',
+          monotonicity_issues: 5,
+          unknown_rate: 0.01,
+          invalid_count: 0,
+        },
+      },
+    };
+    renderWithProviders(<AdminRunbook health={stageRedHealth} />);
+    const header = screen.getByText(/Runbook.*1 issue/);
+    await user.click(header);
+    expect(screen.getByText(/Repair Stage History/)).toBeTruthy();
+    expect(screen.getByText(/day-counter gaps/)).toBeTruthy();
+  });
+
+  it('shows metric badges inline with values', async () => {
+    const user = userEvent.setup();
+    const auditRedHealth: AdminHealthResponse = {
+      ...MOCK_HEALTH,
+      dimensions: {
+        ...MOCK_HEALTH.dimensions,
+        jobs: { ...MOCK_HEALTH.dimensions.jobs, status: 'green' },
+        audit: {
+          ...MOCK_HEALTH.dimensions.audit,
+          status: 'red',
+          daily_fill_pct: 80.0,
+          snapshot_fill_pct: 70.0,
+        },
+      },
+    };
+    renderWithProviders(<AdminRunbook health={auditRedHealth} />);
+    const header = screen.getByText(/Runbook.*1 issue/);
+    await user.click(header);
+    expect(screen.getByText(/Daily fill: 80\.0%/)).toBeTruthy();
+    expect(screen.getByText(/Snapshot fill: 70\.0%/)).toBeTruthy();
   });
 });

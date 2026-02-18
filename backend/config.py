@@ -80,9 +80,15 @@ class Settings(BaseSettings):
     RATE_LIMIT_DEFAULT: str = "100/minute"
     RATE_LIMIT_STORAGE_URL: Optional[str] = None
 
-    # Celery scheduling (disable beat in production; use provider cron)
+    # Deprecated toggles (no longer functional). Kept for backward-compat only.
+    # DB + Render API sync is now the schedule source-of-truth.
     ENABLE_CELERY_BEAT: bool = False
     ENABLE_REDBEAT: bool = False
+
+    # Render API (schedule sync — production only)
+    RENDER_API_KEY: Optional[str] = None
+    RENDER_OWNER_ID: Optional[str] = None
+    RENDER_REPO_URL: str = "https://github.com/sankalp404/axiomfolio.git"
 
     # Admin seeding (development convenience)
     ADMIN_USERNAME: Optional[str] = None

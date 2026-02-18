@@ -6,16 +6,13 @@ services:
     dockerfilePath: ./Dockerfile.backend
     healthCheckPath: /health
     autoDeploy: true
+    preDeployCommand: "bash -c 'set -e && alembic -c backend/alembic.ini upgrade head && python -m backend.scripts.seed_schedules && python -m backend.scripts.sync_render_crons'"
     envVars:
       - key: ENVIRONMENT
         value: production
       - key: SECRET_KEY
         generateValue: true
       - key: AUTO_MIGRATE_ON_STARTUP
-        value: "false"
-      - key: ENABLE_CELERY_BEAT
-        value: "false"
-      - key: ENABLE_REDBEAT
         value: "false"
       - key: LOG_FORMAT
         value: json
@@ -95,125 +92,9 @@ services:
     plan: starter
     ipAllowList: []
 
-  - type: cron
-    name: ibkr-daily-flex-sync
-    runtime: docker
-    schedule: "15 2 * * *"
-    dockerfilePath: ./Dockerfile.backend
-    autoDeploy: false
-    envVars:
-      - key: ENVIRONMENT
-        value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: axiomfolio-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: axiomfolio-redis
-          property: connectionString
-      - key: CELERY_BROKER_URL
-        fromService:
-          type: keyvalue
-          name: axiomfolio-redis
-          property: connectionString
-      - key: CELERY_RESULT_BACKEND
-        fromService:
-          type: keyvalue
-          name: axiomfolio-redis
-          property: connectionString
-    dockerCommand: python -m backend.scripts.run_task backend.tasks.account_sync.sync_all_ibkr_accounts
-
-  - type: cron
-    name: admin_coverage_backfill
-    runtime: docker
-    schedule: "0 3 * * *"
-    dockerfilePath: ./Dockerfile.backend
-    autoDeploy: false
-    envVars:
-      - key: ENVIRONMENT
-        value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: axiomfolio-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: axiomfolio-redis
-          property: connectionString
-      - key: CELERY_BROKER_URL
-        fromService:
-          type: keyvalue
-          name: axiomfolio-redis
-          property: connectionString
-      - key: CELERY_RESULT_BACKEND
-        fromService:
-          type: keyvalue
-          name: axiomfolio-redis
-          property: connectionString
-    dockerCommand: python -m backend.scripts.run_task backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked
-
-  - type: cron
-    name: admin_coverage_refresh
-    runtime: docker
-    schedule: "0 * * * *"
-    dockerfilePath: ./Dockerfile.backend
-    autoDeploy: false
-    envVars:
-      - key: ENVIRONMENT
-        value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: axiomfolio-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: axiomfolio-redis
-          property: connectionString
-      - key: CELERY_BROKER_URL
-        fromService:
-          type: keyvalue
-          name: axiomfolio-redis
-          property: connectionString
-      - key: CELERY_RESULT_BACKEND
-        fromService:
-          type: keyvalue
-          name: axiomfolio-redis
-          property: connectionString
-    dockerCommand: python -m backend.scripts.run_task backend.tasks.market_data_tasks.monitor_coverage_health
-
-  - type: cron
-    name: admin_retention_enforce
-    runtime: docker
-    schedule: "0 4 * * *"
-    dockerfilePath: ./Dockerfile.backend
-    autoDeploy: false
-    envVars:
-      - key: ENVIRONMENT
-        value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: axiomfolio-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: axiomfolio-redis
-          property: connectionString
-      - key: CELERY_BROKER_URL
-        fromService:
-          type: keyvalue
-          name: axiomfolio-redis
-          property: connectionString
-      - key: CELERY_RESULT_BACKEND
-        fromService:
-          type: keyvalue
-          name: axiomfolio-redis
-          property: connectionString
-    dockerCommand: python -m backend.scripts.run_task backend.tasks.market_data_tasks.enforce_price_data_retention
+  # Cron jobs are managed dynamically via the Render API.
+  # The Admin Schedules UI (DB + Render sync) is the source of truth.
+  # Default schedules are seeded from backend/tasks/job_catalog.py on deploy.
 
 databases:
   - name: axiomfolio-db

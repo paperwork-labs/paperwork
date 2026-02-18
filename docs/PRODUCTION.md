@@ -84,8 +84,8 @@ Render cron defaults (UTC):
 4. Data updates land in Postgres; status is recorded in JobRun.
 
 ### Dev vs prod behavior
-- **Production:** `ENABLE_CELERY_BEAT=false` and `ENABLE_REDBEAT=false` (cron-only scheduling).
-- **Development:** keep beat enabled for convenience (`ENABLE_CELERY_BEAT=true`, `ENABLE_REDBEAT=true`).
+- **Production:** Schedules are stored in PostgreSQL (`cron_schedule` table) and synced to Render cron-job services via the Render API. Set `RENDER_API_KEY` and `RENDER_OWNER_ID` on the API service.
+- **Development:** Same DB-backed schedules, but Render sync is a no-op. Use "Run Now" in Admin > Schedules to trigger tasks manually.
 
 ## Admin access bootstrap
 To create the first admin user in production:
@@ -97,7 +97,7 @@ Admin-only endpoints (all `/api/v1/market-data/admin/*` plus task triggers like 
 
 ## Backups
 - Postgres: enable provider backups and periodic exports.
-- Redis: if used for caching only, persistence can be lower priority; for RedBeat, ensure persistence.
+- Redis: used for caching and Celery broker; persistence is lower priority since schedules are now DB-backed.
 
 ## Scaling
 - Scale API based on latency and request rate.

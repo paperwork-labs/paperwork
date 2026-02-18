@@ -250,6 +250,8 @@ class MarketDashboardService:
                 "exit_proximity_top": [],
                 "sector_etf_table": [],
                 "entering_stage_2a": [],
+                "entering_stage_3": [],
+                "entering_stage_4": [],
                 "top10_matrix": {},
                 "bottom10_matrix": {},
             }
@@ -381,6 +383,32 @@ class MarketDashboardService:
             and self._normalize_stage_label(r.previous_stage_label) != "2A"
         ]
 
+        entering_stage_3 = [
+            {
+                "symbol": r.symbol,
+                "previous_stage_label": r.previous_stage_label,
+                "stage_label": r.stage_label,
+                "current_stage_days": r.current_stage_days,
+                "perf_1d": r.perf_1d,
+            }
+            for r in rows
+            if self._normalize_stage_label(r.stage_label) == "3"
+            and self._normalize_stage_label(r.previous_stage_label) != "3"
+        ]
+
+        entering_stage_4 = [
+            {
+                "symbol": r.symbol,
+                "previous_stage_label": r.previous_stage_label,
+                "stage_label": r.stage_label,
+                "current_stage_days": r.current_stage_days,
+                "perf_1d": r.perf_1d,
+            }
+            for r in rows
+            if self._normalize_stage_label(r.stage_label) == "4"
+            and self._normalize_stage_label(r.previous_stage_label) != "4"
+        ]
+
         proximity_rows = []
         for r in rows:
             plan = plan_map.get(r.symbol)
@@ -437,6 +465,10 @@ class MarketDashboardService:
                     "symbol": configured_symbol,
                     "sector_name": SECTOR_ETF_DISPLAY_NAMES.get(configured_symbol, configured_symbol),
                     "change_1d": row.perf_1d if row else None,
+                    "change_5d": row.perf_5d if row else None,
+                    "change_20d": row.perf_20d if row else None,
+                    "rs_mansfield_pct": row.rs_mansfield_pct if row else None,
+                    "atrx_sma_50": row.atrx_sma_50 if row else None,
                     "stage_label": row.stage_label if row else None,
                     "days_in_stage": row.current_stage_days if row else None,
                 }
@@ -483,6 +515,8 @@ class MarketDashboardService:
             "exit_proximity_top": exit_proximity_top,
             "sector_etf_table": sector_etf_table,
             "entering_stage_2a": entering_stage_2a,
+            "entering_stage_3": entering_stage_3,
+            "entering_stage_4": entering_stage_4,
             "top10_matrix": {k: v.get("top", []) for k, v in matrix.items()},
             "bottom10_matrix": {k: v.get("bottom", []) for k, v in matrix.items()},
         }

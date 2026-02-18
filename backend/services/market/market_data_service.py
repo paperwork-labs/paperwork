@@ -2207,6 +2207,11 @@ class MarketDataService:
             .all()
         )
 
+        # Monotonicity validation: cal_gap==1 enforces strict consecutive-day rules.
+        # Gaps >1 calendar day are assumed to be weekends/holidays (non-trading); we
+        # relax strict +1 enforcement but still require forward progression. Multi-day
+        # market closures (e.g. long holidays) may be misclassified; a trading-calendar
+        # library would improve accuracy if needed.
         monotonicity_issues = 0
         by_symbol: Dict[str, List[tuple[datetime, Any, Any]]] = {}
         for symbol, as_of_date, stage_label, current_days in recent_rows:
@@ -2217,7 +2222,8 @@ class MarketDataService:
         for series in by_symbol.values():
             prev_norm: Optional[str] = None
             prev_days: Optional[int] = None
-            for _, stage_label, current_days in series:
+            prev_dt: Optional[datetime] = None
+            for dt, stage_label, current_days in series:
                 norm = self._normalize_stage_label(stage_label)
                 if norm is None:
                     continue
@@ -2227,13 +2233,24 @@ class MarketDataService:
                     cur_days = 0
                 if cur_days < 1:
                     monotonicity_issues += 1
-                elif prev_norm is not None and prev_days is not None:
-                    if norm == prev_norm and cur_days != prev_days + 1:
-                        monotonicity_issues += 1
-                    if norm != prev_norm and cur_days != 1:
-                        monotonicity_issues += 1
+                elif prev_norm is not None and prev_days is not None and prev_dt is not None:
+                    cal_gap = (dt - prev_dt).days if dt and prev_dt else 0
+                    if cal_gap == 1:
+                        if norm == prev_norm and cur_days != prev_days + 1:
+                            monotonicity_issues += 1
+                        if norm != prev_norm and cur_days != 1:
+                            monotonicity_issues += 1
+                    else:
+                        # Gaps >1 calendar day are treated as non-trading-day gaps
+                        # (weekends/holidays). We still require forward progression
+                        # within the same stage but avoid strict +1 enforcement.
+                        if norm == prev_norm and cur_days <= prev_days:
+                            monotonicity_issues += 1
+                        if norm != prev_norm and cur_days < 1:
+                            monotonicity_issues += 1
                 prev_norm = norm
                 prev_days = cur_days if cur_days >= 1 else None
+                prev_dt = dt
 
         known_count = total - unknown_count - invalid_stage_count
         unknown_rate = (unknown_count / total) if total else 0.0

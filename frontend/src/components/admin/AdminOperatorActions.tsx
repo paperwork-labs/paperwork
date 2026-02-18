@@ -153,6 +153,14 @@ const AdminOperatorActions: React.FC<Props> = ({
           method: 'POST',
           endpoint: '/market-data/admin/snapshots/history/record',
         },
+        admin_fundamentals_fill_missing: {
+          method: 'POST',
+          endpoint: '/market-data/admin/fundamentals/fill-missing',
+        },
+        admin_stage_repair: {
+          method: 'POST',
+          endpoint: '/market-data/admin/stage/repair',
+        },
       };
       const task = taskEndpoints[taskName];
       if (!task) throw new Error(`Unsupported task: ${taskName}`);
@@ -420,6 +428,15 @@ const AdminOperatorActions: React.FC<Props> = ({
                   </Button>
                   <Button size="xs" variant="outline" onClick={() => void runNamedTask('admin_snapshots_history_record', 'Record history')}>
                     Record History
+                  </Button>
+                </Box>
+                <Text mt={2} fontSize="xs" color="fg.muted">Maintenance</Text>
+                <Box display="flex" gap={2} flexWrap="wrap">
+                  <Button size="xs" variant="outline" onClick={() => void runNamedTask('admin_fundamentals_fill_missing', 'Fill missing fundamentals queued')}>
+                    Fill Missing Fundamentals
+                  </Button>
+                  <Button size="xs" variant="outline" onClick={() => void runNamedTask('admin_stage_repair', 'Repair stage history queued')}>
+                    Repair Stage History
                   </Button>
                 </Box>
                 <Text mt={2} fontSize="xs" color="fg.muted">
