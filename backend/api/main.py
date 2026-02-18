@@ -163,6 +163,32 @@ async def startup_event():
                 cfg.set_main_option("script_location", os.path.join(backend_dir, "alembic"))
                 _alembic_command.upgrade(cfg, "head")
                 logger.info("✅ Alembic migrations applied (upgrade head)")
+                # Seed cron_schedule from catalog and sync to Render (after migrations create table)
+                try:
+                    from backend.scripts.seed_schedules import seed
+                    from backend.database import SessionLocal
+                    _db = SessionLocal()
+                    try:
+                        seed_result = seed(_db)
+                        logger.info("✅ Schedule seed: %s", seed_result)
+                    finally:
+                        _db.close()
+                except Exception as seed_e:
+                    logger.warning("Schedule seed skipped/failed: %s", seed_e)
+                try:
+                    from backend.services.render_sync_service import render_sync_service
+                    from backend.database import SessionLocal
+                    _db = SessionLocal()
+                    try:
+                        sync_result = render_sync_service.sync_all(_db)
+                        if sync_result.get("status") != "skipped":
+                            logger.info("✅ Render sync: %s", sync_result)
+                        else:
+                            logger.info("Render sync skipped (not configured)")
+                    finally:
+                        _db.close()
+                except Exception as sync_e:
+                    logger.warning("Render sync skipped/failed: %s", sync_e)
             else:
                 logger.info("Alembic migrations skipped (AUTO_MIGRATE_ON_STARTUP=false)")
         except Exception as mig_e:

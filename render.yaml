@@ -6,14 +6,15 @@ services:
     dockerfilePath: ./Dockerfile.backend
     healthCheckPath: /health
     autoDeploy: true
-    preDeployCommand: "bash -c 'set -e && alembic -c backend/alembic.ini upgrade head && python -m backend.scripts.seed_schedules && python -m backend.scripts.sync_render_crons'"
+    # Migrations/seed/sync run at API startup (AUTO_MIGRATE_ON_STARTUP); preDeployCommand
+    # is unreliable for Docker services on Render (env vars often not injected).
     envVars:
       - key: ENVIRONMENT
         value: production
       - key: SECRET_KEY
         generateValue: true
       - key: AUTO_MIGRATE_ON_STARTUP
-        value: "false"
+        value: "true"
       - key: LOG_FORMAT
         value: json
       - key: DATABASE_URL
