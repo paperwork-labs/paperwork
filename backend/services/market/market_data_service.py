@@ -37,12 +37,7 @@ from backend.services.market.indicator_engine import (
     compute_weinstein_stage_from_daily,
 )
 from backend.services.market.universe import tracked_symbols_with_source
-from backend.services.market.constants import (
-    FUNDAMENTAL_FIELDS,
-    FUNDAMENTAL_FIELDS_WITH_NAME,
-    FUNDAMENTAL_FIELDS_WITH_SUB_INDUSTRY,
-    FUNDAMENTAL_FIELDS_CORE_WITH_NAME,
-)
+from backend.services.market.constants import FUNDAMENTAL_FIELDS
 from backend.services.market.dataframe_utils import (
     ensure_newest_first,
     ensure_oldest_first,
@@ -752,7 +747,7 @@ class MarketDataService:
         # - free policy or no FMP: use Yahoo fallback to improve completeness.
         policy = str(getattr(settings, "MARKET_PROVIDER_POLICY", "paid")).lower()
         has_fmp = bool(settings.FMP_API_KEY)
-        needs_core = any(info.get(k) is None for k in FUNDAMENTAL_FIELDS_CORE_WITH_NAME)
+        needs_core = any(info.get(k) is None for k in FUNDAMENTAL_FIELDS[:5])
         needs_full = self._needs_fundamentals(info)
         should_try_yahoo = (not has_fmp) or (policy != "paid" and (needs_full or needs_core))
 
@@ -1336,7 +1331,7 @@ class MarketDataService:
                 .first()
             )
             if prev_row:
-                for key in FUNDAMENTAL_FIELDS_WITH_SUB_INDUSTRY:
+                for key in FUNDAMENTAL_FIELDS:
                     val = getattr(prev_row, key, None)
                     if val is not None and snapshot.get(key) is None:
                         snapshot[key] = val
@@ -1346,7 +1341,7 @@ class MarketDataService:
         if self._needs_fundamentals(snapshot):
             try:
                 info = self.get_fundamentals_info(symbol)
-                for k in FUNDAMENTAL_FIELDS_WITH_NAME:
+                for k in FUNDAMENTAL_FIELDS:
                     if info.get(k) is not None:
                         snapshot[k] = info.get(k)
             except Exception:
@@ -1399,7 +1394,7 @@ class MarketDataService:
         try:
             funda = self.get_fundamentals_info(symbol)
             if funda:
-                for k in FUNDAMENTAL_FIELDS_WITH_NAME:
+                for k in FUNDAMENTAL_FIELDS:
                     if funda.get(k) is not None:
                         snapshot[k] = funda.get(k)
         except Exception:

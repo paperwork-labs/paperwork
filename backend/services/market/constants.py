@@ -3,7 +3,11 @@
 # the backfill start so Weinstein stages are valid from the first row.
 WEINSTEIN_WARMUP_CALENDAR_DAYS: int = 400
 
+# Snapshot fundamental keys: name, sub_industry, then sector/industry/market_cap + extended.
+# Use FUNDAMENTAL_FIELDS[:5] for core-with-name; FUNDAMENTAL_FIELDS[2:5] for core-only.
 FUNDAMENTAL_FIELDS = (
+    "name",
+    "sub_industry",
     "sector",
     "industry",
     "market_cap",
@@ -20,11 +24,6 @@ FUNDAMENTAL_FIELDS = (
     "next_earnings",
     "last_earnings",
 )
-
-FUNDAMENTAL_FIELDS_WITH_SUB_INDUSTRY = ("sub_industry",) + FUNDAMENTAL_FIELDS
-FUNDAMENTAL_FIELDS_WITH_NAME = ("name",) + FUNDAMENTAL_FIELDS_WITH_SUB_INDUSTRY
-FUNDAMENTAL_FIELDS_CORE = ("sector", "industry", "market_cap")
-FUNDAMENTAL_FIELDS_CORE_WITH_NAME = ("name", "sector", "industry", "sub_industry", "market_cap")
 
 SNAPSHOT_PREFERRED_COLUMNS = [
     "symbol",

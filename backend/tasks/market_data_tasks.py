@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 from typing import List, Set, Dict, Optional
 
 from celery import shared_task
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from backend.config import settings
@@ -27,8 +27,7 @@ from backend.models import IndexConstituent, Position, PriceData
 from backend.models.market_data import MarketSnapshotHistory, MarketSnapshot, JobRun
 from backend.services.market.backfill_params import daily_backfill_params
 from backend.services.market.constants import (
-    FUNDAMENTAL_FIELDS_CORE,
-    FUNDAMENTAL_FIELDS_CORE_WITH_NAME,
+    FUNDAMENTAL_FIELDS,
     WEINSTEIN_WARMUP_CALENDAR_DAYS,
 )
 from backend.services.market.coverage_utils import compute_coverage_status
@@ -201,7 +200,7 @@ def enrich_index_fundamentals(indices: List[str] | None = None, limit_per_run: i
                     finally:
                         loop.close()
                     if prov:
-                        for k in FUNDAMENTAL_FIELDS_CORE:
+                        for k in FUNDAMENTAL_FIELDS[2:5]:
                             if prov.get(k) is not None:
                                 snap = snap or {}
                                 snap[k] = prov.get(k)
@@ -240,25 +239,31 @@ def enrich_index_fundamentals(indices: List[str] | None = None, limit_per_run: i
 @shared_task(name="backend.tasks.market_data_tasks.fill_missing_snapshot_fundamentals")
 @task_run("market_snapshots_fundamentals_fill")
 def fill_missing_snapshot_fundamentals(limit_per_run: int = 500) -> dict:
-    """Fill missing sector/industry/market_cap on MarketSnapshot rows.
+    """Fill all missing fundamental/display data on MarketSnapshot rows (tracked table).
 
-    DB-first: try compute_snapshot_from_db; if still missing, fallback to providers.
-    Persists updated snapshot via market_data_service.persist_snapshot.
+    Selects rows where any of name, sub_industry, sector, industry, market_cap, pe_ttm,
+    peg_ttm, roe, eps_growth_*, revenue_growth_*, dividend_yield, beta, analyst_rating,
+    next_earnings, last_earnings is missing. Fetches from providers and persists.
+    DB-first: compute_snapshot_from_db; if still missing any field, fallback to providers.
     """
     _set_task_status("market_snapshots_fundamentals_fill", "running")
     session = SessionLocal()
     try:
         from backend.models.market_data import MarketSnapshot as _MS
 
+        # Rows with any fundamental field missing
+        missing_conditions = []
+        for k in FUNDAMENTAL_FIELDS:
+            if hasattr(_MS, k):
+                missing_conditions.append(getattr(_MS, k).is_(None))
+        if not missing_conditions:
+            return {"status": "ok", "inspected": 0, "updated": 0}
+
         rows = (
             session.query(_MS)
             .filter(
                 _MS.analysis_type == "technical_snapshot",
-                (
-                    (_MS.sector.is_(None))
-                    | (_MS.industry.is_(None))
-                    | (_MS.market_cap.is_(None))
-                ),
+                or_(*missing_conditions),
             )
             .order_by(_MS.analysis_timestamp.desc())
             .limit(limit_per_run)
@@ -269,36 +274,26 @@ def fill_missing_snapshot_fundamentals(limit_per_run: int = 500) -> dict:
             sym = (r.symbol or "").upper()
             if not sym:
                 continue
-            # Build from DB first (no external calls)
             snap = market_data_service.snapshots.compute_snapshot_from_db(session, sym)
-            # If fundamentals still missing, fetch fundamentals only (FMP-first, no price fetch)
-            needs_funda = (
-                not snap
-                or (
-                    snap.get("name") is None
-                    and snap.get("sector") is None
-                    and snap.get("industry") is None
-                    and snap.get("sub_industry") is None
-                    and snap.get("market_cap") is None
-                )
+            needs_funda = not snap or any(
+                snap.get(k) is None for k in FUNDAMENTAL_FIELDS
             )
             if needs_funda:
                 funda = market_data_service.providers.get_fundamentals_info(sym)
                 if funda:
                     snap = snap or {}
-                    for k in FUNDAMENTAL_FIELDS_CORE_WITH_NAME:
+                    for k in FUNDAMENTAL_FIELDS:
                         if funda.get(k) is not None:
                             snap[k] = funda.get(k)
             if not snap:
                 continue
-            # Persist only if something new available
-            if (
-                (getattr(r, "name", None) is None and snap.get("name") is not None)
-                or (r.sector is None and snap.get("sector") is not None)
-                or (r.industry is None and snap.get("industry") is not None)
-                or (getattr(r, "sub_industry", None) is None and snap.get("sub_industry") is not None)
-                or (r.market_cap is None and snap.get("market_cap") is not None)
-            ):
+            # Persist if any fundamental was missing and we now have a value
+            has_new = any(
+                getattr(r, k, None) is None and snap.get(k) is not None
+                for k in FUNDAMENTAL_FIELDS
+                if hasattr(_MS, k)
+            )
+            if has_new:
                 market_data_service.snapshots.persist_snapshot(
                     session, sym, {**(r.raw_analysis or {}), **snap}
                 )

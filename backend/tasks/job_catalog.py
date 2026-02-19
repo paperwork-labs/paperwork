@@ -115,6 +115,15 @@ CATALOG: List[JobTemplate] = [
         default_cron="0 * * * *",
         default_tz="UTC",
     ),
+    JobTemplate(
+        id="market_snapshots_fundamentals_fill",
+        display_name="Fill Missing Snapshot Data",
+        group="market_data",
+        task="backend.tasks.market_data_tasks.fill_missing_snapshot_fundamentals",
+        description="Backfill missing name, sector, industry, PE, EPS, revenue growth, etc. on tracked snapshots",
+        default_cron="45 4 * * *",
+        default_tz="UTC",
+    ),
     # ── Maintenance ───────────────────────────────────────────────
     JobTemplate(
         id="admin_retention_enforce",

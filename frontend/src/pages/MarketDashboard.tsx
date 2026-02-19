@@ -589,29 +589,26 @@ const RRGChart: React.FC<{ sectors: RRGSector[] }> = ({ sectors }) => {
   const pad = Math.ceil(maxAbs * 1.15) || 5;
 
   return (
-    <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={4} bg="bg.card">
+    <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={4} bg="bg.card" h="100%" display="flex" flexDirection="column" minH="520px">
       <Text fontSize="sm" fontWeight="semibold" mb={1}>Relative Rotation Graph (Sectors)</Text>
       <Text fontSize="xs" color="fg.muted" mb={2}>Hover each dot to see sector details</Text>
-      <ResponsiveContainer width="100%" height={380}>
-        <ScatterChart margin={{ top: 20, right: 20, bottom: 16, left: 16 }}>
+      <Box flex={1} minH="380px" w="100%">
+        <ResponsiveContainer width="100%" height="100%">
+          <ScatterChart>
           <CartesianGrid strokeDasharray="3 3" stroke={cc.grid} />
           <XAxis
             type="number"
             dataKey="rs_ratio"
             name="RS-Ratio"
             domain={[-pad, pad]}
-            tick={false}
-            tickLine={false}
-            axisLine={{ stroke: cc.grid }}
+            hide
           />
           <YAxis
             type="number"
             dataKey="rs_momentum"
             name="RS-Momentum"
             domain={[-pad, pad]}
-            tick={false}
-            tickLine={false}
-            axisLine={{ stroke: cc.grid }}
+            hide
           />
           <ZAxis type="number" dataKey="z" range={[160, 160]} />
           <ReferenceArea x1={0} x2={pad} y1={0} y2={pad} fill={cc.success} fillOpacity={0.05} label={{ value: 'Leading ↗', position: 'insideTopRight', fontSize: 11, fill: cc.success, fontWeight: 600 }} />
@@ -626,9 +623,10 @@ const RRGChart: React.FC<{ sectors: RRGSector[] }> = ({ sectors }) => {
               <Cell key={i} fill={SECTOR_PALETTE[i % SECTOR_PALETTE.length]} stroke="white" strokeWidth={1.5} />
             ))}
           </Scatter>
-        </ScatterChart>
-      </ResponsiveContainer>
-      <Box display="grid" gridTemplateColumns="repeat(auto-fill, minmax(130px, 1fr))" gap="3px" mt={2} px={1}>
+          </ScatterChart>
+        </ResponsiveContainer>
+      </Box>
+      <Box display="grid" gridTemplateColumns="repeat(auto-fill, minmax(130px, 1fr))" gap="3px" mt={2} px={1} flexShrink={0}>
         {data.map((s, i) => (
           <HStack key={s.symbol} gap={1}>
             <Box w="8px" h="8px" borderRadius="full" flexShrink={0} bg={SECTOR_PALETTE[i % SECTOR_PALETTE.length]} />

@@ -49,6 +49,17 @@ import AppLogo from '../ui/AppLogo';
 const SIDEBAR_OPEN_STORAGE_KEY = 'qm.ui.sidebar_open';
 const LAST_ROUTE_STORAGE_KEY = 'qm.ui.last_route';
 
+function toTitleCase(s: string): string {
+  if (!s?.trim()) return s;
+  return s.trim().replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+}
+
+function displayName(user: { full_name?: string | null; username?: string } | null): string {
+  if (!user) return 'Guest';
+  const raw = (user.full_name?.trim() || user.username?.trim() || 'Guest').trim();
+  return raw ? toTitleCase(raw) : 'Guest';
+}
+
 const marketItems = [
   { label: 'Dashboard', icon: FiHome, path: '/' },
   { label: 'Tracked', icon: FiList, path: '/market/tracked' },
@@ -551,10 +562,10 @@ const DashboardLayout: React.FC = () => {
                   <HStack gap={2}>
                     <Box w={8} h={8} borderRadius="full" bg="brand.500" display="flex" alignItems="center" justifyContent="center">
                       <Text fontSize="xs" fontWeight="bold" color="white">
-                        {(user?.username || 'U').slice(0, 1).toUpperCase()}
+                        {displayName(user).slice(0, 1).toUpperCase()}
                       </Text>
                     </Box>
-                    <Text fontSize="sm">{user?.username || 'Account'}</Text>
+                    <Text fontSize="sm">{displayName(user)}</Text>
                   </HStack>
                 </Button>
               </MenuTrigger>
@@ -567,7 +578,7 @@ const DashboardLayout: React.FC = () => {
                           Account
                         </Text>
                         <Text fontSize="sm" fontWeight="semibold" mt={1}>
-                          {user?.username || 'Account'}
+                          {displayName(user)}
                         </Text>
                       </Box>
                       <AppDivider />
