@@ -50,8 +50,10 @@ function DebouncedFilterInput({
   }, [value]);
 
   useEffect(() => {
-    lastEmittedRef.current = debounced;
-    onChangeRef.current(debounced);
+    if (debounced !== lastEmittedRef.current) {
+      onChangeRef.current(debounced);
+      lastEmittedRef.current = debounced;
+    }
   }, [debounced]);
 
   return (
