@@ -45,12 +45,18 @@ async def get_live_portfolio(
             query = query.filter(BrokerAccount.account_number == account_id)
         positions_models = query.all()
 
+        acct_ids = {p.account_id for p in positions_models}
+        accounts_map = {
+            a.id: a
+            for a in db.query(BrokerAccount).filter(
+                BrokerAccount.id.in_(acct_ids)
+            ).all()
+        }
+
         # Build accounts mapping like Snowball Analytics style expected by frontend
         accounts: Dict[str, Any] = {}
         for p in positions_models:
-            acc = (
-                db.query(BrokerAccount).filter(BrokerAccount.id == p.account_id).first()
-            )
+            acc = accounts_map.get(p.account_id)
             if not acc:
                 continue
             acc_key = acc.account_number

@@ -13,6 +13,22 @@ export interface BrokerAccount {
   is_enabled?: boolean;
 }
 
+/** Raw shape from GET /accounts (backend may use snake_case or camelCase). */
+export interface BrokerAccountApiRow {
+  id: number;
+  account_number?: string;
+  accountNumber?: string;
+  account_id?: string;
+  account_name?: string;
+  accountName?: string;
+  alias?: string;
+  account_type?: string;
+  type?: string;
+  broker?: string;
+  brokerage?: string;
+  is_enabled?: boolean;
+}
+
 export interface AccountContextValue {
   accounts: BrokerAccount[];
   loading: boolean;
@@ -80,10 +96,10 @@ export const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setError(null);
       try {
         // GET /api/v1/accounts
-        const res = await api.get('/accounts');
-        const list: any[] = res.data || [];
+        const res = await api.get<BrokerAccountApiRow[]>('/accounts');
+        const list: BrokerAccountApiRow[] = Array.isArray(res.data) ? res.data : [];
         // Normalize minimal fields we need
-        const normalized: BrokerAccount[] = list.map((a: any) => ({
+        const normalized: BrokerAccount[] = list.map((a) => ({
           id: a.id,
           account_number: a.account_number || a.accountNumber || a.account_id || '',
           account_name: a.account_name || a.accountName || a.alias || a.account_number || '',

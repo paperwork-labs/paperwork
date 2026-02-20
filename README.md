@@ -48,6 +48,7 @@ Docs
 ----
 - Canonical docs live under `docs/`:
   - Architecture: `docs/ARCHITECTURE.md`
+  - Portfolio: `docs/PORTFOLIO.md`
   - Models: `docs/MODELS.md`
   - Market Data: `docs/MARKET_DATA.md`
   - Rebrand runbook: `docs/REBRAND.md`
@@ -60,8 +61,13 @@ API Map (v1)
 ------------
 - Portfolio:
   - Live: `/api/v1/portfolio/live`
-  - Stocks: `/api/v1/portfolio/stocks`, `/api/v1/portfolio/stocks/{position_id}/tax-lots`
+  - Dashboard: `/api/v1/portfolio/dashboard` (summary, sector_allocation, top_performers, accounts_summary)
+  - Stocks (enriched): `GET /api/v1/portfolio/stocks?include_market_data=true` (stage, RS, perf, RSI, ATR)
+  - Stocks tax lots: `/api/v1/portfolio/stocks/{position_id}/tax-lots`
+  - Performance history: `GET /api/v1/portfolio/performance/history?period=1y` (portfolio_snapshots time series)
+  - Categories: `GET/POST /api/v1/portfolio/categories`, `GET/PUT/DELETE /api/v1/portfolio/categories/{id}`, `POST /api/v1/portfolio/categories/{id}/positions`
   - Options: `/api/v1/portfolio/options/accounts`, `/api/v1/portfolio/options/unified/portfolio`, `/api/v1/portfolio/options/unified/summary`
+  - Activity: `/api/v1/portfolio/activity`, `/api/v1/portfolio/activity/daily_summary`
   - Statements: `/api/v1/portfolio/statements`
   - Dividends: `/api/v1/portfolio/dividends`
 - Market Data:

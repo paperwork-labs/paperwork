@@ -11,8 +11,9 @@ from dataclasses import dataclass
 from enum import Enum
 from sqlalchemy.orm import Session
 
-from backend.models import SessionLocal  # Fixed import
-from backend.models.portfolio import Account, Holding
+from backend.database import SessionLocal
+from backend.models.broker_account import BrokerAccount
+from backend.models.position import Position
 from backend.services.market.market_data_service import market_data_service
 
 logger = logging.getLogger(__name__)
@@ -53,7 +54,8 @@ class TaxLotRecommendation:
 
 
 class DCAStrategyService:
-    def __init__(self):
+    def __init__(self, db_session: Optional[Session] = None):
+        self._db = db_session
         self.cache_ttl = 24 * 60 * 60  # 24 hours cache
         self.last_run_cache = {}
 
@@ -73,35 +75,38 @@ class DCAStrategyService:
             # Return cached results if available
             # In production, store in Redis or database
 
-        db = SessionLocal()
+        db = self._db or SessionLocal()
+        own_session = self._db is None
         try:
-            # Get holdings
-            holdings_query = db.query(Holding).filter(Holding.quantity > 0)
+            # Get open positions (equity holdings)
+            positions_query = db.query(Position).filter(Position.quantity > 0)
             if account_id:
-                account = (
-                    db.query(Account)
-                    .filter(Account.account_number == account_id)
+                broker_account = (
+                    db.query(BrokerAccount)
+                    .filter(BrokerAccount.account_number == account_id)
                     .first()
                 )
-                if account:
-                    holdings_query = holdings_query.filter(
-                        Holding.account_id == account.id
+                if broker_account:
+                    positions_query = positions_query.filter(
+                        Position.account_id == broker_account.id
                     )
 
-            holdings = holdings_query.all()
+            positions = positions_query.all()
 
             # Generate recommendations based on strategy
             recommendations = {}
 
-            for holding in holdings:
-                rec = await self._generate_holding_recommendation(holding, strategy, db)
-                recommendations[holding.symbol] = rec
+            for position in positions:
+                rec = await self._generate_holding_recommendation(
+                    position, strategy, db
+                )
+                recommendations[position.symbol] = rec
 
                 # Generate tax lot recommendations
                 tax_lot_recs = await self._generate_tax_lot_recommendations(
-                    holding, strategy, db
+                    position, strategy, db
                 )
-                recommendations[holding.symbol].tax_lot_recommendations = tax_lot_recs
+                recommendations[position.symbol].tax_lot_recommendations = tax_lot_recs
 
             # Cache the results
             self.last_run_cache[cache_key] = datetime.now()
@@ -118,49 +123,50 @@ class DCAStrategyService:
             logger.error(f"Error generating DCA recommendations: {e}")
             return {"status": "error", "error": str(e)}
         finally:
-            db.close()
+            if own_session:
+                db.close()
 
     async def _generate_holding_recommendation(
-        self, holding: Holding, strategy: DCAStrategy, db: Session
+        self, position: Position, strategy: DCAStrategy, db: Session
     ) -> DCARecommendation:
-        """Generate DCA recommendation for individual holding."""
+        """Generate DCA recommendation for individual position."""
 
         try:
-            # Get market data for the holding
-            market_data = await market_data_service.get_stock_info(holding.symbol)
-            current_price = await market_data_service.get_current_price(holding.symbol)
+            # Get market data for the position
+            market_data = await market_data_service.get_stock_info(position.symbol)
+            current_price = await market_data_service.get_current_price(position.symbol)
 
             market_cap = market_data.get("market_cap", 0) if market_data else 0
             sector = market_data.get("sector", "Unknown") if market_data else "Unknown"
 
             # Calculate metrics
-            unrealized_pnl_pct = holding.unrealized_pnl_pct or 0
-            position_value = holding.market_value or 0
+            unrealized_pnl_pct = float(position.unrealized_pnl_pct or 0)
+            position_value = float(position.market_value or 0)
 
             # Apply strategy-specific logic
             if strategy == DCAStrategy.CONSERVATIVE:
                 return self._benjamin_graham_strategy(
-                    holding, market_cap, unrealized_pnl_pct, position_value
+                    position, market_cap, unrealized_pnl_pct, position_value
                 )
             elif strategy == DCAStrategy.STANDARD:
                 return self._warren_buffett_strategy(
-                    holding, market_cap, unrealized_pnl_pct, position_value
+                    position, market_cap, unrealized_pnl_pct, position_value
                 )
             elif strategy == DCAStrategy.AGGRESSIVE:
                 return self._peter_lynch_strategy(
-                    holding, market_cap, unrealized_pnl_pct, position_value, sector
+                    position, market_cap, unrealized_pnl_pct, position_value, sector
                 )
             elif strategy == DCAStrategy.BALANCED:
                 return self._ray_dalio_strategy(
-                    holding, market_cap, unrealized_pnl_pct, position_value
+                    position, market_cap, unrealized_pnl_pct, position_value
                 )
             else:
                 return self._standard_dca_strategy(
-                    holding, unrealized_pnl_pct, position_value
+                    position, unrealized_pnl_pct, position_value
                 )
 
         except Exception as e:
-            logger.error(f"Error generating recommendation for {holding.symbol}: {e}")
+            logger.error(f"Error generating recommendation for {position.symbol}: {e}")
             return DCARecommendation(
                 action=RecommendationAction.HOLD,
                 confidence=0.5,
@@ -170,7 +176,7 @@ class DCAStrategyService:
 
     def _benjamin_graham_strategy(
         self,
-        holding: Holding,
+        position: Position,
         market_cap: float,
         unrealized_pnl_pct: float,
         position_value: float,
@@ -253,7 +259,7 @@ class DCAStrategyService:
 
     def _warren_buffett_strategy(
         self,
-        holding: Holding,
+        position: Position,
         market_cap: float,
         unrealized_pnl_pct: float,
         position_value: float,
@@ -314,7 +320,7 @@ class DCAStrategyService:
 
     def _peter_lynch_strategy(
         self,
-        holding: Holding,
+        position: Position,
         market_cap: float,
         unrealized_pnl_pct: float,
         position_value: float,
@@ -401,7 +407,7 @@ class DCAStrategyService:
 
     def _ray_dalio_strategy(
         self,
-        holding: Holding,
+        position: Position,
         market_cap: float,
         unrealized_pnl_pct: float,
         position_value: float,
@@ -434,7 +440,7 @@ class DCAStrategyService:
         )
 
     def _standard_dca_strategy(
-        self, holding: Holding, unrealized_pnl_pct: float, position_value: float
+        self, position: Position, unrealized_pnl_pct: float, position_value: float
     ) -> DCARecommendation:
         """Standard DCA approach - simple and mechanical."""
 
@@ -463,7 +469,7 @@ class DCAStrategyService:
         )
 
     async def _generate_tax_lot_recommendations(
-        self, holding: Holding, strategy: DCAStrategy, db: Session
+        self, position: Position, strategy: DCAStrategy, db: Session
     ) -> List[TaxLotRecommendation]:
         """Generate tax-efficient recommendations at tax lot level."""
 
@@ -511,5 +517,8 @@ class DCAStrategyService:
         }
 
 
-# Global service instance
+# Alias for strategy_manager compatibility (expects DCAService(db))
+DCAService = DCAStrategyService
+
+# Global service instance (no session; creates own when needed)
 dca_strategy_service = DCAStrategyService()

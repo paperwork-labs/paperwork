@@ -19,6 +19,11 @@ import { Link as RouterLink } from 'react-router-dom';
 import { useColorMode } from '../theme/colorMode';
 import { marketDataApi } from '../services/api';
 import { ChartContext, SymbolLink, ChartSlidePanel } from '../components/market/SymbolChartUI';
+import StatCard from '../components/shared/StatCard';
+import StageBar from '../components/shared/StageBar';
+import StageBadge from '../components/shared/StageBadge';
+import { useChartColors } from '../hooks/useChartColors';
+import { SECTOR_PALETTE } from '../constants/chart';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, Cell,
   ScatterChart, Scatter, ZAxis, CartesianGrid, ReferenceLine, ReferenceArea, Legend,
@@ -147,15 +152,6 @@ const heatColor = (v: unknown): string | undefined => {
   return undefined;
 };
 
-const STAGE_COLORS: Record<string, string> = {
-  '1': 'gray',
-  '2A': 'green',
-  '2B': 'teal',
-  '2C': 'yellow',
-  '3': 'orange',
-  '4': 'red',
-};
-
 const repeatSymbolColor = (symbol: string): string => {
   // Use a broad hue space so repeated symbols are visually distinct.
   let hash = 0;
@@ -166,55 +162,7 @@ const repeatSymbolColor = (symbol: string): string => {
   return `hsl(${hue} 72% 58%)`;
 };
 
-/* ===== Sub-components ===== */
-
-const StatCard: React.FC<{ label: string; value: string | number; sub?: string }> = ({ label, value, sub }) => (
-  <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card" flex="1" minW="120px">
-    <Text fontSize="xs" color="fg.muted">{label}</Text>
-    <Text fontSize="lg" fontWeight="bold">{value}</Text>
-    {sub && <Text fontSize="xs" color="fg.muted">{sub}</Text>}
-  </Box>
-);
-
-const StageBar: React.FC<{ counts: Record<string, number>; total: number }> = ({ counts, total }) => {
-  const stages = ['1', '2A', '2B', '2C', '3', '4'];
-  if (total === 0) return <Text fontSize="xs" color="fg.muted">No data</Text>;
-  return (
-    <Box>
-      <Box display="flex" h="24px" borderRadius="md" overflow="hidden">
-        {stages.map((s) => {
-          const count = counts[s] || 0;
-          const pct = (count / total) * 100;
-          if (pct === 0) return null;
-          const palette = STAGE_COLORS[s] || 'gray';
-          return (
-            <Box
-              key={s}
-              w={`${pct}%`}
-              bg={`${palette}.400`}
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-              title={`Stage ${s}: ${count} (${pct.toFixed(0)}%)`}
-            >
-              {pct > 4 && <Text fontSize="10px" fontWeight="bold" color="white">{s}</Text>}
-            </Box>
-          );
-        })}
-      </Box>
-      <HStack gap={2} mt={1} flexWrap="wrap">
-        {stages.map((s) => {
-          const count = counts[s] || 0;
-          return (
-            <Badge key={s} size="sm" variant="subtle" colorPalette={STAGE_COLORS[s] || 'gray'}>
-              {s}: {count} ({total > 0 ? ((count / total) * 100).toFixed(0) : 0}%)
-            </Badge>
-          );
-        })}
-      </HStack>
-    </Box>
-  );
-};
+/* ===== Sub-components (StatCard, StageBar from shared) ===== */
 
 const SetupCard: React.FC<{ title: string; items: SetupItem[]; showScore?: boolean; linkPreset?: string }> = ({ title, items, showScore, linkPreset }) => (
   <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card" flex="1" minW="220px">
@@ -237,9 +185,7 @@ const SetupCard: React.FC<{ title: string; items: SetupItem[]; showScore?: boole
             <HStack key={item.symbol} justify="space-between" fontSize="xs">
               <HStack gap={1}>
                 <SymbolLink symbol={item.symbol} />
-                <Badge size="sm" variant="subtle" colorPalette={STAGE_COLORS[item.stage_label || ''] || 'gray'}>
-                  {item.stage_label || '?'}
-                </Badge>
+                <StageBadge stage={item.stage_label || '?'} />
               </HStack>
               <HStack gap={2} flexShrink={0}>
                 {showScore && item.momentum_score != null && (
@@ -365,56 +311,6 @@ const RankMatrix: React.FC<{ title: string; data?: Record<string, Array<{ symbol
   );
 };
 
-const CHART_FALLBACKS: Record<string, [string, string]> = {
-  'chart.danger': ['#DC2626', '#F87171'],
-  'chart.success': ['#16A34A', '#4ADE80'],
-  'chart.neutral': ['#3B82F6', '#60A5FA'],
-  'chart.area1': ['#16A34A', '#34D399'],
-  'chart.area2': ['#2563EB', '#60A5FA'],
-  'chart.grid': ['rgba(15,23,42,0.08)', 'rgba(255,255,255,0.08)'],
-  'chart.axis': ['rgba(15,23,42,0.4)', 'rgba(255,255,255,0.45)'],
-  'chart.refLine': ['rgba(15,23,42,0.2)', 'rgba(255,255,255,0.2)'],
-  'chart.warning': ['#D97706', '#FBBF24'],
-  'fg.muted': ['#64748B', '#94A3B8'],
-  'fg.subtle': ['#94A3B8', '#64748B'],
-  'border.subtle': ['#E2E8F0', '#334155'],
-  'brand.500': ['#6366F1', '#818CF8'],
-  'brand.400': ['#818CF8', '#A5B4FC'],
-  'brand.700': ['#4338CA', '#4F46E5'],
-};
-
-const useChartColors = () => {
-  const { colorMode } = useColorMode();
-  const isDark = colorMode === 'dark';
-  return React.useMemo(() => {
-    const root = typeof document !== 'undefined' ? document.documentElement : null;
-    const get = (token: string) => {
-      const fb = CHART_FALLBACKS[token];
-      const fallback = fb ? (isDark ? fb[1] : fb[0]) : token;
-      if (!root) return fallback;
-      const v = getComputedStyle(root).getPropertyValue(`--chakra-colors-${token.replace(/\./g, '-')}`).trim();
-      return v || fallback;
-    };
-    return {
-      danger: get('chart.danger'),
-      success: get('chart.success'),
-      neutral: get('chart.neutral'),
-      area1: get('chart.area1'),
-      area2: get('chart.area2'),
-      grid: get('chart.grid'),
-      axis: get('chart.axis'),
-      refLine: get('chart.refLine'),
-      muted: get('fg.muted'),
-      subtle: get('fg.subtle'),
-      border: get('border.subtle'),
-      brand500: get('brand.500'),
-      brand400: get('brand.400'),
-      brand700: get('brand.700'),
-      warning: get('chart.warning'),
-    };
-  }, [isDark]);
-};
-
 const RangeHistogram: React.FC<{ bins: RangeHistogramBin[] }> = ({ bins }) => {
   const cc = useChartColors();
   const data = bins.map((b) => {
@@ -523,23 +419,6 @@ const BreadthChart: React.FC<{ series: BreadthPoint[] }> = ({ series }) => {
     </Box>
   );
 };
-
-const SECTOR_PALETTE = [
-  'var(--chakra-colors-brand-600)',
-  'var(--chakra-colors-red-500)',
-  'var(--chakra-colors-green-500)',
-  'var(--chakra-colors-orange-500)',
-  'var(--chakra-colors-purple-500)',
-  'var(--chakra-colors-teal-500)',
-  'var(--chakra-colors-pink-500)',
-  'var(--chakra-colors-cyan-600)',
-  'var(--chakra-colors-yellow-600)',
-  'var(--chakra-colors-brand-400)',
-  'var(--chakra-colors-red-400)',
-  'var(--chakra-colors-green-600)',
-  'var(--chakra-colors-orange-600)',
-  'var(--chakra-colors-purple-400)',
-];
 
 const RRGCustomTooltip: React.FC<any> = ({ active, payload }) => {
   if (!active || !payload?.length) return null;
@@ -765,9 +644,7 @@ const MarketDashboard: React.FC = () => {
                     <HStack key={`aq-${item.symbol}`} justify="space-between" fontSize="xs" py="2px" borderBottomWidth="1px" borderColor="border.subtle">
                       <HStack gap={1} minW="80px">
                         <SymbolLink symbol={item.symbol} />
-                        <Badge size="sm" variant="subtle" colorPalette={STAGE_COLORS[item.stage_label || ''] || 'gray'}>
-                          {item.stage_label || '?'}
-                        </Badge>
+                        <StageBadge stage={item.stage_label || '?'} />
                       </HStack>
                       <HStack gap={1} flexShrink={0}>
                         {reasons.map((r, i) => (
@@ -807,9 +684,7 @@ const MarketDashboard: React.FC = () => {
                         <TableCell>{r.sector_name || r.symbol}</TableCell>
                         <TableCell>
                           {r.stage_label ? (
-                            <Badge size="sm" variant="subtle" colorPalette={STAGE_COLORS[r.stage_label] || 'gray'}>
-                              {r.stage_label}
-                            </Badge>
+                            <StageBadge stage={r.stage_label} />
                           ) : '—'}
                         </TableCell>
                         <TableCell>{r.days_in_stage ?? '—'}</TableCell>
@@ -892,9 +767,7 @@ const MarketDashboard: React.FC = () => {
                         <TableRow key={`entry-${r.symbol}`}>
                           <TableCell>{r.symbol}</TableCell>
                           <TableCell>
-                            <Badge size="sm" variant="subtle" colorPalette={STAGE_COLORS[r.stage_label] || 'gray'}>
-                              {r.stage_label || '?'}
-                            </Badge>
+                            <StageBadge stage={r.stage_label || '?'} />
                           </TableCell>
                           <TableCell>{typeof r.entry_price === 'number' ? r.entry_price.toFixed(2) : '—'}</TableCell>
                           <TableCell>{typeof r.distance_pct === 'number' ? `${r.distance_pct.toFixed(2)}%` : '—'}</TableCell>
@@ -934,9 +807,7 @@ const MarketDashboard: React.FC = () => {
                         <TableRow key={`exit-${r.symbol}`}>
                           <TableCell>{r.symbol}</TableCell>
                           <TableCell>
-                            <Badge size="sm" variant="subtle" colorPalette={STAGE_COLORS[r.stage_label] || 'gray'}>
-                              {r.stage_label || '?'}
-                            </Badge>
+                            <StageBadge stage={r.stage_label || '?'} />
                           </TableCell>
                           <TableCell>{typeof r.exit_price === 'number' ? r.exit_price.toFixed(2) : '—'}</TableCell>
                           <TableCell>{typeof r.distance_pct === 'number' ? `${r.distance_pct.toFixed(2)}%` : '—'}</TableCell>
@@ -1035,7 +906,7 @@ const MarketDashboard: React.FC = () => {
                       <HStack key={`td-${s.symbol}`} justify="space-between" fontSize="xs" py="1px" borderBottomWidth="1px" borderColor="border.subtle">
                         <HStack gap={1}>
                           <SymbolLink symbol={s.symbol} />
-                          <Badge size="sm" variant="subtle" colorPalette={STAGE_COLORS[s.stage_label || ''] || 'gray'}>{s.stage_label || '?'}</Badge>
+                          <StageBadge stage={s.stage_label || '?'} />
                         </HStack>
                         <HStack gap={1} flexShrink={0}>
                           {s.signals.map((sig, i) => (
@@ -1064,7 +935,7 @@ const MarketDashboard: React.FC = () => {
                       <HStack key={`gap-${g.symbol}`} justify="space-between" fontSize="xs" py="1px" borderBottomWidth="1px" borderColor="border.subtle">
                         <HStack gap={1}>
                           <SymbolLink symbol={g.symbol} />
-                          <Badge size="sm" variant="subtle" colorPalette={STAGE_COLORS[g.stage_label || ''] || 'gray'}>{g.stage_label || '?'}</Badge>
+                          <StageBadge stage={g.stage_label || '?'} />
                         </HStack>
                         <HStack gap={2} flexShrink={0}>
                           <Text color="green.400">{g.gaps_up}↑</Text>
@@ -1094,7 +965,7 @@ const MarketDashboard: React.FC = () => {
                       <HStack key={`earn-${e.symbol}`} justify="space-between" fontSize="xs">
                         <HStack gap={1}>
                           <SymbolLink symbol={e.symbol} />
-                          <Badge size="sm" variant="subtle" colorPalette={STAGE_COLORS[e.stage_label || ''] || 'gray'}>{e.stage_label || '?'}</Badge>
+                          <StageBadge stage={e.stage_label || '?'} />
                         </HStack>
                         <Text color="fg.muted">{new Date(e.next_earnings).toLocaleDateString()}</Text>
                       </HStack>
@@ -1115,7 +986,7 @@ const MarketDashboard: React.FC = () => {
                       <HStack key={`fund-${f.symbol}`} justify="space-between" fontSize="xs">
                         <HStack gap={1}>
                           <SymbolLink symbol={f.symbol} />
-                          <Badge size="sm" variant="subtle" colorPalette={STAGE_COLORS[f.stage_label || ''] || 'gray'}>{f.stage_label || '?'}</Badge>
+                          <StageBadge stage={f.stage_label || '?'} />
                         </HStack>
                         <HStack gap={2} flexShrink={0}>
                           <Text>EPS {f.eps_growth_yoy > 0 ? '+' : ''}{f.eps_growth_yoy}%</Text>

@@ -10,6 +10,7 @@ import {
 } from '@chakra-ui/react';
 import AccountSelector, { type AccountData } from './AccountSelector';
 import { useAccountFilter, type FilterableItem, type AccountFilterConfig } from '../../hooks/useAccountFilter';
+import { useAccountContext } from '../../context/AccountContext';
 
 interface AccountFilterWrapperProps<T extends FilterableItem> {
   data: T[];
@@ -34,9 +35,11 @@ function AccountFilterWrapper<T extends FilterableItem>({
   children,
 }: AccountFilterWrapperProps<T>) {
   const filterState = useAccountFilter(data, accounts, config);
+  const { setSelected: setContextSelected } = useAccountContext();
 
   const handleAccountChange = (accountId: string) => {
     filterState.setSelectedAccount(accountId);
+    setContextSelected(accountId);
     onAccountChange?.(accountId);
   };
 

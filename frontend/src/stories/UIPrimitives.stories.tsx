@@ -5,7 +5,7 @@ import { useColorMode } from '../theme/colorMode';
 import AppCard from '../components/ui/AppCard';
 import EmptyState from '../components/ui/EmptyState';
 import FormField from '../components/ui/FormField';
-import KPIStatCard from '../components/ui/KPIStatCard';
+import StatCard from '../components/shared/StatCard';
 import Pagination from '../components/ui/Pagination';
 import { Page, PageHeader } from '../components/ui/Page';
 import Toolbar from '../components/ui/Toolbar';
@@ -46,11 +46,11 @@ export const Overview = () => {
         </AppCard>
 
         <AppCard>
-          <Text fontWeight="semibold" mb={3}>KPIStatCard</Text>
+          <Text fontWeight="semibold" mb={3}>StatCard (full)</Text>
           <Box display="flex" flexDirection="column" gap={3}>
-            <KPIStatCard label="Tracked Symbols" value={512} helpText="Universe size" />
-            <KPIStatCard label="Daily Coverage %" value="98.2%" helpText="502 / 511 bars" arrow="increase" color="green.400" />
-            <KPIStatCard label="5m Coverage %" value="92.1%" helpText="470 / 511 bars" arrow="decrease" color="red.400" />
+            <StatCard variant="full" label="Tracked Symbols" value={512} helpText="Universe size" />
+            <StatCard variant="full" label="Daily Coverage %" value="98.2%" helpText="502 / 511 bars" trend="up" color="green.400" />
+            <StatCard variant="full" label="5m Coverage %" value="92.1%" helpText="470 / 511 bars" trend="down" color="red.400" />
           </Box>
         </AppCard>
 

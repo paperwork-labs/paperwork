@@ -3,7 +3,7 @@ import { Box, Button, Input, InputGroup, IconButton, VStack, Text, HStack } from
 import { FiEye } from "react-icons/fi";
 import AppCard from "../components/ui/AppCard";
 import FormField from "../components/ui/FormField";
-import KPIStatCard from "../components/ui/KPIStatCard";
+import StatCard from "../components/shared/StatCard";
 import { useColorMode } from "../theme/colorMode";
 
 export default {
@@ -47,12 +47,12 @@ export const Basics = () => {
       </AppCard>
 
       <Box mt={8} maxW="520px">
-        <Text fontSize="md" fontWeight="semibold" color="fg.default" mb={3}>KPI stat</Text>
+        <Text fontSize="md" fontWeight="semibold" color="fg.default" mb={3}>StatCard (full)</Text>
         <AppCard>
           <VStack align="stretch" gap={3}>
-            <KPIStatCard label="Tracked Symbols" value={512} helpText="Universe size" />
-            <KPIStatCard label="Daily Coverage %" value="98.2%" helpText="502 / 511 bars" arrow="increase" color="green.400" />
-            <KPIStatCard label="5m Coverage %" value="92.1%" helpText="470 / 511 bars" arrow="decrease" color="red.400" />
+            <StatCard variant="full" label="Tracked Symbols" value={512} helpText="Universe size" />
+            <StatCard variant="full" label="Daily Coverage %" value="98.2%" helpText="502 / 511 bars" trend="up" color="green.400" />
+            <StatCard variant="full" label="5m Coverage %" value="92.1%" helpText="470 / 511 bars" trend="down" color="red.400" />
           </VStack>
         </AppCard>
       </Box>

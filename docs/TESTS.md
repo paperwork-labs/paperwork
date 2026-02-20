@@ -71,3 +71,25 @@ Conventions
 - Mark networked tests with @pytest.mark.integration
 - Use AsyncMock/patch for SDKs in unit tests
 
+Test Plan (from TEST_PLAN.md)
+-----------------------------
+Pyramids:
+- Unit: fast, pure logic (parsers, transforms, dedupe)
+- Integration: broker SDKs/APIs via env; FlexQuery XML fixtures; DB interactions
+- API smoke: minimal happy paths per route
+
+Suites:
+- models/: uniqueness, FKs, invariants
+- services/clients/: ibkr_client, ibkr_flexquery_client, tastytrade_client, schwab_client (placeholder)
+- services/portfolio/: account_config_service, broker_sync_service, ibkr_sync_service, tastytrade_sync_service
+- api/: holdings, options, live, statements, dividends; SSR filters and shapes
+- category_engine: auto-categorization rules, drift computation, rebalance order generation
+- rule_evaluator: condition tree evaluation, signal generation
+- order_engine: idempotency, status transitions
+- risk_gate: pre-trade checks, circuit breakers
+
+Conventions (plan):
+- pytest markers: @pytest.mark.integration for networked tests
+- Env-driven secrets; never hardcode account numbers
+- Run: `docker-compose exec backend pytest -q` or per-file
+

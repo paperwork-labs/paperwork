@@ -34,6 +34,18 @@ Quick start (dev stack)
 - `./run.sh status`
 - `./run.sh logs`
 
+Local dev (frontend on host, backend on host)
+---------------------------------------------
+If you run the frontend with `npm run dev` and the backend separately (e.g. `uvicorn` on port 8000), login can time out because the dev proxy targets `http://backend:8000` (Docker hostname). Do one of the following:
+
+1. **Proxy target:** In the frontend directory create or edit `.env` and set:
+   - `VITE_PROXY_TARGET=http://localhost:8000`
+   Then restart the Vite dev server. API requests to `/api/v1` will be proxied to your local backend.
+
+2. **Direct API URL:** Alternatively set:
+   - `VITE_API_BASE_URL=http://localhost:8000/api/v1`
+   The frontend will call the backend directly (no proxy). Ensure the backend allows CORS for your frontend origin.
+
 Run tests (safe, isolated DB)
 -----------------------------
 - `./run.sh test`

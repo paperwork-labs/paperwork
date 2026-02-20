@@ -26,9 +26,10 @@ from backend.api.routes import (
     portfolio_stocks,
     portfolio_statements,
     portfolio_options,
+    portfolio_categories,
     portfolio_dividends,
     atr,
-    # strategies,      # DISABLED: Causing import errors with strategy_manager
+    strategies,
     market_data,
     # notifications,   # DISABLED: Non-essential for FlexQuery sync
     # admin           # DISABLED: Non-essential for FlexQuery sync
@@ -388,7 +389,13 @@ app.include_router(
     tags=["Portfolio"],
     dependencies=[Depends(require_non_market_access)],
 )
-# app.include_router(strategies.router, prefix="/api/v1/strategies", tags=["Strategies"])  # DISABLED: Import errors
+app.include_router(
+    portfolio_categories.router,
+    prefix="/api/v1/portfolio",
+    tags=["Portfolio"],
+    dependencies=[Depends(require_non_market_access)],
+)
+app.include_router(strategies.router, prefix="/api/v1/strategies", tags=["Strategies"])
 # ATR endpoints remain disabled
 # app.include_router(notifications.router, prefix="/api/v1/notifications", tags=["Notifications"])  # DISABLED: Non-essential
 from backend.api.routes import admin

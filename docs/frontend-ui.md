@@ -28,6 +28,17 @@ We build “app primitives” on top of Chakra v3 components so pages stay consi
 
 Pages should prefer **semantic tokens** like `bg.card`, `border.subtle`, `fg.muted` instead of hardcoded colors.
 
+### Portfolio component map
+
+- **Pages**: PortfolioOverview, PortfolioHoldings, PortfolioOptions, PortfolioTransactions, PortfolioCategories (under `frontend/src/pages/portfolio/`).
+- **Shared**: StatCard, StageBar, StageBadge, PnlText, Skeleton (StatCardSkeleton, TableSkeleton, ChartSkeleton), AccountFilterWrapper, SortableTable.
+- **Utils**: `frontend/src/utils/portfolio.ts` – buildAccountsFromPositions, buildAccountsFromBroker, stageCountsFromPositions, sectorAllocationFromPositions, topMoversFromPositions, toStartEnd, timeAgo.
+- **Account filter**: Global selection via AccountContext; useAccountContext().selected used for API filters and selector display; sync to context on change in AccountFilterWrapper.
+
+### Skeleton loading
+
+Use `StatCardSkeleton`, `TableSkeleton`, `ChartSkeleton` from `frontend/src/components/shared/Skeleton.tsx` for loading states instead of spinner-only so layout is communicated.
+
 ### Ladle (component explorer)
 
 #### Run Ladle locally

@@ -28,6 +28,9 @@ import enum
 
 from . import Base
 
+# Import Signal so it is in the mapper registry when Strategy configures relationship("Signal", ...)
+from backend.models.signals import Signal  # noqa: F401
+
 # =============================================================================
 # ENUMS
 # =============================================================================

@@ -33,6 +33,35 @@ System overview
 ---------------
 ![System architecture](assets/architecture_overview.png)
 
+Three Pillars
+-------------
+- **Portfolio (read-only)**: Broker sync → positions, snapshots, tax lots, transactions. Smart categories with rules and allocation drift. Frontend consumes via REST; no live broker connection for read views.
+- **Intelligence (brain)**: Market data pipeline → indicators (Weinstein stage, RS Mansfield, TD Sequential, RSI, ATR, etc.) → signal generators. Rule engine evaluates condition trees (AND/OR/NOT) against MarketSnapshot + position context to produce signals (ENTRY, EXIT, TRIM, REBALANCE).
+- **Strategy (execution)**: Strategy definition (parameters JSON) → Rule evaluator → signals → Order engine → Risk gate → Broker router (paper or live) → Reconciler. Order model tracks idempotency, status lifecycle, paper vs live.
+
+Sync lifecycle
+--------------
+- **Auto-sync on login**: Frontend checks for NEVER_SYNCED accounts and triggers POST /accounts/sync-all with toast.
+- **Auto-sync on account add**: Backend enqueues Celery sync_account_task after POST /accounts/add; response includes sync_task_id for polling.
+- **Sync-all async**: POST /accounts/sync-all returns { status: "queued", task_ids: { account_key: task_id } }; frontend can poll task status.
+
+Strategy Engine (planned)
+-------------------------
+- Rule evaluator: walks JSON condition trees (entry_rules, exit_rules, trim_rules) against MarketSnapshot + Position; returns list of signals.
+- Signal types: ENTRY, EXIT, SCALE_OUT, STOP_LOSS, ALERT, TRIM, REBALANCE, ROTATE.
+- Strategy status: DRAFT → BACKTESTING → PAPER_TRADING → ACTIVE (live). No strategy goes live without paper trading first.
+
+Order Engine (planned)
+----------------------
+- Order model: idempotency_key, status (PENDING → SUBMITTED → FILLED / CANCELLED / REJECTED), broker_order_id, is_paper_trade.
+- Risk gate: concentration limits, daily loss limit, duplicate check, buying power, market hours, kill switch, circuit breakers.
+- Paper executor: simulated fills with configurable slippage; same code path as live. Reconciler updates positions after fills.
+
+Category Engine (planned)
+-------------------------
+- CategoryRule model: rule_type, operator, field, value (JSON), priority. Presets: market cap, sector, Weinstein stage, account type.
+- CategoryEngine: auto_categorize(), compute_drift(), generate_rebalance_orders(). Hooked into post-sync when user has rules.
+
 Scheduling Architecture
 -----------------------
 - **Source of truth**: The `cron_schedule` table in PostgreSQL holds all schedule definitions. On first access, schedules are auto-seeded from `backend/tasks/job_catalog.py` which defines default jobs (market data, accounts, maintenance groups).
@@ -50,6 +79,12 @@ Broker Data Strategy
 - Implementation status: FlexQuery single-report fetch with cached XML; tax lots, options (positions + exercises), trades are parsed and persisted. Cash transactions (incl. dividends), account balances, margin interest, and transfers are now implemented and persisted. Celery task `sync_all_ibkr_accounts` can enqueue comprehensive syncs for all enabled IBKR accounts. Configure long history via `IBKR_FLEX_LOOKBACK_YEARS` in `.env` and FlexQuery template.
 - IBKR TWS/Gateway (live overlay): intraday prices/positions, managed accounts discovery, account summary. Do not overwrite official cost basis; only update live prices/market values.
 - TastyTrade SDK: discovery + positions/trades/transactions/dividends/balances via credentials. No hardcoded account numbers; env/secure storage only.
+
+Portfolio Data Architecture
+---------------------------
+- **Brokerage integrations**: IBKR FlexQuery + TWS, Tastytrade SDK. Sync services write to `positions`, `trades`, `tax_lots`, `transactions`, `dividends`, `options`, `account_balances`, `portfolio_snapshots`.
+- **Market–portfolio bridge**: `GET /portfolio/stocks?include_market_data=true` LEFT JOINs latest `MarketSnapshot` per symbol so positions are enriched with `stage_label`, `rs_mansfield_pct`, `perf_1d`/`perf_5d`/`perf_20d`, `rsi`, `atr_14`. No new tables; portfolio symbols are already in the tracked universe.
+- **Frontend**: Portfolio section under `/portfolio/*`: Overview (KPIs, allocation, performance chart, stage distribution, account cards), Holdings (enriched SortableTable with stage/RS, heatmap toggle), Options (grouped by underlying), Transactions (unified activity feed), Categories (CRUD + target allocations), Workspace (per-symbol deep dive). Shared components: StatCard, StageBar, StageBadge, PnlText, SymbolLink + ChartSlidePanel.
 
 Data Flow
 ---------

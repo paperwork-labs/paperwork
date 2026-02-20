@@ -212,7 +212,7 @@ class StrategyManager:
 
     async def _execute_atr_options_strategy(
         self,
-        service: ATROptionsService,
+        service: Any,  # ATROptionsService when re-implemented
         execution: StrategyExecution,
         request: StrategyRequest,
     ) -> StrategyExecutionResult:

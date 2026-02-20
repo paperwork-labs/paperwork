@@ -15,9 +15,11 @@ import RequireAdmin from './components/auth/RequireAdmin';
 
 // Lazy-load routes so Chakra v3 migration can happen page-by-page
 const DashboardLayout = React.lazy(() => import('./components/layout/DashboardLayout'));
-const Portfolio = React.lazy(() => import('./pages/Portfolio'));
-const PortfolioCategories = React.lazy(() => import('./pages/PortfolioCategories'));
-const Transactions = React.lazy(() => import('./pages/Transactions'));
+const PortfolioOverview = React.lazy(() => import('./pages/portfolio/PortfolioOverview'));
+const PortfolioHoldings = React.lazy(() => import('./pages/portfolio/PortfolioHoldings'));
+const PortfolioOptions = React.lazy(() => import('./pages/portfolio/PortfolioOptions'));
+const PortfolioCategories = React.lazy(() => import('./pages/portfolio/PortfolioCategories'));
+const PortfolioTransactions = React.lazy(() => import('./pages/portfolio/PortfolioTransactions'));
 const Strategies = React.lazy(() => import('./pages/Strategies'));
 const StrategiesManager = React.lazy(() => import('./pages/StrategiesManager'));
 const SettingsShell = React.lazy(() => import('./pages/SettingsShell'));
@@ -70,12 +72,14 @@ function App() {
                         <Route path="market/tracked" element={<MarketTracked />} />
                         <Route path="market/coverage" element={<MarketCoverage />} />
 
-                        {/* Portfolio section */}
+                        {/* Portfolio section (all under /portfolio/*) */}
                         <Route element={<RequireNonMarketAccess section="portfolio" />}>
-                          <Route path="portfolio" element={<Portfolio />} />
-                          <Route path="portfolio-categories" element={<PortfolioCategories />} />
-                          <Route path="transactions" element={<Transactions />} />
-                          <Route path="workspace" element={<PortfolioWorkspace />} />
+                          <Route path="portfolio" element={<PortfolioOverview />} />
+                          <Route path="portfolio/holdings" element={<PortfolioHoldings />} />
+                          <Route path="portfolio/options" element={<PortfolioOptions />} />
+                          <Route path="portfolio/transactions" element={<PortfolioTransactions />} />
+                          <Route path="portfolio/categories" element={<PortfolioCategories />} />
+                          <Route path="portfolio/workspace" element={<PortfolioWorkspace />} />
                         </Route>
 
                         {/* Strategy section */}

@@ -37,6 +37,18 @@ Core
 
 - Signals/Alerts
   - ATR signals, portfolio alerts; Discord notifications
+  - SignalType enum: ENTRY, EXIT, SCALE_OUT, STOP_LOSS, ALERT, TRIM, REBALANCE, ROTATE (TRIM/REBALANCE/ROTATE added for strategy automation)
+
+- CategoryRule (planned)
+  - Purpose: rule for auto-assigning positions to categories
+  - Fields: category_id, rule_type (SECTOR, INDUSTRY, MARKET_CAP, STAGE, SYMBOL_LIST, CUSTOM), operator, field, value (JSON), priority, is_active
+
+- Order (planned)
+  - Purpose: track orders from strategy signals; idempotency and status lifecycle
+  - Fields: idempotency_key, strategy_id, signal_id, user_id, account_id, symbol, side, order_type, quantity, limit_price, stop_price, time_in_force, status (PENDING, SUBMITTED, PARTIAL_FILL, FILLED, CANCELLED, REJECTED, EXPIRED), broker_order_id, filled_quantity, filled_avg_price, is_paper_trade, parent_order_id
+
+- Strategy (existing; enum extension)
+  - StrategyStatus: add PAPER_TRADING, BACKTESTING (lifecycle: DRAFT → BACKTESTING → PAPER_TRADING → ACTIVE)
 
 Market Data
 -----------

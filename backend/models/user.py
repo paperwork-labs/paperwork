@@ -105,7 +105,15 @@ class User(Base):
     options = relationship(
         "Option", back_populates="user", cascade="all, delete-orphan"
     )
-    # Note: Commented out relationships that reference models not in core imports
+    strategies = relationship(
+        "Strategy",
+        back_populates="user",
+        foreign_keys="Strategy.user_id",
+        cascade="all, delete-orphan",
+    )
+    strategy_executions = relationship(
+        "StrategyExecution", back_populates="user", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         Index("idx_users_email_active", "email", "is_active"),

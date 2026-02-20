@@ -38,6 +38,7 @@ import {
   FiSun,
   FiMoon,
   FiBell,
+  FiLayers,
 } from 'react-icons/fi';
 import { FaBrain } from 'react-icons/fa';
 import { portfolioApi } from '../../services/api';
@@ -67,10 +68,12 @@ const marketItems = [
 ];
 
 const portfolioItems = [
-  { label: 'Dashboard', icon: FiPieChart, path: '/portfolio' },
-  { label: 'Workspace', icon: FiGrid, path: '/workspace' },
-  { label: 'Categories', icon: FiTag, path: '/portfolio-categories' },
-  { label: 'Transactions', icon: FiFileText, path: '/transactions' },
+  { label: 'Overview', icon: FiPieChart, path: '/portfolio' },
+  { label: 'Holdings', icon: FiList, path: '/portfolio/holdings' },
+  { label: 'Options', icon: FiLayers, path: '/portfolio/options' },
+  { label: 'Transactions', icon: FiFileText, path: '/portfolio/transactions' },
+  { label: 'Categories', icon: FiTag, path: '/portfolio/categories' },
+  { label: 'Workspace', icon: FiGrid, path: '/portfolio/workspace' },
 ];
 
 const strategyItems = [
@@ -273,6 +276,10 @@ const DashboardLayout: React.FC = () => {
     const currentPath = location.pathname || '/';
     if (itemPath === '/') {
       return currentPath === '/' || currentPath === '/market/dashboard';
+    }
+    // Exact match for portfolio index so /portfolio/categories does not highlight Overview
+    if (itemPath === '/portfolio') {
+      return currentPath === '/portfolio';
     }
     return currentPath === itemPath || currentPath.startsWith(`${itemPath}/`);
   }, [location.pathname]);

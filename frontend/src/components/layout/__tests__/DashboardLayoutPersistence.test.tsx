@@ -114,10 +114,10 @@ describe('DashboardLayout sidebar persistence', () => {
       appSettingsReady: true,
       ready: true,
     };
-    const { container } = renderWithProviders(<DashboardLayout />, { route: '/portfolio-categories' });
-    const portfolioDashboard = container.querySelector('[data-nav-path="/portfolio"]');
-    const portfolioCategories = container.querySelector('[data-nav-path="/portfolio-categories"]');
-    expect(portfolioDashboard?.getAttribute('data-active')).toBe('false');
+    const { container } = renderWithProviders(<DashboardLayout />, { route: '/portfolio/categories' });
+    const portfolioOverview = container.querySelector('[data-nav-path="/portfolio"]');
+    const portfolioCategories = container.querySelector('[data-nav-path="/portfolio/categories"]');
+    expect(portfolioOverview?.getAttribute('data-active')).toBe('false');
     expect(portfolioCategories?.getAttribute('data-active')).toBe('true');
   });
 

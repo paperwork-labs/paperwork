@@ -64,7 +64,7 @@ api.interceptors.request.use(
       const token = localStorage.getItem('qm_token');
       if (token) {
         config.headers = config.headers || {};
-        (config.headers as any)['Authorization'] = `Bearer ${token}`;
+        (config.headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
       }
     } catch { }
 
@@ -112,9 +112,10 @@ api.interceptors.response.use(
     }
 
     // Retry logic for network errors (skip when _noRetry is set)
-    if ((error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK') && originalRequest && !(originalRequest as any)._noRetry) {
-      if (!(originalRequest as any)._retry) {
-        (originalRequest as any)._retry = true;
+    const orig = originalRequest as typeof originalRequest & { _noRetry?: boolean; _retry?: boolean };
+    if ((error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK') && originalRequest && !orig._noRetry) {
+      if (!orig._retry) {
+        orig._retry = true;
         console.log('🔄 Retrying request:', originalRequest.url);
         await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
         return api(originalRequest);
@@ -133,6 +134,22 @@ const makeOptimizedRequest = async <T>(requestFn: () => Promise<AxiosResponse<T>
   });
 };
 
+// Portfolio API response shapes (for typing hooks and callers)
+export interface StocksResponse {
+  data?: { stocks?: unknown[]; data?: { stocks?: unknown[] } };
+  stocks?: unknown[];
+}
+
+export interface DashboardResponse {
+  data?: unknown;
+}
+
+export interface ActivityResponse {
+  data?: { rows?: unknown[]; total?: number };
+  rows?: unknown[];
+  total?: number;
+}
+
 // Portfolio API endpoints - enhanced with optimization
 export const portfolioApi = {
   getLive: async (accountId?: string) => {
@@ -144,6 +161,25 @@ export const portfolioApi = {
     const url = brokerage ? `/portfolio/dashboard?brokerage=${brokerage}` : '/portfolio/dashboard';
     return makeOptimizedRequest(() => api.get(url));
   },
+
+  getPerformanceHistory: async (params?: { accountId?: string; period?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.accountId) q.set('account_id', params.accountId);
+    if (params?.period) q.set('period', params.period);
+    const url = `/portfolio/performance/history${q.toString() ? `?${q.toString()}` : ''}`;
+    return makeOptimizedRequest(() => api.get(url));
+  },
+
+  getCategories: async () => makeOptimizedRequest(() => api.get('/portfolio/categories')),
+  createCategory: async (body: { name: string; target_allocation_pct?: number; description?: string; color?: string }) =>
+    makeOptimizedRequest(() => api.post('/portfolio/categories', body)),
+  updateCategory: async (id: number, body: { name?: string; target_allocation_pct?: number; description?: string; color?: string }) =>
+    makeOptimizedRequest(() => api.put(`/portfolio/categories/${id}`, body)),
+  deleteCategory: async (id: number) => makeOptimizedRequest(() => api.delete(`/portfolio/categories/${id}`)),
+  assignPositions: async (categoryId: number, positionIds: number[]) =>
+    makeOptimizedRequest(() => api.post(`/portfolio/categories/${categoryId}/positions`, { position_ids: positionIds })),
+  unassignPosition: async (categoryId: number, positionId: number) =>
+    makeOptimizedRequest(() => api.delete(`/portfolio/categories/${categoryId}/positions/${positionId}`)),
 
   sync: async () => {
     // Align to unified accounts sync-all endpoint
@@ -160,8 +196,11 @@ export const portfolioApi = {
   },
 
   // New aligned stocks endpoint
-  getStocks: async (accountId?: string) => {
-    const url = accountId ? `/portfolio/stocks?account_id=${encodeURIComponent(accountId)}` : '/portfolio/stocks';
+  getStocks: async (accountId?: string, includeMarketData: boolean = true) => {
+    const params = new URLSearchParams();
+    if (accountId) params.set('account_id', accountId);
+    params.set('include_market_data', String(includeMarketData));
+    const url = `/portfolio/stocks?${params.toString()}`;
     return makeOptimizedRequest(() => api.get(url));
   },
 
@@ -227,12 +266,18 @@ export const portfolioApi = {
 
 // Options API endpoints - enhanced
 export const optionsApi = {
-  getPortfolio: async () => {
-    return makeOptimizedRequest(() => api.get('/portfolio/options/unified/portfolio'));
+  getPortfolio: async (accountId?: string) => {
+    const url = accountId
+      ? `/portfolio/options/unified/portfolio?account_id=${encodeURIComponent(accountId)}`
+      : '/portfolio/options/unified/portfolio';
+    return makeOptimizedRequest(() => api.get(url));
   },
 
-  getSummary: async () => {
-    return makeOptimizedRequest(() => api.get('/portfolio/options/unified/summary'));
+  getSummary: async (accountId?: string) => {
+    const url = accountId
+      ? `/portfolio/options/unified/summary?account_id=${encodeURIComponent(accountId)}`
+      : '/portfolio/options/unified/summary';
+    return makeOptimizedRequest(() => api.get(url));
   },
 
   sync: async () => {

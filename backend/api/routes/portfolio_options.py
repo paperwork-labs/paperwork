@@ -90,6 +90,14 @@ async def get_unified_options_portfolio(
 
         positions_models = query.all()
 
+        opt_acct_ids = {p.account_id for p in positions_models}
+        opt_accounts_map = {
+            a.id: a
+            for a in db.query(BrokerAccount).filter(
+                BrokerAccount.id.in_(opt_acct_ids)
+            ).all()
+        }
+
         def _days_to_expiry(exp: Optional[date]) -> int:
             try:
                 if not exp:
@@ -101,9 +109,7 @@ async def get_unified_options_portfolio(
         positions: List[Dict[str, Any]] = []
         underlyings: Dict[str, Dict[str, Any]] = {}
         for p in positions_models:
-            acc = (
-                db.query(BrokerAccount).filter(BrokerAccount.id == p.account_id).first()
-            )
+            acc = opt_accounts_map.get(p.account_id)
             account_number = acc.account_number if acc else None
             qty = int(p.open_quantity or 0)
             mult = float(p.multiplier or 100)

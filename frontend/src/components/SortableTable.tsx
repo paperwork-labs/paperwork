@@ -12,6 +12,10 @@ import {
   HStack,
   Text,
   Button,
+  NativeSelectRoot,
+  NativeSelectField,
+  NativeSelectIndicator,
+  Input,
 } from '@chakra-ui/react';
 import { FiChevronUp, FiChevronDown, FiMinus, FiPlus, FiX } from 'react-icons/fi';
 import EmptyState from './ui/EmptyState';
@@ -76,6 +80,8 @@ interface SortableTableProps<T = any> {
   initialFilters?: FilterGroup;
   initialFiltersOpen?: boolean;
   collapseAfterPresetLabels?: string[];
+  /** Optional row click handler; receives the row data. */
+  onRowClick?: (row: T) => void;
 }
 
 function SortableTable<T = any>({
@@ -93,6 +99,7 @@ function SortableTable<T = any>({
   initialFilters,
   initialFiltersOpen = true,
   collapseAfterPresetLabels = [],
+  onRowClick,
 }: SortableTableProps<T>) {
   const { tableDensity } = useUserPreferences();
   const size: 'sm' | 'md' | 'lg' = sizeProp ?? (tableDensity === 'compact' ? 'sm' : 'md');
@@ -466,21 +473,16 @@ function SortableTable<T = any>({
           {filtersOpen && (
             <Box mt={2}>
               <HStack gap={2} flexWrap="wrap">
-                <select
-                  value={filters.conjunction}
-                  onChange={(e) => setFilters((prev) => ({ ...prev, conjunction: e.target.value as 'AND' | 'OR' }))}
-                  style={{
-                    fontSize: 12,
-                    padding: '6px 8px',
-                    borderRadius: 10,
-                    border: '1px solid var(--chakra-colors-border-subtle)',
-                    background: 'var(--chakra-colors-bg-input)',
-                    color: 'var(--chakra-colors-fg-default)',
-                  }}
-                >
-                  <option value="AND">Match all</option>
-                  <option value="OR">Match any</option>
-                </select>
+                <NativeSelectRoot size="sm" w="auto">
+                  <NativeSelectField
+                    value={filters.conjunction}
+                    onChange={(e) => setFilters((prev) => ({ ...prev, conjunction: e.target.value as 'AND' | 'OR' }))}
+                  >
+                    <option value="AND">Match all</option>
+                    <option value="OR">Match any</option>
+                  </NativeSelectField>
+                  <NativeSelectIndicator />
+                </NativeSelectRoot>
                 <Button size="xs" variant="outline" onClick={addFilterRule}>
                   <HStack gap={1}>
                     <Icon as={FiPlus} />
@@ -516,152 +518,115 @@ function SortableTable<T = any>({
                     const compareCols = comparableColumns(type, rule.columnKey);
                     return (
                       <HStack key={rule.id} gap={2} flexWrap="wrap">
-                        <select
-                          value={rule.columnKey}
-                          onChange={(e) => {
-                            const nextKey = e.target.value;
-                            const nextMeta = columnMeta.get(nextKey);
-                            const nextOps = operatorOptions(nextMeta?.type || 'text');
-                            updateRule(rule.id, {
-                              columnKey: nextKey,
-                              operator: nextOps[0]?.value || 'contains',
-                              valueSource: 'literal',
-                              valueColumnKey: undefined,
-                              value: '',
-                              valueTo: '',
-                            });
-                          }}
-                          style={{
-                            fontSize: 12,
-                            padding: '6px 8px',
-                            borderRadius: 10,
-                            border: '1px solid var(--chakra-colors-border-subtle)',
-                            background: 'var(--chakra-colors-bg-input)',
-                            color: 'var(--chakra-colors-fg-default)',
-                          }}
-                        >
-                          {filterableColumns.map((col) => (
-                            <option key={col.key} value={col.key}>
-                              {col.header}
-                            </option>
-                          ))}
-                        </select>
-
-                        <select
-                          value={rule.operator}
-                          onChange={(e) => updateRule(rule.id, { operator: e.target.value as FilterOperator })}
-                          style={{
-                            fontSize: 12,
-                            padding: '6px 8px',
-                            borderRadius: 10,
-                            border: '1px solid var(--chakra-colors-border-subtle)',
-                            background: 'var(--chakra-colors-bg-input)',
-                            color: 'var(--chakra-colors-fg-default)',
-                          }}
-                        >
-                          {ops.map((op) => (
-                            <option key={op.value} value={op.value}>
-                              {op.label}
-                            </option>
-                          ))}
-                        </select>
-
-                        {compareCols.length > 0 && (
-                          <select
-                            value={rule.valueSource || 'literal'}
-                            onChange={(e) =>
+                        <NativeSelectRoot size="sm" w="auto">
+                          <NativeSelectField
+                            value={rule.columnKey}
+                            onChange={(e) => {
+                              const nextKey = e.target.value;
+                              const nextMeta = columnMeta.get(nextKey);
+                              const nextOps = operatorOptions(nextMeta?.type || 'text');
                               updateRule(rule.id, {
-                                valueSource: e.target.value as 'literal' | 'column',
+                                columnKey: nextKey,
+                                operator: nextOps[0]?.value || 'contains',
+                                valueSource: 'literal',
+                                valueColumnKey: undefined,
                                 value: '',
                                 valueTo: '',
-                                valueColumnKey: undefined,
-                              })
-                            }
-                            style={{
-                              fontSize: 12,
-                              padding: '6px 8px',
-                              borderRadius: 10,
-                              border: '1px solid var(--chakra-colors-border-subtle)',
-                              background: 'var(--chakra-colors-bg-input)',
-                              color: 'var(--chakra-colors-fg-default)',
+                              });
                             }}
                           >
-                            <option value="literal">Value</option>
-                            <option value="column">Column</option>
-                          </select>
-                        )}
-
-                        {rule.valueSource === 'column' ? (
-                          <select
-                            value={rule.valueColumnKey || ''}
-                            onChange={(e) => updateRule(rule.id, { valueColumnKey: e.target.value })}
-                            style={{
-                              fontSize: 12,
-                              padding: '6px 8px',
-                              borderRadius: 10,
-                              border: '1px solid var(--chakra-colors-border-subtle)',
-                              background: 'var(--chakra-colors-bg-input)',
-                              color: 'var(--chakra-colors-fg-default)',
-                            }}
-                          >
-                            <option value="">Select column…</option>
-                            {compareCols.map((col) => (
+                            {filterableColumns.map((col) => (
                               <option key={col.key} value={col.key}>
                                 {col.header}
                               </option>
                             ))}
-                          </select>
-                        ) : type === 'select' ? (
-                          <select
-                            value={rule.value || ''}
-                            onChange={(e) => updateRule(rule.id, { value: e.target.value })}
-                            style={{
-                              fontSize: 12,
-                              padding: '6px 8px',
-                              borderRadius: 10,
-                              border: '1px solid var(--chakra-colors-border-subtle)',
-                              background: 'var(--chakra-colors-bg-input)',
-                              color: 'var(--chakra-colors-fg-default)',
-                            }}
+                          </NativeSelectField>
+                          <NativeSelectIndicator />
+                        </NativeSelectRoot>
+
+                        <NativeSelectRoot size="sm" w="auto">
+                          <NativeSelectField
+                            value={rule.operator}
+                            onChange={(e) => updateRule(rule.id, { operator: e.target.value as FilterOperator })}
                           >
-                            <option value="">Select…</option>
-                            {options.map((opt) => (
-                              <option key={opt.value} value={opt.value}>
-                                {opt.label}
+                            {ops.map((op) => (
+                              <option key={op.value} value={op.value}>
+                                {op.label}
                               </option>
                             ))}
-                          </select>
+                          </NativeSelectField>
+                          <NativeSelectIndicator />
+                        </NativeSelectRoot>
+
+                        {compareCols.length > 0 && (
+                          <NativeSelectRoot size="sm" w="auto">
+                            <NativeSelectField
+                              value={rule.valueSource || 'literal'}
+                              onChange={(e) =>
+                                updateRule(rule.id, {
+                                  valueSource: e.target.value as 'literal' | 'column',
+                                  value: '',
+                                  valueTo: '',
+                                  valueColumnKey: undefined,
+                                })
+                              }
+                            >
+                              <option value="literal">Value</option>
+                              <option value="column">Column</option>
+                            </NativeSelectField>
+                            <NativeSelectIndicator />
+                          </NativeSelectRoot>
+                        )}
+
+                        {rule.valueSource === 'column' ? (
+                          <NativeSelectRoot size="sm" w="auto">
+                            <NativeSelectField
+                              value={rule.valueColumnKey || ''}
+                              onChange={(e) => updateRule(rule.id, { valueColumnKey: e.target.value })}
+                            >
+                              <option value="">Select column…</option>
+                              {compareCols.map((col) => (
+                                <option key={col.key} value={col.key}>
+                                  {col.header}
+                                </option>
+                              ))}
+                            </NativeSelectField>
+                            <NativeSelectIndicator />
+                          </NativeSelectRoot>
+                        ) : type === 'select' ? (
+                          <NativeSelectRoot size="sm" w="auto">
+                            <NativeSelectField
+                              value={rule.value || ''}
+                              onChange={(e) => updateRule(rule.id, { value: e.target.value })}
+                            >
+                              <option value="">Select…</option>
+                              {options.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </NativeSelectField>
+                            <NativeSelectIndicator />
+                          </NativeSelectRoot>
                         ) : (
-                          <input
+                          <Input
+                            size="sm"
+                            w="120px"
                             type={type === 'number' ? 'number' : type === 'date' ? 'date' : 'text'}
                             value={rule.value || ''}
                             onChange={(e) => updateRule(rule.id, { value: e.target.value })}
                             placeholder="Value"
-                            style={{
-                              fontSize: 12,
-                              padding: '6px 8px',
-                              borderRadius: 10,
-                              border: '1px solid var(--chakra-colors-border-subtle)',
-                              background: 'var(--chakra-colors-bg-input)',
-                              color: 'var(--chakra-colors-fg-default)',
-                            }}
                           />
                         )}
 
                         {rule.operator === 'between' && rule.valueSource !== 'column' && (
-                          <input
+                          <Input
+                            size="sm"
+                            w="120px"
                             type={type === 'number' ? 'number' : type === 'date' ? 'date' : 'text'}
                             value={rule.valueTo || ''}
                             onChange={(e) => updateRule(rule.id, { valueTo: e.target.value })}
                             placeholder="And"
-                            style={{
-                              fontSize: 12,
-                              padding: '6px 8px',
-                              borderRadius: 10,
-                              border: '1px solid var(--chakra-colors-border-subtle)',
-                              background: 'var(--chakra-colors-bg-input)',
-                              color: 'var(--chakra-colors-fg-default)',
-                            }}
                           />
                         )}
 
@@ -681,6 +646,7 @@ function SortableTable<T = any>({
       {sortedData.length === 0 ? (
         <EmptyState title="No results match filters" />
       ) : (
+        <Box overflowX="auto" w="full">
         <TableScrollArea
           w="full"
           maxHeight={maxHeight}
@@ -694,13 +660,14 @@ function SortableTable<T = any>({
                   {columns.map((column) => (
                     <TableColumnHeader
                       key={column.key}
-                      onClick={() => handleSort(column.key)}
+                      onClick={() => column.sortable && handleSort(column.key)}
                       cursor={column.sortable ? 'pointer' : 'default'}
                       _hover={column.sortable ? { bg: hoverBg } : undefined}
                       userSelect="none"
                       textAlign={column.isNumeric ? 'end' : 'start'}
                       width={column.width}
                       borderColor={borderColor}
+                      aria-sort={column.sortable ? (sortBy === column.key ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none') : undefined}
                     >
                       <HStack gap={2} justify={column.isNumeric ? 'flex-end' : 'flex-start'}>
                         <Text>{column.header}</Text>
@@ -713,7 +680,24 @@ function SortableTable<T = any>({
             )}
             <TableBody>
               {sortedData.map((item, index) => (
-                <TableRow key={index} _hover={{ bg: hoverBg }}>
+                <TableRow
+                  key={index}
+                  _hover={{ bg: hoverBg }}
+                  cursor={onRowClick ? 'pointer' : undefined}
+                  onClick={onRowClick ? () => onRowClick(item) : undefined}
+                  aria-label={onRowClick ? 'View details' : undefined}
+                  tabIndex={onRowClick ? 0 : undefined}
+                  onKeyDown={
+                    onRowClick
+                      ? (e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            onRowClick(item);
+                          }
+                        }
+                      : undefined
+                  }
+                >
                   {columns.map((column) => {
                     const value = column.accessor(item);
                     const renderedValue = column.render ? column.render(value, item) : value;
@@ -733,6 +717,7 @@ function SortableTable<T = any>({
             </TableBody>
           </TableRoot>
         </TableScrollArea>
+        </Box>
       )}
     </Box>
   );

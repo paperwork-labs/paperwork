@@ -16,7 +16,6 @@ from datetime import datetime, timedelta
 # dependencies
 from backend.database import get_db
 from backend.models.user import User
-from backend.services.portfolio.ibkr_sync_service import IBKRSyncService
 from backend.models import BrokerAccount
 
 # Auth dependency (to be implemented)
@@ -29,90 +28,6 @@ router = APIRouter()
 
 class FlexSyncRequest(BaseModel):
     account_id: str
-
-
-# =============================================================================
-# PORTFOLIO SUMMARY ENDPOINTS (Clean & Focused)
-# =============================================================================
-
-
-@router.get("/summary")
-async def get_portfolio_summary(
-    user: User = Depends(get_current_user), db: Session = Depends(get_db)
-) -> Dict[str, Any]:
-    """
-    Get user's portfolio summary.
-    CLEAN: Only portfolio summary, nothing else.
-    """
-    try:
-        sync_service = IBKRSyncService()
-        summary = await sync_service.get_user_portfolio_summary(user.id)
-
-        return {
-            "user_id": user.id,
-            "username": user.username,
-            "portfolio_summary": summary,
-            "timestamp": datetime.now().isoformat(),
-        }
-
-    except Exception as e:
-        logger.error(f"❌ Portfolio summary error for user {user.id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/positions")
-async def get_positions(
-    broker: Optional[str] = Query(
-        None, description="Filter by broker (ibkr, tastytrade)"
-    ),
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> Dict[str, Any]:
-    """
-    Get user's current positions.
-    CLEAN: Only positions data, properly filtered.
-    """
-    try:
-        sync_service = IBKRSyncService()
-        positions = await sync_service.get_user_positions(user.id, broker=broker)
-
-        return {
-            "user_id": user.id,
-            "broker_filter": broker,
-            "positions": positions,
-            "total_positions": len(positions),
-            "timestamp": datetime.now().isoformat(),
-        }
-
-    except Exception as e:
-        logger.error(f"❌ Positions error for user {user.id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/performance")
-async def get_portfolio_performance(
-    days: int = Query(30, description="Performance period in days"),
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> Dict[str, Any]:
-    """
-    Get portfolio performance metrics.
-    CLEAN: Only performance data, configurable timeframe.
-    """
-    try:
-        sync_service = IBKRSyncService()
-        performance = await sync_service.get_user_performance(user.id, days=days)
-
-        return {
-            "user_id": user.id,
-            "period_days": days,
-            "performance_metrics": performance,
-            "timestamp": datetime.now().isoformat(),
-        }
-
-    except Exception as e:
-        logger.error(f"❌ Performance error for user {user.id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 # =============================================================================
@@ -247,6 +162,14 @@ async def get_statements(
         )
         rows = q.all()
 
+        account_ids = {t.account_id for t in rows}
+        accounts_by_id = {
+            a.id: a
+            for a in db.query(BrokerAccount).filter(
+                BrokerAccount.id.in_(account_ids)
+            ).all()
+        }
+
         txs = []
         for t in rows:
             is_buy = (
@@ -255,9 +178,7 @@ async def get_statements(
             is_sell = (
                 t.transaction_type.name if t.transaction_type else ""
             ).upper() == "SELL"
-            acc = (
-                db.query(BrokerAccount).filter(BrokerAccount.id == t.account_id).first()
-            )
+            acc = accounts_by_id.get(t.account_id)
             txs.append(
                 {
                     "id": t.id,

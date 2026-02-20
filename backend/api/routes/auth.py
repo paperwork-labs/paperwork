@@ -168,8 +168,16 @@ def authenticate_user(db: Session, username: str, password: str) -> Optional[Use
     """Authenticate a user with username and password."""
     user = db.query(User).filter(User.username == username).first()
     if not user:
+        logger.warning("Login failed: user not found", extra={"username": username})
         return None
-    if not verify_password(password, user.password_hash or ""):
+    if not user.password_hash:
+        logger.warning("Login failed: user has no password set", extra={"user_id": user.id})
+        return None
+    if not verify_password(password, user.password_hash):
+        logger.warning(
+            "Login failed: password mismatch",
+            extra={"user_id": user.id, "username": user.username},
+        )
         return None
     return user
 

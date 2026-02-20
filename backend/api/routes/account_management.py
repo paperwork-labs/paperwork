@@ -53,6 +53,7 @@ class BrokerAccountResponse(BaseModel):
     last_successful_sync: Optional[datetime]
     sync_status: Optional[str]
     created_at: datetime
+    sync_task_id: Optional[str] = None  # Set when auto-sync is queued after add
 
 
 class SyncAccountRequest(BaseModel):
@@ -131,6 +132,15 @@ async def add_broker_account(
         db.commit()
         db.refresh(broker_account)
 
+        sync_task_id: Optional[str] = None
+        try:
+            from backend.tasks.account_sync import sync_account_task
+
+            sync_task = sync_account_task.delay(broker_account.id)
+            sync_task_id = sync_task.id
+        except Exception:
+            pass
+
         return BrokerAccountResponse(
             id=broker_account.id,
             broker=broker_account.broker.value,
@@ -144,6 +154,7 @@ async def add_broker_account(
                 broker_account.sync_status.value if broker_account.sync_status else None
             ),
             created_at=broker_account.created_at,
+            sync_task_id=sync_task_id,
         )
 
     except HTTPException:
@@ -232,21 +243,21 @@ async def sync_broker_account(
 async def sync_all_accounts(
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
-    """Sync all enabled broker accounts for the user."""
+    """Sync all enabled broker accounts for the user. Returns task IDs for polling."""
     try:
+        from backend.tasks.account_sync import sync_account_task
+
         accounts = (
             db.query(BrokerAccount)
             .filter(BrokerAccount.user_id == current_user.id, BrokerAccount.is_enabled == True)
             .all()
         )
-        results: Dict[str, Any] = {}
+        task_ids: Dict[str, str] = {}
         for account in accounts:
             key = f"{account.broker.value}_{account.account_number}"
-            try:
-                results[key] = broker_sync_service.sync_account(account.account_number, db)
-            except ValueError as ve:
-                results[key] = {"status": "skipped", "reason": str(ve)}
-        return results
+            task = sync_account_task.delay(account.id)
+            task_ids[key] = task.id
+        return {"status": "queued", "task_ids": task_ids}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error syncing accounts: {str(e)}")

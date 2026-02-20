@@ -1200,5 +1200,8 @@ class DiscordNotifier:
         )
 
 
+# Alias for strategy_manager and other callers that expect DiscordService
+DiscordService = DiscordNotifier
+
 # Global instance
 discord_notifier = DiscordNotifier()
