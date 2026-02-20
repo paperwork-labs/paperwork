@@ -12,7 +12,8 @@ import { FiRefreshCw } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { ChartContext, SymbolLink, ChartSlidePanel } from '../../components/market/SymbolChartUI';
 import SortableTable, { type Column, type FilterGroup } from '../../components/SortableTable';
-import FinvizHeatMap from '../../components/charts/FinvizHeatMap';
+import FinvizHeatMap, { type FinvizData } from '../../components/charts/FinvizHeatMap';
+import { TableSkeleton } from '../../components/shared/Skeleton';
 import AccountFilterWrapper from '../../components/ui/AccountFilterWrapper';
 import PageHeader from '../../components/ui/PageHeader';
 import StageBadge from '../../components/shared/StageBadge';
@@ -91,16 +92,16 @@ const PortfolioHoldings: React.FC = () => {
     [rawAccounts, positions]
   );
 
-  const heatmap = useMemo(() => {
+  const heatmap = useMemo((): FinvizData[] => {
     return positions
       .map((p) => ({
         name: String(p.symbol ?? '').toUpperCase() || '—',
         size: Math.max(1, Math.round(Number(p.market_value ?? 0) / 1000)),
-        change: Number((p as any).day_pnl_pct ?? p.perf_1d ?? 0),
+        change: Number(p.day_pnl_pct ?? p.perf_1d ?? 0),
         sector: String(p.sector ?? '—'),
         value: Number.isFinite(Number(p.market_value)) ? Number(p.market_value) : 0,
       }))
-      .filter((x) => x.name !== '—')
+      .filter((x): x is FinvizData => x.name !== '—')
       .slice(0, 40);
   }, [positions]);
 
@@ -161,7 +162,7 @@ const PortfolioHoldings: React.FC = () => {
       {
         key: 'day_pnl_pct',
         header: 'Day P&L %',
-        accessor: (p) => Number((p as any).day_pnl_pct ?? p.perf_1d ?? 0),
+        accessor: (p) => Number(p.day_pnl_pct ?? p.perf_1d ?? 0),
         sortable: true,
         sortType: 'number',
         isNumeric: true,
@@ -264,13 +265,14 @@ const PortfolioHoldings: React.FC = () => {
           config={{ showAllOption: true, showSummary: false, variant: 'simple' }}
           loading={positionsQuery.isLoading || accountsQuery.isLoading}
           error={positionsQuery.error || accountsQuery.error ? 'Failed to load holdings' : null}
+          loadingComponent={<TableSkeleton rows={8} cols={6} />}
         >
           {(filtered) => (
             <Box display="flex" flexDirection="column" gap={4}>
               {showHeatmap && heatmap.length > 0 && (
                 <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
                   <CardBody>
-                    <FinvizHeatMap data={heatmap as any} height={320} />
+                    <FinvizHeatMap data={heatmap} height={320} />
                   </CardBody>
                 </CardRoot>
               )}

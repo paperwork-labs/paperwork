@@ -14,6 +14,7 @@ import {
 import { FiRefreshCw, FiChevronDown, FiChevronRight } from 'react-icons/fi';
 import { ChartContext, SymbolLink, ChartSlidePanel } from '../../components/market/SymbolChartUI';
 import StatCard from '../../components/shared/StatCard';
+import { StatCardSkeleton, TableSkeleton } from '../../components/shared/Skeleton';
 import PnlText from '../../components/shared/PnlText';
 import PageHeader from '../../components/ui/PageHeader';
 import AccountFilterWrapper from '../../components/ui/AccountFilterWrapper';
@@ -96,6 +97,18 @@ const PortfolioOptions: React.FC = () => {
             config={{ showAllOption: true, showSummary: false, variant: 'simple' }}
             loading={optionsQuery.isLoading || accountsQuery.isLoading}
             error={optionsQuery.error || accountsQuery.error ? 'Failed to load options' : null}
+            loadingComponent={
+              <>
+                <Box display="flex" gap={3} flexWrap="wrap">
+                  <StatCardSkeleton />
+                  <StatCardSkeleton />
+                  <StatCardSkeleton />
+                  <StatCardSkeleton />
+                  <StatCardSkeleton />
+                </Box>
+                <TableSkeleton rows={5} cols={4} />
+              </>
+            }
           >
             {() => (
               <>

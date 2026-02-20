@@ -35,40 +35,6 @@ class TestDatabaseOperations:
         except Exception as e:
             pytest.fail(f"Database connection failed: {e}")
 
-    def test_atr_signals_table(self):
-        """Test ATR signals table operations."""
-        try:
-            # This will work after rebuild
-            # db = SessionLocal()
-            #
-            # # Test inserting ATR signal
-            # signal = ATRSignal(
-            #     symbol="AAPL",
-            #     atr_value=4.25,
-            #     volatility_level="MEDIUM",
-            #     is_breakout=True,
-            #     signal_type="ENTRY",
-            #     confidence=0.85,
-            #     created_at=datetime.now()
-            # )
-            #
-            # db.add(signal)
-            # db.commit()
-            #
-            # # Test retrieving signal
-            # retrieved = db.query(ATRSignal).filter(ATRSignal.symbol == "AAPL").first()
-            # assert retrieved is not None
-            # assert retrieved.atr_value == 4.25
-            # assert retrieved.volatility_level == "MEDIUM"
-            #
-            # db.close()
-
-            # Placeholder for now
-            assert True, "ATR signals table test (implement after rebuild)"
-
-        except Exception as e:
-            pytest.fail(f"ATR signals table test failed: {e}")
-
     def test_portfolio_holdings_table(self):
         """Test portfolio holdings table operations."""
         try:
@@ -234,41 +200,6 @@ class TestAPIEndpoints:
 class TestSystemIntegration:
     """Test complete system integration after rebuild."""
 
-    @pytest.mark.asyncio
-    async def test_end_to_end_atr_signal_generation(self):
-        """Test end-to-end ATR signal generation and storage."""
-        try:
-            # This will test the complete flow:
-            # 1. Get stock universe from APIs
-            # 2. Calculate ATR for symbols
-            # 3. Generate signals
-            # 4. Store in database
-            # 5. Send Discord notifications
-            # 6. Serve via API
-
-            # Will implement after rebuild
-            assert True, "End-to-end ATR signal test (implement after rebuild)"
-
-        except Exception as e:
-            pytest.fail(f"End-to-end test failed: {e}")
-
-    @pytest.mark.asyncio
-    async def test_portfolio_integration_with_atr(self):
-        """Test portfolio data integration with ATR calculations."""
-        try:
-            # This will test:
-            # 1. Get portfolio holdings
-            # 2. Calculate ATR for portfolio symbols
-            # 3. Generate portfolio-specific alerts
-            # 4. Store results
-            # 5. Serve via Holdings UI API
-
-            # Will implement after rebuild
-            assert True, "Portfolio ATR integration test (implement after rebuild)"
-
-        except Exception as e:
-            pytest.fail(f"Portfolio integration test failed: {e}")
-
 
 # Test data and fixtures
 @pytest.fixture
@@ -283,27 +214,6 @@ def sample_portfolio_data():
     }
 
 
-@pytest.fixture
-def sample_atr_signals():
-    """Sample ATR signals for testing."""
-    return [
-        {
-            "symbol": "AAPL",
-            "atr_value": 4.25,
-            "volatility_level": "MEDIUM",
-            "is_breakout": True,
-            "confidence": 0.85,
-        },
-        {
-            "symbol": "MSFT",
-            "atr_value": 8.50,
-            "volatility_level": "HIGH",
-            "is_breakout": False,
-            "confidence": 0.72,
-        },
-    ]
-
-
 # Test runners for post-rebuild validation
 async def run_database_tests():
     """Run database tests after rebuild."""
@@ -311,7 +221,6 @@ async def run_database_tests():
 
     test_db = TestDatabaseOperations()
     test_db.test_database_connection()
-    test_db.test_atr_signals_table()
     test_db.test_portfolio_holdings_table()
     test_db.test_market_data_table()
 
@@ -336,8 +245,6 @@ async def run_integration_tests():
     print("🔗 Running Integration Tests...")
 
     test_integration = TestSystemIntegration()
-    await test_integration.test_end_to_end_atr_signal_generation()
-    await test_integration.test_portfolio_integration_with_atr()
 
     print("✅ Integration tests completed!")
 

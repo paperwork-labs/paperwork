@@ -11,9 +11,9 @@ const StrategiesManager: React.FC = () => {
       <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
         <CardBody>
           <VStack align="start" gap={2}>
-            <Badge colorPalette="yellow">Under migration</Badge>
+            <Badge colorPalette="blue">Coming Soon</Badge>
             <Text color="fg.muted">
-              This page is being migrated to Chakra v3 and will return with v3 dialogs + shared table components.
+              The strategy builder will let you compose rules from market indicators like Weinstein stage, RS Mansfield, TD Sequential, and more.
             </Text>
           </VStack>
         </CardBody>

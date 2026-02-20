@@ -19,6 +19,8 @@ interface AccountFilterWrapperProps<T extends FilterableItem> {
   loading?: boolean;
   error?: string | null;
   onAccountChange?: (accountId: string) => void;
+  /** When loading is true, render this instead of the default Spinner (e.g. TableSkeleton). */
+  loadingComponent?: ReactNode;
   children: (filteredData: T[], filterState: ReturnType<typeof useAccountFilter>) => ReactNode;
 }
 
@@ -32,6 +34,7 @@ function AccountFilterWrapper<T extends FilterableItem>({
   loading = false,
   error = null,
   onAccountChange,
+  loadingComponent,
   children,
 }: AccountFilterWrapperProps<T>) {
   const filterState = useAccountFilter(data, accounts, config);
@@ -44,6 +47,7 @@ function AccountFilterWrapper<T extends FilterableItem>({
   };
 
   if (loading) {
+    if (loadingComponent) return <>{loadingComponent}</>;
     return (
       <VStack gap={4} py={8}>
         <Spinner size="xl" color="brand.500" />

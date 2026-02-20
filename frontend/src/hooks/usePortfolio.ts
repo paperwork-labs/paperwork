@@ -329,14 +329,26 @@ export const useDashboardData = () => {
 };
 
 // Helper function to transform API data for charts
+type SummaryWithPositions = PortfolioSummary & { all_positions?: unknown[]; positions?: unknown[] };
+interface ChartPosition {
+  symbol: string;
+  market_value?: number;
+  value?: number;
+  unrealized_pnl?: number;
+  unrealized_pnl_pct?: number;
+  account?: string;
+}
 export const transformPortfolioDataForCharts = (data: PortfolioSummary) => {
-  const anyData: any = data as any;
-  const positions = anyData?.all_positions || anyData?.positions || [];
-  return positions.map((position: any) => ({
-    symbol: position.symbol,
-    value: position.market_value ?? position.value ?? 0,
-    gainLoss: position.unrealized_pnl ?? 0,
-    gainLossPct: position.unrealized_pnl_pct ?? 0,
-    account: position.account,
-  }));
+  const withPos = data as SummaryWithPositions;
+  const positions = withPos?.all_positions ?? withPos?.positions ?? [];
+  return (Array.isArray(positions) ? positions : []).map((position: unknown) => {
+    const p = position as ChartPosition;
+    return {
+      symbol: p.symbol,
+      value: p.market_value ?? p.value ?? 0,
+      gainLoss: p.unrealized_pnl ?? 0,
+      gainLossPct: p.unrealized_pnl_pct ?? 0,
+      account: p.account,
+    };
+  });
 }; 

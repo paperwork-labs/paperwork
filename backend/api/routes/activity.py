@@ -32,7 +32,7 @@ async def get_activity(
     db = Depends(get_db),
 ) -> Dict[str, Any]:
     try:
-        rows = activity_aggregator.get_activity(
+        result = activity_aggregator.get_activity(
             db=db,
             account_id=account_id,
             start=start,
@@ -44,7 +44,7 @@ async def get_activity(
             offset=offset,
             use_mv=True,
         )
-        return {"status": "success", "data": {"activity": rows}}
+        return {"status": "success", "data": {"activity": result["activity"], "total": result["total"]}}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

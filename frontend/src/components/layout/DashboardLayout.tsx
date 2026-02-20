@@ -253,11 +253,11 @@ const DashboardLayout: React.FC = () => {
       }
       try {
         const res = await portfolioApi.getLive();
-        const data = (res as any)?.data || res;
-        const accounts = Object.values<any>(data?.accounts || {});
-        const value = accounts.reduce((sum, a: any) => sum + (a.account_summary?.net_liquidation || 0), 0);
-        const dayPnL = accounts.reduce((sum, a: any) => sum + (a.account_summary?.day_change || 0), 0);
-        const positions = accounts.reduce((sum, a: any) => sum + ((a.all_positions || []).length || 0), 0);
+        const data = res?.data ?? res;
+        const accounts = Object.values(data?.accounts ?? {}) as Array<{ account_summary?: { net_liquidation?: number; day_change?: number }; all_positions?: unknown[] }>;
+        const value = accounts.reduce((sum, a) => sum + (a.account_summary?.net_liquidation ?? 0), 0);
+        const dayPnL = accounts.reduce((sum, a) => sum + (a.account_summary?.day_change ?? 0), 0);
+        const positions = accounts.reduce((sum, a) => sum + (a.all_positions?.length ?? 0), 0);
         setTotals({ value, dayPnL, positions });
         setHeaderStats({
           label: 'Combined Portfolio',

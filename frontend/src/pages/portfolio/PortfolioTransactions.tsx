@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   Box,
   Text,
@@ -15,7 +15,9 @@ import {
 } from '@chakra-ui/react';
 import { FiRefreshCw } from 'react-icons/fi';
 import PageHeader from '../../components/ui/PageHeader';
+import { TableSkeleton } from '../../components/shared/Skeleton';
 import AccountFilterWrapper from '../../components/ui/AccountFilterWrapper';
+import Pagination from '../../components/ui/Pagination';
 import SortableTable, { type Column } from '../../components/SortableTable';
 import { useActivity, usePortfolioSync, usePortfolioAccounts } from '../../hooks/usePortfolio';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
@@ -43,6 +45,8 @@ const PortfolioTransactions: React.FC = () => {
   const [category, setCategory] = useState<string>('');
   const [side, setSide] = useState<string>('');
   const [symbolSearch, setSymbolSearch] = useState<string>('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const debouncedSymbol = useDebounce(symbolSearch, 300);
   const { selected } = useAccountContext();
 
@@ -68,20 +72,29 @@ const PortfolioTransactions: React.FC = () => {
       symbol: debouncedSymbol.trim() || undefined,
       category: category || undefined,
       side: side || undefined,
-      limit: 500,
-      offset: 0,
+      limit: pageSize,
+      offset: (page - 1) * pageSize,
     }),
-    [accountIdForApi, start, end, debouncedSymbol, category, side]
+    [accountIdForApi, start, end, debouncedSymbol, category, side, page, pageSize]
   );
+
+  useEffect(() => {
+    setPage(1);
+  }, [dateRange, category, side, debouncedSymbol, selected]);
 
   const activityQuery = useActivity(activityParams);
   const syncMutation = usePortfolioSync();
 
   const activity = useMemo(() => {
-    const data = activityQuery.data as any;
+    const data = activityQuery.data as import('../../services/api').ActivityResponse | undefined;
     const rows = data?.data?.activity ?? data?.activity ?? [];
-    return rows as ActivityRow[];
+    return (Array.isArray(rows) ? rows : []) as ActivityRow[];
   }, [activityQuery.data]);
+
+  const total =
+    (activityQuery.data as import('../../services/api').ActivityResponse | undefined)?.total ??
+    (activityQuery.data as { data?: { total?: number } } | undefined)?.data?.total ??
+    activity.length;
 
   const columns: Column<ActivityRow>[] = useMemo(
     () => [
@@ -194,7 +207,7 @@ const PortfolioTransactions: React.FC = () => {
           data={activity as import('../../hooks/useAccountFilter').FilterableItem[]}
           accounts={accounts}
           config={{ showAllOption: true, showSummary: false, variant: 'simple' }}
-          loading={activityQuery.isLoading || accountsQuery.isLoading}
+          loading={accountsQuery.isLoading}
           error={activityQuery.error || accountsQuery.error ? 'Failed to load activity' : null}
         >
           {() => (
@@ -240,18 +253,34 @@ const PortfolioTransactions: React.FC = () => {
 
               <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
                 <CardBody>
-                  <HStack justify="space-between" mb={2}>
-                    <Badge colorPalette="gray">{activity.length} rows</Badge>
-                  </HStack>
-                  <SortableTable
-                    data={activity}
-                    columns={columns}
-                    defaultSortBy="ts"
-                    defaultSortOrder="desc"
-                    size="sm"
-                    maxHeight="70vh"
-                    emptyMessage={activityQuery.isLoading ? 'Loading…' : 'No activity in this range.'}
-                  />
+                  {activityQuery.isLoading ? (
+                    <TableSkeleton rows={10} cols={7} />
+                  ) : (
+                    <>
+                      <HStack justify="space-between" mb={2}>
+                        <Badge colorPalette="gray">{activity.length} rows</Badge>
+                      </HStack>
+                      <SortableTable
+                        data={activity}
+                        columns={columns}
+                        defaultSortBy="ts"
+                        defaultSortOrder="desc"
+                        size="sm"
+                        maxHeight="70vh"
+                        emptyMessage="No activity in this range."
+                      />
+                      <Pagination
+                        page={page}
+                        pageSize={pageSize}
+                        total={total}
+                        onPageChange={setPage}
+                        onPageSizeChange={(ps) => {
+                          setPageSize(ps);
+                          setPage(1);
+                        }}
+                      />
+                    </>
+                  )}
                 </CardBody>
               </CardRoot>
             </>

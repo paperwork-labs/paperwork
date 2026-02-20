@@ -30,14 +30,62 @@ Pages should prefer **semantic tokens** like `bg.card`, `border.subtle`, `fg.mut
 
 ### Portfolio component map
 
-- **Pages**: PortfolioOverview, PortfolioHoldings, PortfolioOptions, PortfolioTransactions, PortfolioCategories (under `frontend/src/pages/portfolio/`).
-- **Shared**: StatCard, StageBar, StageBadge, PnlText, Skeleton (StatCardSkeleton, TableSkeleton, ChartSkeleton), AccountFilterWrapper, SortableTable.
-- **Utils**: `frontend/src/utils/portfolio.ts` – buildAccountsFromPositions, buildAccountsFromBroker, stageCountsFromPositions, sectorAllocationFromPositions, topMoversFromPositions, toStartEnd, timeAgo.
-- **Account filter**: Global selection via AccountContext; useAccountContext().selected used for API filters and selector display; sync to context on change in AccountFilterWrapper.
+- **Pages**: PortfolioOverview, PortfolioHoldings, PortfolioOptions, PortfolioTransactions, PortfolioCategories, PortfolioWorkspace (under `frontend/src/pages/portfolio/`).
+- **Shared** (`frontend/src/components/shared/`): StatCard, StageBar, StageBadge, PnlText, Skeleton (StatCardSkeleton, TableSkeleton, ChartSkeleton).
+- **UI**: AccountFilterWrapper, SortableTable (with debounced filter inputs), Pagination.
+- **Utils**: `frontend/src/utils/portfolio.ts` – buildAccountsFromBroker, toStartEnd, timeAgo, stageCountsFromPositions, sectorAllocationFromPositions, topMoversFromPositions.
+- **Account filter**: Global selection via AccountContext; `useAccountContext().selected` used for API filters and selector display; sync to context on change in AccountFilterWrapper.
 
 ### Skeleton loading
 
 Use `StatCardSkeleton`, `TableSkeleton`, `ChartSkeleton` from `frontend/src/components/shared/Skeleton.tsx` for loading states instead of spinner-only so layout is communicated.
+
+**Pattern**: When using `AccountFilterWrapper`, pass optional `loadingComponent` to show a skeleton instead of the default Spinner when account/data is loading:
+
+```tsx
+<AccountFilterWrapper
+  data={positions}
+  accounts={accounts}
+  loading={positionsQuery.isLoading || accountsQuery.isLoading}
+  loadingComponent={<TableSkeleton rows={8} cols={6} />}
+>
+  {(filteredData, filterState) => <SortableTable data={filteredData} ... />}
+</AccountFilterWrapper>
+```
+
+For page-level loading (e.g. activity), render the skeleton when the main query is loading and the table when not:
+
+```tsx
+{activityQuery.isLoading ? (
+  <TableSkeleton rows={10} cols={7} />
+) : (
+  <SortableTable data={activity} ... />
+)}
+```
+
+### Pagination pattern
+
+Use `Pagination` from `frontend/src/components/ui/Pagination.tsx` with local state for `page` and `pageSize`; pass `total` from the API (e.g. activity response `total`). Reset `page` to 1 when filters change (e.g. via `useEffect` on filter deps):
+
+```tsx
+const [page, setPage] = useState(1);
+const [pageSize, setPageSize] = useState(50);
+useEffect(() => setPage(1), [dateRange, category, selected]);
+
+<Pagination
+  page={page}
+  pageSize={pageSize}
+  total={total}
+  onPageChange={setPage}
+  onPageSizeChange={(ps) => { setPageSize(ps); setPage(1); }}
+/>
+```
+
+### AccountFilterWrapper pattern
+
+- Wraps account selector (All / per-account) and filters data by selected account. Children receive `(filteredData, filterState)`.
+- When `loading` is true: if `loadingComponent` is provided, it is rendered; otherwise a Spinner + "Loading account data…" is shown.
+- Use `loadingComponent` with `TableSkeleton` or custom skeleton so users see layout while data loads.
 
 ### Ladle (component explorer)
 
@@ -60,6 +108,18 @@ make ladle-build
 Ladle uses the same Chakra v3 system provider as the app:
 - `frontend/.ladle/components.tsx`
 
+#### Ladle story inventory
+Stories live under `frontend/src/stories/`:
+- **Brand.stories.tsx** — brand/logo
+- **Components.stories.tsx** — shared components
+- **LoadingStates.stories.tsx** — skeletons, spinners
+- **Charts.stories.tsx** — Recharts, sparkline
+- **Tokens.stories.tsx** — theme tokens
+- **Accounts.stories.tsx** — account selector, filter
+- **UIPrimitives.stories.tsx** — buttons, inputs, cards
+- **DashboardLayout.stories.tsx** — layout shell
+- **Tables.stories.tsx** — SortableTable
+
 ### Charts
 
 The app uses several charting approaches depending on the use case:
@@ -81,7 +141,7 @@ Symbols throughout the Market Dashboard follow a hover + click interaction model
 - **Click**: Opens a right-edge slide-out panel with a full `TradingViewChart` for the symbol. The panel covers ~50vw on desktop / 90vw on mobile and can be closed via X button, click-away, or Escape.
 - **No page navigation**: Symbol clicks stay on the dashboard — there is no redirect to `/market/tracked`.
 
-The pattern is implemented via `SymbolLink` (renders a `PopoverRoot` for hover) and `ChartSlidePanel` (renders a `DialogRoot` for the slide-out). A `ChartContext` React context passes the `openChart` callback to all nested `SymbolLink` instances without prop drilling.
+The pattern is implemented via **ChartContext** + **SymbolLink** + **ChartSlidePanel**: `ChartContext` provides the `openChart` callback to nested `SymbolLink` instances without prop drilling; `SymbolLink` renders a `PopoverRoot` for hover (sparkline); `ChartSlidePanel` renders a `DialogRoot` for the slide-out TradingView chart. Used across Market Dashboard and Portfolio (Holdings, etc.).
 
 ### Chart Semantic Tokens
 

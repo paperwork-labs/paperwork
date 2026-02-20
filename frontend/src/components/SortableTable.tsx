@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   TableScrollArea,
   TableRoot,
@@ -19,7 +19,52 @@ import {
 } from '@chakra-ui/react';
 import { FiChevronUp, FiChevronDown, FiMinus, FiPlus, FiX } from 'react-icons/fi';
 import EmptyState from './ui/EmptyState';
+import { useDebounce } from '../hooks/useDebounce';
 import { useUserPreferences } from '../hooks/useUserPreferences';
+
+const DEBOUNCE_MS = 300;
+
+function DebouncedFilterInput({
+  value,
+  onChange,
+  type = 'text',
+  placeholder,
+  size,
+  w,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  type?: 'text' | 'number' | 'date';
+  placeholder?: string;
+  size?: 'sm' | 'md' | 'lg';
+  w?: string;
+}) {
+  const [localValue, setLocalValue] = useState(value ?? '');
+  const debounced = useDebounce(localValue, DEBOUNCE_MS);
+  const lastEmittedRef = useRef<string>(value ?? '');
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  useEffect(() => {
+    if (value !== lastEmittedRef.current) setLocalValue(value ?? '');
+  }, [value]);
+
+  useEffect(() => {
+    lastEmittedRef.current = debounced;
+    onChangeRef.current(debounced);
+  }, [debounced]);
+
+  return (
+    <Input
+      size={size}
+      w={w}
+      type={type}
+      value={localValue}
+      onChange={(e) => setLocalValue(e.target.value)}
+      placeholder={placeholder}
+    />
+  );
+}
 
 export type FilterType = 'text' | 'number' | 'select' | 'date';
 export type FilterOperator =
@@ -609,24 +654,24 @@ function SortableTable<T = any>({
                             <NativeSelectIndicator />
                           </NativeSelectRoot>
                         ) : (
-                          <Input
+                          <DebouncedFilterInput
+                            value={rule.value || ''}
+                            onChange={(v) => updateRule(rule.id, { value: v })}
+                            type={type === 'number' ? 'number' : type === 'date' ? 'date' : 'text'}
+                            placeholder="Value"
                             size="sm"
                             w="120px"
-                            type={type === 'number' ? 'number' : type === 'date' ? 'date' : 'text'}
-                            value={rule.value || ''}
-                            onChange={(e) => updateRule(rule.id, { value: e.target.value })}
-                            placeholder="Value"
                           />
                         )}
 
                         {rule.operator === 'between' && rule.valueSource !== 'column' && (
-                          <Input
+                          <DebouncedFilterInput
+                            value={rule.valueTo || ''}
+                            onChange={(v) => updateRule(rule.id, { valueTo: v })}
+                            type={type === 'number' ? 'number' : type === 'date' ? 'date' : 'text'}
+                            placeholder="And"
                             size="sm"
                             w="120px"
-                            type={type === 'number' ? 'number' : type === 'date' ? 'date' : 'text'}
-                            value={rule.valueTo || ''}
-                            onChange={(e) => updateRule(rule.id, { valueTo: e.target.value })}
-                            placeholder="And"
                           />
                         )}
 

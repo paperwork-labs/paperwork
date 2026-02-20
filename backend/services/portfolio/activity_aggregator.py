@@ -49,8 +49,8 @@ class ActivityAggregatorService:
         limit: int = 200,
         offset: int = 0,
         use_mv: bool = True,
-    ) -> List[Dict[str, Any]]:
-        """Return unified activity rows."""
+    ) -> Dict[str, Any]:
+        """Return unified activity rows and total count."""
         params: Dict[str, Any] = {}
         where_clauses: List[str] = []
         order = "ORDER BY ts DESC"
@@ -134,6 +134,10 @@ class ActivityAggregatorService:
         params["limit"] = min(max(limit, 1), 1000)
         params["offset"] = max(offset, 0)
 
+        count_sql = text(f"SELECT COUNT(*) AS total FROM ({base} {where}) AS _count")
+        total_result = db.execute(count_sql, {k: v for k, v in params.items() if k not in ("limit", "offset")}).mappings().first()
+        total = int(total_result["total"]) if total_result else 0
+
         sql = text(f"""
             {base}
             {where}
@@ -141,7 +145,7 @@ class ActivityAggregatorService:
             {paging}
         """)
         rows = db.execute(sql, params).mappings().all()
-        return [dict(r) for r in rows]
+        return {"activity": [dict(r) for r in rows], "total": total}
 
     def get_daily_summary(
         self,

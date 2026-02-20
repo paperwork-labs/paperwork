@@ -24,4 +24,14 @@ describe('StageBar', () => {
     );
     expect(screen.getByText(/2A: 1 \(50%\)/)).toBeInTheDocument();
   });
+
+  it('has accessible role and aria-label for stage distribution', () => {
+    const { container } = renderWithProviders(
+      <StageBar counts={{ '1': 1, '2A': 2, '2B': 0, '2C': 0, '3': 0, '4': 0 }} total={3} />
+    );
+    const bar = container.querySelector('[role="img"][aria-label*="Stage distribution"]');
+    expect(bar).toBeInTheDocument();
+    expect(bar).toHaveAttribute('aria-label');
+    expect(bar?.getAttribute('aria-label')).toMatch(/Stage distribution:.*1: 1.*2A: 2/);
+  });
 });

@@ -13,7 +13,7 @@ export const StatCardSkeleton: React.FC = () => (
 
 /** Rows of pulsing bars matching table column widths. */
 export const TableSkeleton: React.FC<{ rows?: number; cols?: number }> = ({ rows = 8, cols = 5 }) => (
-  <VStack align="stretch" gap={2}>
+  <VStack align="stretch" gap={2} data-testid="table-skeleton">
     {Array.from({ length: rows }).map((_, i) => (
       <HStack key={i} gap={3}>
         {Array.from({ length: cols }).map((_, j) => (

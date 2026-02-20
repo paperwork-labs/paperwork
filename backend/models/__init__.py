@@ -48,6 +48,9 @@ from .transaction import Transaction, TransactionType, Dividend
 # Options Trading
 from .options import Option, OptionType
 
+# Strategy & Signals (required for User.strategies / User.strategy_executions)
+from .strategy import Strategy, StrategyExecution
+
 # Essential models list
 __all__ = [
     "Base",

@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { renderWithProviders } from '../../test/render';
 import SortableTable, { type Column, type FilterGroup } from '../SortableTable';
 
@@ -13,7 +13,7 @@ vi.mock('../../hooks/useUserPreferences', () => ({
 }));
 
 describe('SortableTable filters', () => {
-  it('filters rows based on text rule', () => {
+  it('filters rows based on text rule', async () => {
     const columns: Column<any>[] = [
       { key: 'name', header: 'Name', accessor: (r) => r.name, sortable: true, sortType: 'string' },
       { key: 'sector', header: 'Sector', accessor: (r) => r.sector, sortable: true, sortType: 'string' },
@@ -29,8 +29,13 @@ describe('SortableTable filters', () => {
     const inputs = screen.getAllByPlaceholderText('Value');
     fireEvent.change(inputs[0], { target: { value: 'AAPL' } });
 
-    expect(screen.getByText('AAPL')).toBeInTheDocument();
-    expect(screen.queryByText('JNJ')).toBeNull();
+    await waitFor(
+      () => {
+        expect(screen.getByText('AAPL')).toBeInTheDocument();
+        expect(screen.queryByText('JNJ')).toBeNull();
+      },
+      { timeout: 400 }
+    );
   });
 
   it('applies filter presets', () => {

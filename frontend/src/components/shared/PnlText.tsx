@@ -32,8 +32,17 @@ const PnlText: React.FC<PnlTextProps> = ({
   }
 
   const arrow = !isZero ? (isPositive ? '\u25B2' : '\u25BC') : '';
+  const ariaLabel = `${isPositive ? 'Gain' : isZero ? 'No change' : 'Loss'}: ${display}`;
   return (
-    <Text fontSize={fontSize} color={color} as="span" display="inline-flex" alignItems="center" gap={1}>
+    <Text
+      fontSize={fontSize}
+      color={color}
+      as="span"
+      display="inline-flex"
+      alignItems="center"
+      gap={1}
+      aria-label={ariaLabel}
+    >
       {arrow && <span aria-hidden="true">{arrow}</span>}
       {display}
     </Text>

@@ -17,9 +17,17 @@ const StageBar: React.FC<StageBarProps> = ({ counts, total }) => {
       </Text>
     );
   }
+  const distributionLabel = `Stage distribution: ${STAGES.map((s) => `${s}: ${counts[s] ?? 0}`).join(', ')}`;
   return (
     <Box>
-      <Box display="flex" h="24px" borderRadius="md" overflow="hidden">
+      <Box
+        display="flex"
+        h="24px"
+        borderRadius="md"
+        overflow="hidden"
+        role="img"
+        aria-label={distributionLabel}
+      >
         {STAGES.map((s) => {
           const count = counts[s] ?? 0;
           const pct = (count / total) * 100;

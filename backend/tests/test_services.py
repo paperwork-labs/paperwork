@@ -280,48 +280,6 @@ class TestDiscordNotificationService:
             logger.warning(f"⚠️ Discord connectivity test failed: {e}")
 
 
-class TestSignalGenerationService:
-    """Test signal generation service functionality."""
-
-    @pytest.mark.asyncio
-    async def test_signal_generator_import(self):
-        """Test signal generator can be imported."""
-        try:
-            from backend.services.signals.atr_signal_generator import (
-                atr_signal_generator,
-            )
-
-            assert atr_signal_generator is not None
-            assert hasattr(atr_signal_generator, "generate_portfolio_signals")
-
-            logger.info("✅ Signal Generator import test passed")
-
-        except Exception as e:
-            logger.warning(f"⚠️ Signal Generator import failed: {e}")
-
-    @pytest.mark.asyncio
-    async def test_portfolio_signal_generation(self):
-        """Test portfolio signal generation."""
-        try:
-            from backend.services.signals.atr_signal_generator import (
-                atr_signal_generator,
-            )
-
-            # Test signal generation for user 1
-            result = await atr_signal_generator.generate_portfolio_signals(
-                user_id=1, symbols=["AAPL", "MSFT"]
-            )
-
-            if result:
-                assert isinstance(result, dict)
-                logger.info("✅ Portfolio signal generation test passed")
-            else:
-                logger.warning("⚠️ Portfolio signal generation returned no results")
-
-        except Exception as e:
-            logger.warning(f"⚠️ Portfolio signal generation test failed: {e}")
-
-
 class TestDatabaseServices:
     """Test database-related services."""
 

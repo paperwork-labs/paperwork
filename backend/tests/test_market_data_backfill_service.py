@@ -241,6 +241,10 @@ def test_compute_snapshot_from_db_derives_previous_stage_from_history_labels(db_
     db_session.commit()
 
     monkeypatch.setattr(
+        market_data_service, "get_fundamentals_info",
+        lambda *a, **kw: {"sector": "Test", "industry": "Test"},
+    )
+    monkeypatch.setattr(
         mds_module,
         "compute_weinstein_stage_from_daily",
         lambda *_args, **_kwargs: {"stage_label": "2A", "stage_slope_pct": 1.1, "stage_dist_pct": 0.9, "rs_mansfield_pct": 0.4},

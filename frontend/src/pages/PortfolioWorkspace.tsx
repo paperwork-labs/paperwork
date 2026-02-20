@@ -95,12 +95,12 @@ const PortfolioWorkspace: React.FC = () => {
         portfolioApi.getStatements(param, 3650),
       ]);
 
-      const stocks: StockRow[] = (stocksRes as any)?.data?.stocks || (stocksRes as any)?.data?.holdings || [];
+      const stocks: StockRow[] = (stocksRes?.data?.stocks ?? stocksRes?.data?.holdings ?? stocksRes?.stocks ?? []) as StockRow[];
       setHoldings(stocks);
       if (!selectedSymbol && stocks.length > 0) {
         setSelectedSymbol(stocks[0].symbol);
       }
-      const tx: TxRow[] = (statementsRes as any)?.data?.transactions || [];
+      const tx: TxRow[] = (statementsRes?.data?.transactions ?? statementsRes?.transactions ?? []) as TxRow[];
       setTransactions(tx);
     } finally {
       setLoading(false);

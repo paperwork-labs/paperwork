@@ -61,8 +61,8 @@ const SettingsUsers: React.FC = () => {
     try {
       const res = await adminUsersApi.list();
       const inv = await adminUsersApi.invites();
-      setUsers((res as any)?.users || []);
-      setInvites((inv as any)?.invites || []);
+      setUsers((res?.users ?? []) as UserRow[]);
+      setInvites((inv?.invites ?? []) as InviteRow[]);
     } catch (e: any) {
       toast.error(e?.message || 'Failed to load users');
     } finally {

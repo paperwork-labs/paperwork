@@ -18,6 +18,7 @@ import StageBar from '../../components/shared/StageBar';
 import PnlText from '../../components/shared/PnlText';
 import PageHeader from '../../components/ui/PageHeader';
 import AccountFilterWrapper from '../../components/ui/AccountFilterWrapper';
+import { DashboardResponse } from '../../services/api';
 import { usePortfolioOverview, usePositions, usePortfolioSync, usePortfolioPerformanceHistory } from '../../hooks/usePortfolio';
 import { useChartColors } from '../../hooks/useChartColors';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
@@ -47,14 +48,14 @@ const PortfolioOverview: React.FC = () => {
   const syncMutation = usePortfolioSync();
   const historyQuery = usePortfolioPerformanceHistory({ period: historyPeriod });
   const positions = (positionsQuery.data ?? []) as EnrichedPosition[];
-  const dashboard = overview.summary.data as any;
+  const dashboard = overview.summary.data as DashboardResponse | undefined;
   const rawAccounts = overview.accountsData ?? [];
   const historySeries = (historyQuery.data ?? []) as Array<{ date: string; total_value: number }>;
 
   const accounts: AccountData[] = useMemo(
     () =>
       buildAccountsFromPositions(
-        rawAccounts.map((a: any) => ({
+        rawAccounts.map((a: { id?: number; account_number?: string; broker?: string; account_name?: string; account_type?: string; last_successful_sync?: string | null }) => ({
           id: a.id,
           account_number: a.account_number ?? String(a.id),
           broker: a.broker ?? 'Unknown',
@@ -71,7 +72,7 @@ const PortfolioOverview: React.FC = () => {
   const sectorData = useMemo(() => sectorAllocationFromPositions(positions), [positions]);
   const { contributors, detractors } = useMemo(() => topMoversFromPositions(positions), [positions]);
 
-  const summary = dashboard?.data?.summary ?? dashboard?.summary ?? dashboard;
+  const summary = (dashboard?.data?.summary ?? dashboard?.summary ?? dashboard) as import('../../services/api').DashboardSummary | undefined;
   const totalValue = Number(summary?.total_market_value ?? 0);
   const totalCost = Number(summary?.total_cost_basis ?? 0);
   const unrealizedPnl = Number(summary?.unrealized_pnl ?? totalValue - totalCost);
@@ -296,7 +297,7 @@ const PortfolioOverview: React.FC = () => {
                                 <Text fontSize="xs" color="fg.muted">{acc.account_id}</Text>
                               </HStack>
                               <Text fontSize="lg" fontWeight="bold">{formatMoney(acc.total_value, currency, { maximumFractionDigits: 0 })}</Text>
-                              <Text fontSize="xs" color="fg.muted">{acc.positions_count} positions · synced {timeAgo((rawAccounts.find((a: any) => (a.account_number ?? a.id) === acc.account_id) as any)?.last_successful_sync)}</Text>
+                              <Text fontSize="xs" color="fg.muted">{acc.positions_count} positions · synced {timeAgo(rawAccounts.find((a: { account_number?: string; id?: unknown }) => (a.account_number ?? String(a.id)) === acc.account_id)?.last_successful_sync)}</Text>
                             </CardBody>
                           </CardRoot>
                         ))}

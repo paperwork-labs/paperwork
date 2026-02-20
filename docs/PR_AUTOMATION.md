@@ -64,15 +64,6 @@ Requirements for automation
     - `contents:write`
     - `pull_requests:write`
 
-CI failures: runner not starting (0 steps)
-------------------------------------------
-If CI jobs show 0 steps and complete in a few seconds with no runner assigned, GitHub Actions minutes for the account are likely exhausted (common for private repos on the Free plan).
-
-- Check usage: https://github.com/settings/billing — Plans and usage → Actions.
-- Options: wait for billing cycle reset; upgrade to Pro for more minutes; or add a self-hosted runner (unlimited, free): https://github.com/sankalp404/axiomfolio/settings/actions/runners/new — download, run `./config.sh` with the provided token, then `./run.sh`.
-
-After minutes are available (or a runner is added), re-trigger CI: `gh run rerun <run_id>` or push an empty commit.
-
 Branch protection (recommended)
 -------------------------------
 In GitHub repo settings:

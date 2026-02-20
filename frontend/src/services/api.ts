@@ -1,6 +1,12 @@
 /// <reference types="vite/client" />
 import axios, { AxiosResponse, AxiosError } from 'axios';
 
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    _noRetry?: boolean;
+  }
+}
+
 // Prefer env-configured base URL; fallback to relative path with dev proxy support
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
@@ -38,6 +44,14 @@ class RequestQueue {
     if (nextRequest) {
       nextRequest();
     }
+  }
+
+  getMetrics() {
+    return {
+      activeRequests: this.activeRequests,
+      queueLength: this.queue.length,
+      maxConcurrent: this.maxConcurrent,
+    };
   }
 }
 
@@ -136,30 +150,59 @@ const makeOptimizedRequest = async <T>(requestFn: () => Promise<AxiosResponse<T>
 
 // Portfolio API response shapes (for typing hooks and callers)
 export interface StocksResponse {
-  data?: { stocks?: unknown[]; data?: { stocks?: unknown[] } };
+  data?: { stocks?: unknown[]; holdings?: unknown[]; data?: { stocks?: unknown[] } };
   stocks?: unknown[];
+  holdings?: unknown[];
 }
 
+export interface DashboardSummary {
+  total_market_value?: number;
+  total_cost_basis?: number;
+  unrealized_pnl?: number;
+  day_change?: number;
+  day_change_pct?: number;
+  [key: string]: unknown;
+}
 export interface DashboardResponse {
-  data?: unknown;
+  status?: string;
+  data?: { summary?: DashboardSummary };
+  summary?: DashboardSummary;
+}
+
+export interface StatementsResponse {
+  data?: { transactions?: unknown[] };
+  transactions?: unknown[];
+}
+
+export interface LiveResponse {
+  data?: { accounts?: Record<string, unknown> };
+  accounts?: Record<string, unknown>;
 }
 
 export interface ActivityResponse {
-  data?: { rows?: unknown[]; total?: number };
-  rows?: unknown[];
+  data?: { activity?: unknown[]; total?: number };
+  activity?: unknown[];
   total?: number;
+}
+
+export interface UsersListResponse {
+  users?: unknown[];
+}
+
+export interface InvitesListResponse {
+  invites?: unknown[];
 }
 
 // Portfolio API endpoints - enhanced with optimization
 export const portfolioApi = {
-  getLive: async (accountId?: string) => {
+  getLive: async (accountId?: string): Promise<LiveResponse> => {
     const url = accountId ? `/portfolio/live?account_id=${encodeURIComponent(accountId)}` : '/portfolio/live';
-    return makeOptimizedRequest(() => api.get(url));
+    return makeOptimizedRequest<LiveResponse>(() => api.get(url));
   },
 
-  getDashboard: async (brokerage?: string) => {
+  getDashboard: async (brokerage?: string): Promise<DashboardResponse> => {
     const url = brokerage ? `/portfolio/dashboard?brokerage=${brokerage}` : '/portfolio/dashboard';
-    return makeOptimizedRequest(() => api.get(url));
+    return makeOptimizedRequest<DashboardResponse>(() => api.get(url));
   },
 
   getPerformanceHistory: async (params?: { accountId?: string; period?: string }) => {
@@ -196,12 +239,12 @@ export const portfolioApi = {
   },
 
   // New aligned stocks endpoint
-  getStocks: async (accountId?: string, includeMarketData: boolean = true) => {
+  getStocks: async (accountId?: string, includeMarketData: boolean = true): Promise<StocksResponse> => {
     const params = new URLSearchParams();
     if (accountId) params.set('account_id', accountId);
     params.set('include_market_data', String(includeMarketData));
     const url = `/portfolio/stocks?${params.toString()}`;
-    return makeOptimizedRequest(() => api.get(url));
+    return makeOptimizedRequest<StocksResponse>(() => api.get(url));
   },
 
   // Back-compat shim for old callers
@@ -210,19 +253,16 @@ export const portfolioApi = {
   },
 
   // Enhanced statements with error handling
-  getStatements: async (accountId?: string, days: number = 30) => {
+  getStatements: async (accountId?: string, days: number = 30): Promise<StatementsResponse> => {
     const url = accountId ? `/portfolio/statements?account_id=${encodeURIComponent(accountId)}&days=${days}` : `/portfolio/statements?days=${days}`;
     try {
-      return await makeOptimizedRequest(() => api.get(url));
+      return await makeOptimizedRequest<StatementsResponse>(() => api.get(url));
     } catch (error) {
       console.warn('Statements API fallback to sample data');
       return {
-        status: 'success',
         data: {
           transactions: [],
-          summary: { total_transactions: 0 },
-          message: 'IBKR connection unavailable - using sample data'
-        }
+        },
       };
     }
   },
@@ -315,7 +355,7 @@ export const activityApi = {
     side?: string;
     limit?: number;
     offset?: number;
-  }) => {
+  }): Promise<ActivityResponse> => {
     const q: string[] = [];
     if (params.accountId) q.push(`account_id=${encodeURIComponent(params.accountId)}`);
     if (params.start) q.push(`start=${encodeURIComponent(params.start)}`);
@@ -326,7 +366,7 @@ export const activityApi = {
     q.push(`limit=${encodeURIComponent(String(params.limit ?? 500))}`);
     q.push(`offset=${encodeURIComponent(String(params.offset ?? 0))}`);
     const url = `/portfolio/activity?${q.join('&')}`;
-    return makeOptimizedRequest(() => api.get(url));
+    return makeOptimizedRequest<ActivityResponse>(() => api.get(url));
   },
   getDailySummary: async (params: {
     accountId?: string;
@@ -446,13 +486,7 @@ export const checkBackendHealth = async (): Promise<boolean> => {
 };
 
 // Performance monitoring
-export const getApiPerformanceMetrics = () => {
-  return {
-    activeRequests: (requestQueue as any).activeRequests,
-    queueLength: (requestQueue as any).queue.length,
-    maxConcurrent: (requestQueue as any).maxConcurrent
-  };
-};
+export const getApiPerformanceMetrics = () => requestQueue.getMetrics();
 
 // Export types
 export interface PortfolioSummary {
@@ -496,9 +530,10 @@ export const appSettingsApi = {
 };
 
 export const adminUsersApi = {
-  list: async (params?: { q?: string; role?: string }) =>
-    makeOptimizedRequest(() => api.get('/admin/users', { params })),
-  invites: async () => makeOptimizedRequest(() => api.get('/admin/users/invites')),
+  list: async (params?: { q?: string; role?: string }): Promise<UsersListResponse> =>
+    makeOptimizedRequest<UsersListResponse>(() => api.get('/admin/users', { params })),
+  invites: async (): Promise<InvitesListResponse> =>
+    makeOptimizedRequest<InvitesListResponse>(() => api.get('/admin/users/invites')),
   invite: async (payload: { email: string; role: string; expires_in_days?: number }) =>
     makeOptimizedRequest(() => api.post('/admin/users/invite', payload)),
   update: async (userId: number, payload: { role?: string; is_active?: boolean }) =>
@@ -524,12 +559,12 @@ export const aggregatorApi = {
   config: async () => makeOptimizedRequest(() => api.get('/aggregator/config')),
   schwabProbe: async () => makeOptimizedRequest(() => api.get('/aggregator/schwab/probe')),
   tastytradeConnect: async (payload: { username: string; password: string; mfa_code?: string }) =>
-    makeOptimizedRequest(() => api.post('/aggregator/tastytrade/connect', payload, { timeout: 60000, _noRetry: true } as any)),
+    makeOptimizedRequest(() => api.post('/aggregator/tastytrade/connect', payload, { timeout: 60000, _noRetry: true })),
   tastytradeDisconnect: async () => makeOptimizedRequest(() => api.post('/aggregator/tastytrade/disconnect')),
   tastytradeStatus: async (jobId?: string) =>
     makeOptimizedRequest(() => api.get('/aggregator/tastytrade/status', { params: jobId ? { job_id: jobId } : {} })),
   ibkrFlexConnect: async (payload: { flex_token: string; query_id: string }) =>
-    makeOptimizedRequest(() => api.post('/aggregator/ibkr/connect', payload, { timeout: 60000, _noRetry: true } as any)),
+    makeOptimizedRequest(() => api.post('/aggregator/ibkr/connect', payload, { timeout: 60000, _noRetry: true })),
   ibkrFlexStatus: async () => makeOptimizedRequest(() => api.get('/aggregator/ibkr/status')),
   ibkrFlexDisconnect: async () => makeOptimizedRequest(() => api.post('/aggregator/ibkr/disconnect')),
 };

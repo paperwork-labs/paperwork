@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, Text, HStack, VStack } from '@chakra-ui/react';
 import { ResponsiveContainer, Treemap, Cell, Tooltip as RechartsTooltip } from 'recharts';
 
-interface FinvizData {
+export interface FinvizData {
   name: string;
   size: number;
   change: number;
