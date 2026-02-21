@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -25,14 +27,40 @@ from backend.services.security.pkce_state import (
     save_verifier_for_state,
     pop_verifier_for_state,
 )
-from backend.services.clients.tastytrade_client import tastytrade_client, TASTYTRADE_AVAILABLE
+from backend.services.clients.tastytrade_client import TastyTradeClient, TASTYTRADE_AVAILABLE
 from backend.services.security.credential_vault import credential_vault as _vault
+from backend.services.security.connect_job_store import connect_job_store
 
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Lightweight in-memory job registry for dev (uses single-process uvicorn)
-JOBS: Dict[str, Dict[str, Any]] = {}
+
+def _persist_connect_error(user_id: int, broker: str, error_msg: str) -> None:
+    """Persist last connect error to AccountCredentials for user's broker accounts."""
+    from backend.models.broker_account import BrokerAccount, BrokerType
+    broker_map = {"tastytrade": BrokerType.TASTYTRADE, "ibkr": BrokerType.IBKR}
+    bt = broker_map.get(broker)
+    if not bt:
+        return
+    sess = SessionLocal()
+    try:
+        accounts = (
+            sess.query(BrokerAccount)
+            .filter(BrokerAccount.user_id == user_id, BrokerAccount.broker == bt)
+            .all()
+        )
+        for acc in accounts:
+            cred = sess.query(AccountCredentials).filter(AccountCredentials.account_id == acc.id).first()
+            if cred:
+                cred.last_error = error_msg
+        sess.commit()
+    except Exception:
+        sess.rollback()
+    finally:
+        sess.close()
+
 
 def _is_truthy_value(val: Optional[str]) -> bool:
     if not val:
@@ -214,9 +242,9 @@ async def schwab_link(
 # Tastytrade Connections
 # -------------------------
 class TTConnectRequest(BaseModel):
-    username: str
-    password: str
-    mfa_code: Optional[str] = None  # Placeholder if needed later
+    client_id: str
+    client_secret: str
+    refresh_token: str
 
 
 class TTStatusResponse(BaseModel):
@@ -229,22 +257,24 @@ class TTStatusResponse(BaseModel):
     job_error: Optional[str] = None
 
 
-async def _tt_connect_job(job_id: str, username: str, password: str, mfa_code: Optional[str], user_id: int):
-    JOBS[job_id] = {"state": "running", "started_at": time.time()}
+async def _tt_connect_job(job_id: str, client_id: str, client_secret: str, refresh_token: str, user_id: int):
+    connect_job_store.set(job_id, {"state": "running", "started_at": time.time(), "broker": "tastytrade"})
     db = SessionLocal()
     try:
-        ok = await tastytrade_client.connect_with_credentials(username, password, mfa_code=mfa_code)
+        client = TastyTradeClient()
+        ok = await client.connect_with_credentials(client_secret, refresh_token)
         if not ok:
-            last_err = getattr(tastytrade_client, "connection_health", {}).get("last_error") or "Login failed"
-            JOBS[job_id] = {
+            last_err = getattr(client, "connection_health", {}).get("last_error") or "Login failed"
+            connect_job_store.set(job_id, {
                 "state": "error",
                 "error": last_err,
                 "finished_at": time.time(),
-            }
+                "broker": "tastytrade",
+            })
+            _persist_connect_error(user_id, "tastytrade", last_err)
             return
-        accounts = await tastytrade_client.get_accounts()
+        accounts = await client.get_accounts()
         from backend.models.broker_account import BrokerAccount, BrokerType, AccountType, AccountStatus, SyncStatus
-        created_or_updated = []
         for acc in accounts or []:
             acct_num = acc.get("account_number")
             if not acct_num:
@@ -283,38 +313,36 @@ async def _tt_connect_job(job_id: str, username: str, password: str, mfa_code: O
                 db.add(ba)
                 db.flush()
                 acc_id = ba.id
-            # Store masked username/password hint at credentials row (one per account)
             from backend.models.broker_account import AccountCredentials
             cred = (
                 db.query(AccountCredentials)
                 .filter(AccountCredentials.account_id == acc_id)
                 .first()
             )
-            masked_user = username[:2] + "***" if username else None
-            payload = {"username": username, "password": password}
+            payload = {"client_id": client_id, "client_secret": client_secret, "refresh_token": refresh_token}
             enc = _vault.encrypt_dict(payload)
             if cred:
                 cred.encrypted_credentials = enc
                 cred.provider = BrokerType.TASTYTRADE
-                cred.credential_type = "basic"
-                cred.username_hint = masked_user
+                cred.credential_type = "oauth"
             else:
                 cred = AccountCredentials(
                     account_id=acc_id,
                     encrypted_credentials=enc,
                     provider=BrokerType.TASTYTRADE,
-                    credential_type="basic",
-                    username_hint=masked_user,
+                    credential_type="oauth",
                 )
                 db.add(cred)
         db.commit()
-        JOBS[job_id] = {
+        connect_job_store.set(job_id, {
             "state": "success",
             "finished_at": time.time(),
-        }
+            "broker": "tastytrade",
+        })
     except Exception as e:
         db.rollback()
-        JOBS[job_id] = {"state": "error", "error": str(e), "finished_at": time.time()}
+        connect_job_store.set(job_id, {"state": "error", "error": str(e), "finished_at": time.time(), "broker": "tastytrade"})
+        _persist_connect_error(user_id, "tastytrade", str(e))
     finally:
         db.close()
 
@@ -328,9 +356,8 @@ async def tastytrade_connect(
     if not TASTYTRADE_AVAILABLE:
         raise HTTPException(status_code=503, detail="TastyTrade SDK not installed")
     job_id = uuid4().hex
-    JOBS[job_id] = {"state": "pending", "created_at": time.time()}
-    # Fire and forget background job
-    asyncio.create_task(_tt_connect_job(job_id, req.username, req.password, req.mfa_code, user.id))
+    connect_job_store.set(job_id, {"state": "pending", "created_at": time.time(), "broker": "tastytrade"})
+    asyncio.create_task(_tt_connect_job(job_id, req.client_id, req.client_secret, req.refresh_token, user.id))
     return {"job_id": job_id}
 
 
@@ -341,39 +368,62 @@ async def tastytrade_disconnect(
 ) -> TTStatusResponse:
     if not TASTYTRADE_AVAILABLE:
         raise HTTPException(status_code=503, detail="TastyTrade SDK not installed")
-    await tastytrade_client.disconnect()
-    # Mark TT accounts disabled for this user
     from backend.models.broker_account import BrokerAccount, BrokerType
-    q = (
+    tt_accounts = (
         db.query(BrokerAccount)
         .filter(BrokerAccount.user_id == user.id, BrokerAccount.broker == BrokerType.TASTYTRADE)
         .all()
     )
-    for acc in q:
-        acc.is_enabled = False
-        acc.connection_status = "disconnected"
+    for a in tt_accounts:
+        a.is_enabled = False
+        a.api_credentials_stored = False
+        a.connection_status = "disconnected"
+        db.query(AccountCredentials).filter(AccountCredentials.account_id == a.id).delete()
     db.commit()
     return TTStatusResponse(available=True, connected=False, accounts=[])
 
 
 @router.get("/tastytrade/status", response_model=TTStatusResponse)
 async def tastytrade_status(
-    user: User = Depends(get_current_user),
     job_id: Optional[str] = Query(default=None),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ) -> TTStatusResponse:
     if not TASTYTRADE_AVAILABLE:
         return TTStatusResponse(available=False, connected=False, accounts=[], last_error="SDK not installed", job_id=job_id, job_state=("error" if job_id else None), job_error="SDK not installed")
-    try:
-        accounts = await tastytrade_client.get_accounts()
-        job_state = None
-        job_error = None
-        if job_id and job_id in JOBS:
-            st = JOBS[job_id]
-            job_state = st.get("state")
-            job_error = st.get("error")
-        return TTStatusResponse(available=True, connected=tastytrade_client.connected, accounts=accounts or [], job_id=job_id, job_state=job_state, job_error=job_error)
-    except Exception as e:
-        return TTStatusResponse(available=True, connected=False, accounts=[], last_error=str(e), job_id=job_id, job_state="error", job_error=str(e))
+    from backend.models.broker_account import BrokerType
+    tt_accounts = (
+        db.query(BrokerAccount)
+        .filter(BrokerAccount.user_id == user.id, BrokerAccount.broker == BrokerType.TASTYTRADE)
+        .all()
+    )
+    has_creds = any(
+        db.query(AccountCredentials).filter(AccountCredentials.account_id == a.id).first()
+        for a in tt_accounts
+    )
+    accounts_list = [
+        {"account_number": a.account_number, "nickname": a.account_name}
+        for a in tt_accounts
+    ]
+    last_error = None
+    for a in tt_accounts:
+        cred = db.query(AccountCredentials).filter(AccountCredentials.account_id == a.id).first()
+        if cred and cred.last_error:
+            last_error = cred.last_error
+            break
+    resp = TTStatusResponse(
+        available=True,
+        connected=has_creds,
+        accounts=accounts_list,
+        last_error=last_error,
+    )
+    if job_id:
+        job = connect_job_store.get(job_id)
+        if job:
+            resp.job_id = job_id
+            resp.job_state = job.get("state")
+            resp.job_error = job.get("error")
+    return resp
 
 
 # -------------------------
@@ -382,14 +432,41 @@ async def tastytrade_status(
 class IBKRFlexConnectRequest(BaseModel):
     flex_token: str
     query_id: str
+    account_number: Optional[str] = None
 
 
-async def _ibkr_connect_job(job_id: str, flex_token: str, query_id: str, user_id: int):
-    JOBS[job_id] = {"state": "running", "started_at": time.time()}
+async def _ibkr_connect_job(
+    job_id: str,
+    flex_token: str,
+    query_id: str,
+    user_id: int,
+    account_number: Optional[str] = None,
+):
+    connect_job_store.set(job_id, {"state": "running", "started_at": time.time(), "broker": "ibkr"})
     db = SessionLocal()
     try:
         from backend.models.broker_account import BrokerAccount, BrokerType, AccountType, AccountStatus, SyncStatus, AccountCredentials
-        acct_num = "IBKR_FLEX"
+        from backend.services.clients.ibkr_flexquery_client import IBKRFlexQueryClient
+
+        acct_num = (account_number or "").strip()
+
+        # If no account number was supplied, try to discover it from IBKR
+        if not acct_num:
+            try:
+                _client = IBKRFlexQueryClient(token=flex_token, query_id=query_id)
+                report = await _client.get_full_report("_discover")
+                if report:
+                    discovered = _client.extract_account_ids(report)
+                    if discovered:
+                        acct_num = discovered[0]
+                        logger.info("Auto-discovered IBKR account: %s", acct_num)
+            except Exception as exc:
+                logger.warning("IBKR account discovery failed: %s", exc)
+
+        if not acct_num:
+            acct_num = f"IBKR-{user_id}"
+
+        # Find existing or create new BrokerAccount
         account = (
             db.query(BrokerAccount)
             .filter(
@@ -404,7 +481,7 @@ async def _ibkr_connect_job(job_id: str, flex_token: str, query_id: str, user_id
                 user_id=user_id,
                 broker=BrokerType.IBKR,
                 account_number=acct_num,
-                account_name="IBKR (FlexQuery)",
+                account_name=f"IBKR ({acct_num})",
                 account_type=AccountType.TAXABLE,
                 status=AccountStatus.ACTIVE,
                 is_enabled=True,
@@ -436,10 +513,28 @@ async def _ibkr_connect_job(job_id: str, flex_token: str, query_id: str, user_id
             )
             db.add(cred)
         db.commit()
-        JOBS[job_id] = {"state": "success", "finished_at": time.time()}
+
+        # Lightweight credential validation: fire a single SendRequest to check
+        # token/query_id are accepted by IBKR. Doesn't block on report generation.
+        warning = None
+        try:
+            client = IBKRFlexQueryClient(token=flex_token, query_id=query_id)
+            valid, msg = await client.validate_credentials()
+            if not valid:
+                warning = msg
+                logger.warning("IBKR credential validation warning for user %s: %s", user_id, msg)
+        except Exception as exc:
+            warning = f"Could not validate credentials: {exc}"
+            logger.warning("IBKR credential validation error: %s", exc)
+
+        job_result: dict = {"state": "success", "finished_at": time.time(), "broker": "ibkr"}
+        if warning:
+            job_result["warning"] = warning
+        connect_job_store.set(job_id, job_result)
     except Exception as e:
         db.rollback()
-        JOBS[job_id] = {"state": "error", "error": str(e), "finished_at": time.time()}
+        connect_job_store.set(job_id, {"state": "error", "error": str(e), "finished_at": time.time(), "broker": "ibkr"})
+        _persist_connect_error(user_id, "ibkr", str(e))
     finally:
         db.close()
 
@@ -451,14 +546,24 @@ async def ibkr_flex_connect(
     user: User = Depends(get_current_user),
 ):
     job_id = uuid4().hex
-    JOBS[job_id] = {"state": "pending", "created_at": time.time()}
-    asyncio.create_task(_ibkr_connect_job(job_id, req.flex_token, req.query_id, user.id))
+    connect_job_store.set(job_id, {"state": "pending", "created_at": time.time(), "broker": "ibkr"})
+    asyncio.create_task(
+        _ibkr_connect_job(
+            job_id,
+            req.flex_token,
+            req.query_id,
+            user.id,
+            account_number=req.account_number,
+        )
+    )
     return {"job_id": job_id}
 
 
 @router.get("/ibkr/status")
 async def ibkr_flex_status(
-    db: Session = Depends(get_db), user: User = Depends(get_current_user)
+    job_id: Optional[str] = Query(default=None),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     from backend.models.broker_account import BrokerAccount, BrokerType
 
@@ -467,7 +572,17 @@ async def ibkr_flex_status(
         .filter(BrokerAccount.user_id == user.id, BrokerAccount.broker == BrokerType.IBKR)
         .all()
     )
-    return {"connected": any(a.api_credentials_stored for a in accounts), "accounts": [{"id": a.id, "account_number": a.account_number, "name": a.account_name} for a in accounts]}
+    result = {
+        "connected": any(a.api_credentials_stored for a in accounts),
+        "accounts": [{"id": a.id, "account_number": a.account_number, "name": a.account_name} for a in accounts],
+    }
+    if job_id:
+        job = connect_job_store.get(job_id)
+        if job:
+            result["job_id"] = job_id
+            result["job_state"] = job.get("state")
+            result["job_error"] = job.get("error")
+    return result
 
 
 @router.post("/ibkr/disconnect")

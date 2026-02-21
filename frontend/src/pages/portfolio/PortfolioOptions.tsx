@@ -37,7 +37,15 @@ type OptionPos = {
   current_price?: number;
   market_value?: number;
   unrealized_pnl?: number;
+  unrealized_pnl_pct?: number;
   days_to_expiration?: number;
+  delta?: number;
+  gamma?: number;
+  theta?: number;
+  vega?: number;
+  implied_volatility?: number;
+  underlying_price?: number;
+  cost_basis?: number;
 };
 
 const EXPIRING_SOON_DAYS = 7;
@@ -57,7 +65,7 @@ const PortfolioOptions: React.FC = () => {
   );
 
   const data = optionsQuery.data as { positions?: OptionPos[]; underlyings?: Record<string, { calls: OptionPos[]; puts: OptionPos[]; total_value: number; total_pnl: number }> } | undefined;
-  const summaryData = optionsQuery.summaryData as { summary?: { total_market_value?: number; total_unrealized_pnl?: number; total_positions?: number; calls_count?: number; puts_count?: number; expiring_this_week?: number; avg_days_to_expiration?: number } } | undefined;
+  const summaryData = optionsQuery.summaryData as { summary?: { total_market_value?: number; total_unrealized_pnl?: number; total_positions?: number; calls_count?: number; puts_count?: number; expiring_this_week?: number; avg_days_to_expiration?: number; net_delta?: number; net_theta?: number } } | undefined;
 
   const positions = data?.positions ?? [];
   const underlyings = data?.underlyings ?? {};
@@ -69,6 +77,8 @@ const PortfolioOptions: React.FC = () => {
   const putsCount = Number(summary.puts_count ?? 0);
   const expiringSoon = Number(summary.expiring_this_week ?? 0);
   const avgDte = Number(summary.avg_days_to_expiration ?? 0);
+  const netDelta = Number(summary.net_delta ?? 0);
+  const netTheta = Number(summary.net_theta ?? 0);
 
   const openChart = (symbol: string) => setChartSymbol(symbol);
 
@@ -131,6 +141,12 @@ const PortfolioOptions: React.FC = () => {
                     value={formatMoney(totalPnl, currency)}
                     sub={totalPnlPct !== 0 ? `${totalPnlPct >= 0 ? '+' : ''}${totalPnlPct.toFixed(1)}%` : undefined}
                     color={totalPnl >= 0 ? 'status.success' : 'status.danger'}
+                  />
+                  <StatCard label="Net Delta" value={netDelta.toFixed(2)} />
+                  <StatCard
+                    label="Daily Theta"
+                    value={formatMoney(netTheta, currency)}
+                    color={netTheta < 0 ? 'status.danger' : 'status.success'}
                   />
                 </Box>
 
@@ -195,21 +211,32 @@ const UnderlyingGroup: React.FC<{
         </HStack>
         <Collapsible.Root open={open}>
           <Collapsible.Content>
-            <VStack align="stretch" gap={1} mt={3} pl={6}>
+            <VStack align="stretch" gap={2} mt={3} pl={6}>
               {allPositions.map((pos) => (
-                <HStack key={pos.id} justify="space-between" fontSize="sm" gap={4} flexWrap="wrap">
-                  <Text fontFamily="mono">
-                    {pos.underlying_symbol} {pos.strike_price}{pos.option_type === 'call' ? 'C' : 'P'} {pos.expiration_date?.slice(0, 10) ?? '—'}
-                  </Text>
-                  <HStack gap={4}>
-                    <Text color="fg.muted">{pos.quantity} contracts</Text>
-                    <Text color="fg.muted">{formatMoney(Number(pos.current_price ?? 0), currency)}</Text>
-                    <PnlText value={Number(pos.unrealized_pnl ?? 0)} format="currency" fontSize="sm" currency={currency} />
-                    {pos.days_to_expiration != null && pos.days_to_expiration <= EXPIRING_SOON_DAYS && (
-                      <Badge colorPalette="orange" size="sm">Expires soon</Badge>
-                    )}
+                <Box key={pos.id} py={1} borderBottomWidth="1px" borderColor="border.subtle" _last={{ borderBottom: 'none' }}>
+                  <HStack justify="space-between" fontSize="sm" gap={4} flexWrap="wrap">
+                    <Text fontFamily="mono" fontWeight="medium">
+                      {pos.strike_price}{pos.option_type === 'call' ? 'C' : 'P'} {pos.expiration_date?.slice(0, 10) ?? '—'}
+                    </Text>
+                    <HStack gap={4}>
+                      <Text color="fg.muted">{pos.quantity} ct</Text>
+                      <Text>{formatMoney(Number(pos.current_price ?? 0), currency)}</Text>
+                      <PnlText value={Number(pos.unrealized_pnl ?? 0)} format="currency" fontSize="sm" currency={currency} />
+                      {pos.days_to_expiration != null && pos.days_to_expiration <= EXPIRING_SOON_DAYS && (
+                        <Badge colorPalette="orange" size="sm">{pos.days_to_expiration}d</Badge>
+                      )}
+                    </HStack>
                   </HStack>
-                </HStack>
+                  {(pos.delta != null || pos.theta != null) && (
+                    <HStack gap={3} fontSize="xs" color="fg.muted" mt={0.5}>
+                      {pos.delta != null && <Text>D {pos.delta.toFixed(3)}</Text>}
+                      {pos.gamma != null && <Text>G {pos.gamma.toFixed(4)}</Text>}
+                      {pos.theta != null && <Text>T {pos.theta.toFixed(3)}</Text>}
+                      {pos.vega != null && <Text>V {pos.vega.toFixed(3)}</Text>}
+                      {pos.days_to_expiration != null && <Text>{pos.days_to_expiration} DTE</Text>}
+                    </HStack>
+                  )}
+                </Box>
               ))}
             </VStack>
           </Collapsible.Content>

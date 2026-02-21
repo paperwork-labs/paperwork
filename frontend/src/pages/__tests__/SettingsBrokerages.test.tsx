@@ -23,7 +23,7 @@ vi.mock('../../services/api', () => {
       tastytradeConnect: vi.fn().mockResolvedValue({ job_id: 'job1' }),
       tastytradeDisconnect: vi.fn().mockResolvedValue({}),
       ibkrFlexConnect: vi.fn().mockResolvedValue({ job_id: 'job2' }),
-      ibkrFlexStatus: vi.fn().mockResolvedValue({ connected: true, accounts: [{ id: 99, account_number: 'IBKR_FLEX' }] }),
+      ibkrFlexStatus: vi.fn().mockResolvedValue({ connected: true, accounts: [{ id: 99, account_number: 'U12345678' }] }),
       schwabLink: vi.fn().mockResolvedValue({ url: 'https://auth.example/authorize' }),
       schwabProbe: vi.fn().mockResolvedValue({}),
     },

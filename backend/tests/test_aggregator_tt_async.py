@@ -32,16 +32,18 @@ def test_tastytrade_connect_async_success(client, monkeypatch):
     if not token:
         pytest.skip("login failed in test env")
 
-    # Patch tastytrade client behavior
     class DummyTT:
         connected = True
-        async def connect_with_credentials(self, username, password, mfa_code=None):
+        connection_health = {"status": "connected"}
+        accounts = []
+        async def connect_with_credentials(self, client_secret, refresh_token, **kwargs):
             return True
         async def get_accounts(self):
             return [{"account_number": "TT123", "nickname": "Primary"}]
-    monkeypatch.setattr(agg, "tastytrade_client", DummyTT())
+        async def disconnect(self):
+            pass
+    monkeypatch.setattr(agg, "TastyTradeClient", lambda: DummyTT())
 
-    # Run background job inline
     def _create_task(coro):
         loop = asyncio.get_event_loop()
         return loop.create_task(coro) if loop.is_running() else asyncio.run(coro)
@@ -49,7 +51,7 @@ def test_tastytrade_connect_async_success(client, monkeypatch):
 
     r = client.post(
         "/api/v1/aggregator/tastytrade/connect",
-        json={"username": "u", "password": "p"},
+        json={"client_id": "test_client_id", "client_secret": "test_secret", "refresh_token": "test_refresh"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert r.status_code == 200
@@ -60,7 +62,3 @@ def test_tastytrade_connect_async_success(client, monkeypatch):
     assert rs.status_code == 200
     body = rs.json()
     assert body.get("job_state") in ("success", None)
-
-
-
-

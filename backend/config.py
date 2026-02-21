@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://:redispassword@redis:6379/0"
     CELERY_BROKER_URL: str = "redis://:redispassword@redis:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://:redispassword@redis:6379/0"
+    CELERY_TASK_SOFT_TIME_LIMIT: int = 300
+    CELERY_TASK_TIME_LIMIT: int = 360
 
     # API Keys
     ALPHA_VANTAGE_API_KEY: Optional[str] = None
@@ -24,11 +26,14 @@ class Settings(BaseSettings):
     TWELVE_DATA_API_KEY: Optional[str] = None
     FMP_API_KEY: Optional[str] = None
 
-    # TastyTrade Configuration
+    # TastyTrade Configuration (OAuth — v12+ SDK)
+    # Dev fallback only; production credentials stored per-user in account_credentials table
+    TASTYTRADE_CLIENT_SECRET: Optional[str] = None
+    TASTYTRADE_REFRESH_TOKEN: Optional[str] = None
+    TASTYTRADE_IS_TEST: bool = False
+    # Legacy credentials (ignored by SDK v12+; kept for backward-compat env files)
     TASTYTRADE_USERNAME: Optional[str] = None
     TASTYTRADE_PASSWORD: Optional[str] = None
-    TASTYTRADE_IS_TEST: bool = False
-    TASTYTRADE_DISCOVER_ON_STARTUP: bool = False
 
     # IBKR Configuration
     IBKR_HOST: str = "127.0.0.1"
@@ -177,6 +182,14 @@ def is_production() -> bool:
     return str(settings.ENVIRONMENT or "").lower() == "production"
 
 
+_GLOBAL_BROKER_CREDS_FORBIDDEN_IN_PROD = [
+    "TASTYTRADE_CLIENT_SECRET",
+    "TASTYTRADE_REFRESH_TOKEN",
+    "IBKR_FLEX_TOKEN",
+    "IBKR_FLEX_QUERY_ID",
+]
+
+
 def validate_production_settings() -> None:
     if not is_production():
         return
@@ -186,6 +199,12 @@ def validate_production_settings() -> None:
         raise RuntimeError("DATABASE_URL must point to Postgres in production.")
     if not settings.REDIS_URL:
         raise RuntimeError("REDIS_URL must be set in production.")
+    leaked = [k for k in _GLOBAL_BROKER_CREDS_FORBIDDEN_IN_PROD if getattr(settings, k, None)]
+    if leaked:
+        raise RuntimeError(
+            f"Global broker credentials must NOT be set in production "
+            f"(use per-user encrypted credentials instead): {', '.join(leaked)}"
+        )
 
 
 # Keep settings as provided; rely on .env and docker-compose. No band-aid normalization here.

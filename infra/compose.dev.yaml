@@ -65,7 +65,7 @@ services:
       - NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}
       - NEW_RELIC_LOG=stdout
       - NEW_RELIC_LOG_LEVEL=info
-    command: sh -c "cd /app && newrelic-admin run-program python -m uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --log-level info --reload --reload-dir /app/backend"
+    command: sh -c "cd /app && python -m uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --log-level info --reload --reload-dir /app/backend"
     networks:
       - axiomfolio_network
     restart: unless-stopped
@@ -83,22 +83,26 @@ services:
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/0
       - IBKR_HOST=${IBKR_HOST}
-      - NEW_RELIC_CONFIG_FILE=/app/infra/observability/newrelic.ini
-      - NEW_RELIC_APP_NAME=AxiomFolio Celery Worker
-      - NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}
-      - NEW_RELIC_LOG=stdout
-      - NEW_RELIC_LOG_LEVEL=info
     volumes:
       - ../backend:/app/backend
       - ../requirements.txt:/app/requirements.txt
-      - ../infra/observability/newrelic.ini:/app/infra/observability/newrelic.ini
     depends_on:
-      - postgres
-      - redis
-      - backend
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      backend:
+        condition: service_started
     networks:
       - axiomfolio_network
-    command: bash -lc "newrelic-admin run-program celery -A backend.tasks.celery_app worker --loglevel=info"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A backend.tasks.celery_app inspect ping --timeout 5 2>/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    command: bash -lc "celery -A backend.tasks.celery_app worker --loglevel=info"
 
   celery_beat:
     build:
@@ -113,23 +117,20 @@ services:
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/0
       - IBKR_HOST=${IBKR_HOST}
-      - NEW_RELIC_CONFIG_FILE=/app/infra/observability/newrelic.ini
-      - NEW_RELIC_APP_NAME=AxiomFolio Celery Beat
-      - NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}
-      - NEW_RELIC_LOG=stdout
-      - NEW_RELIC_LOG_LEVEL=info
     volumes:
       - ../backend:/app/backend
       - ../requirements.txt:/app/requirements.txt
-      - celery_beat_data:/app/celerybeat-schedule
-      - ../infra/observability/newrelic.ini:/app/infra/observability/newrelic.ini
     depends_on:
-      - postgres
-      - redis
-      - backend
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      backend:
+        condition: service_started
     networks:
       - axiomfolio_network
-    command: bash -lc "newrelic-admin run-program celery -A backend.tasks.celery_app beat --loglevel=info"
+    restart: unless-stopped
+    command: bash -lc "celery -A backend.tasks.celery_app beat --loglevel=info"
 
   flower:
     build:
@@ -220,6 +221,4 @@ volumes:
   postgres_data_v16:
     driver: local
   redis_data:
-    driver: local
-  celery_beat_data:
     driver: local

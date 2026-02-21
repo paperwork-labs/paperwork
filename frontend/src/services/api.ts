@@ -552,6 +552,16 @@ export const accountsApi = {
   sync: async (accountId: number, sync_type: string = 'comprehensive') =>
     makeOptimizedRequest(() => api.post(`/accounts/${accountId}/sync`, { sync_type })),
   syncStatus: async (accountId: number) => makeOptimizedRequest(() => api.get(`/accounts/${accountId}/sync-status`)),
+  syncHistory: async (accountId?: number) =>
+    makeOptimizedRequest(() =>
+      api.get('/accounts/sync-history', { params: accountId != null ? { account_id: accountId } : {} })
+    ),
+  updateAccount: async (accountId: number, payload: { account_name?: string; account_type?: string }) =>
+    makeOptimizedRequest(() => api.patch(`/accounts/${accountId}`, payload)),
+  updateCredentials: async (
+    accountId: number,
+    payload: { broker: string; credentials: Record<string, string>; account_number?: string }
+  ) => makeOptimizedRequest(() => api.patch(`/accounts/${accountId}/credentials`, payload)),
   remove: async (accountId: number) => makeOptimizedRequest(() => api.delete(`/accounts/${accountId}`)),
 };
 
@@ -562,13 +572,16 @@ export const aggregatorApi = {
     makeOptimizedRequest(() => api.post('/aggregator/schwab/link', { account_id, trading })),
   config: async () => makeOptimizedRequest(() => api.get('/aggregator/config')),
   schwabProbe: async () => makeOptimizedRequest(() => api.get('/aggregator/schwab/probe')),
-  tastytradeConnect: async (payload: { username: string; password: string; mfa_code?: string }) =>
+  tastytradeConnect: async (payload: { client_id: string; client_secret: string; refresh_token: string }) =>
     makeOptimizedRequest(() => api.post('/aggregator/tastytrade/connect', payload, { timeout: 60000, _noRetry: true })),
   tastytradeDisconnect: async () => makeOptimizedRequest(() => api.post('/aggregator/tastytrade/disconnect')),
   tastytradeStatus: async (jobId?: string) =>
     makeOptimizedRequest(() => api.get('/aggregator/tastytrade/status', { params: jobId ? { job_id: jobId } : {} })),
-  ibkrFlexConnect: async (payload: { flex_token: string; query_id: string }) =>
+  ibkrFlexConnect: async (payload: { flex_token: string; query_id: string; account_number?: string }) =>
     makeOptimizedRequest(() => api.post('/aggregator/ibkr/connect', payload, { timeout: 60000, _noRetry: true })),
-  ibkrFlexStatus: async () => makeOptimizedRequest(() => api.get('/aggregator/ibkr/status')),
+  ibkrFlexStatus: async (jobId?: string) =>
+    makeOptimizedRequest(() =>
+      api.get('/aggregator/ibkr/status', { params: jobId ? { job_id: jobId } : {} })
+    ),
   ibkrFlexDisconnect: async () => makeOptimizedRequest(() => api.post('/aggregator/ibkr/disconnect')),
 };

@@ -11,7 +11,7 @@ Tests for broker_sync_service.py functionality:
 """
 
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, AsyncMock
 
 from backend.models import User, BrokerAccount
 from backend.models.broker_account import BrokerType, AccountType, SyncStatus
@@ -153,6 +153,148 @@ class TestBrokerSyncService:
         assert "positions_synced" in result
 
         print("✅ TastyTrade account sync routing working correctly")
+
+    @pytest.mark.asyncio
+    async def test_tastytrade_sync_uses_stored_credentials(
+        self, db_session, test_user
+    ):
+        """TastyTrade sync uses AccountCredentials when present."""
+        from backend.models.broker_account import AccountCredentials
+        from backend.services.security.credential_vault import credential_vault
+        from backend.services.portfolio.tastytrade_sync_service import (
+            TastyTradeSyncService,
+        )
+
+        account = BrokerAccount(
+            user_id=test_user.id,
+            account_number="TT_CRED_TEST",
+            account_name="TT Cred Test",
+            broker=BrokerType.TASTYTRADE,
+            account_type=AccountType.TAXABLE,
+            sync_status=SyncStatus.NEVER_SYNCED,
+            api_credentials_stored=True,
+        )
+        db_session.add(account)
+        db_session.flush()
+
+        payload = {"client_secret": "test_secret", "refresh_token": "test_refresh"}
+        enc = credential_vault.encrypt_dict(payload)
+        cred = AccountCredentials(
+            account_id=account.id,
+            encrypted_credentials=enc,
+            provider=BrokerType.TASTYTRADE,
+            credential_type="oauth",
+        )
+        db_session.add(cred)
+        db_session.commit()
+
+        svc = TastyTradeSyncService()
+        with (
+            patch.object(
+                svc.client,
+                "connect_with_credentials",
+                new_callable=AsyncMock,
+                return_value=True,
+            ) as mock_creds,
+            patch.object(
+                svc.client, "connect_with_retry", new_callable=AsyncMock
+            ) as mock_retry,
+            patch.object(
+                svc,
+                "_sync_positions",
+                new_callable=AsyncMock,
+                return_value={"positions": 0},
+            ),
+            patch.object(
+                svc, "_sync_trades", new_callable=AsyncMock, return_value={"trades": 0}
+            ),
+            patch.object(
+                svc,
+                "_sync_transactions",
+                new_callable=AsyncMock,
+                return_value={"transactions": 0},
+            ),
+            patch.object(
+                svc,
+                "_sync_dividends",
+                new_callable=AsyncMock,
+                return_value={"dividends": 0},
+            ),
+            patch.object(
+                svc,
+                "_sync_account_balances",
+                new_callable=AsyncMock,
+                return_value={"account_balances": 0},
+            ),
+        ):
+            result = await svc.sync_account(db_session, account)
+            mock_creds.assert_called_once_with(
+                client_secret="test_secret", refresh_token="test_refresh"
+            )
+            mock_retry.assert_not_called()
+            assert result.get("positions") == 0
+
+    @pytest.mark.asyncio
+    async def test_tastytrade_sync_falls_back_to_env(self, db_session, test_user):
+        """TastyTrade sync uses env vars when no stored credentials."""
+        from backend.services.portfolio.tastytrade_sync_service import (
+            TastyTradeSyncService,
+        )
+
+        account = BrokerAccount(
+            user_id=test_user.id,
+            account_number="TT_NO_CRED",
+            broker=BrokerType.TASTYTRADE,
+            account_type=AccountType.TAXABLE,
+            sync_status=SyncStatus.NEVER_SYNCED,
+            api_credentials_stored=False,
+        )
+        db_session.add(account)
+        db_session.commit()
+
+        svc = TastyTradeSyncService()
+        with (
+            patch.object(
+                svc.client, "connect_with_credentials", new_callable=AsyncMock
+            ) as mock_creds,
+            patch.object(
+                svc.client,
+                "connect_with_retry",
+                new_callable=AsyncMock,
+                return_value=True,
+            ) as mock_retry,
+            patch.object(
+                svc,
+                "_sync_positions",
+                new_callable=AsyncMock,
+                return_value={"positions": 0},
+            ),
+            patch.object(
+                svc, "_sync_trades", new_callable=AsyncMock, return_value={"trades": 0}
+            ),
+            patch.object(
+                svc,
+                "_sync_transactions",
+                new_callable=AsyncMock,
+                return_value={"transactions": 0},
+            ),
+            patch.object(
+                svc,
+                "_sync_dividends",
+                new_callable=AsyncMock,
+                return_value={"dividends": 0},
+            ),
+            patch.object(
+                svc,
+                "_sync_account_balances",
+                new_callable=AsyncMock,
+                return_value={"account_balances": 0},
+            ),
+        ):
+            result = await svc.sync_account(db_session, account)
+            mock_retry.assert_called_once()
+            mock_creds.assert_not_called()
+            assert result.get("positions") == 0
 
     def test_sync_unknown_broker_account(
         self, broker_sync_service, db_session, test_user

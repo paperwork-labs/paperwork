@@ -35,7 +35,7 @@ class TestAccountConfigService:
         mock_settings.IBKR_ACCOUNTS = (
             "IBKR_TEST_ACCOUNT_A:TAXABLE,IBKR_TEST_ACCOUNT_B:IRA"
         )
-        mock_settings.TASTYTRADE_USERNAME = "testuser@example.com"
+        mock_settings.TASTYTRADE_CLIENT_SECRET = "test_secret"
         mock_settings.TASTYTRADE_ACCOUNT_NUMBER = "TT_TEST_ACCOUNT_1"
         mock_settings.FIDELITY_ACCOUNTS = ""  # Empty for testing
         return mock_settings
@@ -71,7 +71,7 @@ class TestAccountConfigService:
         account = account_service.get_tastytrade_account_from_env(mock_settings)
 
         assert account is not None
-        assert account["account_id"] == "testuser@example.com"
+        assert account["account_id"] == "oauth"
         assert account["account_number"] == "TT_TEST_ACCOUNT_1"
         assert account["broker"] == BrokerType.TASTYTRADE
         assert account["account_type"] == AccountType.TAXABLE  # Default
@@ -143,7 +143,7 @@ class TestAccountConfigService:
         mock_settings_patch.IBKR_ACCOUNTS = (
             "IBKR_TEST_ACCOUNT_A:TAXABLE,IBKR_TEST_ACCOUNT_B:IRA"
         )
-        mock_settings_patch.TASTYTRADE_USERNAME = "testuser@example.com"
+        mock_settings_patch.TASTYTRADE_CLIENT_SECRET = "test_secret"
         mock_settings_patch.TASTYTRADE_ACCOUNT_NUMBER = "TT_TEST_ACCOUNT_1"
         mock_settings_patch.FIDELITY_ACCOUNTS = ""
 
@@ -246,7 +246,7 @@ class TestAccountConfigService:
         """Test error handling with malformed environment variables."""
         mock_settings = Mock()
         mock_settings.IBKR_ACCOUNTS = "MALFORMED_STRING_NO_COLON"
-        mock_settings.TASTYTRADE_USERNAME = ""
+        mock_settings.TASTYTRADE_CLIENT_SECRET = ""
 
         # Should handle malformed data gracefully
         try:

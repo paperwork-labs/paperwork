@@ -21,6 +21,27 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+_IBKR_ACCT_PREFIXES = ("U", "F", "D", "I", "S")
+
+
+def _is_placeholder_account(account_id: str | None) -> bool:
+    """Return True when *account_id* is missing or not a real IBKR account number.
+
+    Real IBKR account numbers start with a letter prefix (U, F, D, I, S)
+    followed by digits, e.g. ``U19490886``.  Anything else (None, empty
+    string, legacy placeholders like ``"IBKR_FLEX"``) is treated as a
+    placeholder and XML account-filtering is skipped so that all accounts
+    in the FlexQuery report are included.
+    """
+    if not account_id:
+        return True
+    aid = account_id.strip()
+    if not aid:
+        return True
+    if not aid[0].upper() in _IBKR_ACCT_PREFIXES:
+        return True
+    return not aid[1:].isdigit()
+
 
 class IBKRFlexQueryClient:
     """
@@ -33,28 +54,81 @@ class IBKRFlexQueryClient:
     - 1099 reporting data
 
     This is the authoritative source for tax lot information.
+
+    Constructor accepts optional token and query_id for per-account credentials.
+    If not provided, falls back to settings.IBKR_FLEX_TOKEN / IBKR_FLEX_QUERY_ID.
     """
 
-    def __init__(self):
+    def __init__(
+        self,
+        token: Optional[str] = None,
+        query_id: Optional[str] = None,
+    ):
         self.base_url = (
             "https://ndcdyn.interactivebrokers.com/AccountManagement/FlexWebService"
         )
 
-        # Credentials from settings (no hardcoding) - strip accidental quotes from .env
-        _raw_token = getattr(settings, "IBKR_FLEX_TOKEN", None)
-        _raw_query = getattr(settings, "IBKR_FLEX_QUERY_ID", None)
-        try:
-            self.token = _raw_token.strip().strip('"').strip("'") if _raw_token else None
-        except Exception:
-            self.token = _raw_token
-        try:
-            self.query_id = (
-                _raw_query.strip().strip('"').strip("'") if _raw_query else None
-            )
-        except Exception:
-            self.query_id = _raw_query
+        # Use provided credentials over settings
+        if token is not None and token.strip():
+            self.token = token.strip().strip('"').strip("'")
+        else:
+            _raw_token = getattr(settings, "IBKR_FLEX_TOKEN", None)
+            try:
+                self.token = _raw_token.strip().strip('"').strip("'") if _raw_token else None
+            except Exception:
+                self.token = _raw_token
+
+        if query_id is not None and str(query_id).strip():
+            self.query_id = str(query_id).strip().strip('"').strip("'")
+        else:
+            _raw_query = getattr(settings, "IBKR_FLEX_QUERY_ID", None)
+            try:
+                self.query_id = (
+                    _raw_query.strip().strip('"').strip("'") if _raw_query else None
+                )
+            except Exception:
+                self.query_id = _raw_query
+
         # Simple in-memory report cache: {account_id: (timestamp, raw_xml)}
         self._report_cache: dict[str, tuple[float, str]] = {}
+
+    @staticmethod
+    def extract_account_ids(xml_data: str) -> list[str]:
+        """Extract unique IBKR account IDs from a FlexQuery XML report."""
+        try:
+            root = ET.fromstring(xml_data)
+            ids: set[str] = set()
+            for stmt in root.iter("FlexStatement"):
+                aid = stmt.get("accountId", "").strip()
+                if aid:
+                    ids.add(aid)
+            if not ids:
+                for elem in root.iter():
+                    aid = elem.get("accountId", "").strip()
+                    if aid:
+                        ids.add(aid)
+            return sorted(ids)
+        except Exception:
+            return []
+
+    async def validate_credentials(self) -> tuple[bool, str]:
+        """Quick check that token + query_id are accepted by IBKR (single request, no retries)."""
+        if not self.token or not self.query_id:
+            return False, "FlexQuery token or query ID is missing."
+        url = f"{self.base_url}/SendRequest"
+        params = {"t": self.token, "q": self.query_id, "v": "3"}
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+                    body = await resp.text()
+                    root = ET.fromstring(body)
+                    status = root.findtext("Status")
+                    if status == "Success":
+                        return True, "Credentials valid."
+                    err = root.findtext("ErrorMessage") or "Unknown IBKR error"
+                    return False, err
+        except Exception as exc:
+            return False, f"Validation request failed: {exc}"
 
     async def get_full_report(
         self, account_id: str, cache_ttl_seconds: int = 60
@@ -75,14 +149,18 @@ class IBKRFlexQueryClient:
             return cached[1]
 
         try:
-            ref_code = await self._request_report(account_id)
+            # Never pass the acct param on the initial request.  Most FlexQuery
+            # setups are global (all accounts); adding the acct filter often
+            # triggers "Account is invalid" errors and extra retry delays.
+            acct_for_request = None
+            ref_code = await self._request_report(acct_for_request)
             if not ref_code:
                 return None
 
             # Poll for readiness
             max_attempts, delay = 20, 6.0
             for _ in range(max_attempts):
-                data = await self._get_report(ref_code, account_id)
+                data = await self._get_report(ref_code, acct_for_request)
                 if data:
                     self._report_cache[account_id] = (time.time(), data)
                     return data
@@ -103,7 +181,7 @@ class IBKRFlexQueryClient:
             logger.info("   1. Go to IBKR Client Portal > Reports > Flex Queries")
             logger.info("   2. Create FlexQuery with 'Open Positions' section")
             logger.info("   3. Enable FlexQuery Web Service and get token")
-            logger.info("   4. Add IBKR_FLEX_TOKEN and IBKR_FLEX_QUERY_ID to settings")
+            logger.info("   4. Set IBKR_FLEX_TOKEN and IBKR_FLEX_QUERY_ID in env")
             return []
 
         try:
@@ -302,26 +380,35 @@ class IBKRFlexQueryClient:
                                 continue
 
                             # Check if it's XML error or actual report
-                            if (
-                                content.startswith("<?xml")
-                                and "FlexStatementResponse" in content
-                            ):
-                                # Still processing
+                            if "FlexStatementResponse" in content:
+                                # IBKR returns FlexStatementResponse when the
+                                # report is still generating or the request had
+                                # an error.  The real data comes back as
+                                # FlexQueryResponse.
                                 if is_testing:
-                                    # Under tests, return quickly to avoid long waits
                                     logger.info(
                                         "⏳ Report still processing (test mode) → returning None"
                                     )
                                     return None
                                 else:
                                     logger.info(
-                                        f"⏳ Report still processing (attempt {attempt + 1}/{max_attempts})"
+                                        "⏳ Report still processing (attempt %d/%d)",
+                                        attempt + 1,
+                                        max_attempts,
                                     )
                                     await asyncio.sleep(10)
                                     continue
-                            else:
-                                logger.info("✅ Report ready")
+                            elif "FlexQueryResponse" in content:
+                                logger.info("✅ Report ready (%d bytes)", len(content))
                                 return content
+                            else:
+                                logger.warning(
+                                    "Unexpected FlexQuery response (%d bytes): %.200s",
+                                    len(content),
+                                    content,
+                                )
+                                await asyncio.sleep(10)
+                                continue
                         else:
                             logger.error(
                                 f"❌ HTTP error getting report: {response.status}"
@@ -349,6 +436,18 @@ class IBKRFlexQueryClient:
 
             logger.info(f"✅ Found {len(trades_section)} trades in FlexQuery")
 
+            filter_account = account_id
+            if _is_placeholder_account(account_id):
+                for trade in trades_section:
+                    aid = trade.get("accountId", "")
+                    if aid:
+                        filter_account = aid
+                        break
+                if not filter_account:
+                    flex_stmt = root.find(".//FlexStatements/FlexStatement")
+                    if flex_stmt is not None:
+                        filter_account = flex_stmt.get("accountId", "") or ""
+
             # Reconstruct cost basis from actual trading history
             positions = {}  # symbol -> {quantity, total_cost, lots: []}
 
@@ -356,7 +455,7 @@ class IBKRFlexQueryClient:
             for trade in trades_section:
                 # Filter by account
                 trade_account = trade.get("accountId", "")
-                if account_id and trade_account != account_id:
+                if filter_account and trade_account != filter_account:
                     continue
 
                 symbol = trade.get("symbol", "")
@@ -482,7 +581,7 @@ class IBKRFlexQueryClient:
 
                     tax_lot = {
                         "lot_id": lot["lot_id"],
-                        "account_id": account_id,
+                        "account_id": filter_account or account_id,
                         "symbol": symbol,
                         "quantity": remaining_qty,
                         "cost_per_share": lot["cost_per_share"],
@@ -534,16 +633,28 @@ class IBKRFlexQueryClient:
                 f"📊 Found {len(open_positions_section)} open positions in FlexQuery"
             )
 
+            filter_account = account_id
+            if _is_placeholder_account(account_id):
+                for pos in open_positions_section:
+                    aid = pos.get("accountId", "")
+                    if aid:
+                        filter_account = aid
+                        break
+
             for position in open_positions_section:
                 try:
                     # Filter by account
                     pos_account = position.get("accountId", "")
-                    if account_id and pos_account != account_id:
+                    if filter_account and pos_account != filter_account:
                         continue
 
-                    # Only process option positions
+                    # Only process SUMMARY-level option positions (skip LOT rows)
                     asset_category = position.get("assetCategory") or position.get("assetClass") or ""
                     if asset_category != "OPT":
+                        continue
+
+                    level = (position.get("levelOfDetail") or "").upper()
+                    if level and level != "SUMMARY":
                         continue
 
                     symbol = position.get("symbol", "")
@@ -577,7 +688,7 @@ class IBKRFlexQueryClient:
                         expiry_datetime = None
 
                     option_position = {
-                        "account_id": account_id,
+                        "account_id": filter_account or account_id,
                         "symbol": symbol,
                         "underlying_symbol": underlying_symbol,
                         "strike_price": strike_price,
@@ -610,6 +721,70 @@ class IBKRFlexQueryClient:
             traceback.print_exc()
             return []
 
+    def _parse_stock_positions(self, xml_data: str, account_id: str) -> List[Dict]:
+        """Parse stock/ETF positions from FlexQuery OpenPositions (SUMMARY level)."""
+        try:
+            root = ET.fromstring(xml_data)
+            positions: List[Dict] = []
+
+            section = root.find(".//OpenPositions")
+            if section is None:
+                return []
+
+            filter_account = account_id
+            if _is_placeholder_account(account_id):
+                for pos in section:
+                    aid = pos.get("accountId", "")
+                    if aid:
+                        filter_account = aid
+                        break
+
+            for pos in section:
+                try:
+                    pos_account = pos.get("accountId", "")
+                    if filter_account and pos_account != filter_account:
+                        continue
+
+                    cat = (pos.get("assetCategory") or "").upper()
+                    if cat not in ("STK", "ETF"):
+                        continue
+
+                    level = (pos.get("levelOfDetail") or "").upper()
+                    if level != "SUMMARY":
+                        continue
+
+                    symbol = pos.get("symbol", "")
+                    if not symbol:
+                        continue
+
+                    quantity = float(pos.get("position", "0") or 0)
+                    if quantity == 0:
+                        continue
+
+                    positions.append({
+                        "symbol": symbol,
+                        "description": pos.get("description", ""),
+                        "quantity": quantity,
+                        "cost_basis_price": float(pos.get("costBasisPrice", "0") or 0),
+                        "cost_basis_money": float(pos.get("costBasisMoney", "0") or 0),
+                        "mark_price": float(pos.get("markPrice", "0") or 0),
+                        "market_value": float(pos.get("positionValue", "0") or 0),
+                        "unrealized_pnl": float(pos.get("fifoPnlUnrealized", "0") or 0),
+                        "pct_of_nav": pos.get("percentOfNAV", ""),
+                        "currency": pos.get("currency", "USD"),
+                        "asset_category": cat,
+                        "side": pos.get("side", "Long"),
+                    })
+                except (ValueError, TypeError):
+                    continue
+
+            logger.info("Parsed %d stock/ETF positions from OpenPositions", len(positions))
+            return positions
+
+        except Exception as e:
+            logger.error("Error parsing stock positions: %s", e)
+            return []
+
     def _parse_option_exercises(self, xml_data: str, account_id: str) -> List[Dict]:
         """Parse historical option exercises/assignments from FlexQuery OptionEAE section."""
         try:
@@ -626,11 +801,19 @@ class IBKRFlexQueryClient:
                 f"📊 Found {len(option_eae_section)} option exercises/assignments in FlexQuery"
             )
 
+            filter_account = account_id
+            if _is_placeholder_account(account_id):
+                for ex in option_eae_section:
+                    aid = ex.get("accountId", "")
+                    if aid:
+                        filter_account = aid
+                        break
+
             for exercise in option_eae_section:
                 try:
                     # Filter by account
                     exercise_account = exercise.get("accountId", "")
-                    if account_id and exercise_account != account_id:
+                    if filter_account and exercise_account != filter_account:
                         continue
 
                     symbol = exercise.get("symbol", "")
@@ -691,7 +874,7 @@ class IBKRFlexQueryClient:
                     total_quantity = exercised_quantity + assigned_quantity
 
                     option_exercise = {
-                        "account_id": account_id,
+                        "account_id": filter_account or account_id,
                         "symbol": symbol,
                         "underlying_symbol": underlying_symbol,
                         "strike_price": strike_price,
@@ -745,7 +928,7 @@ class IBKRFlexQueryClient:
 
             for statement in flex_statements:
                 statement_account = statement.get("accountId", "")
-                if account_id and statement_account != account_id:
+                if account_id and not _is_placeholder_account(account_id) and statement_account != account_id:
                     continue
 
                 # 1. Parse from OpenPositions (current holdings)
@@ -993,7 +1176,7 @@ class IBKRFlexQueryClient:
             "step_3": "Set Format=XML, Period=Today, Include all fields",
             "step_4": "Go to Flex Web Service Configuration and enable it",
             "step_5": "Generate token (valid 6hrs-1year) and note Query ID",
-            "step_6": "Add to settings: IBKR_FLEX_TOKEN='your_token', IBKR_FLEX_QUERY_ID='query_id'",
+            "step_6": "Set env vars IBKR_FLEX_TOKEN and IBKR_FLEX_QUERY_ID (or provide per-user via UI)",
             "note": "FlexQuery provides OFFICIAL IBKR tax lot data used in Tax Optimizer",
         }
 
@@ -1090,7 +1273,7 @@ class IBKRFlexQueryClient:
 
             for statement in flex_statements:
                 statement_account = statement.get("accountId", "")
-                if account_id and statement_account != account_id:
+                if account_id and not _is_placeholder_account(account_id) and statement_account != account_id:
                     continue
 
                 cash_tx_section = statement.find("CashTransactions")
@@ -1241,7 +1424,7 @@ class IBKRFlexQueryClient:
 
             for statement in flex_statements:
                 statement_account = statement.get("accountId", "")
-                if account_id and statement_account != account_id:
+                if account_id and not _is_placeholder_account(account_id) and statement_account != account_id:
                     continue
 
                 # Get account info from statement attributes
@@ -1432,7 +1615,7 @@ class IBKRFlexQueryClient:
 
             for statement in flex_statements:
                 statement_account = statement.get("accountId", "")
-                if account_id and statement_account != account_id:
+                if account_id and not _is_placeholder_account(account_id) and statement_account != account_id:
                     continue
 
                 interest_section = statement.find("InterestAccruals")
@@ -1515,7 +1698,7 @@ class IBKRFlexQueryClient:
 
             for statement in flex_statements:
                 statement_account = statement.get("accountId", "")
-                if account_id and statement_account != account_id:
+                if account_id and not _is_placeholder_account(account_id) and statement_account != account_id:
                     continue
 
                 transfers_section = statement.find("Transfers")

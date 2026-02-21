@@ -1,6 +1,5 @@
 """
-AxiomFolio V1 - Clean FastAPI Application
-Replaces the massive monolithic API routes with focused, organized endpoints.
+AxiomFolio - FastAPI Application
 """
 
 from fastapi import FastAPI, Request, Depends
@@ -47,18 +46,7 @@ from backend.models import Base
 from backend.database import engine, SessionLocal
 from backend.config import settings, validate_production_settings, LOGGING_CONFIG
 from backend.utils.request_context import set_request_id, reset_request_id
-from backend.models.broker_account import (
-    BrokerAccount,
-    BrokerType,
-    AccountType,
-    AccountStatus,
-    SyncStatus,
-)
 from backend.models.user import User, UserRole
-from backend.services.clients.tastytrade_client import (
-    TastyTradeClient,
-    TASTYTRADE_AVAILABLE,
-)
 from backend.services.portfolio.account_config_service import account_config_service
 from backend.api.routes.auth import get_password_hash
 
@@ -243,67 +231,6 @@ async def startup_event():
                 logger.info("🌱 Account seeding disabled (SEED_ACCOUNTS_ON_STARTUP=false)")
         except Exception as se:
             logger.warning(f"Account seeding skipped/failed: {se}")
-
-        # Optional: TastyTrade autodiscovery (opt-in only)
-        try:
-            if (
-                TASTYTRADE_AVAILABLE
-                and getattr(settings, "TASTYTRADE_DISCOVER_ON_STARTUP", False)
-                and getattr(settings, "TASTYTRADE_USERNAME", None)
-                and getattr(settings, "TASTYTRADE_PASSWORD", None)
-            ):
-                client = TastyTradeClient()
-                ok = await client.connect_with_retry()
-                if ok:
-                    accounts = await client.get_accounts()
-                    if accounts:
-                        db = SessionLocal()
-                        created = 0
-                        updated = 0
-                        for acc in accounts:
-                            acct_num = acc.get("account_number") or acc.get("account")
-                            if not acct_num:
-                                continue
-                            existing = (
-                                db.query(BrokerAccount)
-                                .filter(
-                                    BrokerAccount.user_id == 1,
-                                    BrokerAccount.broker == BrokerType.TASTYTRADE,
-                                    BrokerAccount.account_number == acct_num,
-                                )
-                                .first()
-                            )
-                            if existing:
-                                existing.account_name = (
-                                    acc.get("nickname")
-                                    or existing.account_name
-                                    or f"TastyTrade ({acct_num})"
-                                )
-                                existing.account_type = AccountType.TAXABLE
-                                updated += 1
-                            else:
-                                new_acc = BrokerAccount(
-                                    user_id=1,
-                                    broker=BrokerType.TASTYTRADE,
-                                    account_number=acct_num,
-                                    account_name=acc.get("nickname")
-                                    or f"TastyTrade ({acct_num})",
-                                    account_type=AccountType.TAXABLE,
-                                    status=AccountStatus.ACTIVE,
-                                    is_enabled=True,
-                                    sync_status=SyncStatus.NEVER_SYNCED,
-                                    currency="USD",
-                                )
-                                db.add(new_acc)
-                                created += 1
-                        db.commit()
-                        db.close()
-                        logger.info(
-                            f"🔎 TastyTrade autodiscovery: {created} created, {updated} updated"
-                        )
-                await client.disconnect()
-        except Exception as e:
-            logger.warning(f"TastyTrade autodiscovery skipped: {e}")
 
         # Instruments normalization pass (make instruments table pristine after migrations)
         try:

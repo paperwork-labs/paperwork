@@ -75,7 +75,8 @@ def test_trade_unique_account_execution(db, broker_account):
     nested.rollback()
 
 
-def test_trade_unique_account_order(db, broker_account):
+def test_trade_same_order_id_different_execution_allowed(db, broker_account):
+    """Multiple fills under one order_id are allowed (only execution_id is unique)."""
     t1 = Trade(
         account_id=broker_account.id,
         symbol="MSFT",
@@ -83,6 +84,7 @@ def test_trade_unique_account_order(db, broker_account):
         quantity=1,
         price=100.0,
         order_id="ord-1",
+        execution_id="exec-1",
     )
     db.add(t1)
     db.commit()
@@ -94,12 +96,11 @@ def test_trade_unique_account_order(db, broker_account):
         quantity=1,
         price=100.0,
         order_id="ord-1",
+        execution_id="exec-2",
     )
-    nested = db.begin_nested()
     db.add(t2)
-    with pytest.raises(IntegrityError):
-        db.flush()
-    nested.rollback()
+    db.commit()
+    assert db.query(Trade).filter_by(account_id=broker_account.id).count() == 2
 
 
 def test_transaction_unique_external_and_execution(db, broker_account):

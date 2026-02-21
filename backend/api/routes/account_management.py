@@ -19,6 +19,8 @@ from datetime import datetime
 
 from backend.database import get_db
 from backend.models import BrokerAccount, BrokerType, AccountType, AccountStatus, SyncStatus
+from backend.models.broker_account import AccountSync, AccountCredentials
+from backend.services.security.credential_vault import credential_vault
 from backend.models.position import Position
 from backend.models.tax_lot import TaxLot
 from backend.services.portfolio.broker_sync_service import broker_sync_service
@@ -28,6 +30,9 @@ from fastapi import Query
 from typing import Dict, Any
 from backend.api.routes.auth import get_current_user
 from backend.models.user import User
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/accounts", tags=["Accounts"])
 
@@ -52,6 +57,7 @@ class BrokerAccountResponse(BaseModel):
     is_enabled: bool
     last_successful_sync: Optional[datetime]
     sync_status: Optional[str]
+    sync_error_message: Optional[str] = None
     created_at: datetime
     sync_task_id: Optional[str] = None  # Set when auto-sync is queued after add
 
@@ -60,6 +66,25 @@ class SyncAccountRequest(BaseModel):
     sync_type: str = (
         "comprehensive"  # 'comprehensive', 'positions_only', 'transactions_only'
     )
+
+
+def _record_sync_rejection(
+    db: Session, account_id: int, sync_type: str, error_message: str
+) -> None:
+    """Record a sync attempt that failed before Celery (API-level rejection/failure).
+    Caller must commit; this only adds the record to the session."""
+    now = datetime.now()
+    record = AccountSync(
+        account_id=account_id,
+        sync_type=sync_type,
+        status=SyncStatus.ERROR,
+        started_at=now,
+        completed_at=now,
+        duration_seconds=0,
+        error_message=error_message,
+        sync_trigger="manual",
+    )
+    db.add(record)
 
 
 @router.post("/add", response_model=BrokerAccountResponse)
@@ -138,8 +163,8 @@ async def add_broker_account(
 
             sync_task = sync_account_task.delay(broker_account.id)
             sync_task_id = sync_task.id
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Auto-sync failed for account %s: %s", broker_account.id, e)
 
         return BrokerAccountResponse(
             id=broker_account.id,
@@ -153,6 +178,7 @@ async def add_broker_account(
             sync_status=(
                 broker_account.sync_status.value if broker_account.sync_status else None
             ),
+            sync_error_message=broker_account.sync_error_message,
             created_at=broker_account.created_at,
             sync_task_id=sync_task_id,
         )
@@ -182,10 +208,174 @@ async def list_broker_accounts(
             is_enabled=account.is_enabled,
             last_successful_sync=account.last_successful_sync,
             sync_status=account.sync_status.value if account.sync_status else None,
+            sync_error_message=account.sync_error_message,
             created_at=account.created_at,
         )
         for account in accounts
     ]
+
+
+class SyncHistoryItem(BaseModel):
+    id: int
+    account_id: int
+    account_number: str
+    account_name: Optional[str]
+    sync_type: str
+    status: str
+    started_at: datetime
+    completed_at: Optional[datetime]
+    duration_seconds: Optional[int]
+    error_message: Optional[str]
+
+
+@router.get("/sync-history", response_model=List[SyncHistoryItem])
+async def get_sync_history(
+    account_id: Optional[int] = Query(default=None, description="Filter by account ID"),
+    limit: int = Query(default=20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get recent sync history for user's accounts. Validate ownership via BrokerAccount.user_id."""
+    q = db.query(AccountSync).join(BrokerAccount).filter(BrokerAccount.user_id == current_user.id)
+    if account_id is not None:
+        q = q.filter(AccountSync.account_id == account_id)
+    rows = q.order_by(AccountSync.started_at.desc()).limit(limit).all()
+    return [
+        SyncHistoryItem(
+            id=s.id,
+            account_id=s.account_id,
+            account_number=s.account.account_number,
+            account_name=s.account.account_name,
+            sync_type=s.sync_type,
+            status=s.status.value if s.status else "unknown",
+            started_at=s.started_at,
+            completed_at=s.completed_at,
+            duration_seconds=s.duration_seconds,
+            error_message=s.error_message,
+        )
+        for s in rows
+    ]
+
+
+class UpdateCredentialsRequest(BaseModel):
+    broker: str  # "tastytrade" | "ibkr"
+    credentials: Dict[str, Any]
+    account_number: Optional[str] = None  # Optional for IBKR to change account_number
+
+
+class UpdateAccountRequest(BaseModel):
+    account_name: Optional[str] = None
+    account_type: Optional[str] = None
+
+
+@router.patch("/{account_id}")
+async def update_account(
+    account_id: int,
+    request: UpdateAccountRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update account metadata (name, type). Validates ownership."""
+    account = (
+        db.query(BrokerAccount)
+        .filter(BrokerAccount.id == account_id, BrokerAccount.user_id == current_user.id)
+        .first()
+    )
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    if request.account_name is not None:
+        account.account_name = str(request.account_name).strip() or None
+    if request.account_type is not None:
+        try:
+            account.account_type = AccountType[request.account_type.upper()]
+        except KeyError:
+            raise HTTPException(status_code=400, detail=f"Invalid account type: {request.account_type}")
+    account.updated_at = datetime.now()
+    db.commit()
+    return {"message": "Account updated"}
+
+
+@router.patch("/{account_id}/credentials")
+async def update_account_credentials(
+    account_id: int,
+    request: UpdateCredentialsRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update stored credentials for an account. Validates ownership."""
+    account = (
+        db.query(BrokerAccount)
+        .filter(BrokerAccount.id == account_id, BrokerAccount.user_id == current_user.id)
+        .first()
+    )
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    broker_lower = request.broker.lower()
+    existing_creds: Dict[str, Any] = {}
+    existing_row = (
+        db.query(AccountCredentials)
+        .filter(AccountCredentials.account_id == account_id)
+        .first()
+    )
+    if existing_row and existing_row.encrypted_credentials:
+        try:
+            existing_creds = credential_vault.decrypt_dict(existing_row.encrypted_credentials)
+        except Exception:
+            pass
+
+    if broker_lower == "tastytrade":
+        creds = request.credentials
+        payload = {
+            "client_id": (str(creds.get("client_id") or "").strip()) or existing_creds.get("client_id", ""),
+            "client_secret": (str(creds.get("client_secret") or "").strip()) or existing_creds.get("client_secret", ""),
+            "refresh_token": (str(creds.get("refresh_token") or "").strip()) or existing_creds.get("refresh_token", ""),
+        }
+        if not all(payload.values()):
+            raise HTTPException(
+                status_code=400,
+                detail="Tastytrade requires client_id, client_secret, refresh_token",
+            )
+        cred_type = "oauth"
+    elif broker_lower == "ibkr":
+        creds = request.credentials
+        payload = {
+            "flex_token": (str(creds.get("flex_token") or "").strip()) or existing_creds.get("flex_token", ""),
+            "query_id": (str(creds.get("query_id") or "").strip()) or existing_creds.get("query_id", ""),
+        }
+        if not all(payload.values()):
+            raise HTTPException(
+                status_code=400,
+                detail="IBKR requires flex_token, query_id",
+            )
+        cred_type = "ibkr_flex"
+        if request.account_number and str(request.account_number).strip():
+            account.account_number = str(request.account_number).strip()
+    else:
+        raise HTTPException(status_code=400, detail=f"Unsupported broker: {request.broker}")
+
+    enc = credential_vault.encrypt_dict(payload)
+    existing = (
+        db.query(AccountCredentials)
+        .filter(AccountCredentials.account_id == account_id)
+        .first()
+    )
+    if existing:
+        existing.encrypted_credentials = enc
+        broker_map = {"tastytrade": BrokerType.TASTYTRADE, "ibkr": BrokerType.IBKR}
+        existing.provider = broker_map.get(broker_lower, account.broker)
+        existing.credential_type = cred_type
+        existing.last_error = None
+    else:
+        cred = AccountCredentials(
+            account_id=account_id,
+            encrypted_credentials=enc,
+            provider=account.broker,
+            credential_type=cred_type,
+        )
+        db.add(cred)
+    db.commit()
+    return {"message": "Credentials updated"}
 
 
 @router.post("/{account_id}/sync")
@@ -213,29 +403,41 @@ async def sync_broker_account(
             raise HTTPException(status_code=404, detail="Account not found")
 
         if not account.is_enabled:
+            _record_sync_rejection(db, account_id, request.sync_type, "Account is disabled")
+            db.commit()
             raise HTTPException(status_code=400, detail="Account is disabled")
 
-        # Update sync status
-        account.sync_status = SyncStatus.RUNNING
+        if account.sync_status in (SyncStatus.QUEUED, SyncStatus.RUNNING):
+            _record_sync_rejection(db, account_id, request.sync_type, "Sync already in progress")
+            db.commit()
+            raise HTTPException(
+                status_code=409,
+                detail="Sync already in progress",
+            )
+
+        # Mark as QUEUED; the Celery task will set RUNNING when it starts
+        account.sync_status = SyncStatus.QUEUED
         account.last_sync_attempt = datetime.now()
+        account.sync_error_message = None
         db.commit()
 
-        # Enqueue Celery task and return 202 with task id
         task = celery_app.send_task(
             "backend.tasks.account_sync.sync_account_task",
             args=[account_id, request.sync_type],
         )
-        account.sync_status = SyncStatus.QUEUED
-        account.sync_error_message = None
-        db.commit()
         return {"status": "queued", "task_id": task.id}
 
     except HTTPException:
         raise
     except Exception as e:
-        account.sync_status = SyncStatus.FAILED
-        account.sync_error_message = str(e)
-        db.commit()
+        try:
+            if account is not None:
+                account.sync_status = SyncStatus.FAILED
+                account.sync_error_message = str(e)[:500]
+            _record_sync_rejection(db, account_id, request.sync_type, str(e))
+            db.commit()
+        except Exception:
+            db.rollback()
         raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")
 
 

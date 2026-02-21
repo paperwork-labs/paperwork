@@ -83,24 +83,23 @@ class AccountConfigService:
 
     def get_tastytrade_account_from_env(self, override_settings=None) -> Dict:
         """Get TastyTrade account info from environment variables.
+        Requires TASTYTRADE_CLIENT_SECRET (OAuth) to indicate TT is configured.
         REQUIRE a real account number to seed; otherwise, skip seeding.
         Discovery (to fetch real account numbers) should happen in explicit flows.
         """
         try:
             cfg = override_settings or settings
-            username = getattr(cfg, "TASTYTRADE_USERNAME", None)
+            has_oauth = bool(getattr(cfg, "TASTYTRADE_CLIENT_SECRET", None))
             account_number = getattr(cfg, "TASTYTRADE_ACCOUNT_NUMBER", None)
-            # Some tests may pass a Mock; we don't want to persist the repr
             if account_number is not None:
                 try:
-                    # Use simple strings only; if it's a mocking object or too long, drop it
                     account_number = str(account_number)
                     if account_number.startswith("<") or len(account_number) > 30:
                         account_number = None
                 except Exception:
                     account_number = None
-            if not username:
-                logger.warning("No TASTYTRADE_USERNAME found in environment")
+            if not has_oauth:
+                logger.warning("No TASTYTRADE_CLIENT_SECRET found in environment")
                 return None
             if not account_number:
                 logger.info(
@@ -108,7 +107,7 @@ class AccountConfigService:
                 )
                 return None
             return {
-                "account_id": username,
+                "account_id": "oauth",
                 "account_number": account_number,
                 "account_name": f"TastyTrade ({account_number})",
                 "account_type": AccountType.TAXABLE,

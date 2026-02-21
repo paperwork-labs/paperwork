@@ -17,7 +17,7 @@ import logging
 from typing import Dict
 from datetime import datetime
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, func as sa_func
 from decimal import Decimal
 import json
 
@@ -44,6 +44,10 @@ from backend.models.options import Option
 
 # Import the services we need
 from backend.services.clients.ibkr_flexquery_client import IBKRFlexQueryClient
+from backend.services.portfolio.account_credentials_service import (
+    account_credentials_service,
+    CredentialsNotFoundError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -64,9 +68,26 @@ class IBKRSyncService:
     """IBKR-specific service to sync all IBKR data to broker-agnostic database models."""
 
     def __init__(self):
-        self.flexquery_client = IBKRFlexQueryClient()
+        self._default_client = IBKRFlexQueryClient()
+        # Backward compat: tests patch flexquery_client
+        self.flexquery_client = self._default_client
         # NOTE: IBKRClient may need singleton pattern - will handle connection carefully
         # Account mapping removed - now retrieved dynamically from database/config
+
+    def _get_flexquery_client(
+        self, broker_account: BrokerAccount, db: Session
+    ) -> IBKRFlexQueryClient:
+        """Get FlexQuery client with per-account credentials or env fallback."""
+        try:
+            creds = account_credentials_service.get_ibkr_credentials(
+                broker_account.id, db
+            )
+            return IBKRFlexQueryClient(
+                token=creds["flex_token"],
+                query_id=creds["query_id"],
+            )
+        except CredentialsNotFoundError:
+            return self._default_client
 
     async def sync_comprehensive_portfolio(
         self, account_number: str = "U19491234", db_session: Session | None = None
@@ -99,20 +120,28 @@ class IBKRSyncService:
                     .first()
                 )
             except Exception:
-                # Database not initialized yet in tests
-                return {"error": "not found in database"}
+                return {"status": "error", "error": "Broker account not found in database"}
             if not broker_account:
-                return {"error": "not found in database"}
+                return {"status": "error", "error": "Broker account not found in database"}
+
+            # Get FlexQuery client (per-account creds or env fallback)
+            flexquery_client = self._get_flexquery_client(broker_account, db)
 
             # Fetch single FlexQuery report once to avoid IN_PROGRESS collisions
-            report_xml = await self.flexquery_client.get_full_report(account_number)
+            report_xml = await flexquery_client.get_full_report(account_number)
             if not report_xml:
                 logger.error("❌ FlexQuery report not ready")
-                return {"error": "flexquery_not_ready"}
+                return {"status": "error", "error": "FlexQuery report not available — token or query ID may be invalid."}
+
+            logger.debug(
+                "FlexQuery report length=%d, preview (first 500 chars): %s",
+                len(report_xml),
+                report_xml[:500],
+            )
 
             # Step 1: Sync Instruments (securities master data)
             instruments_result = await self._sync_instruments(
-                db, account_number, report_xml
+                db, account_number, report_xml, flexquery_client
             )
             results["instruments"] = instruments_result
 
@@ -120,25 +149,31 @@ class IBKRSyncService:
             # Prefer the client's canonical tax-lots endpoint over parsing the full report XML,
             # since report formats can vary and the client normalizes the structure.
             tax_lots_result = await self._sync_tax_lots_from_flexquery(
-                db, broker_account, account_number
+                db, broker_account, account_number, report_xml, flexquery_client
             )
             results["tax_lots"] = tax_lots_result
 
             # Step 3: Sync Option Positions from FlexQuery OpenPositions
             options_result = await self._sync_option_positions_from_flexquery(
-                db, broker_account, account_number, report_xml
+                db, broker_account, account_number, report_xml, flexquery_client
             )
             results["option_positions"] = options_result
 
             # Step 4: Sync historical Trades from FlexQuery
             trades_result = await self._sync_trades_from_flexquery(
-                db, broker_account, account_number, report_xml
+                db, broker_account, account_number, report_xml, flexquery_client
             )
             results["trades"] = trades_result
-            # Step 5: Sync current Positions (aggregated from tax lots, uses BrokerAccount)
+            # Step 5: Sync current Positions
+            # Prefer tax-lot-derived positions; fall back to OpenPositions when
+            # the Trades section is too sparse for full reconstruction.
             positions_result = await self._sync_position_from_tax_lots(
                 db, broker_account
             )
+            if isinstance(positions_result, dict) and positions_result.get("synced", 0) == 0:
+                positions_result = await self._sync_positions_from_open_positions(
+                    db, broker_account, account_number, report_xml, flexquery_client
+                )
             results["positions"] = positions_result
 
             # Step 5.1: Refresh prices for positions and tax lots to populate market values
@@ -160,32 +195,49 @@ class IBKRSyncService:
 
             # Step 8: Sync cash transactions including dividends
             cash_transactions_result = await self._sync_cash_transactions(
-                db, broker_account, account_number, report_xml
+                db, broker_account, account_number, report_xml, flexquery_client
             )
             results["cash_transactions"] = cash_transactions_result
 
             # Step 9: Sync account balances
             account_balances_result = await self._sync_account_balances(
-                db, broker_account, account_number, report_xml
+                db, broker_account, account_number, report_xml, flexquery_client
             )
             results["account_balances"] = account_balances_result
 
             # Step 10: Sync margin interest
             margin_interest_result = await self._sync_margin_interest(
-                db, broker_account, account_number, report_xml
+                db, broker_account, account_number, report_xml, flexquery_client
             )
             results["margin_interest"] = margin_interest_result
 
             # Step 11: Sync transfers
             transfers_result = await self._sync_transfers(
-                db, broker_account, account_number, report_xml
+                db, broker_account, account_number, report_xml, flexquery_client
             )
             results["transfers"] = transfers_result
 
             # Commit all changes
             db.commit()
 
-            # Calculate summary
+            # Detect empty FlexQuery report (all sections yielded 0 data)
+            _data_keys = ["tax_lots", "trades", "positions", "cash_transactions", "account_balances"]
+            _total_synced = sum(
+                (r.get("synced", 0) if isinstance(r, dict) else 0)
+                for k in _data_keys
+                if (r := results.get(k)) is not None
+            )
+            if _total_synced == 0:
+                error_msg = (
+                    "FlexQuery report returned no data. "
+                    "Verify your FlexQuery includes: Open Positions, Trades, "
+                    "Cash Transactions, and Account Information sections. "
+                    "Also confirm your Flex Web Service token has not expired."
+                )
+                logger.error("❌ %s (account %s)", error_msg, account_number)
+                return {"status": "error", "error": error_msg, **results}
+
+            # Calculate summary from tax lots; fall back to positions table
             total_cost = sum(
                 float(lot.cost_basis or 0)
                 for lot in db.query(TaxLot)
@@ -198,6 +250,23 @@ class IBKRSyncService:
                 .filter(TaxLot.account_id == broker_account.id)
                 .all()
             )
+            if total_cost == 0 and total_value == 0:
+                total_cost = float(
+                    db.query(
+                        sa_func.coalesce(sa_func.sum(Position.total_cost_basis), 0)
+                    )
+                    .filter(Position.account_id == broker_account.id)
+                    .scalar()
+                    or 0
+                )
+                total_value = float(
+                    db.query(
+                        sa_func.coalesce(sa_func.sum(Position.market_value), 0)
+                    )
+                    .filter(Position.account_id == broker_account.id)
+                    .scalar()
+                    or 0
+                )
             total_pnl = total_value - total_cost
             return_pct = (total_pnl / total_cost * 100) if total_cost > 0 else 0
 
@@ -215,7 +284,7 @@ class IBKRSyncService:
         except Exception as e:
             db.rollback()
             logger.error(f"❌ Error in comprehensive sync: {e}")
-            return {"error": str(e)}
+            return {"status": "error", "error": str(e)}
         finally:
             if db_session is None:
                 db.close()
@@ -227,7 +296,11 @@ class IBKRSyncService:
         return await self.sync_comprehensive_portfolio(account_number, db_session=db_session)
 
     async def _sync_instruments(
-        self, db: Session, account_number: str, report_xml: str | None = None
+        self,
+        db: Session,
+        account_number: str,
+        report_xml: str | None = None,
+        flexquery_client: IBKRFlexQueryClient | None = None,
     ) -> Dict:
         """Sync comprehensive instruments from all FlexQuery sections."""
         try:
@@ -275,11 +348,12 @@ class IBKRSyncService:
                     return Exchange.NASDAQ
 
             # Prefer tax lot symbols during tests (when patched) to keep deterministic
+            fc = flexquery_client or self._default_client
             instruments_data = []
             lots = (
-                await self.flexquery_client.get_official_tax_lots(account_number)
+                await fc.get_official_tax_lots(account_number)
                 if not report_xml
-                else self.flexquery_client._parse_tax_lots(report_xml, account_number)
+                else fc._parse_tax_lots(report_xml, account_number)
             )
             if lots:
                 # Only create base instruments from STOCK/ETF tax lots; skip options/futures/etc.
@@ -306,14 +380,10 @@ class IBKRSyncService:
             else:
                 # Fall back to FlexQuery enhanced parse
                 try:
-                    raw_xml = report_xml or await self.flexquery_client.get_full_report(
-                        account_number
-                    )
+                    raw_xml = report_xml or await fc.get_full_report(account_number)
                     if raw_xml:
                         instruments_data = (
-                            self.flexquery_client._parse_enhanced_instruments(
-                                raw_xml, account_number
-                            )
+                            fc._parse_enhanced_instruments(raw_xml, account_number)
                             or []
                         )
                 except Exception:
@@ -425,14 +495,16 @@ class IBKRSyncService:
         broker_account: BrokerAccount,
         account_number: str,
         report_xml: str | None = None,
+        flexquery_client: IBKRFlexQueryClient | None = None,
     ) -> Dict:
         """Sync tax lots with REAL cost basis from FlexQuery trades section."""
         try:
+            fc = flexquery_client or self._default_client
             # Get the real tax lots data we discovered
             tax_lots_data = (
-                self.flexquery_client._parse_tax_lots(report_xml, account_number)
+                fc._parse_tax_lots(report_xml, account_number)
                 if report_xml
-                else await self.flexquery_client.get_official_tax_lots(account_number)
+                else await fc.get_official_tax_lots(account_number)
             )
 
             # Clear existing tax lots ONLY if new data exists to avoid accidental wipes
@@ -542,20 +614,18 @@ class IBKRSyncService:
         broker_account: BrokerAccount,
         account_number: str,
         report_xml: str | None = None,
+        flexquery_client: IBKRFlexQueryClient | None = None,
     ) -> Dict:
         """Sync historical trades from FlexQuery Trades section."""
         try:
+            fc = flexquery_client or self._default_client
             # Get raw FlexQuery XML and parse trades section (with polling)
-            raw_xml = report_xml or await self.flexquery_client.get_full_report(
-                account_number
-            )
+            raw_xml = report_xml or await fc.get_full_report(account_number)
             if not raw_xml:
                 return {"error": "FlexQuery report not ready"}
 
             # Parse trades from XML
-            trades_data = self.flexquery_client._parse_trades_from_xml(
-                raw_xml, account_number
-            )
+            trades_data = fc._parse_trades_from_xml(raw_xml, account_number)
 
             # Clear existing trades to avoid duplicates
             db.query(Trade).filter(Trade.account_id == broker_account.id).delete()
@@ -689,6 +759,69 @@ class IBKRSyncService:
 
         except Exception as e:
             logger.error(f"Error syncing position: {e}")
+            return {"error": str(e)}
+
+    async def _sync_positions_from_open_positions(
+        self,
+        db: Session,
+        broker_account: BrokerAccount,
+        account_number: str,
+        report_xml: str | None = None,
+        flexquery_client: IBKRFlexQueryClient | None = None,
+    ) -> Dict:
+        """Sync positions directly from FlexQuery OpenPositions SUMMARY rows.
+
+        Used as a fallback when tax-lot reconstruction yields 0 positions
+        (e.g. the Trades section in the API response is too sparse).
+        """
+        try:
+            fc = flexquery_client or self._default_client
+            raw_xml = report_xml or await fc.get_full_report(account_number)
+            if not raw_xml:
+                return {"synced": 0}
+
+            stock_positions = fc._parse_stock_positions(raw_xml, account_number)
+            if not stock_positions:
+                return {"synced": 0}
+
+            db.query(Position).filter(Position.account_id == broker_account.id).delete()
+
+            synced_count = 0
+            for sp in stock_positions:
+                try:
+                    qty = Decimal(str(sp["quantity"]))
+                    cost_basis = Decimal(str(sp["cost_basis_money"]))
+                    mkt_val = Decimal(str(sp["market_value"]))
+                    avg_cost = Decimal(str(sp["cost_basis_price"]))
+                    pnl = Decimal(str(sp["unrealized_pnl"]))
+                    pnl_pct = (pnl / cost_basis * 100) if cost_basis else Decimal("0")
+
+                    position = Position(
+                        user_id=broker_account.user_id,
+                        account_id=broker_account.id,
+                        symbol=sp["symbol"],
+                        instrument_type="STOCK",
+                        position_type=PositionType.LONG if qty > 0 else PositionType.SHORT,
+                        quantity=qty,
+                        status=PositionStatus.OPEN,
+                        average_cost=avg_cost,
+                        total_cost_basis=cost_basis,
+                        current_price=Decimal(str(sp["mark_price"])),
+                        market_value=mkt_val,
+                        unrealized_pnl=pnl,
+                        unrealized_pnl_pct=pnl_pct,
+                        position_updated_at=datetime.now(),
+                    )
+                    db.add(position)
+                    synced_count += 1
+                except Exception:
+                    continue
+
+            db.flush()
+            logger.info("Synced %d positions from OpenPositions for %s", synced_count, account_number)
+            return {"synced": synced_count}
+        except Exception as e:
+            logger.error("Error syncing positions from OpenPositions: %s", e)
             return {"error": str(e)}
 
     async def _sync_current_prices(self, db: Session, account_number: str) -> Dict:
@@ -874,18 +1007,18 @@ class IBKRSyncService:
         broker_account: BrokerAccount,
         account_number: str,
         report_xml: str | None = None,
+        flexquery_client: IBKRFlexQueryClient | None = None,
     ) -> Dict:
         """Sync option positions from IBKR FlexQuery OpenPositions section."""
         try:
             logger.info(f"📊 Syncing option positions for {account_number}")
 
+            fc = flexquery_client or self._default_client
             # Get option positions from FlexQuery first
             option_positions_data = (
-                self.flexquery_client._parse_option_positions(
-                    report_xml, account_number
-                )
+                fc._parse_option_positions(report_xml, account_number)
                 if report_xml
-                else await self.flexquery_client.get_option_positions(account_number)
+                else await fc.get_option_positions(account_number)
             )
 
             # If FlexQuery returns no open option positions, attempt real-time fallback via ib_insync
@@ -921,13 +1054,9 @@ class IBKRSyncService:
 
             # Get historical option exercises from OptionEAE section
             option_exercises_data = (
-                self.flexquery_client._parse_option_exercises(
-                    report_xml, account_number
-                )
+                fc._parse_option_exercises(report_xml, account_number)
                 if report_xml
-                else await self.flexquery_client.get_historical_option_exercises(
-                    account_number
-                )
+                else await fc.get_historical_option_exercises(account_number)
             )
 
             # Clear existing option positions for this account
@@ -943,7 +1072,7 @@ class IBKRSyncService:
                     # Create Option record
                     option_position = Option(
                         user_id=broker_account.user_id,
-                        account_id=broker_account.id,  # Use BrokerAccount.id
+                        account_id=broker_account.id,
                         symbol=option_data["symbol"],
                         underlying_symbol=option_data["underlying_symbol"],
                         strike_price=option_data["strike_price"],
@@ -952,7 +1081,6 @@ class IBKRSyncService:
                         multiplier=option_data["multiplier"],
                         open_quantity=option_data["open_quantity"],
                         current_price=option_data["current_price"],
-                        market_value=option_data["market_value"],
                         unrealized_pnl=option_data["unrealized_pnl"],
                         currency=option_data["currency"],
                         data_source=option_data["data_source"],
@@ -1032,18 +1160,18 @@ class IBKRSyncService:
         broker_account: BrokerAccount,
         account_number: str,
         report_xml: str | None = None,
+        flexquery_client: IBKRFlexQueryClient | None = None,
     ) -> Dict:
         """Sync cash transactions including dividends from FlexQuery."""
         try:
             logger.info(f"📊 Syncing cash transactions for {account_number}")
 
+            fc = flexquery_client or self._default_client
             # Get cash transaction data from FlexQuery
             transactions_data = (
-                self.flexquery_client._parse_cash_transactions(
-                    report_xml, account_number
-                )
+                fc._parse_cash_transactions(report_xml, account_number)
                 if report_xml
-                else await self.flexquery_client.get_cash_transactions(account_number)
+                else await fc.get_cash_transactions(account_number)
             )
 
             if not transactions_data:
@@ -1258,18 +1386,18 @@ class IBKRSyncService:
         broker_account: BrokerAccount,
         account_number: str,
         report_xml: str | None = None,
+        flexquery_client: IBKRFlexQueryClient | None = None,
     ) -> Dict:
         """Sync account balances from FlexQuery."""
         try:
             logger.info(f"📊 Syncing account balances for {account_number}")
 
+            fc = flexquery_client or self._default_client
             # Get account balance data from FlexQuery
             balances_data = (
-                self.flexquery_client._parse_account_information(
-                    report_xml, account_number
-                )
+                fc._parse_account_information(report_xml, account_number)
                 if report_xml
-                else await self.flexquery_client.get_account_balances(account_number)
+                else await fc.get_account_balances(account_number)
             )
 
             if not balances_data:
@@ -1375,18 +1503,18 @@ class IBKRSyncService:
         broker_account: BrokerAccount,
         account_number: str,
         report_xml: str | None = None,
+        flexquery_client: IBKRFlexQueryClient | None = None,
     ) -> Dict:
         """Sync margin interest from FlexQuery."""
         try:
             logger.info(f"📊 Syncing margin interest for {account_number}")
 
+            fc = flexquery_client or self._default_client
             # Get margin interest data from FlexQuery
             interest_data = (
-                self.flexquery_client._parse_interest_accruals(
-                    report_xml, account_number
-                )
+                fc._parse_interest_accruals(report_xml, account_number)
                 if report_xml
-                else await self.flexquery_client.get_margin_interest(account_number)
+                else await fc.get_margin_interest(account_number)
             )
 
             if not interest_data:
@@ -1550,16 +1678,18 @@ class IBKRSyncService:
         broker_account: BrokerAccount,
         account_number: str,
         report_xml: str | None = None,
+        flexquery_client: IBKRFlexQueryClient | None = None,
     ) -> Dict:
         """Sync transfers from FlexQuery."""
         try:
             logger.info(f"📊 Syncing transfers for {account_number}")
 
+            fc = flexquery_client or self._default_client
             # Get transfer data from FlexQuery
             transfers_data = (
-                self.flexquery_client._parse_transfers(report_xml, account_number)
+                fc._parse_transfers(report_xml, account_number)
                 if report_xml
-                else await self.flexquery_client.get_transfers(account_number)
+                else await fc.get_transfers(account_number)
             )
 
             if not transfers_data:

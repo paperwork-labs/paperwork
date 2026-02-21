@@ -22,6 +22,10 @@ from backend.models import (
     Dividend,
     AccountBalance,
 )
+from backend.services.portfolio.account_credentials_service import (
+    account_credentials_service,
+    CredentialsNotFoundError,
+)
 from backend.models.position import PositionType
 from backend.models.transaction import TransactionType
 from backend.models.account_balance import AccountBalanceType
@@ -44,11 +48,21 @@ class TastyTradeSyncService:
     ) -> Dict[str, int]:
         """Sync ALL objects for the given broker account. Returns row counts."""
         counts: Dict[str, int] = {}
-        # Ensure connection prior to any fetches
+
+        # Per-user credentials: use AccountCredentialsService for decryption
         try:
+            payload = account_credentials_service.get_decrypted(broker_account.id, db)
+            ok = await self.client.connect_with_credentials(
+                client_secret=payload["client_secret"],
+                refresh_token=payload["refresh_token"],
+            )
+            if not ok:
+                raise ConnectionError(
+                    f"TastyTrade OAuth failed for account {broker_account.account_number}"
+                )
+        except CredentialsNotFoundError:
+            # Dev fallback: env var credentials for seed accounts without stored creds
             await self.client.connect_with_retry()
-        except Exception:
-            pass
 
         # Ensure the requested account number exists in the connected TT session
         try:
@@ -392,6 +406,10 @@ class TastyTradeSyncService:
             open_quantity=quantity,
             current_price=p.get("mark"),
             unrealized_pnl=unrealized,
+            delta=p.get("delta"),
+            gamma=p.get("gamma"),
+            theta=p.get("theta"),
+            vega=p.get("vega"),
             currency="USD",
             data_source="TASTYTRADE",
         )

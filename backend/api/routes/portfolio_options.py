@@ -160,6 +160,13 @@ async def get_unified_options_portfolio(
                 "account_number": account_number,
                 "days_to_expiration": _days_to_expiry(p.expiry_date),
                 "multiplier": mult,
+                "delta": float(p.delta) if p.delta is not None else None,
+                "gamma": float(p.gamma) if p.gamma is not None else None,
+                "theta": float(p.theta) if p.theta is not None else None,
+                "vega": float(p.vega) if p.vega is not None else None,
+                "implied_volatility": float(p.implied_volatility) if p.implied_volatility is not None else None,
+                "underlying_price": float(p.underlying_price) if p.underlying_price is not None else None,
+                "cost_basis": float(p.total_cost) if p.total_cost else None,
                 "last_updated": (
                     p.updated_at or p.last_updated or datetime.utcnow()
                 ).isoformat(),
@@ -239,6 +246,14 @@ async def get_unified_options_summary(
                 )
                 if positions
                 else 0
+            ),
+            "net_delta": sum(
+                (p.get("delta") or 0) * p.get("quantity", 0)
+                for p in positions
+            ),
+            "net_theta": sum(
+                (p.get("theta") or 0) * p.get("quantity", 0) * p.get("multiplier", 100)
+                for p in positions
             ),
             "underlyings": list(portfolio["data"]["underlyings"].keys()),
         }

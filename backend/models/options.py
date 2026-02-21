@@ -74,6 +74,13 @@ class Option(Base):
     current_price = Column(Numeric(12, 4), nullable=True)  # Current option price
     underlying_price = Column(Numeric(12, 4), nullable=True)  # Current underlying price
 
+    # Greeks (snapshot at last sync)
+    delta = Column(Numeric(10, 6), nullable=True)
+    gamma = Column(Numeric(10, 6), nullable=True)
+    theta = Column(Numeric(10, 6), nullable=True)
+    vega = Column(Numeric(10, 6), nullable=True)
+    implied_volatility = Column(Numeric(10, 4), nullable=True)
+
     # Exercise/Assignment Details
     exercise_date = Column(Date, nullable=True)  # Exercise date
     exercise_price = Column(Float, nullable=True)  # Exercise price

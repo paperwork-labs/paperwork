@@ -82,12 +82,10 @@ class Trade(Base):
     signal = relationship("TradeSignal", back_populates="trades")
     # Note: position relationship will be added when Position model supports trades
 
-    # Dedupe safety: prevent duplicate broker executions/orders per account
     __table_args__ = (
         UniqueConstraint(
             "account_id", "execution_id", name="uq_trades_account_execution"
         ),
-        UniqueConstraint("account_id", "order_id", name="uq_trades_account_order"),
         Index(
             "idx_trades_account_symbol_time", "account_id", "symbol", "execution_time"
         ),

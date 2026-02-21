@@ -23,11 +23,20 @@
 - `CORS_ORIGINS`
 - `RATE_LIMIT_DEFAULT`
 
+Credential vault:
+- `ENCRYPTION_KEY` (Fernet key for credential vault; generate with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`)
+
+**NEVER set these in production** (enforced by `validate_production_settings()` -- app will refuse to start):
+- `IBKR_FLEX_TOKEN`, `IBKR_FLEX_QUERY_ID`, `TASTYTRADE_CLIENT_SECRET`, `TASTYTRADE_REFRESH_TOKEN`
+- These are dev-only global fallbacks for seed accounts. In production, all broker credentials are per-user and stored encrypted in the `account_credentials` table via the credential vault.
+
 Optional:
 - `RATE_LIMIT_STORAGE_URL` (Redis-backed limiter)
 - `NEW_RELIC_LICENSE_KEY`
 - `ADMIN_SEED_ENABLED` (one-time admin bootstrap)
 - `ADMIN_USERNAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` (only if seeding)
+- `CELERY_TASK_SOFT_TIME_LIMIT` (default 300s)
+- `CELERY_TASK_TIME_LIMIT` (default 360s)
 
 ## CI/CD (GitHub Actions)
 1. Build and push Docker images to GHCR.
