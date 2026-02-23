@@ -11,6 +11,13 @@ updates:
     labels:
       - "deps"
       - "frontend"
+    ignore:
+      # react-dom major bumps require react major; we stay on React 18 for now
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      # eslint 10 breaks @testing-library/react type resolution in tests; skip major for now
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
     groups:
       frontend-minor-and-patch:
         applies-to: version-updates
