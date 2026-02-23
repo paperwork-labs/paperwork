@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@/test/testing-library';
 import { renderWithProviders } from '../../test/render';
 import PortfolioTransactions from '../portfolio/PortfolioTransactions';
 

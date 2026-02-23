@@ -132,7 +132,7 @@ const SparklinePopoverContent = memo(SparklinePopoverContentInner);
 const SymbolLinkInner: React.FC<{ symbol: string; children?: React.ReactNode }> = ({ symbol, children }) => {
   const openChart = React.useContext(ChartContext);
   const [hovered, setHovered] = React.useState(false);
-  const hoverTimer = React.useRef<ReturnType<typeof setTimeout>>();
+  const hoverTimer = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const onEnter = useCallback(() => {
     clearTimeout(hoverTimer.current);

@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { screen, cleanup } from '@testing-library/react';
+import { screen, cleanup } from '@/test/testing-library';
 import userEvent from '@testing-library/user-event';
 import AdminHealthBanner from '../AdminHealthBanner';
 import AdminDomainCards from '../AdminDomainCards';

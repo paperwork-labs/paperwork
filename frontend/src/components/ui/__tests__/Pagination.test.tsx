@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from '@/test/testing-library';
 import { renderWithProviders } from '../../../test/render';
 import Pagination from '../Pagination';
 

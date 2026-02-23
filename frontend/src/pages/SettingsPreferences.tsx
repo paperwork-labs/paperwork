@@ -28,8 +28,8 @@ const SettingsPreferences: React.FC = () => {
   const [timezone, setTimezone] = React.useState<string>(user?.timezone || 'America/Los_Angeles');
   const [currency, setCurrency] = React.useState<string>((user?.currency_preference || 'USD').toUpperCase());
   const [saveStatus, setSaveStatus] = React.useState<SaveStatus>('idle');
-  const saveTimeoutRef = React.useRef<ReturnType<typeof setTimeout>>();
-  const debounceRef = React.useRef<ReturnType<typeof setTimeout>>();
+  const saveTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const mountedRef = React.useRef(true);
 
   React.useEffect(() => {

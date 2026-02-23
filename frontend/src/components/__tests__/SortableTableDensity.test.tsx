@@ -46,7 +46,7 @@ describe('SortableTable table density default', () => {
     ];
     const { getAllByTestId } = renderWithProviders(<SortableTable data={[{ name: 'A' }]} columns={columns} size="lg" />);
     const tables = getAllByTestId('table-root');
-    expect(tables.some((t) => t.getAttribute('data-size') === 'lg')).toBe(true);
+    expect(tables.some((t: Element) => t.getAttribute('data-size') === 'lg')).toBe(true);
   });
 });
 

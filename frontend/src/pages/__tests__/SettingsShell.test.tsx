@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen } from '@/test/testing-library';
 import SettingsShell from '../../pages/SettingsShell';
 import { renderWithProviders } from '../../test/render';
 

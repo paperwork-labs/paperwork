@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { screen, waitFor, cleanup } from '@testing-library/react';
+import { screen, waitFor, cleanup } from '@/test/testing-library';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '../../test/render';
 import SettingsPreferences from '../SettingsPreferences';

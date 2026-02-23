@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@/test/testing-library';
 import userEvent from '@testing-library/user-event';
 import AdminJobs from '../AdminJobs';
 import { renderWithProviders } from '../../test/render';

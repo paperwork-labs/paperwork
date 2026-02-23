@@ -1,7 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { cleanup } from '@testing-library/react';
-import { screen } from '@testing-library/react';
+import { cleanup, screen } from '@/test/testing-library';
 import { Route, Routes } from 'react-router-dom';
 
 import { renderWithProviders } from '../../../test/render';

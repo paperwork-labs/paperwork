@@ -1,6 +1,6 @@
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, screen } from '@testing-library/react';
+import { cleanup, screen } from '@/test/testing-library';
 
 import { renderWithProviders } from '../../test/render';
 import MarketTracked from '../MarketTracked';

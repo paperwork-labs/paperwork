@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen } from '@/test/testing-library';
 import { renderWithProviders } from '../../../test/render';
 import StageBar from '../StageBar';
 
