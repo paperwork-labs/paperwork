@@ -1,10 +1,10 @@
 # Core
-fastapi==0.129.0
-uvicorn[standard]==0.40.0
+fastapi==0.129.2
+uvicorn[standard]==0.41.0
 sqlalchemy==2.0.46
 psycopg2-binary==2.9.11
 pydantic==2.12.5
-pydantic-settings==2.12.0
+pydantic-settings==2.13.1
 python-dotenv==1.2.1
 loguru==0.7.3
 alembic==1.18.4
@@ -13,7 +13,7 @@ slowapi==0.1.9
 python-json-logger==4.0.0
 
 # Data & Utils
-pandas==3.0.0
+pandas==3.0.1
 numpy==2.4.2
 requests==2.32.5
 aiohttp==3.13.3
@@ -38,15 +38,15 @@ schedule==1.2.2
 # Task queue / async
 celery==5.6.2
 flower==2.0.1
-redis==7.1.1
+redis==7.2.0
 
 
 # Linters & Dev
 black==26.1.0
-ruff==0.15.1
+ruff==0.15.2
 
 # APM/Monitoring
-newrelic==11.4.0
+newrelic==11.5.0
 
 # Testing
 pytest==9.0.2
