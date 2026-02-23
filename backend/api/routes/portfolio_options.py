@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get("/accounts", response_model=List[Dict[str, Any]])
+@router.get("/accounts", response_model=Dict[str, Any])
 async def get_option_accounts(
     user_id: int | None = Query(None, description="User ID (optional)"),
     db: Session = Depends(get_db),
@@ -54,7 +54,7 @@ async def get_option_accounts(
                     "open_option_positions": open_opt_count,
                 }
             )
-        return result
+        return {"status": "success", "data": {"accounts": result}}
     except Exception as e:
         logger.error(f"❌ Options accounts error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -112,25 +112,25 @@ async def get_unified_options_portfolio(
             acc = opt_accounts_map.get(p.account_id)
             account_number = acc.account_number if acc else None
             qty = int(p.open_quantity or 0)
+            abs_qty = abs(qty) or 1
             mult = float(p.multiplier or 100)
             cur_price = float(p.current_price or 0)
             total_cost = float(p.total_cost or 0)
-            mv = cur_price * qty * mult
-            # Fallback: if price unavailable, use total_cost to avoid zeroed MV
+            mv = cur_price * abs_qty * mult
             try:
                 if mv == 0 and p.total_cost is not None:
                     mv = float(abs(p.total_cost))
-                    if cur_price == 0 and qty:
-                        cur_price = mv / (qty * mult)
+                    if cur_price == 0:
+                        cur_price = mv / (abs_qty * mult)
             except Exception:
                 pass
             u_pnl = float(p.unrealized_pnl or 0)
             if u_pnl == 0 and total_cost:
                 try:
-                    u_pnl = mv - total_cost
+                    u_pnl = mv - abs(total_cost)
                 except Exception:
                     pass
-            avg_cost = float(p.total_cost or 0) / (qty * mult) if qty else 0.0
+            avg_cost = abs(total_cost) / (abs_qty * mult) if qty else 0.0
             sym_value = p.symbol or ""
             if not sym_value:
                 try:
@@ -167,6 +167,8 @@ async def get_unified_options_portfolio(
                 "implied_volatility": float(p.implied_volatility) if p.implied_volatility is not None else None,
                 "underlying_price": float(p.underlying_price) if p.underlying_price is not None else None,
                 "cost_basis": float(p.total_cost) if p.total_cost else None,
+                "realized_pnl": float(p.realized_pnl) if p.realized_pnl is not None else None,
+                "commission": float(p.commission) if p.commission is not None else None,
                 "last_updated": (
                     p.updated_at or p.last_updated or datetime.utcnow()
                 ).isoformat(),
@@ -264,3 +266,63 @@ async def get_unified_options_summary(
     except Exception as e:
         logger.error(f"❌ Options summary error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/chain/{symbol}", response_model=Dict[str, Any])
+async def get_option_chain(
+    symbol: str,
+    db: Session = Depends(get_db),
+):
+    """Fetch live option chain for a symbol. Requires IB Gateway connection."""
+    try:
+        from backend.services.clients.ibkr_client import ibkr_client
+
+        if not ibkr_client.is_connected():
+            raise HTTPException(
+                status_code=503,
+                detail="IB Gateway is not connected. Start it with `make ib-up` and configure credentials.",
+            )
+
+        chain = await ibkr_client.get_option_chain(symbol)
+        return {"status": "success", "data": chain}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Option chain error for %s: %s", symbol, e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/gateway-status", response_model=Dict[str, Any])
+async def get_gateway_status():
+    """Check IB Gateway connection status."""
+    try:
+        from backend.services.clients.ibkr_client import ibkr_client, IBKR_AVAILABLE
+
+        if not IBKR_AVAILABLE:
+            return {
+                "status": "success",
+                "data": {
+                    "connected": False,
+                    "available": False,
+                    "message": "ib_insync not installed",
+                },
+            }
+
+        status = ibkr_client.get_status()
+        return {
+            "status": "success",
+            "data": {
+                "connected": ibkr_client.is_connected(),
+                "available": True,
+                "host": ibkr_client.host,
+                "port": ibkr_client.port,
+                "client_id": ibkr_client.client_id,
+                "accounts": status.get("accounts", []),
+            },
+        }
+    except Exception as e:
+        return {
+            "status": "success",
+            "data": {"connected": False, "available": False, "error": str(e)},
+        }

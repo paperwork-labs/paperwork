@@ -812,8 +812,19 @@ const SettingsBrokerages: React.FC = () => {
                 <Input placeholder="Query ID" value={ibkrForm.query_id} onChange={(e) => setIbkrForm({ ...ibkrForm, query_id: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') submitWizard(); }} />
                 <Input placeholder="IBKR Account Number (e.g. U1234567 - optional)" value={ibkrForm.account_number} onChange={(e) => setIbkrForm({ ...ibkrForm, account_number: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') submitWizard(); }} />
                 <Text fontSize="xs" color="fg.muted">
-                  Client Portal → Reports → Flex Queries → create a query with <strong>Open Positions, Trades, Cash Transactions, and Account Information</strong> sections.
-                  Then enable Flex Web Service, copy the Token and Query ID. Enter your real account number (e.g. U1234567) for best results.
+                  Client Portal &rarr; Reports &rarr; Flex Queries &rarr; create a query with these sections:
+                  {' '}<strong>Open Positions</strong> (stocks &amp; options),
+                  {' '}<strong>Trades</strong>,
+                  {' '}<strong>Cash Transactions</strong> (dividends, fees, interest),
+                  {' '}<strong>Option Exercises/Assignments</strong>,
+                  {' '}<strong>Account Information</strong>.
+                  {' '}Set the date period to <strong>Last 365 days</strong> for full history.
+                  {' '}Then enable Flex Web Service, copy the Token and Query ID.
+                  {' '}Account number is auto-detected from the report if left blank.
+                </Text>
+                <Text fontSize="xs" color="fg.subtle" mt={1}>
+                  Note: The FlexQuery API may return fewer sections than a manual download.
+                  If dividends or transactions are missing, verify the sections above are included in your query.
                 </Text>
               </VStack>
             )}

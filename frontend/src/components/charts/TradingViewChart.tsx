@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   Box,
+  Button,
   CardBody,
   CardHeader,
   CardRoot,
@@ -29,6 +30,33 @@ interface TradingViewChartProps {
   autosize?: boolean;
 }
 
+const STORAGE_KEY_STUDIES = 'qm.tvStudies';
+const STORAGE_KEY_INTERVAL = 'qm.tvInterval';
+
+const AVAILABLE_STUDIES: Record<string, string> = {
+  'MAExp@tv-basicstudies': 'EMA',
+  'RSI@tv-basicstudies': 'RSI',
+  'MACD@tv-basicstudies': 'MACD',
+  'Volume@tv-basicstudies': 'Volume',
+  'BB@tv-basicstudies': 'Bollinger',
+  'VWAP@tv-basicstudies': 'VWAP',
+};
+
+const DEFAULT_STUDIES = ['MAExp@tv-basicstudies', 'Volume@tv-basicstudies'];
+
+function getStoredStudies(): string[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_STUDIES);
+    return raw ? JSON.parse(raw) : DEFAULT_STUDIES;
+  } catch { return DEFAULT_STUDIES; }
+}
+
+function getStoredInterval(): string {
+  try {
+    return localStorage.getItem(STORAGE_KEY_INTERVAL) || 'D';
+  } catch { return 'D'; }
+}
+
 const getCssColor = (token: string, fallback: string) => {
   if (typeof document === 'undefined') return fallback;
   const name = token.replace(/\./g, '-');
@@ -42,7 +70,7 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
   height = 500,
   showHeader = true,
   showControls = true,
-  interval = 'D',
+  interval: intervalProp,
   theme,
   style = '1',
   hideSymbolSearch = false,
@@ -51,6 +79,22 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
   const chartRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { colorMode } = useColorMode();
+  const themeRef = useRef(theme ?? (colorMode === 'dark' ? 'dark' : 'light'));
+
+  const [activeStudies, setActiveStudies] = useState<string[]>(getStoredStudies);
+  const [interval, setInterval] = useState(intervalProp ?? getStoredInterval());
+
+  const toggleStudy = useCallback((studyId: string) => {
+    setActiveStudies(prev => {
+      const next = prev.includes(studyId) ? prev.filter(s => s !== studyId) : [...prev, studyId];
+      localStorage.setItem(STORAGE_KEY_STUDIES, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_INTERVAL, interval);
+  }, [interval]);
 
   useEffect(() => {
     if (!chartRef.current) return;
@@ -59,19 +103,20 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
     container.innerHTML = '';
 
     const effectiveTheme = theme ?? (colorMode === 'dark' ? 'dark' : 'light');
+    themeRef.current = effectiveTheme;
     const toolbarBg = effectiveTheme === 'dark'
       ? getCssColor('bg.panel', '#1E293B')
       : getCssColor('bg.canvas', '#F8FAFC');
 
     const config = {
-      autosize: autosize,
+      autosize,
       width: autosize ? undefined : '100%',
       height: autosize ? undefined : height - (showHeader ? 60 : 0),
-      symbol: symbol,
-      interval: interval,
+      symbol,
+      interval,
       timezone: 'America/New_York',
       theme: effectiveTheme,
-      style: style,
+      style,
       locale: 'en',
       enable_publishing: false,
       allow_symbol_change: !hideSymbolSearch,
@@ -85,6 +130,7 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
       toolbar_bg: toolbarBg,
       withdateranges: true,
       hide_side_toolbar: false,
+      studies: activeStudies,
     };
 
     const wrapper = document.createElement('div');
@@ -109,12 +155,12 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
     return () => {
       container.innerHTML = '';
     };
-  }, [symbol, height, showHeader, interval, theme, style, hideSymbolSearch, autosize, colorMode]);
+  }, [symbol, height, showHeader, interval, theme, style, hideSymbolSearch, autosize, colorMode, activeStudies]);
 
-  const openInTradingView = () => {
+  const openInTradingView = useCallback(() => {
     const url = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(symbol)}`;
     window.open(url, '_blank', 'width=1200,height=800');
-  };
+  }, [symbol]);
 
   return (
     <CardRoot
@@ -129,7 +175,7 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
     >
       {showHeader ? (
         <CardHeader py={3} px={4} borderBottomWidth="1px" borderColor="border.subtle">
-          <HStack justify="space-between" align="center">
+          <HStack justify="space-between" align="center" flexWrap="wrap" gap={2}>
             <HStack gap={3}>
               <Text fontWeight="bold" fontSize="lg">
                 {symbol}
@@ -139,16 +185,29 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
               </Badge>
             </HStack>
 
+            <HStack gap={2} flexWrap="wrap">
+              {Object.entries(AVAILABLE_STUDIES).map(([id, label]) => (
+                <Button
+                  key={id}
+                  size="xs"
+                  variant={activeStudies.includes(id) ? 'solid' : 'outline'}
+                  onClick={() => toggleStudy(id)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </HStack>
+
             {showControls ? (
               <HStack gap={2}>
                 <TooltipRoot>
                   <TooltipTrigger asChild>
-                    <IconButton aria-label="Open in TradingView" size="sm" variant="ghost" onClick={openInTradingView}>
+                    <IconButton aria-label="Open full TradingView with your saved indicators and Pine Scripts" size="sm" variant="ghost" onClick={openInTradingView}>
                       <FiExternalLink />
                     </IconButton>
                   </TooltipTrigger>
                   <TooltipPositioner>
-                    <TooltipContent>Open in TradingView</TooltipContent>
+                    <TooltipContent>Open full TradingView with your saved indicators and Pine Scripts</TooltipContent>
                   </TooltipPositioner>
                 </TooltipRoot>
 

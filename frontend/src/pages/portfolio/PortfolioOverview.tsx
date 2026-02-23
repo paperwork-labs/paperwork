@@ -6,6 +6,7 @@ import {
   Grid,
   CardRoot,
   CardBody,
+  Badge,
   Button,
   HStack,
   VStack,
@@ -19,7 +20,7 @@ import PnlText from '../../components/shared/PnlText';
 import PageHeader from '../../components/ui/PageHeader';
 import AccountFilterWrapper from '../../components/ui/AccountFilterWrapper';
 import { DashboardResponse } from '../../services/api';
-import { usePortfolioOverview, usePositions, usePortfolioSync, usePortfolioPerformanceHistory } from '../../hooks/usePortfolio';
+import { usePortfolioOverview, usePositions, usePortfolioSync, usePortfolioPerformanceHistory, usePortfolioInsights, useAccountBalances, useMarginInterest, useDividendSummary, useLiveSummary, useRiskMetrics } from '../../hooks/usePortfolio';
 import { useChartColors } from '../../hooks/useChartColors';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
 import { formatMoney } from '../../utils/format';
@@ -47,6 +48,18 @@ const PortfolioOverview: React.FC = () => {
   const positionsQuery = usePositions();
   const syncMutation = usePortfolioSync();
   const historyQuery = usePortfolioPerformanceHistory({ period: historyPeriod });
+  const insightsQuery = usePortfolioInsights();
+  const insights = insightsQuery.data;
+  const balancesQuery = useAccountBalances();
+  const marginQuery = useMarginInterest();
+  const balances = (balancesQuery.data ?? []) as Array<Record<string, any>>;
+  const marginItems = (marginQuery.data ?? []) as Array<Record<string, any>>;
+  const dividendQuery = useDividendSummary();
+  const dividendData = dividendQuery.data ?? {};
+  const liveQuery = useLiveSummary();
+  const liveData = liveQuery.data ?? {};
+  const riskQuery = useRiskMetrics();
+  const riskData = riskQuery.data ?? {};
   const positions = (positionsQuery.data ?? []) as EnrichedPosition[];
   const dashboard = overview.summary.data as DashboardResponse | undefined;
   const rawAccounts = overview.accountsData ?? [];
@@ -157,6 +170,23 @@ const PortfolioOverview: React.FC = () => {
                     />
                     <StatCard label="Positions" value={pos.length} />
                   </Box>
+
+                  <Text fontSize="sm" fontWeight="semibold" color="fg.muted" mb={2}>Dividend Income</Text>
+                  <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} gap={3}>
+                    <StatCard label="Trailing 12M Income" value={formatMoney(dividendData.trailing_12m_income ?? 0, currency, { maximumFractionDigits: 0 })} color="status.success" />
+                    <StatCard label="Forward Yield" value={`${dividendData.estimated_forward_yield_pct ?? 0}%`} />
+                    <StatCard label="Top Payer" value={dividendData.top_payers?.[0]?.symbol ?? '-'} sub={dividendData.top_payers?.[0] ? formatMoney(dividendData.top_payers[0].annual_income, currency, { maximumFractionDigits: 0 }) : ''} />
+                    <StatCard label="Upcoming Ex-Date" value={dividendData.upcoming_ex_dates?.[0]?.symbol ?? 'None'} sub={dividendData.upcoming_ex_dates?.[0]?.est_ex_date ?? ''} />
+                  </SimpleGrid>
+
+                  <Text fontSize="sm" fontWeight="semibold" color="fg.muted" mb={2}>Risk Profile</Text>
+                  <SimpleGrid columns={{ base: 1, md: 2, lg: 5 }} gap={3}>
+                    <StatCard label="Beta" value={riskData.beta ?? 1.0} />
+                    <StatCard label="Volatility (Ann.)" value={`${riskData.volatility ?? 0}%`} color={Number(riskData.volatility) > 30 ? 'status.danger' : undefined} />
+                    <StatCard label="Sharpe Ratio" value={riskData.sharpe_ratio ?? 0} />
+                    <StatCard label="Top 5 Weight" value={`${riskData.top5_weight ?? 0}%`} sub={riskData.concentration_label ?? ''} />
+                    <StatCard label="HHI" value={riskData.hhi ?? 0} sub={riskData.concentration_label ?? ''} />
+                  </SimpleGrid>
 
                   <Grid templateColumns={{ base: '1fr', lg: '1fr 1fr' }} gap={4}>
                     <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
@@ -303,6 +333,126 @@ const PortfolioOverview: React.FC = () => {
                         ))}
                       </SimpleGrid>
                     </Box>
+                  )}
+
+                  {balances.length > 0 && (
+                    <Box>
+                      <HStack gap={2} mb={3}>
+                        <Text fontSize="sm" fontWeight="semibold" color="fg.muted">Account Health</Text>
+                        {liveData.is_live && (
+                          <Badge size="sm" colorPalette="green">Live</Badge>
+                        )}
+                      </HStack>
+                      <Box display="flex" gap={3} flexWrap="wrap">
+                        {balances.map((b) => {
+                          const marginUtil = Number(b.margin_utilization_pct ?? 0);
+                          const marginColor = marginUtil > 60 ? 'status.danger' : marginUtil > 30 ? 'yellow.400' : 'status.success';
+                          const netLiq = (liveData.is_live && liveData.net_liquidation != null && balances.length === 1) ? Number(liveData.net_liquidation) : Number(b.net_liquidation ?? 0);
+                          return (
+                            <React.Fragment key={b.account_id}>
+                              <StatCard label={`Cash (${b.broker ?? ''})`} value={formatMoney(Number(b.cash_balance ?? b.total_cash_value ?? 0), currency, { maximumFractionDigits: 0 })} sub={b.available_funds != null ? `Avail ${formatMoney(b.available_funds, currency, { maximumFractionDigits: 0 })}` : undefined} />
+                              <StatCard label="Net Liquidation" value={formatMoney(netLiq, currency, { maximumFractionDigits: 0 })} />
+                              <StatCard label="Buying Power" value={formatMoney(Number(b.buying_power ?? 0), currency, { maximumFractionDigits: 0 })} />
+                              {b.initial_margin_req != null && (
+                                <StatCard label="Margin Used" value={`${marginUtil.toFixed(1)}%`} color={marginColor} sub={`Init ${formatMoney(Number(b.initial_margin_req), currency, { maximumFractionDigits: 0 })}`} />
+                              )}
+                              {b.leverage != null && <StatCard label="Leverage" value={`${Number(b.leverage).toFixed(2)}x`} />}
+                              {b.cushion != null && <StatCard label="Cushion" value={`${(Number(b.cushion) * 100).toFixed(1)}%`} />}
+                              {b.accrued_dividend != null && Number(b.accrued_dividend) !== 0 && (
+                                <StatCard label="Accrued Div" value={formatMoney(Number(b.accrued_dividend), currency)} />
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
+                      </Box>
+                    </Box>
+                  )}
+
+                  {marginItems.length > 0 && (
+                    <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
+                      <CardBody>
+                        <Text fontSize="sm" fontWeight="semibold" color="fg.muted" mb={3}>
+                          Margin & Interest
+                        </Text>
+                        <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} gap={3}>
+                          {marginItems.slice(0, 4).map((m) => (
+                            <Box key={m.id} p={2} borderWidth="1px" borderColor="border.subtle" borderRadius="md">
+                              <Text fontSize="xs" color="fg.muted">{m.from_date} – {m.to_date}</Text>
+                              <Text fontSize="sm" fontWeight="bold">{formatMoney(Number(m.interest_accrued ?? 0), currency)}</Text>
+                              {m.interest_rate != null && <Text fontSize="xs" color="fg.muted">Rate: {(Number(m.interest_rate) * 100).toFixed(2)}%</Text>}
+                              {m.ending_balance != null && <Text fontSize="xs" color="fg.muted">Balance: {formatMoney(Number(m.ending_balance), currency, { maximumFractionDigits: 0 })}</Text>}
+                            </Box>
+                          ))}
+                        </SimpleGrid>
+                      </CardBody>
+                    </CardRoot>
+                  )}
+
+                  {insights && (
+                    <Grid templateColumns={{ base: '1fr', lg: '1fr 1fr 1fr' }} gap={4}>
+                      <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
+                        <CardBody>
+                          <HStack mb={3} gap={2}>
+                            <Text fontSize="sm" fontWeight="semibold" color="fg.muted">Tax Loss Harvest</Text>
+                            <Badge size="sm" colorPalette="red">{insights.harvest_candidates?.length ?? 0}</Badge>
+                          </HStack>
+                          {(insights.harvest_candidates?.length ?? 0) === 0 ? (
+                            <Text fontSize="xs" color="fg.muted">No harvesting candidates right now</Text>
+                          ) : (
+                            <VStack align="stretch" gap={1}>
+                              {insights.harvest_candidates.map((c) => (
+                                <HStack key={c.symbol} justify="space-between">
+                                  <Text fontFamily="mono" fontSize="xs">{c.symbol}</Text>
+                                  <Text fontSize="xs" color="fg.error">{formatMoney(c.unrealized_pnl, currency, { maximumFractionDigits: 0 })}</Text>
+                                </HStack>
+                              ))}
+                            </VStack>
+                          )}
+                        </CardBody>
+                      </CardRoot>
+
+                      <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
+                        <CardBody>
+                          <HStack mb={3} gap={2}>
+                            <Text fontSize="sm" fontWeight="semibold" color="fg.muted">Approaching Long-Term</Text>
+                            <Badge size="sm" colorPalette="yellow">{insights.approaching_lt?.length ?? 0}</Badge>
+                          </HStack>
+                          {(insights.approaching_lt?.length ?? 0) === 0 ? (
+                            <Text fontSize="xs" color="fg.muted">No positions near the 365-day threshold</Text>
+                          ) : (
+                            <VStack align="stretch" gap={1}>
+                              {insights.approaching_lt.map((p) => (
+                                <HStack key={p.symbol} justify="space-between">
+                                  <Text fontFamily="mono" fontSize="xs">{p.symbol}</Text>
+                                  <Text fontSize="xs" color="yellow.400">{p.days_to_lt}d to LT</Text>
+                                </HStack>
+                              ))}
+                            </VStack>
+                          )}
+                        </CardBody>
+                      </CardRoot>
+
+                      <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
+                        <CardBody>
+                          <HStack mb={3} gap={2}>
+                            <Text fontSize="sm" fontWeight="semibold" color="fg.muted">Concentration Risk</Text>
+                            <Badge size="sm" colorPalette="orange">{insights.concentration_warnings?.length ?? 0}</Badge>
+                          </HStack>
+                          {(insights.concentration_warnings?.length ?? 0) === 0 ? (
+                            <Text fontSize="xs" color="fg.muted">Portfolio is well-diversified</Text>
+                          ) : (
+                            <VStack align="stretch" gap={1}>
+                              {insights.concentration_warnings.map((w) => (
+                                <HStack key={w.symbol} justify="space-between">
+                                  <Text fontFamily="mono" fontSize="xs">{w.symbol}</Text>
+                                  <Text fontSize="xs" color="orange.400">{w.pct_of_portfolio}%</Text>
+                                </HStack>
+                              ))}
+                            </VStack>
+                          )}
+                        </CardBody>
+                      </CardRoot>
+                    </Grid>
                   )}
                 </>
               );

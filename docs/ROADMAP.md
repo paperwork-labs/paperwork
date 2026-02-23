@@ -30,7 +30,23 @@ Execution is split into three sections (PRs). Complete Section 1, merge, then Se
 
 - Dev/prod parity: Celery restart policies, healthchecks, depends_on conditions; removed New Relic wrapper from dev backend; fixed celery beat volume-as-directory crash.
 
-## Section 2 -- Smart Categories + Strategy Engine (PR 2) [NEXT]
+## Section 1.75 -- Market Data DB-First + Portfolio Intelligence [NEXT]
+
+**Backend**
+
+- Refactor `get_historical_data()` to check `PriceData` table before calling external APIs. Current flow: Redis -> FMP/yfinance. Target flow: Redis (L1) -> PriceData table (L2) -> External API (L3, backfills DB on fetch).
+- Write-through already implemented: every chart load that hits an external API now persists bars to `PriceData` via `persist_price_bars()`.
+- Portfolio analytics now uses `MarketSnapshot.beta` for weighted portfolio beta (replaces hardcoded 1.0) and `MarketSnapshot.sector` as fallback for sector attribution.
+
+**Frontend**
+
+- Workspace now shows MarketSnapshot fundamentals (Stage, RSI, ATR%, P/E, Div Yield, Beta, RS Mansfield, Earnings date) in a context strip.
+- Support/Resistance horizontal price levels from clustered pivot highs/lows.
+- Persistent colored circle markers on chart event days (buy/sell/dividend) visible without hovering.
+
+**Benefits**: Offline chart rendering, no wasted API credits, instant loads for known symbols, richer portfolio intelligence from existing BRAIN data.
+
+## Section 2 -- Smart Categories + Strategy Engine (PR 2)
 
 **Planned**
 
@@ -42,6 +58,26 @@ Execution is split into three sections (PRs). Complete Section 1, merge, then Se
 **Planned**
 
 - Broker order APIs (IBKR, TastyTrade, Schwab OAuth); circuit breakers and kill switch; StrategyDetail, StrategyBacktest; paper-to-live toggle; mobile polish.
+
+## Section 2.5 -- Backend-Served Indicator Series
+
+**Planned**
+
+- New endpoint `GET /market-data/prices/{symbol}/indicators` returning full EMA series, trendline coordinates, gap zones, TD Sequential labels.
+- Eliminates all frontend indicator computation -- frontend becomes a pure renderer.
+- Server-side caching of computed indicator series.
+- Prerequisite: DB-first OHLCV reads from Section 1.75.
+
+## Section 2.75 -- BRAIN + PORTFOLIO Integration
+
+**Planned**
+
+- "My Holdings" filter toggle in Market Tracked page (highlight/filter to held symbols).
+- Holdings badges in Market Dashboard (mark held symbols in setup tables, stage transitions, divergence alerts).
+- Stage change alerts for portfolio positions (Alert model + AlertCondition exist, need routes + UI + Celery task).
+- Portfolio vs SPY benchmark comparison on Dashboard.
+- Watchlist management (track symbols beyond index constituents + portfolio holdings).
+- Strategy engine execution (Strategy, Signal, Order models exist -- need pipeline: Signal -> Order -> RiskGate -> Execution).
 
 ## Operational
 

@@ -41,6 +41,7 @@ from backend.models.position import Position, PositionType, PositionStatus
 from backend.models.instrument import Instrument, InstrumentType, Exchange
 from backend.models.tax_lot import TaxLotSource
 from backend.models.options import Option
+from backend.models.portfolio import PositionCategory
 
 # Import the services we need
 from backend.services.clients.ibkr_flexquery_client import IBKRFlexQueryClient
@@ -139,6 +140,16 @@ class IBKRSyncService:
                 report_xml[:500],
             )
 
+            # Log all XML sections present in the report for debugging
+            try:
+                import xml.etree.ElementTree as _ET
+                _root = _ET.fromstring(report_xml)
+                for _stmt in _root.iter("FlexStatement"):
+                    _sections = [child.tag for child in _stmt]
+                    logger.info("FlexQuery sections for %s: %s", account_number, _sections)
+            except Exception:
+                pass
+
             # Step 1: Sync Instruments (securities master data)
             instruments_result = await self._sync_instruments(
                 db, account_number, report_xml, flexquery_client
@@ -152,6 +163,11 @@ class IBKRSyncService:
                 db, broker_account, account_number, report_xml, flexquery_client
             )
             results["tax_lots"] = tax_lots_result
+            logger.info(
+                "Tax lots sync result for %s: %s",
+                account_number,
+                tax_lots_result,
+            )
 
             # Step 3: Sync Option Positions from FlexQuery OpenPositions
             options_result = await self._sync_option_positions_from_flexquery(
@@ -217,8 +233,21 @@ class IBKRSyncService:
             )
             results["transfers"] = transfers_result
 
+            # Step 12: Enrich option positions with live Greeks from IB Gateway
+            greeks_result = await self._sync_option_greeks_from_gateway(
+                db, broker_account
+            )
+            results["greeks_enrichment"] = greeks_result
+
             # Commit all changes
             db.commit()
+
+            # Refresh activity materialized views so new data appears immediately
+            try:
+                from backend.services.portfolio.activity_aggregator import activity_aggregator
+                activity_aggregator.refresh_materialized_views(db)
+            except Exception as e:
+                logger.warning("Activity MV refresh skipped: %s", e)
 
             # Detect empty FlexQuery report (all sections yielded 0 data)
             _data_keys = ["tax_lots", "trades", "positions", "cash_transactions", "account_balances"]
@@ -294,6 +323,74 @@ class IBKRSyncService:
     ) -> Dict:
         """Adapter to align with broker-agnostic sync interface."""
         return await self.sync_comprehensive_portfolio(account_number, db_session=db_session)
+
+    async def _sync_option_greeks_from_gateway(
+        self, db: Session, broker_account
+    ) -> Dict[str, int]:
+        """Enrich open option positions with live Greeks from IB Gateway.
+        Gracefully skips if Gateway is unreachable."""
+        try:
+            from backend.services.clients.ibkr_client import ibkr_client, IBKR_AVAILABLE
+            if not IBKR_AVAILABLE or not ibkr_client.is_connected():
+                logger.info("IB Gateway not connected — skipping Greeks enrichment")
+                return {"greeks_enriched": 0, "status": "gateway_offline"}
+        except Exception:
+            return {"greeks_enriched": 0, "status": "import_error"}
+
+        try:
+            from ib_insync import Option as IBOption
+
+            options = (
+                db.query(Option)
+                .filter(
+                    Option.account_id == broker_account.id,
+                    Option.open_quantity != 0,
+                )
+                .all()
+            )
+
+            if not options:
+                return {"greeks_enriched": 0}
+
+            contracts = []
+            option_map = {}
+            for opt in options:
+                exp_str = opt.expiry_date.strftime("%Y%m%d") if opt.expiry_date else ""
+                right = "C" if (opt.option_type or "").upper() in ("CALL", "C") else "P"
+                sym = opt.underlying_symbol or opt.symbol
+                contract = IBOption(sym, exp_str, float(opt.strike_price), right, "SMART")
+                contracts.append(contract)
+                option_map[f"{sym}_{exp_str}_{opt.strike_price}_{right}"] = opt
+
+            greeks_data = await ibkr_client.get_option_greeks(contracts)
+
+            enriched = 0
+            for gd in greeks_data:
+                key = f"{gd['symbol']}_{gd['expiry']}_{gd['strike']}_{gd['right']}"
+                opt = option_map.get(key)
+                if not opt:
+                    continue
+                if gd.get("delta") is not None:
+                    opt.delta = gd["delta"]
+                if gd.get("gamma") is not None:
+                    opt.gamma = gd["gamma"]
+                if gd.get("theta") is not None:
+                    opt.theta = gd["theta"]
+                if gd.get("vega") is not None:
+                    opt.vega = gd["vega"]
+                if gd.get("implied_volatility") is not None:
+                    opt.implied_volatility = gd["implied_volatility"]
+                if gd.get("last_price") is not None:
+                    opt.current_price = gd["last_price"]
+                enriched += 1
+
+            db.flush()
+            logger.info("Enriched %d/%d options with live Greeks", enriched, len(options))
+            return {"greeks_enriched": enriched, "total_options": len(options)}
+
+        except Exception as e:
+            logger.warning("Greeks enrichment failed: %s", e)
+            return {"greeks_enriched": 0, "error": str(e)}
 
     async def _sync_instruments(
         self,
@@ -497,108 +594,181 @@ class IBKRSyncService:
         report_xml: str | None = None,
         flexquery_client: IBKRFlexQueryClient | None = None,
     ) -> Dict:
-        """Sync tax lots with REAL cost basis from FlexQuery trades section."""
+        """Sync tax lots using a three-tier priority chain:
+
+        1. LOT-level OpenPositions rows (official IBKR per-lot data)
+        2. Trade-based FIFO reconstruction from Trades XML
+        3. SUMMARY-level OpenPositions (one lot per position approximation)
+        """
         try:
             fc = flexquery_client or self._default_client
-            # Get the real tax lots data we discovered
-            tax_lots_data = (
-                fc._parse_tax_lots(report_xml, account_number)
-                if report_xml
-                else await fc.get_official_tax_lots(account_number)
-            )
-
-            # Clear existing tax lots ONLY if new data exists to avoid accidental wipes
-            if tax_lots_data:
-                db.query(TaxLot).filter(TaxLot.account_id == broker_account.id).delete()
-
-            synced_count = 0
-            total_cost = 0
-            total_value = 0
 
             from datetime import date as _date, datetime as _datetime
 
             def _coerce_date(value):
                 if value is None:
-                    return _date.today()
+                    return None
                 try:
                     if isinstance(value, _datetime):
                         return value.date()
                     if isinstance(value, _date):
                         return value
-                    s = str(value)
-                    # try ISO first
-                    try:
-                        return _datetime.fromisoformat(s).date()
-                    except Exception:
-                        pass
-                    # try simple YYYY-MM-DD
-                    try:
-                        return _datetime.strptime(s, "%Y-%m-%d").date()
-                    except Exception:
-                        pass
+                    s = str(value).strip()
+                    if not s:
+                        return None
+                    for fmt in ("%Y%m%d", "%Y-%m-%d"):
+                        try:
+                            return _datetime.strptime(s[:10], fmt).date()
+                        except Exception:
+                            continue
+                    return _datetime.fromisoformat(s).date()
                 except Exception:
-                    pass
-                return _date.today()
+                    return None
 
-            for lot_data in tax_lots_data:
-                try:
-                    symbol = lot_data.get("symbol")
-                    if not symbol or len(symbol) > 20:
-                        continue
+            synced_count = 0
+            total_cost = 0.0
+            total_value = 0.0
+            source_label = "none"
 
-                    # Create tax lot with real data
-                    tax_lot = TaxLot(
-                        user_id=broker_account.user_id,  # Use broker account's user_id
-                        account_id=broker_account.id,  # Use broker account ID
-                        lot_id=f"IBKR_{symbol}_{synced_count}",  # Generate unique lot ID
-                        symbol=symbol,
-                        quantity=float(
-                            lot_data.get("quantity", 0)
-                        ),  # Fixed: Use 'quantity' not 'original_quantity'
-                        cost_per_share=float(
-                            lot_data.get("cost_per_share", 0)
-                        ),  # Add required field
-                        cost_basis=float(lot_data.get("cost_basis", 0)),
-                        acquisition_date=_coerce_date(lot_data.get("acquisition_date")),
-                        current_price=float(lot_data.get("current_price", 0)),
-                        market_value=float(
-                            lot_data.get(
-                                "market_value",
-                                lot_data.get("current_value", 0),
-                            )
-                            or 0
-                        ),
-                        unrealized_pnl=float(lot_data.get("unrealized_pnl", 0)),
-                        unrealized_pnl_pct=float(lot_data.get("unrealized_pnl_pct", 0)),
-                        currency=lot_data.get("currency", "USD"),
-                        asset_category=lot_data.get(
-                            "contract_type", "STK"
-                        ),  # Fixed: Use 'asset_category' not 'contract_type'
-                        source=TaxLotSource.OFFICIAL_STATEMENT,  # Fixed: Use broker-agnostic enum (FlexQuery is official statement)
-                        trade_id=lot_data.get("trade_id"),  # Add optional trade_id
-                        exchange=lot_data.get("exchange"),  # Add optional exchange
+            # ── Tier 1: LOT-level OpenPositions (best source) ──
+            if report_xml:
+                lot_rows = fc._parse_tax_lots_from_lot_rows(report_xml, account_number)
+                if lot_rows:
+                    logger.info(
+                        "Tier 1: found %d LOT-level rows for %s",
+                        len(lot_rows), account_number,
                     )
+                    db.query(TaxLot).filter(TaxLot.account_id == broker_account.id).delete()
+                    for ld in lot_rows:
+                        try:
+                            symbol = ld.get("symbol", "")
+                            if not symbol or len(symbol) > 20:
+                                continue
+                            cost = float(ld.get("cost_basis", 0))
+                            mkt = float(ld.get("market_value", 0))
+                            db.add(TaxLot(
+                                user_id=broker_account.user_id,
+                                account_id=broker_account.id,
+                                lot_id=f"IBKR_LOT_{symbol}_{synced_count}",
+                                symbol=symbol,
+                                quantity=float(ld.get("quantity", 0)),
+                                cost_per_share=float(ld.get("cost_per_share", 0)),
+                                cost_basis=cost,
+                                acquisition_date=_coerce_date(ld.get("acquisition_date")),
+                                current_price=float(ld.get("current_price", 0)),
+                                market_value=mkt,
+                                unrealized_pnl=float(ld.get("unrealized_pnl", 0)),
+                                unrealized_pnl_pct=float(ld.get("unrealized_pnl_pct", 0)),
+                                currency=ld.get("currency", "USD"),
+                                asset_category=ld.get("asset_category", "STK"),
+                                contract_id=ld.get("contract_id") or None,
+                                trade_id=ld.get("trade_id") or None,
+                                order_id=ld.get("order_id") or None,
+                                exchange=ld.get("exchange") or None,
+                                fx_rate=float(ld.get("fx_rate", 1)),
+                                source=TaxLotSource.OFFICIAL_STATEMENT,
+                            ))
+                            synced_count += 1
+                            total_cost += cost
+                            total_value += mkt
+                        except Exception as e:
+                            logger.error("Error creating LOT-level tax lot: %s", e)
+                            continue
+                    source_label = "lot_level_official"
 
-                    db.add(tax_lot)
-                    synced_count += 1
-                    total_cost += float(lot_data.get("cost_basis", 0))
-                    total_value += float(
-                        lot_data.get(
-                            "market_value",
-                            lot_data.get("current_value", 0),
-                        )
-                        or 0
-                    )
+            # ── Tier 2: Trade-based FIFO reconstruction ──
+            if synced_count == 0:
+                tax_lots_data = (
+                    fc._parse_tax_lots(report_xml, account_number)
+                    if report_xml
+                    else await fc.get_official_tax_lots(account_number)
+                )
+                if tax_lots_data:
+                    db.query(TaxLot).filter(TaxLot.account_id == broker_account.id).delete()
+                    for ld in tax_lots_data:
+                        try:
+                            symbol = ld.get("symbol", "")
+                            if not symbol or len(symbol) > 20:
+                                continue
+                            cost = float(ld.get("cost_basis", 0))
+                            mkt = float(ld.get("market_value", ld.get("current_value", 0)) or 0)
+                            db.add(TaxLot(
+                                user_id=broker_account.user_id,
+                                account_id=broker_account.id,
+                                lot_id=f"IBKR_{symbol}_{synced_count}",
+                                symbol=symbol,
+                                quantity=float(ld.get("quantity", 0)),
+                                cost_per_share=float(ld.get("cost_per_share", 0)),
+                                cost_basis=cost,
+                                acquisition_date=_coerce_date(ld.get("acquisition_date")),
+                                current_price=float(ld.get("current_price", 0)),
+                                market_value=mkt,
+                                unrealized_pnl=float(ld.get("unrealized_pnl", 0)),
+                                unrealized_pnl_pct=float(ld.get("unrealized_pnl_pct", 0)),
+                                currency=ld.get("currency", "USD"),
+                                asset_category=ld.get("asset_category", ld.get("contract_type", "STK")),
+                                trade_id=ld.get("trade_id"),
+                                exchange=ld.get("exchange"),
+                                source=TaxLotSource.CALCULATED,
+                            ))
+                            synced_count += 1
+                            total_cost += cost
+                            total_value += mkt
+                        except Exception as e:
+                            logger.error("Error creating trade-reconstructed tax lot: %s", e)
+                            continue
+                    source_label = "trades_fifo"
 
-                except Exception as e:
-                    logger.error(f"Error creating tax lot {synced_count}: {e}")
-                    continue
+            # ── Tier 3: SUMMARY-level OpenPositions fallback ──
+            if synced_count == 0 and report_xml:
+                logger.info(
+                    "Tiers 1-2 yielded 0 lots; falling back to SUMMARY for %s",
+                    account_number,
+                )
+                stock_positions = fc._parse_stock_positions(report_xml, account_number)
+                if stock_positions:
+                    db.query(TaxLot).filter(TaxLot.account_id == broker_account.id).delete()
+                    for sp in stock_positions:
+                        try:
+                            qty = float(sp.get("quantity", 0))
+                            if qty == 0:
+                                continue
+                            cps = float(sp.get("cost_basis_price", 0))
+                            cost = float(sp.get("cost_basis_money", 0))
+                            mark = float(sp.get("mark_price", 0))
+                            mkt_val = float(sp.get("market_value", 0))
+                            pnl = float(sp.get("unrealized_pnl", 0))
+                            pnl_pct = (pnl / cost * 100) if cost else 0.0
+                            db.add(TaxLot(
+                                user_id=broker_account.user_id,
+                                account_id=broker_account.id,
+                                lot_id=f"IBKR_SUM_{sp['symbol']}_{synced_count}",
+                                symbol=sp["symbol"],
+                                quantity=qty,
+                                cost_per_share=cps,
+                                cost_basis=cost,
+                                current_price=mark,
+                                market_value=mkt_val,
+                                unrealized_pnl=pnl,
+                                unrealized_pnl_pct=pnl_pct,
+                                currency=sp.get("currency", "USD"),
+                                asset_category=sp.get("asset_category", "STK"),
+                                source=TaxLotSource.CALCULATED,
+                            ))
+                            synced_count += 1
+                            total_cost += cost
+                            total_value += mkt_val
+                        except Exception as e:
+                            logger.error("Error creating SUMMARY fallback tax lot: %s", e)
+                            continue
+                    source_label = "summary_fallback"
 
             db.flush()
             total_pnl = total_value - total_cost
 
             return {
                 "synced": synced_count,
+                "source": source_label,
                 "total_cost_basis": f"${total_cost:,.2f}",
                 "total_market_value": f"${total_value:,.2f}",
                 "unrealized_pnl": f"${total_pnl:,.2f}",
@@ -624,56 +794,80 @@ class IBKRSyncService:
             if not raw_xml:
                 return {"error": "FlexQuery report not ready"}
 
-            # Parse trades from XML
-            trades_data = fc._parse_trades_from_xml(raw_xml, account_number)
+            parsed = fc._parse_trades_from_xml(raw_xml, account_number)
 
-            # Clear existing trades to avoid duplicates
-            db.query(Trade).filter(Trade.account_id == broker_account.id).delete()
+            if isinstance(parsed, list):
+                trades_data = parsed
+                closed_lots_data: list = []
+                wash_sales_data: list = []
+            else:
+                trades_data = parsed.get("trades", [])
+                closed_lots_data = parsed.get("closed_lots", [])
+                wash_sales_data = parsed.get("wash_sales", [])
+
+            db.query(Trade).filter(Trade.account_id == broker_account.id).delete(
+                synchronize_session="fetch"
+            )
 
             synced_count = 0
-            for trade_data in trades_data:
+
+            def _store_trade(td: dict, status: str) -> bool:
+                nonlocal synced_count
+                exec_id = str(td.get("execution_id") or "").strip() or None
+                trade = Trade(
+                    account_id=broker_account.id,
+                    symbol=td.get("symbol"),
+                    side=td.get("side", "BUY"),
+                    quantity=Decimal(str(td.get("quantity", 0))),
+                    price=Decimal(str(td.get("price", 0))),
+                    total_value=Decimal(str(td.get("total_value", 0))),
+                    commission=Decimal(str(td.get("commission", 0))),
+                    fees=Decimal(str(td.get("fees", 0))),
+                    execution_time=td.get("execution_time") or datetime.now(),
+                    order_time=td.get("order_time"),
+                    execution_id=exec_id,
+                    order_id=str(td.get("order_id") or "") or None,
+                    settlement_date=td.get("settlement_date"),
+                    realized_pnl=Decimal(str(td.get("realized_pnl", 0))),
+                    is_opening=td.get("is_opening", True),
+                    notes=td.get("notes") or None,
+                    status=status,
+                    is_paper_trade=False,
+                    trade_metadata=serialize_for_json(td),
+                )
+                db.add(trade)
+                synced_count += 1
+                return True
+
+            for td in trades_data:
                 try:
-                    # Normalize identifiers
-                    exec_id = str(trade_data.get("execution_id") or "").strip() or None
-                    if exec_id:
-                        existing = (
-                            db.query(Trade)
-                            .filter(
-                                Trade.account_id == broker_account.id,
-                                Trade.execution_id == exec_id,
-                            )
-                            .first()
-                        )
-                        if existing:
-                            continue
-
-                    trade = Trade(
-                        account_id=broker_account.id,  # Trade model uses broker account ID
-                        symbol=trade_data.get("symbol"),
-                        side=trade_data.get("side", "BUY"),
-                        quantity=Decimal(str(trade_data.get("quantity", 0))),
-                        price=Decimal(str(trade_data.get("price", 0))),
-                        total_value=Decimal(str(trade_data.get("total_value", 0))),
-                        commission=Decimal(str(trade_data.get("commission", 0))),
-                        execution_time=trade_data.get("execution_time")
-                        or datetime.now(),
-                        execution_id=exec_id,
-                        status="FILLED",
-                        is_paper_trade=False,  # Real trades from IBKR
-                        trade_metadata=serialize_for_json(
-                            trade_data
-                        ),  # Fix JSON serialization
-                    )
-
-                    db.add(trade)
-                    synced_count += 1
-
+                    _store_trade(td, "FILLED")
                 except Exception as e:
-                    logger.error(f"Error creating trade {synced_count}: {e}")
-                    continue
+                    logger.error(f"Error creating trade: {e}")
+
+            for td in closed_lots_data:
+                try:
+                    _store_trade(td, "CLOSED_LOT")
+                except Exception as e:
+                    logger.error(f"Error creating closed lot: {e}")
+
+            for td in wash_sales_data:
+                try:
+                    _store_trade(td, "WASH_SALE")
+                except Exception as e:
+                    logger.error(f"Error creating wash sale: {e}")
 
             db.flush()
-            return {"synced": synced_count}
+            logger.info(
+                f"✅ Synced {len(trades_data)} trades, "
+                f"{len(closed_lots_data)} closed lots, "
+                f"{len(wash_sales_data)} wash sales"
+            )
+            return {
+                "synced": len(trades_data),
+                "closed_lots": len(closed_lots_data),
+                "wash_sales": len(wash_sales_data),
+            }
 
         except Exception as e:
             logger.error(f"Error syncing trades: {e}")
@@ -711,8 +905,19 @@ class IBKRSyncService:
                     lot.market_value or 0
                 )  # Fixed: Use market_value not current_value
 
-            # Clear existing position
-            db.query(Position).filter(Position.account_id == broker_account.id).delete()
+            # Clear existing positions (must remove FK dependents first)
+            existing_pos_ids = [
+                r[0] for r in db.query(Position.id).filter(
+                    Position.account_id == broker_account.id
+                ).all()
+            ]
+            if existing_pos_ids:
+                db.query(PositionCategory).filter(
+                    PositionCategory.position_id.in_(existing_pos_ids)
+                ).delete(synchronize_session="fetch")
+                db.query(Position).filter(
+                    Position.id.in_(existing_pos_ids)
+                ).delete(synchronize_session="fetch")
 
             # Create position
             synced_count = 0
@@ -759,6 +964,10 @@ class IBKRSyncService:
 
         except Exception as e:
             logger.error(f"Error syncing position: {e}")
+            try:
+                db.rollback()
+            except Exception:
+                pass
             return {"error": str(e)}
 
     async def _sync_positions_from_open_positions(
@@ -784,7 +993,18 @@ class IBKRSyncService:
             if not stock_positions:
                 return {"synced": 0}
 
-            db.query(Position).filter(Position.account_id == broker_account.id).delete()
+            existing_pos_ids = [
+                r[0] for r in db.query(Position.id).filter(
+                    Position.account_id == broker_account.id
+                ).all()
+            ]
+            if existing_pos_ids:
+                db.query(PositionCategory).filter(
+                    PositionCategory.position_id.in_(existing_pos_ids)
+                ).delete(synchronize_session="fetch")
+                db.query(Position).filter(
+                    Position.id.in_(existing_pos_ids)
+                ).delete(synchronize_session="fetch")
 
             synced_count = 0
             for sp in stock_positions:
@@ -822,6 +1042,10 @@ class IBKRSyncService:
             return {"synced": synced_count}
         except Exception as e:
             logger.error("Error syncing positions from OpenPositions: %s", e)
+            try:
+                db.rollback()
+            except Exception:
+                pass
             return {"error": str(e)}
 
     async def _sync_current_prices(self, db: Session, account_number: str) -> Dict:
@@ -882,8 +1106,15 @@ class IBKRSyncService:
                 .all()
             )
 
-            # Clear existing positions for this account (use broker_account.id for Position FK)
-            db.query(Position).filter(Position.account_id == broker_account.id).delete()
+            # Clear existing positions (must remove FK dependents first)
+            existing_pos_ids = [p.id for p in position]
+            if existing_pos_ids:
+                db.query(PositionCategory).filter(
+                    PositionCategory.position_id.in_(existing_pos_ids)
+                ).delete(synchronize_session="fetch")
+                db.query(Position).filter(
+                    Position.id.in_(existing_pos_ids)
+                ).delete(synchronize_session="fetch")
 
             synced_count = 0
             for holding in position:
@@ -920,6 +1151,10 @@ class IBKRSyncService:
 
         except Exception as e:
             logger.error(f"Error syncing positions: {e}")
+            try:
+                db.rollback()
+            except Exception:
+                pass
             return {"error": str(e)}
 
     # ---- Test Back-Compat Aliases ----
@@ -1069,7 +1304,6 @@ class IBKRSyncService:
             # Sync current option positions (if any)
             for option_data in option_positions_data:
                 try:
-                    # Create Option record
                     option_position = Option(
                         user_id=broker_account.user_id,
                         account_id=broker_account.id,
@@ -1081,7 +1315,9 @@ class IBKRSyncService:
                         multiplier=option_data["multiplier"],
                         open_quantity=option_data["open_quantity"],
                         current_price=option_data["current_price"],
+                        total_cost=option_data.get("cost_basis_money") or None,
                         unrealized_pnl=option_data["unrealized_pnl"],
+                        realized_pnl=option_data.get("realized_pnl") or None,
                         currency=option_data["currency"],
                         data_source=option_data["data_source"],
                     )
@@ -1175,8 +1411,13 @@ class IBKRSyncService:
             )
 
             if not transactions_data:
-                logger.info(f"No cash transactions found for {account_number}")
-                return {"synced": 0, "dividends": 0}
+                logger.warning(
+                    "No cash transactions returned for %s. "
+                    "The IBKR FlexQuery API often omits the CashTransactions section. "
+                    "Verify your FlexQuery includes: Cash Transactions, Dividends.",
+                    account_number,
+                )
+                return {"synced": 0, "dividends": 0, "note": "FlexQuery returned no CashTransactions section"}
 
             synced_count = 0
             dividend_count = 0
@@ -1270,19 +1511,52 @@ class IBKRSyncService:
                     transaction = Transaction(
                         account_id=broker_account.id,
                         external_id=ext_id,
+                        trade_id=tx_data.get("trade_id") or None,
+                        order_id=tx_data.get("order_id") or None,
+                        execution_id=tx_data.get("execution_id") or None,
                         symbol=tx_data.get("symbol", ""),
                         description=tx_data.get("description", ""),
+                        conid=tx_data.get("conid") or None,
+                        security_id=tx_data.get("security_id") or None,
+                        cusip=tx_data.get("cusip") or None,
+                        isin=tx_data.get("isin") or None,
+                        listing_exchange=tx_data.get("listing_exchange") or None,
+                        underlying_conid=tx_data.get("underlying_conid") or None,
+                        underlying_symbol=tx_data.get("underlying_symbol") or None,
+                        multiplier=tx_data.get("multiplier"),
+                        strike_price=tx_data.get("strike_price"),
+                        expiry_date=tx_data.get("expiry_date"),
+                        option_type=tx_data.get("option_type"),
                         transaction_type=(
                             TransactionType[mapped_transaction_type]
                             if mapped_transaction_type in TransactionType.__members__
                             else TransactionType.OTHER
                         ),
+                        action=tx_data.get("action") or None,
+                        quantity=tx_data.get("quantity"),
+                        trade_price=tx_data.get("trade_price"),
                         amount=tx_data.get("amount", 0.0),
+                        proceeds=tx_data.get("proceeds"),
+                        commission=tx_data.get("commission"),
+                        brokerage_commission=tx_data.get("brokerage_commission"),
+                        clearing_commission=tx_data.get("clearing_commission"),
+                        third_party_commission=tx_data.get("third_party_commission"),
+                        other_fees=tx_data.get("other_fees"),
+                        net_amount=tx_data.get("net_amount", tx_data.get("amount", 0.0)),
+                        currency=tx_data.get("currency", "USD"),
+                        fx_rate_to_base=tx_data.get("fx_rate_to_base"),
+                        asset_category=tx_data.get("asset_category") or None,
+                        sub_category=tx_data.get("sub_category") or None,
                         transaction_date=tx_data.get("transaction_date")
                         or tx_data.get("settlement_date"),
+                        trade_date=tx_data.get("trade_date"),
+                        settlement_date_target=tx_data.get("settlement_date_target"),
                         settlement_date=tx_data.get("settlement_date"),
-                        currency=tx_data.get("currency", "USD"),
-                        net_amount=tx_data.get("amount", 0.0),
+                        taxes=tx_data.get("taxes"),
+                        taxable_amount=tx_data.get("taxable_amount"),
+                        taxable_amount_base=tx_data.get("taxable_amount_base"),
+                        corporate_action_flag=tx_data.get("corporate_action_flag") or None,
+                        corporate_action_id=tx_data.get("corporate_action_id") or None,
                         source="ibkr_flexquery",
                     )
 
@@ -1656,7 +1930,7 @@ class IBKRSyncService:
                 cost_basis = float(lot.cost_basis or 0)
                 market_value = qty_abs * price
                 unrealized = market_value - cost_basis
-                unrealized_pct = ((unrealized / cost_basis) * 100) if cost_basis > 0 else 0.0
+                unrealized_pct = ((unrealized / cost_basis) * 100) if cost_basis and abs(cost_basis) > 1e-9 else 0.0
                 lot.current_price = price
                 lot.market_value = market_value
                 lot.unrealized_pnl = unrealized

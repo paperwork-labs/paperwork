@@ -1,6 +1,7 @@
 """Portfolio categories CRUD and position assignment."""
 
 from typing import Any, Dict, List, Optional
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel
@@ -10,7 +11,10 @@ from sqlalchemy import func
 from backend.database import get_db
 from backend.models.portfolio import Category, PositionCategory
 from backend.models.position import Position
+from backend.models.broker_account import BrokerAccount
 from backend.models.user import User
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -226,3 +230,65 @@ async def unassign_position(
         db.delete(link)
         db.commit()
     return {"status": "success"}
+
+
+@router.get("/categories/rebalance-suggestions", response_model=Dict[str, Any])
+async def get_rebalance_suggestions(
+    user_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+):
+    """Compute rebalancing suggestions based on target vs actual allocations."""
+    try:
+        user = _get_user(db, user_id)
+        acct_ids = [a.id for a in db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user.id).all()]
+        if not acct_ids:
+            return {"status": "success", "data": {"suggestions": [], "total_value": 0}}
+
+        categories = db.query(Category).filter(Category.user_id == user.id).all()
+        positions = db.query(Position).filter(Position.broker_account_id.in_(acct_ids), Position.quantity != 0).all()
+        total_mv = sum(float(p.market_value or 0) for p in positions)
+
+        if total_mv <= 0 or not categories:
+            return {"status": "success", "data": {"suggestions": [], "total_value": total_mv}}
+
+        pos_map = {p.id: p for p in positions}
+
+        suggestions = []
+        for cat in categories:
+            target_pct = float(cat.target_allocation_pct or 0)
+            if target_pct <= 0:
+                continue
+
+            links = db.query(PositionCategory).filter(PositionCategory.category_id == cat.id).all()
+            cat_positions = [pos_map[lnk.position_id] for lnk in links if lnk.position_id in pos_map]
+            cat_mv = sum(float(p.market_value or 0) for p in cat_positions)
+            actual_pct = (cat_mv / total_mv * 100) if total_mv > 0 else 0
+            drift = actual_pct - target_pct
+            threshold = float(cat.rebalance_threshold_pct or 5) if hasattr(cat, "rebalance_threshold_pct") else 5.0
+
+            if abs(drift) > threshold:
+                dollar_adj = round(drift / 100 * total_mv, 2)
+                direction = "SELL" if drift > 0 else "BUY"
+
+                pos_details = []
+                for p in cat_positions:
+                    w = float(p.market_value or 0) / cat_mv if cat_mv > 0 else 1 / max(len(cat_positions), 1)
+                    est = round(abs(dollar_adj) * w, 2)
+                    pos_details.append({"symbol": p.symbol, "est_value": est, "shares": round(est / float(p.current_price or 1), 2) if p.current_price else 0})
+
+                suggestions.append({
+                    "category": cat.name,
+                    "target_pct": round(target_pct, 1),
+                    "actual_pct": round(actual_pct, 1),
+                    "drift_pct": round(drift, 1),
+                    "direction": direction,
+                    "amount": abs(dollar_adj),
+                    "positions": pos_details,
+                })
+
+        return {"status": "success", "data": {"suggestions": suggestions, "total_value": round(total_mv, 2)}}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"rebalance-suggestions error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

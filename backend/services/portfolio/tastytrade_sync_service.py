@@ -21,7 +21,9 @@ from backend.models import (
     Transaction,
     Dividend,
     AccountBalance,
+    TaxLot,
 )
+from backend.models.tax_lot import TaxLotSource
 from backend.services.portfolio.account_credentials_service import (
     account_credentials_service,
     CredentialsNotFoundError,
@@ -83,10 +85,19 @@ class TastyTradeSyncService:
             pass
 
         counts.update(await self._sync_positions(db, broker_account))
+        counts.update(await self._sync_tax_lots(db, broker_account))
         counts.update(await self._sync_trades(db, broker_account))
         counts.update(await self._sync_transactions(db, broker_account))
         counts.update(await self._sync_dividends(db, broker_account))
         counts.update(await self._sync_account_balances(db, broker_account))
+
+        db.commit()
+
+        try:
+            from backend.services.portfolio.activity_aggregator import activity_aggregator
+            activity_aggregator.refresh_materialized_views(db)
+        except Exception as e:
+            logger.warning("Activity MV refresh skipped: %s", e)
 
         logger.info("TastyTrade sync complete → %s", counts)
         return counts
@@ -164,6 +175,54 @@ class TastyTradeSyncService:
         db.flush()
         return {"positions": count}
 
+    async def _sync_tax_lots(self, db: Session, ba: BrokerAccount) -> Dict[str, int]:
+        """Generate tax lots from synced positions (one lot per position).
+
+        TastyTrade's API doesn't expose per-lot data, so we approximate each
+        position as a single lot using the average cost already on the Position
+        row.  This keeps Tax Center / Workspace functional.
+        """
+        positions = db.query(Position).filter_by(account_id=ba.id).all()
+        if not positions:
+            return {"tax_lots": 0}
+
+        db.query(TaxLot).filter_by(account_id=ba.id).delete()
+        count = 0
+        for pos in positions:
+            try:
+                qty = float(pos.quantity or 0)
+                if qty == 0:
+                    continue
+                avg = float(pos.average_cost or 0)
+                cost_basis = float(pos.total_cost_basis or 0) or (qty * avg)
+                mkt_val = float(pos.market_value or 0)
+                pnl = float(pos.unrealized_pnl or 0)
+                pnl_pct = (pnl / cost_basis * 100) if cost_basis else 0.0
+
+                db.add(TaxLot(
+                    user_id=ba.user_id,
+                    account_id=ba.id,
+                    lot_id=f"TT_{pos.symbol}_{count}",
+                    symbol=pos.symbol,
+                    quantity=qty,
+                    cost_per_share=avg,
+                    cost_basis=cost_basis,
+                    current_price=float(pos.current_price or 0),
+                    market_value=mkt_val,
+                    unrealized_pnl=pnl,
+                    unrealized_pnl_pct=pnl_pct,
+                    currency="USD",
+                    asset_category="STK",
+                    source=TaxLotSource.CALCULATED,
+                ))
+                count += 1
+            except Exception:
+                continue
+
+        db.flush()
+        logger.info("Synced %d tax lots from TastyTrade positions for %s", count, ba.account_number)
+        return {"tax_lots": count}
+
     async def _sync_trades(self, db: Session, ba: BrokerAccount) -> Dict[str, int]:
         trades = await self.client.get_trade_history(ba.account_number, days=365)
         db.query(Trade).filter_by(account_id=ba.id).delete()
@@ -207,13 +266,21 @@ class TastyTradeSyncService:
 
     async def _sync_dividends(self, db: Session, ba: BrokerAccount) -> Dict[str, int]:
         divs = await self.client.get_dividends(ba.account_number, days=365)
-        db.query(Dividend).filter_by(account_id=ba.id).delete()
         count = 0
         for d in divs:
             try:
-                db.add(Dividend(**self._div_to_kwargs(d, ba)))
+                kwargs = self._div_to_kwargs(d, ba)
+                ext_id = kwargs.get("external_id")
+                if ext_id:
+                    existing = db.query(Dividend).filter_by(
+                        account_id=ba.id, external_id=ext_id
+                    ).first()
+                    if existing:
+                        continue
+                db.add(Dividend(**kwargs))
                 count += 1
-            except Exception:
+            except Exception as e:
+                logger.debug("Dividend sync skip: %s", e)
                 continue
         db.flush()
         return {"dividends": count}
@@ -323,7 +390,6 @@ class TastyTradeSyncService:
         )
 
     def _div_to_kwargs(self, d: Dict, ba: BrokerAccount) -> Dict:
-        # d is shaped by _transform_tastytrade_transaction
         ex_date = (
             dt.fromisoformat(d.get("date") + "T" + d.get("time"))
             if d.get("date") and d.get("time")
@@ -331,15 +397,23 @@ class TastyTradeSyncService:
         )
         total = abs(float(d.get("amount", 0) or 0))
         shares = abs(float(d.get("quantity", 0) or 0))
-        per_share = (total / shares) if shares > 0 else None
+        per_share = (total / shares) if shares > 0 else total
+        net_amount = abs(float(d.get("net_amount", 0) or 0)) or total
+        tax_withheld = max(0.0, total - net_amount) if net_amount < total else 0.0
         return dict(
             account_id=ba.id,
+            external_id=d.get("execution_id") or d.get("id") or None,
             symbol=d.get("symbol", ""),
             ex_date=ex_date,
             pay_date=ex_date,
             total_dividend=total,
-            dividend_per_share=per_share if per_share is not None else total,
+            dividend_per_share=per_share,
             shares_held=shares,
+            net_dividend=net_amount,
+            tax_withheld=tax_withheld,
+            currency=d.get("currency", "USD"),
+            source="tastytrade",
+            dividend_type="ORDINARY",
         )
 
     def _option_position_kwargs(self, p: Dict, ba: BrokerAccount) -> Dict:

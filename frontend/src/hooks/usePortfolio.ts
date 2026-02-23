@@ -7,6 +7,8 @@ import {
   accountsApi,
   optionsApi,
   activityApi,
+  unwrapResponse,
+  unwrapResponseSingle,
 } from '../services/api';
 import type { EnrichedPosition } from '../types/portfolio';
 import toast from 'react-hot-toast';
@@ -36,9 +38,7 @@ export const usePositions = (accountId?: string) => {
     ['portfolioStocks', accountId],
     async () => {
       const r = await portfolioApi.getStocks(accountId);
-      const raw = (r as { data?: { data?: { stocks?: unknown[] }; stocks?: unknown[] }; stocks?: unknown[] });
-      const stocks = raw?.data?.data?.stocks ?? raw?.data?.stocks ?? raw?.stocks ?? [];
-      return stocks as EnrichedPosition[];
+      return unwrapResponse<EnrichedPosition>(r, 'stocks');
     },
     {
       staleTime: 60000,
@@ -103,7 +103,10 @@ export const useActivity = (params: UseActivityParams = {}) => {
 export const useDividends = (accountId?: string, days: number = 365) => {
   return useQuery(
     ['portfolioDividends', accountId, days],
-    () => portfolioApi.getDividends(accountId, days),
+    async () => {
+      const r = await portfolioApi.getDividends(accountId, days);
+      return unwrapResponse(r, 'dividends');
+    },
     {
       staleTime: 60000,
       onError: (error) => {
@@ -111,6 +114,61 @@ export const useDividends = (accountId?: string, days: number = 365) => {
         toast.error(`Dividends: ${message}`);
       },
     }
+  );
+};
+
+// Categories with allocation data. For Categories page.
+export const useCategories = () => {
+  return useQuery(
+    'portfolioCategories',
+    async () => {
+      const r = await portfolioApi.getCategories();
+      return unwrapResponse(r, 'categories');
+    },
+    {
+      staleTime: 60000,
+      onError: (error) => {
+        const message = handleApiError(error);
+        toast.error(`Categories: ${message}`);
+      },
+    }
+  );
+};
+
+// Positions for category assignment (no enrichment needed).
+export const useCategoryPositions = () => {
+  return useQuery(
+    'portfolioStocksForCategories',
+    async () => {
+      const r = await portfolioApi.getStocks(undefined, false);
+      return unwrapResponse<{ id: number; symbol: string; market_value?: number }>(r, 'stocks');
+    },
+    { staleTime: 60000 }
+  );
+};
+
+export interface PortfolioInsightsData {
+  harvest_candidates: Array<{ symbol: string; unrealized_pnl: number; shares: number; days_held: number }>;
+  approaching_lt: Array<{ symbol: string; days_held: number; days_to_lt: number; shares: number; unrealized_pnl: number }>;
+  concentration_warnings: Array<{ symbol: string; market_value: number; pct_of_portfolio: number }>;
+  total_positions?: number;
+  total_tax_lots?: number;
+}
+
+export const usePortfolioInsights = () => {
+  return useQuery(
+    'portfolioInsights',
+    async () => {
+      try {
+        const r = await portfolioApi.getInsights();
+        const raw = r as Record<string, any> | undefined;
+        const data = raw?.data?.data ?? raw?.data ?? raw;
+        return (data ?? null) as PortfolioInsightsData | null;
+      } catch {
+        return null;
+      }
+    },
+    { staleTime: 300000 }
   );
 };
 
@@ -135,8 +193,7 @@ export const usePortfolioPerformanceHistory = (params: { accountId?: string; per
     ['portfolioPerformanceHistory', params.accountId, params.period],
     async () => {
       const r = await portfolioApi.getPerformanceHistory(params);
-      const raw = r as { data?: { data?: { series?: unknown[] }; series?: unknown[] }; series?: unknown[] };
-      return (raw?.data?.data?.series ?? raw?.data?.series ?? raw?.series ?? []) as Array<{ date: string; total_value: number }>;
+      return unwrapResponse<{ date: string; total_value: number }>(r, 'series');
     },
     { staleTime: 60000 }
   );
@@ -326,6 +383,96 @@ export const useDashboardData = () => {
     isError: portfolioSummary.isError || portfolioHealth.isError,
     error: portfolioSummary.error || portfolioHealth.error,
   };
+};
+
+// Account balances (cash, margin, buying power, etc.)
+export const useAccountBalances = (accountId?: number) => {
+  return useQuery(
+    ['portfolio-balances', accountId],
+    async () => {
+      const r = await portfolioApi.getBalances(accountId);
+      return (r as any)?.data?.data?.balances ?? (r as any)?.data?.balances ?? [];
+    },
+    { staleTime: 60_000 }
+  );
+};
+
+// Margin interest accruals
+export const useMarginInterest = (accountId?: number, period?: string) => {
+  return useQuery(
+    ['portfolio-margin-interest', accountId, period],
+    async () => {
+      const r = await portfolioApi.getMarginInterest(accountId, period);
+      return (r as any)?.data?.data?.margin_interest ?? (r as any)?.data?.margin_interest ?? [];
+    },
+    { staleTime: 120_000 }
+  );
+};
+
+export const useRealizedGains = (year?: number, accountId?: string) => {
+  return useQuery(
+    ['portfolio-realized-gains', year, accountId],
+    async () => {
+      const r = await portfolioApi.getRealizedGains(year, accountId);
+      return (r as any)?.data?.data ?? (r as any)?.data ?? {};
+    },
+    { staleTime: 300_000 }
+  );
+};
+
+export const useClosedPositions = (accountId?: string) => {
+  return useQuery(
+    ['portfolio-closed-positions', accountId],
+    async () => {
+      const r = await portfolioApi.getClosedPositions(accountId);
+      return (r as any)?.data?.data?.closed_positions ?? (r as any)?.data?.closed_positions ?? [];
+    },
+    { staleTime: 300_000 }
+  );
+};
+
+export const useDividendSummary = (accountId?: string) => {
+  return useQuery(
+    ['portfolio-dividend-summary', accountId],
+    async () => {
+      const r = await portfolioApi.getDividendSummary(accountId);
+      return (r as any)?.data?.data ?? (r as any)?.data ?? {};
+    },
+    { staleTime: 300_000 }
+  );
+};
+
+export const useLiveSummary = () => {
+  return useQuery(
+    ['portfolio-live-summary'],
+    async () => {
+      const r = await portfolioApi.getLiveSummary();
+      return (r as any)?.data?.data ?? (r as any)?.data ?? {};
+    },
+    { staleTime: 60_000, retry: 1 }
+  );
+};
+
+export const useRiskMetrics = () => {
+  return useQuery(
+    ['portfolio-risk-metrics'],
+    async () => {
+      const r = await portfolioApi.getRiskMetrics();
+      return (r as any) ?? {};
+    },
+    { staleTime: 300_000 }
+  );
+};
+
+export const useRebalanceSuggestions = () => {
+  return useQuery(
+    ['portfolio-rebalance-suggestions'],
+    async () => {
+      const r = await portfolioApi.getRebalanceSuggestions();
+      return (r as any)?.data?.data ?? (r as any)?.data ?? {};
+    },
+    { staleTime: 300_000 }
+  );
 };
 
 // Helper function to transform API data for charts

@@ -61,8 +61,8 @@ class ActivityAggregatorService:
             base = """
             SELECT * FROM (
                 SELECT
-                    t.execution_time AS ts,
-                    DATE(t.execution_time) AS day,
+                    COALESCE(t.execution_time, t.order_time, t.created_at) AS ts,
+                    DATE(COALESCE(t.execution_time, t.order_time, t.created_at)) AS day,
                     t.account_id,
                     t.symbol,
                     'TRADE'::text AS category,
@@ -75,10 +75,12 @@ class ActivityAggregatorService:
                     'trades'::text AS src,
                     t.execution_id AS external_id
                 FROM trades t
+                WHERE COALESCE(t.execution_time, t.order_time, t.created_at) IS NOT NULL
+                  AND (t.status IS NULL OR t.status = 'FILLED')
                 UNION ALL
                 SELECT
-                    tr.transaction_date AS ts,
-                    DATE(tr.transaction_date) AS day,
+                    COALESCE(tr.transaction_date, tr.trade_date, tr.created_at) AS ts,
+                    DATE(COALESCE(tr.transaction_date, tr.trade_date, tr.created_at)) AS day,
                     tr.account_id,
                     tr.symbol,
                     tr.transaction_type::text AS category,
@@ -93,8 +95,8 @@ class ActivityAggregatorService:
                 FROM transactions tr
                 UNION ALL
                 SELECT
-                    d.ex_date AS ts,
-                    DATE(d.ex_date) AS day,
+                    COALESCE(d.ex_date, d.pay_date) AS ts,
+                    DATE(COALESCE(d.ex_date, d.pay_date)) AS day,
                     d.account_id,
                     d.symbol,
                     'DIVIDEND'::text AS category,
@@ -107,6 +109,38 @@ class ActivityAggregatorService:
                     'dividends'::text AS src,
                     d.external_id AS external_id
                 FROM dividends d
+                UNION ALL
+                SELECT
+                    COALESCE(xf.transfer_date, xf.settle_date, xf.created_at) AS ts,
+                    DATE(COALESCE(xf.transfer_date, xf.settle_date, xf.created_at)) AS day,
+                    xf.broker_account_id AS account_id,
+                    xf.symbol,
+                    UPPER(COALESCE(xf.transfer_type::text, 'TRANSFER'))::text AS category,
+                    xf.direction::text AS side,
+                    xf.quantity::numeric AS quantity,
+                    xf.transfer_price::numeric AS price,
+                    xf.amount::numeric AS amount,
+                    xf.net_cash::numeric AS net_amount,
+                    COALESCE(xf.commission, 0)::numeric AS commission,
+                    'transfers'::text AS src,
+                    xf.transaction_id AS external_id
+                FROM transfers xf
+                UNION ALL
+                SELECT
+                    mi.to_date AS ts,
+                    DATE(mi.to_date) AS day,
+                    mi.broker_account_id AS account_id,
+                    NULL AS symbol,
+                    'INTEREST'::text AS category,
+                    CASE WHEN mi.interest_accrued > 0 THEN 'DEBIT' ELSE 'CREDIT' END AS side,
+                    NULL::numeric AS quantity,
+                    mi.interest_rate::numeric AS price,
+                    mi.interest_accrued::numeric AS amount,
+                    mi.interest_accrued::numeric AS net_amount,
+                    0::numeric AS commission,
+                    'margin_interest'::text AS src,
+                    CONCAT('MI-', mi.id)::text AS external_id
+                FROM margin_interest mi
             ) u
             """
 
@@ -168,8 +202,8 @@ class ActivityAggregatorService:
                 WITH activity AS (
                     SELECT * FROM (
                         SELECT
-                            t.execution_time AS ts,
-                            DATE(t.execution_time) AS day,
+                            COALESCE(t.execution_time, t.order_time, t.created_at) AS ts,
+                            DATE(COALESCE(t.execution_time, t.order_time, t.created_at)) AS day,
                             t.account_id,
                             t.symbol,
                             'TRADE'::text AS category,
@@ -180,10 +214,12 @@ class ActivityAggregatorService:
                             NULL::numeric AS net_amount,
                             (COALESCE(t.commission,0) + COALESCE(t.fees,0))::numeric AS commission
                         FROM trades t
+                        WHERE COALESCE(t.execution_time, t.order_time, t.created_at) IS NOT NULL
+                          AND (t.status IS NULL OR t.status = 'FILLED')
                         UNION ALL
                         SELECT
-                            tr.transaction_date AS ts,
-                            DATE(tr.transaction_date) AS day,
+                            COALESCE(tr.transaction_date, tr.trade_date, tr.created_at) AS ts,
+                            DATE(COALESCE(tr.transaction_date, tr.trade_date, tr.created_at)) AS day,
                             tr.account_id,
                             tr.symbol,
                             tr.transaction_type::text AS category,
@@ -196,8 +232,8 @@ class ActivityAggregatorService:
                         FROM transactions tr
                         UNION ALL
                         SELECT
-                            d.ex_date AS ts,
-                            DATE(d.ex_date) AS day,
+                            COALESCE(d.ex_date, d.pay_date) AS ts,
+                            DATE(COALESCE(d.ex_date, d.pay_date)) AS day,
                             d.account_id,
                             d.symbol,
                             'DIVIDEND'::text AS category,
@@ -208,6 +244,34 @@ class ActivityAggregatorService:
                             d.net_dividend::numeric AS net_amount,
                             COALESCE(d.tax_withheld,0)::numeric AS commission
                         FROM dividends d
+                        UNION ALL
+                        SELECT
+                            COALESCE(xf.transfer_date, xf.settle_date, xf.created_at) AS ts,
+                            DATE(COALESCE(xf.transfer_date, xf.settle_date, xf.created_at)) AS day,
+                            xf.broker_account_id AS account_id,
+                            xf.symbol,
+                            UPPER(COALESCE(xf.transfer_type::text, 'TRANSFER'))::text AS category,
+                            xf.direction::text AS side,
+                            xf.quantity::numeric AS quantity,
+                            xf.transfer_price::numeric AS price,
+                            xf.amount::numeric AS amount,
+                            xf.net_cash::numeric AS net_amount,
+                            COALESCE(xf.commission, 0)::numeric AS commission
+                        FROM transfers xf
+                        UNION ALL
+                        SELECT
+                            mi.to_date AS ts,
+                            DATE(mi.to_date) AS day,
+                            mi.broker_account_id AS account_id,
+                            NULL AS symbol,
+                            'INTEREST'::text AS category,
+                            CASE WHEN mi.interest_accrued > 0 THEN 'DEBIT' ELSE 'CREDIT' END AS side,
+                            NULL::numeric AS quantity,
+                            mi.interest_rate::numeric AS price,
+                            mi.interest_accrued::numeric AS amount,
+                            mi.interest_accrued::numeric AS net_amount,
+                            0::numeric AS commission
+                        FROM margin_interest mi
                     ) u
                 )
                 SELECT

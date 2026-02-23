@@ -193,6 +193,24 @@ export interface UsersListResponse {
   users?: unknown[];
 }
 
+/**
+ * Unwrap a backend response that may be double-wrapped by axios and/or the
+ * `{status, data}` envelope.  Handles all three shapes:
+ *   - `response.data.data[key]`   (axios + envelope)
+ *   - `response.data[key]`        (axios only, or bare envelope)
+ *   - `response[key]`             (already unwrapped by makeOptimizedRequest)
+ * Responses are from our backend; runtime validation (e.g. zod) can be added if needed.
+ */
+export function unwrapResponse<T = unknown>(response: unknown, key: string): T[] {
+  const r = response as Record<string, any> | undefined;
+  return (r?.data?.data?.[key] ?? r?.data?.[key] ?? r?.[key] ?? []) as T[];
+}
+
+export function unwrapResponseSingle<T = unknown>(response: unknown, key: string): T | undefined {
+  const r = response as Record<string, any> | undefined;
+  return (r?.data?.data?.[key] ?? r?.data?.[key] ?? r?.[key]) as T | undefined;
+}
+
 export interface InvitesListResponse {
   invites?: unknown[];
 }
@@ -235,6 +253,22 @@ export const portfolioApi = {
 
   getTaxLots: async () => {
     return makeOptimizedRequest(() => api.get('/portfolio/tax-lots'));
+  },
+
+  getAnalytics: async (accountId: number) => {
+    return makeOptimizedRequest(() => api.get(`/portfolio/analytics/${accountId}`));
+  },
+
+  getTaxOptimization: async (accountId: number) => {
+    return makeOptimizedRequest(() => api.get(`/portfolio/tax-optimization/${accountId}`));
+  },
+
+  getInsights: async () => {
+    return makeOptimizedRequest(() => api.get('/portfolio/insights'));
+  },
+
+  getTaxSummary: async () => {
+    return makeOptimizedRequest(() => api.get('/portfolio/tax-lots/tax-summary'));
   },
 
   getHoldingTaxLots: async (holdingId: number) => {
@@ -287,6 +321,50 @@ export const portfolioApi = {
         }
       };
     }
+  },
+
+  getBalances: async (accountId?: number) => {
+    const q = accountId ? `?account_id=${accountId}` : '';
+    return makeOptimizedRequest(() => api.get(`/portfolio/balances${q}`));
+  },
+
+  getMarginInterest: async (accountId?: number, period?: string) => {
+    const q = new URLSearchParams();
+    if (accountId) q.set('account_id', String(accountId));
+    if (period) q.set('period', period);
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return makeOptimizedRequest(() => api.get(`/portfolio/margin-interest${qs}`));
+  },
+
+  getRealizedGains: async (year?: number, accountId?: string) => {
+    const q = new URLSearchParams();
+    if (year) q.set('year', String(year));
+    if (accountId) q.set('account_id', accountId);
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return makeOptimizedRequest(() => api.get(`/portfolio/realized-gains${qs}`));
+  },
+
+  getClosedPositions: async (accountId?: string) => {
+    const q = accountId ? `?account_id=${encodeURIComponent(accountId)}` : '';
+    return makeOptimizedRequest(() => api.get(`/portfolio/stocks/closed${q}`));
+  },
+
+  getDividendSummary: async (accountId?: string) => {
+    const q = accountId ? `?account_id=${encodeURIComponent(accountId)}` : '';
+    return makeOptimizedRequest(() => api.get(`/portfolio/dividends/summary${q}`));
+  },
+
+  getLiveSummary: async () => {
+    return makeOptimizedRequest(() => api.get('/portfolio/live-summary'));
+  },
+
+  getRiskMetrics: async () => {
+    const r = await makeOptimizedRequest(() => api.get('/portfolio/risk-metrics'));
+    return (r as any)?.data?.data ?? (r as any)?.data ?? {};
+  },
+
+  getRebalanceSuggestions: async () => {
+    return makeOptimizedRequest(() => api.get('/portfolio/categories/rebalance-suggestions'));
   },
 
   // Batch API calls for improved performance
@@ -345,6 +423,9 @@ export const marketDataApi = {
   },
   getDashboard: async () => {
     return makeOptimizedRequest(() => api.get('/market-data/dashboard'));
+  },
+  getSnapshot: async (symbol: string) => {
+    return makeOptimizedRequest(() => api.get(`/market-data/snapshots/${encodeURIComponent(symbol)}`));
   },
 };
 

@@ -39,6 +39,7 @@ import {
   FiMoon,
   FiBell,
   FiLayers,
+  FiShield,
 } from 'react-icons/fi';
 import { FaBrain } from 'react-icons/fa';
 import { portfolioApi } from '../../services/api';
@@ -73,6 +74,7 @@ const portfolioItems = [
   { label: 'Options', icon: FiLayers, path: '/portfolio/options' },
   { label: 'Transactions', icon: FiFileText, path: '/portfolio/transactions' },
   { label: 'Categories', icon: FiTag, path: '/portfolio/categories' },
+  { label: 'Tax Center', icon: FiShield, path: '/portfolio/tax' },
   { label: 'Workspace', icon: FiGrid, path: '/portfolio/workspace' },
 ];
 

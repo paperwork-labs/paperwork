@@ -6,6 +6,7 @@ import {
   HStack,
   Button,
   CardRoot,
+  CardHeader,
   CardBody,
   VStack,
   SimpleGrid,
@@ -25,7 +26,8 @@ import {
 } from '@chakra-ui/react';
 import PageHeader from '../../components/ui/PageHeader';
 import { portfolioApi, handleApiError } from '../../services/api';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useMutation, useQueryClient } from 'react-query';
+import { useCategories, useCategoryPositions, useRebalanceSuggestions } from '../../hooks/usePortfolio';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
 import { formatMoney } from '../../utils/format';
 import toast from 'react-hot-toast';
@@ -53,17 +55,15 @@ const PortfolioCategories: React.FC = () => {
   const [newTargetPct, setNewTargetPct] = useState<string>('');
   const [assignPositionIds, setAssignPositionIds] = useState<number[]>([]);
 
-  const { data: categoriesData, isLoading } = useQuery(
-    'portfolioCategories',
-    () => portfolioApi.getCategories().then((r: any) => r?.data?.categories ?? [])
-  );
+  const { data: categoriesData, isLoading } = useCategories();
   const categories = (categoriesData ?? []) as CategoryRow[];
 
-  const { data: positionsData } = useQuery(
-    'portfolioStocksForCategories',
-    () => portfolioApi.getStocks(undefined, false).then((r: unknown) => (r as { data?: { data?: { stocks?: unknown[] }; stocks?: unknown[] }; stocks?: unknown[] })?.data?.data?.stocks ?? (r as { data?: { stocks?: unknown[] } })?.data?.stocks ?? [])
-  );
-  const allPositions = (positionsData ?? []) as Array<{ id: number; symbol: string; market_value?: number }>;
+  const rebalanceQuery = useRebalanceSuggestions();
+  const rebalanceData = rebalanceQuery.data ?? {};
+  const suggestions = rebalanceData.suggestions ?? [];
+
+  const { data: positionsData } = useCategoryPositions();
+  const allPositions = positionsData ?? [];
 
   const createMutation = useMutation(
     () => {
@@ -156,15 +156,22 @@ const PortfolioCategories: React.FC = () => {
         ) : (
           <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={4}>
             {categories.map((cat) => {
-              const target = cat.target_allocation_pct ?? 0;
-              const actual = cat.actual_allocation_pct ?? 0;
+              const target = Number(cat.target_allocation_pct ?? 0);
+              const actual = Number(cat.actual_allocation_pct ?? 0);
               const diff = actual - target;
               return (
                 <CardRoot key={cat.id} bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
                   <CardBody>
-                    <Text fontWeight="semibold" mb={2}>{cat.name}</Text>
+                    <HStack justify="space-between" align="center" mb={2}>
+                      <Text fontWeight="semibold">{cat.name}</Text>
+                      {Math.abs(diff) > 5 && (
+                        <Badge colorPalette={diff > 0 ? 'red' : 'orange'} size="sm">
+                          Drift {diff > 0 ? '+' : ''}{diff.toFixed(1)}%
+                        </Badge>
+                      )}
+                    </HStack>
                     <Text fontSize="sm" color="fg.muted">
-                      Target: {target}% · Actual: {actual.toFixed(1)}% · {cat.positions_count ?? 0} positions
+                      Target: {target}% · Actual: {Number(cat.actual_allocation_pct || 0).toFixed(1)}% · {cat.positions_count ?? 0} positions
                     </Text>
                     <Progress.Root value={actual} max={100} size="sm" mt={2} borderRadius="md">
                       <Progress.Track>
@@ -188,6 +195,47 @@ const PortfolioCategories: React.FC = () => {
               );
             })}
           </SimpleGrid>
+        )}
+
+        {suggestions.length > 0 && (
+          <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
+            <CardHeader pb={2}>
+              <HStack gap={2}>
+                <Text fontWeight="bold">Rebalancing Suggestions</Text>
+                <Badge colorPalette="orange">{suggestions.length}</Badge>
+              </HStack>
+            </CardHeader>
+            <CardBody pt={2}>
+              <VStack align="stretch" gap={3}>
+                {suggestions.map((s: any, i: number) => (
+                  <Box key={i} p={3} borderWidth="1px" borderColor="border.subtle" borderRadius="lg">
+                    <HStack justify="space-between" mb={1}>
+                      <HStack gap={2}>
+                        <Text fontWeight="semibold">{s.category}</Text>
+                        <Badge colorPalette={s.direction === 'BUY' ? 'green' : 'red'} size="sm">{s.direction}</Badge>
+                      </HStack>
+                      <Text fontSize="sm" fontWeight="bold">{formatMoney(s.amount, currency, { maximumFractionDigits: 0 })}</Text>
+                    </HStack>
+                    <HStack gap={3} fontSize="xs" color="fg.muted">
+                      <Text>Target: {s.target_pct}%</Text>
+                      <Text>Actual: {s.actual_pct}%</Text>
+                      <Text color={Math.abs(s.drift_pct) > 5 ? 'fg.error' : 'fg.muted'}>Drift: {s.drift_pct > 0 ? '+' : ''}{s.drift_pct}%</Text>
+                    </HStack>
+                    {s.positions?.length > 0 && (
+                      <Box mt={2}>
+                        {s.positions.map((p: any, j: number) => (
+                          <HStack key={j} justify="space-between" fontSize="xs" py={0.5}>
+                            <Text fontFamily="mono">{p.symbol}</Text>
+                            <Text>{p.shares > 0 ? `~${p.shares} sh` : ''} · {formatMoney(p.est_value, currency, { maximumFractionDigits: 0 })}</Text>
+                          </HStack>
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
+                ))}
+              </VStack>
+            </CardBody>
+          </CardRoot>
         )}
       </Stack>
 

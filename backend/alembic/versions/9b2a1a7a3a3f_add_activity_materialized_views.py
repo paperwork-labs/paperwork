@@ -16,14 +16,15 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Unified activity MV
+    # Unified activity MV (with COALESCE fallbacks and transfers).
+    # Table/column names are fixed; do not interpolate user-controlled values into this SQL.
     try:
         op.execute(
             """
             CREATE MATERIALIZED VIEW IF NOT EXISTS portfolio_activity_mv AS
         SELECT
-            t.execution_time AS ts,
-            DATE(t.execution_time) AS day,
+            COALESCE(t.execution_time, t.order_time, t.created_at) AS ts,
+            DATE(COALESCE(t.execution_time, t.order_time, t.created_at)) AS day,
             t.account_id,
             t.symbol,
             'TRADE'::text AS category,
@@ -38,8 +39,8 @@ def upgrade() -> None:
         FROM trades t
         UNION ALL
         SELECT
-            tr.transaction_date AS ts,
-            DATE(tr.transaction_date) AS day,
+            COALESCE(tr.transaction_date, tr.trade_date, tr.created_at) AS ts,
+            DATE(COALESCE(tr.transaction_date, tr.trade_date, tr.created_at)) AS day,
             tr.account_id,
             tr.symbol,
             tr.transaction_type::text AS category,
@@ -54,8 +55,8 @@ def upgrade() -> None:
         FROM transactions tr
         UNION ALL
         SELECT
-            d.ex_date AS ts,
-            DATE(d.ex_date) AS day,
+            COALESCE(d.ex_date, d.pay_date) AS ts,
+            DATE(COALESCE(d.ex_date, d.pay_date)) AS day,
             d.account_id,
             d.symbol,
             'DIVIDEND'::text AS category,
@@ -67,7 +68,23 @@ def upgrade() -> None:
             COALESCE(d.tax_withheld,0)::numeric AS commission,
             'dividends'::text AS src,
             d.external_id AS external_id
-        FROM dividends d;
+        FROM dividends d
+        UNION ALL
+        SELECT
+            COALESCE(xf.transfer_date, xf.settle_date, xf.created_at) AS ts,
+            DATE(COALESCE(xf.transfer_date, xf.settle_date, xf.created_at)) AS day,
+            xf.broker_account_id AS account_id,
+            xf.symbol,
+            UPPER(COALESCE(xf.transfer_type::text, 'TRANSFER'))::text AS category,
+            NULL::text AS side,
+            xf.quantity::numeric AS quantity,
+            NULL::numeric AS price,
+            xf.amount::numeric AS amount,
+            xf.net_cash::numeric AS net_amount,
+            0::numeric AS commission,
+            'transfers'::text AS src,
+            xf.external_reference AS external_id
+        FROM transfers xf;
             """
         )
         # Helpful indexes

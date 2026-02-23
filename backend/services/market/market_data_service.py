@@ -840,10 +840,17 @@ class MarketDataService:
                         df = df.head(max_bars)
                     ttl = 300 if interval in ("1m", "5m") else 3600
                     self.redis_client.setex(cache_key, ttl, df.to_json(orient="index"))
+                    try:
+                        db_session = SessionLocal()
+                        self.persist_price_bars(db_session, symbol, df, interval=interval, data_source=provider_used or "provider")
+                        db_session.close()
+                    except Exception as persist_exc:
+                        logger.warning("Write-through persist_price_bars for %s failed (non-blocking): %s", symbol, persist_exc)
                     if return_provider:
                         return df, provider_used
                     return df
-            except Exception:
+            except Exception as exc:
+                logger.warning("Provider %s failed for %s (%s/%s): %s", provider.value, symbol, period, interval, exc)
                 continue
         return (None, provider_used) if return_provider else None
 
@@ -2389,6 +2396,22 @@ class MarketDataService:
             "touched_rows": touched_rows,
             "updated_at": datetime.utcnow().isoformat(),
         }
+
+    def get_historical_dividends(self, symbol: str) -> List[Dict]:
+        """Fetch historical dividend payments from FMP for a given symbol."""
+        if not settings.FMP_API_KEY:
+            return []
+        try:
+            url = f"https://financialmodelingprep.com/api/v3/historical-price-full/stock_dividend/{symbol}?apikey={settings.FMP_API_KEY}"
+            import requests
+            resp = requests.get(url, timeout=15)
+            if resp.status_code != 200:
+                return []
+            data = resp.json()
+            return data.get("historical", [])
+        except Exception as e:
+            logger.warning("FMP dividend fetch failed for %s: %s", symbol, e)
+            return []
 
 # Global instance
 market_data_service = MarketDataService()

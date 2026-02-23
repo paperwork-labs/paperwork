@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, desc
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 import logging
@@ -13,6 +13,10 @@ from backend.models.position import Position
 from backend.models.transaction import Dividend
 from backend.models.portfolio import PortfolioSnapshot
 from backend.models.broker_account import BrokerAccount
+from backend.models.account_balance import AccountBalance
+from backend.models.margin_interest import MarginInterest
+from backend.api.dependencies import get_portfolio_user
+from backend.services.portfolio.portfolio_analytics_service import portfolio_analytics_service
 
 logger = logging.getLogger(__name__)
 
@@ -229,4 +233,305 @@ async def get_performance_history(
         raise
     except Exception as e:
         logger.error(f"performance/history error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/balances", response_model=Dict[str, Any])
+async def get_account_balances(
+    account_id: Optional[int] = Query(None, description="Filter by broker account ID"),
+    user: User = Depends(get_portfolio_user),
+    db: Session = Depends(get_db),
+):
+    """Return latest account balance snapshot per broker account."""
+    try:
+        broker_ids = [
+            r[0]
+            for r in db.query(BrokerAccount.id)
+            .filter(BrokerAccount.user_id == user.id)
+            .all()
+        ]
+        if not broker_ids:
+            return {"status": "success", "data": {"balances": []}}
+
+        if account_id is not None:
+            if account_id not in broker_ids:
+                raise HTTPException(status_code=404, detail="Account not found")
+            broker_ids = [account_id]
+
+        balances = []
+        for bid in broker_ids:
+            bal = (
+                db.query(AccountBalance)
+                .filter(AccountBalance.broker_account_id == bid)
+                .order_by(desc(AccountBalance.balance_date))
+                .first()
+            )
+            if not bal:
+                continue
+            ba = db.query(BrokerAccount).filter(BrokerAccount.id == bid).first()
+            balances.append({
+                "account_id": bid,
+                "broker": ba.broker.value if ba else None,
+                "account_number": ba.account_number if ba else None,
+                "balance_date": bal.balance_date.isoformat() if bal.balance_date else None,
+                "cash_balance": bal.cash_balance,
+                "total_cash_value": bal.total_cash_value,
+                "settled_cash": bal.settled_cash,
+                "available_funds": bal.available_funds,
+                "net_liquidation": bal.net_liquidation,
+                "gross_position_value": bal.gross_position_value,
+                "equity": bal.equity,
+                "buying_power": bal.buying_power,
+                "initial_margin_req": bal.initial_margin_req,
+                "maintenance_margin_req": bal.maintenance_margin_req,
+                "cushion": bal.cushion,
+                "leverage": bal.leverage,
+                "daily_pnl": bal.daily_pnl,
+                "unrealized_pnl": bal.unrealized_pnl,
+                "realized_pnl": bal.realized_pnl,
+                "accrued_dividend": bal.accrued_dividend,
+                "accrued_interest": bal.accrued_interest,
+                "margin_utilization_pct": bal.margin_utilization_pct,
+            })
+
+        return {"status": "success", "data": {"balances": balances}}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"balances error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/margin-interest", response_model=Dict[str, Any])
+async def get_margin_interest(
+    account_id: Optional[int] = Query(None, description="Filter by broker account ID"),
+    period: str = Query("90d", description="30d, 90d, 1y, all"),
+    user: User = Depends(get_portfolio_user),
+    db: Session = Depends(get_db),
+):
+    """Return margin/interest accrual records for the user's accounts."""
+    try:
+        broker_ids = [
+            r[0]
+            for r in db.query(BrokerAccount.id)
+            .filter(BrokerAccount.user_id == user.id)
+            .all()
+        ]
+        if not broker_ids:
+            return {"status": "success", "data": {"margin_interest": []}}
+
+        if account_id is not None:
+            if account_id not in broker_ids:
+                raise HTTPException(status_code=404, detail="Account not found")
+            broker_ids = [account_id]
+
+        query = (
+            db.query(MarginInterest)
+            .filter(MarginInterest.broker_account_id.in_(broker_ids))
+            .order_by(desc(MarginInterest.to_date))
+        )
+
+        delta = _parse_period(period)
+        if delta:
+            since = datetime.utcnow().date() - delta
+            query = query.filter(MarginInterest.to_date >= since)
+
+        rows = query.limit(200).all()
+        items = []
+        for m in rows:
+            items.append({
+                "id": m.id,
+                "account_id": m.broker_account_id,
+                "from_date": m.from_date.isoformat() if m.from_date else None,
+                "to_date": m.to_date.isoformat() if m.to_date else None,
+                "starting_balance": m.starting_balance,
+                "interest_accrued": m.interest_accrued,
+                "accrual_reversal": m.accrual_reversal,
+                "ending_balance": m.ending_balance,
+                "interest_rate": m.interest_rate,
+                "daily_rate": m.daily_rate,
+                "currency": m.currency,
+                "interest_type": m.interest_type,
+            })
+
+        return {"status": "success", "data": {"margin_interest": items}}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"margin-interest error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/dividends/summary")
+async def get_dividend_summary(
+    account_id: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    """Dividend income analytics: trailing 12m, forward yield, top payers, upcoming ex-dates."""
+    try:
+        user = db.query(User).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        acct_ids = [a.id for a in db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user.id).all()]
+        if not acct_ids:
+            return {"status": "success", "data": {}}
+
+        now = datetime.utcnow()
+        one_year_ago = now - timedelta(days=365)
+
+        divs = (
+            db.query(Dividend)
+            .filter(Dividend.account_id.in_(acct_ids))
+            .all()
+        )
+
+        trailing_divs = [d for d in divs if d.pay_date and d.pay_date >= one_year_ago.date()]
+        trailing_12m = sum(float(d.total_dividend or 0) for d in trailing_divs)
+
+        by_sym: Dict[str, list] = {}
+        for d in trailing_divs:
+            by_sym.setdefault(d.symbol, []).append(d)
+
+        top_payers = sorted(
+            [
+                {
+                    "symbol": sym,
+                    "annual_income": round(sum(float(d.total_dividend or 0) for d in ds), 2),
+                    "payment_count": len(ds),
+                }
+                for sym, ds in by_sym.items()
+            ],
+            key=lambda x: -x["annual_income"],
+        )[:5]
+
+        total_mv = sum(
+            float(p.market_value or 0)
+            for p in db.query(Position).filter(Position.broker_account_id.in_(acct_ids)).all()
+        )
+        fwd_yield = round((trailing_12m / total_mv * 100) if total_mv > 0 else 0, 2)
+
+        monthly: Dict[str, float] = {}
+        for d in trailing_divs:
+            key = d.pay_date.strftime("%Y-%m") if d.pay_date else "unknown"
+            monthly[key] = monthly.get(key, 0) + float(d.total_dividend or 0)
+
+        monthly_income = [{"month": k, "amount": round(v, 2)} for k, v in sorted(monthly.items())]
+
+        upcoming: list = []
+        for sym, ds in by_sym.items():
+            ex_dates = sorted(
+                [d.ex_date for d in ds if d.ex_date],
+                reverse=True,
+            )
+            if len(ex_dates) >= 2:
+                gap = (ex_dates[0] - ex_dates[1]).days
+                est_next = ex_dates[0] + timedelta(days=gap)
+                if est_next >= now.date() and (est_next - now.date()).days <= 60:
+                    per_share = [float(d.dividend_per_share or 0) for d in ds if d.dividend_per_share]
+                    upcoming.append({
+                        "symbol": sym,
+                        "est_ex_date": est_next.isoformat(),
+                        "est_per_share": round(sum(per_share) / len(per_share), 4) if per_share else 0,
+                    })
+
+        return {
+            "status": "success",
+            "data": {
+                "trailing_12m_income": round(trailing_12m, 2),
+                "estimated_forward_yield_pct": fwd_yield,
+                "top_payers": top_payers,
+                "upcoming_ex_dates": upcoming[:5],
+                "monthly_income": monthly_income,
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"dividend-summary error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/live-summary")
+async def get_live_summary(db: Session = Depends(get_db)):
+    """Live account summary from IB Gateway, falling back to DB."""
+    try:
+        is_live = False
+        summary = {}
+
+        try:
+            from backend.services.clients.ibkr_client import ibkr_client
+            if ibkr_client.ib and ibkr_client.ib.isConnected():
+                gw_data = ibkr_client.get_account_summary()
+                if gw_data and gw_data.get("net_liquidation"):
+                    summary = gw_data
+                    is_live = True
+        except Exception:
+            pass
+
+        if not is_live:
+            user = db.query(User).first()
+            if user:
+                acct_ids = [a.id for a in db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user.id).all()]
+                if acct_ids:
+                    bal = (
+                        db.query(AccountBalance)
+                        .filter(AccountBalance.broker_account_id.in_(acct_ids))
+                        .order_by(AccountBalance.as_of_date.desc())
+                        .first()
+                    )
+                    if bal:
+                        summary = {
+                            "net_liquidation": float(bal.total_value or 0),
+                            "buying_power": float(bal.buying_power or 0),
+                            "margin_used": float(bal.margin_used or 0) if hasattr(bal, "margin_used") else 0,
+                            "available_funds": float(bal.available_funds or 0) if hasattr(bal, "available_funds") else 0,
+                            "cushion": float(bal.cushion or 0) if hasattr(bal, "cushion") else 0,
+                        }
+
+        summary["is_live"] = is_live
+        return {"status": "success", "data": summary}
+    except Exception as e:
+        logger.error(f"live-summary error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/risk-metrics")
+async def get_risk_metrics(db: Session = Depends(get_db)):
+    """Computed risk metrics: beta, volatility, sharpe, concentration."""
+    try:
+        metrics = portfolio_analytics_service.compute_risk_metrics(db)
+        return {"status": "success", "data": metrics}
+    except Exception as e:
+        logger.error(f"risk-metrics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/twr")
+async def get_twr(
+    period: str = Query("1y", description="1y, ytd, all"),
+    db: Session = Depends(get_db),
+):
+    """Time-Weighted Return."""
+    try:
+        days = 365
+        if period == "ytd":
+            days = (datetime.utcnow() - datetime(datetime.utcnow().year, 1, 1)).days
+        elif period == "all":
+            days = 3650
+        result = portfolio_analytics_service.compute_twr(db, period_days=days)
+        return {"status": "success", "data": result}
+    except Exception as e:
+        logger.error(f"twr error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/sector-attribution")
+async def get_sector_attribution(db: Session = Depends(get_db)):
+    """Performance attribution by sector."""
+    try:
+        result = portfolio_analytics_service.compute_sector_attribution(db)
+        return {"status": "success", "data": {"sectors": result}}
+    except Exception as e:
+        logger.error(f"sector-attribution error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

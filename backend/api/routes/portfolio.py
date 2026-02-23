@@ -125,130 +125,7 @@ async def get_tax_lots_summary(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# =============================================================================
-# TRANSACTION ENDPOINTS (Clean & Focused)
-# =============================================================================
-
-
-@router.get("/statements")
-async def get_statements(
-    days: int = Query(30, ge=1, le=3650),
-    user_id: int | None = Query(None, description="User ID (optional)"),
-    db: Session = Depends(get_db),
-) -> Dict[str, Any]:
-    """Return unified transaction statements for last N days to power Transactions.tsx."""
-    try:
-        from backend.models.transaction import Transaction
-
-        # resolve user
-        user = (
-            db.query(User).first()
-            if user_id is None
-            else db.query(User).filter(User.id == user_id).first()
-        )
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        cutoff = datetime.utcnow() - timedelta(days=days)
-
-        q = (
-            db.query(Transaction)
-            .filter(
-                Transaction.account_id.in_(
-                    db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user.id)
-                ),
-                Transaction.transaction_date >= cutoff,
-            )
-            .order_by(Transaction.transaction_date.desc())
-        )
-        rows = q.all()
-
-        account_ids = {t.account_id for t in rows}
-        accounts_by_id = {
-            a.id: a
-            for a in db.query(BrokerAccount).filter(
-                BrokerAccount.id.in_(account_ids)
-            ).all()
-        }
-
-        txs = []
-        for t in rows:
-            is_buy = (
-                t.transaction_type.name if t.transaction_type else ""
-            ).upper() == "BUY"
-            is_sell = (
-                t.transaction_type.name if t.transaction_type else ""
-            ).upper() == "SELL"
-            acc = accounts_by_id.get(t.account_id)
-            txs.append(
-                {
-                    "id": t.id,
-                    "date": (
-                        t.transaction_date.date().isoformat()
-                        if t.transaction_date
-                        else None
-                    ),
-                    "time": (
-                        t.transaction_date.time().isoformat(timespec="seconds")
-                        if t.transaction_date
-                        else None
-                    ),
-                    "symbol": t.symbol,
-                    "description": t.description,
-                    "type": (
-                        "BUY"
-                        if is_buy
-                        else (
-                            "SELL"
-                            if is_sell
-                            else (
-                                t.transaction_type.name
-                                if t.transaction_type
-                                else "OTHER"
-                            )
-                        )
-                    ),
-                    "action": t.action,
-                    "quantity": float(t.quantity or 0),
-                    "price": float(t.trade_price or 0),
-                    "amount": float(t.amount or 0),
-                    "commission": float(t.commission or 0),
-                    "fees": float(
-                        (t.other_fees or 0)
-                        + (t.third_party_commission or 0)
-                        + (t.clearing_commission or 0)
-                    ),
-                    "net_amount": float(t.net_amount or 0),
-                    "currency": t.currency,
-                    "exchange": t.listing_exchange,
-                    "order_id": t.order_id,
-                    "execution_id": t.execution_id,
-                    "contract_type": t.asset_category,
-                    "account": acc.account_number if acc else None,
-                    "settlement_date": (
-                        t.settlement_date.isoformat() if t.settlement_date else None
-                    ),
-                    "source": t.source,
-                }
-            )
-
-        buys = [x for x in txs if x["type"] == "BUY"]
-        sells = [x for x in txs if x["type"] == "SELL"]
-        summary = {
-            "total_transactions": len(txs),
-            "total_value": sum(abs(x["amount"]) for x in txs),
-            "total_commission": sum(x["commission"] for x in txs),
-            "total_fees": sum(x["fees"] for x in txs),
-            "buy_count": len(buys),
-            "sell_count": len(sells),
-            "date_range": days,
-            "net_buy_value": sum(abs(x["amount"]) for x in buys),
-            "net_sell_value": sum(abs(x["amount"]) for x in sells),
-        }
-
-        return {"status": "success", "data": {"transactions": txs, "summary": summary}}
-    except Exception as e:
-        logger.error(f"❌ Statements error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# NOTE: /statements endpoint removed -- use portfolio_statements.py instead.
 
 
 # =============================================================================
@@ -306,9 +183,9 @@ async def sync_official_tax_lots(
 
         if not official_tax_lots:
             return {
-                "success": False,
-                "message": "No tax lots retrieved - check FlexQuery configuration",
-                "tax_lots_synced": 0,
+                "status": "error",
+                "error": "No tax lots retrieved - check FlexQuery configuration",
+                "data": {"tax_lots_synced": 0},
             }
 
         # Persist to DB
@@ -332,11 +209,13 @@ async def sync_official_tax_lots(
         )
 
         return {
-            "success": True,
-            "message": f"Synced {result['total']} official tax lots",
-            "synced": result,
-            "account_id": payload.account_id,
-            "source": "ibkr_flexquery_official",
+            "status": "success",
+            "data": {
+                "message": f"Synced {result['total']} official tax lots",
+                "synced": result,
+                "account_id": payload.account_id,
+                "source": "ibkr_flexquery_official",
+            },
         }
 
     except Exception as e:
@@ -374,13 +253,15 @@ async def get_portfolio_analytics(
         )
 
         return {
-            "success": True,
-            "analytics": analytics,
-            "features": {
-                "portfolio_metrics": "Performance & risk analysis",
-                "tax_opportunities": "Tax loss harvesting & optimization",
-                "asset_allocation": "Allocation breakdown & concentration risk",
-                "performance_attribution": "Top contributors & detractors",
+            "status": "success",
+            "data": {
+                "analytics": analytics,
+                "features": {
+                    "portfolio_metrics": "Performance & risk analysis",
+                    "tax_opportunities": "Tax loss harvesting & optimization",
+                    "asset_allocation": "Allocation breakdown & concentration risk",
+                    "performance_attribution": "Top contributors & detractors",
+                },
             },
         }
 
@@ -527,4 +408,98 @@ async def get_performance_metrics(
 
     except Exception as e:
         logger.error(f"❌ Performance metrics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/insights")
+async def get_portfolio_insights(
+    user_id: int | None = Query(None, description="User ID (optional)"),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Lightweight portfolio insights from local DB data.
+
+    Returns tax-loss harvesting candidates, positions approaching long-term
+    status, and concentration risk warnings.  No live broker connection needed.
+    """
+    from backend.api.dependencies import get_portfolio_user
+    from backend.models.position import Position
+    from backend.models.tax_lot import TaxLot
+
+    try:
+        user = get_portfolio_user(user_id, db)
+
+        account_ids = [
+            a.id
+            for a in db.query(BrokerAccount)
+            .filter(BrokerAccount.user_id == user.id)
+            .all()
+        ]
+        if not account_ids:
+            return {"status": "success", "data": {"harvest_candidates": [], "approaching_lt": [], "concentration_warnings": []}}
+
+        positions = (
+            db.query(Position)
+            .filter(Position.account_id.in_(account_ids))
+            .all()
+        )
+        tax_lots = (
+            db.query(TaxLot)
+            .filter(TaxLot.account_id.in_(account_ids))
+            .all()
+        )
+
+        total_value = sum(float(p.market_value or 0) for p in positions)
+
+        harvest_candidates = []
+        for lot in tax_lots:
+            unrealized = float(lot.unrealized_pnl or 0)
+            if unrealized < -1000:
+                harvest_candidates.append({
+                    "symbol": lot.symbol,
+                    "unrealized_pnl": unrealized,
+                    "shares": float(lot.quantity or 0),
+                    "days_held": lot.holding_period or 0,
+                })
+        harvest_candidates.sort(key=lambda x: x["unrealized_pnl"])
+
+        approaching_lt = []
+        for lot in tax_lots:
+            days = lot.holding_period or 0
+            if 300 <= days < 365:
+                approaching_lt.append({
+                    "symbol": lot.symbol,
+                    "days_held": days,
+                    "days_to_lt": 365 - days,
+                    "shares": float(lot.quantity or 0),
+                    "unrealized_pnl": float(lot.unrealized_pnl or 0),
+                })
+        approaching_lt.sort(key=lambda x: x["days_to_lt"])
+
+        concentration_warnings = []
+        if total_value > 0:
+            for p in positions:
+                mv = float(p.market_value or 0)
+                pct = (mv / total_value) * 100
+                if pct > 20:
+                    concentration_warnings.append({
+                        "symbol": p.symbol,
+                        "market_value": mv,
+                        "pct_of_portfolio": round(pct, 1),
+                    })
+        concentration_warnings.sort(key=lambda x: -x["pct_of_portfolio"])
+
+        return {
+            "status": "success",
+            "data": {
+                "harvest_candidates": harvest_candidates[:5],
+                "approaching_lt": approaching_lt[:5],
+                "concentration_warnings": concentration_warnings[:5],
+                "total_positions": len(positions),
+                "total_tax_lots": len(tax_lots),
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Portfolio insights error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

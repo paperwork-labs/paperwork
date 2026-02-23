@@ -668,7 +668,7 @@ class IBKRFlexQueryClient:
                     option_type = position.get("putCall", "")  # 'P' or 'C'
                     multiplier = float(position.get("multiplier", "100") or 100)
 
-                    # Position data
+                    # Position data -- preserve sign (negative = short)
                     qty_attr = position.get("position")
                     if qty_attr is None:
                         qty_attr = position.get("quantity")
@@ -676,6 +676,9 @@ class IBKRFlexQueryClient:
                     market_price = float(position.get("markPrice", "0") or 0)
                     market_value = float(position.get("positionValue", "0") or position.get("marketValue", "0") or 0)
                     unrealized_pnl = float(position.get("unrealizedPnl", "0") or position.get("fifoPnlUnrealized", "0") or 0)
+                    realized_pnl = float(position.get("fifoPnlRealized", "0") or 0)
+                    cost_basis_price = float(position.get("costBasisPrice", "0") or 0)
+                    cost_basis_money = float(position.get("costBasisMoney", "0") or 0)
 
                     # Parse expiry date
                     try:
@@ -687,6 +690,8 @@ class IBKRFlexQueryClient:
                     except ValueError:
                         expiry_datetime = None
 
+                    signed_qty = int(quantity)
+
                     option_position = {
                         "account_id": filter_account or account_id,
                         "symbol": symbol,
@@ -695,10 +700,13 @@ class IBKRFlexQueryClient:
                         "expiry_date": expiry_datetime,
                         "option_type": "CALL" if option_type.upper() == "C" else "PUT",
                         "multiplier": multiplier,
-                        "open_quantity": abs(int(quantity)),  # Convert to integer for contracts
+                        "open_quantity": signed_qty,
                         "current_price": market_price,
                         "market_value": market_value,
+                        "cost_basis_price": cost_basis_price,
+                        "cost_basis_money": cost_basis_money,
                         "unrealized_pnl": unrealized_pnl,
+                        "realized_pnl": realized_pnl,
                         "currency": position.get("currency", "USD"),
                         "data_source": "ibkr_flexquery",
                     }
@@ -783,6 +791,92 @@ class IBKRFlexQueryClient:
 
         except Exception as e:
             logger.error("Error parsing stock positions: %s", e)
+            return []
+
+    def _parse_tax_lots_from_lot_rows(self, xml_data: str, account_id: str) -> List[Dict]:
+        """Parse individual tax lots from OpenPositions LOT-level rows.
+
+        IBKR FlexQuery returns LOT rows when the query is configured with
+        Open Positions > Level of Detail = LOT.  Each row represents one
+        acquisition lot with its own cost basis, acquisition date, and
+        holding period -- this is the *official* IBKR tax lot data.
+        """
+        try:
+            root = ET.fromstring(xml_data)
+            section = root.find(".//OpenPositions")
+            if section is None:
+                return []
+
+            filter_account = account_id
+            if _is_placeholder_account(account_id):
+                for pos in section:
+                    aid = pos.get("accountId", "")
+                    if aid:
+                        filter_account = aid
+                        break
+
+            lots: List[Dict] = []
+            for pos in section:
+                try:
+                    pos_account = pos.get("accountId", "")
+                    if filter_account and pos_account != filter_account:
+                        continue
+
+                    level = (pos.get("levelOfDetail") or "").upper()
+                    if level != "LOT":
+                        continue
+
+                    cat = (pos.get("assetCategory") or pos.get("assetClass") or "").upper()
+                    if cat not in ("STK", "ETF", "OPT"):
+                        continue
+
+                    symbol = pos.get("symbol", "")
+                    if not symbol:
+                        continue
+
+                    quantity = float(pos.get("position", "0") or 0)
+                    if quantity == 0:
+                        continue
+
+                    cps = float(pos.get("costBasisPrice", "0") or 0)
+                    cost = float(pos.get("costBasisMoney", "0") or 0)
+                    mark = float(pos.get("markPrice", "0") or 0)
+                    mkt_val = float(pos.get("positionValue", "0") or 0)
+                    pnl = float(pos.get("fifoPnlUnrealized", "0") or 0)
+                    pnl_pct = (pnl / cost * 100) if cost else 0.0
+
+                    open_dt = pos.get("openDateTime", "")
+                    acq_date = open_dt[:8] if open_dt and len(open_dt) >= 8 else None
+                    holding_dt = pos.get("holdingPeriodDateTime", "")
+
+                    lots.append({
+                        "symbol": symbol,
+                        "quantity": quantity,
+                        "cost_per_share": cps,
+                        "cost_basis": cost,
+                        "current_price": mark,
+                        "market_value": mkt_val,
+                        "unrealized_pnl": pnl,
+                        "unrealized_pnl_pct": pnl_pct,
+                        "acquisition_date": acq_date,
+                        "holding_period_date": holding_dt[:8] if holding_dt and len(holding_dt) >= 8 else None,
+                        "order_id": pos.get("originatingOrderID", ""),
+                        "trade_id": pos.get("originatingTransactionID", ""),
+                        "contract_id": pos.get("conid", ""),
+                        "currency": pos.get("currency", "USD"),
+                        "asset_category": cat,
+                        "exchange": pos.get("listingExchange", ""),
+                        "fx_rate": float(pos.get("fxRateToBase", "1") or 1),
+                        "side": pos.get("side", "Long"),
+                    })
+                except (ValueError, TypeError):
+                    continue
+
+            logger.info("Parsed %d tax lots from OpenPositions LOT rows", len(lots))
+            return lots
+
+        except Exception as e:
+            logger.error("Error parsing LOT-level tax lots: %s", e)
             return []
 
     def _parse_option_exercises(self, xml_data: str, account_id: str) -> List[Dict]:
@@ -1180,17 +1274,29 @@ class IBKRFlexQueryClient:
             "note": "FlexQuery provides OFFICIAL IBKR tax lot data used in Tax Optimizer",
         }
 
-    def _parse_trades_from_xml(self, xml_data: str, account_id: str) -> List[Dict]:
-        """Parse historical trades from FlexQuery XML for trade records."""
+    def _parse_trades_from_xml(
+        self, xml_data: str, account_id: str
+    ) -> Dict[str, List[Dict]]:
+        """Parse trades from FlexQuery XML, separated by levelOfDetail.
+
+        Returns dict with keys: trades, closed_lots, wash_sales.
+        """
+        empty: Dict[str, List[Dict]] = {
+            "trades": [],
+            "closed_lots": [],
+            "wash_sales": [],
+        }
         try:
             root = ET.fromstring(xml_data)
-            trades = []
 
-            # Find Trades section
             trades_section = root.find(".//Trades")
             if trades_section is None:
                 logger.warning("No Trades section found in FlexQuery XML")
-                return []
+                return empty
+
+            trades: List[Dict] = []
+            closed_lots: List[Dict] = []
+            wash_sales: List[Dict] = []
 
             for trade in trades_section:
                 try:
@@ -1198,38 +1304,130 @@ class IBKRFlexQueryClient:
                     if not symbol:
                         continue
 
-                    # Parse trade data
-                    trade_data = {
+                    level = (trade.get("levelOfDetail") or "").upper()
+                    if level in ("SYMBOL_SUMMARY", "ASSET_CLASS"):
+                        continue
+
+                    open_close = (trade.get("openCloseIndicator") or "").upper()
+
+                    base = {
                         "symbol": symbol,
-                        "side": "BUY" if trade.get("buySell") == "BUY" else "SELL",
+                        "side": "BUY"
+                        if trade.get("buySell") == "BUY"
+                        else "SELL",
                         "quantity": abs(float(trade.get("quantity", 0))),
                         "price": float(trade.get("tradePrice", 0)),
-                        "total_value": abs(float(trade.get("proceeds", 0))),
-                        "commission": abs(float(trade.get("ibCommission", 0))),
+                        "total_value": abs(
+                            float(trade.get("proceeds", 0))
+                        ),
+                        "commission": abs(
+                            float(trade.get("ibCommission", 0))
+                        ),
+                        "fees": abs(
+                            float(trade.get("otherFees", 0) or 0)
+                        ),
                         "execution_id": trade.get("tradeID"),
                         "execution_time": self._parse_flexquery_date(
                             trade.get("tradeDate")
                         ),
+                        "order_time": self._parse_flexquery_date(
+                            trade.get("orderTime")
+                        ),
                         "currency": trade.get("currency", "USD"),
                         "exchange": trade.get("exchange", ""),
-                        "contract_type": trade.get("assetCategory", "STK"),
+                        "asset_category": trade.get(
+                            "assetCategory", "STK"
+                        ),
+                        "order_id": trade.get("ibOrderID", ""),
+                        "settlement_date": self._parse_flexquery_date(
+                            trade.get("settleDateTarget")
+                        ),
+                        "realized_pnl": float(
+                            trade.get("fifoPnlRealized", 0) or 0
+                        ),
+                        "is_opening": open_close == "O",
+                        "notes": trade.get("notes", ""),
+                        "conid": trade.get("conid", ""),
+                        "multiplier": float(
+                            trade.get("multiplier", 1) or 1
+                        ),
+                        "level_of_detail": level or "EXECUTION",
                     }
 
-                    trades.append(trade_data)
+                    if level == "CLOSED_LOT":
+                        open_dt = self._parse_flexquery_date(
+                            trade.get("openDateTime")
+                        )
+                        holding_dt = self._parse_flexquery_date(
+                            trade.get("holdingPeriodDateTime")
+                        )
+                        when_realized = self._parse_flexquery_date(
+                            trade.get("whenRealized")
+                        )
+                        close_dt = base["execution_time"] or when_realized
+                        lot_open = open_dt or holding_dt
+                        holding_days = (
+                            (close_dt - lot_open).days
+                            if close_dt and lot_open
+                            else None
+                        )
+                        base.update(
+                            {
+                                "cost_basis": float(
+                                    trade.get("costBasis", 0) or 0
+                                ),
+                                "open_date": lot_open,
+                                "close_date": close_dt,
+                                "when_realized": when_realized,
+                                "holding_days": holding_days,
+                                "is_long_term": holding_days > 365
+                                if holding_days is not None
+                                else None,
+                                "orig_trade_price": float(
+                                    trade.get("origTradePrice", 0) or 0
+                                ),
+                                "orig_trade_id": trade.get(
+                                    "origTradeID", ""
+                                ),
+                            }
+                        )
+                        closed_lots.append(base)
+
+                    elif level == "WASH_SALE":
+                        base.update(
+                            {
+                                "cost_basis": float(
+                                    trade.get("costBasis", 0) or 0
+                                ),
+                                "wash_sale_loss": float(
+                                    trade.get("fifoPnlRealized", 0) or 0
+                                ),
+                            }
+                        )
+                        wash_sales.append(base)
+                    else:
+                        trades.append(base)
 
                 except (ValueError, TypeError) as e:
                     logger.error(f"Error parsing trade: {e}")
                     continue
 
-            logger.info(f"✅ Parsed {len(trades)} historical trades from FlexQuery")
-            return trades
+            logger.info(
+                f"✅ Parsed {len(trades)} trades, {len(closed_lots)} closed lots, "
+                f"{len(wash_sales)} wash sales from FlexQuery"
+            )
+            return {
+                "trades": trades,
+                "closed_lots": closed_lots,
+                "wash_sales": wash_sales,
+            }
 
         except ET.ParseError as e:
             logger.error(f"XML parsing error in trades: {e}")
-            return []
+            return empty
         except Exception as e:
             logger.error(f"Error parsing trades from XML: {e}")
-            return []
+            return empty
 
     def _parse_flexquery_date(self, date_str: str) -> Optional[datetime]:
         """Parse FlexQuery date string to datetime object."""

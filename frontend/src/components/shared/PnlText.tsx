@@ -6,6 +6,7 @@ export interface PnlTextProps {
   value: number;
   format?: 'currency' | 'percent';
   fontSize?: string;
+  fontWeight?: string;
   currency?: string;
   maximumFractionDigits?: number;
 }
@@ -15,6 +16,7 @@ const PnlText: React.FC<PnlTextProps> = ({
   value,
   format = 'currency',
   fontSize = '12px',
+  fontWeight,
   currency = 'USD',
   maximumFractionDigits = 0,
 }) => {
@@ -36,6 +38,7 @@ const PnlText: React.FC<PnlTextProps> = ({
   return (
     <Text
       fontSize={fontSize}
+      fontWeight={fontWeight}
       color={color}
       as="span"
       display="inline-flex"

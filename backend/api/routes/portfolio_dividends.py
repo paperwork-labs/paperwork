@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get("/dividends", response_model=List[Dict[str, Any]])
+@router.get("/dividends", response_model=Dict[str, Any])
 async def get_dividends(
     days: int = Query(365, ge=1, le=3650),
     user_id: int | None = Query(None, description="User ID (optional)"),
@@ -66,7 +66,7 @@ async def get_dividends(
                     "account_id": d.account_id,
                 }
             )
-        return results
+        return {"status": "success", "data": {"dividends": results}}
     except Exception as e:
         logger.error(f"❌ Dividends endpoint error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

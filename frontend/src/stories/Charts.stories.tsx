@@ -76,14 +76,16 @@ export const SymbolChartWithMarkers_Example = () => {
     const base = 100 + i * 0.4;
     return { time: t, open: base - 0.6, high: base + 1.2, low: base - 1.1, close: base + (i % 2 ? 0.7 : -0.3) };
   });
-  const buys = [{ time: bars[10].time, price: 102.3, type: 'BUY' as const }];
-  const sells = [{ time: bars[40].time, price: 114.1, type: 'SELL' as const }];
-  const dividends = [{ time: bars[25].time, amount: 0.22 }];
+  const events = [
+    { time: bars[10].time, price: 102.3, type: 'BUY' as const, label: 'Buy 10' },
+    { time: bars[40].time, price: 114.1, type: 'SELL' as const, label: 'Sell 5' },
+    { time: bars[25].time, price: 106, type: 'DIVIDEND' as const, label: 'Div $0.22', amount: 0.22 },
+  ];
 
   return (
     <Box p={6}>
       <Box borderWidth="1px" borderColor="border.subtle" borderRadius="xl" bg="bg.card" p={3}>
-        <SymbolChartWithMarkers bars={bars as any} buys={buys as any} sells={sells as any} dividends={dividends as any} height={420} />
+        <SymbolChartWithMarkers bars={bars} events={events} height={420} />
       </Box>
       <Text mt={3} fontSize="xs" color="fg.muted">
         Note: this loads LightweightCharts from a CDN at runtime.

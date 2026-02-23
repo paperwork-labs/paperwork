@@ -110,6 +110,8 @@ export interface Column<T = any> {
   filterType?: FilterType;
   filterOptions?: Array<{ label: string; value: string }>;
   filterable?: boolean;
+  /** When true the column is available for sorting/filtering but hidden from the table by default. */
+  hidden?: boolean;
 }
 
 interface SortableTableProps<T = any> {
@@ -157,6 +159,8 @@ function SortableTable<T = any>({
     rules: initialFilters?.rules || [],
   });
   const [filtersOpen, setFiltersOpen] = useState(initialFiltersOpen);
+
+  const visibleColumns = useMemo(() => columns.filter((c) => !c.hidden), [columns]);
 
   const borderColor = 'border.subtle';
   const hoverBg = 'bg.panel';
@@ -704,7 +708,7 @@ function SortableTable<T = any>({
             {showHeader && (
               <TableHeader>
                 <TableRow>
-                  {columns.map((column) => (
+                  {visibleColumns.map((column) => (
                     <TableColumnHeader
                       key={column.key}
                       onClick={() => column.sortable && handleSort(column.key)}
@@ -745,7 +749,7 @@ function SortableTable<T = any>({
                       : undefined
                   }
                 >
-                  {columns.map((column) => {
+                  {visibleColumns.map((column) => {
                     const value = column.accessor(item);
                     const renderedValue = column.render ? column.render(value, item) : value;
 

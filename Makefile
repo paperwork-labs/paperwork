@@ -2,7 +2,8 @@
 	test-up test test-frontend test-all test-down \
 	backend-shell frontend-shell task-run \
 	migrate-create migrate-up migrate-down migrate-stamp-head \
-	frontend-install frontend-lint frontend-typecheck frontend-test frontend-check
+	frontend-install frontend-lint frontend-typecheck frontend-test frontend-check \
+	ib-up ib-down ib-logs
 
 DOCKER ?= docker
 PROJECT ?= axiomfolio
@@ -13,6 +14,7 @@ ENV_TEST ?= infra/env.test
 
 COMPOSE_DEV = $(DOCKER) compose --project-name $(PROJECT) --env-file $(ENV_DEV) -f infra/compose.dev.yaml
 COMPOSE_DEV_UI = $(DOCKER) compose --project-name $(PROJECT) --env-file $(ENV_DEV) -f infra/compose.dev.yaml --profile ui
+COMPOSE_DEV_IBKR = $(DOCKER) compose --project-name $(PROJECT) --env-file $(ENV_DEV) -f infra/compose.dev.yaml --profile ibkr
 COMPOSE_TEST = $(DOCKER) compose --project-name $(PROJECT_TEST) --env-file $(ENV_TEST) -f infra/compose.test.yaml
 
 up:
@@ -120,4 +122,13 @@ task-run:
 	@if [ -z "$(TASK)" ]; then echo "Usage: make task-run TASK=module.task"; exit 2; fi
 	$(COMPOSE_DEV) exec backend python -m backend.scripts.run_task "$(TASK)" --args '$(TASK_ARGS)' --kwargs '$(TASK_KWARGS)'
 
+# IB Gateway (requires IBKR_USERNAME and IBKR_PASSWORD in env.dev)
+ib-up:
+	$(COMPOSE_DEV_IBKR) up -d ib-gateway
+
+ib-down:
+	$(COMPOSE_DEV_IBKR) stop ib-gateway
+
+ib-logs:
+	$(COMPOSE_DEV_IBKR) logs --tail=200 -f ib-gateway
 

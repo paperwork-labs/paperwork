@@ -5,15 +5,20 @@ Provides comprehensive portfolio analysis, performance metrics, and insights.
 """
 
 import logging
-from datetime import datetime
+import math
+from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 try:
     from backend.models.position import Position
     from backend.models.tax_lot import TaxLot
     from backend.models.transaction import Transaction
+    from backend.models.portfolio import PortfolioSnapshot
+    from backend.models.broker_account import BrokerAccount
+    from backend.models.market_data import MarketSnapshot
     from backend.services.clients.ibkr_client import ibkr_client
     from backend.services.clients.ibkr_flexquery_client import flexquery_client
 except ImportError:
@@ -353,6 +358,157 @@ class PortfolioAnalyticsService:
             "top_detractors": [{"symbol": s, "pnl": p} for s, p in top_detractors],
             "total_securities": len(by_security),
         }
+
+
+    def compute_risk_metrics(self, db: Session, user_id: int = 1) -> Dict[str, Any]:
+        """Compute real risk metrics from DB positions and snapshot history."""
+        acct_ids = [
+            a.id for a in db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user_id).all()
+        ]
+        if not acct_ids:
+            return {"beta": 1.0, "volatility": 0, "sharpe_ratio": 0, "hhi": 0, "top5_weight": 0, "concentration_label": "N/A"}
+
+        positions = db.query(Position).filter(
+            Position.broker_account_id.in_(acct_ids), Position.quantity != 0
+        ).all()
+
+        total_mv = sum(float(p.market_value or 0) for p in positions)
+        if total_mv <= 0:
+            return {"beta": 1.0, "volatility": 0, "sharpe_ratio": 0, "hhi": 0, "top5_weight": 0, "concentration_label": "N/A"}
+
+        weights = [(float(p.market_value or 0) / total_mv) for p in positions]
+        weights_sorted = sorted(weights, reverse=True)
+
+        hhi = sum(w * w for w in weights) * 10000
+        top5_weight = round(sum(weights_sorted[:5]) * 100, 1)
+        conc_label = "Concentrated" if hhi > 2500 else "Moderate" if hhi > 1500 else "Diversified"
+
+        snapshots = (
+            db.query(PortfolioSnapshot)
+            .filter(PortfolioSnapshot.user_id == user_id)
+            .order_by(PortfolioSnapshot.snapshot_date.desc())
+            .limit(252)
+            .all()
+        )
+        snapshots = list(reversed(snapshots))
+
+        symbols = [p.symbol for p in positions if p.symbol]
+        snapshot_map: Dict[str, Any] = {}
+        if symbols:
+            snaps = (
+                db.query(MarketSnapshot)
+                .filter(MarketSnapshot.symbol.in_(symbols), MarketSnapshot.is_valid == True)
+                .all()
+            )
+            snapshot_map = {s.symbol: s for s in snaps}
+
+        weighted_beta = 0.0
+        beta_coverage = 0.0
+        for p, w in zip(positions, weights):
+            snap = snapshot_map.get(p.symbol)
+            if snap and snap.beta is not None:
+                weighted_beta += w * float(snap.beta)
+                beta_coverage += w
+        beta = round(weighted_beta / beta_coverage, 2) if beta_coverage > 0.5 else 1.0
+
+        volatility = 0.0
+        sharpe = 0.0
+
+        if len(snapshots) >= 20:
+            values = [float(s.total_value or 0) for s in snapshots if s.total_value]
+            if len(values) >= 20:
+                returns = [(values[i] - values[i - 1]) / values[i - 1] for i in range(1, len(values)) if values[i - 1] > 0]
+                if len(returns) >= 10:
+                    mean_r = sum(returns) / len(returns)
+                    var_r = sum((r - mean_r) ** 2 for r in returns) / (len(returns) - 1)
+                    daily_vol = math.sqrt(var_r) if var_r > 0 else 0
+                    volatility = round(daily_vol * math.sqrt(252) * 100, 1)
+                    annualized_ret = mean_r * 252
+                    risk_free = 0.045
+                    sharpe = round((annualized_ret - risk_free) / (daily_vol * math.sqrt(252)) if daily_vol > 0 else 0, 2)
+
+        return {
+            "beta": round(beta, 2),
+            "volatility": volatility,
+            "sharpe_ratio": sharpe,
+            "hhi": round(hhi, 0),
+            "top5_weight": top5_weight,
+            "concentration_label": conc_label,
+        }
+
+    def compute_twr(self, db: Session, user_id: int = 1, period_days: int = 365) -> Dict[str, Any]:
+        """Compute Time-Weighted Return from PortfolioSnapshot history."""
+        cutoff = datetime.utcnow() - timedelta(days=period_days)
+        snapshots = (
+            db.query(PortfolioSnapshot)
+            .filter(PortfolioSnapshot.user_id == user_id, PortfolioSnapshot.snapshot_date >= cutoff.date())
+            .order_by(PortfolioSnapshot.snapshot_date)
+            .all()
+        )
+
+        if len(snapshots) < 2:
+            return {"twr": 0, "period_days": period_days, "data_points": len(snapshots)}
+
+        twr = 1.0
+        values = [float(s.total_value or 0) for s in snapshots if s.total_value]
+        for i in range(1, len(values)):
+            if values[i - 1] > 0:
+                sub_return = (values[i] - values[i - 1]) / values[i - 1]
+                twr *= (1 + sub_return)
+
+        return {
+            "twr": round((twr - 1) * 100, 2),
+            "period_days": period_days,
+            "data_points": len(values),
+        }
+
+    def compute_sector_attribution(self, db: Session, user_id: int = 1) -> List[Dict[str, Any]]:
+        """Compute performance attribution by sector/industry."""
+        acct_ids = [
+            a.id for a in db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user_id).all()
+        ]
+        if not acct_ids:
+            return []
+
+        positions = db.query(Position).filter(
+            Position.broker_account_id.in_(acct_ids), Position.quantity != 0
+        ).all()
+
+        total_mv = sum(float(p.market_value or 0) for p in positions)
+        if total_mv <= 0:
+            return []
+
+        symbols = [p.symbol for p in positions if p.symbol]
+        snap_map: Dict[str, Any] = {}
+        if symbols:
+            snaps = (
+                db.query(MarketSnapshot)
+                .filter(MarketSnapshot.symbol.in_(symbols), MarketSnapshot.is_valid == True)
+                .all()
+            )
+            snap_map = {s.symbol: s for s in snaps}
+
+        by_sector: Dict[str, Dict[str, float]] = {}
+        for p in positions:
+            pos_sector = getattr(p, "sector", None)
+            snap = snap_map.get(p.symbol)
+            sector = pos_sector or (snap.sector if snap and snap.sector else None) or "Other"
+            s = by_sector.setdefault(sector, {"value": 0, "pnl": 0, "weight": 0})
+            mv = float(p.market_value or 0)
+            s["value"] += mv
+            s["pnl"] += float(p.unrealized_pnl or 0)
+            s["weight"] += mv / total_mv
+
+        result = [
+            {
+                "sector": sector,
+                "weight_pct": round(data["weight"] * 100, 1),
+                "market_value": round(data["value"], 2),
+                "contribution_pnl": round(data["pnl"], 2),
+            }
+            for sector, data in sorted(by_sector.items(), key=lambda x: -x[1]["value"])
+        ]
+        return result
 
 
 # Global service instance

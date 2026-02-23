@@ -37,7 +37,7 @@ const DATE_RANGES = [
   { key: 'all', label: 'All' },
 ] as const;
 
-const CATEGORIES = ['TRADE', 'DIVIDEND', 'COMMISSION', 'FEE', 'TRANSFER', ''] as const;
+const CATEGORIES = ['TRADE', 'DIVIDEND', 'COMMISSION', 'FEE', 'TRANSFER', 'INTEREST', 'DEPOSIT', 'WITHDRAWAL', 'TAX', 'OTHER', ''] as const;
 const SIDES = ['BUY', 'SELL', ''] as const;
 
 const PortfolioTransactions: React.FC = () => {
@@ -96,6 +96,14 @@ const PortfolioTransactions: React.FC = () => {
     (activityQuery.data as { data?: { total?: number } } | undefined)?.data?.total ??
     activity.length;
 
+  const accountLookup = useMemo(() => {
+    const map: Record<number, string> = {};
+    for (const a of rawAccounts as Array<{ id?: number; broker?: string; account_number?: string }>) {
+      if (a.id) map[a.id] = a.broker ?? a.account_number ?? String(a.id);
+    }
+    return map;
+  }, [rawAccounts]);
+
   const columns: Column<ActivityRow>[] = useMemo(
     () => [
       {
@@ -104,8 +112,17 @@ const PortfolioTransactions: React.FC = () => {
         accessor: (r) => r.ts,
         sortable: true,
         sortType: 'string',
-        render: (v) => <Text fontSize="sm">{typeof v === 'string' ? v.slice(0, 10) : '—'}</Text>,
-        width: '100px',
+        render: (v) => <Text fontSize="sm">{typeof v === 'string' ? v.slice(0, 16).replace('T', ' ') : '—'}</Text>,
+        width: '130px',
+      },
+      {
+        key: 'account',
+        header: 'Account',
+        accessor: (r) => r.account_id ?? 0,
+        sortable: true,
+        sortType: 'number',
+        render: (v) => <Text fontSize="xs" color="fg.muted">{accountLookup[Number(v)] ?? '—'}</Text>,
+        width: '90px',
       },
       {
         key: 'symbol',
@@ -182,7 +199,7 @@ const PortfolioTransactions: React.FC = () => {
         width: '100px',
       },
     ],
-    [currency]
+    [currency, accountLookup]
   );
 
   return (

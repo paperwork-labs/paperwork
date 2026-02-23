@@ -288,6 +288,183 @@ class IBKRClient:
         except Exception:
             return []
 
+    def is_connected(self) -> bool:
+        """Check if IB Gateway is currently connected."""
+        return bool(self.connected and self.ib and self.ib.isConnected())
+
+    async def get_option_greeks(
+        self, contracts: list, timeout: float = 10.0
+    ) -> List[Dict]:
+        """Request market data for option contracts and extract Greeks.
+
+        Each contract should be an ib_insync Option or similar Contract object.
+        Returns a list of dicts with: symbol, strike, expiry, right, delta,
+        gamma, theta, vega, implied_volatility, last_price, bid, ask.
+        """
+        if not IBKR_AVAILABLE or not await self._ensure_connected():
+            return []
+
+        results = []
+        # Batch in groups of 50 to respect IBKR rate limits
+        batch_size = 50
+        for i in range(0, len(contracts), batch_size):
+            batch = contracts[i : i + batch_size]
+            tickers = []
+            for contract in batch:
+                try:
+                    self.ib.qualifyContracts(contract)
+                    ticker = self.ib.reqMktData(
+                        contract, genericTickList="106,100", snapshot=True
+                    )
+                    tickers.append((contract, ticker))
+                except Exception as e:
+                    logger.debug("Greeks request failed for %s: %s", contract, e)
+
+            if tickers:
+                await asyncio.sleep(min(timeout, 5))
+
+            for contract, ticker in tickers:
+                try:
+                    greeks = {}
+                    if hasattr(ticker, "modelGreeks") and ticker.modelGreeks:
+                        mg = ticker.modelGreeks
+                        greeks = {
+                            "delta": getattr(mg, "delta", None),
+                            "gamma": getattr(mg, "gamma", None),
+                            "theta": getattr(mg, "theta", None),
+                            "vega": getattr(mg, "vega", None),
+                            "implied_volatility": getattr(mg, "impliedVol", None),
+                        }
+                    results.append(
+                        {
+                            "symbol": contract.symbol,
+                            "strike": contract.strike,
+                            "expiry": contract.lastTradeDateOrContractMonth,
+                            "right": contract.right,
+                            "last_price": getattr(ticker, "last", None),
+                            "bid": getattr(ticker, "bid", None),
+                            "ask": getattr(ticker, "ask", None),
+                            **greeks,
+                        }
+                    )
+                    self.ib.cancelMktData(contract)
+                except Exception as e:
+                    logger.debug("Greeks parse failed: %s", e)
+
+        logger.info("Retrieved Greeks for %d/%d contracts", len(results), len(contracts))
+        return results
+
+    async def get_option_chain(
+        self, symbol: str, exchange: str = "SMART"
+    ) -> Dict:
+        """Fetch available option chain (expirations and strikes) for a symbol.
+
+        Returns: { expirations: [...], chains: { "2026-03-21": { calls: [...], puts: [...] } } }
+        """
+        if not IBKR_AVAILABLE or not await self._ensure_connected():
+            return {"expirations": [], "chains": {}}
+
+        try:
+            stock = Stock(symbol, exchange, "USD")
+            self.ib.qualifyContracts(stock)
+            chains = self.ib.reqSecDefOptParams(
+                stock.symbol, "", stock.secType, stock.conId
+            )
+
+            if not chains:
+                return {"expirations": [], "chains": {}}
+
+            # Use the SMART exchange chain or fallback to first
+            chain = next(
+                (c for c in chains if c.exchange == "SMART"), chains[0]
+            )
+
+            expirations = sorted(chain.expirations)
+            strikes = sorted(chain.strikes)
+
+            result: Dict = {"expirations": expirations, "chains": {}}
+
+            # For each expiration, build Option contracts and fetch Greeks
+            for exp in expirations[:5]:  # Limit to 5 nearest expirations
+                calls = []
+                puts = []
+                contracts = []
+
+                for strike in strikes:
+                    call = Option(symbol, exp, strike, "C", exchange)
+                    put = Option(symbol, exp, strike, "P", exchange)
+                    contracts.extend([call, put])
+
+                if contracts:
+                    greeks_data = await self.get_option_greeks(contracts)
+                    for gd in greeks_data:
+                        entry = {
+                            "strike": gd["strike"],
+                            "last": gd.get("last_price"),
+                            "bid": gd.get("bid"),
+                            "ask": gd.get("ask"),
+                            "iv": gd.get("implied_volatility"),
+                            "delta": gd.get("delta"),
+                            "gamma": gd.get("gamma"),
+                            "theta": gd.get("theta"),
+                            "vega": gd.get("vega"),
+                        }
+                        if gd["right"] == "C":
+                            calls.append(entry)
+                        else:
+                            puts.append(entry)
+
+                result["chains"][exp] = {"calls": calls, "puts": puts}
+
+            return result
+
+        except Exception as e:
+            logger.error("Option chain fetch failed for %s: %s", symbol, e)
+            return {"expirations": [], "chains": {}}
+
+    async def get_realtime_option_data(self, contract) -> Dict:
+        """Get a snapshot of real-time option data for a single contract."""
+        if not IBKR_AVAILABLE or not await self._ensure_connected():
+            return {}
+
+        try:
+            self.ib.qualifyContracts(contract)
+            ticker = self.ib.reqMktData(
+                contract, genericTickList="106,100", snapshot=True
+            )
+            await asyncio.sleep(3)
+
+            result = {
+                "symbol": contract.symbol,
+                "strike": contract.strike,
+                "expiry": contract.lastTradeDateOrContractMonth,
+                "right": contract.right,
+                "last": getattr(ticker, "last", None),
+                "bid": getattr(ticker, "bid", None),
+                "ask": getattr(ticker, "ask", None),
+                "volume": getattr(ticker, "volume", None),
+                "open_interest": getattr(ticker, "openInterest", None),
+            }
+
+            if hasattr(ticker, "modelGreeks") and ticker.modelGreeks:
+                mg = ticker.modelGreeks
+                result.update(
+                    {
+                        "delta": getattr(mg, "delta", None),
+                        "gamma": getattr(mg, "gamma", None),
+                        "theta": getattr(mg, "theta", None),
+                        "vega": getattr(mg, "vega", None),
+                        "implied_volatility": getattr(mg, "impliedVol", None),
+                    }
+                )
+
+            self.ib.cancelMktData(contract)
+            return result
+
+        except Exception as e:
+            logger.error("Realtime option data failed: %s", e)
+            return {}
+
 
 # Global singleton instance
 ibkr_client = IBKRClient()

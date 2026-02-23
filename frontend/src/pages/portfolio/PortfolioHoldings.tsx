@@ -60,6 +60,18 @@ const HOLDINGS_FILTER_PRESETS: Array<{ label: string; filters: FilterGroup }> = 
       ],
     },
   },
+  {
+    label: 'High RS (>80)',
+    filters: { conjunction: 'AND', rules: [{ id: 'hrs', columnKey: 'rs_mansfield_pct', operator: 'gt', valueSource: 'literal', value: '80' }] },
+  },
+  {
+    label: 'Oversold (RSI<30)',
+    filters: { conjunction: 'AND', rules: [{ id: 'os', columnKey: 'rsi', operator: 'lt', valueSource: 'literal', value: '30' }] },
+  },
+  {
+    label: 'Concentrated (>10%)',
+    filters: { conjunction: 'AND', rules: [{ id: 'conc', columnKey: 'weight_pct', operator: 'gt', valueSource: 'literal', value: '10' }] },
+  },
 ];
 
 const PortfolioHoldings: React.FC = () => {
@@ -213,6 +225,65 @@ const PortfolioHoldings: React.FC = () => {
         width: '80px',
       },
       {
+        key: 'cost_basis',
+        header: 'Cost Basis',
+        accessor: (p) => Number(p.cost_basis ?? (Number(p.average_cost ?? 0) * Number((p as any).shares ?? 0))),
+        sortable: true,
+        sortType: 'number',
+        isNumeric: true,
+        render: (v) => <Text fontSize="sm" color="fg.muted">{formatMoney(Number(v), currency, { maximumFractionDigits: 0 })}</Text>,
+        width: '110px',
+        hidden: true,
+      },
+      {
+        key: 'perf_5d',
+        header: '5D %',
+        accessor: (p) => Number((p as any).perf_5d ?? 0),
+        sortable: true,
+        sortType: 'number',
+        isNumeric: true,
+        render: (v) => <PnlText value={Number(v)} format="percent" fontSize="sm" />,
+        width: '80px',
+        hidden: true,
+      },
+      {
+        key: 'perf_20d',
+        header: '20D %',
+        accessor: (p) => Number((p as any).perf_20d ?? 0),
+        sortable: true,
+        sortType: 'number',
+        isNumeric: true,
+        render: (v) => <PnlText value={Number(v)} format="percent" fontSize="sm" />,
+        width: '80px',
+        hidden: true,
+      },
+      {
+        key: 'rsi',
+        header: 'RSI',
+        accessor: (p) => Number((p as any).rsi ?? 0),
+        sortable: true,
+        sortType: 'number',
+        isNumeric: true,
+        render: (v) => {
+          const n = Number(v);
+          const color = n > 70 ? 'status.danger' : n < 30 ? 'status.success' : 'fg.muted';
+          return <Text fontSize="sm" color={color}>{n ? n.toFixed(0) : '—'}</Text>;
+        },
+        width: '65px',
+        hidden: true,
+      },
+      {
+        key: 'atr_14',
+        header: 'ATR',
+        accessor: (p) => Number((p as any).atr_14 ?? 0),
+        sortable: true,
+        sortType: 'number',
+        isNumeric: true,
+        render: (v) => <Text fontSize="sm" color="fg.muted">{Number(v) ? Number(v).toFixed(2) : '—'}</Text>,
+        width: '75px',
+        hidden: true,
+      },
+      {
         key: 'sector',
         header: 'Sector',
         accessor: (p) => (p.sector as string) ?? '—',
@@ -220,6 +291,16 @@ const PortfolioHoldings: React.FC = () => {
         sortType: 'string',
         render: (v) => <Text fontSize="xs" color="fg.muted">{String(v || '—')}</Text>,
         width: '100px',
+      },
+      {
+        key: 'industry',
+        header: 'Industry',
+        accessor: (p) => ((p as any).industry as string) ?? '—',
+        sortable: true,
+        sortType: 'string',
+        render: (v) => <Text fontSize="xs" color="fg.muted">{String(v || '—')}</Text>,
+        width: '120px',
+        hidden: true,
       },
     ],
     [currency, totalValue]
