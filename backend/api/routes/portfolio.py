@@ -35,6 +35,50 @@ class FlexSyncRequest(BaseModel):
 # =============================================================================
 
 
+@router.get("/symbols")
+async def get_portfolio_symbols(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Return a map of held symbols with basic position data.
+    Used by Brain pages to highlight portfolio holdings."""
+    from backend.models.position import Position
+
+    account_ids = [
+        r[0]
+        for r in db.query(BrokerAccount.id)
+        .filter(BrokerAccount.user_id == user.id)
+        .all()
+    ]
+
+    if not account_ids:
+        return {"data": {}}
+
+    positions = (
+        db.query(Position)
+        .filter(Position.account_id.in_(account_ids), Position.quantity != 0)
+        .all()
+    )
+
+    result: Dict[str, Any] = {}
+    for p in positions:
+        sym = p.symbol
+        if sym not in result:
+            result[sym] = {
+                "symbol": sym,
+                "quantity": 0,
+                "cost_basis": 0,
+                "market_value": 0,
+                "unrealized_pnl": 0,
+            }
+        result[sym]["quantity"] += float(p.quantity or 0)
+        result[sym]["cost_basis"] += float(p.total_cost_basis or 0)
+        result[sym]["market_value"] += float(p.market_value or 0)
+        result[sym]["unrealized_pnl"] += float(p.unrealized_pnl or 0)
+
+    return {"data": result}
+
+
 @router.get("/tax-lots")
 async def get_tax_lots(
     symbol: Optional[str] = Query(None, description="Filter by symbol"),

@@ -64,5 +64,65 @@ class AccountCredentialsService:
             )
         return {"flex_token": str(flex_token).strip(), "query_id": str(query_id).strip()}
 
+    @staticmethod
+    def get_ibkr_gateway_credentials(account_id: int, db: Session) -> Dict[str, Any]:
+        """
+        Get IB Gateway connection settings stored alongside FlexQuery creds.
+
+        Returns dict with optional keys: gateway_username, gateway_password,
+        gateway_trading_mode, gateway_host, gateway_port, gateway_client_id.
+        Returns empty dict if no gateway-specific credentials are stored.
+        """
+        try:
+            payload = AccountCredentialsService.get_decrypted(account_id, db)
+        except CredentialsNotFoundError:
+            return {}
+        return {
+            k: v for k, v in payload.items()
+            if k.startswith("gateway_") and v is not None
+        }
+
+    @staticmethod
+    def save_ibkr_gateway_credentials(
+        account_id: int, gateway_settings: Dict[str, Any], db: Session
+    ) -> None:
+        """
+        Merge gateway settings into the existing IBKR credential payload.
+        Creates a new AccountCredentials row if none exists.
+        """
+        from backend.models.broker_account import BrokerType
+
+        cred = (
+            db.query(AccountCredentials)
+            .filter(AccountCredentials.account_id == account_id)
+            .first()
+        )
+        if cred and cred.encrypted_credentials:
+            payload = credential_vault.decrypt_dict(cred.encrypted_credentials)
+        else:
+            payload = {}
+
+        for key in (
+            "gateway_username", "gateway_password", "gateway_trading_mode",
+            "gateway_host", "gateway_port", "gateway_client_id",
+        ):
+            if key in gateway_settings:
+                val = gateway_settings[key]
+                if val is not None and str(val).strip():
+                    payload[key] = val
+
+        enc = credential_vault.encrypt_dict(payload)
+        if cred:
+            cred.encrypted_credentials = enc
+        else:
+            cred = AccountCredentials(
+                account_id=account_id,
+                encrypted_credentials=enc,
+                provider=BrokerType.IBKR,
+                credential_type="ibkr_flex",
+            )
+            db.add(cred)
+        db.commit()
+
 
 account_credentials_service = AccountCredentialsService()

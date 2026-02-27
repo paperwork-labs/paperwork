@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 class JobTemplate:
     id: str
     display_name: str
-    group: str  # market_data | accounts | maintenance
+    group: str  # market_data | portfolio | maintenance
     task: str
     description: str
     default_cron: str  # standard 5-field cron
@@ -28,14 +28,34 @@ class JobTemplate:
 
 
 CATALOG: List[JobTemplate] = [
-    # ── Accounts ──────────────────────────────────────────────────
+    # ── Portfolio ──────────────────────────────────────────────────
     JobTemplate(
         id="ibkr-daily-flex-sync",
-        display_name="IBKR Flex Sync",
-        group="accounts",
+        display_name="IBKR Daily Sync",
+        group="portfolio",
         task="backend.tasks.account_sync.sync_all_ibkr_accounts",
-        description="Daily FlexQuery sync for all linked IBKR accounts",
+        description="Sync all enabled IBKR accounts daily via FlexQuery",
         default_cron="15 2 * * *",
+        default_tz="UTC",
+        queue="account_sync",
+    ),
+    JobTemplate(
+        id="schwab-daily-sync",
+        display_name="Schwab Daily Sync",
+        group="portfolio",
+        task="backend.tasks.account_sync.sync_all_schwab_accounts",
+        description="Sync all enabled Schwab accounts (positions, transactions, balances)",
+        default_cron="30 2 * * *",
+        default_tz="UTC",
+        queue="account_sync",
+    ),
+    JobTemplate(
+        id="stale-sync-recovery",
+        display_name="Stale Sync Recovery",
+        group="portfolio",
+        task="backend.tasks.account_sync.recover_stale_syncs",
+        description="Auto-reset accounts stuck in RUNNING state for >10 minutes",
+        default_cron="*/5 * * * *",
         default_tz="UTC",
         queue="account_sync",
     ),
@@ -85,15 +105,6 @@ CATALOG: List[JobTemplate] = [
         task="backend.tasks.market_data_tasks.record_daily_history",
         description="Archive today's market snapshot to immutable history",
         default_cron="20 3 * * *",
-        default_tz="UTC",
-    ),
-    JobTemplate(
-        id="admin_indicators_recompute_universe",
-        display_name="Indicator Recompute",
-        group="market_data",
-        task="backend.tasks.market_data_tasks.recompute_indicators_universe",
-        description="Recompute Weinstein stage, RS, and ATR indicators for all tracked symbols",
-        default_cron="35 3 * * *",
         default_tz="UTC",
     ),
     JobTemplate(

@@ -383,6 +383,7 @@ async def get_history(
     period: str = Query("1y", description="e.g., 1mo, 3mo, 6mo, 1y, 2y, 5y"),
     interval: str = Query("1d", description="1d, 4h, 1h, 5m"),
     user: User | None = Depends(get_optional_user),
+    db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """
     Daily/intraday OHLCV series for the symbol using MarketDataService policy.
@@ -390,8 +391,7 @@ async def get_history(
     """
     try:
         svc = MarketDataService()
-        # Pass max_bars=None so longer periods (e.g., 3y) are not trimmed to default 270
-        df = await svc.get_historical_data(symbol=symbol.upper(), period=period, interval=interval, max_bars=None)
+        df = await svc.get_historical_data(symbol=symbol.upper(), period=period, interval=interval, max_bars=None, db=db)
         if df is None or df.empty:
             raise HTTPException(status_code=404, detail="No historical data")
         # Expect newest->first index; convert to ascending by date
@@ -428,6 +428,132 @@ async def get_history(
         logger.error(f"❌ History error for {symbol}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@router.get("/prices/{symbol}/indicators")
+async def get_indicator_series(
+    symbol: str,
+    indicators: str | None = None,
+    period: str = "1y",
+    db: Session = Depends(get_db),
+):
+    """Read pre-computed indicator series from MarketSnapshotHistory.
+
+    Returns columnar JSON for efficient transfer. If history is sparse,
+    triggers a background backfill and sets backfill_requested=true.
+    """
+    period_days = {
+        "1mo": 35, "3mo": 100, "6mo": 200, "1y": 370,
+        "2y": 740, "3y": 1100, "5y": 1850, "max": 36500,
+    }
+    days = period_days.get(period, 370)
+    start_date = datetime.utcnow() - timedelta(days=days)
+
+    rows = (
+        db.query(MarketSnapshotHistory)
+        .filter(
+            MarketSnapshotHistory.symbol == symbol,
+            MarketSnapshotHistory.analysis_type == "technical_snapshot",
+            MarketSnapshotHistory.as_of_date >= start_date,
+        )
+        .order_by(MarketSnapshotHistory.as_of_date.asc())
+        .all()
+    )
+
+    all_indicator_cols = [
+        "current_price", "rsi", "sma_5", "sma_10", "sma_14", "sma_21", "sma_50",
+        "sma_100", "sma_150", "sma_200", "ema_8", "ema_10", "ema_21", "ema_200",
+        "atr_14", "atr_30", "atrp_14", "atrp_30", "macd", "macd_signal", "macd_histogram",
+        "adx", "plus_di", "minus_di", "bollinger_upper", "bollinger_lower", "bollinger_width",
+        "high_52w", "low_52w", "stoch_rsi", "volume_avg_20d",
+        "range_pos_20d", "range_pos_50d", "range_pos_52w",
+        "atrx_sma_21", "atrx_sma_50", "atrx_sma_100", "atrx_sma_150",
+        "pct_dist_ema8", "pct_dist_ema21", "pct_dist_ema200",
+        "atr_dist_ema8", "atr_dist_ema21", "atr_dist_ema200",
+        "ma_bucket", "stage_label", "stage_slope_pct", "stage_dist_pct", "rs_mansfield_pct",
+        "td_buy_setup", "td_sell_setup", "td_buy_complete", "td_sell_complete",
+        "perf_1d", "perf_3d", "perf_5d", "perf_20d", "perf_60d", "perf_120d", "perf_252d",
+    ]
+
+    if indicators:
+        requested = [c.strip() for c in indicators.split(",")]
+        selected_cols = [c for c in requested if c in all_indicator_cols]
+    else:
+        selected_cols = all_indicator_cols
+
+    dates: list[str | None] = []
+    series: dict[str, list] = {col: [] for col in selected_cols}
+
+    for row in rows:
+        d = row.as_of_date
+        dates.append(d.strftime("%Y-%m-%d") if d else None)
+        for col in selected_cols:
+            val = getattr(row, col, None)
+            if isinstance(val, float) and val != val:  # NaN check
+                val = None
+            series[col].append(val)
+
+    # Gap detection: trigger backfill if history is sparse relative to PriceData
+    expected_per_year = 252
+    expected_rows = int(days / 365.25 * expected_per_year) if days < 36500 else len(rows)
+    backfill_requested = False
+    price_data_pending = False
+
+    if len(rows) < expected_rows * 0.8 and expected_rows > 0:
+        bar_count = (
+            db.query(PriceData)
+            .filter(
+                PriceData.symbol == symbol,
+                PriceData.interval == "1d",
+                PriceData.date >= start_date,
+            )
+            .count()
+        )
+        if bar_count >= expected_rows * 0.7:
+            try:
+                from backend.tasks.market_data_tasks import backfill_snapshot_history_for_symbol
+                backfill_snapshot_history_for_symbol.delay(
+                    symbol=symbol,
+                    start_date=start_date.strftime("%Y-%m-%d"),
+                )
+                backfill_requested = True
+            except Exception:
+                pass
+        else:
+            price_data_pending = True
+
+    # Append today's row from MarketSnapshot if history is stale
+    if dates and rows:
+        latest_hist_date = rows[-1].as_of_date
+        today = datetime.utcnow().date()
+        if hasattr(latest_hist_date, "date"):
+            latest_hist_date = latest_hist_date.date()
+        if latest_hist_date < today:
+            snapshot = (
+                db.query(MarketSnapshot)
+                .filter(
+                    MarketSnapshot.symbol == symbol,
+                    MarketSnapshot.analysis_type == "technical_snapshot",
+                )
+                .order_by(MarketSnapshot.analysis_timestamp.desc())
+                .first()
+            )
+            if snapshot:
+                dates.append(today.strftime("%Y-%m-%d"))
+                for col in selected_cols:
+                    val = getattr(snapshot, col, None)
+                    if isinstance(val, float) and val != val:
+                        val = None
+                    series[col].append(val)
+
+    return {
+        "symbol": symbol,
+        "rows": len(dates),
+        "backfill_requested": backfill_requested,
+        "price_data_pending": price_data_pending,
+        "series": {"dates": dates, **series},
+    }
+
+
 # =============================================================================
 # TECHNICAL SNAPSHOTS (MarketSnapshot)
 # =============================================================================
@@ -450,7 +576,7 @@ async def get_snapshot(
         .first()
     )
     if not row:
-        raise HTTPException(status_code=404, detail="No snapshot found")
+        return {"symbol": symbol.upper(), "snapshot": None}
     # Keep response stable and human-friendly by ordering key columns first.
     preferred = _snapshot_preferred_columns("single")
     col_names = [c.name for c in row.__table__.columns]

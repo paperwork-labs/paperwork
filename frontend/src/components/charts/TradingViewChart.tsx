@@ -14,7 +14,7 @@ import {
   TooltipPositioner,
   TooltipContent,
 } from '@chakra-ui/react';
-import { FiExternalLink, FiX } from 'react-icons/fi';
+import { FiX } from 'react-icons/fi';
 import { useColorMode } from '../../theme/colorMode';
 
 interface TradingViewChartProps {
@@ -157,11 +157,6 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
     };
   }, [symbol, height, showHeader, interval, theme, style, hideSymbolSearch, autosize, colorMode, activeStudies]);
 
-  const openInTradingView = useCallback(() => {
-    const url = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(symbol)}`;
-    window.open(url, '_blank', 'width=1200,height=800');
-  }, [symbol]);
-
   return (
     <CardRoot
       bg="bg.card"
@@ -200,17 +195,6 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
 
             {showControls ? (
               <HStack gap={2}>
-                <TooltipRoot>
-                  <TooltipTrigger asChild>
-                    <IconButton aria-label="Open full TradingView with your saved indicators and Pine Scripts" size="sm" variant="ghost" onClick={openInTradingView}>
-                      <FiExternalLink />
-                    </IconButton>
-                  </TooltipTrigger>
-                  <TooltipPositioner>
-                    <TooltipContent>Open full TradingView with your saved indicators and Pine Scripts</TooltipContent>
-                  </TooltipPositioner>
-                </TooltipRoot>
-
                 {onClose ? (
                   <TooltipRoot>
                     <TooltipTrigger asChild>

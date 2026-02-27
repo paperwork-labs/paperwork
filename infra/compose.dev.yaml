@@ -194,21 +194,21 @@ services:
       - ui
 
   ib-gateway:
-    image: ghcr.io/gnzsnz/ib-gateway:stable
+    image: ghcr.io/extrange/ibkr:stable
     container_name: axiomfolio-ib-gateway
     env_file:
       - ./env.dev
     environment:
-      TWS_USERID: ${IBKR_USERNAME:-}
-      TWS_PASSWORD: ${IBKR_PASSWORD:-}
-      TRADING_MODE: ${IBKR_TRADING_MODE:-paper}
-      TWS_ACCEPT_INCOMING: "accept"
-      READ_ONLY_API: "yes"
-    # VNC (5900) is dev-only; do not expose in production. Add VNC auth via env if needed.
+      USERNAME: ${IBKR_USERNAME:-}
+      PASSWORD: ${IBKR_PASSWORD:-}
+      GATEWAY_OR_TWS: gateway
+      IBC_TradingMode: ${IBKR_TRADING_MODE:-paper}
+      IBC_ReadOnlyApi: "yes"
+    ulimits:
+      nofile: 10000
     ports:
-      - "4001:4001"
-      - "4002:4002"
-      - "5900:5900"
+      - "6080:6080"
+      - "8888:8888"
     networks:
       - axiomfolio_network
     restart: unless-stopped

@@ -10,15 +10,7 @@ import {
   VStack,
   Badge,
   Collapsible,
-  SimpleGrid,
   Input,
-  TableScrollArea,
-  TableRoot,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableColumnHeader,
-  TableCell,
 } from '@chakra-ui/react';
 import { FiRefreshCw, FiChevronDown, FiChevronRight, FiWifi, FiWifiOff, FiGrid, FiList } from 'react-icons/fi';
 import { useQuery } from 'react-query';
@@ -33,41 +25,17 @@ import type { Column, FilterGroup } from '../../components/SortableTable';
 import { useOptions, usePortfolioSync, usePortfolioAccounts } from '../../hooks/usePortfolio';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
 import { useAccountContext } from '../../context/AccountContext';
+import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { formatMoney } from '../../utils/format';
 import { buildAccountsFromBroker } from '../../utils/portfolio';
+import { detectStrategies } from '../../utils/optionStrategies';
+import type { OptionPos, StrategyGroup } from '../../utils/optionStrategies';
 import type { AccountData, FilterableItem } from '../../hooks/useAccountFilter';
 import api from '../../services/api';
 
-type OptionPos = {
-  id: number;
-  symbol: string;
-  underlying_symbol: string;
-  strike_price: number;
-  expiration_date: string | null;
-  option_type: string;
-  quantity: number;
-  average_open_price?: number;
-  current_price?: number;
-  market_value?: number;
-  unrealized_pnl?: number;
-  unrealized_pnl_pct?: number;
-  days_to_expiration?: number;
-  delta?: number;
-  gamma?: number;
-  theta?: number;
-  vega?: number;
-  implied_volatility?: number;
-  underlying_price?: number;
-  cost_basis?: number;
-  realized_pnl?: number;
-  commission?: number;
-  currency?: string;
-  account_id?: number;
-};
-
 const EXPIRING_SOON_DAYS = 7;
 
-type TabId = 'positions' | 'chain' | 'pnl';
+type TabId = 'positions' | 'chain' | 'pnl' | 'analytics';
 type PosView = 'card' | 'table';
 
 /* ------------------------------------------------------------------ */
@@ -96,114 +64,6 @@ const MONEYNESS_COLOR: Record<string, string> = {
   ATM: 'yellow',
 };
 
-type StrategyLabel = 'Vertical Spread' | 'Straddle' | 'Strangle' | 'Iron Condor' | 'Iron Butterfly' | null;
-
-interface StrategyGroup {
-  label: StrategyLabel;
-  positions: OptionPos[];
-  netPnl: number;
-  netDelta: number;
-}
-
-function detectStrategies(positions: OptionPos[]): StrategyGroup[] {
-  const groups: StrategyGroup[] = [];
-  const used = new Set<number>();
-
-  const byUnderlying = new Map<string, OptionPos[]>();
-  for (const p of positions) {
-    const sym = p.underlying_symbol;
-    if (!byUnderlying.has(sym)) byUnderlying.set(sym, []);
-    byUnderlying.get(sym)!.push(p);
-  }
-
-  for (const [, symPositions] of byUnderlying) {
-    const byExpiry = new Map<string, OptionPos[]>();
-    for (const p of symPositions) {
-      const exp = p.expiration_date?.slice(0, 10) ?? 'none';
-      if (!byExpiry.has(exp)) byExpiry.set(exp, []);
-      byExpiry.get(exp)!.push(p);
-    }
-
-    for (const [, expPositions] of byExpiry) {
-      if (expPositions.length < 2) continue;
-      const calls = expPositions.filter(p => (p.option_type || '').toUpperCase() === 'CALL');
-      const puts = expPositions.filter(p => (p.option_type || '').toUpperCase() === 'PUT');
-
-      // Iron Condor: 2 calls + 2 puts, different strikes
-      if (calls.length >= 2 && puts.length >= 2) {
-        const legs = [...calls.slice(0, 2), ...puts.slice(0, 2)];
-        const strikes = new Set(legs.map(l => l.strike_price));
-        if (strikes.size >= 3) {
-          for (const l of legs) used.add(l.id);
-          groups.push({
-            label: 'Iron Condor',
-            positions: legs,
-            netPnl: legs.reduce((s, p) => s + Number(p.unrealized_pnl ?? 0), 0),
-            netDelta: legs.reduce((s, p) => s + Number(p.delta ?? 0) * p.quantity, 0),
-          });
-          continue;
-        }
-      }
-
-      // Straddle: 1 call + 1 put, same strike
-      if (calls.length >= 1 && puts.length >= 1) {
-        for (const c of calls) {
-          const match = puts.find(p => p.strike_price === c.strike_price && !used.has(p.id));
-          if (match && !used.has(c.id)) {
-            used.add(c.id);
-            used.add(match.id);
-            groups.push({
-              label: 'Straddle',
-              positions: [c, match],
-              netPnl: Number(c.unrealized_pnl ?? 0) + Number(match.unrealized_pnl ?? 0),
-              netDelta: Number(c.delta ?? 0) * c.quantity + Number(match.delta ?? 0) * match.quantity,
-            });
-          }
-        }
-        // Strangle: 1 call + 1 put, different strikes
-        for (const c of calls) {
-          if (used.has(c.id)) continue;
-          const match = puts.find(p => p.strike_price !== c.strike_price && !used.has(p.id));
-          if (match) {
-            used.add(c.id);
-            used.add(match.id);
-            groups.push({
-              label: 'Strangle',
-              positions: [c, match],
-              netPnl: Number(c.unrealized_pnl ?? 0) + Number(match.unrealized_pnl ?? 0),
-              netDelta: Number(c.delta ?? 0) * c.quantity + Number(match.delta ?? 0) * match.quantity,
-            });
-          }
-        }
-      }
-
-      // Vertical Spread: same type, different strikes
-      const remaining = expPositions.filter(p => !used.has(p.id));
-      const remCalls = remaining.filter(p => (p.option_type || '').toUpperCase() === 'CALL');
-      const remPuts = remaining.filter(p => (p.option_type || '').toUpperCase() === 'PUT');
-      for (const bucket of [remCalls, remPuts]) {
-        if (bucket.length >= 2) {
-          const sorted = bucket.slice().sort((a, b) => a.strike_price - b.strike_price);
-          for (let i = 0; i < sorted.length - 1; i += 2) {
-            const a = sorted[i], b = sorted[i + 1];
-            if (!used.has(a.id) && !used.has(b.id) && a.strike_price !== b.strike_price) {
-              used.add(a.id);
-              used.add(b.id);
-              groups.push({
-                label: 'Vertical Spread',
-                positions: [a, b],
-                netPnl: Number(a.unrealized_pnl ?? 0) + Number(b.unrealized_pnl ?? 0),
-                netDelta: Number(a.delta ?? 0) * a.quantity + Number(b.delta ?? 0) * b.quantity,
-              });
-            }
-          }
-        }
-      }
-    }
-  }
-
-  return groups;
-}
 
 /* ------------------------------------------------------------------ */
 /* Main Component                                                      */
@@ -229,6 +89,24 @@ const PortfolioOptions: React.FC = () => {
     { staleTime: 30000, refetchInterval: 60000 },
   );
   const gwConnected = gatewayQuery.data?.connected ?? false;
+
+  const stocksQuery = useQuery(
+    ['portfolioStocks', selected],
+    async () => {
+      const params = selected !== 'all' ? `?account_id=${selected}` : '';
+      const res = await api.get(`/portfolio/stocks${params}`);
+      return res.data?.data?.positions ?? [];
+    },
+    { staleTime: 60000 },
+  );
+  const stockPositions = useMemo(
+    () =>
+      (stocksQuery.data ?? []).map((s: any) => ({
+        symbol: s.symbol,
+        quantity: Number(s.quantity ?? 0),
+      })),
+    [stocksQuery.data],
+  );
 
   const rawAccounts = accountsQuery.data ?? [];
   const accounts: AccountData[] = useMemo(
@@ -261,7 +139,7 @@ const PortfolioOptions: React.FC = () => {
 
   const uniqueUnderlyings = useMemo(() => Object.keys(underlyings).sort(), [underlyings]);
 
-  const strategies = useMemo(() => detectStrategies(positions), [positions]);
+  const strategies = useMemo(() => detectStrategies(positions, stockPositions), [positions, stockPositions]);
 
   return (
     <ChartContext.Provider value={openChart}>
@@ -329,7 +207,7 @@ const PortfolioOptions: React.FC = () => {
           {/* Tabs */}
           <HStack gap={1} borderBottomWidth="1px" borderColor="border.subtle" pb={0} justifyContent="space-between">
             <HStack gap={1}>
-              {(['positions', 'chain', 'pnl'] as TabId[]).map(tab => (
+              {(['positions', 'chain', 'pnl', 'analytics'] as TabId[]).map(tab => (
                 <Button
                   key={tab}
                   size="sm"
@@ -338,7 +216,7 @@ const PortfolioOptions: React.FC = () => {
                   borderBottomRadius={0}
                   textTransform="capitalize"
                 >
-                  {tab === 'pnl' ? 'P&L' : tab === 'chain' ? 'Option Chain' : 'Positions'}
+                  {tab === 'pnl' ? 'P&L' : tab === 'chain' ? 'Option Chain' : tab === 'analytics' ? 'Analytics' : 'Positions'}
                 </Button>
               ))}
             </HStack>
@@ -416,12 +294,56 @@ const PortfolioOptions: React.FC = () => {
                                   <Text fontSize="xs" color="fg.muted">
                                     {sg.positions[0]?.underlying_symbol} {sg.positions[0]?.expiration_date?.slice(0, 10)}
                                   </Text>
+                                  {sg.creditDebit && (
+                                    <Badge
+                                      size="sm"
+                                      colorPalette={sg.creditDebit === 'credit' ? 'green' : sg.creditDebit === 'debit' ? 'red' : 'gray'}
+                                      variant="outline"
+                                    >
+                                      {sg.creditDebit === 'credit' ? 'Credit' : sg.creditDebit === 'debit' ? 'Debit' : 'Even'}
+                                      {sg.netPremium ? ` ${formatMoney(Math.abs(sg.netPremium), currency)}` : ''}
+                                    </Badge>
+                                  )}
                                 </HStack>
                                 <HStack gap={3}>
-                                  <Text fontSize="xs" color="fg.muted">Delta {sg.netDelta.toFixed(2)}</Text>
                                   <PnlText value={sg.netPnl} format="currency" fontSize="sm" currency={currency} />
                                 </HStack>
                               </HStack>
+                              <HStack gap={4} fontSize="xs" color="fg.muted" mb={2} flexWrap="wrap">
+                                <Text>Delta {sg.combinedGreeks.delta.toFixed(2)}</Text>
+                                <Text>Theta {sg.combinedGreeks.theta.toFixed(2)}</Text>
+                                <Text>Gamma {sg.combinedGreeks.gamma.toFixed(3)}</Text>
+                                <Text>Vega {sg.combinedGreeks.vega.toFixed(2)}</Text>
+                                {sg.maxProfit != null && <Text color="fg.success">Max Profit {formatMoney(sg.maxProfit, currency)}</Text>}
+                                {sg.maxLoss != null && <Text color="fg.error">Max Loss {formatMoney(sg.maxLoss, currency)}</Text>}
+                                {sg.breakevens.length > 0 && (
+                                  <Text>
+                                    B/E: {sg.breakevens.map(b => b.toFixed(2)).join(', ')}
+                                    {sg.positions[0]?.underlying_price
+                                      ? ` (${((sg.breakevens[0] / Number(sg.positions[0].underlying_price) - 1) * 100).toFixed(1)}%)`
+                                      : ''}
+                                  </Text>
+                                )}
+                              </HStack>
+                              {sg.maxProfit != null && sg.maxProfit > 0 && sg.netPnl !== 0 && (
+                                <Box mb={2}>
+                                  <HStack justify="space-between" fontSize="xs" color="fg.muted" mb={1}>
+                                    <Text>P/L Progress</Text>
+                                    <Text>
+                                      {Math.min(100, Math.max(-100, (sg.netPnl / sg.maxProfit) * 100)).toFixed(0)}% of max profit
+                                    </Text>
+                                  </HStack>
+                                  <Box w="full" h="4px" bg="bg.muted" borderRadius="full" overflow="hidden">
+                                    <Box
+                                      h="full"
+                                      bg={sg.netPnl >= 0 ? 'green.500' : 'red.500'}
+                                      w={`${Math.min(100, Math.abs(sg.netPnl / sg.maxProfit) * 100)}%`}
+                                      borderRadius="full"
+                                      transition="width 0.3s"
+                                    />
+                                  </Box>
+                                </Box>
+                              )}
                               <VStack align="stretch" gap={1}>
                                 {sg.positions.map(pos => (
                                   <PositionRow key={pos.id} pos={pos} currency={currency} gwConnected={gwConnected} />
@@ -473,6 +395,10 @@ const PortfolioOptions: React.FC = () => {
 
           {activeTab === 'pnl' && (
             <PnlTab underlyings={underlyings} currency={currency} />
+          )}
+
+          {activeTab === 'analytics' && (
+            <OptionsAnalyticsTab positions={positions} currency={currency} />
           )}
         </Stack>
       </Box>
@@ -1122,13 +1048,148 @@ const OptionChainTab: React.FC<{
 };
 
 /* ------------------------------------------------------------------ */
-/* P&L Tab (detailed table)                                            */
+/* P&L Tab (SortableTable)                                             */
 /* ------------------------------------------------------------------ */
+
+type PnlRow = {
+  sym: string;
+  posCount: number;
+  totalValue: number;
+  callsPnl: number;
+  putsPnl: number;
+  totalPnl: number;
+  pnlPct: number;
+  realizedPnl: number;
+  deltaExposure: number;
+};
+
+const pnlColumns: Column<PnlRow>[] = [
+  {
+    key: 'sym',
+    header: 'Underlying',
+    accessor: (r) => r.sym,
+    sortable: true,
+    sortType: 'string',
+    filterable: true,
+    filterType: 'text',
+    render: (_v, r) => <SymbolLink symbol={r.sym} />,
+  },
+  {
+    key: 'posCount',
+    header: 'Pos',
+    accessor: (r) => r.posCount,
+    sortable: true,
+    sortType: 'number',
+    isNumeric: true,
+    width: '55px',
+  },
+  {
+    key: 'totalValue',
+    header: 'Value',
+    accessor: (r) => r.totalValue,
+    sortable: true,
+    sortType: 'number',
+    isNumeric: true,
+    width: '90px',
+  },
+  {
+    key: 'callsPnl',
+    header: 'Calls P&L',
+    accessor: (r) => r.callsPnl,
+    sortable: true,
+    sortType: 'number',
+    isNumeric: true,
+    render: (v) => <PnlText value={Number(v)} format="currency" fontSize="xs" />,
+    width: '90px',
+  },
+  {
+    key: 'putsPnl',
+    header: 'Puts P&L',
+    accessor: (r) => r.putsPnl,
+    sortable: true,
+    sortType: 'number',
+    isNumeric: true,
+    render: (v) => <PnlText value={Number(v)} format="currency" fontSize="xs" />,
+    width: '90px',
+  },
+  {
+    key: 'totalPnl',
+    header: 'Total P&L',
+    accessor: (r) => r.totalPnl,
+    sortable: true,
+    sortType: 'number',
+    isNumeric: true,
+    render: (v) => <PnlText value={Number(v)} format="currency" fontSize="xs" />,
+    width: '100px',
+  },
+  {
+    key: 'pnlPct',
+    header: 'P&L%',
+    accessor: (r) => r.pnlPct,
+    sortable: true,
+    sortType: 'number',
+    isNumeric: true,
+    render: (v) => {
+      const pct = Number(v);
+      return <Text fontSize="xs" color={pct >= 0 ? 'fg.success' : 'fg.error'}>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</Text>;
+    },
+    width: '65px',
+  },
+  {
+    key: 'realizedPnl',
+    header: 'Realized',
+    accessor: (r) => r.realizedPnl,
+    sortable: true,
+    sortType: 'number',
+    isNumeric: true,
+    render: (v) => {
+      const val = Number(v);
+      if (!val) return <Text fontSize="xs" color="fg.muted">—</Text>;
+      return <PnlText value={val} format="currency" fontSize="xs" />;
+    },
+    width: '80px',
+  },
+  {
+    key: 'deltaExposure',
+    header: 'Delta Exp.',
+    accessor: (r) => r.deltaExposure,
+    sortable: true,
+    sortType: 'number',
+    isNumeric: true,
+    render: (v) => <Text fontFamily="mono" fontSize="xs">{Number(v).toFixed(2)}</Text>,
+    width: '80px',
+  },
+];
+
+const pnlFilterPresets: Array<{ label: string; filters: FilterGroup }> = [
+  {
+    label: 'Winners',
+    filters: {
+      conjunction: 'AND',
+      rules: [{ id: 'pnl-pos', columnKey: 'totalPnl', operator: 'gt', value: '0' }],
+    },
+  },
+  {
+    label: 'Losers',
+    filters: {
+      conjunction: 'AND',
+      rules: [{ id: 'pnl-neg', columnKey: 'totalPnl', operator: 'lt', value: '0' }],
+    },
+  },
+  {
+    label: 'High Delta',
+    filters: {
+      conjunction: 'AND',
+      rules: [{ id: 'delta-high', columnKey: 'deltaExposure', operator: 'gt', value: '5' }],
+    },
+  },
+];
+
 const PnlTab: React.FC<{
   underlyings: Record<string, { calls: OptionPos[]; puts: OptionPos[]; total_value: number; total_pnl: number }>;
   currency: string;
 }> = ({ underlyings, currency }) => {
-  const rows = useMemo(() => {
+  const rows: PnlRow[] = useMemo(() => {
     return Object.entries(underlyings).map(([sym, grp]) => {
       const callsPnl = grp.calls.reduce((s, p) => s + Number(p.unrealized_pnl ?? 0), 0);
       const putsPnl = grp.puts.reduce((s, p) => s + Number(p.unrealized_pnl ?? 0), 0);
@@ -1139,8 +1200,41 @@ const PnlTab: React.FC<{
       const totalCost = [...grp.calls, ...grp.puts].reduce((s, p) => s + Math.abs(Number(p.cost_basis ?? 0)), 0);
       const pnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
       return { sym, callsPnl, putsPnl, totalPnl, realizedPnl, deltaExposure, totalValue, pnlPct, posCount: grp.calls.length + grp.puts.length };
-    }).sort((a, b) => Math.abs(b.totalPnl) - Math.abs(a.totalPnl));
+    });
   }, [underlyings]);
+
+  const totals = useMemo(() => rows.reduce(
+    (acc, r) => ({
+      callsPnl: acc.callsPnl + r.callsPnl,
+      putsPnl: acc.putsPnl + r.putsPnl,
+      totalPnl: acc.totalPnl + r.totalPnl,
+      realizedPnl: acc.realizedPnl + r.realizedPnl,
+      deltaExposure: acc.deltaExposure + r.deltaExposure,
+    }),
+    { callsPnl: 0, putsPnl: 0, totalPnl: 0, realizedPnl: 0, deltaExposure: 0 },
+  ), [rows]);
+
+  const fmtCols = useMemo(() => {
+    return pnlColumns.map(col => {
+      if (col.key === 'totalValue') {
+        return {
+          ...col,
+          render: (v: any) => <Text fontFamily="mono" fontSize="xs">{formatMoney(Number(v), currency, { maximumFractionDigits: 0 })}</Text>,
+        };
+      }
+      if (['callsPnl', 'putsPnl', 'totalPnl', 'realizedPnl'].includes(col.key)) {
+        return {
+          ...col,
+          render: (v: any) => {
+            const val = Number(v);
+            if (col.key === 'realizedPnl' && !val) return <Text fontSize="xs" color="fg.muted">—</Text>;
+            return <PnlText value={val} format="currency" fontSize="xs" currency={currency} />;
+          },
+        };
+      }
+      return col;
+    });
+  }, [currency]);
 
   if (rows.length === 0) {
     return (
@@ -1152,111 +1246,260 @@ const PnlTab: React.FC<{
     );
   }
 
-  const totals = rows.reduce(
-    (acc, r) => ({
-      callsPnl: acc.callsPnl + r.callsPnl,
-      putsPnl: acc.putsPnl + r.putsPnl,
-      totalPnl: acc.totalPnl + r.totalPnl,
-      realizedPnl: acc.realizedPnl + r.realizedPnl,
-      deltaExposure: acc.deltaExposure + r.deltaExposure,
-    }),
-    { callsPnl: 0, putsPnl: 0, totalPnl: 0, realizedPnl: 0, deltaExposure: 0 },
+  return (
+    <VStack align="stretch" gap={3}>
+      <HStack gap={3} flexWrap="wrap">
+        <StatCard label="Calls P&L" value={formatMoney(totals.callsPnl, currency)} color={totals.callsPnl >= 0 ? 'status.success' : 'status.danger'} />
+        <StatCard label="Puts P&L" value={formatMoney(totals.putsPnl, currency)} color={totals.putsPnl >= 0 ? 'status.success' : 'status.danger'} />
+        <StatCard label="Total P&L" value={formatMoney(totals.totalPnl, currency)} color={totals.totalPnl >= 0 ? 'status.success' : 'status.danger'} />
+        <StatCard label="Realized" value={formatMoney(totals.realizedPnl, currency)} color={totals.realizedPnl >= 0 ? 'status.success' : 'status.danger'} />
+        <StatCard label="Net Delta" value={totals.deltaExposure.toFixed(2)} />
+      </HStack>
+      <SortableTable
+        data={rows}
+        columns={fmtCols}
+        defaultSortBy="totalPnl"
+        defaultSortOrder="desc"
+        size="sm"
+        maxHeight="60vh"
+        filtersEnabled
+        filterPresets={pnlFilterPresets}
+        emptyMessage="No positions to analyze."
+      />
+    </VStack>
   );
+};
+
+/* ------------------------------------------------------------------ */
+/* Analytics Tab                                                       */
+/* ------------------------------------------------------------------ */
+
+const GREEKS_COLORS = { delta: '#3B82F6', gamma: '#10B981', theta: '#EF4444', vega: '#8B5CF6' };
+
+const GreeksDashboard: React.FC<{ positions: OptionPos[]; currency: string }> = ({ positions, currency }) => {
+  const byUnderlying = useMemo(() => {
+    const map = new Map<string, { symbol: string; delta: number; gamma: number; theta: number; vega: number; value: number }>();
+    for (const p of positions) {
+      const sym = p.underlying_symbol;
+      const existing = map.get(sym) ?? { symbol: sym, delta: 0, gamma: 0, theta: 0, vega: 0, value: 0 };
+      existing.delta += Number(p.delta ?? 0) * p.quantity;
+      existing.gamma += Number(p.gamma ?? 0) * p.quantity;
+      existing.theta += Number(p.theta ?? 0) * p.quantity;
+      existing.vega += Number(p.vega ?? 0) * p.quantity;
+      existing.value += Number(p.market_value ?? 0);
+      map.set(sym, existing);
+    }
+    return [...map.values()].sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+  }, [positions]);
+
+  const totals = useMemo(() => ({
+    delta: positions.reduce((s, p) => s + Number(p.delta ?? 0) * p.quantity, 0),
+    gamma: positions.reduce((s, p) => s + Number(p.gamma ?? 0) * p.quantity, 0),
+    theta: positions.reduce((s, p) => s + Number(p.theta ?? 0) * p.quantity, 0),
+    vega: positions.reduce((s, p) => s + Number(p.vega ?? 0) * p.quantity, 0),
+  }), [positions]);
 
   return (
     <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
       <CardBody>
-        <Text fontWeight="bold" mb={3}>P&L by Underlying</Text>
-        <TableScrollArea maxH="60vh">
-          <TableRoot size="sm">
-            <TableHeader>
-              <TableRow>
-                <TableColumnHeader>Underlying</TableColumnHeader>
-                <TableColumnHeader textAlign="end">Pos</TableColumnHeader>
-                <TableColumnHeader textAlign="end">Value</TableColumnHeader>
-                <TableColumnHeader textAlign="end">Calls P&L</TableColumnHeader>
-                <TableColumnHeader textAlign="end">Puts P&L</TableColumnHeader>
-                <TableColumnHeader textAlign="end">Total P&L</TableColumnHeader>
-                <TableColumnHeader textAlign="end">P&L%</TableColumnHeader>
-                <TableColumnHeader textAlign="end">Realized</TableColumnHeader>
-                <TableColumnHeader textAlign="end">Delta Exp.</TableColumnHeader>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map(r => (
-                <TableRow key={r.sym}>
-                  <TableCell>
-                    <SymbolLink symbol={r.sym} />
-                  </TableCell>
-                  <TableCell textAlign="end">{r.posCount}</TableCell>
-                  <TableCell textAlign="end">
-                    <Text fontFamily="mono" fontSize="xs">{formatMoney(r.totalValue, currency, { maximumFractionDigits: 0 })}</Text>
-                  </TableCell>
-                  <TableCell textAlign="end">
-                    <Text fontFamily="mono" fontSize="xs" color={r.callsPnl >= 0 ? 'fg.success' : 'fg.error'}>
-                      {r.callsPnl >= 0 ? '+' : ''}{formatMoney(r.callsPnl, currency, { maximumFractionDigits: 0 })}
-                    </Text>
-                  </TableCell>
-                  <TableCell textAlign="end">
-                    <Text fontFamily="mono" fontSize="xs" color={r.putsPnl >= 0 ? 'fg.success' : 'fg.error'}>
-                      {r.putsPnl >= 0 ? '+' : ''}{formatMoney(r.putsPnl, currency, { maximumFractionDigits: 0 })}
-                    </Text>
-                  </TableCell>
-                  <TableCell textAlign="end">
-                    <PnlText value={r.totalPnl} format="currency" fontSize="xs" currency={currency} />
-                  </TableCell>
-                  <TableCell textAlign="end">
-                    <Text fontFamily="mono" fontSize="xs" color={r.pnlPct >= 0 ? 'fg.success' : 'fg.error'}>
-                      {r.pnlPct >= 0 ? '+' : ''}{r.pnlPct.toFixed(1)}%
-                    </Text>
-                  </TableCell>
-                  <TableCell textAlign="end">
-                    <Text fontFamily="mono" fontSize="xs" color={r.realizedPnl >= 0 ? 'fg.success' : 'fg.error'}>
-                      {r.realizedPnl !== 0 ? `${r.realizedPnl >= 0 ? '+' : ''}${formatMoney(r.realizedPnl, currency, { maximumFractionDigits: 0 })}` : '—'}
-                    </Text>
-                  </TableCell>
-                  <TableCell textAlign="end">
-                    <Text fontFamily="mono" fontSize="xs">{r.deltaExposure.toFixed(2)}</Text>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {/* Totals row */}
-              <TableRow bg="bg.subtle">
-                <TableCell><Text fontWeight="bold">Total</Text></TableCell>
-                <TableCell textAlign="end"><Text fontWeight="bold">{rows.reduce((s, r) => s + r.posCount, 0)}</Text></TableCell>
-                <TableCell textAlign="end">
-                  <Text fontWeight="bold" fontFamily="mono" fontSize="xs">
-                    {formatMoney(rows.reduce((s, r) => s + r.totalValue, 0), currency, { maximumFractionDigits: 0 })}
-                  </Text>
-                </TableCell>
-                <TableCell textAlign="end">
-                  <Text fontWeight="bold" fontFamily="mono" fontSize="xs" color={totals.callsPnl >= 0 ? 'fg.success' : 'fg.error'}>
-                    {totals.callsPnl >= 0 ? '+' : ''}{formatMoney(totals.callsPnl, currency, { maximumFractionDigits: 0 })}
-                  </Text>
-                </TableCell>
-                <TableCell textAlign="end">
-                  <Text fontWeight="bold" fontFamily="mono" fontSize="xs" color={totals.putsPnl >= 0 ? 'fg.success' : 'fg.error'}>
-                    {totals.putsPnl >= 0 ? '+' : ''}{formatMoney(totals.putsPnl, currency, { maximumFractionDigits: 0 })}
-                  </Text>
-                </TableCell>
-                <TableCell textAlign="end">
-                  <PnlText value={totals.totalPnl} format="currency" fontSize="xs" currency={currency} fontWeight="bold" />
-                </TableCell>
-                <TableCell textAlign="end" />
-                <TableCell textAlign="end">
-                  <Text fontWeight="bold" fontFamily="mono" fontSize="xs" color={totals.realizedPnl >= 0 ? 'fg.success' : 'fg.error'}>
-                    {totals.realizedPnl !== 0 ? `${totals.realizedPnl >= 0 ? '+' : ''}${formatMoney(totals.realizedPnl, currency, { maximumFractionDigits: 0 })}` : '—'}
-                  </Text>
-                </TableCell>
-                <TableCell textAlign="end">
-                  <Text fontWeight="bold" fontFamily="mono" fontSize="xs">{totals.deltaExposure.toFixed(2)}</Text>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </TableRoot>
-        </TableScrollArea>
+        <Text fontWeight="bold" mb={3}>Greeks Exposure</Text>
+        <HStack gap={3} mb={4} flexWrap="wrap">
+          <StatCard label="Net Delta" value={totals.delta.toFixed(2)} color={totals.delta >= 0 ? 'status.success' : 'status.danger'} />
+          <StatCard label="Net Gamma" value={totals.gamma.toFixed(3)} />
+          <StatCard label="Daily Theta" value={formatMoney(totals.theta, currency)} color={totals.theta < 0 ? 'status.danger' : 'status.success'} />
+          <StatCard label="Net Vega" value={totals.vega.toFixed(2)} />
+        </HStack>
+        {byUnderlying.length > 0 && (
+          <Box h="250px">
+            <ResponsiveContainer>
+              <BarChart data={byUnderlying} layout="vertical" margin={{ left: 60, right: 20, top: 5, bottom: 5 }}>
+                <XAxis type="number" tick={{ fontSize: 10 }} />
+                <YAxis type="category" dataKey="symbol" tick={{ fontSize: 11, fontFamily: 'mono' }} width={50} />
+                <RechartsTooltip
+                  formatter={(value: number | undefined, name: string | undefined) => [
+                    name === 'theta' ? formatMoney(value, currency) : (value ?? 0).toFixed(3),
+                    (name ?? '').charAt(0).toUpperCase() + (name ?? '').slice(1),
+                  ] as React.ReactNode}
+                />
+                <Bar dataKey="delta" fill={GREEKS_COLORS.delta} barSize={8} radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Box>
+        )}
       </CardBody>
     </CardRoot>
+  );
+};
+
+const ThetaCalendar: React.FC<{ positions: OptionPos[]; currency: string }> = ({ positions, currency }) => {
+  const projections = useMemo(() => {
+    const days: Array<{ day: number; label: string; dailyTheta: number; cumTheta: number }> = [];
+    const dailyTheta = positions.reduce((s, p) => s + Number(p.theta ?? 0) * p.quantity, 0);
+    let cumulative = 0;
+
+    for (let i = 0; i < 30; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() + i);
+
+      cumulative += dailyTheta;
+      days.push({
+        day: i,
+        label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        dailyTheta,
+        cumTheta: cumulative,
+      });
+    }
+    return days;
+  }, [positions]);
+
+  return (
+    <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
+      <CardBody>
+        <Text fontWeight="bold" mb={3}>Theta Decay Projection (30 days)</Text>
+        <Box h="200px">
+          <ResponsiveContainer>
+            <LineChart data={projections} margin={{ left: 10, right: 10, top: 5, bottom: 5 }}>
+              <XAxis dataKey="label" tick={{ fontSize: 9 }} interval={4} />
+              <YAxis tick={{ fontSize: 10 }} />
+              <RechartsTooltip
+                formatter={(value: number | undefined, _name?: string) => [formatMoney(value, currency), 'Cumulative Theta'] as React.ReactNode}
+              />
+              <Line type="monotone" dataKey="cumTheta" stroke="#EF4444" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </Box>
+      </CardBody>
+    </CardRoot>
+  );
+};
+
+const IVSkewChart: React.FC<{ positions: OptionPos[] }> = ({ positions }) => {
+  const skewData = useMemo(() => {
+    const data: Array<{ strike: number; iv: number; type: string; symbol: string }> = [];
+    for (const p of positions) {
+      if (p.implied_volatility && p.implied_volatility > 0) {
+        data.push({
+          strike: p.strike_price,
+          iv: p.implied_volatility * 100,
+          type: (p.option_type || '').toUpperCase(),
+          symbol: p.underlying_symbol,
+        });
+      }
+    }
+    return data.sort((a, b) => a.strike - b.strike);
+  }, [positions]);
+
+  if (skewData.length < 2) {
+    return (
+      <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
+        <CardBody>
+          <Text fontWeight="bold" mb={3}>IV Skew</Text>
+          <Text color="fg.muted" fontSize="sm">Need at least 2 positions with IV data to show skew.</Text>
+        </CardBody>
+      </CardRoot>
+    );
+  }
+
+  return (
+    <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
+      <CardBody>
+        <Text fontWeight="bold" mb={3}>IV Skew</Text>
+        <Box h="200px">
+          <ResponsiveContainer>
+            <LineChart data={skewData} margin={{ left: 10, right: 10, top: 5, bottom: 5 }}>
+              <XAxis dataKey="strike" tick={{ fontSize: 10 }} />
+              <YAxis tick={{ fontSize: 10 }} unit="%" />
+              <RechartsTooltip
+                formatter={(value: number | undefined, _name?: string) => [`${(value ?? 0).toFixed(1)}%`, 'IV'] as React.ReactNode}
+                labelFormatter={(label) => `Strike: ${label}`}
+              />
+              <Line type="monotone" dataKey="iv" stroke="#8B5CF6" strokeWidth={2} dot={{ r: 3 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </Box>
+      </CardBody>
+    </CardRoot>
+  );
+};
+
+const PayoffDiagram: React.FC<{ positions: OptionPos[]; currency: string }> = ({ positions, currency }) => {
+  const payoffData = useMemo(() => {
+    if (positions.length === 0) return [];
+
+    const underlyingPrices = positions.map(p => Number(p.underlying_price ?? 0)).filter(Boolean);
+    if (underlyingPrices.length === 0) return [];
+
+    const avgUnderlying = underlyingPrices.reduce((a, b) => a + b, 0) / underlyingPrices.length;
+    const strikes = positions.map(p => p.strike_price);
+    const minPrice = Math.min(avgUnderlying * 0.8, ...strikes) * 0.95;
+    const maxPrice = Math.max(avgUnderlying * 1.2, ...strikes) * 1.05;
+    const step = (maxPrice - minPrice) / 50;
+
+    const data: Array<{ price: number; pnl: number }> = [];
+    for (let price = minPrice; price <= maxPrice; price += step) {
+      let totalPnl = 0;
+      for (const p of positions) {
+        const isCall = (p.option_type || '').toUpperCase() === 'CALL';
+        const intrinsic = isCall
+          ? Math.max(0, price - p.strike_price)
+          : Math.max(0, p.strike_price - price);
+        const costPerContract = Math.abs(Number(p.average_open_price ?? 0));
+        const pnlPerContract = p.quantity > 0
+          ? (intrinsic - costPerContract) * 100
+          : (costPerContract - intrinsic) * 100;
+        totalPnl += pnlPerContract * Math.abs(p.quantity);
+      }
+      data.push({ price: Math.round(price * 100) / 100, pnl: Math.round(totalPnl) });
+    }
+    return data;
+  }, [positions]);
+
+  if (payoffData.length === 0) {
+    return null;
+  }
+
+  return (
+    <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
+      <CardBody>
+        <Text fontWeight="bold" mb={3}>Payoff at Expiration</Text>
+        <Box h="250px">
+          <ResponsiveContainer>
+            <LineChart data={payoffData} margin={{ left: 20, right: 20, top: 5, bottom: 5 }}>
+              <XAxis dataKey="price" tick={{ fontSize: 10 }} label={{ value: 'Underlying Price', position: 'bottom', fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 10 }} label={{ value: 'P/L ($)', angle: -90, position: 'insideLeft', fontSize: 11 }} />
+              <RechartsTooltip
+                formatter={(value: number | undefined, _name?: string) => [formatMoney(value, currency), 'P/L at Expiration'] as React.ReactNode}
+                labelFormatter={(label) => `Price: $${label}`}
+              />
+              <Line
+                type="monotone"
+                dataKey="pnl"
+                stroke="#3B82F6"
+                strokeWidth={2}
+                dot={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </Box>
+      </CardBody>
+    </CardRoot>
+  );
+};
+
+const OptionsAnalyticsTab: React.FC<{ positions: OptionPos[]; currency: string }> = ({ positions, currency }) => {
+  return (
+    <VStack align="stretch" gap={4}>
+      <GreeksDashboard positions={positions} currency={currency} />
+      <HStack gap={4} align="start" flexWrap="wrap">
+        <Box flex={1} minW="300px">
+          <ThetaCalendar positions={positions} currency={currency} />
+        </Box>
+        <Box flex={1} minW="300px">
+          <IVSkewChart positions={positions} />
+        </Box>
+      </HStack>
+      <PayoffDiagram positions={positions} currency={currency} />
+    </VStack>
   );
 };
 

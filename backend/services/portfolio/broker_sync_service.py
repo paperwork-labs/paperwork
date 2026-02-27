@@ -14,7 +14,7 @@ from datetime import datetime
 
 from backend.database import SessionLocal
 from backend.models import BrokerAccount
-from backend.services.portfolio.ibkr_sync_service import IBKRSyncService
+from backend.services.portfolio.ibkr import IBKRSyncService
 from backend.services.portfolio.tastytrade_sync_service import TastyTradeSyncService
 from backend.models.broker_account import BrokerType
 

@@ -7,7 +7,9 @@ from typing import List, Dict, Any, Optional
 import logging
 
 from backend.database import get_db
+from backend.api.dependencies import get_admin_user
 from backend.models import BrokerAccount, Option
+from backend.models.broker_account import BrokerType
 from backend.models.user import User
 
 logger = logging.getLogger(__name__)
@@ -319,6 +321,7 @@ async def get_gateway_status():
                 "port": ibkr_client.port,
                 "client_id": ibkr_client.client_id,
                 "accounts": status.get("accounts", []),
+                "vnc_url": "http://localhost:6080",
             },
         }
     except Exception as e:
@@ -326,3 +329,72 @@ async def get_gateway_status():
             "status": "success",
             "data": {"connected": False, "available": False, "error": str(e)},
         }
+
+
+@router.post("/gateway-connect")
+async def gateway_connect(
+    _admin: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    """Manually trigger IB Gateway reconnection.
+
+    Loads per-user gateway credentials from the vault when available,
+    falling back to global env vars.
+    """
+    import asyncio
+    import concurrent.futures
+
+    gw_host: str | None = None
+    gw_port: int | None = None
+    gw_client_id: int | None = None
+    try:
+        from backend.services.portfolio.account_credentials_service import account_credentials_service
+        ibkr_accounts = db.query(BrokerAccount).filter(BrokerAccount.broker == BrokerType.IBKR, BrokerAccount.is_enabled == True).all()
+        for acct in ibkr_accounts:
+            gw = account_credentials_service.get_ibkr_gateway_credentials(acct.id, db)
+            if gw:
+                gw_host = gw.get("gateway_host") or gw_host
+                gw_port = int(gw["gateway_port"]) if gw.get("gateway_port") else gw_port
+                gw_client_id = int(gw["gateway_client_id"]) if gw.get("gateway_client_id") else gw_client_id
+                break
+    except Exception as exc:
+        logger.debug("No per-user gateway creds found, using defaults: %s", exc)
+
+    def _sync_connect():
+        from ib_insync import IB, util
+        util.patchAsyncio()
+
+        from backend.services.clients.ibkr_client import ibkr_client
+
+        host = gw_host or ibkr_client.host
+        port = gw_port or ibkr_client.port
+        cid = gw_client_id or ibkr_client.client_id
+
+        ib = IB()
+        try:
+            ib.connect(host=host, port=port, clientId=cid, timeout=15, readonly=True)
+            if ib.isConnected():
+                ibkr_client.ib = ib
+                ibkr_client.connected = True
+                ibkr_client.managed_accounts = ib.managedAccounts() or []
+                ibkr_client.connection_health["status"] = "connected"
+                ibkr_client.retry_count = 0
+                try:
+                    ib.reqAccountSummary()
+                except Exception:
+                    pass
+                return True
+        except Exception:
+            try:
+                ib.disconnect()
+            except Exception:
+                pass
+        return False
+
+    try:
+        loop = asyncio.get_running_loop()
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            connected = await loop.run_in_executor(pool, _sync_connect)
+        return {"status": "connected" if connected else "failed", "connected": connected}
+    except Exception as e:
+        return {"status": "error", "error": str(e), "connected": False}

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from celery import shared_task
 
@@ -11,6 +11,8 @@ from backend.models.broker_account import BrokerAccount, BrokerType, SyncStatus,
 from backend.services.portfolio.broker_sync_service import broker_sync_service
 
 logger = logging.getLogger(__name__)
+
+STALE_SYNC_THRESHOLD_MINUTES = 10
 
 
 def _extract_count(result: dict, key: str) -> int | None:
@@ -38,7 +40,6 @@ def sync_account_task(account_id: int, sync_type: str = "comprehensive") -> dict
         account.last_sync_attempt = started_at
         session.commit()
 
-        # Create AccountSync row for history
         sync_record = AccountSync(
             account_id=account_id,
             sync_type=sync_type,
@@ -78,7 +79,22 @@ def sync_account_task(account_id: int, sync_type: str = "comprehensive") -> dict
                 sync_record.error_message = None
                 if isinstance(result, dict):
                     sync_record.positions_synced = _extract_count(result, "positions")
-                    sync_record.transactions_synced = _extract_count(result, "transactions")
+                    sync_record.transactions_synced = (
+                        _extract_count(result, "cash_transactions")
+                        or _extract_count(result, "transactions")
+                    )
+                    dr_start = result.get("data_range_start")
+                    dr_end = result.get("data_range_end")
+                    if dr_start:
+                        try:
+                            sync_record.data_range_start = datetime.strptime(str(dr_start), "%Y%m%d")
+                        except (ValueError, TypeError):
+                            pass
+                    if dr_end:
+                        try:
+                            sync_record.data_range_end = datetime.strptime(str(dr_end), "%Y%m%d")
+                        except (ValueError, TypeError):
+                            pass
             session.commit()
 
         if is_error:
@@ -91,7 +107,6 @@ def sync_account_task(account_id: int, sync_type: str = "comprehensive") -> dict
         )
     except Exception as e:
         logger.exception("Sync failed for account %s: %s", account_id, e)
-        # Update AccountSync on error
         if sync_record:
             try:
                 sync_record.status = SyncStatus.ERROR
@@ -99,10 +114,22 @@ def sync_account_task(account_id: int, sync_type: str = "comprehensive") -> dict
                 sync_record.duration_seconds = int(
                     (sync_record.completed_at - started_at).total_seconds()
                 )
-                sync_record.error_message = str(e)
+                sync_record.error_message = str(e)[:500]
                 session.commit()
             except Exception:
                 session.rollback()
+
+        # Also reset the BrokerAccount status so it's not stuck RUNNING
+        try:
+            session.rollback()
+            acct = session.query(BrokerAccount).filter(BrokerAccount.id == account_id).first()
+            if acct and acct.sync_status == SyncStatus.RUNNING:
+                acct.sync_status = SyncStatus.ERROR
+                acct.sync_error_message = str(e)[:500]
+                session.commit()
+        except Exception:
+            session.rollback()
+
         return {"status": "error", "error": str(e)}
     finally:
         session.close()
@@ -125,7 +152,6 @@ def sync_all_ibkr_accounts() -> dict:
         results = []
         for acct in accounts:
             try:
-                # Use existing Celery task to perform the heavy sync
                 from backend.tasks.celery_app import celery_app
 
                 task = celery_app.send_task(
@@ -138,5 +164,98 @@ def sync_all_ibkr_accounts() -> dict:
                 results.append({"account_id": acct.id, "error": str(e)})
 
         return {"status": "queued", "enqueued": enqueued, "results": results}
+    finally:
+        session.close()
+
+
+@shared_task(name="backend.tasks.account_sync.sync_all_schwab_accounts")
+def sync_all_schwab_accounts() -> dict:
+    """Enqueue sync tasks for all enabled Schwab accounts."""
+    session = SessionLocal()
+    try:
+        accounts = (
+            session.query(BrokerAccount)
+            .filter(
+                BrokerAccount.broker == BrokerType.SCHWAB,
+                BrokerAccount.is_enabled == True,
+            )
+            .all()
+        )
+        enqueued = 0
+        results = []
+        for acct in accounts:
+            try:
+                from backend.tasks.celery_app import celery_app
+
+                task = celery_app.send_task(
+                    "backend.tasks.account_sync.sync_account_task",
+                    args=[acct.id, "comprehensive"],
+                )
+                results.append({"account_id": acct.id, "task_id": task.id})
+                enqueued += 1
+            except Exception as e:
+                results.append({"account_id": acct.id, "error": str(e)})
+
+        return {"status": "queued", "enqueued": enqueued, "results": results}
+    finally:
+        session.close()
+
+
+@shared_task(name="backend.tasks.account_sync.recover_stale_syncs")
+def recover_stale_syncs() -> dict:
+    """Periodic task to reset accounts stuck in RUNNING state.
+
+    Should be scheduled every 5 minutes via Celery Beat or cron.
+    """
+    session = SessionLocal()
+    try:
+        cutoff = datetime.now() - timedelta(minutes=STALE_SYNC_THRESHOLD_MINUTES)
+        stale_accounts = (
+            session.query(BrokerAccount)
+            .filter(
+                BrokerAccount.sync_status == SyncStatus.RUNNING,
+                BrokerAccount.last_sync_attempt < cutoff,
+            )
+            .all()
+        )
+
+        recovered = 0
+        for acct in stale_accounts:
+            logger.warning(
+                "Recovering stale sync for account %s (stuck since %s)",
+                acct.id, acct.last_sync_attempt,
+            )
+            acct.sync_status = SyncStatus.ERROR
+            acct.sync_error_message = (
+                f"Sync timed out (stuck RUNNING for >{STALE_SYNC_THRESHOLD_MINUTES} min). "
+                "Auto-reset — please retry."
+            )
+
+            # Also close any orphaned AccountSync records
+            stale_syncs = (
+                session.query(AccountSync)
+                .filter(
+                    AccountSync.account_id == acct.id,
+                    AccountSync.status == SyncStatus.RUNNING,
+                    AccountSync.started_at < cutoff,
+                )
+                .all()
+            )
+            for sr in stale_syncs:
+                sr.status = SyncStatus.ERROR
+                sr.completed_at = datetime.now()
+                sr.duration_seconds = int((sr.completed_at - sr.started_at).total_seconds())
+                sr.error_message = "Timed out — auto-recovered by recover_stale_syncs"
+
+            recovered += 1
+
+        session.commit()
+        if recovered:
+            logger.info("Recovered %d stale sync(s)", recovered)
+        return {"recovered": recovered}
+    except Exception as e:
+        logger.error("Error in recover_stale_syncs: %s", e)
+        session.rollback()
+        return {"error": str(e)}
     finally:
         session.close()

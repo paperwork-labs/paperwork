@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, date
 from decimal import Decimal
 from typing import Dict, Any, List
 
@@ -8,21 +9,61 @@ from sqlalchemy.orm import Session
 
 from backend.models.broker_account import BrokerAccount
 from backend.models.position import Position, PositionType, PositionStatus
-from backend.models.transaction import Transaction, TransactionType
+from backend.models.transaction import Transaction, TransactionType, Dividend
+from backend.models.trade import Trade
+from backend.models.account_balance import AccountBalance
 from backend.services.clients.schwab_client import SchwabClient
-from backend.services.security.credential_vault import credential_vault
+from backend.services.portfolio.account_credentials_service import (
+    account_credentials_service,
+    CredentialsNotFoundError,
+)
 from backend.models.options import Option
 
 logger = logging.getLogger(__name__)
 
+SCHWAB_TYPE_MAP = {
+    "TRADE": TransactionType.BUY,
+    "RECEIVE_AND_DELIVER": TransactionType.BUY,
+    "DIVIDEND_OR_INTEREST": TransactionType.DIVIDEND,
+    "JOURNAL": TransactionType.OTHER,
+    "WIRE_IN": TransactionType.DEPOSIT,
+    "WIRE_OUT": TransactionType.WITHDRAWAL,
+    "ACH_IN": TransactionType.DEPOSIT,
+    "ACH_OUT": TransactionType.WITHDRAWAL,
+    "ELECTRONIC_FUND": TransactionType.DEPOSIT,
+}
+
+_TRADE_TYPES = {"TRADE", "RECEIVE_AND_DELIVER"}
+
 
 class SchwabSyncService:
-    """
-    Read-only sync for Schwab accounts (equities baseline).
-    """
+    """Schwab account sync: positions, transactions, dividends, balances, trades."""
 
     def __init__(self, client: SchwabClient | None = None):
         self._client = client or SchwabClient()
+
+    async def _connect(self, account: BrokerAccount, session: Session) -> None:
+        """Authenticate the Schwab client using stored OAuth tokens."""
+        try:
+            payload = account_credentials_service.get_decrypted(account.id, session)
+            access_token = payload.get("access_token")
+            refresh_token = payload.get("refresh_token")
+            ok = await self._client.connect_with_credentials(
+                access_token=access_token or "",
+                refresh_token=refresh_token or "",
+            )
+            if not ok:
+                logger.warning("Schwab sync: connect failed for account %s", account.account_number)
+        except CredentialsNotFoundError:
+            await self._client.connect()
+        except Exception as exc:
+            err_str = str(exc).lower()
+            if "encrypt" in err_str or "token" in err_str or "fernet" in err_str:
+                raise ConnectionError(
+                    f"Invalid encryption token — please re-link your Schwab account "
+                    f"on the Connections page. (Original error: {exc})"
+                ) from exc
+            raise
 
     async def sync_account_comprehensive(self, account_number: str, session: Session) -> Dict:
         account: BrokerAccount | None = (
@@ -33,10 +74,27 @@ class SchwabSyncService:
         if not account:
             raise ValueError(f"Schwab account {account_number} not found")
 
-        await self._client.connect()
+        await self._connect(account, session)
 
-        # Positions
-        positions = await self._client.get_positions(account_number=account_number)
+        results: Dict[str, Any] = {"status": "success"}
+
+        pos_result = await self._sync_positions(account, session)
+        results.update(pos_result)
+
+        opt_result = await self._sync_options(account, session)
+        results.update(opt_result)
+
+        txn_result = await self._sync_transactions(account, session)
+        results.update(txn_result)
+
+        bal_result = await self._sync_balances(account, session)
+        results.update(bal_result)
+
+        session.flush()
+        return results
+
+    async def _sync_positions(self, account: BrokerAccount, session: Session) -> Dict:
+        positions = await self._client.get_positions(account_number=account.account_number)
         created = 0
         updated = 0
         for p in positions:
@@ -75,99 +133,188 @@ class SchwabSyncService:
                 )
                 session.add(new_pos)
                 created += 1
-
         session.flush()
+        return {"positions_created": created, "positions_updated": updated}
 
-        # Options (if client supports it)
-        options_created = 0
-        options_updated = 0
-        get_opts = getattr(self._client, "get_options_positions", None)
-        if callable(get_opts):
-            opts = await get_opts(account_number=account_number)
-            for o in opts:
-                und = (o.get("underlying_symbol") or "").upper()
-                strike = float(o.get("strike_price", 0))
-                expiry = o.get("expiry_date")  # expected as date or ISO string
-                opt_type = (o.get("option_type") or "").upper()  # CALL/PUT
-                open_qty = int(o.get("open_quantity", 0))
-                if isinstance(expiry, str):
-                    from datetime import date
+    async def _sync_options(self, account: BrokerAccount, session: Session) -> Dict:
+        """Sync option positions from Schwab API."""
+        raw = await self._client.get_options_positions(account_number=account.account_number)
+        created = 0
+        updated = 0
+        for o in raw:
+            underlying = (o.get("symbol") or "").upper()
+            strike = float(o.get("strike", 0))
+            put_call = (o.get("put_call") or "CALL").upper()
+            expiry_str = o.get("expiration") or ""
+            qty = int(o.get("quantity", 0))
+            if not underlying or not expiry_str:
+                continue
 
-                    expiry = date.fromisoformat(expiry)
-                if not und or not strike or not expiry or opt_type not in ("CALL", "PUT"):
-                    continue
+            expiry_date = _parse_date(expiry_str).date() if expiry_str else None
+            if not expiry_date:
+                continue
 
-                existing_opt: Option | None = (
-                    session.query(Option)
-                    .filter(
-                        Option.account_id == account.id,
-                        Option.underlying_symbol == und,
-                        Option.strike_price == strike,
-                        Option.expiry_date == expiry,
-                        Option.option_type == opt_type,
-                    )
+            existing = (
+                session.query(Option)
+                .filter(
+                    Option.account_id == account.id,
+                    Option.underlying_symbol == underlying,
+                    Option.strike_price == strike,
+                    Option.expiry_date == expiry_date,
+                    Option.option_type == put_call,
+                )
+                .first()
+            )
+            if existing:
+                existing.open_quantity = qty
+                existing.current_price = Decimal(str(o.get("market_value", 0))) / max(abs(qty) * 100, 1) if qty else None
+                existing.total_cost = Decimal(str(o.get("average_cost", 0) * abs(qty) * 100)) if o.get("average_cost") else None
+                updated += 1
+            else:
+                session.add(Option(
+                    user_id=account.user_id,
+                    account_id=account.id,
+                    symbol=o.get("option_symbol") or f"{underlying}{expiry_date:%y%m%d}{put_call[0]}{strike:.0f}",
+                    underlying_symbol=underlying,
+                    strike_price=strike,
+                    expiry_date=expiry_date,
+                    option_type=put_call,
+                    multiplier=100,
+                    open_quantity=qty,
+                    currency=account.currency or "USD",
+                    data_source="SCHWAB_API",
+                ))
+                created += 1
+        session.flush()
+        return {"options_created": created, "options_updated": updated}
+
+    async def _sync_transactions(self, account: BrokerAccount, session: Session) -> Dict:
+        """Sync transactions from Schwab API and split into transactions, trades, and dividends."""
+        raw_txns = await self._client.get_transactions(account_number=account.account_number)
+        txn_count = 0
+        trade_count = 0
+        dividend_count = 0
+
+        for t in raw_txns:
+            ext_id = str(t.get("id") or "").strip()
+            if not ext_id:
+                continue
+
+            action = (t.get("action") or "").upper()
+            sym = (t.get("symbol") or "").upper()
+            qty = float(t.get("quantity", 0) or 0)
+            price = float(t.get("price", 0) or 0)
+            commission = float(t.get("commission", 0) or 0)
+            amount = float(t.get("amount", 0) or qty * price)
+            net_amount = amount - commission
+            txn_type = SCHWAB_TYPE_MAP.get(action, TransactionType.OTHER)
+            txn_date_str = t.get("date") or t.get("transactionDate")
+            txn_date = _parse_date(txn_date_str) if txn_date_str else datetime.utcnow()
+
+            existing_txn = (
+                session.query(Transaction)
+                .filter(Transaction.account_id == account.id, Transaction.external_id == ext_id)
+                .first()
+            )
+            if not existing_txn:
+                new_txn = Transaction(
+                    account_id=account.id,
+                    external_id=ext_id,
+                    symbol=sym or "CASH",
+                    transaction_type=txn_type,
+                    action=action[:10] if action else None,
+                    quantity=qty,
+                    trade_price=price,
+                    amount=amount,
+                    net_amount=net_amount,
+                    commission=commission,
+                    currency=account.currency or "USD",
+                    transaction_date=txn_date,
+                    source="SCHWAB",
+                )
+                session.add(new_txn)
+                txn_count += 1
+
+            if action in _TRADE_TYPES and sym:
+                side = "BUY" if qty > 0 else "SELL"
+                existing_trade = (
+                    session.query(Trade)
+                    .filter(Trade.account_id == account.id, Trade.execution_id == ext_id)
                     .first()
                 )
-                if existing_opt:
-                    existing_opt.open_quantity = open_qty
-                    options_updated += 1
-                else:
-                    new_opt = Option(
-                        user_id=account.user_id,
+                if not existing_trade:
+                    session.add(Trade(
                         account_id=account.id,
-                        symbol=o.get("symbol") or "",
-                        underlying_symbol=und,
-                        strike_price=strike,
-                        expiry_date=expiry,
-                        option_type=opt_type,
-                        multiplier=float(o.get("multiplier") or 100),
-                        open_quantity=open_qty,
+                        symbol=sym,
+                        side=side,
+                        quantity=abs(qty),
+                        price=price,
+                        total_value=abs(qty * price),
+                        commission=commission,
+                        execution_id=ext_id,
+                        execution_time=txn_date,
+                        status="FILLED",
+                        is_opening=side == "BUY",
+                        is_paper_trade=False,
+                    ))
+                    trade_count += 1
+
+            if txn_type == TransactionType.DIVIDEND and sym:
+                existing_div = (
+                    session.query(Dividend)
+                    .filter(Dividend.account_id == account.id, Dividend.external_id == ext_id)
+                    .first()
+                )
+                if not existing_div:
+                    session.add(Dividend(
+                        account_id=account.id,
+                        external_id=ext_id,
+                        symbol=sym,
+                        ex_date=txn_date,
+                        pay_date=txn_date,
+                        dividend_per_share=0,
+                        shares_held=0,
+                        total_dividend=abs(amount),
+                        tax_withheld=0,
+                        net_dividend=abs(amount),
                         currency=account.currency or "USD",
-                        data_source="SCHWAB",
-                    )
-                    session.add(new_opt)
-                    options_created += 1
+                        source="schwab",
+                    ))
+                    dividend_count += 1
 
         session.flush()
-
-        # Corporate actions (basic splits/mergers handling if provided)
-        get_actions = getattr(self._client, "get_corporate_actions", None)
-        if callable(get_actions):
-            actions = await get_actions(account_number=account_number)
-            for a in actions or []:
-                atype = (a.get("type") or "").lower()
-                sym = (a.get("symbol") or "").upper()
-                if not sym:
-                    continue
-                if atype == "split":
-                    try:
-                        num = Decimal(str(a.get("numerator") or a.get("ratio_n") or a.get("ratio_num")))
-                        den = Decimal(str(a.get("denominator") or a.get("ratio_d") or a.get("ratio_den")))
-                        if num <= 0 or den <= 0:
-                            continue
-                    except Exception:
-                        continue
-                    pos: Position | None = (
-                        session.query(Position)
-                        .filter(Position.account_id == account.id, Position.symbol == sym)
-                        .first()
-                    )
-                    if not pos:
-                        continue
-                    # Adjust quantity and average cost
-                    q = Decimal(pos.quantity or 0)
-                    ac = Decimal(pos.average_cost or 0)
-                    if q != 0 and ac > 0:
-                        pos.quantity = q * num / den
-                        pos.average_cost = ac * den / num
-                        session.flush()
-
         return {
-            "status": "success",
-            "positions_created": created,
-            "positions_updated": updated,
-            "options_created": options_created,
-            "options_updated": options_updated,
+            "transactions_synced": txn_count,
+            "trades_synced": trade_count,
+            "dividends_synced": dividend_count,
         }
 
+    async def _sync_balances(self, account: BrokerAccount, session: Session) -> Dict:
+        """Sync account balances from Schwab API."""
+        bal = await self._client.get_account_balances(account_number=account.account_number)
+        if not bal:
+            return {"balances_synced": 0}
 
+        new_bal = AccountBalance(
+            user_id=account.user_id,
+            broker_account_id=account.id,
+            balance_date=datetime.utcnow(),
+            cash_balance=bal.get("cash_balance"),
+            net_liquidation=bal.get("net_liquidating_value"),
+            buying_power=bal.get("equity_buying_power"),
+            data_source="SCHWAB_API",
+        )
+        session.add(new_bal)
+        session.flush()
+        return {"balances_synced": 1}
+
+
+def _parse_date(val: Any) -> datetime:
+    if isinstance(val, datetime):
+        return val
+    if isinstance(val, date):
+        return datetime.combine(val, datetime.min.time())
+    try:
+        return datetime.fromisoformat(str(val).replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return datetime.utcnow()

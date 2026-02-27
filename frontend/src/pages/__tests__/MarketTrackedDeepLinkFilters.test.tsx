@@ -19,6 +19,10 @@ vi.mock('../../context/AuthContext', () => ({
   }),
 }));
 
+vi.mock('../../hooks/usePortfolioSymbols', () => ({
+  usePortfolioSymbols: () => ({ data: {}, isLoading: false }),
+}));
+
 vi.mock('../../services/api', () => {
   return {
     default: {

@@ -31,80 +31,187 @@ flowchart LR
   Intelligence --> Strategy
 ```
 
-- **Portfolio (read-only)**: Broker sync → positions, trades, options, snapshots. Smart categories (planned) with rules and allocation drift. Frontend consumes via REST; no live broker connection for read views.
-- **Intelligence (brain)**: Market data pipeline → indicators (Weinstein stage, RS Mansfield, TD Sequential, RSI, ATR, etc.) → MarketSnapshot. Rule engine evaluates condition trees against MarketSnapshot + position context to produce signals.
-- **Strategy (execution)**: Strategy definition → Rule evaluator → signals → Order engine → Risk gate → Broker router (paper or live) → Reconciler. Order model tracks idempotency and status lifecycle.
+- **Portfolio (read-only)**: Broker sync -> positions, trades, options, snapshots. Smart categories with drag-and-drop reordering. Frontend consumes via REST; IB Gateway provides live overlay.
+- **Intelligence (brain)**: Market data pipeline -> indicators (Weinstein stage, RS Mansfield, TD Sequential, RSI, ATR, etc.) -> MarketSnapshot -> MarketSnapshotHistory (immutable daily ledger). Rule engine evaluates condition trees against snapshot + position context.
+- **Strategy (execution)**: Strategy definition -> Rule evaluator -> signals -> Order engine -> Risk gate -> Broker router (paper or live) -> Reconciler.
 
 ## System Overview
 
-- **Backend**: FastAPI service exposing REST endpoints; Celery workers for sync and market data jobs.
+- **Backend**: FastAPI, Celery workers for sync and market data jobs.
 - **Data**: PostgreSQL (state), Redis (cache/queue).
-- **Frontend**: React SPA (Chakra v3, React Query, Recharts, TradingView widget).
-- **Brokers**: IBKR (FlexQuery + TWS), TastyTrade (SDK).
+- **Frontend**: React SPA (Chakra v3, React Query, Recharts, lightweight-charts v5, TradingView widget).
+- **Brokers**: IBKR (FlexQuery XML + TWS Gateway), TastyTrade (SDK), Schwab (planned OAuth).
+
+## Data Model Inventory
+
+| Table | Model | Rows | Notes |
+|-------|-------|-----:|-------|
+| `users` | `User` | 1 | Single-user for now |
+| `broker_accounts` | `BrokerAccount` | 2 | IBKR + TastyTrade |
+| `account_syncs` | `AccountSync` | 19 | Sync history records |
+| `account_balances` | `AccountBalance` | 1 | Needs refresh after sync |
+| `positions` | `Position` | 65 | Current open positions |
+| `tax_lots` | `TaxLot` | 554 | Individual tax lots |
+| `trades` | `Trade` | 189 | Historical executions |
+| `transactions` | `Transaction` | 250 | Cash transactions (all TastyTrade) |
+| `dividends` | `Dividend` | 0 | Awaiting IBKR sync |
+| `transfers` | `Transfer` | 0 | Awaiting IBKR sync |
+| `margin_interest` | `MarginInterest` | 1 | Single record |
+| `options` | `Option` | 27 | Option positions |
+| `instruments` | `Instrument` | 65 | Securities master |
+| `categories` | `Category` | 15 | User-defined groupings |
+| `position_categories` | `PositionCategory` | 240 | Position-to-category mapping |
+| `portfolio_snapshots` | `PortfolioSnapshot` | 3 | Daily portfolio snapshots |
+| `price_data` | `PriceData` | 36806 | OHLCV bars (~34 symbols, ~1255 bars each) |
+| `market_snapshot` | `MarketSnapshot` | 0 | **GAP**: Indicators never computed |
+| `market_snapshot_history` | `MarketSnapshotHistory` | 0 | **GAP**: History never backfilled |
+| `cron_schedule` | `CronSchedule` | 11 | Job schedules |
+
+## Backend Module Structure
+
+### API Routes (`backend/api/routes/`)
+
+| Prefix | File | Purpose |
+|--------|------|---------|
+| `/api/v1/auth` | `auth.py` | Login, register, me |
+| `/api/v1/accounts` | `account_management.py` | Add/sync/delete broker accounts |
+| `/api/v1/portfolio` | `portfolio.py` | General portfolio endpoints |
+| `/api/v1/portfolio/live` | `portfolio_live.py` | Live portfolio data |
+| `/api/v1/portfolio/stocks` | `portfolio_stocks.py` | Stock positions |
+| `/api/v1/portfolio/options` | `portfolio_options.py` | Options + IB Gateway |
+| `/api/v1/portfolio/statements` | `portfolio_statements.py` | Statements |
+| `/api/v1/portfolio/dividends` | `portfolio_dividends.py` | Dividends |
+| `/api/v1/portfolio/dashboard` | `portfolio_dashboard.py` | Dashboard aggregations |
+| `/api/v1/portfolio/categories` | `portfolio_categories.py` | Category CRUD + reorder |
+| `/api/v1/portfolio` (activity) | `activity.py` | Activity feed (UNION ALL) |
+| `/api/v1/market-data` | `market_data.py` | Market data + technicals |
+| `/api/v1/strategies` | `strategies.py` | Strategy management |
+| `/api/v1/admin` | `admin.py` | Admin operations |
+| `/api/v1/admin/schedules` | `admin_scheduler.py` | Cron schedule CRUD |
+| `/api/v1/aggregator` | `aggregator.py` | OAuth callbacks, aggregation |
+
+### Services (`backend/services/`)
+
+| Module | Purpose |
+|--------|---------|
+| `portfolio/ibkr_sync_service.py` | IBKR comprehensive sync (2092 lines - refactor target) |
+| `portfolio/tastytrade_sync_service.py` | TastyTrade sync |
+| `portfolio/schwab_sync_service.py` | Schwab sync (placeholder) |
+| `portfolio/broker_sync_service.py` | Broker-agnostic dispatcher |
+| `portfolio/activity_aggregator.py` | Activity UNION ALL across tables |
+| `portfolio/portfolio_analytics_service.py` | Portfolio analytics |
+| `portfolio/account_credentials_service.py` | Encrypted credential management |
+| `portfolio/tax_lot_service.py` | Tax lot computations |
+| `clients/ibkr_flexquery_client.py` | FlexQuery API + XML parsers (2040 lines - refactor target) |
+| `clients/ibkr_client.py` | IB Gateway (ib_insync) client |
+| `clients/tastytrade_client.py` | TastyTrade API client |
+| `clients/schwab_client.py` | Schwab client (placeholder) |
+| `market/indicator_engine.py` | Indicator computation (Stage, RS, RSI, etc.) |
+| `market/coverage_service.py` | Coverage pipeline |
+| `market/snapshot_service.py` | Snapshot persistence |
+| `market/provider_service.py` | Multi-provider OHLCV fetch |
+| `security/credential_vault.py` | Fernet encryption vault |
+
+### Celery Tasks (`backend/tasks/`)
+
+| Task | Schedule | Purpose |
+|------|----------|---------|
+| `sync_account_task` | Manual/on-add | Sync single broker account |
+| `sync_all_ibkr_accounts` | Planned daily | Sync all IBKR accounts |
+| `recompute_indicators_universe` | 03:35 UTC | Compute indicators for all tracked symbols |
+| `record_daily_history` | Part of coverage pipeline | Persist daily snapshot history |
+| `bootstrap_daily_coverage_tracked` | 03:00 UTC | Full coverage pipeline |
+| `monitor_coverage_health` | Hourly | Coverage health check |
+
+## Frontend Pages
+
+| Route | Component | Purpose |
+|-------|-----------|---------|
+| `/` | `MarketDashboard` | Market overview with indicators |
+| `/market/tracked` | `MarketTracked` | Tracked symbol management |
+| `/market/coverage` | `MarketCoverage` | Data coverage status |
+| `/portfolio` | `PortfolioOverview` | Dashboard with P&L, allocation |
+| `/portfolio/holdings` | `PortfolioHoldings` | Position list with market data |
+| `/portfolio/options` | `PortfolioOptions` | Options + IB Gateway chain |
+| `/portfolio/transactions` | `PortfolioTransactions` | Activity feed |
+| `/portfolio/categories` | `PortfolioCategories` | Category management (dnd-kit) |
+| `/portfolio/tax` | `PortfolioTaxCenter` | Tax lot analysis |
+| `/portfolio/workspace` | `PortfolioWorkspace` | Charts workspace |
+| `/strategies` | `Strategies` | Strategy list |
+| `/settings/connections` | `SettingsConnections` | Broker + data connections |
+| `/settings/admin/dashboard` | `AdminDashboard` | Admin operations |
+
+## Data Pipelines
+
+### Broker Sync Pipeline
+
+```
+Trigger (manual/cron)
+  -> Celery sync_account_task
+    -> BrokerSyncService.sync_account_async()
+      -> IBKRSyncService / TastyTradeSyncService / SchwabSyncService
+        -> FlexQuery XML fetch + parse (IBKR)
+          -> positions, tax_lots, trades, transactions, dividends, transfers, balances, options
+        -> db.commit() (single transaction)
+    -> AccountSync record updated
+```
+
+### Market Data Pipeline
+
+```
+Coverage Pipeline (daily 03:00 UTC)
+  1. Fetch OHLCV bars from provider (FMP -> TwelveData -> yfinance)
+  2. Persist to price_data table
+  3. Compute indicators (Stage, RS, RSI, ATR, TD Sequential, SMAs, MACD)
+  4. Persist to market_snapshot (latest) + market_snapshot_history (daily ledger)
+  5. Refresh coverage health
+```
+
+### Activity Aggregation
+
+```
+Activity endpoint (/activity)
+  -> UNION ALL across: trades, transactions, dividends, transfers, margin_interest
+  -> Sorted by date, paginated
+  -> Category types: TRADE, DIVIDEND, PAYMENT_IN_LIEU, WITHHOLDING_TAX,
+     COMMISSION, BROKER_INTEREST_PAID, BROKER_INTEREST_RECEIVED, DEPOSIT,
+     OTHER_FEE, TAX_REFUND, INTEREST, TRANSFER, OTHER
+```
 
 ## RBAC (Role-Based Access Control)
 
 - JWT includes `sub` (username) and `role` claim.
 - `/api/v1/auth/me` returns `{ id, username, email, role }`.
-- Use `require_roles([UserRole.ADMIN])` to guard routes. Admin router is mounted at `/api/v1/admin`.
+- Use `require_roles([UserRole.ADMIN])` to guard routes.
 - Non-admins receive HTTP 403 on admin routes.
 
 ## Auth & Security
 
-- JWT helpers in `backend/api/security.py`: `create_access_token`, `decode_token`, `JWT_ALGORITHM = "HS256"`.
-- All routes resolve the current user via `backend/api/dependencies.py` (`get_current_user`, `get_optional_user`, `require_roles`).
-- Admin seeding (dev-only): when `DEBUG=True` and `ADMIN_*` are set, an admin user is auto-seeded. Configure via `.env`: `ADMIN_USERNAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `DEBUG`.
-
-## Sync Lifecycle
-
-1. **Broker account add**: POST /accounts/add → backend enqueues Celery `sync_account_task`; response includes `sync_task_id` for polling.
-2. **Auto-sync**: Positions, trades, tax lots, transactions, dividends, options, account balances, and portfolio snapshots are populated by sync tasks.
-3. **Daily snapshot**: Scheduled tasks persist portfolio and market snapshots for history.
-4. **Frontend**: POST /accounts/sync-all returns `{ status: "queued", task_ids }`; frontend can trigger sync on login when accounts are NEVER_SYNCED.
-
-## Market Data Pipeline
-
-1. **Universe tracking**: Tracked symbols drive which symbols get OHLCV and indicators.
-2. **Fetch**: Provider-prioritized (FMP → TwelveData → yfinance), Redis caching, backfills.
-3. **Indicator calculation**: Stage, RS Mansfield, RSI, ATR, TD Sequential, SMAs/EMAs, MACD — computed locally (pandas/numpy).
-4. **MarketSnapshot**: Latest per-symbol snapshot stored; consumed by Market Dashboard and portfolio enrichment.
-
-## Market–Portfolio Bridge
-
-- `GET /portfolio/stocks?include_market_data=true` LEFT JOINs latest `MarketSnapshot` per symbol.
-- Positions are enriched with `stage_label`, `rs_mansfield_pct`, `perf_1d`/`perf_5d`/`perf_20d`, `rsi`, `atr_14`.
-- Portfolio symbols are part of the tracked universe; no separate sync.
-
-## Strategy Engine (planned)
-
-- **Rule evaluator**: Walks JSON condition trees (entry_rules, exit_rules, trim_rules) against MarketSnapshot + Position; returns list of signals.
-- **Signal types**: ENTRY, EXIT, SCALE_OUT, STOP_LOSS, ALERT, TRIM, REBALANCE, ROTATE.
-- **Strategy status**: DRAFT → BACKTESTING → PAPER_TRADING → ACTIVE. No strategy goes live without paper trading first.
-
-## Category Engine (planned)
-
-- **CategoryRule** model: rule_type, operator, field, value (JSON), priority. Presets: market cap, sector, Weinstein stage, account type.
-- **CategoryEngine**: auto_categorize(), compute_drift(), generate_rebalance_orders(). Hooked into post-sync when user has rules.
+- JWT helpers in `backend/api/security.py`.
+- All routes resolve current user via `backend/api/dependencies.py`.
+- Admin seeding (dev-only): when `DEBUG=True` and `ADMIN_*` are set.
+- Broker credentials: Fernet symmetric encryption via `CredentialVault`.
 
 ## Scheduling
 
-- **Source of truth**: `cron_schedule` table in PostgreSQL; auto-seeded from `backend/tasks/job_catalog.py`.
-- **Admin CRUD**: Admin → Schedules for create/read/update/delete, cron editing, pause/resume, audit trail.
-- **Render sync**: "Sync to Render" creates/updates/deletes Render Cron Jobs to match DB state.
-- **Execution**: Render Cron → task HTTP trigger → Celery → worker; JobRun rows and Redis last-run; failures surface in Admin Dashboard.
-
-## Frontend Architecture
-
-- **Stack**: React, Chakra v3 (single `system` in `theme/system.ts`), React Query, Recharts, TradingView widget.
-- **Portfolio**: Shared components (StatCard, StageBar, StageBadge, PnlText, Skeleton), AccountFilterWrapper, SortableTable; AccountContext for global account selection; hooks in `usePortfolio.ts`.
-- **Market**: SymbolLink + ChartSlidePanel + ChartContext for hover sparkline and click-to-chart without leaving the page.
+- **Source of truth**: `cron_schedule` table, auto-seeded from `backend/tasks/job_catalog.py`.
+- **Admin CRUD**: Admin -> Schedules page.
+- **Render sync**: "Sync to Render" creates/updates/deletes Render Cron Jobs.
+- **Execution**: Render Cron -> task HTTP trigger -> Celery -> worker.
 
 ## Broker Data Strategy
 
-- **IBKR FlexQuery**: Trades, cash transactions, tax lots, balances, options. Celery `sync_all_ibkr_accounts`; configure `IBKR_FLEX_LOOKBACK_YEARS`.
-- **IBKR TWS/Gateway**: Live overlay for prices/positions only; do not overwrite cost basis.
-- **TastyTrade SDK**: Discovery, positions, trades, transactions, dividends, balances via credentials; no hardcoded account numbers.
+- **IBKR FlexQuery**: Trades, cash transactions, tax lots, balances, options, transfers. Requires "Last 365 Calendar Days" period configuration.
+- **IBKR TWS/Gateway**: Live overlay for prices/positions/Greeks. Docker container (`ghcr.io/extrange/ibkr:stable`). Read-only.
+- **TastyTrade SDK**: Positions, trades, transactions, dividends, balances via encrypted credentials.
+- **Schwab**: OAuth scaffold exists, client is placeholder.
 
-## Security
+## Known Gaps
 
-- Env-only secrets; JWT for user auth; scoped tokens for production.
+1. `market_snapshot` and `market_snapshot_history` have 0 rows -- indicators never computed/persisted
+2. `dividends` table has 0 rows -- IBKR data ready but sync not yet triggered post-FlexQuery fix
+3. `transfers` table has 0 rows -- same as above
+4. TastyTrade sync stuck (`RUNNING`) due to encryption token mismatch
+5. IBKR sync code needs refactor (2 x 2000+ line files with god functions)
+6. Schwab client is placeholder
+7. No stale sync recovery mechanism

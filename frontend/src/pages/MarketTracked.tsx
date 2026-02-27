@@ -18,6 +18,8 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FiCheck, FiEdit2, FiX } from 'react-icons/fi';
 import { ChartContext, SymbolLink, ChartSlidePanel } from '../components/market/SymbolChartUI';
+import { usePortfolioSymbols } from '../hooks/usePortfolioSymbols';
+import PnlText from '../components/shared/PnlText';
 
 const ETF_SYMBOLS = [
   'COLO', 'DBA', 'DIA', 'ECH', 'EPOL', 'EPU', 'EWA', 'EWC', 'EWG', 'EWH', 'EWI', 'EWJ', 'EWM', 'EWW',
@@ -131,6 +133,9 @@ const MarketTracked: React.FC = () => {
   const [loading, setLoading] = React.useState<boolean>(false);
   const [chartSymbol, setChartSymbol] = React.useState<string | null>(null);
   const openChart = React.useCallback((sym: string) => setChartSymbol(sym), []);
+  const [showHoldings, setShowHoldings] = React.useState(false);
+  const portfolioQuery = usePortfolioSymbols();
+  const portfolioSymbols = portfolioQuery.data ?? {};
 
   const load = async () => {
     if (loading) return;
@@ -217,7 +222,14 @@ const MarketTracked: React.FC = () => {
       typeof v === 'number' && Number.isFinite(v) ? `${Math.max(0, Math.round(v))}d` : '—';
 
     return [
-      { key: 'symbol', header: 'Symbol', accessor: (r) => r.symbol, sortable: true, sortType: 'string', render: (_v, r) => <SymbolLink symbol={String(r?.symbol || '')} /> },
+      { key: 'symbol', header: 'Symbol', accessor: (r) => r.symbol, sortable: true, sortType: 'string', render: (_v, r) => (
+        <HStack gap={1}>
+          <SymbolLink symbol={String(r?.symbol || '')} />
+          {String(r?.symbol || '') in portfolioSymbols && (
+            <Badge size="xs" colorPalette="blue" variant="subtle">Held</Badge>
+          )}
+        </HStack>
+      ) },
       { key: 'name', header: 'Name', accessor: (r) => r.name, sortable: true, sortType: 'string', render: (v) => String(v || '—') },
       { key: 'current_price', header: 'Price', accessor: (r) => r.current_price, sortable: true, sortType: 'number', isNumeric: true, render: (v) => (typeof v === 'number' ? formatMoney(v, currency, { maximumFractionDigits: 2 }) : '—') },
       {
@@ -364,8 +376,39 @@ const MarketTracked: React.FC = () => {
       { key: 'sector', header: 'Sector', accessor: (r) => r.sector, sortable: true, sortType: 'string' },
       { key: 'industry', header: 'Industry', accessor: (r) => r.industry, sortable: true, sortType: 'string' },
       { key: 'as_of_timestamp', header: 'As of', accessor: (r) => r.as_of_timestamp || r.analysis_timestamp, sortable: true, sortType: 'date', render: (v) => fmtTs(v) },
+
+      // Portfolio columns (visible only when "My Holdings" is active)
+      {
+        key: 'portfolio_qty',
+        header: 'Qty',
+        accessor: (r) => portfolioSymbols[r.symbol]?.quantity ?? 0,
+        sortable: true,
+        sortType: 'number',
+        isNumeric: true,
+        render: (v) => {
+          const qty = Number(v);
+          return qty > 0 ? <Text fontFamily="mono" fontSize="xs">{qty}</Text> : <Text color="fg.muted" fontSize="xs">—</Text>;
+        },
+        width: '60px',
+        hidden: !showHoldings,
+      },
+      {
+        key: 'portfolio_pnl',
+        header: 'Unrealized',
+        accessor: (r) => portfolioSymbols[r.symbol]?.unrealized_pnl ?? 0,
+        sortable: true,
+        sortType: 'number',
+        isNumeric: true,
+        render: (v) => {
+          const val = Number(v);
+          if (!val) return <Text color="fg.muted" fontSize="xs">—</Text>;
+          return <PnlText value={val} format="currency" />;
+        },
+        width: '80px',
+        hidden: !showHoldings,
+      },
     ];
-  }, [currency, timezone, canEditPlan, updateTrackedPlan]);
+  }, [currency, timezone, canEditPlan, updateTrackedPlan, portfolioSymbols, showHoldings]);
 
   const filterPresets = React.useMemo<Array<{ label: string; filters: FilterGroup }>>(() => [
     {
@@ -546,9 +589,15 @@ const MarketTracked: React.FC = () => {
   }, [etfOnlyDeepLink]);
 
   const tableRows = React.useMemo(() => {
-    if (!etfOnly) return rows;
-    return rows.filter((row) => ETF_SYMBOL_SET.has(String(row?.symbol || '').toUpperCase()));
-  }, [rows, etfOnly]);
+    let d = rows;
+    if (etfOnly) {
+      d = d.filter((row) => ETF_SYMBOL_SET.has(String(row?.symbol || '').toUpperCase()));
+    }
+    if (showHoldings) {
+      d = d.filter((row) => String(row?.symbol || '') in portfolioSymbols);
+    }
+    return d;
+  }, [rows, etfOnly, showHoldings, portfolioSymbols]);
 
   return (
     <ChartContext.Provider value={openChart}>
@@ -564,6 +613,14 @@ const MarketTracked: React.FC = () => {
             </Text>
           </Box>
           <HStack gap={2}>
+            <Button
+              size="xs"
+              variant={showHoldings ? 'solid' : 'outline'}
+              colorPalette={showHoldings ? 'blue' : 'gray'}
+              onClick={() => setShowHoldings((v) => !v)}
+            >
+              My Holdings
+            </Button>
             <Button
               size="xs"
               variant={etfOnly ? 'solid' : 'outline'}

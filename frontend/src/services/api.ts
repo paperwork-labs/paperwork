@@ -235,12 +235,21 @@ export const portfolioApi = {
     return makeOptimizedRequest(() => api.get(url));
   },
 
-  getCategories: async () => makeOptimizedRequest(() => api.get('/portfolio/categories')),
-  createCategory: async (body: { name: string; target_allocation_pct?: number; description?: string; color?: string }) =>
+  getCategoryViews: async () => makeOptimizedRequest(() => api.get('/portfolio/categories/views')),
+  getCategories: async (categoryType?: string) => {
+    const params = categoryType
+      ? `?${new URLSearchParams({ category_type: categoryType })}`
+      : '';
+    return makeOptimizedRequest(() => api.get(`/portfolio/categories${params}`));
+  },
+  getCategory: async (id: number) => makeOptimizedRequest(() => api.get(`/portfolio/categories/${id}`)),
+  createCategory: async (body: { name: string; target_allocation_pct?: number; description?: string; color?: string; category_type?: string }) =>
     makeOptimizedRequest(() => api.post('/portfolio/categories', body)),
   updateCategory: async (id: number, body: { name?: string; target_allocation_pct?: number; description?: string; color?: string }) =>
     makeOptimizedRequest(() => api.put(`/portfolio/categories/${id}`, body)),
   deleteCategory: async (id: number) => makeOptimizedRequest(() => api.delete(`/portfolio/categories/${id}`)),
+  reorderCategories: async (orderedIds: number[]) =>
+    makeOptimizedRequest(() => api.put('/portfolio/categories/reorder', { ordered_ids: orderedIds })),
   assignPositions: async (categoryId: number, positionIds: number[]) =>
     makeOptimizedRequest(() => api.post(`/portfolio/categories/${categoryId}/positions`, { position_ids: positionIds })),
   unassignPosition: async (categoryId: number, positionId: number) =>
@@ -354,8 +363,13 @@ export const portfolioApi = {
     return makeOptimizedRequest(() => api.get(`/portfolio/dividends/summary${q}`));
   },
 
-  getLiveSummary: async () => {
-    return makeOptimizedRequest(() => api.get('/portfolio/live-summary'));
+  getLiveSummary: async (accountId?: string) => {
+    const q = accountId ? `?account_id=${encodeURIComponent(accountId)}` : '';
+    return makeOptimizedRequest(() => api.get(`/portfolio/live/summary${q}`));
+  },
+  getLivePositions: async (accountId?: string) => {
+    const q = accountId ? `?account_id=${encodeURIComponent(accountId)}` : '';
+    return makeOptimizedRequest(() => api.get(`/portfolio/live/positions${q}`));
   },
 
   getRiskMetrics: async () => {

@@ -3,7 +3,7 @@
 	backend-shell frontend-shell task-run \
 	migrate-create migrate-up migrate-down migrate-stamp-head \
 	frontend-install frontend-lint frontend-typecheck frontend-test frontend-check \
-	ib-up ib-down ib-logs
+	ib-up ib-down ib-logs ib-verify
 
 DOCKER ?= docker
 PROJECT ?= axiomfolio
@@ -131,4 +131,25 @@ ib-down:
 
 ib-logs:
 	$(COMPOSE_DEV_IBKR) logs --tail=200 -f ib-gateway
+
+ib-verify: ## Verify IB Gateway connectivity end-to-end
+	@echo "Starting IB Gateway..."
+	docker compose -f infra/compose.dev.yaml --profile ib up -d ib-gateway
+	@echo "Waiting for login (60s timeout)..."
+	@for i in $$(seq 1 60); do \
+		if docker compose -f infra/compose.dev.yaml logs ib-gateway 2>&1 | grep -q "login accepted"; then \
+			echo "✓ IB Gateway login accepted"; \
+			break; \
+		fi; \
+		if [ $$i -eq 60 ]; then \
+			echo "✗ Timeout waiting for login. Check credentials in infra/env.dev"; \
+			echo "  Logs: docker compose -f infra/compose.dev.yaml logs ib-gateway"; \
+			exit 1; \
+		fi; \
+		sleep 1; \
+	done
+	@echo "Checking API connectivity..."
+	@curl -sf http://localhost:8000/api/v1/portfolio/options/gateway-status > /dev/null 2>&1 && \
+		echo "✓ Gateway API reachable" || \
+		echo "⚠ Backend not running or gateway-status endpoint unreachable (start backend first)"
 

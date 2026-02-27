@@ -359,17 +359,15 @@ const AdminOperatorActions: React.FC<Props> = ({
                       Backfill Snapshot History (since)
                     </Button>
                   </Box>
-                  <Box mt={2} display="flex" gap={2} flexWrap="wrap" alignItems="center">
-                    <Button size="xs" colorScheme="brand" loading={backfillingSinceDate} onClick={() => void backfillSinceDate()}>
-                      Backfill Full Flow (since date)
-                    </Button>
-                    <HStack gap={1}>
-                      <Badge size="sm" variant="subtle">Daily</Badge>
-                      <Text fontSize="xs" color="fg.muted">-&gt;</Text>
-                      <Badge size="sm" variant="subtle">Indicators</Badge>
-                      <Text fontSize="xs" color="fg.muted">-&gt;</Text>
-                      <Badge size="sm" variant="subtle">History</Badge>
-                    </HStack>
+                  <Box mt={2} display="flex" flexDirection="column" gap={1}>
+                    <Box display="flex" gap={2} flexWrap="wrap" alignItems="center">
+                      <Button size="xs" colorScheme="brand" loading={backfillingSinceDate} onClick={() => void backfillSinceDate()}>
+                        Backfill Full Flow (since date)
+                      </Button>
+                    </Box>
+                    <Text fontSize="xs" color="fg.muted">
+                      1. Fetch OHLCV bars from provider → 2. Compute indicator series (SMA, RSI, MACD, Stage, RS...) → 3. Persist to MarketSnapshotHistory (immutable daily ledger)
+                    </Text>
                   </Box>
                 </Box>
                 <Box>
@@ -399,17 +397,15 @@ const AdminOperatorActions: React.FC<Props> = ({
                       Backfill Snapshot History (period)
                     </Button>
                   </Box>
-                  <Box mt={2} display="flex" gap={2} flexWrap="wrap" alignItems="center">
-                    <Button size="xs" colorScheme="brand" loading={backfillingPeriodFlow} onClick={() => void backfillPeriodFlow()}>
-                      Backfill Full Flow (period)
-                    </Button>
-                    <HStack gap={1}>
-                      <Badge size="sm" variant="subtle">Daily</Badge>
-                      <Text fontSize="xs" color="fg.muted">-&gt;</Text>
-                      <Badge size="sm" variant="subtle">Indicators</Badge>
-                      <Text fontSize="xs" color="fg.muted">-&gt;</Text>
-                      <Badge size="sm" variant="subtle">History</Badge>
-                    </HStack>
+                  <Box mt={2} display="flex" flexDirection="column" gap={1}>
+                    <Box display="flex" gap={2} flexWrap="wrap" alignItems="center">
+                      <Button size="xs" colorScheme="brand" loading={backfillingPeriodFlow} onClick={() => void backfillPeriodFlow()}>
+                        Backfill Full Flow (period)
+                      </Button>
+                    </Box>
+                    <Text fontSize="xs" color="fg.muted">
+                      1. Fetch OHLCV bars from provider → 2. Compute indicator series (SMA, RSI, MACD, Stage, RS...) → 3. Persist to MarketSnapshotHistory (immutable daily ledger)
+                    </Text>
                   </Box>
                 </Box>
               </Box>

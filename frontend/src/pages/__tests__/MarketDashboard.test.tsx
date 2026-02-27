@@ -8,8 +8,13 @@ vi.mock('../../components/charts/TradingViewChart', () => ({
   default: ({ symbol }: { symbol: string }) => <div data-testid="tv-chart">{symbol}</div>,
 }));
 
+vi.mock('../../hooks/usePortfolioSymbols', () => ({
+  usePortfolioSymbols: () => ({ data: {}, isLoading: false }),
+}));
+
 vi.mock('../../services/api', () => {
   return {
+    default: { get: vi.fn().mockResolvedValue({ data: {} }) },
     marketDataApi: {
       getHistory: vi.fn().mockResolvedValue({
         bars: [

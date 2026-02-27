@@ -593,7 +593,7 @@ const DashboardLayout: React.FC = () => {
                       <AppDivider />
                       <MenuItem value="profile" onClick={() => navigate('/settings/profile')}>Profile</MenuItem>
                       <MenuItem value="preferences" onClick={() => navigate('/settings/preferences')}>Preferences</MenuItem>
-                      <MenuItem value="brokerages" onClick={() => navigate('/settings/brokerages')}>Brokerages</MenuItem>
+                      <MenuItem value="connections" onClick={() => navigate('/settings/connections')}>Connections</MenuItem>
                       {isAdmin ? (
                         <MenuItem value="admin-dashboard" onClick={() => navigate('/settings/admin/dashboard')}>
                           Admin Dashboard

@@ -324,8 +324,8 @@ def test_catalog_endpoint():
         groups = data["catalog"]
         assert "market_data" in groups
         assert len(groups["market_data"]) >= 5
-        assert "accounts" in groups
-        assert len(groups["accounts"]) >= 1
+        assert "portfolio" in groups
+        assert len(groups["portfolio"]) >= 1
     finally:
         app.dependency_overrides.pop(get_admin_user, None)
 

@@ -1,5 +1,18 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import { Box, Badge } from '@chakra-ui/react';
+import {
+  createChart,
+  createSeriesMarkers,
+  CandlestickSeries,
+  LineSeries,
+  AreaSeries,
+  HistogramSeries,
+  LineStyle,
+  type IChartApi,
+  type ISeriesApi,
+  type SeriesType,
+  type UTCTimestamp,
+} from 'lightweight-charts';
 import { useColorMode } from '../../theme/colorMode';
 import type { ChartColors } from '../../hooks/useChartColors';
 import {
@@ -51,6 +64,17 @@ function defaultIndicators(): IndicatorToggles {
   return { trendLines: true, gaps: true, tdSequential: true, emas: true, stage: true, supportResistance: true };
 }
 
+interface MACDData {
+  macd: Array<{ time: string; value: number }>;
+  signal: Array<{ time: string; value: number }>;
+  histogram: Array<{ time: string; value: number; color?: string }>;
+}
+
+interface BollingerData {
+  upper: Array<{ time: string; value: number }>;
+  lower: Array<{ time: string; value: number }>;
+}
+
 interface Props {
   height?: number;
   bars: Bar[];
@@ -65,24 +89,13 @@ interface Props {
   symbol?: string;
   indicators?: IndicatorToggles;
   colors?: ChartColors;
+  rsiData?: Array<{ time: string; value: number }>;
+  macdData?: MACDData;
+  bollingerData?: BollingerData;
+  showRSI?: boolean;
+  showMACD?: boolean;
+  showBollinger?: boolean;
 }
-
-declare global {
-  interface Window {
-    LightweightCharts?: any;
-  }
-}
-
-const loadScript = (src: string) =>
-  new Promise<void>((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
-    const s = document.createElement('script');
-    s.src = src;
-    s.async = true;
-    s.onload = () => resolve();
-    s.onerror = () => reject();
-    document.body.appendChild(s);
-  });
 
 const getCssColor = (token: string, fallback: string) => {
   if (typeof document === 'undefined') return fallback;
@@ -91,10 +104,12 @@ const getCssColor = (token: string, fallback: string) => {
   return v || fallback;
 };
 
-const toDaySec = (iso: string) => {
+const toDaySec = (iso: string): UTCTimestamp => {
   const d = new Date(iso);
-  return Math.floor(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) / 1000);
+  return Math.floor(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) / 1000) as UTCTimestamp;
 };
+
+const asUTC = (t: number) => t as UTCTimestamp;
 
 function hexToRgba(hex: string, alpha: number): string {
   const h = hex.replace('#', '');
@@ -109,7 +124,7 @@ function eventColor(type: ChartEventType, c: ChartColors): string {
   switch (type) {
     case 'BUY': return c.success;
     case 'SELL': return c.danger;
-    case 'DIVIDEND': return c.brand400;
+    case 'DIVIDEND': return '#059669';
     case 'TRANSFER': return c.brand500;
     case 'FEE': return c.warning;
     case 'INTEREST': return c.brand700;
@@ -125,7 +140,7 @@ function pickEventDayColor(evts: ChartEvent[], c: ChartColors): string {
   const types = new Set(evts.map(e => e.type));
   if (types.has('SELL')) return c.danger;
   if (types.has('BUY')) return c.success;
-  if (types.has('DIVIDEND')) return c.brand400;
+  if (types.has('DIVIDEND')) return '#059669';
   return c.muted;
 }
 
@@ -153,6 +168,12 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
   symbol,
   indicators,
   colors,
+  rsiData,
+  macdData,
+  bollingerData,
+  showRSI = false,
+  showMACD = false,
+  showBollinger = false,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -219,315 +240,411 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
   );
 
   useEffect(() => {
-    let chart: any;
-    let mainSeries: any;
+    if (!ref.current) return;
 
-    (async () => {
-      if (!window.LightweightCharts) {
-        try {
-          await loadScript('https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js');
-        } catch {
-          return;
-        }
-      }
-      if (!ref.current) return;
+    const bg = isDark ? getCssColor('bg.canvas', '#0F172A') : '#FFFFFF';
+    const text = isDark ? getCssColor('fg.default', '#E5E7EB') : '#111827';
 
-      const bg = isDark ? getCssColor('bg.canvas', '#0F172A') : '#FFFFFF';
-      const text = isDark ? getCssColor('fg.default', '#E5E7EB') : '#111827';
+    ref.current.innerHTML = '';
+    const chart: IChartApi = createChart(ref.current, {
+      height,
+      rightPriceScale: { borderVisible: false },
+      layout: { background: { color: bg }, textColor: text },
+      grid: { vertLines: { color: c.grid }, horzLines: { color: c.grid } },
+      timeScale: { rightOffset: 8, barSpacing: 6, fixLeftEdge: false, lockVisibleTimeRangeOnResize: false },
+      crosshair: { mode: 1 },
+    });
 
-      ref.current.innerHTML = '';
-      chart = window.LightweightCharts.createChart(ref.current, {
-        height,
-        rightPriceScale: { borderVisible: false },
-        layout: { background: { color: bg }, textColor: text },
-        grid: { vertLines: { color: c.grid }, horzLines: { color: c.grid } },
-        timeScale: { rightOffset: 8, barSpacing: 6, fixLeftEdge: false, lockVisibleTimeRangeOnResize: false },
-        crosshair: { mode: 1 },
+    let mainSeries: ISeriesApi<SeriesType>;
+    if (showLine) {
+      mainSeries = chart.addSeries(AreaSeries, {
+        lineColor: c.neutral,
+        lineWidth: 2,
+        topColor: hexToRgba(c.neutral, 0.28),
+        bottomColor: hexToRgba(c.neutral, 0.02),
+        priceLineVisible: true,
+        lastValueVisible: true,
+        crosshairMarkerVisible: true,
+        crosshairMarkerRadius: 4,
+        crosshairMarkerBackgroundColor: c.neutral,
       });
+    } else {
+      mainSeries = chart.addSeries(CandlestickSeries, {
+        upColor: c.success,
+        downColor: c.danger,
+        borderDownColor: c.danger,
+        borderUpColor: c.success,
+        wickDownColor: c.danger,
+        wickUpColor: c.success,
+      });
+    }
 
-      if (showLine) {
-        mainSeries = chart.addAreaSeries({
-          lineColor: c.neutral,
+    const eventMap = new Map<number, ChartEvent[]>();
+    if (showEvents) {
+      for (const ev of events) {
+        const t = toDaySec(ev.time);
+        if (t <= 0) continue;
+        const arr = eventMap.get(t) || [];
+        arr.push(ev);
+        eventMap.set(t, arr);
+      }
+    }
+
+    if (showLine) {
+      mainSeries.setData(ohlcBars.map(b => {
+        const dayEvts = eventMap.get(b.time);
+        const pt: any = { time: asUTC(b.time), value: b.close };
+        if (dayEvts && dayEvts.length > 0) {
+          const clr = pickEventDayColor(dayEvts, c);
+          pt.lineColor = clr;
+          pt.topColor = hexToRgba(clr, 0.28);
+          pt.bottomColor = hexToRgba(clr, 0.02);
+        }
+        return pt;
+      }));
+    } else {
+      mainSeries.setData(ohlcBars.map(b => ({ ...b, time: asUTC(b.time) })));
+    }
+
+    if (avgPrice && Number.isFinite(avgPrice)) {
+      mainSeries.createPriceLine({
+        price: avgPrice,
+        color: c.brand400,
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: 'AVG',
+      });
+    }
+
+    if (ind.emas) {
+      if (ema8.length > 0) {
+        const s = chart.addSeries(LineSeries, { color: c.warning, lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+        s.setData(ema8.map(e => ({ time: asUTC(e.time), value: e.value })));
+      }
+      if (ema21.length > 0) {
+        const s = chart.addSeries(LineSeries, { color: c.brand500, lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+        s.setData(ema21.map(e => ({ time: asUTC(e.time), value: e.value })));
+      }
+      if (ema200.length > 0) {
+        const s = chart.addSeries(LineSeries, { color: c.danger, lineWidth: 1, lineStyle: LineStyle.Dashed, priceLineVisible: false, lastValueVisible: false });
+        s.setData(ema200.map(e => ({ time: asUTC(e.time), value: e.value })));
+      }
+    }
+
+    if (ind.trendLines) {
+      for (const tl of trendLines) {
+        const color = tl.direction === 'up' ? c.success : c.danger;
+        const mainLine = chart.addSeries(LineSeries, {
+          color,
           lineWidth: 2,
-          topColor: hexToRgba(c.neutral, 0.28),
-          bottomColor: hexToRgba(c.neutral, 0.02),
-          priceLineVisible: true,
-          lastValueVisible: true,
-          crosshairMarkerVisible: true,
-          crosshairMarkerRadius: 4,
-          crosshairMarkerBackgroundColor: c.neutral,
-        });
-      } else {
-        mainSeries = chart.addCandlestickSeries({
-          upColor: c.success,
-          downColor: c.danger,
-          borderDownColor: c.danger,
-          borderUpColor: c.success,
-          wickDownColor: c.danger,
-          wickUpColor: c.success,
-        });
-      }
-
-      const eventMap = new Map<number, ChartEvent[]>();
-      if (showEvents) {
-        for (const ev of events) {
-          const t = toDaySec(ev.time);
-          if (t <= 0) continue;
-          const arr = eventMap.get(t) || [];
-          arr.push(ev);
-          eventMap.set(t, arr);
-        }
-      }
-
-      if (showLine) {
-        mainSeries.setData(ohlcBars.map(b => {
-          const dayEvts = eventMap.get(b.time);
-          const pt: any = { time: b.time, value: b.close };
-          if (dayEvts && dayEvts.length > 0) {
-            const clr = pickEventDayColor(dayEvts, c);
-            pt.lineColor = clr;
-            pt.topColor = hexToRgba(clr, 0.28);
-            pt.bottomColor = hexToRgba(clr, 0.02);
-          }
-          return pt;
-        }));
-      } else {
-        mainSeries.setData(ohlcBars);
-      }
-
-      if (avgPrice && Number.isFinite(avgPrice)) {
-        mainSeries.createPriceLine({
-          price: avgPrice,
-          color: c.brand400,
-          lineWidth: 1,
-          lineStyle: window.LightweightCharts.LineStyle.Dashed,
-          axisLabelVisible: true,
-          title: 'AVG',
-        });
-      }
-
-      if (ind.emas) {
-        if (ema8.length > 0) {
-          const s = chart.addLineSeries({ color: c.warning, lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
-          s.setData(ema8.map(e => ({ time: e.time, value: e.value })));
-        }
-        if (ema21.length > 0) {
-          const s = chart.addLineSeries({ color: c.brand500, lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
-          s.setData(ema21.map(e => ({ time: e.time, value: e.value })));
-        }
-        if (ema200.length > 0) {
-          const s = chart.addLineSeries({ color: c.danger, lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: false });
-          s.setData(ema200.map(e => ({ time: e.time, value: e.value })));
-        }
-      }
-
-      if (ind.trendLines) {
-        for (const tl of trendLines) {
-          const color = tl.direction === 'up' ? c.success : c.danger;
-          const mainLine = chart.addLineSeries({
-            color,
-            lineWidth: 2,
-            lineStyle: 0,
-            priceLineVisible: false,
-            lastValueVisible: false,
-            crosshairMarkerVisible: false,
-          });
-          mainLine.setData([
-            { time: tl.x1, value: tl.y1 },
-            { time: tl.x2, value: tl.y2 },
-          ]);
-
-          if (tl.channelX1 != null && tl.channelY1 != null && tl.channelX2 != null && tl.channelY2 != null) {
-            const channelLine = chart.addLineSeries({
-              color,
-              lineWidth: 1,
-              lineStyle: 2,
-              priceLineVisible: false,
-              lastValueVisible: false,
-              crosshairMarkerVisible: false,
-            });
-            channelLine.setData([
-              { time: tl.channelX1, value: tl.channelY1 },
-              { time: tl.channelX2, value: tl.channelY2 },
-            ]);
-          }
-        }
-      }
-
-      if (showEvents && eventMap.size > 0) {
-        const markers = Array.from(eventMap.entries())
-          .sort((a, b) => a[0] - b[0])
-          .map(([time, evts]) => ({
-            time,
-            position: 'belowBar' as const,
-            color: pickEventDayColor(evts, c),
-            shape: 'circle' as const,
-            size: showLine ? 1 : 0.5,
-            text: '',
-          }));
-        mainSeries.setMarkers(markers);
-      }
-
-      // TD Sequential labels on hidden helper series
-      if (ind.tdSequential && tdLabels.length > 0) {
-        const tdSeries = chart.addLineSeries({
-          color: 'transparent',
-          lineWidth: 0,
+          lineStyle: LineStyle.Solid,
           priceLineVisible: false,
           lastValueVisible: false,
           crosshairMarkerVisible: false,
         });
-        tdSeries.setData(ohlcBars.map(b => ({ time: b.time, value: b.close })));
-        const tdMarkers = tdLabels
-          .filter(l => {
-            const n = parseInt(l.text.replace('+', ''), 10);
-            return l.text.startsWith('+') || n >= 7;
-          })
-          .map(l => ({
-            time: l.time,
-            position: l.position === 'above' ? 'aboveBar' as const : 'belowBar' as const,
-            color: l.color,
-            shape: 'circle' as const,
-            text: l.text,
-          }))
-          .sort((a, b) => a.time - b.time);
-        if (tdMarkers.length > 0) tdSeries.setMarkers(tdMarkers);
-      }
+        mainLine.setData([
+          { time: asUTC(tl.x1), value: tl.y1 },
+          { time: asUTC(tl.x2), value: tl.y2 },
+        ]);
 
-      // Gap zones
-      if (ind.gaps && gapZones.length > 0) {
-        const lastBarTime = ohlcBars.length ? ohlcBars[ohlcBars.length - 1].time : 0;
-        for (const gap of gapZones.filter(g => !g.filled)) {
-          const isUp = gap.direction === 'up';
-          const endTime = gap.filledTime ?? lastBarTime;
-          const topData: { time: number; value: number }[] = [];
-          const bottomData: { time: number; value: number }[] = [];
+        if (tl.channelX1 != null && tl.channelY1 != null && tl.channelX2 != null && tl.channelY2 != null) {
+          const channelLine = chart.addSeries(LineSeries, {
+            color,
+            lineWidth: 1,
+            lineStyle: LineStyle.Dashed,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false,
+          });
+          channelLine.setData([
+            { time: asUTC(tl.channelX1), value: tl.channelY1 },
+            { time: asUTC(tl.channelX2), value: tl.channelY2 },
+          ]);
+        }
+      }
+    }
+
+    // Bollinger bands overlay on main chart pane
+    if (showBollinger && bollingerData) {
+      if (bollingerData.upper?.length) {
+        const upperLine = chart.addSeries(LineSeries, {
+          color: '#6366f180',
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          priceLineVisible: false,
+          lastValueVisible: false,
+          crosshairMarkerVisible: false,
+        });
+        upperLine.setData(bollingerData.upper.map(d => ({ time: toDaySec(d.time), value: d.value })));
+      }
+      if (bollingerData.lower?.length) {
+        const lowerLine = chart.addSeries(LineSeries, {
+          color: '#6366f180',
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          priceLineVisible: false,
+          lastValueVisible: false,
+          crosshairMarkerVisible: false,
+        });
+        lowerLine.setData(bollingerData.lower.map(d => ({ time: toDaySec(d.time), value: d.value })));
+      }
+    }
+
+    if (showEvents && eventMap.size > 0) {
+      const markers = Array.from(eventMap.entries())
+        .sort((a, b) => a[0] - b[0])
+        .map(([time, evts]) => {
+          const types = new Set(evts.map(e => e.type));
+          const isDividendOnly = types.size === 1 && types.has('DIVIDEND');
+          const hasDividend = types.has('DIVIDEND');
+          const divEvt = hasDividend ? evts.find(e => e.type === 'DIVIDEND') : null;
+          const divLabel = divEvt && divEvt.amount ? `$${Math.abs(divEvt.amount).toFixed(2)}` : (divEvt?.label || '');
+          return {
+            time: asUTC(time),
+            position: (isDividendOnly ? 'belowBar' : (types.has('SELL') ? 'aboveBar' : 'belowBar')) as 'aboveBar' | 'belowBar',
+            color: isDividendOnly ? '#059669' : pickEventDayColor(evts, c),
+            shape: (isDividendOnly ? 'arrowUp' : 'circle') as 'circle' | 'arrowUp' | 'arrowDown' | 'square',
+            size: isDividendOnly ? 1.5 : (showLine ? 1 : 0.5),
+            text: isDividendOnly ? (divLabel ? `DIV ${divLabel}` : 'DIV') : '',
+          };
+        });
+      createSeriesMarkers(mainSeries, markers);
+    }
+
+    // TD Sequential labels on hidden helper series
+    if (ind.tdSequential && tdLabels.length > 0) {
+      const tdSeries = chart.addSeries(LineSeries, {
+        color: 'transparent',
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false,
+      });
+      tdSeries.setData(ohlcBars.map(b => ({ time: asUTC(b.time), value: b.close })));
+      const tdMarkers = tdLabels
+        .filter(l => {
+          const n = parseInt(l.text.replace('+', ''), 10);
+          return l.text.startsWith('+') || n >= 7;
+        })
+        .map(l => ({
+          time: asUTC(l.time),
+          position: l.position === 'above' ? 'aboveBar' as const : 'belowBar' as const,
+          color: l.color,
+          shape: 'circle' as const,
+          text: l.text,
+        }))
+        .sort((a, b) => (a.time as number) - (b.time as number));
+      if (tdMarkers.length > 0) createSeriesMarkers(tdSeries, tdMarkers);
+    }
+
+    // Gap zones
+    if (ind.gaps && gapZones.length > 0) {
+      const lastBarTime = ohlcBars.length ? ohlcBars[ohlcBars.length - 1].time : 0;
+      for (const gap of gapZones.filter(g => !g.filled)) {
+        const isUp = gap.direction === 'up';
+        const endTime = gap.filledTime ?? lastBarTime;
+        const topData: { time: UTCTimestamp; value: number }[] = [];
+          const bottomData: { time: UTCTimestamp; value: number }[] = [];
           for (const bar of ohlcBars) {
             if (bar.time < gap.startTime || bar.time > endTime) continue;
-            topData.push({ time: bar.time, value: gap.topPrice });
-            bottomData.push({ time: bar.time, value: gap.bottomPrice });
+            topData.push({ time: asUTC(bar.time), value: gap.topPrice });
+            bottomData.push({ time: asUTC(bar.time), value: gap.bottomPrice });
           }
-          if (topData.length === 0) continue;
+        if (topData.length === 0) continue;
 
-          const borderColor = isUp ? hexToRgba(c.success, 0.5) : hexToRgba(c.danger, 0.5);
-          const fillColor = isUp ? hexToRgba(c.success, 0.12) : hexToRgba(c.danger, 0.12);
+        const borderColor = isUp ? hexToRgba(c.success, 0.5) : hexToRgba(c.danger, 0.5);
+        const fillColor = isUp ? hexToRgba(c.success, 0.12) : hexToRgba(c.danger, 0.12);
 
-          const topSeries = chart.addLineSeries({
-            color: borderColor, lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
-          });
-          topSeries.setData(topData);
+        const topSeries = chart.addSeries(LineSeries, {
+          color: borderColor, lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+        });
+        topSeries.setData(topData);
 
-          const bottomSeries = chart.addLineSeries({
-            color: borderColor, lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
-          });
-          bottomSeries.setData(bottomData);
+        const bottomSeries = chart.addSeries(LineSeries, {
+          color: borderColor, lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+        });
+        bottomSeries.setData(bottomData);
 
-          const fillSeries = chart.addHistogramSeries({
-            color: fillColor, priceLineVisible: false, lastValueVisible: false, base: gap.bottomPrice,
-          });
-          fillSeries.setData(topData);
-        }
+        const fillSeries = chart.addSeries(HistogramSeries, {
+          color: fillColor, priceLineVisible: false, lastValueVisible: false, base: gap.bottomPrice,
+        });
+        fillSeries.setData(topData);
       }
+    }
 
-      if (ind.supportResistance && srLevels.length > 0) {
-        for (const sr of srLevels) {
-          const srColor = sr.type === 'support' ? c.success : c.danger;
-          mainSeries.createPriceLine({
-            price: sr.price,
-            color: hexToRgba(srColor, 0.5),
-            lineWidth: 1,
-            lineStyle: window.LightweightCharts.LineStyle.Dotted,
-            axisLabelVisible: false,
-            title: `${sr.type === 'support' ? 'S' : 'R'} (${sr.strength})`,
-          });
-        }
+    if (ind.supportResistance && srLevels.length > 0) {
+      for (const sr of srLevels) {
+        const srColor = sr.type === 'support' ? c.success : c.danger;
+        mainSeries.createPriceLine({
+          price: sr.price,
+          color: hexToRgba(srColor, 0.5),
+          lineWidth: 1,
+          lineStyle: LineStyle.Dotted,
+          axisLabelVisible: false,
+          title: `${sr.type === 'support' ? 'S' : 'R'} (${sr.strength})`,
+        });
       }
+    }
 
-      // Smart zoom from earliest buy event
-      if (!userHasZoomed.current && !pinnedDaySec) {
-        const buyTimes = events.filter(e => e.type === 'BUY').map(e => toDaySec(e.time)).filter(t => t > 0);
-        const earliestBuy = buyTimes.length > 0 ? Math.min(...buyTimes) : 0;
-        const lastBarTime = ohlcBars.length ? ohlcBars[ohlcBars.length - 1].time : 0;
-
-        if (earliestBuy > 0 && lastBarTime > 0) {
-          chart.timeScale().setVisibleRange({ from: earliestBuy - 30 * 86400, to: lastBarTime + 5 * 86400 });
-        } else if (typeof zoomYears !== 'undefined' && zoomYears !== 'all' && Number.isFinite(zoomYears)) {
-          const end = lastBarTime || undefined;
-          const start = end ? end - Math.floor(Number(zoomYears) * 365.25 * 86400) : undefined;
-          if (start && end) chart.timeScale().setVisibleRange({ from: start, to: end });
-        } else {
-          chart.timeScale().fitContent();
-        }
-      }
-
-      if (pinnedDaySec) {
-        chart.timeScale().setVisibleRange({ from: pinnedDaySec - 86400 * 90, to: pinnedDaySec + 86400 * 90 });
-      }
-
-      let ignoreFirstRangeChange = true;
-      chart.timeScale().subscribeVisibleTimeRangeChange(() => {
-        if (ignoreFirstRangeChange) { ignoreFirstRangeChange = false; return; }
-        userHasZoomed.current = true;
+    // RSI sub-pane
+    if (showRSI && rsiData?.length) {
+      const rsiPane = chart.addPane();
+      rsiPane.setStretchFactor(0.15);
+      const rsiSeries = rsiPane.addSeries(LineSeries, {
+        color: '#7C3AED',
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        priceFormat: { type: 'price', precision: 1, minMove: 0.1 },
       });
+      rsiSeries.setData(rsiData.map(d => ({ time: toDaySec(d.time), value: d.value })));
 
-      chart.subscribeCrosshairMove((p: any) => {
-        const t = p?.time ?? null;
-        onHoverRef.current?.(typeof t === 'number' ? t : null);
+      // Overbought (70) and oversold (30) reference lines
+      const rsiRefOverBought = rsiPane.addSeries(LineSeries, {
+        color: 'rgba(239,68,68,0.3)', lineWidth: 1, lineStyle: LineStyle.Dotted,
+        priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+      });
+      rsiRefOverBought.setData(rsiData.map(d => ({ time: toDaySec(d.time), value: 70 })));
 
-        const tooltip = tooltipRef.current;
-        if (!tooltip) return;
+      const rsiRefOverSold = rsiPane.addSeries(LineSeries, {
+        color: 'rgba(34,197,94,0.3)', lineWidth: 1, lineStyle: LineStyle.Dotted,
+        priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+      });
+      rsiRefOverSold.setData(rsiData.map(d => ({ time: toDaySec(d.time), value: 30 })));
+    }
 
-        if (!p?.point || typeof t !== 'number') {
-          if (tooltip) tooltip.style.display = 'none';
-          if (showLine) {
-            mainSeries.applyOptions({ crosshairMarkerBackgroundColor: c.neutral, crosshairMarkerRadius: 4 });
-          }
-          return;
-        }
+    // MACD sub-pane
+    if (showMACD && macdData) {
+      const macdPane = chart.addPane();
+      macdPane.setStretchFactor(0.15);
 
-        const dayEvts = eventMap.get(t);
+      if (macdData.histogram?.length) {
+        const histSeries = macdPane.addSeries(HistogramSeries, {
+          priceLineVisible: false,
+          lastValueVisible: false,
+          priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+        });
+        histSeries.setData(macdData.histogram.map(d => ({
+          time: toDaySec(d.time),
+          value: d.value,
+          color: d.value >= 0 ? '#22c55e80' : '#ef444480',
+        })));
+      }
+      if (macdData.macd?.length) {
+        const macdLine = macdPane.addSeries(LineSeries, {
+          color: '#3B82F6', lineWidth: 1, priceLineVisible: false, lastValueVisible: false,
+        });
+        macdLine.setData(macdData.macd.map(d => ({ time: toDaySec(d.time), value: d.value })));
+      }
+      if (macdData.signal?.length) {
+        const signalLine = macdPane.addSeries(LineSeries, {
+          color: '#F97316', lineWidth: 1, priceLineVisible: false, lastValueVisible: false,
+        });
+        signalLine.setData(macdData.signal.map(d => ({ time: toDaySec(d.time), value: d.value })));
+      }
+    }
 
+    // Smart zoom from earliest buy event
+    if (!userHasZoomed.current && !pinnedDaySec) {
+      const buyTimes = events.filter(e => e.type === 'BUY').map(e => toDaySec(e.time)).filter(t => (t as number) > 0);
+      const earliestBuy = buyTimes.length > 0 ? Math.min(...buyTimes.map(t => t as number)) : 0;
+      const lastBarTime = ohlcBars.length ? ohlcBars[ohlcBars.length - 1].time : 0;
+
+      if (earliestBuy > 0 && lastBarTime > 0) {
+        chart.timeScale().setVisibleRange({
+          from: asUTC(earliestBuy - 30 * 86400),
+          to: asUTC(lastBarTime + 5 * 86400),
+        });
+      } else if (typeof zoomYears !== 'undefined' && zoomYears !== 'all' && Number.isFinite(zoomYears)) {
+        const end = lastBarTime || undefined;
+        const start = end ? end - Math.floor(Number(zoomYears) * 365.25 * 86400) : undefined;
+        if (start && end) chart.timeScale().setVisibleRange({ from: asUTC(start), to: asUTC(end) });
+      } else {
+        chart.timeScale().fitContent();
+      }
+    }
+
+    if (pinnedDaySec) {
+      chart.timeScale().setVisibleRange({
+        from: asUTC(pinnedDaySec - 86400 * 90),
+        to: asUTC(pinnedDaySec + 86400 * 90),
+      });
+    }
+
+    let ignoreFirstRangeChange = true;
+    chart.timeScale().subscribeVisibleTimeRangeChange(() => {
+      if (ignoreFirstRangeChange) { ignoreFirstRangeChange = false; return; }
+      userHasZoomed.current = true;
+    });
+
+    let lastMarkerColor = '';
+    let lastMarkerRadius = 0;
+
+    const applyMarkerIfChanged = (color: string, radius: number) => {
+      if (color === lastMarkerColor && radius === lastMarkerRadius) return;
+      lastMarkerColor = color;
+      lastMarkerRadius = radius;
+      mainSeries.applyOptions({ crosshairMarkerBackgroundColor: color, crosshairMarkerRadius: radius });
+    };
+
+    chart.subscribeCrosshairMove((p: any) => {
+      const t = p?.time ?? null;
+      onHoverRef.current?.(typeof t === 'number' ? t : null);
+
+      const tooltip = tooltipRef.current;
+      if (!tooltip) return;
+
+      if (!p?.point || typeof t !== 'number') {
+        if (tooltip) tooltip.style.display = 'none';
         if (showLine) {
-          const dotClr = dayEvts?.length ? pickEventDayColor(dayEvts, c) : c.neutral;
-          const dotR = dayEvts?.length ? 6 : 4;
-          mainSeries.applyOptions({ crosshairMarkerBackgroundColor: dotClr, crosshairMarkerRadius: dotR });
+          applyMarkerIfChanged(c.neutral, 4);
         }
+        return;
+      }
 
-        if (dayEvts && dayEvts.length > 0) {
-          const barData = p.seriesData?.get(mainSeries);
-          const price = barData?.value ?? barData?.close ?? 0;
-          const rawY = mainSeries.priceToCoordinate(price);
-          const y = (rawY != null && rawY > 0) ? rawY : p.point.y;
+      const dayEvts = eventMap.get(t);
 
-          if (y != null && ref.current) {
-            const chartW = ref.current.clientWidth;
-            const tipW = 200;
-            const left = p.point.x + 24 + tipW > chartW ? p.point.x - tipW - 12 : p.point.x + 24;
-            tooltip.style.left = `${left}px`;
-            tooltip.style.top = `${Math.max(10, y - 30)}px`;
-            tooltip.style.display = 'block';
+      if (showLine) {
+        const dotClr = dayEvts?.length ? pickEventDayColor(dayEvts, c) : c.neutral;
+        const dotR = dayEvts?.length ? 6 : 4;
+        applyMarkerIfChanged(dotClr, dotR);
+      }
 
-            const fmtD = new Date(t * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-            let html = `<div style="font-size:11px;opacity:0.6">${fmtD}</div>`;
-            html += `<div style="font-size:13px;font-weight:600;margin:2px 0">$${Number(price).toFixed(2)}</div>`;
-            for (const ev of dayEvts) {
-              const ec = eventColor(ev.type, c);
-              html += `<div style="display:flex;align-items:center;gap:5px;margin-top:3px">`;
-              html += `<span style="width:7px;height:7px;border-radius:50%;background:${ec};flex-shrink:0"></span>`;
-              html += `<span style="font-size:11px">${ev.label}</span>`;
-              html += `</div>`;
-            }
-            tooltip.innerHTML = html;
+      if (dayEvts && dayEvts.length > 0) {
+        const barData = p.seriesData?.get(mainSeries);
+        const price = barData?.value ?? barData?.close ?? 0;
+        const rawY = mainSeries.priceToCoordinate(price);
+        const y = (rawY != null && rawY > 0) ? rawY : p.point.y;
+
+        if (y != null && ref.current) {
+          const chartW = ref.current.clientWidth;
+          const tipW = 200;
+          const left = p.point.x + 24 + tipW > chartW ? p.point.x - tipW - 12 : p.point.x + 24;
+          tooltip.style.left = `${left}px`;
+          tooltip.style.top = `${Math.max(10, y - 30)}px`;
+          tooltip.style.display = 'block';
+
+          const fmtD = new Date(t * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          let html = `<div style="font-size:11px;opacity:0.6">${fmtD}</div>`;
+          html += `<div style="font-size:13px;font-weight:600;margin:2px 0">$${Number(price).toFixed(2)}</div>`;
+          for (const ev of dayEvts) {
+            const ec = eventColor(ev.type, c);
+            html += `<div style="display:flex;align-items:center;gap:5px;margin-top:3px">`;
+            html += `<span style="width:7px;height:7px;border-radius:50%;background:${ec};flex-shrink:0"></span>`;
+            html += `<span style="font-size:11px">${ev.label}</span>`;
+            html += `</div>`;
           }
-        } else {
-          tooltip.style.display = 'none';
+          tooltip.innerHTML = html;
         }
-      });
-      chart.subscribeClick((p: any) => {
-        const t = p?.time ?? null;
-        onClickRef.current?.(typeof t === 'number' ? t : null);
-      });
-    })();
+      } else {
+        tooltip.style.display = 'none';
+      }
+    });
+    chart.subscribeClick((p: any) => {
+      const t = p?.time ?? null;
+      onClickRef.current?.(typeof t === 'number' ? t : null);
+    });
 
     return () => {
       try { chart?.remove?.(); } catch { /* ignore */ }
@@ -537,6 +654,7 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
     showLine, avgPrice, pinnedDaySec,
     zoomYears, isDark, ohlcBars, trendLines, gapZones, tdLabels,
     ema8, ema21, ema200, srLevels, ind, c,
+    showRSI, rsiData, showMACD, macdData, showBollinger, bollingerData,
   ]);
 
   return (

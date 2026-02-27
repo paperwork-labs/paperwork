@@ -369,7 +369,7 @@ class PortfolioAnalyticsService:
             return {"beta": 1.0, "volatility": 0, "sharpe_ratio": 0, "hhi": 0, "top5_weight": 0, "concentration_label": "N/A"}
 
         positions = db.query(Position).filter(
-            Position.broker_account_id.in_(acct_ids), Position.quantity != 0
+            Position.account_id.in_(acct_ids), Position.quantity != 0
         ).all()
 
         total_mv = sum(float(p.market_value or 0) for p in positions)
@@ -385,7 +385,7 @@ class PortfolioAnalyticsService:
 
         snapshots = (
             db.query(PortfolioSnapshot)
-            .filter(PortfolioSnapshot.user_id == user_id)
+            .filter(PortfolioSnapshot.account_id.in_(acct_ids))
             .order_by(PortfolioSnapshot.snapshot_date.desc())
             .limit(252)
             .all()
@@ -438,10 +438,15 @@ class PortfolioAnalyticsService:
 
     def compute_twr(self, db: Session, user_id: int = 1, period_days: int = 365) -> Dict[str, Any]:
         """Compute Time-Weighted Return from PortfolioSnapshot history."""
+        acct_ids = [
+            a.id for a in db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user_id).all()
+        ]
+        if not acct_ids:
+            return {"twr": 0, "period_days": period_days, "data_points": 0}
         cutoff = datetime.utcnow() - timedelta(days=period_days)
         snapshots = (
             db.query(PortfolioSnapshot)
-            .filter(PortfolioSnapshot.user_id == user_id, PortfolioSnapshot.snapshot_date >= cutoff.date())
+            .filter(PortfolioSnapshot.account_id.in_(acct_ids), PortfolioSnapshot.snapshot_date >= cutoff.date())
             .order_by(PortfolioSnapshot.snapshot_date)
             .all()
         )
@@ -471,7 +476,7 @@ class PortfolioAnalyticsService:
             return []
 
         positions = db.query(Position).filter(
-            Position.broker_account_id.in_(acct_ids), Position.quantity != 0
+            Position.account_id.in_(acct_ids), Position.quantity != 0
         ).all()
 
         total_mv = sum(float(p.market_value or 0) for p in positions)

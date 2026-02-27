@@ -408,7 +408,7 @@ def get_closed_positions(
         open_symbols = set(
             p.symbol
             for p in db.query(Position.symbol)
-            .filter(Position.broker_account_id.in_(acct_ids), Position.quantity != 0)
+            .filter(Position.account_id.in_(acct_ids), Position.quantity != 0)
             .all()
         )
 

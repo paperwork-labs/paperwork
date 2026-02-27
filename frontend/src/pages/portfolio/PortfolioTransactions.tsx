@@ -37,7 +37,22 @@ const DATE_RANGES = [
   { key: 'all', label: 'All' },
 ] as const;
 
-const CATEGORIES = ['TRADE', 'DIVIDEND', 'COMMISSION', 'FEE', 'TRANSFER', 'INTEREST', 'DEPOSIT', 'WITHDRAWAL', 'TAX', 'OTHER', ''] as const;
+const CATEGORIES = [
+  'TRADE',
+  'DIVIDEND',
+  'PAYMENT_IN_LIEU',
+  'WITHHOLDING_TAX',
+  'COMMISSION',
+  'BROKER_INTEREST_PAID',
+  'BROKER_INTEREST_RECEIVED',
+  'DEPOSIT',
+  'TRANSFER',
+  'INTEREST',
+  'OTHER_FEE',
+  'TAX_REFUND',
+  'OTHER',
+  '',
+] as const;
 const SIDES = ['BUY', 'SELL', ''] as const;
 
 const PortfolioTransactions: React.FC = () => {
@@ -91,10 +106,26 @@ const PortfolioTransactions: React.FC = () => {
     return (Array.isArray(rows) ? rows : []) as ActivityRow[];
   }, [activityQuery.data]);
 
-  const total =
-    (activityQuery.data as import('../../services/api').ActivityResponse | undefined)?.total ??
-    (activityQuery.data as { data?: { total?: number } } | undefined)?.data?.total ??
-    activity.length;
+  type ActivityResp = { total?: number; data?: { total?: number } };
+  const resp = activityQuery.data as ActivityResp | undefined;
+  const apiTotal = resp?.total ?? resp?.data?.total;
+  const hasApiTotal = apiTotal !== undefined && apiTotal !== null;
+  const total = hasApiTotal ? apiTotal! : activity.length;
+
+  const summary = useMemo(() => {
+    const amt = (r: ActivityRow) => Number(r.amount ?? r.net_amount ?? 0);
+    let dividends = 0;
+    let feesCommissions = 0;
+    let interestReceived = 0;
+    for (const r of activity) {
+      const c = r.category ?? '';
+      const a = amt(r);
+      if (c === 'DIVIDEND') dividends += a;
+      else if (['COMMISSION', 'OTHER_FEE', 'BROKER_INTEREST_PAID'].includes(c)) feesCommissions += a;
+      else if (['BROKER_INTEREST_RECEIVED', 'INTEREST'].includes(c)) interestReceived += a;
+    }
+    return { dividends, feesCommissions, interestReceived };
+  }, [activity]);
 
   const accountLookup = useMemo(() => {
     const map: Record<number, string> = {};
@@ -274,8 +305,38 @@ const PortfolioTransactions: React.FC = () => {
                     <TableSkeleton rows={10} cols={7} />
                   ) : (
                     <>
+                      <HStack
+                        gap={4}
+                        p={3}
+                        mb={3}
+                        borderRadius="md"
+                        bg="bg.muted"
+                        flexWrap="wrap"
+                        fontSize="sm"
+                      >
+                        <HStack gap={2}>
+                          <Text color="fg.muted">Dividends:</Text>
+                          <Text color={summary.dividends >= 0 ? 'status.success' : 'status.danger'}>
+                            {formatMoney(summary.dividends, currency)}
+                          </Text>
+                        </HStack>
+                        <HStack gap={2}>
+                          <Text color="fg.muted">Fees/Commissions:</Text>
+                          <Text color={summary.feesCommissions <= 0 ? 'status.danger' : 'status.success'}>
+                            {formatMoney(summary.feesCommissions, currency)}
+                          </Text>
+                        </HStack>
+                        <HStack gap={2}>
+                          <Text color="fg.muted">Interest received:</Text>
+                          <Text color={summary.interestReceived >= 0 ? 'status.success' : 'status.danger'}>
+                            {formatMoney(summary.interestReceived, currency)}
+                          </Text>
+                        </HStack>
+                      </HStack>
                       <HStack justify="space-between" mb={2}>
-                        <Badge colorPalette="gray">{activity.length} rows</Badge>
+                        <Badge colorPalette="gray">
+                          {hasApiTotal ? `${activity.length} of ${total}` : `${activity.length} rows (this page)`}
+                        </Badge>
                       </HStack>
                       <SortableTable
                         data={activity}

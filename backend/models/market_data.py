@@ -52,6 +52,7 @@ class PriceData(Base):
     data_source = Column(String(50))
     interval = Column(String(10))  # '1d', '1h', '5m'
     is_adjusted = Column(Boolean, default=True)
+    is_synthetic_ohlc = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -110,6 +111,17 @@ class MarketSnapshot(Base):
     ema_10 = Column(Float)
     macd = Column(Float)
     macd_signal = Column(Float)
+    macd_histogram = Column(Float)
+    adx = Column(Float)
+    plus_di = Column(Float)
+    minus_di = Column(Float)
+    bollinger_upper = Column(Float)
+    bollinger_lower = Column(Float)
+    bollinger_width = Column(Float)
+    high_52w = Column(Float)
+    low_52w = Column(Float)
+    stoch_rsi = Column(Float)
+    volume_avg_20d = Column(Float)
 
     # Canonical consolidated ATR windows
     atr_14 = Column(Float)
@@ -244,6 +256,17 @@ class MarketSnapshotHistory(Base):
     sma_50 = Column(Float)
     macd = Column(Float)
     macd_signal = Column(Float)
+    macd_histogram = Column(Float)
+    adx = Column(Float)
+    plus_di = Column(Float)
+    minus_di = Column(Float)
+    bollinger_upper = Column(Float)
+    bollinger_lower = Column(Float)
+    bollinger_width = Column(Float)
+    high_52w = Column(Float)
+    low_52w = Column(Float)
+    stoch_rsi = Column(Float)
+    volume_avg_20d = Column(Float)
 
     # Wide snapshot fields (flat, queryable history table).
     name = Column(String(200))
@@ -331,8 +354,6 @@ class MarketSnapshotHistory(Base):
     gaps_unfilled_down = Column(Integer)
     trend_up_count = Column(Integer)
     trend_down_count = Column(Integer)
-
-    next_earnings = Column(DateTime)
 
     __table_args__ = (
         UniqueConstraint(

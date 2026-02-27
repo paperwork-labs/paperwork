@@ -289,33 +289,30 @@ class TestIBKRSyncService:
     async def test_sync_positions_from_holdings(
         self, sync_service, test_broker_account, db_session
     ):
-        """Test positions sync from holdings."""
+        """Test positions sync from tax lots (refactored pipeline)."""
         db = db_session
 
-        # Create test holding
-        holding = Position(
+        tax_lot = TaxLot(
             account_id=test_broker_account.id,
+            lot_id="TEST_AAPL_POS",
             symbol="AAPL",
-            quantity=100,
-            average_cost=150.00,
-            current_price=175.50,
-            market_value=17550.00,
-            unrealized_pnl=2550.00,
-            unrealized_pnl_pct=17.0,
+            quantity=Decimal("100"),
+            cost_basis=Decimal("15000.00"),
+            current_price=Decimal("175.50"),
+            market_value=Decimal("17550.00"),
+            unrealized_pnl=Decimal("2550.00"),
+            unrealized_pnl_pct=Decimal("17.0"),
             currency="USD",
-            sector="Technology",
+            asset_category="STK",
         )
 
-        db.add(holding)
+        db.add(tax_lot)
         db.commit()
 
-        # Test positions sync
         result = await sync_service._sync_positions(db, test_broker_account)
 
-        # Verify result
         assert result["synced"] == 1
 
-        # Verify position created
         positions = (
             db.query(Position)
             .filter(Position.account_id == test_broker_account.id)

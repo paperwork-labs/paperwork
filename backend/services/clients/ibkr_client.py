@@ -85,69 +85,85 @@ class IBKRClient:
         }
         self.retry_count = 0
 
-    async def connect(self) -> bool:
-        """Connect to IBKR Gateway/TWS. No eager IB creation; deterministic client_id."""
+    async def connect(
+        self,
+        host: str | None = None,
+        port: int | None = None,
+        client_id: int | None = None,
+    ) -> bool:
+        """Connect to IBKR Gateway/TWS.
+
+        Optional host/port/client_id override the instance defaults for this
+        connection attempt (useful for per-user gateway settings).
+        """
         if not IBKR_AVAILABLE:
             return False
 
-        # Lazily create a lock bound to the current event loop
+        connect_host = host or self.host
+        connect_port = port or self.port
+        connect_client_id = client_id or self.client_id
+
         lock = self._lock
         if lock is None:
             lock = asyncio.Lock()
             self._lock = lock
         async with lock:
-            # Always cleanup before attempting a fresh connection to satisfy tests
             await self._cleanup()
 
             try:
-                logger.info("🔄 Connecting to IBKR Gateway...")
+                logger.info("🔄 Connecting to IBKR Gateway at %s:%s ...", connect_host, connect_port)
 
-                # Instantiate IB now so tests can patch IB symbol
                 self.ib = IB()
 
-                # Start async connect, but keep tests fast even if Future isn't resolved
-                connect_task = self.ib.connectAsync(
-                    host=self.host,
-                    port=self.port,
-                    clientId=self.client_id,
+                test_mode = (
+                    os.environ.get("AXIOMFOLIO_TESTING") == "1"
+                    or "pytest" in sys.modules
                 )
-                try:
-                    import inspect
+                timeout_s = 0.2 if test_mode else 15
 
-                    if inspect.isawaitable(connect_task):
-                        test_mode = (
-                            os.environ.get("AXIOMFOLIO_TESTING") == "1"
-                            or "pytest" in sys.modules
-                        )
-                        timeout_s = 0.2 if test_mode else 10
-                        try:
-                            await asyncio.wait_for(connect_task, timeout=timeout_s)
-                        except asyncio.TimeoutError:
-                            # Proceed; isConnected() will decide
-                            pass
-                except Exception:
-                    # If connect creation/awaitable check fails, proceed to isConnected()
-                    pass
+                util.patchAsyncio()
 
-                # Minimal verification per tests
-                self.connected = True if (self.ib and self.ib.isConnected()) else False
+                await asyncio.wait_for(
+                    self.ib.connectAsync(
+                        host=connect_host,
+                        port=connect_port,
+                        clientId=connect_client_id,
+                    ),
+                    timeout=timeout_s,
+                )
+
+                self.connected = bool(self.ib and self.ib.isConnected())
                 if self.connected:
-                    # Do not rely on managedAccounts for tests
+                    self.managed_accounts = self.ib.managedAccounts() or []
                     self.connection_health.update({"status": "connected"})
                     self.retry_count = 0
+                    logger.info("✅ Connected to IBKR Gateway. Accounts: %s", self.managed_accounts)
+
+                    # Subscribe to account summary so accountSummary() returns data
+                    try:
+                        self.ib.reqAccountSummary()
+                        await asyncio.sleep(2)
+                        logger.info("✅ Account summary subscription active")
+                    except Exception as e:
+                        logger.warning("Account summary subscription failed: %s", e)
+
                     return True
 
-            except Exception as e:
-                logger.error(f"❌ Connection failed: {e}")
+            except asyncio.TimeoutError:
+                logger.warning("⏱️ IBKR Gateway connection timed out after %ss", timeout_s)
                 self.connection_health["consecutive_failures"] = (
                     self.connection_health.get("consecutive_failures", 0) + 1
                 )
-            # Ensure clean state on failure
+            except Exception as e:
+                logger.error("❌ Connection failed: %s", e)
+                self.connection_health["consecutive_failures"] = (
+                    self.connection_health.get("consecutive_failures", 0) + 1
+                )
             await self._cleanup()
             return False
 
-    async def connect_with_retry(self, max_attempts: int = 3) -> bool:
-        """Retry connection up to max_attempts with simple backoff."""
+    async def connect_with_retry(self, max_attempts: int = 5) -> bool:
+        """Retry connection up to max_attempts with exponential backoff."""
         for attempt in range(max_attempts):
             success = await self.connect()
             if success:
@@ -156,7 +172,15 @@ class IBKRClient:
                 return True
             self.retry_count += 1
             if attempt < max_attempts - 1:
-                await asyncio.sleep(1)
+                delay = min(2**attempt, 16)
+                logger.warning(
+                    "IB Gateway connect attempt %d/%d failed, retrying in %ds: %s",
+                    attempt + 1,
+                    max_attempts,
+                    delay,
+                    self.connection_health.get("status", "unknown"),
+                )
+                await asyncio.sleep(delay)
         return False
 
     def _generate_client_id(self) -> int:
@@ -216,25 +240,30 @@ class IBKRClient:
             return []
 
     async def get_account_summary(self, account_id: str) -> Dict:
-        """Get account summary data."""
+        """Get account summary data for a specific account."""
         if not await self._ensure_connected():
             return {}
 
         try:
-            summary = self.ib.accountSummary(account_id)
+            all_items = self.ib.accountSummary()
+            if not all_items:
+                self.ib.reqAccountSummary()
+                await asyncio.sleep(2)
+                all_items = self.ib.accountSummary()
 
             summary_data = {}
-            for item in summary:
-                summary_data[item.tag] = {
-                    "value": item.value,
-                    "currency": item.currency,
-                }
+            for item in all_items:
+                if item.account == account_id:
+                    summary_data[item.tag] = {
+                        "value": item.value,
+                        "currency": item.currency,
+                    }
 
-            logger.info(f"📊 Retrieved account summary for {account_id}")
+            logger.info("Retrieved account summary for %s (%d tags)", account_id, len(summary_data))
             return summary_data
 
         except Exception as e:
-            logger.error(f"❌ Error getting account summary: {e}")
+            logger.error("Error getting account summary for %s: %s", account_id, e)
             return {}
 
     async def _ensure_connected(self) -> bool:

@@ -1761,6 +1761,121 @@ def backfill_snapshot_history_last_n_days(
         session.close()
 
 
+# ============================= Single-Symbol Snapshot History Backfill =============================
+
+
+@shared_task(name="backend.tasks.market_data_tasks.backfill_snapshot_history_for_symbol")
+@task_run("admin_snapshots_history_backfill_symbol")
+def backfill_snapshot_history_for_symbol(
+    symbol: str,
+    start_date: str,
+    end_date: str | None = None,
+) -> dict:
+    """Backfill MarketSnapshotHistory for a single symbol over a date range.
+
+    Reads OHLCV from PriceData, calls compute_full_indicator_series(),
+    upserts rows for the requested date range.
+    """
+    session = SessionLocal()
+    try:
+        import pandas as pd
+        import numpy as np
+        from backend.services.market.indicator_engine import compute_full_indicator_series
+
+        start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d") if end_date else datetime.utcnow()
+
+        rows = (
+            session.query(
+                PriceData.date, PriceData.open_price, PriceData.high_price,
+                PriceData.low_price, PriceData.close_price, PriceData.volume,
+            )
+            .filter(PriceData.symbol == symbol, PriceData.interval == "1d")
+            .order_by(PriceData.date.asc())
+            .all()
+        )
+        if not rows:
+            return {"status": "skipped", "reason": "no_price_data", "symbol": symbol}
+
+        df = price_data_rows_to_dataframe(rows, ascending=True)
+        df.index = pd.to_datetime(df.index, utc=True, errors="coerce").tz_convert(None).normalize()
+        if df.empty:
+            return {"status": "skipped", "reason": "empty_dataframe", "symbol": symbol}
+
+        spy_df = pd.DataFrame()
+        try:
+            spy_rows = (
+                session.query(
+                    PriceData.date, PriceData.open_price, PriceData.high_price,
+                    PriceData.low_price, PriceData.close_price, PriceData.volume,
+                )
+                .filter(PriceData.symbol == "SPY", PriceData.interval == "1d")
+                .order_by(PriceData.date.asc())
+                .all()
+            )
+            if spy_rows:
+                spy_df = price_data_rows_to_dataframe(spy_rows, ascending=True)
+                spy_df.index = pd.to_datetime(spy_df.index, utc=True, errors="coerce").tz_convert(None).normalize()
+        except Exception:
+            pass
+
+        indicators_df = compute_full_indicator_series(df, spy_df=spy_df if not spy_df.empty else None)
+
+        mask = (indicators_df.index >= pd.Timestamp(start_dt)) & (indicators_df.index <= pd.Timestamp(end_dt))
+        target_df = indicators_df.loc[mask]
+
+        if target_df.empty:
+            return {"status": "skipped", "reason": "no_dates_in_range", "symbol": symbol}
+
+        written = 0
+        errors = 0
+        for batch_start in range(0, len(target_df), 100):
+            batch = target_df.iloc[batch_start:batch_start + 100]
+            batch_rows = []
+            for d, row in batch.iterrows():
+                r = {
+                    "symbol": symbol,
+                    "analysis_type": "technical_snapshot",
+                    "as_of_date": d,
+                }
+                for k, v in row.items():
+                    if hasattr(MarketSnapshotHistory, k):
+                        if isinstance(v, float) and (np.isnan(v) or np.isinf(v)):
+                            r[k] = None
+                        else:
+                            r[k] = v
+                batch_rows.append(r)
+
+            try:
+                stmt = pg_insert(MarketSnapshotHistory.__table__).values(batch_rows)
+                stmt = stmt.on_conflict_do_update(
+                    constraint="uq_symbol_type_asof",
+                    set_={
+                        k: stmt.excluded[k]
+                        for k in batch_rows[0].keys()
+                        if k not in ("symbol", "analysis_type", "as_of_date")
+                    },
+                )
+                session.execute(stmt)
+                session.commit()
+                written += len(batch_rows)
+            except Exception:
+                session.rollback()
+                errors += len(batch_rows)
+
+        return {
+            "status": "ok",
+            "symbol": symbol,
+            "start_date": start_date,
+            "written_rows": written,
+            "errors": errors,
+        }
+    except Exception as exc:
+        return {"status": "error", "symbol": symbol, "error": str(exc)}
+    finally:
+        session.close()
+
+
 # ============================= Stage Duration Backfill =============================
 
 
@@ -2173,6 +2288,95 @@ def audit_market_data_quality(sample_limit: int = 25) -> dict:
         except Exception:
             pass
         return payload
+    finally:
+        session.close()
+
+
+@shared_task(name="backend.tasks.market_data_tasks.check_stage_changes")
+@task_run("admin_stage_change_alerts")
+def check_stage_changes() -> dict:
+    """Check for stage transitions in portfolio holdings and create alerts.
+
+    Compares today's stage_label vs yesterday's for all symbols that are
+    held in any portfolio position. Creates AlertHistory records and optionally
+    notifies via Discord for changes.
+    """
+    session = SessionLocal()
+    try:
+        symbols = [
+            r[0]
+            for r in session.query(Position.symbol)
+            .filter(Position.quantity != 0)
+            .distinct()
+            .all()
+        ]
+        if not symbols:
+            return {"status": "ok", "alerts_created": 0, "reason": "no_positions"}
+
+        today = datetime.utcnow().date()
+        yesterday = today - timedelta(days=1)
+
+        today_rows = (
+            session.query(
+                MarketSnapshotHistory.symbol, MarketSnapshotHistory.stage_label
+            )
+            .filter(
+                MarketSnapshotHistory.symbol.in_(symbols),
+                MarketSnapshotHistory.analysis_type == "technical_snapshot",
+                MarketSnapshotHistory.as_of_date == today,
+            )
+            .all()
+        )
+        yesterday_rows = (
+            session.query(
+                MarketSnapshotHistory.symbol, MarketSnapshotHistory.stage_label
+            )
+            .filter(
+                MarketSnapshotHistory.symbol.in_(symbols),
+                MarketSnapshotHistory.analysis_type == "technical_snapshot",
+                MarketSnapshotHistory.as_of_date == yesterday,
+            )
+            .all()
+        )
+
+        today_map = {r[0]: r[1] for r in today_rows}
+        yesterday_map = {r[0]: r[1] for r in yesterday_rows}
+
+        changes = []
+        for sym in symbols:
+            t_stage = today_map.get(sym)
+            y_stage = yesterday_map.get(sym)
+            if t_stage and y_stage and t_stage != y_stage:
+                changes.append(
+                    {"symbol": sym, "from_stage": y_stage, "to_stage": t_stage}
+                )
+
+        if changes:
+            try:
+                from backend.services.alerts import alert_service
+
+                fields = {
+                    c["symbol"]: f'{c["from_stage"]} → {c["to_stage"]}'
+                    for c in changes[:25]
+                }
+                alert_service.send_discord(
+                    "portfolio_stage_change",
+                    title="Portfolio Stage Changes",
+                    description=f"{len(changes)} held symbol(s) changed stage today.",
+                    fields=fields,
+                    severity="warning",
+                )
+            except Exception:
+                pass
+
+        return {
+            "status": "ok",
+            "symbols_checked": len(symbols),
+            "changes": changes,
+            "alerts_created": len(changes),
+        }
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
     finally:
         session.close()
 

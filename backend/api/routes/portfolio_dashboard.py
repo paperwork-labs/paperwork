@@ -3,14 +3,15 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Dict, Any, List, Optional
 import logging
 
 from backend.database import get_db
 from backend.models.user import User
 from backend.models.position import Position
-from backend.models.transaction import Dividend
+from backend.models.trade import Trade
+from backend.models.transaction import Dividend, Transaction, TransactionType
 from backend.models.portfolio import PortfolioSnapshot
 from backend.models.broker_account import BrokerAccount
 from backend.models.account_balance import AccountBalance
@@ -302,6 +303,168 @@ async def get_account_balances(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/dashboard/margin-health", response_model=Dict[str, Any])
+async def get_margin_health(
+    user: User = Depends(get_portfolio_user),
+    db: Session = Depends(get_db),
+):
+    """Return margin health metrics from latest account balance: cushion, leverage, buying power, and warning flags."""
+    try:
+        broker_ids = [
+            r[0]
+            for r in db.query(BrokerAccount.id)
+            .filter(BrokerAccount.user_id == user.id)
+            .all()
+        ]
+        if not broker_ids:
+            return {
+                "status": "success",
+                "data": {
+                    "cushion": None,
+                    "leverage": None,
+                    "buying_power": None,
+                    "maintenance_margin_req": None,
+                    "margin_warning": False,
+                    "margin_critical": False,
+                    "generated_at": datetime.utcnow().isoformat(),
+                },
+            }
+
+        balances = []
+        for bid in broker_ids:
+            bal = (
+                db.query(AccountBalance)
+                .filter(AccountBalance.broker_account_id == bid)
+                .order_by(desc(AccountBalance.balance_date))
+                .first()
+            )
+            if bal:
+                balances.append(bal)
+
+        if not balances:
+            return {
+                "status": "success",
+                "data": {
+                    "cushion": None,
+                    "leverage": None,
+                    "buying_power": None,
+                    "maintenance_margin_req": None,
+                    "margin_warning": False,
+                    "margin_critical": False,
+                    "generated_at": datetime.utcnow().isoformat(),
+                },
+            }
+
+        cushions = [float(b.cushion or 0) for b in balances if b.cushion is not None]
+        cushion = min(cushions) if cushions else None
+        leverage = max(float(b.leverage or 0) for b in balances) if any(b.leverage is not None for b in balances) else None
+        buying_power = sum(float(b.buying_power or 0) for b in balances)
+        maintenance_margin_req = sum(float(b.maintenance_margin_req or 0) for b in balances)
+
+        margin_warning = cushion is not None and cushion < 0.10
+        margin_critical = cushion is not None and cushion < 0.05
+
+        return {
+            "status": "success",
+            "data": {
+                "cushion": round(cushion, 4) if cushion is not None else None,
+                "leverage": round(leverage, 4) if leverage is not None else None,
+                "buying_power": round(buying_power, 2),
+                "maintenance_margin_req": round(maintenance_margin_req, 2),
+                "margin_warning": margin_warning,
+                "margin_critical": margin_critical,
+                "generated_at": datetime.utcnow().isoformat(),
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"margin-health error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/dashboard/pnl-summary", response_model=Dict[str, Any])
+async def get_pnl_summary(
+    user: User = Depends(get_portfolio_user),
+    db: Session = Depends(get_db),
+):
+    """Return P&L summary: unrealized_pnl, realized_pnl, total_dividends, total_fees, total_return."""
+    try:
+        acct_ids = [
+            r[0]
+            for r in db.query(BrokerAccount.id)
+            .filter(BrokerAccount.user_id == user.id)
+            .all()
+        ]
+        if not acct_ids:
+            return {
+                "status": "success",
+                "data": {
+                    "unrealized_pnl": 0,
+                    "realized_pnl": 0,
+                    "total_dividends": 0,
+                    "total_fees": 0,
+                    "total_return": 0,
+                    "generated_at": datetime.utcnow().isoformat(),
+                },
+            }
+
+        unrealized_row = (
+            db.query(func.coalesce(func.sum(Position.unrealized_pnl), 0))
+            .filter(Position.user_id == user.id)
+            .scalar()
+        )
+        unrealized_pnl = float(unrealized_row or 0)
+
+        realized_row = (
+            db.query(func.coalesce(func.sum(Trade.realized_pnl), 0))
+            .filter(
+                Trade.account_id.in_(acct_ids),
+                Trade.realized_pnl.isnot(None),
+                Trade.realized_pnl != 0,
+            )
+            .scalar()
+        )
+        realized_pnl = float(realized_row or 0)
+
+        dividends_row = (
+            db.query(func.coalesce(func.sum(Dividend.total_dividend), 0))
+            .filter(Dividend.account_id.in_(acct_ids))
+            .scalar()
+        )
+        total_dividends = float(dividends_row or 0)
+
+        fee_types = (TransactionType.COMMISSION, TransactionType.OTHER_FEE, TransactionType.BROKER_INTEREST_PAID)
+        fees_row = (
+            db.query(func.coalesce(func.sum(func.abs(Transaction.amount)), 0))
+            .filter(
+                Transaction.account_id.in_(acct_ids),
+                Transaction.transaction_type.in_(fee_types),
+            )
+            .scalar()
+        )
+        total_fees = float(fees_row or 0)
+
+        total_return = realized_pnl + unrealized_pnl + total_dividends - total_fees
+
+        return {
+            "status": "success",
+            "data": {
+                "unrealized_pnl": round(unrealized_pnl, 2),
+                "realized_pnl": round(realized_pnl, 2),
+                "total_dividends": round(total_dividends, 2),
+                "total_fees": round(total_fees, 2),
+                "total_return": round(total_return, 2),
+                "generated_at": datetime.utcnow().isoformat(),
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"pnl-summary error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/margin-interest", response_model=Dict[str, Any])
 async def get_margin_interest(
     account_id: Optional[int] = Query(None, description="Filter by broker account ID"),
@@ -386,7 +549,15 @@ async def get_dividend_summary(
             .all()
         )
 
-        trailing_divs = [d for d in divs if d.pay_date and d.pay_date >= one_year_ago.date()]
+        one_year_ago_date = one_year_ago.date()
+        trailing_divs = [
+            d for d in divs
+            if d.pay_date and (
+                d.pay_date >= one_year_ago
+                if isinstance(d.pay_date, datetime)
+                else d.pay_date >= one_year_ago_date
+            )
+        ]
         trailing_12m = sum(float(d.total_dividend or 0) for d in trailing_divs)
 
         by_sym: Dict[str, list] = {}
@@ -407,7 +578,7 @@ async def get_dividend_summary(
 
         total_mv = sum(
             float(p.market_value or 0)
-            for p in db.query(Position).filter(Position.broker_account_id.in_(acct_ids)).all()
+            for p in db.query(Position).filter(Position.account_id.in_(acct_ids)).all()
         )
         fwd_yield = round((trailing_12m / total_mv * 100) if total_mv > 0 else 0, 2)
 
@@ -427,7 +598,9 @@ async def get_dividend_summary(
             if len(ex_dates) >= 2:
                 gap = (ex_dates[0] - ex_dates[1]).days
                 est_next = ex_dates[0] + timedelta(days=gap)
-                if est_next >= now.date() and (est_next - now.date()).days <= 60:
+                now_date = now.date()
+                est_next_date = est_next.date() if isinstance(est_next, datetime) else est_next
+                if est_next_date >= now_date and (est_next_date - now_date).days <= 60:
                     per_share = [float(d.dividend_per_share or 0) for d in ds if d.dividend_per_share]
                     upcoming.append({
                         "symbol": sym,
@@ -477,12 +650,12 @@ async def get_live_summary(db: Session = Depends(get_db)):
                     bal = (
                         db.query(AccountBalance)
                         .filter(AccountBalance.broker_account_id.in_(acct_ids))
-                        .order_by(AccountBalance.as_of_date.desc())
+                        .order_by(AccountBalance.balance_date.desc())
                         .first()
                     )
                     if bal:
                         summary = {
-                            "net_liquidation": float(bal.total_value or 0),
+                            "net_liquidation": float(bal.net_liquidation or 0),
                             "buying_power": float(bal.buying_power or 0),
                             "margin_used": float(bal.margin_used or 0) if hasattr(bal, "margin_used") else 0,
                             "available_funds": float(bal.available_funds or 0) if hasattr(bal, "available_funds") else 0,

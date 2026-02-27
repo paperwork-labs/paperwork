@@ -1,6 +1,8 @@
 export type MoneyFormatOptions = {
   maximumFractionDigits?: number;
   minimumFractionDigits?: number;
+  /** Use 'compact' for short forms like 1.2K, 3.5M */
+  notation?: 'standard' | 'compact';
 };
 
 function safeDate(value: string | number | Date): Date | null {
@@ -31,21 +33,19 @@ export function formatMoney(
   const cur = safeCurrency(currency);
   const maximumFractionDigits = opts.maximumFractionDigits ?? 2;
   const minimumFractionDigits = opts.minimumFractionDigits ?? 0;
+  const notation = opts.notation;
+  const intlOpts: Intl.NumberFormatOptions = {
+    style: "currency",
+    currency: cur,
+    maximumFractionDigits,
+    minimumFractionDigits,
+  };
+  if (notation) intlOpts.notation = notation;
   try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: cur,
-      maximumFractionDigits,
-      minimumFractionDigits,
-    }).format(Number.isFinite(n) ? n : 0);
+    return new Intl.NumberFormat("en-US", intlOpts).format(Number.isFinite(n) ? n : 0);
   } catch {
     // If currency code is invalid for this runtime, fall back to USD.
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits,
-      minimumFractionDigits,
-    }).format(Number.isFinite(n) ? n : 0);
+    return new Intl.NumberFormat("en-US", { ...intlOpts, currency: "USD" }).format(Number.isFinite(n) ? n : 0);
   }
 }
 

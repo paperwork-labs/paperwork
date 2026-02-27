@@ -12,6 +12,9 @@ import {
   useDisclosure,
   IconButton,
   Image,
+  Separator,
+  CardRoot,
+  CardBody,
   TableScrollArea,
   TableRoot,
   TableHeader,
@@ -32,19 +35,26 @@ import {
   TooltipTrigger,
   TooltipPositioner,
   TooltipContent,
+  NativeSelectRoot,
+  NativeSelectField,
 } from '@chakra-ui/react';
 import AppCard from '../components/ui/AppCard';
 import { PageHeader } from '../components/ui/Page';
 import hotToast from 'react-hot-toast';
 import { accountsApi, aggregatorApi, handleApiError } from '../services/api';
+import api from '../services/api';
 import { useConnectJobPoll } from '../hooks/useConnectJobPoll';
 import { useAuth } from '../context/AuthContext';
-import { FiArrowLeft, FiEdit2, FiEdit3, FiExternalLink, FiTrash2 } from 'react-icons/fi';
+import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { FiArrowLeft, FiEdit2, FiEdit3, FiExternalLink, FiTrash2, FiActivity, FiBarChart2, FiDatabase, FiLink } from 'react-icons/fi';
 import SchwabLogo from '../assets/logos/schwab.svg';
 import TastytradeLogo from '../assets/logos/tastytrade.svg';
 import IbkrLogo from '../assets/logos/interactive-brokers.svg';
+import IBGatewayLogo from '../assets/logos/ib-gateway.svg';
+import TradingViewLogo from '../assets/logos/tradingview.svg';
+import FmpLogo from '../assets/logos/fmp.svg';
 
-const SettingsBrokerages: React.FC = () => {
+const SettingsConnections: React.FC = () => {
   // Temporary shim: preserve legacy `useToast()` call sites while migrating to `react-hot-toast`.
   const toast = (args: { title: string; description?: string; status?: 'success' | 'error' | 'info' | 'warning' }) => {
     const msg = args.description ? `${args.title}: ${args.description}` : args.title;
@@ -375,15 +385,108 @@ const SettingsBrokerages: React.FC = () => {
     }
   };
 
+  /* ---------- IB Gateway ---------- */
+  const gatewayQuery = useQuery(
+    ['ibGatewayStatus'],
+    async () => {
+      const res = await api.get('/portfolio/options/gateway-status');
+      return res.data?.data ?? { connected: false, available: false };
+    },
+    { staleTime: 30000, refetchInterval: 60000 },
+  );
+  const gwData = gatewayQuery.data as { connected?: boolean; available?: boolean; host?: string; port?: number; client_id?: number; trading_mode?: string; last_connected?: string; error?: string; vnc_url?: string } | undefined;
+
+  const gatewayConnectMutation = useMutation(
+    () => api.post('/portfolio/options/gateway-connect'),
+    {
+      onSuccess: () => {
+        gatewayQuery.refetch();
+        hotToast.success('Gateway reconnection triggered');
+      },
+      onError: (err: unknown) => { hotToast.error(`Gateway connect failed: ${handleApiError(err)}`); },
+    },
+  );
+
+  /* ---------- IB Gateway settings ---------- */
+  const [gwEditOpen, setGwEditOpen] = useState(false);
+  const [gwForm, setGwForm] = useState({ host: '', port: '', client_id: '' });
+  const ibkrAccount = accounts.find((a: any) => String(a.broker || '').toUpperCase() === 'IBKR');
+
+  const loadGwSettings = async () => {
+    if (!ibkrAccount) return;
+    try {
+      const res = await api.get(`/accounts/${ibkrAccount.id}/gateway-settings`);
+      const gw = res.data?.data ?? {};
+      setGwForm({
+        host: gw.gateway_host || gwData?.host || '',
+        port: String(gw.gateway_port || gwData?.port || ''),
+        client_id: String(gw.gateway_client_id || gwData?.client_id || ''),
+      });
+    } catch {
+      setGwForm({
+        host: gwData?.host || '',
+        port: String(gwData?.port || ''),
+        client_id: String(gwData?.client_id || ''),
+      });
+    }
+  };
+
+  const saveGwSettings = useMutation(
+    async () => {
+      if (!ibkrAccount) throw new Error('No IBKR account found');
+      const payload: Record<string, any> = {};
+      if (gwForm.host.trim()) payload.gateway_host = gwForm.host.trim();
+      if (gwForm.port.trim()) payload.gateway_port = parseInt(gwForm.port, 10);
+      if (gwForm.client_id.trim()) payload.gateway_client_id = parseInt(gwForm.client_id, 10);
+      await api.patch(`/accounts/${ibkrAccount.id}/gateway-settings`, payload);
+    },
+    {
+      onSuccess: () => {
+        hotToast.success('Gateway settings saved');
+        setGwEditOpen(false);
+      },
+      onError: (err: unknown) => { hotToast.error(`Save failed: ${handleApiError(err)}`); },
+    },
+  );
+
+  /* ---------- TradingView preferences ---------- */
+  const queryClient = useQueryClient();
+  const tvPrefs = (user as any)?.ui_preferences ?? {};
+  const [tvInterval, setTvInterval] = useState(tvPrefs.tv_default_interval || 'D');
+  const [tvStudies, setTvStudies] = useState<string>(tvPrefs.tv_default_studies || 'EMA,RSI,MACD,Volume');
+
+  const tvPrefsMutation = useMutation(
+    (prefs: Record<string, string>) => api.patch('/users/preferences', { ui_preferences: prefs }),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries('authUser');
+        hotToast.success('TradingView preferences saved');
+      },
+      onError: (err: unknown) => { hotToast.error(`Save failed: ${handleApiError(err)}`); },
+    },
+  );
+
   return (
     <Box w="full">
       <Box w="full" maxW="960px" mx="auto">
         <PageHeader
-          title="Brokerages"
-          subtitle="Use the wizard to add new connections. Connected portfolios appear below."
+          title="Connections"
+          subtitle="Manage brokerages, live data, charting, and data provider integrations."
           actions={<Button onClick={startWizard}>+ New connection</Button>}
         />
-        <VStack align="stretch" gap={4}>
+        <VStack align="stretch" gap={6}>
+
+          {/* ========== SECTION 1: BROKERAGES ========== */}
+          <Box>
+            <HStack gap={3} mb={1}>
+              <Box p={1.5} borderRadius="md" bg="bg.subtle"><FiLink size={18} /></Box>
+              <Text fontWeight="bold" fontSize="lg">Brokerages</Text>
+            </HStack>
+            <Text fontSize="sm" color="fg.muted" mb={4} pl="42px">
+              Connect brokerage accounts to import positions, trades, and transactions.
+            </Text>
+          </Box>
+
           {(tt?.last_error || tt?.job_error) && (
             <Alert.Root colorPalette="red" status="error" variant="subtle">
               <Alert.Indicator />
@@ -393,226 +496,389 @@ const SettingsBrokerages: React.FC = () => {
               </Alert.Content>
             </Alert.Root>
           )}
-          <AppCard>
-            <VStack align="stretch" gap={4}>
-            <HStack justify="space-between">
-              <Text fontWeight="semibold">Linked Accounts</Text>
-              <Button size="sm" onClick={loadAccounts}>Refresh</Button>
-            </HStack>
-            {accounts.length === 0 && (
-              <Box border="1px dashed" borderColor="border.subtle" p={6} borderRadius="md" textAlign="center">
-                <Text fontSize="sm" color="fg.muted">No accounts yet. Add a brokerage account to get started.</Text>
-              </Box>
-            )}
-            <TableScrollArea>
-              <TableRoot size="sm" variant="line">
-                <TableHeader>
-                  <TableRow>
-                    <TableColumnHeader>Broker</TableColumnHeader>
-                    <TableColumnHeader>Account</TableColumnHeader>
-                    <TableColumnHeader>Type</TableColumnHeader>
-                    <TableColumnHeader>Status</TableColumnHeader>
-                    <TableColumnHeader>Actions</TableColumnHeader>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {accounts.map((a) => {
-                    return (
-                      <TableRow key={a.id}>
-                        <TableCell>{brokerDisplayName(String(a.broker))}</TableCell>
-                        <TableCell>
-                          {editNameId === a.id ? (
-                            <HStack gap={1}>
-                              <Input
-                                size="sm"
-                                value={editNameValue}
-                                onChange={(e) => setEditNameValue(e.target.value)}
-                                placeholder="Account name"
-                                w="140px"
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    accountsApi.updateAccount(a.id, { account_name: editNameValue.trim() || undefined }).then(() => {
-                                      setEditNameId(null);
-                                      loadAccounts();
-                                      toast({ title: 'Name updated', status: 'success' });
-                                    }).catch((err) => toast({ title: 'Update failed', status: 'error', description: handleApiError(err) }));
-                                  } else if (e.key === 'Escape') setEditNameId(null);
-                                }}
-                              />
-                              <IconButton aria-label="Save" size="xs" onClick={async () => {
-                                try {
-                                  await accountsApi.updateAccount(a.id, { account_name: editNameValue.trim() || undefined });
-                                  setEditNameId(null);
-                                  await loadAccounts();
-                                  toast({ title: 'Name updated', status: 'success' });
-                                } catch (err) {
-                                  toast({ title: 'Update failed', status: 'error', description: handleApiError(err) });
-                                }
-                              }}>
-                                ✓
-                              </IconButton>
-                              <IconButton aria-label="Cancel" size="xs" variant="ghost" onClick={() => setEditNameId(null)}>✕</IconButton>
+
+          {/* Card-per-broker layout */}
+          <SimpleGrid columns={{ base: 1, md: accounts.length > 0 ? 1 : 3 }} gap={4}>
+            {(() => {
+              const brokerConfigs: { key: string; name: string; logo: string; connected: boolean }[] = [
+                { key: 'IBKR', name: 'Interactive Brokers', logo: IbkrLogo, connected: accounts.some(a => String(a.broker).toUpperCase() === 'IBKR') },
+                { key: 'SCHWAB', name: 'Charles Schwab', logo: SchwabLogo, connected: accounts.some(a => String(a.broker).toUpperCase() === 'SCHWAB') },
+                { key: 'TASTYTRADE', name: 'Tastytrade', logo: TastytradeLogo, connected: accounts.some(a => String(a.broker).toUpperCase() === 'TASTYTRADE') },
+              ];
+              return brokerConfigs.map(bc => {
+                const brokerAccounts = accounts.filter(a => String(a.broker).toUpperCase() === bc.key);
+                const hasAccounts = brokerAccounts.length > 0;
+                const brokerSyncs = syncHistory.filter((s: any) => {
+                  const matchAcct = brokerAccounts.find(a => a.id === s.account_id || a.account_number === s.account_number);
+                  return !!matchAcct;
+                });
+                const lastSync = brokerSyncs.length > 0 ? brokerSyncs[0] : null;
+
+                return (
+                  <AppCard key={bc.key} borderLeftWidth="3px" borderLeftColor={hasAccounts ? 'green.500' : 'transparent'} opacity={hasAccounts ? 1 : 0.85} _hover={{ opacity: 1 }}>
+                    <VStack align="stretch" gap={3}>
+                      <HStack justify="space-between">
+                        <HStack gap={3}>
+                          <Image src={bc.logo} alt={bc.name} boxSize="36px" borderRadius="lg" objectFit="contain" p="2px" bg="bg.subtle" />
+                          <Box>
+                            <Text fontWeight="semibold" fontSize="sm">{bc.name}</Text>
+                            {lastSync && (
+                              <Text fontSize="xs" color="fg.muted">
+                                Synced {new Date(lastSync.started_at).toLocaleString()}
+                                {lastSync.status === 'ERROR' ? ' — failed' : ''}
+                              </Text>
+                            )}
+                          </Box>
+                        </HStack>
+                        <HStack gap={2}>
+                          <Box w="8px" h="8px" borderRadius="full" bg={hasAccounts ? 'green.500' : 'gray.400'} />
+                          <Text fontSize="xs" fontWeight="medium" color={hasAccounts ? 'fg.default' : 'fg.muted'}>
+                            {hasAccounts ? `${brokerAccounts.length} account${brokerAccounts.length > 1 ? 's' : ''}` : 'Not connected'}
+                          </Text>
+                        </HStack>
+                      </HStack>
+
+                      {!hasAccounts && (
+                        <Box border="1px dashed" borderColor="border.subtle" p={4} borderRadius="md" textAlign="center">
+                          <Button size="sm" variant="outline" onClick={() => { setBroker(bc.key as any); setStep(2); wizard.onOpen(); }}>
+                            + Connect {bc.name}
+                          </Button>
+                        </Box>
+                      )}
+
+                      {brokerAccounts.map((a: any) => (
+                        <Box key={a.id} p={3} borderWidth="1px" borderColor="border.subtle" borderRadius="md" bg="bg.subtle">
+                          <HStack justify="space-between" mb={2}>
+                            <HStack gap={2}>
+                              {editNameId === a.id ? (
+                                <HStack gap={1}>
+                                  <Input size="sm" value={editNameValue} onChange={(e) => setEditNameValue(e.target.value)} placeholder="Account name" w="140px"
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') { accountsApi.updateAccount(a.id, { account_name: editNameValue.trim() || undefined }).then(() => { setEditNameId(null); loadAccounts(); toast({ title: 'Name updated', status: 'success' }); }).catch((err) => toast({ title: 'Update failed', status: 'error', description: handleApiError(err) })); }
+                                      else if (e.key === 'Escape') setEditNameId(null);
+                                    }}
+                                  />
+                                  <IconButton aria-label="Save" size="xs" onClick={async () => { try { await accountsApi.updateAccount(a.id, { account_name: editNameValue.trim() || undefined }); setEditNameId(null); await loadAccounts(); toast({ title: 'Name updated', status: 'success' }); } catch (err) { toast({ title: 'Update failed', status: 'error', description: handleApiError(err) }); } }}>✓</IconButton>
+                                  <IconButton aria-label="Cancel" size="xs" variant="ghost" onClick={() => setEditNameId(null)}>✕</IconButton>
+                                </HStack>
+                              ) : (
+                                <HStack gap={1}>
+                                  <Box>
+                                    <Text fontSize="sm" fontWeight="medium">{a.account_name || a.account_number}</Text>
+                                    {a.account_number && String(a.account_number) !== String(a.account_name || '') && (
+                                      <Text fontSize="xs" color="fg.muted">{a.account_number}</Text>
+                                    )}
+                                    {a.data_range_start && a.data_range_end && (
+                                      <Text fontSize="xs" color="fg.muted">Data: {new Date(a.data_range_start).toLocaleDateString()} – {new Date(a.data_range_end).toLocaleDateString()}</Text>
+                                    )}
+                                  </Box>
+                                  <IconButton aria-label="Edit name" size="xs" variant="ghost" onClick={() => { setEditNameId(a.id); setEditNameValue(a.account_name || a.account_number || ''); }}><FiEdit3 /></IconButton>
+                                </HStack>
+                              )}
                             </HStack>
-                          ) : (
                             <HStack gap={1}>
-                              <Box>
-                                <Text fontSize="sm">{a.account_name || a.account_number}</Text>
-                                {a.account_number && String(a.account_number) !== String(a.account_name || '') && (
-                                  <Text fontSize="xs" color="fg.muted">{a.account_number}</Text>
-                                )}
-                              </Box>
-                              <IconButton
-                                aria-label="Edit name"
-                                size="xs"
-                                variant="ghost"
-                                onClick={() => { setEditNameId(a.id); setEditNameValue(a.account_name || a.account_number || ''); }}
-                              >
-                                <FiEdit3 />
-                              </IconButton>
-                            </HStack>
-                          )}
-                        </TableCell>
-                        <TableCell>{a.account_type}</TableCell>
-                        <TableCell>
-                          {a.sync_status && (String(a.sync_status).toLowerCase() === 'error' || String(a.sync_status).toLowerCase() === 'failed') && a.sync_error_message ? (
-                            <TooltipRoot>
-                              <TooltipTrigger asChild>
-                                <span>
-                                  <Badge colorScheme={a.is_enabled ? 'green' : 'gray'}>{a.status}</Badge>
-                                  {' '}
-                                  <Badge variant="outline" colorPalette="red">{a.sync_status}</Badge>
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipPositioner>
-                                <TooltipContent maxW="xs">{a.sync_error_message}</TooltipContent>
-                              </TooltipPositioner>
-                            </TooltipRoot>
-                          ) : (
-                            <>
-                              <Badge colorScheme={a.is_enabled ? 'green' : 'gray'}>{a.status}</Badge>
-                              {' '}
-                              {a.sync_status && <Badge variant="outline">{a.sync_status}</Badge>}
-                            </>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <HStack>
-                            {String(a.broker || '').toLowerCase() === 'schwab' && (
-                              (cfg && !cfg.schwabConfigured) ? (
+                              {a.sync_status && (String(a.sync_status).toLowerCase() === 'error' || String(a.sync_status).toLowerCase() === 'failed') && a.sync_error_message ? (
                                 <TooltipRoot>
                                   <TooltipTrigger asChild>
-                                    <Button size="xs" variant="outline" onClick={() => handleConnectSchwab(a.id)} disabled>
-                                      Connect Charles Schwab <FiExternalLink style={{ marginLeft: 8 }} />
-                                    </Button>
+                                    <Badge variant="outline" colorPalette="red" size="sm">{a.sync_status}</Badge>
                                   </TooltipTrigger>
-                                  <TooltipPositioner>
-                                    <TooltipContent>
-                                      Schwab OAuth not configured on server
-                                    </TooltipContent>
-                                  </TooltipPositioner>
+                                  <TooltipPositioner><TooltipContent maxW="xs">{a.sync_error_message}</TooltipContent></TooltipPositioner>
                                 </TooltipRoot>
                               ) : (
-                                <Button size="xs" variant="outline" onClick={() => handleConnectSchwab(a.id)}>
-                                  Connect Charles Schwab <FiExternalLink style={{ marginLeft: 8 }} />
-                                </Button>
-                              )
+                                <>
+                                  <Badge colorPalette={a.is_enabled ? 'green' : 'gray'} size="sm" variant="subtle">{a.is_enabled ? 'Active' : 'Disabled'}</Badge>
+                                  {a.sync_status && <Badge variant="outline" size="sm">{a.sync_status}</Badge>}
+                                </>
+                              )}
+                            </HStack>
+                          </HStack>
+                          {String(a.sync_error_message || '').toLowerCase().includes('encrypt') || String(a.sync_error_message || '').toLowerCase().includes('credential') ? (
+                            <Text fontSize="xs" color="red.500" mb={2}>Credentials invalid — please re-add this account.</Text>
+                          ) : null}
+                          <HStack gap={2} flexWrap="wrap">
+                            {String(a.broker || '').toLowerCase() === 'schwab' && (
+                              <Button size="xs" variant="outline" onClick={() => handleConnectSchwab(a.id)} disabled={cfg ? !cfg.schwabConfigured : false}>
+                                Link Schwab <FiExternalLink style={{ marginLeft: 6 }} />
+                              </Button>
                             )}
                             {(String(a.broker || '').toLowerCase() === 'tastytrade' || String(a.broker || '').toLowerCase() === 'ibkr') && (
-                              <IconButton aria-label="Edit credentials" size="xs" variant="outline" onClick={() => openEditModal(a)}>
-                                <FiEdit2 />
-                              </IconButton>
+                              <IconButton aria-label="Edit credentials" size="xs" variant="outline" onClick={() => openEditModal(a)}><FiEdit2 /></IconButton>
                             )}
                             <Button size="xs" loading={syncingId === a.id} onClick={() => handleSync(a.id)}>Sync</Button>
-                            <Button size="xs" variant="outline" onClick={async () => {
-                              try {
-                                await accountsApi.remove?.(a.id);
-                                toast({ title: 'Account disabled', status: 'success' });
-                                loadAccounts();
-                              } catch (e) {
-                                toast({ title: 'Disable failed', description: handleApiError(e), status: 'error' });
-                              }
-                            }}>
-                              Disable
-                            </Button>
-                            <IconButton
-                              aria-label="Delete account"
-                              size="xs"
-                              variant="ghost"
-                              colorScheme="red"
-                              onClick={() => { setDeleteId(a.id); onDeleteOpen(); }}
-                            >
-                              <FiTrash2 />
-                            </IconButton>
+                            <IconButton aria-label="Delete account" size="xs" variant="ghost" onClick={() => { setDeleteId(a.id); onDeleteOpen(); }}><FiTrash2 /></IconButton>
                           </HStack>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </TableRoot>
-            </TableScrollArea>
-            </VStack>
-          </AppCard>
-          <AppCard>
+                        </Box>
+                      ))}
+                    </VStack>
+                  </AppCard>
+                );
+              });
+            })()}
+          </SimpleGrid>
+          {syncHistory.length > 0 && (
+            <Box>
+              <details>
+                <summary style={{ cursor: 'pointer', fontSize: '14px', fontWeight: 600, color: 'var(--chakra-colors-fg-muted)', padding: '8px 0' }}>
+                  Recent syncs ({syncHistory.length})
+                </summary>
+                <Box mt={2}>
+                  <TableScrollArea>
+                    <TableRoot size="sm" variant="line">
+                      <TableHeader>
+                        <TableRow>
+                          <TableColumnHeader>Account</TableColumnHeader>
+                          <TableColumnHeader>Status</TableColumnHeader>
+                          <TableColumnHeader>Started</TableColumnHeader>
+                          <TableColumnHeader>Error</TableColumnHeader>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {syncHistory.slice(0, 10).map((s: any) => (
+                          <TableRow key={s.id}>
+                            <TableCell>
+                              <Text fontSize="sm">{s.account_name || s.account_number}</Text>
+                            </TableCell>
+                            <TableCell>
+                              <Badge colorPalette={s.status === 'SUCCESS' ? 'green' : s.status === 'ERROR' ? 'red' : 'blue'} variant="subtle" size="sm">
+                                {s.status}
+                              </Badge>
+                              {s.duration_seconds != null && <Text as="span" fontSize="xs" color="fg.muted"> {s.duration_seconds}s</Text>}
+                            </TableCell>
+                            <TableCell><Text fontSize="xs">{s.started_at ? new Date(s.started_at).toLocaleString() : '—'}</Text></TableCell>
+                            <TableCell>
+                              {s.error_message ? (
+                                <TooltipRoot>
+                                  <TooltipTrigger asChild><Text fontSize="xs" lineClamp={1} maxW="200px" color="red.500">{s.error_message}</Text></TooltipTrigger>
+                                  <TooltipPositioner><TooltipContent maxW="sm">{s.error_message}</TooltipContent></TooltipPositioner>
+                                </TooltipRoot>
+                              ) : '—'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </TableRoot>
+                  </TableScrollArea>
+                </Box>
+              </details>
+            </Box>
+          )}
+
+          <Separator />
+
+          {/* ========== SECTION 2: IB GATEWAY ========== */}
+          <Box>
+            <HStack gap={3} mb={1}>
+              <Box p={1.5} borderRadius="md" bg="bg.subtle"><FiActivity size={18} /></Box>
+              <Text fontWeight="bold" fontSize="lg">IB Gateway</Text>
+              <Badge
+                colorPalette={gwData?.connected ? 'green' : 'gray'}
+                variant="subtle"
+                fontSize="xs"
+              >
+                {gatewayQuery.isLoading ? 'Checking...' : gwData?.connected ? 'Connected' : 'Offline'}
+              </Badge>
+            </HStack>
+            <Text fontSize="sm" color="fg.muted" mb={3} pl="42px">
+              Live connection to Interactive Brokers for real-time quotes, option chains, and Greeks.
+            </Text>
+          </Box>
+          <AppCard borderLeftWidth="3px" borderLeftColor={gwData?.connected ? 'green.500' : 'transparent'}>
             <VStack align="stretch" gap={3}>
-              <HStack justify="space-between">
-                <Text fontWeight="semibold">Recent syncs</Text>
-                <Button size="sm" variant="ghost" onClick={loadSyncHistory}>Refresh</Button>
+              <HStack gap={3} mb={1}>
+                <Image src={IBGatewayLogo} alt="IB Gateway" boxSize="28px" borderRadius="md" />
+                <Box flex={1}>
+                  <HStack gap={2}>
+                    <Box w="8px" h="8px" borderRadius="full" bg={gwData?.connected ? 'green.500' : 'gray.400'} />
+                    <Text fontSize="sm" fontWeight="medium">{gwData?.connected ? 'Connected' : gwData?.available === false ? 'Unavailable' : 'Disconnected'}</Text>
+                    {gwData?.connected && gwData?.last_connected && (
+                      <Text fontSize="xs" color="fg.muted">since {new Date(gwData.last_connected).toLocaleString()}</Text>
+                    )}
+                  </HStack>
+                </Box>
               </HStack>
-              {syncHistory.length === 0 && (
-                <Box border="1px dashed" borderColor="border.subtle" p={4} borderRadius="md" textAlign="center">
-                  <Text fontSize="sm" color="fg.muted">No sync history yet.</Text>
+              <SimpleGrid columns={{ base: 3, md: 3 }} gap={4}>
+                <Box>
+                  <Text fontSize="xs" fontWeight="bold" color="fg.muted" textTransform="uppercase">Host</Text>
+                  <Text fontSize="sm" mt={1} fontFamily="mono">{gwData?.host || '—'}</Text>
+                </Box>
+                <Box>
+                  <Text fontSize="xs" fontWeight="bold" color="fg.muted" textTransform="uppercase">Port</Text>
+                  <Text fontSize="sm" mt={1} fontFamily="mono">{gwData?.port || '—'}</Text>
+                </Box>
+                <Box>
+                  <Text fontSize="xs" fontWeight="bold" color="fg.muted" textTransform="uppercase">Trading Mode</Text>
+                  <Text fontSize="sm" mt={1}>{gwData?.trading_mode || '—'}</Text>
+                </Box>
+              </SimpleGrid>
+              {gwData?.error && (
+                <Alert.Root colorPalette="red" status="error" variant="subtle" size="sm">
+                  <Alert.Indicator />
+                  <Alert.Content>
+                    <Alert.Description fontSize="xs">{gwData.error}</Alert.Description>
+                  </Alert.Content>
+                </Alert.Root>
+              )}
+              <HStack gap={2} mt={1}>
+                <Button
+                  size="sm"
+                  colorPalette={gwData?.connected ? 'gray' : 'brand'}
+                  onClick={() => gatewayConnectMutation.mutate()}
+                  loading={gatewayConnectMutation.isLoading}
+                >
+                  {gwData?.connected ? 'Reconnect' : 'Connect'}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => gatewayQuery.refetch()}>
+                  Refresh Status
+                </Button>
+                {gwData?.vnc_url && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => window.open(gwData.vnc_url, '_blank', 'noopener,noreferrer')}
+                  >
+                    View Gateway (noVNC) <FiExternalLink style={{ marginLeft: 6 }} />
+                  </Button>
+                )}
+                <Button size="sm" variant="ghost" onClick={() => { loadGwSettings(); setGwEditOpen(!gwEditOpen); }}>
+                  {gwEditOpen ? 'Hide Settings' : 'Edit Settings'}
+                </Button>
+              </HStack>
+              {gwEditOpen && (
+                <Box p={3} borderWidth="1px" borderColor="border.subtle" borderRadius="md" bg="bg.subtle">
+                  <SimpleGrid columns={{ base: 1, md: 3 }} gap={3}>
+                    <Box>
+                      <Text fontSize="xs" fontWeight="bold" color="fg.muted" mb={1}>Host</Text>
+                      <Input size="sm" fontFamily="mono" value={gwForm.host} onChange={(e) => setGwForm({ ...gwForm, host: e.target.value })} placeholder="ib-gateway" />
+                    </Box>
+                    <Box>
+                      <Text fontSize="xs" fontWeight="bold" color="fg.muted" mb={1}>Port</Text>
+                      <Input size="sm" fontFamily="mono" value={gwForm.port} onChange={(e) => setGwForm({ ...gwForm, port: e.target.value })} placeholder="8888" />
+                    </Box>
+                    <Box>
+                      <Text fontSize="xs" fontWeight="bold" color="fg.muted" mb={1}>Client ID</Text>
+                      <Input size="sm" fontFamily="mono" value={gwForm.client_id} onChange={(e) => setGwForm({ ...gwForm, client_id: e.target.value })} placeholder="1" />
+                    </Box>
+                  </SimpleGrid>
+                  <HStack mt={3} gap={2}>
+                    <Button size="sm" colorPalette="brand" onClick={() => saveGwSettings.mutate()} loading={saveGwSettings.isLoading}>
+                      Save Settings
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setGwEditOpen(false)}>Cancel</Button>
+                  </HStack>
                 </Box>
               )}
-              {syncHistory.length > 0 && (
-                <TableScrollArea>
-                  <TableRoot size="sm" variant="line">
-                    <TableHeader>
-                      <TableRow>
-                        <TableColumnHeader>Account</TableColumnHeader>
-                        <TableColumnHeader>Status</TableColumnHeader>
-                        <TableColumnHeader>Started</TableColumnHeader>
-                        <TableColumnHeader>Error</TableColumnHeader>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {syncHistory.slice(0, 15).map((s: any) => (
-                        <TableRow key={s.id}>
-                          <TableCell>
-                            <Text fontSize="sm">{s.account_name || s.account_number}</Text>
-                            <Text fontSize="xs" color="fg.muted">{s.account_number}</Text>
-                          </TableCell>
-                          <TableCell>
-                            <Badge colorPalette={s.status === 'SUCCESS' ? 'green' : s.status === 'ERROR' ? 'red' : 'blue'} variant="subtle">
-                              {s.status}
-                            </Badge>
-                            {s.duration_seconds != null && (
-                              <Text fontSize="xs" color="fg.muted"> ({s.duration_seconds}s)</Text>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Text fontSize="xs">{s.started_at ? new Date(s.started_at).toLocaleString() : '—'}</Text>
-                          </TableCell>
-                          <TableCell>
-                            {s.error_message ? (
-                              <TooltipRoot>
-                                <TooltipTrigger asChild>
-                                  <Text fontSize="xs" lineClamp={2} maxW="200px" color="red.500">{s.error_message}</Text>
-                                </TooltipTrigger>
-                                <TooltipPositioner>
-                                  <TooltipContent maxW="sm">{s.error_message}</TooltipContent>
-                                </TooltipPositioner>
-                              </TooltipRoot>
-                            ) : '—'}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </TableRoot>
-                </TableScrollArea>
-              )}
             </VStack>
           </AppCard>
+
+          <Separator />
+
+          {/* ========== SECTION 3: TRADINGVIEW ========== */}
+          <Box>
+            <HStack gap={3} mb={1}>
+              <Box p={1.5} borderRadius="md" bg="bg.subtle"><FiBarChart2 size={18} /></Box>
+              <Text fontWeight="bold" fontSize="lg">TradingView</Text>
+              <Badge colorPalette="green" variant="subtle" fontSize="xs">Active</Badge>
+            </HStack>
+            <Text fontSize="sm" color="fg.muted" mb={3} pl="42px">
+              Charting preferences for the embedded TradingView widget. Charts appear in Market Dashboard and Portfolio Workspace.
+            </Text>
+          </Box>
+          <AppCard borderLeftWidth="3px" borderLeftColor="green.500">
+            <VStack align="stretch" gap={4}>
+              <HStack gap={3} mb={1}>
+                <Image src={TradingViewLogo} alt="TradingView" boxSize="28px" borderRadius="md" />
+                <Text fontSize="sm" fontWeight="medium">Charting Preferences</Text>
+              </HStack>
+              <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+                <Box>
+                  <Text fontSize="xs" fontWeight="bold" color="fg.muted" textTransform="uppercase" mb={1}>Default Interval</Text>
+                  <NativeSelectRoot size="sm">
+                    <NativeSelectField
+                      value={tvInterval}
+                      onChange={(e) => setTvInterval(e.target.value)}
+                    >
+                      <option value="1">1m</option>
+                      <option value="5">5m</option>
+                      <option value="15">15m</option>
+                      <option value="60">1h</option>
+                      <option value="D">Daily</option>
+                      <option value="W">Weekly</option>
+                      <option value="M">Monthly</option>
+                    </NativeSelectField>
+                  </NativeSelectRoot>
+                </Box>
+                <Box>
+                  <Text fontSize="xs" fontWeight="bold" color="fg.muted" textTransform="uppercase" mb={1}>Default Studies</Text>
+                  <Input
+                    size="sm"
+                    value={tvStudies}
+                    onChange={(e) => setTvStudies(e.target.value)}
+                    placeholder="EMA,RSI,MACD,Volume"
+                  />
+                  <Text fontSize="xs" color="fg.muted" mt={1}>Comma-separated TradingView study names</Text>
+                </Box>
+              </SimpleGrid>
+              <Box p={3} borderWidth="1px" borderColor="border.subtle" borderRadius="md" bg="bg.subtle">
+                <Text fontSize="sm" fontWeight="semibold" mb={1}>About Embedded Charts</Text>
+                <Text fontSize="xs" color="fg.muted">
+                  We use TradingView's public embed widget for in-app charting. This provides candlestick charts with
+                  built-in studies (EMA, RSI, MACD, Bollinger, VWAP, Volume) but does <strong>not</strong> connect to
+                  your personal TradingView account — Pine Scripts, saved templates, and custom indicators are not available
+                  in the embed.
+                </Text>
+                <Text fontSize="xs" color="fg.muted" mt={1}>
+                  To access your full TradingView workspace, use the pop-out button on any chart. Upgrading to the
+                  TradingView Charting Library (requires a license) would enable custom data feeds and account integration
+                  in a future release.
+                </Text>
+              </Box>
+              <Button
+                size="sm"
+                colorPalette="brand"
+                alignSelf="flex-start"
+                onClick={() => tvPrefsMutation.mutate({ tv_default_interval: tvInterval, tv_default_studies: tvStudies })}
+                loading={tvPrefsMutation.isLoading}
+              >
+                Save Preferences
+              </Button>
+            </VStack>
+          </AppCard>
+
+          <Separator />
+
+          {/* ========== SECTION 4: DATA PROVIDERS ========== */}
+          <Box>
+            <HStack gap={3} mb={1}>
+              <Box p={1.5} borderRadius="md" bg="bg.subtle"><FiDatabase size={18} /></Box>
+              <Text fontWeight="bold" fontSize="lg">Data Providers</Text>
+              <Badge colorPalette="gray" variant="subtle" fontSize="xs">Coming Soon</Badge>
+            </HStack>
+            <Text fontSize="sm" color="fg.muted" mb={3} pl="42px">
+              Connect third-party data sources for OHLCV, fundamentals, and index constituents.
+            </Text>
+          </Box>
+          <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
+            <CardBody>
+              <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+                <Box p={4} borderWidth="1px" borderColor="border.subtle" borderRadius="lg" opacity={0.6}>
+                  <HStack gap={3} mb={2}>
+                    <Image src={FmpLogo} alt="FMP" boxSize="24px" borderRadius="md" />
+                    <Text fontWeight="semibold" fontSize="sm">Financial Modeling Prep</Text>
+                  </HStack>
+                  <Text fontSize="xs" color="fg.muted">OHLCV, fundamentals, index constituents. API key configuration coming soon.</Text>
+                </Box>
+                <Box p={4} borderWidth="1px" borderColor="border.subtle" borderRadius="lg" opacity={0.6}>
+                  <HStack gap={3} mb={2}>
+                    <Box w="24px" h="24px" borderRadius="md" bg="teal.600" display="flex" alignItems="center" justifyContent="center">
+                      <FiDatabase color="white" size={14} />
+                    </Box>
+                    <Text fontWeight="semibold" fontSize="sm">Twelve Data</Text>
+                  </HStack>
+                  <Text fontSize="xs" color="fg.muted">OHLCV fallback provider. API key configuration coming soon.</Text>
+                </Box>
+              </SimpleGrid>
+            </CardBody>
+          </CardRoot>
         </VStack>
       </Box>
       <DialogRoot placement="center"
@@ -839,4 +1105,4 @@ const SettingsBrokerages: React.FC = () => {
   );
 };
 
-export default SettingsBrokerages; 
+export default SettingsConnections; 

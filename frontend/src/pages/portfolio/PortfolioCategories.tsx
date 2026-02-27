@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   Box,
   Text,
@@ -10,6 +10,7 @@ import {
   CardBody,
   VStack,
   SimpleGrid,
+  Table,
   DialogRoot,
   DialogBackdrop,
   DialogPositioner,
@@ -22,12 +23,30 @@ import {
   Field,
   Progress,
   Badge,
-  Checkbox,
+  Icon,
 } from '@chakra-ui/react';
+import { FiGrid, FiList, FiZap, FiSearch, FiPlus, FiCheck, FiChevronUp, FiChevronDown } from 'react-icons/fi';
+import { RiDraggable } from 'react-icons/ri';
+import {
+  DndContext,
+  DragOverlay,
+  useSensor,
+  useSensors,
+  PointerSensor,
+  closestCenter,
+  useDroppable,
+  useDraggable,
+  type DragStartEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import PageHeader from '../../components/ui/PageHeader';
 import { portfolioApi, handleApiError } from '../../services/api';
-import { useMutation, useQueryClient } from 'react-query';
-import { useCategories, useCategoryPositions, useRebalanceSuggestions } from '../../hooks/usePortfolio';
+import api from '../../services/api';
+import { useMutation, useQuery, useQueryClient } from 'react-query';
+import { useCategories, useCategoryViews, useCategoryPositions, useRebalanceSuggestions } from '../../hooks/usePortfolio';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
 import { formatMoney } from '../../utils/format';
 import toast from 'react-hot-toast';
@@ -44,19 +63,575 @@ type CategoryRow = {
   total_value?: number;
 };
 
+type CatPosition = { id: number; symbol: string; market_value?: number };
+
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
+
+/* ------------------------------------------------------------------ */
+/*  DnD helpers                                                        */
+/* ------------------------------------------------------------------ */
+
+const DroppableCategory: React.FC<{ categoryId: number; children: React.ReactNode }> = ({ categoryId, children }) => {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `category-${categoryId}`,
+    data: { categoryId },
+  });
+  return (
+    <Box
+      ref={setNodeRef}
+      borderWidth="2px"
+      borderColor={isOver ? 'brand.500' : 'transparent'}
+      borderRadius="xl"
+      transition="border-color 0.2s"
+    >
+      {children}
+    </Box>
+  );
+};
+
+const DraggableTicker: React.FC<{ positionId: number; symbol: string; categoryId: number; children: React.ReactNode }> = ({ positionId, symbol, categoryId, children }) => {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `pos-${positionId}`,
+    data: { positionId, symbol, categoryId },
+  });
+  return (
+    <Box
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      opacity={isDragging ? 0.4 : 1}
+      cursor="grab"
+      _active={{ cursor: 'grabbing' }}
+      display="inline-flex"
+    >
+      {children}
+    </Box>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/*  AllocationChart – donut chart with legend                          */
+/* ------------------------------------------------------------------ */
+
+const AllocationChart: React.FC<{ categories: CategoryRow[]; currency: string }> = ({ categories, currency }) => {
+  const data = categories
+    .filter(c => (c.total_value ?? 0) > 0)
+    .map(c => ({ name: c.name, value: Number(c.total_value ?? 0), target: Number(c.target_allocation_pct ?? 0), actual: Number(c.actual_allocation_pct ?? 0) }));
+
+  if (data.length === 0) return null;
+
+  return (
+    <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
+      <CardBody>
+        <Text fontWeight="bold" mb={3}>Allocation Overview</Text>
+        <HStack gap={6} align="center" flexWrap="wrap">
+          <Box w="200px" h="200px">
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie data={data} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={2}>
+                  {data.map((_, i) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value) => formatMoney(Number(value ?? 0), currency, { maximumFractionDigits: 0 })}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </Box>
+          <VStack align="stretch" gap={1} flex={1}>
+            {data.map((d, i) => (
+              <HStack key={d.name} justify="space-between" fontSize="sm">
+                <HStack gap={2}>
+                  <Box w="10px" h="10px" borderRadius="full" bg={COLORS[i % COLORS.length]} flexShrink={0} />
+                  <Text>{d.name}</Text>
+                </HStack>
+                <HStack gap={3}>
+                  <Text fontFamily="mono" color="fg.muted">{d.actual.toFixed(1)}%</Text>
+                  {d.target > 0 && (
+                    <Text fontFamily="mono" color={Math.abs(d.actual - d.target) > 5 ? 'fg.error' : 'fg.muted'} fontSize="xs">
+                      target {d.target}%
+                    </Text>
+                  )}
+                </HStack>
+              </HStack>
+            ))}
+          </VStack>
+        </HStack>
+      </CardBody>
+    </CardRoot>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/*  CategoryCard – single card with ticker chips                       */
+/* ------------------------------------------------------------------ */
+
+const CategoryCard: React.FC<{
+  cat: CategoryRow;
+  currency: string;
+  onEdit: (cat: CategoryRow) => void;
+  onAssign: (cat: CategoryRow) => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  isFirst?: boolean;
+  isLast?: boolean;
+}> = ({ cat, currency, onEdit, onAssign, onMoveUp, onMoveDown, isFirst, isLast }) => {
+  const queryClient = useQueryClient();
+  const [expanded, setExpanded] = useState(false);
+  const target = Number(cat.target_allocation_pct ?? 0);
+  const actual = Number(cat.actual_allocation_pct ?? 0);
+  const diff = actual - target;
+
+  const positionsQuery = useQuery(
+    ['categoryPositions', cat.id],
+    async () => {
+      const res = await portfolioApi.getCategory(cat.id);
+      const r = res as Record<string, any> | undefined;
+      return (r?.data?.data?.positions ?? r?.data?.positions ?? r?.positions ?? []) as CatPosition[];
+    },
+    { staleTime: 60_000 },
+  );
+  const catPositions = positionsQuery.data ?? [];
+  const PREVIEW_LIMIT = 12;
+  const visiblePositions = expanded ? catPositions : catPositions.slice(0, PREVIEW_LIMIT);
+  const overflowCount = catPositions.length - PREVIEW_LIMIT;
+
+  const unassignMutation = useMutation(
+    (positionId: number) => portfolioApi.unassignPosition(cat.id, positionId),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries('portfolioCategories');
+        queryClient.invalidateQueries(['categoryPositions', cat.id]);
+        toast.success('Position removed');
+      },
+      onError: (err) => { toast.error(`Failed to remove: ${handleApiError(err)}`); },
+    },
+  );
+
+  return (
+    <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
+      <CardBody>
+        <HStack justify="space-between" align="center" mb={2}>
+          <HStack gap={1}>
+            <VStack gap={0}>
+              <Box
+                as="button"
+                p={0}
+                lineHeight={1}
+                fontSize="xs"
+                color={isFirst ? 'fg.subtle' : 'fg.muted'}
+                cursor={isFirst ? 'default' : 'pointer'}
+                _hover={isFirst ? {} : { color: 'fg.default' }}
+                onClick={isFirst ? undefined : onMoveUp}
+                aria-label="Move up"
+              >
+                <FiChevronUp size={14} />
+              </Box>
+              <Box
+                as="button"
+                p={0}
+                lineHeight={1}
+                fontSize="xs"
+                color={isLast ? 'fg.subtle' : 'fg.muted'}
+                cursor={isLast ? 'default' : 'pointer'}
+                _hover={isLast ? {} : { color: 'fg.default' }}
+                onClick={isLast ? undefined : onMoveDown}
+                aria-label="Move down"
+              >
+                <FiChevronDown size={14} />
+              </Box>
+            </VStack>
+            <Text fontWeight="semibold">{cat.name}</Text>
+          </HStack>
+          {Math.abs(diff) > 5 && (
+            <Badge colorPalette={diff > 0 ? 'red' : 'orange'} size="sm">
+              Drift {diff > 0 ? '+' : ''}{diff.toFixed(1)}%
+            </Badge>
+          )}
+        </HStack>
+        <Text fontSize="sm" color="fg.muted">
+          Target: {target}% · Actual: {actual.toFixed(1)}% · {cat.positions_count ?? 0} positions
+        </Text>
+        <Progress.Root value={actual} max={100} size="sm" mt={2} borderRadius="md">
+          <Progress.Track>
+            <Progress.Range bg="brand.500" />
+          </Progress.Track>
+        </Progress.Root>
+        {diff !== 0 && (
+          <Text fontSize="xs" color={diff < 0 ? 'status.warning' : 'status.danger'} mt={1}>
+            {diff > 0 ? '+' : ''}{diff.toFixed(1)}% {diff < 0 ? 'underweight' : 'overweight'}
+          </Text>
+        )}
+        {cat.total_value != null && (
+          <Text fontSize="xs" color="fg.muted" mt={1}>
+            {formatMoney(cat.total_value, currency, { maximumFractionDigits: 0 })}
+          </Text>
+        )}
+
+        {catPositions.length > 0 && (
+          <HStack mt={2} gap={1} flexWrap="wrap">
+            {visiblePositions.map((p) => (
+              <DraggableTicker key={p.id} positionId={p.id} symbol={p.symbol} categoryId={cat.id}>
+                <Badge
+                  size="sm"
+                  variant="outline"
+                  colorPalette="gray"
+                  fontFamily="mono"
+                  cursor="pointer"
+                  title={`Click to remove ${p.symbol} · Drag to move`}
+                  onClick={() => unassignMutation.mutate(p.id)}
+                  _hover={{ colorPalette: 'red', borderColor: 'red.400' }}
+                >
+                  {p.symbol} ×
+                </Badge>
+              </DraggableTicker>
+            ))}
+            {overflowCount > 0 && (
+              <Badge
+                size="sm"
+                variant="subtle"
+                colorPalette="brand"
+                cursor="pointer"
+                _hover={{ bg: 'brand.100', _dark: { bg: 'brand.900' } }}
+                onClick={() => setExpanded(!expanded)}
+                title={expanded ? 'Show fewer' : `Show all ${catPositions.length} tickers`}
+              >
+                {expanded ? 'Show less' : `+${overflowCount} more`}
+              </Badge>
+            )}
+          </HStack>
+        )}
+
+        <HStack mt={3} gap={2}>
+          <Button size="xs" variant="outline" onClick={() => onEdit(cat)}>Edit</Button>
+          <Button size="xs" variant="outline" onClick={() => onAssign(cat)}>Manage Positions</Button>
+        </HStack>
+      </CardBody>
+    </CardRoot>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/*  ManagePositionsDialog – clear membership, search, add/remove       */
+/* ------------------------------------------------------------------ */
+
+const ManagePositionsDialog: React.FC<{
+  open: boolean;
+  onClose: () => void;
+  categoryName: string;
+  categoryId: number;
+  allPositions: CatPosition[];
+  uncategorizedIds: Set<number>;
+  currency: string;
+  pendingAdds: number[];
+  pendingRemoves: number[];
+  onToggleAdd: (id: number) => void;
+  onToggleRemove: (id: number) => void;
+  search: string;
+  onSearchChange: (s: string) => void;
+  onSave: () => void;
+  isSaving: boolean;
+  changeCount: number;
+}> = ({
+  open, onClose, categoryName, categoryId, allPositions, uncategorizedIds, currency,
+  pendingAdds, pendingRemoves, onToggleAdd, onToggleRemove,
+  search, onSearchChange, onSave, isSaving, changeCount,
+}) => {
+  const catPosQuery = useQuery(
+    ['categoryPositions', categoryId],
+    async () => {
+      if (!categoryId) return [];
+      const res = await portfolioApi.getCategory(categoryId);
+      const r = res as Record<string, any> | undefined;
+      return (r?.data?.data?.positions ?? r?.data?.positions ?? r?.positions ?? []) as CatPosition[];
+    },
+    { staleTime: 60_000, enabled: open && categoryId > 0 },
+  );
+  const currentMembers = catPosQuery.data ?? [];
+  const memberIds = new Set(currentMembers.map(p => p.id));
+
+  const effectiveMembers = currentMembers.filter(p => !pendingRemoves.includes(p.id));
+  const newlyAdded = allPositions.filter(p => pendingAdds.includes(p.id));
+
+  const uncatSet = uncategorizedIds ?? new Set<number>();
+  const available = allPositions.filter(p => {
+    if (pendingAdds.includes(p.id)) return false;
+    if (memberIds.has(p.id) && !pendingRemoves.includes(p.id)) return false;
+    if (pendingRemoves.includes(p.id)) return true;
+    return uncatSet.has(p.id);
+  });
+
+  const lowerSearch = search.toLowerCase();
+  const filteredAvailable = lowerSearch
+    ? available.filter(p => p.symbol.toLowerCase().includes(lowerSearch))
+    : available;
+
+  return (
+    <DialogRoot open={open} onOpenChange={(e) => { if (!e.open) onClose(); }}>
+      <DialogBackdrop />
+      <DialogPositioner>
+        <DialogContent maxW="lg">
+          <DialogHeader>
+            <VStack align="stretch" gap={1}>
+              <Text fontSize="lg" fontWeight="bold">Manage Positions · {categoryName}</Text>
+              <Text fontSize="sm" color="fg.muted">
+                {effectiveMembers.length + newlyAdded.length} position{effectiveMembers.length + newlyAdded.length !== 1 ? 's' : ''} in category
+              </Text>
+            </VStack>
+          </DialogHeader>
+          <DialogBody>
+            <VStack align="stretch" gap={4}>
+              {/* Current members */}
+              <Box>
+                <HStack mb={2} gap={2}>
+                  <FiCheck color="var(--chakra-colors-green-500)" />
+                  <Text fontSize="sm" fontWeight="semibold">In this category</Text>
+                </HStack>
+                {effectiveMembers.length === 0 && newlyAdded.length === 0 ? (
+                  <Text fontSize="sm" color="fg.muted" pl={6}>No positions assigned yet</Text>
+                ) : (
+                  <HStack gap={1} flexWrap="wrap" pl={6}>
+                    {effectiveMembers.map(p => (
+                      <Badge
+                        key={p.id}
+                        size="sm"
+                        variant="solid"
+                        colorPalette="green"
+                        fontFamily="mono"
+                        cursor="pointer"
+                        title={`Remove ${p.symbol} from category`}
+                        onClick={() => onToggleRemove(p.id)}
+                        _hover={{ opacity: 0.7 }}
+                      >
+                        {p.symbol}
+                        {p.market_value != null && (
+                          <Text as="span" ml={1} fontWeight="normal" opacity={0.8}>
+                            {formatMoney(p.market_value, currency, { maximumFractionDigits: 0, notation: 'compact' })}
+                          </Text>
+                        )}
+                        {' '}×
+                      </Badge>
+                    ))}
+                    {newlyAdded.map(p => (
+                      <Badge
+                        key={p.id}
+                        size="sm"
+                        variant="outline"
+                        colorPalette="green"
+                        fontFamily="mono"
+                        cursor="pointer"
+                        borderStyle="dashed"
+                        title={`Undo adding ${p.symbol}`}
+                        onClick={() => onToggleAdd(p.id)}
+                        _hover={{ opacity: 0.7 }}
+                      >
+                        + {p.symbol} ×
+                      </Badge>
+                    ))}
+                  </HStack>
+                )}
+                {pendingRemoves.length > 0 && (
+                  <HStack gap={1} flexWrap="wrap" pl={6} mt={2}>
+                    <Text fontSize="xs" color="fg.error">Removing:</Text>
+                    {pendingRemoves.map(id => {
+                      const p = currentMembers.find(m => m.id === id);
+                      return p ? (
+                        <Badge
+                          key={id}
+                          size="sm"
+                          variant="outline"
+                          colorPalette="red"
+                          fontFamily="mono"
+                          cursor="pointer"
+                          textDecoration="line-through"
+                          onClick={() => onToggleRemove(id)}
+                          title={`Undo remove ${p.symbol}`}
+                        >
+                          {p.symbol}
+                        </Badge>
+                      ) : null;
+                    })}
+                  </HStack>
+                )}
+              </Box>
+
+              {/* Divider */}
+              <Box borderTopWidth="1px" borderColor="border.subtle" />
+
+              {/* Available positions to add */}
+              <Box>
+                <HStack mb={2} gap={2}>
+                  <FiPlus color="var(--chakra-colors-blue-500)" />
+                  <Text fontSize="sm" fontWeight="semibold">Add positions</Text>
+                </HStack>
+                <Box position="relative" mb={2} pl={6}>
+                  <Box position="absolute" left={6} top="50%" transform="translateY(-50%)" color="fg.muted" pointerEvents="none" zIndex={1}>
+                    <FiSearch size={14} />
+                  </Box>
+                  <Input
+                    size="sm"
+                    pl={8}
+                    placeholder="Search by ticker..."
+                    value={search}
+                    onChange={(e) => onSearchChange(e.target.value)}
+                  />
+                </Box>
+                <Box maxH="200px" overflowY="auto" pl={6}>
+                  {filteredAvailable.length === 0 ? (
+                    <Text fontSize="sm" color="fg.muted">
+                      {search ? 'No matching positions' : 'All positions are assigned to this category'}
+                    </Text>
+                  ) : (
+                    <HStack gap={1} flexWrap="wrap">
+                      {filteredAvailable.map(p => (
+                        <Badge
+                          key={p.id}
+                          size="sm"
+                          variant="outline"
+                          colorPalette="gray"
+                          fontFamily="mono"
+                          cursor="pointer"
+                          title={`Add ${p.symbol} to ${categoryName}`}
+                          onClick={() => onToggleAdd(p.id)}
+                          _hover={{ colorPalette: 'brand', borderColor: 'brand.400' }}
+                        >
+                          + {p.symbol}
+                          {p.market_value != null && (
+                            <Text as="span" ml={1} fontWeight="normal" opacity={0.7}>
+                              {formatMoney(p.market_value, currency, { maximumFractionDigits: 0, notation: 'compact' })}
+                            </Text>
+                          )}
+                        </Badge>
+                      ))}
+                    </HStack>
+                  )}
+                </Box>
+              </Box>
+            </VStack>
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button
+              colorPalette="brand"
+              onClick={onSave}
+              disabled={changeCount === 0 || isSaving}
+            >
+              {isSaving ? 'Saving...' : changeCount === 0 ? 'No changes' : `Save ${changeCount} change${changeCount !== 1 ? 's' : ''}`}
+            </Button>
+          </DialogFooter>
+          <DialogCloseTrigger />
+        </DialogContent>
+      </DialogPositioner>
+    </DialogRoot>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/*  SortableTableRow – draggable row for table view reorder            */
+/* ------------------------------------------------------------------ */
+
+const SortableTableRow: React.FC<{
+  cat: CategoryRow;
+  currency: string;
+  onEdit: (cat: CategoryRow) => void;
+  onAssign: (cat: CategoryRow) => void;
+}> = ({ cat, currency, onEdit, onAssign }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: cat.id,
+  });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    background: isDragging ? 'var(--chakra-colors-bg-subtle)' : undefined,
+  };
+  const target = Number(cat.target_allocation_pct ?? 0);
+  const actual = Number(cat.actual_allocation_pct ?? 0);
+  const drift = actual - target;
+
+  return (
+    <Table.Row ref={setNodeRef} style={style}>
+      <Table.Cell width="40px" px={2}>
+        <Box
+          {...attributes}
+          {...listeners}
+          cursor="grab"
+          _active={{ cursor: 'grabbing' }}
+          color="fg.muted"
+          _hover={{ color: 'fg.default' }}
+          display="flex"
+          alignItems="center"
+        >
+          <RiDraggable size={18} />
+        </Box>
+      </Table.Cell>
+      <Table.Cell><Text fontWeight="semibold">{cat.name}</Text></Table.Cell>
+      <Table.Cell textAlign="right">{target}%</Table.Cell>
+      <Table.Cell textAlign="right">{actual.toFixed(1)}%</Table.Cell>
+      <Table.Cell textAlign="right">
+        <Text color={Math.abs(drift) > 5 ? 'status.danger' : drift !== 0 ? 'status.warning' : 'fg.muted'}>
+          {drift > 0 ? '+' : ''}{drift.toFixed(1)}%
+        </Text>
+      </Table.Cell>
+      <Table.Cell textAlign="right">{cat.positions_count ?? 0}</Table.Cell>
+      <Table.Cell textAlign="right">{formatMoney(cat.total_value ?? 0, currency, { maximumFractionDigits: 0 })}</Table.Cell>
+      <Table.Cell>
+        <HStack gap={1}>
+          <Button size="xs" variant="outline" onClick={() => onEdit(cat)}>Edit</Button>
+          <Button size="xs" variant="outline" onClick={() => onAssign(cat)}>Assign</Button>
+        </HStack>
+      </Table.Cell>
+    </Table.Row>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/*  Auto-categorize presets                                            */
+/* ------------------------------------------------------------------ */
+
+const PRESETS = [
+  { id: 'sector', label: 'By Sector', description: 'Group by GICS sector (Technology, Healthcare, etc.)' },
+  { id: 'market_cap', label: 'By Market Cap', description: 'Mega Cap, Large Cap, Mid Cap, Small Cap, Micro Cap' },
+  { id: 'stage', label: 'By Weinstein Stage', description: 'Stage 1 (Accumulation) through Stage 4 (Decline)' },
+  { id: 'rs_quartile', label: 'By RS Percentile', description: 'Quartiles based on relative strength vs market' },
+] as const;
+
+/* ------------------------------------------------------------------ */
+/*  Main page                                                          */
+/* ------------------------------------------------------------------ */
+
+const VIEW_LABELS: Record<string, string> = {
+  custom: 'Personalized',
+  sector: 'By Sector',
+  market_cap: 'By Market Cap',
+  stage: 'By Stage',
+  rs_quartile: 'By RS Percentile',
+};
+
 const PortfolioCategories: React.FC = () => {
   const { currency } = useUserPreferences();
   const queryClient = useQueryClient();
+
+  const [activeView, setActiveView] = useState<string>('custom');
+  const [view, setView] = useState<'card' | 'table'>('card');
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [presetOpen, setPresetOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<CategoryRow | null>(null);
   const [newName, setNewName] = useState('');
   const [newTargetPct, setNewTargetPct] = useState<string>('');
-  const [assignPositionIds, setAssignPositionIds] = useState<number[]>([]);
+  const [assignSearch, setAssignSearch] = useState('');
+  const [pendingAdds, setPendingAdds] = useState<number[]>([]);
+  const [pendingRemoves, setPendingRemoves] = useState<number[]>([]);
 
-  const { data: categoriesData, isLoading } = useCategories();
-  const categories = (categoriesData ?? []) as CategoryRow[];
+  const { data: viewsData } = useCategoryViews();
+  const availableViews = viewsData ?? [{ key: 'custom', label: 'Personalized' }];
+
+  const { data: categoriesData, isLoading } = useCategories(activeView);
+  const categories = (categoriesData?.categories ?? []) as CategoryRow[];
+  const uncategorized = categoriesData?.uncategorized ?? { positions_count: 0, total_value: 0, actual_allocation_pct: 0, position_ids: [] };
 
   const rebalanceQuery = useRebalanceSuggestions();
   const rebalanceData = rebalanceQuery.data ?? {};
@@ -65,21 +640,33 @@ const PortfolioCategories: React.FC = () => {
   const { data: positionsData } = useCategoryPositions();
   const allPositions = positionsData ?? [];
 
+  const uncategorizedIds = useMemo(
+    () => new Set<number>(uncategorized.position_ids ?? []),
+    [uncategorized.position_ids],
+  );
+
+  /* ---------- mutations ---------- */
+
   const createMutation = useMutation(
     () => {
       const target = newTargetPct ? parseFloat(newTargetPct) : undefined;
-      return portfolioApi.createCategory({ name: newName.trim(), target_allocation_pct: target });
+      return portfolioApi.createCategory({
+        name: newName.trim(),
+        target_allocation_pct: target,
+        category_type: activeView,
+      });
     },
     {
       onSuccess: () => {
         queryClient.invalidateQueries('portfolioCategories');
+        queryClient.invalidateQueries('portfolioCategoryViews');
         toast.success('Category created');
         setNewName('');
         setNewTargetPct('');
         setCreateOpen(false);
       },
       onError: (err) => { toast.error(`Failed to create category: ${handleApiError(err)}`); },
-    }
+    },
   );
 
   const updateMutation = useMutation(
@@ -96,28 +683,134 @@ const PortfolioCategories: React.FC = () => {
         setSelectedCategory(null);
       },
       onError: (err) => { toast.error(`Failed to update category: ${handleApiError(err)}`); },
-    }
+    },
   );
 
   const assignMutation = useMutation(
-    () => {
-      if (!selectedCategory || assignPositionIds.length === 0) throw new Error('No category or positions');
-      return portfolioApi.assignPositions(selectedCategory.id, assignPositionIds);
+    async () => {
+      if (!selectedCategory) throw new Error('No category selected');
+      const catId = selectedCategory.id;
+      for (const posId of pendingRemoves) {
+        await portfolioApi.unassignPosition(catId, posId);
+      }
+      if (pendingAdds.length > 0) {
+        await portfolioApi.assignPositions(catId, pendingAdds);
+      }
     },
     {
       onSuccess: () => {
         queryClient.invalidateQueries('portfolioCategories');
-        toast.success('Positions assigned');
+        if (selectedCategory) queryClient.invalidateQueries(['categoryPositions', selectedCategory.id]);
+        const total = pendingAdds.length + pendingRemoves.length;
+        toast.success(`Updated ${total} position(s)`);
         setAssignOpen(false);
         setSelectedCategory(null);
       },
-      onError: (err) => { toast.error(`Failed to assign positions: ${handleApiError(err)}`); },
-    }
+      onError: (err) => { toast.error(`Failed to update positions: ${handleApiError(err)}`); },
+    },
   );
+
+  const applyPresetMutation = useMutation(
+    (presetId: string) => api.post('/portfolio/categories/apply-preset', { preset: presetId }),
+    {
+      onSuccess: (_data, presetId) => {
+        queryClient.invalidateQueries('portfolioCategories');
+        queryClient.invalidateQueries('portfolioCategoryViews');
+        setActiveView(presetId);
+        toast.success(`Switched to ${VIEW_LABELS[presetId] ?? presetId} view`);
+        setPresetOpen(false);
+      },
+      onError: (err) => { toast.error(`Failed to apply preset: ${handleApiError(err)}`); },
+    },
+  );
+
+  const moveMutation = useMutation(
+    async (args: { positionId: number; fromCategoryId: number; toCategoryId: number }) => {
+      await api.delete(`/portfolio/categories/${args.fromCategoryId}/positions/${args.positionId}`);
+      await api.post(`/portfolio/categories/${args.toCategoryId}/positions`, {
+        position_ids: [args.positionId],
+      });
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries('portfolioCategories');
+        queryClient.invalidateQueries('categoryPositions');
+        toast.success('Position moved');
+      },
+      onError: (err) => { toast.error(`Failed to move: ${handleApiError(err)}`); },
+    },
+  );
+
+  const reorderMutation = useMutation(
+    (orderedIds: number[]) => portfolioApi.reorderCategories(orderedIds),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries('portfolioCategories');
+      },
+      onError: (err) => { toast.error(`Failed to reorder: ${handleApiError(err)}`); },
+    },
+  );
+
+  const persistOrder = useCallback((newCategories: CategoryRow[]) => {
+    reorderMutation.mutate(newCategories.map(c => c.id));
+  }, [reorderMutation]);
+
+  const moveCategory = useCallback((fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= categories.length) return;
+    const reordered = arrayMove([...categories], fromIndex, toIndex);
+    persistOrder(reordered);
+  }, [categories, persistOrder]);
+
+  /* ---------- DnD ---------- */
+
+  const [activeDrag, setActiveDrag] = useState<{ positionId: number; symbol: string; fromCategoryId: number } | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const data = active.data.current as { positionId: number; symbol: string; categoryId: number } | undefined;
+    if (data) {
+      setActiveDrag({ positionId: data.positionId, symbol: data.symbol, fromCategoryId: data.categoryId });
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { over } = event;
+    if (!activeDrag || !over) {
+      setActiveDrag(null);
+      return;
+    }
+    const toCategoryId = over.data.current?.categoryId as number | undefined;
+    if (toCategoryId && toCategoryId !== activeDrag.fromCategoryId) {
+      moveMutation.mutate({
+        positionId: activeDrag.positionId,
+        fromCategoryId: activeDrag.fromCategoryId,
+        toCategoryId,
+      });
+    }
+    setActiveDrag(null);
+  };
+
+  const handleTableDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = categories.findIndex(c => c.id === active.id);
+    const newIndex = categories.findIndex(c => c.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove([...categories], oldIndex, newIndex);
+    persistOrder(reordered);
+  }, [categories, persistOrder]);
+
+  const tableSortableIds = useMemo(() => categories.map(c => c.id), [categories]);
+
+  /* ---------- handlers ---------- */
 
   const handleCreate = () => createMutation.mutate();
   const handleUpdate = () => updateMutation.mutate();
-  const handleAssign = () => assignMutation.mutate();
+  const handleSaveAssignments = () => assignMutation.mutate();
 
   const openEdit = (cat: CategoryRow) => {
     setSelectedCategory(cat);
@@ -128,9 +821,13 @@ const PortfolioCategories: React.FC = () => {
 
   const openAssign = (cat: CategoryRow) => {
     setSelectedCategory(cat);
-    setAssignPositionIds([]);
+    setPendingAdds([]);
+    setPendingRemoves([]);
+    setAssignSearch('');
     setAssignOpen(true);
   };
+
+  /* ---------- render ---------- */
 
   return (
     <Box p={4}>
@@ -139,73 +836,253 @@ const PortfolioCategories: React.FC = () => {
           title="Categories"
           subtitle="Target allocations and position assignment"
           rightContent={
-            <Button colorPalette="brand" onClick={() => { setNewName(''); setNewTargetPct(''); setCreateOpen(true); }}>
-              + New Category
-            </Button>
+            <HStack gap={2}>
+              <Button size="sm" variant="outline" onClick={() => setPresetOpen(true)}>
+                <Icon mr={1}><FiZap /></Icon> Auto-Categorize
+              </Button>
+
+              <HStack gap={1}>
+                <Button
+                  size="xs"
+                  variant={view === 'card' ? 'solid' : 'ghost'}
+                  onClick={() => setView('card')}
+                  aria-label="Card view"
+                >
+                  <FiGrid />
+                </Button>
+                <Button
+                  size="xs"
+                  variant={view === 'table' ? 'solid' : 'ghost'}
+                  onClick={() => setView('table')}
+                  aria-label="Table view"
+                >
+                  <FiList />
+                </Button>
+              </HStack>
+
+              <Button colorPalette="brand" onClick={() => { setNewName(''); setNewTargetPct(''); setCreateOpen(true); }}>
+                + New Category
+              </Button>
+            </HStack>
           }
         />
+
+        {/* View switcher tabs */}
+        <HStack
+          gap={0}
+          borderWidth="1px"
+          borderColor="border.subtle"
+          borderRadius="lg"
+          overflow="hidden"
+          flexWrap="wrap"
+          bg="bg.subtle"
+          p={1}
+        >
+          {availableViews.map((v) => (
+            <Button
+              key={v.key}
+              size="sm"
+              variant={activeView === v.key ? 'solid' : 'ghost'}
+              colorPalette={activeView === v.key ? 'brand' : undefined}
+              onClick={() => setActiveView(v.key)}
+              borderRadius="md"
+              fontWeight={activeView === v.key ? 'semibold' : 'normal'}
+              minW="auto"
+              px={4}
+            >
+              {v.label}
+            </Button>
+          ))}
+        </HStack>
+
+        {categories.length > 0 && <AllocationChart categories={categories} currency={currency} />}
 
         {isLoading ? (
           <TableSkeleton rows={5} cols={4} />
         ) : categories.length === 0 ? (
           <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
             <CardBody>
-              <Text color="fg.muted">No categories yet. Create one to group positions and track target allocation.</Text>
+              <VStack gap={2} py={4}>
+                <Text color="fg.muted">
+                  {activeView === 'custom'
+                    ? 'No categories yet. Create one to group positions and track target allocation.'
+                    : `No categories in this view. Use Auto-Categorize to create "${VIEW_LABELS[activeView] ?? activeView}" categories.`}
+                </Text>
+                {activeView !== 'custom' && (
+                  <Button size="sm" variant="outline" onClick={() => setPresetOpen(true)}>
+                    <Icon mr={1}><FiZap /></Icon> Auto-Categorize
+                  </Button>
+                )}
+              </VStack>
             </CardBody>
           </CardRoot>
+        ) : view === 'table' ? (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleTableDragEnd}
+          >
+            <SortableContext items={tableSortableIds} strategy={verticalListSortingStrategy}>
+              <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl" overflow="hidden">
+                <Table.Root size="sm">
+                  <Table.Header>
+                    <Table.Row>
+                      <Table.ColumnHeader width="40px" px={2} />
+                      <Table.ColumnHeader>Category</Table.ColumnHeader>
+                      <Table.ColumnHeader textAlign="right">Target %</Table.ColumnHeader>
+                      <Table.ColumnHeader textAlign="right">Actual %</Table.ColumnHeader>
+                      <Table.ColumnHeader textAlign="right">Drift</Table.ColumnHeader>
+                      <Table.ColumnHeader textAlign="right">Positions</Table.ColumnHeader>
+                      <Table.ColumnHeader textAlign="right">Value</Table.ColumnHeader>
+                      <Table.ColumnHeader />
+                    </Table.Row>
+                  </Table.Header>
+                  <Table.Body>
+                    {categories.map((cat) => (
+                      <SortableTableRow
+                        key={cat.id}
+                        cat={cat}
+                        currency={currency}
+                        onEdit={openEdit}
+                        onAssign={openAssign}
+                      />
+                    ))}
+                  </Table.Body>
+                </Table.Root>
+              </CardRoot>
+            </SortableContext>
+          </DndContext>
         ) : (
-          <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={4}>
-            {categories.map((cat) => {
-              const target = Number(cat.target_allocation_pct ?? 0);
-              const actual = Number(cat.actual_allocation_pct ?? 0);
-              const diff = actual - target;
-              return (
-                <CardRoot key={cat.id} bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-                  <CardBody>
-                    <HStack justify="space-between" align="center" mb={2}>
-                      <Text fontWeight="semibold">{cat.name}</Text>
-                      {Math.abs(diff) > 5 && (
-                        <Badge colorPalette={diff > 0 ? 'red' : 'orange'} size="sm">
-                          Drift {diff > 0 ? '+' : ''}{diff.toFixed(1)}%
-                        </Badge>
-                      )}
-                    </HStack>
-                    <Text fontSize="sm" color="fg.muted">
-                      Target: {target}% · Actual: {Number(cat.actual_allocation_pct || 0).toFixed(1)}% · {cat.positions_count ?? 0} positions
-                    </Text>
-                    <Progress.Root value={actual} max={100} size="sm" mt={2} borderRadius="md">
-                      <Progress.Track>
-                        <Progress.Range bg="brand.500" />
-                      </Progress.Track>
-                    </Progress.Root>
-                    {diff !== 0 && (
-                      <Text fontSize="xs" color={diff < 0 ? 'status.warning' : 'status.danger'} mt={1}>
-                        {diff > 0 ? '+' : ''}{diff.toFixed(1)}% {diff < 0 ? 'underweight' : 'overweight'}
-                      </Text>
-                    )}
-                    {cat.total_value != null && (
-                      <Text fontSize="xs" color="fg.muted" mt={1}>{formatMoney(cat.total_value, currency, { maximumFractionDigits: 0 })}</Text>
-                    )}
-                    <HStack mt={3} gap={2}>
-                      <Button size="xs" variant="outline" onClick={() => openEdit(cat)}>Edit</Button>
-                      <Button size="xs" variant="outline" onClick={() => openAssign(cat)}>Manage Positions</Button>
-                    </HStack>
-                  </CardBody>
-                </CardRoot>
-              );
-            })}
-          </SimpleGrid>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={4}>
+              {categories.map((cat, idx) => (
+                <DroppableCategory key={cat.id} categoryId={cat.id}>
+                  <CategoryCard
+                    cat={cat}
+                    currency={currency}
+                    onEdit={openEdit}
+                    onAssign={openAssign}
+                    onMoveUp={() => moveCategory(idx, idx - 1)}
+                    onMoveDown={() => moveCategory(idx, idx + 1)}
+                    isFirst={idx === 0}
+                    isLast={idx === categories.length - 1}
+                  />
+                </DroppableCategory>
+              ))}
+            </SimpleGrid>
+            <DragOverlay>
+              {activeDrag ? (
+                <Badge size="sm" variant="solid" colorPalette="brand" fontFamily="mono">
+                  {activeDrag.symbol}
+                </Badge>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        )}
+
+        {/* Uncategorized bucket */}
+        {uncategorized.positions_count > 0 && (
+          <CardRoot
+            bg="bg.card"
+            borderWidth="1px"
+            borderColor="border.subtle"
+            borderRadius="xl"
+            borderStyle="dashed"
+          >
+            <CardBody>
+              <HStack justify="space-between" align="center" mb={2}>
+                <HStack gap={2}>
+                  <Badge colorPalette="gray" variant="subtle" size="sm">Uncategorized</Badge>
+                  <Text fontWeight="semibold" color="fg.muted">
+                    {uncategorized.positions_count} position{uncategorized.positions_count !== 1 ? 's' : ''} not in any {VIEW_LABELS[activeView] ?? activeView} category
+                  </Text>
+                </HStack>
+                <Text fontSize="sm" fontFamily="mono" color="fg.muted">
+                  {formatMoney(uncategorized.total_value, currency, { maximumFractionDigits: 0 })}
+                  {' · '}
+                  {uncategorized.actual_allocation_pct.toFixed(1)}%
+                </Text>
+              </HStack>
+              <HStack gap={1} flexWrap="wrap">
+                {allPositions
+                  .filter(p => uncategorized.position_ids?.includes(p.id))
+                  .slice(0, 20)
+                  .map(p => (
+                    <Badge
+                      key={p.id}
+                      size="sm"
+                      variant="outline"
+                      colorPalette="gray"
+                      fontFamily="mono"
+                    >
+                      {p.symbol}
+                    </Badge>
+                  ))}
+                {uncategorized.positions_count > 20 && (
+                  <Badge size="sm" variant="subtle" colorPalette="gray">
+                    +{uncategorized.positions_count - 20} more
+                  </Badge>
+                )}
+              </HStack>
+              <Text fontSize="xs" color="fg.muted" mt={2}>
+                Assign these positions to categories above using "Manage Positions", or drag them in card view.
+              </Text>
+            </CardBody>
+          </CardRoot>
         )}
 
         {suggestions.length > 0 && (
           <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
             <CardHeader pb={2}>
               <HStack gap={2}>
-                <Text fontWeight="bold">Rebalancing Suggestions</Text>
-                <Badge colorPalette="orange">{suggestions.length}</Badge>
+                <Text fontWeight="bold">Rebalancing Preview</Text>
+                <Badge colorPalette="orange">{suggestions.length} adjustments</Badge>
               </HStack>
             </CardHeader>
             <CardBody pt={2}>
+              <HStack gap={6} align="start" flexWrap="wrap" mb={4}>
+                <VStack align="center" gap={1}>
+                  <Text fontSize="xs" fontWeight="bold" color="fg.muted">CURRENT</Text>
+                  <Box w="120px" h="120px">
+                    <ResponsiveContainer>
+                      <PieChart>
+                        <Pie
+                          data={categories.filter(c => (c.actual_allocation_pct ?? 0) > 0).map(c => ({ name: c.name, value: Number(c.actual_allocation_pct ?? 0) }))}
+                          dataKey="value"
+                          innerRadius={30}
+                          outerRadius={50}
+                          paddingAngle={2}
+                        >
+                          {categories.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </Box>
+                </VStack>
+                <VStack align="center" gap={1}>
+                  <Text fontSize="xs" fontWeight="bold" color="fg.muted">TARGET</Text>
+                  <Box w="120px" h="120px">
+                    <ResponsiveContainer>
+                      <PieChart>
+                        <Pie
+                          data={categories.filter(c => (c.target_allocation_pct ?? 0) > 0).map(c => ({ name: c.name, value: Number(c.target_allocation_pct ?? 0) }))}
+                          dataKey="value"
+                          innerRadius={30}
+                          outerRadius={50}
+                          paddingAngle={2}
+                        >
+                          {categories.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </Box>
+                </VStack>
+              </HStack>
               <VStack align="stretch" gap={3}>
                 {suggestions.map((s: any, i: number) => (
                   <Box key={i} p={3} borderWidth="1px" borderColor="border.subtle" borderRadius="lg">
@@ -239,6 +1116,7 @@ const PortfolioCategories: React.FC = () => {
         )}
       </Stack>
 
+      {/* Create category dialog */}
       <DialogRoot open={createOpen} onOpenChange={(e) => setCreateOpen(e.open)}>
         <DialogBackdrop />
         <DialogPositioner>
@@ -265,6 +1143,7 @@ const PortfolioCategories: React.FC = () => {
         </DialogPositioner>
       </DialogRoot>
 
+      {/* Edit category dialog */}
       <DialogRoot open={editOpen} onOpenChange={(e) => { if (!e.open) setEditOpen(false); }}>
         <DialogBackdrop />
         <DialogPositioner>
@@ -291,37 +1170,59 @@ const PortfolioCategories: React.FC = () => {
         </DialogPositioner>
       </DialogRoot>
 
-      <DialogRoot open={assignOpen} onOpenChange={(e) => { if (!e.open) setAssignOpen(false); }}>
+      {/* Manage positions dialog -- two-section layout */}
+      <ManagePositionsDialog
+        open={assignOpen}
+        onClose={() => setAssignOpen(false)}
+        categoryName={selectedCategory?.name ?? ''}
+        categoryId={selectedCategory?.id ?? 0}
+        allPositions={allPositions}
+        uncategorizedIds={uncategorizedIds}
+        currency={currency}
+        pendingAdds={pendingAdds}
+        pendingRemoves={pendingRemoves}
+        onToggleAdd={(id) => setPendingAdds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+        onToggleRemove={(id) => setPendingRemoves(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+        search={assignSearch}
+        onSearchChange={setAssignSearch}
+        onSave={handleSaveAssignments}
+        isSaving={assignMutation.isLoading}
+        changeCount={pendingAdds.length + pendingRemoves.length}
+      />
+
+      {/* Auto-categorize presets dialog */}
+      <DialogRoot open={presetOpen} onOpenChange={(e) => setPresetOpen(e.open)}>
         <DialogBackdrop />
         <DialogPositioner>
-          <DialogContent maxW="md">
-            <DialogHeader>Assign positions · {selectedCategory?.name}</DialogHeader>
+          <DialogContent maxW="lg">
+            <DialogHeader>Auto-Categorize Positions</DialogHeader>
             <DialogBody>
-              <VStack align="stretch" gap={2} maxH="300px" overflowY="auto">
-                {allPositions.map((p) => (
-                  <Checkbox.Root
-                    key={p.id}
-                    checked={assignPositionIds.includes(p.id)}
-                    onCheckedChange={(e) => {
-                      setAssignPositionIds((prev) =>
-                        e.checked ? [...prev, p.id] : prev.filter((id) => id !== p.id)
-                      );
-                    }}
+              <Text fontSize="sm" color="fg.muted" mb={4}>
+                Choose a preset to automatically create categories and assign positions.
+                Existing categories will not be removed.
+              </Text>
+              <SimpleGrid columns={{ base: 1, md: 2 }} gap={3}>
+                {PRESETS.map((preset) => (
+                  <Box
+                    key={preset.id}
+                    p={4}
+                    borderWidth="1px"
+                    borderColor="border.subtle"
+                    borderRadius="lg"
+                    cursor="pointer"
+                    _hover={{ borderColor: 'brand.500', bg: 'bg.subtle' }}
+                    onClick={() => applyPresetMutation.mutate(preset.id)}
+                    opacity={applyPresetMutation.isLoading ? 0.5 : 1}
+                    pointerEvents={applyPresetMutation.isLoading ? 'none' : 'auto'}
                   >
-                    <Checkbox.HiddenInput />
-                    <Checkbox.Control />
-                    <Checkbox.Label>
-                      {p.symbol} {p.market_value != null ? ` · ${formatMoney(p.market_value, currency, { maximumFractionDigits: 0 })}` : ''}
-                    </Checkbox.Label>
-                  </Checkbox.Root>
+                    <Text fontWeight="semibold" mb={1}>{preset.label}</Text>
+                    <Text fontSize="xs" color="fg.muted">{preset.description}</Text>
+                  </Box>
                 ))}
-              </VStack>
+              </SimpleGrid>
             </DialogBody>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setAssignOpen(false)}>Cancel</Button>
-              <Button colorPalette="brand" onClick={handleAssign} disabled={assignPositionIds.length === 0 || assignMutation.isLoading}>
-                Add {assignPositionIds.length} position(s)
-              </Button>
+              <Button variant="outline" onClick={() => setPresetOpen(false)}>Cancel</Button>
             </DialogFooter>
             <DialogCloseTrigger />
           </DialogContent>

@@ -20,6 +20,7 @@ import { useColorMode } from '../theme/colorMode';
 import { marketDataApi } from '../services/api';
 import { ChartContext, SymbolLink, ChartSlidePanel } from '../components/market/SymbolChartUI';
 import StatCard from '../components/shared/StatCard';
+import { usePortfolioSymbols, type PortfolioSymbolData } from '../hooks/usePortfolioSymbols';
 import StageBar from '../components/shared/StageBar';
 import StageBadge from '../components/shared/StageBadge';
 import { useChartColors } from '../hooks/useChartColors';
@@ -164,7 +165,7 @@ const repeatSymbolColor = (symbol: string): string => {
 
 /* ===== Sub-components (StatCard, StageBar from shared) ===== */
 
-const SetupCard: React.FC<{ title: string; items: SetupItem[]; showScore?: boolean; linkPreset?: string }> = ({ title, items, showScore, linkPreset }) => (
+const SetupCard: React.FC<{ title: string; items: SetupItem[]; showScore?: boolean; linkPreset?: string; portfolioSymbols?: Record<string, PortfolioSymbolData> }> = ({ title, items, showScore, linkPreset, portfolioSymbols }) => (
   <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card" flex="1" minW="220px">
     <HStack justify="space-between" align="center" mb={2}>
       {linkPreset ? (
@@ -185,6 +186,9 @@ const SetupCard: React.FC<{ title: string; items: SetupItem[]; showScore?: boole
             <HStack key={item.symbol} justify="space-between" fontSize="xs">
               <HStack gap={1}>
                 <SymbolLink symbol={item.symbol} />
+                {portfolioSymbols?.[item.symbol] && (
+                  <Badge size="xs" colorPalette="blue" variant="subtle">Held</Badge>
+                )}
                 <StageBadge stage={item.stage_label || '?'} />
               </HStack>
               <HStack gap={2} flexShrink={0}>
@@ -202,7 +206,7 @@ const SetupCard: React.FC<{ title: string; items: SetupItem[]; showScore?: boole
   </Box>
 );
 
-const TransitionList: React.FC<{ title: string; items: StageTransitionItem[]; colorPalette: string }> = ({ title, items, colorPalette }) => {
+const TransitionList: React.FC<{ title: string; items: StageTransitionItem[]; colorPalette: string; portfolioSymbols?: Record<string, PortfolioSymbolData> }> = ({ title, items, colorPalette, portfolioSymbols }) => {
   const symbolsParam = items.map((r) => r.symbol).join(',');
   const titleLink = symbolsParam ? `/market/tracked?symbols=${encodeURIComponent(symbolsParam)}` : undefined;
   return (
@@ -221,7 +225,12 @@ const TransitionList: React.FC<{ title: string; items: StageTransitionItem[]; co
         <Stack gap={1}>
           {items.length ? items.map((r) => (
             <HStack key={`trans-${r.symbol}`} justify="space-between" fontSize="xs">
-              <SymbolLink symbol={r.symbol} />
+              <HStack gap={1}>
+                <SymbolLink symbol={r.symbol} />
+                {portfolioSymbols?.[r.symbol] && (
+                  <Badge size="xs" colorPalette="blue" variant="subtle">Held</Badge>
+                )}
+              </HStack>
               <HStack gap={1}>
                 <Badge variant="subtle" size="sm">
                   {r.previous_stage_label || '—'} → {r.stage_label || '?'}
@@ -525,6 +534,8 @@ const MarketDashboard: React.FC = () => {
   const [error, setError] = React.useState<string | null>(null);
   const [chartSymbol, setChartSymbol] = React.useState<string | null>(null);
   const openChart = React.useCallback((sym: string) => setChartSymbol(sym), []);
+  const portfolioQuery = usePortfolioSymbols();
+  const portfolioSymbols = portfolioQuery.data ?? {};
 
   React.useEffect(() => {
     const load = async () => {
@@ -641,9 +652,12 @@ const MarketDashboard: React.FC = () => {
                     reasons.push(`RS ${item.rs_mansfield_pct > 0 ? '+' : ''}${item.rs_mansfield_pct.toFixed(1)}%`);
                   }
                   return (
-                    <HStack key={`aq-${item.symbol}`} justify="space-between" fontSize="xs" py="2px" borderBottomWidth="1px" borderColor="border.subtle">
+                      <HStack key={`aq-${item.symbol}`} justify="space-between" fontSize="xs" py="2px" borderBottomWidth="1px" borderColor="border.subtle">
                       <HStack gap={1} minW="80px">
                         <SymbolLink symbol={item.symbol} />
+                        {portfolioSymbols[item.symbol] && (
+                          <Badge size="xs" colorPalette="blue" variant="subtle">Held</Badge>
+                        )}
                         <StageBadge stage={item.stage_label || '?'} />
                       </HStack>
                       <HStack gap={1} flexShrink={0}>
@@ -724,10 +738,10 @@ const MarketDashboard: React.FC = () => {
         <Box>
           <Text fontSize="sm" fontWeight="semibold" mb={2}>Trading Setups</Text>
           <Box display="grid" gridTemplateColumns={{ base: '1fr', md: '1fr 1fr', xl: '1fr 1fr 1fr 1fr' }} gap={3}>
-            <SetupCard title="Breakout Candidates" items={breakoutCandidates} linkPreset="breakout" />
-            <SetupCard title="Pullback Buys" items={pullbackCandidates} linkPreset="pullback" />
-            <SetupCard title="RS Leaders" items={rsLeaders} linkPreset="rs_leaders" />
-            <SetupCard title="Momentum Leaders" items={leaders} showScore linkPreset="momentum" />
+            <SetupCard title="Breakout Candidates" items={breakoutCandidates} linkPreset="breakout" portfolioSymbols={portfolioSymbols} />
+            <SetupCard title="Pullback Buys" items={pullbackCandidates} linkPreset="pullback" portfolioSymbols={portfolioSymbols} />
+            <SetupCard title="RS Leaders" items={rsLeaders} linkPreset="rs_leaders" portfolioSymbols={portfolioSymbols} />
+            <SetupCard title="Momentum Leaders" items={leaders} showScore linkPreset="momentum" portfolioSymbols={portfolioSymbols} />
           </Box>
         </Box>
 
@@ -735,8 +749,8 @@ const MarketDashboard: React.FC = () => {
         <Box>
           <Text fontSize="sm" fontWeight="semibold" mb={2}>Stage Transitions</Text>
           <Box display="grid" gridTemplateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={3}>
-            <TransitionList title="Entering Stage 2A (Bullish)" items={enteringStage2a} colorPalette="green" />
-            <TransitionList title="Entering Stage 3/4 (Warning)" items={entering34} colorPalette="red" />
+            <TransitionList title="Entering Stage 2A (Bullish)" items={enteringStage2a} colorPalette="green" portfolioSymbols={portfolioSymbols} />
+            <TransitionList title="Entering Stage 3/4 (Warning)" items={entering34} colorPalette="red" portfolioSymbols={portfolioSymbols} />
           </Box>
         </Box>
 

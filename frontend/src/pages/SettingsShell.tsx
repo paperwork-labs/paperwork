@@ -62,7 +62,7 @@ const SettingsShell: React.FC = () => {
             <Text fontSize="sm" color={sectionColor} px={2}>ACCOUNT</Text>
             <MenuLink to="/settings/profile">Profile</MenuLink>
             <MenuLink to="/settings/preferences">Preferences</MenuLink>
-            <MenuLink to="/settings/brokerages">Brokerages</MenuLink>
+            <MenuLink to="/settings/connections">Connections</MenuLink>
             <MenuLink to="/settings/notifications">Notifications</MenuLink>
             {user?.role === 'admin' && (
               <>
@@ -80,7 +80,7 @@ const SettingsShell: React.FC = () => {
           <VStack align="stretch" gap={2}>
             {iconNav('/settings/profile', 'Profile', <FiUser />)}
             {iconNav('/settings/preferences', 'Preferences', <FiSliders />)}
-            {iconNav('/settings/brokerages', 'Brokerages', <FiShield />)}
+            {iconNav('/settings/connections', 'Connections', <FiShield />)}
             {iconNav('/settings/notifications', 'Notifications', <FiBell />)}
             {user?.role === 'admin' ? (
               <>

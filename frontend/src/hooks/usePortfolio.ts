@@ -117,13 +117,35 @@ export const useDividends = (accountId?: string, days: number = 365) => {
   );
 };
 
-// Categories with allocation data. For Categories page.
-export const useCategories = () => {
+// Available category view types (Personalized, By Sector, etc.)
+export const useCategoryViews = () => {
   return useQuery(
-    'portfolioCategories',
+    'portfolioCategoryViews',
     async () => {
-      const r = await portfolioApi.getCategories();
-      return unwrapResponse(r, 'categories');
+      const r = await portfolioApi.getCategoryViews();
+      return unwrapResponse(r, 'views') as { key: string; label: string }[];
+    },
+    { staleTime: 120000 }
+  );
+};
+
+// Categories with allocation data + uncategorized summary. For Categories page.
+export const useCategories = (categoryType?: string) => {
+  return useQuery(
+    ['portfolioCategories', categoryType ?? 'all'],
+    async () => {
+      const r = await portfolioApi.getCategories(categoryType);
+      const raw = r as Record<string, any> | undefined;
+      const nested = raw?.data?.data ?? raw?.data ?? raw;
+      return {
+        categories: (nested?.categories ?? []) as any[],
+        uncategorized: (nested?.uncategorized ?? { positions_count: 0, total_value: 0, actual_allocation_pct: 0, position_ids: [] }) as {
+          positions_count: number;
+          total_value: number;
+          actual_allocation_pct: number;
+          position_ids: number[];
+        },
+      };
     },
     {
       staleTime: 60000,
@@ -442,12 +464,16 @@ export const useDividendSummary = (accountId?: string) => {
   );
 };
 
-export const useLiveSummary = () => {
+export const useLiveSummary = (accountId?: string) => {
   return useQuery(
-    ['portfolio-live-summary'],
+    ['portfolio-live-summary', accountId],
     async () => {
-      const r = await portfolioApi.getLiveSummary();
-      return (r as any)?.data?.data ?? (r as any)?.data ?? {};
+      try {
+        const r = await portfolioApi.getLiveSummary(accountId);
+        return (r as any)?.data?.data ?? (r as any)?.data ?? {};
+      } catch {
+        return { is_live: false };
+      }
     },
     { staleTime: 60_000, retry: 1 }
   );

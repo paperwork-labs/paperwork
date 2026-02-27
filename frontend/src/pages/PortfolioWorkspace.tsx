@@ -85,7 +85,7 @@ function shortLabel(r: ActivityRow, evType: ChartEventType, currency: string): s
 const EVENT_TOGGLE_CONFIG: { type: ChartEventType; label: string; colorPalette: string }[] = [
   { type: 'BUY', label: 'Buys', colorPalette: 'green' },
   { type: 'SELL', label: 'Sells', colorPalette: 'red' },
-  { type: 'DIVIDEND', label: 'Divs', colorPalette: 'blue' },
+  { type: 'DIVIDEND', label: 'Divs', colorPalette: 'teal' },
 ];
 
 const PortfolioWorkspace: React.FC = () => {
@@ -214,14 +214,6 @@ const PortfolioWorkspace: React.FC = () => {
   // Dividends subset for the panel
   const symbolDividends = useMemo((): ActivityRow[] => {
     return symbolActivity.filter((r: ActivityRow) => classifyActivity(r) === 'DIVIDEND');
-  }, [symbolActivity]);
-
-  // Misc activity (transfers, fees, interest, other) for the new panel
-  const symbolMiscActivity = useMemo((): ActivityRow[] => {
-    return symbolActivity.filter((r: ActivityRow) => {
-      const t = classifyActivity(r);
-      return t === 'TRANSFER' || t === 'FEE' || t === 'INTEREST' || t === 'OTHER';
-    });
   }, [symbolActivity]);
 
   // Build unified events array from activity + tax lots
@@ -718,58 +710,7 @@ const PortfolioWorkspace: React.FC = () => {
               </CardBody>
             </CardRoot>
 
-            {/* Activity (transfers, fees, interest, other) */}
-            <CardRoot borderWidth="1px" borderColor="border.subtle" maxH="320px" overflow="hidden" bg="bg.card">
-              <CardHeader pb={2}>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                  <Text fontWeight="bold">Activity</Text>
-                  <Badge variant="outline">{symbolMiscActivity.length}</Badge>
-                </Box>
-              </CardHeader>
-              <CardBody p={0}>
-                <TableScrollArea maxH="260px">
-                  <TableRoot size="sm">
-                    <TableHeader>
-                      <TableRow>
-                        <TableColumnHeader>Date</TableColumnHeader>
-                        <TableColumnHeader>Type</TableColumnHeader>
-                        <TableColumnHeader textAlign="end">Amount</TableColumnHeader>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {symbolMiscActivity.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={3}>
-                            <Text fontSize="xs" color="fg.muted" textAlign="center" py={4}>
-                              No transfers, fees, or interest for {selectedSymbol ?? 'this symbol'}.
-                            </Text>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                      {symbolMiscActivity.slice(0, 50).map((r: ActivityRow, idx: number) => {
-                        const evType = classifyActivity(r);
-                        const amt = Number(r.amount || r.net_amount || r.commission || 0);
-                        const catLabel = (r.category || evType).replace(/_/g, ' ');
-                        const colorPalette = evType === 'TRANSFER' ? 'purple' : evType === 'FEE' ? 'orange' : evType === 'INTEREST' ? 'yellow' : 'gray';
-                        return (
-                          <TableRow key={`act-${r.external_id || idx}`}>
-                            <TableCell>{fmtDate(r.ts)}</TableCell>
-                            <TableCell>
-                              <Badge size="sm" colorPalette={colorPalette} variant="subtle">
-                                {catLabel.length > 14 ? catLabel.slice(0, 12) + '…' : catLabel}
-                              </Badge>
-                            </TableCell>
-                            <TableCell textAlign="end" color={amt >= 0 ? 'fg.success' : 'fg.error'}>
-                              {amt ? formatMoney(amt, currency) : '-'}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </TableRoot>
-                </TableScrollArea>
-              </CardBody>
-            </CardRoot>
+            {/* Activity table removed -- transfers/fees/interest not useful at symbol level */}
           </SimpleGrid>
         </VStack>
       </Flex>

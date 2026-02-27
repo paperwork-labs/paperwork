@@ -782,6 +782,46 @@ class MarketDataService:
                     info = {}
         return info
 
+    @staticmethod
+    def _period_to_start_date(period: str) -> datetime:
+        """Convert period string to a start date for DB queries."""
+        now = datetime.utcnow()
+        mapping = {
+            "1d": timedelta(days=5),
+            "5d": timedelta(days=10),
+            "1mo": timedelta(days=35),
+            "3mo": timedelta(days=100),
+            "6mo": timedelta(days=200),
+            "1y": timedelta(days=370),
+            "2y": timedelta(days=740),
+            "3y": timedelta(days=1100),
+            "5y": timedelta(days=1850),
+            "10y": timedelta(days=3700),
+            "max": timedelta(days=36500),
+            "ytd": timedelta(days=370),
+        }
+        delta = mapping.get(period, timedelta(days=370))
+        return now - delta
+
+    @staticmethod
+    def _min_bars_for_period(period: str) -> int:
+        """Minimum acceptable bar count for a period. Prevents returning sparse data."""
+        mapping = {
+            "1d": 1,
+            "5d": 3,
+            "1mo": 15,
+            "3mo": 50,
+            "6mo": 100,
+            "1y": 200,
+            "2y": 450,
+            "3y": 700,
+            "5y": 1100,
+            "10y": 2200,
+            "max": 0,
+            "ytd": 0,
+        }
+        return mapping.get(period, 200)
+
     async def get_historical_data(
         self,
         symbol: str,
@@ -789,6 +829,7 @@ class MarketDataService:
         interval: str = "1d",
         max_bars: Optional[int] = 270,
         return_provider: bool = False,
+        db: Optional[Session] = None,
     ) -> Optional[pd.DataFrame] | tuple[Optional[pd.DataFrame], Optional[str]]:
         """Get OHLCV (newest->first index) with provider policy.
 
@@ -810,6 +851,29 @@ class MarketDataService:
             except Exception:
                 pass
 
+        # --- L2: PriceData DB lookup ---
+        if db is not None:
+            try:
+                start_dt = self._period_to_start_date(period)
+                db_df = self.get_db_history(db, symbol, interval=interval, start=start_dt)
+                min_bars = self._min_bars_for_period(period)
+                if db_df is not None and len(db_df) >= max(min_bars, 1):
+                    db_df = ensure_newest_first(db_df)
+                    if max_bars and interval == "1d":
+                        db_df = db_df.head(max_bars)
+                    ttl = 300 if interval in ("1m", "5m") else 3600
+                    self.redis_client.setex(cache_key, ttl, db_df.to_json(orient="index"))
+                    logger.info("L2 DB hit for %s (%s/%s): %d bars", symbol, period, interval, len(db_df))
+                    if return_provider:
+                        return db_df, "db"
+                    return db_df
+                else:
+                    logger.debug("L2 DB miss for %s (%s/%s): got %d bars, need %d",
+                                 symbol, period, interval, len(db_df) if db_df is not None else 0, min_bars)
+            except Exception as db_exc:
+                logger.warning("L2 DB read for %s failed (falling through to L3): %s", symbol, db_exc)
+
+        # --- L3: External API providers ---
         provider_used: Optional[str] = None
         for provider in self._provider_priority("historical_data"):
             if not self._is_provider_available(provider):
@@ -1558,6 +1622,7 @@ class MarketDataService:
         interval: str = "1d",
         data_source: str = "provider",
         is_adjusted: bool = True,
+        is_synthetic_ohlc: bool = False,
         delta_after: Optional[datetime] = None,
     ) -> int:
         """Persist OHLCV bars into `price_data` with ON CONFLICT DO NOTHING.
@@ -1623,6 +1688,7 @@ class MarketDataService:
                     "interval": interval,
                     "data_source": data_source,
                     "is_adjusted": is_adjusted,
+                    "is_synthetic_ohlc": is_synthetic_ohlc,
                 }
             )
 
@@ -1634,6 +1700,7 @@ class MarketDataService:
             constraint="uq_symbol_date_interval",
             set_={
                 "data_source": data_source,
+                "is_synthetic_ohlc": is_synthetic_ohlc,
             },
             where=or_(
                 PriceData.data_source.is_(None),

@@ -142,6 +142,235 @@ def compute_core_indicators_series(data_oldest_first: pd.DataFrame) -> pd.DataFr
     signal = macd_line.ewm(span=9, adjust=False).mean()
     out["macd"] = macd_line
     out["macd_signal"] = signal
+    out["macd_histogram"] = macd_line - signal
+    return out
+
+
+def _compute_td_sequential_series(
+    closes: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Vectorized TD Sequential per-bar setup counts.
+
+    Returns (td_buy_setup, td_sell_setup, td_buy_complete, td_sell_complete)
+    as numpy arrays of the same length as *closes*.
+    """
+    n = len(closes)
+    td_buy = np.zeros(n, dtype=np.int64)
+    td_sell = np.zeros(n, dtype=np.int64)
+    buy_count = 0
+    sell_count = 0
+    for i in range(4, n):
+        if closes[i] < closes[i - 4]:
+            buy_count += 1
+            sell_count = 0
+        elif closes[i] > closes[i - 4]:
+            sell_count += 1
+            buy_count = 0
+        else:
+            buy_count = 0
+            sell_count = 0
+        td_buy[i] = buy_count
+        td_sell[i] = sell_count
+    return td_buy, td_sell, td_buy >= 9, td_sell >= 9
+
+
+def compute_full_indicator_series(
+    ohlcv: pd.DataFrame,
+    spy_df: pd.DataFrame | None = None,
+) -> pd.DataFrame:
+    """Unified indicator computation producing full per-bar series.
+
+    Replaces the scattered compute paths (compute_core_indicators,
+    compute_core_indicators_series, inline derived calcs in
+    _snapshot_from_dataframe and backfill_snapshot_history_last_n_days).
+
+    Parameters
+    ----------
+    ohlcv : pd.DataFrame
+        OHLCV DataFrame (oldest-first), datetime index,
+        columns: Open, High, Low, Close, Volume.
+    spy_df : pd.DataFrame | None
+        SPY OHLCV (oldest-first) for Weinstein stage / Mansfield RS.
+        If None, stage columns are omitted.
+
+    Returns
+    -------
+    pd.DataFrame
+        Same datetime index as *ohlcv*, columns matching
+        MarketSnapshot / MarketSnapshotHistory schema.
+    """
+    if ohlcv is None or ohlcv.empty or "Close" not in ohlcv.columns:
+        return pd.DataFrame(index=ohlcv.index if ohlcv is not None else pd.Index([]))
+
+    close = ohlcv["Close"]
+    high = ohlcv["High"] if "High" in ohlcv.columns else close
+    low = ohlcv["Low"] if "Low" in ohlcv.columns else close
+    volume = ohlcv["Volume"] if "Volume" in ohlcv.columns else pd.Series(np.nan, index=ohlcv.index)
+    has_hlc = {"High", "Low", "Close"}.issubset(ohlcv.columns)
+
+    out = pd.DataFrame(index=ohlcv.index)
+
+    # ── 1. Core indicators (same math as compute_core_indicators_series) ──
+
+    for n in [5, 8, 10, 14, 21, 50, 100, 150, 200]:
+        out[f"sma_{n}"] = close.rolling(n).mean()
+
+    for n in [8, 10, 21, 200]:
+        out[f"ema_{n}"] = close.ewm(span=n, adjust=False).mean()
+
+    rsi = calculate_rsi_series(close, 14)
+    out["rsi"] = rsi if rsi is not None else np.nan
+
+    if has_hlc:
+        out["atr_14"] = calculate_atr_series(ohlcv, 14)
+        out["atr_30"] = calculate_atr_series(ohlcv, 30)
+    else:
+        out["atr_14"] = np.nan
+        out["atr_30"] = np.nan
+
+    ema12 = close.ewm(span=12, adjust=False).mean()
+    ema26 = close.ewm(span=26, adjust=False).mean()
+    macd_line = ema12 - ema26
+    signal = macd_line.ewm(span=9, adjust=False).mean()
+    out["macd"] = macd_line
+    out["macd_signal"] = signal
+    out["macd_histogram"] = macd_line - signal
+
+    # ── 2. ADX / DI (14-period, vectorized) ──
+
+    if has_hlc:
+        period = 14
+        up_move = high.diff()
+        down_move = -low.diff()
+        plus_dm = pd.Series(
+            np.where((up_move > down_move) & (up_move > 0), up_move, 0.0),
+            index=ohlcv.index,
+        )
+        minus_dm = pd.Series(
+            np.where((down_move > up_move) & (down_move > 0), down_move, 0.0),
+            index=ohlcv.index,
+        )
+        tr1 = high - low
+        tr2 = (high - close.shift()).abs()
+        tr3 = (low - close.shift()).abs()
+        tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+        atr_di = tr.rolling(window=period).mean()
+        plus_di = 100 * plus_dm.rolling(window=period).sum() / atr_di
+        minus_di = 100 * minus_dm.rolling(window=period).sum() / atr_di
+        dx = (100 * (plus_di - minus_di).abs() / (plus_di + minus_di)).replace(
+            [np.inf, -np.inf], np.nan
+        )
+        adx = dx.rolling(window=period).mean()
+        out["plus_di"] = plus_di
+        out["minus_di"] = minus_di
+        out["adx"] = adx
+    else:
+        out["plus_di"] = np.nan
+        out["minus_di"] = np.nan
+        out["adx"] = np.nan
+
+    # ── 3. New indicators ──
+
+    sma_20 = close.rolling(20).mean()
+    std_20 = close.rolling(20).std()
+    out["bollinger_upper"] = sma_20 + 2 * std_20
+    out["bollinger_lower"] = sma_20 - 2 * std_20
+    out["bollinger_width"] = (out["bollinger_upper"] - out["bollinger_lower"]).replace(
+        [np.inf, -np.inf], np.nan
+    )
+
+    rsi_s = out["rsi"]
+    rsi_min = rsi_s.rolling(14).min()
+    rsi_max = rsi_s.rolling(14).max()
+    out["stoch_rsi"] = ((rsi_s - rsi_min) / (rsi_max - rsi_min)).replace(
+        [np.inf, -np.inf], np.nan
+    )
+
+    out["high_52w"] = close.rolling(252).max()
+    out["low_52w"] = close.rolling(252).min()
+
+    out["volume_avg_20d"] = volume.rolling(20).mean()
+
+    # ── 4. Derived fields ──
+
+    atr14 = out["atr_14"]
+
+    out["current_price"] = close
+    out["atrp_14"] = (atr14 / close * 100).replace([np.inf, -np.inf], np.nan)
+    out["atrp_30"] = (out["atr_30"] / close * 100).replace([np.inf, -np.inf], np.nan)
+    out["atr_distance"] = ((close - out["sma_50"]) / atr14).replace(
+        [np.inf, -np.inf], np.nan
+    )
+    out["atr_value"] = atr14
+    out["atr_percent"] = out["atrp_14"]
+
+    for label, window in [("20d", 20), ("50d", 50), ("52w", 252)]:
+        roll_lo = low.rolling(window).min()
+        roll_hi = high.rolling(window).max()
+        out[f"range_pos_{label}"] = (
+            ((close - roll_lo) / (roll_hi - roll_lo)) * 100
+        ).replace([np.inf, -np.inf], np.nan)
+
+    for suffix, sma_col in [
+        ("sma_21", "sma_21"),
+        ("sma_50", "sma_50"),
+        ("sma_100", "sma_100"),
+        ("sma_150", "sma_150"),
+    ]:
+        out[f"atrx_{suffix}"] = ((close - out[sma_col]) / atr14).replace(
+            [np.inf, -np.inf], np.nan
+        )
+
+    for suffix, ema_col in [("ema8", "ema_8"), ("ema21", "ema_21"), ("ema200", "ema_200")]:
+        out[f"pct_dist_{suffix}"] = ((close / out[ema_col] - 1) * 100).replace(
+            [np.inf, -np.inf], np.nan
+        )
+
+    for suffix, ema_col in [("ema8", "ema_8"), ("ema21", "ema_21"), ("ema200", "ema_200")]:
+        out[f"atr_dist_{suffix}"] = ((close - out[ema_col]) / atr14).replace(
+            [np.inf, -np.inf], np.nan
+        )
+
+    # ── 5. MA bucket (per-bar classification) ──
+
+    sma_cols = ["sma_5", "sma_8", "sma_21", "sma_50", "sma_100", "sma_200"]
+    sma_stack = pd.concat(
+        [close.rename("price")] + [out[c] for c in sma_cols], axis=1
+    )
+    any_nan = sma_stack.isna().any(axis=1)
+    vals = sma_stack.values
+    diffs = np.diff(vals, axis=1)
+    leading = np.all(diffs < 0, axis=1)
+    lagging = np.all(diffs > 0, axis=1)
+    ma_bucket = pd.Series("NEUTRAL", index=ohlcv.index)
+    ma_bucket[leading] = "LEADING"
+    ma_bucket[lagging] = "LAGGING"
+    ma_bucket[any_nan] = "UNKNOWN"
+    out["ma_bucket"] = ma_bucket
+
+    # ── 6. Performance windows (rolling % change) ──
+
+    for n in [1, 3, 5, 20, 60, 120, 252]:
+        out[f"perf_{n}d"] = close.pct_change(n) * 100
+
+    # ── 7. TD Sequential (per-bar setup counts) ──
+
+    td_buy, td_sell, td_buy_c, td_sell_c = _compute_td_sequential_series(close.values)
+    out["td_buy_setup"] = td_buy
+    out["td_sell_setup"] = td_sell
+    out["td_buy_complete"] = td_buy_c
+    out["td_sell_complete"] = td_sell_c
+
+    # ── 8. Stage / RS (only if spy_df provided) ──
+
+    if spy_df is not None and not spy_df.empty:
+        ohlcv_newest = ohlcv.iloc[::-1]
+        spy_newest = spy_df.iloc[::-1]
+        stage_df = compute_weinstein_stage_series_from_daily(ohlcv_newest, spy_newest)
+        for col in ["stage_label", "stage_slope_pct", "stage_dist_pct", "rs_mansfield_pct"]:
+            if col in stage_df.columns:
+                out[col] = stage_df[col]
+
     return out
 
 

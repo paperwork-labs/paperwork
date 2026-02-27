@@ -65,6 +65,19 @@ class TastyTradeSyncService:
         except CredentialsNotFoundError:
             # Dev fallback: env var credentials for seed accounts without stored creds
             await self.client.connect_with_retry()
+        except Exception as exc:
+            err_str = str(exc).lower()
+            if "encrypt" in err_str or "token" in err_str or "fernet" in err_str:
+                logger.error(
+                    "Encryption/token error for TastyTrade account %s: %s — "
+                    "credentials need to be re-entered.",
+                    broker_account.account_number, exc,
+                )
+                raise ConnectionError(
+                    f"Invalid encryption token — please re-enter your TastyTrade credentials "
+                    f"on the Connections page. (Original error: {exc})"
+                ) from exc
+            raise
 
         # Ensure the requested account number exists in the connected TT session
         try:
@@ -81,8 +94,8 @@ class TastyTradeSyncService:
                     broker_account.account_number = tt_numbers[0]
                     db.add(broker_account)
                     db.commit()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Failed to update account metadata: %s", exc)
 
         counts.update(await self._sync_positions(db, broker_account))
         counts.update(await self._sync_tax_lots(db, broker_account))
@@ -169,7 +182,8 @@ class TastyTradeSyncService:
                     if kwargs:
                         db.add(Position(**kwargs))
                         count += 1
-            except Exception:
+            except Exception as exc:
+                logger.warning("Skipping TastyTrade position %s: %s", pos.get("symbol", "?"), exc)
                 continue
 
         db.flush()
@@ -216,7 +230,8 @@ class TastyTradeSyncService:
                     source=TaxLotSource.CALCULATED,
                 ))
                 count += 1
-            except Exception:
+            except Exception as exc:
+                logger.warning("Skipping TastyTrade tax lot for %s: %s", pos.symbol, exc)
                 continue
 
         db.flush()
@@ -259,7 +274,8 @@ class TastyTradeSyncService:
                     seen_txn_ids.add(ext_id)
                 db.add(Transaction(**kwargs))
                 count += 1
-            except Exception:
+            except Exception as exc:
+                logger.warning("Skipping TastyTrade transaction: %s", exc)
                 continue
         db.flush()
         return {"transactions": count}

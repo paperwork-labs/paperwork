@@ -8,6 +8,7 @@ from sqlalchemy import (
     Text,
     ForeignKey,
     Index,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -29,7 +30,8 @@ class Category(Base):
     __tablename__ = "categories"
 
     id = Column(Integer, primary_key=True)
-    name = Column(String(100), nullable=False, unique=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    name = Column(String(100), nullable=False)
     description = Column(Text)
     color = Column(String(10))  # Hex color code
     parent_category_id = Column(Integer, ForeignKey("categories.id"))
@@ -50,12 +52,18 @@ class Category(Base):
     )  # Trigger rebalancing at 5% deviation
     auto_rebalance = Column(Boolean, default=False)
 
+    display_order = Column(Integer, default=0, server_default="0")
+
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     # Relationships
     parent_category = relationship("Category", remote_side=[id])
     position_assignments = relationship("PositionCategory", back_populates="category")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "name", "category_type", name="uq_category_user_name_type"),
+    )
 
 
 class PositionCategory(Base):

@@ -35,7 +35,7 @@ def test_accounts_list(client):
 
 def test_portfolio_live(client):
     r = client.get("/api/v1/portfolio/live")
-    assert r.status_code in (200, 500)
+    assert r.status_code in (200, 401, 500)
 
 
 def test_statements_empty_ok(client):

@@ -59,7 +59,9 @@ class BrokerAccountResponse(BaseModel):
     sync_status: Optional[str]
     sync_error_message: Optional[str] = None
     created_at: datetime
-    sync_task_id: Optional[str] = None  # Set when auto-sync is queued after add
+    sync_task_id: Optional[str] = None
+    data_range_start: Optional[datetime] = None
+    data_range_end: Optional[datetime] = None
 
 
 class SyncAccountRequest(BaseModel):
@@ -197,22 +199,32 @@ async def list_broker_accounts(
     """List all broker accounts for the user."""
     accounts = db.query(BrokerAccount).filter(BrokerAccount.user_id == current_user.id).all()
 
-    return [
-        BrokerAccountResponse(
-            id=account.id,
-            broker=account.broker.value,
-            account_number=account.account_number,
-            account_name=account.account_name,
-            account_type=account.account_type.value,
-            status=account.status.value,
-            is_enabled=account.is_enabled,
-            last_successful_sync=account.last_successful_sync,
-            sync_status=account.sync_status.value if account.sync_status else None,
-            sync_error_message=account.sync_error_message,
-            created_at=account.created_at,
+    result = []
+    for account in accounts:
+        latest_sync = (
+            db.query(AccountSync)
+            .filter(AccountSync.account_id == account.id, AccountSync.status == SyncStatus.SUCCESS)
+            .order_by(AccountSync.completed_at.desc())
+            .first()
         )
-        for account in accounts
-    ]
+        result.append(
+            BrokerAccountResponse(
+                id=account.id,
+                broker=account.broker.value,
+                account_number=account.account_number,
+                account_name=account.account_name,
+                account_type=account.account_type.value,
+                status=account.status.value,
+                is_enabled=account.is_enabled,
+                last_successful_sync=account.last_successful_sync,
+                sync_status=account.sync_status.value if account.sync_status else None,
+                sync_error_message=account.sync_error_message,
+                created_at=account.created_at,
+                data_range_start=latest_sync.data_range_start if latest_sync else None,
+                data_range_end=latest_sync.data_range_end if latest_sync else None,
+            )
+        )
+    return result
 
 
 class SyncHistoryItem(BaseModel):
@@ -376,6 +388,66 @@ async def update_account_credentials(
         db.add(cred)
     db.commit()
     return {"message": "Credentials updated"}
+
+
+class GatewaySettingsRequest(BaseModel):
+    gateway_host: Optional[str] = None
+    gateway_port: Optional[int] = None
+    gateway_client_id: Optional[int] = None
+    gateway_username: Optional[str] = None
+    gateway_password: Optional[str] = None
+    gateway_trading_mode: Optional[str] = None
+
+
+@router.patch("/{account_id}/gateway-settings")
+async def update_gateway_settings(
+    account_id: int,
+    request: GatewaySettingsRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Save IB Gateway connection settings (encrypted) for an IBKR account."""
+    account = (
+        db.query(BrokerAccount)
+        .filter(BrokerAccount.id == account_id, BrokerAccount.user_id == current_user.id)
+        .first()
+    )
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    if account.broker != BrokerType.IBKR:
+        raise HTTPException(status_code=400, detail="Gateway settings only apply to IBKR accounts")
+
+    from backend.services.portfolio.account_credentials_service import account_credentials_service
+
+    settings_dict = {k: v for k, v in request.model_dump().items() if v is not None}
+    if not settings_dict:
+        raise HTTPException(status_code=400, detail="No settings provided")
+
+    account_credentials_service.save_ibkr_gateway_credentials(account_id, settings_dict, db)
+    return {"message": "Gateway settings saved"}
+
+
+@router.get("/{account_id}/gateway-settings")
+async def get_gateway_settings(
+    account_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get stored IB Gateway settings for an IBKR account (passwords masked)."""
+    account = (
+        db.query(BrokerAccount)
+        .filter(BrokerAccount.id == account_id, BrokerAccount.user_id == current_user.id)
+        .first()
+    )
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    from backend.services.portfolio.account_credentials_service import account_credentials_service
+
+    gw = account_credentials_service.get_ibkr_gateway_credentials(account_id, db)
+    if gw.get("gateway_password"):
+        gw["gateway_password"] = "****"
+    return {"data": gw}
 
 
 @router.post("/{account_id}/sync")
@@ -638,3 +710,62 @@ async def refresh_prices(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Price refresh failed: {e}")
+
+
+@router.get("/flexquery-diagnostic")
+async def flexquery_diagnostic(db: Session = Depends(get_db)):
+    """Diagnostic endpoint: fetch FlexQuery XML and return structured report.
+
+    Returns sections present, row counts, date range, and account IDs
+    without persisting anything.
+    """
+    import xml.etree.ElementTree as ET
+    from backend.services.clients.ibkr_flexquery_client import IBKRFlexQueryClient
+    from backend.services.portfolio.account_credentials_service import (
+        account_credentials_service,
+        CredentialsNotFoundError,
+    )
+
+    accounts = (
+        db.query(BrokerAccount)
+        .filter(BrokerAccount.broker == BrokerType.IBKR, BrokerAccount.is_enabled == True)
+        .all()
+    )
+    if not accounts:
+        return {"status": "no_ibkr_accounts"}
+
+    results = []
+    for acct in accounts:
+        try:
+            creds = account_credentials_service.get_ibkr_credentials(acct.id, db)
+            client = IBKRFlexQueryClient(token=creds["flex_token"], query_id=creds["query_id"])
+        except (CredentialsNotFoundError, Exception):
+            client = IBKRFlexQueryClient()
+
+        try:
+            raw_xml = await client.get_full_report(acct.account_number)
+            if not raw_xml:
+                results.append({"account": acct.account_number, "error": "No XML returned"})
+                continue
+
+            root = ET.fromstring(raw_xml)
+            account_report: dict = {"account": acct.account_number, "statements": []}
+
+            for stmt in root.iter("FlexStatement"):
+                stmt_info = {
+                    "account_id": stmt.get("accountId", ""),
+                    "from_date": stmt.get("fromDate", ""),
+                    "to_date": stmt.get("toDate", ""),
+                    "sections": {},
+                }
+                for child in stmt:
+                    tag = child.tag
+                    rows = len(list(child))
+                    stmt_info["sections"][tag] = rows
+                account_report["statements"].append(stmt_info)
+
+            results.append(account_report)
+        except Exception as exc:
+            results.append({"account": acct.account_number, "error": str(exc)})
+
+    return {"diagnostic": results}

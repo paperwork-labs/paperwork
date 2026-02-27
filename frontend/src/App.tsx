@@ -24,7 +24,7 @@ const PortfolioTaxCenter = React.lazy(() => import('./pages/portfolio/PortfolioT
 const Strategies = React.lazy(() => import('./pages/Strategies'));
 const StrategiesManager = React.lazy(() => import('./pages/StrategiesManager'));
 const SettingsShell = React.lazy(() => import('./pages/SettingsShell'));
-const SettingsBrokerages = React.lazy(() => import('./pages/SettingsBrokerages'));
+const SettingsConnections = React.lazy(() => import('./pages/SettingsConnections'));
 const SettingsProfile = React.lazy(() => import('./pages/SettingsProfile'));
 const SettingsPreferences = React.lazy(() => import('./pages/SettingsPreferences'));
 const SettingsNotifications = React.lazy(() => import('./pages/SettingsNotifications'));
@@ -96,7 +96,7 @@ function App() {
                           <Route path="profile" element={<SettingsProfile />} />
                           <Route path="preferences" element={<SettingsPreferences />} />
                           <Route path="notifications" element={<SettingsNotifications />} />
-                          <Route path="brokerages" element={<SettingsBrokerages />} />
+                          <Route path="connections" element={<SettingsConnections />} />
                           {/* Admin-only routes under Settings */}
                           <Route element={<RequireAdmin />}>
                             <Route path="admin/dashboard" element={<AdminDashboard />} />

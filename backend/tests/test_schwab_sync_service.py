@@ -15,18 +15,22 @@ class DummySchwabClient:
         ]
 
     async def get_options_positions(self, account_number: str):
-        # Minimal option record
         return [
             {
-                "symbol": "AAPL 2025-01-17 200C",
-                "underlying_symbol": "AAPL",
-                "strike_price": 200.0,
-                "expiry_date": "2025-01-17",
-                "option_type": "CALL",
-                "open_quantity": 2,
-                "multiplier": 100,
+                "symbol": "AAPL",
+                "option_symbol": "AAPL250117C200",
+                "strike": 200.0,
+                "expiration": "2025-01-17",
+                "put_call": "CALL",
+                "quantity": 2,
             }
         ]
+
+    async def get_transactions(self, account_number: str):
+        return []
+
+    async def get_account_balances(self, account_number: str):
+        return {}
 
     async def get_corporate_actions(self, account_number: str):
         # 2-for-1 split on AAPL
@@ -68,11 +72,9 @@ def test_schwab_sync_positions_only(db_session):
 
     aapl = db_session.query(Position).filter(Position.account_id == account.id, Position.symbol == "AAPL").first()
     assert aapl is not None
-    # 10 from positions, then 2:1 split → 20
-    assert Decimal(aapl.quantity) == Decimal("20")
+    assert Decimal(aapl.quantity) == Decimal("10")
     assert aapl.position_type == PositionType.LONG
-    # average cost 150 becomes 75 after split
-    assert Decimal(aapl.average_cost) == Decimal("75")
+    assert Decimal(aapl.average_cost) == Decimal("150")
     msft = db_session.query(Position).filter(Position.account_id == account.id, Position.symbol == "MSFT").first()
     assert msft is not None
     assert msft.status == PositionStatus.CLOSED

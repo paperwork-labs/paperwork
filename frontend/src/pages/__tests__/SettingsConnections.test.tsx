@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@/test/testing-library';
-import SettingsBrokerages from '../../pages/SettingsBrokerages';
+import SettingsConnections from '../../pages/SettingsConnections';
 import { renderWithProviders } from '../../test/render';
 
 vi.mock('../../services/api', () => {
@@ -45,7 +45,7 @@ vi.mock('../../context/AuthContext', async () => {
 
 describe('Brokerages wizard', () => {
   it('opens modal and shows broker logos', async () => {
-    renderWithProviders(<SettingsBrokerages />);
+    renderWithProviders(<SettingsConnections />);
     const btn = screen.getByRole('button', { name: /\+ New connection/i });
     fireEvent.click(btn);
     expect(await screen.findByText(/Choose a broker to connect/i)).toBeInTheDocument();

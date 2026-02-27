@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
+  Alert,
   Box,
   Text,
   Stack,
@@ -114,6 +116,18 @@ const PortfolioOverview: React.FC = () => {
             }
           />
 
+          {!liveQuery.isLoading && !liveData.is_live && (
+            <Alert.Root colorPalette="yellow" status="warning" variant="subtle" size="sm">
+              <Alert.Indicator />
+              <Alert.Content>
+                <Alert.Description fontSize="sm">
+                  Live data disconnected. Portfolio values may be stale.{' '}
+                  <Link to="/settings/connections" style={{ textDecoration: 'underline', fontWeight: 600 }}>Reconnect in Settings</Link>
+                </Alert.Description>
+              </Alert.Content>
+            </Alert.Root>
+          )}
+
           {(overview.isLoading || positionsQuery.isLoading) && (
             <SimpleGrid columns={{ base: 2, md: 4 }} gap={4}>
               {[1, 2, 3, 4].map((i) => <StatCardSkeleton key={i} />)}
@@ -212,7 +226,7 @@ const PortfolioOverview: React.FC = () => {
                                 <Cell key={i} fill={SECTOR_PALETTE[i % SECTOR_PALETTE.length]} />
                               ))}
                             </Pie>
-                            <Tooltip formatter={(v: number | undefined) => formatMoney(Number(v ?? 0), currency)} />
+                            <Tooltip formatter={(v: number | undefined, _name?: string) => formatMoney(Number(v ?? 0), currency) as React.ReactNode} />
                             <Legend />
                           </PieChart>
                         </ResponsiveContainer>
@@ -255,7 +269,7 @@ const PortfolioOverview: React.FC = () => {
                               </defs>
                               <XAxis dataKey="date" tick={{ fontSize: 10 }} />
                               <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatMoney(v, currency, { maximumFractionDigits: 0 })} />
-                              <Tooltip formatter={(v: number | undefined) => formatMoney(Number(v ?? 0), currency)} labelFormatter={(d) => String(d)} />
+                              <Tooltip formatter={(v: number | undefined, _name?: string) => formatMoney(Number(v ?? 0), currency) as React.ReactNode} labelFormatter={(d) => String(d)} />
                               <Area type="monotone" dataKey="total_value" stroke={colors.area1} fill="url(#portfolioValueGradient)" strokeWidth={1.5} />
                             </AreaChart>
                           </ResponsiveContainer>
