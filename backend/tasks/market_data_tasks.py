@@ -2216,6 +2216,49 @@ def enforce_price_data_retention(max_days_5m: int = 90) -> dict:
         session.close()
 
 
+# Stale job run recovery: mark JobRun rows stuck in "running" as "cancelled" so jobs list and health can go green.
+STALE_JOB_RUN_MINUTES = 120
+
+
+def recover_stale_job_runs_impl(stale_minutes: int = STALE_JOB_RUN_MINUTES) -> dict:
+    """Mark JobRun rows with status=running and started_at older than threshold as cancelled. Returns counts."""
+    session = SessionLocal()
+    try:
+        cutoff = datetime.utcnow() - timedelta(minutes=stale_minutes)
+        now = datetime.utcnow()
+        msg = (
+            f"Marked cancelled: run exceeded stale threshold ({stale_minutes} min). "
+            "Process likely terminated (cron timeout, OOM, or worker restart)."
+        )
+        cancelled_count = (
+            session.query(JobRun)
+            .filter(JobRun.status == "running", JobRun.started_at < cutoff)
+            .update(
+                {
+                    JobRun.status: "cancelled",
+                    JobRun.finished_at: now,
+                    JobRun.error: msg,
+                },
+                synchronize_session=False,
+            )
+        )
+        session.commit()
+        return {
+            "cancelled_count": cancelled_count,
+            "stale_minutes": stale_minutes,
+            "cutoff": cutoff.isoformat(),
+        }
+    finally:
+        session.close()
+
+
+@shared_task(name="backend.tasks.market_data_tasks.recover_stale_job_runs")
+@task_run("admin_recover_stale_job_runs")
+def recover_stale_job_runs(stale_minutes: int = STALE_JOB_RUN_MINUTES) -> dict:
+    """Periodic task to mark job runs stuck in RUNNING as cancelled so jobs list and health snapshot can go green."""
+    return recover_stale_job_runs_impl(stale_minutes=stale_minutes)
+
+
 # ============================= Coverage instrumentation =============================
 
 

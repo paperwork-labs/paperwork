@@ -60,6 +60,7 @@ from backend.tasks.market_data_tasks import monitor_coverage_health
 from backend.tasks.market_data_tasks import fill_missing_snapshot_fundamentals
 from backend.tasks.market_data_tasks import bootstrap_daily_coverage_tracked
 from backend.tasks.market_data_tasks import backfill_stale_daily_tracked
+from backend.tasks.market_data_tasks import recover_stale_job_runs_impl
 from backend.config import settings
 from backend.services.notifications.discord_bot import discord_bot_client
 from backend.models import Position
@@ -172,6 +173,16 @@ TASK_ACTIONS: List[Dict[str, Any]] = [
         "endpoint": "/market-data/universe/tracked/refresh",
         "description": "Refresh tracked symbol universe (index ∪ portfolio).",
         "status_task": "market_universe_tracked_refresh",
+    },
+    {
+        "task_name": "admin_recover_stale_job_runs",
+        "method": "POST",
+        "endpoint": "/market-data/admin/jobs/recover-stale",
+        "description": "Mark job runs stuck in RUNNING as cancelled so jobs list and health snapshot go green.",
+        "params_schema": [
+            {"name": "stale_minutes", "type": "int", "default": 120, "min": 30, "max": 10080},
+        ],
+        "status_task": "admin_recover_stale_job_runs",
     },
 ]
 
@@ -1292,6 +1303,14 @@ async def admin_get_jobs(
     rows = query.offset(offset).limit(effective_limit).all()
     return {"jobs": serialize_job_runs(rows), "total": total, "limit": effective_limit, "offset": offset}
 
+
+@router.post("/admin/jobs/recover-stale")
+async def admin_recover_stale_jobs(
+    stale_minutes: int = Query(120, ge=30, le=10080, description="Runs older than this (minutes) are marked cancelled"),
+    admin_user: User = Depends(get_admin_user),
+) -> Dict[str, Any]:
+    """Mark job runs stuck in RUNNING as cancelled so the jobs list and health snapshot can go green."""
+    return recover_stale_job_runs_impl(stale_minutes=stale_minutes)
 
 
 @router.get("/admin/tasks")

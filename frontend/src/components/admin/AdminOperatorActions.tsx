@@ -161,6 +161,10 @@ const AdminOperatorActions: React.FC<Props> = ({
           method: 'POST',
           endpoint: '/market-data/admin/stage/repair',
         },
+        admin_recover_stale_job_runs: {
+          method: 'POST',
+          endpoint: '/market-data/admin/jobs/recover-stale',
+        },
       };
       const task = taskEndpoints[taskName];
       if (!task) throw new Error(`Unsupported task: ${taskName}`);
@@ -434,9 +438,12 @@ const AdminOperatorActions: React.FC<Props> = ({
                   <Button size="xs" variant="outline" onClick={() => void runNamedTask('admin_stage_repair', 'Repair stage history queued')}>
                     Repair Stage History
                   </Button>
+                  <Button size="xs" variant="outline" onClick={() => void runNamedTask('admin_recover_stale_job_runs', 'Stale jobs recovered')}>
+                    Recover Stale Job Runs
+                  </Button>
                 </Box>
                 <Text mt={2} fontSize="xs" color="fg.muted">
-                  If Stage/RS look empty, run "Recompute Indicators (Market Snapshot)".
+                  If Stage/RS look empty, run "Recompute Indicators (Market Snapshot)". If jobs list shows many "running", run "Recover Stale Job Runs".
                 </Text>
               </Box>
             </Box>

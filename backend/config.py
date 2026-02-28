@@ -197,8 +197,19 @@ def validate_production_settings() -> None:
         raise RuntimeError("SECRET_KEY must be set to a secure value in production.")
     if not settings.DATABASE_URL or "sqlite:///" in settings.DATABASE_URL:
         raise RuntimeError("DATABASE_URL must point to Postgres in production.")
+    if "localhost" in settings.DATABASE_URL or "127.0.0.1" in settings.DATABASE_URL:
+        raise RuntimeError(
+            "DATABASE_URL points to localhost — this is the dev default, not a real "
+            "Render Postgres connection string. Check the service's env vars in the "
+            "Render dashboard (fromDatabase reference may be missing)."
+        )
     if not settings.REDIS_URL:
         raise RuntimeError("REDIS_URL must be set in production.")
+    if "localhost" in settings.REDIS_URL or "127.0.0.1" in settings.REDIS_URL:
+        raise RuntimeError(
+            "REDIS_URL points to localhost — check the Render dashboard for the "
+            "fromService reference to axiomfolio-redis."
+        )
     leaked = [k for k in _GLOBAL_BROKER_CREDS_FORBIDDEN_IN_PROD if getattr(settings, k, None)]
     if leaked:
         raise RuntimeError(

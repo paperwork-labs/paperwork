@@ -357,20 +357,37 @@ app.include_router(
 )
 
 
-# Global error handler
-@app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
-    """Global exception handler for better error responses."""
-    logger.error(f"❌ Global exception: {exc}")
+# Global error handler — inject CORS headers so browsers can read error bodies
+# instead of masking them as opaque "Network Error" / CORS violations.
+def _cors_headers_for_origin(origin: str | None) -> dict[str, str]:
+    allowed = {
+        o.strip()
+        for o in (settings.CORS_ORIGINS or "").split(",")
+        if o.strip()
+    }
+    if origin and origin in allowed:
+        return {
+            "access-control-allow-origin": origin,
+            "access-control-allow-credentials": "true",
+            "vary": "Origin",
+        }
+    return {"vary": "Origin"}
 
-    return JSONResponse(
-        status_code=500,
-        content={
-            "error": "Internal server error",
-            "message": str(exc),
-            "timestamp": datetime.now().isoformat(),
-        },
-    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc):
+    """Global exception handler for better error responses."""
+    logger.exception("❌ Global exception")
+
+    headers = _cors_headers_for_origin(request.headers.get("origin"))
+    body: dict = {
+        "error": "Internal server error",
+        "timestamp": datetime.now().isoformat(),
+    }
+    if settings.DEBUG:
+        body["message"] = str(exc)
+
+    return JSONResponse(status_code=500, content=body, headers=headers)
 
 
 if __name__ == "__main__":

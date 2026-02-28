@@ -146,4 +146,14 @@ CATALOG: List[JobTemplate] = [
         default_tz="UTC",
         kwargs={"max_days_5m": 90},
     ),
+    JobTemplate(
+        id="admin_recover_stale_job_runs",
+        display_name="Recover Stale Job Runs",
+        group="maintenance",
+        task="backend.tasks.market_data_tasks.recover_stale_job_runs",
+        description="Mark job runs stuck in RUNNING (e.g. cron timeout, worker restart) as cancelled so jobs list and health go green",
+        default_cron="0 */6 * * *",
+        default_tz="UTC",
+        kwargs={"stale_minutes": 120},
+    ),
 ]

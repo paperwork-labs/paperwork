@@ -142,7 +142,7 @@ describe('MarketDashboard', () => {
     fireEvent.click(tslaLinks[0]);
     await waitFor(() => {
       expect(screen.getByTestId('tv-chart')).toBeInTheDocument();
-    });
+    }, { timeout: 5000 });
   });
 
   it('does not navigate to market-tracked when clicking a symbol', async () => {

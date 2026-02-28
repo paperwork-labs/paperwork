@@ -39,6 +39,7 @@ _TASK_STATUS_KEYS: List[str] = sorted({
     "admin_coverage_refresh",
     "admin_coverage_backfill",
     "admin_indicators_recompute_universe",
+    "admin_recover_stale_job_runs",
     "admin_snapshots_history_backfill",
     "admin_snapshots_history_record",
     "market_indices_constituents_refresh",
