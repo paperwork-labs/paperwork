@@ -32,7 +32,7 @@ CONNECTIONS
 |------|---------|-------------|-----------|--------|
 | Brokerage | IBKR FlexQuery | Flex Token + Query ID | Positions, trades, options, tax lots, balances | Active |
 | Brokerage | TastyTrade | OAuth (client_secret + refresh_token) | Positions, trades, transactions, dividends | Active |
-| Brokerage | Schwab | OAuth redirect | Positions (planned) | Planned |
+| Brokerage | Schwab | OAuth 2.0 + PKCE | Positions, transactions, options, balances | Active |
 | Live Data | IB Gateway | TWS API (host:port:clientId) | Real-time quotes, option chains, Greeks | Active |
 | Charting | TradingView | Preferences (no auth) | Default studies, interval (public embed, no account link) | Active |
 | Data Provider | FMP | API key | OHLCV, fundamentals, index constituents | Future |
@@ -211,14 +211,82 @@ For IBKR data sync to work correctly, the FlexQuery must be configured on IBKR's
 
 ## Schwab Integration
 
-Schwab uses OAuth 2.0 via the Schwab Trader API:
+Schwab uses OAuth 2.0 with PKCE via the Schwab Trader API (`api.schwabapi.com`).
 
-1. Register a developer app at developer.schwab.com
-2. Configure `SCHWAB_CLIENT_ID` and `SCHWAB_CLIENT_SECRET` in environment
-3. Link account via Settings > Connections (triggers OAuth flow)
-4. Tokens are stored encrypted and auto-refreshed on 401
+### Developer Portal App
 
-**Status**: OAuth scaffold implemented, client ready for real API calls once credentials are configured.
+| Field | Value |
+|-------|-------|
+| Portal | [developer.schwab.com](https://developer.schwab.com) |
+| App Name | `prod-sankalp404gmailcom-...` |
+| Callback URL | `https://api.axiomfolio.com/api/v1/aggregator/schwab/callback` |
+| Status | Ready For Use |
+| API Domain | `api.schwabapi.com` (not `api.schwab.com` -- migrated post-TD Ameritrade) |
+
+### OAuth Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Frontend as Settings > Connections
+    participant Backend as /aggregator/schwab/link
+    participant Schwab as api.schwabapi.com
+    participant Callback as /aggregator/schwab/callback
+    participant DB as AccountCredentials
+
+    User->>Frontend: Click "Link Schwab"
+    Frontend->>Backend: POST /aggregator/schwab/link
+    Backend->>Backend: Generate PKCE verifier + challenge
+    Backend->>Backend: Issue signed OAuth state (uid, aid)
+    Backend-->>Frontend: { url: "https://api.schwabapi.com/v1/oauth/authorize?..." }
+    Frontend->>Schwab: Open authorize URL in new tab
+    User->>Schwab: Log in and authorize
+    Schwab->>Callback: GET /callback?code=...&state=...
+    Callback->>Callback: Validate state JWT, retrieve PKCE verifier
+    Callback->>Schwab: POST /v1/oauth/token (Basic Auth + code + verifier)
+    Schwab-->>Callback: { access_token, refresh_token, ... }
+    Callback->>DB: Encrypt and store tokens via CredentialVault
+    Callback-->>User: { status: "linked" }
+```
+
+### Token Exchange Details
+
+- **Authorization endpoint**: `https://api.schwabapi.com/v1/oauth/authorize`
+- **Token endpoint**: `https://api.schwabapi.com/v1/oauth/token`
+- **Authentication**: HTTP Basic Auth (`Authorization: Basic base64(client_id:client_secret)`)
+- **PKCE**: `code_challenge_method=S256`, verifier stored in Redis keyed by state
+- **Token refresh**: Automatic on 401 via `SchwabClient._ensure_token()`, persisted back to DB via callback
+
+### Environment Variables
+
+| Variable | Purpose | Example |
+|----------|---------|---------|
+| `SCHWAB_CLIENT_ID` | App Key from Schwab Developer Portal | `fFaKnk...` |
+| `SCHWAB_CLIENT_SECRET` | App Secret | `QfAjA1...` |
+| `SCHWAB_REDIRECT_URI` | Must match portal registration exactly | `https://api.axiomfolio.com/api/v1/aggregator/schwab/callback` |
+| `SCHWAB_AUTH_BASE` | Authorization URL override | `https://api.schwabapi.com/v1/oauth/authorize` |
+| `SCHWAB_CLIENT_ID_SUFFIX` | Legacy TD Ameritrade suffix (leave empty) | _(empty)_ |
+
+### Dev OAuth Testing via Cloudflare Tunnel
+
+Since the callback URL is fixed to `https://api.axiomfolio.com/...`, testing OAuth locally requires routing that domain to your machine:
+
+1. `make tunnel-up` -- starts the Cloudflare Tunnel container
+2. In Cloudflare dashboard, temporarily point `api.axiomfolio.com` to the tunnel instead of Render
+3. Complete the OAuth flow from `http://localhost:5173/settings/connections`
+4. `make tunnel-down` -- stop the tunnel
+5. Restore the `api` CNAME to `axiomfolio-api.onrender.com`
+
+Alternatively, link your Schwab account from the production instance and copy tokens to your dev database (requires matching `ENCRYPTION_KEY`).
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `backend/services/aggregator/schwab_connector.py` | OAuth URL builder, token exchange, token refresh |
+| `backend/services/clients/schwab_client.py` | Trader API client (positions, transactions, balances) |
+| `backend/services/portfolio/schwab_sync_service.py` | Sync orchestrator (connect, sync, enrich) |
+| `backend/api/routes/aggregator.py` | `/schwab/link` and `/schwab/callback` endpoints |
 
 ## Key Files
 

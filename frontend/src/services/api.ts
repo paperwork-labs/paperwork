@@ -441,6 +441,9 @@ export const marketDataApi = {
   getSnapshot: async (symbol: string) => {
     return makeOptimizedRequest(() => api.get(`/market-data/snapshots/${encodeURIComponent(symbol)}`));
   },
+  getVolatilityDashboard: async () => {
+    return makeOptimizedRequest(() => api.get('/market-data/volatility-dashboard'));
+  },
 };
 
 // Unified Activity endpoints

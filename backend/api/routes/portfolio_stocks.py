@@ -51,6 +51,7 @@ def _latest_snapshots_by_symbol(db: Session, symbols: List[str]) -> Dict[str, An
     )
     out: Dict[str, Any] = {}
     for s in snapshots:
+        mc = float(s.market_cap) if s.market_cap is not None else None
         out[s.symbol] = {
             "stage_label": s.stage_label,
             "rs_mansfield_pct": float(s.rs_mansfield_pct) if s.rs_mansfield_pct is not None else None,
@@ -61,8 +62,25 @@ def _latest_snapshots_by_symbol(db: Session, symbols: List[str]) -> Dict[str, An
             "atr_14": float(s.atr_14) if s.atr_14 is not None else None,
             "sma_50": float(s.sma_50) if s.sma_50 is not None else None,
             "sma_200": float(s.sma_200) if s.sma_200 is not None else None,
+            "sector": s.sector,
+            "market_cap": mc,
+            "market_cap_label": _market_cap_label(mc),
         }
     return out
+
+
+def _market_cap_label(market_cap: Optional[float]) -> Optional[str]:
+    if market_cap is None:
+        return None
+    if market_cap >= 200_000_000_000:
+        return "Mega Cap"
+    if market_cap >= 10_000_000_000:
+        return "Large Cap"
+    if market_cap >= 2_000_000_000:
+        return "Mid Cap"
+    if market_cap >= 300_000_000:
+        return "Small Cap"
+    return "Micro Cap"
 
 
 @router.get("/stocks", response_model=Dict[str, Any])
@@ -106,6 +124,8 @@ async def get_stocks(
 
         result: List[Dict[str, Any]] = []
         for p in positions:
+            snap = snapshot_by_symbol.get(p.symbol, {}) if include_market_data else {}
+            sector = p.sector or snap.get("sector") or ""
             row: Dict[str, Any] = {
                 "id": p.id,
                 "symbol": p.symbol,
@@ -120,16 +140,19 @@ async def get_stocks(
                 "unrealized_pnl_pct": float(p.unrealized_pnl_pct or 0),
                 "day_pnl": float(p.day_pnl or 0),
                 "day_pnl_pct": float(p.day_pnl_pct or 0),
-                "sector": p.sector or "",
+                "sector": sector,
                 "industry": p.industry or "",
+                "market_cap": snap.get("market_cap"),
+                "market_cap_label": snap.get("market_cap_label"),
                 "last_updated": (
                     p.position_updated_at.isoformat()
                     if p.position_updated_at
                     else None
                 ),
             }
-            if include_market_data and p.symbol in snapshot_by_symbol:
-                row.update(snapshot_by_symbol[p.symbol])
+            if include_market_data and snap:
+                row.update(snap)
+                row["sector"] = sector
             result.append(row)
 
         return {"status": "success", "data": {"total": len(result), "stocks": result}}

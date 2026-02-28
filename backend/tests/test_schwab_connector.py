@@ -40,7 +40,7 @@ def test_exchange_code_and_refresh_tokens(monkeypatch):
         async def __aexit__(self, exc_type, exc, tb):
             return False
 
-        async def post(self, url, data=None):
+        async def post(self, url, data=None, **kwargs):
             if data.get("grant_type") == "authorization_code":
                 return DummyResponse(200, {"access_token": "at", "refresh_token": "rt"})
             if data.get("grant_type") == "refresh_token":

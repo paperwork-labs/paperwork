@@ -480,6 +480,39 @@ const PortfolioTaxCenter: React.FC = () => {
                   );
                 })}
               </TableBody>
+              {filteredLots.length > 0 && (() => {
+                const totals = filteredLots.reduce(
+                  (acc, l) => ({
+                    shares: acc.shares + l.shares,
+                    cost_basis: acc.cost_basis + (l.cost_basis ?? 0),
+                    market_value: acc.market_value + l.market_value,
+                    unrealized_pnl: acc.unrealized_pnl + l.unrealized_pnl,
+                  }),
+                  { shares: 0, cost_basis: 0, market_value: 0, unrealized_pnl: 0 },
+                );
+                const totalPnlPct = totals.cost_basis ? (totals.unrealized_pnl / totals.cost_basis) * 100 : 0;
+                return (
+                  <tfoot>
+                    <TableRow bg="bg.subtle" fontWeight="bold">
+                      <TableCell><Text fontWeight="bold">Total</Text></TableCell>
+                      <TableCell />
+                      <TableCell />
+                      <TableCell />
+                      <TableCell textAlign="end">{totals.shares.toLocaleString()}</TableCell>
+                      <TableCell />
+                      <TableCell textAlign="end">{formatMoney(totals.cost_basis, currency, { maximumFractionDigits: 0 })}</TableCell>
+                      <TableCell textAlign="end">{formatMoney(totals.market_value, currency, { maximumFractionDigits: 0 })}</TableCell>
+                      <TableCell textAlign="end" color={totals.unrealized_pnl >= 0 ? 'fg.success' : 'fg.error'}>
+                        {formatMoney(totals.unrealized_pnl, currency, { maximumFractionDigits: 0 })}
+                      </TableCell>
+                      <TableCell textAlign="end" color={totalPnlPct >= 0 ? 'fg.success' : 'fg.error'}>
+                        {totalPnlPct.toFixed(1)}%
+                      </TableCell>
+                      <TableCell />
+                    </TableRow>
+                  </tfoot>
+                );
+              })()}
             </TableRoot>
           </TableScrollArea>
         </CardBody>

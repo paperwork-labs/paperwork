@@ -44,6 +44,15 @@ class SchwabClient:
         self._access_token: Optional[str] = None
         self._refresh_token: Optional[str] = None
         self._account_hash_map: Dict[str, str] = {}  # account_number -> hashValue
+        self._on_token_refresh: Optional[Any] = None  # callback(access_token, refresh_token)
+
+    def set_token_refresh_callback(self, callback: Any) -> None:
+        """Set a callback invoked after a successful token refresh.
+
+        The callback signature is ``callback(access_token: str, refresh_token: str)``.
+        Used by the sync service to persist refreshed tokens back to the DB.
+        """
+        self._on_token_refresh = callback
 
     async def connect(self) -> bool:
         """
@@ -97,16 +106,30 @@ class SchwabClient:
         return True
 
     async def _ensure_token(self) -> bool:
-        """Refresh token if we get 401. Returns False if refresh fails."""
+        """Refresh token if we get 401. Returns False if refresh fails.
+
+        After a successful refresh the ``_on_token_refresh`` callback is invoked
+        so the caller (sync service) can persist the new tokens to the DB.
+        """
         if not self._refresh_token or not self.connected:
             return False
         try:
             connector = SchwabConnector()
             tokens = await connector.refresh_tokens(self._refresh_token)
-            self._access_token = tokens.get("access_token")
-            self._refresh_token = tokens.get("refresh_token", self._refresh_token)
-            if self._access_token:
-                return True
+            new_access = tokens.get("access_token")
+            new_refresh = tokens.get("refresh_token", self._refresh_token)
+            if not new_access:
+                logger.error("Schwab API: token refresh returned empty access_token")
+                return False
+            self._access_token = new_access
+            self._refresh_token = new_refresh
+            logger.info("Schwab API: token refresh succeeded")
+            if self._on_token_refresh:
+                try:
+                    self._on_token_refresh(new_access, new_refresh)
+                except Exception as cb_exc:
+                    logger.error("Schwab API: token refresh callback failed: %s", cb_exc)
+            return True
         except Exception as e:
             logger.error("Schwab API: token refresh failed: %s", e)
         return False
@@ -210,6 +233,14 @@ class SchwabClient:
         )
         if hv:
             self._account_hash_map[account_number] = hv
+        else:
+            available = [a.get("account_number") for a in accounts]
+            logger.error(
+                "Schwab API: could not resolve hash for account '%s'. "
+                "Available accounts from API: %s. All data fetches for this account will return empty.",
+                account_number,
+                available,
+            )
         return hv
 
     async def get_positions(self, account_number: str) -> List[Dict[str, Any]]:

@@ -25,6 +25,7 @@ def test_bootstrap_daily_coverage_tracked_defaults_to_rolling_20_day_history(db_
         return {"status": "ok", "days": days, "processed_symbols": 0, "written_rows": 0}
 
     monkeypatch.setattr(market_data_tasks, "backfill_snapshot_history_last_n_days", fake_backfill_snapshot_history_last_n_days)
+    monkeypatch.setattr(market_data_tasks, "_resolve_history_days", lambda _: 20)
 
     res = market_data_tasks.bootstrap_daily_coverage_tracked()
     assert res["status"] == "ok"

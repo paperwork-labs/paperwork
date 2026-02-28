@@ -32,7 +32,7 @@ For each symbol:
 Responsibilities by layer
 -------------------------
 - indicator_engine.py: Pure computations from OHLCV (SMA/EMA/RSI/ATR/MACD/ADX, perf windows, MA bucket, TD/gaps/trendlines, weekly stage helpers).
-- market_data_service.py: Provider access (prices/history/info), Redis caching, DB snapshot assembly from local `price_data`, enrichment (chart metrics + fundamentals), and persistence to `MarketAnalysisCache`.
+- market_data_service.py: Provider access (prices/history/info), Redis caching, DB snapshot assembly from local `price_data`, enrichment (chart metrics + fundamentals), and persistence to `MarketSnapshot`.
 - market_data_tasks.py: Orchestration only. Builds tracked sets, backfills OHLCV, invokes service to build/enrich/persist snapshots, and records daily history.
 
 ## Architecture diagrams
@@ -51,9 +51,9 @@ Responsibilities by layer
 
 ## Persistence Model
 - `market_data.PriceData`: daily/intraday OHLCV with unique `(symbol, date, interval)` (constraint: `uq_symbol_date_interval`)
-- `market_data.MarketAnalysisCache`: compact latest technical snapshot per symbol with expiry (`expiry_timestamp`), including `ma_bucket`
+- `market_data.MarketSnapshot`: compact latest technical snapshot per symbol with expiry (`expiry_timestamp`), including `ma_bucket`
   - Includes persisted stage fields: `stage_label`, `stage_slope_pct`, `stage_dist_pct`
-- `market_data.MarketAnalysisHistory`: immutable daily snapshots keyed by `(symbol, analysis_type, as_of_date)`
+- `market_data.MarketSnapshotHistory`: immutable daily snapshots keyed by `(symbol, analysis_type, as_of_date)`
 
 ## Scheduling
 - Weekly constituents refresh (SP500, NASDAQ100, DOW30) → table `index_constituents`
@@ -61,7 +61,7 @@ Responsibilities by layer
 - Nightly backfill for newly tracked symbols only (reads `tracked:new`)
 - Nightly delta backfill safety for portfolio symbols (last-200)
 - Nightly recompute indicators for full universe (from local `price_data`)
-- Nightly history recording (`market_analysis_history`)
+- Nightly history recording (`market_snapshot_history`)
 - Hourly coverage-health snapshot (`admin_coverage_refresh`) caches freshness buckets + stale symbol lists in Redis so Admin → Coverage can render SLAs instantly and alert on drift.
 
 ### Schedule Management (DB + Render API)
@@ -115,9 +115,9 @@ Notes on retention
    - Fallback: `MarketDataService.build_indicator_snapshot(symbol)` (pull OHLCV then compute)
    - Enrich: `MarketDataService.enrich_chart_metrics_and_fundamentals(db, symbol, snapshot)` adds TD/gaps/trendlines + best-effort sector/industry/market_cap
 4) Persist snapshot
-   - `MarketDataService.persist_snapshot(db, symbol, snapshot)` upserts latest into `MarketAnalysisCache` and stores `raw_analysis`
+   - `MarketDataService.persist_snapshot(db, symbol, snapshot)` upserts latest into `MarketSnapshot` and stores `raw_analysis`
 5) History recording (optional)
-   - `admin_snapshots_history_record` writes one row per `(symbol, as_of_date)` into `MarketAnalysisHistory` with headline fields + full payload
+   - `admin_snapshots_history_record` writes one row per `(symbol, as_of_date)` into `MarketSnapshotHistory` with headline fields + full payload
 6) Scheduling
    - Celery Beat triggers:
      - nightly guided daily backfill → `admin_coverage_backfill`

@@ -13,7 +13,7 @@ flowchart LR
 
   subgraph Intelligence["Intelligence (brain)"]
     Universe[Universe Tracking]
-    Fetch[yfinance / OHLCV]
+    Fetch[FMP / OHLCV]
     Indicators[Stage, RS, RSI, ATR, TD]
     Snapshot[MarketSnapshot]
     Universe --> Fetch --> Indicators --> Snapshot
@@ -40,7 +40,7 @@ flowchart LR
 - **Backend**: FastAPI, Celery workers for sync and market data jobs.
 - **Data**: PostgreSQL (state), Redis (cache/queue).
 - **Frontend**: React SPA (Chakra v3, React Query, Recharts, lightweight-charts v5, TradingView widget).
-- **Brokers**: IBKR (FlexQuery XML + TWS Gateway), TastyTrade (SDK), Schwab (planned OAuth).
+- **Brokers**: IBKR (FlexQuery XML + TWS Gateway), TastyTrade (SDK), Schwab (OAuth 2.0 + PKCE via `api.schwabapi.com`).
 
 ## Data Model Inventory
 
@@ -84,7 +84,7 @@ flowchart LR
 | `/api/v1/portfolio/dashboard` | `portfolio_dashboard.py` | Dashboard aggregations |
 | `/api/v1/portfolio/categories` | `portfolio_categories.py` | Category CRUD + reorder |
 | `/api/v1/portfolio` (activity) | `activity.py` | Activity feed (UNION ALL) |
-| `/api/v1/market-data` | `market_data.py` | Market data + technicals |
+| `/api/v1/market-data` | `market_data.py` | Market data + technicals + volatility dashboard |
 | `/api/v1/strategies` | `strategies.py` | Strategy management |
 | `/api/v1/admin` | `admin.py` | Admin operations |
 | `/api/v1/admin/schedules` | `admin_scheduler.py` | Cron schedule CRUD |
@@ -96,7 +96,7 @@ flowchart LR
 |--------|---------|
 | `portfolio/ibkr_sync_service.py` | IBKR comprehensive sync (2092 lines - refactor target) |
 | `portfolio/tastytrade_sync_service.py` | TastyTrade sync |
-| `portfolio/schwab_sync_service.py` | Schwab sync (placeholder) |
+| `portfolio/schwab_sync_service.py` | Schwab sync (positions, transactions, options, balances) |
 | `portfolio/broker_sync_service.py` | Broker-agnostic dispatcher |
 | `portfolio/activity_aggregator.py` | Activity UNION ALL across tables |
 | `portfolio/portfolio_analytics_service.py` | Portfolio analytics |
@@ -105,7 +105,7 @@ flowchart LR
 | `clients/ibkr_flexquery_client.py` | FlexQuery API + XML parsers (2040 lines - refactor target) |
 | `clients/ibkr_client.py` | IB Gateway (ib_insync) client |
 | `clients/tastytrade_client.py` | TastyTrade API client |
-| `clients/schwab_client.py` | Schwab client (placeholder) |
+| `clients/schwab_client.py` | Schwab Trader API client (OAuth, token refresh with DB persist) |
 | `market/indicator_engine.py` | Indicator computation (Stage, RS, RSI, etc.) |
 | `market/coverage_service.py` | Coverage pipeline |
 | `market/snapshot_service.py` | Snapshot persistence |
@@ -120,7 +120,7 @@ flowchart LR
 | `sync_all_ibkr_accounts` | Planned daily | Sync all IBKR accounts |
 | `recompute_indicators_universe` | 03:35 UTC | Compute indicators for all tracked symbols |
 | `record_daily_history` | Part of coverage pipeline | Persist daily snapshot history |
-| `bootstrap_daily_coverage_tracked` | 03:00 UTC | Full coverage pipeline |
+| `bootstrap_daily_coverage_tracked` | 01:00 UTC | Full coverage pipeline |
 | `monitor_coverage_health` | Hourly | Coverage health check |
 
 ## Frontend Pages
@@ -130,6 +130,7 @@ flowchart LR
 | `/` | `MarketDashboard` | Market overview with indicators |
 | `/market/tracked` | `MarketTracked` | Tracked symbol management |
 | `/market/coverage` | `MarketCoverage` | Data coverage status |
+| `/market/education` | `MarketEducation` | Indicator glossary + deep-dives |
 | `/portfolio` | `PortfolioOverview` | Dashboard with P&L, allocation |
 | `/portfolio/holdings` | `PortfolioHoldings` | Position list with market data |
 | `/portfolio/options` | `PortfolioOptions` | Options + IB Gateway chain |
@@ -159,7 +160,7 @@ Trigger (manual/cron)
 ### Market Data Pipeline
 
 ```
-Coverage Pipeline (daily 03:00 UTC)
+Coverage Pipeline (daily 01:00 UTC)
   1. Fetch OHLCV bars from provider (FMP -> TwelveData -> yfinance)
   2. Persist to price_data table
   3. Compute indicators (Stage, RS, RSI, ATR, TD Sequential, SMAs, MACD)
@@ -204,14 +205,88 @@ Activity endpoint (/activity)
 - **IBKR FlexQuery**: Trades, cash transactions, tax lots, balances, options, transfers. Requires "Last 365 Calendar Days" period configuration.
 - **IBKR TWS/Gateway**: Live overlay for prices/positions/Greeks. Docker container (`ghcr.io/extrange/ibkr:stable`). Read-only.
 - **TastyTrade SDK**: Positions, trades, transactions, dividends, balances via encrypted credentials.
-- **Schwab**: OAuth scaffold exists, client is placeholder.
+- **Schwab**: OAuth client implemented (connect with credentials, token refresh with DB persistence, account hash resolution). Sync service mirrors TastyTrade pattern: positions, transactions, options, balances.
+
+## Production Infrastructure
+
+### Architecture Diagram
+
+```mermaid
+flowchart TB
+    subgraph Internet
+        User[Browser / Mobile]
+    end
+
+    subgraph Cloudflare["Cloudflare (DNS + CDN + WAF)"]
+        CF_DNS[DNS: axiomfolio.com, api.axiomfolio.com]
+        CF_TLS[TLS Termination]
+        CF_DNS --> CF_TLS
+    end
+
+    subgraph Render["Render (PaaS)"]
+        FE[axiomfolio-frontend<br/>Static Site]
+        API[axiomfolio-api<br/>FastAPI / Uvicorn]
+        Worker[axiomfolio-worker<br/>Celery Worker]
+        DB[(axiomfolio-db<br/>PostgreSQL)]
+        Redis[(axiomfolio-redis<br/>Redis)]
+
+        API --> DB
+        API --> Redis
+        Worker --> DB
+        Worker --> Redis
+    end
+
+    subgraph Schwab["Schwab API"]
+        SchwabAuth[api.schwabapi.com<br/>OAuth + Trader API]
+    end
+
+    subgraph IBKR["IBKR"]
+        FlexQuery[FlexQuery XML API]
+        Gateway[IB Gateway<br/>TWS Docker]
+    end
+
+    User --> CF_DNS
+    CF_TLS -- "axiomfolio.com" --> FE
+    CF_TLS -- "api.axiomfolio.com" --> API
+    API -- "OAuth callback" --> SchwabAuth
+    Worker -- "FlexQuery sync" --> FlexQuery
+    API -- "Live overlay" --> Gateway
+```
+
+### Render Service Map
+
+| Service | Type | Hostname | Custom Domain |
+|---------|------|----------|---------------|
+| `axiomfolio-api` | Web (Docker) | `axiomfolio-api.onrender.com` | `api.axiomfolio.com` |
+| `axiomfolio-worker` | Worker (Docker) | _(internal)_ | — |
+| `axiomfolio-frontend` | Static Site | `axiomfolio-frontend.onrender.com` | `axiomfolio.com` |
+| `axiomfolio-db` | PostgreSQL | _(internal)_ | — |
+| `axiomfolio-redis` | Key-Value Store | _(internal)_ | — |
+
+### Cloudflare Configuration
+
+- **Nameservers**: `emely.ns.cloudflare.com`, `kayden.ns.cloudflare.com` (registered at Spaceship)
+- **SSL Mode**: Full (strict)
+- **Proxy**: All records proxied (orange cloud)
+- **Tunnel**: Token-based tunnel available for routing `api.axiomfolio.com` to local dev machine
+
+### Dev vs Production Environment
+
+| Aspect | Development | Production |
+|--------|-------------|------------|
+| Frontend | `localhost:5173` (Vite dev server) | `axiomfolio.com` (Render static) |
+| Backend | `localhost:8000` (Docker Compose) | `api.axiomfolio.com` (Render web) |
+| Database | Local Docker PostgreSQL | Render managed PostgreSQL |
+| Redis | Local Docker Redis | Render managed Redis |
+| Worker | Local Docker Celery | Render worker service |
+| IB Gateway | `make ib-up` (Docker, profile: ibkr) | Not deployed (local only) |
+| Schwab OAuth | Cloudflare Tunnel → local backend | Cloudflare → Render → backend |
+| TLS | Self-signed / HTTP | Cloudflare Full (strict) + Render cert |
+| Docker Compose | `infra/compose.dev.yaml` | Render `render.yaml` |
 
 ## Known Gaps
 
-1. `market_snapshot` and `market_snapshot_history` have 0 rows -- indicators never computed/persisted
-2. `dividends` table has 0 rows -- IBKR data ready but sync not yet triggered post-FlexQuery fix
-3. `transfers` table has 0 rows -- same as above
-4. TastyTrade sync stuck (`RUNNING`) due to encryption token mismatch
-5. IBKR sync code needs refactor (2 x 2000+ line files with god functions)
-6. Schwab client is placeholder
-7. No stale sync recovery mechanism
+1. `dividends` table has 0 rows -- IBKR data ready but sync not yet triggered post-FlexQuery fix
+2. `transfers` table has 0 rows -- same as above
+3. TastyTrade sync stuck (`RUNNING`) due to encryption token mismatch
+4. IBKR sync code needs refactor (2 x 2000+ line files with god functions)

@@ -13,7 +13,7 @@ flowchart TD
     subgraph brokers ["Broker Sources"]
         IBKR["IBKR FlexQuery XML"]
         TT["TastyTrade API"]
-        SCH["Schwab API (OAuth scaffold)"]
+        SCH["Schwab API (OAuth)"]
     end
 
     subgraph syncLayer ["Sync Services"]
@@ -401,7 +401,8 @@ Response includes `is_live: true|false` flag so the frontend can indicate data f
 ## Market Data Bridge
 
 - `GET /portfolio/stocks?include_market_data=true` LEFT JOINs latest `MarketSnapshot` per symbol.
-- Positions enriched with `stage_label`, `rs_mansfield_pct`, `perf_1d`/`perf_5d`/`perf_20d`, `rsi`, `atr_14`.
+- Positions enriched with `stage_label`, `rs_mansfield_pct`, `perf_1d`/`perf_5d`/`perf_20d`, `rsi`, `atr_14`, `market_cap`, `market_cap_label`.
+- Sector fallback: when `Position.sector` is NULL, `MarketSnapshot.sector` is used.
 - Portfolio symbols are part of the tracked universe; no separate sync.
 
 ## File Inventory
@@ -429,6 +430,7 @@ Response includes `is_live: true|false` flag so the frontend can indicate data f
 | | `components/charts/TradingViewChart.tsx` | ~200 | No external link |
 | | `components/charts/SymbolChartWithMarkers.tsx` | ~400 | Custom overlays |
 | | `components/market/SymbolChartUI.tsx` | ~300 | ChartSlidePanel |
+| | `components/charts/BubbleChart.tsx` | ~200 | Finviz-style configurable scatter/bubble chart |
 | **Options (new)** | `components/options/PositionsTab.tsx` | new | Card/table toggle |
 | | `components/options/OptionChainTab.tsx` | new | Chain viewer |
 | | `components/options/PnlTab.tsx` | new | SortableTable P/L |
@@ -470,7 +472,7 @@ Response includes `is_live: true|false` flag so the frontend can indicate data f
 | `ibkr/helpers.py` | ~100 | Shared utilities: `serialize_for_json`, `coerce_date`, `safe_float`, `delete_account_data` |
 | `ibkr_sync_service.py` | ~20 | Backward-compat shim re-exporting from `ibkr/` package |
 | `tastytrade_sync_service.py` | ~500 | TastyTrade sync: positions, tax lots, trades, transactions, dividends |
-| `schwab_sync_service.py` | ~200 | Schwab OAuth sync scaffold |
+| `schwab_sync_service.py` | ~200 | Schwab sync (positions, transactions, options, balances with token refresh) |
 | `tax_lot_service.py` | 678 | Tax lot queries, enrichment, analytics |
 | `portfolio_analytics_service.py` | 359 | Portfolio-level analytics and aggregation |
 | `account_config_service.py` | 350 | Broker account configuration |
@@ -479,7 +481,7 @@ Response includes `is_live: true|false` flag so the frontend can indicate data f
 | `market_data_service.py` | ~2400 | OHLCV fetch (L1/L2/L3), snapshot builder, DB-first reads |
 | `indicator_engine.py` | ~700 | `compute_full_indicator_series()` -- unified indicator computation |
 | `ibkr_client.py` | ~200 | IB Gateway connection singleton (exponential backoff) |
-| `schwab_client.py` | ~200 | Schwab Trader API client (OAuth, token refresh) |
+| `schwab_client.py` | ~200 | Schwab Trader API client (OAuth, token refresh with DB persist, account hash resolution) |
 
 ### Market Data Models
 
@@ -498,5 +500,6 @@ Response includes `is_live: true|false` flag so the frontend can indicate data f
 | `sync_account_task` | On-demand | Sync a single broker account; resets to ERROR on failure |
 | `sync_all_ibkr_accounts` | Daily 01:00 UTC | IBKR FlexQuery sync for all enabled accounts |
 | `recover_stale_syncs` | Every 5 min | Reset accounts stuck in RUNNING beyond threshold |
-| `backfill_daily_coverage` | Daily 03:00 UTC | OHLCV + indicators + snapshot history for tracked universe |
+| `backfill_daily_coverage` | Daily 01:00 UTC | OHLCV + indicators + snapshot history for tracked universe |
+| `refresh_stale_fundamentals` | Weekly Sun 04:00 UTC | Re-fetch fundamentals for snapshots older than 7 days |
 | `admin_indicators_recompute_universe` | On-demand | Full indicator recompute (manual trigger from operator actions) |

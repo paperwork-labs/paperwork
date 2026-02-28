@@ -15,8 +15,8 @@ class SchwabConnector:
     - Refreshes tokens
     """
 
-    AUTH_BASE = "https://api.schwab.com/oauth/authorize"
-    TOKEN_URL = "https://api.schwab.com/oauth/token"
+    AUTH_BASE = "https://api.schwabapi.com/v1/oauth/authorize"
+    TOKEN_URL = "https://api.schwabapi.com/v1/oauth/token"
 
     def __init__(
         self,
@@ -53,19 +53,18 @@ class SchwabConnector:
     async def exchange_code_for_tokens(self, code: str, code_verifier: Optional[str] = None) -> Dict[str, Any]:
         if not (self.client_id and self.client_secret and self.redirect_uri):
             raise ValueError("Schwab OAuth not configured")
-        data = {
+        data: Dict[str, str] = {
             "grant_type": "authorization_code",
             "code": code,
             "redirect_uri": self.redirect_uri,
-            "client_id": self.client_id,
-            "client_secret": self.client_secret,
         }
         if code_verifier:
             data["code_verifier"] = code_verifier
+        auth = httpx.BasicAuth(self.client_id, self.client_secret)
         async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
-            res = await client.post(self.TOKEN_URL, data=data)
+            res = await client.post(self.TOKEN_URL, data=data, auth=auth)
             if res.status_code >= 400:
-                raise RuntimeError(f"Token exchange failed: {res.status_code}")
+                raise RuntimeError(f"Token exchange failed: {res.status_code} {res.text[:200]}")
             return res.json()
 
     async def refresh_tokens(self, refresh_token: str) -> Dict[str, Any]:
@@ -74,13 +73,12 @@ class SchwabConnector:
         data = {
             "grant_type": "refresh_token",
             "refresh_token": refresh_token,
-            "client_id": self.client_id,
-            "client_secret": self.client_secret,
         }
+        auth = httpx.BasicAuth(self.client_id, self.client_secret)
         async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
-            res = await client.post(self.TOKEN_URL, data=data)
+            res = await client.post(self.TOKEN_URL, data=data, auth=auth)
             if res.status_code >= 400:
-                raise RuntimeError(f"Token refresh failed: {res.status_code}")
+                raise RuntimeError(f"Token refresh failed: {res.status_code} {res.text[:200]}")
             return res.json()
 
 

@@ -16,6 +16,7 @@ vi.mock('../../services/api', () => {
   return {
     default: { get: vi.fn().mockResolvedValue({ data: {} }) },
     marketDataApi: {
+      getVolatilityDashboard: vi.fn().mockResolvedValue({}),
       getDashboard: vi.fn().mockResolvedValue({
         tracked_count: 120,
         snapshot_count: 118,

@@ -56,14 +56,14 @@ class _SummaryRow:
 class MarketDashboardService:
     """Build read-only market dashboard summaries from tracked snapshots."""
 
-    def _fetch_rows(self, db: Session) -> tuple[list[str], list[_SummaryRow], dict[str, MarketTrackedPlan]]:
+    def _fetch_rows(self, db: Session) -> tuple[list[str], list[_SummaryRow], dict[str, MarketTrackedPlan], datetime | None]:
         def _coalesce(primary, secondary):
             return primary if primary is not None else secondary
 
         svc = MarketDataService()
         tracked = tracked_symbols(db, redis_client=svc.redis_client)
         if not tracked:
-            return [], [], {}
+            return [], [], {}, None
 
         rows = (
             db.query(MarketSnapshot)
@@ -144,7 +144,9 @@ class MarketDashboardService:
                     gaps_unfilled_down=getattr(r, "gaps_unfilled_down", None),
                 )
             )
-        return tracked, out, plan_map
+        timestamps = [getattr(r, "analysis_timestamp", None) for r in latest_by_symbol.values() if getattr(r, "analysis_timestamp", None) is not None]
+        latest_ts = max(timestamps) if timestamps else None
+        return tracked, out, plan_map, latest_ts
 
     @staticmethod
     def _is_pos(v: float | None) -> bool:
@@ -461,12 +463,13 @@ class MarketDashboardService:
         return out
 
     def build_dashboard(self, db: Session) -> dict[str, Any]:
-        tracked, rows, plan_map = self._fetch_rows(db)
+        tracked, rows, plan_map, latest_snapshot_ts = self._fetch_rows(db)
         tracked_count = len(tracked)
         snapshot_count = len(rows)
 
         empty_payload: dict[str, Any] = {
             "generated_at": datetime.utcnow().isoformat(),
+            "latest_snapshot_at": None,
             "tracked_count": 0,
             "snapshot_count": 0,
             "coverage": None,
@@ -744,6 +747,7 @@ class MarketDashboardService:
 
         return {
             "generated_at": datetime.utcnow().isoformat(),
+            "latest_snapshot_at": latest_snapshot_ts.isoformat() if latest_snapshot_ts else None,
             "tracked_count": tracked_count,
             "snapshot_count": snapshot_count,
             "coverage": {

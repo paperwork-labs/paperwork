@@ -66,6 +66,10 @@ def test_brokers_list(client):
     assert r.status_code == 200 and "schwab" in r.json().get("brokers", [])
 
 
+async def _stub_exchange_code_for_tokens(*args, **kwargs):
+    return {"access_token": "AT", "refresh_token": "RT"}
+
+
 def test_link_and_callback_flow(client, monkeypatch, db_session):
     # Ensure Schwab OAuth is considered configured for this test
     monkeypatch.setattr(settings, "SCHWAB_CLIENT_ID", "cid")
@@ -79,7 +83,7 @@ def test_link_and_callback_flow(client, monkeypatch, db_session):
     token, username = _login_tuple
     account_id = _create_schwab_account_for_user(username, db_session)
 
-    # Stub httpx.AsyncClient used by /schwab/link (probe GET) and /schwab/callback (token POST)
+    # Stub httpx.AsyncClient for /schwab/link (probe GET)
     class DummyResponse:
         def __init__(self, status_code, payload=None):
             self.status_code = status_code
@@ -101,6 +105,9 @@ def test_link_and_callback_flow(client, monkeypatch, db_session):
 
     import httpx
     monkeypatch.setattr(httpx, "AsyncClient", DummyClient)
+    # Stub token exchange so callback succeeds regardless of async/thread context
+    from backend.services.aggregator.schwab_connector import SchwabConnector
+    monkeypatch.setattr(SchwabConnector, "exchange_code_for_tokens", _stub_exchange_code_for_tokens)
 
     try:
         # Link -> get URL (probe runs inside)

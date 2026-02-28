@@ -44,7 +44,7 @@ async def schwab_login():
     if not settings.SCHWAB_CLIENT_ID or not settings.SCHWAB_REDIRECT_URI:
         raise HTTPException(status_code=400, detail="Schwab OAuth not configured")
     auth_url = (
-        "https://api.schwab.com/oauth/authorize?response_type=code"
+        "https://api.schwabapi.com/v1/oauth/authorize?response_type=code"
         f"&client_id={settings.SCHWAB_CLIENT_ID}"
         f"&redirect_uri={settings.SCHWAB_REDIRECT_URI}"
         "&scope=read,trade"
@@ -64,7 +64,7 @@ async def schwab_callback(code: str):
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             token = await client.post(
-                "https://api.schwab.com/oauth/token",
+                "https://api.schwabapi.com/v1/oauth/token",
                 data={
                     "grant_type": "authorization_code",
                     "code": code,

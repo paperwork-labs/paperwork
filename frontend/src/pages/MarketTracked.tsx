@@ -337,7 +337,7 @@ const MarketTracked: React.FC = () => {
       // Earnings hidden (provider coverage is inconsistent)
 
       // Level 3
-      { key: 'rs_mansfield_pct', header: 'RS (Mansfield)', accessor: (r) => r.rs_mansfield_pct, sortable: true, sortType: 'number', isNumeric: true, render: (v) => fmtPct(v) },
+      { key: 'rs_mansfield_pct', header: 'RS (Mansfield)', accessor: (r) => r.rs_mansfield_pct, sortable: true, sortType: 'number', isNumeric: true, render: (v) => typeof v === 'number' && Number.isFinite(v) ? (v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1)) : '—' },
 
       // Level 1 ranges
       { key: 'range_pos_20d', header: 'Range 20d%', accessor: (r) => r.range_pos_20d, sortable: true, sortType: 'number', isNumeric: true, render: (v) => fmtPct(v) },

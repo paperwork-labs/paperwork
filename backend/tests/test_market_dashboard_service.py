@@ -98,7 +98,7 @@ def test_fetch_rows_dedupes_to_latest_snapshot_per_symbol(monkeypatch):
     ]
 
     service = MarketDashboardService()
-    tracked, out, _plan_map = service._fetch_rows(_FakeDB(rows))
+    tracked, out, _plan_map, _latest_ts = service._fetch_rows(_FakeDB(rows))
 
     assert tracked == ["AAPL", "MSFT"]
     assert len(out) == 2
@@ -171,7 +171,7 @@ def test_build_dashboard_sorts_leaders_and_pullbacks_by_momentum_score(monkeypat
     ]
 
     service = MarketDashboardService()
-    monkeypatch.setattr(service, "_fetch_rows", lambda db: (["AAA", "BBB", "ZZZ"], rows, {}))
+    monkeypatch.setattr(service, "_fetch_rows", lambda db: (["AAA", "BBB", "ZZZ"], rows, {}, None))
 
     payload = service.build_dashboard(db=_FakeDB([]))
 
@@ -208,7 +208,7 @@ def test_build_dashboard_sector_etfs_use_configured_list_and_order(monkeypatch):
     ]
 
     service = MarketDashboardService()
-    monkeypatch.setattr(service, "_fetch_rows", lambda db: ([r.symbol for r in rows], rows, {}))
+    monkeypatch.setattr(service, "_fetch_rows", lambda db: ([r.symbol for r in rows], rows, {}, None))
 
     payload = service.build_dashboard(db=_FakeDB([]))
     table = payload["sector_etf_table"]
@@ -259,7 +259,7 @@ def test_build_dashboard_entering_stage_2a_is_not_truncated(monkeypatch):
     ]
 
     service = MarketDashboardService()
-    monkeypatch.setattr(service, "_fetch_rows", lambda db: ([r.symbol for r in rows], rows, {}))
+    monkeypatch.setattr(service, "_fetch_rows", lambda db: ([r.symbol for r in rows], rows, {}, None))
 
     payload = service.build_dashboard(db=_FakeDB([]))
     entering = payload["entering_stage_2a"]

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   Box,
   Text,
@@ -24,8 +24,10 @@ import {
   Progress,
   Badge,
   Icon,
+  Spinner,
+  Collapsible,
 } from '@chakra-ui/react';
-import { FiGrid, FiList, FiZap, FiSearch, FiPlus, FiCheck, FiChevronUp, FiChevronDown } from 'react-icons/fi';
+import { FiGrid, FiList, FiZap, FiSearch, FiPlus, FiCheck, FiChevronUp, FiChevronDown, FiChevronRight } from 'react-icons/fi';
 import { RiDraggable } from 'react-icons/ri';
 import {
   DndContext,
@@ -63,7 +65,7 @@ type CategoryRow = {
   total_value?: number;
 };
 
-type CatPosition = { id: number; symbol: string; market_value?: number };
+type CatPosition = { id: number; symbol: string; market_value?: number; shares?: number; weight_pct?: number; stage_label?: string | null; unrealized_pnl?: number; unrealized_pnl_pct?: number };
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
 
@@ -176,7 +178,9 @@ const CategoryCard: React.FC<{
   onMoveDown?: () => void;
   isFirst?: boolean;
   isLast?: boolean;
-}> = ({ cat, currency, onEdit, onAssign, onMoveUp, onMoveDown, isFirst, isLast }) => {
+  isDetailOpen?: boolean;
+  onToggleDetail?: () => void;
+}> = ({ cat, currency, onEdit, onAssign, onMoveUp, onMoveDown, isFirst, isLast, isDetailOpen, onToggleDetail }) => {
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
   const target = Number(cat.target_allocation_pct ?? 0);
@@ -242,7 +246,22 @@ const CategoryCard: React.FC<{
                 <FiChevronDown size={14} />
               </Box>
             </VStack>
-            <Text fontWeight="semibold">{cat.name}</Text>
+            <Box
+              cursor="pointer"
+              onClick={onToggleDetail}
+              display="flex"
+              alignItems="center"
+              gap={1}
+            >
+              <Box
+                transform={isDetailOpen ? 'rotate(90deg)' : undefined}
+                transition="transform 0.15s"
+                color="fg.muted"
+              >
+                <FiChevronRight size={14} />
+              </Box>
+              <Text fontWeight="semibold">{cat.name}</Text>
+            </Box>
           </HStack>
           {Math.abs(diff) > 5 && (
             <Badge colorPalette={diff > 0 ? 'red' : 'orange'} size="sm">
@@ -269,7 +288,53 @@ const CategoryCard: React.FC<{
           </Text>
         )}
 
-        {catPositions.length > 0 && (
+        {/* Click-through detail table */}
+        {isDetailOpen && (
+          <Box mt={3} borderTopWidth="1px" borderColor="border.subtle" pt={2}>
+            {positionsQuery.isLoading ? (
+              <HStack gap={2} py={2}><Spinner size="xs" /><Text fontSize="xs" color="fg.muted">Loading positions…</Text></HStack>
+            ) : catPositions.length === 0 ? (
+              <Text fontSize="xs" color="fg.muted">No positions in this category</Text>
+            ) : (
+              <Table.Root size="sm">
+                <Table.Header>
+                  <Table.Row>
+                    <Table.ColumnHeader>Symbol</Table.ColumnHeader>
+                    <Table.ColumnHeader textAlign="right">Shares</Table.ColumnHeader>
+                    <Table.ColumnHeader textAlign="right">Value</Table.ColumnHeader>
+                    <Table.ColumnHeader textAlign="right">P&L</Table.ColumnHeader>
+                    <Table.ColumnHeader textAlign="right">P&L %</Table.ColumnHeader>
+                    <Table.ColumnHeader textAlign="right">Weight</Table.ColumnHeader>
+                    <Table.ColumnHeader>Stage</Table.ColumnHeader>
+                  </Table.Row>
+                </Table.Header>
+                <Table.Body>
+                  {catPositions.map((p) => (
+                    <Table.Row key={p.id}>
+                      <Table.Cell><Text fontFamily="mono" fontSize="xs">{p.symbol}</Text></Table.Cell>
+                      <Table.Cell textAlign="right"><Text fontSize="xs">{p.shares != null ? p.shares.toFixed(2) : '—'}</Text></Table.Cell>
+                      <Table.Cell textAlign="right"><Text fontSize="xs">{formatMoney(p.market_value ?? 0, currency, { maximumFractionDigits: 0 })}</Text></Table.Cell>
+                      <Table.Cell textAlign="right">
+                        <Text fontSize="xs" color={(p.unrealized_pnl ?? 0) >= 0 ? 'fg.success' : 'fg.error'}>
+                          {formatMoney(p.unrealized_pnl ?? 0, currency, { maximumFractionDigits: 0 })}
+                        </Text>
+                      </Table.Cell>
+                      <Table.Cell textAlign="right">
+                        <Text fontSize="xs" color={(p.unrealized_pnl_pct ?? 0) >= 0 ? 'fg.success' : 'fg.error'}>
+                          {(p.unrealized_pnl_pct ?? 0).toFixed(1)}%
+                        </Text>
+                      </Table.Cell>
+                      <Table.Cell textAlign="right"><Text fontSize="xs">{p.weight_pct != null ? `${p.weight_pct.toFixed(1)}%` : '—'}</Text></Table.Cell>
+                      <Table.Cell><Badge size="sm" variant="subtle">{p.stage_label || '—'}</Badge></Table.Cell>
+                    </Table.Row>
+                  ))}
+                </Table.Body>
+              </Table.Root>
+            )}
+          </Box>
+        )}
+
+        {!isDetailOpen && catPositions.length > 0 && (
           <HStack mt={2} gap={1} flexWrap="wrap">
             {visiblePositions.map((p) => (
               <DraggableTicker key={p.id} positionId={p.id} symbol={p.symbol} categoryId={cat.id}>
@@ -609,11 +674,18 @@ const VIEW_LABELS: Record<string, string> = {
   rs_quartile: 'By RS Percentile',
 };
 
+const FIXED_TABS = [
+  { key: 'sector', label: 'Sector' },
+  { key: 'market_cap', label: 'Market Cap' },
+  { key: 'stage', label: 'Stage' },
+  { key: 'custom', label: 'Custom' },
+] as const;
+
 const PortfolioCategories: React.FC = () => {
   const { currency } = useUserPreferences();
   const queryClient = useQueryClient();
 
-  const [activeView, setActiveView] = useState<string>('custom');
+  const [activeView, setActiveView] = useState<string>('sector');
   const [view, setView] = useState<'card' | 'table'>('card');
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -625,6 +697,9 @@ const PortfolioCategories: React.FC = () => {
   const [assignSearch, setAssignSearch] = useState('');
   const [pendingAdds, setPendingAdds] = useState<number[]>([]);
   const [pendingRemoves, setPendingRemoves] = useState<number[]>([]);
+  const [detailCatId, setDetailCatId] = useState<number | null>(null);
+
+  const appliedPresetsRef = useRef(new Set<string>());
 
   const { data: viewsData } = useCategoryViews();
   const availableViews = viewsData ?? [{ key: 'custom', label: 'Personalized' }];
@@ -723,6 +798,19 @@ const PortfolioCategories: React.FC = () => {
       onError: (err) => { toast.error(`Failed to apply preset: ${handleApiError(err)}`); },
     },
   );
+
+  // Auto-apply preset when switching to a non-custom tab with no (or empty) categories
+  useEffect(() => {
+    if (activeView === 'custom') return;
+    if (isLoading) return;
+    if (appliedPresetsRef.current.has(activeView)) return;
+    const cats = (categoriesData?.categories ?? []) as CategoryRow[];
+    const totalAssigned = cats.reduce((s, c) => s + (c.positions_count ?? 0), 0);
+    if (cats.length === 0 || totalAssigned === 0) {
+      appliedPresetsRef.current.add(activeView);
+      applyPresetMutation.mutate(activeView);
+    }
+  }, [activeView, isLoading, categoriesData]);
 
   const moveMutation = useMutation(
     async (args: { positionId: number; fromCategoryId: number; toCategoryId: number }) => {
@@ -867,7 +955,7 @@ const PortfolioCategories: React.FC = () => {
           }
         />
 
-        {/* View switcher tabs */}
+        {/* Fixed category tabs */}
         <HStack
           gap={0}
           borderWidth="1px"
@@ -878,26 +966,26 @@ const PortfolioCategories: React.FC = () => {
           bg="bg.subtle"
           p={1}
         >
-          {availableViews.map((v) => (
+          {FIXED_TABS.map((tab) => (
             <Button
-              key={v.key}
+              key={tab.key}
               size="sm"
-              variant={activeView === v.key ? 'solid' : 'ghost'}
-              colorPalette={activeView === v.key ? 'brand' : undefined}
-              onClick={() => setActiveView(v.key)}
+              variant={activeView === tab.key ? 'solid' : 'ghost'}
+              colorPalette={activeView === tab.key ? 'brand' : undefined}
+              onClick={() => { setActiveView(tab.key); setDetailCatId(null); }}
               borderRadius="md"
-              fontWeight={activeView === v.key ? 'semibold' : 'normal'}
+              fontWeight={activeView === tab.key ? 'semibold' : 'normal'}
               minW="auto"
               px={4}
             >
-              {v.label}
+              {tab.label}
             </Button>
           ))}
         </HStack>
 
         {categories.length > 0 && <AllocationChart categories={categories} currency={currency} />}
 
-        {isLoading ? (
+        {isLoading || (activeView !== 'custom' && applyPresetMutation.isLoading) ? (
           <TableSkeleton rows={5} cols={4} />
         ) : categories.length === 0 ? (
           <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
@@ -909,7 +997,7 @@ const PortfolioCategories: React.FC = () => {
                     : `No categories in this view. Use Auto-Categorize to create "${VIEW_LABELS[activeView] ?? activeView}" categories.`}
                 </Text>
                 {activeView !== 'custom' && (
-                  <Button size="sm" variant="outline" onClick={() => setPresetOpen(true)}>
+                  <Button size="sm" variant="outline" onClick={() => applyPresetMutation.mutate(activeView)}>
                     <Icon mr={1}><FiZap /></Icon> Auto-Categorize
                   </Button>
                 )}
@@ -971,6 +1059,8 @@ const PortfolioCategories: React.FC = () => {
                     onMoveDown={() => moveCategory(idx, idx + 1)}
                     isFirst={idx === 0}
                     isLast={idx === categories.length - 1}
+                    isDetailOpen={detailCatId === cat.id}
+                    onToggleDetail={() => setDetailCatId(prev => prev === cat.id ? null : cat.id)}
                   />
                 </DroppableCategory>
               ))}

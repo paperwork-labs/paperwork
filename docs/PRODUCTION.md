@@ -51,13 +51,91 @@ Optional:
 - Treat missing migration secret as a hard deploy failure.
 
 ## Domains
+
 - Frontend (static): `https://axiomfolio.com`
 - API: `https://api.axiomfolio.com`
 
-## DNS + TLS
-- Point `axiomfolio.com` to the Render static service and `api.axiomfolio.com` to the Render web service.
-- Wait for Render to issue TLS certificates before enabling production traffic.
-- Ensure `CORS_ORIGINS` includes the new frontend domain.
+## DNS, TLS, and Cloudflare
+
+### Domain Registrar
+
+**Spaceship** is the domain registrar (owns `axiomfolio.com`). DNS is delegated to Cloudflare.
+
+### Cloudflare DNS
+
+Nameservers (configured in Spaceship):
+
+- `emely.ns.cloudflare.com`
+- `kayden.ns.cloudflare.com`
+
+DNS records (configured in Cloudflare dashboard):
+
+| Type | Name | Target | Proxy |
+|------|------|--------|-------|
+| CNAME | `api` | `axiomfolio-api.onrender.com` | Proxied (orange cloud) |
+| CNAME | `@` (root) | Render frontend `.onrender.com` hostname | Proxied |
+| CNAME | `www` | `axiomfolio.com` | Proxied |
+
+### Cloudflare SSL/TLS
+
+Mode: **Full (strict)**. Both Cloudflare and Render terminate TLS. Cloudflare encrypts the connection to Render's origin, and Render provides its own certificate. Any other mode causes redirect loops.
+
+### Render Custom Domains
+
+| Service | Custom Domain | Status |
+|---------|--------------|--------|
+| `axiomfolio-api` (web) | `api.axiomfolio.com` | Verified, certificate issued |
+| `axiomfolio-frontend` (static) | `axiomfolio.com` | Verified |
+
+Render subdomains remain enabled as fallbacks: `axiomfolio-api.onrender.com`.
+
+### Render Services
+
+| Service | Type | Plan | Purpose |
+|---------|------|------|---------|
+| `axiomfolio-api` | Web (Docker) | Standard (1 CPU / 2 GB) | FastAPI backend |
+| `axiomfolio-worker` | Worker (Docker) | Standard | Celery worker |
+| `axiomfolio-frontend` | Static | Free | React SPA |
+| `axiomfolio-db` | PostgreSQL | Basic 1 GB | Primary database |
+| `axiomfolio-redis` | Key-Value | Starter | Cache + Celery broker |
+
+### Cloudflare Tunnel (Local Dev OAuth)
+
+A Cloudflare Tunnel allows routing `api.axiomfolio.com` traffic to your local machine. This is required for testing Schwab OAuth locally because the callback URL (`https://api.axiomfolio.com/api/v1/aggregator/schwab/callback`) must match the Schwab Developer Portal registration exactly.
+
+**Tunnel credentials** are stored in `infra/env.dev`:
+
+- `CLOUDFLARED_TUNNEL_TOKEN`
+- `CLOUDFLARED_TUNNEL_ID`
+
+**Docker service**: `cloudflared` in `infra/compose.dev.yaml` (profile: `tunnel`).
+
+**Workflow for local OAuth testing**:
+
+1. In Cloudflare dashboard, temporarily disable the `api` CNAME record (or switch it to use the tunnel)
+2. Start the tunnel: `make tunnel-up`
+3. Verify: `make tunnel-logs` (should show "Connection registered")
+4. Test the OAuth flow from `http://localhost:5173/settings/connections`
+5. Stop the tunnel: `make tunnel-down`
+6. Re-enable the `api` CNAME to `axiomfolio-api.onrender.com`
+
+**Alternative**: Complete the initial Schwab OAuth link from the production instance at `https://axiomfolio.com`. Tokens are stored in the production database and can be copied to dev if needed (requires matching `ENCRYPTION_KEY`/`FERNET_KEY`).
+
+### Request Path (Production)
+
+```
+User -> Cloudflare CDN (TLS termination, DDoS, WAF)
+     -> Render load balancer (TLS re-encryption)
+     -> axiomfolio-api container (uvicorn :8000)
+```
+
+### CORS
+
+Ensure `CORS_ORIGINS` includes the frontend domain. Current production value:
+
+```
+CORS_ORIGINS=https://axiomfolio.com,https://staging.axiomfolio.com
+```
 
 ## Database migration (rename + preserve data)
 If you are renaming the database (e.g., `old_db` → `axiomfolio`), migrate data before cutover:
@@ -74,11 +152,21 @@ Use scheduled jobs to enqueue tasks (task status names shown in parentheses):
 - `backend.tasks.market_data_tasks.monitor_coverage_health` (`admin_coverage_refresh`)
 - `backend.tasks.market_data_tasks.enforce_price_data_retention` (`admin_retention_enforce`)
 
-Render cron defaults (UTC):
-- 02:15: IBKR daily Flex sync
-- 03:00: admin_coverage_backfill (daily backfill chain)
-- Hourly: admin_coverage_refresh
-- 04:00: admin_retention_enforce
+Render cron defaults (UTC, from `job_catalog.py`):
+- `*/5 * * * *` — stale-sync-recovery (auto-reset stuck syncs)
+- `0 1 * * *` — admin_coverage_backfill (nightly pipeline: bars, indicators, snapshots)
+- `20 1 * * *` — admin_snapshots_history_record (daily snapshot archive)
+- `30 1 * * *` — backfill_position_metadata (enrich positions from snapshots)
+- `0 2 * * *` — index constituents refresh (S&P 500, NASDAQ-100, Dow 30)
+- `15 2 * * *` — IBKR daily FlexQuery sync
+- `30 2 * * *` — Schwab daily sync + tracked symbols refresh
+- `45 2 * * *` — data quality audit
+- `0 * * * *` — admin_coverage_refresh (hourly health check)
+- `10 4 * * *` — intraday 5m bar backfill (D-1)
+- `30 4 * * *` — admin_retention_enforce (purge old 5m bars)
+- `45 4 * * *` — fill missing snapshot fundamentals
+- `0 4 * * 0` — refresh stale fundamentals (weekly, Sunday)
+- `0 */6 * * *` — recover stale job runs
 
 ### Execution flow (production)
 ![Production execution flow](assets/production_execution_flow.png)

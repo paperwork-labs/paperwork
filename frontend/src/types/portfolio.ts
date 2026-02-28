@@ -35,6 +35,8 @@ export interface EnrichedPosition extends Position {
   atr_14?: number | null;
   sma_50?: number | null;
   sma_200?: number | null;
+  market_cap?: number | null;
+  market_cap_label?: string | null;
 }
 
 /** Option contract position from /portfolio/options/unified/portfolio. */

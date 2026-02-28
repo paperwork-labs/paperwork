@@ -44,6 +44,20 @@ class AccountCredentialsService:
         return payload
 
     @staticmethod
+    def update_encrypted(account_id: int, updates: Dict[str, Any], db: Session) -> None:
+        """Merge *updates* into an existing AccountCredentials payload and persist."""
+        cred = (
+            db.query(AccountCredentials)
+            .filter(AccountCredentials.account_id == account_id)
+            .first()
+        )
+        if not cred or not cred.encrypted_credentials:
+            raise CredentialsNotFoundError(f"No credentials to update for account_id={account_id}")
+        payload = credential_vault.decrypt_dict(cred.encrypted_credentials)
+        payload.update(updates)
+        cred.encrypted_credentials = credential_vault.encrypt_dict(payload)
+
+    @staticmethod
     def get_ibkr_credentials(account_id: int, db: Session) -> Dict[str, str]:
         """
         Get IBKR FlexQuery credentials (flex_token, query_id) for the account.

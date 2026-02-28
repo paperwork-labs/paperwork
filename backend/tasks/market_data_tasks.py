@@ -304,6 +304,129 @@ def fill_missing_snapshot_fundamentals(limit_per_run: int = 500) -> dict:
     finally:
         session.close()
 
+# ============================= Stale Fundamentals Refresh =============================
+
+
+@shared_task(name="backend.tasks.market_data_tasks.refresh_stale_fundamentals")
+@task_run("market_snapshots_fundamentals_refresh")
+def refresh_stale_fundamentals(stale_days: int = 7, limit_per_run: int = 500) -> dict:
+    """Re-fetch fundamentals for snapshots whose analysis_timestamp is older than *stale_days*.
+
+    Unlike fill_missing_snapshot_fundamentals (which only fills NULLs), this task
+    refreshes values that exist but are outdated so EPS/PE data stays current.
+    """
+    _set_task_status("market_snapshots_fundamentals_refresh", "running")
+    session = SessionLocal()
+    try:
+        from backend.models.market_data import MarketSnapshot as _MS
+
+        cutoff = datetime.utcnow() - timedelta(days=stale_days)
+        rows = (
+            session.query(_MS)
+            .filter(
+                _MS.analysis_type == "technical_snapshot",
+                _MS.analysis_timestamp < cutoff,
+            )
+            .order_by(_MS.analysis_timestamp.asc())
+            .limit(limit_per_run)
+            .all()
+        )
+        updated = 0
+        for r in rows:
+            sym = (r.symbol or "").upper()
+            if not sym:
+                continue
+            try:
+                funda = market_data_service.providers.get_fundamentals_info(sym)
+            except Exception:
+                continue
+            if not funda:
+                continue
+            changed = False
+            for k in FUNDAMENTAL_FIELDS:
+                new_val = funda.get(k)
+                if new_val is not None:
+                    if getattr(r, k, None) != new_val and hasattr(r, k):
+                        setattr(r, k, new_val)
+                        changed = True
+            if changed:
+                r.analysis_timestamp = datetime.utcnow()
+                updated += 1
+        if updated:
+            session.commit()
+        res = {"status": "ok", "inspected": len(rows), "updated": updated}
+        _set_task_status("market_snapshots_fundamentals_refresh", "ok", res)
+        return res
+    finally:
+        session.close()
+
+
+# ============================= Position Enrichment =============================
+
+
+@shared_task(name="backend.tasks.market_data_tasks.backfill_position_metadata")
+@task_run("backfill_position_metadata")
+def backfill_position_metadata() -> dict:
+    """Backfill Position.sector and Position.market_cap from MarketSnapshot for NULL values."""
+    _set_task_status("backfill_position_metadata", "running")
+    session = SessionLocal()
+    try:
+        from backend.models.position import Position, PositionStatus
+        from backend.models.market_data import MarketSnapshot as _MS
+
+        positions = (
+            session.query(Position)
+            .filter(
+                Position.status == PositionStatus.OPEN,
+                (Position.sector.is_(None)) | (Position.market_cap.is_(None)),
+            )
+            .all()
+        )
+        if not positions:
+            res = {"status": "ok", "updated": 0, "message": "no positions need backfill"}
+            _set_task_status("backfill_position_metadata", "ok", res)
+            return res
+
+        symbols = list({p.symbol.upper() for p in positions if p.symbol})
+        snapshots = (
+            session.query(_MS)
+            .filter(
+                _MS.analysis_type == "technical_snapshot",
+                _MS.symbol.in_(symbols),
+            )
+            .all()
+        )
+        snap_map: dict[str, _MS] = {}
+        for s in snapshots:
+            sym = (s.symbol or "").upper()
+            if sym and sym not in snap_map:
+                snap_map[sym] = s
+
+        updated = 0
+        for p in positions:
+            sym = (p.symbol or "").upper()
+            snap = snap_map.get(sym)
+            if not snap:
+                continue
+            changed = False
+            if p.sector is None and getattr(snap, "sector", None):
+                p.sector = snap.sector
+                changed = True
+            if p.market_cap is None and getattr(snap, "market_cap", None):
+                p.market_cap = snap.market_cap
+                changed = True
+            if changed:
+                updated += 1
+
+        if updated:
+            session.commit()
+        res = {"status": "ok", "inspected": len(positions), "updated": updated}
+        _set_task_status("backfill_position_metadata", "ok", res)
+        return res
+    finally:
+        session.close()
+
+
 # ============================= Task Status Helper =============================
 
 

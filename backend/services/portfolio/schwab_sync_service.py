@@ -54,8 +54,27 @@ class SchwabSyncService:
             )
             if not ok:
                 logger.warning("Schwab sync: connect failed for account %s", account.account_number)
+                return
+
+            def _persist_refreshed_tokens(new_access: str, new_refresh: str) -> None:
+                """Callback: persist refreshed OAuth tokens back to AccountCredentials."""
+                try:
+                    account_credentials_service.update_encrypted(
+                        account.id,
+                        {"access_token": new_access, "refresh_token": new_refresh},
+                        session,
+                    )
+                    session.flush()
+                    logger.info("Schwab sync: persisted refreshed tokens for account %s", account.account_number)
+                except Exception as persist_exc:
+                    logger.error("Schwab sync: failed to persist refreshed tokens: %s", persist_exc)
+
+            self._client.set_token_refresh_callback(_persist_refreshed_tokens)
         except CredentialsNotFoundError:
-            await self._client.connect()
+            raise ConnectionError(
+                "No Schwab credentials found. Please link your Schwab account "
+                "via the Connections page (OAuth flow) before syncing."
+            )
         except Exception as exc:
             err_str = str(exc).lower()
             if "encrypt" in err_str or "token" in err_str or "fernet" in err_str:
@@ -91,7 +110,50 @@ class SchwabSyncService:
         results.update(bal_result)
 
         session.flush()
+
+        self._enrich_positions_from_snapshots(account, session)
+
         return results
+
+    @staticmethod
+    def _enrich_positions_from_snapshots(account: BrokerAccount, session: Session) -> None:
+        """Backfill sector/market_cap from MarketSnapshot for any open positions with NULLs."""
+        from backend.models.market_data import MarketSnapshot
+
+        positions = (
+            session.query(Position)
+            .filter(
+                Position.account_id == account.id,
+                Position.status == PositionStatus.OPEN,
+                (Position.sector.is_(None)) | (Position.market_cap.is_(None)),
+            )
+            .all()
+        )
+        if not positions:
+            return
+        symbols = list({p.symbol.upper() for p in positions if p.symbol})
+        snaps = (
+            session.query(MarketSnapshot)
+            .filter(MarketSnapshot.analysis_type == "technical_snapshot", MarketSnapshot.symbol.in_(symbols))
+            .all()
+        )
+        snap_map = {}
+        for s in snaps:
+            sym = (s.symbol or "").upper()
+            if sym and sym not in snap_map:
+                snap_map[sym] = s
+        enriched = 0
+        for p in positions:
+            snap = snap_map.get((p.symbol or "").upper())
+            if not snap:
+                continue
+            if p.sector is None and getattr(snap, "sector", None):
+                p.sector = snap.sector
+                enriched += 1
+            if p.market_cap is None and getattr(snap, "market_cap", None):
+                p.market_cap = snap.market_cap
+        if enriched:
+            logger.info("Schwab sync: enriched %d positions with sector/market_cap from MarketSnapshot", enriched)
 
     async def _sync_positions(self, account: BrokerAccount, session: Session) -> Dict:
         positions = await self._client.get_positions(account_number=account.account_number)

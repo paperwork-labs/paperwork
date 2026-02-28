@@ -21,6 +21,7 @@ vi.mock('../../services/api', () => {
           { close: 100 }, { close: 101 }, { close: 102 }, { close: 103 }, { close: 104 },
         ],
       }),
+      getVolatilityDashboard: vi.fn().mockResolvedValue({}),
       getDashboard: vi.fn().mockResolvedValue({
         tracked_count: 120,
         snapshot_count: 118,

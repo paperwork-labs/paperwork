@@ -444,7 +444,22 @@ class MarketDataService:
 
     @staticmethod
     def _needs_fundamentals(snapshot: Dict[str, Any]) -> bool:
-        return any(snapshot.get(f) is None for f in FUNDAMENTAL_FIELDS)
+        if any(snapshot.get(f) is None for f in FUNDAMENTAL_FIELDS):
+            return True
+        ts = snapshot.get("analysis_timestamp")
+        if ts is not None:
+            if isinstance(ts, str):
+                try:
+                    ts = datetime.fromisoformat(ts)
+                except Exception:
+                    return False
+            try:
+                age = datetime.utcnow() - ts.replace(tzinfo=None)
+                if age > timedelta(days=7):
+                    return True
+            except Exception:
+                pass
+        return False
 
 
     # ---------------------- Provider selection ----------------------
@@ -634,14 +649,12 @@ class MarketDataService:
         Returns keys: name, sector, industry, sub_industry, market_cap when available.
         """
         info: Dict[str, Any] = {}
-        def to_pct(value: Any) -> Optional[float]:
+        def _decimal_to_pct(value: Any) -> Optional[float]:
+            """Convert a decimal ratio to percentage (0.15 -> 15.0). For growth metrics from FMP/Yahoo."""
             try:
                 if value is None:
                     return None
-                v = float(value)
-                if -1.0 <= v <= 1.0:
-                    return v * 100.0
-                return v
+                return float(value) * 100.0
             except Exception:
                 return None
 
@@ -699,8 +712,8 @@ class MarketDataService:
                         m = metrics[0]
                         set_if_missing("pe_ttm", m.get("peRatioTTM") or m.get("peRatio"))
                         set_if_missing("peg_ttm", m.get("pegRatioTTM") or m.get("pegRatio"))
-                        set_if_missing("dividend_yield", to_pct(m.get("dividendYieldTTM") or m.get("dividendYield")))
-                        set_if_missing("roe", to_pct(m.get("roeTTM") or m.get("roe")))
+                        set_if_missing("dividend_yield", _decimal_to_pct(m.get("dividendYieldTTM") or m.get("dividendYield")))
+                        set_if_missing("roe", _decimal_to_pct(m.get("roeTTM") or m.get("roe")))
                         set_if_missing("beta", m.get("beta"))
                 except Exception as exc:
                     logger.warning("Failed to fetch FMP key metrics for %s: %s", symbol, exc)
@@ -721,8 +734,8 @@ class MarketDataService:
                         r = ratios[0]
                         set_if_missing("pe_ttm", r.get("priceEarningsRatioTTM") or r.get("priceEarningsRatio"))
                         set_if_missing("peg_ttm", r.get("pegRatioTTM") or r.get("pegRatio"))
-                        set_if_missing("roe", to_pct(r.get("returnOnEquityTTM") or r.get("returnOnEquity")))
-                        set_if_missing("dividend_yield", to_pct(r.get("dividendYieldTTM") or r.get("dividendYield")))
+                        set_if_missing("roe", _decimal_to_pct(r.get("returnOnEquityTTM") or r.get("returnOnEquity")))
+                        set_if_missing("dividend_yield", _decimal_to_pct(r.get("dividendYieldTTM") or r.get("dividendYield")))
                 except Exception as exc:
                     logger.warning("Failed to fetch FMP ratios for %s: %s", symbol, exc)
                 try:
@@ -733,10 +746,10 @@ class MarketDataService:
                     )
                     if growth and isinstance(growth[0], dict):
                         g = growth[0]
-                        set_if_missing("eps_growth_yoy", to_pct(g.get("epsGrowth") or g.get("epsgrowth")))
-                        set_if_missing("eps_growth_qoq", to_pct(g.get("epsGrowthQuarterly") or g.get("epsGrowthQoQ")))
-                        set_if_missing("revenue_growth_yoy", to_pct(g.get("revenueGrowth") or g.get("revenuegrowth")))
-                        set_if_missing("revenue_growth_qoq", to_pct(g.get("revenueGrowthQuarterly") or g.get("revenueGrowthQoQ")))
+                        set_if_missing("eps_growth_yoy", _decimal_to_pct(g.get("epsGrowth") or g.get("epsgrowth")))
+                        set_if_missing("eps_growth_qoq", _decimal_to_pct(g.get("epsGrowthQuarterly") or g.get("epsGrowthQoQ")))
+                        set_if_missing("revenue_growth_yoy", _decimal_to_pct(g.get("revenueGrowth") or g.get("revenuegrowth")))
+                        set_if_missing("revenue_growth_qoq", _decimal_to_pct(g.get("revenueGrowthQuarterly") or g.get("revenueGrowthQoQ")))
                 except Exception as exc:
                     logger.warning("Failed to fetch or process financial growth from FMP for %s: %s", symbol, exc)
         except Exception as exc:
@@ -766,12 +779,12 @@ class MarketDataService:
                     set_if_missing("beta", y.get("beta"))
                     set_if_missing("pe_ttm", y.get("trailingPE") or y.get("forwardPE"))
                     set_if_missing("peg_ttm", y.get("pegRatio"))
-                    set_if_missing("roe", to_pct(y.get("returnOnEquity")))
-                    set_if_missing("dividend_yield", to_pct(y.get("dividendYield")))
-                    set_if_missing("eps_growth_yoy", to_pct(y.get("earningsGrowth")))
-                    set_if_missing("eps_growth_qoq", to_pct(y.get("earningsQuarterlyGrowth")))
-                    set_if_missing("revenue_growth_yoy", to_pct(y.get("revenueGrowth")))
-                    set_if_missing("revenue_growth_qoq", to_pct(y.get("revenueQuarterlyGrowth")))
+                    set_if_missing("roe", _decimal_to_pct(y.get("returnOnEquity")))
+                    set_if_missing("dividend_yield", _decimal_to_pct(y.get("dividendYield")))
+                    set_if_missing("eps_growth_yoy", _decimal_to_pct(y.get("earningsGrowth")))
+                    set_if_missing("eps_growth_qoq", _decimal_to_pct(y.get("earningsQuarterlyGrowth")))
+                    set_if_missing("revenue_growth_yoy", _decimal_to_pct(y.get("revenueGrowth")))
+                    set_if_missing("revenue_growth_qoq", _decimal_to_pct(y.get("revenueQuarterlyGrowth")))
                     set_if_missing("analyst_rating", y.get("recommendationKey"))
                     earnings = y.get("earningsDate")
                     if isinstance(earnings, (list, tuple)) and earnings:
@@ -1390,7 +1403,7 @@ class MarketDataService:
         except Exception:
             pass
         # Fundamentals enrichment (reuse from latest snapshot if present; otherwise fetch once)
-        # Prefer fundamentals from the latest stored snapshot
+        # Prefer fundamentals from the latest stored snapshot, but skip if stale (>7 days)
         try:
             prev_row = (
                 db.query(MarketSnapshot)
@@ -1402,10 +1415,19 @@ class MarketDataService:
                 .first()
             )
             if prev_row:
-                for key in FUNDAMENTAL_FIELDS:
-                    val = getattr(prev_row, key, None)
-                    if val is not None and snapshot.get(key) is None:
-                        snapshot[key] = val
+                prev_ts = getattr(prev_row, "analysis_timestamp", None)
+                prev_stale = False
+                if prev_ts is not None:
+                    try:
+                        age = datetime.utcnow() - prev_ts.replace(tzinfo=None)
+                        prev_stale = age > timedelta(days=7)
+                    except Exception:
+                        pass
+                if not prev_stale:
+                    for key in FUNDAMENTAL_FIELDS:
+                        val = getattr(prev_row, key, None)
+                        if val is not None and snapshot.get(key) is None:
+                            snapshot[key] = val
         except Exception:
             pass
 

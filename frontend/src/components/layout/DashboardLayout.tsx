@@ -40,6 +40,7 @@ import {
   FiBell,
   FiLayers,
   FiShield,
+  FiBook,
 } from 'react-icons/fi';
 import { FaBrain } from 'react-icons/fa';
 import { portfolioApi } from '../../services/api';
@@ -66,6 +67,7 @@ const marketItems = [
   { label: 'Dashboard', icon: FiHome, path: '/' },
   { label: 'Tracked', icon: FiList, path: '/market/tracked' },
   { label: 'Coverage', icon: FiActivity, path: '/market/coverage' },
+  { label: 'Education', icon: FiBook, path: '/market/education' },
 ];
 
 const portfolioItems = [

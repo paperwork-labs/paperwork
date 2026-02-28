@@ -3,7 +3,8 @@
 	backend-shell frontend-shell task-run \
 	migrate-create migrate-up migrate-down migrate-stamp-head \
 	frontend-install frontend-lint frontend-typecheck frontend-test frontend-check \
-	ib-up ib-down ib-logs ib-verify
+	ib-up ib-down ib-logs ib-verify \
+	tunnel-up tunnel-down tunnel-logs
 
 DOCKER ?= docker
 PROJECT ?= axiomfolio
@@ -15,6 +16,7 @@ ENV_TEST ?= infra/env.test
 COMPOSE_DEV = $(DOCKER) compose --project-name $(PROJECT) --env-file $(ENV_DEV) -f infra/compose.dev.yaml
 COMPOSE_DEV_UI = $(DOCKER) compose --project-name $(PROJECT) --env-file $(ENV_DEV) -f infra/compose.dev.yaml --profile ui
 COMPOSE_DEV_IBKR = $(DOCKER) compose --project-name $(PROJECT) --env-file $(ENV_DEV) -f infra/compose.dev.yaml --profile ibkr
+COMPOSE_DEV_TUNNEL = $(DOCKER) compose --project-name $(PROJECT) --env-file $(ENV_DEV) -f infra/compose.dev.yaml --profile tunnel
 COMPOSE_TEST = $(DOCKER) compose --project-name $(PROJECT_TEST) --env-file $(ENV_TEST) -f infra/compose.test.yaml
 
 up:
@@ -131,6 +133,16 @@ ib-down:
 
 ib-logs:
 	$(COMPOSE_DEV_IBKR) logs --tail=200 -f ib-gateway
+
+# Cloudflare Tunnel (routes api.axiomfolio.com to local backend for OAuth testing)
+tunnel-up:
+	$(COMPOSE_DEV_TUNNEL) up -d cloudflared
+
+tunnel-down:
+	$(COMPOSE_DEV_TUNNEL) stop cloudflared
+
+tunnel-logs:
+	$(COMPOSE_DEV_TUNNEL) logs --tail=200 -f cloudflared
 
 ib-verify: ## Verify IB Gateway connectivity end-to-end
 	@echo "Starting IB Gateway..."

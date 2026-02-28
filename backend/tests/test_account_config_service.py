@@ -14,7 +14,7 @@ import pytest
 from unittest.mock import Mock, patch
 
 from backend.models import User, BrokerAccount
-from backend.models.broker_account import BrokerType, AccountType, SyncStatus
+from backend.models.broker_account import BrokerType, AccountType, SyncStatus, AccountCredentials
 from backend.services.portfolio.account_config_service import AccountConfigService
 
 
@@ -96,9 +96,11 @@ class TestAccountConfigService:
 
     def test_ensure_user_exists(self, account_service, db_session):
         """Test user creation when none exists."""
-        # Verify no users initially
-        users = db_session.query(User).all()
-        assert len(users) == 0
+        # Ensure clean state (isolate from other tests; respect FK order)
+        db_session.query(AccountCredentials).delete()
+        db_session.query(BrokerAccount).delete()
+        db_session.query(User).delete()
+        db_session.flush()
 
         # Create default user
         user = account_service.ensure_user_exists(db_session)
@@ -118,6 +120,10 @@ class TestAccountConfigService:
 
     def test_ensure_user_exists_idempotent(self, account_service, db_session):
         """Test that ensure_user_exists is idempotent."""
+        db_session.query(AccountCredentials).delete()
+        db_session.query(BrokerAccount).delete()
+        db_session.query(User).delete()
+        db_session.flush()
         # Create user first time
         user1 = account_service.ensure_user_exists(db_session)
         user1_id = user1.id
@@ -139,6 +145,10 @@ class TestAccountConfigService:
         self, mock_settings_patch, account_service, db_session
     ):
         """Test complete broker account seeding process."""
+        db_session.query(AccountCredentials).delete()
+        db_session.query(BrokerAccount).delete()
+        db_session.query(User).delete()
+        db_session.flush()
         # Setup mock settings
         mock_settings_patch.IBKR_ACCOUNTS = (
             "IBKR_TEST_ACCOUNT_A:TAXABLE,IBKR_TEST_ACCOUNT_B:IRA"
@@ -197,6 +207,10 @@ class TestAccountConfigService:
 
     def test_seed_accounts_idempotent(self, account_service, db_session, mock_settings):
         """Test that seeding is idempotent (won't create duplicates)."""
+        db_session.query(AccountCredentials).delete()
+        db_session.query(BrokerAccount).delete()
+        db_session.query(User).delete()
+        db_session.flush()
         with patch(
             "backend.services.portfolio.account_config_service.settings", mock_settings
         ):

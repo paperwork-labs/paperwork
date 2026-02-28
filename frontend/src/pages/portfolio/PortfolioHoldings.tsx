@@ -192,6 +192,16 @@ const PortfolioHoldings: React.FC = () => {
         width: '110px',
       },
       {
+        key: 'unrealized_pnl_pct',
+        header: 'P&L %',
+        accessor: (p) => Number(p.unrealized_pnl_pct ?? 0),
+        sortable: true,
+        sortType: 'number',
+        isNumeric: true,
+        render: (v) => <PnlText value={Number(v)} format="percent" fontSize="sm" />,
+        width: '90px',
+      },
+      {
         key: 'weight_pct',
         header: 'Weight %',
         accessor: (p) => (totalValue ? (Number(p.market_value ?? 0) / totalValue) * 100 : 0),
@@ -291,6 +301,16 @@ const PortfolioHoldings: React.FC = () => {
         sortType: 'string',
         render: (v) => <Text fontSize="xs" color="fg.muted">{String(v || '—')}</Text>,
         width: '100px',
+      },
+      {
+        key: 'market_cap_label',
+        header: 'Market Cap',
+        accessor: (p) => (p as any).market_cap_label ?? '—',
+        sortable: true,
+        sortType: 'string',
+        render: (v) => <Text fontSize="xs" color="fg.muted">{String(v || '—')}</Text>,
+        width: '100px',
+        hidden: true,
       },
       {
         key: 'industry',

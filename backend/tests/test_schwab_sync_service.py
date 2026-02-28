@@ -8,6 +8,12 @@ class DummySchwabClient:
     async def connect(self):
         return True
 
+    async def connect_with_credentials(self, access_token: str, refresh_token: str, **kwargs):
+        return True
+
+    def set_token_refresh_callback(self, callback):
+        pass
+
     async def get_positions(self, account_number: str):
         return [
             {"symbol": "AAPL", "quantity": 10, "average_cost": 150.0, "total_cost_basis": 1500.0},
@@ -61,7 +67,14 @@ def _create_account(session) -> BrokerAccount:
     return acct
 
 
-def test_schwab_sync_positions_only(db_session):
+def test_schwab_sync_positions_only(db_session, monkeypatch):
+    from backend.services.portfolio import schwab_sync_service
+
+    def _fake_get_decrypted(account_id, session):
+        return {"access_token": "fake_at", "refresh_token": "fake_rt"}
+
+    monkeypatch.setattr(schwab_sync_service.account_credentials_service, "get_decrypted", _fake_get_decrypted)
+
     account = _create_account(db_session)
     service = SchwabSyncService(client=DummySchwabClient())
     result = asyncio.get_event_loop().run_until_complete(

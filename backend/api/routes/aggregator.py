@@ -24,7 +24,6 @@ from backend.config import settings
 from backend.services.security.pkce_state import (
     generate_code_verifier,
     compute_code_challenge,
-    save_verifier_for_state,
     pop_verifier_for_state,
 )
 from backend.services.clients.tastytrade_client import TastyTradeClient, TASTYTRADE_AVAILABLE
@@ -102,19 +101,16 @@ async def get_aggregator_config() -> AggregatorConfigResponse:
             authorize = None
         bases = [
             getattr(settings, "SCHWAB_AUTH_BASE", None) or connector.AUTH_BASE,
-            "https://api.schwab.com/authorize",
-            "https://api.schwab.com/oauth2/authorize",
-            "https://api.schwab.com/oauth/authorize",
+            "https://api.schwabapi.com/v1/oauth/authorize",
         ]
         status_map = {}
         working = None
         async with httpx.AsyncClient(follow_redirects=False, timeout=8) as client:
             for b in bases:
                 try:
-                    # Use GET without following redirects; 200/302/303 considered acceptable
                     r = await client.get(b, params={"response_type": "code"}, timeout=8)
                     status_map[b] = r.status_code
-                    if r.status_code in (200, 301, 302, 303, 307, 308):
+                    if r.status_code in (200, 301, 302, 303, 307, 308, 400, 401):
                         if not working:
                             working = b
                 except Exception as e:
@@ -134,9 +130,7 @@ async def probe_schwab_authorize() -> SchwabProbeResult:
     connector = SchwabConnector()
     bases = [
         getattr(settings, "SCHWAB_AUTH_BASE", None) or connector.AUTH_BASE,
-        "https://api.schwab.com/authorize",
-        "https://api.schwab.com/oauth2/authorize",
-        "https://api.schwab.com/oauth/authorize",
+        "https://api.schwabapi.com/v1/oauth/authorize",
     ]
     status_map = {}
     working = None
@@ -145,7 +139,7 @@ async def probe_schwab_authorize() -> SchwabProbeResult:
             try:
                 r = await client.get(b, params={"response_type": "code"}, timeout=8)
                 status_map[b] = r.status_code
-                if r.status_code in (200, 301, 302, 303, 307, 308):
+                if r.status_code in (200, 301, 302, 303, 307, 308, 400, 401):
                     if not working:
                         working = b
             except Exception as e:
@@ -194,22 +188,19 @@ async def schwab_link(
             status_code=400,
             detail="Schwab OAuth not configured. Set SCHWAB_CLIENT_ID and SCHWAB_REDIRECT_URI.",
         )
-    state = oauth_state_service.issue_state(user_id=user.id, account_id=req.account_id)
     connector = SchwabConnector()
     try:
         # Pick a working authorize base (avoid 404s)
         bases = [
             getattr(settings, "SCHWAB_AUTH_BASE", None) or connector.AUTH_BASE,
-            "https://api.schwab.com/authorize",
-            "https://api.schwab.com/oauth2/authorize",
-            "https://api.schwab.com/oauth/authorize",
+            "https://api.schwabapi.com/v1/oauth/authorize",
         ]
         working = None
         async with httpx.AsyncClient(follow_redirects=False, timeout=8) as client:
             for b in bases:
                 try:
                     r = await client.get(b, params={"response_type": "code"})
-                    if r.status_code in (200, 301, 302, 303, 307, 308):
+                    if r.status_code in (200, 301, 302, 303, 307, 308, 400, 401):
                         working = b
                         break
                 except Exception:
@@ -219,12 +210,13 @@ async def schwab_link(
                 status_code=502,
                 detail="No working Schwab authorize endpoint detected. Check SCHWAB_AUTH_BASE and client_id suffix.",
             )
-        # Override base for this link
         connector.auth_base = working
-        # PKCE: create verifier and derived challenge; persist verifier keyed by state
+        # PKCE: generate verifier + challenge, embed verifier in state JWT
         verifier = generate_code_verifier()
         challenge = compute_code_challenge(verifier)
-        save_verifier_for_state(state, verifier, ttl_seconds=600)
+        state = oauth_state_service.issue_state(
+            user_id=user.id, account_id=req.account_id, code_verifier=verifier
+        )
         # Build URL
         base_url = connector.get_authorization_url(state=state, trading=bool(req.trading))
         # Append PKCE params
@@ -662,10 +654,10 @@ async def schwab_callback(
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
 
-    # Exchange code for tokens
+    # Exchange code for tokens (verifier is embedded in the state JWT)
     connector = SchwabConnector()
     try:
-        code_verifier = pop_verifier_for_state(state)
+        code_verifier = data.get("cv") or pop_verifier_for_state(state)
         tokens = await connector.exchange_code_for_tokens(code, code_verifier=code_verifier)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Token exchange failed: {e}")

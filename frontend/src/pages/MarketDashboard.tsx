@@ -30,6 +30,8 @@ import {
   ScatterChart, Scatter, ZAxis, CartesianGrid, ReferenceLine, ReferenceArea, Legend,
   ComposedChart, Area,
 } from 'recharts';
+import BubbleChart from '../components/charts/BubbleChart';
+import api from '../services/api';
 
 type SetupItem = {
   symbol: string;
@@ -82,6 +84,7 @@ type GapLeader = { symbol: string; gaps_up: number; gaps_down: number; total_gap
 type DashboardPayload = {
   tracked_count?: number;
   snapshot_count?: number;
+  latest_snapshot_at?: string;
   coverage?: { status?: string; daily_pct?: number };
   regime?: {
     stage_counts_normalized?: Record<string, number>;
@@ -526,6 +529,124 @@ const RRGChart: React.FC<{ sectors: RRGSector[] }> = ({ sectors }) => {
   );
 };
 
+/* ===== Volatility Regime ===== */
+
+type VolData = {
+  vix: number | null;
+  vvix: number | null;
+  vix3m: number | null;
+  term_structure_ratio: number | null;
+  vol_of_vol_ratio: number | null;
+  regime: string;
+  signal: string;
+};
+
+const REGIME_COLORS: Record<string, { palette: string; label: string }> = {
+  calm:     { palette: 'green',  label: 'Calm' },
+  elevated: { palette: 'yellow', label: 'Elevated' },
+  fear:     { palette: 'orange', label: 'Fear' },
+  extreme:  { palette: 'red',    label: 'Extreme' },
+  unknown:  { palette: 'gray',   label: 'Unknown' },
+};
+
+const GaugeBar: React.FC<{
+  label: string;
+  value: number | null;
+  min: number;
+  max: number;
+  zones: { end: number; color: string; label: string }[];
+}> = ({ label, value, min, max, zones }) => {
+  const range = max - min;
+  const pct = value != null ? Math.max(0, Math.min(100, ((value - min) / range) * 100)) : null;
+
+  return (
+    <Box>
+      <HStack justify="space-between" mb="2px">
+        <Text fontSize="xs" fontWeight="medium">{label}</Text>
+        <Text fontSize="xs" color="fg.muted">{value != null ? value.toFixed(2) : '—'}</Text>
+      </HStack>
+      <Box position="relative" h="14px" borderRadius="md" overflow="hidden" display="flex">
+        {zones.map((zone, i) => {
+          const start = i === 0 ? min : zones[i - 1].end;
+          const width = ((zone.end - start) / range) * 100;
+          return (
+            <Box
+              key={i}
+              h="100%"
+              w={`${width}%`}
+              bg={zone.color}
+              opacity={0.25}
+              position="relative"
+            />
+          );
+        })}
+        {pct != null && (
+          <Box
+            position="absolute"
+            left={`${pct}%`}
+            top="0"
+            bottom="0"
+            w="3px"
+            bg="fg"
+            borderRadius="sm"
+            transform="translateX(-50%)"
+            zIndex={1}
+          />
+        )}
+      </Box>
+      <HStack justify="space-between" mt="1px">
+        {zones.map((zone, i) => (
+          <Text key={i} fontSize="9px" color="fg.subtle">{zone.label}</Text>
+        ))}
+      </HStack>
+    </Box>
+  );
+};
+
+const VolatilityRegime: React.FC<{ data: VolData | null }> = ({ data }) => {
+  if (!data || data.regime === 'unknown') return null;
+  const rc = REGIME_COLORS[data.regime] || REGIME_COLORS.unknown;
+
+  return (
+    <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" bg="bg.card" p={3}>
+      <HStack justify="space-between" mb={2}>
+        <Text fontSize="sm" fontWeight="semibold">Volatility Regime</Text>
+        <HStack gap={2}>
+          {data.vix != null && <Text fontSize="xs" color="fg.muted">VIX {data.vix.toFixed(1)}</Text>}
+          <Badge variant="subtle" colorPalette={rc.palette} size="sm">{rc.label}</Badge>
+        </HStack>
+      </HStack>
+      <Stack gap={2}>
+        <GaugeBar
+          label="Term Structure (VIX3M / VIX)"
+          value={data.term_structure_ratio}
+          min={0.8}
+          max={1.4}
+          zones={[
+            { end: 1.0,  color: 'red',    label: 'Backwardation' },
+            { end: 1.15, color: 'green',  label: 'Normal' },
+            { end: 1.4,  color: 'orange', label: 'Overbought' },
+          ]}
+        />
+        <GaugeBar
+          label="Vol-of-Vol (VVIX / VIX)"
+          value={data.vol_of_vol_ratio}
+          min={2.0}
+          max={8.0}
+          zones={[
+            { end: 3.5, color: 'green',  label: 'Buy Protection' },
+            { end: 6.0, color: 'gray',   label: 'Neutral' },
+            { end: 8.0, color: 'red',    label: 'Sell Protection' },
+          ]}
+        />
+      </Stack>
+      {data.signal && (
+        <Text fontSize="xs" color="fg.muted" mt={2} fontStyle="italic">{data.signal}</Text>
+      )}
+    </Box>
+  );
+};
+
 /* ===== Main Component ===== */
 
 const MarketDashboard: React.FC = () => {
@@ -536,6 +657,9 @@ const MarketDashboard: React.FC = () => {
   const openChart = React.useCallback((sym: string) => setChartSymbol(sym), []);
   const portfolioQuery = usePortfolioSymbols();
   const portfolioSymbols = portfolioQuery.data ?? {};
+
+  const [volData, setVolData] = React.useState<VolData | null>(null);
+  const [trackedRows, setTrackedRows] = React.useState<any[]>([]);
 
   React.useEffect(() => {
     const load = async () => {
@@ -552,6 +676,19 @@ const MarketDashboard: React.FC = () => {
       }
     };
     void load();
+  }, []);
+
+  React.useEffect(() => {
+    marketDataApi.getVolatilityDashboard().then((d: any) => setVolData(d)).catch(() => {});
+  }, []);
+
+  React.useEffect(() => {
+    api.get('/market-data/snapshots?limit=5000')
+      .then((r: any) => {
+        const rows = r?.data?.rows;
+        if (Array.isArray(rows)) setTrackedRows(rows);
+      })
+      .catch(() => {});
   }, []);
 
   if (loading) {
@@ -596,26 +733,20 @@ const MarketDashboard: React.FC = () => {
 
   const actionQueue = payload?.action_queue || [];
 
-  const regimeLabel = Number(pctAbove50) >= 60 ? 'Bullish' : Number(pctAbove50) <= 40 ? 'Bearish' : 'Neutral';
-  const regimePalette = regimeLabel === 'Bullish' ? 'green' : regimeLabel === 'Bearish' ? 'red' : 'yellow';
-
   return (
     <ChartContext.Provider value={openChart}>
     <Box p={4}>
       <Stack gap={4}>
         <HStack justify="space-between" align="end" flexWrap="wrap">
-          <Box>
-            <HStack gap={2} align="center">
-              <Heading size="md">Market Dashboard</Heading>
-              <Badge variant="solid" colorPalette={regimePalette} size="sm">{regimeLabel}</Badge>
-            </HStack>
-            <Text color="fg.muted" fontSize="sm">
-              Market breadth, sector rotation, trading setups, and ranked metrics.
-            </Text>
-          </Box>
+          <Heading size="md">Market Dashboard</Heading>
           <HStack gap={2}>
             <Badge variant="subtle">Tracked {trackedCount}</Badge>
             <Badge variant="subtle">Snapshots {snapshotCount}</Badge>
+            {payload?.latest_snapshot_at && (
+              <Text fontSize="xs" color="fg.muted">
+                updated {new Date(payload.latest_snapshot_at).toLocaleString('en-US', { timeZone: 'America/Los_Angeles', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })} PST
+              </Text>
+            )}
           </HStack>
         </HStack>
 
@@ -626,53 +757,79 @@ const MarketDashboard: React.FC = () => {
             <StatCard label="% Above 50DMA" value={`${pctAbove50}%`} sub={`${above50} / ${snapshotCount}`} />
             <StatCard label="% Above 200DMA" value={`${pctAbove200}%`} sub={`${above200} / ${snapshotCount}`} />
             <StatCard label="Advance / Decline" value={advDecRatio} sub={`${upCount} up · ${downCount} down`} />
-            <StatCard label="Total Tracked" value={trackedCount} />
           </Box>
           <StageBar counts={stageCounts} total={snapshotCount} />
+          <VolatilityRegime data={volData} />
         </Box>
 
-        {/* Action Queue */}
-        {actionQueue.length > 0 && (
-          <Box>
-            <HStack mb={2} gap={2} align="center">
-              <Text fontSize="sm" fontWeight="semibold">Action Queue</Text>
-              <Badge variant="subtle" size="sm">{actionQueue.length}</Badge>
-            </HStack>
-            <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card" maxH="340px" overflowY="auto">
-              <Box display="grid" gridTemplateColumns={{ base: '1fr', xl: '1fr 1fr' }} gap={1} columnGap={4}>
-                {actionQueue.map((item) => {
-                  const reasons: string[] = [];
-                  if (item.previous_stage_label && item.previous_stage_label !== item.stage_label) {
-                    reasons.push(`${item.previous_stage_label} → ${item.stage_label}`);
-                  }
-                  if (typeof item.perf_1d === 'number' && Math.abs(item.perf_1d) >= 3) {
-                    reasons.push(`1D ${item.perf_1d > 0 ? '+' : ''}${item.perf_1d.toFixed(1)}%`);
-                  }
-                  if (typeof item.rs_mansfield_pct === 'number' && Math.abs(item.rs_mansfield_pct) >= 6) {
-                    reasons.push(`RS ${item.rs_mansfield_pct > 0 ? '+' : ''}${item.rs_mansfield_pct.toFixed(1)}%`);
-                  }
-                  return (
-                      <HStack key={`aq-${item.symbol}`} justify="space-between" fontSize="xs" py="2px" borderBottomWidth="1px" borderColor="border.subtle">
-                      <HStack gap={1} minW="80px">
-                        <SymbolLink symbol={item.symbol} />
-                        {portfolioSymbols[item.symbol] && (
-                          <Badge size="xs" colorPalette="blue" variant="subtle">Held</Badge>
-                        )}
-                        <StageBadge stage={item.stage_label || '?'} />
+        {/* Action Queue — organized by Weinstein Stage */}
+        {actionQueue.length > 0 && (() => {
+          const stageGroups: Record<string, typeof actionQueue> = { '1': [], '2': [], '3': [], '4': [] };
+          for (const item of actionQueue) {
+            const s = (item.stage_label || '').charAt(0);
+            if (s in stageGroups) stageGroups[s].push(item);
+            else stageGroups['1'].push(item);
+          }
+          const stageConfig = [
+            { key: '1', label: 'Stage 1 — Base', palette: 'gray' },
+            { key: '2', label: 'Stage 2 — Uptrend', palette: 'green' },
+            { key: '3', label: 'Stage 3 — Distribution', palette: 'yellow' },
+            { key: '4', label: 'Stage 4 — Downtrend', palette: 'red' },
+          ];
+          return (
+            <Box>
+              <HStack mb={2} gap={2} align="center">
+                <Text fontSize="sm" fontWeight="semibold">Action Queue</Text>
+                <Badge variant="subtle" size="sm">{actionQueue.length}</Badge>
+              </HStack>
+              <Box display="grid" gridTemplateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', xl: 'repeat(4, 1fr)' }} gap={3}>
+                {stageConfig.map(({ key, label, palette }) => (
+                  <Box key={key} borderWidth="1px" borderColor="border.subtle" borderRadius="lg" bg="bg.card" overflow="hidden">
+                    <Box px={3} py={1.5} borderBottomWidth="1px" borderColor="border.subtle">
+                      <HStack justify="space-between">
+                        <Text fontSize="xs" fontWeight="semibold" color={`${palette}.fg`}>{label}</Text>
+                        <Badge size="xs" variant="subtle" colorPalette={palette}>{stageGroups[key].length}</Badge>
                       </HStack>
-                      <HStack gap={1} flexShrink={0}>
-                        {reasons.map((r, i) => (
-                          <Text key={i} fontSize="xs" color="fg.muted">{r}</Text>
-                        ))}
-                        {item.sector && <Text color="fg.subtle" fontSize="xs" truncate maxW="100px">{item.sector}</Text>}
-                      </HStack>
-                    </HStack>
-                  );
-                })}
+                    </Box>
+                    <Box px={3} py={2} maxH="260px" overflowY="auto">
+                      {stageGroups[key].length === 0 ? (
+                        <Text fontSize="xs" color="fg.subtle">No signals</Text>
+                      ) : (
+                        stageGroups[key].map((item) => {
+                          const reasons: string[] = [];
+                          if (item.previous_stage_label && item.previous_stage_label !== item.stage_label) {
+                            reasons.push(`${item.previous_stage_label} → ${item.stage_label}`);
+                          }
+                          if (typeof item.perf_1d === 'number' && Math.abs(item.perf_1d) >= 3) {
+                            reasons.push(`1D ${item.perf_1d > 0 ? '+' : ''}${item.perf_1d.toFixed(1)}%`);
+                          }
+                          if (typeof item.rs_mansfield_pct === 'number' && Math.abs(item.rs_mansfield_pct) >= 6) {
+                            reasons.push(`RS ${item.rs_mansfield_pct > 0 ? '+' : ''}${item.rs_mansfield_pct.toFixed(1)}`);
+                          }
+                          return (
+                            <HStack key={`aq-${item.symbol}`} justify="space-between" fontSize="xs" py="2px" borderBottomWidth="1px" borderColor="border.subtle">
+                              <HStack gap={1}>
+                                <SymbolLink symbol={item.symbol} />
+                                {portfolioSymbols[item.symbol] && (
+                                  <Badge size="xs" colorPalette="blue" variant="subtle">Held</Badge>
+                                )}
+                              </HStack>
+                              <HStack gap={1} flexShrink={0}>
+                                {reasons.map((r, i) => (
+                                  <Text key={i} fontSize="xs" color="fg.muted">{r}</Text>
+                                ))}
+                              </HStack>
+                            </HStack>
+                          );
+                        })
+                      )}
+                    </Box>
+                  </Box>
+                ))}
               </Box>
             </Box>
-          </Box>
-        )}
+          );
+        })()}
 
         {/* Section 2: Sector Rotation */}
         <Box>
@@ -733,6 +890,22 @@ const MarketDashboard: React.FC = () => {
             </Box>
           </Box>
         </Box>
+
+        {/* Scatter/Bubble Chart */}
+        {trackedRows.length > 0 && (
+          <Box>
+            <Text fontSize="sm" fontWeight="semibold" mb={2}>Universe Scatter</Text>
+            <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={4} bg="bg.card">
+              <BubbleChart
+                data={trackedRows}
+                defaultX="perf_1d"
+                defaultY="rs_mansfield_pct"
+                defaultColor="stage_label"
+                defaultSize="market_cap"
+              />
+            </Box>
+          </Box>
+        )}
 
         {/* Section 3: Trading Setups */}
         <Box>

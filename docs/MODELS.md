@@ -58,7 +58,7 @@ Market Data
   - Fields: open_price, high_price, low_price, close_price (required), adjusted_close, volume, true_range, data_source, interval, is_adjusted, created_at
   - Notes: backfills use ON CONFLICT DO NOTHING; missing O/H/L coalesce to Close, Volume defaults to 0
 
-- MarketAnalysisCache
+- MarketSnapshot (table: `market_snapshot`)
   - Purpose: compact, query-friendly latest technical snapshot per symbol
   - Key: latest row by (symbol, analysis_type) ordered by `analysis_timestamp`
   - Core fields: current_price, rsi, atr_value/percent/distance, SMA(20/50/100/200), EMA(10/8/21/200), MACD + signal, performance windows (1d/3d/5d/20d/60d/120d/252d/MTD/QTD/YTD)
@@ -66,7 +66,7 @@ Market Data
   - Stage: `stage_label`, `stage_slope_pct`, `stage_dist_pct`
   - Notes: `raw_analysis` JSON stores full payload; `expiry_timestamp` enables TTL; refreshed by Celery tasks
 
-- MarketAnalysisHistory
+- MarketSnapshotHistory (table: `market_snapshot_history`)
   - Purpose: immutable daily snapshots for backtesting/analytics
   - Unique: (symbol, analysis_type, as_of_date)
   - Headline fields: current_price, rsi, atr_value, sma_50, macd, macd_signal
@@ -75,8 +75,8 @@ Market Data
 Market data relationships
 -------------------------
 - **PriceData** (OHLCV) is the source for backfills and history; uniqueness on (symbol, date, interval).
-- **MarketAnalysisCache** (or **MarketSnapshot** in services): latest per-symbol snapshot (stage, RS, RSI, ATR, performance windows, etc.); keyed by (symbol, analysis_type), ordered by analysis_timestamp.
-- **MarketAnalysisHistory**: immutable daily snapshots for backtesting; unique (symbol, analysis_type, as_of_date).
+- **MarketSnapshot**: latest per-symbol snapshot (stage, RS, RSI, ATR, performance windows, etc.); keyed by (symbol, analysis_type), ordered by analysis_timestamp.
+- **MarketSnapshotHistory**: immutable daily snapshots for backtesting; unique (symbol, analysis_type, as_of_date).
 - **DailyBar** (if used): daily OHLCV aggregates; consumed by indicator pipeline to produce MarketSnapshot.
 - Portfolio **Position** is enriched by LEFT JOIN to latest MarketSnapshot on symbol (no FK; portfolio symbols are in tracked universe).
 

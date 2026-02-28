@@ -68,6 +68,7 @@ class Settings(BaseSettings):
 
     # Security Configuration
     SECRET_KEY: str = "your-secret-key-here-change-in-production"
+    OAUTH_STATE_SECRET: Optional[str] = None
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     ENCRYPTION_KEY: Optional[str] = None
     ENABLE_TRADING: bool = False

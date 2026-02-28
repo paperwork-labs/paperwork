@@ -263,6 +263,23 @@ async def get_rebalance_suggestions(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _market_cap_label(mc_value) -> str:
+    """Convert raw market cap to a human-readable label."""
+    try:
+        mc = float(mc_value)
+    except (TypeError, ValueError):
+        return "Unknown Cap"
+    if mc >= 200_000_000_000:
+        return "Mega Cap"
+    if mc >= 10_000_000_000:
+        return "Large Cap"
+    if mc >= 2_000_000_000:
+        return "Mid Cap"
+    if mc >= 300_000_000:
+        return "Small Cap"
+    return "Micro Cap"
+
+
 @router.post("/categories/apply-preset")
 async def apply_preset(
     body: dict,
@@ -310,11 +327,9 @@ async def apply_preset(
         if preset == "sector":
             return snap.sector or "Unknown Sector"
         elif preset == "market_cap":
-            mc = getattr(snap, "market_cap", None) or getattr(
-                snap, "market_cap_label", None
-            )
-            if mc:
-                return str(mc)
+            mc = getattr(snap, "market_cap", None)
+            if mc is not None:
+                return _market_cap_label(mc)
             return "Unknown Cap"
         elif preset == "stage":
             return f"Stage {snap.stage_label}" if snap.stage_label else "Unknown Stage"
@@ -337,39 +352,32 @@ async def apply_preset(
         bucket = get_bucket(pos)
         buckets.setdefault(bucket, []).append(pos)
 
+    old_cats = (
+        db.query(Category)
+        .filter(Category.user_id == user.id, Category.category_type == preset)
+        .all()
+    )
+    for old_cat in old_cats:
+        db.query(PositionCategory).filter(
+            PositionCategory.category_id == old_cat.id
+        ).delete(synchronize_session=False)
+        db.delete(old_cat)
+    db.flush()
+
     categories_created = 0
     positions_assigned = 0
 
     for bucket_name, bucket_positions in buckets.items():
-        cat = (
-            db.query(Category)
-            .filter(
-                Category.user_id == user.id,
-                Category.name == bucket_name,
-                Category.category_type == preset,
-            )
-            .first()
-        )
-        if not cat:
-            cat = Category(name=bucket_name, user_id=user.id, category_type=preset)
-            db.add(cat)
-            db.flush()
-            categories_created += 1
+        cat = Category(name=bucket_name, user_id=user.id, category_type=preset)
+        db.add(cat)
+        db.flush()
+        categories_created += 1
 
         for pos in bucket_positions:
-            exists = (
-                db.query(PositionCategory)
-                .filter(
-                    PositionCategory.category_id == cat.id,
-                    PositionCategory.position_id == pos.id,
-                )
-                .first()
+            db.add(
+                PositionCategory(category_id=cat.id, position_id=pos.id)
             )
-            if not exists:
-                db.add(
-                    PositionCategory(category_id=cat.id, position_id=pos.id)
-                )
-                positions_assigned += 1
+            positions_assigned += 1
 
     db.commit()
     return {
@@ -395,6 +403,38 @@ async def get_category(
         for r in db.query(PositionCategory.position_id).filter(PositionCategory.category_id == category_id).all()
     ]
     positions = db.query(Position).filter(Position.id.in_(position_ids)).all() if position_ids else []
+    cat_total = sum(float(p.market_value or 0) for p in positions)
+
+    from backend.models.market_data import MarketSnapshot
+
+    symbols = [p.symbol for p in positions]
+    snap_map: dict = {}
+    if symbols:
+        snaps = (
+            db.query(MarketSnapshot)
+            .filter(
+                MarketSnapshot.symbol.in_(symbols),
+                MarketSnapshot.analysis_type == "technical_snapshot",
+            )
+            .all()
+        )
+        snap_map = {s.symbol: s for s in snaps}
+
+    pos_list = []
+    for p in positions:
+        mv = float(p.market_value or 0)
+        snap = snap_map.get(p.symbol)
+        pos_list.append({
+            "id": p.id,
+            "symbol": p.symbol,
+            "shares": float(p.quantity or 0),
+            "market_value": mv,
+            "weight_pct": round(mv / cat_total * 100, 2) if cat_total else 0,
+            "stage_label": getattr(snap, "stage_label", None) if snap else None,
+            "unrealized_pnl": float(p.unrealized_pnl or 0),
+            "unrealized_pnl_pct": float(p.unrealized_pnl_pct or 0),
+        })
+
     return {
         "status": "success",
         "data": {
@@ -405,10 +445,7 @@ async def get_category(
             "category_type": cat.category_type or "custom",
             "target_allocation_pct": cat.target_allocation_pct,
             "position_ids": position_ids,
-            "positions": [
-                {"id": p.id, "symbol": p.symbol, "market_value": float(p.market_value or 0)}
-                for p in positions
-            ],
+            "positions": pos_list,
         },
     }
 
