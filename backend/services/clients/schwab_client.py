@@ -139,33 +139,33 @@ class SchwabClient:
         method: str,
         path: str,
         params: Optional[Dict[str, Any]] = None,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Any:
         """
         Perform authenticated request. On 401, refresh and retry once.
-        Returns parsed JSON or None on failure.
+        Returns parsed JSON (dict or list) or None on failure.
         """
         if not self.connected or not self._access_token:
             return None
 
         url = f"{BASE_URL}{path}"
-        headers = {"Authorization": f"Bearer {self._access_token}"}
 
-        async def _do_request(token: str) -> tuple[int, Optional[dict]]:
-            h = {"Authorization": f"Bearer {token}"}
+        async def _do_request(token: str) -> tuple[int, Any]:
+            headers = {"Authorization": f"Bearer {token}"}
             async with aiohttp.ClientSession(timeout=DEFAULT_TIMEOUT) as session:
-                async with session.get(url, headers=h, params=params) as resp:
+                async with session.request(method, url, headers=headers, params=params) as resp:
                     try:
-                        data = await resp.json() if resp.content_length else None
+                        data = await resp.json(content_type=None)
                     except Exception:
                         data = None
                     return resp.status, data
 
         status, data = await _do_request(self._access_token)
         if status == 401:
+            logger.info("Schwab API %s %s: got 401, attempting token refresh", method, path)
             if await self._ensure_token() and self._access_token:
                 status, data = await _do_request(self._access_token)
         if status != 200:
-            logger.warning("Schwab API %s %s: status=%s", method, path, status)
+            logger.warning("Schwab API %s %s: status=%s body=%s", method, path, status, str(data)[:300])
             return None
         return data
 
@@ -243,11 +243,23 @@ class SchwabClient:
             )
         return hv
 
+    async def _fetch_positions_raw(self, account_hash: str) -> List[Dict[str, Any]]:
+        """Fetch the raw positions array from GET /accounts/{hash}?fields=positions."""
+        data = await self._request("GET", f"/accounts/{account_hash}", params={"fields": "positions"})
+        if not data or not isinstance(data, dict):
+            return []
+        securities = data.get("securitiesAccount", data)
+        if not isinstance(securities, dict):
+            return []
+        positions_raw = securities.get("positions", [])
+        if not isinstance(positions_raw, list):
+            return []
+        return positions_raw
+
     async def get_positions(self, account_number: str) -> List[Dict[str, Any]]:
         """
-        GET /accounts/{accountHash}/positions.
+        GET /accounts/{accountHash}?fields=positions — equity positions.
         Returns list of position dicts with symbol, quantity, average_cost, total_cost_basis.
-        Returns empty list when not configured.
         """
         if not self.connected or not self._access_token:
             logger.debug("Schwab API: get_positions skipped (not connected)")
@@ -257,19 +269,15 @@ class SchwabClient:
         if not account_hash:
             return []
 
-        data = await self._request("GET", f"/accounts/{account_hash}/positions")
-        if not data:
-            return []
-
-        positions_raw = data.get("positions") if isinstance(data, dict) else (data if isinstance(data, list) else [])
-        if not isinstance(positions_raw, list):
-            return []
-
+        positions_raw = await self._fetch_positions_raw(account_hash)
         results = []
         for p in positions_raw:
             if not isinstance(p, dict):
                 continue
             inst = p.get("instrument") or {}
+            asset_type = (inst.get("assetType") or inst.get("type") or "").upper()
+            if asset_type in ("OPTION", "EQUITY_OPTION"):
+                continue
             symbol = (inst.get("symbol") or p.get("symbol") or "").upper()
             if not symbol:
                 continue
@@ -290,6 +298,7 @@ class SchwabClient:
                 "average_cost": avg_cost,
                 "total_cost_basis": cost_basis,
             })
+        logger.info("Schwab API: get_positions returned %d equity positions", len(results))
         return results
 
     async def get_transactions(
@@ -382,14 +391,16 @@ class SchwabClient:
         if not isinstance(bal, dict):
             return {}
 
-        return {
+        result = {
             "cash_balance": float(bal.get("cashBalance", 0) or 0),
             "net_liquidating_value": float(bal.get("liquidationValue", bal.get("netLiquidatingValue", 0)) or 0),
             "equity_buying_power": float(bal.get("buyingPower", 0) or 0),
         }
+        logger.info("Schwab API: get_account_balances NLV=%.2f", result["net_liquidating_value"])
+        return result
 
     async def get_options_positions(self, account_number: str) -> List[Dict[str, Any]]:
-        """Extract option positions from the full positions response."""
+        """Extract option positions from GET /accounts/{hash}?fields=positions."""
         if not self.connected or not self._access_token:
             return []
 
@@ -397,14 +408,7 @@ class SchwabClient:
         if not account_hash:
             return []
 
-        data = await self._request("GET", f"/accounts/{account_hash}/positions")
-        if not data:
-            return []
-
-        positions_raw = data.get("positions") if isinstance(data, dict) else (data if isinstance(data, list) else [])
-        if not isinstance(positions_raw, list):
-            return []
-
+        positions_raw = await self._fetch_positions_raw(account_hash)
         results = []
         for p in positions_raw:
             if not isinstance(p, dict):
@@ -426,6 +430,7 @@ class SchwabClient:
                 "average_cost": float(p.get("averageCost", 0) or 0),
                 "market_value": float(p.get("marketValue", 0) or 0),
             })
+        logger.info("Schwab API: get_options_positions returned %d option positions", len(results))
         return results
 
     async def place_order(

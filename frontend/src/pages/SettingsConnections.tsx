@@ -53,6 +53,8 @@ import IbkrLogo from '../assets/logos/interactive-brokers.svg';
 import IBGatewayLogo from '../assets/logos/ib-gateway.svg';
 import TradingViewLogo from '../assets/logos/tradingview.svg';
 import FmpLogo from '../assets/logos/fmp.svg';
+import { formatDateTime, formatDate } from '../utils/format';
+import { useUserPreferences } from '../hooks/useUserPreferences';
 
 const SettingsConnections: React.FC = () => {
   // Temporary shim: preserve legacy `useToast()` call sites while migrating to `react-hot-toast`.
@@ -63,6 +65,7 @@ const SettingsConnections: React.FC = () => {
     return hotToast(msg);
   };
   const { user } = useAuth();
+  const { timezone } = useUserPreferences();
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -186,6 +189,20 @@ const SettingsConnections: React.FC = () => {
       }
     };
     init();
+
+    // Handle Schwab OAuth callback redirect
+    const params = new URLSearchParams(window.location.search);
+    const schwabStatus = params.get('schwab');
+    if (schwabStatus === 'linked') {
+      toast({ title: 'Schwab account linked successfully', status: 'success' });
+      loadAccounts();
+      loadSyncHistory();
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (schwabStatus === 'error') {
+      const reason = params.get('reason') || 'unknown';
+      toast({ title: 'Schwab linking failed', description: reason.replace(/_/g, ' '), status: 'error' });
+      window.history.replaceState({}, '', window.location.pathname);
+    }
   }, []);
 
   const handleAdd = async () => {
@@ -524,7 +541,7 @@ const SettingsConnections: React.FC = () => {
                             <Text fontWeight="semibold" fontSize="sm">{bc.name}</Text>
                             {lastSync && (
                               <Text fontSize="xs" color="fg.muted">
-                                Synced {new Date(lastSync.started_at).toLocaleString()}
+                                Synced {formatDateTime(lastSync.started_at, timezone)}
                                 {lastSync.status === 'ERROR' ? ' — failed' : ''}
                               </Text>
                             )}
@@ -569,7 +586,7 @@ const SettingsConnections: React.FC = () => {
                                       <Text fontSize="xs" color="fg.muted">{a.account_number}</Text>
                                     )}
                                     {a.data_range_start && a.data_range_end && (
-                                      <Text fontSize="xs" color="fg.muted">Data: {new Date(a.data_range_start).toLocaleDateString()} – {new Date(a.data_range_end).toLocaleDateString()}</Text>
+                                      <Text fontSize="xs" color="fg.muted">Data: {formatDate(a.data_range_start, timezone)} – {formatDate(a.data_range_end, timezone)}</Text>
                                     )}
                                   </Box>
                                   <IconButton aria-label="Edit name" size="xs" variant="ghost" onClick={() => { setEditNameId(a.id); setEditNameValue(a.account_name || a.account_number || ''); }}><FiEdit3 /></IconButton>
@@ -644,7 +661,7 @@ const SettingsConnections: React.FC = () => {
                               </Badge>
                               {s.duration_seconds != null && <Text as="span" fontSize="xs" color="fg.muted"> {s.duration_seconds}s</Text>}
                             </TableCell>
-                            <TableCell><Text fontSize="xs">{s.started_at ? new Date(s.started_at).toLocaleString() : '—'}</Text></TableCell>
+                            <TableCell><Text fontSize="xs">{formatDateTime(s.started_at, timezone)}</Text></TableCell>
                             <TableCell>
                               {s.error_message ? (
                                 <TooltipRoot>
@@ -691,7 +708,7 @@ const SettingsConnections: React.FC = () => {
                     <Box w="8px" h="8px" borderRadius="full" bg={gwData?.connected ? 'green.500' : 'gray.400'} />
                     <Text fontSize="sm" fontWeight="medium">{gwData?.connected ? 'Connected' : gwData?.available === false ? 'Unavailable' : 'Disconnected'}</Text>
                     {gwData?.connected && gwData?.last_connected && (
-                      <Text fontSize="xs" color="fg.muted">since {new Date(gwData.last_connected).toLocaleString()}</Text>
+                      <Text fontSize="xs" color="fg.muted">since {formatDateTime(gwData.last_connected, timezone)}</Text>
                     )}
                   </HStack>
                 </Box>

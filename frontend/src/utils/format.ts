@@ -76,6 +76,29 @@ export function formatDateTime(
   }
 }
 
+export function formatDate(
+  value: string | number | Date | null | undefined,
+  timezone: string | undefined | null
+): string {
+  if (value == null) return "—";
+  const d = safeDate(value);
+  if (!d) return "—";
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone || undefined,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(d);
+  } catch {
+    return new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(d);
+  }
+}
+
 export function formatTime(
   value: string | number | Date | null | undefined,
   timezone: string | undefined | null

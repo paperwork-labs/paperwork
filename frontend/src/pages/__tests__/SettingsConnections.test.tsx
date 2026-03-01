@@ -32,14 +32,15 @@ vi.mock('../../services/api', () => {
 });
 
 vi.mock('../../context/AuthContext', async () => {
-  const React = await import('react');
+  const mockAuth = {
+    user: { id: 1, username: 'u', email: 'e', is_active: true, role: 'admin' },
+    appSettings: { market_only_mode: true },
+    appSettingsReady: true,
+    ready: true,
+  };
   return {
-    useAuth: () => ({
-      user: { id: 1, username: 'u', email: 'e', is_active: true, role: 'admin' },
-      appSettings: { market_only_mode: true },
-      appSettingsReady: true,
-      ready: true,
-    }),
+    useAuth: () => mockAuth,
+    useAuthOptional: () => mockAuth,
   };
 });
 

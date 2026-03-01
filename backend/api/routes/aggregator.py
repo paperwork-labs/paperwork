@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
@@ -637,32 +638,35 @@ async def schwab_callback(
     state: str,
     db: Session = Depends(get_db),
 ):
+    frontend_origin = getattr(settings, "FRONTEND_ORIGIN", None) or settings.CORS_ORIGINS.split(",")[0].strip()
+    connections_url = f"{frontend_origin}/settings/connections"
+
     try:
         data = oauth_state_service.validate_state(state)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid state: {e}")
+        logger.error("Schwab callback: invalid state – %s", e)
+        return RedirectResponse(url=f"{connections_url}?schwab=error&reason=invalid_state")
 
     uid = int(data["uid"])
     aid = int(data["aid"])
 
-    # Locate account
     account = (
         db.query(BrokerAccount)
         .filter(BrokerAccount.id == aid, BrokerAccount.user_id == uid)
         .first()
     )
     if not account:
-        raise HTTPException(status_code=404, detail="Account not found")
+        logger.error("Schwab callback: account %s not found for user %s", aid, uid)
+        return RedirectResponse(url=f"{connections_url}?schwab=error&reason=account_not_found")
 
-    # Exchange code for tokens (verifier is embedded in the state JWT)
     connector = SchwabConnector()
     try:
         code_verifier = data.get("cv") or pop_verifier_for_state(state)
         tokens = await connector.exchange_code_for_tokens(code, code_verifier=code_verifier)
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Token exchange failed: {e}")
+        logger.error("Schwab callback: token exchange failed – %s", e)
+        return RedirectResponse(url=f"{connections_url}?schwab=error&reason=token_exchange_failed")
 
-    # Persist encrypted credentials
     encrypted = credential_vault.encrypt_dict(tokens)
     cred = (
         db.query(AccountCredentials)
@@ -694,6 +698,100 @@ async def schwab_callback(
     account.connection_status = "connected"
     db.commit()
 
-    return {"status": "linked", "account_id": account.id}
+    # Discover real Schwab sub-accounts and create BrokerAccount entries
+    discovered_ids: list[int] = [account.id]
+    try:
+        from backend.services.clients.schwab_client import SchwabClient
+        client = SchwabClient()
+        await client.connect_with_credentials(
+            access_token=tokens.get("access_token", ""),
+            refresh_token=tokens.get("refresh_token", ""),
+        )
+        schwab_accounts = await client.get_accounts()
+        logger.info("Schwab account discovery: found %d accounts", len(schwab_accounts))
+
+        for sa in schwab_accounts:
+            acct_num = sa.get("account_number", "")
+            if not acct_num:
+                continue
+
+            existing = (
+                db.query(BrokerAccount)
+                .filter(
+                    BrokerAccount.user_id == uid,
+                    BrokerAccount.broker == account.broker,
+                    BrokerAccount.account_number == acct_num,
+                )
+                .first()
+            )
+            if existing:
+                if existing.id not in discovered_ids:
+                    discovered_ids.append(existing.id)
+                if not existing.api_credentials_stored:
+                    existing.api_credentials_stored = True
+                    existing.connection_status = "connected"
+                    # Share credentials from the OAuth account
+                    shared_cred = (
+                        db.query(AccountCredentials)
+                        .filter(AccountCredentials.account_id == existing.id)
+                        .first()
+                    )
+                    if not shared_cred:
+                        shared_cred = AccountCredentials(
+                            account_id=existing.id,
+                            encrypted_credentials=encrypted,
+                            credential_hash=token_fingerprint,
+                            provider=account.broker,
+                            credential_type="oauth",
+                        )
+                        db.add(shared_cred)
+                    else:
+                        shared_cred.encrypted_credentials = encrypted
+                        shared_cred.credential_hash = token_fingerprint
+                continue
+
+            # Update placeholder account number if it's the first real account
+            if account.account_number in ("SCHWAB_OAUTH", "", None) and len(discovered_ids) == 1:
+                account.account_number = acct_num
+                logger.info("Updated placeholder account %d → %s", account.id, acct_num)
+            else:
+                new_acct = BrokerAccount(
+                    user_id=uid,
+                    broker=account.broker,
+                    account_number=acct_num,
+                    account_name=f"Schwab {acct_num[-4:]}",
+                    account_type="TAXABLE",
+                    is_enabled=True,
+                    api_credentials_stored=True,
+                    connection_status="connected",
+                )
+                db.add(new_acct)
+                db.flush()
+                discovered_ids.append(new_acct.id)
+                # Share credentials
+                new_cred = AccountCredentials(
+                    account_id=new_acct.id,
+                    encrypted_credentials=encrypted,
+                    credential_hash=token_fingerprint,
+                    provider=account.broker,
+                    credential_type="oauth",
+                )
+                db.add(new_cred)
+
+        db.commit()
+    except Exception as e:
+        logger.error("Schwab account discovery failed (non-fatal): %s", e)
+        db.rollback()
+
+    # Trigger sync for all discovered accounts
+    try:
+        from backend.tasks.account_sync import sync_account_task
+        for acct_id in discovered_ids:
+            sync_account_task.delay(acct_id, "comprehensive")
+        logger.info("Schwab: queued sync for %d accounts", len(discovered_ids))
+    except Exception as e:
+        logger.error("Schwab: failed to queue sync tasks: %s", e)
+
+    return RedirectResponse(url=f"{connections_url}?schwab=linked&account_id={account.id}")
 
 

@@ -1,75 +1,108 @@
 # Connections
 
-Settings > Connections is the unified hub for all external service integrations. Previously named "Brokerages," it now encompasses any service AxiomFolio connects to.
+**Settings → Connections** is the unified hub for all external service integrations (brokerages, live data, charting preferences, and future data providers). Previously named "Brokerages," the page now encompasses every service AxiomFolio connects to.
 
-## Page Structure
+---
+
+## Table of contents
+
+- [At a glance](#at-a-glance)
+- [Page structure](#page-structure)
+- [Connection types](#connection-types)
+- [Architecture](#architecture)
+- [Credential storage](#credential-storage)
+- [TradingView integration](#tradingview-integration)
+- [IB Gateway connection](#ib-gateway-connection)
+- [FlexQuery configuration (IBKR)](#flexquery-configuration-requirements)
+- [Schwab integration](#schwab-integration)
+- [Key files](#key-files)
+
+---
+
+## At a glance
+
+| Section | What it covers |
+|--------|-----------------|
+| **Brokerages** | Link IBKR, TastyTrade, and Schwab; manage credentials and sync history via a wizard. |
+| **IB Gateway** | Status, connect/reconnect, and noVNC link for the live data container. |
+| **TradingView** | Default studies and interval for in-app charts (no account link). |
+| **Data providers** | (Future) FMP and Twelve Data API keys. |
+
+Credentials are encrypted at rest (Fernet). OAuth flows (TastyTrade, Schwab) use PKCE; IBKR uses FlexQuery token + Query ID.
+
+---
+
+## Page structure
+
+The Connections page is organized as cards, one per integration area:
 
 ```
-CONNECTIONS
-├── Brokerages (existing -- wizard, linked accounts, sync history)
-│   ├── Interactive Brokers (FlexQuery Token + Query ID)
-│   ├── Tastytrade (OAuth client_secret + refresh_token)
-│   └── Charles Schwab (OAuth redirect, planned)
-├── IB Gateway (live data connection)
-│   ├── Status badge (connected / offline / error)
-│   ├── Host, Port, Trading Mode display
-│   ├── Connect / Reconnect / Refresh Status buttons
-│   ├── View Gateway (noVNC) button → http://localhost:6080
-│   └── Last connected timestamp
-├── TradingView (charting preferences)
-│   ├── Default studies (EMA, RSI, MACD, Volume, Bollinger, VWAP)
-│   ├── Default interval (1m, 5m, 15m, 1h, D, W, M)
-│   ├── Info box (explains embed limitations, pop-out to full TV)
-│   └── Future: Charting Library license key (account integration)
-└── Data Providers (future)
+Settings → Connections
+│
+├── Brokerages
+│   ├── Interactive Brokers   (FlexQuery token + Query ID)
+│   ├── TastyTrade            (OAuth: client_secret + refresh_token)
+│   └── Charles Schwab        (OAuth 2.0 + PKCE, account discovery + auto-sync)
+│   └── Wizard: add account → credentials → linked accounts → sync history
+│
+├── IB Gateway
+│   ├── Status badge          (connected / offline / error)
+│   ├── Host, port, trading mode
+│   ├── Connect / Reconnect / Refresh status
+│   ├── View Gateway (noVNC)  → http://localhost:6080
+│   └── Last connected
+│
+├── TradingView
+│   ├── Default studies       (EMA, RSI, MACD, Volume, Bollinger, VWAP)
+│   ├── Default interval      (1m, 5m, 15m, 1h, D, W, M)
+│   ├── Info box              (embed limits, pop-out to full TV)
+│   └── (Future) Charting Library license key
+│
+└── Data providers (future)
     ├── FMP API key
     └── Twelve Data API key
 ```
 
-## Connection Types
+---
 
-| Type | Service | Auth Method | Data Flow | Status |
-|------|---------|-------------|-----------|--------|
-| Brokerage | IBKR FlexQuery | Flex Token + Query ID | Positions, trades, options, tax lots, balances | Active |
+## Connection types
+
+| Type | Service | Auth | Data flow | Status |
+|------|---------|------|-----------|--------|
+| Brokerage | IBKR FlexQuery | Flex token + Query ID | Positions, trades, options, tax lots, balances | Active |
 | Brokerage | TastyTrade | OAuth (client_secret + refresh_token) | Positions, trades, transactions, dividends | Active |
 | Brokerage | Schwab | OAuth 2.0 + PKCE | Positions, transactions, options, balances | Active |
-| Live Data | IB Gateway | TWS API (host:port:clientId) | Real-time quotes, option chains, Greeks | Active |
-| Charting | TradingView | Preferences (no auth) | Default studies, interval (public embed, no account link) | Active |
-| Data Provider | FMP | API key | OHLCV, fundamentals, index constituents | Future |
-| Data Provider | Twelve Data | API key | OHLCV fallback | Future |
+| Live data | IB Gateway | TWS API (host:port:clientId) | Real-time quotes, option chains, Greeks | Active |
+| Charting | TradingView | Preferences only | Default studies/interval (public embed) | Active |
+| Data provider | FMP | API key | OHLCV, fundamentals, index constituents | Future |
+| Data provider | Twelve Data | API key | OHLCV fallback | Future |
+
+---
 
 ## Architecture
 
 ```mermaid
 flowchart TD
-    subgraph frontend ["Settings > Connections Page"]
-        BrokerCards["Brokerage Cards
-        (wizard, linked accounts, sync history)"]
-        GatewayCard["IB Gateway Card
-        (status, connect/disconnect)"]
-        TVCard["TradingView Card
-        (studies, interval, login hint)"]
-        DataCard["Data Providers Card
-        (API keys, future)"]
+    subgraph frontend ["Settings → Connections"]
+        BrokerCards["Brokerage cards (wizard, linked accounts, sync history)"]
+        GatewayCard["IB Gateway card (status, connect/disconnect)"]
+        TVCard["TradingView card (studies, interval)"]
+        DataCard["Data providers card (future)"]
     end
 
-    subgraph backend ["Backend Services"]
-        AccountAPI["POST /accounts/add
-        PATCH /accounts/{id}/credentials"]
-        GatewayAPI["GET /portfolio/options/gateway-status
-        POST /portfolio/options/gateway-connect"]
+    subgraph backend ["Backend"]
+        AccountAPI["POST /accounts/add, PATCH /accounts/{id}/credentials"]
+        GatewayAPI["GET/POST portfolio/options/gateway-*"]
         PrefsAPI["PATCH /users/preferences"]
-        CredVault["CredentialVault
-        (Fernet encryption)"]
+        CredVault["CredentialVault (Fernet)"]
     end
 
-    subgraph external ["External Services"]
+    subgraph external ["External"]
         IBKRFlex["IBKR FlexQuery API"]
         TTAPI["TastyTrade API"]
-        IBGateway["IB Gateway Docker
-        (ghcr.io/extrange/ibkr)"]
-        TVEmbed["TradingView Embed Widget
-        (s3.tradingview.com)"]
+        SchwabAPI["Schwab Trader API"]
+        IBGateway["IB Gateway (Docker)"]
+        TVEmbed["TradingView embed widget"]
         FMPAPI["FMP API"]
     end
 
@@ -77,29 +110,71 @@ flowchart TD
     GatewayCard --> GatewayAPI
     TVCard --> PrefsAPI
     DataCard --> PrefsAPI
-
     AccountAPI --> CredVault
     CredVault --> IBKRFlex
     CredVault --> TTAPI
-
+    CredVault --> SchwabAPI
     GatewayAPI --> IBGateway
-    PrefsAPI -.->|"default studies/interval"| TVEmbed
-    AccountAPI --> FMPAPI
+    PrefsAPI -.-> TVEmbed
+    AccountAPI -.-> FMPAPI
 ```
 
-## Credential Storage
+### Brokerage data lifecycle (high level)
 
-All sensitive credentials are encrypted at rest using Fernet symmetric encryption (`CredentialVault`). Each user has their own encryption context via `AccountCredentials`. The vault stores:
+From linking an account to seeing data in the app:
 
-- IBKR: FlexQuery Token, Query ID, and optional Gateway settings (host, port, client_id)
-- TastyTrade: OAuth client_secret, refresh_token
-- Schwab: OAuth access_token, refresh_token (auto-refreshed on 401)
-- IB Gateway: Per-user gateway host/port/client_id stored in the same `AccountCredentials` row as FlexQuery creds
-- FMP: API key (future, per-user)
+```mermaid
+flowchart LR
+    subgraph link ["Link"]
+        L1["User: add account\n(wizard or OAuth)"]
+        L2["Credentials stored\n(encrypted)"]
+    end
+    subgraph sync ["Sync"]
+        S1["sync_account_task\n(Celery or callback)"]
+        S2["Broker API\n(positions, trades, etc.)"]
+        S3["DB: positions,\ntransactions, balances"]
+    end
+    subgraph ui ["UI"]
+        U1["Portfolio, Statements,\nOptions, etc."]
+    end
+    L1 --> L2
+    L2 --> S1
+    S1 --> S2
+    S2 --> S3
+    S3 --> U1
+```
 
-### Gateway Credential Payload Structure
+---
 
-IBKR `AccountCredentials.encrypted_credentials` JSON blob:
+## Credential storage
+
+All sensitive credentials are encrypted at rest with **Fernet** symmetric encryption (`CredentialVault`). Storage is per-user via `AccountCredentials`.
+
+```mermaid
+flowchart LR
+    subgraph user ["User"]
+        UI["Connections page\n(wizard / OAuth)"]
+    end
+    subgraph backend ["Backend"]
+        API["Accounts API\nPATCH credentials"]
+        Vault["CredentialVault\n(Fernet encrypt)"]
+        DB[(AccountCredentials)]
+    end
+    UI -->|"token, query_id, or\naccess/refresh tokens"| API
+    API --> Vault
+    Vault -->|"encrypted blob"| DB
+```
+
+| Integration | Stored in vault |
+|-------------|-----------------|
+| IBKR | FlexQuery token, Query ID; optional gateway host/port/client_id |
+| TastyTrade | OAuth client_secret, refresh_token |
+| Schwab | OAuth access_token, refresh_token (auto-refreshed on 401) |
+| FMP | (Future) API key, per-user |
+
+### IBKR credential payload
+
+`AccountCredentials.encrypted_credentials` for IBKR (decrypted shape):
 
 ```json
 {
@@ -111,124 +186,118 @@ IBKR `AccountCredentials.encrypted_credentials` JSON blob:
 }
 ```
 
-The `gateway_*` fields are optional. When present, the gateway-connect endpoint uses them instead of global env vars. Managed via `PATCH /accounts/{id}/gateway-settings`.
+The `gateway_*` fields are optional. When set, gateway-connect uses them instead of global env. Managed via `PATCH /accounts/{id}/gateway-settings`.
 
-## TradingView Integration
+---
 
-The TradingView experience is fully in-app. Users never leave the application.
+## TradingView integration
 
-**How it works**: We use the free TradingView public embed widget (`s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js`). This is an anonymous iframe — it does **not** connect to the user's TradingView account. Pine Scripts, saved templates, and custom indicators are not available in the embed. Built-in studies (EMA, RSI, MACD, Bollinger, VWAP, Volume) are toggled via our own toolbar.
+Charts are **in-app only**; users do not leave AxiomFolio.
 
-**Where TV charts appear**:
+```mermaid
+flowchart LR
+    subgraph pages ["App pages"]
+        MD["Market Dashboard\n/ Market Tracked"]
+        PW["Portfolio Workspace"]
+    end
+    subgraph tv ["TradingView"]
+        Panel["ChartSlidePanel\n(click symbol → slide-in)"]
+        Inline["Inline TV chart\n(toggle vs Intelligence Chart)"]
+    end
+    Prefs["Connections → TV card\n(default studies, interval)"]
+    MD --> Panel
+    PW --> Inline
+    Prefs -.->|"user prefs"| Panel
+    Prefs -.->|"user prefs"| Inline
+```
 
-1. `ChartSlidePanel` (Market Dashboard / Market Tracked): Click any symbol -> full-height panel slides in with embedded TV widget.
-2. `PortfolioWorkspace`: Toggle between Intelligence Chart (lightweight-charts with custom overlays) and embedded TV chart. Both inline.
+- **Widget**: Free public embed (`s3.tradingview.com/.../embed-widget-advanced-chart.js`). Anonymous iframe — no TradingView account link. No Pine Scripts or saved layouts; built-in studies (EMA, RSI, MACD, Bollinger, VWAP, Volume) are toggled via our toolbar.
+- **Where used**: (1) **ChartSlidePanel** on Market Dashboard / Market Tracked (click symbol → slide-in panel); (2) **PortfolioWorkspace** (toggle Intelligence Chart vs embedded TV).
+- **Connections card**: Default studies and interval are saved to server-side user preferences (cross-device). Info box explains embed limits and how to open full TradingView in a new tab. Future: Charting Library license key for custom data and account integration.
 
-**What the Connections card manages**:
+---
 
-- Default studies/interval: Synced to server-side user preferences (previously localStorage-only). Persists across devices/browsers.
-- Info box: Explains the embed limitations and how to pop out to the full TV site.
-- Future: Charting Library license key field (unlocks custom data feeds, account integration, no watermark).
+## IB Gateway connection
 
-## IB Gateway Connection
+IB Gateway runs as a Docker service (`ib-gateway` in `compose.dev.yaml`) using `ghcr.io/extrange/ibkr:stable` (chosen over `gnzsnz/ib-gateway` due to ARM64 API port issues).
 
-The IB Gateway runs as a Docker container (`ib-gateway` service in `compose.dev.yaml`) using the `ghcr.io/extrange/ibkr:stable` image. This image was chosen over `ghcr.io/gnzsnz/ib-gateway` because the latter has a known ARM64 (Apple Silicon) bug where the API port never opens after login.
+| Port | Purpose |
+|------|---------|
+| 8888 | Unified API (TWS) |
+| 6080 | noVNC (gateway UI at `http://localhost:6080`) |
 
-**Key ports**:
+**Env (in `compose.dev.yaml`)**: `USERNAME` / `PASSWORD` (from `IBKR_USERNAME` / `IBKR_PASSWORD`), `GATEWAY_OR_TWS: gateway`, `IBC_TradingMode` (paper/live), `IBC_ReadOnlyApi: "yes"`.
 
-- `8888` -- Unified API port (the image auto-forwards the correct internal port based on trading mode)
-- `6080` -- noVNC browser access (view the gateway UI at `http://localhost:6080`)
+**Connection behavior**: On-demand reconnect via `_ensure_connected()` before any Gateway call; exponential backoff (1s → 2s → 4s → 8s → 16s, max 5 attempts). No Celery keep-alive; reconnect is manual (Connections page or GatewayStatusBadge). "View Gateway (noVNC)" opens the gateway UI.
 
-**Environment variables** (mapped in `compose.dev.yaml`):
+```mermaid
+flowchart TD
+    Request["App needs Gateway\n(quotes, options, Greeks)"] --> Ensure["_ensure_connected()"]
+    Ensure --> Check{connected?}
+    Check -->|yes| Use["Use existing connection"]
+    Check -->|no| Try["Attempt connect\n(host:port:clientId)"]
+    Try --> Ok{success?}
+    Ok -->|yes| Use
+    Ok -->|no| Backoff["Exponential backoff\n1s → 2s → 4s → 8s → 16s"]
+    Backoff --> Retry{attempts < 5?}
+    Retry -->|yes| Try
+    Retry -->|no| Fail["Raise / show offline"]
+    Use --> Done["Return data"]
+```
 
-- `USERNAME` / `PASSWORD` -- IBKR credentials (from `IBKR_USERNAME` / `IBKR_PASSWORD` in `env.dev`)
-- `GATEWAY_OR_TWS: gateway` -- Run IB Gateway (not TWS)
-- `IBC_TradingMode` -- `paper` or `live` (from `IBKR_TRADING_MODE` in `env.dev`)
-- `IBC_ReadOnlyApi: "yes"` -- Read-only API access
+**Makefile**: `make ib-up` | `make ib-down` | `make ib-verify`.
 
-**Connection strategy**:
+### Multi-tenant (future)
 
-- On-demand reconnection via `_ensure_connected()` -- called before any Gateway operation.
-- Exponential backoff: 1s, 2s, 4s, 8s, 16s with `max_attempts=5`.
-- No periodic Celery reconnect -- IBKR connections are stateful with limited client ID slots.
-- Manual reconnect button in Settings > Connections and via GatewayStatusBadge.
-- "View Gateway (noVNC)" button opens `http://localhost:6080` for visual debugging.
+One authenticated session per IBKR username per container. **Current**: dev = single Gateway container from env; production = per-account gateway host/port/client_id in encrypted credentials, one concurrent Gateway user. **Future options**: (A) Container-per-user via Docker/K8s orchestrator, port allocation, connection pool keyed by user; (B) IBKR Client Portal API (REST, no container, read-only focused). Migration: add orchestrator, switch `IBKRClient` from singleton to pool, add container lifecycle.
 
-**Makefile targets**:
+---
 
-- `make ib-up` -- Start IB Gateway container
-- `make ib-down` -- Stop IB Gateway container
-- `make ib-verify` -- Start container, wait for login, verify API connectivity
+## FlexQuery configuration requirements
 
-## Multi-Tenant IB Gateway (Future Architecture)
+For IBKR sync, the FlexQuery must be set up in IBKR Account Management.
 
-IB Gateway only supports one authenticated session per username. The current dev setup uses a single global container. For production multi-user support, the architecture needs to evolve:
+```mermaid
+flowchart LR
+    User["Connections: enter\nFlex token + Query ID"] --> Store["Encrypt → AccountCredentials"]
+    Store --> Task["Celery: IBKR sync task"]
+    Task --> API["IBKR FlexQuery API\n(XML, 365-day period)"]
+    API --> Parse["Parse XML\n(positions, trades, cash, etc.)"]
+    Parse --> DB["DB: positions,\ntax lots, transactions"]
+    DB --> UI["Portfolio / Statements"]
+```
 
-### Option A: Container-Per-User
+Setup steps:
 
-Each user gets a dedicated `ib-gateway` container with their own IBKR credentials:
+1. **Reports → Flex Queries → Activity Flex Query** — create or edit.
+2. **Sections to include**: Open Positions (lot-level), Trades, Cash Transactions, Account Information, Interest Accruals, Transfers.
+3. **Period**: Last 365 Calendar Days.
+4. **Format**: XML.
+5. **Flex Web Service**: Enable; generate token and note Query ID.
+6. Enter token and Query ID in the AxiomFolio connection wizard.
 
-- **Orchestrator service** dynamically creates/destroys containers via Docker API or K8s
-- **Port allocation**: Each container gets a unique host port (8888, 8889, 8890, ...)
-- **Connection pool**: `IBKRClient` keyed by `user_id` instead of singleton
-- **Session lifecycle**: IBKR forces daily reconnect (~midnight ET maintenance). Containers auto-restart via IBC.
-- **Cost**: Each container uses ~200MB RAM. Scales linearly with user count.
+**Check**: `GET /api/v1/accounts/flexquery-diagnostic` for sections, row counts, and date range.
 
-### Option B: IBKR Client Portal API (Lighter Weight)
+---
 
-IBKR also offers a REST-based Client Portal API that doesn't require a persistent container:
+## Schwab integration
 
-- Stateless HTTP calls with session cookie auth
-- No container needed per user
-- More limited than TWS API (no streaming, limited order types)
-- Better for read-only portfolio data; worse for live trading
+Schwab uses **OAuth 2.0 + PKCE** against the Schwab Trader API (`api.schwabapi.com`).
 
-### Current State
-
-- **Dev**: Single Gateway container, credentials from `env.dev`, singleton `IBKRClient`
-- **Production**: Per-user gateway settings stored encrypted in `AccountCredentials`. Gateway host/port/client_id can be customized per account via Settings > Connections. Container orchestration is deferred -- currently limited to one concurrent Gateway user.
-- **Migration path**: When multi-tenant is needed, implement the orchestrator, switch `IBKRClient` from singleton to connection pool, and add container lifecycle management.
-
-## FlexQuery Configuration Requirements
-
-For IBKR data sync to work correctly, the FlexQuery must be configured on IBKR's Account Management portal:
-
-1. Go to **Reports > Flex Queries > Activity Flex Query**
-2. Create or edit a query that includes these sections:
-   - **Open Positions** (with LOT-level detail)
-   - **Trades** (executions, closed lots, wash sales)
-   - **Cash Transactions** (dividends, interest, fees, withholding tax)
-   - **Account Information** (balances, margin data)
-   - **Interest Accruals** (margin interest)
-   - **Transfers** (ACATS, position transfers)
-3. Set **Period** to "Last 365 Calendar Days" (critical — this determines how much history is fetched)
-4. Set **Format** to XML
-5. Go to **Flex Web Service** and enable it
-6. Generate a token and note the Query ID
-7. Store token and query ID in the AxiomFolio connection wizard
-
-**Diagnostic**: Use `GET /api/v1/accounts/flexquery-diagnostic` to verify sections, row counts, and date range.
-
-## Schwab Integration
-
-Schwab uses OAuth 2.0 with PKCE via the Schwab Trader API (`api.schwabapi.com`).
-
-### Developer Portal App
+### Developer portal
 
 | Field | Value |
-|-------|-------|
+|-------|--------|
 | Portal | [developer.schwab.com](https://developer.schwab.com) |
-| App Name | `prod-sankalp404gmailcom-...` |
 | Callback URL | `https://api.axiomfolio.com/api/v1/aggregator/schwab/callback` |
-| Status | Ready For Use |
-| API Domain | `api.schwabapi.com` (not `api.schwab.com` -- migrated post-TD Ameritrade) |
+| API domain | `api.schwabapi.com` (post–TD Ameritrade) |
 
-### OAuth Flow
+### OAuth flow
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant Frontend as Settings > Connections
+    participant Frontend as Settings → Connections
     participant Backend as /aggregator/schwab/link
     participant Schwab as api.schwabapi.com
     participant Callback as /aggregator/schwab/callback
@@ -236,67 +305,95 @@ sequenceDiagram
 
     User->>Frontend: Click "Link Schwab"
     Frontend->>Backend: POST /aggregator/schwab/link
-    Backend->>Backend: Generate PKCE verifier + challenge
-    Backend->>Backend: Issue signed OAuth state (uid, aid)
-    Backend-->>Frontend: { url: "https://api.schwabapi.com/v1/oauth/authorize?..." }
-    Frontend->>Schwab: Open authorize URL in new tab
+    Backend->>Backend: PKCE verifier + state JWT (uid, aid)
+    Backend-->>Frontend: { url: authorize URL }
+    Frontend->>Schwab: Open URL in new tab
     User->>Schwab: Log in and authorize
-    Schwab->>Callback: GET /callback?code=...&state=...
-    Callback->>Callback: Validate state JWT, retrieve PKCE verifier
-    Callback->>Schwab: POST /v1/oauth/token (Basic Auth + code + verifier)
-    Schwab-->>Callback: { access_token, refresh_token, ... }
-    Callback->>DB: Encrypt and store tokens via CredentialVault
-    Callback-->>User: { status: "linked" }
+    Schwab->>Callback: GET /callback?code=&state=
+    Callback->>Schwab: POST /v1/oauth/token (code + verifier)
+    Schwab-->>Callback: access_token, refresh_token
+    Callback->>DB: Encrypt and store tokens
+    Callback->>Schwab: GET /accounts/accountNumbers
+    Callback->>DB: Create/update BrokerAccount (real account numbers)
+    Callback->>Callback: Queue sync_account_task per account
+    Callback-->>Frontend: Redirect → /settings/connections?schwab=linked
 ```
 
-### Token Exchange Details
+### Token and API details
 
-- **Authorization endpoint**: `https://api.schwabapi.com/v1/oauth/authorize`
-- **Token endpoint**: `https://api.schwabapi.com/v1/oauth/token`
-- **Authentication**: HTTP Basic Auth (`Authorization: Basic base64(client_id:client_secret)`)
-- **PKCE**: `code_challenge_method=S256`, verifier stored in Redis keyed by state
-- **Token refresh**: Automatic on 401 via `SchwabClient._ensure_token()`, persisted back to DB via callback
+- **Authorize**: `https://api.schwabapi.com/v1/oauth/authorize`
+- **Token**: `https://api.schwabapi.com/v1/oauth/token` (HTTP Basic with client_id:client_secret)
+- **PKCE**: S256; verifier in state JWT (`cv` claim) — no Redis.
+- **Refresh**: On 401, `SchwabClient._ensure_token()` refreshes and persists via callback.
+- **Discovery**: Callback calls `GET /accounts/accountNumbers`, creates/updates `BrokerAccount` with real numbers, then queues sync for each.
 
-### Environment Variables
+### Environment variables
 
-| Variable | Purpose | Example |
-|----------|---------|---------|
-| `SCHWAB_CLIENT_ID` | App Key from Schwab Developer Portal | `fFaKnk...` |
-| `SCHWAB_CLIENT_SECRET` | App Secret | `QfAjA1...` |
-| `SCHWAB_REDIRECT_URI` | Must match portal registration exactly | `https://api.axiomfolio.com/api/v1/aggregator/schwab/callback` |
-| `SCHWAB_AUTH_BASE` | Authorization URL override | `https://api.schwabapi.com/v1/oauth/authorize` |
-| `SCHWAB_CLIENT_ID_SUFFIX` | Legacy TD Ameritrade suffix (leave empty) | _(empty)_ |
+| Variable | Purpose |
+|----------|---------|
+| `SCHWAB_CLIENT_ID` | App Key from portal |
+| `SCHWAB_CLIENT_SECRET` | App Secret |
+| `SCHWAB_REDIRECT_URI` | Must match portal (e.g. `https://api.axiomfolio.com/api/v1/aggregator/schwab/callback`) |
+| `SCHWAB_AUTH_BASE` | Optional override for authorize URL |
 
-### Dev OAuth Testing via Cloudflare Tunnel
+### Local OAuth testing
 
-Since the callback URL is fixed to `https://api.axiomfolio.com/...`, testing OAuth locally requires routing that domain to your machine:
+Callback is fixed to production URL. Options:
 
-1. `make tunnel-up` -- starts the Cloudflare Tunnel container
-2. In Cloudflare dashboard, temporarily point `api.axiomfolio.com` to the tunnel instead of Render
-3. Complete the OAuth flow from `http://localhost:5173/settings/connections`
-4. `make tunnel-down` -- stop the tunnel
-5. Restore the `api` CNAME to `axiomfolio-api.onrender.com`
+- **Tunnel**: `make tunnel-on` (tunnel to local backend), complete OAuth at `http://localhost:5173/settings/connections`, then `make tunnel-off`. See [PRODUCTION.md](PRODUCTION.md#cloudflare-tunnel-local-dev-oauth).
+- **Prod**: Link from `https://axiomfolio.com/settings/connections`; dev and prod share `OAUTH_STATE_SECRET`, so tokens work on both.
 
-Alternatively, link your Schwab account from the production instance and copy tokens to your dev database (requires matching `ENCRYPTION_KEY`).
+### Trader API (summary)
 
-### Key Files
+Base: `https://api.schwabapi.com/trader/v1`
 
-| File | Purpose |
-|------|---------|
-| `backend/services/aggregator/schwab_connector.py` | OAuth URL builder, token exchange, token refresh |
-| `backend/services/clients/schwab_client.py` | Trader API client (positions, transactions, balances) |
-| `backend/services/portfolio/schwab_sync_service.py` | Sync orchestrator (connect, sync, enrich) |
-| `backend/api/routes/aggregator.py` | `/schwab/link` and `/schwab/callback` endpoints |
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/accounts/accountNumbers` | GET | List account numbers + hashValue |
+| `/accounts/{hash}?fields=positions` | GET | Positions (equity + options) and balances |
+| `/accounts/{hash}/transactions` | GET | Transactions (max 60 days) |
+| `/accounts/{hash}` | GET | Balances (default fields) |
 
-## Key Files
+Positions and options come from the same `?fields=positions` response; client filters by `instrument.assetType`.
 
-| File | Purpose |
-|------|---------|
-| `frontend/src/pages/SettingsConnections.tsx` | Connections page (renamed from SettingsBrokerages) |
-| `frontend/src/pages/SettingsShell.tsx` | Settings navigation (label: "Connections") |
-| `frontend/src/components/charts/TradingViewChart.tsx` | Embedded TV widget (no external link) |
-| `frontend/src/components/market/SymbolChartUI.tsx` | ChartSlidePanel for in-app TV charts |
-| `backend/services/clients/ibkr_client.py` | IB Gateway connection singleton |
-| `backend/api/routes/portfolio_options.py` | Gateway status/connect endpoints |
-| `backend/services/portfolio/account_credentials_service.py` | Credential vault |
-| `infra/compose.dev.yaml` | IB Gateway Docker service |
+### Sync flow (account discovery fallback)
+
+When `account_number` is still the placeholder (e.g. `SCHWAB_OAUTH`) — for example if sync ran before the OAuth callback updated it — the sync service uses `_resolve_or_discover` to call `GET /accounts/accountNumbers`, pick the real account, update the `BrokerAccount` record, then proceed. So the flow below covers both “already real number” and “placeholder → auto-correct → then sync.”
+
+```mermaid
+flowchart TD
+    SyncTask["sync_account_task(account_id)"] --> Connect["Load tokens, authenticate"]
+    Connect -->|fail| RaiseErr["raise ConnectionError"]
+    Connect -->|ok| Discover["_resolve_or_discover"]
+    Discover -->|placeholder e.g. SCHWAB_OAUTH| GetAccounts["GET /accounts/accountNumbers"]
+    GetAccounts --> FixNum["Update BrokerAccount.account_number to real number"]
+    FixNum --> Fetch
+    Discover -->|real number| Fetch["Fetch all data"]
+    Fetch --> Positions["GET .../hash?fields=positions"]
+    Fetch --> Txns["GET .../hash/transactions"]
+    Fetch --> Bals["GET .../hash"]
+    Positions --> UpsertPos["Upsert positions + options"]
+    Txns --> UpsertTxn["Upsert transactions, trades, dividends"]
+    Bals --> InsertBal["Insert balance snapshot"]
+    UpsertPos --> Enrich["Enrich from MarketSnapshot"]
+    Enrich --> Done["Return results"]
+```
+
+---
+
+## Key files
+
+| Area | File | Purpose |
+|------|------|---------|
+| **Frontend** | `frontend/src/pages/SettingsConnections.tsx` | Connections page (ex-SettingsBrokerages) |
+| | `frontend/src/pages/SettingsShell.tsx` | Settings nav (label "Connections") |
+| | `frontend/src/components/charts/TradingViewChart.tsx` | Embedded TV widget |
+| | `frontend/src/components/market/SymbolChartUI.tsx` | ChartSlidePanel (TV in dashboard/workspace) |
+| **Backend** | `backend/api/routes/aggregator.py` | `/schwab/link`, `/schwab/callback` |
+| | `backend/services/aggregator/schwab_connector.py` | OAuth URL, token exchange, refresh |
+| | `backend/services/clients/schwab_client.py` | Schwab Trader API client |
+| | `backend/services/portfolio/schwab_sync_service.py` | Sync orchestration, _resolve_or_discover |
+| | `backend/services/portfolio/account_credentials_service.py` | Credential vault access |
+| | `backend/services/clients/ibkr_client.py` | IB Gateway client (singleton) |
+| | `backend/api/routes/portfolio_options.py` | Gateway status/connect |
+| **Infra** | `infra/compose.dev.yaml` | IB Gateway service (ports 8888, 6080) |

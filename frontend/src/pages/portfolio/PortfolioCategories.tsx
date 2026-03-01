@@ -53,6 +53,7 @@ import { useUserPreferences } from '../../hooks/useUserPreferences';
 import { formatMoney } from '../../utils/format';
 import toast from 'react-hot-toast';
 import { TableSkeleton } from '../../components/shared/Skeleton';
+import SortableTable, { type Column } from '../../components/SortableTable';
 
 type CategoryRow = {
   id: number;
@@ -296,40 +297,22 @@ const CategoryCard: React.FC<{
             ) : catPositions.length === 0 ? (
               <Text fontSize="xs" color="fg.muted">No positions in this category</Text>
             ) : (
-              <Table.Root size="sm">
-                <Table.Header>
-                  <Table.Row>
-                    <Table.ColumnHeader>Symbol</Table.ColumnHeader>
-                    <Table.ColumnHeader textAlign="right">Shares</Table.ColumnHeader>
-                    <Table.ColumnHeader textAlign="right">Value</Table.ColumnHeader>
-                    <Table.ColumnHeader textAlign="right">P&L</Table.ColumnHeader>
-                    <Table.ColumnHeader textAlign="right">P&L %</Table.ColumnHeader>
-                    <Table.ColumnHeader textAlign="right">Weight</Table.ColumnHeader>
-                    <Table.ColumnHeader>Stage</Table.ColumnHeader>
-                  </Table.Row>
-                </Table.Header>
-                <Table.Body>
-                  {catPositions.map((p) => (
-                    <Table.Row key={p.id}>
-                      <Table.Cell><Text fontFamily="mono" fontSize="xs">{p.symbol}</Text></Table.Cell>
-                      <Table.Cell textAlign="right"><Text fontSize="xs">{p.shares != null ? p.shares.toFixed(2) : '—'}</Text></Table.Cell>
-                      <Table.Cell textAlign="right"><Text fontSize="xs">{formatMoney(p.market_value ?? 0, currency, { maximumFractionDigits: 0 })}</Text></Table.Cell>
-                      <Table.Cell textAlign="right">
-                        <Text fontSize="xs" color={(p.unrealized_pnl ?? 0) >= 0 ? 'fg.success' : 'fg.error'}>
-                          {formatMoney(p.unrealized_pnl ?? 0, currency, { maximumFractionDigits: 0 })}
-                        </Text>
-                      </Table.Cell>
-                      <Table.Cell textAlign="right">
-                        <Text fontSize="xs" color={(p.unrealized_pnl_pct ?? 0) >= 0 ? 'fg.success' : 'fg.error'}>
-                          {(p.unrealized_pnl_pct ?? 0).toFixed(1)}%
-                        </Text>
-                      </Table.Cell>
-                      <Table.Cell textAlign="right"><Text fontSize="xs">{p.weight_pct != null ? `${p.weight_pct.toFixed(1)}%` : '—'}</Text></Table.Cell>
-                      <Table.Cell><Badge size="sm" variant="subtle">{p.stage_label || '—'}</Badge></Table.Cell>
-                    </Table.Row>
-                  ))}
-                </Table.Body>
-              </Table.Root>
+              <SortableTable<CatPosition>
+                data={catPositions}
+                columns={[
+                  { key: 'symbol', header: 'Symbol', accessor: (p) => p.symbol, sortable: true, sortType: 'string', render: (v) => <Text fontFamily="mono" fontSize="xs">{v}</Text> },
+                  { key: 'shares', header: 'Shares', accessor: (p) => p.shares ?? 0, sortable: true, sortType: 'number', isNumeric: true, render: (v) => <Text fontSize="xs">{v != null ? Number(v).toFixed(2) : '—'}</Text> },
+                  { key: 'market_value', header: 'Value', accessor: (p) => p.market_value ?? 0, sortable: true, sortType: 'number', isNumeric: true, render: (_, p) => <Text fontSize="xs">{formatMoney(p.market_value ?? 0, currency, { maximumFractionDigits: 0 })}</Text> },
+                  { key: 'unrealized_pnl', header: 'P&L', accessor: (p) => p.unrealized_pnl ?? 0, sortable: true, sortType: 'number', isNumeric: true, render: (_, p) => <Text fontSize="xs" color={(p.unrealized_pnl ?? 0) >= 0 ? 'fg.success' : 'fg.error'}>{formatMoney(p.unrealized_pnl ?? 0, currency, { maximumFractionDigits: 0 })}</Text> },
+                  { key: 'unrealized_pnl_pct', header: 'P&L %', accessor: (p) => p.unrealized_pnl_pct ?? 0, sortable: true, sortType: 'number', isNumeric: true, render: (_, p) => <Text fontSize="xs" color={(p.unrealized_pnl_pct ?? 0) >= 0 ? 'fg.success' : 'fg.error'}>{(p.unrealized_pnl_pct ?? 0).toFixed(1)}%</Text> },
+                  { key: 'weight_pct', header: 'Weight', accessor: (p) => p.weight_pct ?? 0, sortable: true, sortType: 'number', isNumeric: true, render: (v) => <Text fontSize="xs">{v != null ? `${Number(v).toFixed(1)}%` : '—'}</Text> },
+                  { key: 'stage_label', header: 'Stage', accessor: (p) => p.stage_label ?? '', sortable: true, sortType: 'string', render: (v) => <Badge size="sm" variant="subtle">{v || '—'}</Badge> },
+                ] satisfies Column<CatPosition>[]}
+                defaultSortBy="market_value"
+                defaultSortOrder="desc"
+                size="sm"
+                emptyMessage="No positions in this category"
+              />
             )}
           </Box>
         )}

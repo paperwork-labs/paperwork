@@ -1,3 +1,5 @@
+import { formatDateTime } from './format';
+
 export interface CoverageHistoryEntry {
   ts?: string | null;
   daily_pct?: number | string | null;
@@ -231,7 +233,7 @@ const formatRelativeAge = (seconds?: number | null): string => {
   return `${days.toFixed(1)}d ago`;
 };
 
-export const formatCoverageHero = (snapshot?: any, staleThresholdSeconds = 1800): CoverageHeroMeta => {
+export const formatCoverageHero = (snapshot?: any, staleThresholdSeconds = 1800, timezone?: string): CoverageHeroMeta => {
   const status = snapshot?.status || {};
   const label = (status.label || 'unknown').toString().toUpperCase();
   const staleDaily = Number(status.stale_daily ?? 0);
@@ -245,7 +247,7 @@ export const formatCoverageHero = (snapshot?: any, staleThresholdSeconds = 1800)
         : 'Coverage healthy across daily + 5m intervals.');
   const color = getCoverageStatusColor(status.label);
   const updatedAtIso = snapshot?.meta?.updated_at || snapshot?.generated_at;
-  const updatedDisplay = updatedAtIso ? new Date(updatedAtIso).toLocaleString() : '—';
+  const updatedDisplay = updatedAtIso ? formatDateTime(updatedAtIso, timezone) : '—';
   const providedAgeSeconds = snapshot?.meta?.snapshot_age_seconds;
   const fallbackAgeSeconds =
     updatedAtIso && typeof Date !== 'undefined'

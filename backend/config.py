@@ -75,6 +75,9 @@ class Settings(BaseSettings):
     SEED_ACCOUNTS_ON_STARTUP: bool = False
     AUTO_MIGRATE_ON_STARTUP: bool = False
 
+    # Frontend origin for OAuth redirects (falls back to first CORS_ORIGINS entry)
+    FRONTEND_ORIGIN: Optional[str] = None
+
     # API / CORS / rate limiting
     CORS_ORIGINS: str = (
         "http://localhost:3000,"

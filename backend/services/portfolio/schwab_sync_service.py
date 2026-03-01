@@ -53,8 +53,11 @@ class SchwabSyncService:
                 refresh_token=refresh_token or "",
             )
             if not ok:
-                logger.warning("Schwab sync: connect failed for account %s", account.account_number)
-                return
+                raise ConnectionError(
+                    f"Schwab sync: connect_with_credentials returned False for "
+                    f"account {account.account_number}. Check SCHWAB_CLIENT_ID "
+                    f"and SCHWAB_REDIRECT_URI are configured."
+                )
 
             def _persist_refreshed_tokens(new_access: str, new_refresh: str) -> None:
                 """Callback: persist refreshed OAuth tokens back to AccountCredentials."""
@@ -84,6 +87,55 @@ class SchwabSyncService:
                 ) from exc
             raise
 
+    async def _resolve_or_discover(self, account: BrokerAccount, session: Session) -> None:
+        """If account_number is a placeholder, discover real accounts and fix it."""
+        real_looking = (
+            account.account_number
+            and account.account_number not in ("SCHWAB_OAUTH", "")
+            and not account.account_number.startswith("SCHWAB_")
+        )
+        if real_looking:
+            return
+
+        logger.warning(
+            "Schwab sync: account %d has placeholder number '%s', "
+            "attempting account discovery",
+            account.id, account.account_number,
+        )
+        schwab_accounts = await self._client.get_accounts()
+        if not schwab_accounts:
+            logger.error("Schwab sync: account discovery returned 0 accounts")
+            return
+
+        first = schwab_accounts[0]
+        real_num = first.get("account_number", "")
+        if not real_num:
+            return
+
+        existing = (
+            session.query(BrokerAccount)
+            .filter(
+                BrokerAccount.user_id == account.user_id,
+                BrokerAccount.broker == account.broker,
+                BrokerAccount.account_number == real_num,
+            )
+            .first()
+        )
+        if existing and existing.id != account.id:
+            logger.info(
+                "Schwab sync: real account %s already exists (id=%d), "
+                "skipping placeholder %d",
+                real_num, existing.id, account.id,
+            )
+            return
+
+        logger.info(
+            "Schwab sync: auto-correcting account %d: '%s' -> '%s'",
+            account.id, account.account_number, real_num,
+        )
+        account.account_number = real_num
+        session.flush()
+
     async def sync_account_comprehensive(self, account_number: str, session: Session) -> Dict:
         account: BrokerAccount | None = (
             session.query(BrokerAccount)
@@ -94,6 +146,7 @@ class SchwabSyncService:
             raise ValueError(f"Schwab account {account_number} not found")
 
         await self._connect(account, session)
+        await self._resolve_or_discover(account, session)
 
         results: Dict[str, Any] = {"status": "success"}
 
@@ -112,6 +165,19 @@ class SchwabSyncService:
         session.flush()
 
         self._enrich_positions_from_snapshots(account, session)
+
+        total_items = sum(v for v in results.values() if isinstance(v, int))
+        if total_items == 0 and self._client.connected:
+            logger.warning(
+                "Schwab sync: completed for account %s (%s) but returned 0 items "
+                "across all categories. Possible API issue or empty account.",
+                account.id, account.account_number,
+            )
+        else:
+            logger.info(
+                "Schwab sync: account %s (%s) synced %d total items: %s",
+                account.id, account.account_number, total_items, results,
+            )
 
         return results
 

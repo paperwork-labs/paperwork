@@ -126,10 +126,12 @@ def test_link_and_callback_flow(client, monkeypatch, db_session):
         state = params["state"]
 
         r_cb = client.get(
-            "/api/v1/aggregator/schwab/callback", params={"code": "abc", "state": state}
+            "/api/v1/aggregator/schwab/callback",
+            params={"code": "abc", "state": state},
+            follow_redirects=False,
         )
-        assert r_cb.status_code == 200
-        assert r_cb.json().get("status") == "linked"
+        assert r_cb.status_code in (302, 307)
+        assert "schwab=linked" in r_cb.headers.get("location", "")
     finally:
         app.dependency_overrides.pop(get_db, None)
 

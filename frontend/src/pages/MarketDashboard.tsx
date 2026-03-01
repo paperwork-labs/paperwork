@@ -32,6 +32,8 @@ import {
 } from 'recharts';
 import BubbleChart from '../components/charts/BubbleChart';
 import api from '../services/api';
+import { formatDate } from '../utils/format';
+import { useUserPreferences } from '../hooks/useUserPreferences';
 
 type SetupItem = {
   symbol: string;
@@ -650,6 +652,7 @@ const VolatilityRegime: React.FC<{ data: VolData | null }> = ({ data }) => {
 /* ===== Main Component ===== */
 
 const MarketDashboard: React.FC = () => {
+  const { timezone } = useUserPreferences();
   const [payload, setPayload] = React.useState<DashboardPayload | null>(null);
   const [loading, setLoading] = React.useState<boolean>(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -1154,7 +1157,7 @@ const MarketDashboard: React.FC = () => {
                           <SymbolLink symbol={e.symbol} />
                           <StageBadge stage={e.stage_label || '?'} />
                         </HStack>
-                        <Text color="fg.muted">{new Date(e.next_earnings).toLocaleDateString()}</Text>
+                        <Text color="fg.muted">{formatDate(e.next_earnings, timezone)}</Text>
                       </HStack>
                     ))}
                   </Box>

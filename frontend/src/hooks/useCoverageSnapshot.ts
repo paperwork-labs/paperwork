@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
+import { useUserPreferences } from './useUserPreferences';
 import {
   buildCoverageActions,
   buildCoverageKpis,
@@ -29,6 +30,7 @@ type CoverageSnapshotOptions = {
 const defaultSparkline = deriveSparklineSeries();
 
 const useCoverageSnapshot = (opts?: CoverageSnapshotOptions): UseCoverageSnapshotResult => {
+  const { timezone } = useUserPreferences();
   const [snapshot, setSnapshot] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -74,7 +76,7 @@ const useCoverageSnapshot = (opts?: CoverageSnapshotOptions): UseCoverageSnapsho
     [snapshot],
   );
 
-  const hero = useMemo(() => formatCoverageHero(snapshot), [snapshot]);
+  const hero = useMemo(() => formatCoverageHero(snapshot, 1800, timezone), [snapshot, timezone]);
 
   return {
     snapshot,

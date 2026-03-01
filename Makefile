@@ -1,10 +1,10 @@
-.PHONY: up down down-reset ps logs build health-check ladle-up ladle-down ladle-logs ladle-build \
+.PHONY: up up-all down down-reset ps logs build health-check ladle-up ladle-down ladle-logs ladle-build \
 	test-up test test-frontend test-all test-down \
 	backend-shell frontend-shell task-run \
 	migrate-create migrate-up migrate-down migrate-stamp-head \
 	frontend-install frontend-lint frontend-typecheck frontend-test frontend-check \
 	ib-up ib-down ib-logs ib-verify \
-	tunnel-up tunnel-down tunnel-logs
+	tunnel-up tunnel-down tunnel-logs tunnel-on tunnel-off
 
 DOCKER ?= docker
 PROJECT ?= axiomfolio
@@ -17,17 +17,32 @@ COMPOSE_DEV = $(DOCKER) compose --project-name $(PROJECT) --env-file $(ENV_DEV) 
 COMPOSE_DEV_UI = $(DOCKER) compose --project-name $(PROJECT) --env-file $(ENV_DEV) -f infra/compose.dev.yaml --profile ui
 COMPOSE_DEV_IBKR = $(DOCKER) compose --project-name $(PROJECT) --env-file $(ENV_DEV) -f infra/compose.dev.yaml --profile ibkr
 COMPOSE_DEV_TUNNEL = $(DOCKER) compose --project-name $(PROJECT) --env-file $(ENV_DEV) -f infra/compose.dev.yaml --profile tunnel
+COMPOSE_DEV_ALL = $(DOCKER) compose --project-name $(PROJECT) --env-file $(ENV_DEV) -f infra/compose.dev.yaml --profile ui --profile ibkr --profile tunnel
 COMPOSE_TEST = $(DOCKER) compose --project-name $(PROJECT_TEST) --env-file $(ENV_TEST) -f infra/compose.test.yaml
 
 up:
 	$(COMPOSE_DEV_UI) up -d --build
 	$(MAKE) health-check
 
+up-all:
+	$(COMPOSE_DEV_ALL) up -d --build
+	$(MAKE) health-check
+
 down:
-	$(COMPOSE_DEV_UI) down
+	@# Restore prod DNS if tunnel was running (idempotent -- safe if tunnel was off)
+	@if docker ps --format '{{.Names}}' 2>/dev/null | grep -q axiomfolio-cloudflared; then \
+		$(MAKE) tunnel-off; \
+	fi
+	$(COMPOSE_DEV_ALL) down
 
 down-reset:
-	$(COMPOSE_DEV) down -v
+	@echo "⚠️  WARNING: This will DELETE ALL DATA including the PostgreSQL database, Redis, and all volumes."
+	@echo "   This action is IRREVERSIBLE."
+	@printf "   Type 'yes' to confirm: " && read ans && [ "$$ans" = "yes" ] || (echo "Aborted."; exit 1)
+	@if docker ps --format '{{.Names}}' 2>/dev/null | grep -q axiomfolio-cloudflared; then \
+		$(MAKE) tunnel-off; \
+	fi
+	$(COMPOSE_DEV_ALL) down -v
 
 ps:
 	$(COMPOSE_DEV_UI) ps
@@ -143,6 +158,48 @@ tunnel-down:
 
 tunnel-logs:
 	$(COMPOSE_DEV_TUNNEL) logs --tail=200 -f cloudflared
+
+# One-command dev OAuth: delete prod CNAME, start tunnel, api.axiomfolio.com → local backend
+# Reads CLOUDFLARE_API_TOKEN and CLOUDFLARE_ZONE_ID from env.dev
+tunnel-on:
+	$(eval include $(ENV_DEV))
+	$(eval export CLOUDFLARE_API_TOKEN CLOUDFLARE_ZONE_ID)
+	@test -n "$(CLOUDFLARE_API_TOKEN)" || (echo "ERROR: CLOUDFLARE_API_TOKEN not set in $(ENV_DEV)"; exit 1)
+	@test -n "$(CLOUDFLARE_ZONE_ID)" || (echo "ERROR: CLOUDFLARE_ZONE_ID not set in $(ENV_DEV)"; exit 1)
+	@echo "Deleting api CNAME (prod → Render)..."
+	@RECORD_ID=$$(curl -s "https://api.cloudflare.com/client/v4/zones/$(CLOUDFLARE_ZONE_ID)/dns_records?name=api.axiomfolio.com" \
+		-H "Authorization: Bearer $(CLOUDFLARE_API_TOKEN)" | python3 -c "import json,sys; r=json.load(sys.stdin)['result']; print(r[0]['id'] if r else '')"); \
+	if [ -n "$$RECORD_ID" ]; then \
+		curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/$(CLOUDFLARE_ZONE_ID)/dns_records/$$RECORD_ID" \
+			-H "Authorization: Bearer $(CLOUDFLARE_API_TOKEN)" | python3 -c "import json,sys; d=json.load(sys.stdin); print('✓ CNAME deleted' if d.get('success') else f'✗ {d}')"; \
+	else \
+		echo "No api CNAME found (tunnel may already own the hostname)"; \
+	fi
+	@echo "Starting tunnel..."
+	$(COMPOSE_DEV_TUNNEL) up -d cloudflared
+	@echo "✓ api.axiomfolio.com → local backend. Verify: make tunnel-logs"
+
+# Restore prod: stop tunnel, delete tunnel CNAME, recreate CNAME api → Render
+tunnel-off:
+	$(eval include $(ENV_DEV))
+	$(eval export CLOUDFLARE_API_TOKEN CLOUDFLARE_ZONE_ID)
+	@test -n "$(CLOUDFLARE_API_TOKEN)" || (echo "ERROR: CLOUDFLARE_API_TOKEN not set in $(ENV_DEV)"; exit 1)
+	@test -n "$(CLOUDFLARE_ZONE_ID)" || (echo "ERROR: CLOUDFLARE_ZONE_ID not set in $(ENV_DEV)"; exit 1)
+	@echo "Stopping tunnel..."
+	-$(COMPOSE_DEV_TUNNEL) stop cloudflared
+	@echo "Restoring api CNAME → Render..."
+	@RECORD_ID=$$(curl -s "https://api.cloudflare.com/client/v4/zones/$(CLOUDFLARE_ZONE_ID)/dns_records?name=api.axiomfolio.com" \
+		-H "Authorization: Bearer $(CLOUDFLARE_API_TOKEN)" | python3 -c "import json,sys; r=json.load(sys.stdin)['result']; print(r[0]['id'] if r else '')"); \
+	if [ -n "$$RECORD_ID" ]; then \
+		curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/$(CLOUDFLARE_ZONE_ID)/dns_records/$$RECORD_ID" \
+			-H "Authorization: Bearer $(CLOUDFLARE_API_TOKEN)" > /dev/null; \
+	fi
+	@curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$(CLOUDFLARE_ZONE_ID)/dns_records" \
+		-H "Authorization: Bearer $(CLOUDFLARE_API_TOKEN)" \
+		-H "Content-Type: application/json" \
+		-d '{"type":"CNAME","name":"api","content":"axiomfolio-api.onrender.com","proxied":true,"ttl":1}' \
+		| python3 -c "import json,sys; d=json.load(sys.stdin); print('✓ CNAME restored → Render' if d.get('success') else f'✗ {d}')"
+	@echo "✓ api.axiomfolio.com → Render (prod)"
 
 ib-verify: ## Verify IB Gateway connectivity end-to-end
 	@echo "Starting IB Gateway..."

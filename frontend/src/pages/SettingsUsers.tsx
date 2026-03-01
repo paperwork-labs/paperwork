@@ -19,6 +19,8 @@ import {
 } from '@chakra-ui/react';
 import toast from 'react-hot-toast';
 import { adminUsersApi } from '../services/api';
+import { formatDate } from '../utils/format';
+import { useUserPreferences } from '../hooks/useUserPreferences';
 
 type UserRow = {
   id: number;
@@ -49,6 +51,7 @@ const ROLE_OPTIONS = [
 ];
 
 const SettingsUsers: React.FC = () => {
+  const { timezone } = useUserPreferences();
   const [users, setUsers] = React.useState<UserRow[]>([]);
   const [invites, setInvites] = React.useState<InviteRow[]>([]);
   const [loading, setLoading] = React.useState(false);
@@ -250,7 +253,7 @@ const SettingsUsers: React.FC = () => {
                     <TableRow key={i.id}>
                       <TableCell>{i.email}</TableCell>
                       <TableCell>{i.role}</TableCell>
-                      <TableCell>{new Date(i.expires_at).toLocaleDateString()}</TableCell>
+                      <TableCell>{formatDate(i.expires_at, timezone)}</TableCell>
                     </TableRow>
                   ))}
               </TableBody>
