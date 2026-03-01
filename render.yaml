@@ -79,7 +79,7 @@ services:
     name: axiomfolio-frontend
     runtime: static
     autoDeploy: true
-    buildCommand: cd frontend && rm -rf node_modules package-lock.json && npm install && npm run build
+    buildCommand: cd frontend && npm ci && npm run build
     staticPublishPath: frontend/dist
     routes:
       - type: rewrite

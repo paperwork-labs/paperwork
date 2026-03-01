@@ -101,54 +101,48 @@ Render subdomains remain enabled as fallbacks: `axiomfolio-api.onrender.com`.
 
 ### Cloudflare Tunnel (Local Dev OAuth)
 
-A Cloudflare Tunnel routes `api.axiomfolio.com` traffic to your local machine. Required for testing Schwab OAuth locally because the callback URL (`https://api.axiomfolio.com/api/v1/aggregator/schwab/callback`) must match the Schwab Developer Portal registration exactly.
+A Cloudflare Tunnel routes `api-dev.axiomfolio.com` traffic to your local machine for testing Schwab OAuth locally. The tunnel uses a **dedicated dev subdomain** (`api-dev`) so production (`api.axiomfolio.com`) is never affected.
 
 #### Credentials in `infra/env.dev`
 
 | Variable | Purpose |
 |----------|---------|
 | `CLOUDFLARED_TUNNEL_TOKEN` | Authenticates the cloudflared connector |
-| `CLOUDFLARED_TUNNEL_ID` | Tunnel identifier (`baa0b729-...`) |
-| `CLOUDFLARE_API_TOKEN` | DNS Edit token for `axiomfolio.com` zone |
-| `CLOUDFLARE_ZONE_ID` | Cloudflare zone ID |
+| `CLOUDFLARED_TUNNEL_ID` (optional) | Tunnel identifier (not used by the dev tunnel workflow; kept for reference) |
 
-#### One-Time Setup (Cloudflare Zero Trust)
+#### One-Time Setup
 
-1. Go to **Cloudflare Zero Trust > Networks > Tunnels**
-2. Open the tunnel (`axiomfolio-dev`)
-3. Add a **Public Hostname**:
-   - Subdomain: `api`, Domain: `axiomfolio.com`
-   - Path: _(empty)_
+1. **Cloudflare Zero Trust > Networks > Tunnels** -- open the tunnel (`axiomfolio-dev`) and set the **Public Hostname** to:
+   - Subdomain: `api-dev`, Domain: `axiomfolio.com`
    - Service Type: **HTTP**, URL: `backend:8000`
-4. Save. The tunnel's cloudflared container runs on the Docker network and reaches the `backend` container directly.
+2. **Schwab Developer Portal** -- add `https://api-dev.axiomfolio.com/api/v1/aggregator/schwab/callback` as a registered redirect URI.
+3. Set `SCHWAB_REDIRECT_URI=https://api-dev.axiomfolio.com/api/v1/aggregator/schwab/callback` in `infra/env.dev`.
 
 #### Dev OAuth Testing Workflow
 
 ```bash
-make tunnel-on     # Deletes api CNAME → Render, starts tunnel
-                   # api.axiomfolio.com now routes to local backend:8000
+make tunnel-on     # Starts cloudflared container
+                   # api-dev.axiomfolio.com → local backend:8000
+                   # api.axiomfolio.com (prod) is NOT affected
 make tunnel-logs   # Verify "Connection registered"
 
 # Test OAuth at http://localhost:5173/settings/connections
 
-make tunnel-off    # Stops tunnel, recreates api CNAME → Render
-                   # api.axiomfolio.com routes to prod again
+make tunnel-off    # Stops cloudflared container
 ```
 
-`tunnel-on` / `tunnel-off` automate the DNS swap using the Cloudflare API. No manual dashboard changes needed.
+Production stays up the entire time. No DNS manipulation is needed.
 
 #### How It Works
 
 ```
 tunnel-on:
-  1. Cloudflare API: DELETE api CNAME (removes axiomfolio-api.onrender.com route)
-  2. docker compose up cloudflared (tunnel registers, claims api.axiomfolio.com)
-  3. Traffic: Schwab callback → Cloudflare → tunnel → local backend:8000
+  1. docker compose up cloudflared (tunnel registers, claims api-dev.axiomfolio.com)
+  2. Traffic: Schwab callback → Cloudflare → tunnel → local backend:8000
 
 tunnel-off:
   1. docker compose stop cloudflared
-  2. Cloudflare API: POST new CNAME api → axiomfolio-api.onrender.com (proxied)
-  3. Traffic: Schwab callback → Cloudflare → Render → prod backend
+  2. api-dev.axiomfolio.com becomes unreachable (no effect on prod)
 ```
 
 #### Alternative
