@@ -108,7 +108,7 @@ async def get_live_summary(
             q = (
                 db.query(AccountBalance)
                 .join(BrokerAccount, AccountBalance.broker_account_id == BrokerAccount.id)
-                .filter(BrokerAccount.user_id == current_user.id)
+                .filter(BrokerAccount.user_id == current_user.id, BrokerAccount.is_enabled == True)
             )
             if account_id:
                 q = q.filter(BrokerAccount.account_number == account_id)
@@ -182,7 +182,7 @@ async def get_live_positions(
             query = (
                 db.query(Position)
                 .join(BrokerAccount, Position.account_id == BrokerAccount.id)
-                .filter(Position.user_id == current_user.id)
+                .filter(Position.user_id == current_user.id, BrokerAccount.is_enabled == True)
             )
             if account_id:
                 query = query.filter(BrokerAccount.account_number == account_id)
@@ -227,7 +227,7 @@ async def get_live_portfolio(
         query = (
             db.query(Position)
             .join(BrokerAccount, Position.account_id == BrokerAccount.id)
-            .filter(Position.user_id == current_user.id)
+            .filter(Position.user_id == current_user.id, BrokerAccount.is_enabled == True)
         )
         if account_id:
             query = query.filter(BrokerAccount.account_number == account_id)

@@ -21,16 +21,15 @@ vi.mock('../../../context/AuthContext', () => {
   };
 });
 
-vi.mock('../../../context/AccountContext', () => {
-  return {
-    useAccountContext: () => ({
-      accounts: [],
-      loading: false,
-      selected: 'all',
-      setSelected: vi.fn(),
-    }),
-  };
-});
+let mockedAccountContext = {
+  accounts: [] as Array<{ account_number: string; account_name?: string }>,
+  loading: false,
+  selected: 'all' as const,
+  setSelected: vi.fn(),
+};
+vi.mock('../../../context/AccountContext', () => ({
+  useAccountContext: () => mockedAccountContext,
+}));
 
 // Ensure desktop path so sidebar exists.
 vi.mock('@chakra-ui/react', async () => {
@@ -83,8 +82,7 @@ describe('DashboardLayout sidebar persistence', () => {
     expect(screen.getAllByText('Coverage').length).toBeGreaterThan(0);
     expect(screen.queryByText('PORTFOLIO')).toBeNull();
     expect(screen.queryByText('STRATEGY')).toBeNull();
-    expect(screen.queryByText('Combined Portfolio')).toBeNull();
-    expect(screen.queryByText('Quick Stats')).toBeNull();
+    expect(screen.queryByText('Overview')).toBeNull();
     expect(screen.queryByRole('combobox')).toBeNull();
   });
 
@@ -96,13 +94,18 @@ describe('DashboardLayout sidebar persistence', () => {
       appSettingsReady: true,
       ready: true,
     };
+    mockedAccountContext = {
+      accounts: [{ account_number: 'U123', account_name: 'Test Account' }],
+      loading: false,
+      selected: 'all',
+      setSelected: vi.fn(),
+    };
     renderWithProviders(<DashboardLayout />);
     expect(screen.getByText('PORTFOLIO')).toBeInTheDocument();
     expect(screen.getByText('STRATEGY')).toBeInTheDocument();
     expect(screen.getByText('Workspace')).toBeInTheDocument();
     expect(screen.getByText('Strategies')).toBeInTheDocument();
-    expect(screen.getByText('Combined Portfolio')).toBeInTheDocument();
-    expect(screen.getByText('Quick Stats')).toBeInTheDocument();
+    expect(screen.getByText('Overview')).toBeInTheDocument();
     expect(screen.getByRole('combobox')).toBeInTheDocument();
   });
 

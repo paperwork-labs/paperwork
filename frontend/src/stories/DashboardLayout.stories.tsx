@@ -106,6 +106,7 @@ const MockedProviders: React.FC<{ children: React.ReactNode }> = ({ children }) 
       error: null,
       selected,
       setSelected,
+      refetch: () => {},
     }),
     [selected]
   );

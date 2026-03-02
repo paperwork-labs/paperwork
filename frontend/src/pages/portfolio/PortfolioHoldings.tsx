@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box,
   Text,
@@ -14,7 +14,7 @@ import { ChartContext, SymbolLink, ChartSlidePanel } from '../../components/mark
 import SortableTable, { type Column, type FilterGroup } from '../../components/SortableTable';
 import FinvizHeatMap, { type FinvizData } from '../../components/charts/FinvizHeatMap';
 import { TableSkeleton } from '../../components/shared/Skeleton';
-import AccountFilterWrapper from '../../components/ui/AccountFilterWrapper';
+import { useAccountFilter } from '../../hooks/useAccountFilter';
 import PageHeader from '../../components/ui/PageHeader';
 import StageBadge from '../../components/shared/StageBadge';
 import PnlText from '../../components/shared/PnlText';
@@ -104,8 +104,29 @@ const PortfolioHoldings: React.FC = () => {
     [rawAccounts, positions]
   );
 
+  const filterState = useAccountFilter(positions as import('../../hooks/useAccountFilter').FilterableItem[], accounts);
+  const filtered = filterState.filteredData as EnrichedPosition[];
+
+  const priceRefreshTriggered = useRef(false);
+  useEffect(() => {
+    if (priceRefreshTriggered.current || positions.length === 0 || positionsQuery.isLoading) return;
+    const missingPrice = positions.some(p => Number(p.current_price ?? 0) === 0 && Number(p.shares ?? (p as { quantity?: number }).quantity ?? 0) !== 0);
+    if (missingPrice) {
+      priceRefreshTriggered.current = true;
+      fetch('/api/v1/accounts/prices/refresh', { method: 'POST' })
+        .then((response) => {
+          if (!response.ok) throw new Error(`Price refresh failed: ${response.status}`);
+          setTimeout(() => positionsQuery.refetch(), 3000);
+        })
+        .catch((error) => {
+          console.error('Failed to refresh prices', error);
+          priceRefreshTriggered.current = false;
+        });
+    }
+  }, [positions, positionsQuery.isLoading]);
+
   const heatmap = useMemo((): FinvizData[] => {
-    return positions
+    return filtered
       .map((p) => ({
         name: String(p.symbol ?? '').toUpperCase() || '—',
         size: Math.max(1, Math.round(Number(p.market_value ?? 0) / 1000)),
@@ -115,7 +136,7 @@ const PortfolioHoldings: React.FC = () => {
       }))
       .filter((x): x is FinvizData => x.name !== '—')
       .slice(0, 40);
-  }, [positions]);
+  }, [filtered]);
 
   const totalValue = useMemo(() => positions.reduce((s, p) => s + Number(p.market_value ?? 0), 0), [positions]);
 
@@ -133,6 +154,15 @@ const PortfolioHoldings: React.FC = () => {
         width: '100px',
       },
       {
+        key: 'account',
+        header: 'Account',
+        accessor: (p) => `${(p.broker || '').toUpperCase()} ${(p.account_number || '').slice(-4)}`,
+        sortable: true,
+        sortType: 'string',
+        render: (v) => <Text fontSize="xs" color="fg.muted">{String(v)}</Text>,
+        width: '110px',
+      },
+      {
         key: 'shares',
         header: 'Shares',
         accessor: (p) => Number((p as { shares?: number }).shares ?? 0),
@@ -144,11 +174,11 @@ const PortfolioHoldings: React.FC = () => {
       {
         key: 'average_cost',
         header: 'Avg Cost',
-        accessor: (p) => Number(p.average_cost ?? 0),
+        accessor: (p) => p.average_cost != null ? Number(p.average_cost) : null,
         sortable: true,
         sortType: 'number',
         isNumeric: true,
-        render: (v) => <Text fontSize="sm" color="fg.muted">{formatMoney(Number(v), currency)}</Text>,
+        render: (v) => v == null ? <Text fontSize="sm" color="fg.muted" title="Cost basis unavailable (transferred position)">N/A</Text> : <Text fontSize="sm" color="fg.muted">{formatMoney(Number(v), currency)}</Text>,
         width: '100px',
       },
       {
@@ -158,7 +188,7 @@ const PortfolioHoldings: React.FC = () => {
         sortable: true,
         sortType: 'number',
         isNumeric: true,
-        render: (v) => <Text fontSize="sm" color="fg.muted">{formatMoney(Number(v), currency)}</Text>,
+        render: (v) => Number(v) === 0 ? <Text fontSize="sm" color="fg.subtle">···</Text> : <Text fontSize="sm" color="fg.muted">{formatMoney(Number(v), currency)}</Text>,
         width: '100px',
       },
       {
@@ -168,7 +198,7 @@ const PortfolioHoldings: React.FC = () => {
         sortable: true,
         sortType: 'number',
         isNumeric: true,
-        render: (v) => <Text fontSize="sm" color="fg.muted">{formatMoney(Number(v), currency, { maximumFractionDigits: 0 })}</Text>,
+        render: (v, row) => Number(row.current_price ?? 0) === 0 ? <Text fontSize="sm" color="fg.subtle">···</Text> : <Text fontSize="sm" color="fg.muted">{formatMoney(Number(v), currency, { maximumFractionDigits: 0 })}</Text>,
         width: '110px',
       },
       {
@@ -237,13 +267,16 @@ const PortfolioHoldings: React.FC = () => {
       {
         key: 'cost_basis',
         header: 'Cost Basis',
-        accessor: (p) => Number(p.cost_basis ?? (Number(p.average_cost ?? 0) * Number((p as any).shares ?? 0))),
+        accessor: (p) => {
+          if (p.cost_basis != null) return Number(p.cost_basis);
+          if (p.average_cost != null) return Number(p.average_cost) * Number((p as any).shares ?? 0);
+          return null;
+        },
         sortable: true,
         sortType: 'number',
         isNumeric: true,
-        render: (v) => <Text fontSize="sm" color="fg.muted">{formatMoney(Number(v), currency, { maximumFractionDigits: 0 })}</Text>,
+        render: (v) => v == null ? <Text fontSize="sm" color="fg.muted" title="Cost basis unavailable (transferred position)">N/A</Text> : <Text fontSize="sm" color="fg.muted">{formatMoney(Number(v), currency, { maximumFractionDigits: 0 })}</Text>,
         width: '110px',
-        hidden: true,
       },
       {
         key: 'perf_5d',
@@ -310,7 +343,6 @@ const PortfolioHoldings: React.FC = () => {
         sortType: 'string',
         render: (v) => <Text fontSize="xs" color="fg.muted">{String(v || '—')}</Text>,
         width: '100px',
-        hidden: true,
       },
       {
         key: 'industry',
@@ -320,7 +352,6 @@ const PortfolioHoldings: React.FC = () => {
         sortType: 'string',
         render: (v) => <Text fontSize="xs" color="fg.muted">{String(v || '—')}</Text>,
         width: '120px',
-        hidden: true,
       },
     ],
     [currency, totalValue]
@@ -360,46 +391,41 @@ const PortfolioHoldings: React.FC = () => {
           }
         />
 
-        <AccountFilterWrapper
-          data={positions as import('../../hooks/useAccountFilter').FilterableItem[]}
-          accounts={accounts}
-          config={{ showAllOption: true, showSummary: false, variant: 'simple' }}
-          loading={positionsQuery.isLoading || accountsQuery.isLoading}
-          error={positionsQuery.error || accountsQuery.error ? 'Failed to load holdings' : null}
-          loadingComponent={<TableSkeleton rows={8} cols={6} />}
-        >
-          {(filtered) => (
-            <Box display="flex" flexDirection="column" gap={4}>
-              {showHeatmap && heatmap.length > 0 && (
-                <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-                  <CardBody>
-                    <FinvizHeatMap data={heatmap} height={320} />
-                  </CardBody>
-                </CardRoot>
-              )}
-
+        {(positionsQuery.isLoading || accountsQuery.isLoading) ? (
+          <TableSkeleton rows={8} cols={6} />
+        ) : (positionsQuery.error || accountsQuery.error) ? (
+          <Text color="status.danger">Failed to load holdings</Text>
+        ) : (
+          <Box display="flex" flexDirection="column" gap={4}>
+            {showHeatmap && heatmap.length > 0 && (
               <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
                 <CardBody>
-                  <HStack justify="space-between" mb={2}>
-                    <Badge colorPalette="gray">{filtered.length} positions</Badge>
-                  </HStack>
-                  <SortableTable
-                    data={filtered as EnrichedPosition[]}
-                    columns={columns}
-                    defaultSortBy="market_value"
-                    defaultSortOrder="desc"
-                    size="sm"
-                    maxHeight="70vh"
-                    emptyMessage={positionsQuery.isLoading ? 'Loading…' : 'No holdings found.'}
-                    filtersEnabled
-                    filterPresets={HOLDINGS_FILTER_PRESETS}
-                    onRowClick={handleRowClick}
-                  />
+                  <FinvizHeatMap data={heatmap} height={320} />
                 </CardBody>
               </CardRoot>
-            </Box>
-          )}
-        </AccountFilterWrapper>
+            )}
+
+            <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
+              <CardBody>
+                <HStack justify="space-between" mb={2}>
+                  <Badge colorPalette="gray">{filtered.length} positions</Badge>
+                </HStack>
+                <SortableTable
+                  data={filtered as EnrichedPosition[]}
+                  columns={columns}
+                  defaultSortBy="market_value"
+                  defaultSortOrder="desc"
+                  size="sm"
+                  maxHeight="70vh"
+                  emptyMessage="No holdings found."
+                  filtersEnabled
+                  filterPresets={HOLDINGS_FILTER_PRESETS}
+                  onRowClick={handleRowClick}
+                />
+              </CardBody>
+            </CardRoot>
+          </Box>
+        )}
       </Box>
       <ChartSlidePanel symbol={chartSymbol} onClose={() => setChartSymbol(null)} />
     </ChartContext.Provider>

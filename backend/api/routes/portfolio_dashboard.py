@@ -103,7 +103,7 @@ async def get_dashboard(
         top_losers.reverse()
 
         # accounts_summary: per-account value and count
-        broker_accounts = db.query(BrokerAccount).filter(BrokerAccount.user_id == user.id).all()
+        broker_accounts = db.query(BrokerAccount).filter(BrokerAccount.user_id == user.id, BrokerAccount.is_enabled == True).all()
         accounts_summary = []
         for acc in broker_accounts:
             acc_positions = [p for p in pos_models if p.account_id == acc.id]
@@ -182,7 +182,7 @@ async def get_performance_history(
             raise HTTPException(status_code=404, detail="User not found")
 
         account_ids_q = (
-            db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user.id)
+            db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user.id, BrokerAccount.is_enabled == True)
         )
         if account_id:
             account_ids_q = account_ids_q.filter(BrokerAccount.account_number == account_id)
@@ -248,7 +248,7 @@ async def get_account_balances(
         broker_ids = [
             r[0]
             for r in db.query(BrokerAccount.id)
-            .filter(BrokerAccount.user_id == user.id)
+            .filter(BrokerAccount.user_id == user.id, BrokerAccount.is_enabled == True)
             .all()
         ]
         if not broker_ids:
@@ -313,7 +313,7 @@ async def get_margin_health(
         broker_ids = [
             r[0]
             for r in db.query(BrokerAccount.id)
-            .filter(BrokerAccount.user_id == user.id)
+            .filter(BrokerAccount.user_id == user.id, BrokerAccount.is_enabled == True)
             .all()
         ]
         if not broker_ids:
@@ -393,7 +393,7 @@ async def get_pnl_summary(
         acct_ids = [
             r[0]
             for r in db.query(BrokerAccount.id)
-            .filter(BrokerAccount.user_id == user.id)
+            .filter(BrokerAccount.user_id == user.id, BrokerAccount.is_enabled == True)
             .all()
         ]
         if not acct_ids:
@@ -477,7 +477,7 @@ async def get_margin_interest(
         broker_ids = [
             r[0]
             for r in db.query(BrokerAccount.id)
-            .filter(BrokerAccount.user_id == user.id)
+            .filter(BrokerAccount.user_id == user.id, BrokerAccount.is_enabled == True)
             .all()
         ]
         if not broker_ids:
@@ -536,7 +536,7 @@ async def get_dividend_summary(
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        acct_ids = [a.id for a in db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user.id).all()]
+        acct_ids = [a.id for a in db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user.id, BrokerAccount.is_enabled == True).all()]
         if not acct_ids:
             return {"status": "success", "data": {}}
 
@@ -645,7 +645,7 @@ async def get_live_summary(db: Session = Depends(get_db)):
         if not is_live:
             user = db.query(User).first()
             if user:
-                acct_ids = [a.id for a in db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user.id).all()]
+                acct_ids = [a.id for a in db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user.id, BrokerAccount.is_enabled == True).all()]
                 if acct_ids:
                     bal = (
                         db.query(AccountBalance)

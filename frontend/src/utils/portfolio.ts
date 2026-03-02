@@ -77,7 +77,7 @@ export function stageCountsFromPositions(positions: EnrichedPosition[]): {
   return { counts, total: positions.length };
 }
 
-/** Allocation by sector for donut (from positions with sector). */
+/** Allocation by sector for donut (from positions with sector). Merges slices < 3% into "Other". */
 export function sectorAllocationFromPositions(
   positions: EnrichedPosition[]
 ): Array<{ name: string; value: number }> {
@@ -86,7 +86,23 @@ export function sectorAllocationFromPositions(
     const sector = (p.sector as string)?.trim() || 'Other';
     bySector.set(sector, (bySector.get(sector) ?? 0) + Number(p.market_value ?? 0));
   }
-  return Array.from(bySector.entries()).map(([name, value]) => ({ name, value }));
+  const sorted = Array.from(bySector.entries())
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
+  const total = sorted.reduce((s, x) => s + x.value, 0);
+  if (total <= 0) return sorted;
+  const threshold = total * 0.03;
+  const major: Array<{ name: string; value: number }> = [];
+  let otherValue = 0;
+  for (const s of sorted) {
+    if (s.value >= threshold && s.name !== 'Other') {
+      major.push(s);
+    } else {
+      otherValue += s.value;
+    }
+  }
+  if (otherValue > 0) major.push({ name: 'Other', value: otherValue });
+  return major;
 }
 
 /** Top 5 contributors / detractors by unrealized P&L. */

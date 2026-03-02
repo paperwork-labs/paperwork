@@ -19,7 +19,7 @@ import StatCard from '../../components/shared/StatCard';
 import { StatCardSkeleton, TableSkeleton } from '../../components/shared/Skeleton';
 import PnlText from '../../components/shared/PnlText';
 import PageHeader from '../../components/ui/PageHeader';
-import AccountFilterWrapper from '../../components/ui/AccountFilterWrapper';
+import { useAccountFilter } from '../../hooks/useAccountFilter';
 import SortableTable from '../../components/SortableTable';
 import type { Column, FilterGroup } from '../../components/SortableTable';
 import { useOptions, usePortfolioSync, usePortfolioAccounts } from '../../hooks/usePortfolio';
@@ -119,6 +119,7 @@ const PortfolioOptions: React.FC = () => {
 
   const positions = data?.positions ?? [];
   const underlyings = data?.underlyings ?? {};
+  const optionsFilterState = useAccountFilter(positions as FilterableItem[], accounts);
   const summary = summaryData?.summary ?? {};
   const totalValue = Number(summary.total_market_value ?? 0);
   const totalPnl = Number(summary.total_unrealized_pnl ?? 0);
@@ -243,17 +244,12 @@ const PortfolioOptions: React.FC = () => {
           </HStack>
 
           {/* Tab content */}
-          {activeTab === 'positions' && (
-            <AccountFilterWrapper
-              data={positions as FilterableItem[]}
-              accounts={accounts}
-              config={{ showAllOption: true, showSummary: false, variant: 'simple' }}
-              loading={optionsQuery.isLoading || accountsQuery.isLoading}
-              error={optionsQuery.error || accountsQuery.error ? 'Failed to load options' : null}
-              loadingComponent={<TableSkeleton rows={5} cols={4} />}
-            >
-              {(filteredPositions) => {
-                const typed = filteredPositions as OptionPos[];
+          {activeTab === 'positions' && (optionsQuery.isLoading || accountsQuery.isLoading ? (
+            <TableSkeleton rows={5} cols={4} />
+          ) : (optionsQuery.error || accountsQuery.error) ? (
+            <Text color="status.danger">Failed to load options</Text>
+          ) : (() => {
+                const typed = optionsFilterState.filteredData as OptionPos[];
                 const filteredSet = new Set(typed.map(p => p.id));
                 const filteredUnderlyings: Record<string, { calls: OptionPos[]; puts: OptionPos[]; total_value: number; total_pnl: number }> = {};
                 for (const [sym, grp] of Object.entries(underlyings)) {
@@ -379,8 +375,7 @@ const PortfolioOptions: React.FC = () => {
                     )}
                   </>
                 );
-              }}
-            </AccountFilterWrapper>
+              })()
           )}
 
           {activeTab === 'chain' && (

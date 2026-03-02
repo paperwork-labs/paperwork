@@ -278,6 +278,7 @@ class UpdateCredentialsRequest(BaseModel):
 class UpdateAccountRequest(BaseModel):
     account_name: Optional[str] = None
     account_type: Optional[str] = None
+    is_enabled: Optional[bool] = None
 
 
 @router.patch("/{account_id}")
@@ -302,6 +303,12 @@ async def update_account(
             account.account_type = AccountType[request.account_type.upper()]
         except KeyError:
             raise HTTPException(status_code=400, detail=f"Invalid account type: {request.account_type}")
+    if request.is_enabled is not None:
+        account.is_enabled = request.is_enabled
+        if not request.is_enabled:
+            account.status = AccountStatus.INACTIVE
+        elif account.status == AccountStatus.INACTIVE:
+            account.status = AccountStatus.ACTIVE
     account.updated_at = datetime.now()
     db.commit()
     return {"message": "Account updated"}

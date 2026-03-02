@@ -109,6 +109,7 @@ async def get_stocks(
             .join(BrokerAccount, Position.account_id == BrokerAccount.id)
             .filter(
                 Position.user_id == user.id,
+                BrokerAccount.is_enabled == True,
                 Position.instrument_type == "STOCK",
                 Position.quantity != 0,
             )
@@ -130,12 +131,12 @@ async def get_stocks(
                 "id": p.id,
                 "symbol": p.symbol,
                 "account_number": p.account.account_number if p.account else None,
-                "broker": "IBKR",
+                "broker": p.account.broker.value if p.account else "UNKNOWN",
                 "shares": float(p.quantity),
                 "current_price": float(p.current_price or 0),
                 "market_value": float(p.market_value or 0),
-                "cost_basis": float(p.total_cost_basis or 0),
-                "average_cost": float(p.average_cost or 0),
+                "cost_basis": float(p.total_cost_basis) if p.total_cost_basis else None,
+                "average_cost": float(p.average_cost) if p.average_cost else None,
                 "unrealized_pnl": float(p.unrealized_pnl or 0),
                 "unrealized_pnl_pct": float(p.unrealized_pnl_pct or 0),
                 "day_pnl": float(p.day_pnl or 0),
@@ -309,11 +310,12 @@ async def get_tax_summary(
 
 
 def _user_account_ids(db: Session, user_id: int) -> List[int]:
-    """Return broker account IDs for the given user. Use get_portfolio_user for resolution."""
+    """Return enabled broker account IDs for the given user."""
     return [
         a.id
         for a in db.query(BrokerAccount.id).filter(
-            BrokerAccount.user_id == user_id
+            BrokerAccount.user_id == user_id,
+            BrokerAccount.is_enabled == True,
         ).all()
     ]
 

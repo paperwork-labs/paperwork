@@ -45,6 +45,7 @@ import { accountsApi, aggregatorApi, handleApiError } from '../services/api';
 import api from '../services/api';
 import { useConnectJobPoll } from '../hooks/useConnectJobPoll';
 import { useAuth } from '../context/AuthContext';
+import { useAccountContext } from '../context/AccountContext';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { FiArrowLeft, FiEdit2, FiEdit3, FiExternalLink, FiTrash2, FiActivity, FiBarChart2, FiDatabase, FiLink } from 'react-icons/fi';
 import SchwabLogo from '../assets/logos/schwab.svg';
@@ -65,6 +66,7 @@ const SettingsConnections: React.FC = () => {
     return hotToast(msg);
   };
   const { user } = useAuth();
+  const { refetch: refetchGlobalAccounts } = useAccountContext();
   const { timezone } = useUserPreferences();
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -96,6 +98,7 @@ const SettingsConnections: React.FC = () => {
   const editDisclosure = useDisclosure();
   const [editNameId, setEditNameId] = useState<number | null>(null);
   const [editNameValue, setEditNameValue] = useState('');
+  const [showSetupBanner, setShowSetupBanner] = useState(false);
 
   const openEditModal = (a: any) => {
     setEditAccount(a);
@@ -158,6 +161,7 @@ const SettingsConnections: React.FC = () => {
     try {
       const res: any = await accountsApi.list();
       setAccounts(res || []);
+      refetchGlobalAccounts();
     } catch (e) {
       toast({ title: 'Load accounts failed', description: handleApiError(e), status: 'error' });
     }
@@ -195,6 +199,7 @@ const SettingsConnections: React.FC = () => {
     const schwabStatus = params.get('schwab');
     if (schwabStatus === 'linked') {
       toast({ title: 'Schwab account linked successfully', status: 'success' });
+      setShowSetupBanner(true);
       loadAccounts();
       loadSyncHistory();
       window.history.replaceState({}, '', window.location.pathname);
@@ -493,6 +498,67 @@ const SettingsConnections: React.FC = () => {
         />
         <VStack align="stretch" gap={6}>
 
+          {showSetupBanner && accounts.filter(a => String(a.broker).toUpperCase() === 'SCHWAB').length > 0 && (
+            <Box p={4} borderWidth="2px" borderColor="green.500" borderRadius="xl" bg="bg.subtle">
+              <Text fontWeight="bold" fontSize="md" mb={2}>
+                {accounts.filter(a => String(a.broker).toUpperCase() === 'SCHWAB').length} Schwab account{accounts.filter(a => String(a.broker).toUpperCase() === 'SCHWAB').length > 1 ? 's' : ''} connected
+              </Text>
+              <Text fontSize="sm" color="fg.muted" mb={3}>
+                Classify your accounts and choose which to track in your portfolio. Empty accounts are fine to leave untracked.
+              </Text>
+              <VStack align="stretch" gap={2} mb={3}>
+                {accounts.filter(a => String(a.broker).toUpperCase() === 'SCHWAB').map((a: any) => (
+                  <HStack key={a.id} gap={3} p={2} borderWidth="1px" borderColor="border.subtle" borderRadius="md">
+                    <Text fontSize="sm" fontWeight="medium" flex={1}>{a.account_name || a.account_number}</Text>
+                    <NativeSelectRoot size="sm" w="120px">
+                      <NativeSelectField
+                        value={(a.account_type || 'taxable').toUpperCase()}
+                        onChange={async (e) => {
+                          try {
+                            await accountsApi.updateAccount(a.id, { account_type: e.target.value });
+                            await loadAccounts();
+                          } catch (err) {
+                            toast({ title: 'Update failed', status: 'error', description: handleApiError(err) });
+                          }
+                        }}
+                      >
+                        <option value="TAXABLE">Taxable</option>
+                        <option value="IRA">IRA</option>
+                        <option value="ROTH_IRA">Roth IRA</option>
+                        <option value="HSA">HSA</option>
+                        <option value="TRUST">Trust</option>
+                      </NativeSelectField>
+                    </NativeSelectRoot>
+                    <HStack gap={1}>
+                      <input
+                        type="checkbox"
+                        checked={!!a.is_enabled}
+                        onChange={async (e) => {
+                          try {
+                            await accountsApi.updateAccount(a.id, { is_enabled: e.target.checked });
+                            await loadAccounts();
+                          } catch (err) {
+                            toast({ title: 'Update failed', status: 'error', description: handleApiError(err) });
+                          }
+                        }}
+                        style={{ width: 16, height: 16, accentColor: 'var(--chakra-colors-green-500)' }}
+                      />
+                      <Text fontSize="xs" fontWeight="medium">{a.is_enabled ? 'Track' : 'Skip'}</Text>
+                    </HStack>
+                  </HStack>
+                ))}
+              </VStack>
+              <HStack gap={2}>
+                <Button size="sm" colorPalette="brand" onClick={() => { setShowSetupBanner(false); window.location.href = '/portfolio'; }}>
+                  Go to Portfolio
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setShowSetupBanner(false)}>
+                  Done, dismiss
+                </Button>
+              </HStack>
+            </Box>
+          )}
+
           {/* ========== SECTION 1: BROKERAGES ========== */}
           <Box>
             <HStack gap={3} mb={1}>
@@ -564,7 +630,7 @@ const SettingsConnections: React.FC = () => {
                       )}
 
                       {brokerAccounts.map((a: any) => (
-                        <Box key={a.id} p={3} borderWidth="1px" borderColor="border.subtle" borderRadius="md" bg="bg.subtle">
+                        <Box key={a.id} p={3} borderWidth="1px" borderColor="border.subtle" borderRadius="md" bg="bg.subtle" opacity={a.is_enabled ? 1 : 0.6}>
                           <HStack justify="space-between" mb={2}>
                             <HStack gap={2}>
                               {editNameId === a.id ? (
@@ -593,7 +659,26 @@ const SettingsConnections: React.FC = () => {
                                 </HStack>
                               )}
                             </HStack>
-                            <HStack gap={1}>
+                            <HStack gap={2}>
+                              <NativeSelectRoot size="sm" w="120px">
+                                <NativeSelectField
+                                  value={(a.account_type || 'taxable').toUpperCase()}
+                                  onChange={async (e) => {
+                                    try {
+                                      await accountsApi.updateAccount(a.id, { account_type: e.target.value });
+                                      await loadAccounts();
+                                    } catch (err) {
+                                      toast({ title: 'Update failed', status: 'error', description: handleApiError(err) });
+                                    }
+                                  }}
+                                >
+                                  <option value="TAXABLE">Taxable</option>
+                                  <option value="IRA">IRA</option>
+                                  <option value="ROTH_IRA">Roth IRA</option>
+                                  <option value="HSA">HSA</option>
+                                  <option value="TRUST">Trust</option>
+                                </NativeSelectField>
+                              </NativeSelectRoot>
                               {a.sync_status && (String(a.sync_status).toLowerCase() === 'error' || String(a.sync_status).toLowerCase() === 'failed') && a.sync_error_message ? (
                                 <TooltipRoot>
                                   <TooltipTrigger asChild>
@@ -602,11 +687,29 @@ const SettingsConnections: React.FC = () => {
                                   <TooltipPositioner><TooltipContent maxW="xs">{a.sync_error_message}</TooltipContent></TooltipPositioner>
                                 </TooltipRoot>
                               ) : (
-                                <>
-                                  <Badge colorPalette={a.is_enabled ? 'green' : 'gray'} size="sm" variant="subtle">{a.is_enabled ? 'Active' : 'Disabled'}</Badge>
-                                  {a.sync_status && <Badge variant="outline" size="sm">{a.sync_status}</Badge>}
-                                </>
+                                a.sync_status && <Badge variant="outline" size="sm">{a.sync_status}</Badge>
                               )}
+                            </HStack>
+                          </HStack>
+                          <HStack justify="space-between" mb={2}>
+                            <HStack gap={2} alignItems="center">
+                              <input
+                                type="checkbox"
+                                checked={!!a.is_enabled}
+                                onChange={async (e) => {
+                                  try {
+                                    await accountsApi.updateAccount(a.id, { is_enabled: e.target.checked });
+                                    await loadAccounts();
+                                    toast({ title: e.target.checked ? 'Tracking in portfolio' : 'Removed from portfolio', status: 'success' });
+                                  } catch (err) {
+                                    toast({ title: 'Update failed', status: 'error', description: handleApiError(err) });
+                                  }
+                                }}
+                                style={{ width: 16, height: 16, accentColor: 'var(--chakra-colors-green-500)' }}
+                              />
+                              <Text fontSize="xs" color={a.is_enabled ? 'fg.default' : 'fg.muted'} fontWeight="medium">
+                                {a.is_enabled ? 'Track in Portfolio' : 'Not tracked'}
+                              </Text>
                             </HStack>
                           </HStack>
                           {String(a.sync_error_message || '').toLowerCase().includes('encrypt') || String(a.sync_error_message || '').toLowerCase().includes('credential') ? (

@@ -16,7 +16,9 @@ from uuid import uuid4
 from backend.database import get_db, SessionLocal
 from backend.api.dependencies import get_current_user
 from backend.models.user import User
-from backend.models.broker_account import BrokerAccount, AccountCredentials
+from backend.models.broker_account import (
+    BrokerAccount, AccountCredentials, AccountType, AccountStatus, SyncStatus,
+)
 from backend.services.aggregator.schwab_connector import SchwabConnector
 import httpx
 from backend.services.security.oauth_state import oauth_state_service
@@ -760,10 +762,13 @@ async def schwab_callback(
                     broker=account.broker,
                     account_number=acct_num,
                     account_name=f"Schwab {acct_num[-4:]}",
-                    account_type="TAXABLE",
+                    account_type=AccountType.TAXABLE,
+                    status=AccountStatus.ACTIVE,
                     is_enabled=True,
                     api_credentials_stored=True,
                     connection_status="connected",
+                    sync_status=SyncStatus.NEVER_SYNCED,
+                    currency="USD",
                 )
                 db.add(new_acct)
                 db.flush()

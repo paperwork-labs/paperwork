@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, date
 from decimal import Decimal
@@ -23,14 +24,22 @@ logger = logging.getLogger(__name__)
 
 SCHWAB_TYPE_MAP = {
     "TRADE": TransactionType.BUY,
-    "RECEIVE_AND_DELIVER": TransactionType.BUY,
+    "RECEIVE_AND_DELIVER": TransactionType.TRANSFER,
     "DIVIDEND_OR_INTEREST": TransactionType.DIVIDEND,
     "JOURNAL": TransactionType.OTHER,
     "WIRE_IN": TransactionType.DEPOSIT,
     "WIRE_OUT": TransactionType.WITHDRAWAL,
     "ACH_IN": TransactionType.DEPOSIT,
     "ACH_OUT": TransactionType.WITHDRAWAL,
+    "ACH_RECEIPT": TransactionType.DEPOSIT,
+    "ACH_DISBURSEMENT": TransactionType.WITHDRAWAL,
+    "CASH_RECEIPT": TransactionType.DEPOSIT,
+    "CASH_DISBURSEMENT": TransactionType.WITHDRAWAL,
     "ELECTRONIC_FUND": TransactionType.DEPOSIT,
+    "MEMORANDUM": TransactionType.OTHER,
+    "MARGIN_CALL": TransactionType.OTHER,
+    "MONEY_MARKET": TransactionType.OTHER,
+    "SMA_ADJUSTMENT": TransactionType.OTHER,
 }
 
 _TRADE_TYPES = {"TRADE", "RECEIVE_AND_DELIVER"}
@@ -162,6 +171,9 @@ class SchwabSyncService:
         bal_result = await self._sync_balances(account, session)
         results.update(bal_result)
 
+        price_result = await self._refresh_prices(account, session)
+        results.update(price_result)
+
         session.flush()
 
         self._enrich_positions_from_snapshots(account, session)
@@ -180,6 +192,43 @@ class SchwabSyncService:
             )
 
         return results
+
+    async def _refresh_prices(self, account: BrokerAccount, session: Session) -> Dict:
+        """Fetch current prices concurrently and update position market data."""
+        from backend.services.market.market_data_service import MarketDataService
+
+        market = MarketDataService()
+        positions = (
+            session.query(Position)
+            .filter(
+                Position.account_id == account.id,
+                Position.status == PositionStatus.OPEN,
+                Position.quantity != 0,
+            )
+            .all()
+        )
+        symbols = sorted({p.symbol for p in positions if p.symbol})
+        if not symbols:
+            return {"prices_refreshed": 0}
+
+        results = await asyncio.gather(
+            *(market.get_current_price(sym) for sym in symbols),
+            return_exceptions=True,
+        )
+        price_map = {}
+        for sym, res in zip(symbols, results):
+            if isinstance(res, (int, float)) and res > 0:
+                price_map[sym] = float(res)
+
+        updated = 0
+        for p in positions:
+            price = price_map.get(p.symbol)
+            if price:
+                p.update_market_data(price)
+                updated += 1
+        session.flush()
+        logger.info("Schwab sync: refreshed prices for %d/%d positions", updated, len(positions))
+        return {"prices_refreshed": updated}
 
     @staticmethod
     def _enrich_positions_from_snapshots(account: BrokerAccount, session: Session) -> None:
@@ -230,8 +279,32 @@ class SchwabSyncService:
             if not sym:
                 continue
             qty = Decimal(str(p.get("quantity", 0)))
-            avg_cost = Decimal(str(p.get("average_cost", 0))) if p.get("average_cost") is not None else None
-            total_cost = Decimal(str(p.get("total_cost_basis", 0))) if p.get("total_cost_basis") is not None else None
+            avg_cost = Decimal(str(p.get("average_cost"))) if p.get("average_cost") is not None else None
+            total_cost = Decimal(str(p.get("total_cost_basis"))) if p.get("total_cost_basis") is not None else None
+            mkt_val = Decimal(str(p["market_value"])) if p.get("market_value") is not None else None
+            day_pnl = Decimal(str(p["day_pnl"])) if p.get("day_pnl") is not None else None
+            day_pnl_pct = Decimal(str(p["day_pnl_pct"])) if p.get("day_pnl_pct") is not None else None
+
+            fields = {
+                "quantity": qty,
+                "average_cost": avg_cost,
+                "total_cost_basis": total_cost,
+                "instrument_type": "STOCK",
+                "position_type": PositionType.LONG if qty >= 0 else PositionType.SHORT,
+                "status": PositionStatus.OPEN if qty != 0 else PositionStatus.CLOSED,
+            }
+            if mkt_val is not None:
+                fields["market_value"] = mkt_val
+                if qty != 0:
+                    fields["current_price"] = mkt_val / abs(qty)
+            if day_pnl is not None:
+                fields["day_pnl"] = day_pnl
+            if day_pnl_pct is not None:
+                fields["day_pnl_pct"] = day_pnl_pct
+            if avg_cost and total_cost is None and qty != 0:
+                fields["total_cost_basis"] = avg_cost * abs(qty)
+            elif total_cost and avg_cost is None and qty != 0:
+                fields["average_cost"] = total_cost / abs(qty)
 
             existing: Position | None = (
                 session.query(Position)
@@ -239,25 +312,16 @@ class SchwabSyncService:
                 .first()
             )
             if existing:
-                existing.quantity = qty
-                existing.average_cost = avg_cost
-                existing.total_cost_basis = total_cost
-                existing.instrument_type = "STOCK"
-                existing.position_type = PositionType.LONG if qty >= 0 else PositionType.SHORT
-                existing.status = PositionStatus.OPEN if qty != 0 else PositionStatus.CLOSED
+                for k, v in fields.items():
+                    setattr(existing, k, v)
                 updated += 1
             else:
                 new_pos = Position(
                     user_id=account.user_id,
                     account_id=account.id,
                     symbol=sym,
-                    instrument_type="STOCK",
-                    position_type=PositionType.LONG if qty >= 0 else PositionType.SHORT,
-                    quantity=qty,
-                    status=PositionStatus.OPEN if qty != 0 else PositionStatus.CLOSED,
-                    average_cost=avg_cost,
-                    total_cost_basis=total_cost,
                     currency=account.currency or "USD",
+                    **fields,
                 )
                 session.add(new_pos)
                 created += 1
@@ -322,6 +386,7 @@ class SchwabSyncService:
         txn_count = 0
         trade_count = 0
         dividend_count = 0
+        transfer_cost_map: Dict[str, float] = {}
 
         for t in raw_txns:
             ext_id = str(t.get("id") or "").strip()
@@ -338,6 +403,18 @@ class SchwabSyncService:
             txn_type = SCHWAB_TYPE_MAP.get(action, TransactionType.OTHER)
             txn_date_str = t.get("date") or t.get("transactionDate")
             txn_date = _parse_date(txn_date_str) if txn_date_str else datetime.utcnow()
+            sub_account = t.get("sub_account", "")
+            activity_type = t.get("activity_type", "")
+
+            desc_parts = [t.get("description") or ""]
+            if sub_account:
+                desc_parts.append(f"[{sub_account}]")
+            description = " ".join(p for p in desc_parts if p).strip()
+
+            # For ACATS transfers, capture cost basis from transferItems
+            transfer_cost = t.get("transfer_cost_basis")
+            if action == "RECEIVE_AND_DELIVER" and sym and transfer_cost and transfer_cost > 0:
+                transfer_cost_map[sym] = transfer_cost
 
             existing_txn = (
                 session.query(Transaction)
@@ -358,6 +435,7 @@ class SchwabSyncService:
                     commission=commission,
                     currency=account.currency or "USD",
                     transaction_date=txn_date,
+                    description=description or None,
                     source="SCHWAB",
                 )
                 session.add(new_txn)
@@ -411,6 +489,49 @@ class SchwabSyncService:
                     dividend_count += 1
 
         session.flush()
+
+        # Reconcile cost basis for positions missing it, using ACATS transfer cost or local trades
+        positions_missing_cost = (
+            session.query(Position)
+            .filter(
+                Position.account_id == account.id,
+                Position.status == PositionStatus.OPEN,
+                Position.quantity != 0,
+                (Position.average_cost == None) | (Position.average_cost == 0),  # noqa: E711
+            )
+            .all()
+        )
+        reconciled = 0
+        for pos in positions_missing_cost:
+            cost = transfer_cost_map.get(pos.symbol)
+            if cost and cost > 0 and pos.quantity and pos.quantity != 0:
+                pos.total_cost_basis = Decimal(str(cost))
+                pos.average_cost = Decimal(str(cost)) / abs(pos.quantity)
+                reconciled += 1
+                continue
+            # Fallback: compute from local BUY/TRANSFER transactions
+            buy_txns = (
+                session.query(Transaction)
+                .filter(
+                    Transaction.account_id == account.id,
+                    Transaction.symbol == pos.symbol,
+                    Transaction.transaction_type.in_([TransactionType.BUY, TransactionType.TRANSFER]),
+                    Transaction.trade_price > 0,
+                    Transaction.quantity > 0,
+                )
+                .all()
+            )
+            if buy_txns:
+                total_qty = sum(float(tx.quantity or 0) for tx in buy_txns)
+                total_cost = sum(float(tx.quantity or 0) * float(tx.trade_price or 0) for tx in buy_txns)
+                if total_qty > 0:
+                    pos.average_cost = Decimal(str(total_cost / total_qty))
+                    pos.total_cost_basis = pos.average_cost * abs(pos.quantity)
+                    reconciled += 1
+        if reconciled:
+            session.flush()
+            logger.info("Schwab sync: reconciled cost basis for %d positions", reconciled)
+
         return {
             "transactions_synced": txn_count,
             "trades_synced": trade_count,
@@ -430,6 +551,11 @@ class SchwabSyncService:
             cash_balance=bal.get("cash_balance"),
             net_liquidation=bal.get("net_liquidating_value"),
             buying_power=bal.get("equity_buying_power"),
+            available_funds=bal.get("available_funds"),
+            equity=bal.get("equity"),
+            initial_margin_req=bal.get("long_margin_value"),
+            maintenance_margin_req=bal.get("maintenance_requirement"),
+            sma=bal.get("sma"),
             data_source="SCHWAB_API",
         )
         session.add(new_bal)

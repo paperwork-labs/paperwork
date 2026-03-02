@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useAccountContext } from '../context/AccountContext';
 
 export interface AccountData {
@@ -69,13 +69,12 @@ export const useAccountFilter = <T extends FilterableItem>(
     showSummary = true
   } = config;
 
-  const { selected: globalSelected } = useAccountContext();
+  const { selected: globalSelected, setSelected: setGlobalSelected } = useAccountContext();
+  const selectedAccount = globalSelected || 'all';
+  const setSelectedAccount = setGlobalSelected;
+  const isLoading = false;
+  const error: string | null = null;
 
-  const [selectedAccount, setSelectedAccount] = useState<string>(defaultSelection || globalSelected || 'all');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Filter data based on selected account
   const filteredData = useMemo(() => {
     if (!data?.length) return [];
 
@@ -137,16 +136,6 @@ export const useAccountFilter = <T extends FilterableItem>(
       };
     }
   }, [accounts, selectedAccount]);
-
-  // Reset selection if accounts change and current selection is invalid
-  useEffect(() => {
-    if (accounts.length > 0 && selectedAccount !== 'all' && selectedAccount !== 'taxable' && selectedAccount !== 'ira') {
-      const accountExists = accounts.some(acc => acc.account_id === selectedAccount);
-      if (!accountExists) {
-        setSelectedAccount(defaultSelection || globalSelected || 'all');
-      }
-    }
-  }, [accounts, selectedAccount, defaultSelection, globalSelected]);
 
   return {
     selectedAccount,

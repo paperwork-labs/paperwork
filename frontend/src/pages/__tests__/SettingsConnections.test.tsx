@@ -6,6 +6,12 @@ import { renderWithProviders } from '../../test/render';
 
 vi.mock('../../services/api', () => {
   return {
+    __esModule: true,
+    default: {
+      get: vi.fn().mockResolvedValue({ data: { data: {} } }),
+      post: vi.fn().mockResolvedValue({ data: {} }),
+      patch: vi.fn().mockResolvedValue({ data: {} }),
+    },
     accountsApi: {
       list: vi.fn().mockResolvedValue([]),
       add: vi.fn().mockResolvedValue({ id: 1 }),
@@ -43,6 +49,17 @@ vi.mock('../../context/AuthContext', async () => {
     useAuthOptional: () => mockAuth,
   };
 });
+
+vi.mock('../../context/AccountContext', () => ({
+  useAccountContext: () => ({
+    accounts: [],
+    loading: false,
+    error: null,
+    selected: 'all',
+    setSelected: vi.fn(),
+    refetch: vi.fn(),
+  }),
+}));
 
 describe('Brokerages wizard', () => {
   it('opens modal and shows broker logos', async () => {

@@ -326,44 +326,6 @@ const DashboardLayout: React.FC = () => {
     </VStack>
   );
 
-  const renderPortfolioFooter = () => (
-    <Box px={4} py={4} mt="auto">
-      <VStack gap={2} align="stretch">
-        <AccountSelector
-          value={selected}
-          onChange={setSelected}
-          disabled={accountsLoading}
-          accounts={accounts}
-        />
-        <AppDivider />
-        <HStack justify="space-between">
-          <Text fontSize="xs" fontWeight="semibold" color="fg.subtle">
-            {headerStats.label}
-          </Text>
-          <Text fontSize="xs" fontWeight="semibold" color="fg.muted">
-            {headerStats.sublabel || formatSignedCurrency(totals.dayPnL)}
-          </Text>
-        </HStack>
-        <AppDivider />
-        <Text fontSize="xs" fontWeight="semibold" color="fg.subtle" textTransform="uppercase">
-          Quick Stats
-        </Text>
-        <HStack justify="space-between">
-          <Text fontSize="xs" color="fg.subtle">Day P&L</Text>
-          <Text fontSize="xs" fontWeight="semibold" color={totals.dayPnL >= 0 ? 'status.success' : 'status.danger'}>
-            {formatSignedCurrency(totals.dayPnL)}
-          </Text>
-        </HStack>
-        <HStack justify="space-between">
-          <Text fontSize="xs" color="fg.subtle">Positions</Text>
-          <Text fontSize="xs" fontWeight="semibold">
-            {totals.positions}
-          </Text>
-        </HStack>
-      </VStack>
-    </Box>
-  );
-
   const renderHiddenFooter = () => null;
 
   return (
@@ -415,8 +377,7 @@ const DashboardLayout: React.FC = () => {
               {renderNav({ showLabel: isSidebarOpen, px: isSidebarOpen ? 4 : 2 })}
             </Box>
 
-            {/* Portfolio footer (released only when Portfolio is enabled). */}
-            {isSidebarOpen ? (portfolioEnabled ? renderPortfolioFooter() : renderHiddenFooter()) : null}
+            {isSidebarOpen ? renderHiddenFooter() : null}
           </VStack>
         </Box>
       ) : null}
@@ -488,17 +449,15 @@ const DashboardLayout: React.FC = () => {
                 <FiMenu />
               </IconButton>
             ) : null}
-            {/* Keep account selector in header only on mobile. */}
-            {!isDesktop ? (
+            {portfolioEnabled && accounts.length > 0 ? (
               <AccountSelector
                 value={selected}
                 onChange={setSelected}
                 disabled={accountsLoading}
                 accounts={accounts}
-                width="260px"
+                width={isDesktop ? '200px' : '180px'}
               />
             ) : null}
-            {/* REMOVED: Redundant page name display */}
           </HStack>
 
           <HStack gap={4}>

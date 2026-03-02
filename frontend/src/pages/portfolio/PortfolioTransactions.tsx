@@ -16,7 +16,7 @@ import {
 import { FiRefreshCw } from 'react-icons/fi';
 import PageHeader from '../../components/ui/PageHeader';
 import { TableSkeleton } from '../../components/shared/Skeleton';
-import AccountFilterWrapper from '../../components/ui/AccountFilterWrapper';
+// AccountFilterWrapper removed -- uses global header selector now
 import Pagination from '../../components/ui/Pagination';
 import SortableTable, { type Column } from '../../components/SortableTable';
 import { useActivity, usePortfolioSync, usePortfolioAccounts } from '../../hooks/usePortfolio';
@@ -251,16 +251,13 @@ const PortfolioTransactions: React.FC = () => {
           }
         />
 
-        <AccountFilterWrapper
-          data={activity as import('../../hooks/useAccountFilter').FilterableItem[]}
-          accounts={accounts}
-          config={{ showAllOption: true, showSummary: false, variant: 'simple' }}
-          loading={accountsQuery.isLoading}
-          error={activityQuery.error || accountsQuery.error ? 'Failed to load activity' : null}
-        >
-          {() => (
-            <>
-              <HStack gap={3} flexWrap="wrap">
+        {accountsQuery.isLoading ? (
+          <TableSkeleton rows={10} cols={7} />
+        ) : (activityQuery.error || accountsQuery.error) ? (
+          <Text color="status.danger">Failed to load activity</Text>
+        ) : (
+          <>
+            <HStack gap={3} flexWrap="wrap">
                 {DATE_RANGES.map((r) => (
                   <Button
                     key={r.key}
@@ -361,9 +358,8 @@ const PortfolioTransactions: React.FC = () => {
                   )}
                 </CardBody>
               </CardRoot>
-            </>
-          )}
-        </AccountFilterWrapper>
+          </>
+        )}
       </Stack>
     </Box>
   );

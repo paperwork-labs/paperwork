@@ -654,7 +654,7 @@ export const accountsApi = {
     makeOptimizedRequest(() =>
       api.get('/accounts/sync-history', { params: accountId != null ? { account_id: accountId } : {} })
     ),
-  updateAccount: async (accountId: number, payload: { account_name?: string; account_type?: string }) =>
+  updateAccount: async (accountId: number, payload: { account_name?: string; account_type?: string; is_enabled?: boolean }) =>
     makeOptimizedRequest(() => api.patch(`/accounts/${accountId}`, payload)),
   updateCredentials: async (
     accountId: number,

@@ -35,6 +35,7 @@ export interface AccountContextValue {
   error: string | null;
   selected: SelectedAccount;
   setSelected: (value: SelectedAccount) => void;
+  refetch: () => void;
 }
 
 export const AccountContext = createContext<AccountContextValue | undefined>(undefined);
@@ -47,6 +48,7 @@ export const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<SelectedAccount>('all');
+  const [refetchVersion, setRefetchVersion] = useState(0);
   const { token, ready, user, appSettings, appSettingsReady } = useAuth();
   const marketOnly = appSettingsReady ? Boolean(appSettings?.market_only_mode) : true;
   const isAdmin = user?.role === 'admin';
@@ -99,14 +101,16 @@ export const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const res = await api.get<BrokerAccountApiRow[]>('/accounts');
         const list: BrokerAccountApiRow[] = Array.isArray(res.data) ? res.data : [];
         // Normalize minimal fields we need
-        const normalized: BrokerAccount[] = list.map((a) => ({
-          id: a.id,
-          account_number: a.account_number || a.accountNumber || a.account_id || '',
-          account_name: a.account_name || a.accountName || a.alias || a.account_number || '',
-          account_type: a.account_type || a.type || '',
-          broker: a.broker || a.brokerage || 'IBKR',
-          is_enabled: a.is_enabled !== undefined ? a.is_enabled : true,
-        }));
+        const normalized: BrokerAccount[] = list
+          .filter((a) => a.is_enabled !== false)
+          .map((a) => ({
+            id: a.id,
+            account_number: a.account_number || a.accountNumber || a.account_id || '',
+            account_name: a.account_name || a.accountName || a.alias || a.account_number || '',
+            account_type: a.account_type || a.type || '',
+            broker: a.broker || a.brokerage || 'IBKR',
+            is_enabled: a.is_enabled !== undefined ? a.is_enabled : true,
+          }));
         setAccounts(normalized);
       } catch (e: any) {
         const status = e?.status || e?.response?.status;
@@ -122,11 +126,24 @@ export const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     };
     load();
-  }, [token, ready, appSettingsReady, portfolioEnabled]);
+  }, [token, ready, appSettingsReady, portfolioEnabled, refetchVersion]);
+
+  // Reset selection when the selected account is no longer in the enabled list
+  useEffect(() => {
+    if (!accounts.length || selected === 'all' || selected === 'taxable' || selected === 'ira') return;
+    const exists = accounts.some(
+      (a) => a.account_number === selected || String(a.id) === selected,
+    );
+    if (!exists) {
+      setSelected('all');
+    }
+  }, [accounts, selected]);
+
+  const refetch = useMemo(() => () => setRefetchVersion((v) => v + 1), []);
 
   const value = useMemo<AccountContextValue>(() => {
-    return { accounts, loading, error, selected, setSelected };
-  }, [accounts, loading, error, selected]);
+    return { accounts, loading, error, selected, setSelected, refetch };
+  }, [accounts, loading, error, selected, refetch]);
 
   return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;
 };

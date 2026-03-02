@@ -162,7 +162,8 @@ class SchwabClient:
         status, data = await _do_request(self._access_token)
         if status == 401:
             logger.info("Schwab API %s %s: got 401, attempting token refresh", method, path)
-            if await self._ensure_token() and self._access_token:
+            refresh_ok = await self._ensure_token()
+            if refresh_ok and self._access_token:
                 status, data = await _do_request(self._access_token)
         if status != 200:
             logger.warning("Schwab API %s %s: status=%s body=%s", method, path, status, str(data)[:300])
@@ -284,19 +285,25 @@ class SchwabClient:
             qty = float(p.get("longQuantity") or p.get("quantity") or 0) - float(p.get("shortQuantity") or 0)
             avg_cost = None
             cost_basis = None
-            if "averageCost" in p:
-                avg_cost = float(p["averageCost"])
-            if "currentDayCost" in p:
-                avg_cost = float(p["currentDayCost"]) if avg_cost is None else avg_cost
-            if "cost" in p:
+            for field in ("taxLotAverageLongPrice", "averageLongPrice", "averagePrice", "averageCost"):
+                val = p.get(field)
+                if val is not None and float(val) > 0:
+                    avg_cost = float(val)
+                    break
+            if avg_cost is None and p.get("currentDayCost"):
+                avg_cost = float(p["currentDayCost"])
+            if p.get("cost"):
                 cost_basis = float(p["cost"])
-            if "marketValue" in p and qty != 0 and avg_cost is None:
-                avg_cost = float(p["marketValue"]) / abs(qty)
             results.append({
                 "symbol": symbol,
                 "quantity": qty,
                 "average_cost": avg_cost,
                 "total_cost_basis": cost_basis,
+                "market_value": float(p.get("marketValue", 0) or 0),
+                "day_pnl": float(p.get("currentDayProfitLoss", 0) or 0),
+                "day_pnl_pct": float(p.get("currentDayProfitLossPercentage", 0) or 0),
+                "maintenance_requirement": float(p.get("maintenanceRequirement", 0) or 0),
+                "long_open_pnl": float(p.get("longOpenProfitLoss", 0) or 0),
             })
         logger.info("Schwab API: get_positions returned %d equity positions", len(results))
         return results
@@ -322,8 +329,8 @@ class SchwabClient:
         end = datetime.utcnow()
         start = end - timedelta(days=effective_days)
         params = {
-            "startDate": start.strftime("%Y-%m-%d"),
-            "endDate": end.strftime("%Y-%m-%d"),
+            "startDate": start.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+            "endDate": end.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
         }
 
         data = await self._request("GET", f"/accounts/{account_hash}/transactions", params=params)
@@ -346,12 +353,13 @@ class SchwabClient:
             qty = 0.0
             price = 0.0
             commission = 0.0
+            transfer_cost_basis = None
             if transfer_items and isinstance(transfer_items, list):
                 item = transfer_items[0] if transfer_items else {}
                 inst = item.get("instrument") or {}
                 qty = float(item.get("amount", 0) or 0)
                 price = float(item.get("price", 0) or 0)
-                commission = float(item.get("cost", 0) or 0)
+                transfer_cost_basis = float(item.get("cost", 0) or 0) if item.get("cost") else None
             if not inst:
                 inst = t.get("instrument") or {}
             symbol = (inst.get("symbol") or t.get("symbol") or "").upper()
@@ -360,10 +368,15 @@ class SchwabClient:
                 "account_number": account_number,
                 "symbol": symbol,
                 "action": t.get("type", t.get("transactionType", "")),
+                "activity_type": t.get("activityType", ""),
+                "sub_account": t.get("subAccount", ""),
                 "quantity": qty or float(t.get("quantity", 0) or 0),
                 "price": price or float(t.get("price", 0) or 0),
                 "amount": net_amt,
-                "commission": commission or float(t.get("commission", 0) or 0),
+                "commission": float(t.get("commission", 0) or 0),
+                "transfer_cost_basis": transfer_cost_basis,
+                "position_id": t.get("positionId"),
+                "order_id": t.get("orderId"),
                 "date": t.get("tradeDate") or t.get("settlementDate") or t.get("transactionDate") or t.get("date"),
                 "description": t.get("description") or "",
             })
@@ -386,17 +399,37 @@ class SchwabClient:
         if not data or not isinstance(data, dict):
             return {}
 
-        # Balances may be nested
-        bal = data.get("securitiesAccount", {}).get("currentBalances") or data.get("currentBalances") or {}
+        securities = data.get("securitiesAccount", data)
+        bal = securities.get("currentBalances") or data.get("currentBalances") or {}
         if not isinstance(bal, dict):
             return {}
 
+        def _f(key: str, *alt_keys: str) -> float:
+            for k in (key, *alt_keys):
+                v = bal.get(k)
+                if v is not None:
+                    return float(v)
+            return 0.0
+
         result = {
-            "cash_balance": float(bal.get("cashBalance", 0) or 0),
-            "net_liquidating_value": float(bal.get("liquidationValue", bal.get("netLiquidatingValue", 0)) or 0),
-            "equity_buying_power": float(bal.get("buyingPower", 0) or 0),
+            "cash_balance": _f("cashBalance"),
+            "net_liquidating_value": _f("liquidationValue", "netLiquidatingValue"),
+            "equity_buying_power": _f("buyingPower"),
+            "available_funds": _f("availableFunds"),
+            "day_trading_buying_power": _f("dayTradingBuyingPower"),
+            "equity": _f("equity"),
+            "equity_percentage": _f("equityPercentage"),
+            "long_margin_value": _f("longMarginValue"),
+            "maintenance_call": _f("maintenanceCall"),
+            "maintenance_requirement": _f("maintenanceRequirement"),
+            "margin_balance": _f("marginBalance"),
+            "reg_t_call": _f("regTCall"),
+            "short_margin_value": _f("shortMarginValue"),
+            "sma": _f("sma"),
+            "account_type": (securities.get("type") or "").upper(),
         }
-        logger.info("Schwab API: get_account_balances NLV=%.2f", result["net_liquidating_value"])
+        logger.info("Schwab API: get_account_balances NLV=%.2f equity=%.2f margin_req=%.2f",
+                     result["net_liquidating_value"], result["equity"], result["maintenance_requirement"])
         return result
 
     async def get_options_positions(self, account_number: str) -> List[Dict[str, Any]]:
