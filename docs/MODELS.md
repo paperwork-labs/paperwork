@@ -1,8 +1,19 @@
-Models Reference
-================
+# Models Reference
 
-Core
-----
+Data models (Position, Trade, Option, TaxLot, etc.) for DB and API. Inventory and table list: [ARCHITECTURE.md](ARCHITECTURE.md#data-model-inventory). Domain context: [PORTFOLIO.md](PORTFOLIO.md), [MARKET_DATA.md](MARKET_DATA.md).
+
+---
+
+## Table of contents
+
+- [Core](#core)
+- [Market Data](#market-data)
+- [Market data relationships](#market-data-relationships)
+- [Naming conventions](#naming-conventions-reduce-confusion)
+
+---
+
+## Core
 - BrokerAccount
   - Fields: user_id, broker, account_number, account_name, account_type, status, sync_status, last_successful_sync
   - Notes: Single source for accounts across brokers
@@ -50,8 +61,8 @@ Core
 - Strategy (existing; enum extension planned)
   - **StrategyStatus**: DRAFT → BACKTESTING → PAPER_TRADING → ACTIVE (PAPER_TRADING, BACKTESTING added in Section 2)
 
-Market Data
------------
+## Market Data
+
 - PriceData
   - Purpose: canonical OHLCV store for symbols (daily/intraday slices)
   - Key: unique on (symbol, date, interval) via constraint `uq_symbol_date_interval`
@@ -72,8 +83,8 @@ Market Data
   - Headline fields: current_price, rsi, atr_value, sma_50, macd, macd_signal
   - Fields: stored as a flat/wide table (queryable columns, no JSON payload)
 
-Market data relationships
--------------------------
+## Market data relationships
+
 - **PriceData** (OHLCV) is the source for backfills and history; uniqueness on (symbol, date, interval).
 - **MarketSnapshot**: latest per-symbol snapshot (stage, RS, RSI, ATR, performance windows, etc.); keyed by (symbol, analysis_type), ordered by analysis_timestamp.
 - **MarketSnapshotHistory**: immutable daily snapshots for backtesting; unique (symbol, analysis_type, as_of_date).
@@ -85,8 +96,8 @@ Constraints and Integrity
 - Foreign keys point to `BrokerAccount`
 - Use enums from `backend/models/broker_account.py` and related enums for consistency
 
-Naming conventions (reduce confusion)
--------------------------------------
+## Naming conventions (reduce confusion)
+
 - Use "stocks" and "options" in routes/pages; avoid the term "holdings".
 - Use "position" to refer to a position row (stock or option). For stocks: `Position`. For options: `Option`.
 - Align DTO field names across API responses:

@@ -1,5 +1,35 @@
 # Production Operations Guide
 
+## Table of contents
+
+- [At a glance](#at-a-glance)
+- [Goals](#goals)
+- [Core Services](#core-services)
+- [Required Env Vars](#required-env-vars-minimum)
+- [CI/CD](#cicd-github-actions)
+- [Domains](#domains)
+- [DNS, TLS, and Cloudflare](#dns-tls-and-cloudflare)
+- [Cloudflare Tunnel (Local Dev OAuth)](#cloudflare-tunnel-local-dev-oauth)
+- [Request Path](#request-path-production)
+- [Database migration](#database-migration-rename--preserve-data)
+- [Scheduling](#scheduling-cron-no-always-on-beat)
+- [Admin access bootstrap](#admin-access-bootstrap)
+- [Backups](#backups)
+- [Scaling](#scaling)
+- [Rollback](#rollback)
+
+---
+
+## At a glance
+
+| Item | Value |
+|------|-------|
+| **Domains** | Frontend: `https://axiomfolio.com`; API: `https://api.axiomfolio.com` |
+| **Provider** | Render (API, worker, frontend, Postgres, Redis); DNS/TLS via Cloudflare |
+| **Key env** | `DATABASE_URL`, `REDIS_URL`, `ENCRYPTION_KEY`, `CORS_ORIGINS`, `RENDER_API_KEY` (for cron sync) |
+
+---
+
 ## Goals
 - Provider-agnostic deployment (Render + Fly supported)
 - Immutable Docker images
@@ -24,7 +54,7 @@
 - `RATE_LIMIT_DEFAULT`
 
 Credential vault:
-- `ENCRYPTION_KEY` (Fernet key for credential vault; generate with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`)
+- `ENCRYPTION_KEY` (Fernet key for credential vault; generate with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`). Rotation procedure: [ENCRYPTION_KEY_ROTATION.md](ENCRYPTION_KEY_ROTATION.md).
 
 **NEVER set these in production** (enforced by `validate_production_settings()` -- app will refuse to start):
 - `IBKR_FLEX_TOKEN`, `IBKR_FLEX_QUERY_ID`, `TASTYTRADE_CLIENT_SECRET`, `TASTYTRADE_REFRESH_TOKEN`

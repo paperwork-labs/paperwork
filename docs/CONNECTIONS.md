@@ -148,7 +148,7 @@ flowchart LR
 
 ## Credential storage
 
-All sensitive credentials are encrypted at rest with **Fernet** symmetric encryption (`CredentialVault`). Storage is per-user via `AccountCredentials`.
+All sensitive credentials are encrypted at rest with **Fernet** symmetric encryption (`CredentialVault`). Storage is per-user via `AccountCredentials`. Key rotation invalidates stored credentials; procedure: [ENCRYPTION_KEY_ROTATION.md](ENCRYPTION_KEY_ROTATION.md).
 
 ```mermaid
 flowchart LR

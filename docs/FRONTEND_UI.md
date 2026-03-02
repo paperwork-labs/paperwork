@@ -1,11 +1,33 @@
-## Frontend UI (Chakra v3 + Ladle)
+# Frontend UI (Chakra v3 + Ladle)
 
-### What we’re using
+Frontend theming, components, and Ladle. For route-to-page mapping see [ARCHITECTURE.md](ARCHITECTURE.md#frontend-pages).
+
+---
+
+## Table of contents
+
+- [What we're using](#what-were-using)
+- [Chakra v3 architecture](#chakra-v3-architecture-in-this-repo)
+- [Portfolio component map](#portfolio-component-map)
+- [Skeleton loading](#skeleton-loading)
+- [Pagination pattern](#pagination-pattern)
+- [AccountFilterWrapper pattern](#accountfilterwrapper-pattern)
+- [Ladle (component explorer)](#ladle-component-explorer)
+- [Charts](#charts)
+- [Symbol interaction](#symbol-interaction-pattern)
+- [Chart semantic tokens](#chart-semantic-tokens)
+- [Dashboard components](#dashboard-components)
+- [Keeping UI libraries current](#keeping-ui-libraries-current)
+
+---
+
+## What we're using
+
 - **React + Vite**: `frontend/`
 - **Chakra UI v3**: design system + primitives via a single `system` configuration.
 - **Ladle**: lightweight component explorer (Storybook alternative).
 
-### Chakra v3 architecture in this repo
+## Chakra v3 architecture in this repo
 
 #### 1) Single source of truth: `system`
 The canonical Chakra v3 system lives in:
@@ -20,7 +42,8 @@ The app mounts Chakra like this:
 - `frontend/src/App.tsx` → `<ChakraProvider value={system}>`
 
 #### 2) App-level primitives
-We build “app primitives” on top of Chakra v3 components so pages stay consistent:
+
+We build "app primitives" on top of Chakra v3 components so pages stay consistent:
 - `frontend/src/components/ui/AppCard.tsx`
 - `frontend/src/components/ui/Page.tsx`
 - `frontend/src/components/ui/FormField.tsx`
@@ -180,9 +203,7 @@ Reusable sub-components within `MarketDashboard.tsx`:
 ### Keeping UI libraries current
 - Frontend dependencies live in `frontend/package.json`.
 - Chakra is pinned to v3 (`@chakra-ui/react`).
-- Upgrades should be done by updating versions and validating:
-  - `docker compose --project-name axiomfolio --env-file infra/env.dev -f infra/compose.dev.yaml exec -T frontend npm test`
-  - `docker compose --project-name axiomfolio --env-file infra/env.dev -f infra/compose.dev.yaml exec -T frontend npm run build`
+- Upgrades: update versions, then validate from **repo root** using the [Makefile](../Makefile) (see [docs/README.md](README.md)#makefile-quick-reference):
+  - `make frontend-check` (lint + type-check + test), or `make test-frontend`
   - `make ladle-build`
-
-
+  - If you need a full production build, run it inside the frontend container (e.g. with dev stack up: `docker compose ... exec frontend npm run build`).

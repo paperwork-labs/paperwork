@@ -1,25 +1,54 @@
 # Architecture Overview
 
+## Table of contents
+
+- [At a glance](#at-a-glance)
+- [Three Pillars](#three-pillars)
+- [System Overview](#system-overview)
+- [Data Model Inventory](#data-model-inventory)
+- [Backend Module Structure](#backend-module-structure)
+- [Frontend Pages](#frontend-pages)
+- [Data Pipelines](#data-pipelines)
+- [RBAC](#rbac-role-based-access-control)
+- [Auth & Security](#auth--security)
+- [Scheduling](#scheduling)
+- [Broker Data Strategy](#broker-data-strategy)
+- [Production Infrastructure](#production-infrastructure)
+- [Known Gaps](#known-gaps)
+
+---
+
+## At a glance
+
+| Layer | Stack | Where to read more |
+|-------|-------|--------------------|
+| **Backend** | FastAPI, Celery, PostgreSQL, Redis | This doc; [PRODUCTION.md](PRODUCTION.md) for deploy |
+| **Frontend** | React, Chakra v3, Vite, React Query, Recharts, TradingView | [FRONTEND_UI.md](FRONTEND_UI.md) |
+| **Brokers** | IBKR (FlexQuery + Gateway), TastyTrade, Schwab | [CONNECTIONS.md](CONNECTIONS.md) (setup/OAuth); [BROKERS.md](BROKERS.md) (sync impl) |
+| **Domain pillars** | Portfolio, Market data | [PORTFOLIO.md](PORTFOLIO.md), [MARKET_DATA.md](MARKET_DATA.md) |
+
+---
+
 ## Three Pillars
 
 ```mermaid
 flowchart LR
-  subgraph Portfolio["Portfolio (read-only)"]
+  subgraph portfolioPillar ["Portfolio (read-only)"]
     Broker[Broker Sync]
-    Positions[Positions / Trades / Options]
+    Positions["Positions / Trades / Options"]
     Snapshots[Daily Snapshots]
     Broker --> Positions --> Snapshots
   end
 
-  subgraph Intelligence["Intelligence (brain)"]
+  subgraph intelligencePillar ["Intelligence (brain)"]
     Universe[Universe Tracking]
-    Fetch[FMP / OHLCV]
-    Indicators[Stage, RS, RSI, ATR, TD]
+    Fetch["FMP / OHLCV"]
+    Indicators["Stage, RS, RSI, ATR, TD"]
     Snapshot[MarketSnapshot]
     Universe --> Fetch --> Indicators --> Snapshot
   end
 
-  subgraph Strategy["Strategy (execution)"]
+  subgraph strategyPillar ["Strategy (execution)"]
     Rules[Rule Evaluator]
     Signals[Signals]
     OrderEngine[Order Engine]
@@ -27,8 +56,8 @@ flowchart LR
     Rules --> Signals --> OrderEngine --> BrokerRouter
   end
 
-  Portfolio --> Intelligence
-  Intelligence --> Strategy
+  portfolioPillar --> intelligencePillar
+  intelligencePillar --> strategyPillar
 ```
 
 - **Portfolio (read-only)**: Broker sync -> positions, trades, options, snapshots. Smart categories with drag-and-drop reordering. Frontend consumes via REST; IB Gateway provides live overlay.
@@ -43,6 +72,8 @@ flowchart LR
 - **Brokers**: IBKR (FlexQuery XML + TWS Gateway), TastyTrade (SDK), Schwab (OAuth 2.0 + PKCE via `api.schwabapi.com`).
 
 ## Data Model Inventory
+
+Row counts below are illustrative; run DB queries for current state.
 
 | Table | Model | Rows | Notes |
 |-------|-------|-----:|-------|
@@ -202,6 +233,8 @@ Activity endpoint (/activity)
 
 ## Broker Data Strategy
 
+Broker setup and OAuth: [CONNECTIONS.md](CONNECTIONS.md). Sync implementation: [BROKERS.md](BROKERS.md).
+
 - **IBKR FlexQuery**: Trades, cash transactions, tax lots, balances, options, transfers. Requires "Last 365 Calendar Days" period configuration.
 - **IBKR TWS/Gateway**: Live overlay for prices/positions/Greeks. Docker container (`ghcr.io/extrange/ibkr:stable`). Read-only.
 - **TastyTrade SDK**: Positions, trades, transactions, dividends, balances via encrypted credentials.
@@ -209,26 +242,28 @@ Activity endpoint (/activity)
 
 ## Production Infrastructure
 
+Operational details: [PRODUCTION.md](PRODUCTION.md).
+
 ### Architecture Diagram
 
 ```mermaid
 flowchart TB
-    subgraph Internet
-        User[Browser / Mobile]
+    subgraph internet [Internet]
+        User["Browser / Mobile"]
     end
 
-    subgraph Cloudflare["Cloudflare (DNS + CDN + WAF)"]
-        CF_DNS[DNS: axiomfolio.com, api.axiomfolio.com]
+    subgraph cloudflare ["Cloudflare (DNS + CDN + WAF)"]
+        CF_DNS["DNS: axiomfolio.com, api.axiomfolio.com"]
         CF_TLS[TLS Termination]
         CF_DNS --> CF_TLS
     end
 
-    subgraph Render["Render (PaaS)"]
-        FE[axiomfolio-frontend<br/>Static Site]
-        API[axiomfolio-api<br/>FastAPI / Uvicorn]
-        Worker[axiomfolio-worker<br/>Celery Worker]
-        DB[(axiomfolio-db<br/>PostgreSQL)]
-        Redis[(axiomfolio-redis<br/>Redis)]
+    subgraph render ["Render (PaaS)"]
+        FE["axiomfolio-frontend Static Site"]
+        API["axiomfolio-api FastAPI / Uvicorn"]
+        Worker["axiomfolio-worker Celery Worker"]
+        DB[(axiomfolio-db PostgreSQL)]
+        Redis[(axiomfolio-redis Redis)]
 
         API --> DB
         API --> Redis
@@ -236,13 +271,13 @@ flowchart TB
         Worker --> Redis
     end
 
-    subgraph Schwab["Schwab API"]
-        SchwabAuth[api.schwabapi.com<br/>OAuth + Trader API]
+    subgraph schwab ["Schwab API"]
+        SchwabAuth["api.schwabapi.com OAuth + Trader API"]
     end
 
-    subgraph IBKR["IBKR"]
+    subgraph ibkr [IBKR]
         FlexQuery[FlexQuery XML API]
-        Gateway[IB Gateway<br/>TWS Docker]
+        Gateway["IB Gateway TWS Docker"]
     end
 
     User --> CF_DNS

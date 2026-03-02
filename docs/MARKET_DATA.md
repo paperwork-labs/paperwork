@@ -1,5 +1,34 @@
 # Market Data Ingest and Storage Strategy
 
+Pipeline overview and scheduling: [ARCHITECTURE.md](ARCHITECTURE.md#data-pipelines).
+
+---
+
+## Table of contents
+
+- [At a glance](#at-a-glance)
+- [Goals](#goals)
+- [Scope and Sources](#scope-and-sources)
+- [Environment configuration](#environment-configuration-dev)
+- [Data We Compute/Serve](#data-we-computeserve-indicator_engine)
+- [Architecture diagrams](#architecture-diagrams)
+- [Dev world](#dev-world-local)
+- [Persistence Model](#persistence-model)
+- [Scheduling](#scheduling)
+- [Paid mode operations](#paid-mode-operations)
+
+---
+
+## At a glance
+
+| Item | Summary |
+|------|---------|
+| **Goals** | Centralize market data; 200-day indicators for SPY, NASDAQ 100, Dow 30, held symbols; lightweight snapshots |
+| **Sources** | FMP → Twelve Data → yfinance (paid); Finnhub → Twelve Data → yfinance (free) |
+| **Persistence** | `price_data` (OHLCV), `market_snapshot` (latest), `market_snapshot_history` (daily ledger); Redis cache |
+
+---
+
 ## Goals
 - Centralize market data access via `backend/services/market/market_data_service.py`
 - Provide reliable indicators for last 200 trading days for: SPY, NASDAQ 100, Dow 30, and all held symbols (Russell 2000 roadmap)

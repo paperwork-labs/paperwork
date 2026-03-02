@@ -14,7 +14,7 @@ Execution is split into sections. Complete Section 1, merge, then Section 2, the
 
 **Docs**
 
-- ARCHITECTURE, ROADMAP, PORTFOLIO, frontend-ui, MODELS updated with mermaid and current patterns.
+- ARCHITECTURE, ROADMAP, PORTFOLIO, FRONTEND_UI, MODELS updated with mermaid and current patterns.
 
 ## Section 1.5 -- Brokerage Infra + Per-User Credentials (PR 191) [DONE]
 

@@ -1,6 +1,20 @@
 # Brokers and Data Services
 
-## Broker Integrations
+**Broker implementation guide** — per-broker auth, sync architecture, how to add a broker. Connections page and OAuth flows: [CONNECTIONS.md](CONNECTIONS.md).
+
+---
+
+## Table of contents
+
+- [Broker integrations](#broker-integrations)
+- [Credential storage](#credential-storage)
+- [Sync architecture](#sync-architecture)
+- [Approach to add a broker](#approach-to-add-a-broker)
+- [Index constituents](#index-constituents-service)
+
+---
+
+## Broker integrations
 
 ### Implemented
 
@@ -20,23 +34,36 @@
   4. Frontend polls `GET /api/v1/aggregator/tastytrade/status?job_id=...` with exponential backoff (1s -> 5s cap)
   5. On success, accounts are created as `BrokerAccount` rows and user is prompted to sync
 
+#### Schwab
+
+OAuth 2.0 + PKCE via `api.schwabapi.com`. Account discovery and token refresh with DB persistence; sync mirrors TastyTrade pattern (positions, transactions, options, balances). Details: [CONNECTIONS.md](CONNECTIONS.md#schwab-integration).
+
 ### Planned
 
-- **Schwab:** OAuth app required. Env: `SCHWAB_CLIENT_ID`, `SCHWAB_CLIENT_SECRET`, `SCHWAB_REDIRECT_URI`, `ENCRYPTION_KEY`. Live trading after app approval (feature-flagged). Backend routes for link + callback already scaffolded.
 - **Fidelity:** No broad public trading API. Possible via partner/experimental; likely read-only first.
 - **Robinhood:** Private/undocumented API; trading possible but stability/ToS concerns. Prefer read-only.
 
-## Credential Storage
+## Credential storage
 
-All broker credentials are encrypted at rest using Fernet symmetric encryption via `CredentialVault`.
+Credentials live in `account_credentials` (one row per broker account), encrypted at rest with Fernet via `CredentialVault`; key from `ENCRYPTION_KEY` (or `SECRET_KEY`-derived in dev). **Key rotation:** [ENCRYPTION_KEY_ROTATION.md](ENCRYPTION_KEY_ROTATION.md). Vault details and UI: [CONNECTIONS.md](CONNECTIONS.md#credential-storage).
 
-- **Table:** `account_credentials` (one row per broker account)
-- **Encryption key:** `ENCRYPTION_KEY` env var (production). Falls back to `SECRET_KEY`-derived key in dev.
-- **Key rotation:** See [ENCRYPTION_KEY_ROTATION.md](ENCRYPTION_KEY_ROTATION.md).
-
-## Sync Architecture
+## Sync architecture
 
 ### Broker sync flow
+
+```mermaid
+flowchart LR
+  Trigger["Trigger\n(UI or cron)"]
+  Task[sync_account_task]
+  Dispatcher[BrokerSyncService]
+  SyncService["IBKR / TT / Schwab\nsync service"]
+  DB[(Canonical tables)]
+  Trigger --> Task
+  Task --> Dispatcher
+  Dispatcher --> SyncService
+  SyncService -->|"upsert"| DB
+```
+
 1. User triggers sync via UI or Celery beat schedule
 2. `sync_account_task` (Celery) creates an `AccountSync` row (status=RUNNING)
 3. `BrokerSyncService.sync_account_async()` dispatches to broker-specific sync service
@@ -53,7 +80,7 @@ All broker credentials are encrypted at rest using Fernet symmetric encryption v
 5. Store per-user credentials via `AccountCredentials` + `CredentialVault`
 6. Optional: env-driven seeding for dev convenience
 
-## Index Constituents Service
+## Index constituents service
 - File: `backend/services/market/index_constituents_service.py`
 - Purpose: Fetch and cache constituents for SP500, NASDAQ100, DOW30 (FMP primary, Polygon optional, Wikipedia fallback)
 - Used to build ATR universe and market scanners

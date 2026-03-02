@@ -1,5 +1,7 @@
 # Encryption Key Rotation
 
+Referenced from [CONNECTIONS.md](CONNECTIONS.md) (credential storage) and [PRODUCTION.md](PRODUCTION.md) (env/security).
+
 ## Overview
 
 Broker credentials (Tastytrade OAuth tokens, IBKR FlexQuery tokens, Schwab OAuth tokens) are encrypted at rest using Fernet (symmetric encryption). The encryption key is provided via `ENCRYPTION_KEY` or derived from `SECRET_KEY` in development.
@@ -19,7 +21,7 @@ Broker credentials (Tastytrade OAuth tokens, IBKR FlexQuery tokens, Schwab OAuth
 3. Set the new `ENCRYPTION_KEY` in environment/config
 4. Restart application servers
 5. (Optional) Clear or flag existing `AccountCredentials` rows to avoid confusing decryption errors
-6. Users re-connect via Settings > Brokerages for each affected account
+6. Users re-connect via **Settings → Connections** for each affected account
 
 ## Configuration
 

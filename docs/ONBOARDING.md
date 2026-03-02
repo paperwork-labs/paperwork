@@ -1,5 +1,4 @@
-Onboarding (Humans + Agents)
-===========================
+# Onboarding (Humans + Agents)
 
 This repo is a Docker-first monorepo.
 
@@ -7,12 +6,13 @@ This repo is a Docker-first monorepo.
 - Frontend: React + Vite + Chakra UI
 - State: Postgres + Redis
 
-Golden rules
-------------
+**Use the [Makefile](../Makefile) at repo root** for dev and test commands (see [README.md](README.md)#makefile-quick-reference). After quick start, see [ARCHITECTURE.md](ARCHITECTURE.md) and [README.md](README.md) for the full doc index.
+
+## Golden rules
 
 1) **Never run tests against the dev database.**
    - Backend tests are designed to **fail closed** if `TEST_DATABASE_URL` is missing or unsafe.
-   - The only supported backend test entrypoint is `./run.sh test` (or `make test`).
+   - Use **`make test`** (or `./run.sh test`) from repo root. See [TESTS.md](TESTS.md).
 
 2) **No direct pushes to `main`.**
    - Dependabot PRs may auto-merge after CI passes.
@@ -30,9 +30,10 @@ Prerequisites
 
 Quick start (dev stack)
 -----------------------
-- `./run.sh start`
-- `./run.sh status`
-- `./run.sh logs`
+From repo root (prefer Makefile):
+- `make up` — start dev stack (or `./run.sh start`)
+- `make ps` — container status (or `./run.sh status`)
+- `make logs` — tail backend, worker, frontend logs (or `./run.sh logs`)
 
 Local dev (frontend on host, backend on host)
 ---------------------------------------------
@@ -48,27 +49,21 @@ If you run the frontend with `npm run dev` and the backend separately (e.g. `uvi
 
 Run tests (safe, isolated DB)
 -----------------------------
-- `./run.sh test`
+From repo root, use the **Makefile** (see [README.md](README.md)#makefile-quick-reference):
 
-Other useful targets:
-- Backend only (isolated DB): `make test`
-- Frontend unit checks: `make test-frontend`
-- Both: `make test-all`
+- **Backend only:** `make test` (isolated test DB; never touches dev DB)
+- **Frontend only:** `make test-frontend` (lint + type-check + test)
+- **Both:** `make test-all`
 
-Notes:
-- This uses `infra/compose.test.yaml` with `postgres_test` + an isolated Docker volume.
-- `infra/env.test` is untracked; if missing, `./run.sh test` copies from `infra/env.test.example`.
+Equivalent: `./run.sh test` for backend. Notes: uses `infra/compose.test.yaml` with `postgres_test` and an isolated volume; `infra/env.test` is untracked (if missing, `./run.sh test` copies from `infra/env.test.example`).
 
 Migrations (dev DB only)
 ------------------------
-- Apply migrations:
-  - `./run.sh migrate`
-- Create an autogenerate migration:
-  - `./run.sh makemigration "add new table"`
-- Downgrade:
-  - `./run.sh downgrade -1`
-- Stamp head:
-  - `./run.sh stamp`
+From repo root (Makefile):
+- Apply: `make migrate-up` (or `./run.sh migrate`)
+- Create: `make migrate-create MSG="add new table"` (or `./run.sh makemigration "add new table"`)
+- Downgrade: `make migrate-down REV=-1` (or `./run.sh downgrade -1`)
+- Stamp head: `make migrate-stamp-head` (or `./run.sh stamp`)
 
 CI (GitHub Actions)
 -------------------

@@ -1,19 +1,33 @@
-Testing Strategy
-================
+# Testing Strategy
 
-Test Database Isolation (Backend)
----------------------------------
+**How to run:** See [How to run](#how-to-run) below. Never run tests against the dev database; see [ONBOARDING.md](ONBOARDING.md) (golden rules).
+
+---
+
+## Table of contents
+
+- [Test Database Isolation](#test-database-isolation-backend)
+- [Safe Patterns](#safe-patterns-enforced)
+- [Env Guidance](#env-guidance)
+- [Do/Don't](#dodont)
+- [Goals](#goals)
+- [How to run](#how-to-run)
+- [Scopes](#scopes)
+- [Conventions](#conventions)
+- [Test Plan](#test-plan-from-test_planmd)
+
+---
+
+## Test Database Isolation (Backend)
 - Tests run against a dedicated Postgres database in Docker (`postgres_test`).
 - **Safety invariant:** in tests, `DATABASE_URL` **must equal** `TEST_DATABASE_URL` so any accidental use of the app engine/session still targets the isolated test DB.
 - Pytest will **fail closed** if `TEST_DATABASE_URL` is missing or unsafe.
 - The test suite will:
   - Run Alembic migrations to head on the test database at session start.
   - Create a per-test transaction and roll it back after each test for isolation.
-- Example (Docker):
-  - Run: `./run.sh test` (this uses `infra/compose.test.yaml` + `infra/env.test`).
+- Example: `make test` (or `./run.sh test`); uses `infra/compose.test.yaml` + `infra/env.test`.
 
-Safe Patterns (Enforced)
-------------------------
+## Safe Patterns (Enforced)
 - Single DB path: all tests must use the `db_session` fixture. Direct `SessionLocal`/`engine`/`create_engine` imports in tests are blocked.
 - Destructive tests: must be marked `@pytest.mark.destructive` and only run with `ALLOW_DESTRUCTIVE_TESTS=1` or `--allow-destructive-tests`.
 - Never truncate or drop dev/prod tables. All DB tests run in an isolated test DB with per-test transactions and rollbacks.
@@ -21,58 +35,48 @@ Safe Patterns (Enforced)
 - Misconfig guard: DB tests skip if `TEST_DATABASE_URL` is unset or equals `DATABASE_URL`.
 - Alembic: test migrations run only against `TEST_DATABASE_URL`.
 
-Env Guidance
-------------
+## Env Guidance
 - Leave production `.env` untouched.
 - Local dev uses `infra/env.dev` (untracked); tests use `infra/env.test` (untracked).
 - CI should copy `infra/env.test.example` to `infra/env.test` for safe defaults.
 - Do not run backend tests outside the isolated test compose stack unless you intentionally set `TEST_DATABASE_URL` to `postgres_test` and `_test` DB name.
 
-Do/Don't
---------
+## Do/Don't
 - Do: use the `db_session` fixture provided in `backend/tests/conftest.py`.
 - Do: assume Alembic has upgraded the test DB to head before tests run.
 - Don’t: call `init_db()` or instantiate `SessionLocal()` directly in tests.
 - Don’t: rely on app `DATABASE_URL`; all DB tests must run on `TEST_DATABASE_URL`.
 
-Goals
------
+## Goals
 - Fast unit tests for services and clients
 - Focused integration tests for brokers and market data
 - Smoke tests for API routes
 
-How to run
-----------
-- Recommended:
-  - `./run.sh test`
+## How to run
 
-- Backend only (isolated DB):
-  - `make test`
+**Prefer the [Makefile](../Makefile) at repo root** (see [docs/README.md](README.md)#makefile-quick-reference). All commands below are from repo root.
 
-- Frontend unit checks:
-  - `make test-frontend`
+- **Backend only** (isolated DB): `make test` (or `./run.sh test`)
+- **Frontend only** (lint + type-check + test): `make test-frontend` or `make frontend-check`
+- **Both:** `make test-all`
 
-- Both:
-  - `make test-all`
+Individual frontend steps: `make frontend-lint`, `make frontend-typecheck`, `make frontend-test`.
 
-- Focused (still isolated):
-  - `make test-up`
-  - `docker compose --project-name axiomfolio_test --env-file infra/env.test -f infra/compose.test.yaml run --rm backend_test bash -lc "python -m pytest backend/tests/test_client_tastytrade.py -q"`
+Focused runs (still isolated):
+- `make test-up` — bring up test DB/Redis only, then run pytest manually
+- `docker compose --project-name axiomfolio_test --env-file infra/env.test -f infra/compose.test.yaml run --rm backend_test bash -lc "python -m pytest backend/tests/test_client_tastytrade.py -q"`
 
-Scopes
-------
+## Scopes
 - Unit: deterministic logic (parsers, transforms, dedupe)
 - Integration (flagged): real broker/market API using env credentials
 - API: minimal happy-path per route
 
-Conventions
------------
+## Conventions
 - Read secrets from env (never hardcode account numbers)
 - Mark networked tests with @pytest.mark.integration
 - Use AsyncMock/patch for SDKs in unit tests
 
-Test Plan (from TEST_PLAN.md)
------------------------------
+## Test Plan (from TEST_PLAN.md)
 Pyramids:
 - Unit: fast, pure logic (parsers, transforms, dedupe)
 - Integration: broker SDKs/APIs via env; FlexQuery XML fixtures; DB interactions

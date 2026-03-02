@@ -1,6 +1,17 @@
 # Portfolio Pillar
 
-Architecture, data flow, and file inventory for the Portfolio section of AxiomFolio.
+Architecture, data flow, and file inventory for the Portfolio section of AxiomFolio. Broker setup (IBKR, TastyTrade, Schwab): [CONNECTIONS.md](CONNECTIONS.md).
+
+---
+
+## Table of contents
+
+- [Data Sync Flow](#data-sync-flow)
+- [Key files](#key-files)
+- [Routes](#routes)
+- [Frontend pages](#frontend-pages)
+
+*(Additional sections follow in-file.)*
 
 ---
 
@@ -17,13 +28,7 @@ flowchart TD
     end
 
     subgraph syncLayer ["Sync Services"]
-        IBKRSync["ibkr/ package
-        pipeline.py (orchestrator)
-        sync_positions.py
-        sync_transactions.py
-        sync_balances.py
-        sync_greeks.py
-        helpers.py"]
+        IBKRSync["ibkr package: pipeline, sync_positions, sync_transactions, sync_balances, sync_greeks, helpers"]
         TTSync["TastyTradeSyncService"]
         SCHSync["SchwabSyncService"]
         BrokerSync["BrokerSyncService (orchestrator)"]
