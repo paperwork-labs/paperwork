@@ -4,6 +4,7 @@ Clean IBKR Client - Real-time Trading API
 Focuses on real-time positions, trading, and market data via ib_insync.
 Historical data and tax lots handled by separate FlexQuery client.
 """
+from __future__ import annotations
 
 import asyncio
 import logging
@@ -12,12 +13,23 @@ import os
 import sys
 
 try:
-    from ib_insync import IB, util, Contract, Stock, Option
+    from ib_insync import (
+        IB,
+        util,
+        Contract,
+        Stock,
+        Option,
+        MarketOrder,
+        LimitOrder,
+        StopOrder,
+        StopLimitOrder,
+    )
 
     IBKR_AVAILABLE = True
 except ImportError:
     IBKR_AVAILABLE = False
     IB = None
+    MarketOrder = LimitOrder = StopOrder = StopLimitOrder = None
 
 try:
     from backend.config import settings
@@ -25,6 +37,16 @@ except ImportError:
     from config import settings
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_float(val) -> float | None:
+    """Coerce value to float for DB Float columns; return None if invalid."""
+    if val is None or val == "" or val == "None":
+        return None
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return None
 
 
 class IBKRClient:
@@ -114,6 +136,7 @@ class IBKRClient:
                 logger.info("🔄 Connecting to IBKR Gateway at %s:%s ...", connect_host, connect_port)
 
                 self.ib = IB()
+                self.ib._owner_loop = asyncio.get_running_loop()
 
                 test_mode = (
                     os.environ.get("AXIOMFOLIO_TESTING") == "1"
@@ -267,10 +290,30 @@ class IBKRClient:
             return {}
 
     async def _ensure_connected(self) -> bool:
-        """Ensure we have a valid connection."""
+        """Ensure we have a valid connection in the current event loop."""
+        current_loop = asyncio.get_running_loop()
+        ib_loop = getattr(self.ib, "_owner_loop", None) if self.ib else None
+
+        if self.ib and self.ib.isConnected() and ib_loop is current_loop:
+            return True
+
+        if self.ib and ib_loop is not None and ib_loop is not current_loop:
+            logger.warning(
+                "IBKRClient: IB instance bound to different event loop — reconnecting in current loop"
+            )
+            try:
+                self.ib.disconnect()
+            except Exception:
+                pass
+            self.ib = None
+            self.connected = False
+
         if not self.connected or not self.ib or not self.ib.isConnected():
             logger.info(
-                f"🔄 IBKR not connected; attempting auto-reconnect (host={self.host}, port={self.port}, client_id={self.client_id})"
+                "IBKR not connected; attempting auto-reconnect (host=%s, port=%s, client_id=%s)",
+                self.host,
+                self.port,
+                self.client_id,
             )
             return await self.connect_with_retry()
         return True
@@ -493,6 +536,238 @@ class IBKRClient:
         except Exception as e:
             logger.error("Realtime option data failed: %s", e)
             return {}
+
+    # --- Order execution helpers and methods ---
+
+    def _build_contract(self, symbol: str) -> Contract:
+        """Create a US stock contract for the given symbol."""
+        return Stock(symbol, "SMART", "USD")
+
+    def _build_order(
+        self,
+        action: str,
+        quantity: float,
+        order_type: str,
+        limit_price: float | None = None,
+        stop_price: float | None = None,
+    ):
+        """Build an ib_insync Order from parameters.
+
+        order_type: 'MKT', 'LMT', 'STP', 'STP_LMT' (or 'STP LMT')
+        """
+        action = str(action).upper()
+        order_type = str(order_type).upper().replace(" ", "_")
+        if order_type == "STP_LMT":
+            order_type = "STP LMT"  # ib_insync uses space
+
+        if order_type == "MKT":
+            return MarketOrder(action, quantity)
+        if order_type == "LMT":
+            if limit_price is None:
+                raise ValueError("limit_price required for LMT orders")
+            return LimitOrder(action, quantity, float(limit_price))
+        if order_type == "STP":
+            if stop_price is None:
+                raise ValueError("stop_price required for STP orders")
+            return StopOrder(action, quantity, float(stop_price))
+        if order_type in ("STP_LMT", "STP LMT"):
+            if limit_price is None or stop_price is None:
+                raise ValueError("limit_price and stop_price required for STP_LMT orders")
+            return StopLimitOrder(
+                action, quantity, float(limit_price), float(stop_price)
+            )
+        raise ValueError(f"Unsupported order_type: {order_type}")
+
+    def _is_paper_trading(self) -> bool:
+        """True if connected to paper trading (port 7496 TWS or 4001 Gateway, or IBKR_TRADING_MODE=paper)."""
+        mode = getattr(settings, "IBKR_TRADING_MODE", "").lower()
+        if mode == "paper":
+            return True
+        port = getattr(self, "port", None) or getattr(
+            settings, "IBKR_PORT", 7497
+        )
+        return int(port) in (7496, 4001)
+
+    async def what_if_order(
+        self,
+        symbol: str,
+        action: str,
+        quantity: float,
+        order_type: str,
+        limit_price: float | None = None,
+        stop_price: float | None = None,
+    ) -> Dict:
+        """Simulated order preview (commission, margin impact). No real order placed.
+
+        Returns dict with: estimated_commission, estimated_margin_impact,
+        estimated_equity_with_loan, maintenance_margin, initial_margin.
+        """
+        if not IBKR_AVAILABLE or not await self._ensure_connected():
+            return {
+                "estimated_commission": None,
+                "estimated_margin_impact": None,
+                "estimated_equity_with_loan": None,
+                "maintenance_margin": None,
+                "initial_margin": None,
+                "error": "Not connected or ib_insync not available",
+            }
+
+        try:
+            contract = self._build_contract(symbol)
+            self.ib.qualifyContracts(contract)
+            order = self._build_order(
+                action, quantity, order_type, limit_price, stop_price
+            )
+            state = await self.ib.whatIfOrderAsync(contract, order)
+            est_commission = None
+            if (
+                state.commission is not None
+                and state.commission != getattr(util, "UNSET_DOUBLE", float("inf"))
+            ):
+                try:
+                    est_commission = float(state.commission)
+                except (TypeError, ValueError):
+                    pass
+            return {
+                "estimated_commission": est_commission,
+                "estimated_margin_impact": _safe_float(state.maintMarginChange),
+                "estimated_equity_with_loan": _safe_float(state.equityWithLoanAfter),
+                "maintenance_margin": _safe_float(state.maintMarginAfter),
+                "initial_margin": _safe_float(state.initMarginAfter),
+            }
+        except Exception as e:
+            logger.error("what_if_order failed for %s: %s", symbol, e)
+            return {
+                "estimated_commission": None,
+                "estimated_margin_impact": None,
+                "estimated_equity_with_loan": None,
+                "maintenance_margin": None,
+                "initial_margin": None,
+                "error": str(e),
+            }
+
+    async def place_order(
+        self,
+        symbol: str,
+        action: str,
+        quantity: float,
+        order_type: str,
+        limit_price: float | None = None,
+        stop_price: float | None = None,
+    ) -> Dict:
+        """Place a real order. Requires ENABLE_TRADING.
+
+        action: 'BUY' or 'SELL'
+        order_type: 'MKT', 'LMT', 'STP', 'STP_LMT'
+        Returns dict with broker_order_id, status.
+        """
+        if not IBKR_AVAILABLE:
+            return {"broker_order_id": None, "status": "error", "error": "ib_insync not available"}
+
+        if not getattr(settings, "ENABLE_TRADING", False):
+            return {
+                "broker_order_id": None,
+                "status": "rejected",
+                "error": "ENABLE_TRADING is False",
+            }
+
+        if not await self._ensure_connected():
+            return {
+                "broker_order_id": None,
+                "status": "error",
+                "error": "Not connected to IBKR",
+            }
+
+        if not self._is_paper_trading():
+            allow_live = getattr(settings, "ALLOW_LIVE_ORDERS", False)
+            if isinstance(allow_live, str):
+                allow_live = allow_live.strip().lower() in ("true", "1", "yes")
+            if not allow_live:
+                return {
+                    "broker_order_id": None,
+                    "status": "rejected",
+                    "error": "Live orders blocked. Set ALLOW_LIVE_ORDERS=true to enable.",
+                }
+            port = getattr(self, "port", None) or getattr(settings, "IBKR_PORT", "?")
+            mode = getattr(settings, "IBKR_TRADING_MODE", "unknown")
+            logger.warning("Placing LIVE order: %s %s %s (port=%s, mode=%s)", action, quantity, symbol, port, mode)
+
+        try:
+            contract = self._build_contract(symbol)
+            self.ib.qualifyContracts(contract)
+            order = self._build_order(
+                action, quantity, order_type, limit_price, stop_price
+            )
+            trade = self.ib.placeOrder(contract, order)
+            broker_order_id = trade.order.orderId
+            status = trade.orderStatus.status if trade.orderStatus else "Submitted"
+            return {
+                "broker_order_id": broker_order_id,
+                "status": status,
+            }
+        except Exception as e:
+            logger.error("place_order failed for %s: %s", symbol, e)
+            return {
+                "broker_order_id": None,
+                "status": "error",
+                "error": str(e),
+            }
+
+    async def cancel_order(self, broker_order_id: int | str) -> Dict:
+        """Cancel an order by its broker order ID."""
+        if not IBKR_AVAILABLE:
+            return {"status": "error", "error": "ib_insync not available"}
+
+        if not getattr(settings, "ENABLE_TRADING", False):
+            return {"status": "rejected", "error": "ENABLE_TRADING is False"}
+
+        if not await self._ensure_connected():
+            return {"status": "error", "error": "Not connected to IBKR"}
+
+        if not self._is_paper_trading():
+            logger.warning("Cancelling LIVE order: broker_order_id=%s", broker_order_id)
+
+        try:
+            order_id = int(broker_order_id)
+            for trade in self.ib.trades():
+                if trade.order.orderId == order_id:
+                    self.ib.cancelOrder(trade.order)
+                    return {"broker_order_id": order_id, "status": "PendingCancel"}
+            return {
+                "broker_order_id": order_id,
+                "status": "error",
+                "error": f"Order {order_id} not found in session",
+            }
+        except Exception as e:
+            logger.error("cancel_order failed for %s: %s", broker_order_id, e)
+            return {"broker_order_id": broker_order_id, "status": "error", "error": str(e)}
+
+    async def get_order_status(self, broker_order_id: int | str) -> Dict:
+        """Return current order status from IB."""
+        if not IBKR_AVAILABLE or not await self._ensure_connected():
+            return {"broker_order_id": broker_order_id, "status": "unknown", "error": "Not connected"}
+
+        try:
+            order_id = int(broker_order_id)
+            for trade in self.ib.trades():
+                if trade.order.orderId == order_id:
+                    status = trade.orderStatus.status if trade.orderStatus else "Unknown"
+                    filled = getattr(trade.orderStatus, "filled", 0) or 0
+                    remaining = getattr(trade.orderStatus, "remaining", 0) or 0
+                    return {
+                        "broker_order_id": order_id,
+                        "status": status,
+                        "filled": float(filled),
+                        "remaining": float(remaining),
+                    }
+            return {
+                "broker_order_id": order_id,
+                "status": "unknown",
+                "error": "Order not found in session",
+            }
+        except Exception as e:
+            logger.error("get_order_status failed for %s: %s", broker_order_id, e)
+            return {"broker_order_id": broker_order_id, "status": "unknown", "error": str(e)}
 
 
 # Global singleton instance

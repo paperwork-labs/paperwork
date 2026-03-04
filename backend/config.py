@@ -72,6 +72,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     ENCRYPTION_KEY: Optional[str] = None
     ENABLE_TRADING: bool = False
+    ALLOW_LIVE_ORDERS: bool = False
     SEED_ACCOUNTS_ON_STARTUP: bool = False
     AUTO_MIGRATE_ON_STARTUP: bool = False
 

@@ -30,7 +30,11 @@ import { useUserPreferences } from '../../hooks/useUserPreferences';
 import { formatMoney } from '../../utils/format';
 import { TableSkeleton } from '../../components/shared/Skeleton';
 import StatCard from '../../components/shared/StatCard';
+import SellOrderModal from '../../components/orders/SellOrderModal';
 import { TAX_RATE_SHORT_TERM_PCT, TAX_RATE_LONG_TERM_PCT } from '../../constants/tax';
+import { useColorMode } from '../../theme/colorMode';
+
+type SellTarget = { symbol: string; currentPrice: number; sharesHeld: number; averageCost?: number } | null;
 
 interface TaxLotRow {
   id: number;
@@ -92,8 +96,11 @@ interface YearSummary {
 
 const PortfolioTaxCenter: React.FC = () => {
   const { currency } = useUserPreferences();
+  const { colorMode } = useColorMode();
+  const isDark = colorMode === 'dark';
   const [activeTab, setActiveTab] = useState<TabId>('unrealized');
   const [search, setSearch] = useState('');
+  const [sellTarget, setSellTarget] = useState<SellTarget>(null);
   const [filter, setFilter] = useState<'all' | 'lt' | 'st' | 'harvest' | 'approaching'>('all');
   const [sortBy, setSortBy] = useState<SortField>('days_held');
   const [sortDesc, setSortDesc] = useState(true);
@@ -437,13 +444,14 @@ const PortfolioTaxCenter: React.FC = () => {
                   </TableColumnHeader>
                   <TableColumnHeader textAlign="end">P/L %</TableColumnHeader>
                   <TableColumnHeader>Source</TableColumnHeader>
+                  <TableColumnHeader w="60px" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredLots.map((l) => {
                   const daysToLT = Math.max(0, 365 - l.days_held);
                   return (
-                    <TableRow key={l.id} bg={l.approaching_lt ? 'yellow.950' : undefined}>
+                    <TableRow key={l.id} bg={l.approaching_lt ? (isDark ? 'yellow.950' : 'yellow.50') : undefined}>
                       <TableCell>
                         <Text fontFamily="mono" fontWeight="semibold">{l.symbol}</Text>
                       </TableCell>
@@ -453,9 +461,9 @@ const PortfolioTaxCenter: React.FC = () => {
                         </Badge>
                       </TableCell>
                       <TableCell textAlign="end">
-                        <Text fontSize="xs" color={l.approaching_lt ? 'yellow.400' : 'fg.muted'}>
+                        <Text fontSize="xs" color={l.approaching_lt ? (isDark ? 'yellow.400' : 'yellow.700') : 'fg.muted'}>
                           {l.days_held}d
-                          {l.approaching_lt && <Text as="span" fontSize="xs" color="yellow.400"> ({daysToLT}d to LT)</Text>}
+                          {l.approaching_lt && <Text as="span" fontSize="xs" color={isDark ? 'yellow.400' : 'yellow.700'}> ({daysToLT}d to LT)</Text>}
                         </Text>
                       </TableCell>
                       <TableCell>{fmtDate(l.purchase_date)}</TableCell>
@@ -475,6 +483,21 @@ const PortfolioTaxCenter: React.FC = () => {
                             {l.source === 'official_statement' ? 'Official' : 'Estimated'}
                           </Badge>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          colorPalette="red"
+                          onClick={() => setSellTarget({
+                            symbol: l.symbol,
+                            currentPrice: l.shares > 0 ? l.market_value / l.shares : 0,
+                            sharesHeld: l.shares,
+                            averageCost: l.cost_per_share,
+                          })}
+                        >
+                          Sell
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );
@@ -509,6 +532,7 @@ const PortfolioTaxCenter: React.FC = () => {
                         {totalPnlPct.toFixed(1)}%
                       </TableCell>
                       <TableCell />
+                      <TableCell />
                     </TableRow>
                   </tfoot>
                 );
@@ -517,6 +541,17 @@ const PortfolioTaxCenter: React.FC = () => {
           </TableScrollArea>
         </CardBody>
       </CardRoot>
+      )}
+
+      {sellTarget && (
+        <SellOrderModal
+          isOpen={!!sellTarget}
+          symbol={sellTarget.symbol}
+          currentPrice={sellTarget.currentPrice}
+          sharesHeld={sellTarget.sharesHeld}
+          averageCost={sellTarget.averageCost}
+          onClose={() => setSellTarget(null)}
+        />
       )}
     </VStack>
   );

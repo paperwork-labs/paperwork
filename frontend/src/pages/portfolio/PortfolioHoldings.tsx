@@ -24,6 +24,9 @@ import { formatMoney } from '../../utils/format';
 import { buildAccountsFromPositions } from '../../utils/portfolio';
 import type { AccountData } from '../../hooks/useAccountFilter';
 import type { EnrichedPosition } from '../../types/portfolio';
+import SellOrderModal from '../../components/orders/SellOrderModal';
+
+type SellTarget = { symbol: string; currentPrice: number; sharesHeld: number; averageCost?: number; positionId?: number } | null;
 
 function isNonOptionPosition(p: EnrichedPosition): boolean {
   const t = String((p as { instrument_type?: string; asset_class?: string })?.instrument_type ?? (p as { instrument_type?: string; asset_class?: string })?.asset_class ?? '').toLowerCase();
@@ -77,6 +80,7 @@ const HOLDINGS_FILTER_PRESETS: Array<{ label: string; filters: FilterGroup }> = 
 const PortfolioHoldings: React.FC = () => {
   const [chartSymbol, setChartSymbol] = useState<string | null>(null);
   const [showHeatmap, setShowHeatmap] = useState(false);
+  const [sellTarget, setSellTarget] = useState<SellTarget>(null);
   const navigate = useNavigate();
   const { currency } = useUserPreferences();
   const positionsQuery = usePositions();
@@ -265,6 +269,100 @@ const PortfolioHoldings: React.FC = () => {
         width: '80px',
       },
       {
+        key: 'current_stage_days',
+        header: 'Stage Days',
+        accessor: (p) => (p as any).current_stage_days ?? null,
+        sortable: true,
+        sortType: 'number',
+        isNumeric: true,
+        render: (v) => {
+          const n = Number(v);
+          return n ? <Text fontSize="sm" color="fg.muted">{n}d</Text> : <Text fontSize="sm" color="fg.muted">—</Text>;
+        },
+        width: '80px',
+      },
+      {
+        key: 'td_signal',
+        header: 'TD Seq',
+        accessor: (p) => {
+          const buy = (p as any).td_buy_setup ?? 0;
+          const sell = (p as any).td_sell_setup ?? 0;
+          return buy >= 9 ? buy : sell >= 9 ? -sell : buy > sell ? buy : -sell;
+        },
+        sortable: true,
+        sortType: 'number',
+        render: (_, row) => {
+          const r = row as any;
+          const parts: string[] = [];
+          if (r.td_buy_complete) parts.push('Buy 9');
+          else if (r.td_buy_setup >= 7) parts.push(`B${r.td_buy_setup}`);
+          if (r.td_sell_complete) parts.push('Sell 9');
+          else if (r.td_sell_setup >= 7) parts.push(`S${r.td_sell_setup}`);
+          if (r.td_buy_countdown >= 12) parts.push(`BC${r.td_buy_countdown}`);
+          if (r.td_sell_countdown >= 12) parts.push(`SC${r.td_sell_countdown}`);
+          if (!parts.length) return <Text fontSize="xs" color="fg.muted">—</Text>;
+          return (
+            <HStack gap={0.5}>
+              {parts.map((p, i) => (
+                <Badge key={i} size="sm" variant="outline" colorPalette={p.startsWith('B') ? 'green' : 'red'}>{p}</Badge>
+              ))}
+            </HStack>
+          );
+        },
+        width: '90px',
+      },
+      {
+        key: 'gaps',
+        header: 'Gaps',
+        accessor: (p) => ((p as any).gaps_unfilled_up ?? 0) + ((p as any).gaps_unfilled_down ?? 0),
+        sortable: true,
+        sortType: 'number',
+        isNumeric: true,
+        render: (_, row) => {
+          const up = (row as any).gaps_unfilled_up ?? 0;
+          const dn = (row as any).gaps_unfilled_down ?? 0;
+          if (!up && !dn) return <Text fontSize="xs" color="fg.muted">—</Text>;
+          return (
+            <HStack gap={1}>
+              {up > 0 && <Text fontSize="xs" color="green.400">{up}↑</Text>}
+              {dn > 0 && <Text fontSize="xs" color="red.400">{dn}↓</Text>}
+            </HStack>
+          );
+        },
+        width: '70px',
+      },
+      {
+        key: 'pe_ttm',
+        header: 'P/E',
+        accessor: (p) => (p as any).pe_ttm ?? null,
+        sortable: true,
+        sortType: 'number',
+        isNumeric: true,
+        render: (v) => {
+          if (v == null) return <Text fontSize="xs" color="fg.muted">—</Text>;
+          const n = Number(v);
+          const color = n < 0 ? 'red.400' : n > 50 ? 'yellow.400' : 'fg.muted';
+          return <Text fontSize="xs" color={color}>{n.toFixed(1)}</Text>;
+        },
+        width: '65px',
+      },
+      {
+        key: 'next_earnings',
+        header: 'Earnings',
+        accessor: (p) => (p as any).next_earnings ?? null,
+        sortable: true,
+        sortType: 'date',
+        render: (v) => {
+          if (!v) return <Text fontSize="xs" color="fg.muted">—</Text>;
+          const d = new Date(String(v));
+          if (isNaN(d.getTime())) return <Text fontSize="xs" color="fg.muted">—</Text>;
+          const daysOut = Math.ceil((d.getTime() - Date.now()) / (1000 * 86400));
+          const color = daysOut <= 7 ? 'yellow.400' : 'fg.muted';
+          return <Text fontSize="xs" color={color}>{d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</Text>;
+        },
+        width: '80px',
+      },
+      {
         key: 'cost_basis',
         header: 'Cost Basis',
         accessor: (p) => {
@@ -353,6 +451,32 @@ const PortfolioHoldings: React.FC = () => {
         render: (v) => <Text fontSize="xs" color="fg.muted">{String(v || '—')}</Text>,
         width: '120px',
       },
+      {
+        key: 'actions',
+        header: '',
+        accessor: () => '',
+        sortable: false,
+        render: (_, row) => (
+          <Button
+            size="xs"
+            variant="outline"
+            colorPalette="red"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSellTarget({
+                symbol: row.symbol,
+                currentPrice: Number(row.current_price ?? 0),
+                sharesHeld: Number((row as any).shares ?? 0),
+                averageCost: row.average_cost != null ? Number(row.average_cost) : undefined,
+                positionId: row.id,
+              });
+            }}
+          >
+            Sell
+          </Button>
+        ),
+        width: '60px',
+      },
     ],
     [currency, totalValue]
   );
@@ -428,6 +552,18 @@ const PortfolioHoldings: React.FC = () => {
         )}
       </Box>
       <ChartSlidePanel symbol={chartSymbol} onClose={() => setChartSymbol(null)} />
+      {sellTarget && (
+        <SellOrderModal
+          isOpen={!!sellTarget}
+          onClose={() => setSellTarget(null)}
+          symbol={sellTarget.symbol}
+          currentPrice={sellTarget.currentPrice}
+          sharesHeld={sellTarget.sharesHeld}
+          averageCost={sellTarget.averageCost}
+          positionId={sellTarget.positionId}
+          onOrderPlaced={() => positionsQuery.refetch()}
+        />
+      )}
     </ChartContext.Provider>
   );
 };

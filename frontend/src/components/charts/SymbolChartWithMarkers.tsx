@@ -24,10 +24,12 @@ import {
   computeWeinsteinStage,
 } from '../../utils/indicators';
 import type { OHLCBar, TrendLine, SRLevel, GapZone, TDLabel, EMAResult, StageInfo } from '../../utils/indicators';
+import { STAGE_COLORS, RSI_HEX, MACD_HEX, BOLLINGER_HEX } from '../../constants/chart';
 
 type Bar = { time: string; open: number; high: number; low: number; close: number; volume?: number };
 
-export type ChartEventType = 'BUY' | 'SELL' | 'DIVIDEND' | 'TRANSFER' | 'FEE' | 'INTEREST' | 'OTHER';
+export type ChartEventType = 'BUY' | 'SELL' | 'DIVIDEND' | 'TRANSFER' | 'FEE' | 'INTEREST' | 'OTHER'
+  | 'ORDER_PENDING' | 'ORDER_FILLED' | 'ORDER_CANCELLED';
 
 export type ChartEvent = {
   time: string;
@@ -95,6 +97,7 @@ interface Props {
   showRSI?: boolean;
   showMACD?: boolean;
   showBollinger?: boolean;
+  priceLinesExtra?: Array<{ price: number; color: string; title: string; lineStyle?: number }>;
 }
 
 const getCssColor = (token: string, fallback: string) => {
@@ -128,17 +131,29 @@ function eventColor(type: ChartEventType, c: ChartColors): string {
     case 'TRANSFER': return c.brand500;
     case 'FEE': return c.warning;
     case 'INTEREST': return c.brand700;
+    case 'ORDER_PENDING': return c.warning;
+    case 'ORDER_FILLED': return c.success;
+    case 'ORDER_CANCELLED': return c.muted;
     default: return c.muted;
   }
 }
 
 function eventPosition(type: ChartEventType): 'aboveBar' | 'belowBar' {
-  return type === 'SELL' || type === 'FEE' ? 'aboveBar' : 'belowBar';
+  const above: Set<ChartEventType> = new Set(['SELL', 'FEE', 'ORDER_PENDING', 'ORDER_FILLED', 'ORDER_CANCELLED']);
+  return above.has(type) ? 'aboveBar' : 'belowBar';
+}
+
+function eventShape(type: ChartEventType): 'circle' | 'arrowUp' | 'arrowDown' | 'square' {
+  if (type === 'ORDER_PENDING') return 'square';
+  if (type === 'ORDER_FILLED') return 'arrowDown';
+  if (type === 'ORDER_CANCELLED') return 'square';
+  return 'circle';
 }
 
 function pickEventDayColor(evts: ChartEvent[], c: ChartColors): string {
   const types = new Set(evts.map(e => e.type));
-  if (types.has('SELL')) return c.danger;
+  if (types.has('SELL') || types.has('ORDER_FILLED')) return c.danger;
+  if (types.has('ORDER_PENDING')) return c.warning;
   if (types.has('BUY')) return c.success;
   if (types.has('DIVIDEND')) return '#059669';
   return c.muted;
@@ -174,6 +189,7 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
   showRSI = false,
   showMACD = false,
   showBollinger = false,
+  priceLinesExtra,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -212,8 +228,8 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
   );
 
   const tdLabels: TDLabel[] = useMemo(
-    () => (ind.tdSequential ? computeTDSequential(ohlcBars) : []),
-    [ohlcBars, ind.tdSequential],
+    () => (ind.tdSequential ? computeTDSequential(ohlcBars, isDark ? 'dark' : 'light') : []),
+    [ohlcBars, ind.tdSequential, isDark],
   );
 
   const ema8: EMAResult[] = useMemo(
@@ -365,11 +381,13 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
       }
     }
 
+    const cIdx = isDark ? 1 : 0;
+
     // Bollinger bands overlay on main chart pane
     if (showBollinger && bollingerData) {
       if (bollingerData.upper?.length) {
         const upperLine = chart.addSeries(LineSeries, {
-          color: '#6366f180',
+          color: BOLLINGER_HEX[cIdx],
           lineWidth: 1,
           lineStyle: LineStyle.Dashed,
           priceLineVisible: false,
@@ -380,7 +398,7 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
       }
       if (bollingerData.lower?.length) {
         const lowerLine = chart.addSeries(LineSeries, {
-          color: '#6366f180',
+          color: BOLLINGER_HEX[cIdx],
           lineWidth: 1,
           lineStyle: LineStyle.Dashed,
           priceLineVisible: false,
@@ -392,21 +410,35 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
     }
 
     if (showEvents && eventMap.size > 0) {
+      const ORDER_TYPES: Set<ChartEventType> = new Set(['ORDER_PENDING', 'ORDER_FILLED', 'ORDER_CANCELLED']);
       const markers = Array.from(eventMap.entries())
         .sort((a, b) => a[0] - b[0])
         .map(([time, evts]) => {
           const types = new Set(evts.map(e => e.type));
           const isDividendOnly = types.size === 1 && types.has('DIVIDEND');
+          const isOrderOnly = evts.every(e => ORDER_TYPES.has(e.type));
           const hasDividend = types.has('DIVIDEND');
           const divEvt = hasDividend ? evts.find(e => e.type === 'DIVIDEND') : null;
           const divLabel = divEvt && divEvt.amount ? `$${Math.abs(divEvt.amount).toFixed(2)}` : (divEvt?.label || '');
+
+          const orderEvt = isOrderOnly ? evts[0] : null;
+          const shape = isDividendOnly ? 'arrowUp'
+            : orderEvt ? eventShape(orderEvt.type)
+            : 'circle';
+          const pos = isDividendOnly ? 'belowBar'
+            : (types.has('SELL') || isOrderOnly) ? 'aboveBar'
+            : 'belowBar';
+          const text = isDividendOnly ? (divLabel ? `DIV ${divLabel}` : 'DIV')
+            : orderEvt ? orderEvt.label
+            : '';
+
           return {
             time: asUTC(time),
-            position: (isDividendOnly ? 'belowBar' : (types.has('SELL') ? 'aboveBar' : 'belowBar')) as 'aboveBar' | 'belowBar',
+            position: pos as 'aboveBar' | 'belowBar',
             color: isDividendOnly ? '#059669' : pickEventDayColor(evts, c),
-            shape: (isDividendOnly ? 'arrowUp' : 'circle') as 'circle' | 'arrowUp' | 'arrowDown' | 'square',
+            shape: shape as 'circle' | 'arrowUp' | 'arrowDown' | 'square',
             size: isDividendOnly ? 1.5 : (showLine ? 1 : 0.5),
-            text: isDividendOnly ? (divLabel ? `DIV ${divLabel}` : 'DIV') : '',
+            text,
           };
         });
       createSeriesMarkers(mainSeries, markers);
@@ -487,6 +519,19 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
       }
     }
 
+    if (priceLinesExtra?.length) {
+      for (const pl of priceLinesExtra) {
+        mainSeries.createPriceLine({
+          price: pl.price,
+          color: pl.color,
+          lineWidth: 1,
+          lineStyle: pl.lineStyle ?? LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: pl.title,
+        });
+      }
+    }
+
     // RSI sub-pane
     if (showRSI && rsiData?.length) {
       const rsiPane = chart.addPane();
@@ -502,13 +547,13 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
 
       // Overbought (70) and oversold (30) reference lines
       const rsiRefOverBought = rsiPane.addSeries(LineSeries, {
-        color: 'rgba(239,68,68,0.3)', lineWidth: 1, lineStyle: LineStyle.Dotted,
+        color: RSI_HEX.overbought[cIdx], lineWidth: 1, lineStyle: LineStyle.Dotted,
         priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
       });
       rsiRefOverBought.setData(rsiData.map(d => ({ time: toDaySec(d.time), value: 70 })));
 
       const rsiRefOverSold = rsiPane.addSeries(LineSeries, {
-        color: 'rgba(34,197,94,0.3)', lineWidth: 1, lineStyle: LineStyle.Dotted,
+        color: RSI_HEX.oversold[cIdx], lineWidth: 1, lineStyle: LineStyle.Dotted,
         priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
       });
       rsiRefOverSold.setData(rsiData.map(d => ({ time: toDaySec(d.time), value: 30 })));
@@ -528,7 +573,7 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
         histSeries.setData(macdData.histogram.map(d => ({
           time: toDaySec(d.time),
           value: d.value,
-          color: d.value >= 0 ? '#22c55e80' : '#ef444480',
+          color: d.value >= 0 ? MACD_HEX.positive[cIdx] : MACD_HEX.negative[cIdx],
         })));
       }
       if (macdData.macd?.length) {
@@ -654,7 +699,7 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
     showLine, avgPrice, pinnedDaySec,
     zoomYears, isDark, ohlcBars, trendLines, gapZones, tdLabels,
     ema8, ema21, ema200, srLevels, ind, c,
-    showRSI, rsiData, showMACD, macdData, showBollinger, bollingerData,
+    showRSI, rsiData, showMACD, macdData, showBollinger, bollingerData, priceLinesExtra,
   ]);
 
   return (
@@ -662,7 +707,7 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
       {stageInfo && ind.stage && (
         <Box position="absolute" top={2} left={2} zIndex={10} display="flex" gap={2}>
           <Badge
-            colorPalette={stageInfo.stage.startsWith('2') ? 'green' : stageInfo.stage === '4' ? 'red' : 'gray'}
+            colorPalette={STAGE_COLORS[stageInfo.stage] ?? 'gray'}
             variant="subtle"
             px={2}
             py={1}

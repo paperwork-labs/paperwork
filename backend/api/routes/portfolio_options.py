@@ -360,7 +360,8 @@ async def gateway_connect(
     except Exception as exc:
         logger.debug("No per-user gateway creds found, using defaults: %s", exc)
 
-    def _sync_connect():
+    def _sync_probe():
+        """Probe gateway connectivity in a worker thread without keeping the IB instance."""
         from ib_insync import IB, util
         util.patchAsyncio()
 
@@ -373,28 +374,32 @@ async def gateway_connect(
         ib = IB()
         try:
             ib.connect(host=host, port=port, clientId=cid, timeout=15, readonly=True)
-            if ib.isConnected():
-                ibkr_client.ib = ib
-                ibkr_client.connected = True
-                ibkr_client.managed_accounts = ib.managedAccounts() or []
-                ibkr_client.connection_health["status"] = "connected"
-                ibkr_client.retry_count = 0
-                try:
-                    ib.reqAccountSummary()
-                except Exception:
-                    pass
-                return True
+            ok = ib.isConnected()
+            managed = ib.managedAccounts() or [] if ok else []
+            ib.disconnect()
+            return ok, host, port, cid, managed
         except Exception:
             try:
                 ib.disconnect()
             except Exception:
                 pass
-        return False
+            return False, host, port, cid, []
 
     try:
         loop = asyncio.get_running_loop()
         with concurrent.futures.ThreadPoolExecutor() as pool:
-            connected = await loop.run_in_executor(pool, _sync_connect)
-        return {"status": "connected" if connected else "failed", "connected": connected}
+            ok, host, port, cid, managed = await loop.run_in_executor(pool, _sync_probe)
+
+        if ok:
+            from backend.services.clients.ibkr_client import ibkr_client
+            ibkr_client.host = host
+            ibkr_client.port = port
+            ibkr_client.client_id = cid
+            ibkr_client.managed_accounts = managed
+            ibkr_client.connection_health["status"] = "connected"
+            ibkr_client.retry_count = 0
+            ibkr_client.connected = False
+
+        return {"status": "connected" if ok else "failed", "connected": ok}
     except Exception as e:
         return {"status": "error", "error": str(e), "connected": False}

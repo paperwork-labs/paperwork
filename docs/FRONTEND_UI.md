@@ -18,6 +18,7 @@ Frontend theming, components, and Ladle. For route-to-page mapping see [ARCHITEC
 - [Chart semantic tokens](#chart-semantic-tokens)
 - [Dashboard components](#dashboard-components)
 - [Keeping UI libraries current](#keeping-ui-libraries-current)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -207,3 +208,7 @@ Reusable sub-components within `MarketDashboard.tsx`:
   - `make frontend-check` (lint + type-check + test), or `make test-frontend`
   - `make ladle-build`
   - If you need a full production build, run it inside the frontend container (e.g. with dev stack up: `docker compose ... exec frontend npm run build`).
+
+### Troubleshooting
+
+- **Dev server 504 / Failed to fetch module**: If you see `504 (Outdated Optimize Dep)` or `TypeError: Failed to fetch dynamically imported module` in the browser, Vite's pre-bundled dependency cache is stale. Stop the dev server, run `rm -rf frontend/node_modules/.vite`, then restart (`npm run dev` or your usual frontend command). If it persists, try a clean install: `rm -rf node_modules package-lock.json && npm install`, then clear the cache again and restart.

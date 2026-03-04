@@ -18,6 +18,7 @@ from datetime import datetime, timedelta
 from typing import List, Set, Dict, Optional
 
 from celery import shared_task
+from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import func, or_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
@@ -895,7 +896,32 @@ def refresh_index_constituents() -> dict:
                 "provider_used": provider_used,
                 "fallback_used": fallback_used,
             }
-        res = {"status": "ok", "preflight": preflight, "indices": results}
+        # Health check: alert if any index returned 0 constituents or all used fallbacks
+        min_expected = {"SP500": 400, "NASDAQ100": 90, "DOW30": 25}
+        warnings = []
+        for idx_name, expected in min_expected.items():
+            idx_result = results.get(idx_name, {})
+            fetched = idx_result.get("fetched", 0)
+            if fetched < expected:
+                warnings.append(f"{idx_name}: only {fetched} constituents (expected >= {expected})")
+            if idx_result.get("error"):
+                warnings.append(f"{idx_name}: error - {idx_result['error']}")
+
+        if warnings:
+            try:
+                from backend.services.alerts import alert_service
+                alert_service.send_discord(
+                    "system_status",
+                    title="Index Constituents Health Check Warning",
+                    description="One or more indices have low/missing constituent counts after refresh.",
+                    fields={w.split(":")[0]: w for w in warnings},
+                    severity="warning",
+                )
+            except Exception:
+                pass
+            logger.warning("Index constituents health check: %s", "; ".join(warnings))
+
+        res = {"status": "ok", "preflight": preflight, "indices": results, "health_warnings": warnings}
         _set_task_status("market_indices_constituents_refresh", "ok", res)
         return res
     finally:
@@ -1170,7 +1196,11 @@ def backfill_stale_daily_tracked() -> dict:
 # ============================= Recompute Indicators and Chart Metrics =============================
 
 
-@shared_task(name="backend.tasks.market_data_tasks.recompute_indicators_universe")
+@shared_task(
+    name="backend.tasks.market_data_tasks.recompute_indicators_universe",
+    soft_time_limit=3600,
+    time_limit=3700,
+)
 @task_run("admin_indicators_recompute_universe")
 def recompute_indicators_universe(batch_size: int = 50) -> dict:
     """Recompute indicators for the tracked universe from local DB (orchestrator only).
@@ -1183,6 +1213,27 @@ def recompute_indicators_universe(batch_size: int = 50) -> dict:
     _set_task_status("admin_indicators_recompute_universe", "running")
     session = SessionLocal()
     try:
+        # Clean up any stuck "running" job rows from previous killed runs.
+        stale_cutoff = datetime.utcnow() - timedelta(hours=2)
+        try:
+            stuck = (
+                session.query(JobRun)
+                .filter(
+                    JobRun.task_name == "admin_indicators_recompute_universe",
+                    JobRun.status == "running",
+                    JobRun.started_at < stale_cutoff,
+                )
+                .all()
+            )
+            for j in stuck:
+                j.status = "error"
+                j.error = "Marked as timed out by subsequent run"
+                j.finished_at = j.started_at + timedelta(seconds=3600)
+            if stuck:
+                session.commit()
+        except Exception:
+            session.rollback()
+
         ordered = _get_tracked_symbols_safe(session)
 
         processed_ok = 0
@@ -1246,27 +1297,90 @@ def recompute_indicators_universe(batch_size: int = 50) -> dict:
                 f"lags latest daily {latest_daily_dt.date()}; RS may be stale."
             )
 
+        # Pre-fetch SPY benchmark bars once (avoids re-querying per symbol).
+        spy_df = None
+        try:
+            spy_rows = (
+                session.query(
+                    PriceData.date,
+                    PriceData.open_price,
+                    PriceData.high_price,
+                    PriceData.low_price,
+                    PriceData.close_price,
+                    PriceData.volume,
+                )
+                .filter(PriceData.symbol == benchmark_symbol, PriceData.interval == "1d")
+                .order_by(PriceData.date.desc())
+                .limit(400)
+                .all()
+            )
+            if spy_rows:
+                spy_df = price_data_rows_to_dataframe(spy_rows, ascending=False)
+        except Exception:
+            pass
+
+        # Skip symbols that already have a fresh snapshot (makes re-runs fast).
+        fresh_cutoff = datetime.utcnow() - timedelta(hours=4)
+        fresh_syms: Set[str] = set()
+        try:
+            fresh_syms = {
+                str(s).upper()
+                for (s,) in session.query(MarketSnapshot.symbol).filter(
+                    MarketSnapshot.analysis_type == "technical_snapshot",
+                    MarketSnapshot.analysis_timestamp >= fresh_cutoff,
+                )
+            }
+        except Exception:
+            pass
+        skipped_fresh = 0
+
         # Chunking by batch_size
-        for i in range(0, len(ordered), max(1, batch_size)):
-            chunk = ordered[i : i + batch_size]
-            for sym in chunk:
-                try:
-                    snap = market_data_service.snapshots.compute_snapshot_from_db(session, sym)
-                    if not snap:
-                        skipped_no_data += 1
+        try:
+            for i in range(0, len(ordered), max(1, batch_size)):
+                chunk = ordered[i : i + batch_size]
+                for sym in chunk:
+                    if sym in fresh_syms:
+                        skipped_fresh += 1
                         continue
-                    market_data_service.snapshots.persist_snapshot(session, sym, snap)
-                    processed_ok += 1
-                except Exception as exc:
+                    try:
+                        snap = market_data_service.snapshots.compute_snapshot_from_db(
+                            session, sym, skip_fundamentals=True, benchmark_df=spy_df,
+                        )
+                        if not snap:
+                            skipped_no_data += 1
+                            continue
+                        market_data_service.snapshots.persist_snapshot(
+                            session, sym, snap, auto_commit=False,
+                        )
+                        processed_ok += 1
+                    except SoftTimeLimitExceeded:
+                        raise
+                    except Exception as exc:
+                        session.rollback()
+                        errors += 1
+                        if len(error_samples) < 25:
+                            error_samples.append({"symbol": sym, "error": str(exc)})
+                try:
+                    session.commit()
+                except SoftTimeLimitExceeded:
+                    raise
+                except Exception:
                     session.rollback()
-                    errors += 1
-                    if len(error_samples) < 25:
-                        error_samples.append({"symbol": sym, "error": str(exc)})
+        except SoftTimeLimitExceeded:
+            try:
+                session.commit()
+            except Exception:
+                session.rollback()
+            warnings.append(
+                f"Task hit soft time limit after processing {processed_ok} of {len(ordered)} symbols. "
+                "Remaining symbols were skipped."
+            )
         res = {
             "status": "ok",
             "symbols": len(ordered),
             "processed_ok": processed_ok,
             "skipped_no_data": skipped_no_data,
+            "skipped_fresh": skipped_fresh,
             "errors": errors,
             "error_samples": error_samples,
             "benchmark": {

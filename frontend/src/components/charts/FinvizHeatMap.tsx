@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Text, HStack, VStack } from '@chakra-ui/react';
 import { ResponsiveContainer, Treemap, Cell, Tooltip as RechartsTooltip } from 'recharts';
+import { HEAT_MAP_COLORS } from '../../constants/chart';
 
 export interface FinvizData {
   name: string;
@@ -16,15 +17,6 @@ interface FinvizHeatMapProps {
   showLegend?: boolean;
   title?: string;
 }
-
-// Visualization palette (chart-only; not Chakra tokens)
-const HEAT_MAP_COLORS = {
-  strong_positive: '#00C851',
-  positive: '#39CCCC',
-  neutral: '#FFBB33',
-  negative: '#FF8800',
-  strong_negative: '#FF4444',
-};
 
 const getHeatMapColor = (changePercent: number): string => {
   if (changePercent > 3) return HEAT_MAP_COLORS.strong_positive;

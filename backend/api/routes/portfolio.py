@@ -7,11 +7,12 @@ AFTER: Clean, focused endpoints with proper separation of concerns
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import logging
-from datetime import datetime, timedelta
+import uuid
+from datetime import date, datetime, timedelta
 
 # dependencies
 from backend.database import get_db
@@ -28,6 +29,41 @@ router = APIRouter()
 
 class FlexSyncRequest(BaseModel):
     account_id: str
+
+
+class ManualTaxLotCreate(BaseModel):
+    symbol: str
+    quantity: float
+    cost_per_share: float
+    acquisition_date: date
+    account_id: Optional[int] = None
+
+    @field_validator("quantity")
+    @classmethod
+    def qty_positive(cls, v: float) -> float:
+        if v <= 0:
+            raise ValueError("quantity must be > 0")
+        return v
+
+    @field_validator("cost_per_share")
+    @classmethod
+    def cps_non_negative(cls, v: float) -> float:
+        if v < 0:
+            raise ValueError("cost_per_share must be >= 0")
+        return v
+
+    @field_validator("acquisition_date")
+    @classmethod
+    def date_not_future(cls, v: date) -> date:
+        if v > date.today():
+            raise ValueError("acquisition_date cannot be in the future")
+        return v
+
+
+class ManualTaxLotUpdate(BaseModel):
+    quantity: Optional[float] = None
+    cost_per_share: Optional[float] = None
+    acquisition_date: Optional[date] = None
 
 
 # =============================================================================
@@ -145,6 +181,137 @@ async def get_tax_lots(
     except Exception as e:
         logger.error(f"❌ Tax lots error for user {user.id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/tax-lots")
+async def create_manual_tax_lot(
+    body: ManualTaxLotCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Create a manual tax lot for transferred or unsynced shares."""
+    from backend.models.tax_lot import TaxLot, TaxLotSource
+
+    acct_id = body.account_id
+    if not acct_id:
+        first_acct = (
+            db.query(BrokerAccount)
+            .filter(BrokerAccount.user_id == user.id)
+            .first()
+        )
+        if not first_acct:
+            raise HTTPException(status_code=400, detail="No broker account found")
+        acct_id = first_acct.id
+    else:
+        acct = db.query(BrokerAccount).filter(
+            BrokerAccount.id == acct_id,
+            BrokerAccount.user_id == user.id,
+        ).first()
+        if not acct:
+            raise HTTPException(status_code=404, detail="Account not found")
+
+    lot = TaxLot(
+        user_id=user.id,
+        account_id=acct_id,
+        symbol=body.symbol.upper(),
+        quantity=body.quantity,
+        cost_per_share=body.cost_per_share,
+        cost_basis=body.quantity * body.cost_per_share,
+        acquisition_date=body.acquisition_date,
+        holding_period=(date.today() - body.acquisition_date).days,
+        lot_id=f"manual-{uuid.uuid4().hex[:12]}",
+        source=TaxLotSource.MANUAL_ENTRY,
+        asset_category="STK",
+        currency="USD",
+    )
+    db.add(lot)
+    db.commit()
+    db.refresh(lot)
+
+    return {
+        "data": {
+            "id": lot.id,
+            "lot_id": lot.lot_id,
+            "symbol": lot.symbol,
+            "quantity": float(lot.quantity),
+            "cost_per_share": float(lot.cost_per_share or 0),
+            "cost_basis": float(lot.cost_basis or 0),
+            "acquisition_date": lot.acquisition_date.isoformat() if lot.acquisition_date else None,
+            "holding_period": lot.holding_period,
+            "source": lot.source.value,
+        }
+    }
+
+
+@router.put("/tax-lots/{lot_id}")
+async def update_manual_tax_lot(
+    lot_id: int,
+    body: ManualTaxLotUpdate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Update a manual tax lot. Only MANUAL_ENTRY lots can be edited."""
+    from backend.models.tax_lot import TaxLot, TaxLotSource
+
+    lot = db.query(TaxLot).filter(TaxLot.id == lot_id, TaxLot.user_id == user.id).first()
+    if not lot:
+        raise HTTPException(status_code=404, detail="Tax lot not found")
+    if lot.source != TaxLotSource.MANUAL_ENTRY:
+        raise HTTPException(status_code=403, detail="Only manual lots can be edited")
+
+    if body.quantity is not None:
+        if body.quantity <= 0:
+            raise HTTPException(status_code=400, detail="quantity must be > 0")
+        lot.quantity = body.quantity
+    if body.cost_per_share is not None:
+        if body.cost_per_share < 0:
+            raise HTTPException(status_code=400, detail="cost_per_share must be >= 0")
+        lot.cost_per_share = body.cost_per_share
+    if body.acquisition_date is not None:
+        if body.acquisition_date > date.today():
+            raise HTTPException(status_code=400, detail="acquisition_date cannot be in the future")
+        lot.acquisition_date = body.acquisition_date
+
+    lot.cost_basis = lot.quantity * (lot.cost_per_share or 0)
+    lot.holding_period = (date.today() - lot.acquisition_date).days if lot.acquisition_date else 0
+
+    db.commit()
+    db.refresh(lot)
+
+    return {
+        "data": {
+            "id": lot.id,
+            "lot_id": lot.lot_id,
+            "symbol": lot.symbol,
+            "quantity": float(lot.quantity),
+            "cost_per_share": float(lot.cost_per_share or 0),
+            "cost_basis": float(lot.cost_basis or 0),
+            "acquisition_date": lot.acquisition_date.isoformat() if lot.acquisition_date else None,
+            "holding_period": lot.holding_period,
+            "source": lot.source.value,
+        }
+    }
+
+
+@router.delete("/tax-lots/{lot_id}")
+async def delete_manual_tax_lot(
+    lot_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Delete a manual tax lot. Only MANUAL_ENTRY lots can be deleted."""
+    from backend.models.tax_lot import TaxLot, TaxLotSource
+
+    lot = db.query(TaxLot).filter(TaxLot.id == lot_id, TaxLot.user_id == user.id).first()
+    if not lot:
+        raise HTTPException(status_code=404, detail="Tax lot not found")
+    if lot.source != TaxLotSource.MANUAL_ENTRY:
+        raise HTTPException(status_code=403, detail="Only manual lots can be deleted")
+
+    db.delete(lot)
+    db.commit()
+
+    return {"data": {"deleted": True, "id": lot_id}}
 
 
 @router.get("/tax-lots/summary")

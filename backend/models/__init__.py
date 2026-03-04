@@ -26,6 +26,7 @@ from .index_constituent import IndexConstituent
 # Trading & Positions
 from .position import Position, PositionType, PositionStatus
 from .trade import Trade, TradeSignal
+from .order import Order, OrderSide, OrderType, OrderStatus
 
 # Portfolio Management
 from .portfolio import PortfolioSnapshot, Category, PositionCategory
@@ -92,4 +93,8 @@ __all__ = [
     "PositionCategory",
     "Trade",
     "TradeSignal",
+    "Order",
+    "OrderSide",
+    "OrderType",
+    "OrderStatus",
 ]

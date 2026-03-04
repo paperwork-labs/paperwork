@@ -40,6 +40,7 @@ import {
   FiBell,
   FiLayers,
   FiShield,
+  FiShoppingBag,
   FiBook,
 } from 'react-icons/fi';
 import { FaBrain } from 'react-icons/fa';
@@ -77,6 +78,7 @@ const portfolioItems = [
   { label: 'Transactions', icon: FiFileText, path: '/portfolio/transactions' },
   { label: 'Categories', icon: FiTag, path: '/portfolio/categories' },
   { label: 'Tax Center', icon: FiShield, path: '/portfolio/tax' },
+  { label: 'Orders', icon: FiShoppingBag, path: '/portfolio/orders' },
   { label: 'Workspace', icon: FiGrid, path: '/portfolio/workspace' },
 ];
 

@@ -3,9 +3,11 @@
  * Used by Market Dashboard and Market Tracked pages.
  * Optimized: memoized components, stable callbacks, lazy-loaded chart.
  */
-import React, { useCallback, useMemo, memo } from 'react';
+import React, { useCallback, useMemo, memo, useState } from 'react';
 import {
+  Badge,
   Box,
+  Button,
   HStack,
   Spinner,
   Text,
@@ -23,6 +25,9 @@ import {
 } from '@chakra-ui/react';
 import { FiX } from 'react-icons/fi';
 import { marketDataApi } from '../../services/api';
+import SellOrderModal from '../orders/SellOrderModal';
+
+export const PortfolioSymbolsContext = React.createContext<Record<string, any> | null>(null);
 
 export const ChartContext = React.createContext<(symbol: string) => void>(() => {});
 
@@ -129,8 +134,10 @@ const SparklinePopoverContentInner: React.FC<{ symbol: string }> = ({ symbol }) 
 
 const SparklinePopoverContent = memo(SparklinePopoverContentInner);
 
-const SymbolLinkInner: React.FC<{ symbol: string; children?: React.ReactNode }> = ({ symbol, children }) => {
+const SymbolLinkInner: React.FC<{ symbol: string; children?: React.ReactNode; showHeldBadge?: boolean }> = ({ symbol, children, showHeldBadge = true }) => {
   const openChart = React.useContext(ChartContext);
+  const portfolioSymbols = React.useContext(PortfolioSymbolsContext);
+  const isHeld = showHeldBadge && portfolioSymbols != null && symbol in (portfolioSymbols || {});
   const [hovered, setHovered] = React.useState(false);
   const hoverTimer = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -182,6 +189,7 @@ const SymbolLinkInner: React.FC<{ symbol: string; children?: React.ReactNode }> 
           onKeyDown={handleKeyDown}
         >
           {children ?? symbol}
+          {isHeld && <Badge size="xs" colorPalette="blue" variant="subtle" ml={1}>Held</Badge>}
         </Text>
       </PopoverTrigger>
       <PopoverPositioner>
@@ -208,8 +216,61 @@ export const SymbolLink = memo(SymbolLinkInner);
 
 const TradingViewChartLazy = React.lazy(() => import('../charts/TradingViewChart'));
 
+const SnapshotContextStrip: React.FC<{ symbol: string }> = memo(({ symbol }) => {
+  const [snap, setSnap] = React.useState<Record<string, any> | null>(null);
+  React.useEffect(() => {
+    if (!symbol) return;
+    marketDataApi.getSnapshot(symbol).then((res: any) => {
+      setSnap(res?.data || res || null);
+    }).catch(() => {});
+  }, [symbol]);
+  if (!snap) return null;
+
+  const items: Array<{ label: string; value: string; color?: string }> = [];
+  if (snap.stage_label) items.push({ label: 'Stage', value: snap.stage_label });
+  if (snap.current_stage_days) items.push({ label: 'Days', value: `${snap.current_stage_days}d` });
+  if (snap.rsi != null) items.push({ label: 'RSI', value: Number(snap.rsi).toFixed(0), color: snap.rsi > 70 ? 'red.400' : snap.rsi < 30 ? 'green.400' : undefined });
+  if (snap.pe_ttm != null) items.push({ label: 'P/E', value: Number(snap.pe_ttm).toFixed(1) });
+  if (snap.rs_mansfield_pct != null) items.push({ label: 'RS', value: `${Number(snap.rs_mansfield_pct).toFixed(1)}%`, color: snap.rs_mansfield_pct >= 0 ? 'green.400' : 'red.400' });
+  if (snap.atr_14 != null) items.push({ label: 'ATR', value: Number(snap.atr_14).toFixed(2) });
+  if (snap.dividend_yield != null) items.push({ label: 'Yield', value: `${Number(snap.dividend_yield).toFixed(2)}%` });
+  if (snap.sector) items.push({ label: 'Sector', value: snap.sector });
+
+  const td: string[] = [];
+  if (snap.td_buy_complete) td.push('Buy 9');
+  if (snap.td_sell_complete) td.push('Sell 9');
+  if (snap.td_buy_countdown >= 12) td.push(`BC${snap.td_buy_countdown}`);
+  if (snap.td_sell_countdown >= 12) td.push(`SC${snap.td_sell_countdown}`);
+  if (td.length) items.push({ label: 'TD', value: td.join(' ') });
+
+  const gapsUp = snap.gaps_unfilled_up ?? 0;
+  const gapsDn = snap.gaps_unfilled_down ?? 0;
+  if (gapsUp || gapsDn) items.push({ label: 'Gaps', value: `${gapsUp}↑ ${gapsDn}↓` });
+
+  if (!items.length) return null;
+  return (
+    <HStack gap={3} px={4} py={2} bg="bg.subtle" borderBottomWidth="1px" borderColor="border.subtle" flexWrap="wrap">
+      {items.map((item, i) => (
+        <HStack key={i} gap={1}>
+          <Text fontSize="xs" color="fg.muted">{item.label}</Text>
+          <Text fontSize="xs" fontWeight="semibold" color={item.color || 'fg.default'}>{item.value}</Text>
+        </HStack>
+      ))}
+    </HStack>
+  );
+});
+
 const ChartSlidePanelInner: React.FC<{ symbol: string | null; onClose: () => void }> = ({ symbol, onClose }) => {
-  const chartHeight = typeof window !== 'undefined' ? window.innerHeight - 52 : 400;
+  const chartHeight = typeof window !== 'undefined' ? window.innerHeight - 100 : 400;
+  const portfolioSymbols = React.useContext(PortfolioSymbolsContext);
+  const isHeld = symbol ? symbol in (portfolioSymbols || {}) : false;
+  const [sellOpen, setSellOpen] = useState(false);
+
+  const posData = symbol && portfolioSymbols?.[symbol];
+  const sharesHeld = posData ? posData.quantity : 0;
+  const currentPrice = posData && posData.quantity > 0 ? posData.market_value / posData.quantity : 0;
+  const averageCost = posData && posData.quantity > 0 ? posData.cost_basis / posData.quantity : undefined;
+
   return (
     <DialogRoot open={!!symbol} onOpenChange={(d) => { if (!d.open) onClose(); }}>
       <DialogBackdrop bg="blackAlpha.400" />
@@ -226,8 +287,8 @@ const ChartSlidePanelInner: React.FC<{ symbol: string | null; onClose: () => voi
       >
         <DialogContent
           position="relative"
-          w={{ base: '90vw', lg: '50vw' }}
-          maxW="900px"
+          w={{ base: '95vw', lg: '60vw' }}
+          maxW="1100px"
           h="100vh"
           borderRadius={0}
           borderLeft="1px"
@@ -245,11 +306,25 @@ const ChartSlidePanelInner: React.FC<{ symbol: string | null; onClose: () => voi
             borderBottomWidth="1px"
             borderColor="border.subtle"
           >
-            <Text fontWeight="semibold" fontSize="sm">{symbol}</Text>
+            <HStack gap={2}>
+              <Text fontWeight="semibold" fontSize="sm">{symbol}</Text>
+              {isHeld && <Badge size="sm" colorPalette="blue" variant="subtle">Held</Badge>}
+              {isHeld && (
+                <Button
+                  size="xs"
+                  variant="outline"
+                  colorPalette="red"
+                  onClick={() => setSellOpen(true)}
+                >
+                  Sell
+                </Button>
+              )}
+            </HStack>
             <IconButton aria-label="Close chart" size="sm" variant="ghost" onClick={onClose}>
               <FiX />
             </IconButton>
           </HStack>
+          {symbol && <SnapshotContextStrip symbol={symbol} />}
           <DialogBody p={0} flex="1" overflow="hidden">
             {symbol && (
               <React.Suspense fallback={<HStack p={4}><Spinner size="sm" /> <Text fontSize="sm">Loading chart…</Text></HStack>}>
@@ -266,6 +341,17 @@ const ChartSlidePanelInner: React.FC<{ symbol: string | null; onClose: () => voi
           </DialogBody>
         </DialogContent>
       </DialogPositioner>
+
+      {sellOpen && symbol && (
+        <SellOrderModal
+          isOpen={sellOpen}
+          symbol={symbol}
+          currentPrice={currentPrice}
+          sharesHeld={sharesHeld}
+          averageCost={averageCost}
+          onClose={() => setSellOpen(false)}
+        />
+      )}
     </DialogRoot>
   );
 };

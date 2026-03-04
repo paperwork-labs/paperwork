@@ -21,11 +21,11 @@ COMPOSE_DEV_ALL = $(DOCKER) compose --project-name $(PROJECT) --env-file $(ENV_D
 COMPOSE_TEST = $(DOCKER) compose --project-name $(PROJECT_TEST) --env-file $(ENV_TEST) -f infra/compose.test.yaml
 
 up:
-	$(COMPOSE_DEV_UI) up -d --build
+	$(COMPOSE_DEV_ALL) up -d --build
 	$(MAKE) health-check
 
-up-all:
-	$(COMPOSE_DEV_ALL) up -d --build
+up-ui:
+	$(COMPOSE_DEV_UI) up -d --build
 	$(MAKE) health-check
 
 down:

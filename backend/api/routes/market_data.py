@@ -665,7 +665,7 @@ async def get_snapshots(
         payload["exit_price"] = getattr(plan, "exit_price", None) if plan else None
         out.append(payload)
 
-    return {"count": len(out), "rows": out}
+    return {"count": len(out), "tracked_count": len(tracked), "rows": out}
 
 
 @router.patch("/tracked-plan/{symbol}")

@@ -423,7 +423,13 @@ const SettingsConnections: React.FC = () => {
     {
       onSuccess: () => {
         gatewayQuery.refetch();
-        hotToast.success('Gateway reconnection triggered');
+        hotToast.success('Gateway reconnection triggered — auto-checking status...');
+        let polls = 0;
+        const timer = setInterval(() => {
+          polls++;
+          gatewayQuery.refetch();
+          if (polls >= 10) clearInterval(timer);
+        }, 3000);
       },
       onError: (err: unknown) => { hotToast.error(`Gateway connect failed: ${handleApiError(err)}`); },
     },
@@ -863,6 +869,12 @@ const SettingsConnections: React.FC = () => {
                   {gwEditOpen ? 'Hide Settings' : 'Edit Settings'}
                 </Button>
               </HStack>
+              {!gwData?.connected && (
+                <Text fontSize="xs" color="fg.muted">
+                  After logging in to the Gateway UI (noVNC), click Connect above to establish the backend link.
+                  Status will auto-refresh for 30 seconds.
+                </Text>
+              )}
               {gwEditOpen && (
                 <Box p={3} borderWidth="1px" borderColor="border.subtle" borderRadius="md" bg="bg.subtle">
                   <SimpleGrid columns={{ base: 1, md: 3 }} gap={3}>

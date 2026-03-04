@@ -2,8 +2,11 @@ import React from 'react';
 import {
   Badge,
   Box,
+  Button,
+  Collapsible,
   Heading,
   HStack,
+  IconButton,
   Spinner,
   Stack,
   Text,
@@ -16,15 +19,16 @@ import {
   TableScrollArea,
 } from '@chakra-ui/react';
 import { Link as RouterLink } from 'react-router-dom';
-import { useColorMode } from '../theme/colorMode';
+import { FiChevronDown, FiChevronRight, FiRefreshCw } from 'react-icons/fi';
 import { marketDataApi } from '../services/api';
-import { ChartContext, SymbolLink, ChartSlidePanel } from '../components/market/SymbolChartUI';
+import { ChartContext, SymbolLink, ChartSlidePanel, PortfolioSymbolsContext } from '../components/market/SymbolChartUI';
 import StatCard from '../components/shared/StatCard';
-import { usePortfolioSymbols, type PortfolioSymbolData } from '../hooks/usePortfolioSymbols';
+import { usePortfolioSymbols } from '../hooks/usePortfolioSymbols';
 import StageBar from '../components/shared/StageBar';
 import StageBadge from '../components/shared/StageBadge';
 import { useChartColors } from '../hooks/useChartColors';
-import { SECTOR_PALETTE } from '../constants/chart';
+import { SECTOR_PALETTE, heatColor } from '../constants/chart';
+import { ETF_SYMBOL_SET } from '../constants/etf';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, Cell,
   ScatterChart, Scatter, ZAxis, CartesianGrid, ReferenceLine, ReferenceArea, Legend,
@@ -120,6 +124,7 @@ type DashboardPayload = {
   rsi_divergences?: { bearish?: RSIDivergenceItem[]; bullish?: RSIDivergenceItem[] };
   td_signals?: TDSignalItem[];
   gap_leaders?: GapLeader[];
+  constituent_symbols?: string[];
 };
 
 const METRIC_ORDER = [
@@ -147,17 +152,6 @@ const normalizeSymbol = (symbol: unknown): string => {
   return symbol.trim().toUpperCase();
 };
 
-const heatColor = (v: unknown): string | undefined => {
-  if (typeof v !== 'number' || !Number.isFinite(v)) return undefined;
-  if (v > 3) return 'green.600';
-  if (v > 1) return 'green.500';
-  if (v > 0) return 'green.400';
-  if (v < -3) return 'red.600';
-  if (v < -1) return 'red.500';
-  if (v < 0) return 'red.400';
-  return undefined;
-};
-
 const repeatSymbolColor = (symbol: string): string => {
   // Use a broad hue space so repeated symbols are visually distinct.
   let hash = 0;
@@ -170,7 +164,7 @@ const repeatSymbolColor = (symbol: string): string => {
 
 /* ===== Sub-components (StatCard, StageBar from shared) ===== */
 
-const SetupCard: React.FC<{ title: string; items: SetupItem[]; showScore?: boolean; linkPreset?: string; portfolioSymbols?: Record<string, PortfolioSymbolData> }> = ({ title, items, showScore, linkPreset, portfolioSymbols }) => (
+const SetupCard: React.FC<{ title: string; items: SetupItem[]; showScore?: boolean; linkPreset?: string; showHeldBadge?: boolean }> = ({ title, items, showScore, linkPreset, showHeldBadge = true }) => (
   <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card" flex="1" minW="220px">
     <HStack justify="space-between" align="center" mb={2}>
       {linkPreset ? (
@@ -187,18 +181,15 @@ const SetupCard: React.FC<{ title: string; items: SetupItem[]; showScore?: boole
     ) : (
       <Box maxH="260px" overflowY="auto" pr={1}>
         <Box display="flex" flexDirection="column" gap={1}>
-          {items.map((item) => (
-            <HStack key={item.symbol} justify="space-between" fontSize="xs">
+          {items.map((item, i) => (
+            <HStack key={`setup-${item.symbol}-${i}`} justify="space-between" fontSize="xs">
               <HStack gap={1}>
-                <SymbolLink symbol={item.symbol} />
-                {portfolioSymbols?.[item.symbol] && (
-                  <Badge size="xs" colorPalette="blue" variant="subtle">Held</Badge>
-                )}
+                <SymbolLink symbol={item.symbol} showHeldBadge={showHeldBadge} />
                 <StageBadge stage={item.stage_label || '?'} />
               </HStack>
               <HStack gap={2} flexShrink={0}>
                 {showScore && item.momentum_score != null && (
-                  <Text color="fg.muted">{item.momentum_score.toFixed(1)}</Text>
+                  <Text color={heatColor(item.momentum_score)}>{item.momentum_score.toFixed(1)}</Text>
                 )}
                 <Text color={heatColor(item.perf_20d)}>{fmtPct(item.perf_20d)}</Text>
                 <Text color={heatColor(item.rs_mansfield_pct)}>RS {fmtPct(item.rs_mansfield_pct)}</Text>
@@ -211,7 +202,7 @@ const SetupCard: React.FC<{ title: string; items: SetupItem[]; showScore?: boole
   </Box>
 );
 
-const TransitionList: React.FC<{ title: string; items: StageTransitionItem[]; colorPalette: string; portfolioSymbols?: Record<string, PortfolioSymbolData> }> = ({ title, items, colorPalette, portfolioSymbols }) => {
+const TransitionList: React.FC<{ title: string; items: StageTransitionItem[]; colorPalette: string; showHeldBadge?: boolean }> = ({ title, items, colorPalette, showHeldBadge = true }) => {
   const symbolsParam = items.map((r) => r.symbol).join(',');
   const titleLink = symbolsParam ? `/market/tracked?symbols=${encodeURIComponent(symbolsParam)}` : undefined;
   return (
@@ -228,14 +219,9 @@ const TransitionList: React.FC<{ title: string; items: StageTransitionItem[]; co
       </HStack>
       <Box maxH="280px" overflowY="auto" pr={1}>
         <Stack gap={1}>
-          {items.length ? items.map((r) => (
-            <HStack key={`trans-${r.symbol}`} justify="space-between" fontSize="xs">
-              <HStack gap={1}>
-                <SymbolLink symbol={r.symbol} />
-                {portfolioSymbols?.[r.symbol] && (
-                  <Badge size="xs" colorPalette="blue" variant="subtle">Held</Badge>
-                )}
-              </HStack>
+          {items.length ? items.map((r, i) => (
+            <HStack key={`trans-${r.symbol}-${i}`} justify="space-between" fontSize="xs">
+              <SymbolLink symbol={r.symbol} showHeldBadge={showHeldBadge} />
               <HStack gap={1}>
                 <Badge variant="subtle" size="sm">
                   {r.previous_stage_label || '—'} → {r.stage_label || '?'}
@@ -486,7 +472,7 @@ const RRGChart: React.FC<{ sectors: RRGSector[] }> = ({ sectors }) => {
       <Text fontSize="sm" fontWeight="semibold" mb={1}>Relative Rotation Graph (Sectors)</Text>
       <Text fontSize="xs" color="fg.muted" mb={2}>Hover each dot to see sector details</Text>
       <Box flex={1} minH="380px" w="100%">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height={400}>
           <ScatterChart>
           <CartesianGrid strokeDasharray="3 3" stroke={cc.grid} />
           <XAxis
@@ -521,7 +507,7 @@ const RRGChart: React.FC<{ sectors: RRGSector[] }> = ({ sectors }) => {
       </Box>
       <Box display="grid" gridTemplateColumns="repeat(auto-fill, minmax(130px, 1fr))" gap="3px" mt={2} px={1} flexShrink={0}>
         {data.map((s, i) => (
-          <HStack key={s.symbol} gap={1}>
+          <HStack key={`rrg-${s.symbol}-${i}`} gap={1}>
             <Box w="8px" h="8px" borderRadius="full" flexShrink={0} bg={SECTOR_PALETTE[i % SECTOR_PALETTE.length]} />
             <Text fontSize="10px" truncate color="fg.muted">{s.name}</Text>
           </HStack>
@@ -649,7 +635,84 @@ const VolatilityRegime: React.FC<{ data: VolData | null }> = ({ data }) => {
   );
 };
 
+/* ===== Section visibility & collapse ===== */
+
+type UniverseFilter = 'all' | 'etf' | 'holdings';
+
+const SECTION_VIS = {
+  all:      { pulse: true,  actionQueue: true,  sectorRotation: true,  scatter: true,  setups: true,  transitions: true,  ranked: true,  proximity: true,  insights: true,  signals: true,  earnings: true  },
+  etf:      { pulse: true,  actionQueue: false, sectorRotation: true,  scatter: true,  setups: false, transitions: false, ranked: false, proximity: true,  insights: true,  signals: false, earnings: false },
+  holdings: { pulse: false, actionQueue: true,  sectorRotation: false, scatter: false, setups: true,  transitions: true,  ranked: false, proximity: true,  insights: false, signals: true,  earnings: true  },
+} as const;
+
+const MODE_DESCRIPTIONS: Record<UniverseFilter, string> = {
+  all: 'S&P 500, NASDAQ 100, and DOW 30 constituents',
+  etf: 'Sector and thematic ETFs -- rotation and relative strength',
+  holdings: 'Signals and alerts for your portfolio positions',
+};
+
+const COLLAPSE_KEY = 'axiomfolio:dashboard:collapsed';
+
+function useSectionCollapse() {
+  const [collapsed, setCollapsed] = React.useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem(COLLAPSE_KEY);
+      return stored ? new Set(JSON.parse(stored) as string[]) : new Set<string>();
+    } catch { return new Set<string>(); }
+  });
+
+  const toggle = React.useCallback((key: string) => {
+    setCollapsed(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  }, []);
+
+  return { collapsed, toggle };
+}
+
+const SectionHeading: React.FC<{
+  title: string;
+  sectionKey: string;
+  isCollapsed: boolean;
+  onToggle: () => void;
+  count?: number;
+}> = ({ title, sectionKey, isCollapsed, onToggle, count }) => (
+  <HStack
+    cursor="pointer"
+    onClick={onToggle}
+    tabIndex={0}
+    onKeyDown={(e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        onToggle();
+      }
+    }}
+    gap={2}
+    mb={isCollapsed ? 0 : 2}
+    role="button"
+    aria-expanded={!isCollapsed}
+    aria-controls={`section-${sectionKey}`}
+    _hover={{ opacity: 0.8 }}
+    userSelect="none"
+  >
+    {isCollapsed ? <FiChevronRight size={14} /> : <FiChevronDown size={14} />}
+    <Text fontSize="sm" fontWeight="semibold">{title}</Text>
+    {count != null && count > 0 && <Badge variant="subtle" size="sm">{count}</Badge>}
+  </HStack>
+);
+
+const EmptyState: React.FC<{ mode: UniverseFilter; noun?: string }> = ({ mode, noun = 'items' }) => (
+  <Text fontSize="sm" color="fg.muted" py={4} textAlign="center">
+    No {noun} for {MODE_DESCRIPTIONS[mode].toLowerCase()}
+  </Text>
+);
+
 /* ===== Main Component ===== */
+
+const UNIVERSE_FILTER_KEY = 'axiomfolio:market-dashboard:universe-filter';
 
 const MarketDashboard: React.FC = () => {
   const { timezone } = useUserPreferences();
@@ -660,26 +723,55 @@ const MarketDashboard: React.FC = () => {
   const openChart = React.useCallback((sym: string) => setChartSymbol(sym), []);
   const portfolioQuery = usePortfolioSymbols();
   const portfolioSymbols = portfolioQuery.data ?? {};
+  const { collapsed, toggle } = useSectionCollapse();
+
+  const [universeFilter, setUniverseFilter] = React.useState<UniverseFilter>(() => {
+    try {
+      const stored = localStorage.getItem(UNIVERSE_FILTER_KEY);
+      if (stored === 'etf' || stored === 'holdings') return stored;
+    } catch {}
+    return 'all';
+  });
+
+  const handleFilterChange = React.useCallback((f: UniverseFilter) => {
+    setUniverseFilter(f);
+    try { localStorage.setItem(UNIVERSE_FILTER_KEY, f); } catch {}
+  }, []);
+
+  const vis = SECTION_VIS[universeFilter];
+  const showHeld = universeFilter !== 'holdings';
+
+  const constituentSet = React.useMemo(
+    () => new Set((payload?.constituent_symbols ?? []).map((s: string) => s.toUpperCase())),
+    [payload?.constituent_symbols],
+  );
+
+  const symbolFilter = React.useCallback((symbol: string): boolean => {
+    const sym = symbol?.toUpperCase?.() || '';
+    if (universeFilter === 'all') return constituentSet.size === 0 || constituentSet.has(sym);
+    if (universeFilter === 'etf') return ETF_SYMBOL_SET.has(sym);
+    if (universeFilter === 'holdings') return sym in portfolioSymbols;
+    return true;
+  }, [universeFilter, portfolioSymbols, constituentSet]);
 
   const [volData, setVolData] = React.useState<VolData | null>(null);
   const [trackedRows, setTrackedRows] = React.useState<any[]>([]);
 
-  React.useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const res = await marketDataApi.getDashboard();
-        setPayload((res as DashboardPayload) || null);
-        setError(null);
-      } catch (e: any) {
-        setPayload(null);
-        setError(e?.message || 'Failed to load market dashboard');
-      } finally {
-        setLoading(false);
-      }
-    };
-    void load();
+  const fetchDashboard = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await marketDataApi.getDashboard();
+      setPayload((res as DashboardPayload) || null);
+      setError(null);
+    } catch (e: any) {
+      setPayload(null);
+      setError(e?.message || 'Failed to load market dashboard');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  React.useEffect(() => { void fetchDashboard(); }, [fetchDashboard]);
 
   React.useEffect(() => {
     marketDataApi.getVolatilityDashboard().then((d: any) => setVolData(d)).catch(() => {});
@@ -693,6 +785,71 @@ const MarketDashboard: React.FC = () => {
       })
       .catch(() => {});
   }, []);
+
+  const filteredTrackedRows = React.useMemo(
+    () => trackedRows.filter((r) => symbolFilter(r?.symbol)),
+    [trackedRows, symbolFilter],
+  );
+
+  /* --- ZONE 1b: effectiveStats (must be before early returns) --- */
+  const effectiveStats = React.useMemo(() => {
+    const regime = payload?.regime || {};
+    if (universeFilter === 'all' && constituentSet.size === 0) {
+      const sc = payload?.snapshot_count || 0;
+      const a50 = regime.above_sma50_count || 0;
+      const a200 = regime.above_sma200_count || 0;
+      const up = regime.up_1d_count || 0;
+      const dn = regime.down_1d_count || 0;
+      const flat = (regime.flat_1d_count as number) || 0;
+      return { count: sc, above50: a50, above200: a200, upCount: up, downCount: dn, flatCount: flat, stageCounts: regime.stage_counts_normalized || {} };
+    }
+    const rows = filteredTrackedRows;
+    const n = rows.length;
+    return {
+      count: n,
+      above50: rows.filter((r: any) => r.sma_50 && r.current_price > r.sma_50).length,
+      above200: rows.filter((r: any) => r.sma_200 && r.current_price > r.sma_200).length,
+      upCount: rows.filter((r: any) => (r.change_1d ?? r.perf_1d ?? 0) > 0).length,
+      downCount: rows.filter((r: any) => (r.change_1d ?? r.perf_1d ?? 0) < 0).length,
+      flatCount: rows.filter((r: any) => (r.change_1d ?? r.perf_1d ?? 0) === 0).length,
+      stageCounts: rows.reduce((acc: Record<string, number>, r: any) => {
+        const s = r.stage_label; if (s) acc[s] = (acc[s] || 0) + 1; return acc;
+      }, {} as Record<string, number>),
+    };
+  }, [universeFilter, constituentSet.size, filteredTrackedRows, payload]);
+
+  /* --- ZONE 1c: filteredSections (consolidate all sf() calls) --- */
+  const filteredSections = React.useMemo(() => {
+    const sf = <T extends { symbol?: string }>(arr: T[]) =>
+      arr.filter((r) => symbolFilter(r.symbol || ''));
+    const sfMatrix = (m: Record<string, any[]> | undefined | null) =>
+      m ? Object.fromEntries(Object.entries(m).map(([k, arr]) => [k, sf(arr)])) : undefined;
+
+    return {
+      sectorRows: sf(payload?.sector_etf_table || []),
+      sectorMomentum: payload?.sector_momentum || [],
+      breakoutCandidates: sf(payload?.setups?.breakout_candidates || []),
+      pullbackCandidates: sf(payload?.setups?.pullback_candidates || []),
+      rsLeaders: sf(payload?.setups?.rs_leaders || []),
+      leaders: sf(payload?.leaders || []),
+      enteringStage2a: sf(payload?.entering_stage_2a || []),
+      entering34: sf([...(payload?.entering_stage_3 || []), ...(payload?.entering_stage_4 || [])]),
+      entryRows: sf(payload?.entry_proximity_top || []),
+      exitRows: sf(payload?.exit_proximity_top || []),
+      actionQueue: sf(payload?.action_queue || []),
+      top10Matrix: sfMatrix(payload?.top10_matrix),
+      bottom10Matrix: sfMatrix(payload?.bottom10_matrix),
+      rrgSectors: sf(payload?.rrg_sectors || []),
+      rsiBearish: sf(payload?.rsi_divergences?.bearish || []),
+      rsiBullish: sf(payload?.rsi_divergences?.bullish || []),
+      tdSignals: sf(payload?.td_signals || []),
+      gapLeaders: sf(payload?.gap_leaders || []),
+      upcomingEarnings: sf(payload?.upcoming_earnings || []),
+      fundamentalLeaders: sf(payload?.fundamental_leaders || []),
+    };
+  }, [payload, symbolFilter]);
+
+  /* --- ZONE 2: Early returns (all hooks are above this line) --- */
 
   if (loading) {
     return (
@@ -711,62 +868,103 @@ const MarketDashboard: React.FC = () => {
     );
   }
 
-  const regime = payload?.regime || {};
-  const stageCounts = regime.stage_counts_normalized || {};
+  /* --- ZONE 3: Derived plain values + JSX --- */
+
+  const {
+    sectorRows, sectorMomentum, breakoutCandidates, pullbackCandidates,
+    rsLeaders, leaders, enteringStage2a, entering34, entryRows, exitRows,
+    actionQueue, top10Matrix, bottom10Matrix, rrgSectors, rsiBearish,
+    rsiBullish, tdSignals, gapLeaders, upcomingEarnings, fundamentalLeaders,
+  } = filteredSections;
+
   const trackedCount = payload?.tracked_count || 0;
-  const snapshotCount = payload?.snapshot_count || 0;
-  const above50 = regime.above_sma50_count || 0;
-  const above200 = regime.above_sma200_count || 0;
-  const upCount = regime.up_1d_count || 0;
-  const downCount = regime.down_1d_count || 0;
+
+  const { count: snapshotCount, above50, above200, upCount, downCount, stageCounts } = effectiveStats;
   const pctAbove50 = snapshotCount > 0 ? ((above50 / snapshotCount) * 100).toFixed(0) : '0';
   const pctAbove200 = snapshotCount > 0 ? ((above200 / snapshotCount) * 100).toFixed(0) : '0';
   const advDecRatio = downCount > 0 ? (upCount / downCount).toFixed(2) : upCount > 0 ? '∞' : '0';
+  const advDecColor = (() => {
+    const r = downCount > 0 ? upCount / downCount : upCount > 0 ? 2 : 1;
+    if (r > 1.2) return 'green.500';
+    if (r > 1) return 'green.400';
+    if (r < 0.8) return 'red.500';
+    if (r < 1) return 'red.400';
+    return undefined;
+  })();
 
-  const sectorRows = payload?.sector_etf_table || [];
-  const sectorMomentum = payload?.sector_momentum || [];
-  const breakoutCandidates = payload?.setups?.breakout_candidates || [];
-  const pullbackCandidates = payload?.setups?.pullback_candidates || [];
-  const rsLeaders = payload?.setups?.rs_leaders || [];
-  const leaders = payload?.leaders || [];
-  const enteringStage2a = payload?.entering_stage_2a || [];
-  const entering34 = [...(payload?.entering_stage_3 || []), ...(payload?.entering_stage_4 || [])];
-  const entryRows = payload?.entry_proximity_top || [];
-  const exitRows = payload?.exit_proximity_top || [];
+  const snapshotAge = payload?.latest_snapshot_at
+    ? Math.round((Date.now() - new Date(payload.latest_snapshot_at).getTime()) / 60000)
+    : null;
 
-  const actionQueue = payload?.action_queue || [];
+  const filterLabels: Record<UniverseFilter, string> = {
+    all: `All (${constituentSet.size || trackedCount})`,
+    etf: `ETFs (${ETF_SYMBOL_SET.size})`,
+    holdings: `Holdings (${Object.keys(portfolioSymbols).length})`,
+  };
 
   return (
+    <PortfolioSymbolsContext.Provider value={portfolioSymbols}>
     <ChartContext.Provider value={openChart}>
     <Box p={4}>
       <Stack gap={4}>
-        <HStack justify="space-between" align="end" flexWrap="wrap">
-          <Heading size="md">Market Dashboard</Heading>
-          <HStack gap={2}>
-            <Badge variant="subtle">Tracked {trackedCount}</Badge>
-            <Badge variant="subtle">Snapshots {snapshotCount}</Badge>
-            {payload?.latest_snapshot_at && (
-              <Text fontSize="xs" color="fg.muted">
-                updated {new Date(payload.latest_snapshot_at).toLocaleString('en-US', { timeZone: 'America/Los_Angeles', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })} PST
-              </Text>
-            )}
-          </HStack>
-        </HStack>
-
-        {/* Section 1: Market Pulse */}
         <Box>
-          <Text fontSize="sm" fontWeight="semibold" mb={2}>Market Pulse</Text>
-          <Box display="flex" gap={2} flexWrap="wrap" mb={3}>
-            <StatCard label="% Above 50DMA" value={`${pctAbove50}%`} sub={`${above50} / ${snapshotCount}`} />
-            <StatCard label="% Above 200DMA" value={`${pctAbove200}%`} sub={`${above200} / ${snapshotCount}`} />
-            <StatCard label="Advance / Decline" value={advDecRatio} sub={`${upCount} up · ${downCount} down`} />
-          </Box>
-          <StageBar counts={stageCounts} total={snapshotCount} />
-          <VolatilityRegime data={volData} />
+          <HStack justify="space-between" align="end" flexWrap="wrap" mb={1}>
+            <HStack gap={3} align="baseline">
+              <Heading size="md">Market Dashboard</Heading>
+              <HStack gap={1}>
+                {(['all', 'etf', 'holdings'] as UniverseFilter[]).map((f) => (
+                  <Button
+                    key={f}
+                    size="xs"
+                    variant={universeFilter === f ? 'solid' : 'outline'}
+                    colorPalette={universeFilter === f ? (f === 'holdings' ? 'blue' : 'gray') : 'gray'}
+                    onClick={() => handleFilterChange(f)}
+                  >
+                    {filterLabels[f]}
+                  </Button>
+                ))}
+              </HStack>
+            </HStack>
+            <HStack gap={2}>
+              <HStack gap={1}>
+                <Text fontSize="xs" color={snapshotAge != null && snapshotAge > 30 ? 'status.warning' : 'fg.muted'}>
+                  {snapshotAge != null ? `${snapshotAge}m ago` : ''}
+                </Text>
+                <IconButton size="xs" variant="ghost" onClick={() => { void fetchDashboard(); }} aria-label="Refresh dashboard">
+                  <FiRefreshCw />
+                </IconButton>
+              </HStack>
+            </HStack>
+          </HStack>
+          <Text fontSize="xs" color="fg.muted">{MODE_DESCRIPTIONS[universeFilter]}</Text>
         </Box>
 
+        {/* Section 1: Market Pulse */}
+        {vis.pulse && (
+        <Box>
+          <SectionHeading title="Market Pulse" sectionKey="pulse" isCollapsed={collapsed.has('pulse')} onToggle={() => toggle('pulse')} />
+          <Collapsible.Root open={!collapsed.has('pulse')}>
+            <Collapsible.Content>
+              <Box display="flex" gap={2} flexWrap="wrap" mb={3}>
+                <StatCard label="% Above 50DMA" value={`${pctAbove50}%`} sub={`${above50} / ${snapshotCount}`} />
+                <StatCard label="% Above 200DMA" value={`${pctAbove200}%`} sub={`${above200} / ${snapshotCount}`} />
+                <StatCard label="Advance / Decline" value={advDecRatio} sub={`${upCount} up · ${downCount} down`} color={advDecColor} />
+              </Box>
+              <StageBar counts={stageCounts} total={snapshotCount} />
+              <VolatilityRegime data={volData} />
+            </Collapsible.Content>
+          </Collapsible.Root>
+        </Box>
+        )}
+
         {/* Action Queue — organized by Weinstein Stage */}
-        {actionQueue.length > 0 && (() => {
+        {vis.actionQueue && (() => {
+          if (actionQueue.length === 0) return (
+            <Box>
+              <SectionHeading title="Action Queue" sectionKey="actionQueue" isCollapsed={collapsed.has('actionQueue')} onToggle={() => toggle('actionQueue')} count={0} />
+              <Collapsible.Root open={!collapsed.has('actionQueue')}><Collapsible.Content><EmptyState mode={universeFilter} noun="action items" /></Collapsible.Content></Collapsible.Root>
+            </Box>
+          );
           const stageGroups: Record<string, typeof actionQueue> = { '1': [], '2': [], '3': [], '4': [] };
           for (const item of actionQueue) {
             const s = (item.stage_label || '').charAt(0);
@@ -781,10 +979,9 @@ const MarketDashboard: React.FC = () => {
           ];
           return (
             <Box>
-              <HStack mb={2} gap={2} align="center">
-                <Text fontSize="sm" fontWeight="semibold">Action Queue</Text>
-                <Badge variant="subtle" size="sm">{actionQueue.length}</Badge>
-              </HStack>
+              <SectionHeading title="Action Queue" sectionKey="actionQueue" isCollapsed={collapsed.has('actionQueue')} onToggle={() => toggle('actionQueue')} count={actionQueue.length} />
+              <Collapsible.Root open={!collapsed.has('actionQueue')}>
+                <Collapsible.Content>
               <Box display="grid" gridTemplateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', xl: 'repeat(4, 1fr)' }} gap={3}>
                 {stageConfig.map(({ key, label, palette }) => (
                   <Box key={key} borderWidth="1px" borderColor="border.subtle" borderRadius="lg" bg="bg.card" overflow="hidden">
@@ -798,7 +995,7 @@ const MarketDashboard: React.FC = () => {
                       {stageGroups[key].length === 0 ? (
                         <Text fontSize="xs" color="fg.subtle">No signals</Text>
                       ) : (
-                        stageGroups[key].map((item) => {
+                        stageGroups[key].map((item, idx) => {
                           const reasons: string[] = [];
                           if (item.previous_stage_label && item.previous_stage_label !== item.stage_label) {
                             reasons.push(`${item.previous_stage_label} → ${item.stage_label}`);
@@ -810,13 +1007,8 @@ const MarketDashboard: React.FC = () => {
                             reasons.push(`RS ${item.rs_mansfield_pct > 0 ? '+' : ''}${item.rs_mansfield_pct.toFixed(1)}`);
                           }
                           return (
-                            <HStack key={`aq-${item.symbol}`} justify="space-between" fontSize="xs" py="2px" borderBottomWidth="1px" borderColor="border.subtle">
-                              <HStack gap={1}>
-                                <SymbolLink symbol={item.symbol} />
-                                {portfolioSymbols[item.symbol] && (
-                                  <Badge size="xs" colorPalette="blue" variant="subtle">Held</Badge>
-                                )}
-                              </HStack>
+                            <HStack key={`aq-${item.symbol}-${idx}`} justify="space-between" fontSize="xs" py="2px" borderBottomWidth="1px" borderColor="border.subtle">
+                              <SymbolLink symbol={item.symbol} showHeldBadge={showHeld} />
                               <HStack gap={1} flexShrink={0}>
                                 {reasons.map((r, i) => (
                                   <Text key={i} fontSize="xs" color="fg.muted">{r}</Text>
@@ -830,13 +1022,18 @@ const MarketDashboard: React.FC = () => {
                   </Box>
                 ))}
               </Box>
+                </Collapsible.Content>
+              </Collapsible.Root>
             </Box>
           );
         })()}
 
         {/* Section 2: Sector Rotation */}
+        {vis.sectorRotation && (
         <Box>
-          <Text fontSize="sm" fontWeight="semibold" mb={2}>Sector Rotation</Text>
+          <SectionHeading title="Sector Rotation" sectionKey="sectorRotation" isCollapsed={collapsed.has('sectorRotation')} onToggle={() => toggle('sectorRotation')} />
+          <Collapsible.Root open={!collapsed.has('sectorRotation')}>
+            <Collapsible.Content>
           <Box display="grid" gridTemplateColumns={{ base: '1fr', xl: '1.6fr 0.4fr' }} gap={3}>
             <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
               <TableScrollArea borderWidth="1px" borderColor="border.subtle" borderRadius="md">
@@ -853,8 +1050,8 @@ const MarketDashboard: React.FC = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sectorRows.map((r) => (
-                      <TableRow key={`sector-${r.symbol}`}>
+                    {sectorRows.map((r, i) => (
+                      <TableRow key={`sector-${r.symbol}-${i}`}>
                         <TableCell>{r.sector_name || r.symbol}</TableCell>
                         <TableCell>
                           {r.stage_label ? (
@@ -879,8 +1076,8 @@ const MarketDashboard: React.FC = () => {
                 <Text fontSize="xs" color="fg.muted">No data</Text>
               ) : (
                 <Box display="flex" flexDirection="column" gap={1}>
-                  {sectorMomentum.slice(0, 10).map((sm) => (
-                    <HStack key={sm.sector} justify="space-between" fontSize="xs">
+                  {sectorMomentum.slice(0, 10).map((sm, i) => (
+                    <HStack key={`sector-mom-${sm.sector}-${i}`} justify="space-between" fontSize="xs">
                       <Text truncate maxW="140px">{sm.sector}</Text>
                       <HStack gap={2}>
                         <Text color={heatColor(sm.avg_perf_20d)}>{fmtPct(sm.avg_perf_20d)}</Text>
@@ -892,51 +1089,94 @@ const MarketDashboard: React.FC = () => {
               )}
             </Box>
           </Box>
+            </Collapsible.Content>
+          </Collapsible.Root>
         </Box>
+        )}
 
         {/* Scatter/Bubble Chart */}
-        {trackedRows.length > 0 && (
+        {vis.scatter && filteredTrackedRows.length > 0 && (
           <Box>
-            <Text fontSize="sm" fontWeight="semibold" mb={2}>Universe Scatter</Text>
+            <SectionHeading title="Universe Scatter" sectionKey="scatter" isCollapsed={collapsed.has('scatter')} onToggle={() => toggle('scatter')} count={filteredTrackedRows.length} />
+            <Collapsible.Root open={!collapsed.has('scatter')}>
+              {/* @ts-expect-error unmountOnExit is supported at runtime but not typed */}
+              <Collapsible.Content unmountOnExit>
             <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={4} bg="bg.card">
               <BubbleChart
-                data={trackedRows}
+                data={filteredTrackedRows}
                 defaultX="perf_1d"
                 defaultY="rs_mansfield_pct"
                 defaultColor="stage_label"
                 defaultSize="market_cap"
+                onSymbolClick={openChart}
               />
             </Box>
+              </Collapsible.Content>
+            </Collapsible.Root>
           </Box>
         )}
 
         {/* Section 3: Trading Setups */}
+        {vis.setups && (
         <Box>
-          <Text fontSize="sm" fontWeight="semibold" mb={2}>Trading Setups</Text>
-          <Box display="grid" gridTemplateColumns={{ base: '1fr', md: '1fr 1fr', xl: '1fr 1fr 1fr 1fr' }} gap={3}>
-            <SetupCard title="Breakout Candidates" items={breakoutCandidates} linkPreset="breakout" portfolioSymbols={portfolioSymbols} />
-            <SetupCard title="Pullback Buys" items={pullbackCandidates} linkPreset="pullback" portfolioSymbols={portfolioSymbols} />
-            <SetupCard title="RS Leaders" items={rsLeaders} linkPreset="rs_leaders" portfolioSymbols={portfolioSymbols} />
-            <SetupCard title="Momentum Leaders" items={leaders} showScore linkPreset="momentum" portfolioSymbols={portfolioSymbols} />
-          </Box>
+          <SectionHeading title="Trading Setups" sectionKey="setups" isCollapsed={collapsed.has('setups')} onToggle={() => toggle('setups')} count={breakoutCandidates.length + pullbackCandidates.length + rsLeaders.length + leaders.length} />
+          <Collapsible.Root open={!collapsed.has('setups')}>
+            <Collapsible.Content>
+              {(breakoutCandidates.length + pullbackCandidates.length + rsLeaders.length + leaders.length) === 0 ? (
+                <EmptyState mode={universeFilter} noun="trading setups" />
+              ) : (
+                <Box display="grid" gridTemplateColumns={{ base: '1fr', md: '1fr 1fr', xl: '1fr 1fr 1fr 1fr' }} gap={3}>
+                  <SetupCard title="Breakout Candidates" items={breakoutCandidates} linkPreset="breakout" showHeldBadge={showHeld} />
+                  <SetupCard title="Pullback Buys" items={pullbackCandidates} linkPreset="pullback" showHeldBadge={showHeld} />
+                  <SetupCard title="RS Leaders" items={rsLeaders} linkPreset="rs_leaders" showHeldBadge={showHeld} />
+                  <SetupCard title="Momentum Leaders" items={leaders} showScore linkPreset="momentum" showHeldBadge={showHeld} />
+                </Box>
+              )}
+            </Collapsible.Content>
+          </Collapsible.Root>
         </Box>
+        )}
 
         {/* Section 4: Stage Transitions */}
+        {vis.transitions && (
         <Box>
-          <Text fontSize="sm" fontWeight="semibold" mb={2}>Stage Transitions</Text>
-          <Box display="grid" gridTemplateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={3}>
-            <TransitionList title="Entering Stage 2A (Bullish)" items={enteringStage2a} colorPalette="green" portfolioSymbols={portfolioSymbols} />
-            <TransitionList title="Entering Stage 3/4 (Warning)" items={entering34} colorPalette="red" portfolioSymbols={portfolioSymbols} />
-          </Box>
+          <SectionHeading title="Stage Transitions" sectionKey="transitions" isCollapsed={collapsed.has('transitions')} onToggle={() => toggle('transitions')} count={enteringStage2a.length + entering34.length} />
+          <Collapsible.Root open={!collapsed.has('transitions')}>
+            <Collapsible.Content>
+              {(enteringStage2a.length + entering34.length) === 0 ? (
+                <EmptyState mode={universeFilter} noun="stage transitions" />
+              ) : (
+                <Box display="grid" gridTemplateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={3}>
+                  <TransitionList title="Entering Stage 2A (Bullish)" items={enteringStage2a} colorPalette="green" showHeldBadge={showHeld} />
+                  <TransitionList title="Entering Stage 3/4 (Warning)" items={entering34} colorPalette="red" showHeldBadge={showHeld} />
+                </Box>
+              )}
+            </Collapsible.Content>
+          </Collapsible.Root>
         </Box>
+        )}
 
         {/* Section 5: Ranked Metrics */}
-        <RankMatrix title="Top 10 Matrix" data={payload?.top10_matrix} />
-        <RankMatrix title="Bottom 10 Matrix" data={payload?.bottom10_matrix} />
+        {vis.ranked && (
+        <Box>
+          <SectionHeading title="Top / Bottom 10 Matrix" sectionKey="ranked" isCollapsed={collapsed.has('ranked')} onToggle={() => toggle('ranked')} />
+          <Collapsible.Root open={!collapsed.has('ranked')}>
+            <Collapsible.Content>
+              <Stack gap={3}>
+                <RankMatrix title="Top 10 Matrix" data={top10Matrix} />
+                <RankMatrix title="Bottom 10 Matrix" data={bottom10Matrix} />
+              </Stack>
+            </Collapsible.Content>
+          </Collapsible.Root>
+        </Box>
+        )}
 
         {/* Section 6: Entry/Exit Proximity */}
+        {vis.proximity && (
         <Box>
-          <Text fontSize="sm" fontWeight="semibold" mb={2}>Entry / Exit Proximity</Text>
+          <SectionHeading title="Entry / Exit Proximity" sectionKey="proximity" isCollapsed={collapsed.has('proximity')} onToggle={() => toggle('proximity')} />
+          <Collapsible.Root open={!collapsed.has('proximity')}>
+            <Collapsible.Content>
           <Box display="grid" gridTemplateColumns={{ base: '1fr', xl: '1fr 1fr' }} gap={3}>
             <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
               <Text fontSize="xs" fontWeight="semibold" mb={2}>Top 10 Closest to Entry</Text>
@@ -953,17 +1193,20 @@ const MarketDashboard: React.FC = () => {
                   </TableHeader>
                   <TableBody>
                     {entryRows.slice(0, 10).length ? (
-                      entryRows.slice(0, 10).map((r: any) => (
-                        <TableRow key={`entry-${r.symbol}`}>
-                          <TableCell>{r.symbol}</TableCell>
+                      entryRows.slice(0, 10).map((r: any, i: number) => {
+                        const distColor = typeof r.distance_pct === 'number' && Math.abs(r.distance_pct) <= 3 ? 'green.400' : undefined;
+                        return (
+                        <TableRow key={`entry-${r.symbol}-${i}`}>
+                          <TableCell><SymbolLink symbol={r.symbol} showHeldBadge={showHeld} /></TableCell>
                           <TableCell>
                             <StageBadge stage={r.stage_label || '?'} />
                           </TableCell>
                           <TableCell>{typeof r.entry_price === 'number' ? r.entry_price.toFixed(2) : '—'}</TableCell>
-                          <TableCell>{typeof r.distance_pct === 'number' ? `${r.distance_pct.toFixed(2)}%` : '—'}</TableCell>
+                          <TableCell><Text color={distColor}>{typeof r.distance_pct === 'number' ? `${r.distance_pct.toFixed(2)}%` : '—'}</Text></TableCell>
                           <TableCell>{typeof r.distance_atr === 'number' ? `${r.distance_atr.toFixed(2)}x` : '—'}</TableCell>
                         </TableRow>
-                      ))
+                        );
+                      })
                     ) : (
                       <TableRow>
                         <TableCell colSpan={5}>
@@ -993,17 +1236,20 @@ const MarketDashboard: React.FC = () => {
                   </TableHeader>
                   <TableBody>
                     {exitRows.slice(0, 10).length ? (
-                      exitRows.slice(0, 10).map((r: any) => (
-                        <TableRow key={`exit-${r.symbol}`}>
-                          <TableCell>{r.symbol}</TableCell>
+                      exitRows.slice(0, 10).map((r: any, i: number) => {
+                        const distColor = typeof r.distance_pct === 'number' && Math.abs(r.distance_pct) <= 3 ? 'red.400' : undefined;
+                        return (
+                        <TableRow key={`exit-${r.symbol}-${i}`}>
+                          <TableCell><SymbolLink symbol={r.symbol} showHeldBadge={showHeld} /></TableCell>
                           <TableCell>
                             <StageBadge stage={r.stage_label || '?'} />
                           </TableCell>
                           <TableCell>{typeof r.exit_price === 'number' ? r.exit_price.toFixed(2) : '—'}</TableCell>
-                          <TableCell>{typeof r.distance_pct === 'number' ? `${r.distance_pct.toFixed(2)}%` : '—'}</TableCell>
+                          <TableCell><Text color={distColor}>{typeof r.distance_pct === 'number' ? `${r.distance_pct.toFixed(2)}%` : '—'}</Text></TableCell>
                           <TableCell>{typeof r.distance_atr === 'number' ? `${r.distance_atr.toFixed(2)}x` : '—'}</TableCell>
                         </TableRow>
-                      ))
+                        );
+                      })
                     ) : (
                       <TableRow>
                         <TableCell colSpan={5}>
@@ -1018,10 +1264,18 @@ const MarketDashboard: React.FC = () => {
               </TableScrollArea>
             </Box>
           </Box>
+            </Collapsible.Content>
+          </Collapsible.Root>
         </Box>
+        )}
+
         {/* Market Insights */}
+        {vis.insights && (
         <Box>
-          <Text fontSize="sm" fontWeight="semibold" mb={2}>Market Insights</Text>
+          <SectionHeading title="Market Insights" sectionKey="insights" isCollapsed={collapsed.has('insights')} onToggle={() => toggle('insights')} />
+          <Collapsible.Root open={!collapsed.has('insights')}>
+            {/* @ts-expect-error unmountOnExit is supported at runtime but not typed */}
+            <Collapsible.Content unmountOnExit>
           <Box display="grid" gridTemplateColumns={{ base: '1fr', lg: '1fr 1fr' }} gap={3}>
             <Box display="flex" flexDirection="column" gap={3}>
               {(payload?.range_histogram || []).length > 0 && (
@@ -1031,28 +1285,34 @@ const MarketDashboard: React.FC = () => {
                 <BreadthChart series={payload!.breadth_series!} />
               )}
             </Box>
-            {(payload?.rrg_sectors || []).length > 0 && (
-              <RRGChart sectors={payload!.rrg_sectors!} />
+            {rrgSectors.length > 0 && (
+              <RRGChart sectors={rrgSectors} />
             )}
           </Box>
+            </Collapsible.Content>
+          </Collapsible.Root>
         </Box>
+        )}
 
         {/* Signals & Divergences */}
+        {vis.signals && (
         <Box>
-          <Text fontSize="sm" fontWeight="semibold" mb={2}>Signals & Divergences</Text>
+          <SectionHeading title="Signals & Divergences" sectionKey="signals" isCollapsed={collapsed.has('signals')} onToggle={() => toggle('signals')} count={rsiBearish.length + rsiBullish.length + tdSignals.length + gapLeaders.length} />
+          <Collapsible.Root open={!collapsed.has('signals')}>
+            <Collapsible.Content>
           <Box display="grid" gridTemplateColumns={{ base: '1fr', lg: '1fr 1fr 1fr' }} gap={3}>
             <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
               <Text fontSize="xs" fontWeight="semibold" mb={2}>Divergence Watch</Text>
-              {((payload?.rsi_divergences?.bearish || []).length + (payload?.rsi_divergences?.bullish || []).length) === 0 ? (
+              {(rsiBearish.length + rsiBullish.length) === 0 ? (
                 <Text fontSize="xs" color="fg.muted">No divergences detected</Text>
               ) : (
                 <Box maxH="300px" overflowY="auto" pr={1}>
                   <Box display="flex" flexDirection="column" gap={2}>
-                    {(payload?.rsi_divergences?.bearish || []).length > 0 && (
+                    {rsiBearish.length > 0 && (
                       <Box>
-                        <Badge size="sm" variant="subtle" colorPalette="red" mb={1}>Bearish ({payload!.rsi_divergences!.bearish!.length})</Badge>
-                        {payload!.rsi_divergences!.bearish!.map((d) => (
-                          <HStack key={`div-b-${d.symbol}`} justify="space-between" fontSize="xs" py="1px">
+                        <Badge size="sm" variant="subtle" colorPalette="red" mb={1}>Bearish ({rsiBearish.length})</Badge>
+                        {rsiBearish.map((d, i) => (
+                          <HStack key={`div-b-${d.symbol}-${i}`} justify="space-between" fontSize="xs" py="1px">
                             <SymbolLink symbol={d.symbol} />
                             <HStack gap={2}>
                               <Text color="green.400">+{d.perf_20d}%</Text>
@@ -1062,11 +1322,11 @@ const MarketDashboard: React.FC = () => {
                         ))}
                       </Box>
                     )}
-                    {(payload?.rsi_divergences?.bullish || []).length > 0 && (
+                    {rsiBullish.length > 0 && (
                       <Box>
-                        <Badge size="sm" variant="subtle" colorPalette="green" mb={1}>Bullish ({payload!.rsi_divergences!.bullish!.length})</Badge>
-                        {payload!.rsi_divergences!.bullish!.map((d) => (
-                          <HStack key={`div-l-${d.symbol}`} justify="space-between" fontSize="xs" py="1px">
+                        <Badge size="sm" variant="subtle" colorPalette="green" mb={1}>Bullish ({rsiBullish.length})</Badge>
+                        {rsiBullish.map((d, i) => (
+                          <HStack key={`div-l-${d.symbol}-${i}`} justify="space-between" fontSize="xs" py="1px">
                             <SymbolLink symbol={d.symbol} />
                             <HStack gap={2}>
                               <Text color="red.400">{d.perf_20d}%</Text>
@@ -1084,16 +1344,16 @@ const MarketDashboard: React.FC = () => {
             <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
               <HStack justify="space-between" mb={1}>
                 <Text fontSize="xs" fontWeight="semibold">TD Sequential Signals</Text>
-                {(payload?.td_signals || []).length > 0 && <Badge variant="subtle" size="sm">{payload!.td_signals!.length}</Badge>}
+                {tdSignals.length > 0 && <Badge variant="subtle" size="sm">{tdSignals.length}</Badge>}
               </HStack>
               <Text fontSize="xs" color="fg.muted" mb={2}>Setup 9 = potential reversal. Countdown 13 = exhaustion confirmed.</Text>
-              {(payload?.td_signals || []).length === 0 ? (
+              {tdSignals.length === 0 ? (
                 <Text fontSize="xs" color="fg.muted">No active signals</Text>
               ) : (
                 <Box maxH="300px" overflowY="auto">
                   <Box display="grid" gridTemplateColumns={{ base: '1fr', xl: '1fr 1fr' }} gap={1} columnGap={3}>
-                    {payload!.td_signals!.map((s) => (
-                      <HStack key={`td-${s.symbol}`} justify="space-between" fontSize="xs" py="1px" borderBottomWidth="1px" borderColor="border.subtle">
+                    {tdSignals.map((s, i) => (
+                      <HStack key={`td-${s.symbol}-${i}`} justify="space-between" fontSize="xs" py="1px" borderBottomWidth="1px" borderColor="border.subtle">
                         <HStack gap={1}>
                           <SymbolLink symbol={s.symbol} />
                           <StageBadge stage={s.stage_label || '?'} />
@@ -1113,16 +1373,16 @@ const MarketDashboard: React.FC = () => {
             <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
               <HStack justify="space-between" mb={2}>
                 <Text fontSize="xs" fontWeight="semibold">Open Gaps</Text>
-                {(payload?.gap_leaders || []).length > 0 && <Badge variant="subtle" size="sm">{payload!.gap_leaders!.length}</Badge>}
+                {gapLeaders.length > 0 && <Badge variant="subtle" size="sm">{gapLeaders.length}</Badge>}
               </HStack>
               <Text fontSize="xs" color="fg.muted" mb={2}>Symbols with unfilled price gaps (potential support/resistance).</Text>
-              {(payload?.gap_leaders || []).length === 0 ? (
+              {gapLeaders.length === 0 ? (
                 <Text fontSize="xs" color="fg.subtle">No unfilled gaps detected. Gap data populates after indicator computation runs.</Text>
               ) : (
                 <Box maxH="300px" overflowY="auto">
                   <Box display="flex" flexDirection="column" gap={1}>
-                    {payload!.gap_leaders!.map((g) => (
-                      <HStack key={`gap-${g.symbol}`} justify="space-between" fontSize="xs" py="1px" borderBottomWidth="1px" borderColor="border.subtle">
+                    {gapLeaders.map((g, i) => (
+                      <HStack key={`gap-${g.symbol}-${i}`} justify="space-between" fontSize="xs" py="1px" borderBottomWidth="1px" borderColor="border.subtle">
                         <HStack gap={1}>
                           <SymbolLink symbol={g.symbol} />
                           <StageBadge stage={g.stage_label || '?'} />
@@ -1138,21 +1398,27 @@ const MarketDashboard: React.FC = () => {
               )}
             </Box>
           </Box>
+            </Collapsible.Content>
+          </Collapsible.Root>
         </Box>
+        )}
 
         {/* Earnings & Fundamentals */}
+        {vis.earnings && (
         <Box>
-          <Text fontSize="sm" fontWeight="semibold" mb={2}>Earnings & Fundamentals</Text>
+          <SectionHeading title="Earnings & Fundamentals" sectionKey="earnings" isCollapsed={collapsed.has('earnings')} onToggle={() => toggle('earnings')} count={upcomingEarnings.length + fundamentalLeaders.length} />
+          <Collapsible.Root open={!collapsed.has('earnings')}>
+            <Collapsible.Content>
           <Box display="grid" gridTemplateColumns={{ base: '1fr', lg: '1fr 1fr' }} gap={3}>
             <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
               <Text fontSize="xs" fontWeight="semibold" mb={2}>Upcoming Earnings (7d)</Text>
-              {(payload?.upcoming_earnings || []).length === 0 ? (
+              {upcomingEarnings.length === 0 ? (
                 <Text fontSize="xs" color="fg.muted">No upcoming earnings</Text>
               ) : (
                 <Box maxH="260px" overflowY="auto" pr={1}>
                   <Box display="flex" flexDirection="column" gap={1}>
-                    {payload!.upcoming_earnings!.map((e) => (
-                      <HStack key={`earn-${e.symbol}`} justify="space-between" fontSize="xs">
+                    {upcomingEarnings.map((e, i) => (
+                      <HStack key={`earn-${e.symbol}-${i}`} justify="space-between" fontSize="xs">
                         <HStack gap={1}>
                           <SymbolLink symbol={e.symbol} />
                           <StageBadge stage={e.stage_label || '?'} />
@@ -1167,13 +1433,13 @@ const MarketDashboard: React.FC = () => {
 
             <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
               <Text fontSize="xs" fontWeight="semibold" mb={2}>Fundamental Leaders</Text>
-              {(payload?.fundamental_leaders || []).length === 0 ? (
+              {fundamentalLeaders.length === 0 ? (
                 <Text fontSize="xs" color="fg.muted">Insufficient data</Text>
               ) : (
                 <Box maxH="260px" overflowY="auto" pr={1}>
                   <Box display="flex" flexDirection="column" gap={1}>
-                    {payload!.fundamental_leaders!.map((f) => (
-                      <HStack key={`fund-${f.symbol}`} justify="space-between" fontSize="xs">
+                    {fundamentalLeaders.map((f, i) => (
+                      <HStack key={`fund-${f.symbol}-${i}`} justify="space-between" fontSize="xs">
                         <HStack gap={1}>
                           <SymbolLink symbol={f.symbol} />
                           <StageBadge stage={f.stage_label || '?'} />
@@ -1190,11 +1456,16 @@ const MarketDashboard: React.FC = () => {
               )}
             </Box>
           </Box>
+            </Collapsible.Content>
+          </Collapsible.Root>
         </Box>
+        )}
+
       </Stack>
       <ChartSlidePanel symbol={chartSymbol} onClose={() => setChartSymbol(null)} />
     </Box>
     </ChartContext.Provider>
+    </PortfolioSymbolsContext.Provider>
   );
 };
 

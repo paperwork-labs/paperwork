@@ -226,7 +226,7 @@ export interface StockRow {
 
 /** Tax lot row (for workspace table). */
 export interface LotRow {
-  id?: string | number;
+  id?: number;
   purchase_date?: string;
   cost_per_share?: number;
   shares?: number;
@@ -235,6 +235,7 @@ export interface LotRow {
   unrealized_pnl?: number;
   is_long_term?: boolean;
   days_held?: number;
+  source?: string;
 }
 
 /** Options summary from /portfolio/options/unified/summary. */

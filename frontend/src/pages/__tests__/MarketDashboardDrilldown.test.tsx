@@ -16,6 +16,7 @@ vi.mock('../../services/api', () => {
   return {
     default: { get: vi.fn().mockResolvedValue({ data: {} }) },
     marketDataApi: {
+      getSnapshot: vi.fn().mockResolvedValue({ data: { stage_label: '2A' } }),
       getVolatilityDashboard: vi.fn().mockResolvedValue({}),
       getDashboard: vi.fn().mockResolvedValue({
         tracked_count: 120,
@@ -75,6 +76,7 @@ describe('MarketDashboard rebuilt sections', () => {
   it('renders top and bottom metric matrices', async () => {
     renderPage();
     await waitFor(() => expect(screen.getByText(/Top 10 Matrix/i)).toBeInTheDocument());
-    expect(screen.getByText(/Bottom 10 Matrix/i)).toBeInTheDocument();
+    // Section heading is "Top / Bottom 10 Matrix"; subsection is "Bottom 10 Matrix" — use getAllByText
+    expect(screen.getAllByText(/Bottom 10 Matrix/i).length).toBeGreaterThanOrEqual(1);
   });
 });

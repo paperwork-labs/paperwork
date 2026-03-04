@@ -37,13 +37,15 @@ import { StatCardSkeleton } from '../../components/shared/Skeleton';
 import type { AccountData } from '../../hooks/useAccountFilter';
 import type { EnrichedPosition } from '../../types/portfolio';
 import { SECTOR_PALETTE } from '../../constants/chart';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, AreaChart, Area, XAxis, YAxis } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, AreaChart, Area, XAxis, YAxis, Line, ComposedChart } from 'recharts';
+import { marketDataApi } from '../../services/api';
 
 const PERIODS = [{ key: '30d', label: '30d' }, { key: '90d', label: '90d' }, { key: '1y', label: '1Y' }, { key: 'all', label: 'All' }] as const;
 
 const PortfolioOverview: React.FC = () => {
   const [chartSymbol, setChartSymbol] = useState<string | null>(null);
   const [historyPeriod, setHistoryPeriod] = useState<string>('1y');
+  const [showBenchmark, setShowBenchmark] = useState<boolean>(true);
   const { currency } = useUserPreferences();
   const colors = useChartColors();
   const overview = usePortfolioOverview();
@@ -66,6 +68,31 @@ const PortfolioOverview: React.FC = () => {
   const dashboard = overview.summary.data as DashboardResponse | undefined;
   const rawAccounts = overview.accountsData ?? [];
   const historySeries = (historyQuery.data ?? []) as Array<{ date: string; total_value: number }>;
+
+  const [spyBars, setSpyBars] = React.useState<Array<{ time: string; close: number }>>([]);
+  React.useEffect(() => {
+    marketDataApi.getHistory('SPY', historyPeriod === 'all' ? '5y' : historyPeriod, '1d')
+      .then((res: any) => {
+        const bars = (res?.bars || res?.data || []) as Array<{ time?: string; date?: string; close: number }>;
+        setSpyBars(bars.map((b) => ({ time: (b.time || b.date || '').slice(0, 10), close: b.close })));
+      })
+      .catch(() => setSpyBars([]));
+  }, [historyPeriod]);
+
+  const equityCurveData = useMemo(() => {
+    if (!historySeries.length) return [];
+    const spyMap = new Map(spyBars.map((b) => [b.time, b.close]));
+    const firstPortfolioValue = historySeries[0].total_value || 1;
+    let firstSpyClose: number | null = null;
+    return historySeries.map((pt) => {
+      const dateKey = pt.date.slice(0, 10);
+      const spyClose = spyMap.get(dateKey);
+      if (spyClose && firstSpyClose === null) firstSpyClose = spyClose;
+      const portfolioPct = ((pt.total_value / firstPortfolioValue) - 1) * 100;
+      const spyPct = (spyClose && firstSpyClose) ? ((spyClose / firstSpyClose) - 1) * 100 : undefined;
+      return { date: dateKey, total_value: pt.total_value, portfolio_pct: portfolioPct, spy_pct: spyPct };
+    });
+  }, [historySeries, spyBars]);
 
   const accounts: AccountData[] = useMemo(
     () =>
@@ -189,9 +216,77 @@ const PortfolioOverview: React.FC = () => {
                     <StatCard label="Positions" value={pos.length} />
                   </Box>
 
-                  {/* 2. Data Freshness Indicator */}
+                  {/* 2. Insights Hero (promoted from below) */}
+                  {insights && (insights.harvest_candidates?.length > 0 || insights.approaching_lt?.length > 0 || insights.concentration_warnings?.length > 0) && (
+                    <Grid templateColumns={{ base: '1fr', lg: '1fr 1fr 1fr' }} gap={3}>
+                      <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
+                        <CardBody py={3}>
+                          <HStack mb={2} gap={2}>
+                            <Text fontSize="sm" fontWeight="semibold" color="fg.muted">Tax Loss Harvest</Text>
+                            <Badge size="sm" colorPalette="red">{insights.harvest_candidates?.length ?? 0}</Badge>
+                          </HStack>
+                          {(insights.harvest_candidates?.length ?? 0) === 0 ? (
+                            <Text fontSize="xs" color="fg.muted">No candidates</Text>
+                          ) : (
+                            <VStack align="stretch" gap={1}>
+                              {insights.harvest_candidates.slice(0, 5).map((c) => (
+                                <HStack key={c.symbol} justify="space-between">
+                                  <Text fontFamily="mono" fontSize="xs">{c.symbol}</Text>
+                                  <Text fontSize="xs" color="fg.error">{formatMoney(c.unrealized_pnl, currency, { maximumFractionDigits: 0 })}</Text>
+                                </HStack>
+                              ))}
+                            </VStack>
+                          )}
+                        </CardBody>
+                      </CardRoot>
+
+                      <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
+                        <CardBody py={3}>
+                          <HStack mb={2} gap={2}>
+                            <Text fontSize="sm" fontWeight="semibold" color="fg.muted">Approaching Long-Term</Text>
+                            <Badge size="sm" colorPalette="yellow">{insights.approaching_lt?.length ?? 0}</Badge>
+                          </HStack>
+                          {(insights.approaching_lt?.length ?? 0) === 0 ? (
+                            <Text fontSize="xs" color="fg.muted">None near 365-day threshold</Text>
+                          ) : (
+                            <VStack align="stretch" gap={1}>
+                              {insights.approaching_lt.slice(0, 5).map((p) => (
+                                <HStack key={p.symbol} justify="space-between">
+                                  <Text fontFamily="mono" fontSize="xs">{p.symbol}</Text>
+                                  <Text fontSize="xs" color="yellow.400">{p.days_to_lt}d to LT</Text>
+                                </HStack>
+                              ))}
+                            </VStack>
+                          )}
+                        </CardBody>
+                      </CardRoot>
+
+                      <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
+                        <CardBody py={3}>
+                          <HStack mb={2} gap={2}>
+                            <Text fontSize="sm" fontWeight="semibold" color="fg.muted">Concentration Risk</Text>
+                            <Badge size="sm" colorPalette="orange">{insights.concentration_warnings?.length ?? 0}</Badge>
+                          </HStack>
+                          {(insights.concentration_warnings?.length ?? 0) === 0 ? (
+                            <Text fontSize="xs" color="fg.muted">Well-diversified</Text>
+                          ) : (
+                            <VStack align="stretch" gap={1}>
+                              {insights.concentration_warnings.slice(0, 5).map((w) => (
+                                <HStack key={w.symbol} justify="space-between">
+                                  <Text fontFamily="mono" fontSize="xs">{w.symbol}</Text>
+                                  <Text fontSize="xs" color="orange.400">{w.pct_of_portfolio}%</Text>
+                                </HStack>
+                              ))}
+                            </VStack>
+                          )}
+                        </CardBody>
+                      </CardRoot>
+                    </Grid>
+                  )}
+
+                  {/* 2b. Data Freshness (condensed) */}
                   {rawAccounts.length > 0 && (
-                    <HStack gap={4} p={3} borderRadius="md" bg="bg.subtle" flexWrap="wrap" alignItems="center">
+                    <HStack gap={4} px={3} py={2} borderRadius="md" bg="bg.subtle" flexWrap="wrap" alignItems="center">
                       {rawAccounts.map((a: { id?: number; account_number?: string; broker?: string; last_successful_sync?: string | null }) => {
                         const syncTime = a.last_successful_sync ? new Date(a.last_successful_sync) : null;
                         const ageMs = syncTime ? Date.now() - syncTime.getTime() : Infinity;
@@ -199,22 +294,21 @@ const PortfolioOverview: React.FC = () => {
                         const dotColor = ageHours < 1 ? 'green.500' : ageHours < 24 ? 'yellow.400' : 'red.400';
                         return (
                           <HStack key={a.id} gap={1}>
-                            <Box w="8px" h="8px" borderRadius="full" bg={dotColor} />
+                            <Box w="6px" h="6px" borderRadius="full" bg={dotColor} />
                             <Text fontSize="xs" color="fg.muted">
-                              {(a.broker || '').toUpperCase()} {(a.account_number || '').slice(-4)} · {syncTime ? timeAgo(a.last_successful_sync) : 'Never synced'}
+                              {(a.broker || '').toUpperCase()} ···{(a.account_number || '').slice(-4)} · {syncTime ? timeAgo(a.last_successful_sync) : 'Never'}
                             </Text>
                           </HStack>
                         );
                       })}
                       <Button
                         size="xs"
-                        variant="solid"
-                        colorPalette="brand"
+                        variant="outline"
                         onClick={() => syncMutation.mutate()}
                         loading={syncMutation.isLoading}
                         ml="auto"
                       >
-                        <HStack gap={1}><FiRefreshCw size={12} /> Sync All</HStack>
+                        <HStack gap={1}><FiRefreshCw size={10} /> Sync</HStack>
                       </Button>
                     </HStack>
                   )}
@@ -223,9 +317,19 @@ const PortfolioOverview: React.FC = () => {
                   <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
                     <CardBody>
                       <HStack justify="space-between" mb={3}>
-                        <Text fontSize="sm" fontWeight="semibold" color="fg.muted">
-                          Value over time
-                        </Text>
+                        <HStack gap={3}>
+                          <Text fontSize="sm" fontWeight="semibold" color="fg.muted">
+                            {showBenchmark ? 'Performance vs SPY' : 'Value over time'}
+                          </Text>
+                          <Button
+                            size="xs"
+                            variant={showBenchmark ? 'solid' : 'outline'}
+                            colorPalette={showBenchmark ? 'blue' : 'gray'}
+                            onClick={() => setShowBenchmark((v) => !v)}
+                          >
+                            vs SPY
+                          </Button>
+                        </HStack>
                         <HStack gap={1}>
                           {PERIODS.map((p) => (
                             <Button
@@ -242,21 +346,42 @@ const PortfolioOverview: React.FC = () => {
                       </HStack>
                       {historyQuery.isLoading ? (
                         <Text fontSize="sm" color="fg.muted">Loading…</Text>
-                      ) : historySeries.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={300}>
-                          <AreaChart data={historySeries} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
-                            <defs>
-                              <linearGradient id="portfolioValueGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor={colors.area1} stopOpacity={0.25} />
-                                <stop offset="100%" stopColor={colors.area1} stopOpacity={0.02} />
-                              </linearGradient>
-                            </defs>
-                            <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                            <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatMoney(v, currency, { maximumFractionDigits: 0 })} />
-                            <Tooltip formatter={(v: number | undefined, _name?: string) => formatMoney(Number(v ?? 0), currency) as React.ReactNode} labelFormatter={(d) => String(d)} />
-                            <Area type="monotone" dataKey="total_value" stroke={colors.area1} fill="url(#portfolioValueGradient)" strokeWidth={1.5} />
-                          </AreaChart>
-                        </ResponsiveContainer>
+                      ) : equityCurveData.length > 0 ? (
+                        showBenchmark ? (
+                          <ResponsiveContainer width="100%" height={300}>
+                            <ComposedChart data={equityCurveData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+                              <defs>
+                                <linearGradient id="portfolioPctGradient" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor={colors.area1} stopOpacity={0.2} />
+                                  <stop offset="100%" stopColor={colors.area1} stopOpacity={0.02} />
+                                </linearGradient>
+                              </defs>
+                              <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                              <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v.toFixed(0)}%`} />
+                              <Tooltip
+                                formatter={(v: number | undefined, name?: string) => [`${Number(v ?? 0).toFixed(2)}%`, name === 'portfolio_pct' ? 'Portfolio' : 'SPY'] as [React.ReactNode, string]}
+                                labelFormatter={(d) => String(d)}
+                              />
+                              <Area type="monotone" dataKey="portfolio_pct" stroke={colors.area1} fill="url(#portfolioPctGradient)" strokeWidth={2} name="portfolio_pct" />
+                              <Line type="monotone" dataKey="spy_pct" stroke={colors.area2} strokeWidth={1.5} strokeDasharray="4 3" dot={false} name="spy_pct" />
+                            </ComposedChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <ResponsiveContainer width="100%" height={300}>
+                            <AreaChart data={equityCurveData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+                              <defs>
+                                <linearGradient id="portfolioValueGradient" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor={colors.area1} stopOpacity={0.25} />
+                                  <stop offset="100%" stopColor={colors.area1} stopOpacity={0.02} />
+                                </linearGradient>
+                              </defs>
+                              <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                              <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatMoney(v, currency, { maximumFractionDigits: 0 })} />
+                              <Tooltip formatter={(v: number | undefined, _name?: string) => formatMoney(Number(v ?? 0), currency) as React.ReactNode} labelFormatter={(d) => String(d)} />
+                              <Area type="monotone" dataKey="total_value" stroke={colors.area1} fill="url(#portfolioValueGradient)" strokeWidth={1.5} />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        )
                       ) : (
                         <Text fontSize="sm" color="fg.muted">No performance history yet. Snapshots are recorded after sync.</Text>
                       )}
@@ -400,72 +525,35 @@ const PortfolioOverview: React.FC = () => {
                     </CardRoot>
                   </Grid>
 
-                  {/* 5. Insights */}
-                  {insights && (
-                    <Grid templateColumns={{ base: '1fr', lg: '1fr 1fr 1fr' }} gap={4}>
-                      <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-                        <CardBody>
-                          <HStack mb={3} gap={2}>
-                            <Text fontSize="sm" fontWeight="semibold" color="fg.muted">Tax Loss Harvest</Text>
-                            <Badge size="sm" colorPalette="red">{insights.harvest_candidates?.length ?? 0}</Badge>
-                          </HStack>
-                          {(insights.harvest_candidates?.length ?? 0) === 0 ? (
-                            <Text fontSize="xs" color="fg.muted">No harvesting candidates right now</Text>
-                          ) : (
-                            <VStack align="stretch" gap={1}>
-                              {insights.harvest_candidates.map((c) => (
-                                <HStack key={c.symbol} justify="space-between">
-                                  <Text fontFamily="mono" fontSize="xs">{c.symbol}</Text>
-                                  <Text fontSize="xs" color="fg.error">{formatMoney(c.unrealized_pnl, currency, { maximumFractionDigits: 0 })}</Text>
+                  {/* 5. Holdings KPI Row (top 5 by value) */}
+                  {pos.length > 0 && (
+                    <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
+                      <CardBody py={3}>
+                        <HStack justify="space-between" mb={2}>
+                          <Text fontSize="sm" fontWeight="semibold" color="fg.muted">Top Holdings</Text>
+                          <Link to="/portfolio/holdings" style={{ textDecoration: 'none' }}>
+                            <Text fontSize="xs" color="brand.500" _hover={{ textDecoration: 'underline' }} cursor="pointer">View all</Text>
+                          </Link>
+                        </HStack>
+                        <Box display="flex" gap={3} flexWrap="wrap">
+                          {[...pos].sort((a, b) => Number(b.market_value ?? 0) - Number(a.market_value ?? 0)).slice(0, 6).map((p) => {
+                            const pnl = Number(p.unrealized_pnl ?? 0);
+                            const mv = Number(p.market_value ?? 0);
+                            const weight = filteredTotal > 0 ? ((mv / filteredTotal) * 100).toFixed(1) : '0';
+                            return (
+                              <Box key={p.symbol} flex="1" minW="120px" p={2} borderWidth="1px" borderColor="border.subtle" borderRadius="md">
+                                <HStack justify="space-between" mb={1}>
+                                  <Text fontFamily="mono" fontSize="xs" fontWeight="semibold">{p.symbol}</Text>
+                                  <Text fontSize="xs" color="fg.muted">{weight}%</Text>
                                 </HStack>
-                              ))}
-                            </VStack>
-                          )}
-                        </CardBody>
-                      </CardRoot>
-
-                      <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-                        <CardBody>
-                          <HStack mb={3} gap={2}>
-                            <Text fontSize="sm" fontWeight="semibold" color="fg.muted">Approaching Long-Term</Text>
-                            <Badge size="sm" colorPalette="yellow">{insights.approaching_lt?.length ?? 0}</Badge>
-                          </HStack>
-                          {(insights.approaching_lt?.length ?? 0) === 0 ? (
-                            <Text fontSize="xs" color="fg.muted">No positions near the 365-day threshold</Text>
-                          ) : (
-                            <VStack align="stretch" gap={1}>
-                              {insights.approaching_lt.map((p) => (
-                                <HStack key={p.symbol} justify="space-between">
-                                  <Text fontFamily="mono" fontSize="xs">{p.symbol}</Text>
-                                  <Text fontSize="xs" color="yellow.400">{p.days_to_lt}d to LT</Text>
-                                </HStack>
-                              ))}
-                            </VStack>
-                          )}
-                        </CardBody>
-                      </CardRoot>
-
-                      <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-                        <CardBody>
-                          <HStack mb={3} gap={2}>
-                            <Text fontSize="sm" fontWeight="semibold" color="fg.muted">Concentration Risk</Text>
-                            <Badge size="sm" colorPalette="orange">{insights.concentration_warnings?.length ?? 0}</Badge>
-                          </HStack>
-                          {(insights.concentration_warnings?.length ?? 0) === 0 ? (
-                            <Text fontSize="xs" color="fg.muted">Portfolio is well-diversified</Text>
-                          ) : (
-                            <VStack align="stretch" gap={1}>
-                              {insights.concentration_warnings.map((w) => (
-                                <HStack key={w.symbol} justify="space-between">
-                                  <Text fontFamily="mono" fontSize="xs">{w.symbol}</Text>
-                                  <Text fontSize="xs" color="orange.400">{w.pct_of_portfolio}%</Text>
-                                </HStack>
-                              ))}
-                            </VStack>
-                          )}
-                        </CardBody>
-                      </CardRoot>
-                    </Grid>
+                                <Text fontSize="sm" fontWeight="bold">{formatMoney(mv, currency, { maximumFractionDigits: 0 })}</Text>
+                                <PnlText value={pnl} format="currency" fontSize="xs" currency={currency} />
+                              </Box>
+                            );
+                          })}
+                        </Box>
+                      </CardBody>
+                    </CardRoot>
                   )}
 
                   {/* 6. Collapsible: Dividends, Risk & Margin */}

@@ -20,15 +20,9 @@ import { FiCheck, FiEdit2, FiX } from 'react-icons/fi';
 import { ChartContext, SymbolLink, ChartSlidePanel } from '../components/market/SymbolChartUI';
 import { usePortfolioSymbols } from '../hooks/usePortfolioSymbols';
 import PnlText from '../components/shared/PnlText';
+import StageBadge from '../components/shared/StageBadge';
 
-const ETF_SYMBOLS = [
-  'COLO', 'DBA', 'DIA', 'ECH', 'EPOL', 'EPU', 'EWA', 'EWC', 'EWG', 'EWH', 'EWI', 'EWJ', 'EWM', 'EWW',
-  'EWY', 'EWZ', 'FUTY', 'FXU', 'GII', 'GLD', 'GREK', 'IDU', 'IFRA', 'IHI', 'INDA', 'ITA', 'ITB', 'IWC',
-  'IWM', 'IYR', 'IYT', 'JXI', 'MDY', 'MOO', 'NFRA', 'OIH', 'PALL', 'PAVE', 'PPLT', 'RSPU', 'SDP', 'SHLD',
-  'SOX', 'SOXX', 'SPSM', 'SPY', 'UPW', 'USO', 'UTES', 'VPU', 'XBI', 'XHB', 'XLB', 'XLC', 'XLE', 'XLF', 'XLI',
-  'XLK', 'XLP', 'XLU', 'XLV', 'XLY', 'XME', 'XOP', 'XRT',
-];
-const ETF_SYMBOL_SET = new Set(ETF_SYMBOLS.map((s) => s.toUpperCase()));
+import { ETF_SYMBOL_SET } from '../constants/etf';
 
 type EditablePriceCellProps = {
   symbol: string;
@@ -130,6 +124,7 @@ const MarketTracked: React.FC = () => {
   const { user } = useAuth();
   const canEditPlan = user?.role === 'admin' || user?.role === 'analyst';
   const [rows, setRows] = React.useState<any[]>([]);
+  const [trackedCount, setTrackedCount] = React.useState<number>(0);
   const [loading, setLoading] = React.useState<boolean>(false);
   const [chartSymbol, setChartSymbol] = React.useState<string | null>(null);
   const openChart = React.useCallback((sym: string) => setChartSymbol(sym), []);
@@ -142,8 +137,10 @@ const MarketTracked: React.FC = () => {
     setLoading(true);
     try {
       const r = await api.get('/market-data/snapshots?limit=5000');
-      const out = (r as any)?.data?.rows;
+      const data = (r as any)?.data;
+      const out = data?.rows;
       setRows(Array.isArray(out) ? out : []);
+      setTrackedCount(typeof data?.tracked_count === 'number' ? data.tracked_count : 0);
     } catch (err: any) {
       toast.error(err?.message || 'Failed to load tracked snapshot table');
       setRows([]);
@@ -201,22 +198,6 @@ const MarketTracked: React.FC = () => {
       };
       return map[label] ?? null;
     };
-    const stageBadge = (current: any, prev: any) => {
-      const cur = stageScore(current);
-      const prior = stageScore(prev);
-      const label = String(current || 'UNKNOWN');
-      if (cur == null || prior == null) {
-        return <Badge variant="subtle" colorPalette="gray">{label}</Badge>;
-      }
-      if (cur > prior) {
-        return <Badge variant="subtle" colorPalette="green">{label}</Badge>;
-      }
-      if (cur < prior) {
-        return <Badge variant="subtle" colorPalette="red">{label}</Badge>;
-      }
-      return <Badge variant="subtle" colorPalette="yellow">{label}</Badge>;
-    };
-
     // Keep default view compact. Level 1–4 fields are still sortable and visible via horizontal scroll.
     const fmtDays = (v: any) =>
       typeof v === 'number' && Number.isFinite(v) ? `${Math.max(0, Math.round(v))}d` : '—';
@@ -285,7 +266,21 @@ const MarketTracked: React.FC = () => {
           { label: '4', value: '4' },
           { label: 'UNKNOWN', value: 'UNKNOWN' },
         ],
-        render: (v, r) => stageBadge(v, r.previous_stage_label),
+        render: (v, r) => {
+          const cur = stageScore(v);
+          const prev = stageScore(r.previous_stage_label);
+          const changed = prev != null && cur != null && cur !== prev;
+          return (
+            <HStack gap={1}>
+              <StageBadge stage={v || '?'} />
+              {changed && (
+                <Text fontSize="xs" color={cur! > prev! ? 'green.400' : 'red.400'}>
+                  {cur! > prev! ? '▲' : '▼'}
+                </Text>
+              )}
+            </HStack>
+          );
+        },
       },
       {
         key: 'current_stage_days',
@@ -631,6 +626,15 @@ const MarketTracked: React.FC = () => {
             <Badge variant="subtle">{tableRows.length} rows</Badge>
           </HStack>
         </HStack>
+
+        {!loading && trackedCount > 0 && rows.length < trackedCount && (
+          <Box bg="bg.subtle" borderRadius="md" px={3} py={2} mb={2}>
+            <Text fontSize="xs" color="fg.muted">
+              Showing {rows.length} of {trackedCount} tracked symbols with computed indicators.
+              {rows.length < trackedCount * 0.9 && ' Run "Recompute Indicators (Market Snapshot)" from Operator Actions to update all tracked symbols.'}
+            </Text>
+          </Box>
+        )}
 
         <Box w="full" borderWidth="1px" borderColor="border.subtle" borderRadius="xl" bg="bg.card">
           <SortableTable

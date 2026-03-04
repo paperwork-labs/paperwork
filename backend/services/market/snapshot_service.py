@@ -16,11 +16,14 @@ class MarketSnapshotService:
         *,
         limit_bars: int = 300,
         as_of_dt=None,
+        skip_fundamentals: bool = False,
+        benchmark_df=None,
     ) -> Dict[str, Any]:
-        # `limit_bars` is intentionally retained here for call-site compatibility;
-        # MarketDataService now reads bar limits from settings.
         _ = limit_bars
-        return self._service.compute_snapshot_from_db(db, symbol, as_of_dt=as_of_dt)
+        return self._service.compute_snapshot_from_db(
+            db, symbol, as_of_dt=as_of_dt, skip_fundamentals=skip_fundamentals,
+            benchmark_df=benchmark_df,
+        )
 
     async def compute_snapshot_from_providers(self, symbol: str) -> Dict[str, Any]:
         return await self._service.compute_snapshot_from_providers(symbol)
@@ -33,6 +36,7 @@ class MarketSnapshotService:
         *,
         analysis_type: str = "technical_snapshot",
         ttl_hours: int = 24,
+        auto_commit: bool = True,
     ):
         return self._service.persist_snapshot(
             db,
@@ -40,6 +44,7 @@ class MarketSnapshotService:
             snapshot,
             analysis_type=analysis_type,
             ttl_hours=ttl_hours,
+            auto_commit=auto_commit,
         )
 
     async def get_snapshot(self, symbol: str) -> Dict[str, Any]:

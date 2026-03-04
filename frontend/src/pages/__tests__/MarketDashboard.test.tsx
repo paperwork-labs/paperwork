@@ -21,6 +21,7 @@ vi.mock('../../services/api', () => {
           { close: 100 }, { close: 101 }, { close: 102 }, { close: 103 }, { close: 104 },
         ],
       }),
+      getSnapshot: vi.fn().mockResolvedValue({ data: { stage_label: '2A', current_stage_days: 5 } }),
       getVolatilityDashboard: vi.fn().mockResolvedValue({}),
       getDashboard: vi.fn().mockResolvedValue({
         tracked_count: 120,

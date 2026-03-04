@@ -195,15 +195,17 @@ services:
 
   ib-gateway:
     image: ghcr.io/extrange/ibkr:stable
+    platform: linux/amd64
     container_name: axiomfolio-ib-gateway
     env_file:
       - ./env.dev
     environment:
       USERNAME: ${IBKR_USERNAME:-}
-      PASSWORD: ${IBKR_PASSWORD:-}
+      PASSWORD: "${IBKR_PASSWORD:-}"
       GATEWAY_OR_TWS: gateway
       IBC_TradingMode: ${IBKR_TRADING_MODE:-paper}
-      IBC_ReadOnlyApi: "yes"
+      IBC_ReadOnlyApi: "${IBC_READONLY_API:-yes}"
+      IBC_ExistingSessionDetectedAction: primary
     ulimits:
       nofile: 10000
     ports:

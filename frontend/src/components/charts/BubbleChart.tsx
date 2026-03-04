@@ -11,8 +11,9 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
-import { SECTOR_PALETTE, STAGE_COLORS } from '../../constants/chart';
+import { SECTOR_PALETTE, STAGE_COLORS, STAGE_HEX } from '../../constants/chart';
 import { useChartColors } from '../../hooks/useChartColors';
+import { useColorMode } from '../../theme/colorMode';
 
 const COLUMN_LABELS: Record<string, string> = {
   perf_1d: '1D Change %',
@@ -41,14 +42,7 @@ const NUMERIC_COLUMNS = [
 
 const COLOR_COLUMNS = ['stage_label', 'sector', 'ma_bucket'] as const;
 
-const STAGE_HEX: Record<string, string> = {
-  '1': '#718096',
-  '2A': '#38A169',
-  '2B': '#48BB78',
-  '2C': '#ECC94B',
-  '3': '#ED8936',
-  '4': '#E53E3E',
-};
+// STAGE_HEX imported from constants/chart
 
 const MA_BUCKET_HEX: Record<string, string> = {
   above_all: '#38A169',
@@ -63,6 +57,7 @@ export type BubbleChartProps = {
   defaultY?: string;
   defaultColor?: string;
   defaultSize?: string;
+  onSymbolClick?: (symbol: string) => void;
 };
 
 type DropdownProps = {
@@ -145,8 +140,11 @@ const BubbleChart: React.FC<BubbleChartProps> = ({
   defaultY = 'rs_mansfield_pct',
   defaultColor = 'stage_label',
   defaultSize = 'market_cap',
+  onSymbolClick,
 }) => {
   const cc = useChartColors();
+  const { colorMode } = useColorMode();
+  const darkIdx = colorMode === 'dark' ? 1 : 0;
   const [xKey, setXKey] = useState(defaultX);
   const [yKey, setYKey] = useState(defaultY);
   const [colorKey, setColorKey] = useState(defaultColor);
@@ -190,7 +188,8 @@ const BubbleChart: React.FC<BubbleChartProps> = ({
     const sortedColorVals = [...uniqueColorValues].sort();
     sortedColorVals.forEach((val, idx) => {
       if (colorKey === 'stage_label') {
-        cMap[val] = STAGE_HEX[val] ?? '#718096';
+        const hex = STAGE_HEX[val];
+        cMap[val] = hex ? hex[darkIdx] : '#718096';
       } else if (colorKey === 'ma_bucket') {
         cMap[val] = MA_BUCKET_HEX[val] ?? '#718096';
       } else {
@@ -266,6 +265,8 @@ const BubbleChart: React.FC<BubbleChartProps> = ({
               fillOpacity={0.7}
               stroke={colorMap[colorVal] || '#718096'}
               strokeWidth={1}
+              cursor={onSymbolClick ? 'pointer' : undefined}
+              onClick={onSymbolClick ? (entry: any) => { if (entry?.symbol) onSymbolClick(entry.symbol); } : undefined}
             />
           ))}
         </ScatterChart>

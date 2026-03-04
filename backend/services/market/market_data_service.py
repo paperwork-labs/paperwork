@@ -102,11 +102,11 @@ class MarketDataService:
         if settings.FMP_API_KEY:
             logger.info("FMP API configured")
 
-        # Index endpoints for constituents
+        # Index endpoints for constituents (per-provider)
         self.index_endpoints = {
-            "SP500": {"fmp": "sp500_constituent"},
-            "NASDAQ100": {"fmp": "nasdaq_constituent"},
-            "DOW30": {"fmp": "dowjones_constituent"},
+            "SP500": {"fmp": "sp500_constituent", "finnhub": "^GSPC"},
+            "NASDAQ100": {"fmp": "nasdaq_constituent", "finnhub": "^NDX"},
+            "DOW30": {"fmp": "dowjones_constituent", "finnhub": "^DJI"},
         }
 
     @property
@@ -644,17 +644,19 @@ class MarketDataService:
         return None
 
     def get_fundamentals_info(self, symbol: str) -> Dict[str, Any]:
-        """Return fundamentals for a symbol using FMP first, then yfinance.
+        """Return fundamentals for a symbol using multi-provider cascade.
 
-        Returns keys: name, sector, industry, sub_industry, market_cap when available.
+        Provider order: FMP -> Finnhub -> Twelve Data -> Alpha Vantage -> yfinance.
+        Each subsequent provider only fills fields still missing after the previous one.
+        Returns keys: name, sector, industry, sub_industry, market_cap, eps_ttm, revenue_ttm, etc.
         """
+        from backend.services.market.rate_limiter import provider_rate_limiter
+
         info: Dict[str, Any] = {}
+
         def _decimal_to_pct(value: Any) -> Optional[float]:
-            """Convert a decimal ratio to percentage (0.15 -> 15.0). For growth metrics from FMP/Yahoo."""
             try:
-                if value is None:
-                    return None
-                return float(value) * 100.0
+                return float(value) * 100.0 if value is not None else None
             except Exception:
                 return None
 
@@ -665,18 +667,14 @@ class MarketDataService:
         def call_fmp_first_available(
             candidate_names: list[str], *, apikey: str, symbol: str
         ) -> Any:
-            """Call the first available fmpsdk helper across SDK variants."""
             last_exc: Exception | None = None
             for fn_name in candidate_names:
                 fn = getattr(fmpsdk, fn_name, None)
                 if not callable(fn):
                     continue
                 try:
-                    return self._call_blocking_with_retries_sync(
-                        fn,
-                        apikey=apikey,
-                        symbol=symbol,
-                    )
+                    provider_rate_limiter.acquire_sync("fmp")
+                    return self._call_blocking_with_retries_sync(fn, apikey=apikey, symbol=symbol)
                 except Exception as exc:
                     last_exc = exc
                     continue
@@ -684,12 +682,12 @@ class MarketDataService:
                 raise last_exc
             return None
 
+        # --- Provider 1: FMP ---
         try:
             if settings.FMP_API_KEY:
+                provider_rate_limiter.acquire_sync("fmp")
                 prof = self._call_blocking_with_retries_sync(
-                    fmpsdk.company_profile,
-                    apikey=settings.FMP_API_KEY,
-                    symbol=symbol,
+                    fmpsdk.company_profile, apikey=settings.FMP_API_KEY, symbol=symbol,
                 )
                 if prof and len(prof) > 0 and isinstance(prof[0], dict):
                     d = prof[0]
@@ -703,10 +701,9 @@ class MarketDataService:
                     if d.get("beta") is not None:
                         info["beta"] = d.get("beta")
                 try:
+                    provider_rate_limiter.acquire_sync("fmp")
                     metrics = self._call_blocking_with_retries_sync(
-                        fmpsdk.key_metrics_ttm,
-                        apikey=settings.FMP_API_KEY,
-                        symbol=symbol,
+                        fmpsdk.key_metrics_ttm, apikey=settings.FMP_API_KEY, symbol=symbol,
                     )
                     if metrics and isinstance(metrics[0], dict):
                         m = metrics[0]
@@ -715,20 +712,14 @@ class MarketDataService:
                         set_if_missing("dividend_yield", _decimal_to_pct(m.get("dividendYieldTTM") or m.get("dividendYield")))
                         set_if_missing("roe", _decimal_to_pct(m.get("roeTTM") or m.get("roe")))
                         set_if_missing("beta", m.get("beta"))
+                        set_if_missing("eps_ttm", m.get("netIncomePerShareTTM") or m.get("epsTTM"))
+                        set_if_missing("revenue_ttm", m.get("revenuePerShareTTM"))
                 except Exception as exc:
-                    logger.warning("Failed to fetch FMP key metrics for %s: %s", symbol, exc)
+                    logger.warning("FMP key metrics failed for %s: %s", symbol, exc)
                 try:
                     ratios = call_fmp_first_available(
-                        [
-                            # Newer fmpsdk naming
-                            "financial_ratios_ttm",
-                            # Older/internal naming used in some environments
-                            "ratios_ttm",
-                            # Fallback without explicit TTM suffix
-                            "financial_ratios",
-                        ],
-                        apikey=settings.FMP_API_KEY,
-                        symbol=symbol,
+                        ["financial_ratios_ttm", "ratios_ttm", "financial_ratios"],
+                        apikey=settings.FMP_API_KEY, symbol=symbol,
                     )
                     if ratios and isinstance(ratios[0], dict):
                         r = ratios[0]
@@ -737,12 +728,11 @@ class MarketDataService:
                         set_if_missing("roe", _decimal_to_pct(r.get("returnOnEquityTTM") or r.get("returnOnEquity")))
                         set_if_missing("dividend_yield", _decimal_to_pct(r.get("dividendYieldTTM") or r.get("dividendYield")))
                 except Exception as exc:
-                    logger.warning("Failed to fetch FMP ratios for %s: %s", symbol, exc)
+                    logger.warning("FMP ratios failed for %s: %s", symbol, exc)
                 try:
+                    provider_rate_limiter.acquire_sync("fmp")
                     growth = self._call_blocking_with_retries_sync(
-                        fmpsdk.financial_growth,
-                        apikey=settings.FMP_API_KEY,
-                        symbol=symbol,
+                        fmpsdk.financial_growth, apikey=settings.FMP_API_KEY, symbol=symbol,
                     )
                     if growth and isinstance(growth[0], dict):
                         g = growth[0]
@@ -751,21 +741,105 @@ class MarketDataService:
                         set_if_missing("revenue_growth_yoy", _decimal_to_pct(g.get("revenueGrowth") or g.get("revenuegrowth")))
                         set_if_missing("revenue_growth_qoq", _decimal_to_pct(g.get("revenueGrowthQuarterly") or g.get("revenueGrowthQoQ")))
                 except Exception as exc:
-                    logger.warning("Failed to fetch or process financial growth from FMP for %s: %s", symbol, exc)
+                    logger.warning("FMP financial growth failed for %s: %s", symbol, exc)
         except Exception as exc:
-            logger.warning("Failed to fetch FMP fundamentals for %s: %s", symbol, exc)
-        # Yahoo fundamentals fallback policy:
-        # - paid policy + FMP configured: strict FMP-only for fundamentals to avoid
-        #   Yahoo throttling storms during large universe recomputes.
-        # - free policy or no FMP: use Yahoo fallback to improve completeness.
-        policy = str(getattr(settings, "MARKET_PROVIDER_POLICY", "paid")).lower()
-        has_fmp = bool(settings.FMP_API_KEY)
+            logger.warning("FMP fundamentals failed for %s: %s", symbol, exc)
+
+        # --- Provider 2: Finnhub ---
+        if self.finnhub_client and self._needs_fundamentals(info):
+            try:
+                provider_rate_limiter.acquire_sync("finnhub")
+                prof2 = self.finnhub_client.company_profile2(symbol=symbol)
+                if isinstance(prof2, dict) and prof2.get("name"):
+                    set_if_missing("name", prof2.get("name"))
+                    set_if_missing("sector", prof2.get("finnhubIndustry"))
+                    set_if_missing("industry", prof2.get("finnhubIndustry"))
+                    set_if_missing("market_cap", prof2.get("marketCapitalization"))
+            except Exception as exc:
+                logger.debug("Finnhub profile failed for %s: %s", symbol, exc)
+            try:
+                provider_rate_limiter.acquire_sync("finnhub")
+                basics = self.finnhub_client.company_basic_financials(symbol=symbol, metric="all")
+                if isinstance(basics, dict):
+                    m = basics.get("metric", {})
+                    set_if_missing("pe_ttm", m.get("peTTM"))
+                    set_if_missing("beta", m.get("beta"))
+                    set_if_missing("roe", _decimal_to_pct(m.get("roeTTM")))
+                    set_if_missing("dividend_yield", _decimal_to_pct(m.get("dividendYieldIndicatedAnnual")))
+                    set_if_missing("eps_ttm", m.get("epsTTM"))
+                    set_if_missing("revenue_ttm", m.get("revenueTTM"))
+                    set_if_missing("peg_ttm", m.get("pegAnnual"))
+                    set_if_missing("high_52w_price", m.get("52WeekHigh"))
+                    set_if_missing("low_52w_price", m.get("52WeekLow"))
+            except Exception as exc:
+                logger.debug("Finnhub basic financials failed for %s: %s", symbol, exc)
+
+        # --- Provider 3: Alpha Vantage ---
+        if settings.ALPHA_VANTAGE_API_KEY and self._needs_fundamentals(info):
+            try:
+                import requests as _requests
+                provider_rate_limiter.acquire_sync("alphavantage")
+                url = (
+                    f"https://www.alphavantage.co/query?function=OVERVIEW"
+                    f"&symbol={symbol}&apikey={settings.ALPHA_VANTAGE_API_KEY}"
+                )
+                resp = _requests.get(url, timeout=10)
+                if resp.ok:
+                    av = resp.json()
+                    if av.get("Symbol"):
+                        set_if_missing("name", av.get("Name"))
+                        set_if_missing("sector", av.get("Sector"))
+                        set_if_missing("industry", av.get("Industry"))
+                        try:
+                            set_if_missing("market_cap", float(av["MarketCapitalization"]))
+                        except (ValueError, KeyError, TypeError):
+                            pass
+                        try:
+                            set_if_missing("pe_ttm", float(av["TrailingPE"]))
+                        except (ValueError, KeyError, TypeError):
+                            pass
+                        try:
+                            set_if_missing("peg_ttm", float(av["PEGRatio"]))
+                        except (ValueError, KeyError, TypeError):
+                            pass
+                        try:
+                            set_if_missing("eps_ttm", float(av["EPS"]))
+                        except (ValueError, KeyError, TypeError):
+                            pass
+                        try:
+                            set_if_missing("revenue_ttm", float(av["RevenueTTM"]))
+                        except (ValueError, KeyError, TypeError):
+                            pass
+                        try:
+                            set_if_missing("beta", float(av["Beta"]))
+                        except (ValueError, KeyError, TypeError):
+                            pass
+                        try:
+                            set_if_missing("roe", _decimal_to_pct(float(av["ReturnOnEquityTTM"])))
+                        except (ValueError, KeyError, TypeError):
+                            pass
+                        try:
+                            set_if_missing("dividend_yield", _decimal_to_pct(float(av["DividendYield"])))
+                        except (ValueError, KeyError, TypeError):
+                            pass
+                        try:
+                            set_if_missing("eps_growth_yoy", _decimal_to_pct(float(av["QuarterlyEarningsGrowthYOY"])))
+                        except (ValueError, KeyError, TypeError):
+                            pass
+                        try:
+                            set_if_missing("revenue_growth_yoy", _decimal_to_pct(float(av["QuarterlyRevenueGrowthYOY"])))
+                        except (ValueError, KeyError, TypeError):
+                            pass
+                        set_if_missing("analyst_rating", av.get("AnalystRating") or av.get("AnalystTargetPrice"))
+            except Exception as exc:
+                logger.debug("Alpha Vantage overview failed for %s: %s", symbol, exc)
+
+        # --- Provider 4: yfinance (last resort) ---
         needs_core = any(info.get(k) is None for k in FUNDAMENTAL_FIELDS[:5])
         needs_full = self._needs_fundamentals(info)
-        should_try_yahoo = (not has_fmp) or (policy != "paid" and (needs_full or needs_core))
-
-        if should_try_yahoo:
+        if needs_full or needs_core:
             try:
+                provider_rate_limiter.acquire_sync("yfinance")
                 y = self._call_blocking_with_retries_sync(lambda: yf.Ticker(symbol).info)
                 if y:
                     if not info:
@@ -776,6 +850,11 @@ class MarketDataService:
                             "sub_industry": y.get("subIndustry") or y.get("industry") or None,
                             "market_cap": y.get("marketCap"),
                         }
+                    set_if_missing("name", y.get("shortName") or y.get("longName"))
+                    set_if_missing("sector", y.get("sector"))
+                    set_if_missing("industry", y.get("industry"))
+                    set_if_missing("sub_industry", y.get("subIndustry") or y.get("industry"))
+                    set_if_missing("market_cap", y.get("marketCap"))
                     set_if_missing("beta", y.get("beta"))
                     set_if_missing("pe_ttm", y.get("trailingPE") or y.get("forwardPE"))
                     set_if_missing("peg_ttm", y.get("pegRatio"))
@@ -785,6 +864,8 @@ class MarketDataService:
                     set_if_missing("eps_growth_qoq", _decimal_to_pct(y.get("earningsQuarterlyGrowth")))
                     set_if_missing("revenue_growth_yoy", _decimal_to_pct(y.get("revenueGrowth")))
                     set_if_missing("revenue_growth_qoq", _decimal_to_pct(y.get("revenueQuarterlyGrowth")))
+                    set_if_missing("eps_ttm", y.get("trailingEps"))
+                    set_if_missing("revenue_ttm", y.get("totalRevenue"))
                     set_if_missing("analyst_rating", y.get("recommendationKey"))
                     earnings = y.get("earningsDate")
                     if isinstance(earnings, (list, tuple)) and earnings:
@@ -793,6 +874,17 @@ class MarketDataService:
             except Exception:
                 if not info:
                     info = {}
+
+        # --- ETF sector/industry override ---
+        from backend.services.market.constants import ETF_SECTOR_INDUSTRY
+        upper_sym = symbol.upper()
+        if upper_sym in ETF_SECTOR_INDUSTRY:
+            etf_sector, etf_industry = ETF_SECTOR_INDUSTRY[upper_sym]
+            info["sector"] = etf_sector
+            info["industry"] = etf_industry
+            if not info.get("sub_industry"):
+                info["sub_industry"] = etf_industry
+
         return info
 
     @staticmethod
@@ -1070,8 +1162,27 @@ class MarketDataService:
                 data = []
             if isinstance(data, list):
                 symbols = [str(d.get("symbol", "")).strip().upper().replace('.', '-') for d in data if d.get("symbol")]
-        # Track which path we used
         provider_used = "fmp" if symbols else None
+        if symbols:
+            logger.info("Index %s: fetched %d constituents from FMP", idx, len(symbols))
+
+        # Finnhub fallback
+        if not symbols:
+            fh_symbol = self.index_endpoints.get(idx, {}).get("finnhub")
+            if self.finnhub_client and fh_symbol:
+                try:
+                    fh_data = self.finnhub_client.indices_const(symbol=fh_symbol)
+                    if isinstance(fh_data, dict) and fh_data.get("constituents"):
+                        symbols = [
+                            str(s).strip().upper().replace('.', '-')
+                            for s in fh_data["constituents"] if s
+                        ]
+                        if symbols:
+                            provider_used = "finnhub"
+                            logger.info("Index %s: fetched %d constituents from Finnhub", idx, len(symbols))
+                except Exception as exc:
+                    logger.warning("Index %s: Finnhub constituents failed: %s", idx, exc)
+
         # Wikipedia fallback
         if not symbols:
             import pandas as _pd
@@ -1097,10 +1208,15 @@ class MarketDataService:
                         if "Symbol" in t.columns and len(t) <= 40:
                             symbols = [str(s).upper().replace('.', '-') for s in t["Symbol"].dropna().tolist()]
                             break
-            except Exception:
+            except Exception as exc:
+                logger.warning("Index %s: Wikipedia fallback failed: %s", idx, exc)
                 symbols = []
-        fallback_used = False if provider_used == "fmp" and symbols else (True if not provider_used else False)
+        fallback_used = provider_used not in ("fmp",) if symbols else True
         provider_used = provider_used or ("wikipedia" if symbols else "none")
+        if provider_used == "wikipedia":
+            logger.info("Index %s: fetched %d constituents from Wikipedia fallback", idx, len(symbols))
+        elif provider_used == "none":
+            logger.error("Index %s: ALL constituent providers failed (FMP, Finnhub, Wikipedia)", idx)
         # Normalize and cache
         out = sorted(list({s for s in symbols if s and len(s) <= 5}))
         try:
@@ -1268,6 +1384,8 @@ class MarketDataService:
         symbol: str,
         *,
         as_of_dt: datetime | None = None,
+        skip_fundamentals: bool = False,
+        benchmark_df=None,
     ) -> Dict[str, Any]:
         """Compute a snapshot purely from local PriceData (and enrich it) for speed and consistency.
 
@@ -1309,23 +1427,26 @@ class MarketDataService:
 
         # Level 3/4: Relative strength vs SPY + Weinstein stage (DB-only if benchmark available).
         try:
-            bm = "SPY"
-            bm_rows = (
-                db.query(
-                    PriceData.date,
-                    PriceData.open_price,
-                    PriceData.high_price,
-                    PriceData.low_price,
-                    PriceData.close_price,
-                    PriceData.volume,
+            if benchmark_df is not None:
+                bm_df = benchmark_df
+            else:
+                bm = "SPY"
+                bm_rows = (
+                    db.query(
+                        PriceData.date,
+                        PriceData.open_price,
+                        PriceData.high_price,
+                        PriceData.low_price,
+                        PriceData.close_price,
+                        PriceData.volume,
+                    )
+                    .filter(PriceData.symbol == bm, PriceData.interval == "1d")
+                    .order_by(PriceData.date.desc())
+                    .limit(limit_bars)
+                    .all()
                 )
-                .filter(PriceData.symbol == bm, PriceData.interval == "1d")
-                .order_by(PriceData.date.desc())
-                .limit(limit_bars)
-                .all()
-            )
-            if bm_rows:
-                bm_df = price_data_rows_to_dataframe(bm_rows, ascending=False)
+                bm_df = price_data_rows_to_dataframe(bm_rows, ascending=False) if bm_rows else None
+            if bm_df is not None:
                 # compute_weinstein_stage_from_daily expects newest-first
                 sym_newest = df.copy()
                 bm_newest = bm_df.copy()
@@ -1431,7 +1552,7 @@ class MarketDataService:
         except Exception:
             pass
 
-        if self._needs_fundamentals(snapshot):
+        if not skip_fundamentals and self._needs_fundamentals(snapshot):
             try:
                 info = self.get_fundamentals_info(symbol)
                 for k in FUNDAMENTAL_FIELDS:
@@ -1439,7 +1560,6 @@ class MarketDataService:
                         snapshot[k] = info.get(k)
             except Exception:
                 pass
-        # no broad except here; previous except already guarded
         return snapshot
 
     async def compute_snapshot_from_providers(self, symbol: str) -> Dict[str, Any]:
@@ -1502,6 +1622,7 @@ class MarketDataService:
         snapshot: Dict[str, Any],
         analysis_type: str = "technical_snapshot",
         ttl_hours: int = 24,
+        auto_commit: bool = True,
         ) -> MarketSnapshot:
         """Persist latest snapshot (MarketSnapshot) and append to immutable history (MarketSnapshotHistory).
 
@@ -1631,7 +1752,8 @@ class MarketDataService:
                         setattr(hist, k, v)
                 db.add(hist)
         db.flush()
-        db.commit()
+        if auto_commit:
+            db.commit()
         return row
 
     # ---------------------- Persistence Helpers (OHLCV Backfill) ----------------------

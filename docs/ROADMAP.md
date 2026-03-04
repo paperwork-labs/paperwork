@@ -162,7 +162,7 @@ Indicator Data Flow:
 - Daily Coverage Pipeline (OHLCV + indicators + history): 03:00 UTC
 - Stale Sync Recovery: every 5 min
 
-## Section 2.75 -- BRAIN + PORTFOLIO Integration
+## Section 2.75 -- BRAIN + PORTFOLIO Integration [DONE]
 
 - "My Holdings" filter toggle in Market Tracked (highlight held symbols, show Qty/Cost/P&L columns).
 - "Portfolio" badge on Market Dashboard setup table rows where symbol is held.
@@ -170,15 +170,47 @@ Indicator Data Flow:
 - Actionable insights: stage deterioration alerts, concentration warnings, sector drift, RS degradation, earnings proximity.
 - Portfolio vs SPY benchmark comparison on Dashboard.
 
+## Section 2.8 -- Streamline Three Pillars [DONE]
+
+**Market Data Pillar**
+
+- Production ETF-only data gap fixed: Finnhub added as third constituents fallback, health check with Discord alerts after index constituent refresh.
+- Universe filter on Market Dashboard: All / ETFs Only / My Holdings, client-side with localStorage persistence.
+- Multi-provider fundamentals cascade: FMP -> Finnhub -> Twelve Data -> Alpha Vantage -> yfinance, using `set_if_missing()` pattern.
+- Proactive per-provider rate limiter (token-bucket) for FMP Starter (250/min), Finnhub (50/min), Twelve Data (7/min), Alpha Vantage (4/min).
+- `eps_ttm` and `revenue_ttm` columns added to MarketSnapshot + MarketSnapshotHistory with Alembic migration.
+
+**Portfolio Pillar**
+
+- Portfolio Overview streamlined: promoted insight cards to hero position, SPY benchmark overlay on equity curve, condensed data freshness, added Holdings KPI row.
+- Holdings enriched with intelligence metrics: days in stage, TD Sequential, unfilled gaps, P/E, earnings date via expanded snapshot JOIN.
+- Unified Symbol Intelligence Panel: wider ChartSlidePanel (60vw) with SnapshotContextStrip (stage, RSI, P/E, RS, ATR, yield, sector, TD Sequential, gaps).
+- Portfolio badge on SymbolLink component across Market Dashboard.
+- Enhanced Workspace context strip with stage days, TD Sequential signals, gap counts.
+
+**Strategy Pillar (Trade Execution Foundation)**
+
+- Order model with OrderSide/OrderType/OrderStatus enums, Alembic migration with whatIfOrder preview fields.
+- IBKRClient extended: `what_if_order`, `place_order`, `cancel_order`, `get_order_status` (paper mode enforced).
+- OrderService with preview (whatIfOrder dry run), submit, cancel, poll, list + risk guardrails ($100K max order value).
+- API routes: POST preview, POST submit, GET list, GET detail/status, DELETE cancel.
+- 3-step SellOrderModal: Configure -> Review with whatIfOrder preview -> Status with live polling.
+- Sell action integrated across: Holdings table, Tax Center lot rows, Intelligence Panel (ChartSlidePanel), Workspace symbol bar.
+- ChartEventType extended with ORDER_PENDING, ORDER_FILLED, ORDER_CANCELLED; order markers + limit/stop price lines on Workspace chart.
+- `/portfolio/orders` page with SortableTable, status badges, cancel action, auto-refresh for active orders.
+- Orders added to portfolio sidebar navigation.
+
 ## Section 3 -- Live Execution + Polish (PR 3)
 
-**Prerequisites**: IB Gateway connected and stable, Strategy models wired, order pipeline tested in paper mode.
+**Prerequisites**: IB Gateway connected and stable, order pipeline tested in paper mode (done in 2.8).
 
-- Broker order APIs (IBKR via ib_insync, TastyTrade SDK, Schwab OAuth).
+- Buy order support: extend SellOrderModal -> OrderModal with buy/sell toggle; integrate into Intelligence Panel and Workspace.
+- Broker expansion: TastyTrade SDK `place_order`, Schwab OAuth order endpoints.
 - Strategy engine execution pipeline: Signal -> Order -> RiskGate -> Execution.
 - Circuit breakers and kill switch (max daily loss, max position size, max orders/minute).
 - StrategyDetail page, StrategyBacktest page (reads from MarketSnapshotHistory for historical indicator values).
 - Paper-to-live toggle with confirmation gate.
+- Order reconciliation: link filled Orders to Trades created by broker sync.
 - Watchlist management: `Watchlist` model, "Watch" toggle button, auto-add to tracked universe.
 - Mobile polish: responsive layouts, touch-friendly drag-and-drop fallback.
 

@@ -56,8 +56,8 @@ const STAGE_DIAGRAM: React.FC = () => (
           <stop offset="20%" stopColor="#718096" />
           <stop offset="30%" stopColor="#38A169" />
           <stop offset="55%" stopColor="#38A169" />
-          <stop offset="65%" stopColor="#ECC94B" />
-          <stop offset="75%" stopColor="#ECC94B" />
+          <stop offset="65%" stopColor="#ED8936" />
+          <stop offset="75%" stopColor="#ED8936" />
           <stop offset="85%" stopColor="#E53E3E" />
           <stop offset="100%" stopColor="#E53E3E" />
         </linearGradient>
@@ -70,14 +70,14 @@ const STAGE_DIAGRAM: React.FC = () => (
       />
       <line x1="0" y1="95" x2="200" y2="88" stroke="#718096" strokeWidth="1.5" strokeDasharray="6 3" opacity="0.6" />
       <line x1="200" y1="88" x2="500" y2="40" stroke="#38A169" strokeWidth="1.5" strokeDasharray="6 3" opacity="0.6" />
-      <line x1="500" y1="40" x2="620" y2="60" stroke="#ECC94B" strokeWidth="1.5" strokeDasharray="6 3" opacity="0.6" />
+      <line x1="500" y1="40" x2="620" y2="60" stroke="#ED8936" strokeWidth="1.5" strokeDasharray="6 3" opacity="0.6" />
       <line x1="620" y1="60" x2="800" y2="120" stroke="#E53E3E" strokeWidth="1.5" strokeDasharray="6 3" opacity="0.6" />
       <text x="80" y="130" textAnchor="middle" fontSize="13" fontWeight="600" fill="#718096">Stage 1</text>
       <text x="80" y="145" textAnchor="middle" fontSize="10" fill="#A0AEC0">Basing</text>
       <text x="330" y="15" textAnchor="middle" fontSize="13" fontWeight="600" fill="#38A169">Stage 2</text>
       <text x="330" y="30" textAnchor="middle" fontSize="10" fill="#68D391">Advancing</text>
-      <text x="560" y="45" textAnchor="middle" fontSize="13" fontWeight="600" fill="#D69E2E">Stage 3</text>
-      <text x="560" y="60" textAnchor="middle" fontSize="10" fill="#ECC94B">Distribution</text>
+      <text x="560" y="45" textAnchor="middle" fontSize="13" fontWeight="600" fill="#DD6B20">Stage 3</text>
+      <text x="560" y="60" textAnchor="middle" fontSize="10" fill="#ED8936">Distribution</text>
       <text x="730" y="105" textAnchor="middle" fontSize="13" fontWeight="600" fill="#E53E3E">Stage 4</text>
       <text x="730" y="120" textAnchor="middle" fontSize="10" fill="#FC8181">Declining</text>
     </svg>
@@ -117,7 +117,7 @@ const DEEP_DIVES: DeepDive[] = [
               </VStack>
             </Box>
             <Box>
-              <HStack mb={1}><Badge variant="subtle" colorPalette="yellow">Stage 3</Badge><Text fontSize="sm" fontWeight="semibold">Distribution / Top</Text></HStack>
+              <HStack mb={1}><Badge variant="subtle" colorPalette="orange">Stage 3</Badge><Text fontSize="sm" fontWeight="semibold">Distribution / Top</Text></HStack>
               <Text fontSize="sm">Transition phase with choppy, range-bound action. The SMA flattens as large holders distribute to retail. Watch for volume expansion on down days.</Text>
             </Box>
             <Box>
@@ -143,6 +143,46 @@ const DEEP_DIVES: DeepDive[] = [
         heading: 'How to interpret it',
         body: (
           <Text fontSize="sm">Focus your long exposure on Stage 2 names. Use Stage 1 as a watchlist for potential breakouts. Treat Stage 3 as a warning to tighten stops. Stage 4 should be avoided for longs entirely. The sub-stages (2A/2B/2C) help calibrate position sizing and entry timing — 2A offers the best risk/reward, while 2C suggests you may be late.</Text>
+        ),
+      },
+      {
+        heading: 'Color legend',
+        body: (
+          <VStack align="stretch" gap={3}>
+            <HStack gap={2} flexWrap="wrap">
+              {[
+                { stage: '1', label: 'Basing', color: '#718096' },
+                { stage: '2A', label: 'Early advance', color: '#38A169' },
+                { stage: '2B', label: 'Healthy trend', color: '#2F855A' },
+                { stage: '2C', label: 'Extended', color: '#D69E2E' },
+                { stage: '3', label: 'Distribution', color: '#DD6B20' },
+                { stage: '4', label: 'Declining', color: '#E53E3E' },
+              ].map(({ stage, label, color }) => (
+                <HStack key={stage} gap={1}>
+                  <Box w="12px" h="12px" borderRadius="sm" bg={color} flexShrink={0} />
+                  <Text fontSize="xs" fontWeight="semibold">{stage}</Text>
+                  <Text fontSize="xs" color="fg.muted">{label}</Text>
+                </HStack>
+              ))}
+            </HStack>
+            <Text fontSize="sm">The progression follows a traffic-light metaphor: gray (dormant) &rarr; green (bullish trend) &rarr; yellow (caution / overextended) &rarr; orange (distribution / deterioration) &rarr; red (markdown / danger). This color scheme is applied consistently across badges, charts, scatter plots, and the stage distribution bar.</Text>
+          </VStack>
+        ),
+      },
+      {
+        heading: 'Reading stage data: days in stage & transitions',
+        body: (
+          <VStack align="stretch" gap={2}>
+            <Text fontSize="sm"><strong>Days in stage</strong> indicates conviction. A stock in Stage 2B for 60+ days has established trend momentum with institutional support. At 3 days it may be a false breakout. Conversely, Stage 4 at 90+ days suggests a deeply entrenched downtrend — but also that a contrarian base (Stage 1) may be forming.</Text>
+            <Text fontSize="sm"><strong>Previous stage</strong> reveals transition direction, which matters as much as the current stage:</Text>
+            <VStack align="stretch" gap={1} pl={4}>
+              <Text fontSize="sm">&bull; <strong>2A from Stage 1</strong> = fresh breakout — strongest signal for entry.</Text>
+              <Text fontSize="sm">&bull; <strong>2A from 2C</strong> = recovery after overextension — less conviction.</Text>
+              <Text fontSize="sm">&bull; <strong>Stage 3 from 2C</strong> = overheated top — higher probability of 4.</Text>
+              <Text fontSize="sm">&bull; <strong>Stage 3 from 2A</strong> = failed early advance — possibly just back to 1.</Text>
+            </VStack>
+            <Text fontSize="sm">The Action Queue and Stage Transitions sections on the Market Dashboard surface these transitions automatically, ranked by significance.</Text>
+          </VStack>
         ),
       },
     ],

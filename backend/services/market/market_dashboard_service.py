@@ -7,6 +7,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from backend.models.index_constituent import IndexConstituent
 from backend.models.market_data import MarketSnapshot, MarketSnapshotHistory
 from backend.models.market_tracked_plan import MarketTrackedPlan
 from backend.services.market.constants import (
@@ -494,6 +495,7 @@ class MarketDashboardService:
             "rsi_divergences": {"bearish": [], "bullish": []},
             "td_signals": [],
             "gap_leaders": [],
+            "constituent_symbols": [],
         }
         if tracked_count == 0:
             return empty_payload
@@ -738,6 +740,13 @@ class MarketDashboardService:
         td_signals = self._build_td_signals(rows)
         gap_leaders = self._build_gap_leaders(rows)
 
+        constituent_syms = sorted({
+            str(sym).upper()
+            for (sym,) in db.query(IndexConstituent.symbol)
+            .filter(IndexConstituent.is_active.is_(True))
+            .distinct()
+        })
+
         md_svc = MarketDataService()
         coverage = md_svc.coverage.build_coverage_response(
             db,
@@ -790,4 +799,5 @@ class MarketDashboardService:
             "rsi_divergences": rsi_divergences,
             "td_signals": td_signals,
             "gap_leaders": gap_leaders,
+            "constituent_symbols": constituent_syms,
         }

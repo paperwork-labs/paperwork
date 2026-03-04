@@ -28,6 +28,11 @@ class _FakeQuery:
     def all(self):
         return self._rows
 
+    def __iter__(self):
+        # Support iteration for db.query(IndexConstituent.symbol).filter().distinct()
+        for r in self._rows:
+            yield (getattr(r, "symbol", r),)
+
 
 class _FakeDB:
     def __init__(self, rows):

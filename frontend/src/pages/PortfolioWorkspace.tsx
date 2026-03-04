@@ -10,8 +10,8 @@ import {
   CardRoot,
   CardBody,
   CardHeader,
-  SimpleGrid,
   Button,
+  IconButton,
   TableScrollArea,
   TableRoot,
   TableHeader,
@@ -20,13 +20,14 @@ import {
   TableColumnHeader,
   TableCell,
 } from '@chakra-ui/react';
-import { FiRefreshCw, FiSearch } from 'react-icons/fi';
+import { FiRefreshCw, FiSearch, FiMinusCircle, FiLock, FiUnlock, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import toast from 'react-hot-toast';
 import { useQuery, useQueryClient } from 'react-query';
 import PageHeader from '../components/ui/PageHeader';
 import SymbolChartWithMarkers, { getStoredIndicators, storeIndicators } from '../components/charts/SymbolChartWithMarkers';
 import type { IndicatorToggles, ChartEvent, ChartEventType } from '../components/charts/SymbolChartWithMarkers';
 import TradingViewChart from '../components/charts/TradingViewChart';
-import { marketDataApi, portfolioApi, unwrapResponse } from '../services/api';
+import api, { marketDataApi, portfolioApi, unwrapResponse } from '../services/api';
 import { usePositions, useActivity, useClosedPositions } from '../hooks/usePortfolio';
 import { useAccountContext } from '../context/AccountContext';
 import { useUserPreferences } from '../hooks/useUserPreferences';
@@ -35,6 +36,15 @@ import { formatMoney } from '../utils/format';
 import { TableSkeleton } from '../components/shared/Skeleton';
 import { useColorMode } from '../theme/colorMode';
 import type { EnrichedPosition, ActivityRow, LotRow } from '../types/portfolio';
+import SellOrderModal from '../components/orders/SellOrderModal';
+
+type SellTarget = { symbol: string; currentPrice: number; sharesHeld: number; averageCost?: number; positionId?: number } | null;
+
+interface LotTotals {
+  shares: number;
+  cost: number;
+  value: number;
+}
 
 const fmtDate = (iso: string | undefined | null) => {
   if (!iso) return '';
@@ -86,6 +96,7 @@ const EVENT_TOGGLE_CONFIG: { type: ChartEventType; label: string; colorPalette: 
   { type: 'BUY', label: 'Buys', colorPalette: 'green' },
   { type: 'SELL', label: 'Sells', colorPalette: 'red' },
   { type: 'DIVIDEND', label: 'Divs', colorPalette: 'teal' },
+  { type: 'ORDER_PENDING', label: 'Orders', colorPalette: 'yellow' },
 ];
 
 const PortfolioWorkspace: React.FC = () => {
@@ -99,6 +110,7 @@ const PortfolioWorkspace: React.FC = () => {
 
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [sellTarget, setSellTarget] = useState<SellTarget>(null);
   const [enabledEvents, setEnabledEvents] = useState<Set<ChartEventType>>(new Set(['BUY', 'SELL', 'DIVIDEND']));
   const [hoverDaySec, setHoverDaySec] = useState<number | null>(null);
   const [lockedDaySec, setLockedDaySec] = useState<number | null>(null);
@@ -127,6 +139,11 @@ const PortfolioWorkspace: React.FC = () => {
   const handleClickDay = useCallback((t: number | null) => setLockedDaySec((prev: number | null) => (prev === t ? null : t || null)), []);
 
   const [holdingsTab, setHoldingsTab] = useState<'open' | 'closed'>('open');
+  const [lotEditMode, setLotEditMode] = useState(false);
+  const [editingLotId, setEditingLotId] = useState<number | null>(null);
+  const emptyLotForm = { date: '', qty: '', costPerShare: '' };
+  const [lotForm, setLotForm] = useState(emptyLotForm);
+  const [lotSaving, setLotSaving] = useState(false);
 
   const positionsQuery = usePositions(accountId);
   const holdings = (positionsQuery.data ?? []) as EnrichedPosition[];
@@ -181,6 +198,24 @@ const PortfolioWorkspace: React.FC = () => {
     { enabled: !!selectedHolding?.id, staleTime: 60000 }
   );
   const lots = lotsQuery.data ?? [];
+
+  const ordersQuery = useQuery(
+    ['workspaceOrders', selectedSymbol],
+    async () => {
+      if (!selectedSymbol) return [];
+      const res = await api.get('/portfolio/orders', { params: { symbol: selectedSymbol, limit: 50 } });
+      return res.data?.data ?? res.data ?? [];
+    },
+    {
+      enabled: !!selectedSymbol,
+      staleTime: 15000,
+      refetchInterval: (data: any) => {
+        const active = (data ?? []).some((o: any) => ['submitted', 'pending_submit', 'partially_filled'].includes(o.status));
+        return active ? 5000 : false;
+      },
+    }
+  );
+  const orders: any[] = ordersQuery.data ?? [];
 
   const filteredHoldings = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -242,25 +277,67 @@ const PortfolioWorkspace: React.FC = () => {
       };
     });
 
-    const eventsFromLots: ChartEvent[] = lots.map((l: LotRow) => {
-      const iso = `${(l.purchase_date || '').slice(0, 10)}T13:30:00Z`;
-      const price = Number(l.cost_per_share || 0);
-      const qty = Number((l.shares_remaining ?? l.shares) || 0);
-      return {
-        time: iso,
-        price,
-        type: 'BUY' as const,
-        label: `B ${qty} @${price.toFixed(0)}`,
-      };
-    });
+    const activityBuyDates = new Set(
+      eventsFromActivity
+        .filter(e => e.type === 'BUY')
+        .map(e => (e.time || '').slice(0, 10)),
+    );
+    const eventsFromLots: ChartEvent[] = lots
+      .filter((l: LotRow) => !activityBuyDates.has((l.purchase_date || '').slice(0, 10)))
+      .map((l: LotRow) => {
+        const iso = `${(l.purchase_date || '').slice(0, 10)}T13:30:00Z`;
+        const price = Number(l.cost_per_share || 0);
+        const qty = Number((l.shares_remaining ?? l.shares) || 0);
+        return {
+          time: iso,
+          price,
+          type: 'BUY' as const,
+          label: `B ${qty} @${price.toFixed(0)}`,
+        };
+      });
 
-    return [...eventsFromActivity, ...eventsFromLots];
-  }, [symbolActivity, lots, bars, currency]);
+    const eventsFromOrders: ChartEvent[] = orders
+      .filter((o: any) => o.created_at || o.filled_at || o.submitted_at)
+      .map((o: any) => {
+        const status = (o.status || '').toLowerCase();
+        let evType: ChartEventType = 'ORDER_PENDING';
+        if (status === 'filled') evType = 'ORDER_FILLED';
+        else if (status === 'cancelled') evType = 'ORDER_CANCELLED';
 
-  // Filter events by enabled toggles
+        const ts = o.filled_at || o.submitted_at || o.created_at || '';
+        const price = Number(o.filled_avg_price || o.limit_price || o.stop_price || 0) || findClosest(ts);
+        const side = (o.side || 'sell').charAt(0).toUpperCase();
+        const qty = Number(o.quantity || 0);
+        const label = `${side}${qty} ${status}`;
+        return { time: ts, price, type: evType, label, amount: qty };
+      });
+
+    return [...eventsFromActivity, ...eventsFromLots, ...eventsFromOrders];
+  }, [symbolActivity, lots, bars, currency, orders]);
+
   const filteredEvents = useMemo(() => {
-    return chartEvents.filter(e => enabledEvents.has(e.type));
+    const ORDER_EVENT_TYPES: Set<ChartEventType> = new Set(['ORDER_PENDING', 'ORDER_FILLED', 'ORDER_CANCELLED']);
+    const showOrders = enabledEvents.has('ORDER_PENDING');
+    return chartEvents.filter(e =>
+      enabledEvents.has(e.type) || (showOrders && ORDER_EVENT_TYPES.has(e.type))
+    );
   }, [chartEvents, enabledEvents]);
+
+  const priceLinesExtra = useMemo(() => {
+    const ACTIVE = new Set(['submitted', 'pending_submit', 'partially_filled']);
+    return orders
+      .filter((o: any) => ACTIVE.has(o.status))
+      .flatMap((o: any) => {
+        const lines: { price: number; color: string; title: string; lineStyle?: number }[] = [];
+        if (o.limit_price) {
+          lines.push({ price: Number(o.limit_price), color: '#D97706', title: `LIMIT $${Number(o.limit_price).toFixed(2)}`, lineStyle: 2 });
+        }
+        if (o.stop_price) {
+          lines.push({ price: Number(o.stop_price), color: '#DC2626', title: `STOP $${Number(o.stop_price).toFixed(2)}`, lineStyle: 3 });
+        }
+        return lines;
+      });
+  }, [orders]);
 
   const avgPrice = useMemo(() => {
     if (!lots?.length) return undefined;
@@ -274,9 +351,55 @@ const PortfolioWorkspace: React.FC = () => {
   }, [lots]);
 
   const handleRefresh = () => {
-    queryClient.invalidateQueries('portfolioStocks');
-    queryClient.invalidateQueries('portfolioActivity');
+    queryClient.invalidateQueries({ queryKey: ['portfolioStocks'] });
+    queryClient.invalidateQueries({ queryKey: ['portfolioActivity'] });
   };
+
+  const invalidateLotQueries = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['workspaceTaxLots'] });
+    queryClient.invalidateQueries({ queryKey: ['portfolioTaxLots'] });
+    queryClient.invalidateQueries({ queryKey: ['portfolioStocks'] });
+  }, [queryClient]);
+
+  const handleLotSave = useCallback(async () => {
+    if (!selectedSymbol || !lotForm.date || !lotForm.qty || !lotForm.costPerShare) return;
+    setLotSaving(true);
+    try {
+      if (editingLotId) {
+        await portfolioApi.updateManualTaxLot(editingLotId, {
+          quantity: parseFloat(lotForm.qty),
+          cost_per_share: parseFloat(lotForm.costPerShare),
+          acquisition_date: lotForm.date,
+        });
+        toast.success('Tax lot updated');
+      } else {
+        await portfolioApi.createManualTaxLot({
+          symbol: selectedSymbol,
+          quantity: parseFloat(lotForm.qty),
+          cost_per_share: parseFloat(lotForm.costPerShare),
+          acquisition_date: lotForm.date,
+        });
+        toast.success('Tax lot added');
+      }
+      setLotForm(emptyLotForm);
+      setEditingLotId(null);
+      invalidateLotQueries();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || 'Failed to save lot');
+    } finally {
+      setLotSaving(false);
+    }
+  }, [selectedSymbol, lotForm, editingLotId, emptyLotForm, invalidateLotQueries]);
+
+  const handleLotDelete = useCallback(async (id: number) => {
+    try {
+      await portfolioApi.deleteManualTaxLot(id);
+      toast.success('Tax lot deleted');
+      invalidateLotQueries();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || 'Failed to delete lot');
+    }
+  }, [invalidateLotQueries]);
 
   const isLoading = positionsQuery.isLoading;
 
@@ -405,7 +528,7 @@ const PortfolioWorkspace: React.FC = () => {
         <VStack flex={1} gap={4} align="stretch">
           {/* Symbol summary bar */}
           {selectedHolding && (
-            <Box display="flex" gap={4} flexWrap="wrap" px={1}>
+            <Box display="flex" gap={4} flexWrap="wrap" px={1} alignItems="center">
               <Box>
                 <Text fontSize="xs" color="fg.muted">Value</Text>
                 <Text fontSize="sm" fontWeight="bold">{formatMoney(Number(selectedHolding.market_value ?? 0), currency, { maximumFractionDigits: 0 })}</Text>
@@ -429,6 +552,22 @@ const PortfolioWorkspace: React.FC = () => {
                 <Text fontSize="xs" color="fg.muted">Avg Cost</Text>
                 <Text fontSize="sm" fontWeight="bold">{selectedHolding.average_cost != null ? formatMoney(Number(selectedHolding.average_cost), currency) : '—'}</Text>
               </Box>
+              <Box ml="auto">
+                <Button
+                  size="xs"
+                  variant="outline"
+                  colorPalette="red"
+                  onClick={() => setSellTarget({
+                    symbol: selectedHolding.symbol,
+                    currentPrice: Number(selectedHolding.current_price ?? 0),
+                    sharesHeld: Number(selectedHolding.shares ?? 0),
+                    averageCost: selectedHolding.average_cost != null ? Number(selectedHolding.average_cost) : undefined,
+                    positionId: selectedHolding.id,
+                  })}
+                >
+                  Sell
+                </Button>
+              </Box>
             </Box>
           )}
 
@@ -442,6 +581,9 @@ const PortfolioWorkspace: React.FC = () => {
                 >
                   Stage {snapshot.stage_label}
                 </Badge>
+              )}
+              {snapshot.current_stage_days != null && (
+                <Badge variant="outline" size="sm">{snapshot.current_stage_days}d in stage</Badge>
               )}
               {snapshot.rsi != null && (
                 <Badge colorPalette={snapshot.rsi > 70 ? 'red' : snapshot.rsi < 30 ? 'green' : 'gray'} variant="outline" size="sm">
@@ -463,6 +605,25 @@ const PortfolioWorkspace: React.FC = () => {
               {snapshot.rs_mansfield_pct != null && (
                 <Badge colorPalette={Number(snapshot.rs_mansfield_pct) > 0 ? 'green' : 'red'} variant="outline" size="sm">
                   RS {Number(snapshot.rs_mansfield_pct) > 0 ? '+' : ''}{Number(snapshot.rs_mansfield_pct).toFixed(1)}%
+                </Badge>
+              )}
+              {(() => {
+                const tdParts: string[] = [];
+                if (snapshot.td_buy_complete) tdParts.push('Buy 9');
+                else if (snapshot.td_buy_setup >= 7) tdParts.push(`B${snapshot.td_buy_setup}`);
+                if (snapshot.td_sell_complete) tdParts.push('Sell 9');
+                else if (snapshot.td_sell_setup >= 7) tdParts.push(`S${snapshot.td_sell_setup}`);
+                if (snapshot.td_buy_countdown >= 12) tdParts.push(`BC${snapshot.td_buy_countdown}`);
+                if (snapshot.td_sell_countdown >= 12) tdParts.push(`SC${snapshot.td_sell_countdown}`);
+                return tdParts.length > 0 ? (
+                  <Badge colorPalette={tdParts[0].startsWith('B') ? 'green' : 'red'} variant="outline" size="sm">
+                    TD {tdParts.join(' ')}
+                  </Badge>
+                ) : null;
+              })()}
+              {((snapshot.gaps_unfilled_up ?? 0) > 0 || (snapshot.gaps_unfilled_down ?? 0) > 0) && (
+                <Badge variant="outline" size="sm">
+                  Gaps {snapshot.gaps_unfilled_up ?? 0}↑ {snapshot.gaps_unfilled_down ?? 0}↓
                 </Badge>
               )}
               {snapshot.next_earnings && (
@@ -571,23 +732,35 @@ const PortfolioWorkspace: React.FC = () => {
                     pinnedDaySec={lockedDaySec}
                     indicators={indicators}
                     colors={chartColors}
+                    priceLinesExtra={enabledEvents.has('ORDER_PENDING') ? priceLinesExtra : undefined}
                   />
                 )
               ) : <Box h="520px" />}
             </CardBody>
           </CardRoot>
 
-          <SimpleGrid columns={{ base: 1, xl: 3 }} gap={4}>
+          <Box display="grid" gridTemplateColumns={{ base: '1fr', lg: '2fr 1fr' }} gap={4}>
             {/* Tax Lots panel */}
-            <CardRoot borderWidth="1px" borderColor="border.subtle" maxH="320px" overflow="hidden" bg="bg.card">
+            <CardRoot borderWidth="1px" borderColor="border.subtle" maxH={lotEditMode ? '520px' : '400px'} overflow="hidden" bg="bg.card">
               <CardHeader pb={2}>
                 <Box display="flex" justifyContent="space-between" alignItems="center">
-                  <Text fontWeight="bold">Tax Lots</Text>
-                  <Badge variant="outline">{lots.length}</Badge>
+                  <Box display="flex" gap={2} alignItems="center">
+                    <Text fontWeight="bold">Tax Lots</Text>
+                    <Badge variant="outline">{lots.length}</Badge>
+                  </Box>
+                  <IconButton
+                    size="2xs"
+                    variant={lotEditMode ? 'solid' : 'ghost'}
+                    colorPalette={lotEditMode ? 'purple' : 'gray'}
+                    aria-label={lotEditMode ? 'Lock tax lots' : 'Unlock to add/edit lots'}
+                    onClick={() => { setLotEditMode(v => !v); setEditingLotId(null); setLotForm(emptyLotForm); }}
+                  >
+                    {lotEditMode ? <FiUnlock /> : <FiLock />}
+                  </IconButton>
                 </Box>
               </CardHeader>
               <CardBody p={0}>
-                <TableScrollArea maxH="260px">
+                <TableScrollArea maxH="340px">
                   <TableRoot size="sm">
                     <TableHeader>
                       <TableRow>
@@ -598,12 +771,13 @@ const PortfolioWorkspace: React.FC = () => {
                         <TableColumnHeader textAlign="end">Cost/Share</TableColumnHeader>
                         <TableColumnHeader textAlign="end">Value</TableColumnHeader>
                         <TableColumnHeader textAlign="end">P/L</TableColumnHeader>
+                        <TableColumnHeader w="28px" />
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {lots.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={7}>
+                          <TableCell colSpan={8}>
                             <Text fontSize="xs" color="fg.muted" textAlign="center" py={4}>
                               {lotsQuery.isLoading ? 'Loading tax lots…' : `No tax lots synced for ${selectedSymbol ?? 'this symbol'}. Sync your brokerage to populate.`}
                             </Text>
@@ -631,6 +805,7 @@ const PortfolioWorkspace: React.FC = () => {
                               id={`lot-${lotDay}-${idx}`}
                               key={`lot-${l.id || idx}`}
                               bg={focused ? 'bg.muted' : approachingLT ? (isDark ? 'yellow.950' : 'yellow.50') : undefined}
+                              css={{ '& .sell-icon': { opacity: 0, transition: 'opacity 0.15s' }, '&:hover .sell-icon': { opacity: 1 } }}
                             >
                               <TableCell>{fmtDate(l.purchase_date)}</TableCell>
                               <TableCell>
@@ -638,9 +813,9 @@ const PortfolioWorkspace: React.FC = () => {
                                   <Badge size="sm" colorPalette={isLT ? 'green' : approachingLT ? 'yellow' : 'gray'}>
                                     {isLT ? 'LT' : 'ST'}
                                   </Badge>
-                                  {(l as any).source && (
-                                    <Badge size="sm" variant="outline" colorPalette={(l as any).source === 'OFFICIAL_STATEMENT' || (l as any).source === 'official_statement' ? 'blue' : 'gray'}>
-                                      {(l as any).source === 'OFFICIAL_STATEMENT' || (l as any).source === 'official_statement' ? 'Official' : 'Est'}
+                                  {l.source && (
+                                    <Badge size="sm" variant="outline" colorPalette={l.source === 'OFFICIAL_STATEMENT' || l.source === 'official_statement' ? 'blue' : l.source === 'MANUAL_ENTRY' || l.source === 'manual_entry' ? 'purple' : 'gray'}>
+                                      {l.source === 'OFFICIAL_STATEMENT' || l.source === 'official_statement' ? 'Official' : l.source === 'MANUAL_ENTRY' || l.source === 'manual_entry' ? 'Manual' : 'Est'}
                                     </Badge>
                                   )}
                                 </Box>
@@ -656,36 +831,191 @@ const PortfolioWorkspace: React.FC = () => {
                               <TableCell textAlign="end" color={pnl >= 0 ? 'fg.success' : 'fg.error'}>
                                 {pnl ? formatMoney(pnl, currency, { maximumFractionDigits: 0 }) : '-'}
                               </TableCell>
+                              <TableCell w={lotEditMode ? '56px' : '28px'} p={0}>
+                                {lotEditMode && (l.source === 'MANUAL_ENTRY' || l.source === 'manual_entry') ? (
+                                  <Box display="flex" gap={0}>
+                                    <IconButton
+                                      size="2xs"
+                                      variant="ghost"
+                                      aria-label="Edit lot"
+                                      onClick={() => {
+                                        setEditingLotId(l.id ?? null);
+                                        setLotForm({
+                                          date: (l.purchase_date || '').slice(0, 10),
+                                          qty: String(sh),
+                                          costPerShare: String(cps),
+                                        });
+                                      }}
+                                    >
+                                      <FiEdit2 />
+                                    </IconButton>
+                                    <IconButton
+                                      size="2xs"
+                                      variant="ghost"
+                                      colorPalette="red"
+                                      aria-label="Delete lot"
+                                      onClick={() => l.id && handleLotDelete(l.id)}
+                                    >
+                                      <FiTrash2 />
+                                    </IconButton>
+                                  </Box>
+                                ) : (
+                                  <IconButton
+                                    className="sell-icon"
+                                    size="2xs"
+                                    variant="ghost"
+                                    colorPalette="red"
+                                    aria-label={`Sell ${sh} shares from lot`}
+                                    onClick={() => setSellTarget({
+                                      symbol: selectedSymbol!,
+                                      currentPrice: lastClose,
+                                      sharesHeld: sh,
+                                      averageCost: cps || undefined,
+                                      positionId: selectedHolding?.id,
+                                    })}
+                                  >
+                                    <FiMinusCircle />
+                                  </IconButton>
+                                )}
+                              </TableCell>
                             </TableRow>
                           );
                         })}
+                      {lots.length > 0 && (() => {
+                        const lastClose = bars?.length ? Number(bars[bars.length - 1].close || 0) : 0;
+                        const totals = lots.reduce<LotTotals>(
+                          (acc, l: LotRow) => {
+                            const sh = Number((l.shares_remaining ?? l.shares) || 0);
+                            const cps = Number(l.cost_per_share || 0);
+                            acc.shares += sh;
+                            acc.cost += sh * cps;
+                            acc.value += sh * lastClose;
+                            return acc;
+                          },
+                          { shares: 0, cost: 0, value: 0 },
+                        );
+                        const totalPnl = totals.value - totals.cost;
+                        return (
+                          <TableRow bg="bg.subtle">
+                            <TableCell colSpan={3}>
+                              <Text fontSize="xs" fontWeight="semibold">Total</Text>
+                            </TableCell>
+                            <TableCell textAlign="end">
+                              <Text fontSize="xs" fontWeight="semibold">{totals.shares.toLocaleString()}</Text>
+                            </TableCell>
+                            <TableCell textAlign="end">
+                              <Text fontSize="xs" fontWeight="semibold">{formatMoney(totals.cost / (totals.shares || 1), currency)}</Text>
+                            </TableCell>
+                            <TableCell textAlign="end">
+                              <Text fontSize="xs" fontWeight="semibold">{formatMoney(totals.value, currency, { maximumFractionDigits: 0 })}</Text>
+                            </TableCell>
+                            <TableCell textAlign="end">
+                              <Text fontSize="xs" fontWeight="semibold" color={totalPnl >= 0 ? 'fg.success' : 'fg.error'}>
+                                {formatMoney(totalPnl, currency, { maximumFractionDigits: 0 })}
+                              </Text>
+                            </TableCell>
+                            <TableCell w="28px" />
+                          </TableRow>
+                        );
+                      })()}
                     </TableBody>
                   </TableRoot>
                 </TableScrollArea>
+                {lotEditMode && (
+                  <Box px={3} py={2} borderTopWidth="1px" borderColor="border.subtle" bg="bg.subtle">
+                    <Text fontSize="xs" fontWeight="semibold" mb={1} color="fg.muted">
+                      {editingLotId ? 'Edit Lot' : 'Add Manual Lot'}
+                    </Text>
+                    <Box display="flex" gap={2} alignItems="end" flexWrap="wrap">
+                      <Box>
+                        <Text fontSize="2xs" color="fg.muted">Date</Text>
+                        <Input
+                          size="xs"
+                          type="date"
+                          value={lotForm.date}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLotForm(f => ({ ...f, date: e.target.value }))}
+                          max={new Date().toISOString().slice(0, 10)}
+                          w="130px"
+                        />
+                      </Box>
+                      <Box>
+                        <Text fontSize="2xs" color="fg.muted">Shares</Text>
+                        <Input
+                          size="xs"
+                          type="number"
+                          placeholder="Qty"
+                          value={lotForm.qty}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLotForm(f => ({ ...f, qty: e.target.value }))}
+                          min={0}
+                          step="any"
+                          w="80px"
+                        />
+                      </Box>
+                      <Box>
+                        <Text fontSize="2xs" color="fg.muted">Cost/Share</Text>
+                        <Input
+                          size="xs"
+                          type="number"
+                          placeholder="Price"
+                          value={lotForm.costPerShare}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLotForm(f => ({ ...f, costPerShare: e.target.value }))}
+                          min={0}
+                          step="any"
+                          w="90px"
+                        />
+                      </Box>
+                      <Button
+                        size="xs"
+                        colorPalette="purple"
+                        disabled={lotSaving || !lotForm.date || !lotForm.qty || !lotForm.costPerShare}
+                        onClick={handleLotSave}
+                      >
+                        {lotSaving ? '...' : editingLotId ? 'Update' : 'Save'}
+                      </Button>
+                      {editingLotId && (
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          onClick={() => { setEditingLotId(null); setLotForm(emptyLotForm); }}
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                    </Box>
+                  </Box>
+                )}
               </CardBody>
             </CardRoot>
 
             {/* Dividends */}
-            <CardRoot borderWidth="1px" borderColor="border.subtle" maxH="320px" overflow="hidden" bg="bg.card">
+            <CardRoot borderWidth="1px" borderColor="border.subtle" maxH="400px" overflow="hidden" bg="bg.card">
               <CardHeader pb={2}>
                 <Box display="flex" justifyContent="space-between" alignItems="center">
                   <Text fontWeight="bold">Dividends</Text>
-                  <Badge variant="outline">{symbolDividends.length}</Badge>
+                  <Box display="flex" gap={2} alignItems="center">
+                    {symbolDividends.length > 0 && (
+                      <Text fontSize="xs" color="fg.muted">
+                        Total {formatMoney(symbolDividends.reduce((s, r: ActivityRow) => s + Number(r.amount || r.net_amount || 0), 0), currency)}
+                      </Text>
+                    )}
+                    <Badge variant="outline">{symbolDividends.length}</Badge>
+                  </Box>
                 </Box>
               </CardHeader>
               <CardBody p={0}>
-                <TableScrollArea maxH="260px">
+                <TableScrollArea maxH="340px">
                   <TableRoot size="sm">
                     <TableHeader>
                       <TableRow>
                         <TableColumnHeader>Date</TableColumnHeader>
                         <TableColumnHeader textAlign="end">Amount</TableColumnHeader>
+                        <TableColumnHeader textAlign="end">Per Share</TableColumnHeader>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {symbolDividends.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={2}>
+                          <TableCell colSpan={3}>
                             <Text fontSize="xs" color="fg.muted" textAlign="center" py={4}>
                               No dividend history for {selectedSymbol ?? 'this symbol'}.
                             </Text>
@@ -697,10 +1027,13 @@ const PortfolioWorkspace: React.FC = () => {
                         const hoverDay = focusedDaySec ? new Date(focusedDaySec * 1000).toISOString().slice(0, 10) : '';
                         const focused = hoverDay && day === hoverDay;
                         const amt = Number(r.amount || r.net_amount || 0);
+                        const qty = Number(r.quantity || 0);
+                        const perShare = qty > 0 ? amt / qty : null;
                         return (
                           <TableRow id={`div-${day}-${idx}`} key={`div-${r.external_id || idx}`} bg={focused ? 'bg.muted' : undefined}>
                             <TableCell>{fmtDate(r.ts)}</TableCell>
                             <TableCell textAlign="end">{amt ? formatMoney(amt, currency) : '-'}</TableCell>
+                            <TableCell textAlign="end" color="fg.muted">{perShare != null ? formatMoney(perShare, currency, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '-'}</TableCell>
                           </TableRow>
                         );
                       })}
@@ -709,11 +1042,21 @@ const PortfolioWorkspace: React.FC = () => {
                 </TableScrollArea>
               </CardBody>
             </CardRoot>
-
-            {/* Activity table removed -- transfers/fees/interest not useful at symbol level */}
-          </SimpleGrid>
+          </Box>
         </VStack>
       </Flex>
+
+      {sellTarget && (
+        <SellOrderModal
+          isOpen={!!sellTarget}
+          symbol={sellTarget.symbol}
+          currentPrice={sellTarget.currentPrice}
+          sharesHeld={sellTarget.sharesHeld}
+          averageCost={sellTarget.averageCost}
+          positionId={sellTarget.positionId}
+          onClose={() => setSellTarget(null)}
+        />
+      )}
     </VStack>
   );
 };

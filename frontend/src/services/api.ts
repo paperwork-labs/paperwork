@@ -285,6 +285,18 @@ export const portfolioApi = {
     return makeOptimizedRequest(() => api.get(`/portfolio/stocks/${holdingId}/tax-lots`));
   },
 
+  createManualTaxLot: async (body: { symbol: string; quantity: number; cost_per_share: number; acquisition_date: string; account_id?: number }) => {
+    return makeOptimizedRequest(() => api.post('/portfolio/tax-lots', body));
+  },
+
+  updateManualTaxLot: async (id: number, body: { quantity?: number; cost_per_share?: number; acquisition_date?: string }) => {
+    return makeOptimizedRequest(() => api.put(`/portfolio/tax-lots/${id}`, body));
+  },
+
+  deleteManualTaxLot: async (id: number) => {
+    return makeOptimizedRequest(() => api.delete(`/portfolio/tax-lots/${id}`));
+  },
+
   // New aligned stocks endpoint
   getStocks: async (accountId?: string, includeMarketData: boolean = true): Promise<StocksResponse> => {
     const params = new URLSearchParams();

@@ -49,22 +49,40 @@ def _latest_snapshots_by_symbol(db: Session, symbols: List[str]) -> Dict[str, An
         )
         .all()
     )
+    def _f(v):
+        return float(v) if v is not None else None
+
     out: Dict[str, Any] = {}
     for s in snapshots:
-        mc = float(s.market_cap) if s.market_cap is not None else None
+        mc = _f(s.market_cap)
         out[s.symbol] = {
             "stage_label": s.stage_label,
-            "rs_mansfield_pct": float(s.rs_mansfield_pct) if s.rs_mansfield_pct is not None else None,
-            "perf_1d": float(s.perf_1d) if s.perf_1d is not None else None,
-            "perf_5d": float(s.perf_5d) if s.perf_5d is not None else None,
-            "perf_20d": float(s.perf_20d) if s.perf_20d is not None else None,
-            "rsi": float(s.rsi) if s.rsi is not None else None,
-            "atr_14": float(s.atr_14) if s.atr_14 is not None else None,
-            "sma_50": float(s.sma_50) if s.sma_50 is not None else None,
-            "sma_200": float(s.sma_200) if s.sma_200 is not None else None,
+            "current_stage_days": s.current_stage_days,
+            "previous_stage_label": s.previous_stage_label,
+            "rs_mansfield_pct": _f(s.rs_mansfield_pct),
+            "perf_1d": _f(s.perf_1d),
+            "perf_5d": _f(s.perf_5d),
+            "perf_20d": _f(s.perf_20d),
+            "rsi": _f(s.rsi),
+            "atr_14": _f(s.atr_14),
+            "sma_50": _f(s.sma_50),
+            "sma_200": _f(s.sma_200),
             "sector": s.sector,
+            "industry": s.industry,
             "market_cap": mc,
             "market_cap_label": _market_cap_label(mc),
+            "pe_ttm": _f(s.pe_ttm),
+            "eps_ttm": _f(getattr(s, "eps_ttm", None)),
+            "dividend_yield": _f(s.dividend_yield),
+            "next_earnings": s.next_earnings.isoformat() if s.next_earnings else None,
+            "td_buy_setup": s.td_buy_setup,
+            "td_sell_setup": s.td_sell_setup,
+            "td_buy_countdown": s.td_buy_countdown,
+            "td_sell_countdown": s.td_sell_countdown,
+            "td_buy_complete": s.td_buy_complete,
+            "td_sell_complete": s.td_sell_complete,
+            "gaps_unfilled_up": s.gaps_unfilled_up,
+            "gaps_unfilled_down": s.gaps_unfilled_down,
         }
     return out
 

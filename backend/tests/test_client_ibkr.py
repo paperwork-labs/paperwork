@@ -93,6 +93,8 @@ class TestIBKRClient:
         client.connected = True
         client.ib = Mock()
         client.ib.isConnected.return_value = True
+        # Match current event loop so _ensure_connected returns True without reconnecting
+        client.ib._owner_loop = asyncio.get_running_loop()
 
         result = await client._ensure_connected()
         assert result is True

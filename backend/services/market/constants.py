@@ -14,6 +14,8 @@ FUNDAMENTAL_FIELDS = (
     "pe_ttm",
     "peg_ttm",
     "roe",
+    "eps_ttm",
+    "revenue_ttm",
     "eps_growth_yoy",
     "eps_growth_qoq",
     "revenue_growth_yoy",
@@ -36,6 +38,8 @@ SNAPSHOT_PREFERRED_COLUMNS = [
     "pe_ttm",
     "peg_ttm",
     "roe",
+    "eps_ttm",
+    "revenue_ttm",
     "eps_growth_yoy",
     "eps_growth_qoq",
     "revenue_growth_yoy",
@@ -86,6 +90,8 @@ SNAPSHOTS_PREFERRED_COLUMNS = [
     "pe_ttm",
     "peg_ttm",
     "roe",
+    "eps_ttm",
+    "revenue_ttm",
     "eps_growth_yoy",
     "eps_growth_qoq",
     "revenue_growth_yoy",
@@ -143,6 +149,8 @@ SNAPSHOT_HISTORY_PREFERRED_COLUMNS = [
     "pe_ttm",
     "peg_ttm",
     "roe",
+    "eps_ttm",
+    "revenue_ttm",
     "eps_growth_yoy",
     "eps_growth_qoq",
     "revenue_growth_yoy",
@@ -415,4 +423,85 @@ SECTOR_ETF_DISPLAY_NAMES: dict[str, str] = {
 # tradable ETF proxies so the dashboard always has data to show.
 SECTOR_ETF_PROXY_SYMBOLS: dict[str, list[str]] = {
     "SOX": ["SOX", "SOXX"],
+}
+
+# Known ETF symbols and their proper sector/industry classification.
+# FMP/Finnhub/yfinance often return "Financial Services" for all ETFs since
+# they are investment products.  This map overrides with the ETF's actual focus.
+ETF_SECTOR_INDUSTRY: dict[str, tuple[str, str]] = {
+    # Sector SPDR ETFs
+    "XLE": ("Energy", "Energy Select Sector"),
+    "XLK": ("Technology", "Technology Select Sector"),
+    "XLC": ("Communication Services", "Communication Services Select Sector"),
+    "XLB": ("Materials", "Materials Select Sector"),
+    "XLF": ("Financial Services", "Financial Select Sector"),
+    "XLI": ("Industrials", "Industrial Select Sector"),
+    "XLP": ("Consumer Staples", "Consumer Staples Select Sector"),
+    "XLV": ("Healthcare", "Health Care Select Sector"),
+    "XLU": ("Utilities", "Utilities Select Sector"),
+    "XLY": ("Consumer Discretionary", "Consumer Discretionary Select Sector"),
+    # Thematic / Industry ETFs
+    "XRT": ("Consumer Discretionary", "Retail"),
+    "XME": ("Materials", "Metals & Mining"),
+    "XHB": ("Consumer Discretionary", "Homebuilders"),
+    "XBI": ("Healthcare", "Biotech"),
+    "XOP": ("Energy", "Oil & Gas Exploration"),
+    "OIH": ("Energy", "Oil Services"),
+    "SOX": ("Technology", "Semiconductors"),
+    "SOXX": ("Technology", "Semiconductors"),
+    "IHI": ("Healthcare", "Medical Devices"),
+    "ITA": ("Industrials", "Aerospace & Defense"),
+    "ITB": ("Consumer Discretionary", "Home Construction"),
+    # Broad Market Index ETFs
+    "SPY": ("Broad Market", "S&P 500 Index"),
+    "DIA": ("Broad Market", "Dow Jones Index"),
+    "IWM": ("Broad Market", "Russell 2000 Index"),
+    "IWC": ("Broad Market", "Russell Micro-Cap Index"),
+    "MDY": ("Broad Market", "S&P 400 Mid-Cap Index"),
+    "SPSM": ("Broad Market", "S&P 600 Small-Cap Index"),
+    # Country / Regional ETFs
+    "EWA": ("International", "Australia"),
+    "EWC": ("International", "Canada"),
+    "EWG": ("International", "Germany"),
+    "EWH": ("International", "Hong Kong"),
+    "EWI": ("International", "Italy"),
+    "EWJ": ("International", "Japan"),
+    "EWM": ("International", "Malaysia"),
+    "EWW": ("International", "Mexico"),
+    "EWY": ("International", "South Korea"),
+    "EWZ": ("International", "Brazil"),
+    "ECH": ("International", "Chile"),
+    "EPOL": ("International", "Poland"),
+    "EPU": ("International", "Peru"),
+    "GREK": ("International", "Greece"),
+    "INDA": ("International", "India"),
+    "COLO": ("International", "Colombia"),
+    # Commodity ETFs
+    "GLD": ("Commodities", "Gold"),
+    "USO": ("Commodities", "Crude Oil"),
+    "PALL": ("Commodities", "Palladium"),
+    "PPLT": ("Commodities", "Platinum"),
+    "DBA": ("Commodities", "Agriculture"),
+    "MOO": ("Commodities", "Agribusiness"),
+    # Utilities-focused ETFs
+    "FUTY": ("Utilities", "Fidelity MSCI Utilities"),
+    "FXU": ("Utilities", "First Trust Utilities AlphaDEX"),
+    "IDU": ("Utilities", "iShares U.S. Utilities"),
+    "VPU": ("Utilities", "Vanguard Utilities"),
+    "RSPU": ("Utilities", "Invesco Equal Weight Utilities"),
+    "UTES": ("Utilities", "Virtus Reaves Utilities"),
+    "UPW": ("Utilities", "ProShares Ultra Utilities"),
+    "SDP": ("Utilities", "ProShares UltraShort Utilities"),
+    # Infrastructure
+    "GII": ("Industrials", "Global Infrastructure"),
+    "IFRA": ("Industrials", "iShares U.S. Infrastructure"),
+    "NFRA": ("Industrials", "FlexShares STOXX Infrastructure"),
+    "PAVE": ("Industrials", "U.S. Infrastructure Development"),
+    "JXI": ("Utilities", "iShares Global Utilities"),
+    # Real Estate
+    "IYR": ("Real Estate", "U.S. Real Estate"),
+    # Transport
+    "IYT": ("Industrials", "Transportation"),
+    # Defense
+    "SHLD": ("Industrials", "Aerospace & Defense"),
 }

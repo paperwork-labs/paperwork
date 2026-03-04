@@ -21,6 +21,7 @@ const PortfolioOptions = React.lazy(() => import('./pages/portfolio/PortfolioOpt
 const PortfolioCategories = React.lazy(() => import('./pages/portfolio/PortfolioCategories'));
 const PortfolioTransactions = React.lazy(() => import('./pages/portfolio/PortfolioTransactions'));
 const PortfolioTaxCenter = React.lazy(() => import('./pages/portfolio/PortfolioTaxCenter'));
+const PortfolioOrders = React.lazy(() => import('./pages/portfolio/PortfolioOrders'));
 const Strategies = React.lazy(() => import('./pages/Strategies'));
 const StrategiesManager = React.lazy(() => import('./pages/StrategiesManager'));
 const SettingsShell = React.lazy(() => import('./pages/SettingsShell'));
@@ -83,6 +84,7 @@ function App() {
                           <Route path="portfolio/transactions" element={<PortfolioTransactions />} />
                           <Route path="portfolio/categories" element={<PortfolioCategories />} />
                           <Route path="portfolio/tax" element={<PortfolioTaxCenter />} />
+                          <Route path="portfolio/orders" element={<PortfolioOrders />} />
                           <Route path="portfolio/workspace" element={<PortfolioWorkspace />} />
                         </Route>
 

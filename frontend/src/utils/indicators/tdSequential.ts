@@ -1,4 +1,5 @@
 import type { OHLCBar } from './trendLines';
+import { TD_HEX } from '../../constants/chart';
 
 export interface TDLabel {
   time: number;
@@ -9,11 +10,11 @@ export interface TDLabel {
   size: 'small' | 'tiny';
 }
 
-const COLOR_SETUP = '#eab308';     // yellow
-const COLOR_PERFECT = '#d946ef';   // fuchsia
-const COLOR_COUNTDOWN = '#ef4444'; // red
-
-export function computeTDSequential(bars: OHLCBar[]): TDLabel[] {
+export function computeTDSequential(bars: OHLCBar[], colorMode: 'light' | 'dark' = 'dark'): TDLabel[] {
+  const idx = colorMode === 'dark' ? 1 : 0;
+  const COLOR_SETUP = TD_HEX.setup[idx];
+  const COLOR_PERFECT = TD_HEX.perfect[idx];
+  const COLOR_COUNTDOWN = TD_HEX.countdown[idx];
   if (bars.length < 5) return [];
 
   const labels: TDLabel[] = [];
