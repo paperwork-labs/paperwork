@@ -1,0 +1,134 @@
+# filefree.tax - AI-Powered Free Tax Filing
+
+## Project Context
+filefree.tax is a mobile-first tax filing web application that lets users file their taxes by taking photos of their W2 and Driver's License. The app uses AI (OCR + LLM) to extract data, calculate taxes, and e-file — targeting the ~100M Americans with simple tax situations (W2 income, standard deduction) who are currently overpaying for TurboTax.
+
+The domain is filefree.tax. The brand name is "FileFree" when written as a product name.
+
+## Core Philosophy
+- "Photo to Filed in 60 seconds" — every design decision optimizes for speed and simplicity
+- Mobile-first, desktop-responsive
+- Dark mode by default with vibrant gradients (Linear/Raycast aesthetic, NOT TurboTax boomer energy)
+- AI does the work, user just confirms
+- Free for simple federal filing, monetize through state filing, refund advances, and audit protection
+
+## Tech Stack (DO NOT DEVIATE)
+
+### Frontend
+- **Framework**: Next.js 14+ (App Router)
+- **Language**: TypeScript (strict mode)
+- **Component System**: shadcn/ui (Radix primitives + Tailwind — copy-paste, we own the code)
+- **Styling**: Tailwind CSS 3.4+
+- **Animations**: Framer Motion
+- **AI Streaming**: Vercel AI SDK (`ai` + `@ai-sdk/react`) — for streaming AI insights and explanations
+- **Charts**: Recharts
+- **Icons**: Lucide React (shadcn default, keep consistent)
+- **Forms**: React Hook Form + Zod validation (shadcn Form component wraps this)
+- **State Management**: Zustand (for global state like user session, tax data)
+- **Camera**: Browser MediaDevices API (navigator.mediaDevices.getUserMedia)
+- **PDF Generation**: @react-pdf/renderer (for downloadable tax return PDFs)
+
+### Backend
+- **Framework**: FastAPI (Python 3.11+)
+- **ORM**: SQLAlchemy 2.0 with async support
+- **Database**: PostgreSQL 15+
+- **Cache**: Redis
+- **Task Queue**: Celery with Redis broker
+- **Migrations**: Alembic
+
+### AI/ML Pipeline
+- **OCR**: AWS Textract (AnalyzeDocument API)
+- **LLM Validation**: OpenAI GPT-4o API (structured outputs)
+- **Document preprocessing**: Pillow (Python) for server-side image processing
+
+### Infrastructure
+- **Frontend Hosting**: Vercel
+- **Backend Hosting**: Railway or AWS ECS (later)
+- **File Storage**: AWS S3 (encrypted, auto-delete after 24hrs)
+- **Secrets**: Environment variables via .env (never commit)
+- **Local Dev**: Docker Compose (postgres, redis, api, celery, web — all containerized)
+
+### AI UX Patterns (IMPORTANT — this is what makes us feel different)
+- AI insights stream in with a typewriter effect using Vercel AI SDK's useCompletion hook
+- Show a pulsing "AI thinking" indicator (animated gradient orb) while waiting for AI responses
+- Confidence scores on OCR fields use animated color transitions (red → yellow → green)
+- The tax summary explanation should stream in word-by-word, not appear all at once
+- Use subtle particle/glow effects around AI-generated content to distinguish it from static content
+- Every AI interaction should feel fast — optimistic UI, stream partial results, never show a blank loading state
+
+### shadcn/ui Conventions
+- Initialize with: `npx shadcn-ui@latest init` (New York style, Zinc base color, CSS variables: yes)
+- Add components as needed: `npx shadcn-ui@latest add button card dialog input form toast`
+- Components live in `src/components/ui/` — this is shadcn's default, don't move them
+- Build custom components in `src/components/` — compose from shadcn primitives
+- Override shadcn theme in `src/app/globals.css` CSS variables to match our dark violet/purple brand
+- Never install Radix packages directly — always go through shadcn
+
+## Code Style & Conventions
+
+### TypeScript/React
+- Use functional components only, never class components
+- Use named exports for components, default export only for page components
+- File naming: kebab-case for files (e.g., `tax-calculator.ts`), PascalCase for components (e.g., `TaxCalculator.tsx`)
+- Directory structure follows Next.js App Router conventions
+- All API calls go through a centralized `lib/api.ts` client
+- Use `use client` directive only when necessary (prefer server components)
+- All forms use React Hook Form with Zod schemas via shadcn Form component
+- Custom hooks go in `hooks/` directory, prefixed with `use`
+- Shared types go in `types/` directory
+
+### Python/FastAPI
+- Use async def for all route handlers
+- Pydantic v2 models for all request/response schemas
+- Repository pattern for database access (not raw queries in routes)
+- Service layer between routes and repositories for business logic
+- All monetary values stored as integers (cents) to avoid floating point issues
+- File naming: snake_case everywhere
+- Type hints on all function signatures
+
+### Styling Rules
+- Mobile-first Tailwind (start with base, add `md:` and `lg:` breakpoints)
+- Use CSS variables for theme colors defined in `tailwind.config.ts` and `globals.css`
+- Gradient accents: primary gradient is `from-violet-500 to-purple-600`
+- Card backgrounds: use shadcn Card component with dark overrides
+- Never use arbitrary Tailwind values like `w-[400px]` — use standard utilities
+- All interactive elements need hover and focus states
+- Minimum touch target: 44x44px for mobile
+
+### Security Rules (CRITICAL — we handle SSNs and financial data)
+- NEVER log PII (SSN, full name + address combos, financial data)
+- NEVER store W2 images longer than necessary (auto-delete from S3 after processing)
+- All PII fields encrypted at rest (use application-level encryption, not just DB encryption)
+- SSN displayed as masked (XXX-XX-1234) in UI, never fully visible after initial entry
+- All API routes require authentication except /health, /auth/login, /auth/register
+- Rate limit all endpoints, especially auth and file-upload routes
+- CORS restricted to frontend domain only
+- Input validation on EVERY endpoint using Pydantic models
+
+## Key Domain Concepts
+- **Filing**: A single tax return filing attempt (has status: draft, processing, review, submitted, accepted, rejected)
+- **TaxProfile**: User's tax-relevant information extracted from documents
+- **Document**: An uploaded document (W2, DL, 1099, etc.) with its extraction results
+- **TaxCalculation**: The computed tax return data (income, deductions, credits, refund/owed)
+- **Submission**: The e-file submission record with IRS tracking
+
+## API Design
+- RESTful with consistent response envelope: `{ success: boolean, data: T, error?: string }`
+- API versioning via URL prefix: `/api/v1/`
+- Auth via HTTP-only secure cookies (not localStorage JWT)
+- File uploads via multipart/form-data to dedicated upload endpoints
+- Long-running operations (OCR, tax calc) return immediately with a job ID, client polls for result
+
+## Error Handling
+- Frontend: shadcn Toast component for user-facing errors, never raw error messages
+- Backend: Custom exception classes mapped to HTTP status codes
+- All errors logged with correlation IDs for debugging
+- User-facing error messages are friendly and actionable ("We couldn't read Box 1 on your W2. Try taking another photo with better lighting.")
+
+## Testing
+- Frontend: Vitest + React Testing Library for component tests
+- Backend: Pytest with async support, factory_boy for test data
+- Tax calculation engine: 100% test coverage required (this is financial data, no bugs allowed)
+- Integration tests for the full OCR → calculation → e-file pipeline
+- Linting: Ruff (Python), ESLint (TypeScript)
+- Type checking: mypy (Python), tsc --noEmit (TypeScript)
