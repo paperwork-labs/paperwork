@@ -23,6 +23,7 @@ const PortfolioTransactions = React.lazy(() => import('./pages/portfolio/Portfol
 const PortfolioTaxCenter = React.lazy(() => import('./pages/portfolio/PortfolioTaxCenter'));
 const PortfolioOrders = React.lazy(() => import('./pages/portfolio/PortfolioOrders'));
 const Strategies = React.lazy(() => import('./pages/Strategies'));
+const StrategyDetail = React.lazy(() => import('./pages/StrategyDetail'));
 const StrategiesManager = React.lazy(() => import('./pages/StrategiesManager'));
 const SettingsShell = React.lazy(() => import('./pages/SettingsShell'));
 const SettingsConnections = React.lazy(() => import('./pages/SettingsConnections'));
@@ -91,7 +92,8 @@ function App() {
                         {/* Strategy section */}
                         <Route element={<RequireNonMarketAccess section="strategy" />}>
                           <Route path="strategies" element={<Strategies />} />
-                          <Route path="strategies-manager" element={<StrategiesManager />} />
+                          <Route path="strategies/:strategyId" element={<StrategyDetail />} />
+                          <Route path="strategies-manager" element={<Navigate to="/strategies" replace />} />
                         </Route>
 
                         {/* Settings (open to all authenticated users) */}

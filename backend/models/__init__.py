@@ -52,6 +52,9 @@ from .options import Option, OptionType
 # Strategy & Signals (required for User.strategies / User.strategy_executions)
 from .strategy import Strategy, StrategyExecution
 
+# Watchlist
+from .watchlist import Watchlist
+
 # Essential models list
 __all__ = [
     "Base",
@@ -97,4 +100,5 @@ __all__ = [
     "OrderSide",
     "OrderType",
     "OrderStatus",
+    "Watchlist",
 ]

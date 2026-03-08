@@ -646,9 +646,9 @@ const SECTION_VIS = {
 } as const;
 
 const MODE_DESCRIPTIONS: Record<UniverseFilter, string> = {
-  all: 'S&P 500, NASDAQ 100, and DOW 30 constituents',
-  etf: 'Sector and thematic ETFs -- rotation and relative strength',
-  holdings: 'Signals and alerts for your portfolio positions',
+  all: 'S&P 500, NASDAQ 100, and DOW 30 -- broad market scanning for entries and exits',
+  etf: 'Sector and thematic ETFs -- rotation and relative strength analysis',
+  holdings: 'Your portfolio positions -- signals, setups, and earnings alerts',
 };
 
 const COLLAPSE_KEY = 'axiomfolio:dashboard:collapsed';

@@ -51,9 +51,7 @@ jobs:
 
       - name: Install
         working-directory: frontend
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install
+        run: npm ci
 
       - name: Lint
         working-directory: frontend

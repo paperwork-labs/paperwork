@@ -18,9 +18,6 @@ import {
   MenuItem,
   Button,
   Portal,
-  NativeSelectRoot,
-  NativeSelectField,
-  NativeSelectIndicator,
   useMediaQuery,
 } from '@chakra-ui/react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -160,35 +157,7 @@ const NavItem: React.FC<NavItemProps> = ({ icon: Icon, label, path, isActive, on
   );
 };
 
-interface AccountSelectorProps {
-  value: string;
-  onChange: (value: string) => void;
-  disabled: boolean;
-  accounts: Array<{ account_number: string; account_name?: string }>;
-  width?: string | number;
-}
-
-const AccountSelector: React.FC<AccountSelectorProps> = ({
-  value,
-  onChange,
-  disabled,
-  accounts,
-  width = '100%',
-}) => (
-  <NativeSelectRoot size="sm" width={width} disabled={disabled}>
-    <NativeSelectField value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="all">All Accounts</option>
-      <option value="taxable">Taxable</option>
-      <option value="ira">Tax-Deferred (IRA)</option>
-      {accounts.map((a) => (
-        <option key={a.account_number} value={a.account_number}>
-          {a.account_name || a.account_number}
-        </option>
-      ))}
-    </NativeSelectField>
-    <NativeSelectIndicator />
-  </NativeSelectRoot>
-);
+import { CompactAccountSelector as AccountSelector } from '../shared/CompactAccountSelector';
 
 const DashboardLayout: React.FC = () => {
   const location = useLocation();
@@ -482,7 +451,7 @@ const DashboardLayout: React.FC = () => {
               </MenuTrigger>
               <Portal>
                 <MenuPositioner>
-                  <MenuContent minW="340px" p={2}>
+                  <MenuContent minW={{ base: 'calc(100vw - 32px)', md: '340px' }} p={2}>
                     <VStack align="stretch" gap={1}>
                       <HStack justify="space-between" px={2} py={1}>
                         <Text fontSize="sm" fontWeight="semibold">Notifications</Text>

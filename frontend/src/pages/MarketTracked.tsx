@@ -17,12 +17,15 @@ import { formatMoney, formatDateTime } from '../utils/format';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FiCheck, FiEdit2, FiX } from 'react-icons/fi';
-import { ChartContext, SymbolLink, ChartSlidePanel } from '../components/market/SymbolChartUI';
+import { ChartContext, SymbolLink, ChartSlidePanel, PortfolioSymbolsContext } from '../components/market/SymbolChartUI';
 import { usePortfolioSymbols } from '../hooks/usePortfolioSymbols';
 import PnlText from '../components/shared/PnlText';
 import StageBadge from '../components/shared/StageBadge';
+import TradeModal from '../components/orders/TradeModal';
 
 import { ETF_SYMBOL_SET } from '../constants/etf';
+
+type TradeTarget = { symbol: string; currentPrice: number; sharesHeld: number; averageCost?: number } | null;
 
 type EditablePriceCellProps = {
   symbol: string;
@@ -129,6 +132,7 @@ const MarketTracked: React.FC = () => {
   const [chartSymbol, setChartSymbol] = React.useState<string | null>(null);
   const openChart = React.useCallback((sym: string) => setChartSymbol(sym), []);
   const [showHoldings, setShowHoldings] = React.useState(false);
+  const [tradeTarget, setTradeTarget] = React.useState<TradeTarget>(null);
   const portfolioQuery = usePortfolioSymbols();
   const portfolioSymbols = portfolioQuery.data ?? {};
 
@@ -402,6 +406,33 @@ const MarketTracked: React.FC = () => {
         width: '80px',
         hidden: !showHoldings,
       },
+      {
+        key: 'actions',
+        header: '',
+        accessor: () => '',
+        sortable: false,
+        width: '70px',
+        render: (_v: any, r: any) => {
+          const sym = String(r?.symbol || '');
+          const price = typeof r?.current_price === 'number' ? r.current_price : 0;
+          const posData = portfolioSymbols[sym];
+          const sharesHeld = posData?.quantity ?? 0;
+          const avgCost = posData && posData.quantity > 0 ? posData.cost_basis / posData.quantity : undefined;
+          return (
+            <Button
+              size="xs"
+              variant="outline"
+              colorPalette="blue"
+              onClick={(e: React.MouseEvent) => {
+                e.stopPropagation();
+                setTradeTarget({ symbol: sym, currentPrice: price, sharesHeld, averageCost: avgCost });
+              }}
+            >
+              Trade
+            </Button>
+          );
+        },
+      },
     ];
   }, [currency, timezone, canEditPlan, updateTrackedPlan, portfolioSymbols, showHoldings]);
 
@@ -596,6 +627,7 @@ const MarketTracked: React.FC = () => {
 
   return (
     <ChartContext.Provider value={openChart}>
+      <PortfolioSymbolsContext.Provider value={portfolioSymbols}>
       <Box p={4}>
         <HStack justify="space-between" align="end" mb={3} flexWrap="wrap" gap={2}>
           <Box>
@@ -653,6 +685,17 @@ const MarketTracked: React.FC = () => {
         </Box>
       </Box>
       <ChartSlidePanel symbol={chartSymbol} onClose={() => setChartSymbol(null)} />
+      {tradeTarget && (
+        <TradeModal
+          isOpen={!!tradeTarget}
+          symbol={tradeTarget.symbol}
+          currentPrice={tradeTarget.currentPrice}
+          sharesHeld={tradeTarget.sharesHeld}
+          averageCost={tradeTarget.averageCost}
+          onClose={() => setTradeTarget(null)}
+        />
+      )}
+      </PortfolioSymbolsContext.Provider>
     </ChartContext.Provider>
   );
 };

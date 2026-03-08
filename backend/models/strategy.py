@@ -85,7 +85,6 @@ class Strategy(Base):
     name = Column(String(100), nullable=False)
     description = Column(Text)
     strategy_type = Column(SQLEnum(StrategyType), nullable=False)
-    version = Column(String(20), default="1.0")
 
     # Execution Settings
     status = Column(SQLEnum(StrategyStatus), default=StrategyStatus.DRAFT)

@@ -102,7 +102,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
-    command: bash -lc "celery -A backend.tasks.celery_app worker --loglevel=info"
+    command: bash -lc "celery -A backend.tasks.celery_app worker -Q celery,account_sync,orders --loglevel=info"
 
   celery_beat:
     build:

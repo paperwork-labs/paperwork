@@ -14,6 +14,7 @@ from sqlalchemy import (
     DateTime,
     JSON,
     Index,
+    ForeignKey,
 )
 from sqlalchemy.sql import func
 
@@ -43,6 +44,19 @@ class OrderStatus(enum.Enum):
     ERROR = "error"
 
 
+class OrderSource(enum.Enum):
+    MANUAL = "manual"
+    STRATEGY = "strategy"
+    REBALANCE = "rebalance"
+
+
+class BrokerType(enum.Enum):
+    IBKR = "ibkr"
+    ALPACA = "alpaca"
+    TASTYTRADE = "tastytrade"
+    SCHWAB = "schwab"
+
+
 class Order(Base):
     """Order model for trade execution and preview/whatIf responses."""
 
@@ -50,8 +64,8 @@ class Order(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     symbol = Column(String(20), nullable=False, index=True)
-    side = Column(String(10), nullable=False)  # OrderSide value
-    order_type = Column(String(20), nullable=False)  # OrderType value
+    side = Column(String(10), nullable=False)
+    order_type = Column(String(20), nullable=False)
     status = Column(String(20), nullable=False, default="preview", index=True)
     quantity = Column(Float, nullable=False)
     limit_price = Column(Float, nullable=True)
@@ -60,6 +74,15 @@ class Order(Base):
     filled_avg_price = Column(Float, nullable=True)
     account_id = Column(String(100), nullable=True)
     broker_order_id = Column(String(100), nullable=True, index=True)
+
+    # Lineage: which strategy / signal / position triggered this order
+    strategy_id = Column(Integer, ForeignKey("strategies.id"), nullable=True, index=True)
+    signal_id = Column(Integer, nullable=True, index=True)
+    position_id = Column(Integer, nullable=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+
+    source = Column(String(20), nullable=False, default="manual")
+    broker_type = Column(String(20), nullable=False, default="ibkr")
 
     # whatIfOrder preview fields
     estimated_commission = Column(Float, nullable=True)
@@ -81,4 +104,6 @@ class Order(Base):
     __table_args__ = (
         Index("idx_orders_symbol_status", "symbol", "status"),
         Index("idx_orders_status_created_at", "status", "created_at"),
+        Index("idx_orders_strategy_id", "strategy_id"),
+        Index("idx_orders_user_id", "user_id"),
     )

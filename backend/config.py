@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     IBKR_HOST: str = "127.0.0.1"
     IBKR_PORT: int = 7497
     IBKR_CLIENT_ID: int = 1
+    IBKR_TRADING_MODE: str = "paper"  # paper | live
     IBKR_ACCOUNTS: Optional[str] = None  # Comma separated account numbers
     IBKR_DISCOVER_ON_SEED: bool = False
     IBKR_FLEX_TOKEN: Optional[str] = None
@@ -46,6 +47,11 @@ class Settings(BaseSettings):
     IBKR_FLEX_LOOKBACK_YEARS: int = (
         10  # Intended history window; configure FlexQuery accordingly
     )
+
+    # Alpaca Configuration
+    ALPACA_API_KEY: Optional[str] = None
+    ALPACA_API_SECRET: Optional[str] = None
+    ALPACA_TRADING_MODE: str = "paper"  # paper | live
 
     # Schwab (optional) - comma-separated account numbers for seeding
     SCHWAB_ACCOUNTS: Optional[str] = None

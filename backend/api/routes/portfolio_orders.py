@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from backend.api.dependencies import get_current_user
 from backend.database import get_db
 from backend.models.user import User
-from backend.services.order_service import order_service
+from backend.services.order_service import order_service, RiskViolation
 
 router = APIRouter(prefix="/portfolio/orders", tags=["orders"])
 
@@ -34,16 +34,19 @@ async def preview_order(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    result = await order_service.preview_order(
-        db,
-        symbol=req.symbol,
-        side=req.side,
-        order_type=req.order_type,
-        quantity=req.quantity,
-        limit_price=req.limit_price,
-        stop_price=req.stop_price,
-        created_by=user.email,
-    )
+    try:
+        result = await order_service.preview_order(
+            db,
+            symbol=req.symbol,
+            side=req.side,
+            order_type=req.order_type,
+            quantity=req.quantity,
+            limit_price=req.limit_price,
+            stop_price=req.stop_price,
+            created_by=user.email,
+        )
+    except RiskViolation as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     if result.get("error"):
         raise HTTPException(status_code=400, detail=result["error"])
     return {"data": result}

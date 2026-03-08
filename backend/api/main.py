@@ -36,6 +36,7 @@ from backend.api.routes import (
 )
 from backend.api.routes import activity as activity_routes
 from backend.api.routes import aggregator as aggregator_routes
+from backend.api.routes import watchlist as watchlist_routes
 
 # Import new account management routes
 from backend.api.routes import account_management
@@ -349,6 +350,12 @@ app.include_router(
     aggregator_routes.router,
     prefix="/api/v1/aggregator",
     tags=["Aggregator"],
+)
+app.include_router(
+    watchlist_routes.router,
+    prefix="/api/v1",
+    tags=["Watchlist"],
+    dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(
     admin.router,

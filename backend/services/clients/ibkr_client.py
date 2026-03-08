@@ -579,14 +579,23 @@ class IBKRClient:
         raise ValueError(f"Unsupported order_type: {order_type}")
 
     def _is_paper_trading(self) -> bool:
-        """True if connected to paper trading (port 7496 TWS or 4001 Gateway, or IBKR_TRADING_MODE=paper)."""
+        """True if connected to paper trading.
+
+        Authority: settings.IBKR_TRADING_MODE (paper|live).
+        Fallback:  port-based detection per IB docs:
+          - Paper ports: 7497 (TWS Paper), 4002 (Gateway Paper)
+          - Live ports:  7496 (TWS Live),  4001 (Gateway Live)
+        Port 8888 (extrange unified) is ambiguous; rely on IBKR_TRADING_MODE.
+        """
         mode = getattr(settings, "IBKR_TRADING_MODE", "").lower()
         if mode == "paper":
             return True
+        if mode == "live":
+            return False
         port = getattr(self, "port", None) or getattr(
             settings, "IBKR_PORT", 7497
         )
-        return int(port) in (7496, 4001)
+        return int(port) in (7497, 4002)
 
     async def what_if_order(
         self,

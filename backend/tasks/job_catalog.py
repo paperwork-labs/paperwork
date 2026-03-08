@@ -153,6 +153,17 @@ CATALOG: List[JobTemplate] = [
         default_cron="30 1 * * *",
         default_tz="UTC",
     ),
+    # ── Orders ─────────────────────────────────────────────────────
+    JobTemplate(
+        id="monitor-open-orders",
+        display_name="Monitor Open Orders",
+        group="portfolio",
+        task="backend.tasks.order_tasks.monitor_open_orders_task",
+        description="Poll broker for status updates on submitted/partially-filled orders and flag stale entries",
+        default_cron="* * * * *",
+        default_tz="UTC",
+        queue="orders",
+    ),
     # ── Maintenance ───────────────────────────────────────────────
     JobTemplate(
         id="admin_retention_enforce",

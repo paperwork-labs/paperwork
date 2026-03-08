@@ -9,31 +9,40 @@ export function Page({ children, ...props }: BoxProps & { children: React.ReactN
   );
 }
 
+export interface PageHeaderProps extends StackProps {
+  title: string;
+  subtitle?: string;
+  actions?: React.ReactNode;
+  rightContent?: React.ReactNode;
+}
+
 export function PageHeader({
   title,
   subtitle,
   actions,
+  rightContent,
   ...props
-}: {
-  title: string;
-  subtitle?: string;
-  actions?: React.ReactNode;
-} & StackProps) {
+}: PageHeaderProps) {
   return (
-    <HStack align="flex-start" justify="space-between" gap={4} mb={6} {...props}>
-      <Box>
-        <Heading size="lg" letterSpacing="-0.02em" color="fg.default">
-          {title}
-        </Heading>
-        {subtitle ? (
-          <Text mt={1} fontSize="sm" color="fg.muted">
-            {subtitle}
-          </Text>
-        ) : null}
-      </Box>
-      {actions ? <Box>{actions}</Box> : null}
-    </HStack>
+    <Box mb={6}>
+      <HStack align="flex-start" justify="space-between" gap={4} {...props}>
+        <Box>
+          <Heading size="lg" letterSpacing="-0.02em" color="fg.default">
+            {title}
+          </Heading>
+          {subtitle ? (
+            <Text mt={1} fontSize="sm" color="fg.muted">
+              {subtitle}
+            </Text>
+          ) : null}
+        </Box>
+        {rightContent}
+      </HStack>
+      {actions ? <Box mt={2}>{actions}</Box> : null}
+    </Box>
   );
 }
+
+export default PageHeader;
 
 

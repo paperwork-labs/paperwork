@@ -19,6 +19,7 @@ import {
   TableRow,
   TableColumnHeader,
   TableCell,
+  useMediaQuery,
 } from '@chakra-ui/react';
 import { FiRefreshCw, FiSearch, FiMinusCircle, FiLock, FiUnlock, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
@@ -36,9 +37,9 @@ import { formatMoney } from '../utils/format';
 import { TableSkeleton } from '../components/shared/Skeleton';
 import { useColorMode } from '../theme/colorMode';
 import type { EnrichedPosition, ActivityRow, LotRow } from '../types/portfolio';
-import SellOrderModal from '../components/orders/SellOrderModal';
+import TradeModal from '../components/orders/TradeModal';
 
-type SellTarget = { symbol: string; currentPrice: number; sharesHeld: number; averageCost?: number; positionId?: number } | null;
+type TradeTarget = { symbol: string; currentPrice: number; sharesHeld: number; averageCost?: number; positionId?: number } | null;
 
 interface LotTotals {
   shares: number;
@@ -110,7 +111,7 @@ const PortfolioWorkspace: React.FC = () => {
 
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [sellTarget, setSellTarget] = useState<SellTarget>(null);
+  const [tradeTarget, setTradeTarget] = useState<TradeTarget>(null);
   const [enabledEvents, setEnabledEvents] = useState<Set<ChartEventType>>(new Set(['BUY', 'SELL', 'DIVIDEND']));
   const [hoverDaySec, setHoverDaySec] = useState<number | null>(null);
   const [lockedDaySec, setLockedDaySec] = useState<number | null>(null);
@@ -138,6 +139,8 @@ const PortfolioWorkspace: React.FC = () => {
   const handleHoverDay = useCallback((v: number | null) => setHoverDaySec(v), []);
   const handleClickDay = useCallback((t: number | null) => setLockedDaySec((prev: number | null) => (prev === t ? null : t || null)), []);
 
+  const [isMdOrLarger] = useMediaQuery(['(min-width: 768px)']);
+  const chartHeight = isMdOrLarger ? 520 : 300;
   const [holdingsTab, setHoldingsTab] = useState<'open' | 'closed'>('open');
   const [lotEditMode, setLotEditMode] = useState(false);
   const [editingLotId, setEditingLotId] = useState<number | null>(null);
@@ -405,7 +408,7 @@ const PortfolioWorkspace: React.FC = () => {
 
   if (isLoading) {
     return (
-      <VStack p={6} gap={6} align="stretch">
+      <VStack p={{ base: 3, md: 6 }} gap={6} align="stretch">
         <PageHeader title="Workspace" subtitle="Holdings list + Trades and dividends by symbol" />
         <TableSkeleton rows={8} cols={4} />
       </VStack>
@@ -413,10 +416,10 @@ const PortfolioWorkspace: React.FC = () => {
   }
 
   return (
-    <VStack p={6} gap={4} align="stretch">
-      <Flex gap={4} align="stretch">
+    <VStack p={{ base: 3, md: 6 }} gap={4} align="stretch">
+      <Flex gap={4} align="stretch" flexDirection={{ base: 'column', lg: 'row' }}>
         {/* Left: holdings list */}
-        <VStack bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl" p={3} gap={3} align="stretch" w="340px" h="calc(100vh - 2rem)">
+        <VStack bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl" p={3} gap={3} align="stretch" w={{ base: '100%', lg: '340px' }} h={{ base: '40vh', lg: 'calc(100vh - 2rem)' }}>
           <Box display="flex" gap={2} alignItems="center">
             <InputGroup
               startElement={
@@ -557,7 +560,7 @@ const PortfolioWorkspace: React.FC = () => {
                   size="xs"
                   variant="outline"
                   colorPalette="red"
-                  onClick={() => setSellTarget({
+                  onClick={() => setTradeTarget({
                     symbol: selectedHolding.symbol,
                     currentPrice: Number(selectedHolding.current_price ?? 0),
                     sharesHeld: Number(selectedHolding.shares ?? 0),
@@ -565,7 +568,7 @@ const PortfolioWorkspace: React.FC = () => {
                     positionId: selectedHolding.id,
                   })}
                 >
-                  Sell
+                  Trade
                 </Button>
               </Box>
             </Box>
@@ -706,12 +709,12 @@ const PortfolioWorkspace: React.FC = () => {
                 showAdvanced ? (
                   <TradingViewChart
                     symbol={selectedSymbol}
-                    height={520}
+                    height={chartHeight}
                     showHeader={false}
                     theme="dark"
                   />
                 ) : barsError && !barsQuery.isLoading ? (
-                  <Box h="520px" display="flex" flexDirection="column" alignItems="center" justifyContent="center" gap={3}>
+                  <Box h={`${chartHeight}px`} display="flex" flexDirection="column" alignItems="center" justifyContent="center" gap={3}>
                     <Text color="fg.muted">No price data available for {selectedSymbol}</Text>
                     <Button size="sm" colorPalette="brand" variant="outline" onClick={() => setShowAdvanced(true)}>
                       Open TradingView Chart
@@ -719,7 +722,7 @@ const PortfolioWorkspace: React.FC = () => {
                   </Box>
                 ) : (
                   <SymbolChartWithMarkers
-                    height={520}
+                    height={chartHeight}
                     bars={bars}
                     symbol={selectedSymbol ?? undefined}
                     events={filteredEvents}
@@ -735,13 +738,13 @@ const PortfolioWorkspace: React.FC = () => {
                     priceLinesExtra={enabledEvents.has('ORDER_PENDING') ? priceLinesExtra : undefined}
                   />
                 )
-              ) : <Box h="520px" />}
+              ) : <Box h={`${chartHeight}px`} />}
             </CardBody>
           </CardRoot>
 
           <Box display="grid" gridTemplateColumns={{ base: '1fr', lg: '2fr 1fr' }} gap={4}>
             {/* Tax Lots panel */}
-            <CardRoot borderWidth="1px" borderColor="border.subtle" maxH={lotEditMode ? '520px' : '400px'} overflow="hidden" bg="bg.card">
+            <CardRoot borderWidth="1px" borderColor="border.subtle" maxH={lotEditMode ? { base: '70vh', md: '520px' } : { base: '50vh', md: '400px' }} overflow="hidden" bg="bg.card">
               <CardHeader pb={2}>
                 <Box display="flex" justifyContent="space-between" alignItems="center">
                   <Box display="flex" gap={2} alignItems="center">
@@ -760,7 +763,7 @@ const PortfolioWorkspace: React.FC = () => {
                 </Box>
               </CardHeader>
               <CardBody p={0}>
-                <TableScrollArea maxH="340px">
+                <TableScrollArea maxH={{ base: '250px', md: '340px' }}>
                   <TableRoot size="sm">
                     <TableHeader>
                       <TableRow>
@@ -866,7 +869,7 @@ const PortfolioWorkspace: React.FC = () => {
                                     variant="ghost"
                                     colorPalette="red"
                                     aria-label={`Sell ${sh} shares from lot`}
-                                    onClick={() => setSellTarget({
+                                    onClick={() => setTradeTarget({
                                       symbol: selectedSymbol!,
                                       currentPrice: lastClose,
                                       sharesHeld: sh,
@@ -988,7 +991,7 @@ const PortfolioWorkspace: React.FC = () => {
             </CardRoot>
 
             {/* Dividends */}
-            <CardRoot borderWidth="1px" borderColor="border.subtle" maxH="400px" overflow="hidden" bg="bg.card">
+            <CardRoot borderWidth="1px" borderColor="border.subtle" maxH={{ base: '50vh', md: '400px' }} overflow="hidden" bg="bg.card">
               <CardHeader pb={2}>
                 <Box display="flex" justifyContent="space-between" alignItems="center">
                   <Text fontWeight="bold">Dividends</Text>
@@ -1003,7 +1006,7 @@ const PortfolioWorkspace: React.FC = () => {
                 </Box>
               </CardHeader>
               <CardBody p={0}>
-                <TableScrollArea maxH="340px">
+                <TableScrollArea maxH={{ base: '250px', md: '340px' }}>
                   <TableRoot size="sm">
                     <TableHeader>
                       <TableRow>
@@ -1046,15 +1049,15 @@ const PortfolioWorkspace: React.FC = () => {
         </VStack>
       </Flex>
 
-      {sellTarget && (
-        <SellOrderModal
-          isOpen={!!sellTarget}
-          symbol={sellTarget.symbol}
-          currentPrice={sellTarget.currentPrice}
-          sharesHeld={sellTarget.sharesHeld}
-          averageCost={sellTarget.averageCost}
-          positionId={sellTarget.positionId}
-          onClose={() => setSellTarget(null)}
+      {tradeTarget && (
+        <TradeModal
+          isOpen={!!tradeTarget}
+          symbol={tradeTarget.symbol}
+          currentPrice={tradeTarget.currentPrice}
+          sharesHeld={tradeTarget.sharesHeld}
+          averageCost={tradeTarget.averageCost}
+          positionId={tradeTarget.positionId}
+          onClose={() => setTradeTarget(null)}
         />
       )}
     </VStack>

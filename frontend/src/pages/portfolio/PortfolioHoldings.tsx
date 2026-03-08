@@ -24,9 +24,9 @@ import { formatMoney } from '../../utils/format';
 import { buildAccountsFromPositions } from '../../utils/portfolio';
 import type { AccountData } from '../../hooks/useAccountFilter';
 import type { EnrichedPosition } from '../../types/portfolio';
-import SellOrderModal from '../../components/orders/SellOrderModal';
+import TradeModal from '../../components/orders/TradeModal';
 
-type SellTarget = { symbol: string; currentPrice: number; sharesHeld: number; averageCost?: number; positionId?: number } | null;
+type TradeTarget = { symbol: string; currentPrice: number; sharesHeld: number; averageCost?: number; positionId?: number } | null;
 
 function isNonOptionPosition(p: EnrichedPosition): boolean {
   const t = String((p as { instrument_type?: string; asset_class?: string })?.instrument_type ?? (p as { instrument_type?: string; asset_class?: string })?.asset_class ?? '').toLowerCase();
@@ -80,7 +80,7 @@ const HOLDINGS_FILTER_PRESETS: Array<{ label: string; filters: FilterGroup }> = 
 const PortfolioHoldings: React.FC = () => {
   const [chartSymbol, setChartSymbol] = useState<string | null>(null);
   const [showHeatmap, setShowHeatmap] = useState(false);
-  const [sellTarget, setSellTarget] = useState<SellTarget>(null);
+  const [tradeTarget, setTradeTarget] = useState<TradeTarget>(null);
   const navigate = useNavigate();
   const { currency } = useUserPreferences();
   const positionsQuery = usePositions();
@@ -460,10 +460,10 @@ const PortfolioHoldings: React.FC = () => {
           <Button
             size="xs"
             variant="outline"
-            colorPalette="red"
+            colorPalette="blue"
             onClick={(e) => {
               e.stopPropagation();
-              setSellTarget({
+              setTradeTarget({
                 symbol: row.symbol,
                 currentPrice: Number(row.current_price ?? 0),
                 sharesHeld: Number((row as any).shares ?? 0),
@@ -472,7 +472,7 @@ const PortfolioHoldings: React.FC = () => {
               });
             }}
           >
-            Sell
+            Trade
           </Button>
         ),
         width: '60px',
@@ -552,15 +552,15 @@ const PortfolioHoldings: React.FC = () => {
         )}
       </Box>
       <ChartSlidePanel symbol={chartSymbol} onClose={() => setChartSymbol(null)} />
-      {sellTarget && (
-        <SellOrderModal
-          isOpen={!!sellTarget}
-          onClose={() => setSellTarget(null)}
-          symbol={sellTarget.symbol}
-          currentPrice={sellTarget.currentPrice}
-          sharesHeld={sellTarget.sharesHeld}
-          averageCost={sellTarget.averageCost}
-          positionId={sellTarget.positionId}
+      {tradeTarget && (
+        <TradeModal
+          isOpen={!!tradeTarget}
+          onClose={() => setTradeTarget(null)}
+          symbol={tradeTarget.symbol}
+          currentPrice={tradeTarget.currentPrice}
+          sharesHeld={tradeTarget.sharesHeld}
+          averageCost={tradeTarget.averageCost}
+          positionId={tradeTarget.positionId}
           onOrderPlaced={() => positionsQuery.refetch()}
         />
       )}

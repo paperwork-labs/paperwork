@@ -112,6 +112,10 @@ export interface Column<T = any> {
   filterable?: boolean;
   /** When true the column is available for sorting/filtering but hidden from the table by default. */
   hidden?: boolean;
+  /** When true the column is hidden on viewports below `md` breakpoint. */
+  hiddenOnMobile?: boolean;
+  /** Optional compact renderer for mobile card-style rows. */
+  mobileRender?: (value: any, item: T) => React.ReactNode;
 }
 
 interface SortableTableProps<T = any> {
@@ -160,7 +164,19 @@ function SortableTable<T = any>({
   });
   const [filtersOpen, setFiltersOpen] = useState(initialFiltersOpen);
 
-  const visibleColumns = useMemo(() => columns.filter((c) => !c.hidden), [columns]);
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  const visibleColumns = useMemo(
+    () => columns.filter((c) => !c.hidden && !(isMobile && c.hiddenOnMobile)),
+    [columns, isMobile],
+  );
 
   const borderColor = 'border.subtle';
   const hoverBg = 'bg.panel';
@@ -738,6 +754,7 @@ function SortableTable<T = any>({
                   onClick={onRowClick ? () => onRowClick(item) : undefined}
                   aria-label={onRowClick ? 'View details' : undefined}
                   tabIndex={onRowClick ? 0 : undefined}
+                  minH="44px"
                   onKeyDown={
                     onRowClick
                       ? (e) => {

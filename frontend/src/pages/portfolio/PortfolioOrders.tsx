@@ -13,25 +13,9 @@ import PageHeader from '../../components/ui/PageHeader';
 import { formatMoney } from '../../utils/format';
 import api from '../../services/api';
 
-interface OrderRow {
-  id: number;
-  symbol: string;
-  side: string;
-  order_type: string;
-  status: string;
-  quantity: number;
-  limit_price: number | null;
-  stop_price: number | null;
-  filled_quantity: number;
-  filled_avg_price: number | null;
-  estimated_commission: number | null;
-  broker_order_id: string | null;
-  error_message: string | null;
-  created_at: string | null;
-  submitted_at: string | null;
-  filled_at: string | null;
-  cancelled_at: string | null;
-}
+import type { Order } from '../../types/orders';
+
+type OrderRow = Order;
 
 type StatusFilter = 'all' | 'active' | 'filled' | 'cancelled';
 
@@ -178,8 +162,22 @@ const PortfolioOrders: React.FC = () => {
       accessor: (o) => o.filled_avg_price,
       sortable: true,
       isNumeric: true,
+      hiddenOnMobile: true,
       render: (v) => <Text fontSize="xs">{v != null ? formatMoney(Number(v), 'USD') : '—'}</Text>,
       width: '85px',
+    },
+    {
+      key: 'source',
+      header: 'Source',
+      accessor: (o) => o.source ?? 'manual',
+      sortable: true,
+      hiddenOnMobile: true,
+      render: (v) => (
+        <Badge size="sm" variant="subtle" colorPalette={v === 'strategy' ? 'purple' : v === 'rebalance' ? 'blue' : 'gray'}>
+          {String(v).charAt(0).toUpperCase() + String(v).slice(1)}
+        </Badge>
+      ),
+      width: '90px',
     },
     {
       key: 'estimated_commission',
@@ -187,6 +185,7 @@ const PortfolioOrders: React.FC = () => {
       accessor: (o) => o.estimated_commission,
       sortable: true,
       isNumeric: true,
+      hiddenOnMobile: true,
       render: (v) => <Text fontSize="xs">{v != null ? formatMoney(Number(v), 'USD') : '—'}</Text>,
       width: '75px',
     },

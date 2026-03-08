@@ -25,7 +25,7 @@ import {
 } from '@chakra-ui/react';
 import { FiX } from 'react-icons/fi';
 import { marketDataApi } from '../../services/api';
-import SellOrderModal from '../orders/SellOrderModal';
+import TradeModal from '../orders/TradeModal';
 
 export const PortfolioSymbolsContext = React.createContext<Record<string, any> | null>(null);
 
@@ -264,7 +264,7 @@ const ChartSlidePanelInner: React.FC<{ symbol: string | null; onClose: () => voi
   const chartHeight = typeof window !== 'undefined' ? window.innerHeight - 100 : 400;
   const portfolioSymbols = React.useContext(PortfolioSymbolsContext);
   const isHeld = symbol ? symbol in (portfolioSymbols || {}) : false;
-  const [sellOpen, setSellOpen] = useState(false);
+  const [tradeOpen, setTradeOpen] = useState(false);
 
   const posData = symbol && portfolioSymbols?.[symbol];
   const sharesHeld = posData ? posData.quantity : 0;
@@ -309,16 +309,14 @@ const ChartSlidePanelInner: React.FC<{ symbol: string | null; onClose: () => voi
             <HStack gap={2}>
               <Text fontWeight="semibold" fontSize="sm">{symbol}</Text>
               {isHeld && <Badge size="sm" colorPalette="blue" variant="subtle">Held</Badge>}
-              {isHeld && (
-                <Button
-                  size="xs"
-                  variant="outline"
-                  colorPalette="red"
-                  onClick={() => setSellOpen(true)}
-                >
-                  Sell
-                </Button>
-              )}
+              <Button
+                size="xs"
+                variant="outline"
+                colorPalette="blue"
+                onClick={() => setTradeOpen(true)}
+              >
+                Trade
+              </Button>
             </HStack>
             <IconButton aria-label="Close chart" size="sm" variant="ghost" onClick={onClose}>
               <FiX />
@@ -342,14 +340,14 @@ const ChartSlidePanelInner: React.FC<{ symbol: string | null; onClose: () => voi
         </DialogContent>
       </DialogPositioner>
 
-      {sellOpen && symbol && (
-        <SellOrderModal
-          isOpen={sellOpen}
+      {tradeOpen && symbol && (
+        <TradeModal
+          isOpen={tradeOpen}
           symbol={symbol}
-          currentPrice={currentPrice}
+          currentPrice={currentPrice || 0}
           sharesHeld={sharesHeld}
           averageCost={averageCost}
-          onClose={() => setSellOpen(false)}
+          onClose={() => setTradeOpen(false)}
         />
       )}
     </DialogRoot>

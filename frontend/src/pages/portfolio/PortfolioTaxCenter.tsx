@@ -30,11 +30,11 @@ import { useUserPreferences } from '../../hooks/useUserPreferences';
 import { formatMoney } from '../../utils/format';
 import { TableSkeleton } from '../../components/shared/Skeleton';
 import StatCard from '../../components/shared/StatCard';
-import SellOrderModal from '../../components/orders/SellOrderModal';
+import TradeModal from '../../components/orders/TradeModal';
 import { TAX_RATE_SHORT_TERM_PCT, TAX_RATE_LONG_TERM_PCT } from '../../constants/tax';
 import { useColorMode } from '../../theme/colorMode';
 
-type SellTarget = { symbol: string; currentPrice: number; sharesHeld: number; averageCost?: number } | null;
+type TradeTarget = { symbol: string; currentPrice: number; sharesHeld: number; averageCost?: number } | null;
 
 interface TaxLotRow {
   id: number;
@@ -100,7 +100,7 @@ const PortfolioTaxCenter: React.FC = () => {
   const isDark = colorMode === 'dark';
   const [activeTab, setActiveTab] = useState<TabId>('unrealized');
   const [search, setSearch] = useState('');
-  const [sellTarget, setSellTarget] = useState<SellTarget>(null);
+  const [tradeTarget, setTradeTarget] = useState<TradeTarget>(null);
   const [filter, setFilter] = useState<'all' | 'lt' | 'st' | 'harvest' | 'approaching'>('all');
   const [sortBy, setSortBy] = useState<SortField>('days_held');
   const [sortDesc, setSortDesc] = useState(true);
@@ -489,7 +489,7 @@ const PortfolioTaxCenter: React.FC = () => {
                           size="xs"
                           variant="outline"
                           colorPalette="red"
-                          onClick={() => setSellTarget({
+                          onClick={() => setTradeTarget({
                             symbol: l.symbol,
                             currentPrice: l.shares > 0 ? l.market_value / l.shares : 0,
                             sharesHeld: l.shares,
@@ -543,14 +543,14 @@ const PortfolioTaxCenter: React.FC = () => {
       </CardRoot>
       )}
 
-      {sellTarget && (
-        <SellOrderModal
-          isOpen={!!sellTarget}
-          symbol={sellTarget.symbol}
-          currentPrice={sellTarget.currentPrice}
-          sharesHeld={sellTarget.sharesHeld}
-          averageCost={sellTarget.averageCost}
-          onClose={() => setSellTarget(null)}
+      {tradeTarget && (
+        <TradeModal
+          isOpen={!!tradeTarget}
+          symbol={tradeTarget.symbol}
+          currentPrice={tradeTarget.currentPrice}
+          sharesHeld={tradeTarget.sharesHeld}
+          averageCost={tradeTarget.averageCost}
+          onClose={() => setTradeTarget(null)}
         />
       )}
     </VStack>
