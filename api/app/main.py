@@ -18,17 +18,21 @@ from app.utils.correlation import CorrelationIdMiddleware
 from app.utils.exceptions import AppException, app_exception_handler
 from app.utils.pii_scrubber import setup_pii_scrubbing
 
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 
 def _run_migrations() -> None:
     """Run Alembic migrations on startup. Safe for single-instance deploys."""
+    if "localhost" in settings.DATABASE_URL or "127.0.0.1" in settings.DATABASE_URL:
+        logger.info("Skipping auto-migration (local/default DATABASE_URL)")
+        return
     try:
         result = subprocess.run(
             ["alembic", "upgrade", "head"],
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=10,
         )
         if result.returncode == 0:
             logger.info("Alembic migrations applied successfully")
