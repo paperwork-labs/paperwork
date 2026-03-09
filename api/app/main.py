@@ -27,12 +27,15 @@ def _run_migrations() -> None:
     if "localhost" in settings.DATABASE_URL or "127.0.0.1" in settings.DATABASE_URL:
         logger.info("Skipping auto-migration (local/default DATABASE_URL)")
         return
+    import pathlib
+    api_dir = str(pathlib.Path(__file__).resolve().parent.parent)
     try:
         result = subprocess.run(
             ["alembic", "upgrade", "head"],
             capture_output=True,
             text=True,
             timeout=10,
+            cwd=api_dir,
         )
         if result.returncode == 0:
             logger.info("Alembic migrations applied successfully")
