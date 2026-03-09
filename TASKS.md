@@ -1,800 +1,781 @@
-# filefree.tax — Build Tasks
+# FileFree — Unified Build Tasks
 
-Work through these in order. Each task is scoped for one Cursor session. Paste the task into Cursor as your prompt — it has .cursorrules for full context. Check them off as you go.
+**Version**: 5.0 | **Updated**: 2026-03-09
+
+Work through these in order. Each task is scoped for one PR. Reference PRODUCT_SPEC.md for UX specs, .cursorrules for coding conventions, PRD.md for business context.
+
+**AI-agent-assisted development**: Each task is scoped for 4-8 hours of focused work with AI coding agents. The entire core MVP (Sprint 0 through Sprint 3) targets ~2 weeks of calendar time.
+
+**Critical dates:**
+- March 9: EFIN application submitted + coding starts + Hetzner VPS + Postiz deployed (Task B.6)
+- March 14: Foundation complete (Docker, Next.js, FastAPI, DB) + daily social posting begins
+- March 18: Landing page live on filefree.tax + OCR demo working
+- March 22: Full MVP code complete (auth, filing, tax calc, PDF) + paid ads start (boost top organic posts)
+- March 25: Production deployed, beta testing + creator partnerships go live
+- April 15: Tax deadline push — peak content + paid amplification
+- October 2026: Column Tax e-file live + IRS ATS testing begins for own transmitter
+- January 2027: Own MeF transmitter live = FREE E-FILE (NORTH STAR)
 
 ---
 
-## Phase 0: Project Setup
+## Sprint 0: Business Operations (March 9 — parallel with coding)
 
-Task 0.0 — Dev Infrastructure & Docker
-Set up the full local development environment using Docker Compose with separate dev and test configurations so they never share data.
+Non-code tasks that must happen immediately. These run in parallel with Sprint 1.
 
-Create three compose files at the project root:
+### Task B.1 — EFIN Application (Form 8633)
 
-docker-compose.yml — base services shared by both dev and test:
+**APPLY THIS WEEK.** 45-day IRS processing time is the longest lead item.
 
-PostgreSQL 15 (user: filefree, password: filefree_dev)
-Redis 7
-The FastAPI backend (volume-mounted code, hot reload via uvicorn --reload)
-A Celery worker (same image as API, runs celery worker command)
-A Celery beat scheduler (same image as API, runs celery beat command)
-The Next.js frontend (volume-mounted code, hot reload)
-Mailhog for dev email testing (SMTP port 1025, UI port 8025)
-docker-compose.dev.yml — dev overrides:
+Requirements:
+- PTIN (Preparer Tax Identification Number) — apply at irs.gov/ptin
+- IRS e-Services account — register at irs.gov
+- ID.me identity verification
+- Fingerprinting appointment (for non-credentialed applicants)
+- Submit Form 8633 electronically via e-Services
 
-Postgres db name: filefree_dev, exposed on port 5432
-Redis exposed on port 6379
-API exposed on port 8000
-Frontend exposed on port 3000
-Mailhog UI exposed on port 8025
-Named volumes for postgres data persistence (filefree_dev_pgdata) so your data survives restarts
-Named volume for redis data persistence
-All env vars point to dev database and dev redis (db 0)
-docker-compose.test.yml — test overrides:
+Expected approval: ~late April 2026. This unblocks MeF system access.
 
-Postgres db name: filefree_test, use tmpfs for the data directory so it's fast and fully disposable
-Redis uses db 1 (or a separate container) so it never touches dev sessions
-API and celery run but no ports exposed (tests run inside the network)
-No frontend service (not needed for backend tests)
-No named volumes — everything is ephemeral
-Overrides the API entrypoint to run: alembic upgrade head, then wait (so you can exec pytest into it), OR provide a test-runner service that depends on api+postgres+redis being healthy and runs pytest then exits
-Environment variable TESTING=true so the app can detect test mode (e.g., skip real S3, use mock OCR)
-Usage patterns (document these in the README):
+### Task B.2 — Company Setup
 
-# Dev
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+- Register LLC/Corp if not already done
+- Set up business bank account
+- Create social media accounts: TikTok (@filefree), Instagram (@filefree.tax), Twitter/X (@filefreetax), YouTube (FileFree)
+- Pin post on all accounts: "Coming soon — file your taxes in 5 minutes, free."
 
-# Run tests (isolated, disposable)
-docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm api pytest -v
+### Task B.3 — Legal Drafts
 
-# Tear down test containers (no data loss in dev)
-docker compose -f docker-compose.yml -f docker-compose.test.yml down
+- Draft v1 privacy policy (plain English, CCPA/GDPR compliant) — disclose AI processing of tax data, SSN isolation
+- Draft v1 terms of service with tax preparation disclaimers
+- Note: AI advisory content must be positioned as "tax education" not "tax advice" (IRS Circular 230)
 
-Create Dockerfiles:
+### Task B.4 — Notion Workspace (Company HQ)
 
-filefree-api/Dockerfile — Python 3.11-slim, install requirements, expose 8000
-filefree-web/Dockerfile.dev — Node 20-alpine, npm install, expose 3000
-All services should have health checks where applicable. Use depends_on with conditions so the API waits for healthy postgres and redis before starting.
+- Create Notion workspace: "FileFree HQ"
+- Pages: Strategy, Product Roadmap, Decision Log, Content Calendar, Legal/Compliance, Financials
+- Decision Log: record every strategic decision with date, rationale, alternatives considered
+- Connect to Cursor via .cursor/mcp.json (Notion MCP)
 
-Also set up:
+### Task B.5 — Column Tax Outreach
 
-.gitignore covering Node, Python, .env files, .next, pycache, venv, docker volumes
-.env.example files for both frontend and backend with all required env vars documented (include comments noting which vars differ between dev and test)
-A README.md with instructions for both docker compose up commands, what URLs to hit in dev, and how to run tests in isolation
-Also create a .github/workflows/ci.yml GitHub Actions workflow that:
+- Book Column Tax demo call (columntax.com/contact-us)
+- Goal: understand SDK, negotiate pricing (target $10-15/return), get sandbox access
+- This is backup/interim only — own MeF transmitter is the priority
 
-On PR and push to main
-Uses the test compose configuration (or spins up postgres + redis as GH Actions service containers)
-Runs Python linting (ruff), type checking (mypy), and tests (pytest) against the test database
-Runs TypeScript linting (eslint), type checking (tsc --noEmit), tests (vitest), and build (next build)
-And a .github/dependabot.yml that checks npm, pip, and github-actions weekly.
+### Task B.6 — Social Media Infrastructure + Ad Accounts
 
+**Spin up the social media operations stack (parallel with coding):**
 
+**Hetzner VPS** ($7.50/mo, CX33: 8GB RAM, 2 vCPU, 80GB SSD):
+- Deploy Postiz (open-source social media scheduler) + PostgreSQL + Redis + Temporal via Docker Compose
+- Keep n8n container defined but stopped until Phase 2 autonomous workflows
+- Separate databases within shared PostgreSQL: `postiz_db` and `n8n_db`
 
+**Postiz setup:**
+- Connect accounts: TikTok (@filefree), Instagram (@filefree.tax), X (@filefreetax), YouTube (FileFree)
+- Generate API key for REST API + MCP integration
+- Test scheduling a post to each platform
+- Try Postiz MCP in Cursor (known reliability issues with self-hosted — use REST API as fallback)
 
+**Ad accounts:**
+- TikTok Ads Manager: create business account, add payment method, install TikTok Pixel on filefree.tax
+- Meta Ads Manager: create business account, connect Instagram, add payment method, install Meta Pixel
+- Do NOT launch ads yet — wait until Week 3 when organic content proves which formats work
 
+**Content prep:**
+- AI drafts first 10 posts via social.mdc persona (scripts, captions, hooks)
+- Record first 5 founder-led videos (see social.mdc for topics)
+- Schedule Week 2 content in Postiz
 
-### Task 0.1 — Initialize Next.js Frontend
-Create a new Next.js 14 app inside `filefree-web/` with App Router, TypeScript, Tailwind CSS, ESLint, and src directory.
+**Acceptance**: Postiz is live and can schedule to all 4 platforms. Ad accounts created. First 10 posts drafted. First 5 videos recorded.
 
-Install these dependencies:
-- framer-motion, recharts, lucide-react, zustand, react-hook-form, @hookform/resolvers, zod, axios
-- ai, @ai-sdk/react, @ai-sdk/openai (Vercel AI SDK for streaming)
-- @react-pdf/renderer (for tax return PDF generation)
-- clsx, tailwind-merge
+---
 
-Initialize shadcn/ui: New York style, Zinc base color, CSS variables enabled. Add these base components: button, card, input, label, form, dialog, sheet, toast, dropdown-menu, separator, badge, tabs.
+## Sprint 1: Foundation + Get Live (Days 1-4)
 
-Configure `tailwind.config.ts`:
-- Dark mode: 'class'
-- Extend with brand violet/purple palette
-- Add Inter (body) and JetBrains Mono (numbers/monospace) fonts
+### Task 0.1 — Docker Dev Environment
 
-Override CSS variables in `globals.css` for our dark violet/purple theme:
-- Background: very deep gray/near-black
-- Primary: violet
-- Accent: purple tones
-- Make it feel like Linear or Raycast, not TurboTax
+**Branch**: `feat/0.1-docker-dev-environment`
 
-Create these foundational files:
-- `src/lib/api.ts` — axios instance with base URL from env var, withCredentials for cookies, response interceptor for error handling
-- `src/lib/utils.ts` — formatCurrency (cents to $X,XXX.XX), formatSSN (mask as XXX-XX-1234), cn (clsx + tailwind-merge)
-- `src/types/index.ts` — TypeScript interfaces matching all data models from PRD (User, Filing, Document, TaxProfile, TaxCalculation, Submission, all enums)
-- `src/store/use-auth-store.ts` — Zustand store: user, isAuthenticated, login/register/logout actions
-- `src/store/use-filing-store.ts` — Zustand store: currentStep, filing, documents, taxProfile, calculation, navigation actions
+Set up local development with Docker Compose.
 
-Base layout in `src/app/layout.tsx`: dark background, fonts loaded, metadata for filefree.tax.
+**docker-compose.yml**:
+- PostgreSQL 15 (user: filefree, password: filefree_dev, db: filefree_dev)
+- Redis 7 (sessions)
+- FastAPI backend (volume-mounted, hot reload, port 8000)
+- Next.js frontend (volume-mounted, hot reload, port 3000)
 
-Verify it runs on localhost:3000 with the dark theme.
+**Dockerfiles**:
+- `filefree-api/Dockerfile` — Python 3.11-slim, install requirements, expose 8000
+- `filefree-web/Dockerfile.dev` — Node 20-alpine, npm install, expose 3000
 
-### Task 0.2 — Initialize FastAPI Backend
-Create the `filefree-api/` directory with this structure:
-ilefree-api/
+**Also create**:
+- `.gitignore` — Node, Python, .env, .next, __pycache__, venv, docker volumes, uploads/
+- `.env.example` files for both frontend and backend
+- `README.md` with setup instructions
+- Named volumes for postgres data persistence
+- `Makefile` — targets: `dev` (docker compose up), `test` (run all tests), `lint` (ruff + eslint), `format` (ruff format + prettier), `migrate` (alembic upgrade head), `seed` (seed test data), `clean` (docker compose down -v)
+- `.python-version` — `3.11` (pyenv/asdf compatible)
+- `.node-version` — `20` (nvm/fnm compatible)
+- `pyproject.toml` — ruff + mypy configuration ONLY (deps stay in requirements.txt for wider compatibility)
+
+**Important:** Docker Compose is for LOCAL DEVELOPMENT ONLY. Production uses Render native buildpack (render.yaml) + Vercel git deploy. No production Dockerfiles needed.
+
+Health checks on all services. API waits for healthy postgres and redis before starting.
+
+**Acceptance**: `docker compose up` starts everything, frontend on :3000, API /health returns `{ "status": "healthy" }`. `make dev`, `make test`, `make lint` all work.
+
+---
+
+### Task 0.2 — Next.js Frontend Init + Design System
+
+**Branch**: `feat/0.2-frontend-design-system`
+
+Create `filefree-web/` with Next.js 14 App Router, TypeScript, Tailwind CSS, ESLint, src directory.
+
+**Dependencies**:
+- framer-motion, recharts, lucide-react, zustand, @tanstack/react-query
+- react-hook-form, @hookform/resolvers, zod, axios
+- ai, @ai-sdk/react, @ai-sdk/openai
+- @react-pdf/renderer
+- clsx, tailwind-merge, next-themes, sonner, vaul, react-dropzone, date-fns, nuqs
+- canvas-confetti
+
+**shadcn/ui init**: New York style, Slate base, CSS variables, border-radius 0.5rem. Install: button, input, label, card, dialog, sheet, tooltip, popover, dropdown-menu, select, checkbox, radio-group, switch, textarea, separator, badge, skeleton, progress, form, command, accordion.
+
+**Design system** (see PRODUCT_SPEC.md):
+- `tailwind.config.ts`: dark mode 'class', Indigo primary + Slate neutrals, Inter + JetBrains Mono
+- `globals.css`: CSS custom properties for all tokens in `:root` and `.dark`
+- `next-themes`: defaultTheme="dark"
+- Inter via `next/font/google`, weights 400/500/600/700
+
+**Foundational files**:
+- `src/lib/utils.ts` — `cn()`, `formatCurrency()`, `formatSSN()`
+- `src/lib/motion.ts` — Framer Motion presets
+- `src/lib/api.ts` — axios instance with withCredentials, error interceptor
+- `src/types/index.ts` — TypeScript interfaces matching PRD data models
+
+Base layout: dark background, fonts, metadata, QueryClientProvider, ThemeProvider.
+
+**Acceptance**: Runs on :3000 with dark theme, design tokens work, shadcn components render.
+
+---
+
+### Task 0.3 — FastAPI Backend Init + Database
+
+**Branch**: `feat/0.3-backend-database`
+
+Create `filefree-api/` with structure:
+```
+filefree-api/
 ├── app/
-│ ├── init.py
-│ ├── main.py # FastAPI app, CORS, middleware, exception handlers
-│ ├── config.py # Pydantic Settings for all env vars
-│ ├── database.py # Async SQLAlchemy engine + session maker
-│ ├── worker.py # Celery app configuration
-│ ├── models/ # SQLAlchemy ORM models
-│ │ ├── init.py
-│ │ ├── user.py
-│ │ ├── filing.py
-│ │ ├── document.py
-│ │ ├── tax_profile.py
-│ │ ├── tax_calculation.py
-│ │ └── submission.py
-│ ├── schemas/ # Pydantic request/response schemas
-│ │ ├── init.py
-│ │ ├── auth.py
-│ │ ├── filing.py
-│ │ ├── document.py
-│ │ └── tax.py
-│ ├── routers/ # API route handlers
-│ │ ├── init.py
-│ │ ├── auth.py
-│ │ ├── filings.py
-│ │ ├── documents.py
-│ │ └── tax.py
-│ ├── services/ # Business logic layer
-│ │ ├── init.py
-│ │ ├── auth_service.py
-│ │ ├── document_service.py
-│ │ ├── ocr_service.py
-│ │ ├── tax_calculator.py
-│ │ └── ai_insights.py
-│ ├── repositories/ # Database access layer
-│ │ ├── init.py
-│ │ ├── user_repo.py
-│ │ ├── filing_repo.py
-│ │ └── document_repo.py
-│ └── utils/
-│ ├── init.py
-│ ├── encryption.py # AES-256 encryption for PII fields
-│ ├── security.py # Password hashing, session management
-│ └── exceptions.py # Custom exception classes + FastAPI handlers
-├── alembic/
-│ └── versions/
-├── alembic.ini
+│   ├── main.py, config.py, database.py
+│   ├── models/       (all data models)
+│   ├── schemas/      (Pydantic request/response)
+│   ├── routers/      (auth, filings, documents, tax, waitlist)
+│   ├── services/     (auth, document, ocr, tax_calculator, storage)
+│   ├── repositories/ (user, filing, document)
+│   └── utils/        (encryption, security, exceptions, pii_scrubber)
+├── alembic/ + alembic.ini
+├── tax-data/2025.json
 ├── tests/
-│ ├── init.py
-│ ├── conftest.py
-│ ├── test_tax_calculator.py
-│ └── test_ocr_service.py
 ├── requirements.txt
 └── .env.example
+```
 
-requirements.txt should include: fastapi, uvicorn[standard], sqlalchemy[asyncio], asyncpg, alembic, pydantic, pydantic-settings, python-multipart, python-jose[cryptography], passlib[bcrypt], boto3, openai, redis, celery, pillow, httpx, pytest, pytest-asyncio, ruff, mypy, factory-boy.
+**requirements.txt**: fastapi, uvicorn[standard], gunicorn, sqlalchemy[asyncio], asyncpg, alembic, pydantic, pydantic-settings, python-multipart, python-jose[cryptography], passlib[bcrypt], google-cloud-vision, google-cloud-storage, openai, redis, pillow, httpx, slowapi, cryptography, pytest, pytest-asyncio, ruff, mypy, factory-boy.
 
-Implement:
-- `main.py`: FastAPI app with CORS (allow frontend origin from env), include all routers with /api/v1 prefix, register exception handlers, add /health endpoint
-- `config.py`: Pydantic Settings reading DATABASE_URL, REDIS_URL, AWS keys, OPENAI_API_KEY, ENCRYPTION_KEY, SECRET_KEY, FRONTEND_URL, S3_BUCKET from env
-- `database.py`: async SQLAlchemy engine using asyncpg, async session maker, get_db dependency
-- `worker.py`: Celery app configured with Redis broker URL from config
-- `utils/exceptions.py`: UnauthorizedError, NotFoundError, ValidationError, ExtractionError — each mapped to proper HTTP status codes in exception handlers
+**Implement**:
+- `main.py`: CORS, router prefixes, exception handlers, PII scrubbing middleware, /health
+- `config.py`: Pydantic Settings for all env vars
+- `database.py`: async SQLAlchemy engine + session + get_db
+- `utils/encryption.py`: AES-256 encrypt/decrypt
+- `utils/security.py`: hash_password, verify_password, generate_session_token
+- `utils/exceptions.py`: custom exceptions with HTTP status mapping
+- `utils/pii_scrubber.py`: middleware stripping SSN patterns from logs
+- All SQLAlchemy models per PRD Section 5 (includes Waitlist table)
+- `tax-data/2025.json`: brackets, standard deductions ($15,750/$31,500/$15,750/$23,625), source citations
 
-Verify: uvicorn runs and /health returns `{ "status": "healthy" }`.
+**Alembic**: async, initial migration.
 
-### Task 0.3 — Database Models & Migrations
-Implement all SQLAlchemy ORM models matching the data models from PRD.md Section 4.
-
-Every model needs:
-- id: UUID primary key with default uuid4
-- created_at: DateTime with server_default=func.now()
-- updated_at: DateTime with onupdate=func.now()
-
-Use proper types:
-- SQLAlchemy Enum for all status fields (FilingStatus, DocumentType, ExtractionStatus, IrsStatus)
-- JSONB for extraction_data, confidence_scores, address_encrypted, ai_insights, rejection_codes
-- String for all encrypted fields (SSN, names, etc.)
-- Integer for all monetary values (cents)
-- Proper foreign key relationships with back_populates
-
-Set up Alembic for async:
-- `alembic init alembic`
-- Configure env.py to use our async engine and import all models
-- Generate initial migration
-- The migration should run when the API container starts (or via a manual command)
-
-Verify: all tables are created in the Dockerized postgres.
+**Acceptance**: /health returns healthy, Alembic creates all tables.
 
 ---
 
-## Phase 1: Auth + Landing Page
+### Task 0.4 — Landing Page + Waitlist + Deploy
 
-### Task 1.1 — Backend Auth System
-Implement the full auth system:
+**Branch**: `feat/0.4-landing-deploy`
 
-`utils/security.py`:
-- hash_password and verify_password using bcrypt via passlib
-- generate_session_token using secrets.token_urlsafe(32)
+Landing page AND deployment in one task — we need to be live by March 22.
 
-`repositories/user_repo.py`:
-- create_user(db, email, password_hash, full_name_encrypted)
-- get_by_email(db, email)
-- get_by_id(db, user_id)
+**Landing page** (`src/app/page.tsx`):
+- Hero: "Taxes shouldn't make you cry." / "Snap your W2. Get your return in minutes. Actually free."
+- Email capture: "Get early access" → POST /api/v1/waitlist
+- 3-step "How it works": Snap → We read it → Download your return
+- Trust badges: "256-bit encrypted", "We never sell your data", "Your data is deleted when you ask"
+- Anti-TurboTax hook: "Unlike TurboTax, we don't ask 60 questions or charge hidden fees."
+- Mobile-first, dark theme, gradient accents, fast
+- Social media links in footer
 
-`services/auth_service.py`:
-- register(db, redis, email, password, full_name) — validate unique email, hash password, encrypt full_name, create user, create Redis session, return user + session token
-- login(db, redis, email, password) — verify credentials, create Redis session, return user + session token
-- logout(redis, session_token) — delete Redis session
-- get_current_user(db, redis, session_token) — lookup session in Redis, fetch user
+**Backend**: POST /api/v1/waitlist stores email + source + timestamp.
 
-Redis sessions: key = `session:{token}`, value = user_id as string, TTL = 7 days.
+**Deploy**:
+- Frontend → Vercel (Pro plan), custom domain filefree.tax
+- Backend → Render (Starter plan, $7/mo, 512MB — sufficient for FastAPI making HTTP calls), custom domain api.filefree.tax
+- Database → Neon serverless PostgreSQL (free tier)
+- Sessions → Upstash serverless Redis (free tier)
+- Storage → GCP Cloud Storage bucket with encryption + 24hr lifecycle policy
+- HTTPS everywhere
+- Create `render.yaml` at project root for Render Blueprints (IaC). Defines: web service, build command, start command: `gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT`. Render uses native Python buildpack — no production Dockerfile needed.
 
-`routers/auth.py`:
-- POST `/api/v1/auth/register` — body: { email, password, full_name }, sets httponly cookie named `session`, returns `{ success: true, data: { id, email } }`
-- POST `/api/v1/auth/login` — body: { email, password }, sets cookie, returns user
-- POST `/api/v1/auth/logout` — clears cookie, deletes Redis session
-- GET `/api/v1/auth/me` — reads cookie, returns current user or 401
-
-Cookie settings: httponly=True, secure=True (except when ENVIRONMENT=development), samesite='lax', max_age=604800, path='/'
-
-Create a FastAPI dependency `get_current_user` that extracts the session cookie, validates against Redis, and returns the User ORM object. Raise UnauthorizedError if invalid.
-
-### Task 1.2 — Landing Page
-Create the filefree.tax landing page at `src/app/page.tsx`.
-
-Hero section:
-- Headline: "File Your Taxes for Free"
-- Subline: "Take a photo of your W2. We'll handle the rest."
-- Big CTA button with animated gradient border using Framer Motion: "Start Filing — It's Free"
-- Subtle animated background — maybe a slow-moving gradient mesh or floating particles (Framer Motion, nothing heavy)
-
-Social proof: "Join X,XXX people who already filed" with an animated counter
-
-How it works section — 3 steps with Framer Motion scroll-triggered animations:
-1. 📸 "Snap your W2" — take a photo
-2. ✅ "Confirm your info" — AI extracts everything, you just double-check
-3. 🚀 "File instantly" — submitted to the IRS in seconds
-
-Comparison section: "filefree.tax vs TurboTax" — side by side showing time (60s vs 45min), cost (Free vs $89+), questions asked (3 vs 60+)
-
-Footer with links and legal disclaimers.
-
-Use shadcn components (Button, Card) with our dark theme. Must look amazing on mobile (375px) through desktop (1440px). This is the first thing users see — it needs to feel premium, modern, and fast. Think Linear.app or Raycast landing page energy.
-
-### Task 1.3 — Auth UI + Middleware
-Create auth pages:
-
-`src/app/auth/layout.tsx` — centered card on gradient background, filefree.tax logo at top
-
-`src/app/auth/register/page.tsx`:
-- Fields: Full Name, Email, Password, Confirm Password
-- Zod schema validation via shadcn Form component
-- Animated field transitions with Framer Motion
-- On success: call useAuthStore.register, redirect to /file
-
-`src/app/auth/login/page.tsx`:
-- Fields: Email, Password
-- "Don't have an account? Sign up" link
-- On success: call useAuthStore.login, redirect to /file
-
-Implement `useAuthStore` fully:
-- user state, isAuthenticated computed
-- register action: POST /api/v1/auth/register, set user state
-- login action: POST /api/v1/auth/login, set user state
-- logout action: POST /api/v1/auth/logout, clear state
-- checkAuth action: GET /api/v1/auth/me, set user or clear (call on app mount)
-
-Create a shadcn Toast-based notification system for errors ("Invalid email or password", "Account already exists", etc.). Never show raw API errors.
-
-Create `src/middleware.ts` (Next.js middleware):
-- Protect all `/file/*` and `/dashboard/*` routes
-- If no session cookie present, redirect to `/auth/login`
-- Allow `/`, `/auth/*`, and API routes through
+**Acceptance**: filefree.tax is live, email capture works, page loads in < 2s, responsive 375px-1440px. Backend deploy via `render.yaml` succeeds.
 
 ---
 
-## Phase 2: Document Capture
+## Sprint 2: OCR Demo for April 15 (March 22 - April 15)
 
-### Task 2.1 — Camera Component
-Create `src/components/camera/document-camera.tsx`.
+Ship the "wow moment" — anonymous W2 scanning — to ride the April 15 traffic spike.
 
-Props: documentType ('w2' | 'drivers_license'), onCapture (file: File) => void, onError (message: string) => void
+### Task 1.1 — Camera Component + Image Quality
 
-The component should:
-1. Request rear camera: `navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } })`
-2. Render the live video stream filling the viewport
-3. Overlay a semi-transparent dark mask with a document-shaped transparent cutout in the center:
-   - W2: landscape rectangle, roughly 8.5x11 aspect ratio
-   - DL: landscape rectangle, credit card aspect ratio (~1.586:1)
-4. Animated guide text above the cutout: "Position your W2 within the frame"
-5. Large capture button centered at bottom — white circle with satisfying scale animation on press (Framer Motion)
-6. "Upload from library" text button below capture button — triggers a hidden file input with accept="image/*"
-7. On capture: draw current video frame to a hidden canvas, export as JPEG (quality 0.92), create File object, call onCapture
+**Branch**: `feat/1.1-camera-image-quality`
 
-Handle states:
-- Loading: "Starting camera..." with spinner while getUserMedia resolves
-- Permission denied: friendly message "Camera access is needed to scan your documents. Please allow camera access in your browser settings." with a "Try Again" button
-- Error: generic camera error message
+**`src/components/camera/document-camera.tsx`**:
+Props: documentType, onCapture, onError.
 
-Make it feel like a native camera app. Full viewport, no browser chrome showing if possible. Dark UI with white/violet accents.
+Features:
+1. Rear camera via getUserMedia
+2. Live video stream with document-shaped cutout overlay
+3. Guide text + capture button with animation
+4. "Upload from library" fallback
+5. Post-capture quality check and preview
 
-### Task 2.2 — Image Quality Checks
-Create `src/lib/image-quality.ts` with these functions:
+**`src/lib/image-quality.ts`**: blur check, dimension check, file size check.
 
-`checkBlur(canvas: HTMLCanvasElement): { isBlurry: boolean, score: number }`:
-- Convert canvas to grayscale pixel data
-- Apply 3x3 Laplacian kernel convolution across the image
-- Calculate variance of the Laplacian output
-- Return isBlurry: true if variance < 100 (tune threshold as needed)
+**`src/components/upload/file-upload-zone.tsx`**: react-dropzone wrapper with drag-over, progress, errors.
 
-`checkDimensions(width: number, height: number): boolean`:
-- Return false if the shortest side is < 1000px
+**Acceptance**: Camera works mobile + desktop, quality checks catch bad images, upload fallback works.
 
-`checkFileSize(file: File): boolean`:
-- Return false if > 10MB
+---
 
-`validateCapturedImage(file: File, canvas: HTMLCanvasElement): { valid: boolean, message?: string }`:
-- Run all three checks
-- Return first failure with a friendly message:
-  - Blurry: "That came out a bit blurry. Try holding your phone steadier."
-  - Too small: "Move your phone a bit closer to the document."
-  - Too large: "Image is too large. Try again."
-- If all pass: { valid: true }
+### Task 1.2 — Tiered OCR Pipeline (Cloud Vision + GPT) + Demo Endpoint
 
-In the DocumentCamera component: after capturing, run validateCapturedImage. If it fails, show the error message with a "Retake" button. If it passes, show the captured image as a preview with "Use This Photo" and "Retake" buttons. "Use This Photo" calls onCapture with the file.
+**Branch**: `feat/1.2-ocr-pipeline`
 
-### Task 2.3 — Document Upload Backend
-Implement the document upload and retrieval endpoints.
+**Backend OCR — Tiered Pipeline (Cloud Vision + GPT)**:
 
-`repositories/document_repo.py`:
-- create_document(db, filing_id, document_type, s3_key)
-- get_by_id(db, document_id)
-- update_status(db, document_id, status)
-- update_extraction_data(db, document_id, data, confidence_scores)
-
-`services/document_service.py`:
-- upload_document(db, file, document_type, filing_id, user_id):
-  1. Verify the filing belongs to the user
-  2. Validate file type (JPEG or PNG only)
-  3. Process image with Pillow: resize if largest dimension > 2048px, maintain aspect ratio
-  4. Upload to S3 with server-side encryption (AES-256), key format: `documents/{filing_id}/{document_id}.jpg`
-  5. Create Document record in DB with status='pending'
-  6. Enqueue Celery task: process_document.delay(document_id)
-  7. Return the Document record
-- get_status(db, document_id, user_id) — verify ownership, return status
-- get_extraction_data(db, document_id, user_id) — verify ownership, return extraction_data + confidence_scores
-- update_extraction_data(db, document_id, user_id, corrections) — merge user corrections into extraction_data
-
-`routers/documents.py`:
-- POST `/api/v1/documents/upload` — multipart form: file + document_type + filing_id. Returns `{ success: true, data: { id, status: 'pending' } }`
-- GET `/api/v1/documents/{id}/status` — returns `{ success: true, data: { status, extraction_data?, confidence_scores? } }`
-- GET `/api/v1/documents/{id}/data` — returns full extraction data
-- PATCH `/api/v1/documents/{id}/data` — body: partial extraction data corrections
-
-All endpoints require auth. All endpoints verify the document belongs to the current user's filing.
-
-For S3: create a utility in `services/s3_service.py` that handles upload and presigned URL generation. Use config values for bucket name and region. If AWS creds aren't configured (local dev), save files to a local `uploads/` directory instead as a fallback.
-
-### Task 2.4 — OCR Pipeline (Celery Task)
-Implement the document processing Celery task.
+`services/image_processor.py`:
+- preprocess_image(image_bytes): auto-rotate via EXIF, contrast normalization (Pillow), resize to optimal OCR dimensions, return processed image bytes
+- Uses Pillow only (no OpenCV needed — Cloud Vision handles document detection)
 
 `services/ocr_service.py`:
+- process_document(image_bytes, document_type):
+  1. Preprocess image via image_processor
+  2. Call GCP Cloud Vision `DOCUMENT_TEXT_DETECTION` — returns hierarchical text (pages/blocks/paragraphs/words) with bounding box coordinates. $0.0015/page.
+  3. Extract SSN via regex (`\d{3}-?\d{2}-?\d{4}`) from Cloud Vision text output LOCALLY — NEVER send to GPT (replace with masked placeholder XXX-XX-XXXX)
+  4. **Primary path**: GPT-4o-mini structured output — send scrubbed OCR text + bounding box positions, maps to W-2 Pydantic schema (~$0.001/doc)
+  5. **Fallback path** (if low confidence <85%): GPT-4o vision receives actual image for direct extraction (~$0.02/doc)
+  6. Post-validate: SSN format (9 digits), EIN format (XX-XXXXXXX), wage amounts numeric, cross-field consistency
+  7. Return extraction_data + confidence_scores
 
-Main Celery task `process_document(document_id: str)`:
-1. Fetch Document record from DB
-2. Download image from S3 (or local uploads/ in dev)
-3. Call AWS Textract `analyze_document` with FeatureTypes=['FORMS']
-4. Parse the Textract response — extract all key-value pairs from the FORMS feature results
-5. Map extracted pairs to structured fields based on document_type:
+- No model initialization needed (Cloud Vision is a remote API call — no memory overhead)
+- MOCK MODE: if OPENAI_API_KEY not set, return realistic hardcoded W2 data. Essential for dev.
+- MOCK GCV MODE: if GOOGLE_APPLICATION_CREDENTIALS not set, return realistic hardcoded OCR output. Essential for dev without GCP credentials.
 
-For W2:
-- Map Box labels (Box 1, Box 2, etc.) to field names (wages, federal_withheld, etc.)
-- Extract: employee_ssn, employer_ein, employer_name, employer_address, employee_name, employee_address, wages (Box 1), federal_withheld (Box 2), ss_wages (Box 3), ss_tax (Box 4), medicare_wages (Box 5), medicare_tax (Box 6), state (Box 15), state_wages (Box 16), state_withheld (Box 17)
+`services/storage_service.py`: GCP Cloud Storage upload, signed URL, local filesystem fallback for dev.
 
-For DL:
-- Extract: full_name, address (street, city, state, zip), date_of_birth, dl_number
+`services/document_service.py`:
+- upload_document(db, file, document_type, filing_id, user_id): save to GCP Cloud Storage, create Document record, trigger background processing
+- demo_extract(file, document_type): process without storage, return data directly (for try-before-signup)
 
-6. Send raw extraction to GPT-4o for validation and correction:
-- System prompt: "You are a tax document data validator. Given raw OCR output, validate and correct extracted fields. Fix OCR errors (O vs 0, l vs 1). Ensure SSN is 9 digits (XXX-XX-XXXX), EIN is 9 digits (XX-XXXXXXX), monetary values are valid, state abbreviations are valid US states. Return structured JSON with each field and a confidence score 0-100."
-- Use structured output / function calling to enforce the response schema
-- Parse response into extraction_data and confidence_scores
+**Routers** (`routers/documents.py`):
+- POST `/api/v1/documents/demo-upload` — anonymous, rate limited (3/day/IP), no persistent storage, returns extraction data directly
+- POST `/api/v1/documents/upload` — authenticated, full pipeline (used later in Task 1.5)
+- GET `/api/v1/documents/{id}/status` — poll extraction status
+- GET `/api/v1/documents/{id}/data` — full data
+- PATCH `/api/v1/documents/{id}/data` — user corrections
 
-7. Save extraction_data and confidence_scores to Document record
-8. Update Document status to 'completed'
+**Accuracy Validation (REQUIRED):** Test the Cloud Vision + GPT-4o-mini pipeline against 20+ real W-2 images. Document per-field accuracy (employer name, EIN, wages, federal withholding, SSN, employee name/address). Target: 95%+ accuracy on Tier 1. If accuracy < 95%, increase GPT-4o vision fallback usage. Log results in KNOWLEDGE.md.
 
-Error handling:
-- If Textract fails: retry once after 5 seconds. If still fails, mark as 'failed' with error message.
-- If LLM fails: use raw Textract output without validation, set all confidence scores to 70 (medium).
-- Never let the task crash silently — always update the document status.
-
-Create a MOCK MODE for local dev: if AWS_ACCESS_KEY_ID is not set or equals "testing", skip Textract and return hardcoded realistic W2/DL extraction data with high confidence scores. This lets us build the frontend without needing real AWS creds.
-
----
-
-## Phase 3: Filing Flow UI
-
-### Task 3.1 — Filing Flow Layout & Navigation
-Create the filing flow shell at `src/app/file/layout.tsx`.
-
-This layout wraps all filing step pages and provides:
-- A progress bar at the top — animated width using Framer Motion, shows current step out of total
-- Step labels below the bar (small text, current step highlighted in violet)
-- Clean minimal chrome — NO navbar during filing, just the progress indicator
-- Exit button (X icon, top-left) that saves draft and navigates to /dashboard
-- Framer Motion AnimatePresence for page transitions — slide left when advancing, slide right when going back, with a subtle fade
-
-Update `use-filing-store.ts` with:
-- steps: ['w2', 'identity', 'confirm', 'details', 'summary', 'submit']
-- currentStep index
-- nextStep() and prevStep() actions
-- The filing object, documents array, taxProfile, and calculation data
-- A createFiling action that POSTs to /api/v1/filings and stores the result
-
-Also implement the filing creation endpoint on the backend:
-- POST `/api/v1/filings` — creates a new Filing with status='draft', returns it
-- GET `/api/v1/filings` — list current user's filings
-- GET `/api/v1/filings/{id}` — get filing detail (verify ownership)
-- PATCH `/api/v1/filings/{id}` — update filing_status, filing details
-
-Create the pages as placeholder files for now (just the page.tsx with a heading), we'll implement each one in subsequent tasks:
-- `src/app/file/page.tsx` — redirects to /file/w2 and creates a new filing
-- `src/app/file/w2/page.tsx`
-- `src/app/file/identity/page.tsx`
-- `src/app/file/confirm/page.tsx`
-- `src/app/file/details/page.tsx`
-- `src/app/file/summary/page.tsx`
-- `src/app/file/submit/page.tsx`
-
-### Task 3.2 — W2 Capture Page
-Implement `src/app/file/w2/page.tsx`.
-
-Use the DocumentCamera component with documentType='w2'.
-
-Flow:
-1. User sees full-screen camera interface
-2. On capture: show a processing overlay with animated messages cycling every 2 seconds ("Reading your W2...", "Extracting tax data...", "Crunching numbers...", "Almost there...") — use Framer Motion AnimatePresence to fade between messages. Show a pulsing violet gradient orb animation as the AI indicator.
-3. Upload the file to POST /api/v1/documents/upload
-4. Poll GET /api/v1/documents/{id}/status every 2 seconds
-5. On status='completed': show success checkmark animation, then auto-advance to identity step after 1 second
-6. On status='failed': show friendly error ("We couldn't read that W2. Let's try again.") with "Retake Photo" button
-
-After successful first W2, show the captured W2 as a small card/thumbnail with:
-- Green checkmark overlay
-- "W2 from [Employer Name]" text (from extraction data)
-- "Add Another W2" button below it
-
-Store document data in useFilingStore.
-
-### Task 3.3 — DL Capture Page
-Implement `src/app/file/identity/page.tsx`.
-
-Same pattern as W2 capture but:
-- documentType='drivers_license'
-- DL-shaped overlay
-- Explain why: "We need your ID to verify your identity with the IRS" — shown as a small info banner above the camera
-- Processing messages: "Reading your ID...", "Verifying identity...", "Almost done..."
-- On success: auto-advance to confirm step
-
-### Task 3.4 — Data Confirmation Page
-Implement `src/app/file/confirm/page.tsx`.
-
-Fetch extracted data from all documents in the current filing.
-
-Display in a clean form layout using shadcn Card, Input, Label, Form components:
-
-Section 1 — "Your Information" (from DL):
-- Full Name (editable input)
-- Street Address (editable)
-- City, State, Zip (editable, inline row)
-- Date of Birth (editable)
-
-Section 2 — "Your Income" (from W2, repeat for each W2):
-- Card header: "W2 from [Employer Name]"
-- Employer Name (editable)
-- Employer EIN (editable)
-- SSN — MASKED display: "XXX-XX-1234", tap to reveal temporarily (3 seconds then re-mask)
-- Wages - Box 1 (editable, formatted as currency)
-- Federal Tax Withheld - Box 2 (editable, formatted as currency)
-- State (editable, dropdown of US states)
-- State Wages - Box 16 (editable, formatted as currency)
-- State Tax Withheld - Box 17 (editable, formatted as currency)
-
-Each field has a confidence indicator dot:
-- Green dot (confidence > 95): high confidence
-- Yellow dot (confidence 80-95): "Please verify" — field has a subtle yellow border
-- Red dot (confidence < 80): "Needs attention" — field has a red border and is auto-focused
-
-Use Framer Motion for the confidence dot animations (pulse on yellow/red).
-
-Bottom CTA: "Everything Looks Right" shadcn Button — on click, PATCH the document data with any corrections and PUT the tax profile, then advance to details step.
-
-### Task 3.5 — Filing Details Page
-Implement `src/app/file/details/page.tsx`.
-
-Filing status selector — show as large, tappable shadcn Cards in a 2x2 grid:
-- Single (icon: User)
-- Married Filing Jointly (icon: Users)
-- Married Filing Separately (icon: UserMinus)
-- Head of Household (icon: Home)
-
-Each card shows the status name, a one-line description ("For most unmarried people"), and is selectable (violet border + checkmark when selected). AI pre-selects one based on extracted data (just default to Single for MVP).
-
-Below the selector, show an info Card:
-- "Standard Deduction: $15,000" (amount updates based on selected filing status)
-- "This is automatically applied and is the best option for most people."
-
-Additional required questions (minimal, as toggle switches using shadcn):
-- "Can anyone claim you as a dependent?" — Yes/No
-- "Did you have health insurance coverage all year?" — Yes/No
-
-Greyed-out "Dependents" section with "Coming in v1.1" badge.
-
-Big CTA button: "Calculate My Return" — calls POST /api/v1/filings/{id}/calculate, shows loading animation (the pulsing AI orb), on success advance to summary.
-
-### Task 3.6 — Return Summary Page (THE MONEY SCREEN)
-Implement `src/app/file/summary/page.tsx`. This is the most important screen — make it BEAUTIFUL.
-
-Fetch calculation results from GET /api/v1/filings/{id}/calculation.
-
-Hero section:
-- If REFUND: Big animated number counting up from $0 to the refund amount using Framer Motion (animate the number value over ~2 seconds). Green gradient text. Trigger a confetti animation (build a simple canvas-based confetti effect, no library). Text: "You're getting back"
-- If OWED: Calm display, orange/amber text, empathetic copy: "You owe". No celebration. Helpful tone.
-
-Breakdown section — clean Card with rows (NOT a table):
-- Each row: label on left, amount on right, subtle divider line
-- Gross Income → minus Standard Deduction → equals Taxable Income → Federal Tax Calculated → minus Already Paid (Withheld) → equals Your Refund / Amount Owed
-- Use subtle Framer Motion stagger animation — each row fades in sequentially
-
-Charts section (two cards side by side on desktop, stacked on mobile):
-- Pie chart (Recharts): "Where Your Federal Taxes Go" — Defense 15%, Healthcare 25%, Social Security 23%, Safety Net Programs 8%, Interest on Debt 8%, Everything Else 21%. Use our violet/purple color palette.
-- Bar chart (Recharts): "Your Refund vs Average" — 3 bars: "You" (violet), "State Average" (gray), "National Average" (gray). Use mock averages for now.
-
-AI Insights section — THIS STREAMS IN:
-- Card with a sparkle/wand icon and "AI Tax Advisor" header
-- Use Vercel AI SDK's useCompletion hook to stream the explanation from a Next.js API route
-- Create `src/app/api/insights/route.ts` — calls OpenAI with the tax data context, streams the response
-- The text should type out word-by-word like ChatGPT
-- Show the pulsing gradient orb while waiting for the stream to start
-- Below the explanation, show 1-2 tip cards (e.g., "💡 IRA Contribution — Contributing to a Traditional IRA could save you up to $X next year")
-
-CTAs at bottom:
-- Primary: "File My Federal Return — Free" (big gradient button, Framer Motion hover effect)
-- Secondary: "Add [State] State Return — $14.99" (outline button)
+**Acceptance**: Demo endpoint works without auth, Cloud Vision extracts text from W2 images, GPT-4o-mini maps fields correctly, SSN never sent to OpenAI, rate limiting works, mock mode returns realistic data. Accuracy validation results documented.
 
 ---
 
-## Phase 4: Tax Engine & AI
+### Task 1.3 — Try-Before-Signup Frontend
 
-### Task 4.1 — Federal Tax Calculator
-Implement `services/tax_calculator.py`. This is the core tax engine — it must be 100% correct.
+**Branch**: `feat/1.3-try-before-signup`
 
-Store the 2025 federal tax bracket data as a constant dict keyed by filing status. Each entry is a list of (upper_bound_cents, rate) tuples. Include brackets for: single, married_joint, married_separate, head_of_household.
+The viral entry point: snap a W2 without an account, see the magic.
 
-Store the 2025 standard deduction amounts as a constant dict keyed by filing status. All values in cents.
+**Flow**:
+1. Landing page CTA "Snap Your W2 — See It In Action" → opens camera/upload (NO auth required)
+2. On capture: upload to demo-upload endpoint
+3. Show loading: animated gradient orb "Reading your W2..."
+4. On success: extracted data cascades in field by field (50ms stagger animation)
+5. Show extracted employer name, wages, withheld amounts
+6. Gate: "Create a free account to save your return and calculate your refund" → register page
+7. Store extracted data in sessionStorage
+8. On register: transfer sessionStorage data to new Filing + TaxProfile
 
-Functions:
-- `get_standard_deduction(filing_status: str) -> int` — returns deduction in cents
-- `calculate_federal_tax(taxable_income_cents: int, filing_status: str) -> int` — progressive bracket calculation, returns tax in cents. Iterate through brackets, calculate tax for the portion of income within each bracket range.
-- `calculate_return(filing_id: UUID, db: AsyncSession) -> TaxCalculation`:
-  1. Fetch the Filing and its TaxProfile
-  2. Get total_wages and total_federal_withheld from TaxProfile
-  3. adjusted_gross_income = total_wages
-  4. standard_deduction = get_standard_deduction(filing_status)
-  5. taxable_income = max(0, adjusted_gross_income - standard_deduction)
-  6. federal_tax = calculate_federal_tax(taxable_income, filing_status)
-  7. refund_or_owed = total_federal_withheld - federal_tax
-  8. Create and save TaxCalculation record
-  9. Return it
+**Implementation**:
+- `src/app/demo/page.tsx` — the try-before-signup flow
+- `src/components/demo/extraction-reveal.tsx` — animated field cascade
+- Update landing page CTA to link to /demo
 
-ALL VALUES IN CENTS. No floats anywhere. Integer arithmetic only.
-
-Implement `routers/tax.py`:
-- POST `/api/v1/filings/{id}/calculate` — calls calculate_return, returns the TaxCalculation
-- GET `/api/v1/filings/{id}/calculation` — returns existing TaxCalculation for the filing
-
-Write comprehensive tests in `tests/test_tax_calculator.py`:
-- Test single filer at each bracket boundary
-- Test married filing jointly brackets
-- Test zero income → zero tax
-- Test income exactly at a bracket boundary
-- Test standard deduction reduces taxable income correctly
-- Test refund scenario (withheld > tax)
-- Test owed scenario (withheld < tax)
-- Test all four filing statuses
-- Test that results are always integers
-- Test negative taxable income floors to zero
-- Aim for 100% line coverage on the calculator functions
-
-### Task 4.2 — AI Insights Service + Streaming Endpoint
-Implement `services/ai_insights.py`:
-
-`generate_insights_prompt(calculation: TaxCalculation, profile: TaxProfile) -> str`:
-- Build a prompt string with all the tax data context
-- System instruction: "You are a friendly, clear tax advisor for filefree.tax. Explain this person's tax return in plain English that a 22-year-old would understand. Be encouraging if they're getting a refund. Be empathetic if they owe. Never use jargon. Keep the explanation under 150 words. Then provide 1-2 specific, actionable tips for how they could save on taxes next year. Include dollar amounts where possible."
-
-On the backend, create an endpoint:
-- GET `/api/v1/filings/{id}/insights/stream` — streams the AI response using FastAPI's StreamingResponse + OpenAI's streaming API
-
-On the frontend, create:
-- `src/app/api/insights/route.ts` — a Next.js API route that proxies to the backend streaming endpoint (or calls OpenAI directly with the Vercel AI SDK)
-- This is what the useCompletion hook on the summary page connects to
-
-Also implement a fallback: if OpenAI is down or errors out, generate a basic template insight without AI:
-- "You earned [wages] this year. After the standard deduction of [deduction], your taxable income was [taxable]. You owed [tax] in federal taxes, and your employer withheld [withheld]. [You're getting back X / You owe X]."
+**Acceptance**: Anonymous user can scan W2, see extracted data, sign up and have data preserved. The cascade animation is genuinely impressive.
 
 ---
 
-## Phase 5: Submit & Dashboard
+### Task 1.4 — Content Foundation + Social Media Launch Sprint
 
-### Task 5.1 — Submit Flow
-Implement `src/app/file/submit/page.tsx`.
+**Branch**: `feat/1.4-content-foundation`
 
-Condensed return summary at top (Card):
-- Filing Status, Gross Income, Federal Tax, Refund/Owed — just the key numbers, one line each
+This runs in parallel with engineering tasks. Split into code (SEO/pages) and non-code (social execution).
 
-E-sign section (Card):
-- Header: "Verify Your Identity"
-- Explanation: "The IRS needs one of these to verify it's really you"
-- Option A: "5-digit IRS PIN" — input field, numeric, 5 digits
-- Option B: "Last year's AGI" — input field, currency formatted
-- Small text: "Don't have either? You can request an IRS PIN at irs.gov"
+**Technical SEO (code)**:
+- `src/app/sitemap.ts` and `src/app/robots.ts`
+- Meta tags on all pages via Next.js Metadata API
+- OG image (1200x630)
+- JSON-LD structured data on landing page
+- TikTok Pixel + Meta Pixel installed via `next/script`
 
-Consent section:
-- shadcn Checkbox: "Under penalties of perjury, I declare that the information on this return is true, correct, and complete."
-- Link: "Read full terms of service"
+**Content pages** (3 articles targeting organic traffic):
+- `src/app/guides/how-to-file-taxes-for-free/page.tsx` — targets "how to file taxes for free 2026"
+- `src/app/guides/what-is-a-w2/page.tsx` — targets "what is a W2 form"
+- `src/app/guides/standard-deduction-2025/page.tsx` — targets "standard deduction 2025 amount"
 
-Submit button:
-- Disabled until consent is checked and PIN/AGI is filled
-- "Submit to IRS" with gradient background
-- On click: POST /api/v1/filings/{id}/submit
-- Loading state: "Submitting your return..." with the AI orb animation
+Each article: genuinely helpful, links to product naturally, FAQ schema markup for snippets.
 
-On success — celebration screen:
-- 🎉 "Your Return Has Been Submitted!"
-- "We'll email you when the IRS accepts it (usually 24-48 hours)"
-- "Estimated refund date: [~21 days from today]"
-- Confetti animation again
-- "Go to Dashboard" button
+**/pricing page** (`src/app/pricing/page.tsx`):
+- Crystal clear: what's free, what's paid
+- Free forever guarantee for core filing (federal + state)
+- Premium services listed with prices: Tax Optimization Plan ($29/yr), Audit Shield ($19-29/yr)
+- Comparison table: FileFree vs TurboTax vs FreeTaxUSA vs Cash App Taxes
+- "What's the catch?" section (there isn't one — we make money when you choose premium services)
 
-Backend endpoint:
-- POST `/api/v1/filings/{id}/submit` — FOR MVP: save all return data, update filing status to 'submitted', create Submission record with mock data. Don't actually transmit to IRS. Return success.
-- GET `/api/v1/filings/{id}/submission` — return submission status
+**Social media launch (non-code — uses Postiz from Task B.6)**:
+- Daily posting begins: TikTok + IG Reels + X (7/week minimum during tax season)
+- Week 2: "Coming soon" + build-in-public content. "Building a free tax app live", "Day 5 of building FileFree"
+- Week 3 (app live): shift to "it's live" + demo reactions. "I just filed my taxes in 2 minutes for free"
+- First creator outreach: 10 DMs to personal finance micro-influencers (10K-100K followers)
+- Content calendar: 4-week plan drafted via social.mdc persona, scheduled in Postiz
+- Paid amplification: after Week 3, boost top organic posts via TikTok Spark Ads + Meta (see social.mdc for playbook). Budget: $200-500/mo in intermittent bursts on winners.
 
-**MVP DISCLAIMER**: Show a small banner on the success screen: "Demo Mode — Your return has been saved but not transmitted to the IRS."
-
-### Task 5.2 — Dashboard
-Implement `src/app/dashboard/page.tsx`.
-
-Header: "Welcome back, [First Name]" with the date.
-
-Filing status card (main Card, prominent):
-- Current filing with status Badge (Draft / Submitted / Accepted / Processing / Refund Sent)
-- Horizontal stepper with icons showing the IRS processing steps: Submitted → Accepted → Processing → Refund Sent
-- Current step highlighted in violet, future steps in gray
-- If accepted: "Estimated refund date: [date]"
-- If rejected: red badge, show reason, "Fix & Resubmit" button
-- Tax year and filing status shown
-
-Quick actions row:
-- "Download Return (PDF)" — generates PDF using @react-pdf/renderer with the tax return data
-- "File State Return" CTA if state filing hasn't been done
-- "View Full Summary" links back to the summary page
-
-Mini charts section (smaller versions of the summary page charts):
-- Refund amount card with the big number
-- Pie chart card (compact)
-
-Upsell cards row:
-- "Audit Shield — $29/year" card with shield icon, brief copy
-- "Get Your Refund Early" card with clock icon, brief copy
-- Both have "Learn More" buttons (link to # for now)
+**Acceptance**: All pages have proper meta tags, sitemap generates, pricing page is honest and clear. Pixels installed. 20+ posts scheduled in Postiz. Daily posting cadence established.
 
 ---
 
-## Phase 6: Polish & Production Readiness
+## Sprint 3: Full MVP (April 15 - May 31)
 
-### Task 6.1 — Loading States & Skeletons
-Create skeleton/loading components for every page:
-- `src/app/file/loading.tsx` — skeleton for filing flow
-- `src/app/dashboard/loading.tsx` — skeleton for dashboard
-- Skeleton components for: Card, Form fields, Chart placeholders
+Complete filing flow for extension filers.
 
-Use shadcn Skeleton component as base. Add a subtle shimmer animation.
+### Task 2.1 — Backend Auth System
 
-Ensure every async operation (API calls, file uploads, calculations) shows a visible loading state. Never show a blank screen or frozen UI.
+**Branch**: `feat/2.1-backend-auth`
 
-### Task 6.2 — Error Boundaries & Error States
-Create `src/app/error.tsx` — global error boundary with:
-- Friendly error illustration (build with CSS/SVG, not an image)
-- "Something went wrong" message
-- "Try Again" button that resets the error boundary
-- "Go Home" button
+Redis sessions: key = `session:{token}`, value = user_id, TTL = 7 days.
 
-Create specific error states for:
-- Camera permission denied
-- Network/API errors
-- OCR extraction failure
-- Tax calculation error
+**`services/auth_service.py`**: register, login, logout, get_current_user, delete_account (CCPA).
 
-Each has: friendly message, suggested action, retry mechanism. Never show technical error details to the user.
+**`routers/auth.py`**:
+- POST register — sets httponly cookie
+- POST login — sets cookie
+- POST logout — clears cookie + session
+- GET /me — current user or 401
+- DELETE /account — delete all data
 
-Create `src/app/not-found.tsx` — custom 404 with filefree.tax branding.
+Cookie: httponly, secure, samesite='lax', max_age=604800.
+CSRF: token on login, validate on all state-changing requests.
+Rate limiting: 5 req/min on auth via slowapi.
 
-### Task 6.3 — Animations & Micro-interactions
-Do an animation polish pass across the entire app:
-
-- Page transitions: slide + fade between all filing steps (should already work via AnimatePresence in layout, verify and tune)
-- Button interactions: scale down slightly on press, gradient shifts on hover
-- Form fields: label floats up on focus with smooth transition
-- Number animations: count-up effect on all dollar amounts on summary and dashboard
-- Confetti: canvas-based confetti on submit success and on summary page if refund (build custom, ~50 particles, gravity, fade out after 3 seconds)
-- Progress bar: smooth spring animation when advancing steps
-- Card hover: subtle translateY(-2px) + shadow increase on desktop
-- Staggered list animations: rows in the tax breakdown fade in one by one
-- The AI insight streaming should have a blinking cursor at the end while streaming
-
-Use Framer Motion for everything. Keep animations fast (200-400ms). Nothing should feel slow or over-animated.
-
-### Task 6.4 — Responsive Design Pass
-Go through every single page and test at these widths: 375px (iPhone SE), 390px (iPhone 14/15), 768px (iPad), 1024px (laptop), 1440px (desktop).
-
-Fix:
-- Any horizontal overflow or scroll
-- Text that gets cut off or wraps awkwardly
-- Touch targets smaller than 44x44px on mobile
-- Charts that don't resize properly
-- Camera component on mobile portrait and landscape
-- Forms that are hard to use on mobile (inputs too small, keyboard covers content)
-- The filing flow should feel native-app-quality on mobile
-
-### Task 6.5 — PWA Setup
-Add Progressive Web App support:
-- `public/manifest.json` with filefree.tax name, violet theme color, icons at multiple sizes
-- Generate app icons (use a simple "FF" lettermark in violet, create as SVG, export sizes)
-- Basic service worker for offline shell (just cache the app shell, not API data)
-- Apple-specific meta tags for iOS Add to Home Screen
-- Splash screen configuration
-
-When users "Add to Home Screen" on mobile, it should launch fullscreen with the filefree.tax icon and splash screen, feeling like a native app.
-
-### Task 6.6 — SEO & Meta Tags
-Add metadata to all pages using Next.js Metadata API:
-- Title: "filefree.tax — File Your Taxes for Free in 60 Seconds"
-- Description: "Take a photo of your W2 and file your federal taxes for free. AI-powered, instant filing for simple tax returns."
-- Open Graph tags with title, description, and OG image
-- Twitter Card tags
-
-Create an OG image (1200x630) programmatically using Next.js OG image generation or as a static asset.
-
-Add JSON-LD structured data on the landing page (Organization + WebApplication schema).
-
-Create `src/app/sitemap.ts` and `src/app/robots.ts` using Next.js file conventions.
+**Acceptance**: Full auth cycle works, CSRF works, rate limiting works.
 
 ---
 
-## Phase 7: Testing
+### Task 2.2 — Frontend Auth + Protected Routes
 
-### Task 7.1 — Tax Calculator Tests
-Make sure `tests/test_tax_calculator.py` has 100% line and branch coverage on the tax calculator module. Add any missing cases:
-- Every bracket boundary for every filing status
-- Zero income, max reasonable income (e.g., $1M)
-- Exactly at each bracket threshold (both sides)
-- Standard deduction exceeds income (taxable income = 0)
-- Multiple W2s with different amounts
-- Verify all outputs are integers (no float contamination)
+**Branch**: `feat/2.2-frontend-auth`
 
-Run: `pytest tests/test_tax_calculator.py -v --cov=app.services.tax_calculator --cov-report=term-missing`
+**Auth pages**:
+- `src/app/auth/layout.tsx` — centered card on gradient background
+- `src/app/auth/register/page.tsx` — Full Name, Email, Password, Confirm Password, Zod validation
+- `src/app/auth/login/page.tsx` — Email, Password
 
-### Task 7.2 — API Integration Tests
-Create `tests/test_api.py` with integration tests:
-- Full auth flow: register → login → /me returns user → logout → /me returns 401
-- Create filing, verify it's returned in list
-- Upload document (mock S3), verify status endpoint works
-- Trigger calculation with known inputs, verify output matches expected
-- Verify user A cannot access user B's filings (auth isolation)
-- Verify rate limiting on auth endpoints
+**State**: Zustand store for auth (user, isAuthenticated). React-query mutations for login/register/logout.
 
-Use pytest fixtures with a test database and test Redis instance.
+**Middleware**: protect /file/* and /dashboard/*, redirect to /auth/login if no session.
 
-### Task 7.3 — Frontend Component Tests
-Set up Vitest + React Testing Library in the frontend.
+**Session timeout**: 30 min inactivity → "Still there?" modal.
 
-Write tests for:
-- DocumentCamera: test permission handling states (granted, denied, error)
-- Data confirmation form: test field editing, validation, form submission
-- Summary page: test that correct amounts render, test refund vs owed display
-- Auth forms: test validation (empty fields, invalid email, password mismatch)
-- Navigation: test that filing flow steps advance correctly
+**Acceptance**: Register, login, protected routes, timeout, logout — all work end-to-end.
+
+---
+
+### Task 2.3 — Filing Flow Layout + Data Confirmation
+
+**Branch**: `feat/2.3-filing-flow`
+
+**`src/app/file/layout.tsx`**: progress bar, step labels, exit button, AnimatePresence transitions.
+
+**Zustand store** (`use-filing-store.ts`): steps, currentStep, filing data, navigation actions.
+
+**Step routes**:
+- `/file` → creates filing, redirects to first step
+- `/file/w2` → camera component (Task 1.1)
+- `/file/identity` → DL capture or manual entry
+- `/file/confirm` → data confirmation (below)
+- `/file/details` → filing details (Task 2.4)
+- `/file/summary` → return summary (Task 2.5)
+
+**Data confirmation page** (`/file/confirm`):
+- Section 1: "Your Information" — name, address, DOB (editable)
+- Section 2: "Your Income" — per W2 card with employer name, EIN, SSN (masked), wages, withheld
+- Confidence indicators (green/yellow/red) with pulsing animation
+- OCR auto-fill cascade animation (the magic moment)
+- Manual entry fallback with W2 box-number labels
+- "Add Another W2" button
+- "Everything Looks Right" CTA
+
+**Backend**: filing CRUD endpoints (POST, GET, PATCH), document upload flow.
+
+**Acceptance**: Full navigation works, OCR data renders with confidence, manual fallback works, corrections save.
+
+---
+
+### Task 2.4 — Filing Details + Tax Calculator
+
+**Branch**: `feat/2.4-tax-calculator`
+
+**Filing details** (`/file/details`):
+- Filing status: 4 large tappable cards (Single, MFJ, MFS, HoH)
+- Standard deduction display (updates on selection)
+- Minimal — only legally required questions
+- CTA: "Calculate My Return"
+
+**Tax calculator** (`services/tax_calculator.py`):
+- Load from `tax-data/2025.json`
+- `get_standard_deduction(filing_status) -> int` (cents)
+- `calculate_federal_tax(taxable_income_cents, filing_status) -> int`
+- `calculate_return(filing_id, db) -> TaxCalculation`
+- ALL CENTS. INTEGER ONLY.
+
+**AI Insights** (generated on calculate):
+- Call GPT-4o with user's tax data
+- Plain-English explanation + 1-2 personalized tips
+- Store in TaxCalculation.ai_insights
+- Fallback template if OpenAI fails
+
+**Router**: POST /calculate, GET /calculation.
+
+**Tests** — 100% coverage:
+- Each bracket boundary for all filing statuses
+- Zero income, deduction > income
+- Refund and owed scenarios
+- Correct standard deductions: $15,750 / $31,500 / $15,750 / $23,625
+- Validate against IRS Publication 17 examples
+
+**Acceptance**: Calculation correct for all scenarios, 100% test coverage.
+
+---
+
+### Task 2.5 — Return Summary + PDF Generation
+
+**Branch**: `feat/2.5-return-summary-pdf`
+
+**Return summary** (`/file/summary`):
+- Refund reveal: animated count-up, green gradient. Owed: calm amber.
+- Breakdown card: stagger animation
+- Charts: pie ("Where Your Taxes Go"), bar ("Your Refund vs Average")
+- AI insights card with sparkle icon
+- Tax receipt viral card (shareable graphic — see PRODUCT_SPEC.md)
+- CTAs: "Download Your Return (PDF)", "Add State Filing — Free"
+
+**PDF generation** (GET `/api/v1/filings/{id}/pdf`):
+- @react-pdf/renderer
+- Cover page: "Your 2025 Federal Tax Return — Prepared by FileFree"
+- Form 1040: field layout matching IRS form, Courier font, all calculated values
+- Instructions page: how to submit via IRS Free File or mail
+- Footer: "Prepared by FileFree (filefree.tax)"
+
+**Refund Plan teaser** (on download/next-steps page):
+- "Where should your refund go?" — link to Refund Plan screen (Task 3.6)
+- Preview tip based on their data (e.g., "Your refund could earn $55 in a 5.5% APY savings account")
+- If pre-launch: email capture for "get notified when financial recommendations are ready"
+
+**Acceptance**: Summary looks beautiful with animations, PDF downloads with correct data, advisory teaser captures interest.
+
+---
+
+### Task 2.6 — Component Library + Error Handling + Mobile Polish
+
+**Branch**: `feat/2.6-polish`
+
+**Custom components** (on top of shadcn):
+- SSNInput: masked, toggle reveal, auto-format, lock icon
+- CurrencyDisplay: count-up animation, green/amber coloring
+- SecureBadge: lock + "Encrypted & Secure"
+- InfoTooltip: popover (desktop) / bottom sheet (mobile)
+- EmptyState: icon, title, description, CTA
+- StepProgress: animated progress bar with clickable completed steps
+
+**Error handling**:
+- Global error boundary (`error.tsx`), custom 404
+- Skeleton components for all pages
+- Inline validation with field shake animation
+- sonner toasts for API errors (never raw)
+- Offline detection banner
+- Session expiry modal
+
+**Mobile audit** (375px, 390px, 768px, 1024px, 1440px):
+- 44px minimum touch targets
+- vaul bottom sheets below lg breakpoint
+- inputMode attributes (numeric for SSN/currency)
+- Sticky bottom bar for Continue
+- No horizontal overflow
+
+**Acceptance**: Every error state has designed UI, mobile feels native-quality.
+
+---
+
+### Task 2.7 — Analytics + Monitoring + Production Hardening
+
+**Branch**: `feat/2.7-analytics-production`
+
+**PostHog**:
+- posthog-js + posthog-react, PII filter before any event
+- Key events: signup, filing_started, step_completed, upload, ocr_completed, filing_completed, share_card, advisory_interest
+- Funnel: landing → demo → signup → filing_start → filing_complete
+
+**Sentry**: @sentry/nextjs, source maps, error boundaries, alert on >10 errors/5min.
+
+**CI**: GitHub Actions — lint, type check, test, build on PR/push to main.
+
+**Acceptance**: Events fire, PII filtered, Sentry catches errors, CI passes.
+
+---
+
+## Sprint 4: Growth + E-File Prep (June - September)
+
+### Task 3.1 — Full Marketing Landing Page
+
+**Branch**: `feat/3.1-marketing-page`
+
+Replace simple landing page with full marketing page. See PRODUCT_SPEC.md for detailed specs.
+
+- Hero with try-before-signup CTA + animated background
+- Social proof: filing counter, testimonials from beta users
+- 3-step How It Works with scroll-triggered animations
+- Competitive comparison table (honest, fact-based)
+- Trust section: security badges, encryption details
+- FAQ accordion (5-7 Gen Z-focused questions)
+- Footer with legal disclaimers
+
+Lighthouse 95+ on all categories.
+
+**Acceptance**: Looks premium, loads fast, responsive.
+
+---
+
+### Task 3.2 — Tax Receipt Viral Card + Referral System
+
+**Branch**: `feat/3.2-viral-referral`
+
+**Tax receipt card**:
+- Post-filing: "Share your filing card" option
+- Content: filing time, opt-in refund amount, date, FileFree branding, filefree.tax URL
+- Formats: Instagram Story (1080x1920), Twitter (1200x675), square (1080x1080)
+- Generate server-side via @vercel/og or canvas API
+- One-tap share or download
+
+**Referral system**:
+- Each user gets unique code on registration (already in User model)
+- filefree.tax/ref/{code} → landing page with referral tracking
+- Dashboard card: "Share FileFree — [referral link]"
+- Track: referral clicks, signups, completions
+
+**Acceptance**: Card generates beautifully, share works, referral tracking functions.
+
+---
+
+### Task 3.3 — Column Tax SDK Integration (Interim E-File)
+
+**Branch**: `feat/3.3-column-tax-efile`
+
+**Context**: This is the INTERIM e-file solution while our own MeF transmitter goes through IRS certification (see Task 5.7). Column Tax provides e-file capability at cost-passthrough until January 2027.
+
+**Implementation**:
+- Integrate Column Tax web SDK into post-summary filing flow
+- Pre-fill all extracted data (name, SSN, income, deductions, calculated tax) via Column Tax API
+- White-label Column Tax UI to match FileFree branding where possible
+- Handle submission status (accepted/rejected) and surface in FileFree dashboard
+- POST /api/v1/filings/{id}/submit, GET /api/v1/filings/{id}/submission
+
+**UX (see PRODUCT_SPEC.md e-file transition section)**:
+- Summary page shows two CTAs: "Download PDF (Free)" and "E-File (~$X, at cost)"
+- Transparent messaging: "We're completing IRS e-file certification. Until then, e-file through our certified partner at cost, or download and mail for free."
+- On success: return to FileFree celebration screen with confetti
+- Free PDF download ALWAYS prominently visible as alternative
+
+**Testing**: Full sandbox testing before October 1 go-live.
+
+**Acceptance**: E-file works end-to-end in sandbox, cost-passthrough pricing displays correctly, rejection handling works, free PDF alternative is always available.
+
+---
+
+### Task 3.4 — State Tax Calculation
+
+**Branch**: `feat/3.4-state-tax`
+
+Top 5 income-tax states: CA, NY, IL, PA, OH.
+- Pluggable module per state (brackets, credits, rules)
+- No-income-tax states: auto-detect and skip
+- Account for SALT cap ($40,000 for 2025)
+- State tax results included in summary and PDF
+
+**Acceptance**: Correct state calculations for all 5 states + no-tax state handling.
+
+---
+
+### Task 3.5 — Transactional Emails + Lifecycle
+
+**Branch**: `feat/3.5-emails`
+
+**Transactional** (react-email + resend, notifications@filefree.tax):
+- Welcome: "Welcome to FileFree"
+- Email verification: 24-hour expiry link
+- Filing confirmation: "Your return is ready!" + PDF download link
+
+**Lifecycle** (drip sequences):
+- Abandonment: 24h, 72h, 7 days after starting but not completing
+- Tax deadline: 2 weeks and 3 days before April 15 / October 15
+- Advisory teaser: monthly tip based on filing data (warm up for subscription)
+
+**Acceptance**: All emails render, send, are mobile-responsive, CAN-SPAM compliant.
+
+---
+
+### Task 3.6 — Refund Plan + Financial Partnerships
+
+**Branch**: `feat/3.6-refund-plan`
+
+The primary monetization screen. See PRODUCT_SPEC.md "Refund Plan Screen" for full UX spec.
+
+**Refund Plan page** (`src/app/filing/[id]/refund-plan/page.tsx`):
+- Interactive refund allocation UI (split refund into up to 3 accounts via IRS Form 8888)
+- Partner HYSA/IRA recommendation cards with personalized projections
+- "3 things that could save you money" recommendation section
+- Audit Shield upsell card ($19-29/yr)
+- Affiliate disclosure compliance (FTC)
+- All recommendations based on user's actual tax data (income, refund amount, filing status)
+- Default: keep everything in existing checking. No pressure to change.
+
+**Partner integration architecture** (`services/referrals.py`):
+- Referral link generation with UTM tracking per partner
+- Conversion webhook handler (partner reports successful signup)
+- Revenue attribution tracking in database
+- Partner payout reconciliation (monthly)
+
+**Form 8888 integration**:
+- When user allocates to partner accounts, generate Form 8888 data
+- Include in MeF XML submission or PDF package
+- Validate routing/account numbers against partner API
+
+**Dashboard "Tax Tips" card** (`/dashboard`):
+- Free tier: one generic monthly tip
+- Tax Optimization Plan purchasers: personalized tips, W-4 calculator link, IRA optimizer
+- Soft upsell for non-purchasers: "Get your personalized plan — $29/year"
+
+**Tracking**: `refund_plan_viewed`, `refund_routing_selected`, `recommendation_clicked`, `recommendation_converted`, `audit_shield_purchased`, `optimization_plan_purchased`.
+
+**Acceptance**: Refund Plan screen renders personalized recommendations. Form 8888 data generates correctly. Affiliate links track properly. Audit Shield purchase flow works.
+
+---
+
+## Sprint 5: October Extension Season Launch
+
+### Task 4.1 — E-File Go-Live + Extension Campaign
+
+**Branch**: `feat/4.1-efile-launch`
+
+- Flip e-file from sandbox to production
+- Marketing push: "Haven't filed yet? Do it in 5 minutes. Free."
+- Email blast to waitlist + existing users
+- Social media campaign targeting extension filers
+- Monitor e-file acceptance/rejection rates
+
+**Acceptance**: Real returns accepted by IRS, monitoring dashboard shows health.
+
+---
+
+## Sprint 6: January 2027 Full Season (October - January)
+
+### Task 5.1 — Tax Optimization Plan (Stripe, $29/year)
+Wire up Stripe for $29/year Tax Optimization Plan. Premium dashboard with W-4 optimizer, year-over-year comparison, IRA/401k calculator. Annual one-time purchase at filing time, not a monthly subscription.
+
+### Task 5.2 — Financial Product Referral Infrastructure
+Partnership agreements with 2-3 financial products (HYSA, investing, credit card). Referral tracking, attribution, disclosure compliance. In-app recommendations based on tax data.
+
+### Task 5.3 — Product Hunt + HN Launch
+Prepare launch assets. Coordinate timing with filing season start. Target first week of February 2027.
+
+### Task 5.4 — Admin Dashboard
+User management, filing queue, OCR accuracy monitor, error log, support queue. @tanstack/react-table.
+
+### Task 5.5 — Accessibility Audit
+WCAG 2.1 AA. Keyboard nav, screen readers, contrast, reduced motion. axe-core in CI.
+
+### Task 5.6 — Dependent Support + Complex Filing
+Add dependent data model, child tax credit calculation. Eventually: 1099 support, itemized deductions.
+
+### Task 5.7 — Own IRS MeF Transmitter (NORTH STAR)
+
+**Branch**: `feat/5.7-mef-transmitter`
+
+**This is the #1 long-term strategic priority.** Owning our e-file infrastructure means $0/return, full control, no third-party dependencies, and "free forever" becomes permanently sustainable.
+
+**Prerequisites** (from Sprint 0):
+- EFIN approved (Form 8633, applied March 2026)
+- e-Services MeF system access granted
+
+**Implementation**:
+
+`services/mef_generator.py`:
+- Build MeF XML generator from TaxCalculation data model
+- Map all Form 1040 fields to IRS MeF XML schema (IRS Publication 4164)
+- Generate valid MeF XML envelope with required headers, manifests, and digital signatures
+- Support: Form 1040, Schedule 1, Schedule B (interest/dividends), state returns (top 5 states)
+
+`services/mef_transmitter.py`:
+- Submit MeF XML to IRS SOAP web service
+- Handle acknowledgments (accepted/rejected)
+- Parse rejection codes and map to user-friendly messages
+- Retry logic for transient failures
+
+**IRS ATS Testing (October 2026)**:
+- Submit 12 mandatory test scenarios to IRS Assurance Testing System
+- Scenarios include: single filer, MFJ, various income levels, refund/owed, state returns
+- Must pass ALL 12 scenarios to receive production authorization
+- ATS opens once per year in October — missing this window delays by a full year
+
+**Communication Test (November 2026)**:
+- Submit test transmission to IRS MeF production system
+- Verify end-to-end connectivity and XML validation
+
+**Go-Live (January 2027)**:
+- Switch from Column Tax SDK to own MeF transmitter for all simple returns
+- E-file becomes FREE for all users
+- Keep Column Tax as fallback for edge cases / complex returns not yet supported
+- Monitor acceptance/rejection rates closely in first 2 weeks
+
+**Acceptance**: Pass all 12 ATS scenarios, communication test succeeds, first production return accepted by IRS.
+
+---
+
+## How to Use This Document
+
+1. Start each task by creating a branch: `feat/{task-number}-short-description`
+2. Read .cursorrules for coding conventions
+3. Reference PRODUCT_SPEC.md for detailed UX specs
+4. Reference PRD.md for business context and competitive strategy
+5. Complete the task, test it, create a PR, merge, move on
+6. Each PR should be self-contained and deployable
+7. After each sprint, review analytics and adjust priorities based on data

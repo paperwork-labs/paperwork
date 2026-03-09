@@ -1,0 +1,91 @@
+---
+alwaysApply: true
+description: "Staff Engineer persona — tech stack, architecture, code conventions, security. This is the primary engineering context for all code generation."
+globs: ["filefree-api/**/*.py", "filefree-web/**/*.ts", "filefree-web/**/*.tsx", "docker-compose.yml", "Makefile", "render.yaml"]
+---
+
+# FileFree Engineering Context
+
+This file mirrors and extends .cursorrules. It is the authoritative technical reference for AI coding agents.
+
+## Architecture Overview
+
+### OCR Pipeline (Cloud Vision + GPT — Tiered)
+
+```
+W-2 Photo
+    │
+    ▼
+[Pillow] → preprocess (auto-rotate EXIF, contrast, resize)
+    │
+    ▼
+[GCP Cloud Vision DOCUMENT_TEXT_DETECTION] → hierarchical text + bounding boxes ($0.0015/page)
+    │
+    ▼
+[Regex] → extract SSN locally, replace with XXX-XX-XXXX in all downstream text
+    │
+    ├─ [GPT-4o-mini structured output] → map scrubbed text to W-2 fields (~$0.001)
+    │
+    └─ low confidence (<85%) → [GPT-4o vision] → send actual image → extract fields (~$0.02)
+    │
+    └─ still low → Manual entry fallback
+```
+
+SSN extracted via regex locally. NEVER sent to any third-party API. Masked placeholder in all GPT contexts.
+Google Cloud Vision does NOT store images, does NOT use them for training.
+
+### Infrastructure (Zero AWS)
+
+- Frontend: Vercel Pro ($20/mo) — filefree.tax
+- Backend: Render Starter ($7/mo, 512MB) — api.filefree.tax. Start: `gunicorn app.main:app -k uvicorn.workers.UvicornWorker`
+- Database: Neon serverless PostgreSQL (free tier MVP)
+- Sessions: Upstash serverless Redis (free tier: 500K commands/mo)
+- Storage: GCP Cloud Storage (encrypted, 24hr auto-delete lifecycle)
+- OCR API: GCP Cloud Vision (1K free pages/mo, then $0.0015/page)
+- Local Dev: Docker Compose — DEV ONLY (postgres, redis, api, web)
+- Production Deploy: render.yaml (Render Blueprints IaC) + Vercel git deploy
+- Dev Tooling: Makefile (`make dev`, `make test`, `make lint`, `make format`, `make migrate`)
+
+### Key Dependencies
+
+**Frontend** (filefree-web/package.json):
+- next, react, typescript, tailwindcss
+- framer-motion, recharts, lucide-react, zustand, @tanstack/react-query
+- react-hook-form, @hookform/resolvers, zod, axios
+- ai, @ai-sdk/react, @ai-sdk/openai
+- @react-pdf/renderer
+- clsx, tailwind-merge, next-themes, sonner, vaul, react-dropzone, date-fns, nuqs, canvas-confetti
+
+**Backend** (filefree-api/requirements.txt):
+- fastapi, uvicorn[standard], gunicorn, sqlalchemy[asyncio], asyncpg, alembic
+- pydantic, pydantic-settings, python-multipart
+- python-jose[cryptography], passlib[bcrypt]
+- google-cloud-vision, google-cloud-storage, openai, redis
+- pillow, httpx, slowapi, cryptography
+- pytest, pytest-asyncio, ruff, mypy, factory-boy
+
+### Code Conventions
+
+All conventions from .cursorrules apply. Key additions:
+
+- Cloud Vision is a remote API call — no model initialization, no memory overhead on our server
+- All OCR processing runs in FastAPI BackgroundTasks
+- Mock mode: when OPENAI_API_KEY not set, return hardcoded W2 data. When GOOGLE_APPLICATION_CREDENTIALS not set, return hardcoded OCR output.
+- Tax calculations use integer arithmetic (cents). No floats. Ever.
+- All monetary display uses CurrencyDisplay component with count-up animation
+- Use `make` commands for dev workflow (see Makefile at repo root)
+- Production infrastructure defined in render.yaml — changes go through PR review
+
+## Quality Gate (Pre-Merge Checklist)
+
+Before merging any PR:
+- [ ] All tests pass (`make test`)
+- [ ] Lints clean (`make lint`)
+- [ ] No PII in logs (grep for SSN patterns)
+- [ ] No hardcoded secrets or API keys
+- [ ] Mobile tested at 375px (if frontend changes)
+- [ ] Acceptance criteria from TASKS.md met
+
+## Handoff Protocol
+
+After implementation, invoke QA persona for review (see qa.mdc). For PII-touching features, also invoke Legal persona (see legal.mdc).
