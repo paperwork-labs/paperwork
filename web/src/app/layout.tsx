@@ -18,13 +18,13 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "FileFree — Free AI Tax Filing",
   description:
-    "Snap your W-2, get your completed return in minutes. Actually free. AI-powered tax filing for Gen Z.",
+    "Snap your W-2, get your completed return in minutes. Actually free. No upsells. No hidden fees.",
   keywords: [
     "free tax filing",
     "AI tax",
     "W2 scanner",
     "file taxes free",
-    "Gen Z taxes",
+    "AI tax filing",
     "filefree",
   ],
   openGraph: {
