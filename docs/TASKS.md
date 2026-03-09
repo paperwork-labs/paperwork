@@ -1,6 +1,6 @@
 # FileFree — Unified Build Tasks
 
-**Version**: 6.0 | **Updated**: 2026-03-09
+**Version**: 7.0 | **Updated**: 2026-03-09
 
 Work through these in order. Each task is scoped for one PR. Reference [PRODUCT_SPEC.md](PRODUCT_SPEC.md) for UX specs, [.cursorrules](../.cursorrules) for coding conventions, [PRD.md](PRD.md) for business context, [PARTNERSHIPS.md](PARTNERSHIPS.md) for partner playbook.
 
@@ -10,8 +10,8 @@ Work through these in order. Each task is scoped for one PR. Reference [PRODUCT_
 
 **Critical dates:**
 - March 9: Sprint 0 business ops begin (EFIN, LLC, social accounts, Hetzner VPS, affiliate applications)
-- March 16: Foundation complete (Docker, Next.js, FastAPI, DB)
-- March 23: Landing page live on filefree.tax
+- March 16: Foundation complete (Docker, Next.js, FastAPI, DB) — DONE
+- March 16: Landing page content live on filefree.tax (Task 0.4b)
 - March 30: OCR demo working + try-before-signup live
 - April 5-15: Content push for tax deadline — OCR demo is the marketing asset
 - April 15 - May 31: Full MVP (auth, filing flow, tax calc, PDF, polish)
@@ -73,7 +73,7 @@ Expected approval: ~late April 2026. This unblocks MeF system access.
 **Hetzner VPS** (EUR 5.49/mo, CX33: 8GB RAM, 4 vCPU, 80GB SSD) — server provisioned at 204.168.147.100, deploy configs in `infra/hetzner/`, DNS configured. Bootstrapped: Docker, Caddy, firewall installed. All services running.
 - Postiz (social media scheduler) + n8n (workflow automation) + PostgreSQL + Redis deployed via `infra/hetzner/compose.yaml`
 - Single shared `filefree_ops` database within PostgreSQL
-- **n8n persona workflows imported** (6 workflows: Social Content Generator, Growth Content Writer, Weekly Strategy Check-in, QA Security Scan, Partnership Outreach Drafter, CPA Tax Review). Workflow JSONs in `infra/hetzner/workflows/`. Remaining: add OpenAI API key credential in n8n UI (Settings > Credentials > OpenAI).
+- **n8n persona workflows imported** (6 workflows: Social Content Generator, Growth Content Writer, Weekly Strategy Check-in, QA Security Scan, Partnership Outreach Drafter, CPA Tax Review). Workflow JSONs in `infra/hetzner/workflows/`. OpenAI API key credential added in n8n UI — DONE.
 
 **Postiz setup:**
 - Connect accounts: TikTok (@filefree), Instagram (@filefree.tax), X (@filefreetax), YouTube (FileFree)
@@ -139,6 +139,26 @@ Draft initial legal documents needed before landing page goes live.
 - Note: AI advisory content must be positioned as "tax education" not "tax advice" (IRS Circular 230)
 
 **Acceptance**: Privacy policy and ToS drafts ready for legal review before landing page ships.
+
+### Task B.11 — Agent Autonomy (n8n Workflow Wiring)
+
+Make the 6 imported n8n persona workflows autonomous by connecting their outputs to real systems. No code changes — all configuration in n8n UI.
+
+**Workflow wiring:**
+- **Social Content Generator** → drafts post → creates Notion page in Content Calendar → optionally schedules in Postiz via API
+- **Growth Content Writer** → drafts blog post → creates Notion page for review
+- **Weekly Strategy Check-in** (already on Monday 9am cron) → writes summary to Notion Decision Log
+- **QA Security Scan** → creates GitHub Issue with findings
+- **Partnership Outreach Drafter** → creates Notion entry in Partnership Pipeline
+- **CPA Tax Review** → creates Notion page with review notes
+
+**Prerequisites:**
+- Notion API key added as n8n credential (Settings > Credentials > Notion)
+- GitHub personal access token added as n8n credential
+- Postiz API key added as n8n credential (generate in Postiz UI)
+- Each workflow needs 2-3 additional nodes (API calls to Notion/GitHub/Postiz)
+
+**Acceptance**: All 6 workflows produce output in their target systems when triggered. Weekly Strategy Check-in fires automatically on Monday mornings.
 
 ---
 
@@ -255,35 +275,62 @@ api/
 
 ---
 
-### Task 0.4 — Landing Page + Waitlist + Deploy — DONE
+### Task 0.4 — Infrastructure + Deploy — DONE
 
 **Branch**: `feat/0.4-landing-deploy`
 
-Landing page AND deployment in one task — we need to be live by March 22.
+**Infrastructure** (DONE):
+- Vercel live at filefree.tax (Hobby tier, auto-deploy from `main`)
+- Render Starter ($7/mo) live at api.filefree.tax (custom domain, TLS)
+- Neon PostgreSQL connected + migrated (auto-migration on startup via Alembic)
+- DNS configured (Spaceship): A record (Vercel), CNAME www (Vercel), CNAME api (Render), A records for n8n/social/ops (Hetzner)
+- `render.yaml` at project root for Render Blueprints IaC
+- POST /api/v1/waitlist endpoint live and tested e2e
+- Neon URL auto-normalized: `postgresql://` -> `postgresql+asyncpg://`, `sslmode` -> `ssl`, `channel_binding` stripped
 
-**Infrastructure status** (DONE): Vercel live at filefree.tax, Render live at api.filefree.tax, Neon DB provisioned and wired, DNS configured. Landing page content and waitlist endpoint still needed.
+**Acceptance**: All services healthy, `api.filefree.tax/health` returns `{"status":"healthy","db_connected":true}`, waitlist endpoint creates records in Neon.
+
+---
+
+### Task 0.4b — Landing Page Content
+
+**Branch**: `feat/0.4b-landing-page`
+
+Build the actual landing page content. Infrastructure is done (Task 0.4) but filefree.tax has no content yet.
 
 **Landing page** (`src/app/page.tsx`):
 - Hero: "Taxes shouldn't make you cry." / "Snap your W2. Get your return in minutes. Actually free."
-- Email capture: "Get early access" → POST /api/v1/waitlist
+- Email capture: "Get early access" → POST /api/v1/waitlist (already live)
 - 3-step "How it works": Snap → We read it → Download your return
 - Trust badges: "256-bit encrypted", "We never sell your data", "Your data is deleted when you ask"
 - Anti-TurboTax hook: "Unlike TurboTax, we don't ask 60 questions or charge hidden fees."
 - Mobile-first, dark theme, gradient accents, fast
 - Social media links in footer
+- Privacy policy and ToS links in footer (link to /privacy and /terms — pages from Task B.10)
 
-**Backend**: POST /api/v1/waitlist stores email + source + timestamp.
+**Acceptance**: filefree.tax is shareable, email capture works, page loads in < 2s, responsive 375px-1440px.
 
-**Deploy**:
-- Frontend → Vercel (Pro plan), custom domain filefree.tax
-- Backend → Render (Starter plan, $7/mo, 512MB — sufficient for FastAPI making HTTP calls), custom domain api.filefree.tax
-- Database → Neon serverless PostgreSQL (free tier)
-- Sessions → Upstash serverless Redis (free tier)
-- Storage → GCP Cloud Storage bucket with encryption + 24hr lifecycle policy
-- HTTPS everywhere
-- Create `render.yaml` at project root for Render Blueprints (IaC). Defines: web service, build command, start command: `gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT`. Render uses native Python buildpack — no production Dockerfile needed.
+---
 
-**Acceptance**: filefree.tax is live, email capture works, page loads in < 2s, responsive 375px-1440px. Backend deploy via `render.yaml` succeeds.
+### Task 0.5 — Analytics Foundation
+
+**Branch**: `feat/0.5-analytics`
+
+Wire up analytics before the landing page goes live. Pulled forward from Task 2.7 — we need attribution from day one.
+
+**PostHog**:
+- Install posthog-js + posthog-react
+- PII filter before any event (no email, no SSN in events)
+- Key events: `page_view`, `waitlist_signup`, `cta_click`
+- UTM parameter capture (already in frontend code, needs PostHog integration)
+- Funnel: landing → waitlist_signup
+
+**Sentry** (lightweight):
+- @sentry/nextjs with source maps
+- Error boundaries
+- Alert on >10 errors/5min
+
+**Acceptance**: PostHog dashboard shows page views and waitlist signups. UTM parameters attached to events. Sentry catches frontend errors.
 
 ---
 
