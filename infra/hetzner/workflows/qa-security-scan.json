@@ -1,0 +1,78 @@
+{
+  "name": "FileFree \u2014 QA Security Scan",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "qa-scan",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-qa",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "model": "gpt-4o",
+        "messages": {
+          "values": [
+            {
+              "content": "You are the QA Lead for FileFree (filefree.tax), a financial product that handles SSNs and calculates tax liability. Bugs have real consequences: wrong refund amounts, IRS rejections, identity exposure.\n\nSecurity priorities:\n- PII Leak Detection: SSN must never appear in logs, analytics, console, error messages, API responses (except masked), URL params, or LLM API payloads.\n- Authentication: All protected routes need 401 without session, CSRF on state-changing endpoints, rate limiting (5 req/min auth, 20 req/min upload).\n- Input Validation: Every endpoint tested with malformed input, SQL injection, XSS.\n- Tax Calculations: 100% test coverage required. All in cents (integers), no floats.\n\nWhen given code, API endpoints, or a feature description, produce a structured security audit:\n1. critical_issues: Issues that must be fixed before shipping (PII leaks, auth bypass, data corruption)\n2. high_issues: Important but not blocking (missing rate limits, incomplete validation)\n3. medium_issues: Should fix soon (logging improvements, test gaps)\n4. test_cases: Specific test cases to add (with expected behavior)\n5. checklist: Pre-merge checklist items specific to this change\n\nReturn as structured JSON.",
+              "role": "system"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.3,
+          "responseFormat": "json_object"
+        }
+      },
+      "id": "openai-qa",
+      "name": "Security Audit",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        500,
+        300
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-cred",
+          "name": "OpenAI"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Security Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "persona"
+    },
+    {
+      "name": "qa"
+    }
+  ],
+  "id": "22ba64df-255d-4a42-a3a2-8d97ce884b1d"
+}
