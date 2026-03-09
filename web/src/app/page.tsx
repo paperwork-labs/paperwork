@@ -1,28 +1,17 @@
 export default function Home() {
   return (
-    <main
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "100vh",
-        fontFamily: "system-ui, sans-serif",
-        background: "#0a0a0a",
-        color: "#fafafa",
-      }}
-    >
-      <h1 style={{ fontSize: "3rem", fontWeight: 700, marginBottom: "0.5rem" }}>
-        FileFree
-      </h1>
-      <p style={{ fontSize: "1.25rem", color: "#a1a1aa" }}>
-        Free AI-powered tax filing for Gen Z
-      </p>
-      <p
-        style={{ fontSize: "0.875rem", color: "#52525b", marginTop: "2rem" }}
-      >
-        Dev environment running on localhost:3000
-      </p>
+    <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
+      <div className="flex flex-col items-center gap-4 text-center">
+        <h1 className="bg-gradient-to-r from-violet-500 to-purple-600 bg-clip-text text-5xl font-bold tracking-tight text-transparent md:text-6xl">
+          FileFree
+        </h1>
+        <p className="text-lg text-muted-foreground md:text-xl">
+          Free AI-powered tax filing for Gen Z
+        </p>
+        <p className="mt-8 text-sm text-muted-foreground/60">
+          Landing page coming soon &mdash; filefree.tax
+        </p>
+      </div>
     </main>
   );
 }
