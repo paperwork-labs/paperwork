@@ -25,6 +25,8 @@ Work through these in order. Each task is scoped for one PR. Reference [PRODUCT_
 
 Non-code tasks that must happen immediately. These run in parallel with Sprint 1.
 
+**Status key**: DONE = complete, PARTIAL = in progress, blank = not started.
+
 ### Task B.1 — EFIN Application (Form 8633)
 
 **APPLY THIS WEEK.** 45-day IRS processing time is the longest lead item.
@@ -51,12 +53,12 @@ Expected approval: ~late April 2026. This unblocks MeF system access.
 - Draft v1 terms of service with tax preparation disclaimers
 - Note: AI advisory content must be positioned as "tax education" not "tax advice" (IRS Circular 230)
 
-### Task B.4 — Notion Workspace (Company HQ)
+### Task B.4 — Notion Workspace (Company HQ) — DONE
 
-- Create Notion workspace: "FileFree HQ"
-- Pages: Strategy, Product Roadmap, Decision Log, Content Calendar, Legal/Compliance, Financials
-- Decision Log: record every strategic decision with date, rationale, alternatives considered
-- Connect to Cursor via .cursor/mcp.json (Notion MCP)
+- ~~Create Notion workspace: "FileFree HQ"~~
+- ~~Pages: Strategy, Product Roadmap, Decision Log, Content Calendar, Legal/Compliance, Financials~~
+- ~~Decision Log: record every strategic decision with date, rationale, alternatives considered~~
+- ~~Connect to Cursor via .cursor/mcp.json (Notion MCP)~~
 
 ### Task B.5 — Column Tax Outreach
 
@@ -64,11 +66,11 @@ Expected approval: ~late April 2026. This unblocks MeF system access.
 - Goal: understand SDK, negotiate pricing (target $10-15/return), get sandbox access
 - This is backup/interim only — own MeF transmitter is the priority
 
-### Task B.6 — Social Media Infrastructure + Ad Accounts
+### Task B.6 — Social Media Infrastructure + Ad Accounts — PARTIAL
 
 **Spin up the social media operations stack (parallel with coding):**
 
-**Hetzner VPS** (EUR 5.49/mo, CX33: 8GB RAM, 4 vCPU, 80GB SSD):
+**Hetzner VPS** (EUR 5.49/mo, CX33: 8GB RAM, 4 vCPU, 80GB SSD) — server provisioned at 204.168.147.100, deploy configs in `infra/hetzner/`, DNS configured. Bootstrap pending.
 - Deploy Postiz (open-source social media scheduler) + PostgreSQL + Redis + Temporal via Docker Compose
 - Keep n8n container defined but stopped until Phase 2 autonomous workflows
 - Separate databases within shared PostgreSQL: `postiz_db` and `n8n_db`
@@ -91,16 +93,16 @@ Expected approval: ~late April 2026. This unblocks MeF system access.
 
 **Acceptance**: Postiz is live and can schedule to all 4 platforms. Ad accounts created. First 10 posts drafted. First 5 videos recorded.
 
-### Task B.7 — Partnership Foundation (Founder 1)
+### Task B.7 — Partnership Foundation (Founder 1) — DONE
 
 Set up the partnership infrastructure and documentation for Founder 2.
 
-- Create `docs/PARTNERSHIPS.md` (standalone playbook for partnerships co-founder)
-- Create `.cursor/rules/partnerships.mdc` (AI persona for partnership support)
-- Create Notion workspace "FileFree HQ" with Partnership Pipeline database
-- AI-generate Pitch Package: Executive Summary (2 pages), Revenue Model one-pager, Partnership Hit List
-- Share Notion workspace with Founder 2
-- AI-draft all outreach templates in [PARTNERSHIPS.md](PARTNERSHIPS.md) Section 4
+- ~~Create `docs/PARTNERSHIPS.md` (standalone playbook for partnerships co-founder)~~
+- ~~Create `.cursor/rules/partnerships.mdc` (AI persona for partnership support)~~
+- ~~Create Notion workspace "FileFree HQ" with Partnership Pipeline database~~
+- ~~AI-generate Pitch Package: Executive Summary (2 pages), Revenue Model one-pager, Partnership Hit List~~
+- ~~Share Notion workspace with Founder 2~~
+- ~~AI-draft all outreach templates in [PARTNERSHIPS.md](PARTNERSHIPS.md) Section 4~~
 
 **Acceptance**: Founder 2 has a Notion workspace, a standalone playbook, outreach templates, and a pitch package — everything needed to start operating independently.
 
@@ -142,7 +144,7 @@ Draft initial legal documents needed before landing page goes live.
 
 ## Sprint 1: Foundation + Get Live (Week 1-2)
 
-### Task 0.1 — Docker Dev Environment
+### Task 0.1 — Docker Dev Environment — DONE
 
 **Branch**: `feat/0.1-docker-dev-environment`
 
@@ -251,11 +253,13 @@ api/
 
 ---
 
-### Task 0.4 — Landing Page + Waitlist + Deploy
+### Task 0.4 — Landing Page + Waitlist + Deploy — PARTIAL
 
 **Branch**: `feat/0.4-landing-deploy`
 
 Landing page AND deployment in one task — we need to be live by March 22.
+
+**Infrastructure status** (DONE): Vercel live at filefree.tax, Render live at api.filefree.tax, Neon DB provisioned and wired, DNS configured. Landing page content and waitlist endpoint still needed.
 
 **Landing page** (`src/app/page.tsx`):
 - Hero: "Taxes shouldn't make you cry." / "Snap your W2. Get your return in minutes. Actually free."

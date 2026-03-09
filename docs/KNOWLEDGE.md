@@ -189,3 +189,16 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 - **Decision**: (1) Fixed stale doc paths across 4 persona files (strategy.mdc, partnerships.mdc, workflows.mdc, cfo.mdc) — all `KNOWLEDGE.md`/`TASKS.md` references updated to `docs/` prefix. (2) Updated Hetzner CX33 pricing from $7.50 to EUR 5.49/mo across docs and persona files. (3) Created `infra/hetzner/` with Docker Compose (Postiz + n8n + PostgreSQL + Redis), env template, bootstrap script, and README. (4) Made CORS origins configurable via `FRONTEND_URL` env var. (5) Fixed Makefile to use `docker compose run --rm` instead of `exec` for cold-start compatibility. (6) Mounted `pyproject.toml` into API container for linter config access. (7) Replaced root `TASKS.md` duplicate with redirect to `docs/TASKS.md`. (8) Added guard messages for unscaffolded Makefile targets (migrate, seed). (9) Integrated Render MCP (24 tools) for programmatic deployment management — create services, set env vars, monitor deploys/logs/metrics without dashboard.
 - **Alternatives**: Manual Render dashboard (rejected — MCP enables AI-driven deployment). Skip Hetzner until post-MVP (rejected — content/social ops need to start immediately for audience building).
 - **Reversibility**: Easy. All changes are config/docs. Hetzner stack is fully containerized.
+
+### D21: Production Infrastructure Complete (2026-03-09)
+- **Context**: All foundational infrastructure needed before application development is now provisioned and verified. This closes out Sprint 0 infrastructure tasks.
+- **Decision**: Full production stack deployed and verified:
+  - **Vercel** (frontend): filefree.tax + www.filefree.tax live (Valid Configuration, auto-deploy from `main`). Hobby tier.
+  - **Render** (API): filefree-api live at api.filefree.tax. Custom domain verified, TLS certificate issued. Free tier (upgrade to Starter $7/mo when billing added). Auto-deploy from `main`. DATABASE_URL wired to Neon.
+  - **Neon** (database): `filefree` project created (Postgres 17, AWS US East 1). Connection pooling enabled via pgbouncer. Connection string set on Render as `DATABASE_URL` with `postgresql+asyncpg://` prefix for SQLAlchemy async compatibility.
+  - **Hetzner** (ops VPS): CX33 server `filefree-ops` running at 204.168.147.100. Deployment configs in `infra/hetzner/`. Not yet bootstrapped (Docker/Caddy install pending).
+  - **DNS** (Spaceship): 6 records configured for filefree.tax — A record (Vercel), CNAME www (Vercel), CNAME api (Render), A records for n8n/social/ops (Hetzner). Updated to Vercel's recommended project-specific values.
+  - **MCP integrations**: Render (24 tools — deploy, env vars, logs, metrics), Notion (workspace management), GitHub, Context7 (library docs).
+- **Cleanup**: Removed empty placeholder directories `api/alembic/` and `api/tax-data/` — will be scaffolded when needed in Sprint 1 (Alembic) and Sprint 2 (tax data).
+- **What's next**: Sprint 1 coding (Task 0.2 frontend foundation, Task 0.3 backend foundation, Task 0.4 landing page). Parallel: Hetzner bootstrap, EFIN application, affiliate applications, legal drafts.
+- **Reversibility**: N/A — this is a milestone, not a reversible decision.
