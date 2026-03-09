@@ -194,7 +194,7 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 - **Context**: All foundational infrastructure needed before application development is now provisioned and verified. This closes out Sprint 0 infrastructure tasks.
 - **Decision**: Full production stack deployed and verified:
   - **Vercel** (frontend): filefree.tax + www.filefree.tax live (Valid Configuration, auto-deploy from `main`). Hobby tier.
-  - **Render** (API): filefree-api live at api.filefree.tax. Custom domain verified, TLS certificate issued. Free tier (upgrade to Starter $7/mo when billing added). Auto-deploy from `main`. DATABASE_URL wired to Neon.
+  - **Render** (API): filefree-api live at api.filefree.tax. Custom domain verified, TLS certificate issued. Starter plan ($7/mo). Auto-deploy from `main`. DATABASE_URL wired to Neon with auto-normalization (postgresql:// -> postgresql+asyncpg://, sslmode -> ssl, channel_binding stripped). Alembic migrations run automatically on startup.
   - **Neon** (database): `filefree` project created (Postgres 17, AWS US East 1). Connection pooling enabled via pgbouncer. Connection string set on Render as `DATABASE_URL` with `postgresql+asyncpg://` prefix for SQLAlchemy async compatibility.
   - **Hetzner** (ops VPS): CX33 server `filefree-ops` running at 204.168.147.100. Fully bootstrapped: Docker, Caddy (reverse proxy + auto TLS), UFW firewall. Services running: PostgreSQL (healthy), Redis (healthy), n8n (https://n8n.filefree.tax), Postiz (https://social.filefree.tax).
   - **DNS** (Spaceship): 6 records configured for filefree.tax — A record (Vercel), CNAME www (Vercel), CNAME api (Render), A records for n8n/social/ops (Hetzner). Updated to Vercel's recommended project-specific values.
@@ -214,10 +214,10 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 - **What shipped**:
   - Frontend design system: Tailwind v4, 22 shadcn components, Inter + JetBrains Mono fonts, dark indigo/violet theme, attribution UTM capture, Framer Motion presets, axios API client with response envelope interceptor
   - Backend foundation: 7 SQLAlchemy models (User, Filing, Document, TaxProfile, TaxCalculation, Submission, Waitlist) with cascade deletes, BaseRepository + WaitlistService, response envelope, AES-256 encryption, PII scrubber, correlation ID middleware, SlowAPI rate limiter, 16 passing tests
-  - Alembic configured for async migrations (migration not yet generated against Neon)
+  - Alembic configured for async migrations. Neon DB connected + migrated. Auto-migration on startup via lifespan handler.
   - 2025 tax data (Rev. Proc. 2024-40, P.L. 119-21)
   - Hetzner ops stack fully bootstrapped: Docker, Caddy, n8n (live at n8n.filefree.tax), Postiz (live at social.filefree.tax)
 - **Branding change**: Removed "Gen Z" from all user-facing copy (README, layout metadata, page content, API description). Product leads with benefits ("Free AI-powered tax filing"), not demographic labels. Internal strategy docs retain the demographic insight where analytically relevant.
-- **Monthly burn**: $5.49/mo (Hetzner VPS only). Vercel Hobby (free), Render free tier, Neon free tier, Upstash free tier.
+- **Monthly burn**: $12.49/mo (Hetzner VPS $5.49 + Render Starter $7). Vercel Hobby (free), Neon free tier, Upstash free tier.
 - **Inconsistencies fixed**: TASKS.md (Temporal reference, separate DBs, docker-compose.yml path, Gen Z FAQ), .cursorrules + engineering.mdc (Vercel tier Hobby not Pro), env.prod.example (missing auth vars), KNOWLEDGE.md D21 (Hetzner bootstrapped).
 - **Reversibility**: N/A — milestone.
