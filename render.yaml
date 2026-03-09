@@ -11,6 +11,7 @@ services:
     region: oregon
     plan: starter
     buildCommand: cd api && pip install -r requirements.txt
+    preDeployCommand: cd api && alembic upgrade head
     startCommand: cd api && gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
     healthCheckPath: /health
     envVars:
@@ -20,6 +21,8 @@ services:
         sync: false
       - key: SECRET_KEY
         generateValue: true
+      - key: ENCRYPTION_KEY
+        sync: false
       - key: OPENAI_API_KEY
         sync: false
       - key: GOOGLE_APPLICATION_CREDENTIALS
