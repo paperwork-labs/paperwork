@@ -1,0 +1,37 @@
+# Web framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+gunicorn>=23.0.0
+
+# Database
+sqlalchemy[asyncio]>=2.0.36
+asyncpg>=0.30.0
+alembic>=1.14.0
+
+# Validation & settings
+pydantic>=2.10.0
+pydantic-settings>=2.6.0
+python-multipart>=0.0.17
+
+# Auth
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# External APIs
+google-cloud-vision>=3.8.0
+google-cloud-storage>=2.18.0
+openai>=1.57.0
+redis>=5.2.0
+
+# Utilities
+pillow>=11.0.0
+httpx>=0.28.0
+slowapi>=0.1.9
+cryptography>=44.0.0
+
+# Dev / Test
+pytest>=8.3.0
+pytest-asyncio>=0.24.0
+ruff>=0.8.0
+mypy>=1.13.0
+factory-boy>=3.3.0

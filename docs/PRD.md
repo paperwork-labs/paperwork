@@ -22,6 +22,8 @@ filefree.tax is a mobile-first web application that **starts** as free, AI-power
 **Phase 2 (2027):** Free e-file via own IRS MeF transmitter (NORTH STAR) + AI tax advisor subscription + financial product marketplace.
 **Phase 3 (2028):** Embedded tax engine (B2B API) for fintechs, payroll providers, and neobanks.
 
+**Founding team:** Two co-founders with complementary domains. Founder 1 (Product/Engineering) builds the app, OCR pipeline, tax calculations, and infrastructure. Founder 2 (Partnerships/Revenue) sources and closes financial product partnerships — the primary revenue engine. AI personas assist both co-founders. See PARTNERSHIPS.md for the partnerships playbook and STRATEGY_REPORT.md Section 6 for the full team structure.
+
 ### 1.3 Target User (MVP)
 
 - Age 18-30 (Gen Z, especially first-time and early-career filers)
@@ -622,6 +624,22 @@ Version history: v1.0 was $3.30/user (AWS Textract). v4.0 was $0.068/user (Paddl
 Scenario B crosses $1M ARR at ~125K users (mid-2028). Scenario C crosses $1M at ~75K users + B2B (early 2028). Scenario A needs ~230K users (2029).
 
 The 80% retention rate (PCMag industry data) is the engine: 30K users in 2027 -> 24K retained + 76K new = 100K in 2028 -> 80K retained + 120K new = 200K in 2029.
+
+### Partnership Execution Strategy
+
+Partnership-dependent revenue (refund routing + financial referrals + refund advance) accounts for 77% of Scenario B revenue. These streams are owned by the partnerships co-founder with a tiered execution strategy:
+
+**Phase 1 — Affiliate Applications (pre-product, Sprint 0):** Apply to affiliate networks (Impact, CJ Affiliate) for Marcus, Wealthfront, Betterment, Fidelity. These are online applications — no calls, no negotiation. Standard affiliate payouts: $50-100/funded account.
+
+**Phase 2 — Activate + Optimize (product live, 500+ users):** Affiliate links go live on the Refund Plan screen. Track conversion rates per partner. A/B test recommendation copy and placement. Identify top performers.
+
+**Phase 3 — Upgrade to Direct Partnerships (5K+ users):** Partnerships co-founder reaches out to affiliate partners for direct deals. Pitch: proven conversion data + volume. Target: 2-3x higher payouts ($100-200+/funded account), co-marketing, API integration, dedicated account manager.
+
+**Phase 4 — Expand Categories (10K+ users):** Add lending partners (refund advance), insurance referrals, credit products. Explore B2B API partnerships (Phase 3 of product roadmap).
+
+**Key insight:** The gap between Scenario A (no partnerships) and Scenario B (partnerships in place) is $367K at 100K users. A dedicated partnerships co-founder is the single largest lever on revenue.
+
+See PARTNERSHIPS.md for the complete playbook including partner hit list, outreach templates, and partnership lifecycle.
 
 ---
 

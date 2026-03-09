@@ -1,0 +1,43 @@
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["api"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "S",    # flake8-bandit (security)
+    "T20",  # flake8-print
+    "SIM",  # flake8-simplify
+    "RUF",  # ruff-specific rules
+]
+ignore = [
+    "S101",  # assert used in tests
+    "S105",  # hardcoded password (false positives on env vars)
+    "S106",  # hardcoded password
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["redis.*", "slowapi.*", "passlib.*", "jose.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["api/tests"]
+asyncio_mode = "auto"

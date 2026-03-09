@@ -145,18 +145,18 @@ What breaks the model:
 ### 4. Execution Risk Register
 
 
-| #   | Risk                                              | Probability | Impact   | Severity | Mitigation                                                                                                                                                                                               |
-| --- | ------------------------------------------------- | ----------- | -------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Solo founder burnout during tax season            | High        | Critical | CRITICAL | n8n automation for repetitive tasks. Limit scope to simple W2 filers. No 1099/itemized in MVP. Hire contractor for customer support if >5K users.                                                        |
-| 2   | OCR accuracy below 95% on real W2s                | Medium      | High     | HIGH     | Cloud Vision + GPT-4o-mini is UNVALIDATED on W2s. Test with 20+ real W2s in Sprint 2. Fallback: increase GPT-4o vision usage (10x more expensive but proven).                                            |
-| 3   | Column Tax pricing too high or unavailable        | Medium      | High     | HIGH     | Book demo call THIS WEEK. Fallback: PDF-only for 2026 (weaker product but functional). MeF transmitter resolves permanently in January 2027.                                                             |
-| 4   | MeF ATS testing fails in October 2026             | Low-Medium  | Critical | HIGH     | ATS opens once per year. Failure means no own transmitter until January 2028. Mitigation: start XML generator early (June), leave 8 weeks for testing iterations. Keep Column Tax as permanent fallback. |
-| 5   | Zero refund routing partners by launch            | Medium      | High     | HIGH     | HYSA affiliate programs (Marcus, Wealthfront) are self-serve signup. Don't need a partnership agreement — just an affiliate account. Start application in Sprint 0.                                      |
-| 6   | Render Starter 512MB memory overflow              | Low-Medium  | Medium   | MEDIUM   | Monitor during beta. FastAPI + deps use ~200-300MB. Upgrade trigger: sustained >80%. One-click upgrade to $25/mo Standard (2GB).                                                                         |
-| 7   | Gen Z doesn't trust a new tax app with SSN        | Medium      | High     | HIGH     | Try-before-signup (no SSN needed for demo). Privacy messaging on every screen. SOC2 audit planned for 2027. Founder-led content builds trust.                                                            |
-| 8   | Paid ad budget too small to move the needle       | High        | Medium   | MEDIUM   | $200-500/mo is noise for acquisition. Entire strategy depends on organic/viral content. If social content doesn't perform, growth stalls. Mitigation: creator partnerships (free product + rev share).   |
-| 9   | Content creation takes too much solo founder time | High        | Medium   | MEDIUM   | 45-60 min/day during tax season. n8n auto-drafts in Phase 2 (5 min/day). Video content requires founder face time — cannot be fully automated.                                                           |
-| 10  | Postiz MCP unreliable for self-hosted             | Medium      | Low      | LOW      | REST API as primary integration. MCP is nice-to-have. Known issues: GitHub #846, #984.                                                                                                                   |
+| #   | Risk                                              | Probability | Impact   | Severity | Mitigation                                                                                                                                                                                                  |
+| --- | ------------------------------------------------- | ----------- | -------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Co-founder burnout during tax season              | Medium      | High     | HIGH     | Two co-founders with clear domain split. n8n automation for repetitive tasks. Limit scope to simple W2 filers. No 1099/itemized in MVP. Hire contractor for customer support if >5K users.                  |
+| 2   | OCR accuracy below 95% on real W2s                | Medium      | High     | HIGH     | Cloud Vision + GPT-4o-mini is UNVALIDATED on W2s. Test with 20+ real W2s in Sprint 2. Fallback: increase GPT-4o vision usage (10x more expensive but proven).                                               |
+| 3   | Column Tax pricing too high or unavailable        | Medium      | High     | HIGH     | Book demo call THIS WEEK. Fallback: PDF-only for 2026 (weaker product but functional). MeF transmitter resolves permanently in January 2027.                                                                |
+| 4   | MeF ATS testing fails in October 2026             | Low-Medium  | Critical | HIGH     | ATS opens once per year. Failure means no own transmitter until January 2028. Mitigation: start XML generator early (June), leave 8 weeks for testing iterations. Keep Column Tax as permanent fallback.    |
+| 5   | Zero refund routing partners by launch            | Low-Medium  | High     | MEDIUM   | Partnerships co-founder owns partner outreach. Tiered strategy: affiliate applications now (self-serve), direct partnerships at scale. HYSA affiliate programs (Marcus, Wealthfront) are self-serve signup. |
+| 6   | Render Starter 512MB memory overflow              | Low-Medium  | Medium   | MEDIUM   | Monitor during beta. FastAPI + deps use ~200-300MB. Upgrade trigger: sustained >80%. One-click upgrade to $25/mo Standard (2GB).                                                                            |
+| 7   | Gen Z doesn't trust a new tax app with SSN        | Medium      | High     | HIGH     | Try-before-signup (no SSN needed for demo). Privacy messaging on every screen. SOC2 audit planned for 2027. Founder-led content builds trust.                                                               |
+| 8   | Paid ad budget too small to move the needle       | High        | Medium   | MEDIUM   | $200-500/mo is noise for acquisition. Entire strategy depends on organic/viral content. If social content doesn't perform, growth stalls. Mitigation: creator partnerships (free product + rev share).      |
+| 9   | Content creation takes too much solo founder time | High        | Medium   | MEDIUM   | 45-60 min/day during tax season. n8n auto-drafts in Phase 2 (5 min/day). Video content requires founder face time — cannot be fully automated.                                                              |
+| 10  | Postiz MCP unreliable for self-hosted             | Medium      | Low      | LOW      | REST API as primary integration. MCP is nice-to-have. Known issues: GitHub #846, #984.                                                                                                                      |
 
 
 ---
@@ -166,53 +166,78 @@ What breaks the model:
 Every assumption in the business plan, explicitly listed with validation method.
 
 
-| #   | Assumption                                                 | Source                                                                                        | Confidence | Validation Plan                                                                       |
-| --- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------- |
-| A1  | 80% annual retention on tax software                       | PCMag survey data                                                                             | HIGH       | Track Year 1 → Year 2 retention in January 2028.                                      |
-| A2  | Gen Z will trust a new app with their SSN                  | 43% would trust AI over tax pro (Stagwell)                                                    | MEDIUM     | Track demo → signup conversion. If <10%, trust is a problem.                          |
-| A3  | Cloud Vision + GPT-4o-mini achieves >95% W2 accuracy       | Google recommends Document AI for forms                                                       | LOW        | Test 20+ real W2s in Sprint 2. This is the #1 technical risk.                         |
-| A4  | 8% of users will route refund to partner HYSA              | No direct comp data. TurboTax routes refunds to Credit Karma Money but doesn't publish rates. | LOW-MEDIUM | A/B test Refund Plan screen with first 500 users.                                     |
-| A5  | HYSA partners pay $50+ per funded account                  | Marcus pays $50-100 (public program)                                                          | HIGH       | Apply to Marcus/Wealthfront affiliate program in Sprint 0.                            |
-| A6  | Column Tax pricing negotiable to $10-15/return             | Public rate is ~$25/return (WorkMoney). Negotiable at volume.                                 | MEDIUM     | Book demo call. Ask directly. Fallback: PDF-only.                                     |
-| A7  | MeF ATS can be passed in 2-8 weeks                         | IRS documentation + industry reports                                                          | MEDIUM     | Start XML generator June 2026. Leave 8 weeks for iterations.                          |
-| A8  | 30K users achievable in 2027 tax season                    | Requires organic + social + SEO                                                               | LOW-MEDIUM | Track waitlist growth rate as leading indicator. If <1K by October 2026, revise down. |
-| A9  | $0.060/user cost holds at scale                            | Cloud Vision pricing is published. OpenAI pricing may drop.                                   | HIGH       | Monitor monthly. OpenAI costs only go down historically.                              |
-| A10 | 2-5% conversion on Tax Optimization Plan ($29/yr)          | No direct comp. Mint Premium was 2-3%.                                                        | LOW        | Track purchase intent in beta. If <1%, re-evaluate pricing or bundle.                 |
-| A11 | Refund advance partner available for our scale             | Refundo and Green Dot serve small tax preparers                                               | MEDIUM     | Outreach in Sprint 4 (after e-file is live).                                          |
-| A12 | Solo founder can build MVP in ~4 weeks with AI agents      | Ambitious but informed by AI-agent productivity data                                          | MEDIUM     | Track actual velocity in Sprint 1. Adjust timeline if needed.                         |
-| A13 | TikTok/IG organic content reaches Gen Z at scale           | Tax content is seasonal but underserved on TikTok                                             | MEDIUM     | Track first 10 posts' performance. If avg <500 views, adjust strategy.                |
-| A14 | Gen Z "doom spends" refunds and would benefit from routing | 62% plan to spend most of refund (Origin 2026 survey)                                         | HIGH       | This is the user insight that makes refund routing a win-win.                         |
+| #   | Assumption                                                 | Source                                                                                         | Confidence | Validation Plan                                                                       |
+| --- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------- |
+| A1  | 80% annual retention on tax software                       | PCMag survey data                                                                              | HIGH       | Track Year 1 → Year 2 retention in January 2028.                                      |
+| A2  | Gen Z will trust a new app with their SSN                  | 43% would trust AI over tax pro (Stagwell)                                                     | MEDIUM     | Track demo → signup conversion. If <10%, trust is a problem.                          |
+| A3  | Cloud Vision + GPT-4o-mini achieves >95% W2 accuracy       | Google recommends Document AI for forms                                                        | LOW        | Test 20+ real W2s in Sprint 2. This is the #1 technical risk.                         |
+| A4  | 8% of users will route refund to partner HYSA              | No direct comp data. TurboTax routes refunds to Credit Karma Money but doesn't publish rates.  | LOW-MEDIUM | A/B test Refund Plan screen with first 500 users.                                     |
+| A5  | HYSA partners pay $50+ per funded account                  | Marcus pays $50-100 (public program)                                                           | HIGH       | Apply to Marcus/Wealthfront affiliate program in Sprint 0.                            |
+| A6  | Column Tax pricing negotiable to $10-15/return             | Public rate is ~$25/return (WorkMoney). Negotiable at volume.                                  | MEDIUM     | Book demo call. Ask directly. Fallback: PDF-only.                                     |
+| A7  | MeF ATS can be passed in 2-8 weeks                         | IRS documentation + industry reports                                                           | MEDIUM     | Start XML generator June 2026. Leave 8 weeks for iterations.                          |
+| A8  | 30K users achievable in 2027 tax season                    | Requires organic + social + SEO                                                                | LOW-MEDIUM | Track waitlist growth rate as leading indicator. If <1K by October 2026, revise down. |
+| A9  | $0.060/user cost holds at scale                            | Cloud Vision pricing is published. OpenAI pricing may drop.                                    | HIGH       | Monitor monthly. OpenAI costs only go down historically.                              |
+| A10 | 2-5% conversion on Tax Optimization Plan ($29/yr)          | No direct comp. Mint Premium was 2-3%.                                                         | LOW        | Track purchase intent in beta. If <1%, re-evaluate pricing or bundle.                 |
+| A11 | Refund advance partner available for our scale             | Refundo and Green Dot serve small tax preparers                                                | MEDIUM     | Outreach in Sprint 4 (after e-file is live).                                          |
+| A12 | Two co-founders can build + launch MVP in ~6 weeks with AI | Ambitious but informed by AI-agent productivity data. Partnerships co-founder handles revenue. | MEDIUM     | Track actual velocity in Sprint 1. Adjust timeline if needed.                         |
+| A13 | TikTok/IG organic content reaches Gen Z at scale           | Tax content is seasonal but underserved on TikTok                                              | MEDIUM     | Track first 10 posts' performance. If avg <500 views, adjust strategy.                |
+| A14 | Gen Z "doom spends" refunds and would benefit from routing | 62% plan to spend most of refund (Origin 2026 survey)                                          | HIGH       | This is the user insight that makes refund routing a win-win.                         |
 
 
 ---
 
-### 6. Solo Founder Risk Assessment
+### 6. Founding Team Structure & Risk Assessment
 
-This is the #1 strategic risk. A single person building a tax filing app that handles SSNs during a seasonal peak.
+#### Co-Founder Roles
+
+
+| Domain       | Founder 1 (Product/Engineering)               | Founder 2 (Partnerships/Revenue)                   |
+| ------------ | --------------------------------------------- | -------------------------------------------------- |
+| Product      | Build the app, OCR pipeline, tax calc, deploy | Review UX for partner integration points           |
+| Partnerships | Provide data/deck for partner pitches         | Outreach, negotiate, close deals                   |
+| Revenue      | Build the Refund Plan screen, referral infra  | Source HYSA, lending, insurance partners           |
+| Legal        | Privacy policy, ToS, EFIN application         | Partnership agreement review                       |
+| Content      | Record videos, write code                     | Review/approve brand messaging in partner contexts |
+| Column Tax   | Build SDK integration                         | Book demo, negotiate pricing                       |
+
+
+Founder 2 has FAANG partnerships experience and commits 2-3 hours/week, supported by an AI persona (partnerships.mdc) that handles research, drafts, and pipeline tracking.
+
+#### Tiered Partnership Strategy
+
+The partnership revenue streams (refund routing + financial referrals = 77% of Scenario B revenue) follow a phased approach:
+
+- **Phase 1 (NOW, pre-product):** Apply to affiliate networks (Impact, CJ Affiliate). Online applications, no calls needed. Payout: $50-100/funded account.
+- **Phase 2 (product live, 500+ users):** Activate affiliate links on Refund Plan screen. Track conversion, A/B test placement.
+- **Phase 3 (5K+ users):** Founder 2 upgrades affiliate relationships to direct partnerships. Negotiated payouts: $100-200+/funded account (2-3x affiliate rates).
+- **Phase 4 (10K+ users):** Expand to lending partners (refund advance), insurance, credit products, and B2B API partnerships.
+
+#### Risk Assessment (Updated for Two Co-Founders)
 
 **What breaks:**
 
-- Production bug during tax season (January-April) when you're the only one who can fix it
+- Production bug during tax season (January-April) when only Founder 1 can fix it
 - Customer support volume exceeds what one person can handle
-- Content creation + engineering + business ops compete for the same hours
-- Burnout from sustained 60+ hour weeks during tax season
+- Content creation + engineering compete for Founder 1's hours
+- Partnership negotiations stall if Founder 2's FAANG workload spikes
 
 **Mitigations in place:**
 
-- 11 AI personas for cognitive offloading (but they don't write production code autonomously)
+- Two co-founders with clear domain split (product vs. partnerships)
+- 12 AI personas for cognitive offloading (including partnerships.mdc for Founder 2)
 - n8n automation for content drafting, analytics review, cost monitoring
 - Scope limited to simple W2 filers (not all tax situations)
 - Infrastructure is managed services (Render, Vercel, Neon) — no server management
 - TASKS.md is designed for AI-agent-assisted development (each task 4-8 hours)
+- Founder 2's partnership workflow is AI-assisted (2-3 hrs/week, all prep automated)
 
 **Mitigations needed (not yet in place):**
 
 - **Hire a contractor for customer support if >5K users** — budget $500/mo for a part-time VA during tax season
 - **Set up PagerDuty or Sentry alerting** — production issues must wake you up, not wait for user complaints
 - **Create a "break glass" runbook** — documented steps for the 5 most likely production emergencies
-- **Identify a technical co-founder candidate** — not to hire now, but to know who to call if you need help fast
 
-**Honest assessment:** A solo founder can get to 10K users on grit and AI agents. Getting to 50K+ users while maintaining quality almost certainly requires at least one hire (engineer or customer support). Plan to hire by January 2027 if traction warrants.
+**Honest assessment:** With two co-founders and clear role separation, reaching 30K users is achievable. The partnership co-founder directly addresses the most fragile revenue assumption (refund routing attach rate). Getting to 50K+ users while maintaining quality will likely require one additional hire (engineer or customer support) by January 2027.
 
 ---
 
