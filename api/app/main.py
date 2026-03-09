@@ -1,4 +1,5 @@
 import logging
+import subprocess
 from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
 
@@ -20,10 +21,30 @@ from app.utils.pii_scrubber import setup_pii_scrubbing
 logger = logging.getLogger(__name__)
 
 
+def _run_migrations() -> None:
+    """Run Alembic migrations on startup. Safe for single-instance deploys."""
+    try:
+        result = subprocess.run(
+            ["alembic", "upgrade", "head"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if result.returncode == 0:
+            logger.info("Alembic migrations applied successfully")
+        else:
+            logger.warning("Alembic migration failed: %s", result.stderr[:500])
+    except Exception:
+        logger.warning("Could not run Alembic migrations", exc_info=True)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     setup_pii_scrubbing()
-    logger.info("FileFree API starting up (env=%s)", settings.ENVIRONMENT)
+    db_url = settings.DATABASE_URL
+    masked = db_url[:30] + "..." if len(db_url) > 30 else db_url
+    logger.info("FileFree API starting up (env=%s, db=%s)", settings.ENVIRONMENT, masked)
+    _run_migrations()
     yield
     await engine.dispose()
     logger.info("FileFree API shut down")
