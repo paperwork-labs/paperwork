@@ -1,5 +1,5 @@
 {
-  "name": "FileFree \u2014 Weekly Strategy Check-in",
+  "name": "FileFree — Weekly Strategy Check-in",
   "nodes": [
     {
       "parameters": {
@@ -16,10 +16,7 @@
       "name": "Monday 9am",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [
-        250,
-        300
-      ]
+      "position": [250, 300]
     },
     {
       "parameters": {
@@ -28,7 +25,7 @@
         "messages": {
           "values": [
             {
-              "content": "You are the Chief of Staff for FileFree (filefree.tax), a free AI-powered tax filing app built by two co-founders.\n\nCo-founder model:\n- Founder 1 (Product/Engineering): AI-assisted coding, owns product and infrastructure.\n- Founder 2 (Partnerships/Revenue): FAANG partnerships background, 2-3 hrs/week, owns partner outreach and deal negotiation.\n\nNorth Star milestones:\n1. Landing page live \u2014 filefree.tax (March 2026)\n2. OCR demo \u2014 try-before-signup (March 2026)\n3. Full MVP \u2014 complete filing flow (May 2026)\n4. Column Tax e-file live (October 2026)\n5. Own MeF transmitter \u2014 FREE E-FILE (January 2027)\n6. 50,000 filers (April 2027)\n\nKey metrics: Cost per user $0.06, ARPU $8.05, gross margin 99.3%, fixed infra ~$32.50/mo.\n\nGenerate a weekly strategy check-in report with:\n1. progress_summary: What should have been accomplished this week based on the sprint timeline\n2. risks: Top 3 risks or blockers to flag\n3. priorities_next_week: Top 3 priorities for the coming week\n4. founder2_actions: 1-2 specific actions for the partnerships co-founder (each <10 min)\n5. decision_needed: Any strategic decisions that need to be made this week\n\nReturn as structured JSON.",
+              "content": "You are the Chief of Staff for FileFree (filefree.tax), a free AI-powered tax filing app built by two co-founders.\n\nCo-founder model:\n- Founder 1 (Product/Engineering): AI-assisted coding, owns product and infrastructure.\n- Founder 2 (Partnerships/Revenue): FAANG partnerships background, 2-3 hrs/week, owns partner outreach and deal negotiation.\n\nNorth Star milestones:\n1. Landing page live — filefree.tax (March 2026)\n2. OCR demo — try-before-signup (March 2026)\n3. Full MVP — complete filing flow (May 2026)\n4. Column Tax e-file live (October 2026)\n5. Own MeF transmitter — FREE E-FILE (January 2027)\n6. 50,000 filers (April 2027)\n\nKey metrics: Cost per user $0.06, ARPU $8.05, gross margin 99.3%, fixed infra ~$32.50/mo.\n\nGenerate a weekly strategy check-in report with:\n1. progress_summary: What should have been accomplished this week based on the sprint timeline\n2. risks: Top 3 risks or blockers to flag\n3. priorities_next_week: Top 3 priorities for the coming week\n4. founder2_actions: 1-2 specific actions for the partnerships co-founder (each <10 min)\n5. decision_needed: Any strategic decisions that need to be made this week\n\nReturn as structured JSON.",
               "role": "system"
             },
             {
@@ -46,41 +43,62 @@
       "name": "Generate Strategy Report",
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 1.8,
-      "position": [
-        500,
-        300
-      ],
+      "position": [500, 300],
       "credentials": {
         "openAiApi": {
           "id": "openai-cred",
           "name": "OpenAI"
         }
       }
+    },
+    {
+      "parameters": {
+        "resource": "page",
+        "databaseId": { "__rl": true, "mode": "list", "value": "" },
+        "title": "={{ 'Weekly Check-in — ' + new Date().toISOString().slice(0,10) }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Status|select",
+              "selectValue": "Published"
+            }
+          ]
+        },
+        "blockUi": {
+          "blockValues": [
+            {
+              "type": "paragraph",
+              "richTextUi": {
+                "richTextValues": [
+                  { "text": "={{ $json.message.content }}" }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "id": "notion-strategy",
+      "name": "Save to Decision Log",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [750, 300],
+      "credentials": {
+        "notionApi": {
+          "id": "notion-cred",
+          "name": "Notion"
+        }
+      }
     }
   ],
   "connections": {
     "Monday 9am": {
-      "main": [
-        [
-          {
-            "node": "Generate Strategy Report",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
-  },
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "tags": [
-    {
-      "name": "persona"
+      "main": [[{ "node": "Generate Strategy Report", "type": "main", "index": 0 }]]
     },
-    {
-      "name": "strategy"
+    "Generate Strategy Report": {
+      "main": [[{ "node": "Save to Decision Log", "type": "main", "index": 0 }]]
     }
-  ],
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "persona" }, { "name": "strategy" }],
   "id": "d9314236-808d-4cb1-aec9-fc738e16f23d"
 }

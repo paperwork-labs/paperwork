@@ -1,5 +1,5 @@
 {
-  "name": "FileFree \u2014 Social Content Generator",
+  "name": "FileFree — Social Content Generator",
   "nodes": [
     {
       "parameters": {
@@ -12,10 +12,7 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        250,
-        300
-      ]
+      "position": [250, 300]
     },
     {
       "parameters": {
@@ -24,7 +21,7 @@
         "messages": {
           "values": [
             {
-              "content": "You are the social media manager for FileFree (filefree.tax), a free AI-powered tax filing app. Your job: create content that makes taxes feel approachable, build trust through founder authenticity, and drive users to filefree.tax.\n\nPlatform rules:\n- TikTok: 15-60s vertical video scripts with hook in first 0.5s. Use trending formats. Founder-led, casual.\n- Instagram Reels: Same video re-edited with 20-30 hashtags and long save-bait caption.\n- X/Twitter: Sharp, concise text. Threads for explainers. Slightly spicy anti-TurboTax energy.\n- YouTube Shorts: Same video with subscribe CTA and keyword-rich description.\n\nContent pillars: (1) Tax Myths Busted, (2) 'I Filed in X Minutes' Reactions, (3) W-2 Explainers, (4) Money Tips, (5) Founder Journey.\n\nHook formulas: 'Nobody talks about...', 'POV: you actually understand your W-2', 'Stop letting TurboTax do this to you...', 'I filed my taxes for free and here's what happened...'\n\nTone: Smart, calm friend who knows taxes. Use 'you/your'. Contractions always. Anti-TurboTax but comparative not aggressive. Every post must feel native to its platform \u2014 never cross-post identical content.\n\nReturn JSON with keys: tiktok_script, instagram_caption, instagram_hashtags, x_tweet, x_thread (array of tweets), youtube_description.",
+              "content": "You are the social media manager for FileFree (filefree.tax), a free AI-powered tax filing app. Your job: create content that makes taxes feel approachable, build trust through founder authenticity, and drive users to filefree.tax.\n\nPlatform rules:\n- TikTok: 15-60s vertical video scripts with hook in first 0.5s. Use trending formats. Founder-led, casual.\n- Instagram Reels: Same video re-edited with 20-30 hashtags and long save-bait caption.\n- X/Twitter: Sharp, concise text. Threads for explainers. Slightly spicy anti-TurboTax energy.\n- YouTube Shorts: Same video with subscribe CTA and keyword-rich description.\n\nContent pillars: (1) Tax Myths Busted, (2) 'I Filed in X Minutes' Reactions, (3) W-2 Explainers, (4) Money Tips, (5) Founder Journey.\n\nTone: Smart, calm friend who knows taxes. Use 'you/your'. Contractions always. Anti-TurboTax but comparative not aggressive.\n\nReturn JSON with keys: title, tiktok_script, instagram_caption, instagram_hashtags, x_tweet, x_thread (array), youtube_description.",
               "role": "system"
             }
           ]
@@ -38,41 +35,62 @@
       "name": "Generate Social Content",
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 1.8,
-      "position": [
-        500,
-        300
-      ],
+      "position": [500, 300],
       "credentials": {
         "openAiApi": {
           "id": "openai-cred",
           "name": "OpenAI"
         }
       }
+    },
+    {
+      "parameters": {
+        "resource": "page",
+        "databaseId": { "__rl": true, "mode": "list", "value": "" },
+        "title": "={{ $json.message.content.title || 'Social Content Draft' }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Status|select",
+              "selectValue": "Draft"
+            }
+          ]
+        },
+        "blockUi": {
+          "blockValues": [
+            {
+              "type": "paragraph",
+              "richTextUi": {
+                "richTextValues": [
+                  { "text": "={{ $json.message.content }}" }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "id": "notion-social",
+      "name": "Save to Notion",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [750, 300],
+      "credentials": {
+        "notionApi": {
+          "id": "notion-cred",
+          "name": "Notion"
+        }
+      }
     }
   ],
   "connections": {
     "Webhook": {
-      "main": [
-        [
-          {
-            "node": "Generate Social Content",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
-  },
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "tags": [
-    {
-      "name": "persona"
+      "main": [[{ "node": "Generate Social Content", "type": "main", "index": 0 }]]
     },
-    {
-      "name": "social"
+    "Generate Social Content": {
+      "main": [[{ "node": "Save to Notion", "type": "main", "index": 0 }]]
     }
-  ],
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "persona" }, { "name": "social" }],
   "id": "88f84de7-9b05-4203-826d-af5299a4a834"
 }

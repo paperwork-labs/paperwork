@@ -1,5 +1,5 @@
 {
-  "name": "FileFree \u2014 Growth Content Writer",
+  "name": "FileFree — Growth Content Writer",
   "nodes": [
     {
       "parameters": {
@@ -12,10 +12,7 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        250,
-        300
-      ]
+      "position": [250, 300]
     },
     {
       "parameters": {
@@ -24,7 +21,7 @@
         "messages": {
           "values": [
             {
-              "content": "You are the Head of Growth for FileFree (filefree.tax), a free AI-powered tax filing app.\n\nYour job: create marketing content that drives signups, builds trust, and positions FileFree as the anti-TurboTax.\n\nTarget audience: First-time and early-career filers (18-30), mobile-first, skeptical of 'free' claims.\n\nBrand voice: Smart, calm friend who knows taxes. Use 'you/your'. Contractions always. Never 'the taxpayer'. Celebrate wins. Anti-TurboTax energy: honest, simple, transparent.\n\nSEO target keywords: 'how to file taxes for free 2026', 'what is a W2 form', 'standard deduction 2025 amount', 'first time filing taxes guide', 'tax refund calculator 2026'.\n\nContent types you produce:\n1. SEO blog posts (1000-1500 words, genuinely helpful, not thin SEO bait)\n2. Landing page copy (headlines, subheadlines, CTAs)\n3. Email sequences (waitlist nurture, post-filing follow-up)\n4. Ad copy (TikTok Spark Ads, Meta boost \u2014 short, punchy)\n\nMessaging for interim e-file: 'We're going through IRS certification. Free e-file coming early 2027. Download your return \u2014 free.'\n\nReturn structured JSON with the content type requested and all necessary copy variants.",
+              "content": "You are the Head of Growth for FileFree (filefree.tax), a free AI-powered tax filing app.\n\nYour job: create marketing content that drives signups, builds trust, and positions FileFree as the anti-TurboTax.\n\nTarget audience: First-time and early-career filers (18-30), mobile-first, skeptical of 'free' claims.\n\nBrand voice: Smart, calm friend who knows taxes. Use 'you/your'. Contractions always. Never 'the taxpayer'. Celebrate wins. Anti-TurboTax energy: honest, simple, transparent.\n\nSEO target keywords: 'how to file taxes for free 2026', 'what is a W2 form', 'standard deduction 2025 amount', 'first time filing taxes guide', 'tax refund calculator 2026'.\n\nReturn structured JSON with keys: title, content_type, body, meta_description, target_keyword, cta.",
               "role": "system"
             }
           ]
@@ -38,41 +35,66 @@
       "name": "Generate Growth Content",
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 1.8,
-      "position": [
-        500,
-        300
-      ],
+      "position": [500, 300],
       "credentials": {
         "openAiApi": {
           "id": "openai-cred",
           "name": "OpenAI"
         }
       }
+    },
+    {
+      "parameters": {
+        "resource": "page",
+        "databaseId": { "__rl": true, "mode": "list", "value": "" },
+        "title": "={{ $json.message.content.title || 'Growth Content Draft' }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Status|select",
+              "selectValue": "Draft"
+            },
+            {
+              "key": "Type|select",
+              "selectValue": "Blog Post"
+            }
+          ]
+        },
+        "blockUi": {
+          "blockValues": [
+            {
+              "type": "paragraph",
+              "richTextUi": {
+                "richTextValues": [
+                  { "text": "={{ $json.message.content }}" }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "id": "notion-growth",
+      "name": "Save to Notion",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [750, 300],
+      "credentials": {
+        "notionApi": {
+          "id": "notion-cred",
+          "name": "Notion"
+        }
+      }
     }
   ],
   "connections": {
     "Webhook": {
-      "main": [
-        [
-          {
-            "node": "Generate Growth Content",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
-  },
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "tags": [
-    {
-      "name": "persona"
+      "main": [[{ "node": "Generate Growth Content", "type": "main", "index": 0 }]]
     },
-    {
-      "name": "growth"
+    "Generate Growth Content": {
+      "main": [[{ "node": "Save to Notion", "type": "main", "index": 0 }]]
     }
-  ],
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "persona" }, { "name": "growth" }],
   "id": "3d31bf77-136c-4a84-8853-e37e31f2c66b"
 }
