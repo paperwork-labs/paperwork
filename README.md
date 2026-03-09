@@ -29,40 +29,68 @@ FileFree starts as free tax prep and grows into a year-round AI financial adviso
 
 ## Getting Started
 
+### Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine + Compose)
+- [Make](https://www.gnu.org/software/make/) (pre-installed on macOS/Linux)
+
+### Quick Start
+
 ```bash
 # Clone
 git clone https://github.com/your-org/filefree.git
 cd filefree
 
-# Copy environment variables
-cp filefree-api/.env.example filefree-api/.env
-cp filefree-web/.env.example filefree-web/.env
+# First-time setup (copies env files)
+make setup
 
-# Start everything (option A: Makefile)
+# Start everything
 make dev
-
-# Start everything (option B: direct)
-docker compose up
 
 # Frontend: http://localhost:3000
 # Backend:  http://localhost:8000
 # API docs: http://localhost:8000/docs
 ```
 
+### Available Commands
+
+```bash
+make help        # Show all available commands
+make dev         # Start all services (with --build)
+make dev-d       # Start in background (detached)
+make stop        # Stop all services
+make test        # Run all tests (in Docker)
+make test-local  # Run backend tests (no Docker)
+make lint        # Run linters (ruff + eslint)
+make format      # Auto-format code
+make migrate     # Run database migrations
+make clean       # Stop services + remove volumes
+make logs        # Tail all logs
+make db          # Open psql shell
+```
+
+### Without Docker
+
+```bash
+# Backend
+cd api
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+cp ../infra/env.dev.example .env  # edit DATABASE_URL and REDIS_URL for local services
+uvicorn app.main:app --reload
+
+# Frontend
+cd web
+npm install
+echo "NEXT_PUBLIC_API_URL=http://localhost:8000" > .env.local
+npm run dev
+```
+
 ## Project Structure
 
 ```
 filefree/
-├── filefree-web/          # Next.js frontend
-│   ├── src/
-│   │   ├── app/           # App Router pages
-│   │   ├── components/    # React components (custom + shadcn/ui)
-│   │   ├── lib/           # Utilities, API client, motion presets
-│   │   ├── hooks/         # Custom React hooks
-│   │   ├── types/         # TypeScript interfaces
-│   │   └── stores/        # Zustand stores
-│   └── ...
-├── filefree-api/          # FastAPI backend
+├── api/                   # FastAPI backend
 │   ├── app/
 │   │   ├── models/        # SQLAlchemy data models
 │   │   ├── schemas/       # Pydantic request/response schemas
@@ -72,33 +100,53 @@ filefree/
 │   │   └── utils/         # Encryption, security, PII scrubbing
 │   ├── tax-data/          # IRS tax brackets and deductions (JSON)
 │   ├── alembic/           # Database migrations
-│   └── tests/
+│   ├── tests/
+│   ├── Dockerfile
+│   └── requirements.txt
+├── web/                   # Next.js frontend
+│   ├── src/
+│   │   ├── app/           # App Router pages
+│   │   ├── components/    # React components (custom + shadcn/ui)
+│   │   ├── lib/           # Utilities, API client, motion presets
+│   │   ├── hooks/         # Custom React hooks
+│   │   ├── types/         # TypeScript interfaces
+│   │   └── stores/        # Zustand stores
+│   ├── Dockerfile.dev
+│   └── package.json
+├── docs/                  # Strategy, product, and business docs
+│   ├── TASKS.md           # Sprint-by-sprint build plan
+│   ├── PRD.md             # Product Requirements Document
+│   ├── PRODUCT_SPEC.md    # UX & Product Specification
+│   ├── PARTNERSHIPS.md    # Partnership playbook for co-founder
+│   ├── PITCH_PACKAGE.md   # Co-founder pitch package
+│   ├── STRATEGY_REPORT.md # Strategic assessment
+│   └── KNOWLEDGE.md       # Organizational memory (decisions log)
+├── infra/                 # Infrastructure configs
+│   ├── compose.dev.yaml   # Docker Compose (local dev only)
+│   ├── env.dev.example    # Dev environment variables
+│   └── env.prod.example   # Production env reference
+├── .cursor/rules/         # AI persona context files (11 personas + workflows)
 ├── .cursorrules           # AI coding conventions
-├── .cursor/rules/         # AI persona context files (10 personas + workflows)
-├── KNOWLEDGE.md           # Organizational memory (decisions, learnings, patterns)
-├── STRATEGY_REPORT.md     # McKinsey-style strategic assessment (living doc)
-├── PRD.md                 # Product Requirements Document
-├── PRODUCT_SPEC.md        # UX & Product Specification
-├── TASKS.md               # Build task breakdown
 ├── Makefile               # Dev commands (make dev, test, lint, format, migrate)
 ├── render.yaml            # Render Blueprints (production IaC)
 ├── pyproject.toml         # Ruff + mypy configuration
-└── docker-compose.yml     # Local dev only
+└── README.md
 ```
 
 ## Key Documents
 
-- **[PRD.md](PRD.md)** — Business strategy, competitive analysis, revenue model, e-file strategy
-- **[TASKS.md](TASKS.md)** — Sprint-by-sprint build plan with acceptance criteria
-- **[PRODUCT_SPEC.md](PRODUCT_SPEC.md)** — UX specification, design system, component specs
-- **[KNOWLEDGE.md](KNOWLEDGE.md)** — Organizational memory: decisions, learnings, patterns, open questions
-- **[STRATEGY_REPORT.md](STRATEGY_REPORT.md)** — McKinsey-style strategic assessment (living document, updated per review cycle)
+- **[docs/PRD.md](docs/PRD.md)** — Business strategy, competitive analysis, revenue model, e-file strategy
+- **[docs/TASKS.md](docs/TASKS.md)** — Sprint-by-sprint build plan with acceptance criteria
+- **[docs/PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md)** — UX specification, design system, component specs
+- **[docs/KNOWLEDGE.md](docs/KNOWLEDGE.md)** — Organizational memory: decisions, learnings, patterns
+- **[docs/STRATEGY_REPORT.md](docs/STRATEGY_REPORT.md)** — McKinsey-style strategic assessment
+- **[docs/PARTNERSHIPS.md](docs/PARTNERSHIPS.md)** — Partnership playbook for the partnerships co-founder
 - **[.cursorrules](.cursorrules)** — AI coding conventions and tech stack rules
 
 ## Architecture Highlights
 
 - **Tiered OCR Pipeline**: GCP Cloud Vision + GPT-4o-mini structured outputs. $0.002/doc vs $0.30 for Google's own Document AI W-2 Parser. SSN extracted locally via regex, never sent to AI APIs. GPT-4o vision fallback for low-confidence extractions.
 - **Zero AWS**: Entire stack runs on Vercel + Render Starter ($7/mo) + Neon + Upstash + GCP Cloud Storage/Vision.
-- **Docker = Dev Only**: Docker Compose for local dev. Production uses Render native buildpack (render.yaml) + Vercel git deploy.
+- **Docker = Dev Only**: Docker Compose (`infra/compose.dev.yaml`) for local dev. Production uses Render native buildpack (render.yaml) + Vercel git deploy.
 - **North Star**: Own IRS MeF transmitter for free e-file (January 2027). Currently in IRS certification process.
-- **AI Personas**: `.cursor/rules/` contains 10 persona files + workflow playbooks. Each persona has trigger conditions, quality gates, and handoff protocols.
+- **AI Personas**: `.cursor/rules/` contains 11 persona files + workflow playbooks. Each persona has trigger conditions, quality gates, and handoff protocols.

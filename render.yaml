@@ -1,0 +1,36 @@
+# Render Blueprints — Production Infrastructure as Code
+# https://render.com/docs/blueprint-spec
+#
+# Deploy: connect this repo to Render, it auto-detects render.yaml.
+# Database and Redis are provisioned via Neon and Upstash (not Render).
+
+services:
+  - type: web
+    name: filefree-api
+    runtime: python
+    region: oregon
+    plan: starter
+    buildCommand: cd api && pip install -r requirements.txt
+    startCommand: cd api && gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        sync: false
+      - key: GCS_BUCKET_NAME
+        sync: false
+      - key: FRONTEND_URL
+        value: https://filefree.tax
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: PYTHON_VERSION
+        value: "3.11.0"
