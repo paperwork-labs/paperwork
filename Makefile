@@ -41,8 +41,14 @@ format-local: ## Auto-format locally (no Docker)
 	cd api && ruff format . && ruff check --fix .
 	cd web && npm run format
 
-migrate: ## Run database migrations (requires alembic setup — see Sprint 1)
-	@echo "⚠ Alembic not yet configured. Set up alembic in api/ first (see docs/TASKS.md Sprint 1)."
+migrate: ## Run database migrations
+	$(COMPOSE) run --rm api alembic upgrade head
+
+migrate-local: ## Run migrations locally (no Docker)
+	cd api && alembic upgrade head
+
+migration: ## Create a new migration (usage: make migration MSG="description")
+	$(COMPOSE) run --rm api alembic revision --autogenerate -m "$(MSG)"
 
 seed: ## Seed test data (requires seed module — see Sprint 1)
 	@echo "⚠ Seed module not yet implemented. See docs/TASKS.md Sprint 1."
