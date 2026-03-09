@@ -7,12 +7,23 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _normalize_database_url(self) -> "Settings":
-        """Neon/Supabase provide postgresql:// URLs; asyncpg needs the +asyncpg driver."""
+        """Neon/Supabase provide postgresql:// URLs; asyncpg needs the +asyncpg driver.
+        Also strips query params unsupported by asyncpg (e.g. channel_binding)."""
         url = self.DATABASE_URL
         if url.startswith("postgresql://"):
-            object.__setattr__(self, "DATABASE_URL", url.replace("postgresql://", "postgresql+asyncpg://", 1))
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
         elif url.startswith("postgres://"):
-            object.__setattr__(self, "DATABASE_URL", url.replace("postgres://", "postgresql+asyncpg://", 1))
+            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+
+        from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+
+        parsed = urlparse(url)
+        params = parse_qs(parsed.query)
+        params.pop("channel_binding", None)
+        clean_query = urlencode(params, doseq=True)
+        url = urlunparse(parsed._replace(query=clean_query))
+
+        object.__setattr__(self, "DATABASE_URL", url)
         return self
     REDIS_URL: str = "redis://localhost:6379/0"
     SECRET_KEY: str = "change-me-to-a-random-64-char-string"
