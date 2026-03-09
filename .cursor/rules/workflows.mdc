@@ -14,7 +14,7 @@ Engineering (builds) → QA (reviews) → UX (validates mobile) → Legal (check
 
 **Steps:**
 1. Engineering creates branch from `feat/{task}-short-description`
-2. Engineering implements per TASKS.md acceptance criteria and .cursorrules conventions
+2. Engineering implements per docs/TASKS.md acceptance criteria and .cursorrules conventions
 3. QA reviews: tests pass, no new linter errors, PII leak check, security review for auth/encryption changes
 4. UX validates: mobile-first (375px), touch targets (44px), dark mode, animations smooth
 5. Legal checks (only if feature touches PII, disclaimers, or financial data): disclaimers present, SSN isolation intact, no PII in logs
@@ -25,7 +25,7 @@ Engineering (builds) → QA (reviews) → UX (validates mobile) → Legal (check
 ## 2. Make a Strategic Decision
 
 ```
-Strategy (frames options) → CFO (evaluates cost) → Legal (checks compliance) → Founder (decides) → log in KNOWLEDGE.md
+Strategy (frames options) → CFO (evaluates cost) → Legal (checks compliance) → Founder (decides) → log in docs/KNOWLEDGE.md
 ```
 
 **Steps:**
@@ -33,9 +33,9 @@ Strategy (frames options) → CFO (evaluates cost) → Legal (checks compliance)
 2. CFO evaluates cost impact of each alternative (unit economics, monthly spend, scale projections)
 3. Legal checks compliance implications (IRS rules, CCPA/GDPR, FTC, Circular 230)
 4. Founder makes final call
-5. Log decision in KNOWLEDGE.md with date, rationale, alternatives, and reversibility
+5. Log decision in docs/KNOWLEDGE.md with date, rationale, alternatives, and reversibility
 
-**Quality gate:** Decision logged in KNOWLEDGE.md before moving forward.
+**Quality gate:** Decision logged in docs/KNOWLEDGE.md before moving forward.
 
 ## 3. Publish Content (Blog/Email)
 
@@ -90,7 +90,7 @@ QA (triages) → Engineering (fixes) → QA (verifies) → Strategy (decides com
 4. Strategy decides user communication (P0/P1: email affected users; P2/P3: no communication needed)
 5. Deploy fix. Monitor for recurrence.
 
-**Quality gate:** Regression test exists. Root cause documented in KNOWLEDGE.md for P0/P1.
+**Quality gate:** Regression test exists. Root cause documented in docs/KNOWLEDGE.md for P0/P1.
 
 ## 5. Evaluate a Vendor or Tool
 
@@ -110,7 +110,7 @@ CFO (runs checklist) → Engineering (assesses fit) → Legal (reviews data poli
 1. CFO fills out checklist with cost projections
 2. Engineering assesses: integration complexity, maintenance burden, compatibility with stack
 3. Legal reviews: data processing terms, PII handling, compliance (especially if service touches SSNs or tax data)
-4. Decision logged in KNOWLEDGE.md
+4. Decision logged in docs/KNOWLEDGE.md
 
 **Quality gate:** All 6 checklist items answered before committing to any new vendor.
 
@@ -129,6 +129,6 @@ QA (tests) → Engineering (lints) → CFO (cost check) → deploy
 - [ ] Database migrations reviewed (if any)
 - [ ] No unexpected new costs (new API calls, storage, etc.)
 - [ ] Mobile tested at 375px
-- [ ] Acceptance criteria from TASKS.md met
+- [ ] Acceptance criteria from docs/TASKS.md met
 
 **Quality gate:** All checkboxes passed. Any failure blocks deploy.

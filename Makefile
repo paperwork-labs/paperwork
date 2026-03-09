@@ -19,33 +19,33 @@ stop: ## Stop all services
 	$(COMPOSE) down
 
 test: ## Run all tests
-	$(COMPOSE) exec api pytest -v
+	$(COMPOSE) run --rm api pytest -v
 
 test-local: ## Run backend tests locally (no Docker)
 	cd api && python -m pytest -v
 
 lint: ## Run linters (ruff + eslint)
-	$(COMPOSE) exec api ruff check .
-	$(COMPOSE) exec web npm run lint
+	$(COMPOSE) run --rm api ruff check .
+	$(COMPOSE) run --rm web npm run lint
 
 lint-local: ## Run linters locally (no Docker)
 	cd api && ruff check .
 	cd web && npm run lint
 
 format: ## Auto-format code (ruff + prettier)
-	$(COMPOSE) exec api ruff format .
-	$(COMPOSE) exec api ruff check --fix .
-	$(COMPOSE) exec web npm run format
+	$(COMPOSE) run --rm api ruff format .
+	$(COMPOSE) run --rm api ruff check --fix .
+	$(COMPOSE) run --rm web npm run format
 
 format-local: ## Auto-format locally (no Docker)
 	cd api && ruff format . && ruff check --fix .
 	cd web && npm run format
 
-migrate: ## Run database migrations (alembic upgrade head)
-	$(COMPOSE) exec api alembic upgrade head
+migrate: ## Run database migrations (requires alembic setup — see Sprint 1)
+	@echo "⚠ Alembic not yet configured. Set up alembic in api/ first (see docs/TASKS.md Sprint 1)."
 
-seed: ## Seed test data
-	$(COMPOSE) exec api python -m app.seed
+seed: ## Seed test data (requires seed module — see Sprint 1)
+	@echo "⚠ Seed module not yet implemented. See docs/TASKS.md Sprint 1."
 
 clean: ## Stop services and remove volumes
 	$(COMPOSE) down -v
