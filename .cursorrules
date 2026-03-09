@@ -73,7 +73,7 @@ The ultimate strategic goal is owning our e-file infrastructure at $0/return. We
 - **Blended OCR cost**: ~$0.005/doc (90% handled by Cloud Vision+GPT-4o-mini at $0.002, 10% escalated to GPT-4o vision at $0.02)
 
 ### Infrastructure (Zero AWS)
-- **Frontend Hosting**: Vercel (Pro plan, $20/mo)
+- **Frontend Hosting**: Vercel (Hobby tier, free — upgrade to Pro when needed)
 - **Backend Hosting**: Render (Starter plan, $7/mo, 512MB — sufficient for FastAPI making HTTP calls to Cloud Vision/OpenAI)
 - **Database (Production)**: Neon serverless PostgreSQL (free tier for MVP, scales to paid at 5K+ users)
 - **Sessions (Production)**: Upstash serverless Redis (free tier: 500K commands/mo, sufficient for MVP)

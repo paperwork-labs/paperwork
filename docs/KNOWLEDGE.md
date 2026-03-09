@@ -196,7 +196,7 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
   - **Vercel** (frontend): filefree.tax + www.filefree.tax live (Valid Configuration, auto-deploy from `main`). Hobby tier.
   - **Render** (API): filefree-api live at api.filefree.tax. Custom domain verified, TLS certificate issued. Free tier (upgrade to Starter $7/mo when billing added). Auto-deploy from `main`. DATABASE_URL wired to Neon.
   - **Neon** (database): `filefree` project created (Postgres 17, AWS US East 1). Connection pooling enabled via pgbouncer. Connection string set on Render as `DATABASE_URL` with `postgresql+asyncpg://` prefix for SQLAlchemy async compatibility.
-  - **Hetzner** (ops VPS): CX33 server `filefree-ops` running at 204.168.147.100. Deployment configs in `infra/hetzner/`. Not yet bootstrapped (Docker/Caddy install pending).
+  - **Hetzner** (ops VPS): CX33 server `filefree-ops` running at 204.168.147.100. Fully bootstrapped: Docker, Caddy (reverse proxy + auto TLS), UFW firewall. Services running: PostgreSQL (healthy), Redis (healthy), n8n (https://n8n.filefree.tax), Postiz (https://social.filefree.tax).
   - **DNS** (Spaceship): 6 records configured for filefree.tax — A record (Vercel), CNAME www (Vercel), CNAME api (Render), A records for n8n/social/ops (Hetzner). Updated to Vercel's recommended project-specific values.
   - **MCP integrations**: Render (24 tools — deploy, env vars, logs, metrics), Notion (workspace management), GitHub, Context7 (library docs).
 - **Cleanup**: Removed empty placeholder directories `api/alembic/` and `api/tax-data/` — will be scaffolded when needed in Sprint 1 (Alembic) and Sprint 2 (tax data).
@@ -208,3 +208,16 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 - **Alternatives considered**: Auth.js/NextAuth (rejected: session management must be server-side for CCPA deletion, security audits, revocation), TikTok Login (rejected: no email, privacy concerns), Firebase Auth (rejected: vendor lock-in, less control).
 - **Impact**: User model includes `auth_provider`, `auth_provider_id`, `email_verified` fields and nullable `password_hash`. Config includes Google/Apple OAuth vars (empty = disabled in dev). Actual OAuth endpoints are Task 2.1.
 - **Reversibility**: Low cost to add more providers later; the `auth_provider` enum is extensible.
+
+### D23 — Sprint 1 Complete + Gen Z Branding Removed (2026-03-09)
+- **Context**: Sprint 1 foundation work complete. Full persona review (12 personas) identified 7 doc inconsistencies and a branding issue. All fixed.
+- **What shipped**:
+  - Frontend design system: Tailwind v4, 22 shadcn components, Inter + JetBrains Mono fonts, dark indigo/violet theme, attribution UTM capture, Framer Motion presets, axios API client with response envelope interceptor
+  - Backend foundation: 7 SQLAlchemy models (User, Filing, Document, TaxProfile, TaxCalculation, Submission, Waitlist) with cascade deletes, BaseRepository + WaitlistService, response envelope, AES-256 encryption, PII scrubber, correlation ID middleware, SlowAPI rate limiter, 16 passing tests
+  - Alembic configured for async migrations (migration not yet generated against Neon)
+  - 2025 tax data (Rev. Proc. 2024-40, P.L. 119-21)
+  - Hetzner ops stack fully bootstrapped: Docker, Caddy, n8n (live at n8n.filefree.tax), Postiz (live at social.filefree.tax)
+- **Branding change**: Removed "Gen Z" from all user-facing copy (README, layout metadata, page content, API description). Product leads with benefits ("Free AI-powered tax filing"), not demographic labels. Internal strategy docs retain the demographic insight where analytically relevant.
+- **Monthly burn**: $5.49/mo (Hetzner VPS only). Vercel Hobby (free), Render free tier, Neon free tier, Upstash free tier.
+- **Inconsistencies fixed**: TASKS.md (Temporal reference, separate DBs, docker-compose.yml path, Gen Z FAQ), .cursorrules + engineering.mdc (Vercel tier Hobby not Pro), env.prod.example (missing auth vars), KNOWLEDGE.md D21 (Hetzner bootstrapped).
+- **Reversibility**: N/A — milestone.
