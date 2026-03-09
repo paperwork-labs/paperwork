@@ -69,6 +69,13 @@ export function getAttribution(): Attribution {
 export function AttributionProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     captureAttribution();
+
+    const attribution = getAttribution();
+    if (Object.keys(attribution).length > 0) {
+      import("@/lib/posthog").then(({ posthog }) => {
+        posthog.register(attribution);
+      });
+    }
   }, []);
 
   return children;

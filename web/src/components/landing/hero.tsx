@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import api from "@/lib/api";
 import { getAttribution } from "@/lib/attribution";
+import { trackEvent } from "@/lib/posthog";
 import { fadeIn, slideInUp } from "@/lib/motion";
 
 const waitlistSchema = z.object({
@@ -34,12 +35,17 @@ export function Hero() {
 
   const onSubmit = async (data: WaitlistForm) => {
     try {
+      const attribution = getAttribution();
       await api.post("/api/v1/waitlist", {
         email: data.email,
         source: "landing",
-        attribution: getAttribution(),
+        attribution,
       });
       setSubmitted(true);
+      trackEvent("waitlist_signup", {
+        source: "landing_hero",
+        ...attribution,
+      });
       confetti({
         particleCount: 100,
         spread: 70,
@@ -52,6 +58,7 @@ export function Hero() {
         toast.info("You're already on the list! We'll be in touch soon.");
         setSubmitted(true);
       } else {
+        trackEvent("waitlist_signup_error", { error: message });
         toast.error(message);
       }
     }
