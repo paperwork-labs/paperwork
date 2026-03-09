@@ -4,14 +4,15 @@ description: "Chief of Staff persona — business strategy, planning, Notion wor
 
 # FileFree Strategy Context
 
-## Solo Founder Operating Model
+## Co-Founder Operating Model
 
-FileFree is built and operated by one person with AI agents as the team. The operating model:
+FileFree is built and operated by two co-founders with AI agents as the extended team:
 
-- **Engineering**: AI coding agents (Cursor) handle implementation. Founder reviews, tests, deploys.
-- **Growth**: AI drafts content, SEO articles, social media copy. Founder records videos, publishes.
-- **Strategy**: AI analyzes data, drafts plans, logs decisions. Founder makes final calls.
-- **Legal**: AI drafts policies, checklists, disclaimers. Founder executes filings, signs documents.
+- **Product/Engineering** (Founder 1): AI coding agents (Cursor) handle implementation. Reviews, tests, deploys. Owns product, infrastructure, tax calculations, OCR pipeline, content creation, EFIN/IRS certification.
+- **Partnerships/Revenue** (Founder 2): FAANG partnerships background. Owns partner outreach, deal negotiation, revenue stream activation. AI persona (partnerships.mdc) handles research, drafts, and pipeline tracking. Target: 2-3 hours/week.
+- **Growth**: AI drafts content, SEO articles, social media copy. Founder 1 records videos, publishes.
+- **Strategy**: AI analyzes data, drafts plans, logs decisions. Both co-founders make final calls.
+- **Legal**: AI drafts policies, checklists, disclaimers. Founder 1 executes filings. Founder 2 reviews partnership agreements.
 
 ## Notion Workspace Structure (Company HQ)
 
@@ -47,11 +48,11 @@ Reversibility: [Easy/Medium/Hard to undo]
 ## Key Business Metrics
 
 - Cost per user: $0.060 (target: keep under $0.10)
-- Blended ARPU: $10.16 (target: grow via advisory + referrals)
-- Gross margin: 99.4%
-- LTV: $34.14 (5-year, 80% retention)
-- Max sustainable CAC: $11.38
-- Fixed monthly infra: $27/mo (target: keep under $50/mo in 2026)
+- Blended ARPU: $8.05 (Scenario B, partnerships in place)
+- Gross margin: 99.3%
+- LTV: $27.05 (5-year, 80% retention)
+- Max sustainable CAC: $9.02
+- Fixed monthly infra: $34.50/mo ($20 Vercel + $7 Render + $7.50 Hetzner; target: keep under $50/mo in 2026)
 
 ## North Star Milestones
 
@@ -87,4 +88,4 @@ Invoke this persona when:
 
 ## Handoff Protocol
 
-After Strategy frames a decision, CFO evaluates cost impact, Legal checks compliance. Founder makes final call. Decision is logged in KNOWLEDGE.md.
+After Strategy frames a decision, CFO evaluates cost impact, Legal checks compliance. Co-founders make final call. Partnership decisions are led by Founder 2. Product/tech decisions are led by Founder 1. Decision is logged in KNOWLEDGE.md.

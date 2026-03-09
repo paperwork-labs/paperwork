@@ -1,7 +1,7 @@
 ---
 alwaysApply: true
 description: "Staff Engineer persona — tech stack, architecture, code conventions, security. This is the primary engineering context for all code generation."
-globs: ["filefree-api/**/*.py", "filefree-web/**/*.ts", "filefree-web/**/*.tsx", "docker-compose.yml", "Makefile", "render.yaml"]
+globs: ["api/**/*.py", "web/**/*.ts", "web/**/*.tsx", "infra/compose.dev.yaml", "Makefile", "render.yaml"]
 ---
 
 # FileFree Engineering Context
@@ -42,13 +42,14 @@ Google Cloud Vision does NOT store images, does NOT use them for training.
 - Sessions: Upstash serverless Redis (free tier: 500K commands/mo)
 - Storage: GCP Cloud Storage (encrypted, 24hr auto-delete lifecycle)
 - OCR API: GCP Cloud Vision (1K free pages/mo, then $0.0015/page)
-- Local Dev: Docker Compose — DEV ONLY (postgres, redis, api, web)
+- Local Dev: Docker Compose (`infra/compose.dev.yaml`) — DEV ONLY (postgres, redis, api, web)
 - Production Deploy: render.yaml (Render Blueprints IaC) + Vercel git deploy
 - Dev Tooling: Makefile (`make dev`, `make test`, `make lint`, `make format`, `make migrate`)
+- Env Config: Single consolidated `infra/env.dev.example` for all services
 
 ### Key Dependencies
 
-**Frontend** (filefree-web/package.json):
+**Frontend** (web/package.json):
 - next, react, typescript, tailwindcss
 - framer-motion, recharts, lucide-react, zustand, @tanstack/react-query
 - react-hook-form, @hookform/resolvers, zod, axios
@@ -56,7 +57,7 @@ Google Cloud Vision does NOT store images, does NOT use them for training.
 - @react-pdf/renderer
 - clsx, tailwind-merge, next-themes, sonner, vaul, react-dropzone, date-fns, nuqs, canvas-confetti
 
-**Backend** (filefree-api/requirements.txt):
+**Backend** (api/requirements.txt):
 - fastapi, uvicorn[standard], gunicorn, sqlalchemy[asyncio], asyncpg, alembic
 - pydantic, pydantic-settings, python-multipart
 - python-jose[cryptography], passlib[bcrypt]
@@ -84,7 +85,7 @@ Before merging any PR:
 - [ ] No PII in logs (grep for SSN patterns)
 - [ ] No hardcoded secrets or API keys
 - [ ] Mobile tested at 375px (if frontend changes)
-- [ ] Acceptance criteria from TASKS.md met
+- [ ] Acceptance criteria from docs/TASKS.md met
 
 ## Handoff Protocol
 

@@ -1,2 +1,58 @@
-# MCP config may contain tokens; use mcp.json.example as template, copy to .cursor/mcp.json locally
+# MCP config may contain tokens
 .cursor/mcp.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+venv/
+.venv/
+*.whl
+
+# Node
+node_modules/
+.next/
+out/
+.turbo/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Environment variables (actual env files, not examples)
+infra/env.dev
+infra/env.test
+infra/env.prod
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Docker
+docker-volumes/
+
+# Uploads (temporary file storage)
+uploads/
+
+# Test / Coverage
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# OS
+Thumbs.db
