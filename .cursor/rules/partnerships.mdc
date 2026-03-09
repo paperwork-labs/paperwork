@@ -109,4 +109,4 @@ Every deliverable must pass:
 - Can she act on it in under 10 minutes?
 - Does it include enough context that she doesn't need to ask background questions?
 - Is the outreach email ready to send (not "here's a rough draft")?
-- Are numbers accurate and sourced from PRD.md / STRATEGY_REPORT.md?
+- Are numbers accurate and sourced from docs/PRD.md / docs/STRATEGY_REPORT.md?

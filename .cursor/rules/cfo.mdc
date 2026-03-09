@@ -27,9 +27,9 @@ description: "CFO / Cost Optimizer persona — unit economics, infrastructure sp
 | Upstash | $0/mo | Free (500K cmds) | >500K cmds/mo → Pay-as-you-go |
 | GCP Cloud Storage | $0/mo | Free (5GB) | Negligible at any scale |
 | GCP Cloud Vision | $0/mo | 1K pages free/mo | >1K pages/mo → $0.0015/page |
-| Hetzner VPS (Postiz + n8n) | $7.50/mo | CX33 (8GB RAM) | >80% RAM → upgrade CX33 ($14) |
+| Hetzner VPS (Postiz + n8n) | EUR 5.49/mo | CX33 (4 vCPU, 8GB RAM) | >80% RAM → upgrade CX43 |
 | OpenAI | Variable | Pay-as-you-go | Largest variable cost |
-| **Total Fixed (Infra)** | **$34.50/mo** | | |
+| **Total Fixed (Infra)** | **~$32.50/mo** | | |
 
 ### Marketing Spend (Separate Budget — Tax Season Only)
 
@@ -80,7 +80,7 @@ description: "CFO / Cost Optimizer persona — unit economics, infrastructure sp
 - Blended ARPU (Scenario B, moderate): $8.05 at scale
 - Cost per user: $0.060
 - Gross margin: 99.3%
-- Break-even users for fixed costs: $34.50/mo ÷ $8.05 ARPU = 5 paying users
+- Break-even users for fixed costs: ~$32.50/mo ÷ $8.05 ARPU = 5 paying users
 - Max sustainable CAC: $9.02
 - Primary revenue: refund routing to HYSA partners ($4.00/user at 8% attach) + financial referrals ($2.25/user at 3%)
 - Secondary revenue: audit shield, tax optimization plan ($29/yr), refund advance

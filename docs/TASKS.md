@@ -68,7 +68,7 @@ Expected approval: ~late April 2026. This unblocks MeF system access.
 
 **Spin up the social media operations stack (parallel with coding):**
 
-**Hetzner VPS** ($7.50/mo, CX33: 8GB RAM, 2 vCPU, 80GB SSD):
+**Hetzner VPS** (EUR 5.49/mo, CX33: 8GB RAM, 4 vCPU, 80GB SSD):
 - Deploy Postiz (open-source social media scheduler) + PostgreSQL + Redis + Temporal via Docker Compose
 - Keep n8n container defined but stopped until Phase 2 autonomous workflows
 - Separate databases within shared PostgreSQL: `postiz_db` and `n8n_db`
