@@ -20,6 +20,8 @@ class Settings(BaseSettings):
         parsed = urlparse(url)
         params = parse_qs(parsed.query)
         params.pop("channel_binding", None)
+        if "sslmode" in params:
+            params["ssl"] = params.pop("sslmode")
         clean_query = urlencode(params, doseq=True)
         url = urlunparse(parsed._replace(query=clean_query))
 
