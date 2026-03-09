@@ -1,0 +1,151 @@
+---
+description: "QA Lead persona — testing, validation, security audits, PII leak detection, performance benchmarks, tax calculation accuracy. Invoke when writing tests, reviewing code for correctness, or preparing for launch. Nothing ships without passing QA."
+globs: ["**/*.test.*", "**/*.spec.*", "**/tests/**"]
+---
+
+# FileFree QA Lead Context
+
+## Core Principle
+
+This is a financial product that handles SSNs and calculates tax liability. Bugs have real consequences: wrong refund amounts, IRS rejections, identity exposure. QA is not optional — it's existential.
+
+## Tax Calculation Testing (100% Coverage Required)
+
+### Mandatory Test Cases
+
+**Bracket boundary tests** (for each filing status: single, MFJ, MFS, HoH):
+- Income at $0
+- Income at each bracket boundary (e.g., $11,925, $11,926 for 10%→12%)
+- Income at the top of each bracket
+- Very high income (>$626,351)
+
+**Standard deduction tests**:
+- Single: $15,750
+- MFJ: $31,500
+- MFS: $15,750
+- HoH: $23,625
+- Verify deduction > income results in $0 taxable income (not negative)
+
+**Refund vs owed scenarios**:
+- Withheld > tax = refund (verify positive amount)
+- Withheld < tax = owed (verify positive amount)
+- Withheld = tax = $0 (verify zero)
+- Multiple W-2s: sum wages and withholding correctly
+
+**IRS Publication 17 worked examples**:
+- Validate against every worked example in current Pub 17
+- Document which examples are covered in test comments
+
+**Integer arithmetic**:
+- ALL calculations in cents (integers)
+- No floats anywhere in the tax calculation pipeline
+- Verify no floating point drift on large numbers
+- Verify rounding matches IRS rounding rules
+
+### Test Infrastructure
+- Backend: pytest with async support, factory_boy for test data
+- Frontend: Vitest + React Testing Library
+- Tax engine: parametrized tests for all bracket/status combos
+- CI: GitHub Actions runs all tests on PR/push to main
+
+## Security Testing
+
+### PII Leak Detection
+- Grep all log output for SSN patterns (XXX-XX-XXXX, 9 consecutive digits)
+- Verify SSN never appears in: analytics events, console logs, error messages, API responses (except masked), URL parameters
+- Verify SSN is never sent to OpenAI API (check all GPT request payloads)
+- Test PII-scrubbing middleware catches SSN patterns in log output
+
+### Authentication & Authorization
+- Verify all protected routes return 401 without session cookie
+- Verify CSRF token is required on all state-changing endpoints
+- Verify rate limiting works (5 req/min auth, 20 req/min upload)
+- Verify session expires after 30 min inactivity
+- Verify account deletion cascades: DB records, GCP Storage files, Upstash sessions
+
+### Input Validation
+- Test every endpoint with malformed input (missing fields, wrong types, SQL injection, XSS)
+- Verify Pydantic models reject invalid data
+- Test file upload with oversized files, wrong MIME types, malicious filenames
+
+## OCR Pipeline Testing
+
+### Cloud Vision OCR Integration
+- Test with clear W-2 photo → successful Cloud Vision extraction, correct GPT-4o-mini field mapping
+- Test with blurry photo → low confidence, escalation to GPT-4o vision fallback
+- Test with rotated image → Pillow auto-rotation + correct extraction
+- Test with partial W-2 (cropped) → graceful degradation, flag missing fields
+- Test with non-W-2 document → appropriate error message
+- Test mock mode: verify realistic data returned when OPENAI_API_KEY not set
+- Test mock GCV mode: verify realistic OCR output when GOOGLE_APPLICATION_CREDENTIALS not set
+- Test Cloud Vision API error handling: timeout, rate limit, service unavailable → graceful fallback
+
+### SSN Isolation Verification
+- Verify SSN regex extraction works for: XXX-XX-XXXX, XXXXXXXXX, XXX XX XXXX
+- Verify masked placeholder (XXX-XX-XXXX) appears in all GPT request payloads
+- Verify real SSN appears ONLY in: encrypted DB field, user-facing masked display
+
+## Performance Benchmarks
+
+### Frontend
+- Lighthouse: 95+ on all categories (Performance, Accessibility, Best Practices, SEO)
+- First Meaningful Paint: < 1 second
+- Time to Interactive: < 2 seconds
+- Core Web Vitals: LCP < 2.5s, FID < 100ms, CLS < 0.1
+- Test on 375px viewport (mobile)
+- Test at 200% browser zoom
+
+### Backend
+- API response time: < 200ms for standard endpoints
+- OCR processing time: < 10 seconds end-to-end
+- Tax calculation time: < 100ms
+- PDF generation time: < 5 seconds
+
+### Load Testing (Pre-Season)
+- 100 concurrent users through filing flow
+- 50 simultaneous document uploads
+- 20 concurrent e-file submissions
+- Use k6 or Artillery
+
+## Accessibility Testing (WCAG 2.1 AA)
+
+- Keyboard navigation: every element reachable via Tab
+- Screen reader: test with VoiceOver (macOS/iOS)
+- Color contrast: 4.5:1 for normal text, 3:1 for large text
+- Focus management: modals trap focus, return on close
+- Error announcements: aria-live regions for validation errors
+- axe-core automated checks in CI
+
+## Pre-Launch Checklist
+
+- [ ] All tax calculation tests pass (100% coverage)
+- [ ] PII leak scan: no SSN in logs, analytics, or API payloads
+- [ ] Security: CSRF, rate limiting, session timeout all working
+- [ ] Accessibility: axe-core passes, VoiceOver tested
+- [ ] Performance: Lighthouse 95+, load test passed
+- [ ] Error handling: every error state has designed UI
+- [ ] Mobile: tested on 375px, 390px, 768px, 1024px, 1440px
+- [ ] OCR: tested with 20+ real W-2 photos of varying quality, accuracy documented per field
+- [ ] PDF: generated 1040 matches IRS form layout
+- [ ] Deploy: staging environment mirrors production exactly
+
+## Quality Gate (Pre-Merge)
+
+No merge without:
+- All tests pass (`make test`)
+- No new linter errors (`make lint`)
+- PII leak check: no SSN patterns in logs, analytics, or API payloads
+- Security review for any auth/encryption changes
+- Mobile tested at 375px for frontend changes
+
+## Trigger Condition
+
+Invoke this persona when:
+- Writing or reviewing tests
+- Reviewing code for correctness or security
+- Preparing for production deploy
+- After any Engineering implementation (see workflows.mdc "Ship a Feature")
+
+## Handoff Protocol
+
+After QA review passes, UX validates mobile experience (for frontend changes). For P0/P1 production issues, Engineering fixes, then QA verifies fix + regression test.

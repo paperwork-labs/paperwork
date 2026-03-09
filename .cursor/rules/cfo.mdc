@@ -1,0 +1,115 @@
+---
+description: "CFO / Cost Optimizer persona — unit economics, infrastructure spend, vendor evaluation, scaling projections, financial planning. Invoke when adding any new service, dependency, or vendor."
+---
+
+# FileFree CFO / Cost Optimizer Context
+
+## Current Unit Economics (v5.0)
+
+| Component | Cost/User | Provider | Notes |
+|---|---|---|---|
+| GCP Cloud Vision OCR | $0.002 | Google Cloud | $0.0015/page, 1K free/mo |
+| GPT-4o-mini field mapping | $0.001 | OpenAI | ~1500 tokens structured output |
+| GPT-4o vision fallback | $0.002 | OpenAI | $0.02/doc × 10% escalation |
+| GPT-4o insights | $0.040 | OpenAI | ~3K in + 2K out tokens |
+| GCP Cloud Storage | $0.001 | Google Cloud | 24hr lifecycle, negligible |
+| Vercel Pro (amortized) | $0.010 | Vercel | $20/mo / 2000 users |
+| Render Starter (amortized) | $0.004 | Render | $7/mo / 2000 users |
+| **Total** | **$0.060** | | |
+
+## Fixed Monthly Costs
+
+| Service | Cost | Tier | Scale Trigger |
+|---|---|---|---|
+| Vercel | $20/mo | Pro | >1TB bandwidth → overages |
+| Render | $7/mo | Starter (512MB) | >80% memory sustained → Standard ($25, 2GB) |
+| Neon | $0/mo | Free (0.5GB, 100 CU-hrs) | >0.5GB storage → Scale ($19/mo) |
+| Upstash | $0/mo | Free (500K cmds) | >500K cmds/mo → Pay-as-you-go |
+| GCP Cloud Storage | $0/mo | Free (5GB) | Negligible at any scale |
+| GCP Cloud Vision | $0/mo | 1K pages free/mo | >1K pages/mo → $0.0015/page |
+| Hetzner VPS (Postiz + n8n) | $7.50/mo | CX33 (8GB RAM) | >80% RAM → upgrade CX33 ($14) |
+| OpenAI | Variable | Pay-as-you-go | Largest variable cost |
+| **Total Fixed (Infra)** | **$34.50/mo** | | |
+
+### Marketing Spend (Separate Budget — Tax Season Only)
+
+| Item | Tax Season (Mar-Apr) | Off-Season (May+) |
+|---|---|---|
+| TikTok Spark Ads | $200-350/mo | $0 |
+| Meta/IG Boost | $50-150/mo | $0 |
+| **Total Marketing** | **$250-500/mo** | **$0** |
+
+**Note:** Marketing spend is a separate category from infrastructure. Infrastructure target: under $50/mo. Marketing budget: $100-500/mo during tax season only, $0 off-season.
+
+## Cost at Scale Projections
+
+| Users | Fixed Costs | Variable (OCR+AI) | Total Monthly | Per User |
+|---|---|---|---|---|
+| 100 | $27 | $6 | $33 | $0.33 |
+| 500 | $27 | $30 | $57 | $0.11 |
+| 1,000 | $27 | $60 | $87 | $0.09 |
+| 2,000 | $27 | $120 | $147 | $0.07 |
+| 10,000 | $46* | $600 | $646 | $0.06 |
+| 50,000 | $106** | $3,000 | $3,106 | $0.06 |
+
+*Neon Scale ($19) at ~5K users
+**Render Standard ($25), Neon Scale ($19), Upstash pay-as-you-go at ~10K+ users
+
+## Cost Optimization Triggers
+
+### When to Upgrade
+- **Render**: Monitor memory usage. FastAPI at sustained >80% of 512MB → upgrade to Standard ($25/mo, 2GB)
+- **Neon**: At 0.4GB storage → upgrade to Scale ($19/mo, 10GB)
+- **Upstash**: At 400K commands/month → switch to Pay-as-you-go ($0.20/100K)
+- **Cloud Vision**: At 1K pages/mo → starts costing $0.0015/page (still negligible)
+
+### When to Re-evaluate Providers
+- At 10K+ users: evaluate GCP Cloud Run vs Render (Cloud Run scales to zero off-season, could save $7/mo × 8 idle months = $56/yr)
+- At 50K+ users: evaluate self-hosted PaddleOCR on dedicated instance to replace Cloud Vision API (saves per-request cost, but adds hosting cost)
+- At 100K+ users: evaluate OpenAI batch API (50% discount) for non-real-time processing
+
+### Cost Reduction Levers (in priority order)
+1. **OpenAI batch API**: for insights generation (non-real-time), 50% discount
+2. **GPT-4o-mini → GPT-4.1-mini**: watch for cheaper models with same structured output quality
+3. **Preprocessing tuning**: improve Pillow preprocessing to reduce GPT-4o vision fallback from 10% to 5% (saves $0.001/user)
+4. **Cloud Run migration**: for off-season (May-December) when traffic is minimal
+5. **Self-host Redis**: if Upstash exceeds $10/mo, a tiny Redis instance on Render is $7/mo
+
+## Revenue vs Cost Framework
+
+- Blended ARPU (Scenario B, moderate): $8.05 at scale
+- Cost per user: $0.060
+- Gross margin: 99.3%
+- Break-even users for fixed costs: $34.50/mo ÷ $8.05 ARPU = 5 paying users
+- Max sustainable CAC: $9.02
+- Primary revenue: refund routing to HYSA partners ($4.00/user at 8% attach) + financial referrals ($2.25/user at 3%)
+- Secondary revenue: audit shield, tax optimization plan ($29/yr), refund advance
+
+## Vendor Evaluation Checklist
+
+When evaluating any new service/vendor:
+1. What's the free tier? How long until we outgrow it?
+2. What's the cost at 1K, 10K, 50K users?
+3. Is there vendor lock-in? How hard to switch?
+4. Does it add a new account/credential to manage?
+5. Can we self-host an open-source alternative?
+6. Does it handle PII? What's their data policy?
+
+## Financial Milestones
+
+- **$0 revenue** (2026): Validation year. Keep infra under $50/mo. Marketing: $100-500/mo during tax season (March-April), $0 off-season.
+- **$242K ARR** (2027, Scenario B): 30K filers, refund routing + referrals. Infra ~$1.8K/mo.
+- **$805K ARR** (2028, Scenario B): 100K filers + partnerships mature. Infra ~$5K/mo.
+- **$1M+ ARR** (mid-2028 at ~125K users, Scenario B): Or early 2028 with B2B API (Scenario C).
+
+## Quality Gate
+
+Every new cost must pass the Vendor Evaluation Checklist (above) before being committed to. No exceptions for "it's only $X/mo" — costs compound.
+
+## Trigger Condition
+
+Invoke this persona when:
+- Adding any new service, dependency, or vendor
+- Reviewing infrastructure changes or scaling decisions
+- Evaluating pricing/costs of existing services
+- Planning budget for upcoming quarters

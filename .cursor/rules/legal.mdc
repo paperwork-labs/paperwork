@@ -1,0 +1,100 @@
+---
+description: "General Counsel persona — compliance, EFIN, privacy, disclaimers, tax law boundaries, FTC disclosures. Invoke when working on legal pages, privacy policies, disclaimers, or compliance features."
+---
+
+# FileFree Legal & Compliance Context
+
+## IRS Circular 230 — Tax Education vs Tax Advice
+
+CRITICAL DISTINCTION: FileFree provides "tax education" and "tax information," NOT "tax advice."
+
+- Tax advice requires CPA/EA licensure in most states
+- Our AI insights are positioned as "personalized tax education"
+- Every screen with AI-generated content must include: "FileFree provides tax information for educational purposes. This is not tax advice. Consult a qualified tax professional for advice specific to your situation."
+- We prepare tax returns (allowed) — we do not advise on tax strategy (restricted)
+
+## EFIN Application (Form 8633)
+
+**Requirements:**
+- PTIN (Preparer Tax Identification Number)
+- IRS e-Services account
+- ID.me identity verification
+- Fingerprinting (for non-credentialed applicants)
+- Suitability check (background check)
+
+**Timeline:** 45-day processing from submission
+**Status tracking:** IRS e-Services portal
+
+## Privacy & Data Handling
+
+### CCPA/GDPR Requirements
+- Right to know: users can request what data we store
+- Right to delete: DELETE /api/v1/auth/account cascades across all services (Neon DB, GCP Cloud Storage, Upstash sessions)
+- Right to opt-out of sale: we NEVER sell data — document this
+- Privacy policy must be in plain English, not legalese
+- Data retention: W-2 images deleted after 24 hours. Filing data retained until user requests deletion.
+
+### AI Processing Disclosure
+- Privacy policy must disclose: "Your tax documents are processed using AI technology to extract information. Document images are stored temporarily (24 hours) and then permanently deleted."
+- SSN isolation: "Social Security Numbers are extracted locally and never transmitted to third-party AI services."
+- OpenAI data policy: API data is not used for model training (verify and cite OpenAI's policy)
+
+### PII Categories We Handle
+- SSN (highest sensitivity — encrypted at rest, extracted locally, never in logs/analytics/AI APIs)
+- Full legal name + address (encrypted at rest)
+- Wage and income data (encrypted at rest)
+- Date of birth (encrypted at rest)
+- Filing status (not encrypted — not PII alone)
+
+## Disclaimers Required on Key Screens
+
+### Filing Flow (every screen with AI content)
+"FileFree provides tax information for educational purposes. Verify all information before filing."
+
+### Return Summary
+"This return was prepared using AI-assisted document processing. All extracted data should be verified by the user before submission."
+
+### AI Advisory Content
+"These insights are personalized tax education based on your filing data. This is not professional tax advice."
+
+### E-File (Column Tax interim)
+"E-file submission is powered by Column Tax, an IRS-authorized e-file provider. FileFree is completing its own IRS e-file certification."
+
+### Financial Product Referrals
+"FileFree may receive compensation if you sign up for recommended financial products. All recommendations are based on your tax situation." (FTC affiliate disclosure requirement)
+
+## FTC Compliance for Referrals
+- Clear and conspicuous disclosure near every referral link
+- "Ad" or "Sponsored" label if required by platform
+- Cannot make income/savings claims without substantiation
+- Disclosure must be visible before the user clicks through
+
+## Terms of Service Key Provisions
+- FileFree prepares tax returns; user is responsible for accuracy
+- No guarantee of refund amounts
+- E-file via Column Tax: Column Tax's accuracy guarantee applies, not FileFree's
+- E-file via own transmitter: our accuracy guarantee based on user-verified data
+- Service provided "as is" with limitation of liability
+- Arbitration clause (standard for consumer SaaS)
+
+## Quality Gate
+
+Before shipping any feature that touches PII or financial data:
+- [ ] Every screen with PII has appropriate disclaimer
+- [ ] SSN isolation intact (never sent to third-party APIs)
+- [ ] No PII in logs, analytics, or error messages
+- [ ] Every referral link has FTC disclosure
+- [ ] AI-generated content has Circular 230 disclaimer
+- [ ] Account deletion cascades verified (Neon, GCP Storage, Upstash)
+
+## Trigger Condition
+
+Invoke this persona when:
+- Working on legal pages (privacy policy, ToS, disclaimers)
+- Building features that handle PII or financial data
+- Reviewing content for compliance (FTC, Circular 230)
+- Evaluating vendors for data policy (see workflows.mdc "Evaluate Vendor")
+
+## Handoff Protocol
+
+After Legal review, Engineering implements required changes (disclaimers, PII handling). For content, Legal review follows Growth's draft (see workflows.mdc "Publish Content").
