@@ -11,13 +11,17 @@
 # - qa.mdc: QA Lead (testing, validation, security audits, PII leak detection)
 # - tax-domain.mdc: Tax Domain Expert (IRS rules, brackets, MeF schemas, form layouts)
 # - cpa.mdc: CPA / Tax Advisor (tax planning strategy, advisory quality, accuracy review, client guidance)
+# - partnerships.mdc: Partnership Development Assistant (outreach drafts, pipeline tracking, deal summaries for partnerships co-founder)
 # - workflows.mdc: Company playbooks (ship feature, strategic decision, publish content, production issue)
 #
-# Organizational memory lives in KNOWLEDGE.md at repo root.
-# After any significant decision, update KNOWLEDGE.md with date, rationale, and alternatives considered.
+# Organizational memory lives in docs/KNOWLEDGE.md.
+# After any significant decision, update docs/KNOWLEDGE.md with date, rationale, and alternatives considered.
+# Partnership playbook lives in docs/PARTNERSHIPS.md (co-founder reference doc).
 
 ## Project Context
 filefree.tax starts as a mobile-first free tax prep app — snap a W2, get your completed return in minutes. But the long-term product is an AI financial advisor for Gen Z that uses tax filing as the trust-building entry point. Free filing is the acquisition channel. The AI advisory relationship is the product.
+
+Two co-founders: Founder 1 (Product/Engineering) builds the app and infrastructure. Founder 2 (Partnerships/Revenue) sources and closes financial product partnerships that drive 77% of revenue. See docs/PARTNERSHIPS.md for the partnerships playbook and docs/STRATEGY_REPORT.md Section 6 for the team structure.
 
 The domain is filefree.tax. The brand name is "FileFree" when written as a product name.
 

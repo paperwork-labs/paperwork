@@ -156,3 +156,30 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 - **Context**: Needed to preserve the "advisory" revenue stream but reframe for realistic Gen Z purchasing behavior.
 - **Decision**: Annual one-time purchase at $29/year during filing, not a $9.99/month recurring subscription.
 - **Rationale**: Tax advice is seasonal — users don't think about taxes May-December. Monthly subscriptions for annual-use products have high churn. $29/year is less than the cost of one TurboTax filing, anchored to the filing moment when willingness to pay is highest. If the W-4 adjustment alone saves $200/year, the ROI is obvious.
+
+### D16: Co-Founder Structure — Product/Eng + Partnerships/Revenue (2026-03-09)
+- **Context**: Solo founder risk was the #1 strategic risk (CRITICAL severity). Partnership-dependent revenue streams (refund routing + financial referrals) account for 77% of Scenario B revenue but require dedicated relationship management that a solo engineer would struggle to execute.
+- **Decision**: Two co-founder structure. Founder 1 owns product, engineering, infrastructure, tax calculations, OCR pipeline, content creation, and IRS certification. Founder 2 (FAANG partnerships background) owns partner outreach, deal negotiation, and revenue stream activation at 2-3 hours/week, supported by AI persona (partnerships.mdc).
+- **Alternatives**: Solo founder + hire later, solo founder + contractor for BD, single founder doing everything.
+- **Rationale**: The delta between Scenario A (no partnerships, $438K) and Scenario B (partnerships in place, $805K) is $367K at 100K users. Having a dedicated partnerships person with enterprise deal experience directly addresses the most fragile revenue assumption (refund routing attach rate) and reduces the solo founder burnout risk from CRITICAL to HIGH. Her FAANG experience means she knows how enterprise partnership agreements, rev-share negotiations, and compliance work.
+- **Reversibility**: Easy. Roles are cleanly separated. Either founder can operate independently if needed.
+
+### D17: Tiered Partnership Strategy — Affiliate First, Direct Deals at Scale (2026-03-09)
+- **Context**: Partnership revenue requires signed agreements with financial product companies (HYSA, investment, lending, insurance). Cold outreach to enterprise partners pre-product is low-probability. Need a pragmatic path from zero to revenue.
+- **Decision**: Four-phase tiered approach. Phase 1 (NOW): affiliate network applications (self-serve, $50-100/funded). Phase 2 (500+ users): activate affiliate links, track conversion. Phase 3 (5K+ users): upgrade to direct partnerships ($100-200+/funded, 2-3x affiliate rates). Phase 4 (10K+): expand to lending, insurance, credit, B2B API.
+- **Alternatives**: Cold outreach to direct partnerships immediately (low probability pre-product), skip partnerships and rely on Tax Optimization Plan revenue only (leaves $367K/yr on the table), hire a BD agency (expensive, misaligned incentives).
+- **Rationale**: Affiliate programs (Marcus via Impact, Wealthfront via Impact, Betterment via CJ) accept applications without a live product. This lets us have revenue infrastructure ready at launch. Direct partnerships require volume proof — moving to Phase 3 at 5K+ users gives us conversion data to negotiate 2-3x higher payouts.
+- **Reversibility**: Easy. Each phase is independent. Can skip phases or stay at affiliate level indefinitely.
+
+### D18: Docker Dev Environment — Task 0.1 Complete (2026-03-09)
+- **Context**: Repo was entirely documentation — no code, no dev environment. Needed to create the complete local development stack as the foundation for all subsequent engineering tasks.
+- **Decision**: Docker Compose with 4 services (PostgreSQL 15, Redis 7, FastAPI backend, Next.js frontend). Makefile with 17 commands. Separate Dockerfiles for dev (Docker Compose) vs production (Render native buildpack via render.yaml). Health checks on all services with dependency ordering.
+- **Alternatives**: Dev containers (VS Code), local-only (no Docker), Nix flakes. Docker Compose chosen for team portability and parity with production services.
+- **Key files created**: `infra/compose.dev.yaml`, `Makefile`, `api/Dockerfile`, `web/Dockerfile.dev`, `api/requirements.txt`, `api/app/main.py` (health endpoint), `web/package.json`, `pyproject.toml` (ruff + mypy), `render.yaml` (production IaC), `infra/env.dev.example`, `.python-version`, `.node-version`, `.gitignore`.
+- **Reversibility**: Easy. All infrastructure as code, no state outside Docker volumes.
+
+### D19: Project Structure Cleanup (2026-03-09)
+- **Context**: Initial scaffolding used verbose directory names (`filefree-api/`, `filefree-web/`), scattered env files, docs cluttering the root, and a premature OCR validation script. User wanted a cleaner structure inspired by their AXIOMFOLIO project.
+- **Decision**: Renamed `filefree-api/` → `api/`, `filefree-web/` → `web/`. Created `infra/` folder for compose + env files (per-environment: `env.dev.example`, `env.prod.example`). Created `docs/` folder for all strategy/product documents. Deleted premature `scripts/validate_ocr.py`. Consolidated env files into single `infra/env.dev.example`. Confirmed monorepo as correct architecture for solo founder + AI agents.
+- **Alternatives**: Separate repos (rejected — AI agents need full context), `backend/`+`frontend/` naming (user chose `api/`+`web/`), keep docs at root (user chose `docs/` for cleaner root).
+- **Reversibility**: Easy. Just file moves and renames.

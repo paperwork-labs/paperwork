@@ -2,7 +2,7 @@
 
 **Version**: 6.0 | **Updated**: 2026-03-09
 
-Work through these in order. Each task is scoped for one PR. Reference [PRODUCT_SPEC.md](PRODUCT_SPEC.md) for UX specs, [.cursorrules](../.cursorrules) for coding conventions, [PRD.md](PRD.md) for business context, [PARTNERSHIPS.md](PARTNERSHIPS.md) for partner playbook.
+Work through these in order. Each task is scoped for one PR. Reference [PRODUCT_SPEC.md](PRODUCT_SPEC.md) for UX specs, [.cursorrules](.cursorrules) for coding conventions, [PRD.md](PRD.md) for business context, [PARTNERSHIPS.md](PARTNERSHIPS.md) for partner playbook.
 
 **Founding team**: Two co-founders. Founder 1 (Product/Engineering) owns all code tasks. Founder 2 (Partnerships/Revenue) owns partner outreach tasks (marked with "Founder 2" below). See [PARTNERSHIPS.md](PARTNERSHIPS.md) for the full playbook.
 
@@ -85,8 +85,8 @@ Expected approval: ~late April 2026. This unblocks MeF system access.
 - Do NOT launch ads yet — wait until Week 3 when organic content proves which formats work
 
 **Content prep:**
-- AI drafts first 10 posts via [social.mdc](../.cursor/rules/social.mdc) persona (scripts, captions, hooks)
-- Record first 5 founder-led videos (see [social.mdc](../.cursor/rules/social.mdc) for topics)
+- AI drafts first 10 posts via [social.mdc](.cursor/rules/social.mdc) persona (scripts, captions, hooks)
+- Record first 5 founder-led videos (see [social.mdc](.cursor/rules/social.mdc) for topics)
 - Schedule Week 2 content in Postiz
 
 **Acceptance**: Postiz is live and can schedule to all 4 platforms. Ad accounts created. First 10 posts drafted. First 5 videos recorded.
@@ -95,7 +95,7 @@ Expected approval: ~late April 2026. This unblocks MeF system access.
 
 Set up the partnership infrastructure and documentation for Founder 2.
 
-- Create `docs/PARTNERSHIPS.md` (standalone playbook for partnerships co-founder)
+- Create `PARTNERSHIPS.md` at repo root (standalone playbook for partnerships co-founder)
 - Create `.cursor/rules/partnerships.mdc` (AI persona for partnership support)
 - Create Notion workspace "FileFree HQ" with Partnership Pipeline database
 - AI-generate Pitch Package: Executive Summary (2 pages), Revenue Model one-pager, Partnership Hit List
@@ -131,7 +131,7 @@ Book and run the Column Tax demo call to secure interim e-file capability.
 
 Draft initial legal documents needed before landing page goes live.
 
-- Draft v1 privacy policy (plain English, CCPA/GDPR compliant) using [legal.mdc](../.cursor/rules/legal.mdc) persona
+- Draft v1 privacy policy (plain English, CCPA/GDPR compliant) using [legal.mdc](.cursor/rules/legal.mdc) persona
 - Draft v1 terms of service with tax preparation disclaimers
 - Include AI processing disclosure, SSN isolation explanation, data deletion rights
 - Note: AI advisory content must be positioned as "tax education" not "tax advice" (IRS Circular 230)
@@ -155,8 +155,8 @@ Set up local development with Docker Compose.
 - Next.js frontend (volume-mounted, hot reload, port 3000)
 
 **Dockerfiles**:
-- `api/Dockerfile` — Python 3.11-slim, install requirements, expose 8000
-- `web/Dockerfile.dev` — Node 20-alpine, npm install, expose 3000
+- `filefree-api/Dockerfile` — Python 3.11-slim, install requirements, expose 8000
+- `filefree-web/Dockerfile.dev` — Node 20-alpine, npm install, expose 3000
 
 **Also create**:
 - `.gitignore` — Node, Python, .env, .next, __pycache__, venv, docker volumes, uploads/
@@ -180,7 +180,7 @@ Health checks on all services. API waits for healthy postgres and redis before s
 
 **Branch**: `feat/0.2-frontend-design-system`
 
-Create `web/` with Next.js 14 App Router, TypeScript, Tailwind CSS, ESLint, src directory.
+Create `filefree-web/` with Next.js 14 App Router, TypeScript, Tailwind CSS, ESLint, src directory.
 
 **Dependencies**:
 - framer-motion, recharts, lucide-react, zustand, @tanstack/react-query
@@ -214,9 +214,9 @@ Base layout: dark background, fonts, metadata, QueryClientProvider, ThemeProvide
 
 **Branch**: `feat/0.3-backend-database`
 
-Create `api/` with structure:
+Create `filefree-api/` with structure:
 ```
-api/
+filefree-api/
 ├── app/
 │   ├── main.py, config.py, database.py
 │   ├── models/       (all data models)
@@ -407,8 +407,8 @@ Each article: genuinely helpful, links to product naturally, FAQ schema markup f
 - Week 2: "Coming soon" + build-in-public content. "Building a free tax app live", "Day 5 of building FileFree"
 - Week 3 (app live): shift to "it's live" + demo reactions. "I just filed my taxes in 2 minutes for free"
 - First creator outreach: 10 DMs to personal finance micro-influencers (10K-100K followers)
-- Content calendar: 4-week plan drafted via [social.mdc](../.cursor/rules/social.mdc) persona, scheduled in Postiz
-- Paid amplification: after Week 3, boost top organic posts via TikTok Spark Ads + Meta (see [social.mdc](../.cursor/rules/social.mdc) for playbook). Budget: $200-500/mo in intermittent bursts on winners.
+- Content calendar: 4-week plan drafted via [social.mdc](.cursor/rules/social.mdc) persona, scheduled in Postiz
+- Paid amplification: after Week 3, boost top organic posts via TikTok Spark Ads + Meta (see [social.mdc](.cursor/rules/social.mdc) for playbook). Budget: $200-500/mo in intermittent bursts on winners.
 
 **Acceptance**: All pages have proper meta tags, sitemap generates, pricing page is honest and clear. Pixels installed. 20+ posts scheduled in Postiz. Daily posting cadence established.
 
@@ -745,7 +745,7 @@ The primary monetization screen. See [PRODUCT_SPEC.md](PRODUCT_SPEC.md) "Refund 
 **Context**: Requires e-file capability (Column Tax integration from Task 3.3 must be close to live).
 
 - Cold outreach to Refundo and Green Dot/Republic Bank
-- AI ([partnerships.mdc](../.cursor/rules/partnerships.mdc)) drafts pitch email using Template D from [PARTNERSHIPS.md](PARTNERSHIPS.md)
+- AI ([partnerships.mdc](.cursor/rules/partnerships.mdc)) drafts pitch email using Template D from [PARTNERSHIPS.md](PARTNERSHIPS.md)
 - Founder 2 personalizes and sends
 - Negotiate rev share ($3-5/advance)
 - Goal: one lending partner signed by October 2026 e-file launch
@@ -851,7 +851,7 @@ Add dependent data model, child tax credit calculation. Eventually: 1099 support
 ## How to Use This Document
 
 1. Start each task by creating a branch: `feat/{task-number}-short-description`
-2. Read [.cursorrules](../.cursorrules) for coding conventions
+2. Read [.cursorrules](.cursorrules) for coding conventions
 3. Reference [PRODUCT_SPEC.md](PRODUCT_SPEC.md) for detailed UX specs
 4. Reference [PRD.md](PRD.md) for business context and competitive strategy
 5. Complete the task, test it, create a PR, merge, move on

@@ -191,26 +191,6 @@ If OCR fails or user doesn't have their W2 photo handy, the manual entry path mu
 
 ---
 
-### Tax Receipt Viral Card (Growth-Critical)
-
-After filing completion, offer a shareable "tax receipt" graphic — the tax equivalent of Spotify Wrapped.
-
-**Card content (user opts in to each):**
-- "Filed in [X] minutes" (always shown)
-- "Refund: $X,XXX" (opt-in)
-- Filing date
-- "Filed free with FileFree" footer with logo
-- filefree.tax URL
-
-**Formats:**
-- Instagram Story (1080x1920)
-- Twitter/X card (1200x675)
-- General share (1080x1080)
-
-**Implementation:** Generate server-side using @vercel/og or canvas API. One-tap share or download.
-
----
-
 ### 1040 PDF Template Specification
 
 The app must generate a downloadable IRS Form 1040 PDF using @react-pdf/renderer.
