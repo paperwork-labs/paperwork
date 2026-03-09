@@ -1,0 +1,2 @@
+# MCP config may contain tokens; use mcp.json.example as template, copy to .cursor/mcp.json locally
+.cursor/mcp.json

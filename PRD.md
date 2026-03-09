@@ -236,9 +236,9 @@ Our OCR pipeline uses GCP Cloud Vision for text extraction and GPT for intellige
 
 1. **Preprocessing** (Pillow): auto-rotate via EXIF, contrast normalization, resize to optimal dimensions
 2. **Text Extraction** (GCP Cloud Vision `DOCUMENT_TEXT_DETECTION`): returns hierarchical text (pages/blocks/paragraphs/words) with bounding box coordinates. $0.0015/page, 1K free pages/mo. Google does NOT store images or use them for training.
-3. **SSN Isolation** (local regex): SSN extracted via regex (`\d{3}-?\d{2}-?\d{4}`) from Cloud Vision text output ON OUR SERVER. Masked placeholder (XXX-XX-XXXX) replaces SSN in all text sent to OpenAI. SSN never touches any third-party AI API.
+3. **SSN Isolation & Masking** (local regex): SSN extracted via regex (`\d{3}-?\d{2}-?\d{4}`) from Cloud Vision text output ON OUR SERVER. For all downstream LLM calls (OpenAI GPT), SSNs are removed or replaced with a masked placeholder (XXX-XX-XXXX) in the text we send. Raw SSNs are only present in (a) the original uploaded W-2 image stored in our encrypted bucket and (b) the transient text output from Google Cloud Vision; we do not log or persist SSNs beyond what is required to populate the tax return.
 4. **Field Mapping — Primary Path** (GPT-4o-mini structured output): send scrubbed OCR text + bounding box positions to GPT-4o-mini. It maps text to a W-2 Pydantic schema with guaranteed valid JSON. Cost: ~$0.001/doc
-5. **Field Mapping — Fallback Path** (GPT-4o vision): for low-confidence extractions (<85%), send actual image to GPT-4o vision for direct field extraction. Cost: ~$0.02/doc
+5. **Field Mapping — Fallback Path** (GPT-4o vision): for low-confidence extractions (<85%), send a locally redacted image (SSN region blurred/covered before upload) to GPT-4o vision for direct field extraction. Cost: ~$0.02/doc
 6. **Post-validation**: SSN format (9 digits), EIN format (XX-XXXXXXX), wage amounts numeric, cross-field consistency checks
 7. **Manual entry fallback**: if both paths produce low-confidence results, flag fields for user manual entry
 
