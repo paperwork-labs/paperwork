@@ -19,7 +19,7 @@
 # Partnership playbook lives in docs/PARTNERSHIPS.md (co-founder reference doc).
 
 ## Project Context
-filefree.tax starts as a mobile-first free tax prep app — snap a W2, get your completed return in minutes. But the long-term product is an AI financial advisor for Gen Z that uses tax filing as the trust-building entry point. Free filing is the acquisition channel. The AI advisory relationship is the product.
+filefree.tax starts as a mobile-first free tax prep app — snap a W2, get your completed return in minutes. But the long-term product is an AI financial advisor that uses tax filing as the trust-building entry point. Free filing is the acquisition channel. The AI advisory relationship is the product. Primary audience: first-time and early-career filers (18-30), but the product works for anyone with a simple return.
 
 Two co-founders: Founder 1 (Product/Engineering) builds the app and infrastructure. Founder 2 (Partnerships/Revenue) sources and closes financial product partnerships that drive 77% of revenue. See docs/PARTNERSHIPS.md for the partnerships playbook and docs/STRATEGY_REPORT.md Section 6 for the team structure.
 
@@ -34,7 +34,7 @@ The ultimate strategic goal is owning our e-file infrastructure at $0/return. We
 - Dark mode by default with vibrant gradients (Linear/Raycast aesthetic, NOT TurboTax boomer energy)
 - AI does the work, user just confirms
 - Filing is FREE FOREVER (federal + state) — this is the acquisition channel, never gate it
-- Anxiety-killer for Gen Z — every interaction reduces tax stress, never adds to it
+- Anxiety-killer — every interaction reduces tax stress, never adds to it
 - Revenue comes from refund routing to partner accounts (HYSA/IRA), financial product referrals, Tax Optimization Plan ($29/yr), refund advances, and audit shield — NOT from filing fees
 - Every screen should build toward the advisory relationship: "FileFree knows my finances and helps me make better decisions"
 

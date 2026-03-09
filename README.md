@@ -1,6 +1,6 @@
 # FileFree
 
-**Free AI-powered tax filing for Gen Z.** Snap your W-2, get your completed return in minutes. Actually free.
+**Free AI-powered tax filing.** Snap your W-2, get your completed return in minutes. Actually free.
 
 **Live at:** [filefree.tax](https://filefree.tax)
 

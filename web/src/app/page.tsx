@@ -6,7 +6,7 @@ export default function Home() {
           FileFree
         </h1>
         <p className="text-lg text-muted-foreground md:text-xl">
-          Free AI-powered tax filing for Gen Z
+          Free AI-powered tax filing. Seriously.
         </p>
         <p className="mt-8 text-sm text-muted-foreground/60">
           Landing page coming soon &mdash; filefree.tax
