@@ -73,6 +73,7 @@ Expected approval: ~late April 2026. This unblocks MeF system access.
 **Hetzner VPS** (EUR 5.49/mo, CX33: 8GB RAM, 4 vCPU, 80GB SSD) — server provisioned at 204.168.147.100, deploy configs in `infra/hetzner/`, DNS configured. Bootstrapped: Docker, Caddy, firewall installed. All services running.
 - Postiz (social media scheduler) + n8n (workflow automation) + PostgreSQL + Redis deployed via `infra/hetzner/compose.yaml`
 - Single shared `filefree_ops` database within PostgreSQL
+- **n8n persona workflows imported** (6 workflows: Social Content Generator, Growth Content Writer, Weekly Strategy Check-in, QA Security Scan, Partnership Outreach Drafter, CPA Tax Review). Workflow JSONs in `infra/hetzner/workflows/`. Remaining: add OpenAI API key credential in n8n UI (Settings > Credentials > OpenAI).
 
 **Postiz setup:**
 - Connect accounts: TikTok (@filefree), Instagram (@filefree.tax), X (@filefreetax), YouTube (FileFree)
@@ -173,11 +174,13 @@ Set up local development with Docker Compose.
 
 Health checks on all services. API waits for healthy postgres and redis before starting.
 
-**Acceptance**: `docker compose up` starts everything, frontend on :3000, API /health returns `{ "status": "healthy" }`. `make dev`, `make test`, `make lint` all work.
+**Test isolation**: Separate `filefree_test` database created via `infra/init-test-db.sh`. Tests use transactional rollback (no data persists). Test schema auto-created from SQLAlchemy models. `conftest.py` overrides `get_db` dependency for full isolation.
+
+**Acceptance**: `docker compose up` starts everything, frontend on :3000, API /health returns `{ "status": "healthy" }`. `make dev`, `make test`, `make lint` all work. Tests never touch dev database.
 
 ---
 
-### Task 0.2 — Next.js Frontend Init + Design System
+### Task 0.2 — Next.js Frontend Init + Design System — DONE
 
 **Branch**: `feat/0.2-frontend-design-system`
 
@@ -211,7 +214,7 @@ Base layout: dark background, fonts, metadata, QueryClientProvider, ThemeProvide
 
 ---
 
-### Task 0.3 — FastAPI Backend Init + Database
+### Task 0.3 — FastAPI Backend Init + Database — DONE
 
 **Branch**: `feat/0.3-backend-database`
 
@@ -252,7 +255,7 @@ api/
 
 ---
 
-### Task 0.4 — Landing Page + Waitlist + Deploy — PARTIAL
+### Task 0.4 — Landing Page + Waitlist + Deploy — DONE
 
 **Branch**: `feat/0.4-landing-deploy`
 

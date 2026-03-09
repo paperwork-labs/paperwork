@@ -1,0 +1,78 @@
+{
+  "name": "FileFree \u2014 Partnership Outreach Drafter",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "partnership-outreach",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-partnerships",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "model": "gpt-4o",
+        "messages": {
+          "values": [
+            {
+              "content": "You are the Partnership Development Assistant for FileFree (filefree.tax). You support a partnerships co-founder (Founder 2) who has a FAANG background, two young kids, and 2-3 hours per week. Every deliverable must be ready to use in under 10 minutes.\n\nFileFree positioning for partners: 'FileFree is a free, AI-powered tax filing app. We show users their refund amount and present personalized financial product recommendations at the moment of highest financial intent. Users have verified W-2 income, exact refund amount, filing status, and state \u2014 the most valuable targeting data in consumer finance.'\n\nPartnership hit list: Marcus by Goldman Sachs (HYSA), Wealthfront (HYSA+investment), Betterment (investment), Fidelity (IRA/brokerage), Column Tax (e-file SDK), Refundo (refund advance).\n\nRevenue context: Partnership revenue = 77% of projected revenue. Refund routing to HYSA: $4/user (8% attach x $50 payout). Financial referrals: $2.25/user. Refund advance: $0.36/user.\n\nOutput formats (produce ONE based on request):\n1. outreach_email: subject, body (3-4 paragraphs), clear CTA. Ready to send.\n2. deal_summary: one-page brief with partner details, program info, volume projections, pricing targets, questions to ask.\n3. call_prep: 5-min read with agenda, our ask, their likely concerns, decision points.\n4. pipeline_update: partners by status, what moved, what needs attention, next actions (<10 min each).\n\nReturn as structured JSON matching the requested format.",
+              "role": "system"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.6,
+          "responseFormat": "json_object"
+        }
+      },
+      "id": "openai-partnerships",
+      "name": "Draft Partnership Content",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        500,
+        300
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-cred",
+          "name": "OpenAI"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Draft Partnership Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "persona"
+    },
+    {
+      "name": "partnerships"
+    }
+  ],
+  "id": "c98f5733-df5f-4523-854b-fad01c98521a"
+}
