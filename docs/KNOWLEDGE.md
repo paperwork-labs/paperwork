@@ -202,3 +202,9 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 - **Cleanup**: Removed empty placeholder directories `api/alembic/` and `api/tax-data/` — will be scaffolded when needed in Sprint 1 (Alembic) and Sprint 2 (tax data).
 - **What's next**: Sprint 1 coding (Task 0.2 frontend foundation, Task 0.3 backend foundation, Task 0.4 landing page). Parallel: Hetzner bootstrap, EFIN application, affiliate applications, legal drafts.
 - **Reversibility**: N/A — this is a milestone, not a reversible decision.
+
+### D22 — Auth Architecture: Google One-Tap + Apple + Email/Password (2026-03-09)
+- **Decision**: Authentication strategy uses Google One-Tap (~60%), Apple Sign In (~25%), and email/password (~15%). TikTok Login rejected (no email returned, regulatory risk). FastAPI owns all auth — validates social tokens server-side, creates Redis sessions, sets HTTP-only cookies.
+- **Alternatives considered**: Auth.js/NextAuth (rejected: session management must be server-side for CCPA deletion, security audits, revocation), TikTok Login (rejected: no email, privacy concerns), Firebase Auth (rejected: vendor lock-in, less control).
+- **Impact**: User model includes `auth_provider`, `auth_provider_id`, `email_verified` fields and nullable `password_hash`. Config includes Google/Apple OAuth vars (empty = disabled in dev). Actual OAuth endpoints are Task 2.1.
+- **Reversibility**: Low cost to add more providers later; the `auth_provider` enum is extensible.
