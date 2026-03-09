@@ -129,16 +129,16 @@ Book and run the Column Tax demo call to secure interim e-file capability.
 
 **Acceptance**: Column Tax pricing confirmed. Sandbox access timeline established.
 
-### Task B.10 — Legal Drafts v1
+### Task B.10 — Legal Drafts v1 — DONE
 
 Draft initial legal documents needed before landing page goes live.
 
-- Draft v1 privacy policy (plain English, CCPA/GDPR compliant) using [legal.mdc](../.cursor/rules/legal.mdc) persona
-- Draft v1 terms of service with tax preparation disclaimers
-- Include AI processing disclosure, SSN isolation explanation, data deletion rights
-- Note: AI advisory content must be positioned as "tax education" not "tax advice" (IRS Circular 230)
+- ~~Draft v1 privacy policy (plain English, CCPA/GDPR compliant) using [legal.mdc](../.cursor/rules/legal.mdc) persona~~ — live at `/privacy`
+- ~~Draft v1 terms of service with tax preparation disclaimers~~ — live at `/terms`
+- ~~Include AI processing disclosure, SSN isolation explanation, data deletion rights~~
+- ~~Note: AI advisory content must be positioned as "tax education" not "tax advice" (IRS Circular 230)~~
 
-**Acceptance**: Privacy policy and ToS drafts ready for legal review before landing page ships.
+**Acceptance**: Privacy policy and ToS v1 live. Linked from landing page footer. Drafts for legal review.
 
 ### Task B.11 — Agent Autonomy (n8n Workflow Wiring)
 
