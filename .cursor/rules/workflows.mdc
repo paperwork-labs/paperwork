@@ -1,0 +1,134 @@
+---
+description: "Company operating playbooks — repeatable workflows with persona handoff chains. Invoke when starting any cross-functional process (shipping features, making decisions, publishing content, handling incidents)."
+---
+
+# FileFree Workflow Playbooks
+
+These are the standard operating procedures for the AI team. Each workflow defines who does what, in what order, with quality gates between handoffs.
+
+## 1. Ship a Feature
+
+```
+Engineering (builds) → QA (reviews) → UX (validates mobile) → Legal (checks if PII-touching) → merge
+```
+
+**Steps:**
+1. Engineering creates branch from `feat/{task}-short-description`
+2. Engineering implements per TASKS.md acceptance criteria and .cursorrules conventions
+3. QA reviews: tests pass, no new linter errors, PII leak check, security review for auth/encryption changes
+4. UX validates: mobile-first (375px), touch targets (44px), dark mode, animations smooth
+5. Legal checks (only if feature touches PII, disclaimers, or financial data): disclaimers present, SSN isolation intact, no PII in logs
+6. Merge to main. Deploy automatically via Vercel (frontend) / Render (backend).
+
+**Quality gate before merge:** All tests pass. No linter errors. No PII in logs. Mobile-responsive. Acceptance criteria met.
+
+## 2. Make a Strategic Decision
+
+```
+Strategy (frames options) → CFO (evaluates cost) → Legal (checks compliance) → Founder (decides) → log in KNOWLEDGE.md
+```
+
+**Steps:**
+1. Strategy defines the decision, context, and 2-3 alternatives with pros/cons
+2. CFO evaluates cost impact of each alternative (unit economics, monthly spend, scale projections)
+3. Legal checks compliance implications (IRS rules, CCPA/GDPR, FTC, Circular 230)
+4. Founder makes final call
+5. Log decision in KNOWLEDGE.md with date, rationale, alternatives, and reversibility
+
+**Quality gate:** Decision logged in KNOWLEDGE.md before moving forward.
+
+## 3. Publish Content (Blog/Email)
+
+```
+Growth (drafts) → Legal (reviews disclaimers) → Founder (approves) → publish
+```
+
+**Steps:**
+1. Growth drafts content following brand voice (smart calm friend, anti-TurboTax, Gen Z native)
+2. Legal reviews: no unauthorized tax advice (Circular 230), FTC disclosure on referrals, no unsubstantiated claims
+3. Founder reviews tone and approves
+4. Publish to platform (blog, email)
+
+**Quality gate:** Legal sign-off on any content mentioning tax advice, refund amounts, or financial products.
+
+## 3b. Create Social Content (Daily)
+
+```
+Social (drafts) → Legal (reviews if tax claims) → Founder (records video + approves) → schedule via Postiz
+```
+
+**Manual mode (tax season):**
+1. Social persona drafts scripts, captions, hooks per platform (invoke social.mdc in Cursor)
+2. Legal reviews if post makes tax-related claims (most educational content is fine)
+3. Founder records video, edits in CapCut
+4. Schedule via Postiz (MCP from Cursor or Postiz dashboard)
+
+**Autonomous mode (off-season, via n8n):**
+1. n8n cron (daily 8am) fetches trending topics + calls OpenAI with social.mdc system prompt
+2. n8n queues 3 draft posts in Postiz via REST API
+3. Founder opens Postiz dashboard, reviews/approves/schedules (~5 min)
+4. For tax claims: flag for Legal review before publishing
+
+**Paid amplification** (after posting):
+1. Wait 24-48 hours for organic performance data
+2. If post reaches >1K views (TikTok) or >500 views (IG): boost via Spark Ads / Meta
+3. Run boost for 3-5 days, evaluate CPC
+4. Kill if CPC exceeds threshold (see social.mdc)
+
+**Quality gate:** No tax claims without Legal review. No ad spend without 24hr organic performance data.
+
+## 4. Handle a Production Issue
+
+```
+QA (triages) → Engineering (fixes) → QA (verifies) → Strategy (decides communication)
+```
+
+**Steps:**
+1. QA triages: severity (P0 = data loss/security, P1 = feature broken, P2 = degraded, P3 = cosmetic)
+2. Engineering fixes on hotfix branch, writes regression test
+3. QA verifies fix, runs full test suite
+4. Strategy decides user communication (P0/P1: email affected users; P2/P3: no communication needed)
+5. Deploy fix. Monitor for recurrence.
+
+**Quality gate:** Regression test exists. Root cause documented in KNOWLEDGE.md for P0/P1.
+
+## 5. Evaluate a Vendor or Tool
+
+```
+CFO (runs checklist) → Engineering (assesses fit) → Legal (reviews data policy) → decide
+```
+
+**Checklist (from cfo.mdc):**
+1. What's the free tier? How long until we outgrow it?
+2. What's the cost at 1K, 10K, 50K users?
+3. Is there vendor lock-in? How hard to switch?
+4. Does it add a new account/credential to manage?
+5. Can we self-host an open-source alternative?
+6. Does it handle PII? What's their data policy?
+
+**Steps:**
+1. CFO fills out checklist with cost projections
+2. Engineering assesses: integration complexity, maintenance burden, compatibility with stack
+3. Legal reviews: data processing terms, PII handling, compliance (especially if service touches SSNs or tax data)
+4. Decision logged in KNOWLEDGE.md
+
+**Quality gate:** All 6 checklist items answered before committing to any new vendor.
+
+## 6. Pre-Deploy Checklist
+
+```
+QA (tests) → Engineering (lints) → CFO (cost check) → deploy
+```
+
+**Before every production deploy:**
+- [ ] All tests pass (`make test`)
+- [ ] Lints clean (`make lint`)
+- [ ] No new PII exposure (grep for SSN patterns in logs/analytics)
+- [ ] No new unencrypted PII fields
+- [ ] No hardcoded secrets or API keys
+- [ ] Database migrations reviewed (if any)
+- [ ] No unexpected new costs (new API calls, storage, etc.)
+- [ ] Mobile tested at 375px
+- [ ] Acceptance criteria from TASKS.md met
+
+**Quality gate:** All checkboxes passed. Any failure blocks deploy.

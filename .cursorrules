@@ -1,16 +1,38 @@
-# filefree.tax - AI-Powered Free Tax Filing
+# filefree.tax - AI-Powered Free Tax Filing → Year-Round Tax Advisor
+#
+# NOTE: Persona-specific context lives in .cursor/rules/*.mdc (11 personas)
+# - engineering.mdc: Staff Engineer (tech stack, architecture, code conventions) [alwaysApply]
+# - ux.mdc: UX/UI Lead (design system, accessibility, mobile-first, animations)
+# - growth.mdc: Head of Growth (marketing, content, SEO, viral mechanics)
+# - social.mdc: Social Media Manager (platform playbooks, paid ads, analytics, creator outreach, content pipeline)
+# - strategy.mdc: Chief of Staff (business strategy, planning, Notion)
+# - legal.mdc: General Counsel (compliance, EFIN, privacy, tax law)
+# - cfo.mdc: CFO / Cost Optimizer (unit economics, infrastructure spend, vendor evaluation)
+# - qa.mdc: QA Lead (testing, validation, security audits, PII leak detection)
+# - tax-domain.mdc: Tax Domain Expert (IRS rules, brackets, MeF schemas, form layouts)
+# - cpa.mdc: CPA / Tax Advisor (tax planning strategy, advisory quality, accuracy review, client guidance)
+# - workflows.mdc: Company playbooks (ship feature, strategic decision, publish content, production issue)
+#
+# Organizational memory lives in KNOWLEDGE.md at repo root.
+# After any significant decision, update KNOWLEDGE.md with date, rationale, and alternatives considered.
 
 ## Project Context
-filefree.tax is a mobile-first tax filing web application that lets users file their taxes by taking photos of their W2 and Driver's License. The app uses AI (OCR + LLM) to extract data, calculate taxes, and e-file — targeting the ~100M Americans with simple tax situations (W2 income, standard deduction) who are currently overpaying for TurboTax.
+filefree.tax starts as a mobile-first free tax prep app — snap a W2, get your completed return in minutes. But the long-term product is an AI financial advisor for Gen Z that uses tax filing as the trust-building entry point. Free filing is the acquisition channel. The AI advisory relationship is the product.
 
 The domain is filefree.tax. The brand name is "FileFree" when written as a product name.
 
+## North Star: Own IRS MeF Transmitter (January 2027)
+The ultimate strategic goal is owning our e-file infrastructure at $0/return. We are actively going through the rigorous IRS certification process (EFIN, ATS testing). Until certified, users can download their completed 1040 PDF for free, or e-file via our partner at cost. Once our transmitter passes IRS testing (target: January 2027), e-file becomes free forever.
+
 ## Core Philosophy
-- "Photo to Filed in 60 seconds" — every design decision optimizes for speed and simplicity
+- "Photo to Done in 5 minutes" — every design decision optimizes for speed and simplicity
 - Mobile-first, desktop-responsive
 - Dark mode by default with vibrant gradients (Linear/Raycast aesthetic, NOT TurboTax boomer energy)
 - AI does the work, user just confirms
-- Free for simple federal filing, monetize through state filing, refund advances, and audit protection
+- Filing is FREE FOREVER (federal + state) — this is the acquisition channel, never gate it
+- Anxiety-killer for Gen Z — every interaction reduces tax stress, never adds to it
+- Revenue comes from refund routing to partner accounts (HYSA/IRA), financial product referrals, Tax Optimization Plan ($29/yr), refund advances, and audit shield — NOT from filing fees
+- Every screen should build toward the advisory relationship: "FileFree knows my finances and helps me make better decisions"
 
 ## Tech Stack (DO NOT DEVIATE)
 
@@ -24,7 +46,8 @@ The domain is filefree.tax. The brand name is "FileFree" when written as a produ
 - **Charts**: Recharts
 - **Icons**: Lucide React (shadcn default, keep consistent)
 - **Forms**: React Hook Form + Zod validation (shadcn Form component wraps this)
-- **State Management**: Zustand (for global state like user session, tax data)
+- **Server State**: @tanstack/react-query — for all API calls, caching, polling, optimistic updates
+- **Client State**: Zustand — for minimal client-only state (auth session, filing step index, theme). NOT for server data.
 - **Camera**: Browser MediaDevices API (navigator.mediaDevices.getUserMedia)
 - **PDF Generation**: @react-pdf/renderer (for downloadable tax return PDFs)
 
@@ -32,21 +55,37 @@ The domain is filefree.tax. The brand name is "FileFree" when written as a produ
 - **Framework**: FastAPI (Python 3.11+)
 - **ORM**: SQLAlchemy 2.0 with async support
 - **Database**: PostgreSQL 15+
-- **Cache**: Redis
-- **Task Queue**: Celery with Redis broker
+- **Cache/Sessions**: Redis (used for session storage; add caching later as needed)
+- **Async Processing**: FastAPI BackgroundTasks for MVP (migrate to Celery with Redis broker at scale)
 - **Migrations**: Alembic
 
-### AI/ML Pipeline
-- **OCR**: AWS Textract (AnalyzeDocument API)
-- **LLM Validation**: OpenAI GPT-4o API (structured outputs)
-- **Document preprocessing**: Pillow (Python) for server-side image processing
+### AI/ML Pipeline — Tiered OCR (Cloud Vision + GPT)
+- **OCR Engine**: GCP Cloud Vision API (`DOCUMENT_TEXT_DETECTION`) — returns hierarchical text (pages/blocks/paragraphs/words) with bounding box coordinates. $0.0015/page, 1K free pages/mo. Google does NOT store images or use them for training.
+- **Image Preprocessing**: Pillow — auto-rotate (EXIF), contrast normalization, resize to optimal OCR dimensions
+- **Field Mapping**: OpenAI GPT-4o-mini (structured outputs) — receives OCR text + positions, maps to W-2 Pydantic schema (~$0.001/doc)
+- **Vision Fallback**: OpenAI GPT-4o vision — for low-confidence extractions (<85%), send actual image for direct field extraction (~$0.02/doc)
+- **AI Insights**: OpenAI GPT-4o — plain-English tax explanations, personalized tips, advisory content (where quality matters)
+- **SSN Isolation**: SSN is extracted via regex from Cloud Vision text output locally — NEVER sent to OpenAI. Masked placeholder (XXX-XX-XXXX) used in all GPT contexts.
+- **Blended OCR cost**: ~$0.005/doc (90% handled by Cloud Vision+GPT-4o-mini at $0.002, 10% escalated to GPT-4o vision at $0.02)
 
-### Infrastructure
-- **Frontend Hosting**: Vercel
-- **Backend Hosting**: Railway or AWS ECS (later)
-- **File Storage**: AWS S3 (encrypted, auto-delete after 24hrs)
+### Infrastructure (Zero AWS)
+- **Frontend Hosting**: Vercel (Pro plan, $20/mo)
+- **Backend Hosting**: Render (Starter plan, $7/mo, 512MB — sufficient for FastAPI making HTTP calls to Cloud Vision/OpenAI)
+- **Database (Production)**: Neon serverless PostgreSQL (free tier for MVP, scales to paid at 5K+ users)
+- **Sessions (Production)**: Upstash serverless Redis (free tier: 500K commands/mo, sufficient for MVP)
+- **File Storage**: GCP Cloud Storage (encrypted, auto-delete via lifecycle policy after 24hrs)
 - **Secrets**: Environment variables via .env (never commit)
-- **Local Dev**: Docker Compose (postgres, redis, api, celery, web — all containerized)
+- **Local Dev**: Docker Compose (postgres, redis, api, web — DEV ONLY, all containerized)
+- **Production Deploy**: render.yaml (Render Blueprints IaC) + Vercel git deploy. No production Dockerfiles.
+- **Dev Tooling**: Makefile (dev, test, lint, format, migrate), `.python-version` (3.11), `.node-version` (20)
+- **No AWS**: All cloud services run on GCP + Render + serverless providers. No AWS account needed.
+
+### Tax Data
+- Tax brackets, standard deductions, and credits stored in `tax-data/{year}.json`
+- Each file includes source citations (IRS Revenue Procedure number, Public Law number)
+- 2025 data sourced from Rev. Proc. 2024-40 as amended by P.L. 119-21 (One Big Beautiful Bill)
+- Updated annually each October when IRS releases new Revenue Procedure
+- Validated against IRS Publication 17 worked examples
 
 ### AI UX Patterns (IMPORTANT — this is what makes us feel different)
 - AI insights stream in with a typewriter effect using Vercel AI SDK's useCompletion hook
@@ -57,11 +96,11 @@ The domain is filefree.tax. The brand name is "FileFree" when written as a produ
 - Every AI interaction should feel fast — optimistic UI, stream partial results, never show a blank loading state
 
 ### shadcn/ui Conventions
-- Initialize with: `npx shadcn-ui@latest init` (New York style, Zinc base color, CSS variables: yes)
+- Initialize with: `npx shadcn-ui@latest init` (New York style, Slate base color, CSS variables: yes)
 - Add components as needed: `npx shadcn-ui@latest add button card dialog input form toast`
 - Components live in `src/components/ui/` — this is shadcn's default, don't move them
 - Build custom components in `src/components/` — compose from shadcn primitives
-- Override shadcn theme in `src/app/globals.css` CSS variables to match our dark violet/purple brand
+- Override shadcn theme in `src/app/globals.css` CSS variables to match our dark indigo/violet brand
 - Never install Radix packages directly — always go through shadcn
 
 ## Code Style & Conventions
@@ -71,7 +110,7 @@ The domain is filefree.tax. The brand name is "FileFree" when written as a produ
 - Use named exports for components, default export only for page components
 - File naming: kebab-case for files (e.g., `tax-calculator.ts`), PascalCase for components (e.g., `TaxCalculator.tsx`)
 - Directory structure follows Next.js App Router conventions
-- All API calls go through a centralized `lib/api.ts` client
+- All API calls go through @tanstack/react-query hooks wrapping a centralized `lib/api.ts` client
 - Use `use client` directive only when necessary (prefer server components)
 - All forms use React Hook Form with Zod schemas via shadcn Form component
 - Custom hooks go in `hooks/` directory, prefixed with `use`
@@ -96,14 +135,19 @@ The domain is filefree.tax. The brand name is "FileFree" when written as a produ
 - Minimum touch target: 44x44px for mobile
 
 ### Security Rules (CRITICAL — we handle SSNs and financial data)
-- NEVER log PII (SSN, full name + address combos, financial data)
-- NEVER store W2 images longer than necessary (auto-delete from S3 after processing)
-- All PII fields encrypted at rest (use application-level encryption, not just DB encryption)
+- NEVER log PII (SSN, full name + address combos, financial data) — implement PII-scrubbing middleware on all log output
+- NEVER store W2 images longer than necessary (GCP Cloud Storage lifecycle policy: auto-delete after 24hrs)
+- All PII fields encrypted at rest using application-level AES-256 encryption (separate key from DB encryption)
 - SSN displayed as masked (XXX-XX-1234) in UI, never fully visible after initial entry
-- All API routes require authentication except /health, /auth/login, /auth/register
-- Rate limit all endpoints, especially auth and file-upload routes
+- SSN is NEVER sent to any third-party API (OpenAI, etc.) — extract via regex locally, send masked placeholder
+- All API routes require authentication except /health, /auth/login, /auth/register, /documents/demo-upload
+- Rate limit all endpoints: 5 req/min auth, 20 req/min upload, 5 uploads/day/user
+- CSRF tokens on all state-changing endpoints (SameSite=Lax cookies require CSRF protection)
+- hCaptcha on sign-up to prevent bot abuse
 - CORS restricted to frontend domain only
 - Input validation on EVERY endpoint using Pydantic models
+- Account deletion endpoint available from day one (CCPA/GDPR) — must cascade: Neon DB, GCP Cloud Storage, Upstash sessions
+- Never validate SSN against external sources — prevents stolen SSN abuse
 
 ## Key Domain Concepts
 - **Filing**: A single tax return filing attempt (has status: draft, processing, review, submitted, accepted, rejected)
@@ -115,13 +159,13 @@ The domain is filefree.tax. The brand name is "FileFree" when written as a produ
 ## API Design
 - RESTful with consistent response envelope: `{ success: boolean, data: T, error?: string }`
 - API versioning via URL prefix: `/api/v1/`
-- Auth via HTTP-only secure cookies (not localStorage JWT)
+- Auth via HTTP-only secure cookies with SameSite=Lax + CSRF tokens
 - File uploads via multipart/form-data to dedicated upload endpoints
-- Long-running operations (OCR, tax calc) return immediately with a job ID, client polls for result
+- Long-running operations (OCR) processed via FastAPI BackgroundTasks, client polls for result via react-query
 
 ## Error Handling
-- Frontend: shadcn Toast component for user-facing errors, never raw error messages
-- Backend: Custom exception classes mapped to HTTP status codes
+- Frontend: sonner toast for user-facing errors, never raw error messages
+- Backend: Custom exception classes mapped to HTTP status codes, with PII-scrubbed logging
 - All errors logged with correlation IDs for debugging
 - User-facing error messages are friendly and actionable ("We couldn't read Box 1 on your W2. Try taking another photo with better lighting.")
 
@@ -129,6 +173,8 @@ The domain is filefree.tax. The brand name is "FileFree" when written as a produ
 - Frontend: Vitest + React Testing Library for component tests
 - Backend: Pytest with async support, factory_boy for test data
 - Tax calculation engine: 100% test coverage required (this is financial data, no bugs allowed)
-- Integration tests for the full OCR → calculation → e-file pipeline
+- Validate tax calculations against IRS Publication 17 worked examples
+- Integration tests for the full OCR → calculation pipeline
 - Linting: Ruff (Python), ESLint (TypeScript)
 - Type checking: mypy (Python), tsc --noEmit (TypeScript)
+- Dev commands: `make dev` (start), `make test` (run tests), `make lint` (check), `make format` (fix)
