@@ -36,7 +36,7 @@ Google Cloud Vision does NOT store images, does NOT use them for training.
 
 ### Infrastructure (Zero AWS)
 
-- Frontend: Vercel Pro ($20/mo) — filefree.tax
+- Frontend: Vercel (Hobby tier, free — upgrade to Pro when needed) — filefree.tax
 - Backend: Render Starter ($7/mo, 512MB) — api.filefree.tax. Start: `gunicorn app.main:app -k uvicorn.workers.UvicornWorker`
 - Database: Neon serverless PostgreSQL (free tier MVP)
 - Sessions: Upstash serverless Redis (free tier: 500K commands/mo)

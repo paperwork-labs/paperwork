@@ -70,10 +70,9 @@ Expected approval: ~late April 2026. This unblocks MeF system access.
 
 **Spin up the social media operations stack (parallel with coding):**
 
-**Hetzner VPS** (EUR 5.49/mo, CX33: 8GB RAM, 4 vCPU, 80GB SSD) — server provisioned at 204.168.147.100, deploy configs in `infra/hetzner/`, DNS configured. Bootstrap pending.
-- Deploy Postiz (open-source social media scheduler) + PostgreSQL + Redis + Temporal via Docker Compose
-- Keep n8n container defined but stopped until Phase 2 autonomous workflows
-- Separate databases within shared PostgreSQL: `postiz_db` and `n8n_db`
+**Hetzner VPS** (EUR 5.49/mo, CX33: 8GB RAM, 4 vCPU, 80GB SSD) — server provisioned at 204.168.147.100, deploy configs in `infra/hetzner/`, DNS configured. Bootstrapped: Docker, Caddy, firewall installed. All services running.
+- Postiz (social media scheduler) + n8n (workflow automation) + PostgreSQL + Redis deployed via `infra/hetzner/compose.yaml`
+- Single shared `filefree_ops` database within PostgreSQL
 
 **Postiz setup:**
 - Connect accounts: TikTok (@filefree), Instagram (@filefree.tax), X (@filefreetax), YouTube (FileFree)
@@ -620,7 +619,7 @@ Replace simple landing page with full marketing page. See [PRODUCT_SPEC.md](PROD
 - 3-step How It Works with scroll-triggered animations
 - Competitive comparison table (honest, fact-based)
 - Trust section: security badges, encryption details
-- FAQ accordion (5-7 Gen Z-focused questions)
+- FAQ accordion (5-7 first-time filer questions)
 - Footer with legal disclaimers
 
 Lighthouse 95+ on all categories.
