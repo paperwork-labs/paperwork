@@ -16,7 +16,11 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FileFree — Free AI Tax Filing",
+  metadataBase: new URL("https://filefree.tax"),
+  title: {
+    default: "FileFree — Free AI Tax Filing",
+    template: "%s | FileFree",
+  },
   description:
     "Snap your W-2, get your completed return in minutes. Actually free. No upsells. No hidden fees.",
   keywords: [
@@ -26,6 +30,8 @@ export const metadata: Metadata = {
     "file taxes free",
     "AI tax filing",
     "filefree",
+    "free tax return",
+    "tax filing app",
   ],
   openGraph: {
     title: "FileFree — Free AI Tax Filing",
@@ -34,16 +40,25 @@ export const metadata: Metadata = {
     url: "https://filefree.tax",
     siteName: "FileFree",
     type: "website",
+    locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
     title: "FileFree — Free AI Tax Filing",
     description:
       "Snap your W-2, get your completed return in minutes. Actually free.",
+    creator: "@filefreetax",
   },
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
 };
 
