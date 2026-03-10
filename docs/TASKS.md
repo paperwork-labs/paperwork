@@ -209,7 +209,7 @@ Make the 6 imported n8n persona workflows autonomous by connecting their outputs
 </details>
 ## Sprint 1: Foundation + Get Live (Week 1-2)
 
-> **Progress: 4/6 complete** | 0.1, 0.2, 0.3, 0.4 done | 0.4b, 0.5 not started
+> **Progress: 5/6 complete** | 0.1, 0.2, 0.3, 0.4, 0.4b done | 0.5 not started
 
 <details>
 <summary><strong>Task 0.1 — Docker Dev Environment — DONE</strong></summary>
@@ -356,7 +356,7 @@ api/
 
 </details>
 <details>
-<summary><strong>Task 0.4b — Landing Page Content</strong></summary>
+<summary><strong>Task 0.4b — Landing Page Content — DONE</strong></summary>
 
 
 **Branch**: `feat/0.4b-landing-page`

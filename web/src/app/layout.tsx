@@ -35,7 +35,6 @@ export const metadata: Metadata = {
   ],
   icons: {
     icon: "/favicon.svg",
-    apple: "/brand/filefree-avatar.png",
   },
   openGraph: {
     title: "FileFree — Free AI Tax Filing",
@@ -45,14 +44,6 @@ export const metadata: Metadata = {
     siteName: "FileFree",
     type: "website",
     locale: "en_US",
-    images: [
-      {
-        url: "/filefree-og.png",
-        width: 1200,
-        height: 630,
-        alt: "FileFree — Free AI Tax Filing",
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
@@ -60,7 +51,6 @@ export const metadata: Metadata = {
     description:
       "Snap your W-2, get your completed return in minutes. Actually free.",
     creator: "@filefreetax",
-    images: ["/filefree-og.png"],
   },
   robots: {
     index: true,
