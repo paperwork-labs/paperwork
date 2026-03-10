@@ -1,6 +1,6 @@
 # FileFree — Unified Build Tasks
 
-**Version**: 7.0 | **Updated**: 2026-03-09
+**Version**: 8.0 | **Updated**: 2026-03-10
 
 Work through these in order. Each task is scoped for one PR. Reference [PRODUCT_SPEC.md](PRODUCT_SPEC.md) for UX specs, [.cursorrules](../.cursorrules) for coding conventions, [PRD.md](PRD.md) for business context, [PARTNERSHIPS.md](PARTNERSHIPS.md) for partner playbook.
 
@@ -25,146 +25,195 @@ Work through these in order. Each task is scoped for one PR. Reference [PRODUCT_
 
 Non-code tasks that must happen immediately. These run in parallel with Sprint 1.
 
-**Status key**: DONE = complete, PARTIAL = in progress, blank = not started.
+> **Progress: 4/11 complete, 1 partial** | B.4, B.7, B.10, B.11 done | B.6 partial | B.1, B.2, B.3, B.5, B.8, B.9 not started
 
-### Task B.1 — EFIN Application (Form 8633)
+<details>
+<summary><strong>Task B.1 — EFIN Application (Form 8633)</strong></summary>
+
 
 **APPLY THIS WEEK.** 45-day IRS processing time is the longest lead item.
 
-Requirements:
-- PTIN (Preparer Tax Identification Number) — apply at irs.gov/ptin
-- IRS e-Services account — register at irs.gov
-- ID.me identity verification
-- Fingerprinting appointment (for non-credentialed applicants)
-- Submit Form 8633 electronically via e-Services
+- [ ] PTIN (Preparer Tax Identification Number) — apply at irs.gov/ptin
+- [ ] IRS e-Services account — register at irs.gov
+- [ ] ID.me identity verification
+- [ ] Fingerprinting appointment (for non-credentialed applicants)
+- [ ] Submit Form 8633 electronically via e-Services
 
 Expected approval: ~late April 2026. This unblocks MeF system access.
 
-### Task B.2 — Company Setup
 
-- Register LLC/Corp if not already done
-- Set up business bank account
-- Create social media accounts: TikTok (@filefree), Instagram (@filefree.tax), Twitter/X (@filefreetax), YouTube (FileFree)
-- Pin post on all accounts: "Coming soon — file your taxes in 5 minutes, free."
+</details>
+<details>
+<summary><strong>Task B.2 — Company Setup</strong></summary>
 
-### Task B.3 — Legal Drafts
 
-- Draft v1 privacy policy (plain English, CCPA/GDPR compliant) — disclose AI processing of tax data, SSN isolation
-- Draft v1 terms of service with tax preparation disclaimers
-- Note: AI advisory content must be positioned as "tax education" not "tax advice" (IRS Circular 230)
+- [ ] Register LLC/Corp if not already done
+- [ ] Set up business bank account
+- [ ] Create social media accounts: TikTok (@filefree), Instagram (@filefree.tax), Twitter/X (@filefreetax), YouTube (FileFree)
+- [ ] Pin post on all accounts: "Coming soon — file your taxes in 5 minutes, free."
 
-### Task B.4 — Notion Workspace (Company HQ) — DONE
 
-- ~~Create Notion workspace: "FileFree HQ"~~
-- ~~Pages: Strategy, Product Roadmap, Decision Log, Content Calendar, Legal/Compliance, Financials~~
-- ~~Decision Log: record every strategic decision with date, rationale, alternatives considered~~
-- ~~Connect to Cursor via .cursor/mcp.json (Notion MCP)~~
+</details>
+<details>
+<summary><strong>Task B.3 — Legal Drafts</strong></summary>
 
-### Task B.5 — Column Tax Outreach
 
-- Book Column Tax demo call (columntax.com/contact-us)
-- Goal: understand SDK, negotiate pricing (target $10-15/return), get sandbox access
-- This is backup/interim only — own MeF transmitter is the priority
+- [ ] Draft v1 privacy policy (plain English, CCPA/GDPR compliant) — disclose AI processing of tax data, SSN isolation
+- [ ] Draft v1 terms of service with tax preparation disclaimers
+- [ ] Note: AI advisory content must be positioned as "tax education" not "tax advice" (IRS Circular 230)
 
-### Task B.6 — Social Media Infrastructure + Ad Accounts — PARTIAL
+
+</details>
+<details>
+<summary><strong>Task B.4 — Notion Workspace (Company HQ) — DONE</strong></summary>
+
+
+- [x] Create Notion workspace: "FileFree HQ"
+- [x] Pages: Strategy, Product Roadmap, Decision Log, Content Calendar, Legal/Compliance, Financials
+- [x] Decision Log: record every strategic decision with date, rationale, alternatives considered
+- [x] Connect to Cursor via .cursor/mcp.json (Notion MCP)
+
+
+</details>
+<details>
+<summary><strong>Task B.5 — Column Tax Outreach</strong></summary>
+
+
+- [ ] Book Column Tax demo call (columntax.com/contact-us)
+- [ ] Goal: understand SDK, negotiate pricing (target $10-15/return), get sandbox access
+- [ ] This is backup/interim only — own MeF transmitter is the priority
+
+
+</details>
+<details>
+<summary><strong>Task B.6 — Social Media Infrastructure + Ad Accounts — PARTIAL</strong></summary>
+
 
 **Spin up the social media operations stack (parallel with coding):**
 
-**Hetzner VPS** (EUR 5.49/mo, CX33: 8GB RAM, 4 vCPU, 80GB SSD) — server provisioned at 204.168.147.100, deploy configs in `infra/hetzner/`, DNS configured. Bootstrapped: Docker, Caddy, firewall installed. All services running.
-- Postiz (social media scheduler) + n8n (workflow automation) + PostgreSQL + Redis deployed via `infra/hetzner/compose.yaml`
-- Single shared `filefree_ops` database within PostgreSQL
-- **n8n persona workflows imported** (6 workflows: Social Content Generator, Growth Content Writer, Weekly Strategy Check-in, QA Security Scan, Partnership Outreach Drafter, CPA Tax Review). Workflow JSONs in `infra/hetzner/workflows/`. OpenAI API key credential added in n8n UI — DONE.
+**Hetzner VPS** (EUR 5.49/mo, CX33: 8GB RAM, 4 vCPU, 80GB SSD):
+- [x] Server provisioned at 204.168.147.100, deploy configs in `infra/hetzner/`, DNS configured
+- [x] Docker, Caddy, firewall installed
+- [x] Postiz + n8n + PostgreSQL + Redis deployed via `infra/hetzner/compose.yaml` (+ Temporal stack for Postiz v2.12+)
+- [x] n8n persona workflows imported (6 workflows). OpenAI API key credential added in n8n UI
+- [x] Notion API key + GitHub PAT added as n8n credentials
 
 **Postiz setup:**
-- Connect accounts: TikTok (@filefree), Instagram (@filefree.tax), X (@filefreetax), YouTube (FileFree)
-- Generate API key for REST API + MCP integration
-- Test scheduling a post to each platform
-- Try Postiz MCP in Cursor (known reliability issues with self-hosted — use REST API as fallback)
+- [ ] Connect accounts: TikTok (@filefree), Instagram (@filefree.tax), X (@filefreetax), YouTube (FileFree)
+- [ ] Generate API key for REST API + MCP integration
+- [ ] Test scheduling a post to each platform
+- [ ] Try Postiz MCP in Cursor (known reliability issues with self-hosted — use REST API as fallback)
 
 **Ad accounts:**
-- TikTok Ads Manager: create business account, add payment method, install TikTok Pixel on filefree.tax
-- Meta Ads Manager: create business account, connect Instagram, add payment method, install Meta Pixel
-- Do NOT launch ads yet — wait until Week 3 when organic content proves which formats work
+- [ ] TikTok Ads Manager: create business account, add payment method, install TikTok Pixel on filefree.tax
+- [ ] Meta Ads Manager: create business account, connect Instagram, add payment method, install Meta Pixel
+- [ ] Do NOT launch ads yet — wait until Week 3 when organic content proves which formats work
 
 **Content prep:**
-- AI drafts first 10 posts via [social.mdc](../.cursor/rules/social.mdc) persona (scripts, captions, hooks)
-- Record first 5 founder-led videos (see [social.mdc](../.cursor/rules/social.mdc) for topics)
-- Schedule Week 2 content in Postiz
+- [ ] AI drafts first 10 posts via [social.mdc](../.cursor/rules/social.mdc) persona (scripts, captions, hooks)
+- [ ] Record first 5 founder-led videos (see [social.mdc](../.cursor/rules/social.mdc) for topics)
+- [ ] Schedule Week 2 content in Postiz
 
 **Acceptance**: Postiz is live and can schedule to all 4 platforms. Ad accounts created. First 10 posts drafted. First 5 videos recorded.
 
-### Task B.7 — Partnership Foundation (Founder 1) — DONE
+
+</details>
+<details>
+<summary><strong>Task B.7 — Partnership Foundation (Founder 1) — DONE</strong></summary>
+
 
 Set up the partnership infrastructure and documentation for Founder 2.
 
-- ~~Create `docs/PARTNERSHIPS.md` (standalone playbook for partnerships co-founder)~~
-- ~~Create `.cursor/rules/partnerships.mdc` (AI persona for partnership support)~~
-- ~~Create Notion workspace "FileFree HQ" with Partnership Pipeline database~~
-- ~~AI-generate Pitch Package: Executive Summary (2 pages), Revenue Model one-pager, Partnership Hit List~~
-- ~~Share Notion workspace with Founder 2~~
-- ~~AI-draft all outreach templates in [PARTNERSHIPS.md](PARTNERSHIPS.md) Section 4~~
+- [x] Create `docs/PARTNERSHIPS.md` (standalone playbook for partnerships co-founder)
+- [x] Create `.cursor/rules/partnerships.mdc` (AI persona for partnership support)
+- [x] Create Notion workspace "FileFree HQ" with Partnership Pipeline database
+- [x] AI-generate Pitch Package: Executive Summary (2 pages), Revenue Model one-pager, Partnership Hit List
+- [x] Share Notion workspace with Founder 2
+- [x] AI-draft all outreach templates in [PARTNERSHIPS.md](PARTNERSHIPS.md) Section 4
 
 **Acceptance**: Founder 2 has a Notion workspace, a standalone playbook, outreach templates, and a pitch package — everything needed to start operating independently.
 
-### Task B.8 — Affiliate Applications (Either co-founder)
+
+</details>
+<details>
+<summary><strong>Task B.8 — Affiliate Applications (Either co-founder)</strong></summary>
+
 
 Apply to affiliate networks for the top 4 HYSA/investment partners. These are online applications — no calls, no product needed.
 
-- Create Impact.com publisher account, apply for Marcus by Goldman Sachs
-- Create Impact.com publisher account, apply for Wealthfront
-- Create CJ Affiliate publisher account, apply for Betterment
-- Apply to Fidelity affiliate/advisor program (in-house)
-- Use Template A from [PARTNERSHIPS.md](PARTNERSHIPS.md) for "describe your audience" fields
+- [ ] Create Impact.com publisher account, apply for Marcus by Goldman Sachs
+- [ ] Create Impact.com publisher account, apply for Wealthfront
+- [ ] Create CJ Affiliate publisher account, apply for Betterment
+- [ ] Apply to Fidelity affiliate/advisor program (in-house)
+- [ ] Use Template A from [PARTNERSHIPS.md](PARTNERSHIPS.md) for "describe your audience" fields
 
 **Acceptance**: Applications submitted to all 4 partners. Approval expected in 1-2 weeks.
 
-### Task B.9 — Column Tax Demo Call (Founder 2)
+
+</details>
+<details>
+<summary><strong>Task B.9 — Column Tax Demo Call (Founder 2)</strong></summary>
+
 
 Book and run the Column Tax demo call to secure interim e-file capability.
 
-- Book demo at columntax.com/contact-us
-- AI preps call brief: volume projections (2K-5K first season, 30K+ at scale), pricing targets ($10-15/return), SDK technical questions, white-labeling options
-- Founder 2 runs the call. Founder 1 joins for technical questions if needed.
-- Goal: confirm pricing, get sandbox access by June 2026
+- [ ] Book demo at columntax.com/contact-us
+- [ ] AI preps call brief: volume projections (2K-5K first season, 30K+ at scale), pricing targets ($10-15/return), SDK technical questions, white-labeling options
+- [ ] Founder 2 runs the call. Founder 1 joins for technical questions if needed.
+- [ ] Goal: confirm pricing, get sandbox access by June 2026
 
 **Acceptance**: Column Tax pricing confirmed. Sandbox access timeline established.
 
-### Task B.10 — Legal Drafts v1 — DONE
+
+</details>
+<details>
+<summary><strong>Task B.10 — Legal Drafts v1 — DONE</strong></summary>
+
 
 Draft initial legal documents needed before landing page goes live.
 
-- ~~Draft v1 privacy policy (plain English, CCPA/GDPR compliant) using [legal.mdc](../.cursor/rules/legal.mdc) persona~~ — live at `/privacy`
-- ~~Draft v1 terms of service with tax preparation disclaimers~~ — live at `/terms`
-- ~~Include AI processing disclosure, SSN isolation explanation, data deletion rights~~
-- ~~Note: AI advisory content must be positioned as "tax education" not "tax advice" (IRS Circular 230)~~
+- [x] Draft v1 privacy policy (plain English, CCPA/GDPR compliant) using [legal.mdc](../.cursor/rules/legal.mdc) persona — live at `/privacy`
+- [x] Draft v1 terms of service with tax preparation disclaimers — live at `/terms`
+- [x] Include AI processing disclosure, SSN isolation explanation, data deletion rights
+- [x] AI advisory content positioned as "tax education" not "tax advice" (IRS Circular 230)
 
 **Acceptance**: Privacy policy and ToS v1 live. Linked from landing page footer. Drafts for legal review.
 
-### Task B.11 — Agent Autonomy (n8n Workflow Wiring)
 
-Make the 6 imported n8n persona workflows autonomous by connecting their outputs to real systems. No code changes — all configuration in n8n UI.
+</details>
+<details>
+<summary><strong>Task B.11 — Agent Autonomy (n8n Workflow Wiring) — DONE</strong></summary>
+
+
+Make the 6 imported n8n persona workflows autonomous by connecting their outputs to real systems.
 
 **Workflow wiring:**
-- **Social Content Generator** → drafts post → creates Notion page in Content Calendar → optionally schedules in Postiz via API
-- **Growth Content Writer** → drafts blog post → creates Notion page for review
-- **Weekly Strategy Check-in** (already on Monday 9am cron) → writes summary to Notion Decision Log
-- **QA Security Scan** → creates GitHub Issue with findings
-- **Partnership Outreach Drafter** → creates Notion entry in Partnership Pipeline
-- **CPA Tax Review** → creates Notion page with review notes
+- [x] **Social Content Generator** → drafts post → creates Notion page in Content Calendar
+- [x] **Growth Content Writer** → drafts blog post → creates Notion page for review
+- [x] **Weekly Strategy Check-in** (Monday 9am cron) → writes summary to Notion Decision Log
+- [x] **QA Security Scan** → creates GitHub Issue with findings
+- [x] **Partnership Outreach Drafter** → creates Notion entry in Partnership Pipeline
+- [x] **CPA Tax Review** → creates Notion page with review notes
 
-**Prerequisites:**
-- Notion API key added as n8n credential (Settings > Credentials > Notion)
-- GitHub personal access token added as n8n credential
-- Postiz API key added as n8n credential (generate in Postiz UI)
-- Each workflow needs 2-3 additional nodes (API calls to Notion/GitHub/Postiz)
+**Prerequisites (all met):**
+- [x] Notion API key added as n8n credential
+- [x] GitHub personal access token added as n8n credential
+- [x] OpenAI API key added as n8n credential
+- [ ] Postiz API key added as n8n credential (generate in Postiz UI — optional, for social scheduling)
 
 **Acceptance**: All 6 workflows produce output in their target systems when triggered. Weekly Strategy Check-in fires automatically on Monday mornings.
 
 ---
 
+
+</details>
 ## Sprint 1: Foundation + Get Live (Week 1-2)
 
-### Task 0.1 — Docker Dev Environment — DONE
+> **Progress: 4/6 complete** | 0.1, 0.2, 0.3, 0.4 done | 0.4b, 0.5 not started
+
+<details>
+<summary><strong>Task 0.1 — Docker Dev Environment — DONE</strong></summary>
+
 
 **Branch**: `feat/0.1-docker-dev-environment`
 
@@ -200,7 +249,11 @@ Health checks on all services. API waits for healthy postgres and redis before s
 
 ---
 
-### Task 0.2 — Next.js Frontend Init + Design System — DONE
+
+</details>
+<details>
+<summary><strong>Task 0.2 — Next.js Frontend Init + Design System — DONE</strong></summary>
+
 
 **Branch**: `feat/0.2-frontend-design-system`
 
@@ -234,7 +287,11 @@ Base layout: dark background, fonts, metadata, QueryClientProvider, ThemeProvide
 
 ---
 
-### Task 0.3 — FastAPI Backend Init + Database — DONE
+
+</details>
+<details>
+<summary><strong>Task 0.3 — FastAPI Backend Init + Database — DONE</strong></summary>
+
 
 **Branch**: `feat/0.3-backend-database`
 
@@ -275,7 +332,11 @@ api/
 
 ---
 
-### Task 0.4 — Infrastructure + Deploy — DONE
+
+</details>
+<details>
+<summary><strong>Task 0.4 — Infrastructure + Deploy — DONE</strong></summary>
+
 
 **Branch**: `feat/0.4-landing-deploy`
 
@@ -292,7 +353,11 @@ api/
 
 ---
 
-### Task 0.4b — Landing Page Content
+
+</details>
+<details>
+<summary><strong>Task 0.4b — Landing Page Content</strong></summary>
+
 
 **Branch**: `feat/0.4b-landing-page`
 
@@ -312,33 +377,46 @@ Build the actual landing page content. Infrastructure is done (Task 0.4) but fil
 
 ---
 
-### Task 0.5 — Analytics Foundation
+
+</details>
+<details>
+<summary><strong>Task 0.5 — Analytics Foundation — PARTIAL</strong></summary>
+
 
 **Branch**: `feat/0.5-analytics`
 
 Wire up analytics before the landing page goes live. Pulled forward from Task 2.7 — we need attribution from day one.
 
-**PostHog**:
-- Install posthog-js + posthog-react
-- PII filter before any event (no email, no SSN in events)
-- Key events: `page_view`, `waitlist_signup`, `cta_click`
-- UTM parameter capture (already in frontend code, needs PostHog integration)
-- Funnel: landing → waitlist_signup
+**PostHog:**
+- [x] Install `posthog-js`
+- [x] PII scrubbing filter (SSN + email patterns) before any event
+- [x] PostHogProvider wrapping app with page view tracking
+- [x] UTM parameter capture via attribution.ts → posthog.register()
+- [x] Key events wired: `waitlist_signup`, `waitlist_signup_error`
+- [x] PostHog project API key configured in `.env.production`
+- [ ] Verify events appearing in PostHog dashboard
+- [ ] Set up `page_view` → `waitlist_signup` funnel
 
 **Sentry** (lightweight):
-- @sentry/nextjs with source maps
-- Error boundaries
-- Alert on >10 errors/5min
+- [ ] @sentry/nextjs with source maps
+- [ ] Error boundaries
+- [ ] Alert on >10 errors/5min
 
 **Acceptance**: PostHog dashboard shows page views and waitlist signups. UTM parameters attached to events. Sentry catches frontend errors.
 
 ---
 
+
+</details>
 ## Sprint 2: OCR Demo for April 15 (March 22 - April 15)
+
+> **Progress: 0/4 complete** | Not started
 
 Ship the "wow moment" — anonymous W2 scanning — to ride the April 15 traffic spike.
 
-### Task 1.1 — Camera Component + Image Quality
+<details>
+<summary><strong>Task 1.1 — Camera Component + Image Quality</strong></summary>
+
 
 **Branch**: `feat/1.1-camera-image-quality`
 
@@ -360,7 +438,11 @@ Features:
 
 ---
 
-### Task 1.2 — Tiered OCR Pipeline (Cloud Vision + GPT) + Demo Endpoint
+
+</details>
+<details>
+<summary><strong>Task 1.2 — Tiered OCR Pipeline (Cloud Vision + GPT) + Demo Endpoint</strong></summary>
+
 
 **Branch**: `feat/1.2-ocr-pipeline`
 
@@ -403,7 +485,11 @@ Features:
 
 ---
 
-### Task 1.3 — Try-Before-Signup Frontend
+
+</details>
+<details>
+<summary><strong>Task 1.3 — Try-Before-Signup Frontend</strong></summary>
+
 
 **Branch**: `feat/1.3-try-before-signup`
 
@@ -428,7 +514,11 @@ The viral entry point: snap a W2 without an account, see the magic.
 
 ---
 
-### Task 1.4 — Content Foundation + Social Media Launch Sprint
+
+</details>
+<details>
+<summary><strong>Task 1.4 — Content Foundation + Social Media Launch Sprint</strong></summary>
+
 
 **Branch**: `feat/1.4-content-foundation`
 
@@ -467,11 +557,17 @@ Each article: genuinely helpful, links to product naturally, FAQ schema markup f
 
 ---
 
+
+</details>
 ## Sprint 3: Full MVP (April 15 - May 31)
+
+> **Progress: 0/7 complete** | Not started
 
 Complete filing flow for extension filers.
 
-### Task 2.1 — Backend Auth System
+<details>
+<summary><strong>Task 2.1 — Backend Auth System</strong></summary>
+
 
 **Branch**: `feat/2.1-backend-auth`
 
@@ -494,7 +590,11 @@ Rate limiting: 5 req/min on auth via slowapi.
 
 ---
 
-### Task 2.2 — Frontend Auth + Protected Routes
+
+</details>
+<details>
+<summary><strong>Task 2.2 — Frontend Auth + Protected Routes</strong></summary>
+
 
 **Branch**: `feat/2.2-frontend-auth`
 
@@ -513,7 +613,11 @@ Rate limiting: 5 req/min on auth via slowapi.
 
 ---
 
-### Task 2.3 — Filing Flow Layout + Data Confirmation
+
+</details>
+<details>
+<summary><strong>Task 2.3 — Filing Flow Layout + Data Confirmation</strong></summary>
+
 
 **Branch**: `feat/2.3-filing-flow`
 
@@ -544,7 +648,11 @@ Rate limiting: 5 req/min on auth via slowapi.
 
 ---
 
-### Task 2.4 — Filing Details + Tax Calculator
+
+</details>
+<details>
+<summary><strong>Task 2.4 — Filing Details + Tax Calculator</strong></summary>
+
 
 **Branch**: `feat/2.4-tax-calculator`
 
@@ -580,7 +688,11 @@ Rate limiting: 5 req/min on auth via slowapi.
 
 ---
 
-### Task 2.5 — Return Summary + PDF Generation
+
+</details>
+<details>
+<summary><strong>Task 2.5 — Return Summary + PDF Generation</strong></summary>
+
 
 **Branch**: `feat/2.5-return-summary-pdf`
 
@@ -608,7 +720,11 @@ Rate limiting: 5 req/min on auth via slowapi.
 
 ---
 
-### Task 2.6 — Component Library + Error Handling + Mobile Polish
+
+</details>
+<details>
+<summary><strong>Task 2.6 — Component Library + Error Handling + Mobile Polish</strong></summary>
+
 
 **Branch**: `feat/2.6-polish`
 
@@ -639,7 +755,11 @@ Rate limiting: 5 req/min on auth via slowapi.
 
 ---
 
-### Task 2.7 — Analytics + Monitoring + Production Hardening
+
+</details>
+<details>
+<summary><strong>Task 2.7 — Analytics + Monitoring + Production Hardening</strong></summary>
+
 
 **Branch**: `feat/2.7-analytics-production`
 
@@ -656,9 +776,15 @@ Rate limiting: 5 req/min on auth via slowapi.
 
 ---
 
+
+</details>
 ## Sprint 4: Growth + E-File Prep (June - September)
 
-### Task 3.1 — Full Marketing Landing Page
+> **Progress: 0/8 complete** | Not started
+
+<details>
+<summary><strong>Task 3.1 — Full Marketing Landing Page</strong></summary>
+
 
 **Branch**: `feat/3.1-marketing-page`
 
@@ -678,7 +804,11 @@ Lighthouse 95+ on all categories.
 
 ---
 
-### Task 3.2 — Tax Receipt Viral Card + Referral System
+
+</details>
+<details>
+<summary><strong>Task 3.2 — Tax Receipt Viral Card + Referral System</strong></summary>
+
 
 **Branch**: `feat/3.2-viral-referral`
 
@@ -699,7 +829,11 @@ Lighthouse 95+ on all categories.
 
 ---
 
-### Task 3.3 — Column Tax SDK Integration (Interim E-File, Founder 1 + Founder 2)
+
+</details>
+<details>
+<summary><strong>Task 3.3 — Column Tax SDK Integration (Interim E-File, Founder 1 + Founder 2)</strong></summary>
+
 
 **Branch**: `feat/3.3-column-tax-efile`
 
@@ -724,7 +858,11 @@ Lighthouse 95+ on all categories.
 
 ---
 
-### Task 3.4 — State Tax Calculation
+
+</details>
+<details>
+<summary><strong>Task 3.4 — State Tax Calculation</strong></summary>
+
 
 **Branch**: `feat/3.4-state-tax`
 
@@ -738,7 +876,11 @@ Top 5 income-tax states: CA, NY, IL, PA, OH.
 
 ---
 
-### Task 3.5 — Transactional Emails + Lifecycle
+
+</details>
+<details>
+<summary><strong>Task 3.5 — Transactional Emails + Lifecycle</strong></summary>
+
 
 **Branch**: `feat/3.5-emails`
 
@@ -756,7 +898,11 @@ Top 5 income-tax states: CA, NY, IL, PA, OH.
 
 ---
 
-### Task 3.6 — Refund Plan + Financial Partnerships
+
+</details>
+<details>
+<summary><strong>Task 3.6 — Refund Plan + Financial Partnerships</strong></summary>
+
 
 **Branch**: `feat/3.6-refund-plan`
 
@@ -793,7 +939,11 @@ The primary monetization screen. See [PRODUCT_SPEC.md](PRODUCT_SPEC.md) "Refund 
 
 ---
 
-### Task 3.7 — Refund Advance Partner Outreach (Founder 2)
+
+</details>
+<details>
+<summary><strong>Task 3.7 — Refund Advance Partner Outreach (Founder 2)</strong></summary>
+
 
 **Context**: Requires e-file capability (Column Tax integration from Task 3.3 must be close to live).
 
@@ -807,7 +957,11 @@ The primary monetization screen. See [PRODUCT_SPEC.md](PRODUCT_SPEC.md) "Refund 
 
 ---
 
-### Task 3.8 — Affiliate-to-Direct Partnership Upgrade (Founder 2, when 5K+ users)
+
+</details>
+<details>
+<summary><strong>Task 3.8 — Affiliate-to-Direct Partnership Upgrade (Founder 2, when 5K+ users)</strong></summary>
+
 
 **Context**: Phase 3 of the tiered partnership strategy. Only begin when we have conversion data to prove our value.
 
@@ -821,9 +975,15 @@ The primary monetization screen. See [PRODUCT_SPEC.md](PRODUCT_SPEC.md) "Refund 
 
 ---
 
+
+</details>
 ## Sprint 5: October Extension Season Launch
 
-### Task 4.1 — E-File Go-Live + Extension Campaign
+> **Progress: 0/1 complete** | Not started
+
+<details>
+<summary><strong>Task 4.1 — E-File Go-Live + Extension Campaign</strong></summary>
+
 
 **Branch**: `feat/4.1-efile-launch`
 
@@ -837,27 +997,57 @@ The primary monetization screen. See [PRODUCT_SPEC.md](PRODUCT_SPEC.md) "Refund 
 
 ---
 
+
+</details>
 ## Sprint 6: January 2027 Full Season (October - January)
 
-### Task 5.1 — Tax Optimization Plan (Stripe, $29/year)
+> **Progress: 0/7 complete** | Not started
+
+<details>
+<summary><strong>Task 5.1 — Tax Optimization Plan (Stripe, $29/year)</strong></summary>
+
 Wire up Stripe for $29/year Tax Optimization Plan. Premium dashboard with W-4 optimizer, year-over-year comparison, IRA/401k calculator. Annual one-time purchase at filing time, not a monthly subscription.
 
-### Task 5.2 — Financial Product Referral Infrastructure
+
+</details>
+<details>
+<summary><strong>Task 5.2 — Financial Product Referral Infrastructure</strong></summary>
+
 Partnership agreements with 2-3 financial products (HYSA, investing, credit card). Referral tracking, attribution, disclosure compliance. In-app recommendations based on tax data.
 
-### Task 5.3 — Product Hunt + HN Launch
+
+</details>
+<details>
+<summary><strong>Task 5.3 — Product Hunt + HN Launch</strong></summary>
+
 Prepare launch assets. Coordinate timing with filing season start. Target first week of February 2027.
 
-### Task 5.4 — Admin Dashboard
+
+</details>
+<details>
+<summary><strong>Task 5.4 — Admin Dashboard</strong></summary>
+
 User management, filing queue, OCR accuracy monitor, error log, support queue. @tanstack/react-table.
 
-### Task 5.5 — Accessibility Audit
+
+</details>
+<details>
+<summary><strong>Task 5.5 — Accessibility Audit</strong></summary>
+
 WCAG 2.1 AA. Keyboard nav, screen readers, contrast, reduced motion. axe-core in CI.
 
-### Task 5.6 — Dependent Support + Complex Filing
+
+</details>
+<details>
+<summary><strong>Task 5.6 — Dependent Support + Complex Filing</strong></summary>
+
 Add dependent data model, child tax credit calculation. Eventually: 1099 support, itemized deductions.
 
-### Task 5.7 — Own IRS MeF Transmitter (NORTH STAR)
+
+</details>
+<details>
+<summary><strong>Task 5.7 — Own IRS MeF Transmitter (NORTH STAR)</strong></summary>
+
 
 **Branch**: `feat/5.7-mef-transmitter`
 
@@ -901,6 +1091,8 @@ Add dependent data model, child tax credit calculation. Eventually: 1099 support
 
 ---
 
+
+</details>
 ## How to Use This Document
 
 1. Start each task by creating a branch: `feat/{task-number}-short-description`

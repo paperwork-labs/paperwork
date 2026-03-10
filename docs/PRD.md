@@ -19,7 +19,7 @@ But the bigger problem is upstream: **filing your first tax return is the first 
 filefree.tax is a mobile-first web application that **starts** as free, AI-powered tax preparation — snap a W2, get your completed return in minutes. But the real product is what comes next: a year-round AI tax advisor that helps Gen Z make smarter financial decisions, starting from the trust earned during that first filing.
 
 **Phase 1 (2026):** Free tax prep — W2 photo to completed 1040 PDF in under 5 minutes. Tiered OCR pipeline (GCP Cloud Vision + GPT). E-file via partner at cost while our own IRS transmitter is certified.
-**Phase 2 (2027):** Free e-file via own IRS MeF transmitter (NORTH STAR) + AI tax advisor subscription + financial product marketplace.
+**Phase 2 (2027):** Free e-file via own IRS MeF transmitter (NORTH STAR) + Tax Optimization Plan ($29/yr) + financial product marketplace.
 **Phase 3 (2028):** Embedded tax engine (B2B API) for fintechs, payroll providers, and neobanks.
 
 **Founding team:** Two co-founders with complementary domains. Founder 1 (Product/Engineering) builds the app, OCR pipeline, tax calculations, and infrastructure. Founder 2 (Partnerships/Revenue) sources and closes financial product partnerships — the primary revenue engine. AI personas assist both co-founders. See PARTNERSHIPS.md for the partnerships playbook and STRATEGY_REPORT.md Section 6 for the full team structure.
@@ -562,9 +562,9 @@ Evidence: april (B2B embedded tax, $78M raised). Avalara ($8B company, sales tax
 | GPT-4o vision fallback (~10% of docs) | $0.002 | $0.02/doc x 10% escalation rate |
 | GPT-4o insights generation | $0.040 | $2.50/M input, ~3K in + 2K out |
 | GCP Cloud Storage (24 hours) | $0.001 | Negligible |
-| Vercel Pro (amortized) | $0.010 | $20/mo / 2000 users |
+| Vercel Hobby (amortized) | $0.000 | $0/mo (free tier) |
 | Render Starter (amortized) | $0.004 | $7/mo / 2000 users |
-| **Total per user** | **$0.060** | |
+| **Total per user** | **$0.050** | |
 
 Version history: v1.0 was $3.30/user (AWS Textract). v4.0 was $0.068/user (PaddleOCR + Render Standard). v5.0/v6.0 is $0.060/user (Cloud Vision + Render Starter) — a **55x cost reduction** from v1.0 through architectural decisions. Cloud Vision has no hosting overhead, unlike PaddleOCR which required a $25/mo instance for its 500MB-2GB+ RAM footprint.
 
@@ -719,7 +719,7 @@ See PARTNERSHIPS.md for the complete playbook including partner hit list, outrea
 - Deprecate Column Tax for simple returns
 - Product Hunt + Hacker News launch
 - TikTok/YouTube content campaign
-- AI Advisor subscription launch
+- Tax Optimization Plan ($29/yr) launch
 - Financial product referral partnerships live
 - **Goal: 50,000 filers with free e-file**
 
@@ -733,7 +733,7 @@ At $11.38 max CAC, we cannot afford paid acquisition at scale. Organic and viral
 
 ### Tooling Stack
 
-- **Postiz** (self-hosted, open-source): Social media scheduling across 28+ platforms. Runs on dedicated Hetzner VPS ($7.50/mo) alongside n8n. REST API for programmatic scheduling.
+- **Postiz** (self-hosted, open-source): Social media scheduling across 28+ platforms. Runs on dedicated Hetzner VPS (EUR 5.49/mo) alongside n8n. REST API for programmatic scheduling.
 - **n8n** (self-hosted, open-source): Autonomous workflow automation. Runs on same VPS. Automates daily content drafting, weekly analytics review, and monthly cost monitoring — using persona system prompts from `.cursor/rules/*.mdc`.
 - **CapCut** (free): Video editing for short-form content
 - **TikTok Ads Manager + Meta Ads Manager**: Paid amplification on proven organic content

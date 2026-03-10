@@ -52,11 +52,11 @@ Reversibility: [Easy/Medium/Hard to undo]
 - Gross margin: 99.3%
 - LTV: $27.05 (5-year, 80% retention)
 - Max sustainable CAC: $9.02
-- Fixed monthly infra: ~$32.50/mo ($20 Vercel + $7 Render + EUR 5.49 Hetzner; target: keep under $50/mo in 2026)
+- Fixed monthly infra: ~$12.49/mo ($7 Render Starter + EUR 5.49 Hetzner). Vercel Hobby (free), Neon free tier, Upstash free tier. Target: keep under $50/mo in 2026.
 
 ## North Star Milestones
 
-1. Landing page live — filefree.tax (March 2026)
+1. Landing page live — filefree.tax (March 2026) (DONE)
 2. OCR demo live — try-before-signup (March 2026)
 3. Full MVP — complete filing flow (March 2026)
 4. EFIN approved (April 2026)

@@ -66,12 +66,52 @@ services:
       FRONTEND_URL: https://${POSTIZ_HOST:-localhost}
       BACKEND_INTERNAL_URL: http://localhost:3000
       NEXT_PUBLIC_BACKEND_URL: https://${POSTIZ_HOST:-localhost}/api
+      TEMPORAL_ADDRESS: temporal:7233
+      IS_GENERAL: "true"
+      STORAGE_PROVIDER: local
+      UPLOAD_DIRECTORY: /uploads
+      NEXT_PUBLIC_UPLOAD_DIRECTORY: /uploads
     volumes:
-      - postizdata:/app/.uploads
+      - postizdata:/uploads
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+
+  temporal-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporal
+    volumes:
+      - temporaldb:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  temporal:
+    image: temporalio/auto-setup:1.28.1
+    restart: unless-stopped
+    ports:
+      - "7233:7233"
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_USER: temporal
+      POSTGRES_PWD: temporal
+      POSTGRES_SEEDS: temporal-db
+      DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/development-sql.yaml
+      TEMPORAL_NAMESPACE: default
+    volumes:
+      - ./dynamicconfig:/etc/temporal/config/dynamicconfig
+    depends_on:
+      temporal-db:
         condition: service_healthy
 
 volumes:
@@ -79,3 +119,4 @@ volumes:
   redisdata:
   n8ndata:
   postizdata:
+  temporaldb:

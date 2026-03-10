@@ -1,6 +1,6 @@
 # filefree.tax - AI-Powered Free Tax Filing → Year-Round Tax Advisor
 #
-# NOTE: Persona-specific context lives in .cursor/rules/*.mdc (10 personas + workflows playbook)
+# NOTE: Persona-specific context lives in .cursor/rules/*.mdc (12 personas + workflows playbook)
 # - engineering.mdc: Staff Engineer (tech stack, architecture, code conventions) [alwaysApply]
 # - ux.mdc: UX/UI Lead (design system, accessibility, mobile-first, animations)
 # - growth.mdc: Head of Growth (marketing, content, SEO, viral mechanics)
@@ -44,7 +44,7 @@ The ultimate strategic goal is owning our e-file infrastructure at $0/return. We
 - **Framework**: Next.js 14+ (App Router)
 - **Language**: TypeScript (strict mode)
 - **Component System**: shadcn/ui (Radix primitives + Tailwind — copy-paste, we own the code)
-- **Styling**: Tailwind CSS 3.4+
+- **Styling**: Tailwind CSS 4+
 - **Animations**: Framer Motion
 - **AI Streaming**: Vercel AI SDK (`ai` + `@ai-sdk/react`) — for streaming AI insights and explanations
 - **Charts**: Recharts
@@ -85,7 +85,7 @@ The ultimate strategic goal is owning our e-file infrastructure at $0/return. We
 - **No AWS**: All cloud services run on GCP + Render + serverless providers. No AWS account needed.
 
 ### Tax Data
-- Tax brackets, standard deductions, and credits stored in `tax-data/{year}.json`
+- Tax brackets, standard deductions, and credits stored in `api/tax-data/{year}.json`
 - Each file includes source citations (IRS Revenue Procedure number, Public Law number)
 - 2025 data sourced from Rev. Proc. 2024-40 as amended by P.L. 119-21 (One Big Beautiful Bill)
 - Updated annually each October when IRS releases new Revenue Procedure
