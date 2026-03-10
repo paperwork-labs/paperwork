@@ -2,7 +2,7 @@
 
 Organizational memory for FileFree. AI agents read this at session start. Update after significant decisions, learnings, or pattern discoveries.
 
-**Last Updated**: 2026-03-10
+**Last Updated**: 2026-03-11
 
 ---
 
@@ -250,3 +250,28 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 - **Context**: TASKS.md used `~~strikethrough~~` for completed items, which doesn't render as visual checkboxes in many markdown viewers. User couldn't track progress.
 - **Decision**: Replaced all `~~strikethrough~~` with `[x]` checkboxes. Added `[ ]` checkboxes to all uncompleted items in active tasks. Added sprint progress summaries (`> Progress: X/Y complete`) at the top of each sprint section. Deleted root `TASKS.md` (was a 3-line redirect to `docs/TASKS.md`). Fixed stale cost/pricing references across `docs/PRD.md`, `docs/STRATEGY_REPORT.md`, `docs/PARTNERSHIPS.md` (Vercel Hobby free, total burn $12.49/mo). Updated 6 persona `.mdc` files for consistency.
 - **Reversibility**: N/A — documentation improvement.
+
+### D28 — Temporal Visibility: PostgreSQL to Elasticsearch (2026-03-10)
+- **Context**: Postiz returned 502 Bad Gateway. Root cause: Temporal v1.28.1 has a hardcoded limit of 3 Text search attributes in its SQL (PostgreSQL) visibility backend. Postiz v2.12+ registers 4+ custom search attributes, exceeding the limit and crashing Temporal, which cascaded to Postiz.
+- **Decision**: Switched Temporal's visibility store from PostgreSQL to Elasticsearch 7.17.27. Added `temporal-elasticsearch` service to `infra/hetzner/compose.yaml` (256MB JVM heap, single-node). Set `ENABLE_ES=true`, `ES_SEEDS=temporal-elasticsearch`, `ES_VERSION=v7` on Temporal. Recreated Temporal databases for clean ES setup.
+- **Alternatives**: Patch Temporal dynamic config (failed — hardcoded in binary), downgrade Postiz (no cron-based versions available), use Temporal Cloud ($200/mo — overkill).
+- **Rationale**: Elasticsearch has no search attribute limits. 256MB heap fits within Hetzner CX33's 8GB RAM alongside all other services.
+- **Reversibility**: Moderate. Would require re-creating Temporal databases to switch back to SQL visibility.
+
+### D29 — Brand Assets Removed (2026-03-10)
+- **Context**: AI-generated logo assets (wordmark, monogram, avatar, OG image) were rejected as low quality.
+- **Decision**: Deleted all AI-generated brand images from `web/public/brand/` and `web/public/filefree-og.png`. Updated `brand.mdc` to mark logo assets as pending. Favicon SVG retained (text-based, acceptable quality).
+- **Next**: Generate wordmark via Ideogram v3 with refined prompt. Generate monogram via Figma/Canva.
+- **Reversibility**: Easy. New assets drop into the same paths.
+
+### D30 — Postiz MCP Activated (2026-03-10)
+- **Context**: Postiz was running but not connected to Cursor for AI-assisted social media management.
+- **Decision**: Generated Postiz API key via UI, configured `mcp-postiz-server` in `.cursor/mcp.json` with API URL pointing to `https://social.filefree.tax/api/public/v1`.
+- **Note**: API key stored only in local `.cursor/mcp.json` (gitignored). Also needs to be added as n8n credential for workflow automation.
+- **Reversibility**: Easy. Rotate key in Postiz UI.
+
+### D31 — n8n Database Isolation (2026-03-10)
+- **Context**: n8n and Postiz shared the same PostgreSQL database (`filefree_ops` / `ops`). When Postiz was recreated (to add MAIN_URL + ES visibility), its Prisma migrations dropped/overwrote n8n's tables. n8n logged `relation "public.user" does not exist` repeatedly.
+- **Decision**: Created a separate `n8n` database on the existing PostgreSQL instance. Updated `infra/hetzner/compose.yaml`: `DB_POSTGRESDB_DATABASE: n8n` (was `${POSTGRES_DB:-ops}`). Restarted n8n — migrations ran cleanly on the fresh database.
+- **Impact**: n8n requires re-setup: owner account registration, workflow re-import (6 JSONs in `infra/hetzner/workflows/`), credential re-configuration (OpenAI, Notion, GitHub).
+- **Reversibility**: Easy. Point n8n back to shared DB if needed (not recommended).
