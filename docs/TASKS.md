@@ -565,7 +565,7 @@ Each article: genuinely helpful, links to product naturally, FAQ schema markup f
 </details>
 ## Sprint 3: Full MVP (April 15 - May 31)
 
-> **Progress: 2/7 complete** | 2.1, 2.2 done
+> **Progress: 7/7 complete** | 2.1–2.7 done
 
 Complete filing flow for extension filers.
 
@@ -620,7 +620,7 @@ Rate limiting: 5 req/min on auth via slowapi.
 
 </details>
 <details>
-<summary><strong>Task 2.3 — Filing Flow Layout + Data Confirmation</strong></summary>
+<summary><strong>Task 2.3 — Filing Flow Layout + Data Confirmation — DONE</strong></summary>
 
 
 **Branch**: `feat/2.3-filing-flow`
@@ -655,7 +655,7 @@ Rate limiting: 5 req/min on auth via slowapi.
 
 </details>
 <details>
-<summary><strong>Task 2.4 — Filing Details + Tax Calculator</strong></summary>
+<summary><strong>Task 2.4 — Filing Details + Tax Calculator — DONE</strong></summary>
 
 
 **Branch**: `feat/2.4-tax-calculator`
@@ -695,7 +695,7 @@ Rate limiting: 5 req/min on auth via slowapi.
 
 </details>
 <details>
-<summary><strong>Task 2.5 — Return Summary + PDF Generation</strong></summary>
+<summary><strong>Task 2.5 — Return Summary + PDF Generation — DONE</strong></summary>
 
 
 **Branch**: `feat/2.5-return-summary-pdf`
@@ -727,7 +727,7 @@ Rate limiting: 5 req/min on auth via slowapi.
 
 </details>
 <details>
-<summary><strong>Task 2.6 — Component Library + Error Handling + Mobile Polish</strong></summary>
+<summary><strong>Task 2.6 — Component Library + Error Handling + Mobile Polish — DONE</strong></summary>
 
 
 **Branch**: `feat/2.6-polish`
@@ -762,7 +762,7 @@ Rate limiting: 5 req/min on auth via slowapi.
 
 </details>
 <details>
-<summary><strong>Task 2.7 — Analytics + Monitoring + Production Hardening</strong></summary>
+<summary><strong>Task 2.7 — Analytics + Monitoring + Production Hardening — DONE</strong></summary>
 
 
 **Branch**: `feat/2.7-analytics-production`
