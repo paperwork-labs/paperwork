@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 interface ServiceCheck {
   name: string;
   url: string;
+  dashboardUrl: string;
+  accessHint: string;
   status: "healthy" | "degraded" | "down" | "unknown";
   latencyMs: number | null;
   details?: Record<string, unknown>;
@@ -37,12 +39,16 @@ const TIMEOUT_MS = 8000;
 const PRODUCTION_SERVICES: {
   name: string;
   url: string;
+  dashboardUrl: string;
+  accessHint: string;
   category: ServiceCheck["category"];
   parseDetails?: (data: unknown) => Record<string, unknown>;
 }[] = [
   {
     name: "Render API",
     url: "https://api.filefree.tax/health",
+    dashboardUrl: "https://dashboard.render.com",
+    accessHint: "Render dashboard > filefree-api service. Manage deploys, env vars, logs.",
     category: "core",
     parseDetails: (data) => {
       const d = data as Record<string, unknown>;
@@ -58,21 +64,29 @@ const PRODUCTION_SERVICES: {
   {
     name: "Vercel Frontend",
     url: "https://filefree.tax",
+    dashboardUrl: "https://vercel.com/dashboard",
+    accessHint: "Vercel dashboard > filefree project. Auto-deploys from main.",
     category: "core",
   },
   {
     name: "n8n (Agents)",
     url: "https://n8n.filefree.tax/healthz",
+    dashboardUrl: "https://n8n.filefree.tax",
+    accessHint: "Login with N8N_USER / N8N_PASSWORD from Hetzner env. Manage AI agent workflows.",
     category: "ops",
   },
   {
     name: "Postiz (Social)",
     url: "https://social.filefree.tax",
+    dashboardUrl: "https://social.filefree.tax",
+    accessHint: "Login, then connect TikTok / IG / X / YouTube accounts to start posting.",
     category: "ops",
   },
   {
     name: "PostHog (Analytics)",
     url: "https://us.i.posthog.com/decide?v=3",
+    dashboardUrl: "https://us.posthog.com",
+    accessHint: "Login to view funnels, events, and dashboards. API key in web/.env.production.",
     category: "analytics",
     parseDetails: () => ({ raw: "reachable" }),
   },
@@ -95,27 +109,31 @@ async function checkService(
 
     const latencyMs = Date.now() - start;
 
+    const base = {
+      name: service.name,
+      url: service.url,
+      dashboardUrl: service.dashboardUrl,
+      accessHint: service.accessHint,
+      category: service.category,
+    };
+
     if (!res.ok && res.status >= 500) {
       return {
-        name: service.name,
-        url: service.url,
-        status: "down",
+        ...base,
+        status: "down" as const,
         latencyMs,
         details: { httpStatus: res.status },
         checkedAt: new Date().toISOString(),
-        category: service.category,
       };
     }
 
     if (!res.ok) {
       return {
-        name: service.name,
-        url: service.url,
-        status: "degraded",
+        ...base,
+        status: "degraded" as const,
         latencyMs,
         details: { httpStatus: res.status },
         checkedAt: new Date().toISOString(),
-        category: service.category,
       };
     }
 
@@ -128,19 +146,20 @@ async function checkService(
     }
 
     return {
-      name: service.name,
-      url: service.url,
-      status: "healthy",
+      ...base,
+      status: "healthy" as const,
       latencyMs,
       details,
       checkedAt: new Date().toISOString(),
-      category: service.category,
     };
   } catch (err) {
     return {
       name: service.name,
       url: service.url,
-      status: "down",
+      dashboardUrl: service.dashboardUrl,
+      accessHint: service.accessHint,
+      category: service.category,
+      status: "down" as const,
       latencyMs: Date.now() - start,
       details: {
         error:
@@ -151,7 +170,6 @@ async function checkService(
             : "Unknown error",
       },
       checkedAt: new Date().toISOString(),
-      category: service.category,
     };
   }
 }

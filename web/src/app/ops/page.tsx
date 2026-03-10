@@ -28,6 +28,8 @@ import { Button } from "@/components/ui/button";
 interface ServiceCheck {
   name: string;
   url: string;
+  dashboardUrl: string;
+  accessHint: string;
   status: "healthy" | "degraded" | "down" | "unknown";
   latencyMs: number | null;
   details?: Record<string, unknown>;
@@ -136,6 +138,10 @@ function StatusDot({ status }: { status: StatusType }) {
   );
 }
 
+function stripProtocol(url: string): string {
+  return url.replace(/^https?:\/\//, "");
+}
+
 function ServiceCard({ service }: { service: ServiceCheck }) {
   const Icon = SERVICE_ICONS[service.name] || Server;
 
@@ -162,8 +168,26 @@ function ServiceCard({ service }: { service: ServiceCheck }) {
         <StatusDot status={service.status} />
       </div>
 
+      {service.dashboardUrl && (
+        <a
+          href={service.dashboardUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 flex items-center gap-1.5 text-xs text-violet-400 transition hover:text-violet-300"
+        >
+          {stripProtocol(service.dashboardUrl)}
+          <ExternalLink className="h-3 w-3" />
+        </a>
+      )}
+
+      {service.accessHint && (
+        <p className="mt-1 text-xs leading-snug text-muted-foreground/60">
+          {service.accessHint}
+        </p>
+      )}
+
       {service.latencyMs !== null && (
-        <p className="mt-3 text-xs text-muted-foreground">
+        <p className="mt-2 text-xs text-muted-foreground">
           <span className="font-mono text-foreground">
             {service.latencyMs}ms
           </span>
