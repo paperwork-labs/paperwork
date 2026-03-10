@@ -13,15 +13,15 @@ description: "CFO / Cost Optimizer persona — unit economics, infrastructure sp
 | GPT-4o vision fallback | $0.002 | OpenAI | $0.02/doc × 10% escalation |
 | GPT-4o insights | $0.040 | OpenAI | ~3K in + 2K out tokens |
 | GCP Cloud Storage | $0.001 | Google Cloud | 24hr lifecycle, negligible |
-| Vercel Pro (amortized) | $0.010 | Vercel | $20/mo / 2000 users |
+| Vercel Hobby (amortized) | $0.000 | Vercel | $0/mo (free tier) |
 | Render Starter (amortized) | $0.004 | Render | $7/mo / 2000 users |
-| **Total** | **$0.060** | | |
+| **Total** | **$0.050** | | |
 
 ## Fixed Monthly Costs
 
 | Service | Cost | Tier | Scale Trigger |
 |---|---|---|---|
-| Vercel | $20/mo | Pro | >1TB bandwidth → overages |
+| Vercel | $0/mo | Hobby (free) | >100GB bandwidth → upgrade to Pro |
 | Render | $7/mo | Starter (512MB) | >80% memory sustained → Standard ($25, 2GB) |
 | Neon | $0/mo | Free (0.5GB, 100 CU-hrs) | >0.5GB storage → Scale ($19/mo) |
 | Upstash | $0/mo | Free (500K cmds) | >500K cmds/mo → Pay-as-you-go |
@@ -29,7 +29,7 @@ description: "CFO / Cost Optimizer persona — unit economics, infrastructure sp
 | GCP Cloud Vision | $0/mo | 1K pages free/mo | >1K pages/mo → $0.0015/page |
 | Hetzner VPS (Postiz + n8n) | EUR 5.49/mo | CX33 (4 vCPU, 8GB RAM) | >80% RAM → upgrade CX43 |
 | OpenAI | Variable | Pay-as-you-go | Largest variable cost |
-| **Total Fixed (Infra)** | **~$32.50/mo** | | |
+| **Total Fixed (Infra)** | **~$12.49/mo** | | |
 
 ### Marketing Spend (Separate Budget — Tax Season Only)
 
@@ -78,9 +78,9 @@ description: "CFO / Cost Optimizer persona — unit economics, infrastructure sp
 ## Revenue vs Cost Framework
 
 - Blended ARPU (Scenario B, moderate): $8.05 at scale
-- Cost per user: $0.060
+- Cost per user: $0.050
 - Gross margin: 99.3%
-- Break-even users for fixed costs: ~$32.50/mo ÷ $8.05 ARPU = 5 paying users
+- Break-even users for fixed costs: ~$12.49/mo ÷ $8.05 ARPU = 2 paying users
 - Max sustainable CAC: $9.02
 - Primary revenue: refund routing to HYSA partners ($4.00/user at 8% attach) + financial referrals ($2.25/user at 3%)
 - Secondary revenue: audit shield, tax optimization plan ($29/yr), refund advance

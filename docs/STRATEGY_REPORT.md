@@ -17,7 +17,7 @@ FileFree is a mobile-first free tax filing app targeting Gen Z (18-30), monetize
 **Key numbers:**
 
 - Variable cost: $0.060/user
-- Fixed infrastructure: $34.50/month
+- Fixed infrastructure: $12.49/month
 - Scenario B ARPU: $8.05 (at scale, with partnerships)
 - Path to $1M ARR: ~125K users (mid-2028)
 - 80% annual retention (industry average, PCMag)
@@ -279,7 +279,7 @@ These tell you whether the strategy is working BEFORE revenue arrives.
 | ------------------------ | ------------------------ | --------- | ------------------------ |
 | Blended ARPU             | $4+ (Scenario A minimum) | Monthly   | Revenue model validation |
 | Infrastructure cost/user | <$0.10                   | Monthly   | Cost structure holds     |
-| Total monthly burn       | <$85 (infra) + marketing | Monthly   | Runway management        |
+| Total monthly burn       | $12.49 (infra) + marketing | Monthly   | Runway management        |
 | Partner revenue received | First payout by Q1 2027  | Monthly   | Partnership validation   |
 
 

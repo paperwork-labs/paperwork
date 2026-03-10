@@ -2,7 +2,7 @@
 
 Organizational memory for FileFree. AI agents read this at session start. Update after significant decisions, learnings, or pattern discoveries.
 
-**Last Updated**: 2026-03-09
+**Last Updated**: 2026-03-10
 
 ---
 
@@ -116,6 +116,11 @@ FastAPI + deps need ~200-300MB. Under concurrent requests during tax season peak
 ### Q3: Column Tax SDK Availability and Pricing
 Need to book demo call and negotiate pricing. Target: $10-15/return cost-passthrough. Sandbox access needed by September 2026 for October launch.
 
+### L8: Postiz v2.12+ Requires Temporal (2026-03-10)
+Postiz switched from cron to Temporal for background job scheduling in v2.12.0. The `ghcr.io/gitroomhq/postiz-app:latest` image requires a Temporal server at port 7233. Without it, the backend fails to start: `Error: connect ECONNREFUSED ::1:7233`. Fix: add `temporalio/auto-setup:1.28.1` + its own `postgres:16-alpine` to Docker Compose, set `TEMPORAL_ADDRESS: temporal:7233` in Postiz env. Reference: https://docs.postiz.com/installation/docker-compose
+
+---
+
 ### Q4: Postiz MCP Reliability with Self-Hosted Instances
 GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeouts, 404s) on self-hosted Postiz. Community MCP package (`mcp-postiz-server`) is third-party maintained. Fallback: Postiz REST API works reliably. Test MCP first; use REST API if needed.
 
@@ -221,3 +226,27 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 - **Monthly burn**: $12.49/mo (Hetzner VPS $5.49 + Render Starter $7). Vercel Hobby (free), Neon free tier, Upstash free tier.
 - **Inconsistencies fixed**: TASKS.md (Temporal reference, separate DBs, docker-compose.yml path, Gen Z FAQ), .cursorrules + engineering.mdc (Vercel tier Hobby not Pro), env.prod.example (missing auth vars), KNOWLEDGE.md D21 (Hetzner bootstrapped).
 - **Reversibility**: N/A — milestone.
+
+### D24 — PostHog Analytics Foundation (2026-03-10)
+- **Context**: Need attribution and event tracking before landing page goes live. Can't measure what we don't track.
+- **Decision**: Integrated PostHog (`posthog-js`) with PII scrubbing (SSN + email patterns stripped from all events). PostHogProvider wraps the app, tracks page views on route changes. UTM parameters from `attribution.ts` registered as super properties. Key events wired: `waitlist_signup`, `waitlist_signup_error`. PostHog project API key set in `web/.env.production`.
+- **Key files**: `web/src/lib/posthog.ts` (init + scrub + track), `web/src/components/posthog-provider.tsx`, `web/src/components/providers.tsx` (wraps app).
+- **Sentry**: Not yet integrated (Task 0.5 remaining work).
+- **Reversibility**: Easy. PostHog is a standalone analytics provider, no app logic depends on it.
+
+### D25 — Legal Pages Live (2026-03-10)
+- **Context**: Landing page needs privacy policy and terms of service linked in footer before going live.
+- **Decision**: Created `/privacy` and `/terms` pages using the `legal.mdc` persona. Privacy policy discloses AI processing (Cloud Vision, OpenAI), SSN isolation, data deletion rights, no data selling, CCPA/GDPR compliance. Terms cover "tax education not tax advice" (Circular 230), free pricing, e-file partner disclosure.
+- **Key files**: `web/src/app/privacy/page.tsx`, `web/src/app/terms/page.tsx`.
+- **Reversibility**: Easy. Pages can be updated independently. Should be reviewed by actual legal counsel before January 2027 launch.
+
+### D26 — Agent Autonomy: n8n Workflows Wired (2026-03-10)
+- **Context**: 6 n8n persona workflows were imported but had no output destinations — they generated AI content but didn't save it anywhere.
+- **Decision**: Added Notion/GitHub output nodes to all 6 workflows. Social Content Generator, Growth Content Writer, Weekly Strategy Check-in, Partnership Outreach Drafter, CPA Tax Review all output to Notion databases. QA Security Scan outputs to GitHub Issues. All credentials configured in n8n UI (OpenAI, Notion API key, GitHub PAT). Workflow JSONs updated in `infra/hetzner/workflows/`.
+- **Postiz v2.12+ Temporal requirement**: Postiz updated from cron-based to Temporal-based job scheduling. Added `temporal` (auto-setup:1.28.1) + `temporal-db` (postgres:16-alpine) services to Hetzner compose. Also fixed Caddy reverse proxy port (was 4200, Postiz runs on 5000).
+- **Reversibility**: Easy. Workflows are independent, credentials can be rotated.
+
+### D27 — TASKS.md v8: Checkbox Overhaul + Docs Consistency (2026-03-10)
+- **Context**: TASKS.md used `~~strikethrough~~` for completed items, which doesn't render as visual checkboxes in many markdown viewers. User couldn't track progress.
+- **Decision**: Replaced all `~~strikethrough~~` with `[x]` checkboxes. Added `[ ]` checkboxes to all uncompleted items in active tasks. Added sprint progress summaries (`> Progress: X/Y complete`) at the top of each sprint section. Deleted root `TASKS.md` (was a 3-line redirect to `docs/TASKS.md`). Fixed stale cost/pricing references across `docs/PRD.md`, `docs/STRATEGY_REPORT.md`, `docs/PARTNERSHIPS.md` (Vercel Hobby free, total burn $12.49/mo). Updated 6 persona `.mdc` files for consistency.
+- **Reversibility**: N/A — documentation improvement.

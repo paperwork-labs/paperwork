@@ -31,7 +31,7 @@ Partnership-dependent revenue (refund routing + financial referrals + refund adv
 - Gross margin: 99.3%
 - 5-year LTV: $27.05 (80% annual retention, PCMag data)
 - Max sustainable CAC: $9.02
-- Fixed monthly infrastructure: $34.50/mo
+- Fixed monthly infrastructure: $12.49/mo
 
 ---
 

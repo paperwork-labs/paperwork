@@ -9,7 +9,7 @@ description: "Tax Domain Expert persona — IRS rules, form layouts, MeF XML sch
 ### Source Authority
 - IRS Revenue Procedure 2024-40 (inflation adjustments)
 - P.L. 119-21 "One Big Beautiful Bill" (standard deduction increases, SALT cap change, overtime deduction)
-- Tax brackets and standard deductions stored in `tax-data/2025.json` with source citations
+- Tax brackets and standard deductions stored in `api/tax-data/2025.json` with source citations
 - Validated against IRS Publication 17 worked examples
 
 ### Standard Deductions (2025, per P.L. 119-21)
@@ -34,7 +34,7 @@ description: "Tax Domain Expert persona — IRS rules, form layouts, MeF XML sch
 | 37% | $626,351+ |
 
 MFJ brackets are approximately 2x single. MFS = single. HoH is between single and MFJ.
-Full bracket tables for all filing statuses must be in `tax-data/2025.json`.
+Full bracket tables for all filing statuses must be in `api/tax-data/2025.json`.
 
 ### 2025 Tax Law Changes (One Big Beautiful Bill)
 - Standard deductions increased (see above)
@@ -171,7 +171,7 @@ Invoke this persona when:
 - Working on tax calculations, brackets, deductions, or credits
 - Building form generation (1040 layout, MeF XML)
 - Referencing any IRS rule, number, or procedure
-- Updating `tax-data/` JSON files
+- Updating `api/tax-data/` JSON files
 
 ## Handoff Protocol
 
