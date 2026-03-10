@@ -64,6 +64,52 @@ async def login(db: AsyncSession, redis: Redis, email: str, password: str) -> tu
     return user, session_token, csrf_token
 
 
+async def social_login(
+    db: AsyncSession,
+    redis: Redis,
+    provider: AuthProvider,
+    email: str,
+    name: str | None,
+    provider_id: str,
+) -> tuple[User, str, str]:
+    """Find or create a user from social login. Returns (user, session_token, csrf_token).
+
+    Account linking: if a user already exists with this email (any provider),
+    they can log in via any verified social provider. The original auth_provider
+    is preserved but auth_provider_id is updated if empty.
+    """
+    repo = UserRepository(db)
+    normalized_email = email.lower()
+    user = await repo.get_by_email(normalized_email)
+
+    if user:
+        if not user.auth_provider_id and provider_id:
+            user.auth_provider_id = provider_id
+            await db.flush()
+            await db.refresh(user)
+    else:
+        referral_code = secrets.token_urlsafe(8)
+        encrypted_name = encrypt(name) if name else None
+
+        user = await repo.create(
+            email=normalized_email,
+            password_hash=None,
+            full_name_encrypted=encrypted_name,
+            referral_code=referral_code,
+            auth_provider=provider,
+            auth_provider_id=provider_id,
+            email_verified=True,
+        )
+
+    session_token = generate_session_token()
+    csrf_token = secrets.token_urlsafe(32)
+
+    await redis.setex(f"{SESSION_PREFIX}{session_token}", SESSION_TTL, str(user.id))
+    await redis.setex(f"{CSRF_PREFIX}{session_token}", SESSION_TTL, csrf_token)
+
+    return user, session_token, csrf_token
+
+
 async def logout(redis: Redis, session_token: str) -> None:
     """Destroy session and CSRF token."""
     await redis.delete(f"{SESSION_PREFIX}{session_token}")
