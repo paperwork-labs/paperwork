@@ -564,12 +564,12 @@ Each article: genuinely helpful, links to product naturally, FAQ schema markup f
 </details>
 ## Sprint 3: Full MVP (April 15 - May 31)
 
-> **Progress: 0/7 complete** | Not started
+> **Progress: 1/7 complete** | 2.1 done
 
 Complete filing flow for extension filers.
 
 <details>
-<summary><strong>Task 2.1 — Backend Auth System</strong></summary>
+<summary><strong>Task 2.1 — Backend Auth System — DONE</strong></summary>
 
 
 **Branch**: `feat/2.1-backend-auth`
@@ -589,7 +589,7 @@ Cookie: httponly, secure, samesite='lax', max_age=604800.
 CSRF: token on login, validate on all state-changing requests.
 Rate limiting: 5 req/min on auth via slowapi.
 
-**Acceptance**: Full auth cycle works, CSRF works, rate limiting works.
+**Acceptance**: Full auth cycle works, CSRF works, rate limiting works. 20 tests covering register (7), login (3), me (3), logout (2), delete (2), CSRF (3), rate limiting (1), cookie properties (1). All 52 tests pass.
 
 ---
 
