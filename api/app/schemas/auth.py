@@ -35,3 +35,12 @@ class LoginRequest(BaseModel):
 
 class AuthResponse(BaseModel):
     csrf_token: str
+
+
+class GoogleAuthRequest(BaseModel):
+    id_token: str
+
+
+class AppleAuthRequest(BaseModel):
+    id_token: str
+    user: dict | None = None

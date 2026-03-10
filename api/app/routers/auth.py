@@ -5,11 +5,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user, require_csrf
-from app.models.user import User
+from app.models.user import AuthProvider, User
 from app.rate_limit import limiter
 from app.redis import get_redis
-from app.schemas.auth import LoginRequest, RegisterRequest
+from app.schemas.auth import (
+    AppleAuthRequest,
+    GoogleAuthRequest,
+    LoginRequest,
+    RegisterRequest,
+)
 from app.services import auth_service
+from app.services.oauth_service import verify_apple_token, verify_google_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -76,6 +82,62 @@ async def login(
 ):
     redis = get_redis()
     user, session_token, csrf_token = await auth_service.login(db, redis, data.email, data.password)
+
+    resp = _make_response(
+        {
+            "user": auth_service.user_to_response(user),
+            "csrf_token": csrf_token,
+        }
+    )
+    _set_session_cookie(resp, session_token)
+    return resp
+
+
+@router.post("/google")
+@limiter.limit("5/minute")
+async def google_auth(
+    request: Request,
+    data: GoogleAuthRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    oauth_user = await verify_google_token(data.id_token)
+    redis = get_redis()
+
+    user, session_token, csrf_token = await auth_service.social_login(
+        db, redis,
+        provider=AuthProvider.GOOGLE,
+        email=oauth_user.email,
+        name=oauth_user.name,
+        provider_id=oauth_user.provider_id,
+    )
+
+    resp = _make_response(
+        {
+            "user": auth_service.user_to_response(user),
+            "csrf_token": csrf_token,
+        }
+    )
+    _set_session_cookie(resp, session_token)
+    return resp
+
+
+@router.post("/apple")
+@limiter.limit("5/minute")
+async def apple_auth(
+    request: Request,
+    data: AppleAuthRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    oauth_user = await verify_apple_token(data.id_token, data.user)
+    redis = get_redis()
+
+    user, session_token, csrf_token = await auth_service.social_login(
+        db, redis,
+        provider=AuthProvider.APPLE,
+        email=oauth_user.email,
+        name=oauth_user.name,
+        provider_id=oauth_user.provider_id,
+    )
 
     resp = _make_response(
         {
