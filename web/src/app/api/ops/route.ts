@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 
 interface ServiceCheck {
   name: string;
+  url: string;
   status: "healthy" | "degraded" | "down" | "unknown";
   latencyMs: number | null;
   details?: Record<string, unknown>;
   checkedAt: string;
+  category: "core" | "ops" | "analytics" | "ci";
 }
 
 interface N8nWorkflow {
@@ -15,75 +17,154 @@ interface N8nWorkflow {
   updatedAt: string;
 }
 
+interface CIRun {
+  name: string;
+  conclusion: string | null;
+  status: string;
+  updatedAt: string;
+  url: string;
+}
+
 interface OpsResponse {
   services: ServiceCheck[];
   workflows: N8nWorkflow[];
+  ciRuns: CIRun[];
   checkedAt: string;
 }
 
-const TIMEOUT_MS = 5000;
+const TIMEOUT_MS = 8000;
+
+const PRODUCTION_SERVICES: {
+  name: string;
+  url: string;
+  category: ServiceCheck["category"];
+  parseDetails?: (data: unknown) => Record<string, unknown>;
+}[] = [
+  {
+    name: "Render API",
+    url: "https://api.filefree.tax/health",
+    category: "core",
+    parseDetails: (data) => {
+      const d = data as Record<string, unknown>;
+      const inner = d?.data as Record<string, unknown> | undefined;
+      return {
+        dbConnected: inner?.db_connected,
+        redisConnected: inner?.redis_connected,
+        version: inner?.version,
+        status: inner?.status,
+      };
+    },
+  },
+  {
+    name: "Vercel Frontend",
+    url: "https://filefree.tax",
+    category: "core",
+  },
+  {
+    name: "n8n (Agents)",
+    url: "https://n8n.filefree.tax/healthz",
+    category: "ops",
+  },
+  {
+    name: "Postiz (Social)",
+    url: "https://social.filefree.tax",
+    category: "ops",
+  },
+  {
+    name: "PostHog (Analytics)",
+    url: "https://us.i.posthog.com/decide?v=3",
+    category: "analytics",
+    parseDetails: () => ({ raw: "reachable" }),
+  },
+];
 
 async function checkService(
-  name: string,
-  url: string,
-  parseDetails?: (data: unknown) => Record<string, unknown>,
+  service: (typeof PRODUCTION_SERVICES)[number],
 ): Promise<ServiceCheck> {
   const start = Date.now();
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-    const res = await fetch(url, { signal: controller.signal, cache: "no-store" });
+    const res = await fetch(service.url, {
+      signal: controller.signal,
+      cache: "no-store",
+      headers: { "User-Agent": "FileFree-Ops/1.0" },
+    });
     clearTimeout(timeout);
 
     const latencyMs = Date.now() - start;
 
+    if (!res.ok && res.status >= 500) {
+      return {
+        name: service.name,
+        url: service.url,
+        status: "down",
+        latencyMs,
+        details: { httpStatus: res.status },
+        checkedAt: new Date().toISOString(),
+        category: service.category,
+      };
+    }
+
     if (!res.ok) {
       return {
-        name,
+        name: service.name,
+        url: service.url,
         status: "degraded",
         latencyMs,
         details: { httpStatus: res.status },
         checkedAt: new Date().toISOString(),
+        category: service.category,
       };
     }
 
     let details: Record<string, unknown> = {};
     try {
       const json = await res.json();
-      details = parseDetails ? parseDetails(json) : { raw: "ok" };
+      details = service.parseDetails ? service.parseDetails(json) : {};
     } catch {
-      details = { raw: "non-json response" };
+      // Non-JSON response is fine for health checks (e.g., Vercel returns HTML)
     }
 
     return {
-      name,
+      name: service.name,
+      url: service.url,
       status: "healthy",
       latencyMs,
       details,
       checkedAt: new Date().toISOString(),
+      category: service.category,
     };
   } catch (err) {
     return {
-      name,
+      name: service.name,
+      url: service.url,
       status: "down",
       latencyMs: Date.now() - start,
-      details: { error: err instanceof Error ? err.message : "Unknown error" },
+      details: {
+        error:
+          err instanceof Error
+            ? err.name === "AbortError"
+              ? "Timeout (>8s)"
+              : err.message
+            : "Unknown error",
+      },
       checkedAt: new Date().toISOString(),
+      category: service.category,
     };
   }
 }
 
 async function fetchN8nWorkflows(): Promise<N8nWorkflow[]> {
-  const n8nUrl = process.env.N8N_URL;
   const n8nApiKey = process.env.N8N_API_KEY;
-  if (!n8nUrl || !n8nApiKey) return [];
+  if (!n8nApiKey) return [];
 
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-    const res = await fetch(`${n8nUrl}/api/v1/workflows`, {
+    const res = await fetch("https://n8n.filefree.tax/api/v1/workflows", {
       headers: { "X-N8N-API-KEY": n8nApiKey },
       signal: controller.signal,
       cache: "no-store",
@@ -108,64 +189,56 @@ async function fetchN8nWorkflows(): Promise<N8nWorkflow[]> {
   }
 }
 
+async function fetchGitHubCI(): Promise<CIRun[]> {
+  const ghToken = process.env.GITHUB_TOKEN;
+  if (!ghToken) return [];
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    const res = await fetch(
+      "https://api.github.com/repos/sankalp404/fileFree/actions/runs?per_page=5&branch=main",
+      {
+        headers: {
+          Authorization: `Bearer ${ghToken}`,
+          Accept: "application/vnd.github+json",
+        },
+        signal: controller.signal,
+        cache: "no-store",
+      },
+    );
+    clearTimeout(timeout);
+
+    if (!res.ok) return [];
+
+    const json = await res.json();
+    const runs = json.workflow_runs;
+    if (!Array.isArray(runs)) return [];
+
+    return runs.slice(0, 5).map((r: Record<string, unknown>) => ({
+      name: String(r.name ?? "Unknown"),
+      conclusion: r.conclusion as string | null,
+      status: String(r.status ?? "unknown"),
+      updatedAt: String(r.updated_at ?? ""),
+      url: String(r.html_url ?? ""),
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export async function GET() {
-  const apiUrl =
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-  const n8nUrl = process.env.N8N_URL;
-  const postizUrl = process.env.POSTIZ_URL;
-  const hetznerIp = process.env.HETZNER_IP;
-
-  const checks: Promise<ServiceCheck>[] = [
-    checkService("Render API", `${apiUrl}/health`, (data) => {
-      const d = data as Record<string, unknown>;
-      return {
-        dbConnected: d?.data
-          ? (d.data as Record<string, unknown>).db_connected
-          : undefined,
-        version: d?.data
-          ? (d.data as Record<string, unknown>).version
-          : undefined,
-        status: d?.data
-          ? (d.data as Record<string, unknown>).status
-          : undefined,
-      };
-    }),
-
-    checkService("Vercel Frontend", "https://filefree.tax", () => ({
-      raw: "ok",
-    })),
-  ];
-
-  if (n8nUrl) {
-    checks.push(
-      checkService("n8n", `${n8nUrl}/healthz`, () => ({ raw: "ok" })),
-    );
-  }
-
-  if (postizUrl) {
-    checks.push(
-      checkService("Postiz", postizUrl, () => ({ raw: "ok" })),
-    );
-  }
-
-  if (hetznerIp) {
-    checks.push(
-      checkService(
-        "Hetzner VPS",
-        `http://${hetznerIp}:80`,
-        () => ({ raw: "reachable" }),
-      ),
-    );
-  }
-
-  const [services, workflows] = await Promise.all([
-    Promise.all(checks),
+  const [services, workflows, ciRuns] = await Promise.all([
+    Promise.all(PRODUCTION_SERVICES.map(checkService)),
     fetchN8nWorkflows(),
+    fetchGitHubCI(),
   ]);
 
   const response: OpsResponse = {
     services,
     workflows,
+    ciRuns,
     checkedAt: new Date().toISOString(),
   };
 
