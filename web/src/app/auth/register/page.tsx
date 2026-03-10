@@ -25,6 +25,9 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { GoogleSignIn } from "@/components/auth/google-sign-in";
+import { AppleSignIn } from "@/components/auth/apple-sign-in";
+import { OrDivider } from "@/components/auth/or-divider";
 import { useRegister } from "@/hooks/use-auth";
 import {
   registerSchema,
@@ -68,6 +71,11 @@ export default function RegisterPage() {
         </CardHeader>
 
         <CardContent>
+          <div className="space-y-2">
+            <GoogleSignIn text="signup_with" />
+            <AppleSignIn />
+          </div>
+          <OrDivider />
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
