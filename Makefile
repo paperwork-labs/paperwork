@@ -1,6 +1,6 @@
 .PHONY: dev stop test lint format migrate seed clean setup setup-hooks help
 
-COMPOSE = docker compose -f infra/compose.dev.yaml
+COMPOSE = docker compose -p filefree -f infra/compose.dev.yaml
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
