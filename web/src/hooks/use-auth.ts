@@ -80,6 +80,58 @@ export function useLogin() {
   });
 }
 
+export function useGoogleAuth() {
+  const { setUser } = useAuthStore();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (idToken: string) => {
+      const res = await api.post<ApiResponse<AuthResponseData>>(
+        "/api/v1/auth/google",
+        { id_token: idToken }
+      );
+      return res.data.data!;
+    },
+    onSuccess: ({ user, csrf_token }) => {
+      setUser(user, csrf_token);
+      queryClient.setQueryData(["auth", "me"], user);
+      toast.success("Welcome to FileFree!");
+      router.push(safeRedirect(searchParams.get("redirect"), "/file"));
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
+export function useAppleAuth() {
+  const { setUser } = useAuthStore();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: { idToken: string; user?: unknown }) => {
+      const res = await api.post<ApiResponse<AuthResponseData>>(
+        "/api/v1/auth/apple",
+        { id_token: data.idToken, user: data.user }
+      );
+      return res.data.data!;
+    },
+    onSuccess: ({ user, csrf_token }) => {
+      setUser(user, csrf_token);
+      queryClient.setQueryData(["auth", "me"], user);
+      toast.success("Welcome to FileFree!");
+      router.push(safeRedirect(searchParams.get("redirect"), "/file"));
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
 export function useLogout() {
   const { csrfToken, clearAuth } = useAuthStore();
   const router = useRouter();
