@@ -2,6 +2,7 @@ name: filefree
 
 services:
   postgres:
+    container_name: filefree-postgres
     image: postgres:15-alpine
     environment:
       POSTGRES_USER: filefree
@@ -19,6 +20,7 @@ services:
       retries: 5
 
   redis:
+    container_name: filefree-redis
     image: redis:7-alpine
     ports:
       - "6379:6379"
@@ -29,6 +31,7 @@ services:
       retries: 5
 
   api:
+    container_name: filefree-api
     build:
       context: ../api
       dockerfile: Dockerfile
@@ -52,6 +55,7 @@ services:
       start_period: 10s
 
   web:
+    container_name: filefree-web
     build:
       context: ../web
       dockerfile: Dockerfile.dev

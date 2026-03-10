@@ -24,7 +24,16 @@ alwaysApply: true
    ```
    gh pr create --title "..." --body "..."
    ```
-5. Return the PR URL to the user.
+5. **Request Copilot review** immediately after PR creation:
+   ```
+   gh pr edit <number> --add-reviewer @copilot
+   ```
+6. **Wait for Copilot review**, then read comments:
+   ```
+   gh api repos/{owner}/{repo}/pulls/{number}/comments
+   ```
+7. **Address any findings** — fix issues, push commits, confirm review is clean.
+8. Return the PR URL to the user.
 
 ### Branch Naming Convention
 
