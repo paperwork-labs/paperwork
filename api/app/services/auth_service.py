@@ -101,6 +101,11 @@ async def delete_account(
     await redis.delete(f"{CSRF_PREFIX}{session_token}")
 
 
+async def get_csrf_token(redis: Redis, session_token: str) -> str | None:
+    """Retrieve the CSRF token for a given session."""
+    return await redis.get(f"{CSRF_PREFIX}{session_token}")
+
+
 async def validate_csrf(
     redis: Redis, session_token: str, csrf_token: str
 ) -> bool:

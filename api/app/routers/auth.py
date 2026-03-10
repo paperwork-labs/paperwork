@@ -106,8 +106,14 @@ async def logout(
 @router.get("/me")
 async def me(
     user: User = Depends(get_current_user),
+    session_token: str | None = Cookie(None, alias="session"),
 ):
-    return _make_response({"user": auth_service.user_to_response(user)})
+    redis = get_redis()
+    csrf_token = await auth_service.get_csrf_token(redis, session_token or "")
+    data: dict = {"user": auth_service.user_to_response(user)}
+    if csrf_token:
+        data["csrf_token"] = csrf_token
+    return _make_response(data)
 
 
 @router.delete("/account")

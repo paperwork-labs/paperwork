@@ -25,6 +25,59 @@ const comingSoon = [
   { name: "Multi-state support", date: "Coming soon" },
 ];
 
+const competitors = [
+  {
+    name: "FileFree",
+    highlight: true,
+    federal: "Free",
+    state: "Free",
+    ocrScan: true,
+    speed: "2-5 min",
+    incomeLimit: "None",
+    upsells: false,
+  },
+  {
+    name: "TurboTax",
+    highlight: false,
+    federal: '"Free" (upsells)',
+    state: "$39.99+",
+    ocrScan: true,
+    speed: "30+ min",
+    incomeLimit: "None",
+    upsells: true,
+  },
+  {
+    name: "IRS Free File",
+    highlight: false,
+    federal: "Free (if eligible)",
+    state: "$0-40",
+    ocrScan: false,
+    speed: "20-40 min",
+    incomeLimit: "AGI ≤ $84K",
+    upsells: true,
+  },
+  {
+    name: "FreeTaxUSA",
+    highlight: false,
+    federal: "Free",
+    state: "$15.99",
+    ocrScan: false,
+    speed: "20-40 min",
+    incomeLimit: "None",
+    upsells: false,
+  },
+  {
+    name: "Cash App Taxes",
+    highlight: false,
+    federal: "Free",
+    state: "Free",
+    ocrScan: false,
+    speed: "15-30 min",
+    incomeLimit: "None (requires Cash App)",
+    upsells: false,
+  },
+];
+
 export default function PricingPage() {
   const jsonLd = {
     "@context": "https://schema.org",
@@ -120,6 +173,98 @@ export default function PricingPage() {
             referrals for your refund, an annual Tax Optimization Plan ($29/yr),
             and affiliate partnerships. Filing will always be free.
           </p>
+        </div>
+
+        <div className="mt-16">
+          <h2 className="text-xl font-bold text-foreground">
+            How we compare
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            No fine print. No eligibility quizzes. No surprises at checkout.
+          </p>
+
+          <div className="mt-6 overflow-x-auto">
+            <table className="w-full min-w-[600px] text-sm">
+              <thead>
+                <tr className="border-b border-border/50 text-left">
+                  <th className="py-3 pr-4 font-medium text-muted-foreground" scope="col">
+                    <span className="sr-only">Feature</span>
+                  </th>
+                  {competitors.map((c) => (
+                    <th
+                      key={c.name}
+                      scope="col"
+                      className={`px-3 py-3 text-center font-semibold ${c.highlight ? "text-violet-400" : "text-foreground"}`}
+                    >
+                      {c.name}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="text-muted-foreground">
+                <tr className="border-b border-border/20">
+                  <td className="py-3 pr-4 font-medium text-foreground">Federal</td>
+                  {competitors.map((c) => (
+                    <td key={c.name} className={`px-3 py-3 text-center ${c.highlight ? "text-green-400 font-medium" : ""}`}>
+                      {c.federal}
+                    </td>
+                  ))}
+                </tr>
+                <tr className="border-b border-border/20">
+                  <td className="py-3 pr-4 font-medium text-foreground">State</td>
+                  {competitors.map((c) => (
+                    <td key={c.name} className={`px-3 py-3 text-center ${c.highlight ? "text-green-400 font-medium" : ""}`}>
+                      {c.state}
+                    </td>
+                  ))}
+                </tr>
+                <tr className="border-b border-border/20">
+                  <td className="py-3 pr-4 font-medium text-foreground">W-2 scan</td>
+                  {competitors.map((c) => (
+                    <td key={c.name} className="px-3 py-3 text-center">
+                      {c.ocrScan ? (
+                        <span className={c.highlight ? "text-green-400" : ""} aria-label="Supported">
+                          &#10003;
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground/50" aria-label="Not supported">
+                          &mdash;
+                        </span>
+                      )}
+                    </td>
+                  ))}
+                </tr>
+                <tr className="border-b border-border/20">
+                  <td className="py-3 pr-4 font-medium text-foreground">Speed</td>
+                  {competitors.map((c) => (
+                    <td key={c.name} className={`px-3 py-3 text-center ${c.highlight ? "text-green-400 font-medium" : ""}`}>
+                      {c.speed}
+                    </td>
+                  ))}
+                </tr>
+                <tr className="border-b border-border/20">
+                  <td className="py-3 pr-4 font-medium text-foreground">Income limit</td>
+                  {competitors.map((c) => (
+                    <td key={c.name} className={`px-3 py-3 text-center ${c.highlight ? "text-green-400 font-medium" : ""}`}>
+                      {c.incomeLimit}
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="py-3 pr-4 font-medium text-foreground">Hidden upsells</td>
+                  {competitors.map((c) => (
+                    <td key={c.name} className="px-3 py-3 text-center">
+                      {c.upsells ? (
+                        <span className="text-red-400">Yes</span>
+                      ) : (
+                        <span className={c.highlight ? "text-green-400 font-medium" : ""}>No</span>
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div className="mt-12">
