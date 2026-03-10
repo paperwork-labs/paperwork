@@ -104,7 +104,8 @@ async def google_auth(
     redis = get_redis()
 
     user, session_token, csrf_token = await auth_service.social_login(
-        db, redis,
+        db,
+        redis,
         provider=AuthProvider.GOOGLE,
         email=oauth_user.email,
         name=oauth_user.name,
@@ -132,7 +133,8 @@ async def apple_auth(
     redis = get_redis()
 
     user, session_token, csrf_token = await auth_service.social_login(
-        db, redis,
+        db,
+        redis,
         provider=AuthProvider.APPLE,
         email=oauth_user.email,
         name=oauth_user.name,

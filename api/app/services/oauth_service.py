@@ -76,9 +76,7 @@ async def _get_apple_jwks() -> dict:
         return _apple_jwks_cache
 
 
-async def verify_apple_token(
-    id_token: str, user_info: dict | None = None
-) -> OAuthUser:
+async def verify_apple_token(id_token: str, user_info: dict | None = None) -> OAuthUser:
     """Verify an Apple ID token and extract user info.
 
     Apple's flow: the JS SDK returns an id_token (JWT). User info (name, email)

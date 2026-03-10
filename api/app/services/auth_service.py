@@ -103,12 +103,8 @@ async def social_login(
     session_token = generate_session_token()
     csrf_token = secrets.token_urlsafe(32)
 
-    await redis.setex(
-        f"{SESSION_PREFIX}{session_token}", SESSION_TTL, str(user.id)
-    )
-    await redis.setex(
-        f"{CSRF_PREFIX}{session_token}", SESSION_TTL, csrf_token
-    )
+    await redis.setex(f"{SESSION_PREFIX}{session_token}", SESSION_TTL, str(user.id))
+    await redis.setex(f"{CSRF_PREFIX}{session_token}", SESSION_TTL, csrf_token)
 
     return user, session_token, csrf_token
 
