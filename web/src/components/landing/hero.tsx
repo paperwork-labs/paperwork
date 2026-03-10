@@ -1,19 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Loader2 } from "lucide-react";
-import confetti from "canvas-confetti";
-import { toast } from "sonner";
+import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import api from "@/lib/api";
-import { getAttribution } from "@/lib/attribution";
-import { trackEvent } from "@/lib/posthog";
 import { fadeIn, slideInUp } from "@/lib/motion";
 
 const PUNCHLINES = [
@@ -75,56 +67,9 @@ function RotatingPunchline() {
   );
 }
 
-const waitlistSchema = z.object({
-  email: z.string().email("Enter a valid email address"),
-});
-
-type WaitlistForm = z.infer<typeof waitlistSchema>;
-
 export function Hero() {
-  const [submitted, setSubmitted] = useState(false);
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<WaitlistForm>({
-    resolver: zodResolver(waitlistSchema),
-  });
-
-  const onSubmit = async (data: WaitlistForm) => {
-    try {
-      const attribution = getAttribution();
-      await api.post("/api/v1/waitlist", {
-        email: data.email,
-        source: "landing",
-        attribution,
-      });
-      setSubmitted(true);
-      trackEvent("waitlist_signup", {
-        source: "landing_hero",
-        ...attribution,
-      });
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-      });
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Something went wrong";
-      if (message.includes("already on the waitlist")) {
-        toast.info("You're already on the list! We'll be in touch soon.");
-        setSubmitted(true);
-      } else {
-        trackEvent("waitlist_signup_error", { error: message });
-        toast.error(message);
-      }
-    }
-  };
-
   return (
-    <section className="relative flex min-h-[90vh] flex-col items-center justify-center overflow-hidden px-4 py-20">
+    <section className="relative flex min-h-[90vh] flex-col items-center justify-center overflow-hidden px-4 pt-10 pb-20">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(263_70%_50%/0.15),transparent_70%)]" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,hsl(238_76%_57%/0.1),transparent_60%)]" />
 
@@ -151,65 +96,30 @@ export function Hero() {
           upsells, no hidden fees, no tricks.
         </motion.p>
 
-        <motion.div className="mt-10 w-full max-w-md" variants={slideInUp}>
-          {submitted ? (
-            <div className="rounded-lg border border-violet-500/30 bg-violet-500/10 p-6 text-center">
-              <p className="text-lg font-semibold text-foreground">
-                You&apos;re on the list!
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                We&apos;ll let you know when FileFree is ready.
-              </p>
-            </div>
-          ) : (
-            <form
-              onSubmit={handleSubmit(onSubmit)}
-              className="flex flex-col gap-3 sm:flex-row"
-            >
-              <div className="flex-1">
-                <Input
-                  type="email"
-                  placeholder="you@email.com"
-                  className="h-12 border-border/50 bg-card/50 text-base backdrop-blur"
-                  {...register("email")}
-                />
-                {errors.email && (
-                  <p className="mt-1 text-sm text-destructive">
-                    {errors.email.message}
-                  </p>
-                )}
-              </div>
-              <Button
-                type="submit"
-                size="lg"
-                disabled={isSubmitting}
-                className="h-12 bg-gradient-to-r from-violet-600 to-purple-600 px-6 text-base font-semibold hover:from-violet-500 hover:to-purple-500"
-              >
-                {isSubmitting ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <ArrowRight className="mr-2 h-4 w-4" />
-                )}
-                Get Early Access
-              </Button>
-            </form>
-          )}
+        <motion.div className="mt-10 flex flex-col items-center gap-4" variants={slideInUp}>
+          <Button
+            asChild
+            size="lg"
+            className="h-12 bg-gradient-to-r from-violet-600 to-purple-600 px-8 text-base font-semibold hover:from-violet-500 hover:to-purple-500"
+          >
+            <Link href="/auth/register">
+              Get Started Free
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+
+          <p className="text-xs text-muted-foreground/60">
+            Free forever. No credit card needed.
+          </p>
         </motion.div>
 
-        <motion.p
-          className="mt-4 text-xs text-muted-foreground/60"
-          variants={slideInUp}
-        >
-          Free forever. No credit card needed.
-        </motion.p>
-
         <motion.div className="mt-6" variants={slideInUp}>
-          <a
+          <Link
             href="/demo"
             className="text-sm font-medium text-violet-400 transition hover:text-violet-300"
           >
             Or try it now &mdash; snap your W-2, no account needed &rarr;
-          </a>
+          </Link>
         </motion.div>
       </motion.div>
     </section>

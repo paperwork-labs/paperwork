@@ -21,6 +21,10 @@ ignore = [
     "S101",  # assert used in tests
     "S105",  # hardcoded password (false positives on env vars)
     "S106",  # hardcoded password
+    "B008",  # Depends() in function defaults — idiomatic FastAPI
+    "S607",  # partial executable path — intentional for alembic CLI
+    "N818",  # AppException naming — base class, not user-facing
+    "UP042", # str+Enum → StrEnum — defer to avoid SQLAlchemy enum migration risk
 ]
 
 [tool.ruff.lint.isort]

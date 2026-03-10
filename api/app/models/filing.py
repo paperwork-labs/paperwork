@@ -36,17 +36,20 @@ class Filing(TimestampMixin, Base):
     tax_year: Mapped[int] = mapped_column(Integer, nullable=False)
     filing_status_type: Mapped[FilingStatusType | None] = mapped_column(
         Enum(
-            FilingStatusType, name="filing_status_type",
+            FilingStatusType,
+            name="filing_status_type",
             values_callable=lambda e: [x.value for x in e],
         ),
         nullable=True,
     )
     status: Mapped[FilingStatus] = mapped_column(
         Enum(
-            FilingStatus, name="filing_status",
+            FilingStatus,
+            name="filing_status",
             values_callable=lambda e: [x.value for x in e],
         ),
-        default=FilingStatus.DRAFT, nullable=False,
+        default=FilingStatus.DRAFT,
+        nullable=False,
     )
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

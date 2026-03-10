@@ -29,6 +29,7 @@ def _run_migrations() -> None:
         logger.info("Skipping auto-migration (local/default DATABASE_URL)")
         return
     import pathlib
+
     api_dir = str(pathlib.Path(__file__).resolve().parent.parent)
     try:
         result = subprocess.run(
