@@ -1,10 +1,10 @@
 import Link from "next/link";
 
 const socials = [
-  { label: "TikTok", href: "https://tiktok.com/@filefree" },
+  { label: "TikTok", href: "https://tiktok.com/@filefree.tax" },
   { label: "Instagram", href: "https://instagram.com/filefree.tax" },
   { label: "X", href: "https://x.com/filefreetax" },
-  { label: "YouTube", href: "https://youtube.com/@FileFree" },
+  { label: "YouTube", href: "https://youtube.com/@FileFreeTax" },
 ];
 
 export function Footer() {

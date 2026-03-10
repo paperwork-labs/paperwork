@@ -1,0 +1,49 @@
+---
+description: "Git workflow guardrails — enforces branch-based development with PRs. Always active."
+alwaysApply: true
+---
+
+# Git Workflow Rules
+
+## Branch-Based Development (MANDATORY)
+
+**NEVER push directly to `main`.** All code changes must go through a pull request.
+
+### Workflow
+
+1. **Create a feature branch** before making any changes:
+   ```
+   git checkout -b <type>/<short-description>
+   ```
+2. **Commit to the feature branch** as you work.
+3. **Push the feature branch** to the remote:
+   ```
+   git push -u origin HEAD
+   ```
+4. **Open a PR** via GitHub CLI:
+   ```
+   gh pr create --title "..." --body "..."
+   ```
+5. Return the PR URL to the user.
+
+### Branch Naming Convention
+
+| Type     | Pattern                | Example                        |
+|----------|------------------------|--------------------------------|
+| Feature  | `feat/short-desc`      | `feat/ocr-pipeline`            |
+| Fix      | `fix/short-desc`       | `fix/waitlist-cors`            |
+| Chore    | `chore/short-desc`     | `chore/update-deps`            |
+| Docs     | `docs/short-desc`      | `docs/api-readme`              |
+| Refactor | `refactor/short-desc`  | `refactor/auth-middleware`     |
+
+### Rules
+
+- NEVER run `git push origin main` or `git push` while on the `main` branch.
+- NEVER force push to `main` or `master`.
+- If you realize you're on `main` after making changes, stash, create a branch, then unstash:
+  ```
+  git stash && git checkout -b feat/my-feature && git stash pop
+  ```
+- One PR per logical unit of work. Don't bundle unrelated changes.
+- PR descriptions must include a summary and test plan.
+- After the PR is created, do NOT merge it — the user will review and merge.
