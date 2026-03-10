@@ -1,18 +1,19 @@
 import logging
 import subprocess
-from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from slowapi.util import get_remote_address
 
 from app.config import settings
 from app.database import engine
+from app.rate_limit import limiter
+from app.redis import close_redis, init_redis
 from app.routers import auth, documents, filings, health, tax, waitlist
 from app.utils.correlation import CorrelationIdMiddleware
 from app.utils.exceptions import AppException, app_exception_handler
@@ -52,7 +53,9 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     masked = db_url[:30] + "..." if len(db_url) > 30 else db_url
     logger.info("FileFree API starting up (env=%s, db=%s)", settings.ENVIRONMENT, masked)
     _run_migrations()
+    await init_redis()
     yield
+    await close_redis()
     await engine.dispose()
     logger.info("FileFree API shut down")
 
@@ -78,7 +81,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
 
