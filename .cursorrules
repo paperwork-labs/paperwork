@@ -1,6 +1,7 @@
 # filefree.tax - AI-Powered Free Tax Filing → Year-Round Tax Advisor
 #
-# NOTE: Persona-specific context lives in .cursor/rules/*.mdc (12 personas + workflows playbook)
+# NOTE: Persona-specific context lives in .cursor/rules/*.mdc (12 personas + workflows playbook + git guardrails)
+# - git-workflow.mdc: Git guardrails — branch-based dev, PR workflow, never push to main [alwaysApply]
 # - engineering.mdc: Staff Engineer (tech stack, architecture, code conventions) [alwaysApply]
 # - ux.mdc: UX/UI Lead (design system, accessibility, mobile-first, animations)
 # - growth.mdc: Head of Growth (marketing, content, SEO, viral mechanics)

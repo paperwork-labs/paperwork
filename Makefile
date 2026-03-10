@@ -1,13 +1,18 @@
-.PHONY: dev stop test lint format migrate seed clean setup help
+.PHONY: dev stop test lint format migrate seed clean setup setup-hooks help
 
 COMPOSE = docker compose -f infra/compose.dev.yaml
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
-setup: ## First-time setup: copy env files
+setup: setup-hooks ## First-time setup: copy env files, install git hooks
 	@test -f infra/env.dev || cp infra/env.dev.example infra/env.dev
 	@echo "✓ Environment files ready. Edit infra/env.dev as needed."
+
+setup-hooks: ## Install git hooks (blocks direct pushes to main)
+	@ln -sf ../../infra/git-hooks/pre-push .git/hooks/pre-push
+	@chmod +x infra/git-hooks/pre-push
+	@echo "✓ Git hooks installed. Direct pushes to main are now blocked."
 
 dev: setup ## Start all services (docker compose up --build)
 	$(COMPOSE) up --build
