@@ -15,7 +15,7 @@ class Settings(BaseSettings):
         elif url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql+asyncpg://", 1)
 
-        from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+        from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
         parsed = urlparse(url)
         params = parse_qs(parsed.query)
@@ -27,6 +27,7 @@ class Settings(BaseSettings):
 
         object.__setattr__(self, "DATABASE_URL", url)
         return self
+
     REDIS_URL: str = "redis://localhost:6379/0"
     SECRET_KEY: str = "change-me-to-a-random-64-char-string"
     ENCRYPTION_KEY: str = "change-me-generate-with-fernet"

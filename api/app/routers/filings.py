@@ -32,9 +32,7 @@ async def create_filing(
     _csrf: None = Depends(require_csrf),
     db: AsyncSession = Depends(get_db),
 ):
-    filing, created = await filing_service.create_filing(
-        db, user.id, data.tax_year
-    )
+    filing, created = await filing_service.create_filing(db, user.id, data.tax_year)
     status = 201 if created else 200
     return success_response(filing_service.filing_to_response(filing), status)
 
@@ -46,9 +44,7 @@ async def list_filings(
     db: AsyncSession = Depends(get_db),
 ):
     filings = await filing_service.get_user_filings(db, user.id, tax_year)
-    return success_response(
-        [filing_service.filing_to_response(f) for f in filings]
-    )
+    return success_response([filing_service.filing_to_response(f) for f in filings])
 
 
 @router.get("/{filing_id}")
@@ -57,9 +53,7 @@ async def get_filing(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    filing = await filing_service.get_filing(
-        db, _parse_uuid(filing_id), user.id
-    )
+    filing = await filing_service.get_filing(db, _parse_uuid(filing_id), user.id)
     return success_response(filing_service.filing_to_response(filing))
 
 
@@ -78,9 +72,7 @@ async def update_filing(
             db, fid, user.id, data.filing_status_type
         )
     elif data.status:
-        filing = await filing_service.advance_status(
-            db, fid, user.id, data.status
-        )
+        filing = await filing_service.advance_status(db, fid, user.id, data.status)
     else:
         filing = await filing_service.get_filing(db, fid, user.id)
 

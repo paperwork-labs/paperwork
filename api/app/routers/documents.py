@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request, UploadFile
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from app.schemas.base import success_response, error_response
+from app.schemas.base import error_response, success_response
 from app.schemas.document import DemoExtractionResponse, W2FieldResult
 from app.services.ocr_service import process_w2
 
@@ -34,9 +34,7 @@ async def demo_upload(request: Request, file: UploadFile):
     are returned.
     """
     if file.content_type not in ALLOWED_CONTENT_TYPES:
-        return error_response(
-            "Invalid file type. Please upload a JPG, PNG, or WEBP image.", 400
-        )
+        return error_response("Invalid file type. Please upload a JPG, PNG, or WEBP image.", 400)
 
     image_bytes = await file.read()
 

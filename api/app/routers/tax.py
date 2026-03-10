@@ -40,9 +40,7 @@ async def calculate(
         raise NotFoundError("Filing not found")
 
     if not filing.filing_status_type:
-        raise ConflictError(
-            "Filing status type must be set before calculating"
-        )
+        raise ConflictError("Filing status type must be set before calculating")
 
     total_wages = 0
     total_fed_withheld = 0
@@ -52,21 +50,13 @@ async def calculate(
         for doc in filing.documents:
             if doc.extraction_data:
                 total_wages += doc.extraction_data.get("wages", 0)
-                total_fed_withheld += doc.extraction_data.get(
-                    "federal_tax_withheld", 0
-                )
-                total_state_withheld += doc.extraction_data.get(
-                    "state_tax_withheld", 0
-                )
+                total_fed_withheld += doc.extraction_data.get("federal_tax_withheld", 0)
+                total_state_withheld += doc.extraction_data.get("state_tax_withheld", 0)
 
     if filing.tax_profile:
         total_wages = filing.tax_profile.total_wages or total_wages
-        total_fed_withheld = (
-            filing.tax_profile.total_federal_withheld or total_fed_withheld
-        )
-        total_state_withheld = (
-            filing.tax_profile.total_state_withheld or total_state_withheld
-        )
+        total_fed_withheld = filing.tax_profile.total_federal_withheld or total_fed_withheld
+        total_state_withheld = filing.tax_profile.total_state_withheld or total_state_withheld
 
     result = tax_calculator.calculate_return(
         total_wages_cents=total_wages,
@@ -90,17 +80,19 @@ async def calculate(
     await db.flush()
     await db.refresh(calc)
 
-    return success_response({
-        "adjusted_gross_income": calc.adjusted_gross_income,
-        "standard_deduction": calc.standard_deduction,
-        "taxable_income": calc.taxable_income,
-        "federal_tax": calc.federal_tax,
-        "state_tax": calc.state_tax,
-        "total_withheld": calc.total_withheld,
-        "refund_amount": calc.refund_amount,
-        "owed_amount": calc.owed_amount,
-        "calculated_at": calc.calculated_at.isoformat(),
-    })
+    return success_response(
+        {
+            "adjusted_gross_income": calc.adjusted_gross_income,
+            "standard_deduction": calc.standard_deduction,
+            "taxable_income": calc.taxable_income,
+            "federal_tax": calc.federal_tax,
+            "state_tax": calc.state_tax,
+            "total_withheld": calc.total_withheld,
+            "refund_amount": calc.refund_amount,
+            "owed_amount": calc.owed_amount,
+            "calculated_at": calc.calculated_at.isoformat(),
+        }
+    )
 
 
 @router.get("/calculation/{filing_id}")
@@ -120,15 +112,17 @@ async def get_calculation(
     if not calc:
         raise NotFoundError("No calculation found for this filing")
 
-    return success_response({
-        "adjusted_gross_income": calc.adjusted_gross_income,
-        "standard_deduction": calc.standard_deduction,
-        "taxable_income": calc.taxable_income,
-        "federal_tax": calc.federal_tax,
-        "state_tax": calc.state_tax,
-        "total_withheld": calc.total_withheld,
-        "refund_amount": calc.refund_amount,
-        "owed_amount": calc.owed_amount,
-        "ai_insights": calc.ai_insights,
-        "calculated_at": calc.calculated_at.isoformat(),
-    })
+    return success_response(
+        {
+            "adjusted_gross_income": calc.adjusted_gross_income,
+            "standard_deduction": calc.standard_deduction,
+            "taxable_income": calc.taxable_income,
+            "federal_tax": calc.federal_tax,
+            "state_tax": calc.state_tax,
+            "total_withheld": calc.total_withheld,
+            "refund_amount": calc.refund_amount,
+            "owed_amount": calc.owed_amount,
+            "ai_insights": calc.ai_insights,
+            "calculated_at": calc.calculated_at.isoformat(),
+        }
+    )

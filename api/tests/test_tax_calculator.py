@@ -112,8 +112,9 @@ class TestFederalTax:
 
     def test_married_separate_same_as_single(self):
         income = 5_000_000
-        assert calculate_federal_tax(income, "married_separate") == \
-            calculate_federal_tax(income, "single")
+        assert calculate_federal_tax(income, "married_separate") == calculate_federal_tax(
+            income, "single"
+        )
 
     def test_invalid_status(self):
         with pytest.raises(ValueError, match="Unknown filing status"):

@@ -148,9 +148,7 @@ async def test_login_nonexistent_email(client: AsyncClient):
 
 async def test_me_success(client: AsyncClient):
     result = await _register_user(client)
-    resp = await client.get(
-        ME_URL, cookies={"session": result["session_cookie"]}
-    )
+    resp = await client.get(ME_URL, cookies={"session": result["session_cookie"]})
     assert resp.status_code == 200
     user = resp.json()["data"]["user"]
     assert user["email"] == "test@example.com"
@@ -179,9 +177,7 @@ async def test_logout_success(client: AsyncClient, fake_redis: FakeRedis):
     )
     assert resp.status_code == 200
 
-    me_resp = await client.get(
-        ME_URL, cookies={"session": result["session_cookie"]}
-    )
+    me_resp = await client.get(ME_URL, cookies={"session": result["session_cookie"]})
     assert me_resp.status_code == 401
 
 
@@ -198,9 +194,7 @@ async def test_delete_account_success(client: AsyncClient, fake_redis: FakeRedis
     assert resp.status_code == 200
     assert resp.json()["data"]["message"] == "Account deleted"
 
-    me_resp = await client.get(
-        ME_URL, cookies={"session": result["session_cookie"]}
-    )
+    me_resp = await client.get(ME_URL, cookies={"session": result["session_cookie"]})
     assert me_resp.status_code == 401
 
 
@@ -249,7 +243,7 @@ async def test_register_rate_limited(client: AsyncClient):
                 "full_name": "Rate Limiter",
             },
         )
-        assert resp.status_code == 201, f"Request {i+1} should succeed: {resp.text}"
+        assert resp.status_code == 201, f"Request {i + 1} should succeed: {resp.text}"
 
     resp = await client.post(
         REGISTER_URL,
@@ -266,8 +260,7 @@ async def test_register_sets_httponly_cookie(client: AsyncClient):
     resp = await client.post(REGISTER_URL, json=VALID_USER)
     assert resp.status_code == 201
     cookie_headers = [
-        v for k, v in resp.headers.multi_items()
-        if k.lower() == "set-cookie" and "session=" in v
+        v for k, v in resp.headers.multi_items() if k.lower() == "set-cookie" and "session=" in v
     ]
     assert len(cookie_headers) == 1
     cookie = cookie_headers[0].lower()

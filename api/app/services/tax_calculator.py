@@ -26,9 +26,7 @@ def get_standard_deduction(filing_status: str, year: int = 2025) -> int:
     return deductions[filing_status]
 
 
-def calculate_federal_tax(
-    taxable_income_cents: int, filing_status: str, year: int = 2025
-) -> int:
+def calculate_federal_tax(taxable_income_cents: int, filing_status: str, year: int = 2025) -> int:
     if taxable_income_cents <= 0:
         return 0
 

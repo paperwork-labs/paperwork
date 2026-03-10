@@ -97,6 +97,7 @@ async def client(
     redis_module._redis_pool = fake_redis  # type: ignore[assignment]
 
     from app.rate_limit import limiter as app_limiter
+
     app_limiter._storage.reset()  # no public API; slowapi exposes storage only via _storage
 
     transport = ASGITransport(app=fastapi_app)
