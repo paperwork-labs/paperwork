@@ -35,13 +35,16 @@ class User(TimestampMixin, Base):
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
     role: Mapped[UserRole] = mapped_column(
-        Enum(UserRole, name="user_role"), default=UserRole.USER, nullable=False
+        Enum(UserRole, name="user_role", values_callable=lambda e: [x.value for x in e]),
+        default=UserRole.USER, nullable=False,
     )
     advisor_tier: Mapped[AdvisorTier] = mapped_column(
-        Enum(AdvisorTier, name="advisor_tier"), default=AdvisorTier.FREE, nullable=False
+        Enum(AdvisorTier, name="advisor_tier", values_callable=lambda e: [x.value for x in e]),
+        default=AdvisorTier.FREE, nullable=False,
     )
     auth_provider: Mapped[AuthProvider] = mapped_column(
-        Enum(AuthProvider, name="auth_provider"), default=AuthProvider.LOCAL, nullable=False
+        Enum(AuthProvider, name="auth_provider", values_callable=lambda e: [x.value for x in e]),
+        default=AuthProvider.LOCAL, nullable=False,
     )
     auth_provider_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
