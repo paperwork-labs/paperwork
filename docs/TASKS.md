@@ -209,7 +209,7 @@ Make the 6 imported n8n persona workflows autonomous by connecting their outputs
 </details>
 ## Sprint 1: Foundation + Get Live (Week 1-2)
 
-> **Progress: 5/6 complete** | 0.1, 0.2, 0.3, 0.4, 0.4b done | 0.5 not started
+> **Progress: 5/6 complete, 1 partial** | 0.1, 0.2, 0.3, 0.4, 0.4b done | 0.5 partial (code done, needs DSN)
 
 <details>
 <summary><strong>Task 0.1 — Docker Dev Environment — DONE</strong></summary>
@@ -398,9 +398,12 @@ Wire up analytics before the landing page goes live. Pulled forward from Task 2.
 - [ ] Set up `page_view` → `waitlist_signup` funnel
 
 **Sentry** (lightweight):
-- [ ] @sentry/nextjs with source maps
-- [ ] Error boundaries
-- [ ] Alert on >10 errors/5min
+- [x] @sentry/nextjs with source maps (withSentryConfig in next.config.mjs)
+- [x] Error boundaries (global-error.tsx + error.tsx + not-found.tsx)
+- [x] Client/server/edge configs with PII scrubbing (SSN pattern redaction)
+- [x] Instrumentation hooks for request error capture
+- [ ] Set NEXT_PUBLIC_SENTRY_DSN in .env.production and Vercel
+- [ ] Alert on >10 errors/5min (configure in Sentry dashboard)
 
 **Acceptance**: PostHog dashboard shows page views and waitlist signups. UTM parameters attached to events. Sentry catches frontend errors.
 
@@ -410,12 +413,12 @@ Wire up analytics before the landing page goes live. Pulled forward from Task 2.
 </details>
 ## Sprint 2: OCR Demo for April 15 (March 22 - April 15)
 
-> **Progress: 0/4 complete** | Not started
+> **Progress: 4/4 complete** | 1.1, 1.2, 1.3, 1.4 done
 
 Ship the "wow moment" — anonymous W2 scanning — to ride the April 15 traffic spike.
 
 <details>
-<summary><strong>Task 1.1 — Camera Component + Image Quality</strong></summary>
+<summary><strong>Task 1.1 — Camera Component + Image Quality — DONE</strong></summary>
 
 
 **Branch**: `feat/1.1-camera-image-quality`
@@ -441,7 +444,7 @@ Features:
 
 </details>
 <details>
-<summary><strong>Task 1.2 — Tiered OCR Pipeline (Cloud Vision + GPT) + Demo Endpoint</strong></summary>
+<summary><strong>Task 1.2 — Tiered OCR Pipeline (Cloud Vision + GPT) + Demo Endpoint — DONE</strong></summary>
 
 
 **Branch**: `feat/1.2-ocr-pipeline`
@@ -488,7 +491,7 @@ Features:
 
 </details>
 <details>
-<summary><strong>Task 1.3 — Try-Before-Signup Frontend</strong></summary>
+<summary><strong>Task 1.3 — Try-Before-Signup Frontend — DONE</strong></summary>
 
 
 **Branch**: `feat/1.3-try-before-signup`
@@ -517,7 +520,7 @@ The viral entry point: snap a W2 without an account, see the magic.
 
 </details>
 <details>
-<summary><strong>Task 1.4 — Content Foundation + Social Media Launch Sprint</strong></summary>
+<summary><strong>Task 1.4 — Content Foundation + Social Media Launch Sprint — DONE</strong></summary>
 
 
 **Branch**: `feat/1.4-content-foundation`
