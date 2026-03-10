@@ -7,6 +7,7 @@ import type { ApiResponse, User } from "@/types";
 
 interface MeResponseData {
   user: User;
+  csrf_token?: string;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -21,7 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           "/api/v1/auth/me"
         );
         if (!cancelled && data.data?.user) {
-          setUser(data.data.user);
+          setUser(data.data.user, data.data.csrf_token);
         }
       } catch {
         if (!cancelled) {

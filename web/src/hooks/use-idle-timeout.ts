@@ -39,7 +39,7 @@ export function useIdleTimeout({
 
     warningTimer.current = setTimeout(() => {
       setShowWarning(true);
-    }, timeoutMs - warningMs);
+    }, Math.max(0, timeoutMs - warningMs));
 
     timeoutTimer.current = setTimeout(() => {
       onTimeout();

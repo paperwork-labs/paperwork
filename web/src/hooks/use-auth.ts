@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import api from "@/lib/api";
@@ -12,33 +12,16 @@ interface AuthResponseData {
   csrf_token: string;
 }
 
-interface MeResponseData {
-  user: User;
-}
-
-export function useCurrentUser() {
-  const { setUser, clearAuth, setLoading } = useAuthStore();
-
-  return useQuery({
-    queryKey: ["auth", "me"],
-    queryFn: async () => {
-      const { data } = await api.get<ApiResponse<MeResponseData>>("/api/v1/auth/me");
-      return data.data!.user;
-    },
-    retry: false,
-    staleTime: 5 * 60 * 1000,
-    meta: {
-      onSuccess: (user: User) => {
-        setUser(user);
-      },
-      onError: () => {
-        clearAuth();
-      },
-      onSettled: () => {
-        setLoading(false);
-      },
-    },
-  });
+function safeRedirect(raw: string | null, fallback: string): string {
+  if (!raw) return fallback;
+  if (!raw.startsWith("/") || raw.startsWith("//")) return fallback;
+  try {
+    const url = new URL(raw, "http://localhost");
+    if (url.protocol !== "http:" && url.protocol !== "https:") return fallback;
+  } catch {
+    return fallback;
+  }
+  return raw;
 }
 
 export function useRegister() {
@@ -63,7 +46,7 @@ export function useRegister() {
       setUser(user, csrf_token);
       queryClient.setQueryData(["auth", "me"], user);
       toast.success("Welcome to FileFree!");
-      router.push(searchParams.get("redirect") || "/file");
+      router.push(safeRedirect(searchParams.get("redirect"), "/file"));
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -89,7 +72,7 @@ export function useLogin() {
       setUser(user, csrf_token);
       queryClient.setQueryData(["auth", "me"], user);
       toast.success("Welcome back!");
-      router.push(searchParams.get("redirect") || "/file");
+      router.push(safeRedirect(searchParams.get("redirect"), "/file"));
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -104,9 +87,9 @@ export function useLogout() {
 
   return useMutation({
     mutationFn: async () => {
-      await api.post("/api/v1/auth/logout", null, {
-        headers: { "X-CSRF-Token": csrfToken ?? "" },
-      });
+      const headers: Record<string, string> = {};
+      if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+      await api.post("/api/v1/auth/logout", null, { headers });
     },
     onSuccess: () => {
       clearAuth();
@@ -128,9 +111,9 @@ export function useDeleteAccount() {
 
   return useMutation({
     mutationFn: async () => {
-      await api.delete("/api/v1/auth/account", {
-        headers: { "X-CSRF-Token": csrfToken ?? "" },
-      });
+      const headers: Record<string, string> = {};
+      if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+      await api.delete("/api/v1/auth/account", { headers });
     },
     onSuccess: () => {
       clearAuth();

@@ -187,10 +187,13 @@ export default function PricingPage() {
             <table className="w-full min-w-[600px] text-sm">
               <thead>
                 <tr className="border-b border-border/50 text-left">
-                  <th className="py-3 pr-4 font-medium text-muted-foreground" />
+                  <th className="py-3 pr-4 font-medium text-muted-foreground" scope="col">
+                    <span className="sr-only">Feature</span>
+                  </th>
                   {competitors.map((c) => (
                     <th
                       key={c.name}
+                      scope="col"
                       className={`px-3 py-3 text-center font-semibold ${c.highlight ? "text-violet-400" : "text-foreground"}`}
                     >
                       {c.name}
@@ -220,9 +223,13 @@ export default function PricingPage() {
                   {competitors.map((c) => (
                     <td key={c.name} className="px-3 py-3 text-center">
                       {c.ocrScan ? (
-                        <span className={c.highlight ? "text-green-400" : ""}>&#10003;</span>
+                        <span className={c.highlight ? "text-green-400" : ""} aria-label="Supported">
+                          &#10003;
+                        </span>
                       ) : (
-                        <span className="text-muted-foreground/50">&mdash;</span>
+                        <span className="text-muted-foreground/50" aria-label="Not supported">
+                          &mdash;
+                        </span>
                       )}
                     </td>
                   ))}
