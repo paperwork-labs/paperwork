@@ -7,6 +7,8 @@ import { useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { AttributionProvider } from "@/lib/attribution";
 import { PostHogProvider } from "@/components/posthog-provider";
+import { AuthProvider } from "@/components/auth-provider";
+import { SessionTimeoutDialog } from "@/components/session-timeout-dialog";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -32,7 +34,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <Suspense fallback={null}>
           <PostHogProvider>
             <AttributionProvider>
-              {children}
+              <AuthProvider>
+                {children}
+                <SessionTimeoutDialog />
+              </AuthProvider>
               <Toaster richColors position="top-right" />
             </AttributionProvider>
           </PostHogProvider>

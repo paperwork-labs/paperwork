@@ -96,7 +96,28 @@ That last stat is the business case: **whoever captures a 22-year-old owns their
 | **FileFree**   | **Free**              | **Free** | **Yes (AI)**     | **2-5 min** | **Advisory + referrals**         | —                                                                         |
 
 
-### 2.3 The april Threat (Most Important Competitor)
+### 2.3 IRS Free File Program (8 Trusted Partners)
+
+The IRS Free File program is a public-private partnership where commercial tax software companies (TaxSlayer, TaxAct, FreeTaxUSA, 1040NOW, ezTaxReturn, FileYourTaxes, OLT, and one rotating partner) offer free federal filing to taxpayers below income thresholds (typically AGI ≤ $84,000, varies by partner). Despite being available to ~70% of filers, only ~3% of eligible taxpayers use it.
+
+**Why Free File is NOT a threat:**
+
+| Factor | IRS Free File Partners | FileFree |
+|--------|----------------------|----------|
+| Eligibility | AGI caps vary by partner; must check 8 different sets of rules | No income limits — free for everyone |
+| State filing | Often $15-40 extra | Free |
+| UX | Legacy desktop-first forms, 20-40 min | Mobile-first, photo-to-done in 5 min |
+| W-2 entry | Manual data entry (most partners) | AI-powered camera scan |
+| Discovery | Users must navigate IRS.gov, compare 8 partners | Direct brand, one product |
+| Upsells | Heavy — partners profit from add-ons and upgrades | No filing upsells, ever |
+| Year-round value | None (annual-only) | AI tax advisor, optimization plan |
+| Privacy | Varies by partner, data sharing common | SSN isolation, AES-256, no data selling |
+
+**Why ~3% participation proves the model is broken:** The eligibility maze (8 partners, different income limits, different state pricing, different feature sets) creates decision paralysis. Users who do find the program often get upsold mid-flow ("your situation requires our Deluxe edition"). The IRS has reduced the number of partners from 14 to 8 over the past decade, and participation has declined steadily. This is exactly the kind of broken experience we replace with "one app, always free, snap and done."
+
+**Positioning opportunity:** "You could spend 20 minutes figuring out which of 8 IRS partners you qualify for — and still end up paying for state filing. Or just snap your W-2."
+
+### 2.4 The april Threat (Most Important Competitor)
 
 april raised $78M ($38M Series B in July 2025). They are the first new company in 15+ years to achieve national e-file coverage in all 50 states. They're embedded in Chime, Gusto, and 30+ fintech platforms. They show users only 36 screens for federal + state combined. 60+ NPS.
 
@@ -106,7 +127,7 @@ april raised $78M ($38M Series B in July 2025). They are the first new company i
 
 **E-file note:** We're building our own IRS MeF transmitter (NORTH STAR). Column Tax is our interim e-file partner (October 2026) at cost-passthrough while we complete IRS certification. april remains competitive intelligence for our Phase 3 B2B API strategy.
 
-### 2.4 Honest Moat Assessment
+### 2.5 Honest Moat Assessment
 
 **What is NOT a moat (but IS a differentiator):**
 
@@ -131,7 +152,7 @@ Each year of filing data makes the AI advisor smarter: "You made $12K more than 
 **Moat 5: Proprietary OCR Intelligence Layer (COST STRUCTURE)**
 The moat isn't the OCR engine itself — it's the post-processing intelligence layer on top. Our pipeline: GCP Cloud Vision for text extraction + local SSN isolation (regex, never sent to AI) + GPT-4o-mini structured field mapping + GPT-4o vision fallback for edge cases. Cost: $0.004/doc vs competitors' $0.30+ (GCP Document AI W-2 Parser) or $0.03+ (AWS Textract). This 75x cost advantage means we can offer truly free filing at any scale. The intelligence layer is OCR-engine-agnostic (can swap Cloud Vision for PaddleOCR or Textract without changing the GPT pipeline) and is the foundation for our Phase 3 B2B API.
 
-### 2.5 Marketing Narrative
+### 2.6 Marketing Narrative
 
 "67% of Gen Z are stressed about taxes. TurboTax got caught selling your data. The IRS killed free filing. We built what should have existed all along — file in 5 minutes, free forever, and an AI advisor that actually helps you keep more of your money."
 
