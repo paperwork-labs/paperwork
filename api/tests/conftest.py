@@ -52,6 +52,7 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
     except Exception:
+        await engine.dispose()
         pytest.skip("Database not available")
 
     async with engine.connect() as conn:
@@ -95,7 +96,7 @@ async def client(
     redis_module._redis_pool = fake_redis  # type: ignore[assignment]
 
     from app.rate_limit import limiter as app_limiter
-    app_limiter._storage.reset()
+    app_limiter._storage.reset()  # no public API; slowapi exposes storage only via _storage
 
     transport = ASGITransport(app=fastapi_app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:

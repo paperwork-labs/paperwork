@@ -23,6 +23,9 @@ async def init_redis() -> None:
         logger.info("Redis connected (%s)", masked_url)
     except Exception:
         logger.warning("Redis not available — sessions will fail")
+        if _redis_pool is not None:
+            await _redis_pool.aclose()
+            _redis_pool = None
 
 
 async def close_redis() -> None:
