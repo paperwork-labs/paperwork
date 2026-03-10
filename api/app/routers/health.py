@@ -14,7 +14,7 @@ router = APIRouter(tags=["health"])
 
 
 @router.get("/health")
-async def health_check(db: AsyncSession = Depends(get_db)):  # noqa: B008
+async def health_check(db: AsyncSession = Depends(get_db)):
     db_connected = False
     db_error = None
     try:

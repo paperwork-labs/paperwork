@@ -24,8 +24,8 @@ jobs:
           python-version: "3.11"
           cache: pip
       - run: pip install ruff mypy
-      - run: ruff check .
-      - run: ruff format --check .
+      - run: ruff check . --exclude alembic
+      - run: ruff format --check . --exclude alembic
 
   api-test:
     name: API Tests

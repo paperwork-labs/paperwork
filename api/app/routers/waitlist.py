@@ -12,7 +12,7 @@ router = APIRouter(prefix="/waitlist", tags=["waitlist"])
 @router.post("")
 async def join_waitlist(
     data: WaitlistCreate,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_db),
 ):
     service = WaitlistService(db)
     entry = await service.join_waitlist(data)

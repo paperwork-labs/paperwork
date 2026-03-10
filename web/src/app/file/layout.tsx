@@ -23,7 +23,7 @@ export default function FileLayout({
   if (pathname === "/file") return <>{children}</>;
 
   return (
-    <div className="min-h-screen bg-background pt-14">
+    <div className="min-h-screen bg-background">
       <div className="sticky top-14 z-40 border-b border-border/40 bg-background/95 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
           <div className="flex items-center gap-6">

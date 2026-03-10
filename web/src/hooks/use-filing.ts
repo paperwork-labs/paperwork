@@ -17,6 +17,12 @@ interface FilingData {
   submitted_at: string | null;
 }
 
+function getCsrfHeader(): Record<string, string> {
+  const token = useAuthStore.getState().csrfToken;
+  if (!token) throw new Error("Session not ready. Please try again.");
+  return { "X-CSRF-Token": token };
+}
+
 export function useFiling(filingId: string | null) {
   return useQuery({
     queryKey: ["filing", filingId],
@@ -31,7 +37,6 @@ export function useFiling(filingId: string | null) {
 }
 
 export function useCreateFiling() {
-  const { csrfToken } = useAuthStore();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -39,7 +44,7 @@ export function useCreateFiling() {
       const res = await api.post<ApiResponse<FilingData>>(
         "/api/v1/filings",
         { tax_year: taxYear },
-        { headers: { "X-CSRF-Token": csrfToken ?? "" } }
+        { headers: getCsrfHeader() }
       );
       return res.data.data!;
     },
@@ -53,7 +58,6 @@ export function useCreateFiling() {
 }
 
 export function useUpdateFiling() {
-  const { csrfToken } = useAuthStore();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -68,7 +72,7 @@ export function useUpdateFiling() {
       const res = await api.patch<ApiResponse<FilingData>>(
         `/api/v1/filings/${filingId}`,
         data,
-        { headers: { "X-CSRF-Token": csrfToken ?? "" } }
+        { headers: getCsrfHeader() }
       );
       return res.data.data!;
     },
@@ -83,7 +87,6 @@ export function useUpdateFiling() {
 }
 
 export function useConfirmData() {
-  const { csrfToken } = useAuthStore();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -91,7 +94,7 @@ export function useConfirmData() {
       const res = await api.post<ApiResponse<FilingData>>(
         `/api/v1/filings/${filingId}/confirm`,
         {},
-        { headers: { "X-CSRF-Token": csrfToken ?? "" } }
+        { headers: getCsrfHeader() }
       );
       return res.data.data!;
     },

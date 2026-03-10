@@ -19,11 +19,6 @@ function formatSSN(raw: string): string {
   return `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
 }
 
-function maskSSN(formatted: string): string {
-  if (formatted.length <= 7) return formatted.replace(/\d/g, "*");
-  return `***-**-${formatted.slice(-4)}`;
-}
-
 export const SSNInput = forwardRef<HTMLInputElement, SSNInputProps>(
   function SSNInput({ value, onChange, disabled, className }, ref) {
     const [visible, setVisible] = useState(false);
@@ -33,16 +28,14 @@ export const SSNInput = forwardRef<HTMLInputElement, SSNInputProps>(
       onChange(formatted);
     }
 
-    const display = visible ? value : maskSSN(value);
-
     return (
       <div className={cn("relative", className)}>
         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           ref={ref}
-          type="text"
+          type={visible ? "text" : "password"}
           inputMode="numeric"
-          value={display}
+          value={value}
           onChange={handleChange}
           disabled={disabled}
           className="pl-9 pr-10 font-mono"

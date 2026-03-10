@@ -73,8 +73,9 @@ def calculate_return(
     federal_tax = calculate_federal_tax(taxable_income, filing_status, year)
 
     total_withheld = total_federal_withheld_cents + total_state_withheld_cents
+    total_tax = federal_tax  # state tax not modeled yet
 
-    net = total_federal_withheld_cents - federal_tax
+    net = total_withheld - total_tax
     refund_amount = max(0, net)
     owed_amount = max(0, -net)
 

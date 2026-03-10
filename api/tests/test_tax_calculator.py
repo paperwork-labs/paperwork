@@ -122,7 +122,7 @@ class TestFederalTax:
 
 class TestCalculateReturn:
     def test_refund_scenario(self):
-        # $50,000 wages, $8,000 federal withheld, single
+        # $50,000 wages, $8,000 federal withheld, $2,000 state withheld, single
         result = calculate_return(
             total_wages_cents=5_000_000,
             total_federal_withheld_cents=800_000,
@@ -137,7 +137,8 @@ class TestCalculateReturn:
         # total federal_tax = 387,150
         assert result["federal_tax"] == 387_150
         assert result["total_withheld"] == 1_000_000
-        assert result["refund_amount"] == 800_000 - 387_150  # 412,850
+        # net = total_withheld - total_tax = 1,000,000 - 387,150 = 612,850
+        assert result["refund_amount"] == 612_850
         assert result["owed_amount"] == 0
 
     def test_owed_scenario(self):

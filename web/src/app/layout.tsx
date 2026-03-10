@@ -78,7 +78,9 @@ export default function RootLayout({
       >
         <Providers>
           <Nav />
-          {children}
+          <main className="pt-14">
+            {children}
+          </main>
         </Providers>
       </body>
     </html>

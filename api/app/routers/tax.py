@@ -1,4 +1,4 @@
-from uuid import UUID
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,9 +11,18 @@ from app.models.user import User
 from app.repositories.filing import FilingRepository
 from app.schemas.base import success_response
 from app.services import tax_calculator
-from app.utils.exceptions import ConflictError, NotFoundError
+from app.utils.exceptions import ConflictError, NotFoundError, ValidationError
 
 router = APIRouter(prefix="/tax", tags=["tax"])
+
+
+def _parse_uuid(filing_id: str):
+    from uuid import UUID
+
+    try:
+        return UUID(filing_id)
+    except ValueError as err:
+        raise ValidationError("Invalid filing ID format") from err
 
 
 @router.post("/calculate/{filing_id}")
@@ -23,7 +32,7 @@ async def calculate(
     _csrf: None = Depends(require_csrf),
     db: AsyncSession = Depends(get_db),
 ):
-    fid = UUID(filing_id)
+    fid = _parse_uuid(filing_id)
     repo = FilingRepository(db)
     filing = await repo.get_by_id_with_relations(fid)
 
@@ -31,7 +40,9 @@ async def calculate(
         raise NotFoundError("Filing not found")
 
     if not filing.filing_status_type:
-        raise ConflictError("Filing status type must be set before calculating")
+        raise ConflictError(
+            "Filing status type must be set before calculating"
+        )
 
     total_wages = 0
     total_fed_withheld = 0
@@ -69,6 +80,7 @@ async def calculate(
     if existing_calc:
         for key, value in result.items():
             setattr(existing_calc, key, value)
+        existing_calc.calculated_at = datetime.now(UTC)
         calc = existing_calc
     else:
         calc = TaxCalculation(filing_id=fid, **result)
@@ -97,7 +109,7 @@ async def get_calculation(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    fid = UUID(filing_id)
+    fid = _parse_uuid(filing_id)
     repo = FilingRepository(db)
     filing = await repo.get_by_id_with_relations(fid)
 

@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { CheckCircle, AlertTriangle, Edit2 } from "lucide-react";
+import { CheckCircle, AlertTriangle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,10 +43,11 @@ export default function ConfirmPage() {
   const { w2s, updateW2, filingId, setCurrentStep } = useFilingStore();
   const confirmData = useConfirmData();
 
-  if (w2s.length === 0) {
-    router.replace("/file/w2");
-    return null;
-  }
+  useEffect(() => {
+    if (w2s.length === 0) router.replace("/file/w2");
+  }, [w2s.length, router]);
+
+  if (w2s.length === 0) return null;
 
   function handleConfirm() {
     trackEvent("filing_step_completed", { step: "confirm" });
@@ -261,7 +263,9 @@ function CentsField({
           step="0.01"
           value={displayValue}
           onChange={(e) => {
-            const val = parseFloat(e.target.value);
+            const raw = e.target.value;
+            if (raw === "") { onChange(0); return; }
+            const val = parseFloat(raw);
             if (!isNaN(val)) onChange(Math.round(val * 100));
           }}
           className="pl-7"

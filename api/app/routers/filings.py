@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,8 +13,16 @@ from app.schemas.filing import (
     UpdateFilingRequest,
 )
 from app.services import filing_service
+from app.utils.exceptions import ValidationError
 
 router = APIRouter(prefix="/filings", tags=["filings"])
+
+
+def _parse_uuid(filing_id: str) -> UUID:
+    try:
+        return UUID(filing_id)
+    except ValueError as err:
+        raise ValidationError("Invalid filing ID format") from err
 
 
 @router.post("")
@@ -22,8 +32,11 @@ async def create_filing(
     _csrf: None = Depends(require_csrf),
     db: AsyncSession = Depends(get_db),
 ):
-    filing = await filing_service.create_filing(db, user.id, data.tax_year)
-    return success_response(filing_service.filing_to_response(filing), 201)
+    filing, created = await filing_service.create_filing(
+        db, user.id, data.tax_year
+    )
+    status = 201 if created else 200
+    return success_response(filing_service.filing_to_response(filing), status)
 
 
 @router.get("")
@@ -44,9 +57,9 @@ async def get_filing(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    from uuid import UUID
-
-    filing = await filing_service.get_filing(db, UUID(filing_id), user.id)
+    filing = await filing_service.get_filing(
+        db, _parse_uuid(filing_id), user.id
+    )
     return success_response(filing_service.filing_to_response(filing))
 
 
@@ -58,20 +71,18 @@ async def update_filing(
     _csrf: None = Depends(require_csrf),
     db: AsyncSession = Depends(get_db),
 ):
-    from uuid import UUID
-
-    filing_uuid = UUID(filing_id)
+    fid = _parse_uuid(filing_id)
 
     if data.filing_status_type:
         filing = await filing_service.update_filing_status_type(
-            db, filing_uuid, user.id, data.filing_status_type
+            db, fid, user.id, data.filing_status_type
         )
     elif data.status:
         filing = await filing_service.advance_status(
-            db, filing_uuid, user.id, data.status
+            db, fid, user.id, data.status
         )
     else:
-        filing = await filing_service.get_filing(db, filing_uuid, user.id)
+        filing = await filing_service.get_filing(db, fid, user.id)
 
     return success_response(filing_service.filing_to_response(filing))
 
@@ -84,9 +95,7 @@ async def confirm_data(
     _csrf: None = Depends(require_csrf),
     db: AsyncSession = Depends(get_db),
 ):
-    from uuid import UUID
-
     filing = await filing_service.advance_status(
-        db, UUID(filing_id), user.id, "data_confirmed"
+        db, _parse_uuid(filing_id), user.id, "data_confirmed"
     )
     return success_response(filing_service.filing_to_response(filing))

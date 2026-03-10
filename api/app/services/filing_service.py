@@ -9,17 +9,19 @@ from app.utils.exceptions import ConflictError, NotFoundError
 
 async def create_filing(
     db: AsyncSession, user_id: uuid.UUID, tax_year: int
-) -> Filing:
+) -> tuple[Filing, bool]:
+    """Returns (filing, created). If an active filing exists, returns it with created=False."""
     repo = FilingRepository(db)
     existing = await repo.get_active_filing(user_id, tax_year)
     if existing:
-        return existing
+        return existing, False
 
-    return await repo.create(
+    filing = await repo.create(
         user_id=user_id,
         tax_year=tax_year,
         status=FilingStatus.DRAFT,
     )
+    return filing, True
 
 
 async def get_filing(

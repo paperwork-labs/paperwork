@@ -34,15 +34,16 @@ export function useCalculation(filingId: string | null) {
 }
 
 export function useCalculateTax() {
-  const { csrfToken } = useAuthStore();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (filingId: string) => {
+      const token = useAuthStore.getState().csrfToken;
+      if (!token) throw new Error("Session not ready. Please try again.");
       const res = await api.post<ApiResponse<TaxCalculationData>>(
         `/api/v1/tax/calculate/${filingId}`,
         {},
-        { headers: { "X-CSRF-Token": csrfToken ?? "" } }
+        { headers: { "X-CSRF-Token": token } }
       );
       return res.data.data!;
     },
