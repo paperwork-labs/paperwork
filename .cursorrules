@@ -132,7 +132,7 @@ The ultimate strategic goal is owning our e-file infrastructure at $0/return. We
 
 ### Styling Rules
 - Mobile-first Tailwind (start with base, add `md:` and `lg:` breakpoints)
-- Use CSS variables for theme colors defined in `tailwind.config.ts` and `globals.css`
+- Use CSS variables for theme colors defined in `globals.css` (Tailwind v4 CSS-based config, no tailwind.config.ts)
 - Gradient accents: primary gradient is `from-violet-500 to-purple-600`
 - Card backgrounds: use shadcn Card component with dark overrides
 - Never use arbitrary Tailwind values like `w-[400px]` — use standard utilities

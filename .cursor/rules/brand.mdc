@@ -13,7 +13,9 @@ alwaysApply: true
 
 ## Logo Assets
 
-All assets in `web/public/brand/`:
+**Status**: Logo assets pending. Generate wordmark via Ideogram v3 (prompt: stylized "FileFree" wordmark, gradient violet-to-purple, dark background, modern sans-serif with distinctive lowercase "f" ligature). Generate monogram via Figma/Canva.
+
+When created, place in `web/public/brand/`:
 
 | Asset | File | Usage |
 |-------|------|-------|
@@ -21,7 +23,7 @@ All assets in `web/public/brand/`:
 | FF Monogram | `filefree-monogram.png` | App icon, social avatars, favicon source |
 | Social Avatar | `filefree-avatar.png` | TikTok, Instagram, X, YouTube profile pictures |
 | OG Image | `filefree-og.png` | Social sharing previews (1200x630) |
-| Favicon | `favicon.svg` | Browser tab icon |
+| Favicon | `favicon.svg` | Browser tab icon (exists) |
 
 ### Logo Rules
 

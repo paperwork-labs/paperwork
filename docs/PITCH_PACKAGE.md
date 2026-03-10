@@ -48,7 +48,7 @@ Partners (Marcus, Wealthfront, Betterment) pay $50-100 for each funded account. 
 | Scenario B ARPU | $8.05 |
 | Gross margin | 99.3% |
 | 5-year LTV (80% retention) | $27.05 |
-| Fixed monthly infrastructure | $34.50 |
+| Fixed monthly infrastructure | $12.49 |
 | Path to $1M ARR | ~125K users (mid-2028) |
 
 ### The Competitive Moat
@@ -162,7 +162,7 @@ See **PARTNERSHIPS.md** in the repo root for:
 ## Part 4: Why This Is Real, Not a Hobby
 
 ### The Infrastructure Cost Is Negligible
-$34.50/month. Vercel ($20) + Render ($7) + Hetzner ($7.50). We can run this for years without revenue pressure.
+$12.49/month. Render ($7) + Hetzner (EUR 5.49). Vercel Hobby (free), Neon (free tier), Upstash (free tier). We can run this for years without revenue pressure.
 
 ### The Cost Per User Is World-Class
 $0.06/user. Our OCR pipeline (Cloud Vision + GPT-4o-mini) is 150x cheaper than Google's own Document AI W-2 Parser ($0.30/doc). This cost advantage is structural.
