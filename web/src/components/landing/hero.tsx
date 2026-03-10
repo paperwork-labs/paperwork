@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Loader2 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { toast } from "sonner";
@@ -15,6 +15,65 @@ import api from "@/lib/api";
 import { getAttribution } from "@/lib/attribution";
 import { trackEvent } from "@/lib/posthog";
 import { fadeIn, slideInUp } from "@/lib/motion";
+
+const PUNCHLINES = [
+  "make you cry.",
+  "cost $89.",
+  "take 3 hours.",
+  "feel this hard.",
+  "require a CPA.",
+] as const;
+
+const CYCLE_MS = 4000;
+
+function RotatingPunchline() {
+  const [index, setIndex] = useState(0);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setPrefersReducedMotion(mq.matches);
+    const handler = (e: MediaQueryListEvent) =>
+      setPrefersReducedMotion(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  const advance = useCallback(() => {
+    setIndex((prev) => (prev + 1) % PUNCHLINES.length);
+  }, []);
+
+  useEffect(() => {
+    if (prefersReducedMotion) return;
+    const id = setInterval(advance, CYCLE_MS);
+    return () => clearInterval(id);
+  }, [prefersReducedMotion, advance]);
+
+  if (prefersReducedMotion) {
+    return (
+      <span className="bg-gradient-to-r from-violet-500 to-purple-600 bg-clip-text text-transparent">
+        {PUNCHLINES[0]}
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-block h-[1.2em] overflow-hidden align-bottom">
+      <AnimatePresence mode="wait">
+        <motion.span
+          key={PUNCHLINES[index]}
+          className="inline-block bg-gradient-to-r from-violet-500 to-purple-600 bg-clip-text text-transparent"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.4, ease: "easeInOut" }}
+        >
+          {PUNCHLINES[index]}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  );
+}
 
 const waitlistSchema = z.object({
   email: z.string().email("Enter a valid email address"),
@@ -81,9 +140,7 @@ export function Hero() {
         >
           Taxes shouldn&apos;t
           <br />
-          <span className="bg-gradient-to-r from-violet-500 to-purple-600 bg-clip-text text-transparent">
-            make you cry.
-          </span>
+          <RotatingPunchline />
         </motion.h1>
 
         <motion.p

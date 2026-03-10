@@ -1,0 +1,127 @@
+---
+description: "Brand identity guide — logo usage, color palette, typography, voice, and tone. Always active so all content and UI stays on-brand."
+alwaysApply: true
+---
+
+# FileFree Brand Guide
+
+## Brand Name
+
+- **Product name**: FileFree (one word, camelCase capital F's)
+- **Domain**: filefree.tax
+- **Never**: File Free, Filefree, FILE FREE, File-Free, FileFree Tax
+
+## Logo Assets
+
+All assets in `web/public/brand/`:
+
+| Asset | File | Usage |
+|-------|------|-------|
+| Wordmark (dark bg) | `filefree-wordmark-dark.png` | Hero sections, marketing, presentations |
+| FF Monogram | `filefree-monogram.png` | App icon, social avatars, favicon source |
+| Social Avatar | `filefree-avatar.png` | TikTok, Instagram, X, YouTube profile pictures |
+| OG Image | `filefree-og.png` | Social sharing previews (1200x630) |
+| Favicon | `favicon.svg` | Browser tab icon |
+
+### Logo Rules
+
+- Minimum clear space: half the height of the logo on all sides
+- Never rotate, skew, add shadows, or place on busy backgrounds
+- On dark backgrounds: use the wordmark as-is (white + gradient)
+- On light backgrounds: use solid indigo (#4F46E5) for the full wordmark
+- Never use the gradient on light backgrounds — it loses contrast
+
+## Color Palette
+
+### Primary Colors
+
+| Name | HSL | Hex | Tailwind | Usage |
+|------|-----|-----|----------|-------|
+| Indigo | `238 76% 57%` | `#4F46E5` | `indigo-600` | Primary actions, links |
+| Violet | `258 90% 66%` | `#8B5CF6` | `violet-500` | Gradient start |
+| Purple | `271 81% 56%` | `#9333EA` | `purple-600` | Gradient end |
+
+### Brand Gradient
+
+```css
+background: linear-gradient(to right, #8B5CF6, #9333EA);
+/* Tailwind: bg-gradient-to-r from-violet-500 to-purple-600 */
+```
+
+### Semantic Colors
+
+| Role | Color | Usage |
+|------|-------|-------|
+| Background (dark) | `hsl(224, 71%, 4%)` / `#020817` | App background |
+| Foreground | `hsl(213, 31%, 91%)` / `#E2E8F0` | Body text |
+| Muted | `hsl(215, 16%, 57%)` | Secondary text, labels |
+| Success | Green | Refund amounts, high confidence |
+| Warning | Amber | Owed amounts, medium confidence |
+| Destructive | Red | Errors, low confidence |
+
+## Typography
+
+| Role | Font | Weight | Tailwind |
+|------|------|--------|----------|
+| Headings | Inter | 700 (bold) | `font-bold` |
+| Body | Inter | 400 (regular) | `font-normal` |
+| UI labels | Inter | 500 (medium) | `font-medium` |
+| Currency/data | JetBrains Mono | 500 | `font-mono font-medium` |
+
+- All sizes in `rem`, never `px`
+- Maximum reading width: 70 characters (`max-w-2xl`)
+- Headings: tight tracking (`tracking-tight`)
+
+## Brand Voice
+
+### Personality
+
+FileFree is a smart, calm friend who happens to know taxes. Not software. Not the IRS. Not a corporate accountant.
+
+### Tone Principles
+
+| Do | Don't |
+|----|-------|
+| Casual but competent | Condescending or dumbed-down |
+| Direct and clear | Jargon-heavy or corporate |
+| Reassuring and confident | Anxious or uncertain |
+| Honest about limitations | Overpromising or hype |
+
+### Word Choice
+
+**Use**: free, simple, fast, yours, done, clear, secure, people, money, return, refund
+**Avoid**: optimize, leverage, synergy, disrupt, taxpayer, file (as a noun), utilize, solution
+
+### Anxiety-Killing Patterns
+
+Use these short, definitive sentences to close interactions:
+- "You're done."
+- "That's it."
+- "We handle this."
+- "Nothing hidden."
+- "Free. Actually free."
+
+### Headlines / Punchlines
+
+The brand speaks in short punchy lines. Rotate through these themes:
+- Pain: "Taxes shouldn't make you cry."
+- Cost: "Taxes shouldn't cost $89."
+- Time: "Taxes shouldn't take 3 hours."
+- Complexity: "Taxes shouldn't feel this hard."
+- Access: "Taxes shouldn't require a CPA."
+
+## Social Handles
+
+| Platform | Handle | Display Name |
+|----------|--------|-------------|
+| TikTok | `@filefree.tax` | FileFree |
+| Instagram | `filefree.tax` | FileFree |
+| X | `@filefreetax` | FileFree |
+| YouTube | `@FileFreeTax` | FileFree |
+
+## Content Formatting
+
+- App name in copy: "FileFree" (never "the FileFree app" or "FileFree.tax")
+- Domain in URLs: filefree.tax (lowercase)
+- Hashtags: #filefree #filefreetax
+- Email: hello@filefree.tax
