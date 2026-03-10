@@ -9,8 +9,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DocumentCamera } from "@/components/camera/document-camera";
 import { FileUploadZone } from "@/components/upload/file-upload-zone";
+import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { checkImageQuality, getQualityMessage } from "@/lib/image-quality";
 import { trackEvent } from "@/lib/posthog";
+import { estimateRefund } from "@/lib/tax-estimator";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 
@@ -64,8 +66,14 @@ export default function DemoPage() {
     const quality = await checkImageQuality(file);
     const qualityMsg = getQualityMessage(quality);
     if (qualityMsg) {
-      toast.warning(qualityMsg);
+      toast.info(qualityMsg);
     }
+    trackEvent("demo_image_quality", {
+      blur_score: quality.blur.score,
+      blur_passed: quality.blur.passed,
+      dimensions_passed: quality.dimensions.passed,
+      overall_passed: quality.passed,
+    });
 
     try {
       const formData = new FormData();
@@ -196,6 +204,23 @@ function ResultStep({ data, onRetry }: { data: ExtractionResponse; onRetry: () =
     return typeof val === "string" ? val.length > 0 : val > 0;
   });
 
+  const showEstimate = data.confidence >= 0.8 && data.fields.wages > 0;
+
+  const estimate = showEstimate
+    ? estimateRefund(
+        data.fields.wages,
+        data.fields.federal_tax_withheld,
+        data.fields.state_tax_withheld,
+      )
+    : null;
+
+  const isRefund = estimate ? estimate.refundAmount > 0 : false;
+  const estimateAmount = estimate
+    ? isRefund
+      ? estimate.refundAmount
+      : estimate.owedAmount
+    : 0;
+
   return (
     <motion.div
       key="result"
@@ -213,6 +238,37 @@ function ResultStep({ data, onRetry }: { data: ExtractionResponse; onRetry: () =
         Here&apos;s what we extracted from your W-2. Review it below.
       </p>
 
+      {estimate && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.3, duration: 0.5, ease: "easeOut" }}
+          className={`mt-8 rounded-xl border p-6 text-center ${
+            isRefund
+              ? "border-green-500/30 bg-green-500/5"
+              : "border-amber-500/30 bg-amber-500/5"
+          }`}
+        >
+          <p className="text-sm font-medium text-muted-foreground">
+            {isRefund ? "Estimated Federal Refund" : "Estimated Federal Amount Owed"}
+          </p>
+          <div className="mt-2">
+            <CurrencyDisplay
+              cents={estimateAmount}
+              animate
+              duration={1500}
+              className={`text-4xl font-bold sm:text-5xl ${
+                isRefund ? "text-green-400" : "text-amber-400"
+              }`}
+            />
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground/70">
+            Estimate assumes single filer with standard deduction.
+            Sign up for your exact calculation with all filing statuses and credits.
+          </p>
+        </motion.div>
+      )}
+
       <div className="mt-8 space-y-1 overflow-hidden rounded-xl border border-border/50">
         {visibleFields.map(({ key, label, isCurrency }, i) => {
           const value = data.fields[key];
@@ -225,7 +281,7 @@ function ResultStep({ data, onRetry }: { data: ExtractionResponse; onRetry: () =
               key={key}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.06, duration: 0.25, ease: "easeOut" }}
+              transition={{ delay: 0.6 + i * 0.06, duration: 0.25, ease: "easeOut" }}
               className="flex items-center justify-between bg-card/30 px-4 py-3 text-sm"
             >
               <span className="text-muted-foreground">{label}</span>
@@ -243,10 +299,14 @@ function ResultStep({ data, onRetry }: { data: ExtractionResponse; onRetry: () =
 
       <div className="mt-8 rounded-xl border border-violet-500/30 bg-violet-500/5 p-6">
         <h3 className="text-lg font-semibold text-foreground">
-          Ready to calculate your refund?
+          {estimate && isRefund
+            ? `Get your ${formatCurrency(estimate.refundAmount)} refund`
+            : "Ready to file your return?"}
         </h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Create a free account to save your data and get your completed return.
+          {estimate && isRefund
+            ? "Create a free account to file and claim your refund."
+            : "Create a free account to save your data and get your completed return."}
         </p>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row">
           <Button

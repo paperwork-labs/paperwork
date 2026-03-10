@@ -9,7 +9,7 @@ const MIN_WIDTH = 640;
 const MIN_HEIGHT = 480;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const MIN_FILE_SIZE = 10 * 1024; // 10KB
-const BLUR_THRESHOLD = 30;
+const BLUR_THRESHOLD = 15;
 
 function detectBlur(imageData: ImageData): number {
   const { data, width, height } = imageData;
@@ -117,7 +117,7 @@ export function getQualityMessage(check: QualityCheck): string | null {
   }
 
   if (!check.blur.passed) {
-    return "Image appears blurry. Hold steady and make sure the document is well-lit.";
+    return "Tip: For best results, hold steady and use good lighting.";
   }
 
   return "Image quality check failed. Try taking another photo.";
