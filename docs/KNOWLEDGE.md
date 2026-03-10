@@ -270,6 +270,13 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 - **Note**: API key stored only in local `.cursor/mcp.json` (gitignored). Also needs to be added as n8n credential for workflow automation.
 - **Reversibility**: Easy. Rotate key in Postiz UI.
 
+### D32 — Frontend Auth + Protected Routes (2026-03-10)
+- **Context**: Backend auth API was complete (Task 2.1, PR #9) but no frontend UI existed. Users couldn't register, login, or access protected routes.
+- **Decision**: Built full frontend auth system: Zustand auth store, React Query hooks, register/login pages with Zod validation, Next.js middleware for route protection, 30-min idle timeout with "Still there?" dialog. Also fixed SQLAlchemy enum value mismatch across all models (values_callable for lowercase enum persistence), added csrf_token to /me endpoint for session restoration, added global nav with Sign In/Sign Up buttons, replaced waitlist hero with "Get Started Free" CTA.
+- **Alternatives considered**: Server-side auth via NextAuth.js — rejected because our backend already handles sessions via Redis cookies; adding NextAuth would duplicate auth state and add complexity.
+- **Impact**: Auth flow is fully functional end-to-end. Protected routes (/file/*, /dashboard/*) redirect to login. Landing page now directs to registration.
+- **PRs**: #10 (auth), nav+CTA polish on feat/2.2-nav-polish branch.
+
 ### D31 — n8n Database Isolation (2026-03-10)
 - **Context**: n8n and Postiz shared the same PostgreSQL database (`filefree_ops` / `ops`). When Postiz was recreated (to add MAIN_URL + ES visibility), its Prisma migrations dropped/overwrote n8n's tables. n8n logged `relation "public.user" does not exist` repeatedly.
 - **Decision**: Created a separate `n8n` database on the existing PostgreSQL instance. Updated `infra/hetzner/compose.yaml`: `DB_POSTGRESDB_DATABASE: n8n` (was `${POSTGRES_DB:-ops}`). Restarted n8n — migrations ran cleanly on the fresh database.

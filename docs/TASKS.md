@@ -21,6 +21,7 @@ Work through these in order. Each task is scoped for one PR. Reference [PRODUCT_
 
 ---
 
+
 ## Sprint 0: Business Operations (March 9 — parallel with coding)
 
 Non-code tasks that must happen immediately. These run in parallel with Sprint 1.
@@ -564,7 +565,7 @@ Each article: genuinely helpful, links to product naturally, FAQ schema markup f
 </details>
 ## Sprint 3: Full MVP (April 15 - May 31)
 
-> **Progress: 1/7 complete** | 2.1 done
+> **Progress: 2/7 complete** | 2.1, 2.2 done
 
 Complete filing flow for extension filers.
 
@@ -596,7 +597,7 @@ Rate limiting: 5 req/min on auth via slowapi.
 
 </details>
 <details>
-<summary><strong>Task 2.2 — Frontend Auth + Protected Routes</strong></summary>
+<summary><strong>Task 2.2 — Frontend Auth + Protected Routes — DONE</strong></summary>
 
 
 **Branch**: `feat/2.2-frontend-auth`
