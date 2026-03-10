@@ -145,6 +145,15 @@ export function Hero() {
         >
           Free forever. No credit card needed.
         </motion.p>
+
+        <motion.div className="mt-6" variants={slideInUp}>
+          <a
+            href="/demo"
+            className="text-sm font-medium text-violet-400 transition hover:text-violet-300"
+          >
+            Or try it now &mdash; snap your W-2, no account needed &rarr;
+          </a>
+        </motion.div>
       </motion.div>
     </section>
   );
