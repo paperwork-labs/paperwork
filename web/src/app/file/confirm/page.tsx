@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useFilingStore } from "@/stores/filing-store";
 import { useConfirmData } from "@/hooks/use-filing";
+import { trackEvent } from "@/lib/posthog";
 import { slideInUp, staggerContainer } from "@/lib/motion";
 
 function formatCents(cents: number): string {
@@ -47,6 +48,7 @@ export default function ConfirmPage() {
   }
 
   function handleConfirm() {
+    trackEvent("filing_step_completed", { step: "confirm" });
     if (filingId) {
       confirmData.mutate(filingId, {
         onSuccess: () => {

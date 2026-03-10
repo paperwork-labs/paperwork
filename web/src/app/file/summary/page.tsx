@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useFilingStore } from "@/stores/filing-store";
 import { useCalculation, useCalculateTax } from "@/hooks/use-tax";
+import { trackEvent } from "@/lib/posthog";
 import { slideInUp, staggerContainer } from "@/lib/motion";
 
 function formatCents(cents: number): string {
@@ -61,7 +62,14 @@ export default function SummaryPage() {
 
   useEffect(() => {
     if (filingId && !calc) {
-      calculateTax.mutate(filingId);
+      calculateTax.mutate(filingId, {
+        onSuccess: (data) => {
+          trackEvent("tax_calculated", {
+            refund: data.refund_amount,
+            owed: data.owed_amount,
+          });
+        },
+      });
     }
   }, [filingId]); // eslint-disable-line react-hooks/exhaustive-deps
 

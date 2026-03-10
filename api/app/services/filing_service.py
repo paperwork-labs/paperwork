@@ -55,11 +55,11 @@ async def update_filing_status_type(
 
     try:
         filing.filing_status_type = FilingStatusType(filing_status_type)
-    except ValueError:
+    except ValueError as err:
         valid = [s.value for s in FilingStatusType]
         raise ConflictError(
             f"Invalid filing status type. Must be one of: {', '.join(valid)}"
-        )
+        ) from err
 
     await db.flush()
     await db.refresh(filing)
@@ -79,11 +79,11 @@ async def advance_status(
 
     try:
         filing.status = FilingStatus(new_status)
-    except ValueError:
+    except ValueError as err:
         valid = [s.value for s in FilingStatus]
         raise ConflictError(
             f"Invalid status. Must be one of: {', '.join(valid)}"
-        )
+        ) from err
 
     await db.flush()
     await db.refresh(filing)

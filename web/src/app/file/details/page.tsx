@@ -7,6 +7,7 @@ import { User, Users, UserMinus, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useFilingStore } from "@/stores/filing-store";
 import { useUpdateFiling } from "@/hooks/use-filing";
+import { trackEvent } from "@/lib/posthog";
 import { slideInUp, staggerContainer } from "@/lib/motion";
 
 const FILING_STATUSES = [
@@ -48,6 +49,7 @@ export default function DetailsPage() {
 
   function handleContinue() {
     if (!filingStatusType) return;
+    trackEvent("filing_step_completed", { step: "details", filing_status: filingStatusType });
 
     if (filingId) {
       updateFiling.mutate(

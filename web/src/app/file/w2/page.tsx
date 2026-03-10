@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileUploadZone } from "@/components/upload/file-upload-zone";
 import { useFilingStore, type W2Data } from "@/stores/filing-store";
+import { trackEvent } from "@/lib/posthog";
 import { slideInUp } from "@/lib/motion";
 import api from "@/lib/api";
 
@@ -53,10 +54,15 @@ export default function W2Page() {
       };
 
       addW2(w2);
+      trackEvent("w2_scanned", {
+        confidence: data.data.confidence,
+        tier: data.data.tier_used,
+      });
       toast.success("W-2 scanned successfully!");
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to process W-2";
+      trackEvent("w2_scan_error", { error: message });
       toast.error(message);
     } finally {
       setIsProcessing(false);
@@ -64,6 +70,7 @@ export default function W2Page() {
   }
 
   function handleContinue() {
+    trackEvent("filing_step_completed", { step: "w2", w2_count: w2s.length });
     setCurrentStep(1);
     router.push("/file/confirm");
   }
