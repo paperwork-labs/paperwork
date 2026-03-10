@@ -79,7 +79,8 @@ async def social_login(
     is preserved but auth_provider_id is updated if empty.
     """
     repo = UserRepository(db)
-    user = await repo.get_by_email(email)
+    normalized_email = email.lower()
+    user = await repo.get_by_email(normalized_email)
 
     if user:
         if not user.auth_provider_id and provider_id:
@@ -91,7 +92,7 @@ async def social_login(
         encrypted_name = encrypt(name) if name else None
 
         user = await repo.create(
-            email=email,
+            email=normalized_email,
             password_hash=None,
             full_name_encrypted=encrypted_name,
             referral_code=referral_code,

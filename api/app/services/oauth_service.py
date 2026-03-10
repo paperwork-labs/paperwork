@@ -6,18 +6,21 @@ Apple: fetches Apple's JWKS and validates JWT with python-jose.
 
 import time
 from dataclasses import dataclass
+from functools import partial
 
+import anyio
 import httpx
 from google.auth.transport.requests import Request as GoogleRequest
 from google.oauth2 import id_token as google_id_token
 from jose import jwt as jose_jwt
 
 from app.config import settings
-from app.utils.exceptions import UnauthorizedError
+from app.utils.exceptions import AppException, UnauthorizedError
 
 _apple_jwks_cache: dict | None = None
 _apple_jwks_fetched_at: float = 0
 APPLE_JWKS_TTL = 3600  # 1 hour
+APPLE_JWKS_TIMEOUT = 10.0  # seconds
 
 
 @dataclass
@@ -36,13 +39,21 @@ async def verify_google_token(id_token: str) -> OAuthUser:
     - Issuer (accounts.google.com)
     - Audience (our GOOGLE_CLIENT_ID)
     - Expiration
+
+    google-auth uses synchronous requests internally, so we offload
+    to a worker thread to avoid blocking the event loop.
     """
     if not settings.GOOGLE_CLIENT_ID:
         raise UnauthorizedError("Google Sign In is not configured")
 
     try:
-        idinfo = google_id_token.verify_oauth2_token(
-            id_token, GoogleRequest(), settings.GOOGLE_CLIENT_ID
+        idinfo = await anyio.to_thread.run_sync(
+            partial(
+                google_id_token.verify_oauth2_token,
+                id_token,
+                GoogleRequest(),
+                settings.GOOGLE_CLIENT_ID,
+            )
         )
     except ValueError as err:
         raise UnauthorizedError("Invalid Google token") from err
@@ -68,12 +79,15 @@ async def _get_apple_jwks() -> dict:
     if _apple_jwks_cache and (time.time() - _apple_jwks_fetched_at) < APPLE_JWKS_TTL:
         return _apple_jwks_cache
 
-    async with httpx.AsyncClient() as client:
-        resp = await client.get("https://appleid.apple.com/auth/keys")
-        resp.raise_for_status()
-        _apple_jwks_cache = resp.json()
-        _apple_jwks_fetched_at = time.time()
-        return _apple_jwks_cache
+    try:
+        async with httpx.AsyncClient(timeout=APPLE_JWKS_TIMEOUT) as client:
+            resp = await client.get("https://appleid.apple.com/auth/keys")
+            resp.raise_for_status()
+            _apple_jwks_cache = resp.json()
+            _apple_jwks_fetched_at = time.time()
+            return _apple_jwks_cache
+    except httpx.HTTPError as err:
+        raise AppException("Apple Sign In is temporarily unavailable", status_code=503) from err
 
 
 async def verify_apple_token(id_token: str, user_info: dict | None = None) -> OAuthUser:
@@ -107,7 +121,7 @@ async def verify_apple_token(id_token: str, user_info: dict | None = None) -> OA
             issuer="https://appleid.apple.com",
         )
     except Exception as err:
-        if isinstance(err, UnauthorizedError):
+        if isinstance(err, (UnauthorizedError, AppException)):
             raise
         raise UnauthorizedError("Invalid Apple token") from err
 
@@ -116,10 +130,12 @@ async def verify_apple_token(id_token: str, user_info: dict | None = None) -> OA
         raise UnauthorizedError("Apple account has no email address")
 
     name = None
-    if user_info and user_info.get("name"):
-        first = user_info["name"].get("firstName", "")
-        last = user_info["name"].get("lastName", "")
-        name = f"{first} {last}".strip() or None
+    if user_info:
+        raw_name = user_info.get("name")
+        if isinstance(raw_name, dict):
+            first = raw_name.get("firstName", "")
+            last = raw_name.get("lastName", "")
+            name = f"{first} {last}".strip() or None
 
     return OAuthUser(
         email=email.lower(),
