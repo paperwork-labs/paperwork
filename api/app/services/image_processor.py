@@ -37,6 +37,10 @@ def preprocess_image(image_bytes: bytes) -> bytes:
 
     logger.info(
         "Image preprocessed: %dx%d -> %dx%d (%d bytes)",
-        w, h, img.size[0], img.size[1], buf.getbuffer().nbytes,
+        w,
+        h,
+        img.size[0],
+        img.size[1],
+        buf.getbuffer().nbytes,
     )
     return buf.read()

@@ -10,7 +10,5 @@ class WaitlistRepository(BaseRepository[Waitlist]):
         super().__init__(Waitlist, session)
 
     async def get_by_email(self, email: str) -> Waitlist | None:
-        result = await self.session.execute(
-            select(Waitlist).where(Waitlist.email == email)
-        )
+        result = await self.session.execute(select(Waitlist).where(Waitlist.email == email))
         return result.scalar_one_or_none()

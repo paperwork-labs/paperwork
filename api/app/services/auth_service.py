@@ -16,9 +16,7 @@ CSRF_PREFIX = "csrf:"
 SESSION_TTL = 7 * 24 * 60 * 60  # 7 days
 
 
-async def register(
-    db: AsyncSession, redis: Redis, data: RegisterRequest
-) -> tuple[User, str, str]:
+async def register(db: AsyncSession, redis: Redis, data: RegisterRequest) -> tuple[User, str, str]:
     """Register a new user. Returns (user, session_token, csrf_token)."""
     repo = UserRepository(db)
 
@@ -46,9 +44,7 @@ async def register(
     return user, session_token, csrf_token
 
 
-async def login(
-    db: AsyncSession, redis: Redis, email: str, password: str
-) -> tuple[User, str, str]:
+async def login(db: AsyncSession, redis: Redis, email: str, password: str) -> tuple[User, str, str]:
     """Authenticate user. Returns (user, session_token, csrf_token)."""
     repo = UserRepository(db)
 
@@ -74,9 +70,7 @@ async def logout(redis: Redis, session_token: str) -> None:
     await redis.delete(f"{CSRF_PREFIX}{session_token}")
 
 
-async def get_current_user(
-    db: AsyncSession, redis: Redis, session_token: str
-) -> User:
+async def get_current_user(db: AsyncSession, redis: Redis, session_token: str) -> User:
     """Resolve session token to user. Raises UnauthorizedError if invalid."""
     user_id_str = await redis.get(f"{SESSION_PREFIX}{session_token}")
     if not user_id_str:
@@ -91,9 +85,7 @@ async def get_current_user(
     return user
 
 
-async def delete_account(
-    db: AsyncSession, redis: Redis, user: User, session_token: str
-) -> None:
+async def delete_account(db: AsyncSession, redis: Redis, user: User, session_token: str) -> None:
     """Delete user and all data (CCPA). Clears session."""
     repo = UserRepository(db)
     await repo.delete_cascade(user)
@@ -106,9 +98,7 @@ async def get_csrf_token(redis: Redis, session_token: str) -> str | None:
     return await redis.get(f"{CSRF_PREFIX}{session_token}")
 
 
-async def validate_csrf(
-    redis: Redis, session_token: str, csrf_token: str
-) -> bool:
+async def validate_csrf(redis: Redis, session_token: str, csrf_token: str) -> bool:
     """Check that the provided CSRF token matches the stored one."""
     stored = await redis.get(f"{CSRF_PREFIX}{session_token}")
     if not stored:

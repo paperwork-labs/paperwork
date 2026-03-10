@@ -109,15 +109,17 @@ async def _cloud_vision_ocr(image_bytes: bytes) -> dict[str, Any]:
                         block_text += word_text + " "
 
                 vertices = block.bounding_box.vertices
-                blocks.append({
-                    "text": block_text.strip(),
-                    "bounds": {
-                        "x": vertices[0].x,
-                        "y": vertices[0].y,
-                        "width": vertices[2].x - vertices[0].x,
-                        "height": vertices[2].y - vertices[0].y,
-                    },
-                })
+                blocks.append(
+                    {
+                        "text": block_text.strip(),
+                        "bounds": {
+                            "x": vertices[0].x,
+                            "y": vertices[0].y,
+                            "width": vertices[2].x - vertices[0].x,
+                            "height": vertices[2].y - vertices[0].y,
+                        },
+                    }
+                )
 
     return {"full_text": full_text, "blocks": blocks}
 
@@ -184,7 +186,8 @@ async def _gpt_vision_fallback(image_bytes: bytes) -> dict[str, Any]:
                 "role": "system",
                 "content": (
                     "You are a W-2 form data extractor. Extract all fields from this W-2 image. "
-                    "Dollar amounts as numbers. SSN should be extracted but will be handled securely. "
+                    "Dollar amounts as numbers. "
+                    "SSN should be extracted but will be handled securely. "
                     "Output JSON with keys: employer_name, employer_ein, employer_address, "
                     "employee_name, employee_address, employee_ssn, wages, federal_tax_withheld, "
                     "social_security_wages, social_security_tax, medicare_wages, medicare_tax, "

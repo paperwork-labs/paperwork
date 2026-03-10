@@ -31,7 +31,8 @@ class Document(TimestampMixin, Base):
     )
     document_type: Mapped[DocumentType] = mapped_column(
         Enum(
-            DocumentType, name="document_type",
+            DocumentType,
+            name="document_type",
             values_callable=lambda e: [x.value for x in e],
         ),
         nullable=False,
@@ -39,7 +40,8 @@ class Document(TimestampMixin, Base):
     storage_key: Mapped[str | None] = mapped_column(Text, nullable=True)
     extraction_status: Mapped[ExtractionStatus] = mapped_column(
         Enum(
-            ExtractionStatus, name="extraction_status",
+            ExtractionStatus,
+            name="extraction_status",
             values_callable=lambda e: [x.value for x in e],
         ),
         default=ExtractionStatus.PENDING,

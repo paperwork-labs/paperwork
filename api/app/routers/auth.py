@@ -75,9 +75,7 @@ async def login(
     db: AsyncSession = Depends(get_db),
 ):
     redis = get_redis()
-    user, session_token, csrf_token = await auth_service.login(
-        db, redis, data.email, data.password
-    )
+    user, session_token, csrf_token = await auth_service.login(db, redis, data.email, data.password)
 
     resp = _make_response(
         {

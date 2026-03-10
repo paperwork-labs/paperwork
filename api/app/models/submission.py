@@ -28,7 +28,8 @@ class Submission(TimestampMixin, Base):
     submission_id_external: Mapped[str | None] = mapped_column(String(255), nullable=True)
     irs_status: Mapped[IrsStatus] = mapped_column(
         Enum(IrsStatus, name="irs_status", values_callable=lambda e: [x.value for x in e]),
-        default=IrsStatus.SUBMITTED, nullable=False,
+        default=IrsStatus.SUBMITTED,
+        nullable=False,
     )
     rejection_codes: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     submitted_at: Mapped[datetime] = mapped_column(
