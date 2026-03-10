@@ -102,6 +102,27 @@ When evaluating any new service/vendor:
 - **$805K ARR** (2028, Scenario B): 100K filers + partnerships mature. Infra ~$5K/mo.
 - **$1M+ ARR** (mid-2028 at ~125K users, Scenario B): Or early 2028 with B2B API (Scenario C).
 
+## Tool Registry (Single Source of Truth)
+
+All tools, vendors, and services are tracked in the **Notion Tool Registry** database:
+`FileFree HQ > Financials > Tool Registry`
+([Notion link](https://www.notion.so/d8d81676702440ed9d209aad58d70685))
+
+**Current inventory (26 tools, ~$12.49/mo fixed):**
+
+| Category | Count | Examples |
+|----------|-------|---------|
+| Infrastructure | 7 | Render ($7), Hetzner (EUR 5.49), Vercel, Neon, Upstash, GCP Storage, Caddy |
+| AI/API | 2 | OpenAI (pay-per-use), GCP Cloud Vision (1K free/mo) |
+| Dev Tools | 3 | GitHub, Cursor, Docker |
+| Ops/Content | 3 | n8n, Postiz, Temporal (all self-hosted) |
+| Analytics | 2 | PostHog (free tier), Sentry (placeholder — needs DSN) |
+| DNS/Domain | 1 | Spaceship |
+| MCP Integrations | 5 | GitHub, Context7, Notion, Render, Postiz (placeholder) |
+| Future/Planned | 3 | Impact.com, Column Tax, hCaptcha |
+
+**When adding a new tool:** Update the Notion Tool Registry AND this section of `cfo.mdc`.
+
 ## Quality Gate
 
 Every new cost must pass the Vendor Evaluation Checklist (above) before being committed to. No exceptions for "it's only $X/mo" — costs compound.
