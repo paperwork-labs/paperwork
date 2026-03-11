@@ -1,0 +1,8 @@
+# PostHog write-only ingest API key was historically committed in web/.env.production
+# It has been moved to .env.local (gitignored). This entry suppresses the historical finding.
+dd09ad9:web/.env.production:generic-api-key:2
+3172738:web/.env.production:generic-api-key:2
+308db16:web/.env.production:generic-api-key:4
+
+# n8n API key in .cursor/mcp.json (gitignored, but may appear in history if ever tracked)
+# CI test secrets are intentionally hardcoded (not real credentials)

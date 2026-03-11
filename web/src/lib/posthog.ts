@@ -1,10 +1,10 @@
 "use client";
 
 import posthog from "posthog-js";
+import { clientConfig } from "./client-config";
 
-const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY ?? "";
-const POSTHOG_HOST =
-  process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com";
+const POSTHOG_KEY = clientConfig.posthogKey;
+const POSTHOG_HOST = clientConfig.posthogHost;
 
 const PII_PATTERNS = [
   /\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b/g, // SSN

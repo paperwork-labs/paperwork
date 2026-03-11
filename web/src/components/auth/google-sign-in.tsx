@@ -4,8 +4,9 @@ import { useEffect, useRef, useCallback } from "react";
 import Script from "next/script";
 import { toast } from "sonner";
 import { useGoogleAuth } from "@/hooks/use-auth";
+import { clientConfig } from "@/lib/client-config";
 
-const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
+const GOOGLE_CLIENT_ID = clientConfig.googleClientId;
 
 declare global {
   interface Window {

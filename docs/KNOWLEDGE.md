@@ -297,3 +297,17 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 - **Decision**: Created a separate `n8n` database on the existing PostgreSQL instance. Updated `infra/hetzner/compose.yaml`: `DB_POSTGRESDB_DATABASE: n8n` (was `${POSTGRES_DB:-ops}`). Restarted n8n — migrations ran cleanly on the fresh database.
 - **Impact**: n8n requires re-setup: owner account registration, workflow re-import (6 JSONs in `infra/hetzner/workflows/`), credential re-configuration (OpenAI, Notion, GitHub).
 - **Reversibility**: Easy. Point n8n back to shared DB if needed (not recommended).
+
+### D34 — Centralized Config System + Credential Safety (2026-03-08)
+- **Context**: Frontend had 14 raw `process.env` reads scattered across 10 files with no validation. `web/.env.production` was tracked in git with the PostHog API key committed. No secrets scanner existed. n8n had zero workflows after D31 database isolation.
+- **Decision**: Built a company-wide credential management system:
+  1. **Zod-validated config modules**: `server-config.ts` (server-only: N8N_API_KEY, GITHUB_TOKEN) and `client-config.ts` (client: apiUrl, posthogKey, googleClientId, etc.) replace all scattered `process.env` reads. Mirrors backend's Pydantic BaseSettings pattern.
+  2. **Credential registry**: `docs/CREDENTIALS.md` maps every credential across all systems (29 credentials, 7 categories) to purpose, location, rotation policy, and owner. QA audits against this document.
+  3. **Env file fix**: Moved PostHog key from tracked `.env.production` to gitignored `.env.local`. Tracked env files now contain only non-secret defaults.
+  4. **Gitleaks in CI**: `gitleaks/gitleaks-action@v2` runs on every PR, blocks merge if secrets detected. `.gitleaksignore` suppresses historical PostHog key.
+  5. **n8n workflows re-imported**: All 6 persona workflows imported via REST API (inactive, pending credential setup in n8n UI).
+  6. **Shared types**: `web/src/types/ops.ts` eliminates type duplication between ops route and page.
+- **Alternatives**: Vault/SSM (overkill for current scale), no validation (status quo, fragile), per-file validation (too scattered).
+- **Impact**: Single source of truth for every `process.env` read. New credentials must be added to `CREDENTIALS.md` before merge. CI catches accidental secret commits. Backend config unchanged (already solid with Pydantic).
+- **PR**: #14
+- **Reversibility**: Easy. Config modules are drop-in wrappers — can revert to raw `process.env` reads if needed.

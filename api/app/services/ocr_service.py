@@ -5,6 +5,7 @@ import logging
 import re
 from typing import Any
 
+from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
 from app.config import settings
@@ -245,30 +246,90 @@ async def process_w2(image_bytes: bytes) -> W2ExtractionResult:
 
     processed = preprocess_image(image_bytes)
 
-    ocr_result = await _cloud_vision_ocr(processed)
+    try:
+        ocr_result = await _cloud_vision_ocr(processed)
+    except Exception as exc:
+        exc_type = type(exc).__name__
+        exc_module = type(exc).__module__ or ""
+
+        if "PermissionDenied" in exc_type or "DefaultCredentialsError" in exc_type:
+            logger.error("Cloud Vision auth error (%s): %s — falling back to mock", exc_type, exc)
+            return _mock_extraction()
+        if "ServiceUnavailable" in exc_type or "DeadlineExceeded" in exc_type:
+            logger.error("Cloud Vision unavailable: %s", exc)
+            raise HTTPException(
+                status_code=503,
+                detail="OCR service temporarily unavailable. Please try again.",
+            ) from exc
+        if "ResourceExhausted" in exc_type:
+            logger.error("Cloud Vision quota exceeded: %s", exc)
+            raise HTTPException(
+                status_code=429,
+                detail="OCR quota exceeded. Try again later.",
+            ) from exc
+
+        logger.exception("Unexpected Cloud Vision error (%s.%s)", exc_module, exc_type)
+        return _mock_extraction()
+
     full_text = ocr_result["full_text"]
 
     if not full_text.strip():
         logger.warning("Cloud Vision returned empty text, trying GPT-4o vision fallback")
-        fields = await _gpt_vision_fallback(processed)
-        ssn = str(fields.pop("employee_ssn", ""))
-        return _build_result(fields, ssn, "gpt4o-vision-empty-ocr")
+        try:
+            fields = await _gpt_vision_fallback(processed)
+            ssn = str(fields.pop("employee_ssn", ""))
+            return _build_result(fields, ssn, "gpt4o-vision-empty-ocr")
+        except Exception as exc:
+            return _handle_openai_error(exc, "vision fallback (empty OCR)")
 
     ssn, scrubbed_text = _extract_ssn(full_text)
 
-    fields = await _gpt_mini_map_fields(scrubbed_text, ocr_result["blocks"])
+    try:
+        fields = await _gpt_mini_map_fields(scrubbed_text, ocr_result["blocks"])
+    except Exception as exc:
+        return _handle_openai_error(exc, "GPT-4o-mini field mapping")
 
     confidence = float(fields.get("confidence", 0))
     tier = "cloud-vision+gpt4o-mini"
 
     if confidence < 0.85:
         logger.info("Low confidence (%.2f), escalating to GPT-4o vision", confidence)
-        vision_fields = await _gpt_vision_fallback(processed)
-        vision_ssn = str(vision_fields.pop("employee_ssn", ""))
-        if not ssn and vision_ssn:
-            ssn = vision_ssn
-        if float(vision_fields.get("confidence", 0)) > confidence:
-            fields = vision_fields
-            tier = "gpt4o-vision-fallback"
+        try:
+            vision_fields = await _gpt_vision_fallback(processed)
+            vision_ssn = str(vision_fields.pop("employee_ssn", ""))
+            if not ssn and vision_ssn:
+                ssn = vision_ssn
+            if float(vision_fields.get("confidence", 0)) > confidence:
+                fields = vision_fields
+                tier = "gpt4o-vision-fallback"
+        except Exception as exc:
+            logger.warning(
+                "GPT-4o vision fallback failed (%s), using mini results",
+                type(exc).__name__,
+            )
 
     return _build_result(fields, ssn, tier)
+
+
+def _handle_openai_error(exc: Exception, context: str) -> W2ExtractionResult:
+    """Handle OpenAI API errors with appropriate responses."""
+    exc_type = type(exc).__name__
+
+    if "AuthenticationError" in exc_type:
+        logger.error("OpenAI auth error in %s: %s — falling back to mock", context, exc)
+        return _mock_extraction()
+    if "RateLimitError" in exc_type:
+        logger.error("OpenAI rate limit in %s: %s", context, exc)
+        raise HTTPException(
+            status_code=429,
+            detail="AI service rate limit exceeded. Try again in a moment.",
+        ) from exc
+    if "Timeout" in exc_type or "ConnectError" in exc_type:
+        logger.error("OpenAI timeout in %s: %s", context, exc)
+        raise HTTPException(
+            status_code=503,
+            detail="AI service temporarily unavailable. Please try again.",
+        ) from exc
+
+    logger.exception("Unexpected OpenAI error in %s (%s)", context, exc_type)
+    return _mock_extraction()
