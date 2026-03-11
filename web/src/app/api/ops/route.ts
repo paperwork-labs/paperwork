@@ -64,16 +64,15 @@ async function checkService(
   service: (typeof PRODUCTION_SERVICES)[number],
 ): Promise<ServiceCheck> {
   const start = Date.now();
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
+  try {
     const res = await fetch(service.url, {
       signal: controller.signal,
       cache: "no-store",
       headers: { "User-Agent": "FileFree-Ops/1.0" },
     });
-    clearTimeout(timeout);
 
     const latencyMs = Date.now() - start;
 
@@ -139,6 +138,8 @@ async function checkService(
       },
       checkedAt: new Date().toISOString(),
     };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -146,17 +147,16 @@ async function fetchN8nWorkflows(): Promise<N8nWorkflow[]> {
   const n8nApiKey = serverConfig.N8N_API_KEY;
   if (!n8nApiKey) return [];
 
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
+  try {
     const n8nHost = serverConfig.N8N_HOST;
     const res = await fetch(`${n8nHost}/api/v1/workflows`, {
       headers: { "X-N8N-API-KEY": n8nApiKey },
       signal: controller.signal,
       cache: "no-store",
     });
-    clearTimeout(timeout);
 
     if (!res.ok) return [];
 
@@ -173,6 +173,8 @@ async function fetchN8nWorkflows(): Promise<N8nWorkflow[]> {
     }));
   } catch {
     return [];
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -180,10 +182,10 @@ async function fetchGitHubCI(): Promise<CIRun[]> {
   const ghToken = serverConfig.GITHUB_TOKEN;
   if (!ghToken) return [];
 
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
+  try {
     const res = await fetch(
       "https://api.github.com/repos/sankalp404/fileFree/actions/runs?per_page=5&branch=main",
       {
@@ -195,7 +197,6 @@ async function fetchGitHubCI(): Promise<CIRun[]> {
         cache: "no-store",
       },
     );
-    clearTimeout(timeout);
 
     if (!res.ok) return [];
 
@@ -212,9 +213,13 @@ async function fetchGitHubCI(): Promise<CIRun[]> {
     }));
   } catch {
     return [];
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
+// TODO: Add auth guard — this endpoint exposes service inventory and triggers outbound health checks.
+// Currently acceptable (no secrets leaked, internal tool) but should require admin session before launch.
 export async function GET() {
   const [services, workflows, ciRuns] = await Promise.all([
     Promise.all(PRODUCTION_SERVICES.map(checkService)),

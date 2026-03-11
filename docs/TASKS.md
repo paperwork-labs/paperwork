@@ -1,6 +1,6 @@
 # FileFree — Unified Build Tasks
 
-**Version**: 8.2 | **Updated**: 2026-03-08
+**Version**: 8.3 | **Updated**: 2026-03-11
 
 Work through these in order. Each task is scoped for one PR. Reference [PRODUCT_SPEC.md](PRODUCT_SPEC.md) for UX specs, [.cursorrules](../.cursorrules) for coding conventions, [PRD.md](PRD.md) for business context, [PARTNERSHIPS.md](PARTNERSHIPS.md) for partner playbook.
 

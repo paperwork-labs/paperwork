@@ -6,6 +6,8 @@ import { ArrowRight, Camera, Upload, Loader2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
+import axios from "axios";
+
 import { Button } from "@/components/ui/button";
 import { DocumentCamera } from "@/components/camera/document-camera";
 import { FileUploadZone } from "@/components/upload/file-upload-zone";
@@ -40,7 +42,7 @@ interface ExtractionResponse {
   tier_used: string;
 }
 
-type DemoStep = "choose" | "camera" | "processing" | "result" | "error";
+type DemoStep = "choose" | "camera" | "processing" | "result" | "error" | "rate-limited";
 
 const fieldLabels: { key: keyof W2Fields; label: string; isCurrency: boolean }[] = [
   { key: "employer_name", label: "Employer", isCurrency: false },
@@ -97,6 +99,12 @@ export default function DemoPage() {
         has_employer: !!data.fields.employer_name,
       });
     } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 429) {
+        setStep("rate-limited");
+        trackEvent("demo_rate_limited");
+        return;
+      }
+
       const message = err instanceof Error ? err.message : "Something went wrong";
       setErrorMsg(message);
       setStep("error");
@@ -120,6 +128,7 @@ export default function DemoPage() {
           {step === "processing" && <ProcessingStep />}
           {step === "result" && result && <ResultStep data={result} onRetry={() => setStep("choose")} />}
           {step === "error" && <ErrorStep message={errorMsg} onRetry={() => setStep("choose")} />}
+          {step === "rate-limited" && <RateLimitStep />}
         </AnimatePresence>
       </div>
     </main>
@@ -207,11 +216,7 @@ function ResultStep({ data, onRetry }: { data: ExtractionResponse; onRetry: () =
   const showEstimate = data.confidence >= 0.8 && data.fields.wages > 0;
 
   const estimate = showEstimate
-    ? estimateRefund(
-        data.fields.wages,
-        data.fields.federal_tax_withheld,
-        data.fields.state_tax_withheld,
-      )
+    ? estimateRefund(data.fields.wages, data.fields.federal_tax_withheld)
     : null;
 
   const isRefund = estimate ? estimate.refundAmount > 0 : false;
@@ -349,6 +354,42 @@ function ErrorStep({ message, onRetry }: { message: string; onRetry: () => void 
       <Button className="mt-6" onClick={onRetry}>
         Try Again
       </Button>
+    </motion.div>
+  );
+}
+
+function RateLimitStep() {
+  return (
+    <motion.div
+      key="rate-limited"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      className="flex flex-col items-center py-16"
+    >
+      <div className="rounded-full bg-violet-500/10 p-4">
+        <Upload className="h-8 w-8 text-violet-400" />
+      </div>
+      <h2 className="mt-4 text-xl font-semibold text-foreground">
+        You&apos;ve used your free scans for today
+      </h2>
+      <p className="mt-2 max-w-md text-center text-sm text-muted-foreground">
+        Create a free account to scan more W-2s and file your return — completely free.
+      </p>
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <Button
+          asChild
+          className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500"
+        >
+          <Link href="/auth/register">
+            Create Free Account
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Link>
+        </Button>
+      </div>
+      <p className="mt-4 text-xs text-muted-foreground/60">
+        Free forever. No credit card required. File federal + state for $0.
+      </p>
     </motion.div>
   );
 }

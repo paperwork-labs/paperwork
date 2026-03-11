@@ -24,6 +24,7 @@ import {
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { useReducedMotion } from "@/lib/motion";
 import type { ServiceCheck, N8nWorkflow, CIRun, OpsData } from "@/types/ops";
 
 type StatusType = ServiceCheck["status"];
@@ -92,10 +93,10 @@ const KNOWN_AGENTS = [
   },
 ];
 
-function StatusDot({ status }: { status: StatusType }) {
+function StatusDot({ status, reduceMotion = false }: { status: StatusType; reduceMotion?: boolean }) {
   return (
     <span className="relative flex h-3 w-3">
-      {status === "healthy" && (
+      {status === "healthy" && !reduceMotion && (
         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
       )}
       <span
@@ -109,12 +110,12 @@ function stripProtocol(url: string): string {
   return url.replace(/^https?:\/\//, "");
 }
 
-function ServiceCard({ service }: { service: ServiceCheck }) {
+function ServiceCard({ service, reduceMotion = false }: { service: ServiceCheck; reduceMotion?: boolean }) {
   const Icon = SERVICE_ICONS[service.name] || Server;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={reduceMotion ? false : { opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={`rounded-xl border bg-card/50 p-4 ${STATUS_BORDER[service.status]}`}
     >
@@ -132,7 +133,7 @@ function ServiceCard({ service }: { service: ServiceCheck }) {
             </p>
           </div>
         </div>
-        <StatusDot status={service.status} />
+        <StatusDot status={service.status} reduceMotion={reduceMotion} />
       </div>
 
       {service.dashboardUrl && (
@@ -401,6 +402,7 @@ export default function OpsPage() {
   const [data, setData] = useState<OpsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const reduceMotion = useReducedMotion();
 
   const fetchOps = useCallback(async () => {
     setLoading(true);
@@ -419,9 +421,10 @@ export default function OpsPage() {
 
   useEffect(() => {
     fetchOps();
-    const interval = setInterval(fetchOps, 30_000);
+    const refreshMs = reduceMotion ? 120_000 : 30_000;
+    const interval = setInterval(fetchOps, refreshMs);
     return () => clearInterval(interval);
-  }, [fetchOps]);
+  }, [fetchOps, reduceMotion]);
 
   const healthyCount =
     data?.services.filter((s) => s.status === "healthy").length ?? 0;
@@ -477,7 +480,7 @@ export default function OpsPage() {
               disabled={loading}
             >
               <RefreshCw
-                className={`mr-1.5 h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
+                className={`mr-1.5 h-3.5 w-3.5 ${loading && !reduceMotion ? "animate-spin" : ""}`}
               />
               Refresh
             </Button>
@@ -506,11 +509,11 @@ export default function OpsPage() {
                   {data.services.map((service, i) => (
                     <motion.div
                       key={service.name}
-                      initial={{ opacity: 0, y: 10 }}
+                      initial={reduceMotion ? false : { opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
+                      transition={reduceMotion ? { duration: 0 } : { delay: i * 0.05 }}
                     >
-                      <ServiceCard service={service} />
+                      <ServiceCard service={service} reduceMotion={reduceMotion} />
                     </motion.div>
                   ))}
                 </div>
@@ -558,7 +561,7 @@ export default function OpsPage() {
                     minute: "2-digit",
                     second: "2-digit",
                   })}
-                  {" \u00B7 "}Auto-refreshes every 30s
+                  {" \u00B7 "}Auto-refreshes every {reduceMotion ? "2m" : "30s"}
                 </p>
               )}
             </motion.div>
