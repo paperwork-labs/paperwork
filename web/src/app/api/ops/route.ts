@@ -1,38 +1,6 @@
 import { NextResponse } from "next/server";
-
-interface ServiceCheck {
-  name: string;
-  url: string;
-  dashboardUrl: string;
-  accessHint: string;
-  status: "healthy" | "degraded" | "down" | "unknown";
-  latencyMs: number | null;
-  details?: Record<string, unknown>;
-  checkedAt: string;
-  category: "core" | "ops" | "analytics" | "ci";
-}
-
-interface N8nWorkflow {
-  id: string;
-  name: string;
-  active: boolean;
-  updatedAt: string;
-}
-
-interface CIRun {
-  name: string;
-  conclusion: string | null;
-  status: string;
-  updatedAt: string;
-  url: string;
-}
-
-interface OpsResponse {
-  services: ServiceCheck[];
-  workflows: N8nWorkflow[];
-  ciRuns: CIRun[];
-  checkedAt: string;
-}
+import { serverConfig } from "@/lib/server-config";
+import type { ServiceCheck, N8nWorkflow, CIRun, OpsData } from "@/types/ops";
 
 const TIMEOUT_MS = 8000;
 
@@ -86,7 +54,7 @@ const PRODUCTION_SERVICES: {
     name: "PostHog (Analytics)",
     url: "https://us.i.posthog.com/decide?v=3",
     dashboardUrl: "https://us.posthog.com",
-    accessHint: "Login to view funnels, events, and dashboards. API key in web/.env.production.",
+    accessHint: "Login to view funnels, events, and dashboards. API key in Vercel dashboard (prod) or .env.local (dev).",
     category: "analytics",
     parseDetails: () => ({ raw: "reachable" }),
   },
@@ -175,14 +143,15 @@ async function checkService(
 }
 
 async function fetchN8nWorkflows(): Promise<N8nWorkflow[]> {
-  const n8nApiKey = process.env.N8N_API_KEY;
+  const n8nApiKey = serverConfig.N8N_API_KEY;
   if (!n8nApiKey) return [];
 
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-    const res = await fetch("https://n8n.filefree.tax/api/v1/workflows", {
+    const n8nHost = serverConfig.N8N_HOST;
+    const res = await fetch(`${n8nHost}/api/v1/workflows`, {
       headers: { "X-N8N-API-KEY": n8nApiKey },
       signal: controller.signal,
       cache: "no-store",
@@ -208,7 +177,7 @@ async function fetchN8nWorkflows(): Promise<N8nWorkflow[]> {
 }
 
 async function fetchGitHubCI(): Promise<CIRun[]> {
-  const ghToken = process.env.GITHUB_TOKEN;
+  const ghToken = serverConfig.GITHUB_TOKEN;
   if (!ghToken) return [];
 
   try {
@@ -253,7 +222,7 @@ export async function GET() {
     fetchGitHubCI(),
   ]);
 
-  const response: OpsResponse = {
+  const response: OpsData = {
     services,
     workflows,
     ciRuns,

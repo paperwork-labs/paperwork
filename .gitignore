@@ -32,6 +32,7 @@ infra/env.prod
 .env
 .env.local
 .env.*.local
+web/.env.local
 
 # IDE
 .vscode/

@@ -24,40 +24,7 @@ import {
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-
-interface ServiceCheck {
-  name: string;
-  url: string;
-  dashboardUrl: string;
-  accessHint: string;
-  status: "healthy" | "degraded" | "down" | "unknown";
-  latencyMs: number | null;
-  details?: Record<string, unknown>;
-  checkedAt: string;
-  category: "core" | "ops" | "analytics" | "ci";
-}
-
-interface N8nWorkflow {
-  id: string;
-  name: string;
-  active: boolean;
-  updatedAt: string;
-}
-
-interface CIRun {
-  name: string;
-  conclusion: string | null;
-  status: string;
-  updatedAt: string;
-  url: string;
-}
-
-interface OpsData {
-  services: ServiceCheck[];
-  workflows: N8nWorkflow[];
-  ciRuns: CIRun[];
-  checkedAt: string;
-}
+import type { ServiceCheck, N8nWorkflow, CIRun, OpsData } from "@/types/ops";
 
 type StatusType = ServiceCheck["status"];
 type IconComponent = typeof Server;
@@ -88,37 +55,37 @@ const STATUS_BORDER: Record<StatusType, string> = {
 
 const KNOWN_AGENTS = [
   {
-    name: "Social Content Generator",
+    name: "FileFree — Social Content Generator",
     persona: "growth.mdc",
     schedule: "Daily 10am ET",
     output: "Notion + Postiz",
   },
   {
-    name: "Growth Content Writer",
+    name: "FileFree — Growth Content Writer",
     persona: "growth.mdc",
     schedule: "Mon/Wed/Fri 9am ET",
     output: "Notion",
   },
   {
-    name: "Weekly Strategy Check-in",
+    name: "FileFree — Weekly Strategy Check-in",
     persona: "strategy.mdc",
     schedule: "Monday 9am ET",
     output: "Notion",
   },
   {
-    name: "QA Security Scan",
+    name: "FileFree — QA Security Scan",
     persona: "qa.mdc",
     schedule: "Daily 2am ET",
     output: "GitHub Issues",
   },
   {
-    name: "Partnership Outreach Drafter",
+    name: "FileFree — Partnership Outreach Drafter",
     persona: "strategy.mdc",
     schedule: "Tuesday 10am ET",
     output: "Notion",
   },
   {
-    name: "CPA Tax Review",
+    name: "FileFree — CPA Tax Review",
     persona: "cpa.mdc",
     schedule: "Weekly Thursday 3pm ET",
     output: "Notion",
@@ -295,7 +262,7 @@ function AgentRoster({ liveWorkflows }: { liveWorkflows: N8nWorkflow[] }) {
               <Bot className="h-3.5 w-3.5 text-violet-400" />
               <div>
                 <p className="text-sm font-medium text-foreground">
-                  {agent.name}
+                  {agent.name.replace("FileFree — ", "")}
                 </p>
                 <p className="text-xs text-muted-foreground/60 sm:hidden">
                   {agent.schedule}
