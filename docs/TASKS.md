@@ -1,6 +1,6 @@
 # FileFree — Unified Build Tasks
 
-**Version**: 8.1 | **Updated**: 2026-03-11
+**Version**: 8.2 | **Updated**: 2026-03-08
 
 Work through these in order. Each task is scoped for one PR. Reference [PRODUCT_SPEC.md](PRODUCT_SPEC.md) for UX specs, [.cursorrules](../.cursorrules) for coding conventions, [PRD.md](PRD.md) for business context, [PARTNERSHIPS.md](PARTNERSHIPS.md) for partner playbook.
 
@@ -11,10 +11,12 @@ Work through these in order. Each task is scoped for one PR. Reference [PRODUCT_
 **Critical dates:**
 - March 9: Sprint 0 business ops begin (EFIN, LLC, social accounts, Hetzner VPS, affiliate applications)
 - March 16: Foundation complete (Docker, Next.js, FastAPI, DB) — DONE
-- March 16: Landing page content live on filefree.tax (Task 0.4b)
-- March 30: OCR demo working + try-before-signup live
+- March 16: Landing page content live on filefree.tax (Task 0.4b) — DONE
+- March 30: OCR demo working + try-before-signup live — DONE
+- March 11: Sprint 3 complete (auth, filing flow, tax calc, OAuth, CI) — DONE (ahead of schedule)
+- March 8: Config + credential safety system — DONE (PR #14)
+- **NOW**: Sprint 4 — all 50 state tax calculations + PDF generation + production polish
 - April 5-15: Content push for tax deadline — OCR demo is the marketing asset
-- April 15 - May 31: Full MVP (auth, filing flow, tax calc, PDF, polish)
 - June 2026: Column Tax sandbox access confirmed (Founder 2 negotiated)
 - October 2026: Column Tax e-file live + IRS ATS testing begins for own transmitter
 - January 2027: Own MeF transmitter live = FREE E-FILE (NORTH STAR)
@@ -782,6 +784,38 @@ Rate limiting: 5 req/min on auth via slowapi.
 
 
 </details>
+## Infrastructure: Config + Credential Safety (March 2026)
+
+> **Progress: 1/1 complete**
+
+<details>
+<summary><strong>Task I.1 — Centralized Config System + Credential Safety — DONE</strong></summary>
+
+
+**Branch**: `feat/config-credential-safety`
+
+**Problem**: Frontend had 14 raw `process.env` reads scattered across 10 files with no validation. `web/.env.production` was tracked in git with the PostHog API key committed. No secrets scanner existed. n8n had zero workflows after D31 database isolation.
+
+**What shipped:**
+- [x] Zod-validated `server-config.ts` and `client-config.ts` replacing all scattered `process.env` reads
+- [x] `docs/CREDENTIALS.md` — company-wide credential registry (29 credentials, 7 categories)
+- [x] PostHog key moved from tracked `.env.production` to gitignored `.env.local`
+- [x] Gitleaks secrets scanner added to CI (blocks PRs with leaked credentials)
+- [x] `.gitleaksignore` for historical PostHog key
+- [x] `web/.env.example` documenting all env vars
+- [x] Shared `web/src/types/ops.ts` (DRY types for ops dashboard)
+- [x] All 6 n8n persona workflows re-imported via REST API
+- [x] Orphaned `SESSION_SECRET` removed from CI
+
+**Acceptance**: Type check clean, 38/38 frontend tests pass, no secrets in tracked files, ops dashboard shows live n8n workflow data.
+
+**PR**: #14
+
+---
+
+
+</details>
+
 ## Sprint 4: Growth + E-File Prep (June - September)
 
 > **Progress: 0/8 complete** | Not started
@@ -865,18 +899,51 @@ Lighthouse 95+ on all categories.
 
 </details>
 <details>
-<summary><strong>Task 3.4 — State Tax Calculation</strong></summary>
+<summary><strong>Task 3.4 — State Tax Calculation (All 50 States)</strong></summary>
 
 
 **Branch**: `feat/3.4-state-tax`
 
-Top 5 income-tax states: CA, NY, IL, PA, OH.
-- Pluggable module per state (brackets, credits, rules)
-- No-income-tax states: auto-detect and skip
-- Account for SALT cap ($40,000 for 2025)
-- State tax results included in summary and PDF
+**Strategy: data-driven, not code-driven.** Build a single state tax engine that reads from `tax-data/states/{state}.json`. Adding a state means adding a JSON file, not writing code. Each JSON file contains brackets (or flat rate), standard deduction, personal exemption, and special rules.
 
-**Acceptance**: Correct state calculations for all 5 states + no-tax state handling.
+**The 50-state breakdown:**
+- **9 no-income-tax states** (AK, FL, NV, NH, SD, TN, TX, WA, WY): auto-detect and skip
+- **9 flat-tax states** (CO, IL, IN, KY, MA, MI, NC, PA, UT): single bracket, one engine
+- **~32 graduated-bracket states**: similar to federal, varying rates/thresholds
+
+**Implementation order:**
+1. [ ] Build JSON-driven state tax engine (`services/state_tax_calculator.py`) with Pydantic schema for state data files
+2. [ ] No-income-tax state detection (9 states — zero calculation)
+3. [ ] Flat-tax states (9 JSON files — one bracket each)
+4. [ ] Top 10 graduated states by population (CA, NY, NJ, VA, GA, OH, MN, WI, MD, OR)
+5. [ ] Remaining ~14 graduated states
+6. [ ] Client-side state estimator (`web/src/lib/state-tax-estimator.ts`) for demo page
+7. [ ] Account for SALT cap ($40,000 for 2025)
+8. [ ] State tax results included in summary and PDF
+9. [ ] 100% test coverage: bracket boundaries, no-tax states, flat states, graduated states
+
+**JSON schema per state** (`tax-data/states/{state}.json`):
+```json
+{
+  "state": "CA",
+  "name": "California",
+  "taxYear": 2025,
+  "type": "graduated",
+  "filingStatuses": {
+    "single": {
+      "standardDeduction": 555600,
+      "personalExemption": 14400,
+      "brackets": [
+        { "min": 0, "max": 1115400, "rate": 0.01 },
+        { "min": 1115400, "max": 2643600, "rate": 0.02 }
+      ]
+    }
+  },
+  "source": "California FTB 2025 Tax Rate Schedules"
+}
+```
+
+**Acceptance**: Correct state calculations for all 50 states (including no-tax detection). JSON data files validated against state DOR publications. Test coverage at 100%.
 
 ---
 
