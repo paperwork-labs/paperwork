@@ -9,7 +9,8 @@ const MIN_WIDTH = 640;
 const MIN_HEIGHT = 480;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const MIN_FILE_SIZE = 10 * 1024; // 10KB
-const BLUR_THRESHOLD = 15;
+const BLUR_THRESHOLD = 5;
+const HIGH_RES_BYPASS = 1500;
 
 function detectBlur(imageData: ImageData): number {
   const { data, width, height } = imageData;
@@ -65,17 +66,24 @@ export async function checkImageQuality(file: File): Promise<QualityCheck> {
         height: img.height,
       };
 
-      const canvas = document.createElement("canvas");
-      const scale = Math.min(1, 800 / Math.max(img.width, img.height));
-      canvas.width = img.width * scale;
-      canvas.height = img.height * scale;
+      const isHighRes = Math.max(img.width, img.height) >= HIGH_RES_BYPASS;
 
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      let blurCheck: { passed: boolean; score: number };
+      if (isHighRes) {
+        blurCheck = { passed: true, score: 999 };
+      } else {
+        const canvas = document.createElement("canvas");
+        const scale = Math.min(1, 800 / Math.max(img.width, img.height));
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
 
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const blurScore = detectBlur(imageData);
-      const blurCheck = { passed: blurScore >= BLUR_THRESHOLD, score: blurScore };
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const blurScore = detectBlur(imageData);
+        blurCheck = { passed: blurScore >= BLUR_THRESHOLD, score: blurScore };
+      }
 
       URL.revokeObjectURL(url);
 

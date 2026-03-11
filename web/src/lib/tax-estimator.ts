@@ -59,14 +59,13 @@ function calculateFederalTax(taxableIncomeCents: number): number {
 export function estimateRefund(
   wagesCents: number,
   federalWithheldCents: number,
-  stateWithheldCents: number,
 ): TaxEstimate {
   const agi = wagesCents;
   const taxableIncome = Math.max(0, agi - SINGLE_STANDARD_DEDUCTION);
   const federalTax = calculateFederalTax(taxableIncome);
 
-  const totalWithheld = federalWithheldCents + stateWithheldCents;
-  const net = totalWithheld - federalTax;
+  const totalWithheld = federalWithheldCents;
+  const net = federalWithheldCents - federalTax;
 
   return {
     adjustedGrossIncome: agi,

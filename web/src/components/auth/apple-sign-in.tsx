@@ -4,10 +4,11 @@ import { useCallback } from "react";
 import Script from "next/script";
 import { toast } from "sonner";
 import { useAppleAuth } from "@/hooks/use-auth";
+import { clientConfig } from "@/lib/client-config";
 
-const APPLE_CLIENT_ID = process.env.NEXT_PUBLIC_APPLE_CLIENT_ID ?? "";
+const APPLE_CLIENT_ID = clientConfig.appleClientId;
 const APPLE_REDIRECT_URI =
-  process.env.NEXT_PUBLIC_APPLE_REDIRECT_URI ??
+  clientConfig.appleRedirectUri ||
   (typeof window !== "undefined" ? window.location.origin : "");
 
 declare global {

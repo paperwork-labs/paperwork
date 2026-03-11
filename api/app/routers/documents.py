@@ -4,6 +4,7 @@ from fastapi import APIRouter, Request, UploadFile
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+from app.config import settings
 from app.schemas.base import error_response, success_response
 from app.schemas.document import DemoExtractionResponse, W2FieldResult
 from app.services.ocr_service import process_w2
@@ -23,9 +24,11 @@ ALLOWED_CONTENT_TYPES = {
 }
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
+DEMO_RATE_LIMIT = "3/day" if settings.ENVIRONMENT == "production" else "1000/day"
+
 
 @router.post("/demo-upload")
-@limiter.limit("3/day")
+@limiter.limit(DEMO_RATE_LIMIT)
 async def demo_upload(request: Request, file: UploadFile):
     """Anonymous W-2 extraction — no auth, no storage, rate limited.
 
