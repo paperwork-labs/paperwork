@@ -2,7 +2,7 @@
 
 Organizational memory for FileFree. AI agents read this at session start. Update after significant decisions, learnings, or pattern discoveries.
 
-**Last Updated**: 2026-03-11
+**Last Updated**: 2026-03-12
 
 ---
 
@@ -276,6 +276,21 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 - **Alternatives considered**: Server-side auth via NextAuth.js — rejected because our backend already handles sessions via Redis cookies; adding NextAuth would duplicate auth state and add complexity.
 - **Impact**: Auth flow is fully functional end-to-end. Protected routes (/file/*, /dashboard/*) redirect to login. Landing page now directs to registration.
 - **PRs**: #10 (auth), nav+CTA polish on feat/2.2-nav-polish branch.
+
+### D33 — Sprint 3 Complete + OAuth + Demo Refund Estimate (2026-03-11)
+- **Context**: Sprint 3 (Full MVP) shipped in PRs #10-#12. All 7 tasks complete: backend auth, frontend auth, filing flow, tax calculator, return summary, component library, CI/analytics. OAuth (Google/Apple Sign In) added via PR #12 with server-side token verification, account linking, and frontend SDK integration.
+- **What shipped**:
+  - Full filing flow: W-2 upload -> data confirmation -> filing status selection -> tax summary with animated refund
+  - Tax calculator engine: integer cents, 4 filing statuses, 7 federal brackets (2025 rates, Rev. Proc. 2024-40 + P.L. 119-21), 100% test coverage
+  - Google Sign In + Apple Sign In: server-side token verification (`google-auth`, `python-jose` for Apple JWKS), social login endpoints, account linking (same-email local+social), frontend SDK components
+  - Frontend test infrastructure: Vitest + React Testing Library + happy-dom, 38 tests
+  - GitHub Actions CI: 7 jobs (API Lint, API Tests, Web Lint, Web Tests, Web Build, Vercel, Vercel Preview)
+  - Demo improvements: blur threshold lowered (30->15), softer info toast, blur score tracked in PostHog for calibration, client-side tax estimator shows estimated refund/owed with animated CurrencyDisplay before signup
+  - Component library: SSNInput (masked, toggle visibility), CurrencyDisplay (count-up animation), SecureBadge, SkeletonCard
+- **Total tests**: 89 backend + 38 frontend = 127 across 10 test files
+- **PRs**: #10 (frontend auth), #11 (Sprint 3 tasks 2.3-2.7), #12 (OAuth social login)
+- **Monthly burn**: $12.49/mo (unchanged)
+- **Reversibility**: N/A — milestone.
 
 ### D31 — n8n Database Isolation (2026-03-10)
 - **Context**: n8n and Postiz shared the same PostgreSQL database (`filefree_ops` / `ops`). When Postiz was recreated (to add MAIN_URL + ES visibility), its Prisma migrations dropped/overwrote n8n's tables. n8n logged `relation "public.user" does not exist` repeatedly.
