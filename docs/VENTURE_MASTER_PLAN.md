@@ -238,24 +238,28 @@ Every piece of user-facing content (email, social post, in-app message, landing 
 
 Before collecting ANY user PII or processing ANY tax/legal data:
 
-| Item | Status | Deadline | Notes |
-|---|---|---|---|
-| E&O + Cyber liability insurance ($1M) | NOT DONE | Before first SSN | $1,500-3,000/yr. Covers data breach, errors in tax calcs, professional liability |
-| Data breach response plan (SANS template) | NOT DONE | Before first SSN | 2-page doc: discovery, containment, notification, remediation. State AG notification timelines vary (CA: 72hrs) |
-| Terms of Service (attorney-reviewed) | NOT DONE | Before launch | Limitation of liability, arbitration clause, data accuracy disclaimer, AI-assisted filing disclosure |
-| Privacy Policy (CCPA + state laws) | NOT DONE | Before launch | Data collection, retention (24hr for images), sharing (Cloud Vision, OpenAI -- with SSN masking), deletion rights |
-| Tax filing disclaimer (Circular 230) | NOT DONE | Before launch | On every screen that touches tax data |
-| LLC formation disclaimer (UPL) | NOT DONE | Before launch | On every LaunchFree page |
-| Startup attorney consultation | NOT DONE | Before Phase 3 | 1 hour, ~$300-500. Key questions: UPL boundaries for AI formation guidance, RA liability exposure, tax prep liability vs CPA liability |
+
+| Item                                      | Status   | Deadline         | Notes                                                                                                                                  |
+| ----------------------------------------- | -------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| E&O + Cyber liability insurance ($1M)     | NOT DONE | Before first SSN | $1,500-3,000/yr. Covers data breach, errors in tax calcs, professional liability                                                       |
+| Data breach response plan (SANS template) | NOT DONE | Before first SSN | 2-page doc: discovery, containment, notification, remediation. State AG notification timelines vary (CA: 72hrs)                        |
+| Terms of Service (attorney-reviewed)      | NOT DONE | Before launch    | Limitation of liability, arbitration clause, data accuracy disclaimer, AI-assisted filing disclosure                                   |
+| Privacy Policy (CCPA + state laws)        | NOT DONE | Before launch    | Data collection, retention (24hr for images), sharing (Cloud Vision, OpenAI -- with SSN masking), deletion rights                      |
+| Tax filing disclaimer (Circular 230)      | NOT DONE | Before launch    | On every screen that touches tax data                                                                                                  |
+| LLC formation disclaimer (UPL)            | NOT DONE | Before launch    | On every LaunchFree page                                                                                                               |
+| Startup attorney consultation             | NOT DONE | Before Phase 3   | 1 hour, ~$300-500. Key questions: UPL boundaries for AI formation guidance, RA liability exposure, tax prep liability vs CPA liability |
+
 
 **Liability Comparison -- How Competitors Handle It**:
 
-| Company | Approach | Key Protections |
-|---|---|---|
-| **Credit Karma Tax** (now Cash App Taxes) | "Not a substitute for professional tax advice." Accuracy guarantee (pays IRS penalties if their math is wrong). | Strong ToS limitation of liability. E&O insurance. Accuracy guarantee builds trust. |
-| **FreeTaxUSA** | "$100K accuracy guarantee." Covers IRS penalties from calculation errors. | Clear "education not advice" framing. Guarantee is capped and excludes user input errors. |
-| **LegalZoom** | "We are not a law firm." Survived multiple UPL lawsuits by positioning as document preparation, not legal advice. | Operating agreement TEMPLATES, not custom drafting. Clear disclaimers on every page. Separate lawyer marketplace for actual advice. |
-| **TurboTax** | Expert review add-on ($$$). Free tier has no accuracy guarantee. | Massive legal team. FTC consent decree for "free" advertising. |
+
+| Company                                   | Approach                                                                                                          | Key Protections                                                                                                                     |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **Credit Karma Tax** (now Cash App Taxes) | "Not a substitute for professional tax advice." Accuracy guarantee (pays IRS penalties if their math is wrong).   | Strong ToS limitation of liability. E&O insurance. Accuracy guarantee builds trust.                                                 |
+| **FreeTaxUSA**                            | "$100K accuracy guarantee." Covers IRS penalties from calculation errors.                                         | Clear "education not advice" framing. Guarantee is capped and excludes user input errors.                                           |
+| **LegalZoom**                             | "We are not a law firm." Survived multiple UPL lawsuits by positioning as document preparation, not legal advice. | Operating agreement TEMPLATES, not custom drafting. Clear disclaimers on every page. Separate lawyer marketplace for actual advice. |
+| **TurboTax**                              | Expert review add-on ($$$). Free tier has no accuracy guarantee.                                                  | Massive legal team. FTC consent decree for "free" advertising.                                                                      |
+
 
 **Our approach**: Follow FreeTaxUSA model for tax (accuracy guarantee capped at $10K, covers OUR calculation errors only, not user input errors). Follow LegalZoom model for LLC (templates, not drafting). Get E&O insurance before collecting any data.
 
@@ -583,12 +587,14 @@ Phase 1.5: After monorepo restructure (Phase 1), before 50-state data pipeline (
 **Research finding**: AI branding in financial services is a double-edged sword. The answer depends on what you're branding as AI-powered.
 
 **Where "AI-powered" HELPS trust**:
+
 - **Automation / speed**: "AI reads your W-2 in seconds" -- people trust AI for tedious data entry
 - **Cost reduction**: "AI eliminates the middleman, so filing is free" -- people understand AI = cheaper
 - **Accuracy in calculation**: "AI double-checks your math" -- people trust computers with arithmetic
 - **Data analysis**: "AI compares all 50 states to find the best fit" -- people trust AI for research
 
 **Where "AI-powered" HURTS trust**:
+
 - **Advice / judgment**: "AI-powered tax advice" -- people want human judgment for high-stakes decisions
 - **Legal documents**: "AI-generated operating agreement" -- legal liability anxiety
 - **Personal data handling**: Over-emphasizing AI processing of SSNs or financial data creates concern
@@ -679,21 +685,33 @@ The repo is currently named `fileFree` (the original product). When the LLC name
 
 ### Plan B Revenue: Zero Partnerships Closed
 
-If Founder 2 closes no deals and self-serve affiliate applications are the only revenue source:
+If Founder 2 closes no deals. Key insight: MOST fintech affiliate programs are self-serve (apply online, no calls, no relationship). The original Plan B underestimated this.
 
+**Confirmed Self-Serve Affiliate Programs** (Founder 1 applies in one afternoon):
 
-| Stream                                        | Available Without Partnerships?     | Year 1 Revenue |
-| --------------------------------------------- | ----------------------------------- | -------------- |
-| Tax Optimization Plan ($29/yr)                | YES -- direct Stripe sale           | $1.5K-8.7K     |
-| Trinkets AdSense                              | YES -- self-serve                   | $50-300        |
-| Self-serve affiliate signups (Impact.com, CJ) | YES -- Founder 1 can apply          | $2K-10K        |
-| RA credits                                    | NO -- requires RA wholesale partner | $0             |
-| Refund advance                                | NO -- requires lending partner      | $0             |
-| Audit Shield                                  | NO -- requires TaxAudit partnership | $0             |
-| **TOTAL (Plan B)**                            |                                     | **$3.5K-19K**  |
+| Program | Platform | Commission | Application |
+|---|---|---|---|
+| Betterment (HYSA/investing) | Impact.com | $25-$1,250 per referral | Self-serve at betterment.com/affiliate |
+| SoFi (banking/investing) | Impact.com | $50-$100 per funded account | Self-serve via Impact |
+| Wealthfront (HYSA/investing) | Direct | $30-$75 per funded account | wealthfront.com/affiliates |
+| Ally Bank (HYSA/savings) | CJ Affiliate | $5-$12 per signup | Self-serve via CJ dashboard |
+| Robinhood (investing) | Impact.com | $5-$20 per funded account | Self-serve via Impact |
+| Chime (banking) | CJ Affiliate | $10-$50 per direct deposit | Self-serve via CJ |
+| Acorns (micro-investing) | CJ Affiliate | $5-$10 per signup | Self-serve via CJ |
 
+| Stream | Available Without Partnerships? | Year 1 Revenue |
+|---|---|---|
+| Tax Optimization Plan ($29/yr) | YES -- direct Stripe sale | $1.5K-8.7K |
+| Self-serve HYSA affiliates (Betterment, SoFi, Wealthfront) | YES -- self-serve application | $2.5K-15K |
+| Self-serve investment affiliates (Robinhood, Acorns) | YES -- self-serve application | $1K-5K |
+| Self-serve banking affiliates (Ally, Chime) | YES -- self-serve application | $500-3K |
+| Trinkets AdSense | YES -- self-serve | $50-300 |
+| Audit shield (direct sale via Stripe at $24, partner with individual EAs) | PARTIAL -- no wholesale, but direct sale works | $1K-5K |
+| RA credits | NO -- requires RA wholesale partner | $0 |
+| Refund advance | NO -- requires lending partner | $0 |
+| **TOTAL (Plan B)** | | **$6.5K-37K** |
 
-**Plan B is survivable** because monthly burn is low (~$120/mo real). But it delays growth by 6-12 months. Self-serve affiliate applications (Impact.com for Marcus/Wealthfront, CJ for Betterment) are online forms Founder 1 can submit — no calls, no relationship needed. These should be submitted in Phase 0 regardless of Founder 2's availability.
+**Plan B is not just survivable -- it's viable.** Founder 2 raises the ceiling (premium partnership terms, co-marketing deals, exclusive rates) but does NOT set the floor. The venture generates meaningful affiliate revenue from self-serve programs that require zero relationship-building. These should be submitted in Phase 0 regardless of Founder 2's availability -- there is no reason to wait.
 
 ### Partnership Milestone Deadlines (Hard Dates)
 
@@ -1820,7 +1838,7 @@ The plan projects 10K-30K FileFree filers and 2K-5K LaunchFree users but never m
 | **SEO / Content**                         | $0 (AI-written, founder-edited) | 6-12 months      | 1,000-5,000         | Blog posts: "cheapest state for LLC", "free tax filing 2027", "LLC vs sole prop". Long tail, compounds. |
 | **Product Hunt + HN launch**              | $0                              | Day 1 spike only | 500-2,000           | One-time spike. LaunchFree PH launch, FileFree PH launch. Plan for both.                                |
 | **Reddit / personal finance communities** | $0 (time cost)                  | 1-3 months       | 200-1,000           | r/personalfinance, r/smallbusiness, r/tax. Authentic answers that mention product. Never spam.          |
-| **TikTok Spark Ads**                      | $200-500/mo                     | Immediate        | 2,000-8,000         | Boost top-performing organic videos. $0.05-0.10/click. Budget this in FINANCIALS.md.                    |
+| **TikTok Spark Ads**                      | $100-300/mo                     | Immediate        | 1,000-5,000         | Boost top-performing organic videos only. $0.05-0.10/click. Budget in FINANCIALS.md.                    |
 | **Referral program**                      | $0-5/referral (tax credit)      | 3-6 months       | 500-2,000           | "Refer a friend, both get [benefit]". Implement in Phase 7.                                             |
 | **Cross-sell (LaunchFree -> FileFree)**   | $0                              | Jan 2027         | 500-2,000           | Every LLC former needs to file taxes. Built-in pipeline.                                                |
 | **TOTAL REALISTIC RANGE**                 |                                 |                  | **5,200-23,000**    |                                                                                                         |
@@ -1860,6 +1878,7 @@ The plan projects 10K-30K FileFree filers and 2K-5K LaunchFree users but never m
 ### Brand Mission Alignment
 
 Every piece of content should reinforce one of these mission pillars:
+
 - **Accessibility**: "Taxes shouldn't cost $89" / "Your LLC shouldn't cost $500"
 - **Transparency**: "No hidden fees, no bait-and-switch, no surprise renewals"
 - **Empowerment**: "You don't need a CPA for a simple return" / "You don't need a lawyer to form an LLC"
@@ -1977,23 +1996,23 @@ Agents are organized into three tiers:
 ### 6E. New Agents to Build (12+)
 
 
-| #   | Agent                     | Type                  | Trigger                | Purpose                                                                                                   |
-| --- | ------------------------- | --------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------- |
-| 19  | L1 Support (DocBot)       | n8n webhook           | User message           | Answer from knowledge base (60% resolution target)                                                        |
-| 20  | L2 Support (OpsBot)       | n8n webhook           | DocBot escalation      | Execute actions: check status, resend email, reset password                                               |
-| 21  | State Data Validator      | n8n cron (daily/weekly) | Daily for volatile states (CA, NY, TX, FL, IL, WA, NJ, MA, GA, PA), weekly for others | Check state SOS websites for fee/rule changes. Flag stale data (>30 days) to Compliance Monitor. |
-| 22  | IRS Update Monitor        | n8n cron (October)    | Annual                 | Parse new Revenue Procedure for bracket changes                                                           |
-| 23  | Competitive Intel         | n8n cron (weekly)     | Mondays                | Monitor LegalZoom/ZenBusiness/TurboTax pricing + features                                                 |
-| 24  | Analytics Reporter        | n8n cron (weekly)     | Sundays                | Pull PostHog data, generate weekly metrics report                                                         |
-| 25  | Infra Health Monitor      | n8n cron (hourly)     | Continuous             | Check Render/Vercel/Hetzner status, alert on issues (see Section 7B)                                      |
-| 26  | Affiliate Revenue Tracker | n8n cron (daily)      | Daily                  | Check affiliate dashboards, report conversions                                                            |
-| 27  | LaunchFree Social Bot     | n8n cron (daily)      | 8am                    | Draft LaunchFree social content for Postiz                                                                |
-| 28  | LaunchFree Growth Bot     | n8n cron (weekly)     | Mondays                | Draft LaunchFree SEO articles                                                                             |
-| 29  | LaunchFree Compliance Bot | n8n cron (monthly)    | 1st                    | State filing deadline alerts for users                                                                    |
-| 30  | Knowledge Base Sync       | n8n cron (nightly)    | 2am                    | Sync Google Drive docs to support agent context                                                           |
-| 31  | AI Ops Lead               | Cursor persona (.mdc) | On demand              | Model routing, cost tracking, persona audits                                                              |
-| 32  | Executive Assistant (EA)  | Cursor persona + n8n  | Daily cron + on-demand | Daily briefing, weekly planning, decision tracking, financial tracking, doc maintenance. See Section 6J1. |
-| 33  | Compliance & Security Monitor | n8n cron (daily) | 6am | Tracks: cyber insurance status, data breach plan currency, EFIN cert status, 50-state data freshness, legal doc expiry (ToS, privacy policy last-reviewed dates). Outputs daily compliance status to Slack #compliance-alerts and weekly summary to Mission Control P4.4. |
+| #   | Agent                         | Type                    | Trigger                                                                               | Purpose                                                                                                                                                                                                                                                                   |
+| --- | ----------------------------- | ----------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 19  | L1 Support (DocBot)           | n8n webhook             | User message                                                                          | Answer from knowledge base (60% resolution target)                                                                                                                                                                                                                        |
+| 20  | L2 Support (OpsBot)           | n8n webhook             | DocBot escalation                                                                     | Execute actions: check status, resend email, reset password                                                                                                                                                                                                               |
+| 21  | State Data Validator          | n8n cron (daily/weekly) | Daily for volatile states (CA, NY, TX, FL, IL, WA, NJ, MA, GA, PA), weekly for others | Check state SOS websites for fee/rule changes. Flag stale data (>30 days) to Compliance Monitor.                                                                                                                                                                          |
+| 22  | IRS Update Monitor            | n8n cron (October)      | Annual                                                                                | Parse new Revenue Procedure for bracket changes                                                                                                                                                                                                                           |
+| 23  | Competitive Intel             | n8n cron (weekly)       | Mondays                                                                               | Monitor LegalZoom/ZenBusiness/TurboTax pricing + features                                                                                                                                                                                                                 |
+| 24  | Analytics Reporter            | n8n cron (weekly)       | Sundays                                                                               | Pull PostHog data, generate weekly metrics report                                                                                                                                                                                                                         |
+| 25  | Infra Health Monitor          | n8n cron (hourly)       | Continuous                                                                            | Check Render/Vercel/Hetzner status, alert on issues (see Section 7B)                                                                                                                                                                                                      |
+| 26  | Affiliate Revenue Tracker     | n8n cron (daily)        | Daily                                                                                 | Check affiliate dashboards, report conversions                                                                                                                                                                                                                            |
+| 27  | LaunchFree Social Bot         | n8n cron (daily)        | 8am                                                                                   | Draft LaunchFree social content for Postiz                                                                                                                                                                                                                                |
+| 28  | LaunchFree Growth Bot         | n8n cron (weekly)       | Mondays                                                                               | Draft LaunchFree SEO articles                                                                                                                                                                                                                                             |
+| 29  | LaunchFree Compliance Bot     | n8n cron (monthly)      | 1st                                                                                   | State filing deadline alerts for users                                                                                                                                                                                                                                    |
+| 30  | Knowledge Base Sync           | n8n cron (nightly)      | 2am                                                                                   | Sync Google Drive docs to support agent context                                                                                                                                                                                                                           |
+| 31  | AI Ops Lead                   | Cursor persona (.mdc)   | On demand                                                                             | Model routing, cost tracking, persona audits                                                                                                                                                                                                                              |
+| 32  | Executive Assistant (EA)      | Cursor persona + n8n    | Daily cron + on-demand                                                                | Daily briefing, weekly planning, decision tracking, financial tracking, doc maintenance. See Section 6J1.                                                                                                                                                                 |
+| 33  | Compliance & Security Monitor | n8n cron (daily)        | 6am                                                                                   | Tracks: cyber insurance status, data breach plan currency, EFIN cert status, 50-state data freshness, legal doc expiry (ToS, privacy policy last-reviewed dates). Outputs daily compliance status to Slack #compliance-alerts and weekly summary to Mission Control P4.4. |
 
 
 ### 6F. n8n Workflow Updates (Existing 6)
@@ -2130,50 +2149,54 @@ FOUNDER (Root -- final arbiter on all escalations)
 
 Every agent has one of three statuses:
 
-| Status | Meaning | System Prompt | Runs? |
-|---|---|---|---|
-| **Active** | Role is live, executing work | Written and deployed | Yes |
-| **Standby** | Role is defined, system prompt ready, waiting for workload | Written, NOT deployed | No -- activated by founder when needed |
-| **Planned** | Role is defined in org chart only | Not yet written | No -- write system prompt before activation |
 
-| Agent | Type | Status | Notes |
-|---|---|---|---|
-| Engineering | Cursor | Active | Existing |
-| UX/UI Lead | Cursor | Active | Existing |
-| Strategy | Cursor | Active | Existing |
-| Legal | Cursor | Active | Existing |
-| CFO | Cursor | Active | Existing |
-| QA Lead | Cursor | Active | Existing |
-| Partnerships | Cursor | Active | Existing |
-| Workflows | Cursor | Active | Existing |
-| Tax Domain | Cursor | Active | Existing |
-| CPA / Tax Advisor | Cursor | Active | Existing |
-| Social (general) | Cursor | Active | Existing -- splits into product-specific in Phase 6 |
-| Growth (general) | Cursor | Active | Existing -- splits into product-specific in Phase 6 |
-| Brand (general) | Cursor | Active | Existing -- splits into product-specific in Phase 6 |
-| EA Interactive | Cursor | Active | ea.mdc |
-| AI Ops Lead | Cursor | Active | agent-ops.mdc |
-| Formation Domain | Cursor | Standby | Write system prompt in Phase 2 |
-| Studio Lead | Cursor | Standby | Write system prompt in Phase 1 |
-| FileFree Social | Cursor | Planned | Phase 6 split |
-| FileFree Growth | Cursor | Planned | Phase 6 split |
-| FileFree Brand | Cursor | Planned | Phase 6 split |
-| LaunchFree Social | Cursor | Planned | Phase 6 split |
-| LaunchFree Growth | Cursor | Planned | Phase 6 split |
-| LaunchFree Brand | Cursor | Planned | Phase 6 split |
-| Compliance Monitor | n8n | Standby | Activate in Phase 3 |
-| 6 existing n8n workflows | n8n | Active | Social, Growth, Strategy, QA, Partnership, CPA |
-| EA Daily / EA Weekly | n8n | Standby | Activate after Slack hub is set up |
-| State Data Validator | n8n | Standby | Activate in Phase 2 |
-| Infra Health Monitor | n8n | Standby | Activate in Phase 1 |
-| L1/L2 Support Bots | n8n | Planned | Activate when support volume justifies |
-| Competitive Intel | n8n | Standby | Activate before first product launch |
-| Analytics Reporter | n8n | Standby | Activate when PostHog events > 1K/week |
-| Affiliate Revenue Tracker | n8n | Planned | Activate when affiliate revenue exists |
-| LaunchFree Content Pipeline | n8n | Planned | Activate in Phase 6 |
-| LaunchFree Compliance Bot | n8n | Standby | Activate in Phase 3 |
-| Knowledge Base Sync | n8n | Planned | Activate with support bot |
-| IRS Update Monitor | n8n | Standby | Activate October 2026 |
+| Status      | Meaning                                                    | System Prompt         | Runs?                                       |
+| ----------- | ---------------------------------------------------------- | --------------------- | ------------------------------------------- |
+| **Active**  | Role is live, executing work                               | Written and deployed  | Yes                                         |
+| **Standby** | Role is defined, system prompt ready, waiting for workload | Written, NOT deployed | No -- activated by founder when needed      |
+| **Planned** | Role is defined in org chart only                          | Not yet written       | No -- write system prompt before activation |
+
+
+
+| Agent                       | Type   | Status  | Notes                                               |
+| --------------------------- | ------ | ------- | --------------------------------------------------- |
+| Engineering                 | Cursor | Active  | Existing                                            |
+| UX/UI Lead                  | Cursor | Active  | Existing                                            |
+| Strategy                    | Cursor | Active  | Existing                                            |
+| Legal                       | Cursor | Active  | Existing                                            |
+| CFO                         | Cursor | Active  | Existing                                            |
+| QA Lead                     | Cursor | Active  | Existing                                            |
+| Partnerships                | Cursor | Active  | Existing                                            |
+| Workflows                   | Cursor | Active  | Existing                                            |
+| Tax Domain                  | Cursor | Active  | Existing                                            |
+| CPA / Tax Advisor           | Cursor | Active  | Existing                                            |
+| Social (general)            | Cursor | Active  | Existing -- splits into product-specific in Phase 6 |
+| Growth (general)            | Cursor | Active  | Existing -- splits into product-specific in Phase 6 |
+| Brand (general)             | Cursor | Active  | Existing -- splits into product-specific in Phase 6 |
+| EA Interactive              | Cursor | Active  | ea.mdc                                              |
+| AI Ops Lead                 | Cursor | Active  | agent-ops.mdc                                       |
+| Formation Domain            | Cursor | Standby | Write system prompt in Phase 2                      |
+| Studio Lead                 | Cursor | Standby | Write system prompt in Phase 1                      |
+| FileFree Social             | Cursor | Planned | Phase 6 split                                       |
+| FileFree Growth             | Cursor | Planned | Phase 6 split                                       |
+| FileFree Brand              | Cursor | Planned | Phase 6 split                                       |
+| LaunchFree Social           | Cursor | Planned | Phase 6 split                                       |
+| LaunchFree Growth           | Cursor | Planned | Phase 6 split                                       |
+| LaunchFree Brand            | Cursor | Planned | Phase 6 split                                       |
+| Compliance Monitor          | n8n    | Standby | Activate in Phase 3                                 |
+| 6 existing n8n workflows    | n8n    | Active  | Social, Growth, Strategy, QA, Partnership, CPA      |
+| EA Daily / EA Weekly        | n8n    | Standby | Activate after Slack hub is set up                  |
+| State Data Validator        | n8n    | Standby | Activate in Phase 2                                 |
+| Infra Health Monitor        | n8n    | Standby | Activate in Phase 1                                 |
+| L1/L2 Support Bots          | n8n    | Planned | Activate when support volume justifies              |
+| Competitive Intel           | n8n    | Standby | Activate before first product launch                |
+| Analytics Reporter          | n8n    | Standby | Activate when PostHog events > 1K/week              |
+| Affiliate Revenue Tracker   | n8n    | Planned | Activate when affiliate revenue exists              |
+| LaunchFree Content Pipeline | n8n    | Planned | Activate in Phase 6                                 |
+| LaunchFree Compliance Bot   | n8n    | Standby | Activate in Phase 3                                 |
+| Knowledge Base Sync         | n8n    | Planned | Activate with support bot                           |
+| IRS Update Monitor          | n8n    | Standby | Activate October 2026                               |
+
 
 #### 6I-1. Governance Protocol: Multi-Agent Consensus
 
@@ -2217,19 +2240,23 @@ When a significant change is proposed (new feature, architecture decision, legal
 
 #### 6I-2. Overlap Resolution
 
-| Overlap | Personas | Resolution |
-|---|---|---|
-| Financial tracking | CFO + EA | **EA owns operational tracking** (logging expenses, updating FINANCIALS.md). **CFO owns analysis** (unit economics, vendor evaluation, scaling projections). |
-| Strategic planning | Strategy + EA | **EA owns tactical planning** (daily/weekly). **Strategy owns strategic direction** (product roadmap, market positioning). |
-| Persona audits | Agent-Ops + QA | **Agent-Ops owns model/prompt optimization**. **QA owns security/compliance review**. Different audit dimensions. |
-| Social content | filefree-social + launchfree-social | **Separate globs** prevent co-activation. Shared social infra uses `social-infra.mdc` stub. |
+
+| Overlap            | Personas                            | Resolution                                                                                                                                                   |
+| ------------------ | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Financial tracking | CFO + EA                            | **EA owns operational tracking** (logging expenses, updating FINANCIALS.md). **CFO owns analysis** (unit economics, vendor evaluation, scaling projections). |
+| Strategic planning | Strategy + EA                       | **EA owns tactical planning** (daily/weekly). **Strategy owns strategic direction** (product roadmap, market positioning).                                   |
+| Persona audits     | Agent-Ops + QA                      | **Agent-Ops owns model/prompt optimization**. **QA owns security/compliance review**. Different audit dimensions.                                            |
+| Social content     | filefree-social + launchfree-social | **Separate globs** prevent co-activation. Shared social infra uses `social-infra.mdc` stub.                                                                  |
+
 
 #### 6I-3. EA Agent Split
 
-| Role | Implementation | Responsibilities | Trigger |
-|---|---|---|---|
-| **EA Interactive** | `ea.mdc` (Cursor persona) | Decision logging, task status queries, ad-hoc ops questions, expense logging, routing proposals to governance | Founder asks operational questions in Cursor |
-| **EA Ops Monitor** | `venture-ea-daily` + `venture-ea-weekly` (n8n) | Daily briefing (7am -> Slack #daily-briefing), weekly planning (Sunday 6pm -> GDrive), n8n health checks | Cron schedules |
+
+| Role               | Implementation                                 | Responsibilities                                                                                              | Trigger                                      |
+| ------------------ | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| **EA Interactive** | `ea.mdc` (Cursor persona)                      | Decision logging, task status queries, ad-hoc ops questions, expense logging, routing proposals to governance | Founder asks operational questions in Cursor |
+| **EA Ops Monitor** | `venture-ea-daily` + `venture-ea-weekly` (n8n) | Daily briefing (7am -> Slack #daily-briefing), weekly planning (Sunday 6pm -> GDrive), n8n health checks      | Cron schedules                               |
+
 
 The interactive EA should NOT generate briefings. The ops monitor should NOT update docs -- it produces reports for the founder to act on.
 
@@ -2471,44 +2498,88 @@ The command center is the control plane for the entire venture. It is what makes
 
 ### Phase 7: FileFree Season Prep (October 2026)
 
-| Task | Details |
-|---|---|
-| P7.1 Resume FileFree Sprint 4 | All 50 state tax calcs (data already built in P2.3), PDF polish |
-| P7.2 Column Tax integration | SDK integration, sandbox testing |
-| P7.3 TaxAudit partnership | White-label audit shield integration (if Founder 2 closed deal) |
-| P7.4 Refund Plan screen | HYSA referrals, financial product recs, audit shield upsell |
-| P7.5 Transactional emails | Welcome, filing confirmation, abandonment drip |
-| P7.6 FileFree -> LaunchFree campaigns | Post-filing cross-sell for users with biz income |
-| P7.7 Marketing page refresh | Social proof, filing counter, comparison table |
-| P7.8 1099-NEC + Schedule C support | Freelancer/gig income. 1099-NEC extraction via OCR pipeline, Schedule C business income/expenses |
-| P7.9 Dependent support | Dependent information capture, Child Tax Credit ($2,000/child), EITC calculations, HOH filing status |
-| P7.10 Schedule B (interest/dividends) | Interest and ordinary dividend income, auto-populate from 1099-INT/1099-DIV |
-| P7.11 Schedule 1 (additional income) | Student loan interest, educator expenses, HSA deductions, IRA contributions |
-| P7.12 All 50 state return engines | Data-driven state tax calculation engine. Each state defined in JSON (rates, brackets, credits, conformity). ALL 50 states from launch. |
+
+| Task                                  | Details                                                                                                                                 |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| P7.1 Resume FileFree Sprint 4         | All 50 state tax calcs (data already built in P2.3), PDF polish                                                                         |
+| P7.2 Column Tax integration           | SDK integration, sandbox testing                                                                                                        |
+| P7.3 TaxAudit partnership             | White-label audit shield integration (if Founder 2 closed deal)                                                                         |
+| P7.4 Refund Plan screen               | HYSA referrals, financial product recs, audit shield upsell                                                                             |
+| P7.5 Transactional emails             | Welcome, filing confirmation, abandonment drip                                                                                          |
+| P7.6 FileFree -> LaunchFree campaigns | Post-filing cross-sell for users with biz income                                                                                        |
+| P7.7 Marketing page refresh           | Social proof, filing counter, comparison table                                                                                          |
+| P7.8 1099-NEC + Schedule C support    | Freelancer/gig income. 1099-NEC extraction via OCR pipeline, Schedule C business income/expenses                                        |
+| P7.9 Dependent support                | Dependent information capture, Child Tax Credit ($2,000/child), EITC calculations, HOH filing status                                    |
+| P7.10 Schedule B (interest/dividends) | Interest and ordinary dividend income, auto-populate from 1099-INT/1099-DIV                                                             |
+| P7.11 Schedule 1 (additional income)  | Student loan interest, educator expenses, HSA deductions, IRA contributions                                                             |
+| P7.12 All 50 state return engines     | Data-driven state tax calculation engine. Each state defined in JSON (rates, brackets, credits, conformity). ALL 50 states from launch. |
+
 
 ### Form Coverage Roadmap
 
-| Milestone | Forms | Notes |
-|---|---|---|
-| **January 2027 launch** | 1040 + Schedule 1 + Schedule B + Schedule C + 1099-NEC/INT/DIV + dependents + ALL 50 state returns | Covers ~80% of US filers |
-| **February 2027 (mid-season)** | Schedule A (itemized deductions) + Schedule D (capital gains basics) | Covers homeowners + basic investors |
-| **Year 2 (2027-2028 season)** | Schedule E (rental), Schedule SE (self-employment tax), multi-state, HSA (Form 8889), K-1 pass-through | Covers small landlords, full self-employed, health savings |
-| **Year 3+** | Depreciation (Form 4562), AMT (Form 6251), brokerage import (CSV/API), foreign income (Form 2555) | Edge cases, power users |
+
+| Milestone                      | Forms                                                                                                  | Notes                                                      |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| **January 2027 launch**        | 1040 + Schedule 1 + Schedule B + Schedule C + 1099-NEC/INT/DIV + dependents + ALL 50 state returns     | Covers ~80% of US filers                                   |
+| **February 2027 (mid-season)** | Schedule A (itemized deductions) + Schedule D (capital gains basics)                                   | Covers homeowners + basic investors                        |
+| **Year 2 (2027-2028 season)**  | Schedule E (rental), Schedule SE (self-employment tax), multi-state, HSA (Form 8889), K-1 pass-through | Covers small landlords, full self-employed, health savings |
+| **Year 3+**                    | Depreciation (Form 4562), AMT (Form 6251), brokerage import (CSV/API), foreign income (Form 2555)      | Edge cases, power users                                    |
+
 
 **MeF ATS testing scope**: The October 2026 ATS testing must cover 1040 + Schedule 1 + B + C + state return XML schemas for ALL 50 states. Start XML generator development by June 2026.
 
+### 7D. MeF Local Validation Engine (Zero-Risk ATS Strategy)
+
+ATS testing is schema validation -- the IRS programmatically checks your XML output against published schemas. This is exactly what AI excels at. By building a local validation engine FIRST, we achieve near-100% first-submission pass rate to ATS.
+
+**Key facts** (verified):
+- IRS ATS requires ~13 test scenarios for Form 1040 (published as PDFs on irs.gov)
+- ALL XML schemas are publicly downloadable from irs.gov/downloads/irs-schema
+- State MeF schemas are published by E-Standards (statemef.com), the FTA-recognized body
+- State returns piggyback on the federal submission -- you don't submit 50 separate state packages
+- 42 states + DC participate in the 1040 MeF program. Only CA FTB and MA DOR run independent systems.
+
+**Pipeline**:
+
+| Step | Timeline | Agent Work | Human Work |
+|---|---|---|---|
+| P7.13 Schema acquisition | June 2026 | Download ALL IRS + E-Standards XML schemas. Parse into Zod types (TS) and Pydantic models (Python). Build schema version tracker. | None |
+| P7.14 Local validation engine | June-July 2026 | Build XML generator from tax calculation output. Build local schema validator. Generate all 13 IRS test scenarios programmatically. Iterate until 100% local pass rate. | Review 2-3 generated XML files |
+| P7.15 Test return factory | August 2026 | For each of 42 MeF-participating states, generate a test return with correct state schema piggyback. Validate ALL state attachments locally. Generate coverage report. | Review coverage report |
+| P7.16 ATS submission | October 2026 | Submit all 13 federal scenarios (already locally validated). Monitor acknowledgments. Auto-fix and resubmit any rejections. | Contact e-Help Desk if non-schema issues |
+| P7.17 Communication test | November 2026 | Automated end-to-end transmission test. | Verify acknowledgment |
+
+**For CA FTB and MA DOR** (independent systems): Use Column Tax as e-file partner for these 2 states only in Year 1. Apply for their independent transmitter programs in Year 2.
+
+**Residual risk**: Zero for schema-related failures. Only risk is IRS process delays (their systems being slow), mitigated by starting June not October.
+
+### 7E. Tiered State Tax Engine Architecture
+
+Federal tax is uniform. State tax is chaos. The engine uses three tiers to handle all 50 states efficiently:
+
+**Tier 1 -- Conforming States (~30 states)**: Start from federal AGI or taxable income, apply state-specific rate brackets, standard deduction, and credits. Entirely data-driven via JSON config. Examples: Colorado (flat 4.4% of federal taxable income), Utah (flat 4.65%), Michigan (flat 4.25%).
+
+**Tier 2 -- Semi-Conforming States (~12 states)**: Start from federal AGI but with state-specific modifications. JSON config + small modifier functions per state. Examples: Virginia (starts from federal AGI, subtracts VA-specific deductions, applies VA brackets), Georgia (adjusts for GA standard deduction amounts).
+
+**Tier 3 -- Independent States (~5 states: CA, NJ, PA, MA, NH)**: Fully custom calculation modules per state. Agent generates initial module from state tax form instructions (publicly available PDFs). Human reviews tax logic. Example: California starts from federal AGI but has its own Schedule CA with ~40 modification items.
+
+**No-income-tax states (7: AK, FL, NV, SD, TX, WA, WY)**: No state return needed. Config flag: `"hasIncomeTax": false`.
+
+**Budget**: Tier 1 states take minutes each (config only). Tier 2 states take hours each. Tier 3 requires 2-3 days per state. Total extra budget: 2 weeks in Phase 7.
+
 ### Phase 8: FileFree Launch (January 2027)
 
-| Task | Details |
-|---|---|
-| P8.1 MeF transmitter | Build XML generator, pass IRS ATS testing (October), communication test (November). Test schemas for 1040 + Schedules 1, B, C + all 50 state returns. |
-| P8.2 E-file go-live | Switch from Column Tax to own transmitter for supported forms |
-| P8.3 Tax Optimization Plan | Stripe, $29/yr, premium dashboard |
-| P8.4 Product Hunt + HN launch | Coordinate with filing season start |
-| P8.5 Paid amplification | TikTok Spark Ads + Meta boost on winning organic content |
-| P8.6 Schedule A (itemized) | Mid-season release (February 2027). Mortgage interest, SALT, charitable contributions |
-| P8.7 Schedule D (capital gains) | Mid-season release (February 2027). Basic stock sales, 1099-B import |
-| P8.8 Refund Advance integration | If partner secured. Early refund access as acquisition tool |
+
+| Task                            | Details                                                                                                                                               |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P8.1 MeF transmitter            | Build XML generator, pass IRS ATS testing (October), communication test (November). Test schemas for 1040 + Schedules 1, B, C + all 50 state returns. |
+| P8.2 E-file go-live             | Switch from Column Tax to own transmitter for supported forms                                                                                         |
+| P8.3 Tax Optimization Plan      | Stripe, $29/yr, premium dashboard                                                                                                                     |
+| P8.4 Product Hunt + HN launch   | Coordinate with filing season start                                                                                                                   |
+| P8.5 Paid amplification         | TikTok Spark Ads + Meta boost on winning organic content                                                                                              |
+| P8.6 Schedule A (itemized)      | Mid-season release (February 2027). Mortgage interest, SALT, charitable contributions                                                                 |
+| P8.7 Schedule D (capital gains) | Mid-season release (February 2027). Basic stock sales, 1099-B import                                                                                  |
+| P8.8 Refund Advance integration | If partner secured. Early refund access as acquisition tool                                                                                           |
 
 
 ### Background Tasks (Continuous)
@@ -2525,7 +2596,7 @@ The command center is the control plane for the entire venture. It is what makes
 | TaxAudit/audit shield partnership                                             | Founder 2 | September 2026             | NOT STARTED | 3-6 month lead time, start Q2 2026.                                             |
 | HYSA affiliate applications (banking partners)                                | Founder 2 | October 2026               | NOT STARTED | At least 1 banking partner for first tax season.                                |
 | MeF certification prep                                                        | Founder 1 | Start June 2026            | NOT STARTED | XML generator -> ATS testing (October) -> Comms test (November).                |
-| TikTok Spark Ads budget                                                       | Founder 1 | At LaunchFree launch       | NOT STARTED | $200-500/mo. See Section 5K.                                                    |
+| TikTok Spark Ads budget                                                       | Founder 1 | At LaunchFree launch       | NOT STARTED | $100-300/mo max. Boost proven organic winners only. See Section 5K.             |
 | Pre-launch audience building                                                  | Founder 1 | Ongoing, start NOW         | NOT STARTED | SEO blog posts, Reddit, waitlist growth. See Section 5K.                        |
 
 
@@ -2585,18 +2656,18 @@ The formation wizard says "submit" but most states do NOT have e-filing APIs for
 The Infra Health Monitor (Agent #25) needs a clear alerting hierarchy:
 
 
-| Severity | Condition                                                | Alert Channel                          | Response Time     |
-| -------- | -------------------------------------------------------- | -------------------------------------- | ----------------- |
-| CRITICAL | Render/Vercel DOWN, API 5xx rate >5%                     | Email + Discord webhook + SMS (Twilio) | Immediate         |
-| WARNING  | API response time >2s, error rate >1%, disk >80%         | Email + Discord webhook                | Within 1 hour     |
-| INFO     | Deploy completed, cron job finished, daily health report | Discord webhook only                   | Next business day |
+| Severity | Condition                                                | Alert Channel                        | Response Time     |
+| -------- | -------------------------------------------------------- | ------------------------------------ | ----------------- |
+| CRITICAL | Render/Vercel DOWN, API 5xx rate >5%                     | Slack #ops-alerts + Email + SMS      | Immediate         |
+| WARNING  | API response time >2s, error rate >1%, disk >80%         | Slack #ops-alerts + Email            | Within 1 hour     |
+| INFO     | Deploy completed, cron job finished, daily health report | Slack #ops-alerts only               | Next business day |
 
 
 **Alert routing**:
 
-- All alerts go to a `#ops-alerts` Discord channel on the venture Discord server
+- All alerts go to Slack `#ops-alerts` channel (see Section 14 for full Slack hub architecture)
 - CRITICAL also sends email to founder + SMS via Twilio ($0.0075/SMS, ~$2/month max)
-- n8n handles all alert routing logic (HTTP Request nodes to Discord webhook + Twilio API)
+- n8n handles all alert routing logic (Slack API nodes + Twilio API)
 
 **Monitoring endpoints**:
 
@@ -2654,6 +2725,16 @@ Create a Cursor rule (`.cursor/rules/plans.mdc`) that enforces:
 - Sub-plans for specific coding tasks reference the master plan section
 - When a plan is superseded, move it to `.cursor/plans/archive/` (create dir)
 - Never create a plan without checking if an existing one covers the scope
+
+### Anti-Bloat Rules
+
+This plan is the company OS. It must stay readable. Rules:
+
+1. **Phase Completion Collapse**: When a Phase is COMPLETE, collapse its task table to a single summary line: "Phase 1: COMPLETE -- monorepo restructure, 14 tasks, merged via PRs #15-28." Detailed tasks live in git history and TASKS.md.
+2. **KNOWLEDGE.md Rotation**: Every 6 months, archive decisions older than 6 months to `docs/archive/KNOWLEDGE_YYYY_HN.md`. Keep the active file under 500 lines.
+3. **TASKS.md Sprint Archive**: Completed sprints collapse to a one-line summary. Detailed task history lives in git. Keep TASKS.md under 500 lines of active content.
+4. **Superseded Doc Archive**: Any doc fully superseded by this master plan moves to `docs/archive/`. Currently superseded: STRATEGY_REPORT.md, UTILITY_SITES_STRATEGY.md, SOCIAL_ROADMAP.md.
+5. **Master Plan Target**: Keep under 3,500 lines. If approaching, collapse completed phases and merge redundant sections.
 
 ### docs/TASKS.md Update
 
@@ -2941,33 +3022,38 @@ The venture operates like a company with AI employees. Employees need a persiste
 
 ### Channel Structure
 
-| Channel | Purpose | Who Posts |
-|---|---|---|
-| #general | Company-wide announcements, decisions | Founder, EA |
-| #daily-briefing | EA Ops Monitor daily summary (7am) | EA Ops Monitor (n8n) |
-| #weekly-planning | Weekly planning output (Sunday 6pm) | EA Ops Monitor (n8n) |
-| #compliance-alerts | Compliance Monitor status updates | Compliance Monitor (n8n) |
-| #ops-alerts | Infrastructure health alerts (CRITICAL/WARNING/INFO) | Infra Health Monitor (n8n) |
-| #social-content | Social post drafts for review/approval | Social Content Pipeline (n8n) |
-| #dev-feed | GitHub PR notifications, Vercel deploys, CI results | GitHub/Vercel integrations |
-| #partnerships | Partnership pipeline updates, outreach drafts | Partnership Outreach (n8n) |
-| #data-integrity | State data validation results, stale data alerts | State Data Validator (n8n) |
-| #revenue | Affiliate conversions, Stripe events | Affiliate Tracker (n8n), Stripe integration |
+
+| Channel            | Purpose                                              | Who Posts                                   |
+| ------------------ | ---------------------------------------------------- | ------------------------------------------- |
+| #general           | Company-wide announcements, decisions                | Founder, EA                                 |
+| #daily-briefing    | EA Ops Monitor daily summary (7am)                   | EA Ops Monitor (n8n)                        |
+| #weekly-planning   | Weekly planning output (Sunday 6pm)                  | EA Ops Monitor (n8n)                        |
+| #compliance-alerts | Compliance Monitor status updates                    | Compliance Monitor (n8n)                    |
+| #ops-alerts        | Infrastructure health alerts (CRITICAL/WARNING/INFO) | Infra Health Monitor (n8n)                  |
+| #social-content    | Social post drafts for review/approval               | Social Content Pipeline (n8n)               |
+| #dev-feed          | GitHub PR notifications, Vercel deploys, CI results  | GitHub/Vercel integrations                  |
+| #partnerships      | Partnership pipeline updates, outreach drafts        | Partnership Outreach (n8n)                  |
+| #data-integrity    | State data validation results, stale data alerts     | State Data Validator (n8n)                  |
+| #revenue           | Affiliate conversions, Stripe events                 | Affiliate Tracker (n8n), Stripe integration |
+
 
 ### Two-Way Agent Interaction
 
 **Founder -> Agent (Slack -> n8n)**:
+
 - Founder posts in a channel with a command format (e.g., `/agent status`, `/agent brief me on partnerships`)
 - n8n Slack trigger node picks up the message
 - Routes to appropriate agent workflow
 - Agent responds in-thread
 
 **Agent -> Founder (n8n -> Slack)**:
+
 - n8n workflows post to appropriate channels via Slack API
 - Urgent items go to #ops-alerts (plus email/SMS for CRITICAL)
 - Routine reports go to #daily-briefing
 
 **Cursor -> Slack (Slack MCP)**:
+
 - Use Slack MCP in Cursor to read/post messages from within the IDE
 - EA persona can check Slack context before answering operational questions
 - Decisions made in Cursor get logged to #general via EA
@@ -2976,16 +3062,19 @@ The venture operates like a company with AI employees. Employees need a persiste
 
 Department-level email aliases on Google Workspace. All route to founder's inbox. Agents draft replies, founder approves and sends.
 
-| Alias | Domain | Purpose |
-|---|---|---|
-| hello@filefree.tax | filefree.tax | General FileFree inquiries |
-| support@filefree.tax | filefree.tax | FileFree user support |
-| legal@filefree.ai | filefree.ai | Legal inquiries, DMCA, compliance |
-| partnerships@filefree.ai | filefree.ai | Partnership inquiries (Founder 2 primary) |
-| hello@launchfree.ai | launchfree.ai | General LaunchFree inquiries |
-| support@launchfree.ai | launchfree.ai | LaunchFree user support |
+
+| Alias                                                       | Domain        | Purpose                                   |
+| ----------------------------------------------------------- | ------------- | ----------------------------------------- |
+| [hello@filefree.tax](mailto:hello@filefree.tax)             | filefree.tax  | General FileFree inquiries                |
+| [support@filefree.tax](mailto:support@filefree.tax)         | filefree.tax  | FileFree user support                     |
+| [legal@filefree.ai](mailto:legal@filefree.ai)               | filefree.ai   | Legal inquiries, DMCA, compliance         |
+| [partnerships@filefree.ai](mailto:partnerships@filefree.ai) | filefree.ai   | Partnership inquiries (Founder 2 primary) |
+| [hello@launchfree.ai](mailto:hello@launchfree.ai)           | launchfree.ai | General LaunchFree inquiries              |
+| [support@launchfree.ai](mailto:support@launchfree.ai)       | launchfree.ai | LaunchFree user support                   |
+
 
 **Outbound Email Flow**:
+
 1. Agent (Partnership Outreach, Support Bot) drafts email in Google Docs or Slack thread
 2. Founder reviews draft in Slack (#partnerships or #support)
 3. Founder approves -> Agent sends via Gmail API (n8n Gmail node) from appropriate alias
@@ -2998,7 +3087,9 @@ Department-level email aliases on Google Workspace. All route to founder's inbox
 Risk: 10+ channels with multiple agents posting could overwhelm the founder.
 
 Mitigations:
+
 - **Notification tiers**: Only #ops-alerts and #compliance-alerts send push notifications. All other channels are check-when-ready.
 - **Daily digest**: EA Ops Monitor's 7am #daily-briefing summarizes everything the founder needs to know. If nothing is on fire, the founder only reads this one channel.
 - **Mute by default**: #dev-feed, #revenue, #data-integrity are muted. Founder checks manually or via weekly planning.
 - **Escalation chain**: If an agent posts something that needs immediate founder attention, it goes to #ops-alerts with CRITICAL tag, plus email + SMS.
+

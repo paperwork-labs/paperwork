@@ -395,3 +395,33 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 - **Decision**: ReplyRunner and FittingRoom are NO-GO (low alignment, crowded/complex markets). Axiomfolio and Jointly are DEFER to Year 2+ (good alignment but require Plaid integration costs that aren't viable pre-revenue). Full analysis in docs/FOUNDER_SIDE_PROJECTS.md.
 - **Alternatives**: Build one alongside main products (rejected: context-switching risk), abandon all (rejected: axiomfolio and jointly have genuine venture alignment).
 - **Reversibility**: Can revisit deferred projects anytime when revenue supports Plaid costs.
+
+### D49 — MeF Local Validation Engine: Zero-Risk ATS Strategy (2026-03-12)
+- **Context**: Concern that testing 50 state MeF schemas in one ATS window may not be feasible.
+- **Decision**: Build a local XML validation engine BEFORE submitting to ATS. IRS publishes all schemas (irs.gov/downloads/irs-schema). State schemas from E-Standards (statemef.com). ATS only requires ~13 test scenarios for 1040. State returns piggyback on federal submission (not 50 separate tests). Local validation achieves 100% pass rate before ATS submission. CA FTB and MA DOR (independent systems) use Column Tax as e-file partner in Year 1 only.
+- **Alternatives**: Submit to ATS blind and iterate (rejected: wastes testing window cycles), federal-only in Year 1 (rejected: unnecessary since piggyback makes states trivial).
+- **Reversibility**: Pipeline is additive. Can always fall back to Column Tax for any state.
+
+### D50 — Plan B Revenue Upgrade: Self-Serve Affiliates (2026-03-12)
+- **Context**: Original Plan B ($3.5K-19K) assumed HYSA referrals require partnerships. Research shows most fintech affiliate programs (Betterment, SoFi, Wealthfront, Ally, Robinhood, Chime, Acorns) are self-serve applications on Impact.com and CJ Affiliate.
+- **Decision**: Revised Plan B to $6.5K-37K. Founder 1 applies to all self-serve programs in Phase 0 (one afternoon of form fills). Founder 2 raises revenue ceiling with premium terms but doesn't set the floor.
+- **Alternatives**: Wait for Founder 2 (rejected: unnecessary delay for self-serve programs), skip affiliates entirely (rejected: leaving money on the table).
+- **Reversibility**: Can add/remove affiliate programs at any time.
+
+### D51 — Tiered State Tax Engine Architecture (2026-03-12)
+- **Context**: 50-state tax calculations vary from trivial (flat % of federal income) to complex (CA has ~40 modification items).
+- **Decision**: Three-tier engine. Tier 1 (~30 conforming states): JSON config only. Tier 2 (~12 semi-conforming): config + modifier functions. Tier 3 (~5 independent: CA, NJ, PA, MA, NH): custom calculation modules. Budget 2 extra weeks in Phase 7 for Tier 3.
+- **Alternatives**: Single engine for all states (rejected: CA/NJ complexity can't fit in JSON config), custom module per state (rejected: massive over-engineering for conforming states).
+- **Reversibility**: Can always add more states to Tier 3 if JSON config proves insufficient.
+
+### D52 — Doc Hygiene: Anti-Bloat Rules (2026-03-12)
+- **Context**: 15 docs / 8,773 lines total. Master plan at 3,000+ lines. Risk of docs becoming unreadable.
+- **Decision**: Anti-bloat rules in Section 8: collapse completed phases to one-line summaries, rotate KNOWLEDGE.md every 6 months, archive superseded docs. Moved STRATEGY_REPORT.md, UTILITY_SITES_STRATEGY.md, SOCIAL_ROADMAP.md to docs/archive/. Master plan target: under 3,500 lines.
+- **Alternatives**: Split master plan into multiple docs (rejected: loses single source of truth), no archival (rejected: docs grow indefinitely).
+- **Reversibility**: Can always restore archived docs from git history.
+
+### D53 — Alert Routing: Slack Not Discord (2026-03-12)
+- **Context**: Section 7B routed alerts to Discord. Section 14 established Slack as the company hub. Inconsistency.
+- **Decision**: All alerts route through Slack #ops-alerts. Discord references removed. Consistent with Section 14 Slack hub architecture.
+- **Alternatives**: Keep both Slack and Discord (rejected: unnecessary tool sprawl), use Discord only (rejected: Slack is already the company hub).
+- **Reversibility**: Channel routing is n8n config, trivial to change.
