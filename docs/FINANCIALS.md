@@ -71,7 +71,7 @@
 | **Year 1 Total** | **$11K** | **$44.5K** | **$175K** |
 | Year 2 (2028) | $50K | $200K | $600K |
 
-**Plan B (zero partnerships)**: $3.5K-19K Year 1 from Tax Optimization Plan direct sales + AdSense + self-serve affiliates only. Survivable at $278/mo burn.
+**Plan B (zero partnerships)**: $6.5K-37K Year 1 from Tax Optimization Plan direct sales + AdSense + self-serve affiliates (Betterment, SoFi, Wealthfront, Ally, Robinhood, Chime, Acorns -- all self-serve applications). Survivable at $278/mo burn.
 
 ## Monthly Actuals
 

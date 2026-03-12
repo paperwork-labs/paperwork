@@ -25,7 +25,7 @@ Source of truth: .cursor/plans/venture_master_plan_v1_61fe6d89.plan.md (Cursor p
 
 **AI Model Strategy**: 9 models across 7 roles. See Section 0E for authoritative routing registry (owned by AI Ops Lead persona).
 
-**Monthly burn (real)**: ~~$120/mo recurring + $800/yr CA franchise tax. Breakdown: Hetzner $6 + Render x2 $14 + Google Workspace $6 + domains ~$20 + OpenAI ~$10 + ElevenLabs $5 + cyber insurance ~$150 (est. $1,800/yr amortized) + CA franchise tax ~$67 (est. $800/yr amortized). At scale add: Stripe fees (2.9%+$0.30 per transaction), variable AI costs (~~$0.005-0.02/OCR doc, ~$15-17/mo social pipeline), partner wholesale costs. Vercel/Neon/Upstash all free tier until scale triggers listed in FINANCIALS.md.
+**Monthly burn (real)**: ~$278/mo. Breakdown: Hetzner $6 + Render x2 $14 + Google Workspace $6 + domains ~$20 + OpenAI ~$10 + ElevenLabs $5 + cyber insurance ~$150 (est. $1,800/yr amortized) + CA franchise tax ~$67 (est. $800/yr amortized). At scale add: Stripe fees (2.9%+$0.30 per transaction), variable AI costs (~$0.005-0.02/OCR doc, ~$15-17/mo social pipeline), partner wholesale costs. Vercel/Neon/Upstash all free tier until scale triggers listed in FINANCIALS.md.
 
 ---
 
@@ -679,7 +679,7 @@ The repo is currently named `fileFree` (the original product). When the LLC name
 | Aggressive      | $25K                 | $150K                   | **$175K**  |
 
 
-**Why the pessimistic scenario matters**: It models what happens if (a) user acquisition is slow (5K filers, 2K formations), (b) attach rates are bottom-tier for an unknown brand, and (c) partnerships are self-serve affiliates only (no Founder 2 deals closed). At $11K Year 1 revenue, the venture survives (burn is ~$120/mo real cost) but takes longer to reach meaningful revenue. This is the floor, not the target.
+**Why the pessimistic scenario matters**: It models what happens if (a) user acquisition is slow (5K filers, 2K formations), (b) attach rates are bottom-tier for an unknown brand, and (c) partnerships are self-serve affiliates only (no Founder 2 deals closed). At $11K Year 1 revenue, the venture survives (burn is ~$278/mo real cost) but takes longer to reach meaningful revenue. This is the floor, not the target.
 
 **Year 2 (2028)**: $150K-600K (dependent on retention, growth trajectory, and partnership maturity)
 
@@ -689,27 +689,31 @@ If Founder 2 closes no deals. Key insight: MOST fintech affiliate programs are s
 
 **Confirmed Self-Serve Affiliate Programs** (Founder 1 applies in one afternoon):
 
-| Program | Platform | Commission | Application |
-|---|---|---|---|
-| Betterment (HYSA/investing) | Impact.com | $25-$1,250 per referral | Self-serve at betterment.com/affiliate |
-| SoFi (banking/investing) | Impact.com | $50-$100 per funded account | Self-serve via Impact |
-| Wealthfront (HYSA/investing) | Direct | $30-$75 per funded account | wealthfront.com/affiliates |
-| Ally Bank (HYSA/savings) | CJ Affiliate | $5-$12 per signup | Self-serve via CJ dashboard |
-| Robinhood (investing) | Impact.com | $5-$20 per funded account | Self-serve via Impact |
-| Chime (banking) | CJ Affiliate | $10-$50 per direct deposit | Self-serve via CJ |
-| Acorns (micro-investing) | CJ Affiliate | $5-$10 per signup | Self-serve via CJ |
 
-| Stream | Available Without Partnerships? | Year 1 Revenue |
-|---|---|---|
-| Tax Optimization Plan ($29/yr) | YES -- direct Stripe sale | $1.5K-8.7K |
-| Self-serve HYSA affiliates (Betterment, SoFi, Wealthfront) | YES -- self-serve application | $2.5K-15K |
-| Self-serve investment affiliates (Robinhood, Acorns) | YES -- self-serve application | $1K-5K |
-| Self-serve banking affiliates (Ally, Chime) | YES -- self-serve application | $500-3K |
-| Trinkets AdSense | YES -- self-serve | $50-300 |
-| Audit shield (direct sale via Stripe at $24, partner with individual EAs) | PARTIAL -- no wholesale, but direct sale works | $1K-5K |
-| RA credits | NO -- requires RA wholesale partner | $0 |
-| Refund advance | NO -- requires lending partner | $0 |
-| **TOTAL (Plan B)** | | **$6.5K-37K** |
+| Program                      | Platform     | Commission                  | Application                            |
+| ---------------------------- | ------------ | --------------------------- | -------------------------------------- |
+| Betterment (HYSA/investing)  | Impact.com   | $25-$1,250 per referral     | Self-serve at betterment.com/affiliate |
+| SoFi (banking/investing)     | Impact.com   | $50-$100 per funded account | Self-serve via Impact                  |
+| Wealthfront (HYSA/investing) | Direct       | $30-$75 per funded account  | wealthfront.com/affiliates             |
+| Ally Bank (HYSA/savings)     | CJ Affiliate | $5-$12 per signup           | Self-serve via CJ dashboard            |
+| Robinhood (investing)        | Impact.com   | $5-$20 per funded account   | Self-serve via Impact                  |
+| Chime (banking)              | CJ Affiliate | $10-$50 per direct deposit  | Self-serve via CJ                      |
+| Acorns (micro-investing)     | CJ Affiliate | $5-$10 per signup           | Self-serve via CJ                      |
+
+
+
+| Stream                                                                    | Available Without Partnerships?                | Year 1 Revenue |
+| ------------------------------------------------------------------------- | ---------------------------------------------- | -------------- |
+| Tax Optimization Plan ($29/yr)                                            | YES -- direct Stripe sale                      | $1.5K-8.7K     |
+| Self-serve HYSA affiliates (Betterment, SoFi, Wealthfront)                | YES -- self-serve application                  | $2.5K-15K      |
+| Self-serve investment affiliates (Robinhood, Acorns)                      | YES -- self-serve application                  | $1K-5K         |
+| Self-serve banking affiliates (Ally, Chime)                               | YES -- self-serve application                  | $500-3K        |
+| Trinkets AdSense                                                          | YES -- self-serve                              | $50-300        |
+| Audit shield (direct sale via Stripe at $24, partner with individual EAs) | PARTIAL -- no wholesale, but direct sale works | $1K-5K         |
+| RA credits                                                                | NO -- requires RA wholesale partner            | $0             |
+| Refund advance                                                            | NO -- requires lending partner                 | $0             |
+| **TOTAL (Plan B)**                                                        |                                                | **$6.5K-37K**  |
+
 
 **Plan B is not just survivable -- it's viable.** Founder 2 raises the ceiling (premium partnership terms, co-marketing deals, exclusive rates) but does NOT set the floor. The venture generates meaningful affiliate revenue from self-serve programs that require zero relationship-building. These should be submitted in Phase 0 regardless of Founder 2's availability -- there is no reason to wait.
 
@@ -2060,7 +2064,7 @@ Competitive Intel (weekly) --> GDrive report
     v (informs)
 Growth Content Writer (weekly) --> GDrive draft
 
-Infra Health Monitor (hourly) --> email/Discord alerts
+Infra Health Monitor (hourly) --> Slack #ops-alerts
 Affiliate Revenue Tracker (daily) --> GDrive report
 LaunchFree Compliance Bot (monthly) --> user emails
 ```
@@ -2287,31 +2291,31 @@ When: During coding/strategy sessions in Cursor IDE. These are your real-time co
 How: Run on cron schedules or webhook triggers. No founder action needed.
 
 
-| Time        | Workflow                               | Output Location                        | Founder Action             |
-| ----------- | -------------------------------------- | -------------------------------------- | -------------------------- |
-| 2am daily   | Knowledge Base Sync                    | Internal DB                            | None (background)          |
-| 7am daily   | EA Daily Briefing                      | GDrive + Discord `#ops-alerts`         | Read (5 min)               |
-| 8am daily   | Social Content (FileFree + LaunchFree) | Postiz queue                           | Review/approve (5 min)     |
-| Hourly      | Infra Health Monitor                   | Discord `#ops-alerts` (only on issues) | Act if alerted             |
-| Daily       | Affiliate Revenue Tracker              | GDrive report                          | Check weekly               |
-| Sunday 6pm  | EA Weekly Planning                     | GDrive                                 | Review and adjust (10 min) |
-| Mondays     | Competitive Intel + Growth Content     | GDrive                                 | Review at leisure          |
-| Monthly 1st | State Data Validator + Compliance Bot  | GitHub Issues + user emails            | Review issues              |
+| Time        | Workflow                               | Output Location                      | Founder Action             |
+| ----------- | -------------------------------------- | ------------------------------------ | -------------------------- |
+| 2am daily   | Knowledge Base Sync                    | Internal DB                          | None (background)          |
+| 7am daily   | EA Daily Briefing                      | GDrive + Slack `#daily-briefing`     | Read (5 min)               |
+| 8am daily   | Social Content (FileFree + LaunchFree) | Postiz queue                         | Review/approve (5 min)     |
+| Hourly      | Infra Health Monitor                   | Slack `#ops-alerts` (only on issues) | Act if alerted             |
+| Daily       | Affiliate Revenue Tracker              | GDrive report                        | Check weekly               |
+| Sunday 6pm  | EA Weekly Planning                     | GDrive                               | Review and adjust (10 min) |
+| Mondays     | Competitive Intel + Growth Content     | GDrive                               | Review at leisure          |
+| Monthly 1st | State Data Validator + Compliance Bot  | GitHub Issues + user emails          | Review issues              |
 
 
 Daily founder time: ~15-20 minutes reviewing agent outputs. Mostly reading briefings and approving social content.
 
 **Pattern 3: ON-DEMAND N8N WORKFLOWS (you trigger them)**
 
-How: n8n webhook URL, Discord slash command, or direct n8n execution.
+How: n8n webhook URL, Slack slash command, or direct n8n execution.
 
 
 | Command                       | What Runs                                                                        | Output            |
 | ----------------------------- | -------------------------------------------------------------------------------- | ----------------- |
 | `/trinket-discover [keyword]` | Market Discovery Agent: researches keyword, finds competitors, sizes opportunity | 1-pager in GDrive |
-| `/support [user question]`    | L1 DocBot: answers from knowledge base                                           | Discord response  |
+| `/support [user question]`    | L1 DocBot: answers from knowledge base                                           | Slack response    |
 | `/competitive-check`          | Competitive Intel: immediate scan of competitor pricing/features                 | GDrive report     |
-| `/ea [question]`              | EA agent: ad-hoc operational query                                               | Discord response  |
+| `/ea [question]`              | EA agent: ad-hoc operational query                                               | Slack response    |
 
 
 ### 6J1. Executive Assistant Agent (#32) -- Detail Spec
@@ -2533,6 +2537,7 @@ The command center is the control plane for the entire venture. It is what makes
 ATS testing is schema validation -- the IRS programmatically checks your XML output against published schemas. This is exactly what AI excels at. By building a local validation engine FIRST, we achieve near-100% first-submission pass rate to ATS.
 
 **Key facts** (verified):
+
 - IRS ATS requires ~13 test scenarios for Form 1040 (published as PDFs on irs.gov)
 - ALL XML schemas are publicly downloadable from irs.gov/downloads/irs-schema
 - State MeF schemas are published by E-Standards (statemef.com), the FTA-recognized body
@@ -2541,13 +2546,15 @@ ATS testing is schema validation -- the IRS programmatically checks your XML out
 
 **Pipeline**:
 
-| Step | Timeline | Agent Work | Human Work |
-|---|---|---|---|
-| P7.13 Schema acquisition | June 2026 | Download ALL IRS + E-Standards XML schemas. Parse into Zod types (TS) and Pydantic models (Python). Build schema version tracker. | None |
-| P7.14 Local validation engine | June-July 2026 | Build XML generator from tax calculation output. Build local schema validator. Generate all 13 IRS test scenarios programmatically. Iterate until 100% local pass rate. | Review 2-3 generated XML files |
-| P7.15 Test return factory | August 2026 | For each of 42 MeF-participating states, generate a test return with correct state schema piggyback. Validate ALL state attachments locally. Generate coverage report. | Review coverage report |
-| P7.16 ATS submission | October 2026 | Submit all 13 federal scenarios (already locally validated). Monitor acknowledgments. Auto-fix and resubmit any rejections. | Contact e-Help Desk if non-schema issues |
-| P7.17 Communication test | November 2026 | Automated end-to-end transmission test. | Verify acknowledgment |
+
+| Step                          | Timeline       | Agent Work                                                                                                                                                              | Human Work                               |
+| ----------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| P7.13 Schema acquisition      | June 2026      | Download ALL IRS + E-Standards XML schemas. Parse into Zod types (TS) and Pydantic models (Python). Build schema version tracker.                                       | None                                     |
+| P7.14 Local validation engine | June-July 2026 | Build XML generator from tax calculation output. Build local schema validator. Generate all 13 IRS test scenarios programmatically. Iterate until 100% local pass rate. | Review 2-3 generated XML files           |
+| P7.15 Test return factory     | August 2026    | For each of 42 MeF-participating states, generate a test return with correct state schema piggyback. Validate ALL state attachments locally. Generate coverage report.  | Review coverage report                   |
+| P7.16 ATS submission          | October 2026   | Submit all 13 federal scenarios (already locally validated). Monitor acknowledgments. Auto-fix and resubmit any rejections.                                             | Contact e-Help Desk if non-schema issues |
+| P7.17 Communication test      | November 2026  | Automated end-to-end transmission test.                                                                                                                                 | Verify acknowledgment                    |
+
 
 **For CA FTB and MA DOR** (independent systems): Use Column Tax as e-file partner for these 2 states only in Year 1. Apply for their independent transmitter programs in Year 2.
 
@@ -2656,11 +2663,11 @@ The formation wizard says "submit" but most states do NOT have e-filing APIs for
 The Infra Health Monitor (Agent #25) needs a clear alerting hierarchy:
 
 
-| Severity | Condition                                                | Alert Channel                        | Response Time     |
-| -------- | -------------------------------------------------------- | ------------------------------------ | ----------------- |
-| CRITICAL | Render/Vercel DOWN, API 5xx rate >5%                     | Slack #ops-alerts + Email + SMS      | Immediate         |
-| WARNING  | API response time >2s, error rate >1%, disk >80%         | Slack #ops-alerts + Email            | Within 1 hour     |
-| INFO     | Deploy completed, cron job finished, daily health report | Slack #ops-alerts only               | Next business day |
+| Severity | Condition                                                | Alert Channel                   | Response Time     |
+| -------- | -------------------------------------------------------- | ------------------------------- | ----------------- |
+| CRITICAL | Render/Vercel DOWN, API 5xx rate >5%                     | Slack #ops-alerts + Email + SMS | Immediate         |
+| WARNING  | API response time >2s, error rate >1%, disk >80%         | Slack #ops-alerts + Email       | Within 1 hour     |
+| INFO     | Deploy completed, cron job finished, daily health report | Slack #ops-alerts only          | Next business day |
 
 
 **Alert routing**:
