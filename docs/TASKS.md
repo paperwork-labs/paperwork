@@ -15,9 +15,10 @@ Work through these in order. Each task is scoped for one PR. Reference [PRODUCT_
 - March 30: OCR demo working + try-before-signup live — DONE
 - March 11: Sprint 3 complete (auth, filing flow, tax calc, OAuth, CI) — DONE (ahead of schedule)
 - March 8: Config + credential safety system — DONE (PR #14)
-- **NOW**: Sprint 4 — all 50 state tax calculations + PDF generation + production polish
+- **NOW**: Venture Phase 0 (Infrastructure) -- see Venture Phases below
+- **EFIN APPLICATION**: NOT STARTED -- apply THIS WEEK (45-day processing blocks MeF chain)
 - April 5-15: Content push for tax deadline — OCR demo is the marketing asset
-- June 2026: Column Tax sandbox access confirmed (Founder 2 negotiated)
+- June 2026: Column Tax sandbox access (Founder 2 to book demo -- Task B.9 NOT STARTED)
 - October 2026: Column Tax e-file live + IRS ATS testing begins for own transmitter
 - January 2027: Own MeF transmitter live = FREE E-FILE (NORTH STAR)
 
@@ -818,6 +819,8 @@ Rate limiting: 5 req/min on auth via slowapi.
 
 ## Sprint 4: Growth + E-File Prep (June - September)
 
+> **Status**: SUPERSEDED by Venture Phase 7 (FileFree Season Prep). Tasks below are the detailed specs for Phase 7 implementation. See `docs/VENTURE_MASTER_PLAN.md` Section 7 for venture-wide context.
+
 > **Progress: 0/8 complete** | Not started
 
 <details>
@@ -1050,6 +1053,8 @@ The primary monetization screen. See [PRODUCT_SPEC.md](PRODUCT_SPEC.md) "Refund 
 </details>
 ## Sprint 5: October Extension Season Launch
 
+> **Status**: SUPERSEDED by Venture Phase 7 (P7.2 Column Tax integration). Task below is the detailed spec for Phase 7 implementation.
+
 > **Progress: 0/1 complete** | Not started
 
 <details>
@@ -1071,6 +1076,8 @@ The primary monetization screen. See [PRODUCT_SPEC.md](PRODUCT_SPEC.md) "Refund 
 
 </details>
 ## Sprint 6: January 2027 Full Season (October - January)
+
+> **Status**: SUPERSEDED by Venture Phase 8 (FileFree Launch). Tasks below are the detailed specs for Phase 8 implementation. Tasks 5.5 (Accessibility) and 5.6 (Dependent Support) are not yet mapped to venture phases -- add to Phase 7 or Phase 8 when execution approaches.
 
 > **Progress: 0/7 complete** | Not started
 
@@ -1166,42 +1173,53 @@ Add dependent data model, child tax credit calculation. Eventually: 1099 support
 </details>
 ---
 
-## Venture Phases (from Master Plan v1)
+## Venture Phases (from Master Plan v1 -- Stress Tested)
 
-> The following phases cover the full venture (FileFree + LaunchFree + Trinkets + Studio). FileFree Sprints 0-6 above are historical record. Sprint 4 tasks (state tax calcs, PDF polish) fold into Phase 7. See `docs/VENTURE_MASTER_PLAN.md` for full context.
+> The following phases cover the full venture (FileFree + LaunchFree + Trinkets + Studio). FileFree Sprints 0-6 above are historical record -- they contain detailed implementation specs that venture phases reference. Sprint 4 tasks fold into Phase 7. Sprint 5 folds into Phase 7. Sprint 6 folds into Phase 8. Tasks 3.7 (Refund Advance), 3.8 (Affiliate Upgrade), 5.5 (Accessibility), and 5.6 (Dependent Support) are mapped below. See `docs/VENTURE_MASTER_PLAN.md` for full context including stress test findings.
 
-### Phase 0: Infrastructure (This Week)
+### Pre-Code Blockers (Section 0G -- Do Before Phase 1)
 
-| Task | Owner | Status | Details |
-|---|---|---|---|
-| P0.1 Buy domains | Founder 1 | DONE | launchfree.ai + filefree.ai purchased (March 2026) |
-| P0.2 Migrate FileFree domain | Founder 1 | Not started | filefree.tax -> filefree.ai (Vercel, DNS, 301s) |
-| P0.3 Google Workspace | Founder 1 | Not started | Set up on sankalpsharma.com, add secondary domains |
-| P0.4 Google Drive HQ | Founder 1 | Not started | Create Venture HQ folder structure, add GDrive MCP |
-| P0.5 Secure social handles | Founder 1 | Not started | @launchfree on TikTok, IG, X, YouTube |
-| P0.6 Form LLC | Founder 1 | Not started | California LLC (name TBD). File DBAs for FileFree, LaunchFree, Trinkets |
-| P0.7 Migrate DNS subdomains | Founder 1 | Not started | ops/social.sankalpsharma.com -> Hetzner |
-| P0.8 File trademarks | Founder 1 | Not started | FILEFREE + LAUNCHFREE on USPTO Supplemental Register (~$2,100) |
-| P0.9 Legal compliance setup | Founder 1 | Not started | Content Review Gate checklist, update privacy/terms |
+| Action | Owner | Deadline | Status | Blocks |
+|---|---|---|---|---|
+| Decide LLC name | Founder 1 | 2 weeks from now | NOT STARTED | Phase 0.6 -> EIN -> bank -> Stripe -> trademarks |
+| Apply for EFIN (Form 8633) | Founder 1 | THIS WEEK | NOT STARTED | Phase 8 (MeF transmitter). 45-day processing. |
+| Get cyber liability insurance | Founder 1 | Before first SSN collected | NOT STARTED | Phase 7 (FileFree launch). Non-negotiable. |
+| Draft data breach response plan | Founder 1 | Before first SSN collected | NOT STARTED | Phase 7. SANS/NIST template. |
+| Startup attorney consultation | Founder 1 | Before Phase 3 | NOT STARTED | Phase 3 (LaunchFree). UPL + RA questions. |
+| Submit self-serve affiliate apps | Founder 1 | April 2026 | NOT STARTED | Plan B revenue. Online forms, no calls needed. |
 
-### Phase 1: Monorepo Restructure (Week 2-3)
+### Phase 0: Infrastructure (Weeks 1-3, Realistic)
 
-| Task | Status | Details |
-|---|---|---|
-| P1.1 Init pnpm workspace | Not started | Root package.json, pnpm-workspace.yaml |
-| P1.2 Extract packages/ui | Not started | 22 shadcn components + utils. 4-theme system (filefree, launchfree, studio, trinkets) |
-| P1.3 Extract packages/auth | Not started | use-auth, use-idle-timeout, api.ts, session-timeout-dialog |
-| P1.4 Extract packages/analytics | Not started | posthog.ts, attribution.ts, posthog-provider |
-| P1.5 Move web/ -> apps/filefree/ | Not started | Update imports to @venture/* packages |
-| P1.6 Move api/ -> apis/filefree/ | Not started | Update compose, render.yaml, Makefile paths |
-| P1.7 Scaffold apps/launchfree/ | Not started | Copy structure, strip product-specific pages |
-| P1.8 Scaffold apis/launchfree/ | Not started | Copy base patterns (auth, repo, config) |
-| P1.9 Scaffold apps/studio/ | Not started | Next.js app for sankalpsharma.com |
-| P1.9b Scaffold apps/trinkets/ | Not started | Next.js SSG, Vercel free tier, AdSense placeholder |
-| P1.10 Update infra | Not started | compose.dev.yaml, render.yaml, Makefile, CI for monorepo |
-| P1.11 Verify | Not started | All 4 dev commands work |
+| Task | Owner | Status | Branch | Details |
+|---|---|---|---|---|
+| P0.1 Buy domains | Founder 1 | DONE | N/A | launchfree.ai + filefree.ai purchased (March 2026) |
+| P0.2 Migrate FileFree domain | Founder 1 | Not started | `chore/domain-migration` | filefree.tax -> filefree.ai (Vercel, DNS, 301s) |
+| P0.3 Google Workspace | Founder 1 | Not started | N/A | Set up on sankalpsharma.com, add secondary domains, SPF/DKIM/DMARC |
+| P0.4 Google Drive HQ | Founder 1 | Not started | N/A | Create Venture HQ folder structure, add GDrive MCP |
+| P0.5 Secure social handles | Founder 1 | Not started | N/A | @launchfree on TikTok, IG, X, YouTube |
+| P0.6 Form LLC | Founder 1 | BLOCKED | N/A | California LLC (name TBD). File DBAs. Blocked on LLC name decision. |
+| P0.7 Migrate DNS subdomains | Founder 1 | Not started | `chore/dns-migration` | ops/social.sankalpsharma.com -> Hetzner |
+| P0.8 File trademarks | Founder 1 | DEFERRED | N/A | Needs specimen of use (after product launch) |
+| P0.9 Legal compliance setup | Founder 1 | Not started | `chore/legal-compliance` | Content Review Gate checklist, update privacy/terms per Section 0C |
 
-### Phase 1.5: First Trinket + Agent Pipeline Test (Week 3-4)
+### Phase 1: Monorepo Restructure (Weeks 3-8, Realistic)
+
+| Task | Status | Branch | Details | Depends On |
+|---|---|---|---|---|
+| P1.1 Init pnpm workspace | Not started | `feat/monorepo-init` | Root package.json, pnpm-workspace.yaml, .npmrc | None |
+| P1.2 Extract packages/ui | Not started | `feat/shared-ui` | 22 shadcn components + utils. 4-theme system (filefree, launchfree, studio, trinkets) | P1.1 |
+| P1.3 Extract packages/auth | Not started | `feat/shared-auth` | use-auth, use-idle-timeout, api.ts, session-timeout-dialog | P1.1 |
+| P1.4 Extract packages/analytics | Not started | `feat/shared-analytics` | posthog.ts, attribution.ts, posthog-provider | P1.1 |
+| P1.5 Move web/ -> apps/filefree/ | Not started | `feat/move-filefree` | Update imports to @venture/* packages | P1.2, P1.3, P1.4 |
+| P1.6 Move api/ -> apis/filefree/ | Not started | `feat/move-filefree-api` | Update compose, render.yaml, Makefile paths | P1.5 |
+| P1.7 Scaffold apps/launchfree/ | Not started | `feat/scaffold-launchfree` | Copy structure, strip product-specific pages, teal-cyan theme | P1.5 |
+| P1.8 Scaffold apis/launchfree/ | Not started | `feat/scaffold-launchfree-api` | Copy base patterns (auth, repo, config) | P1.6 |
+| P1.9 Scaffold apps/studio/ | Not started | `feat/scaffold-studio` | Next.js app for sankalpsharma.com + docs viewer | P1.5 |
+| P1.9b Scaffold apps/trinkets/ | Not started | `feat/scaffold-trinkets` | Next.js SSG, Vercel free tier, AdSense placeholder | P1.5 |
+| P1.10 Update infra | Not started | `feat/monorepo-infra` | compose.dev.yaml, render.yaml, Makefile, CI (dorny/paths-filter) | P1.6-P1.9b |
+| P1.11 Verify | Not started | N/A | All 6 dev processes run on correct ports: 3001-3004, 8001-8002 | P1.10 |
+
+### Phase 1.5: First Trinket + Agent Pipeline Test (Can defer if behind)
 
 | Task | Status | Details |
 |---|---|---|
@@ -1211,7 +1229,7 @@ Add dependent data model, child tax credit calculation. Eventually: 1099 support
 | P1.5.4 Test Trinket Factory pipeline | Not started | 3-stage agent pipeline validation |
 | P1.5.5 Deploy to Vercel | Not started | SSG, AdSense, SEO verification |
 
-### Phase 2: 50-State Data Infrastructure (Week 4-7)
+### Phase 2: 50-State Data Infrastructure (Weeks 7-12, Realistic)
 
 | Task | Status | Details |
 |---|---|---|
@@ -1226,22 +1244,25 @@ Add dependent data model, child tax credit calculation. Eventually: 1099 support
 | P2.9 n8n: Deep Validator | Not started | Monthly cron: cross-validate all 50 states |
 | P2.10 n8n: Annual Update | Not started | October cron: full federal + state refresh |
 
-### Phase 3: LaunchFree MVP (Week 6-10)
+### Phase 3: LaunchFree MVP (Weeks 10-20, Realistic -- 8-12 weeks)
+
+Note: "Submit LLC" is a misnomer for most states. See master plan "LaunchFree Submit LLC Reality Check" -- most states require mail filing or manual portal entry. Our value is document preparation + AI state comparison + compliance calendar, not auto-submission.
 
 | Task | Status | Details |
 |---|---|---|
 | P3.1 LaunchFree landing page | Not started | Hero, how it works, state selector, pricing, trust |
-| P3.2 Formation wizard | Not started | State selection -> name check -> details -> review -> submit |
+| P3.2 Formation wizard | Not started | State selection -> name check -> details -> review -> prepare docs (NOT "submit" for most states) |
 | P3.3 Articles of Organization PDF | Not started | @react-pdf/renderer, state-specific templates |
 | P3.4 Backend: formation service | Not started | Create formation, store state, generate PDF, track status |
 | P3.5 RA credit system | Not started | $49/yr base, earn credits via partner actions |
 | P3.6 Stripe integration | Not started | RA subscription, one-time formation fees |
 | P3.7 LaunchFree dashboard | Not started | LLC status, compliance checklist, RA status, next steps |
-| P3.8 Legal pages | Not started | Privacy policy, ToS (adapt from FileFree) |
+| P3.8 Legal pages | Not started | Privacy policy, ToS (adapt from FileFree). Updated consent language per Section 0C Legal Risk Matrix. |
+| P3.9 Operating agreement templates | Not started | State-specific TEMPLATES (NOT AI-generated). Attorney-reviewed PDFs. AI explains clauses only. See Section 0C UPL remediation. |
 
-### Phase 4: Command Center (Week 8-14, parallel with Phase 3)
+### Phase 4: Command Center (Parallel with Phase 3 -- Tier 1 only during Phase 3)
 
-**Tier 1 (build first):**
+**Tier 1 (build first -- enables daily operations):**
 
 | Task | Status | Details |
 |---|---|---|
@@ -1253,7 +1274,7 @@ Add dependent data model, child tax credit calculation. Eventually: 1099 support
 | P4.6 Infrastructure health | Not started | Render + Vercel + Hetzner + Neon + Upstash APIs |
 | P4.14 Docs viewer | Not started | `/docs/*` public -- renders company markdown as readable HTML via react-markdown |
 
-**Tier 2 (build next):**
+**Tier 2 (build post-LaunchFree launch):**
 
 | Task | Status | Details |
 |---|---|---|
@@ -1270,12 +1291,12 @@ Add dependent data model, child tax credit calculation. Eventually: 1099 support
 | P4.12 Campaign control | Not started | Campaign tables in studio DB |
 | P4.13 User intelligence | Not started | Venture identity DB + cross-product queries |
 
-### Phase 5: User Intelligence Platform (Week 10-12)
+### Phase 5: User Intelligence Platform (Deferrable -- can launch LaunchFree without it)
 
 | Task | Status | Details |
 |---|---|---|
 | P5.1 Venture identity data model | Not started | VentureIdentity, IdentityProduct, UserEvent tables |
-| P5.2 Cross-product opt-in consent | Not started | CAN-SPAM compliant checkbox |
+| P5.2 Cross-product opt-in consent | Not started | Updated consent language from Section 0C Legal Risk Matrix. Per-brand unsubscribe. |
 | P5.3 packages/cross-sell engine | Not started | Rules-based recommendation engine |
 | P5.4 packages/email templates | Not started | React Email: onboarding + cross-sell + partner offers |
 | P5.5 LaunchFree onboarding emails | Not started | 5-email welcome series via n8n + Gmail |
@@ -1283,49 +1304,65 @@ Add dependent data model, child tax credit calculation. Eventually: 1099 support
 | P5.7 User event tracking | Not started | Emit UserEvents on key milestones |
 | P5.8 Campaign analytics + admin | Not started | PostHog events, UTM tracking, campaign performance |
 
-### Phase 6: Agent Restructure + Social Pipeline (Week 10-14)
+### Phase 6: Agent Restructure + Social Pipeline (Right-sized -- see stress test)
 
 | Task | Status | Details |
 |---|---|---|
 | P6.1 Update 9 venture-level personas | Not started | Expand to venture-wide scope |
-| P6.2 Split 3 personas into product-specific | Not started | social, brand, growth -> product splits |
-| P6.3 Create 6 new personas | Not started | formation-domain, launchfree-social/growth/brand, studio, agent-ops |
+| P6.2 Split 3 personas (when triggered) | Not started | social, brand, growth -> product splits. Build trigger: LaunchFree launched + 500 users. |
+| P6.3 Create 2 new personas NOW | Not started | formation-domain.mdc, studio.mdc (needed for Phase 3+4) |
+| P6.3b Create 4 personas LATER | Not started | launchfree-social/growth/brand, agent-ops. Build when metrics justify. |
 | P6.4 Update 6 existing n8n workflows | Not started | Rename, output to GDrive instead of Notion |
-| P6.5 Build faceless content pipeline | Not started | n8n: topics -> GPT script -> ElevenLabs -> video -> Postiz |
-| P6.6 Build 12 new n8n workflows | Not started | Support bots, validators, intel, analytics, infra, campaigns |
+| P6.5 Build faceless content pipeline | Not started | n8n: topics -> GPT script -> ElevenLabs -> video -> Postiz. Cost: ~$15-17/mo. |
+| P6.6 Build n8n workflows (triggered) | Not started | Build only when metrics justify. See master plan Section 6I-3 for build triggers. |
 | P6.7 Migrate Notion to Google Drive | Not started | Move docs, update n8n output nodes |
 
-### Phase 7: FileFree Season Prep (October 2026)
+### Phase 7: FileFree Season Prep (October 2026 -- HARD DEADLINE)
 
-| Task | Status | Details |
-|---|---|---|
-| P7.1 Resume FileFree Sprint 4 | Not started | All 50 state tax calcs, PDF polish |
-| P7.2 Column Tax integration | Not started | SDK integration, sandbox testing |
-| P7.3 TaxAudit partnership | Not started | White-label audit shield (if deal closed) |
-| P7.4 Refund Plan screen | Not started | HYSA referrals, financial product recs, audit shield |
-| P7.5 Transactional emails | Not started | Welcome, filing confirmation, abandonment drip |
-| P7.6 FileFree -> LaunchFree campaigns | Not started | Post-filing cross-sell for biz income users |
-| P7.7 Marketing page refresh | Not started | Social proof, filing counter, comparison table |
+Sprint 4 tasks (3.1-3.8) contain the detailed implementation specs for these items.
 
-### Phase 8: FileFree Launch (January 2027)
-
-| Task | Status | Details |
-|---|---|---|
-| P8.1 MeF transmitter | Not started | Build XML generator, pass IRS ATS testing (Oct), comms test (Nov) |
-| P8.2 E-file go-live | Not started | Switch from Column Tax to own transmitter |
-| P8.3 Tax Optimization Plan | Not started | Stripe, $29/yr, premium dashboard |
-| P8.4 Product Hunt + HN launch | Not started | Coordinate with filing season start |
-| P8.5 Paid amplification | Not started | TikTok Spark Ads + Meta boost on winners |
-
-### Background Tasks (Continuous)
-
-| Task | Owner | Status | Timeline |
+| Task | Status | Details | Sprint Reference |
 |---|---|---|---|
-| EFIN application (Form 8633) | Founder 1 | Not started | Apply NOW, 45-day processing |
-| Column Tax partnership | Founder 2 | Not started | Book demo, negotiate by June 2026 |
-| TaxAudit partnership | Founder 2 | Not started | 3-6 month lead time, start Q2 2026 |
-| HYSA affiliate applications | Founder 2 | Not started | Marcus, Wealthfront via Impact |
-| MeF certification prep | Founder 1 | Not started | XML generator June, ATS testing October |
+| P7.1 Resume FileFree Sprint 4 | Not started | All 50 state tax calcs (data from P2.3), PDF polish | Sprint 4 Task 3.4 |
+| P7.2 Column Tax integration | Not started | SDK integration, sandbox testing | Sprint 4 Task 3.3 |
+| P7.3 TaxAudit partnership | Not started | White-label audit shield (if deal closed) | -- |
+| P7.4 Refund Plan screen | Not started | HYSA referrals, financial product recs, audit shield | Sprint 4 Task 3.6 |
+| P7.5 Transactional emails | Not started | Welcome, filing confirmation, abandonment drip | Sprint 4 Task 3.5 |
+| P7.6 FileFree -> LaunchFree campaigns | Not started | Post-filing cross-sell for biz income users | -- |
+| P7.7 Marketing page refresh | Not started | Social proof, filing counter, comparison table | Sprint 4 Task 3.1 |
+| P7.8 Refund advance partner (if ready) | Not started | Integration with lending partner (if Founder 2 closed deal) | Sprint 4 Task 3.7 |
+| P7.9 Accessibility audit | Not started | WCAG 2.1 AA. Keyboard nav, screen readers, contrast, axe-core in CI. | Sprint 6 Task 5.5 |
+| P7.10 Referral system + viral card | Not started | Tax receipt viral card, referral tracking | Sprint 4 Task 3.2 |
+
+### Phase 8: FileFree Launch (January 2027 -- HARD DEADLINE)
+
+Sprint 6 tasks (5.1-5.7) contain the detailed implementation specs for these items.
+
+| Task | Status | Details | Sprint Reference |
+|---|---|---|---|
+| P8.1 MeF transmitter | Not started | Build XML generator, pass IRS ATS testing (Oct), comms test (Nov). Must start XML generator by June 2026. | Sprint 6 Task 5.7 |
+| P8.2 E-file go-live | Not started | Switch from Column Tax to own transmitter | Sprint 5 Task 4.1 |
+| P8.3 Tax Optimization Plan | Not started | Stripe, $29/yr, premium dashboard | Sprint 6 Task 5.1 |
+| P8.4 Product Hunt + HN launch | Not started | Coordinate with filing season start. Also BetaList, Indie Hackers per Section 5K. | Sprint 6 Task 5.3 |
+| P8.5 Paid amplification | Not started | TikTok Spark Ads ($200-500/mo) + Meta boost on winners | Section 5K |
+| P8.6 Dependent support | Not started | Dependent data model, child tax credit calculation. 1099 support. | Sprint 6 Task 5.6 |
+| P8.7 Affiliate-to-direct upgrade | Not started | Upgrade top affiliate to direct partnership when 5K+ users. | Sprint 4 Task 3.8 |
+
+### Background Tasks (Continuous -- with Hard Deadlines)
+
+| Task | Owner | Deadline | Status | Notes |
+|---|---|---|---|---|
+| EFIN application (Form 8633) | Founder 1 | THIS WEEK | NOT STARTED | 45-day processing. Blocks MeF chain. |
+| Self-serve affiliate apps | Founder 1 | April 2026 | NOT STARTED | Plan B revenue. Impact.com, CJ. |
+| Cyber liability insurance | Founder 1 | Before first SSN | NOT STARTED | $1,500-3,000/yr. Non-negotiable. |
+| Data breach response plan | Founder 1 | Before first SSN | NOT STARTED | SANS/NIST template. |
+| Attorney consultation | Founder 1 | Before Phase 3 | NOT STARTED | UPL + RA questions. ~$300-500. |
+| Column Tax partnership | Founder 2 | June 2026 | NOT STARTED | Book demo, negotiate sandbox access. |
+| TaxAudit partnership | Founder 2 | September 2026 | NOT STARTED | 3-6 month lead time. |
+| Banking partner (at least 1) | Either | October 2026 | NOT STARTED | For refund routing in first tax season. |
+| MeF certification prep | Founder 1 | Start June 2026 | NOT STARTED | XML generator -> ATS (Oct) -> Comms (Nov). |
+| Pre-launch audience building | Founder 1 | Ongoing NOW | NOT STARTED | SEO blog posts, Reddit, waitlist growth per Section 5K. |
+| TikTok Spark Ads | Founder 1 | At LaunchFree launch | NOT STARTED | $200-500/mo. |
 
 ---
 

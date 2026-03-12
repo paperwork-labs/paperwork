@@ -27,7 +27,19 @@
 | Google Workspace | $6/mo | Operations | sankalpsharma.com + aliases |
 | Domain renewals (avg) | ~$20/mo | Domain | Spread across year |
 | OpenAI API (dev usage) | ~$10/mo | AI/ML | GPT-4o, GPT-4o-mini, DALL-E |
-| **TOTAL MONTHLY** | **~$56/mo** | | |
+| ElevenLabs (voice clone) | $5/mo | Content | Starter plan. Apply for startup grant (33M chars free/12mo). |
+| Cyber liability insurance (amortized) | ~$150/mo | Legal/Insurance | ~$1,800/yr for $1M E&O + cyber coverage. GET THIS BEFORE FIRST SSN. |
+| CA franchise tax (amortized) | ~$67/mo | Legal | $800/yr minimum, due April 15 annually |
+| **TOTAL MONTHLY (REAL)** | **~$278/mo** | | |
+
+### At-Scale Variable Costs (not yet incurred)
+
+| Service | Cost | Trigger |
+|---|---|---|
+| Stripe processing fees | 2.9% + $0.30/txn | First paid transaction |
+| AI OCR at scale (Cloud Vision + GPT) | ~$0.005-0.02/doc | >1K OCR pages/mo |
+| Social content pipeline (ElevenLabs + Hetzner FFmpeg) | ~$15-17/mo | Full video pipeline active |
+| Partner wholesale costs (RA, audit shield) | Varies by partner | First partner deal closed |
 
 ### Free Tier Services (no cost until scale)
 
@@ -44,28 +56,63 @@
 
 | Metric | Value |
 |---|---|
-| Total monthly burn | ~$56/mo |
+| Total monthly burn (real) | ~$278/mo |
+| Annual fixed costs | ~$3,336/yr (monthly) + $800/yr franchise tax = ~$4,136/yr |
 | Cash invested to date | ~$440 (domains) |
-| Planned one-time expenses | ~$2,249-$2,294 (LLC + trademarks) |
+| Planned one-time expenses | ~$2,689-$2,734 (LLC + trademarks) + ~$300-500 (attorney consult) + ~$1,800 (first year cyber insurance) = ~$4,789-$5,034 |
 | Months of runway at $0 revenue | Indefinite (bootstrapped, costs covered by founder) |
 
-## Revenue Projections (from Master Plan Section 1)
+## Revenue Projections (from Master Plan Section 1 — Stress Tested)
 
-| Period | Conservative | Moderate | Aggressive |
+| Period | Pessimistic | Moderate | Aggressive |
 |---|---|---|---|
-| LaunchFree H2 2026 | $10K | $18K | $25K |
-| FileFree Jan-Apr 2027 | $47K | $94K | $141K |
-| **Year 1 Total** | **$57K** | **$112K** | **$166K** |
-| Year 2 (2028) | $300K | $450K | $600K |
+| LaunchFree H2 2026 | $4K | $15.5K | $25K |
+| FileFree Jan-Apr 2027 | $7K | $29K | $150K |
+| **Year 1 Total** | **$11K** | **$44.5K** | **$175K** |
+| Year 2 (2028) | $50K | $200K | $600K |
 
-## Expense Log
+**Plan B (zero partnerships)**: $3.5K-19K Year 1 from Tax Optimization Plan direct sales + AdSense + self-serve affiliates only. Survivable at $278/mo burn.
+
+## Monthly Actuals
+
+Track ALL venture expenses by category. EA agent logs expenses as they occur. CFO agent analyzes monthly trends.
+
+### March 2026
+
+| Category | Item | Amount | Notes |
+|---|---|---|---|
+| **Domain** | filefree.ai (2yr) | $220 | Purchased |
+| **Domain** | launchfree.ai (2yr) | $220 | Purchased |
+| **SaaS** | Cursor (IDE) | TBD | Track monthly subscription cost |
+| **AI/ML** | OpenAI API usage | TBD | Track from platform.openai.com/usage |
+| **AI/ML** | Anthropic API usage | TBD | Track from console.anthropic.com |
+| **Infra** | Hetzner VPS | $6 | |
+| **Infra** | Render (FileFree API) | $7 | |
+| **Ops** | Google Workspace | $6 | |
+| **TOTAL** | | TBD | Fill in at month end |
+
+### Categories
+
+| Category | What Goes Here | Who Logs | Who Analyzes |
+|---|---|---|---|
+| Infra | Hosting, servers, databases, Redis, CDN | EA | CFO |
+| AI/ML | API costs (OpenAI, Anthropic, Google Cloud Vision, ElevenLabs) | EA | AI Ops Lead |
+| Domain | Domain registrations, renewals | EA | CFO |
+| SaaS | Developer tools (Cursor, GitHub, Postiz, Sentry, PostHog) | EA | CFO |
+| Legal | LLC fees, trademarks, attorney consults, insurance | EA | Legal + CFO |
+| Marketing | Paid ads (Spark Ads, Meta boost), content production | EA | Growth |
+| Content | Voiceover, video production, stock assets | EA | Growth |
+
+*Copy the March template each month. Track everything. No expense is too small to log.*
+
+## Expense Log (Chronological)
 
 Track all purchases here as they happen. EA agent updates this section.
 
-| Date | Description | Amount | Receipt/Reference |
-|---|---|---|---|
-| Mar 2026 | filefree.ai domain registration (2yr) | ~$220 | Registrar confirmation |
-| Mar 2026 | launchfree.ai domain registration (2yr) | ~$220 | Registrar confirmation |
+| Date | Description | Amount | Category | Receipt/Reference |
+|---|---|---|---|---|
+| Mar 2026 | filefree.ai domain registration (2yr) | ~$220 | Domain | Registrar confirmation |
+| Mar 2026 | launchfree.ai domain registration (2yr) | ~$220 | Domain | Registrar confirmation |
 
 ---
 

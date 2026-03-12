@@ -164,7 +164,7 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 
 ### D16: Co-Founder Structure — Product/Eng + Partnerships/Revenue (2026-03-09)
 - **Context**: Solo founder risk was the #1 strategic risk (CRITICAL severity). Partnership-dependent revenue streams (refund routing + financial referrals) account for 77% of Scenario B revenue but require dedicated relationship management that a solo engineer would struggle to execute.
-- **Decision**: Two co-founder structure. Founder 1 owns product, engineering, infrastructure, tax calculations, OCR pipeline, content creation, and IRS certification. Founder 2 (FAANG partnerships background) owns partner outreach, deal negotiation, and revenue stream activation at 2-3 hours/week, supported by AI persona (partnerships.mdc).
+- **Decision**: Two co-founder structure. Founder 1 owns product, engineering, infrastructure, tax calculations, OCR pipeline, content creation, and IRS certification. Founder 2 (FAANG partnerships background) owns partner outreach, deal negotiation, and revenue stream activation on an outcome-driven basis, supported by AI persona (partnerships.mdc).
 - **Alternatives**: Solo founder + hire later, solo founder + contractor for BD, single founder doing everything.
 - **Rationale**: The delta between Scenario A (no partnerships, $438K) and Scenario B (partnerships in place, $805K) is $367K at 100K users. Having a dedicated partnerships person with enterprise deal experience directly addresses the most fragile revenue assumption (refund routing attach rate) and reduces the solo founder burnout risk from CRITICAL to HIGH. Her FAANG experience means she knows how enterprise partnership agreements, rev-share negotiations, and compliance work.
 - **Reversibility**: Easy. Roles are cleanly separated. Either founder can operate independently if needed.
@@ -353,3 +353,45 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 - **Decision**: Partner RA with CorpNet volume pricing. Charge $99/yr initially (cheaper than ZenBusiness $199, LegalZoom $299). Drop to $79/yr at 500+ users, $49/yr at 1,000+ users. DIY RA deferred indefinitely.
 - **Alternatives**: DIY RA (rejected: requires 50-state physical addresses + E&O insurance), flat $49/yr from day 1 (rejected: not profitable until 1,000+ volume).
 - **Reversibility**: Can switch RA partners or adjust pricing at any time.
+
+### D42 — Agent Org Chart: Full Company from Day One (2026-03-12)
+- **Context**: Stress test recommended right-sizing agents from 43 to 20. Founder pushed back -- agents are employees and the company structure should be complete.
+- **Decision**: All 43 agents (24 Cursor personas + 19 n8n workflows) defined in a hierarchical org chart from day one. Agents have Active/Standby/Planned status. Standby = system prompt ready but not deployed. Full governance protocol: multi-agent consensus with APPROVE/CONCERN/BLOCK verdicts and escalation to parent nodes.
+- **Alternatives**: Right-size to 20 with build triggers (rejected: doesn't model a real company), flat structure with no governance (rejected: no checks and balances).
+- **Reversibility**: Can always defer/shelve Planned agents. Governance protocol is process, not infrastructure.
+
+### D43 — FileFree Form Coverage: All 50 States + Major Schedules at Launch (2026-03-12)
+- **Context**: Previous plan suggested launching with top 10-15 states. Founder insisted on all 50.
+- **Decision**: January 2027 launch covers 1040 + Schedule 1 + B + C + 1099-NEC/INT/DIV + dependents + ALL 50 state returns. Mid-season (Feb 2027) adds Schedule A + D. Year 2 adds E, SE, HSA, K-1. Data-driven state engine makes marginal effort per state minimal.
+- **Alternatives**: Top 10 states only (rejected: marginal effort delta not worth it), simple returns only (rejected: limits TAM significantly).
+- **Reversibility**: Can always delay specific schedules if MeF testing scope is too large.
+
+### D44 — Quality-First AI Model Philosophy (2026-03-12)
+- **Context**: Original routing principle was "cheapest model that works." Founder prefers quality over cost.
+- **Decision**: Use the BEST model for the task. Only downgrade when cheaper model produces EQUIVALENT quality, not just "good enough." GPT-5 should be evaluated immediately upon release.
+- **Alternatives**: Cost-first routing (rejected: founder willing to pay for quality), single premium model for everything (rejected: wasteful for bulk extraction).
+- **Reversibility**: Cost philosophy is a guideline, easily adjusted.
+
+### D45 — Founder 2 Framing: Outcome-Driven (2026-03-12)
+- **Context**: Plan specified "2-3 hrs/wk" for Founder 2. This felt prescriptive and limiting.
+- **Decision**: Removed all time-commitment references. Founder 2 is framed as "outcome-driven, flexible commitment" -- AI handles all prep, Founder 2 does what requires a human (calls, emails, negotiations).
+- **Alternatives**: Keep time specification (rejected: unnecessarily constraining).
+- **Reversibility**: Can always add time expectations back if needed.
+
+### D46 — AI Branding: Lead with Outcomes, Not Technology (2026-03-12)
+- **Context**: Question of whether promoting "AI-powered" helps or hurts trust in financial services.
+- **Decision**: Lead with outcomes ("free, 5 minutes, accurate"), not "AI-powered." Mention AI when it explains WHY something is free/fast, but never as headline value prop. Competitors (Credit Karma, FreeTaxUSA) barely mention AI -- users care about results.
+- **Alternatives**: AI-forward branding (rejected: research shows it hurts trust for advice/judgment), hide AI entirely (rejected: misses speed/cost explanation opportunity).
+- **Reversibility**: Easy to adjust messaging emphasis.
+
+### D47 — Slack as Agent Communication Hub (2026-03-12)
+- **Context**: Agents need persistent two-way communication with founder beyond ephemeral Cursor chat.
+- **Decision**: Slack as central company hub with 10 functional channels. n8n posts agent output to channels. Founder can reply/command in channels. Professional email aliases on Google Workspace (filefree.tax, filefree.ai, launchfree.ai) route to founder inbox.
+- **Alternatives**: Discord (rejected: already have Slack workspace), Notion comments (rejected: wife can't use it easily), custom dashboard (rejected: unnecessary build).
+- **Reversibility**: Channel structure is config, easy to reorganize.
+
+### D48 — Side Projects Evaluation (2026-03-12)
+- **Context**: Founder has 4 side projects (axiomfolio, replyrunner, jointly, fittingroom) that needed evaluation.
+- **Decision**: ReplyRunner and FittingRoom are NO-GO (low alignment, crowded/complex markets). Axiomfolio and Jointly are DEFER to Year 2+ (good alignment but require Plaid integration costs that aren't viable pre-revenue). Full analysis in docs/FOUNDER_SIDE_PROJECTS.md.
+- **Alternatives**: Build one alongside main products (rejected: context-switching risk), abandon all (rejected: axiomfolio and jointly have genuine venture alignment).
+- **Reversibility**: Can revisit deferred projects anytime when revenue supports Plaid costs.

@@ -6,6 +6,12 @@
 
 This is a living document. The AI Ops Lead updates it monthly with actual usage data and whenever a model swap occurs.
 
+## Quality-First Routing Philosophy
+
+Use the **best model for the task**. Only downgrade when a cheaper model produces **equivalent quality** -- not "good enough," equivalent. The founder is willing to pay more for better results. Cost optimization happens by routing to the right tier, not by forcing cheaper models where quality suffers.
+
+**GPT-5 readiness**: When GPT-5 releases, evaluate immediately. If it outperforms current assignments at comparable cost, swap without waiting for a scheduled review cycle. The AI Ops Lead should generate a swap recommendation within 48 hours of any major model release.
+
 ---
 
 ## Current Model Assignments

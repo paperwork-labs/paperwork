@@ -142,7 +142,7 @@ These are self-serve applications. Fill out a form, describe the audience, submi
 
 ### Your Time Commitment
 
-**2-3 hours per week.** An AI persona handles all research, drafting, and prep work. You only do what requires a human: send emails, take calls, negotiate terms, leverage your network.
+**Flexible, outcome-driven commitment.** An AI persona handles all research, drafting, and prep work. You only do what requires a human: send emails, take calls, negotiate terms, leverage your network.
 
 - Monday (30 min): Review pipeline, approve/send outreach
 - Wednesday (60 min): Partnership calls

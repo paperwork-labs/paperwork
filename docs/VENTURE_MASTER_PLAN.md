@@ -1,5 +1,4 @@
-> **Source of truth**: This file (`docs/VENTURE_MASTER_PLAN.md`) is the authoritative copy. The `.cursor/plans/` copy may be stale. All edits should happen here and be committed to git.
-
+Source of truth: .cursor/plans/venture_master_plan_v1_61fe6d89.plan.md (Cursor plan system)
 # Venture Master Plan v1
 
 **Date**: March 12, 2026 | **Supersedes**: All prior strategy plans including deep_research_tightening (5 plans archived)
@@ -8,7 +7,7 @@
 
 ## 0. Venture Overview
 
-**Model**: One human + AI agent workforce + partnerships co-founder (2-3 hrs/wk)
+**Model**: One human + AI agent workforce + partnerships co-founder (outcome-driven, flexible commitment)
 
 **Products**:
 
@@ -26,7 +25,7 @@
 
 **AI Model Strategy**: 9 models across 7 roles. See Section 0E for authoritative routing registry (owned by AI Ops Lead persona).
 
-**Monthly burn**: ~$46/mo (Hetzner $6 + Render x2 $14 + Google Workspace $6 + domains ~$20 + OpenAI ~$10). Vercel/Neon/Upstash all free tier.
+**Monthly burn (real)**: ~~$120/mo recurring + $800/yr CA franchise tax. Breakdown: Hetzner $6 + Render x2 $14 + Google Workspace $6 + domains ~$20 + OpenAI ~$10 + ElevenLabs $5 + cyber insurance ~$150 (est. $1,800/yr amortized) + CA franchise tax ~$67 (est. $800/yr amortized). At scale add: Stripe fees (2.9%+$0.30 per transaction), variable AI costs (~~$0.005-0.02/OCR doc, ~$15-17/mo social pipeline), partner wholesale costs. Vercel/Neon/Upstash all free tier until scale triggers listed in FINANCIALS.md.
 
 ---
 
@@ -96,17 +95,19 @@ Founder is exploring additional options via separate brainstorming session. Name
 
 The original plan recommended Wyoming. After analysis, California is the clear choice for a CA-resident founder:
 
-| Factor | Wyoming | California |
-|---|---|---|
-| Filing fee | $100 | $70 |
-| Annual report | $60/yr | $0 (no annual report required) |
-| Franchise tax | $0 (but CA charges you anyway since founder is CA resident) | $800/yr (first year exempt for new LLCs) |
-| RA cost | $25-29/yr | $49-125/yr |
-| Privacy | Excellent (no owner disclosure) | Poor (public disclosure required) |
-| Foreign registration in CA | Required (~$70 extra) | Not needed |
-| Asset protection | Strong (charging order protection for single-member) | Weak |
-| **Year 1 total** | **~$1,094** (with CA foreign reg + franchise tax) | **~$119** (first year franchise exempt) |
-| **Year 2+ total** | **~$985/yr** | **~$849/yr** |
+
+| Factor                     | Wyoming                                                     | California                               |
+| -------------------------- | ----------------------------------------------------------- | ---------------------------------------- |
+| Filing fee                 | $100                                                        | $70                                      |
+| Annual report              | $60/yr                                                      | $0 (no annual report required)           |
+| Franchise tax              | $0 (but CA charges you anyway since founder is CA resident) | $800/yr (first year exempt for new LLCs) |
+| RA cost                    | $25-29/yr                                                   | $49-125/yr                               |
+| Privacy                    | Excellent (no owner disclosure)                             | Poor (public disclosure required)        |
+| Foreign registration in CA | Required (~$70 extra)                                       | Not needed                               |
+| Asset protection           | Strong (charging order protection for single-member)        | Weak                                     |
+| **Year 1 total**           | **~$1,094** (with CA foreign reg + franchise tax)           | **~$119** (first year franchise exempt)  |
+| **Year 2+ total**          | **~$985/yr**                                                | **~$849/yr**                             |
+
 
 **Bottom line**: Wyoming's $0 income tax doesn't help a CA resident -- California taxes all your income regardless of where the LLC is formed. Wyoming would require foreign LLC registration in CA ($70), double RA fees, and double compliance. The only real Wyoming advantages (privacy, charging order protection) don't justify ~$975/yr extra pre-revenue.
 
@@ -205,7 +206,7 @@ After 5 years of commercial use: petition to move to Principal Register with evi
 
 **Cross-Sell Email Compliance:**
 
-1. Opt-in checkbox (unchecked by default) on every signup form: "I'd like to hear about other [LLC Name] products"
+1. Opt-in checkbox (unchecked by default) on every signup form: "I consent to [LLC Name] using my information across FileFree, LaunchFree, and related services to send me product updates and recommendations. I can unsubscribe from any product at any time."
 2. Every email includes: physical business address (CAN-SPAM), one-click unsubscribe, clear sender identification
 3. Cross-product emails only sent to users who opted in
 4. FTC disclosure on any partner/affiliate recommendation: "We may earn a commission if you sign up through this link."
@@ -221,6 +222,52 @@ Every piece of user-facing content (email, social post, in-app message, landing 
 - FTC affiliate disclosure present if recommending partner products
 - CAN-SPAM compliant (unsubscribe, physical address, honest subject line)
 - No reference to filefree.com anywhere
+
+### Legal Risk Matrix (Stress Test Addition)
+
+
+| Risk                                              | Severity | Gap                                                                                                                                                                                                                 | Remediation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **50-state data errors -> incorrect LLC filings** | CRITICAL | Disclaimers cover opinions, not facts. Wrong filing fees or deadlines = negligence exposure even with disclaimers.                                                                                                  | Add source-linking on every data point ("Fee: $70, source: CA SOS, last verified: 2026-03-01"). Add prominent "last verified" date on every state page. Add user confirmation step ("I confirm I've verified this fee on [state SOS link]"). Add ToS data accuracy disclaimer: "Filing fees and deadlines are sourced from state government websites and verified monthly. We make every effort to keep this data current but cannot guarantee accuracy. Always verify with your state's Secretary of State before filing." |
+| **FTC "Free" scrutiny**                           | HIGH     | "Free LLC" headline is misleading re: state fees. RA credit system is a landmine ("free RA" claim). Intuit precedent heightens FTC scrutiny of "free" claims in adjacent spaces.                                    | **RULES**: (1) NEVER use "Free LLC" as a standalone headline. Always: "Free LLC Formation Service" or "$0 Service Fee." (2) State filing fees must appear in the same visual field as any "free" claim -- not below the fold, not on a different page. (3) RA credits: NEVER say "Free RA." Always: "RA starting at $49/yr. Earn credits to reduce your cost." (4) Every landing page with "free" in the headline must pass FTC Free Guide compliance review.                                                               |
+| **AI operating agreements (UPL risk)**            | HIGH     | "AI-generated, state-specific operating agreement" crosses from template fill-in to document drafting. LegalZoom survived UPL challenges specifically because they did NOT auto-generate -- they offered templates. | **DECISION**: Use template model, not generation. LaunchFree provides state-specific operating agreement TEMPLATES (pre-written by a licensed attorney, stored as PDFs). AI EXPLAINS clauses ("This section covers member voting rights. Most single-member LLCs use...") but does NOT select, modify, or draft clause language. Marketing: "Operating agreement template included" not "AI-generated operating agreement." The attorney consultation (Section 0G #3) should validate this approach.                        |
+| **Cross-sell consent language**                   | MEDIUM   | Current: "I'd like to hear about other [LLC Name] products." Too vague for CCPA and lacks per-brand granularity. Missing TCPA gap if SMS is ever added.                                                             | **FIX**: Replace with explicit cross-product data use: "I consent to [LLC Name] using my information across FileFree, LaunchFree, and related services to send me product updates and recommendations. I can unsubscribe from any product at any time." Add separate SMS consent checkbox if SMS is ever added (TCPA requires express written consent for marketing texts). Add per-brand unsubscribe capability in email footer: "Unsubscribe from FileFree emails                                                         |
+
+
+### Legal Protection Checklist (Stress Test Addition)
+
+Before collecting ANY user PII or processing ANY tax/legal data:
+
+| Item | Status | Deadline | Notes |
+|---|---|---|---|
+| E&O + Cyber liability insurance ($1M) | NOT DONE | Before first SSN | $1,500-3,000/yr. Covers data breach, errors in tax calcs, professional liability |
+| Data breach response plan (SANS template) | NOT DONE | Before first SSN | 2-page doc: discovery, containment, notification, remediation. State AG notification timelines vary (CA: 72hrs) |
+| Terms of Service (attorney-reviewed) | NOT DONE | Before launch | Limitation of liability, arbitration clause, data accuracy disclaimer, AI-assisted filing disclosure |
+| Privacy Policy (CCPA + state laws) | NOT DONE | Before launch | Data collection, retention (24hr for images), sharing (Cloud Vision, OpenAI -- with SSN masking), deletion rights |
+| Tax filing disclaimer (Circular 230) | NOT DONE | Before launch | On every screen that touches tax data |
+| LLC formation disclaimer (UPL) | NOT DONE | Before launch | On every LaunchFree page |
+| Startup attorney consultation | NOT DONE | Before Phase 3 | 1 hour, ~$300-500. Key questions: UPL boundaries for AI formation guidance, RA liability exposure, tax prep liability vs CPA liability |
+
+**Liability Comparison -- How Competitors Handle It**:
+
+| Company | Approach | Key Protections |
+|---|---|---|
+| **Credit Karma Tax** (now Cash App Taxes) | "Not a substitute for professional tax advice." Accuracy guarantee (pays IRS penalties if their math is wrong). | Strong ToS limitation of liability. E&O insurance. Accuracy guarantee builds trust. |
+| **FreeTaxUSA** | "$100K accuracy guarantee." Covers IRS penalties from calculation errors. | Clear "education not advice" framing. Guarantee is capped and excludes user input errors. |
+| **LegalZoom** | "We are not a law firm." Survived multiple UPL lawsuits by positioning as document preparation, not legal advice. | Operating agreement TEMPLATES, not custom drafting. Clear disclaimers on every page. Separate lawyer marketplace for actual advice. |
+| **TurboTax** | Expert review add-on ($$$). Free tier has no accuracy guarantee. | Massive legal team. FTC consent decree for "free" advertising. |
+
+**Our approach**: Follow FreeTaxUSA model for tax (accuracy guarantee capped at $10K, covers OUR calculation errors only, not user input errors). Follow LegalZoom model for LLC (templates, not drafting). Get E&O insurance before collecting any data.
+
+### 50-State Data Accuracy Standard (Stress Test Addition)
+
+Every state data point displayed to users must meet this standard:
+
+1. **Source-linked**: Every fee, deadline, and requirement shows its source ("CA SOS, last verified 2026-03-01")
+2. **Freshness visible**: "Last verified" date displayed prominently. If >90 days old, show warning badge.
+3. **User confirmation**: Before any filing action, user sees: "Please verify this information on [state SOS website link] before proceeding. Filing fees and requirements can change."
+4. **Automated freshness**: n8n State Data Validator (Agent #21) checks DAILY for volatile states (CA, NY, TX, FL, IL, WA, NJ, MA, GA, PA) and WEEKLY for all others. Any state >30 days since last verification shows yellow warning. Any state >60 days triggers red alert to Compliance Monitor and EA daily briefing.
+5. **Error correction**: If a user reports incorrect data, treat it as a P0 bug. Fix within 24 hours, notify affected users, log in incident report.
 
 ---
 
@@ -268,9 +315,11 @@ Every piece of user-facing content (email, social post, in-app message, landing 
 - Context: Credit Karma playbook proven at smaller scale, AI advisory relationship established
 - This requires: partnership revenue firing on all cylinders, advisory product retention, brand trust at scale
 
-**The Formation Nation Acquisition is the most relevant comp**: LegalZoom paid ~$115M total (cash + stock + earnout) for a business formation company. If LaunchFree reaches ~$5-10M revenue with a free acquisition channel and cross-sell to FileFree, a similar acquisition outcome ($50-100M) is realistic in the 5-7 year timeframe.
+**Formation Nation comp caveat (stress test)**: LegalZoom paid ~$115M for Formation Nation (Inc Authority brand), but Formation Nation was a mature, profitable business with estimated $20-30M revenue and years of operating history. Comparing a pre-revenue startup to an acquired mature company is misleading. The relevant takeaway is that the business formation MARKET commands 3-4x revenue multiples, which validates the sector. A pre-revenue startup in this space would need to demonstrate traction (10K+ users, growing MoM) before any acquisition interest materializes.
 
-**What makes our valuation story unique**: Two products with shared infrastructure and cross-sell moat. Each product individually is worth 3-5x revenue. Together with cross-sell data and AI advisory relationship, the portfolio premium could push multiples to 8-12x. This is the Credit Karma playbook: the platform IS the data, and the data compounds with every user.
+**"Home run" multiple reality check (stress test)**: The 8-12x multiple in Scenario D assumes the "AI financial advisor" narrative takes hold with investors, which requires proof points (high NPS, demonstrated advisory value, user retention). For a single-founder bootstrapped operation, realistic exit multiples are 4-6x revenue until institutional investors or strategic acquirers validate the platform thesis. The 8-12x range is aspirational and requires Credit Karma-level user engagement data.
+
+**What makes our valuation story unique**: Two products with shared infrastructure and cross-sell moat. Each product individually is worth 3-5x revenue. Together with cross-sell data and AI advisory relationship, the portfolio premium could push multiples higher. This is the Credit Karma playbook: the platform IS the data, and the data compounds with every user. But Credit Karma took 8 years to reach acquisition -- plan accordingly.
 
 ---
 
@@ -278,9 +327,13 @@ Every piece of user-facing content (email, social post, in-app message, landing 
 
 **Last reviewed**: March 12, 2026 | **Next review**: April 12, 2026
 
-### Routing Principle
+### Routing Principle: Quality-First
 
-Use the cheapest model that can do the job accurately. Escalate only when the task demands it. The AI Ops Lead persona (`agent-ops.mdc`) owns this registry and all model routing decisions. Engineering implements but does not choose models.
+Use the best model for the task. Only downgrade when a cheaper model produces equivalent quality (not "good enough" -- equivalent). The founder is willing to pay more for better results. Cost optimization happens by routing to the right tier, not by forcing cheaper models where quality suffers.
+
+The AI Ops Lead persona (`agent-ops.mdc`) owns this registry and all model routing decisions. Engineering implements but does not choose models.
+
+**GPT-5 readiness**: When GPT-5 releases, evaluate immediately. If it outperforms current assignments at comparable cost, swap. Do not wait for a scheduled review cycle.
 
 ### Model Landscape (March 2026)
 
@@ -525,6 +578,57 @@ Phase 1.5: After monorepo restructure (Phase 1), before 50-state data pipeline (
 
 ---
 
+## 0F-2. AI Branding in Financial Services: Help or Hurt?
+
+**Research finding**: AI branding in financial services is a double-edged sword. The answer depends on what you're branding as AI-powered.
+
+**Where "AI-powered" HELPS trust**:
+- **Automation / speed**: "AI reads your W-2 in seconds" -- people trust AI for tedious data entry
+- **Cost reduction**: "AI eliminates the middleman, so filing is free" -- people understand AI = cheaper
+- **Accuracy in calculation**: "AI double-checks your math" -- people trust computers with arithmetic
+- **Data analysis**: "AI compares all 50 states to find the best fit" -- people trust AI for research
+
+**Where "AI-powered" HURTS trust**:
+- **Advice / judgment**: "AI-powered tax advice" -- people want human judgment for high-stakes decisions
+- **Legal documents**: "AI-generated operating agreement" -- legal liability anxiety
+- **Personal data handling**: Over-emphasizing AI processing of SSNs or financial data creates concern
+
+**Our approach**: Use "AI-powered" for process/speed/cost messaging, NEVER for advice/judgment messaging. Say "AI handles the tedious stuff so you don't have to" not "AI tells you what to do." The product is the human experience of simplicity, not the AI behind it.
+
+**Competitors' approach**: Credit Karma barely mentions AI. TurboTax emphasizes "expert review" (human). FreeTaxUSA doesn't mention tech at all. Cash App Taxes focuses on "free + easy." Takeaway: users care about outcomes (free, fast, accurate), not the technology stack.
+
+**DECISION**: Lead with outcomes ("free, 5 minutes, accurate"), not with "AI-powered." Mention AI when it explains WHY something is free or fast, but never as the headline value prop. The brand voice speaks as a competent friend, not as a robot.
+
+---
+
+## 0G. Critical Pre-Code Actions (Stress Test Finding)
+
+These are existential risk mitigations that cost under $5K total. Complete before writing any product code (i.e., before Phase 1).
+
+
+| #   | Action                                                        | Cost                                        | Deadline                          | Blocks                                                                                                                                                                                                                         |
+| --- | ------------------------------------------------------------- | ------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | **Get cyber liability insurance** (E&O + cyber, $1M coverage) | $1,500-3,000/yr                             | Before first SSN is collected     | Phase 7 (FileFree launch). Non-negotiable for handling SSNs. A single breach without it is company-ending.                                                                                                                     |
+| 2   | **Draft data breach response plan**                           | $0 (self-authored from SANS/NIST templates) | Before first SSN is collected     | Phase 7. Need: notification timeline by state tier, template notification letter, forensics firm contact, first-call list.                                                                                                     |
+| 3   | **1-hour startup attorney consultation**                      | ~$300-500                                   | Before Phase 3 (LaunchFree MVP)   | Two specific questions: (a) does AI-assisted operating agreement survive UPL analysis in CA, TX, NY, FL? (b) is wholesale RA arrangement structured to minimize agency liability?                                              |
+| 4   | **Decide LLC name**                                           | $0                                          | Hard deadline: 2 weeks from today | Phase 0.6 (LLC filing) -> EIN -> bank account -> Stripe -> trademarks. On the critical path. Stop researching, pick one, file.                                                                                                 |
+| 5   | **Apply for EFIN (Form 8633)**                                | $0                                          | THIS WEEK                         | Phase 8 (MeF transmitter). 45-day IRS processing. Chain: EFIN -> Software Developer ID -> ATS testing (October 2026) -> Comms test (November) -> Go-live (January 2027). Every day of delay compresses the October ATS window. |
+
+
+**Why this section exists**: The stress test identified that the plan has strong technical architecture but weak operational/legal preparedness. These 5 actions are the highest-ROI items in the entire plan — they cost <$5K and prevent catastrophic outcomes. None require code.
+
+---
+
+## 0H. Repo Rename (Deferred)
+
+The repo is currently named `fileFree` (the original product). When the LLC name is decided, rename to match the venture (e.g., `butterside-labs` or chosen name). Do this during a quiet period when no PRs are open, no agents are running, and no CI is in-flight.
+
+**What changes**: GitHub repo name, Render blueprint references, Vercel project names, all `package.json` names, import paths referencing the repo, DNS CNAME records, and `.cursor/rules/` absolute path references.
+
+**When**: After LLC filing (Phase 0.6). Not before. Don't burn time on this until the name is locked.
+
+---
+
 ## 1. Revenue Model (Corrected)
 
 ### Timeline
@@ -536,45 +640,101 @@ Phase 1.5: After monorepo restructure (Phase 1), before 50-state data pipeline (
 ### FileFree First Tax Season (Jan-Apr 2027)
 
 
-| Stream                | First-Season Attach Rate | Rev Per | 10K Filers | 20K Filers | 30K Filers |
-| --------------------- | ------------------------ | ------- | ---------- | ---------- | ---------- |
-| Refund routing HYSA   | 4%                       | $50     | $20K       | $40K       | $60K       |
-| Financial referrals   | 1.5%                     | $75     | $11K       | $22.5K     | $34K       |
-| Audit Shield          | 5% (if partner ready)    | $20     | $10K       | $20K       | $30K       |
-| Tax Optimization Plan | 2%                       | $29     | $5.8K      | $11.6K     | $17.4K     |
-| Refund advance        | 0% (not ready Y1)        | --      | $0         | $0         | $0         |
-| **TOTAL**             |                          |         | **$47K**   | **$94K**   | **$141K**  |
+| Stream                | Pessimistic Rate | Moderate Rate | Aggressive Rate | Rev Per | 5K Filers (Pess.) | 10K Filers (Mod.) | 30K Filers (Agg.) |
+| --------------------- | ---------------- | ------------- | --------------- | ------- | ----------------- | ----------------- | ----------------- |
+| Refund routing HYSA   | 1%               | 2%            | 4%              | $50     | $2.5K             | $10K              | $60K              |
+| Financial referrals   | 0.5%             | 1%            | 1.5%            | $75     | $1.9K             | $7.5K             | $34K              |
+| Audit Shield          | 1%               | 3%            | 5%              | $20     | $1K               | $6K               | $30K              |
+| Tax Optimization Plan | 1%               | 2%            | 3%              | $29     | $1.5K             | $5.8K             | $26K              |
+| Refund advance        | 0%               | 0%            | 0%              | --      | $0                | $0                | $0                |
+| **TOTAL**             |                  |               |                 |         | **$7K**           | **$29K**          | **$150K**         |
 
+
+**Rate justification** (stress test): Credit Karma achieves 2-4% on financial referrals at maturity after years of trust-building with 100M+ profiles. FreeTaxUSA hits 8-12% on audit shield as an established brand. A brand-new product with zero trust history should model Year 1 rates at 40-60% of mature rates. The pessimistic scenario assumes only 5K filers (realistic for a new, unknown product with no marketing budget) and bottom-tier attach rates.
 
 ### LaunchFree H2 2026 (~6 months)
 
 
-| Stream                     | Volume  | Rev Per | Total        |
-| -------------------------- | ------- | ------- | ------------ |
-| RA credits (3% buy $49/yr) | 60-150  | $49     | $3K-7K       |
-| Banking referrals (5%)     | 100-250 | $50     | $5K-12.5K    |
-| Payroll referrals (1%)     | 20-50   | $100    | $2K-5K       |
-| **TOTAL**                  |         |         | **$10K-25K** |
+| Stream                     | Pess. Volume | Mod. Volume | Agg. Volume | Rev Per | Pess. Total | Mod. Total | Agg. Total |
+| -------------------------- | ------------ | ----------- | ----------- | ------- | ----------- | ---------- | ---------- |
+| RA credits (1-3% buy)      | 20           | 100         | 150         | $49     | $1K         | $5K        | $7K        |
+| Banking referrals (2-5%)   | 40           | 150         | 250         | $50     | $2K         | $7.5K      | $12.5K     |
+| Payroll referrals (0.5-1%) | 10           | 30          | 50          | $100    | $1K         | $3K        | $5K        |
+| **TOTAL**                  |              |             |             |         | **$4K**     | **$15.5K** | **$25K**   |
 
 
-### Combined
+### Combined (Year 1)
 
 
-| Scenario     | LaunchFree (H2 2026) | FileFree (Jan-Apr 2027) | **Total** |
-| ------------ | -------------------- | ----------------------- | --------- |
-| Conservative | $10K                 | $47K                    | **$57K**  |
-| Moderate     | $18K                 | $94K                    | **$112K** |
-| Aggressive   | $25K                 | $141K                   | **$166K** |
+| Scenario        | LaunchFree (H2 2026) | FileFree (Jan-Apr 2027) | **Total**  |
+| --------------- | -------------------- | ----------------------- | ---------- |
+| **Pessimistic** | $4K                  | $7K                     | **$11K**   |
+| Moderate        | $15.5K               | $29K                    | **$44.5K** |
+| Aggressive      | $25K                 | $150K                   | **$175K**  |
 
 
-**Year 2 (2028)**: $300K-600K (80% retention + growth + at-scale attach rates + cross-sell)
+**Why the pessimistic scenario matters**: It models what happens if (a) user acquisition is slow (5K filers, 2K formations), (b) attach rates are bottom-tier for an unknown brand, and (c) partnerships are self-serve affiliates only (no Founder 2 deals closed). At $11K Year 1 revenue, the venture survives (burn is ~$120/mo real cost) but takes longer to reach meaningful revenue. This is the floor, not the target.
+
+**Year 2 (2028)**: $150K-600K (dependent on retention, growth trajectory, and partnership maturity)
+
+### Plan B Revenue: Zero Partnerships Closed
+
+If Founder 2 closes no deals and self-serve affiliate applications are the only revenue source:
+
+
+| Stream                                        | Available Without Partnerships?     | Year 1 Revenue |
+| --------------------------------------------- | ----------------------------------- | -------------- |
+| Tax Optimization Plan ($29/yr)                | YES -- direct Stripe sale           | $1.5K-8.7K     |
+| Trinkets AdSense                              | YES -- self-serve                   | $50-300        |
+| Self-serve affiliate signups (Impact.com, CJ) | YES -- Founder 1 can apply          | $2K-10K        |
+| RA credits                                    | NO -- requires RA wholesale partner | $0             |
+| Refund advance                                | NO -- requires lending partner      | $0             |
+| Audit Shield                                  | NO -- requires TaxAudit partnership | $0             |
+| **TOTAL (Plan B)**                            |                                     | **$3.5K-19K**  |
+
+
+**Plan B is survivable** because monthly burn is low (~$120/mo real). But it delays growth by 6-12 months. Self-serve affiliate applications (Impact.com for Marcus/Wealthfront, CJ for Betterment) are online forms Founder 1 can submit — no calls, no relationship needed. These should be submitted in Phase 0 regardless of Founder 2's availability.
+
+### Partnership Milestone Deadlines (Hard Dates)
+
+
+| Milestone                                                          | Owner     | Deadline       | Consequence If Missed                                           |
+| ------------------------------------------------------------------ | --------- | -------------- | --------------------------------------------------------------- |
+| Submit self-serve affiliate apps (Marcus, Wealthfront, Betterment) | Founder 1 | April 2026     | Delays referral revenue by approval processing time (1-2 weeks) |
+| Book Column Tax demo call                                          | Founder 2 | May 2026       | No interim e-file for October extension season                  |
+| Column Tax sandbox access                                          | Founder 2 | June 2026      | Cannot test e-file integration; fallback = PDF download only    |
+| RA wholesale partner signed (CorpNet or equivalent)                | Founder 2 | July 2026      | Launch LaunchFree without RA service; add later                 |
+| TaxAudit/audit shield partnership                                  | Founder 2 | September 2026 | Launch FileFree without audit shield; add Year 2                |
+| At least 1 banking partner confirmed                               | Either    | October 2026   | Refund routing not available for first tax season               |
+
+
+### Partnership Documentation Strategy
+
+Every partnership gets a comprehensive, agent-produced documentation package. This ensures bulletproof preparation for every partner conversation.
+
+**Per-Partner Package** (generated by Partnership Dev agent + relevant domain agents):
+
+1. **Partner Brief** (1-pager): Company overview, their product, how we integrate, revenue model for both sides, competitive landscape
+2. **Integration Spec**: Technical integration requirements, API endpoints, data flow, PII handling
+3. **Legal Memo**: Compliance considerations specific to this partner type (FTC disclosures for affiliate, data sharing agreements, Circular 230 for tax-adjacent)
+4. **Financial Model**: Revenue projections at 3 volume tiers (pessimistic, moderate, aggressive), margin analysis, break-even point
+5. **Pitch Deck** (5 slides): Problem, our product, integration value prop, projected volume, ask
+
+**Quarterly Review Cadence**:
+
+- Q1 (March): Review all active partnerships. Update financial projections with actuals. Identify underperformers.
+- Q2 (June): Pipeline review. Score prospects by: revenue potential, integration complexity, strategic value. Prioritize top 3.
+- Q3 (September): Pre-season prep. Ensure all tax season partnerships (HYSA, audit shield) are integration-tested.
+- Q4 (December): Final partner readiness check before FileFree tax season.
+
+**Legal Doc Freshness**: Compliance Monitor agent (#33) tracks partner agreement expiry dates and data sharing agreement renewal dates. Alerts 30 days before expiry.
 
 ### LaunchFree "Free" Framing (Honest, Defensible)
 
 **What's actually free (our service -- $0 forever)**:
 
 - LLC formation filing (prep + submit): $0
-- Operating agreement (AI-generated, state-specific): $0
+- Operating agreement template (state-specific, attorney-reviewed): $0
 - EIN filing walkthrough: $0
 - Compliance calendar + reminders: $0
 - 50-state comparison AI guide (compares filing fees, annual costs, franchise tax, privacy, speed): $0
@@ -586,14 +746,16 @@ Phase 1.5: After monorepo restructure (Phase 1), before 50-state data pipeline (
 
 **Cheapest states to form** (marketing content):
 
-| State | Filing Fee | Annual Cost | Notes |
-|---|---|---|---|
-| Montana | $35 | $20/yr | Cheapest filing in the US |
-| Kentucky | $40 | $15/yr | Low ongoing costs |
-| Arkansas | $45 | $150/yr | Higher annual |
-| Colorado | $50 | $10/yr | Very low annual |
-| Arizona | $50 | $0/yr (no annual report) | No ongoing state cost |
-| Michigan | $50 | $25/yr | Moderate |
+
+| State    | Filing Fee | Annual Cost              | Notes                     |
+| -------- | ---------- | ------------------------ | ------------------------- |
+| Montana  | $35        | $20/yr                   | Cheapest filing in the US |
+| Kentucky | $40        | $15/yr                   | Low ongoing costs         |
+| Arkansas | $45        | $150/yr                  | Higher annual             |
+| Colorado | $50        | $10/yr                   | Very low annual           |
+| Arizona  | $50        | $0/yr (no annual report) | No ongoing state cost     |
+| Michigan | $50        | $25/yr                   | Moderate                  |
+
 
 **Framing language** (use across all marketing):
 
@@ -603,13 +765,15 @@ Phase 1.5: After monorepo restructure (Phase 1), before 50-state data pipeline (
 
 **Competitive comparison**:
 
-| Service | Service Fee | Upsells | State Fee Transparency | State Comparison |
-|---|---|---|---|---|
-| LegalZoom | $0-$299 | Heavy ($199 RA, $159 operating agreement, $159 EIN) | Buried in total | No |
-| ZenBusiness | $0 | Heavy ($199/yr Pro, $349/yr Premium) | Shown separately | No |
-| Northwest | $39 | Moderate ($125/yr RA included Y1) | Shown separately | No |
-| Incfile | $0 | Heavy ($149-$349 bundles) | Shown separately | No |
-| **LaunchFree** | **$0** | **None (revenue from partner referrals)** | **Upfront, before you start** | **Yes (AI-powered, all 50 states)** |
+
+| Service        | Service Fee | Upsells                                             | State Fee Transparency        | State Comparison                    |
+| -------------- | ----------- | --------------------------------------------------- | ----------------------------- | ----------------------------------- |
+| LegalZoom      | $0-$299     | Heavy ($199 RA, $159 operating agreement, $159 EIN) | Buried in total               | No                                  |
+| ZenBusiness    | $0          | Heavy ($199/yr Pro, $349/yr Premium)                | Shown separately              | No                                  |
+| Northwest      | $39         | Moderate ($125/yr RA included Y1)                   | Shown separately              | No                                  |
+| Incfile        | $0          | Heavy ($149-$349 bundles)                           | Shown separately              | No                                  |
+| **LaunchFree** | **$0**      | **None (revenue from partner referrals)**           | **Upfront, before you start** | **Yes (AI-powered, all 50 states)** |
+
 
 ### Audit Shield Economics
 
@@ -735,32 +899,36 @@ Each `apps/` and `apis/` directory can have its own `.cursor/rules/` with produc
 
 All ports start from `x001` to avoid conflicts with default ports (3000, 8000) from other projects.
 
-| Service | Port | Notes |
-|---|---|---|
-| **Frontends** | | |
-| apps/filefree | 3001 | Next.js `--port 3001` |
-| apps/launchfree | 3002 | Next.js `--port 3002` |
-| apps/trinkets | 3003 | Next.js `--port 3003` |
-| apps/studio | 3004 | Next.js `--port 3004` |
-| **Backends** | | |
-| apis/filefree | 8001 | uvicorn `--port 8001` |
-| apis/launchfree | 8002 | uvicorn `--port 8002` |
-| apis/studio | 8003 | uvicorn `--port 8003` |
-| **Infrastructure** | | |
-| PostgreSQL | 5432 | Default (shared, schema-isolated) |
-| Redis | 6379 | Default (shared, key-prefixed) |
+
+| Service            | Port | Notes                             |
+| ------------------ | ---- | --------------------------------- |
+| **Frontends**      |      |                                   |
+| apps/filefree      | 3001 | Next.js `--port 3001`             |
+| apps/launchfree    | 3002 | Next.js `--port 3002`             |
+| apps/trinkets      | 3003 | Next.js `--port 3003`             |
+| apps/studio        | 3004 | Next.js `--port 3004`             |
+| **Backends**       |      |                                   |
+| apis/filefree      | 8001 | uvicorn `--port 8001`             |
+| apis/launchfree    | 8002 | uvicorn `--port 8002`             |
+| apis/studio        | 8003 | uvicorn `--port 8003`             |
+| **Infrastructure** |      |                                   |
+| PostgreSQL         | 5432 | Default (shared, schema-isolated) |
+| Redis              | 6379 | Default (shared, key-prefixed)    |
+
 
 **Environment variables per app**: Each frontend sets `NEXT_PUBLIC_API_URL=http://localhost:800X` matching its backend.
 
 **Dev commands** (root `package.json` scripts via pnpm):
 
-| Command | What It Starts | Use Case |
-|---|---|---|
-| `pnpm dev:filefree` | 3001 + 8001 | Working on FileFree |
-| `pnpm dev:launchfree` | 3002 + 8002 | Working on LaunchFree |
-| `pnpm dev:trinkets` | 3003 (no backend) | Working on Trinkets (client-side only) |
-| `pnpm dev:studio` | 3004 + 8003 | Working on Studio |
-| `pnpm dev:all` | All ports | Cross-product testing |
+
+| Command               | What It Starts    | Use Case                               |
+| --------------------- | ----------------- | -------------------------------------- |
+| `pnpm dev:filefree`   | 3001 + 8001       | Working on FileFree                    |
+| `pnpm dev:launchfree` | 3002 + 8002       | Working on LaunchFree                  |
+| `pnpm dev:trinkets`   | 3003 (no backend) | Working on Trinkets (client-side only) |
+| `pnpm dev:studio`     | 3004 + 8003       | Working on Studio                      |
+| `pnpm dev:all`        | All ports         | Cross-product testing                  |
+
 
 Each dev command uses `concurrently` to start both frontend and backend. Trinkets has no backend (all client-side processing). `pnpm dev:all` starts everything for integration testing.
 
@@ -796,6 +964,8 @@ The command center is the control plane for the entire venture. It is what makes
 - Summary cards: total users, revenue this month, active agents, uptime
 - Quick links to each product's admin
 - Data sources: n8n executions, Render health, Vercel deployments, PostHog events, Stripe revenue
+- **Compliance Status Indicator**: traffic-light badge (green/yellow/red) for: cyber insurance active, data breach plan current, EFIN cert valid, privacy policy reviewed within 90 days, ToS reviewed within 90 days. Data from Compliance & Security Monitor agent (#33).
+- **Data Integrity Dashboard**: per-state freshness badges (green: <30 days, yellow: 30-60 days, red: >60 days since last verification). Volatile states (CA, NY, TX, FL, IL) validated daily. Drill-down shows source URLs and last-verified timestamps. Data from State Data Validator agent (#21).
 
 **P4.5 Agent Monitor** (`/admin/agents`)
 
@@ -846,12 +1016,13 @@ The command center is the control plane for the entire venture. It is what makes
 
 ### Tier 3 -- Build When Revenue Flows
 
-**P4.11 Revenue Intelligence** (`/admin/revenue`)
+**P4.11 Revenue & Spend Intelligence** (`/admin/revenue`)
 
 - Stripe revenue by product, stream, time period
 - Affiliate revenue from partner dashboards
 - MRR, churn, ARPU calculations
-- Data source: Stripe API + affiliate dashboard APIs
+- **Spend overview panel**: monthly burn by category (infra, AI/ML, domains, SaaS tools, legal, marketing). Data from `docs/FINANCIALS.md` Monthly Actuals section (EA logs, CFO analyzes). Trend chart showing burn rate over time.
+- Data source: Stripe API + affiliate dashboard APIs + FINANCIALS.md
 
 **P4.12 Campaign Control** (`/admin/campaigns`)
 
@@ -895,13 +1066,15 @@ Not everyone in the founder's life uses GitHub or Notion. Documents need to be a
 
 **Two-layer system**:
 
-| Doc Type | Source of Truth | Readable At | Collaborative At | Who Reads |
-|---|---|---|---|---|
-| Company docs (FINANCIALS, KNOWLEDGE, TASKS, MASTER PLAN, AI_MODEL_REGISTRY) | `docs/*.md` in git repo | sankalpsharma.com/docs/* (P4.14) | Git PRs (founder only) | Founder, wife, future investors |
-| Agent outputs (daily briefings, weekly plans, reports) | Google Drive (`Venture HQ/`) | Google Drive link sharing | Google Docs comments | Founder, wife |
-| Trinket one-pagers | Google Docs (created from template) | Google Drive link sharing | Google Docs comments | Founder, wife, future team |
-| Trinket PRDs | Google Docs (created from template) | Google Drive link sharing | Google Docs comments | Founder, future engineers |
-| Social content drafts | Postiz queue | Postiz UI | Postiz UI | Founder |
+
+| Doc Type                                                                    | Source of Truth                     | Readable At                      | Collaborative At       | Who Reads                       |
+| --------------------------------------------------------------------------- | ----------------------------------- | -------------------------------- | ---------------------- | ------------------------------- |
+| Company docs (FINANCIALS, KNOWLEDGE, TASKS, MASTER PLAN, AI_MODEL_REGISTRY) | `docs/*.md` in git repo             | sankalpsharma.com/docs/* (P4.14) | Git PRs (founder only) | Founder, wife, future investors |
+| Agent outputs (daily briefings, weekly plans, reports)                      | Google Drive (`Venture HQ/`)        | Google Drive link sharing        | Google Docs comments   | Founder, wife                   |
+| Trinket one-pagers                                                          | Google Docs (created from template) | Google Drive link sharing        | Google Docs comments   | Founder, wife, future team      |
+| Trinket PRDs                                                                | Google Docs (created from template) | Google Drive link sharing        | Google Docs comments   | Founder, future engineers       |
+| Social content drafts                                                       | Postiz queue                        | Postiz UI                        | Postiz UI              | Founder                         |
+
 
 **Why not just Google Docs for everything?**
 
@@ -913,18 +1086,20 @@ Trinket one-pagers and PRDs need collaborative review -- the founder might want 
 
 **Agent output routing**:
 
-| Agent | Output Format | Destination |
-|---|---|---|
-| EA daily briefing | Google Doc | `Venture HQ/Operations/Daily Briefings/` |
-| EA weekly plan | Google Doc | `Venture HQ/Operations/Weekly Plans/` |
-| Market Discovery Agent (trinket) | Google Doc (from template) | `Venture HQ/Trinkets/One-Pagers/` |
-| PRD Agent (trinket) | Google Doc (from template) | `Venture HQ/Trinkets/PRDs/` |
-| Competitive Intel | Google Doc | `Venture HQ/Intelligence/` |
-| Analytics Reporter | Google Doc | `Venture HQ/Operations/Analytics/` |
-| Social Content bots | Postiz queue entry | Postiz |
-| Decision logging (EA) | Markdown commit | `docs/KNOWLEDGE.md` in git |
-| Expense logging (EA) | Markdown commit | `docs/FINANCIALS.md` in git |
-| Task updates (EA) | Markdown commit | `docs/TASKS.md` in git |
+
+| Agent                            | Output Format              | Destination                              |
+| -------------------------------- | -------------------------- | ---------------------------------------- |
+| EA daily briefing                | Google Doc                 | `Venture HQ/Operations/Daily Briefings/` |
+| EA weekly plan                   | Google Doc                 | `Venture HQ/Operations/Weekly Plans/`    |
+| Market Discovery Agent (trinket) | Google Doc (from template) | `Venture HQ/Trinkets/One-Pagers/`        |
+| PRD Agent (trinket)              | Google Doc (from template) | `Venture HQ/Trinkets/PRDs/`              |
+| Competitive Intel                | Google Doc                 | `Venture HQ/Intelligence/`               |
+| Analytics Reporter               | Google Doc                 | `Venture HQ/Operations/Analytics/`       |
+| Social Content bots              | Postiz queue entry         | Postiz                                   |
+| Decision logging (EA)            | Markdown commit            | `docs/KNOWLEDGE.md` in git               |
+| Expense logging (EA)             | Markdown commit            | `docs/FINANCIALS.md` in git              |
+| Task updates (EA)                | Markdown commit            | `docs/TASKS.md` in git                   |
+
 
 **Google Drive folder structure** (set up in P0.4):
 
@@ -1571,20 +1746,22 @@ The founder is forming a California LLC RIGHT NOW. This is the exact journey Lau
 
 **LLC Formation Steps -> Content Hooks**:
 
-| Step | What Happens | Content Hook (TikTok/IG/X) | Emotion |
-|---|---|---|---|
-| 1. Choose a name | Search CA SOS business database, discover your name is taken, try 5 more | "I tried to name my company and California said no. 5 times." | Frustration -> relatability |
-| 2. File Articles of Org | Fill out Form LLC-1 on CA SOS website, pay $70 | "Starting an LLC costs $70 in California. Here's the 3-minute form nobody shows you." | Demystification |
-| 3. Wait for approval | CA SOS processing time (can be weeks) | "Day 1 vs Day 14 of waiting for California to approve my LLC..." | Anticipation |
-| 4. Get an EIN | IRS.gov, free, takes 5 minutes online | "The IRS gave me a tax ID in 5 minutes. For free. Why does anyone pay $70 for this?" | Outrage at upsellers |
-| 5. Operating Agreement | Write one (or use a template, or AI generates it) | "LegalZoom charges $99 for this document. I had AI write mine in 30 seconds." | Product demo moment |
-| 6. Registered Agent | Set up RA service | "Your LLC needs a 'registered agent.' Here's what that actually means (and why it costs $49-249/yr)." | Education |
-| 7. Statement of Info | File LLC-12 within 90 days of formation | "90 days after forming your LLC, California wants MORE paperwork. Here's what to do." | Compliance awareness |
-| 8. Business bank account | Apply at Mercury/Relay/local bank | "I opened a business bank account in 10 minutes. From my phone." | Partner demo moment |
-| 9. Franchise tax reality | Discover the $800/yr CA franchise tax | "Nobody told me California charges $800/yr just to EXIST as an LLC. Here's the workaround." | Shock -> education |
-| 10. First year exempt | Discover first-year exemption | "Plot twist: your first year is actually FREE. Here's the fine print." | Relief |
-| 11. Compliance calendar | Set up annual reminders | "The 5 dates every LLC owner needs to know. Miss one and your LLC gets dissolved." | Urgency |
-| 12. DBA filing | File "Doing Business As" for brand names | "My LLC name isn't my brand name. Here's why you need a DBA (and what it costs)." | Practical |
+
+| Step                     | What Happens                                                             | Content Hook (TikTok/IG/X)                                                                            | Emotion                     |
+| ------------------------ | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | --------------------------- |
+| 1. Choose a name         | Search CA SOS business database, discover your name is taken, try 5 more | "I tried to name my company and California said no. 5 times."                                         | Frustration -> relatability |
+| 2. File Articles of Org  | Fill out Form LLC-1 on CA SOS website, pay $70                           | "Starting an LLC costs $70 in California. Here's the 3-minute form nobody shows you."                 | Demystification             |
+| 3. Wait for approval     | CA SOS processing time (can be weeks)                                    | "Day 1 vs Day 14 of waiting for California to approve my LLC..."                                      | Anticipation                |
+| 4. Get an EIN            | IRS.gov, free, takes 5 minutes online                                    | "The IRS gave me a tax ID in 5 minutes. For free. Why does anyone pay $70 for this?"                  | Outrage at upsellers        |
+| 5. Operating Agreement   | Write one (or use a template, or AI generates it)                        | "LegalZoom charges $99 for this document. I had AI write mine in 30 seconds."                         | Product demo moment         |
+| 6. Registered Agent      | Set up RA service                                                        | "Your LLC needs a 'registered agent.' Here's what that actually means (and why it costs $49-249/yr)." | Education                   |
+| 7. Statement of Info     | File LLC-12 within 90 days of formation                                  | "90 days after forming your LLC, California wants MORE paperwork. Here's what to do."                 | Compliance awareness        |
+| 8. Business bank account | Apply at Mercury/Relay/local bank                                        | "I opened a business bank account in 10 minutes. From my phone."                                      | Partner demo moment         |
+| 9. Franchise tax reality | Discover the $800/yr CA franchise tax                                    | "Nobody told me California charges $800/yr just to EXIST as an LLC. Here's the workaround."           | Shock -> education          |
+| 10. First year exempt    | Discover first-year exemption                                            | "Plot twist: your first year is actually FREE. Here's the fine print."                                | Relief                      |
+| 11. Compliance calendar  | Set up annual reminders                                                  | "The 5 dates every LLC owner needs to know. Miss one and your LLC gets dissolved."                    | Urgency                     |
+| 12. DBA filing           | File "Doing Business As" for brand names                                 | "My LLC name isn't my brand name. Here's why you need a DBA (and what it costs)."                     | Practical                   |
+
 
 **Content Format per Step** (each step produces 3-5 pieces):
 
@@ -1630,6 +1807,84 @@ Reinvest in more content + product
 
 ---
 
+## 5K. User Acquisition Strategy (Stress Test Addition)
+
+The plan projects 10K-30K FileFree filers and 2K-5K LaunchFree users but never modeled how they arrive. Social content is one channel, not the strategy. This section fills that gap.
+
+### Channel-by-Channel Projections (Year 1)
+
+
+| Channel                                   | Monthly Investment              | Time to Impact   | Year 1 Users (Est.) | Notes                                                                                                   |
+| ----------------------------------------- | ------------------------------- | ---------------- | ------------------- | ------------------------------------------------------------------------------------------------------- |
+| **Organic TikTok/Reels**                  | $15-17/mo (pipeline cost)       | 2-4 months       | 500-3,000           | Faceless + founder content. 90%+ of videos get <500 views; the bet is on the 1-2 that go viral.         |
+| **SEO / Content**                         | $0 (AI-written, founder-edited) | 6-12 months      | 1,000-5,000         | Blog posts: "cheapest state for LLC", "free tax filing 2027", "LLC vs sole prop". Long tail, compounds. |
+| **Product Hunt + HN launch**              | $0                              | Day 1 spike only | 500-2,000           | One-time spike. LaunchFree PH launch, FileFree PH launch. Plan for both.                                |
+| **Reddit / personal finance communities** | $0 (time cost)                  | 1-3 months       | 200-1,000           | r/personalfinance, r/smallbusiness, r/tax. Authentic answers that mention product. Never spam.          |
+| **TikTok Spark Ads**                      | $200-500/mo                     | Immediate        | 2,000-8,000         | Boost top-performing organic videos. $0.05-0.10/click. Budget this in FINANCIALS.md.                    |
+| **Referral program**                      | $0-5/referral (tax credit)      | 3-6 months       | 500-2,000           | "Refer a friend, both get [benefit]". Implement in Phase 7.                                             |
+| **Cross-sell (LaunchFree -> FileFree)**   | $0                              | Jan 2027         | 500-2,000           | Every LLC former needs to file taxes. Built-in pipeline.                                                |
+| **TOTAL REALISTIC RANGE**                 |                                 |                  | **5,200-23,000**    |                                                                                                         |
+
+
+### Customer Acquisition Cost (CAC) Model
+
+
+| Segment                 | CAC              | Lifetime Value (LTV) | LTV:CAC  | Verdict                                                       |
+| ----------------------- | ---------------- | -------------------- | -------- | ------------------------------------------------------------- |
+| Organic (SEO + social)  | ~$0              | $15-50 (Year 1)      | Infinite | Build this first. It compounds.                               |
+| Paid social (Spark Ads) | $0.50-2.00       | $15-50               | 7-100x   | Profitable from day 1 IF content converts. Test with $200/mo. |
+| Product Hunt / HN       | ~$0              | $15-50               | Infinite | One-time, non-repeatable. Nice but not a strategy.            |
+| Referral                | $5 (credit cost) | $15-50               | 3-10x    | Excellent unit economics. Build in Phase 7.                   |
+
+
+### Pre-Launch Audience Building (Start NOW, Before Products Ship)
+
+
+| Action                                                 | Owner          | Timeline           | Goal                                         |
+| ------------------------------------------------------ | -------------- | ------------------ | -------------------------------------------- |
+| Start LLC Journey content series (Section 5J)          | Founder 1      | March-April 2026   | 500+ followers before LaunchFree launch      |
+| Publish 3 SEO blog posts on sankalpsharma.com/blog     | Founder 1 + AI | April 2026         | Index in Google for long-tail LLC keywords   |
+| Post in r/smallbusiness and r/Entrepreneur weekly      | Founder 1      | Ongoing            | Build credibility, understand user language  |
+| Launch waitlist with referral incentive                | Founder 1      | Already live       | Grow to 500+ emails before LaunchFree launch |
+| Submit to BetaList, Indie Hackers, Startup directories | Founder 1      | 1 month pre-launch | 200-500 signups from startup community       |
+
+
+### Bootstrapped Growth Case Studies
+
+**FreeTaxUSA**: Built to 10M+ filers with zero VC funding. Strategy: SEO-first (ranks #1 for "free tax filing"), word-of-mouth from happy users, price undercut (federal free, state $14.99). No paid social until 1M+ users. Lesson: product quality IS the marketing.
+
+**Credit Karma**: Grew to 100M users pre-acquisition on free credit scores + SEO + word-of-mouth. Zero paid ads for first 3 years. Lesson: give away something valuable that competitors charge for, and users become evangelists.
+
+**Our playbook**: Follow both patterns. Free filing IS the hook (like Credit Karma's free credit score). SEO compounds over time (like FreeTaxUSA's dominance). Social content builds brand recognition. Paid amplification ($100-300/mo max) only boosts proven organic winners.
+
+### Brand Mission Alignment
+
+Every piece of content should reinforce one of these mission pillars:
+- **Accessibility**: "Taxes shouldn't cost $89" / "Your LLC shouldn't cost $500"
+- **Transparency**: "No hidden fees, no bait-and-switch, no surprise renewals"
+- **Empowerment**: "You don't need a CPA for a simple return" / "You don't need a lawyer to form an LLC"
+- **AI as helper**: "AI does the work, you just confirm"
+
+Content that doesn't tie back to a mission pillar gets killed. This is how brands build recognition -- relentless consistency, not volume.
+
+### Viral Mechanics
+
+- **Refund amount sharing**: "I just filed my taxes for free and I'm getting $X back" (shareable card with FileFree branding)
+- **LLC formation celebration**: "I just started my business!" (shareable certificate with LaunchFree branding)
+- **Comparison calculator**: "How much are you overpaying for tax prep?" (interactive widget, generates shareable result)
+- **Referral loops**: Referrer and referee both get a benefit (e.g., priority support, Tax Optimization Plan discount)
+
+### What's NOT in the Strategy (Honest Gaps)
+
+- **Paid search (Google Ads)**: Too expensive for "LLC formation" ($15-30/click). Not viable until revenue covers it.
+- **Influencer partnerships**: No budget and no traction to pitch. Revisit at 10K+ users.
+- **Email list buying**: Never. Destroys trust and violates CAN-SPAM intent.
+- **PR / press**: No story yet. Revisit after Product Hunt launch with traction data.
+
+**Ad budget**: $100-300/mo max for TikTok Spark Ads + Meta boost, starting at LaunchFree launch. Only boost organic content that already performed well. This is NOT a paid-first strategy.
+
+---
+
 ## 6. Agent Architecture (Venture-Wide)
 
 ### 6A. The Problem: All Agents Are FileFree-Specific
@@ -1669,12 +1924,12 @@ Agents are organized into three tiers:
 
 | #   | Persona                     | File                                              | Globs                                                                      | Purpose                                                                         |
 | --- | --------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| 10  | Tax Domain Expert           | `tax-domain.mdc`                                  | `apps/filefree/`**, `apis/filefree/**`, `packages/data/**/tax-*`           | IRS rules, brackets, MeF schemas                                                |
+| 10  | Tax Domain Expert           | `tax-domain.mdc`                                  | `apps/filefree/`**, `apis/filefree/`**, `packages/data/**/tax-*`           | IRS rules, brackets, MeF schemas                                                |
 | 11  | CPA / Tax Advisor           | `cpa.mdc`                                         | `apps/filefree/**`                                                         | Tax advisory content quality                                                    |
 | 12  | FileFree Social             | `filefree-social.mdc` (rename from `social.mdc`)  | `apps/filefree/**/social/**`                                               | FileFree content: @filefree handles, tax hooks, TurboTax positioning            |
 | 13  | FileFree Growth             | `filefree-growth.mdc` (extract from `growth.mdc`) | `apps/filefree/**`                                                         | Tax-specific SEO, TurboTax competition keywords                                 |
 | 14  | FileFree Brand              | `filefree-brand.mdc` (extract from `brand.mdc`)   | `apps/filefree/**`                                                         | Violet-indigo palette, FileFree voice                                           |
-| 15  | **Formation Domain Expert** | `formation-domain.mdc` (NEW)                      | `apps/launchfree/`**, `apis/launchfree/**`, `packages/data/**/formation-*` | State LLC rules, RA requirements, annual report deadlines, entity types         |
+| 15  | **Formation Domain Expert** | `formation-domain.mdc` (NEW)                      | `apps/launchfree/`**, `apis/launchfree/`**, `packages/data/**/formation-*` | State LLC rules, RA requirements, annual report deadlines, entity types         |
 | 16  | **LaunchFree Social**       | `launchfree-social.mdc` (NEW)                     | `apps/launchfree/**/social/`**                                             | LaunchFree content: @launchfree handles, formation hooks, LegalZoom positioning |
 | 17  | **LaunchFree Growth**       | `launchfree-growth.mdc` (NEW)                     | `apps/launchfree/`**                                                       | Formation-specific SEO, "free LLC" keywords, LegalZoom/ZenBusiness positioning  |
 | 18  | **LaunchFree Brand**        | `launchfree-brand.mdc` (NEW)                      | `apps/launchfree/`**                                                       | Teal-cyan palette, LaunchFree voice                                             |
@@ -1683,7 +1938,7 @@ Agents are organized into three tiers:
 
 ### 6C. Persona Split Specs
 
-`**social.mdc` -> `filefree-social.mdc` + `launchfree-social.mdc**`:
+`**social.mdc` -> `filefree-social.mdc` + `launchfree-social.mdc`**:
 
 
 | Attribute                       | filefree-social.mdc                                                           | launchfree-social.mdc                                                                 |
@@ -1697,13 +1952,13 @@ Agents are organized into three tiers:
 | Posting cadence                 | 7-10/week tax season, 2-3/week off-season                                     | 3-5/week consistent year-round                                                        |
 
 
-`**brand.mdc` -> `filefree-brand.mdc` + `launchfree-brand.mdc**`:
+`**brand.mdc` -> `filefree-brand.mdc` + `launchfree-brand.mdc`**:
 
 - FileFree: violet-indigo palette (`from-violet-500 to-purple-600`), tax-anxiety-killing tone
 - LaunchFree: teal-cyan palette (`from-teal-500 to-cyan-600`), entrepreneurial empowerment tone
 - Shared: Inter + JetBrains Mono typography, dark mode default, same animation patterns
 
-`**growth.mdc` -> `filefree-growth.mdc` + `launchfree-growth.mdc**`:
+`**growth.mdc` -> `filefree-growth.mdc` + `launchfree-growth.mdc`**:
 
 - FileFree: SEO targets "free tax filing", "file taxes online free", competitor comparison pages vs TurboTax
 - LaunchFree: SEO targets "free LLC formation", "how to start an LLC", state-specific landing pages, competitor comparisons vs LegalZoom/ZenBusiness
@@ -1722,22 +1977,23 @@ Agents are organized into three tiers:
 ### 6E. New Agents to Build (12+)
 
 
-| #   | Agent                     | Type                  | Trigger           | Purpose                                                              |
-| --- | ------------------------- | --------------------- | ----------------- | -------------------------------------------------------------------- |
-| 19  | L1 Support (DocBot)       | n8n webhook           | User message      | Answer from knowledge base (60% resolution target)                   |
-| 20  | L2 Support (OpsBot)       | n8n webhook           | DocBot escalation | Execute actions: check status, resend email, reset password          |
-| 21  | State Data Validator      | n8n cron (monthly)    | 1st of month      | Check 50 state websites for fee/rule changes                         |
-| 22  | IRS Update Monitor        | n8n cron (October)    | Annual            | Parse new Revenue Procedure for bracket changes                      |
-| 23  | Competitive Intel         | n8n cron (weekly)     | Mondays           | Monitor LegalZoom/ZenBusiness/TurboTax pricing + features            |
-| 24  | Analytics Reporter        | n8n cron (weekly)     | Sundays           | Pull PostHog data, generate weekly metrics report                    |
-| 25  | Infra Health Monitor      | n8n cron (hourly)     | Continuous        | Check Render/Vercel/Hetzner status, alert on issues (see Section 7B) |
-| 26  | Affiliate Revenue Tracker | n8n cron (daily)      | Daily             | Check affiliate dashboards, report conversions                       |
-| 27  | LaunchFree Social Bot     | n8n cron (daily)      | 8am               | Draft LaunchFree social content for Postiz                           |
-| 28  | LaunchFree Growth Bot     | n8n cron (weekly)     | Mondays           | Draft LaunchFree SEO articles                                        |
-| 29  | LaunchFree Compliance Bot | n8n cron (monthly)    | 1st               | State filing deadline alerts for users                               |
-| 30  | Knowledge Base Sync       | n8n cron (nightly)    | 2am               | Sync Google Drive docs to support agent context                      |
-| 31  | AI Ops Lead               | Cursor persona (.mdc) | On demand         | Model routing, cost tracking, persona audits                         |
+| #   | Agent                     | Type                  | Trigger                | Purpose                                                                                                   |
+| --- | ------------------------- | --------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------- |
+| 19  | L1 Support (DocBot)       | n8n webhook           | User message           | Answer from knowledge base (60% resolution target)                                                        |
+| 20  | L2 Support (OpsBot)       | n8n webhook           | DocBot escalation      | Execute actions: check status, resend email, reset password                                               |
+| 21  | State Data Validator      | n8n cron (daily/weekly) | Daily for volatile states (CA, NY, TX, FL, IL, WA, NJ, MA, GA, PA), weekly for others | Check state SOS websites for fee/rule changes. Flag stale data (>30 days) to Compliance Monitor. |
+| 22  | IRS Update Monitor        | n8n cron (October)    | Annual                 | Parse new Revenue Procedure for bracket changes                                                           |
+| 23  | Competitive Intel         | n8n cron (weekly)     | Mondays                | Monitor LegalZoom/ZenBusiness/TurboTax pricing + features                                                 |
+| 24  | Analytics Reporter        | n8n cron (weekly)     | Sundays                | Pull PostHog data, generate weekly metrics report                                                         |
+| 25  | Infra Health Monitor      | n8n cron (hourly)     | Continuous             | Check Render/Vercel/Hetzner status, alert on issues (see Section 7B)                                      |
+| 26  | Affiliate Revenue Tracker | n8n cron (daily)      | Daily                  | Check affiliate dashboards, report conversions                                                            |
+| 27  | LaunchFree Social Bot     | n8n cron (daily)      | 8am                    | Draft LaunchFree social content for Postiz                                                                |
+| 28  | LaunchFree Growth Bot     | n8n cron (weekly)     | Mondays                | Draft LaunchFree SEO articles                                                                             |
+| 29  | LaunchFree Compliance Bot | n8n cron (monthly)    | 1st                    | State filing deadline alerts for users                                                                    |
+| 30  | Knowledge Base Sync       | n8n cron (nightly)    | 2am                    | Sync Google Drive docs to support agent context                                                           |
+| 31  | AI Ops Lead               | Cursor persona (.mdc) | On demand              | Model routing, cost tracking, persona audits                                                              |
 | 32  | Executive Assistant (EA)  | Cursor persona + n8n  | Daily cron + on-demand | Daily briefing, weekly planning, decision tracking, financial tracking, doc maintenance. See Section 6J1. |
+| 33  | Compliance & Security Monitor | n8n cron (daily) | 6am | Tracks: cyber insurance status, data breach plan currency, EFIN cert status, 50-state data freshness, legal doc expiry (ToS, privacy policy last-reviewed dates). Outputs daily compliance status to Slack #compliance-alerts and weekly summary to Mission Control P4.4. |
 
 
 ### 6F. n8n Workflow Updates (Existing 6)
@@ -1802,25 +2058,182 @@ LaunchFree Compliance Bot (monthly) --> user emails
 4. **New Model Evaluation**: When a new model drops, evaluate benchmarks + pricing vs current assignments. Generate swap recommendation within 48 hours.
 5. **Workflow Optimization**: Identify tasks where a cheaper model could achieve the same quality.
 
-### 6I. Three-Layer Architecture
+### 6I. Company Org Chart: Agents as Employees
+
+Agents are employees. The full company is staffed from day one -- every role is defined with a system prompt and clear domain, even if some are initially in **Standby** (activated when workload appears). This is not premature scaling; this is organizational design. A company defines all roles before hiring into them.
+
+#### Org Chart (Tree Structure)
 
 ```
-Layer 1: STRATEGY (Human)
-  Founder -- decisions, code, legal filings
-  Co-founder -- partnership relationships
-
-Layer 2: EXECUTION (AI Agents)
-  Cursor Personas (14 venture + 10 product = 24 total)
-    -- code, strategy, legal, growth, brand, ops, domain expertise, EA
-  n8n Autonomous (19 workflows)
-    -- social, support, monitors, content, compliance, ops, EA daily/weekly
-
-Layer 3: INFRASTRUCTURE
-  Hetzner VPS (n8n, Postiz) | Vercel x4 (sites) | Render x2 (APIs)
-  Google Workspace | OpenAI + Anthropic + Google APIs
+FOUNDER (Root -- final arbiter on all escalations)
+├── CHIEF OF STAFF (EA Interactive -- ea.mdc)
+│   ├── EA Ops Monitor (n8n: ea-daily, ea-weekly)
+│   └── Compliance & Security Monitor (n8n: daily)
+│
+├── VP ENGINEERING (engineering.mdc)
+│   ├── Tax Domain Expert (tax-domain.mdc)
+│   ├── Formation Domain Expert (formation-domain.mdc)
+│   ├── Studio Lead (studio.mdc)
+│   ├── AI Ops Lead (agent-ops.mdc)
+│   └── QA Lead (qa.mdc)
+│       ├── QA Security Scanner (n8n)
+│       └── State Data Validator (n8n: daily/weekly)
+│           └── IRS Update Monitor (n8n: annual October)
+│
+├── VP PRODUCT (ux.mdc)
+│   └── UX/UI decisions for all products
+│
+├── VP GROWTH
+│   ├── FileFree Growth (filefree-growth.mdc)
+│   │   ├── FileFree Social (filefree-social.mdc)
+│   │   └── FileFree Content Pipeline (n8n: daily)
+│   ├── LaunchFree Growth (launchfree-growth.mdc)
+│   │   ├── LaunchFree Social (launchfree-social.mdc)
+│   │   └── LaunchFree Content Pipeline (n8n: daily)
+│   └── Analytics Reporter (n8n: weekly)
+│
+├── VP BRAND
+│   ├── FileFree Brand (filefree-brand.mdc)
+│   └── LaunchFree Brand (launchfree-brand.mdc)
+│
+├── GENERAL COUNSEL (legal.mdc)
+│   ├── Content Review Gate (built into all content personas)
+│   └── LaunchFree Compliance Bot (n8n: monthly)
+│
+├── CFO (cfo.mdc)
+│   └── Affiliate Revenue Tracker (n8n: daily)
+│
+├── VP PARTNERSHIPS (partnerships.mdc -- Founder 2 primary)
+│   └── Partnership Outreach Drafter (n8n)
+│
+├── CPA / TAX ADVISOR (cpa.mdc)
+│   └── CPA Tax Review (n8n)
+│
+├── CUSTOMER SUCCESS
+│   ├── L1 Support Bot (n8n: webhook)
+│   ├── L2 Support Bot (n8n: webhook)
+│   └── Knowledge Base Sync (n8n: nightly)
+│
+├── COMPETITIVE INTEL (n8n: weekly)
+│
+├── STRATEGY (strategy.mdc)
+│   └── Weekly Strategy Check-in (n8n)
+│
+├── WORKFLOWS (workflows.mdc)
+│
+└── INFRA HEALTH MONITOR (n8n: hourly)
 ```
 
-**Total agent count post-restructure**: 24 Cursor personas + 19 n8n workflows = **43 agents** (up from 18)
+**Total: 24 Cursor personas + 19 n8n workflows = 43 agents**
+
+#### Agent Status Levels
+
+Every agent has one of three statuses:
+
+| Status | Meaning | System Prompt | Runs? |
+|---|---|---|---|
+| **Active** | Role is live, executing work | Written and deployed | Yes |
+| **Standby** | Role is defined, system prompt ready, waiting for workload | Written, NOT deployed | No -- activated by founder when needed |
+| **Planned** | Role is defined in org chart only | Not yet written | No -- write system prompt before activation |
+
+| Agent | Type | Status | Notes |
+|---|---|---|---|
+| Engineering | Cursor | Active | Existing |
+| UX/UI Lead | Cursor | Active | Existing |
+| Strategy | Cursor | Active | Existing |
+| Legal | Cursor | Active | Existing |
+| CFO | Cursor | Active | Existing |
+| QA Lead | Cursor | Active | Existing |
+| Partnerships | Cursor | Active | Existing |
+| Workflows | Cursor | Active | Existing |
+| Tax Domain | Cursor | Active | Existing |
+| CPA / Tax Advisor | Cursor | Active | Existing |
+| Social (general) | Cursor | Active | Existing -- splits into product-specific in Phase 6 |
+| Growth (general) | Cursor | Active | Existing -- splits into product-specific in Phase 6 |
+| Brand (general) | Cursor | Active | Existing -- splits into product-specific in Phase 6 |
+| EA Interactive | Cursor | Active | ea.mdc |
+| AI Ops Lead | Cursor | Active | agent-ops.mdc |
+| Formation Domain | Cursor | Standby | Write system prompt in Phase 2 |
+| Studio Lead | Cursor | Standby | Write system prompt in Phase 1 |
+| FileFree Social | Cursor | Planned | Phase 6 split |
+| FileFree Growth | Cursor | Planned | Phase 6 split |
+| FileFree Brand | Cursor | Planned | Phase 6 split |
+| LaunchFree Social | Cursor | Planned | Phase 6 split |
+| LaunchFree Growth | Cursor | Planned | Phase 6 split |
+| LaunchFree Brand | Cursor | Planned | Phase 6 split |
+| Compliance Monitor | n8n | Standby | Activate in Phase 3 |
+| 6 existing n8n workflows | n8n | Active | Social, Growth, Strategy, QA, Partnership, CPA |
+| EA Daily / EA Weekly | n8n | Standby | Activate after Slack hub is set up |
+| State Data Validator | n8n | Standby | Activate in Phase 2 |
+| Infra Health Monitor | n8n | Standby | Activate in Phase 1 |
+| L1/L2 Support Bots | n8n | Planned | Activate when support volume justifies |
+| Competitive Intel | n8n | Standby | Activate before first product launch |
+| Analytics Reporter | n8n | Standby | Activate when PostHog events > 1K/week |
+| Affiliate Revenue Tracker | n8n | Planned | Activate when affiliate revenue exists |
+| LaunchFree Content Pipeline | n8n | Planned | Activate in Phase 6 |
+| LaunchFree Compliance Bot | n8n | Standby | Activate in Phase 3 |
+| Knowledge Base Sync | n8n | Planned | Activate with support bot |
+| IRS Update Monitor | n8n | Standby | Activate October 2026 |
+
+#### 6I-1. Governance Protocol: Multi-Agent Consensus
+
+When a significant change is proposed (new feature, architecture decision, legal/compliance change, content strategy shift), it must pass through the relevant agents in the org chart before implementation. This prevents single-persona blind spots.
+
+**Protocol** (inspired by RACI matrix + hierarchical consensus):
+
+```
+1. PROPOSE: Founder or agent proposes a change
+       |
+       v
+2. ROUTE: EA routes the proposal to all AFFECTED leaf-node agents
+   (e.g., "add 1099 support" routes to: Tax Domain, Engineering, QA, Legal, CPA)
+       |
+       v
+3. REVIEW: Each agent reviews from its domain perspective
+   - Tax Domain: "Are the IRS rules correct?"
+   - Engineering: "Is the architecture sound?"
+   - QA: "Are there security/PII implications?"
+   - Legal: "Are there compliance risks?"
+   - CPA: "Is the tax logic accurate?"
+       |
+       v
+4. VERDICT: Each agent returns APPROVE / CONCERN / BLOCK
+   - APPROVE: No issues in my domain
+   - CONCERN: Minor issue, can proceed with noted caveat
+   - BLOCK: Serious issue, must resolve before proceeding
+       |
+       v
+5. RESOLVE:
+   - All APPROVE -> implement
+   - Any CONCERN -> implement with caveats logged to KNOWLEDGE.md
+   - Any BLOCK -> escalate to parent node in org chart
+     - Parent resolves or escalates further
+     - Founder is final arbiter (root node)
+```
+
+**When to use full governance**: Architecture changes, new form/schedule support, legal/compliance decisions, partner integrations, security-affecting changes. NOT for: bug fixes, copy changes, routine tasks.
+
+**Implementation**: In Cursor, the founder invokes relevant personas sequentially or asks a "review council" question that triggers multiple personas. In n8n, automated governance runs as a workflow for content (e.g., social post -> Legal Content Review Gate -> approve/reject).
+
+#### 6I-2. Overlap Resolution
+
+| Overlap | Personas | Resolution |
+|---|---|---|
+| Financial tracking | CFO + EA | **EA owns operational tracking** (logging expenses, updating FINANCIALS.md). **CFO owns analysis** (unit economics, vendor evaluation, scaling projections). |
+| Strategic planning | Strategy + EA | **EA owns tactical planning** (daily/weekly). **Strategy owns strategic direction** (product roadmap, market positioning). |
+| Persona audits | Agent-Ops + QA | **Agent-Ops owns model/prompt optimization**. **QA owns security/compliance review**. Different audit dimensions. |
+| Social content | filefree-social + launchfree-social | **Separate globs** prevent co-activation. Shared social infra uses `social-infra.mdc` stub. |
+
+#### 6I-3. EA Agent Split
+
+| Role | Implementation | Responsibilities | Trigger |
+|---|---|---|---|
+| **EA Interactive** | `ea.mdc` (Cursor persona) | Decision logging, task status queries, ad-hoc ops questions, expense logging, routing proposals to governance | Founder asks operational questions in Cursor |
+| **EA Ops Monitor** | `venture-ea-daily` + `venture-ea-weekly` (n8n) | Daily briefing (7am -> Slack #daily-briefing), weekly planning (Sunday 6pm -> GDrive), n8n health checks | Cron schedules |
+
+The interactive EA should NOT generate briefings. The ops monitor should NOT update docs -- it produces reports for the founder to act on.
+
+**Social pipeline cost**: ElevenLabs Starter ($5/mo or startup grant) + Hetzner for FFmpeg (~$6/mo) = **$11-17/mo**.
 
 ### 6J. Agent Interaction Model
 
@@ -1830,13 +2243,15 @@ The founder needs a clear mental model for how to communicate with the AI workfo
 
 How: Open a file matching a persona's glob pattern, or explicitly invoke by asking a relevant question.
 
-| Action | What Happens |
-|---|---|
-| Open `apps/filefree/...` | Engineering + FileFree product personas activate |
-| Ask "review this for legal compliance" | `legal.mdc` activates |
-| Ask "what should I work on today?" | `ea.mdc` activates |
-| Ask "is this model the right choice?" | `agent-ops.mdc` activates |
-| Ask "log this decision: we chose California LLC" | `ea.mdc` logs to `docs/KNOWLEDGE.md` |
+
+| Action                                           | What Happens                                     |
+| ------------------------------------------------ | ------------------------------------------------ |
+| Open `apps/filefree/...`                         | Engineering + FileFree product personas activate |
+| Ask "review this for legal compliance"           | `legal.mdc` activates                            |
+| Ask "what should I work on today?"               | `ea.mdc` activates                               |
+| Ask "is this model the right choice?"            | `agent-ops.mdc` activates                        |
+| Ask "log this decision: we chose California LLC" | `ea.mdc` logs to `docs/KNOWLEDGE.md`             |
+
 
 When: During coding/strategy sessions in Cursor IDE. These are your real-time collaborators.
 
@@ -1844,16 +2259,18 @@ When: During coding/strategy sessions in Cursor IDE. These are your real-time co
 
 How: Run on cron schedules or webhook triggers. No founder action needed.
 
-| Time | Workflow | Output Location | Founder Action |
-|---|---|---|---|
-| 2am daily | Knowledge Base Sync | Internal DB | None (background) |
-| 7am daily | EA Daily Briefing | GDrive + Discord `#ops-alerts` | Read (5 min) |
-| 8am daily | Social Content (FileFree + LaunchFree) | Postiz queue | Review/approve (5 min) |
-| Hourly | Infra Health Monitor | Discord `#ops-alerts` (only on issues) | Act if alerted |
-| Daily | Affiliate Revenue Tracker | GDrive report | Check weekly |
-| Sunday 6pm | EA Weekly Planning | GDrive | Review and adjust (10 min) |
-| Mondays | Competitive Intel + Growth Content | GDrive | Review at leisure |
-| Monthly 1st | State Data Validator + Compliance Bot | GitHub Issues + user emails | Review issues |
+
+| Time        | Workflow                               | Output Location                        | Founder Action             |
+| ----------- | -------------------------------------- | -------------------------------------- | -------------------------- |
+| 2am daily   | Knowledge Base Sync                    | Internal DB                            | None (background)          |
+| 7am daily   | EA Daily Briefing                      | GDrive + Discord `#ops-alerts`         | Read (5 min)               |
+| 8am daily   | Social Content (FileFree + LaunchFree) | Postiz queue                           | Review/approve (5 min)     |
+| Hourly      | Infra Health Monitor                   | Discord `#ops-alerts` (only on issues) | Act if alerted             |
+| Daily       | Affiliate Revenue Tracker              | GDrive report                          | Check weekly               |
+| Sunday 6pm  | EA Weekly Planning                     | GDrive                                 | Review and adjust (10 min) |
+| Mondays     | Competitive Intel + Growth Content     | GDrive                                 | Review at leisure          |
+| Monthly 1st | State Data Validator + Compliance Bot  | GitHub Issues + user emails            | Review issues              |
+
 
 Daily founder time: ~15-20 minutes reviewing agent outputs. Mostly reading briefings and approving social content.
 
@@ -1861,12 +2278,14 @@ Daily founder time: ~15-20 minutes reviewing agent outputs. Mostly reading brief
 
 How: n8n webhook URL, Discord slash command, or direct n8n execution.
 
-| Command | What Runs | Output |
-|---|---|---|
+
+| Command                       | What Runs                                                                        | Output            |
+| ----------------------------- | -------------------------------------------------------------------------------- | ----------------- |
 | `/trinket-discover [keyword]` | Market Discovery Agent: researches keyword, finds competitors, sizes opportunity | 1-pager in GDrive |
-| `/support [user question]` | L1 DocBot: answers from knowledge base | Discord response |
-| `/competitive-check` | Competitive Intel: immediate scan of competitor pricing/features | GDrive report |
-| `/ea [question]` | EA agent: ad-hoc operational query | Discord response |
+| `/support [user question]`    | L1 DocBot: answers from knowledge base                                           | Discord response  |
+| `/competitive-check`          | Competitive Intel: immediate scan of competitor pricing/features                 | GDrive report     |
+| `/ea [question]`              | EA agent: ad-hoc operational query                                               | Discord response  |
+
 
 ### 6J1. Executive Assistant Agent (#32) -- Detail Spec
 
@@ -1878,50 +2297,60 @@ The EA is the founder's most frequently used agent. It bridges Cursor (interacti
 
 **Documents owned by EA**:
 
-| Document | Update Frequency | Trigger |
-|---|---|---|
-| `docs/KNOWLEDGE.md` | Per conversation | Founder makes a decision |
-| `docs/TASKS.md` | Per task completion | Phase milestone hit |
-| `docs/FINANCIALS.md` | Per expense | Domain purchase, subscription change |
-| `docs/VENTURE_MASTER_PLAN.md` | Strategic changes only | Major direction shift |
+
+| Document                      | Update Frequency       | Trigger                              |
+| ----------------------------- | ---------------------- | ------------------------------------ |
+| `docs/KNOWLEDGE.md`           | Per conversation       | Founder makes a decision             |
+| `docs/TASKS.md`               | Per task completion    | Phase milestone hit                  |
+| `docs/FINANCIALS.md`          | Per expense            | Domain purchase, subscription change |
+| `docs/VENTURE_MASTER_PLAN.md` | Strategic changes only | Major direction shift                |
+
 
 ---
 
 ## 7. Execution Phases
 
-### Phase 0: Infrastructure (This Week)
+### Phase 0: Infrastructure (Weeks 1-3, Realistic)
+
+**Dependency chain**: P0.1 (DONE) -> P0.2, P0.3, P0.4, P0.5 (parallel) -> P0.6 (blocked on LLC name) -> P0.7 -> P0.8 (needs specimen, after launch) -> P0.9 (parallel with anything)
+
+**Pre-code blockers (Section 0G)**: EFIN application, cyber insurance, LLC name decision, attorney consult, breach response plan. These run parallel to Phase 0 tasks below.
 
 
-| Task                         | Owner     | Details                                                                                                        |
-| ---------------------------- | --------- | -------------------------------------------------------------------------------------------------------------- |
-| P0.1 Buy domains             | Founder 1 | launchfree.ai + filefree.ai PURCHASED (March 2026). Consider launchfree.llc.                                   |
-| P0.2 Migrate FileFree domain | Founder 1 | filefree.tax -> filefree.ai (Vercel, DNS, 301s)                                                                |
-| P0.3 Google Workspace        | Founder 1 | Set up on sankalpsharma.com, add secondary domains, create aliases                                             |
-| P0.4 Google Drive HQ         | Founder 1 | Create Venture HQ folder structure, add GDrive MCP to Cursor                                                   |
-| P0.5 Secure social handles   | Founder 1 | @launchfree on TikTok, IG, X, YouTube                                                                          |
-| P0.6 Form LLC                | Founder 1 | California LLC (name TBD -- founder deciding, see Section 0B). File DBAs for "FileFree", "LaunchFree", "Trinkets". See Section 0B for CA vs WY analysis. |
-| P0.7 Migrate DNS subdomains  | Founder 1 | ops/social.sankalpsharma.com -> Hetzner (replace filefree.tax subdomains)                                      |
-| P0.8 File trademarks         | Founder 1 | FILEFREE + LAUNCHFREE on USPTO Supplemental Register, Class 036+042 and Class 035+042 (~$2,100)                |
-| P0.9 Legal compliance setup  | Founder 1 | Add Content Review Gate checklist to all persona .mdc files. Update privacy/terms per Section 0C.              |
+| Task                         | Owner     | Branch                   | Files/Specs                                                                                                                                                                                                                                        | Acceptance Criteria                                                                                                                                                                                | Depends On                             | Status             |
+| ---------------------------- | --------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- | ------------------ |
+| P0.1 Buy domains             | Founder 1 | N/A (no code)            | N/A                                                                                                                                                                                                                                                | launchfree.ai + filefree.ai registrar confirmed                                                                                                                                                    | None                                   | DONE               |
+| P0.2 Migrate FileFree domain | Founder 1 | `chore/domain-migration` | `web/next.config.ts` (redirects), Vercel dashboard (custom domain), DNS provider (A/CNAME records)                                                                                                                                                 | filefree.ai serves the app. filefree.tax 301-redirects to filefree.ai. All existing links preserved. SSL cert issued.                                                                              | P0.1                                   | NOT STARTED        |
+| P0.3 Google Workspace        | Founder 1 | N/A (no code)            | Google Admin console: add filefree.ai, launchfree.ai as secondary domains. Create aliases: hello@, support@, legal@ for each.                                                                                                                      | Emails received at [hello@filefree.ai](mailto:hello@filefree.ai), [hello@launchfree.ai](mailto:hello@launchfree.ai). SPF/DKIM/DMARC configured for all domains.                                    | P0.1                                   | NOT STARTED        |
+| P0.4 Google Drive HQ         | Founder 1 | N/A (no code)            | Create folder structure: `Venture HQ/Operations/Daily Briefings/`, `Venture HQ/Operations/Weekly Plans/`, `Venture HQ/Trinkets/One-Pagers/`, `Venture HQ/Trinkets/PRDs/`, `Venture HQ/Intelligence/`. Add GDrive MCP server to `.cursor/mcp.json`. | GDrive accessible from Cursor via MCP. Folder structure matches EA spec in `ea.mdc`.                                                                                                               | P0.3                                   | NOT STARTED        |
+| P0.5 Secure social handles   | Founder 1 | N/A (no code)            | Register @launchfree on TikTok, Instagram, X, YouTube. Set profile pic to monogram, link to launchfree.ai.                                                                                                                                         | All 4 accounts created, profile pics set, bios written, URLs point to launchfree.ai.                                                                                                               | P0.1                                   | NOT STARTED        |
+| P0.6 Form LLC                | Founder 1 | N/A (no code)            | California SOS online filing. DBA filings at county clerk (FileFree, LaunchFree, Trinkets).                                                                                                                                                        | Articles of Organization filed with CA SOS. Confirmation number received. DBA filings submitted. EIN applied for on IRS.gov (same day as LLC confirmation). Bank account opened.                   | LLC name decided (Section 0G #4)       | BLOCKED (name TBD) |
+| P0.7 Migrate DNS subdomains  | Founder 1 | `chore/dns-migration`    | DNS provider records: ops.sankalpsharma.com -> Hetzner (n8n), social.sankalpsharma.com -> Hetzner (Postiz). Remove old filefree.tax subdomains.                                                                                                    | n8n accessible at ops.sankalpsharma.com. Postiz accessible at social.sankalpsharma.com. Old subdomains return 404 or redirect.                                                                     | P0.2                                   | NOT STARTED        |
+| P0.8 File trademarks         | Founder 1 | N/A (no code)            | USPTO TEAS Plus application. FILEFREE: Class 036 + 042. LAUNCHFREE: Class 035 + 042. Supplemental Register.                                                                                                                                        | Applications filed. Serial numbers received. Docket dates noted in TASKS.md.                                                                                                                       | Product launch (needs specimen of use) | DEFERRED           |
+| P0.9 Legal compliance setup  | Founder 1 | `chore/legal-compliance` | Update `.cursor/rules/social.mdc`, `growth.mdc`, `brand.mdc` to include Content Review Gate checklist from Section 0C. Create/update `web/src/app/(legal)/privacy/page.tsx`, `web/src/app/(legal)/terms/page.tsx`.                                 | Every content-producing persona .mdc includes the Content Review Gate checklist verbatim. Privacy policy and ToS pages updated with cross-sell consent language from Section 0C Legal Risk Matrix. | None (can start immediately)           | NOT STARTED        |
 
 
-### Phase 1: Monorepo Restructure (Week 2-3)
+### Phase 1: Monorepo Restructure (Weeks 3-8, Realistic)
+
+**Dependency chain**: P1.1 -> P1.2 -> P1.3, P1.4 (parallel) -> P1.5 -> P1.6 -> P1.7, P1.8, P1.9, P1.9b (parallel) -> P1.10 -> P1.11
+
+**This is the highest-risk phase**: Every file in the repo moves. Imports break. CI breaks. Expect 4-6 weeks, not 2-3.
 
 
-| Task                             | Details                                                                                                                                                                                                                      |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| P1.1 Init pnpm workspace         | Create root package.json, pnpm-workspace.yaml                                                                                                                                                                                |
-| P1.2 Extract packages/ui         | Move 22 shadcn components + utils.ts + motion.ts. Add multi-brand theme system (Section 2 palettes): `themes.css` with `[data-theme]` selectors for filefree (violet-indigo), launchfree (teal-cyan), studio (zinc-neutral), trinkets (amber-orange) -- 4 themes |
-| P1.3 Extract packages/auth       | Move use-auth, use-idle-timeout, api.ts, session-timeout-dialog                                                                                                                                                              |
-| P1.4 Extract packages/analytics  | Move posthog.ts, attribution.ts, posthog-provider, providers                                                                                                                                                                 |
-| P1.5 Move web/ -> apps/filefree/ | Update all imports to @venture/* packages                                                                                                                                                                                    |
-| P1.6 Move api/ -> apis/filefree/ | Update paths in compose, render.yaml, Makefile                                                                                                                                                                               |
-| P1.7 Scaffold apps/launchfree/   | Copy filefree structure, strip product-specific pages                                                                                                                                                                        |
-| P1.8 Scaffold apis/launchfree/   | Copy base patterns (auth, repo, response envelope, config)                                                                                                                                                                   |
-| P1.9 Scaffold apps/studio/       | Next.js app for sankalpsharma.com                                                                                                                                                                                            |
-| P1.9b Scaffold apps/trinkets/    | Next.js SSG app, Vercel free tier, AdSense placeholder, tool-layout component                                                                                                                                                |
-| P1.10 Update infra               | compose.dev.yaml, render.yaml, Makefile, CI for monorepo                                                                                                                                                                     |
-| P1.11 Verify                     | `pnpm dev:filefree`, `pnpm dev:launchfree`, `pnpm dev:studio`, `pnpm dev:trinkets` all work                                                                                                                                  |
+| Task                             | Branch                         | Files/Specs                                                                                                                                                                                                                                                                                                                                                                                   | Acceptance Criteria                                                                                                                                                                                                                                                             | Depends On                    |
+| -------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| P1.1 Init pnpm workspace         | `feat/monorepo-init`           | `package.json` (root, workspaces config), `pnpm-workspace.yaml` (packages: `apps/`*, `apis/`*, `packages/*`), `.npmrc` (shamefully-hoist=true if needed). Remove root `node_modules/` and `package-lock.json`.                                                                                                                                                                                | `pnpm install` succeeds from root. `pnpm -r list` shows all workspace packages. No npm lockfile present.                                                                                                                                                                        | None                          |
+| P1.2 Extract packages/ui         | `feat/shared-ui`               | `packages/ui/package.json`, `packages/ui/src/components/` (22 shadcn components from `web/src/components/ui/`), `packages/ui/src/lib/utils.ts`, `packages/ui/src/lib/motion.ts`, `packages/ui/src/themes.css` (4 brand themes with `[data-theme]` selectors -- see Section 2 palettes), `packages/ui/tsconfig.json`, `packages/ui/tailwind.config.ts` (if needed, or Tailwind v4 CSS config). | `import { Button } from '@venture/ui'` works from any app. All 22 components render correctly. `themes.css` provides filefree (violet-indigo), launchfree (teal-cyan), studio (zinc-neutral), trinkets (amber-orange) CSS variable sets. `pnpm build` succeeds for packages/ui. | P1.1                          |
+| P1.3 Extract packages/auth       | `feat/shared-auth`             | `packages/auth/package.json`, `packages/auth/src/hooks/use-auth.ts`, `packages/auth/src/hooks/use-idle-timeout.ts`, `packages/auth/src/lib/api.ts` (base API client with auth headers), `packages/auth/src/components/session-timeout-dialog.tsx`.                                                                                                                                            | `import { useAuth } from '@venture/auth'` works. Auth flow (login, logout, session refresh) functional from any app.                                                                                                                                                            | P1.1                          |
+| P1.4 Extract packages/analytics  | `feat/shared-analytics`        | `packages/analytics/package.json`, `packages/analytics/src/posthog.ts`, `packages/analytics/src/attribution.ts`, `packages/analytics/src/components/posthog-provider.tsx`, `packages/analytics/src/components/providers.tsx`.                                                                                                                                                                 | `import { PostHogProvider } from '@venture/analytics'` works. Events fire to PostHog from any app.                                                                                                                                                                              | P1.1                          |
+| P1.5 Move web/ -> apps/filefree/ | `feat/move-filefree`           | Move entire `web/` directory to `apps/filefree/`. Update ALL internal imports from `@/components/ui/*` to `@venture/ui`, `@/hooks/use-auth` to `@venture/auth`, etc. Update `apps/filefree/package.json` name to `@venture/filefree`.                                                                                                                                                         | `pnpm dev:filefree` starts on port 3001. All pages render. No broken imports. Tests pass.                                                                                                                                                                                       | P1.2, P1.3, P1.4              |
+| P1.6 Move api/ -> apis/filefree/ | `feat/move-filefree-api`       | Move entire `api/` directory to `apis/filefree/`. Update `infra/compose.dev.yaml` volume mounts and build context. Update `render.yaml` root directory. Update Makefile targets.                                                                                                                                                                                                              | `make dev` starts the API on port 8001. All existing endpoints return correct responses. Alembic migrations run.                                                                                                                                                                | P1.5                          |
+| P1.7 Scaffold apps/launchfree/   | `feat/scaffold-launchfree`     | Copy `apps/filefree/` structure. Strip product-specific pages (keep: layout, auth, landing). Update package.json name to `@venture/launchfree`. Set `[data-theme="launchfree"]` in root layout. Bare landing page with teal-cyan branding.                                                                                                                                                    | `pnpm dev:launchfree` starts on port 3002. Landing page renders with teal-cyan theme. Auth flow works via shared packages.                                                                                                                                                      | P1.5                          |
+| P1.8 Scaffold apis/launchfree/   | `feat/scaffold-launchfree-api` | Copy `apis/filefree/` base patterns (auth middleware, repository pattern, response envelope, config, health endpoint). Strip FileFree-specific routes. Update compose.dev.yaml.                                                                                                                                                                                                               | `apis/launchfree/` starts on port 8002. `/health` returns 200. Auth middleware functional.                                                                                                                                                                                      | P1.6                          |
+| P1.9 Scaffold apps/studio/       | `feat/scaffold-studio`         | Next.js app at `apps/studio/`. Package name `@venture/studio`. `[data-theme="studio"]` (zinc-neutral). Pages: `/` (public portfolio/landing), `/admin` (protected, placeholder), `/docs` (public, P4.14 Docs Viewer).                                                                                                                                                                         | `pnpm dev:studio` starts on port 3003. Landing page renders. `/docs` renders a markdown file from the repo.                                                                                                                                                                     | P1.5                          |
+| P1.9b Scaffold apps/trinkets/    | `feat/scaffold-trinkets`       | Next.js SSG app at `apps/trinkets/`. Package name `@venture/trinkets`. `[data-theme="trinkets"]` (amber-orange). Pages: `/` (tool directory), `tool-layout.tsx` component, AdSense placeholder component, SEO head component.                                                                                                                                                                 | `pnpm dev:trinkets` starts on port 3004. Tool directory renders. SSG build succeeds (`pnpm build` produces static HTML).                                                                                                                                                        | P1.5                          |
+| P1.10 Update infra               | `feat/monorepo-infra`          | `infra/compose.dev.yaml` (update all service build contexts and volume mounts for new paths), `render.yaml` (update root dirs for Render deployment), `Makefile` (add `dev:filefree`, `dev:launchfree`, `dev:studio`, `dev:trinkets`, `dev:all` targets), `.github/workflows/ci.yml` (add `dorny/paths-filter@v3` per Section F11 spec).                                                      | `make dev` starts all services. `make test` runs all test suites. `make lint` lints all workspaces. CI runs path-filtered builds on PR.                                                                                                                                         | P1.6, P1.7, P1.8, P1.9, P1.9b |
+| P1.11 Verify                     | N/A (manual)                   | Run all 4 frontends + 2 APIs simultaneously. Verify port assignments: filefree :3001, launchfree :3002, studio :3003, trinkets :3004, filefree-api :8001, launchfree-api :8002.                                                                                                                                                                                                               | All 6 processes start without port conflicts. Each frontend renders its branded theme. Each API responds to `/health`. Cross-package imports resolve.                                                                                                                           | P1.10                         |
 
 
 ### Phase 1.5: First Trinket + Agent Pipeline Test (Week 3-4, 3-5 days)
@@ -1987,7 +2416,7 @@ The command center is the control plane for the entire venture. It is what makes
 | P4.4 Mission Control dashboard | `/admin`                | n8n + Render + Vercel + Hetzner + Stripe + PostHog APIs | High       |
 | P4.5 Agent Monitor             | `/admin/agents`         | n8n API (workflows + executions)                        | Medium     |
 | P4.6 Infrastructure health     | `/admin/infrastructure` | Render + Vercel + Hetzner + Neon + Upstash APIs         | Medium     |
-| P4.14 Docs viewer              | `/docs/*` (public)      | GitHub raw content API -> react-markdown                | Low        |
+| P4.14 Docs viewer              | `/docs/`* (public)      | GitHub raw content API -> react-markdown                | Low        |
 
 
 **Tier 2 -- Build Next (enables growth operations):**
@@ -2014,16 +2443,16 @@ The command center is the control plane for the entire venture. It is what makes
 ### Phase 5: User Intelligence Platform (Week 10-12)
 
 
-| Task                                  | Details                                                                                         |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| P5.1 Venture identity data model      | VentureIdentity, IdentityProduct, UserEvent, UserSegment, Campaign, CampaignEvent tables        |
-| P5.2 Cross-product opt-in consent     | "Receive recommendations from our other tools" checkbox (CAN-SPAM compliant, unchecked default) |
-| P5.3 packages/cross-sell engine       | Rules-based recommendation engine: segments + milestones + timing -> action                     |
-| P5.4 packages/email templates         | React Email templates: onboarding series + cross-sell + partner offers (Legal reviewed)         |
-| P5.5 LaunchFree onboarding emails     | 5-email welcome series via n8n + Gmail (with cross-product opt-in respect)                      |
-| P5.6 LaunchFree -> FileFree campaigns | Tax season blast, post-formation nudge (only for users who opted in)                            |
-| P5.7 User event tracking              | Emit UserEvents from both products on key milestones (formed LLC, filed taxes, clicked partner) |
-| P5.8 Campaign analytics + admin       | PostHog events, UTM tracking, campaign performance in admin dashboard                           |
+| Task                                  | Details                                                                                                                                                                                                                                                                                                    |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P5.1 Venture identity data model      | VentureIdentity, IdentityProduct, UserEvent, UserSegment, Campaign, CampaignEvent tables                                                                                                                                                                                                                   |
+| P5.2 Cross-product opt-in consent     | "I consent to [LLC Name] using my information across FileFree, LaunchFree, and related services to send me product updates and recommendations. I can unsubscribe from any product at any time." Unchecked default. Per-brand unsubscribe in email footer. See Section 0C Legal Risk Matrix for full spec. |
+| P5.3 packages/cross-sell engine       | Rules-based recommendation engine: segments + milestones + timing -> action                                                                                                                                                                                                                                |
+| P5.4 packages/email templates         | React Email templates: onboarding series + cross-sell + partner offers (Legal reviewed)                                                                                                                                                                                                                    |
+| P5.5 LaunchFree onboarding emails     | 5-email welcome series via n8n + Gmail (with cross-product opt-in respect)                                                                                                                                                                                                                                 |
+| P5.6 LaunchFree -> FileFree campaigns | Tax season blast, post-formation nudge (only for users who opted in)                                                                                                                                                                                                                                       |
+| P5.7 User event tracking              | Emit UserEvents from both products on key milestones (formed LLC, filed taxes, clicked partner)                                                                                                                                                                                                            |
+| P5.8 Campaign analytics + admin       | PostHog events, UTM tracking, campaign performance in admin dashboard                                                                                                                                                                                                                                      |
 
 
 ### Phase 6: Agent Restructure + Social Pipeline (Week 10-14)
@@ -2042,59 +2471,114 @@ The command center is the control plane for the entire venture. It is what makes
 
 ### Phase 7: FileFree Season Prep (October 2026)
 
+| Task | Details |
+|---|---|
+| P7.1 Resume FileFree Sprint 4 | All 50 state tax calcs (data already built in P2.3), PDF polish |
+| P7.2 Column Tax integration | SDK integration, sandbox testing |
+| P7.3 TaxAudit partnership | White-label audit shield integration (if Founder 2 closed deal) |
+| P7.4 Refund Plan screen | HYSA referrals, financial product recs, audit shield upsell |
+| P7.5 Transactional emails | Welcome, filing confirmation, abandonment drip |
+| P7.6 FileFree -> LaunchFree campaigns | Post-filing cross-sell for users with biz income |
+| P7.7 Marketing page refresh | Social proof, filing counter, comparison table |
+| P7.8 1099-NEC + Schedule C support | Freelancer/gig income. 1099-NEC extraction via OCR pipeline, Schedule C business income/expenses |
+| P7.9 Dependent support | Dependent information capture, Child Tax Credit ($2,000/child), EITC calculations, HOH filing status |
+| P7.10 Schedule B (interest/dividends) | Interest and ordinary dividend income, auto-populate from 1099-INT/1099-DIV |
+| P7.11 Schedule 1 (additional income) | Student loan interest, educator expenses, HSA deductions, IRA contributions |
+| P7.12 All 50 state return engines | Data-driven state tax calculation engine. Each state defined in JSON (rates, brackets, credits, conformity). ALL 50 states from launch. |
 
-| Task                                  | Details                                                         |
-| ------------------------------------- | --------------------------------------------------------------- |
-| P7.1 Resume FileFree Sprint 4         | All 50 state tax calcs (data already built in P2.3), PDF polish |
-| P7.2 Column Tax integration           | SDK integration, sandbox testing                                |
-| P7.3 TaxAudit partnership             | White-label audit shield integration (if Founder 2 closed deal) |
-| P7.4 Refund Plan screen               | HYSA referrals, financial product recs, audit shield upsell     |
-| P7.5 Transactional emails             | Welcome, filing confirmation, abandonment drip                  |
-| P7.6 FileFree -> LaunchFree campaigns | Post-filing cross-sell for users with biz income                |
-| P7.7 Marketing page refresh           | Social proof, filing counter, comparison table                  |
+### Form Coverage Roadmap
 
+| Milestone | Forms | Notes |
+|---|---|---|
+| **January 2027 launch** | 1040 + Schedule 1 + Schedule B + Schedule C + 1099-NEC/INT/DIV + dependents + ALL 50 state returns | Covers ~80% of US filers |
+| **February 2027 (mid-season)** | Schedule A (itemized deductions) + Schedule D (capital gains basics) | Covers homeowners + basic investors |
+| **Year 2 (2027-2028 season)** | Schedule E (rental), Schedule SE (self-employment tax), multi-state, HSA (Form 8889), K-1 pass-through | Covers small landlords, full self-employed, health savings |
+| **Year 3+** | Depreciation (Form 4562), AMT (Form 6251), brokerage import (CSV/API), foreign income (Form 2555) | Edge cases, power users |
+
+**MeF ATS testing scope**: The October 2026 ATS testing must cover 1040 + Schedule 1 + B + C + state return XML schemas for ALL 50 states. Start XML generator development by June 2026.
 
 ### Phase 8: FileFree Launch (January 2027)
 
-
-| Task                          | Details                                                                            |
-| ----------------------------- | ---------------------------------------------------------------------------------- |
-| P8.1 MeF transmitter          | Build XML generator, pass IRS ATS testing (October), communication test (November) |
-| P8.2 E-file go-live           | Switch from Column Tax to own transmitter for simple returns                       |
-| P8.3 Tax Optimization Plan    | Stripe, $29/yr, premium dashboard                                                  |
-| P8.4 Product Hunt + HN launch | Coordinate with filing season start                                                |
-| P8.5 Paid amplification       | TikTok Spark Ads + Meta boost on winning organic content                           |
+| Task | Details |
+|---|---|
+| P8.1 MeF transmitter | Build XML generator, pass IRS ATS testing (October), communication test (November). Test schemas for 1040 + Schedules 1, B, C + all 50 state returns. |
+| P8.2 E-file go-live | Switch from Column Tax to own transmitter for supported forms |
+| P8.3 Tax Optimization Plan | Stripe, $29/yr, premium dashboard |
+| P8.4 Product Hunt + HN launch | Coordinate with filing season start |
+| P8.5 Paid amplification | TikTok Spark Ads + Meta boost on winning organic content |
+| P8.6 Schedule A (itemized) | Mid-season release (February 2027). Mortgage interest, SALT, charitable contributions |
+| P8.7 Schedule D (capital gains) | Mid-season release (February 2027). Basic stock sales, 1099-B import |
+| P8.8 Refund Advance integration | If partner secured. Early refund access as acquisition tool |
 
 
 ### Background Tasks (Continuous)
 
 
-| Task                                 | Owner     | Timeline                                               |
-| ------------------------------------ | --------- | ------------------------------------------------------ |
-| EFIN application (Form 8633)         | Founder 1 | Apply NOW, 45-day processing                           |
-| Column Tax partnership               | Founder 2 | Book demo, negotiate by June 2026                      |
-| TaxAudit/Protection Plus partnership | Founder 2 | 3-6 month lead time, start Q2 2026                     |
-| HYSA affiliate applications          | Founder 2 | Marcus, Wealthfront via Impact. Self-serve, apply now. |
-| MeF certification prep               | Founder 1 | Start XML generator June, ATS testing October          |
+| Task                                                                          | Owner     | Deadline                   | Status      | Notes                                                                           |
+| ----------------------------------------------------------------------------- | --------- | -------------------------- | ----------- | ------------------------------------------------------------------------------- |
+| EFIN application (Form 8633)                                                  | Founder 1 | THIS WEEK                  | NOT STARTED | 45-day processing. Blocks entire MeF chain. See Section 0G.                     |
+| Self-serve affiliate apps (Marcus, Wealthfront, Betterment via Impact.com/CJ) | Founder 1 | April 2026                 | NOT STARTED | Plan B revenue. Online forms, no calls needed. Do this regardless of Founder 2. |
+| Cyber liability insurance ($1M E&O + cyber)                                   | Founder 1 | Before first SSN collected | NOT STARTED | $1,500-3,000/yr. Non-negotiable. See Section 0G.                                |
+| Data breach response plan                                                     | Founder 1 | Before first SSN collected | NOT STARTED | 2-page doc from SANS/NIST templates. See Section 0G.                            |
+| Startup attorney consult (1 hour)                                             | Founder 1 | Before Phase 3             | NOT STARTED | UPL + RA questions. ~$300-500. See Section 0G.                                  |
+| Column Tax partnership                                                        | Founder 2 | June 2026                  | NOT STARTED | Book demo, negotiate sandbox access.                                            |
+| TaxAudit/audit shield partnership                                             | Founder 2 | September 2026             | NOT STARTED | 3-6 month lead time, start Q2 2026.                                             |
+| HYSA affiliate applications (banking partners)                                | Founder 2 | October 2026               | NOT STARTED | At least 1 banking partner for first tax season.                                |
+| MeF certification prep                                                        | Founder 1 | Start June 2026            | NOT STARTED | XML generator -> ATS testing (October) -> Comms test (November).                |
+| TikTok Spark Ads budget                                                       | Founder 1 | At LaunchFree launch       | NOT STARTED | $200-500/mo. See Section 5K.                                                    |
+| Pre-launch audience building                                                  | Founder 1 | Ongoing, start NOW         | NOT STARTED | SEO blog posts, Reddit, waitlist growth. See Section 5K.                        |
 
 
-### Phase Timeline Reality Check
+### Phase Timeline (Agent-Augmented)
 
-The 8-phase plan spans infrastructure (now) through FileFree launch (January 2027). This is ambitious for one founder doing all engineering.
+The 8-phase plan spans infrastructure (now) through FileFree launch (January 2027) -- 10 months. With a full AI agent workforce handling research, content, documentation, data extraction, and code generation, the human bottleneck is decision-making and review, not execution volume. The timeline below reflects agent-augmented capacity.
 
-**Realistic adjustments**:
 
-- Phases 0-1 (Infra + Monorepo): 3-4 weeks (not 2-3). Monorepo restructure is fiddly.
-- Phase 1.5 (First Trinket): Can overlap with late Phase 1. +1 week buffer.
-- Phase 2 (50-State Data): 3-4 weeks. AI extraction is fast but human review is the bottleneck.
-- Phases 3-6 are NOT sequential -- they can run in parallel tracks:
-  - **Track A** (product): Phase 3 LaunchFree MVP
-  - **Track B** (operations): Phase 4 Command Center (Tier 1 only)
-  - **Track C** (agents): Phase 6 Agent Restructure
-  - Phase 5 (User Intelligence) requires both products to exist, so it follows Phase 3.
-- October 2026 is a hard deadline for FileFree tax season prep (Phase 7).
+| Phase                          | Aspirational | Realistic                     | Rationale                                                                                                                                                                                                                | Can Defer?                                                   |
+| ------------------------------ | ------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| Phase 0 (Infrastructure)       | 1 week       | 2-3 weeks                     | LLC name decision is blocking. EFIN application has 45-day processing. Non-code tasks take longer than expected.                                                                                                         | NO -- critical path                                          |
+| Phase 1 (Monorepo)             | 2-3 weeks    | 4-6 weeks                     | pnpm workspace restructure, shared package extraction, 4 apps scaffolded, infra updates. This is fiddly and breaks things.                                                                                               | NO -- everything depends on it                               |
+| Phase 1.5 (First Trinket)      | 3-5 days     | 1-2 weeks                     | Overlaps with late Phase 1. Agent pipeline testing adds uncertainty.                                                                                                                                                     | YES -- defer to after Phase 3 if behind                      |
+| Phase 2 (50-State Data)        | 3-4 weeks    | 4-6 weeks                     | AI extraction is fast but human review of 50 states is the bottleneck (4-6 hours). n8n workflows need testing.                                                                                                           | NO -- LaunchFree depends on it                               |
+| Phase 3 (LaunchFree MVP)       | 4-5 weeks    | 8-12 weeks                    | This is an entire product. Formation wizard, state-specific PDF generation, Stripe integration, RA credit system, dashboard. The "submit LLC" step is hand-waved -- most states do NOT have filing APIs. See note below. | NO -- this is the first revenue product                      |
+| Phase 4 (Command Center)       | 6 weeks      | 4-6 weeks (Tier 1 only)       | Build Tier 1 only during Phase 3. Tier 2-3 deferred until post-LaunchFree launch.                                                                                                                                        | PARTIAL -- Tier 2-3 defers                                   |
+| Phase 5 (User Intelligence)    | 2-3 weeks    | 3-4 weeks                     | Requires Phase 3 completion. Cross-product data model, consent UI, email templates, campaign engine.                                                                                                                     | YES -- can launch LaunchFree without it, add within 2 months |
+| Phase 6 (Agent Restructure)    | 4 weeks      | 2-3 weeks (with right-sizing) | Reduced agent count (see Section 6 stress test). Most personas are config files, not code. Social pipeline is the only complex build.                                                                                    | PARTIAL -- social pipeline defers                            |
+| Phase 7 (FileFree Season Prep) | October 2026 | October 2026 (HARD DEADLINE)  | IRS season doesn't move. Must start MeF XML generator by June 2026 to hit October ATS testing window.                                                                                                                    | NO -- date is external                                       |
+| Phase 8 (FileFree Launch)      | January 2027 | January 2027 (HARD DEADLINE)  | Tax season start. IRS accepts returns ~late January.                                                                                                                                                                     | NO -- date is external                                       |
 
-**Buffer**: Add 2-week buffer between Phase 2 completion and October 2026. If behind schedule, Phase 4 Tier 2-3 and Phase 6 social pipeline are the first to defer.
+
+**Timeline**: 10 months (March 2026 - January 2027). The primary bottleneck is founder decision-making and context-switching between products. Mitigation: batch similar work (e.g., all legal tasks in one sprint), use agents to pre-research and draft so founder reviews rather than creates, and protect 2-hour deep work blocks daily. Phase 7 is tight but achievable if EFIN application happens THIS WEEK and MeF XML development starts by June 2026.
+
+### Critical Path (Stress Test Addition)
+
+```
+LLC Name Decision (NOW) -> Phase 0.6 (file LLC) -> EIN -> Bank Account -> Stripe -> Trademarks
+                                                                                 |
+EFIN Application (NOW) -------- 45 days ---------> Software Dev ID -> ATS Testing (Oct 2026) -> MeF Launch (Jan 2027)
+                                                                                 |
+Phase 1 (Monorepo) -> Phase 2 (50-State) -> Phase 3 (LaunchFree) -> Phase 7 (FileFree Prep) -> Phase 8 (Launch)
+```
+
+**Three hard deadlines that cannot move**:
+
+1. **EFIN approval**: Must apply NOW. 45-day processing means approval by May 2026 at earliest. Late application compresses the October ATS testing window.
+2. **MeF ATS testing**: IRS opens ATS testing window each fall. Must have XML generator complete by June 2026 to test in October. Miss this and FileFree e-file delays to January 2028.
+3. **Tax season**: IRS starts accepting returns late January. Product must be live by then.
+
+### LaunchFree "Submit LLC" Reality Check (Stress Test Addition)
+
+The formation wizard says "submit" but most states do NOT have e-filing APIs for LLC Articles of Organization. The reality:
+
+
+| Method                                 | States                                   | Implementation                                                                                                                                        |
+| -------------------------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Online filing portal exists (web form) | ~15-20 states (e.g., CA, DE, WY, TX, FL) | We CANNOT auto-submit. We can pre-fill a printable form, generate the PDF, and provide step-by-step walkthrough with screenshots of the state portal. |
+| Mail-only filing                       | ~20-25 states                            | Generate completed PDF + cover letter. User prints, signs, mails with check. We provide pre-addressed envelope instructions.                          |
+| Registered agent submits               | ~10 states                               | Partner RA handles submission. This is the premium path.                                                                                              |
+
+
+**Honest UX**: LaunchFree "prepares your LLC filing" -- it does NOT "file for you" in most states. The language must reflect this. The value is in the AI state comparison, document preparation, and compliance calendar -- not in pressing a "submit" button that doesn't exist for 35+ states.
 
 ### 7B. Alerting Strategy
 
@@ -2437,17 +2921,84 @@ Voice clones require the founder to record 30+ minutes of clean audio for a qual
 
 ---
 
-## 11. Realistic Valuation Estimate
+## 11. Valuation Estimate
 
-See Section 0D for the full analysis with comparable companies. Summary:
+**MERGED**: This section previously duplicated Section 0D. See **Section 0D** for the single authoritative valuation analysis with comparable companies, scenario modeling, and comp rationale.
 
+---
 
-| Timeframe          | Revenue         | Users | Multiple | Valuation Range |
-| ------------------ | --------------- | ----- | -------- | --------------- |
-| Year 2 (2027)      | ~$100K combined | 30K+  | 3-5x     | $300K-500K      |
-| Year 3 (2028)      | ~$500K combined | 50K+  | 5-8x     | $2.5M-4M        |
-| Year 4-5 (2029-30) | ~$2M combined   | 200K+ | 6-10x    | $12M-20M        |
-| Home run (2031+)   | ~$5M+ combined  | 500K+ | 8-12x    | $40M-60M        |
+## 14. Agent Communication Hub: Slack + Email Aliases
 
+### Why Slack
 
-Most relevant comp: LegalZoom paid ~$115M for Formation Nation (business formation brand). Credit Karma acquired for $7.1B at 7.1x revenue. Our cross-sell moat (tax filing + LLC formation) creates a portfolio premium neither comp had.
+The venture operates like a company with AI employees. Employees need a persistent communication channel that isn't just Cursor chat windows (which are ephemeral). Slack provides:
+
+- Persistent message history (searchable, linkable)
+- Channel-based organization (functional departments)
+- Two-way agent interaction via n8n webhooks
+- Mobile app for founder on-the-go checks
+- Integrations ecosystem (GitHub, Vercel, Render, Google Drive notifications)
+
+### Channel Structure
+
+| Channel | Purpose | Who Posts |
+|---|---|---|
+| #general | Company-wide announcements, decisions | Founder, EA |
+| #daily-briefing | EA Ops Monitor daily summary (7am) | EA Ops Monitor (n8n) |
+| #weekly-planning | Weekly planning output (Sunday 6pm) | EA Ops Monitor (n8n) |
+| #compliance-alerts | Compliance Monitor status updates | Compliance Monitor (n8n) |
+| #ops-alerts | Infrastructure health alerts (CRITICAL/WARNING/INFO) | Infra Health Monitor (n8n) |
+| #social-content | Social post drafts for review/approval | Social Content Pipeline (n8n) |
+| #dev-feed | GitHub PR notifications, Vercel deploys, CI results | GitHub/Vercel integrations |
+| #partnerships | Partnership pipeline updates, outreach drafts | Partnership Outreach (n8n) |
+| #data-integrity | State data validation results, stale data alerts | State Data Validator (n8n) |
+| #revenue | Affiliate conversions, Stripe events | Affiliate Tracker (n8n), Stripe integration |
+
+### Two-Way Agent Interaction
+
+**Founder -> Agent (Slack -> n8n)**:
+- Founder posts in a channel with a command format (e.g., `/agent status`, `/agent brief me on partnerships`)
+- n8n Slack trigger node picks up the message
+- Routes to appropriate agent workflow
+- Agent responds in-thread
+
+**Agent -> Founder (n8n -> Slack)**:
+- n8n workflows post to appropriate channels via Slack API
+- Urgent items go to #ops-alerts (plus email/SMS for CRITICAL)
+- Routine reports go to #daily-briefing
+
+**Cursor -> Slack (Slack MCP)**:
+- Use Slack MCP in Cursor to read/post messages from within the IDE
+- EA persona can check Slack context before answering operational questions
+- Decisions made in Cursor get logged to #general via EA
+
+### Professional Email Aliases (Google Workspace)
+
+Department-level email aliases on Google Workspace. All route to founder's inbox. Agents draft replies, founder approves and sends.
+
+| Alias | Domain | Purpose |
+|---|---|---|
+| hello@filefree.tax | filefree.tax | General FileFree inquiries |
+| support@filefree.tax | filefree.tax | FileFree user support |
+| legal@filefree.ai | filefree.ai | Legal inquiries, DMCA, compliance |
+| partnerships@filefree.ai | filefree.ai | Partnership inquiries (Founder 2 primary) |
+| hello@launchfree.ai | launchfree.ai | General LaunchFree inquiries |
+| support@launchfree.ai | launchfree.ai | LaunchFree user support |
+
+**Outbound Email Flow**:
+1. Agent (Partnership Outreach, Support Bot) drafts email in Google Docs or Slack thread
+2. Founder reviews draft in Slack (#partnerships or #support)
+3. Founder approves -> Agent sends via Gmail API (n8n Gmail node) from appropriate alias
+4. Sent email logged in Slack thread for audit trail
+
+**Setup**: Google Workspace already active on sankalpsharma.com. Add filefree.tax, filefree.ai, and launchfree.ai as alias domains in Google Workspace Admin. Create group aliases for each department. Route all to founder's primary inbox.
+
+### Stress Test: Communication Overload
+
+Risk: 10+ channels with multiple agents posting could overwhelm the founder.
+
+Mitigations:
+- **Notification tiers**: Only #ops-alerts and #compliance-alerts send push notifications. All other channels are check-when-ready.
+- **Daily digest**: EA Ops Monitor's 7am #daily-briefing summarizes everything the founder needs to know. If nothing is on fire, the founder only reads this one channel.
+- **Mute by default**: #dev-feed, #revenue, #data-integrity are muted. Founder checks manually or via weekly planning.
+- **Escalation chain**: If an agent posts something that needs immediate founder attention, it goes to #ops-alerts with CRITICAL tag, plus email + SMS.
