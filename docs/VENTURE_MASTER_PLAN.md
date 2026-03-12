@@ -768,7 +768,7 @@ Each dev command uses `concurrently` to start both frontend and backend. Trinket
 
 ## 3. sankalpsharma.com: The Command Center (Detailed Spec)
 
-The command center is the control plane for the entire venture. It is what makes the "one human + AI agents" model operationally viable. 13 admin pages organized in 3 tiers based on operational priority.
+The command center is the control plane for the entire venture. It is what makes the "one human + AI agents" model operationally viable. 14 admin pages organized in 3 tiers based on operational priority, plus a public docs viewer.
 
 ### Tier 1 -- Build First (enables daily operations)
 
@@ -867,6 +867,19 @@ The command center is the control plane for the entire venture. It is what makes
 - Cross-product journey visualization
 - Data source: Venture identity DB + cross-product queries
 
+**P4.14 Docs Viewer** (`/docs` -- public, no auth needed)
+
+- Renders company docs from the git repo as clean, readable HTML pages
+- Pages: Master Plan, Financials, Knowledge Base, Tasks, AI Model Registry
+- Uses `react-markdown` or `next-mdx-remote` to render markdown fetched from GitHub API (raw content URL)
+- Clean typography, table styling, anchor links for section navigation
+- Responsive and mobile-friendly -- designed for non-technical readers
+- No GitHub account needed to read
+- **Primary use case**: Founder shares `sankalpsharma.com/docs/financials` with wife to review company finances, or `sankalpsharma.com/docs/master-plan` to read the full strategy
+- Data source: GitHub raw content API (e.g., `https://raw.githubusercontent.com/{owner}/{repo}/main/docs/FINANCIALS.md`)
+- Cached with React Query (staleTime: 5 min) so pages load instantly after first visit
+- Table of contents sidebar generated from markdown headings
+
 ### UX Guidelines (Admin)
 
 - Use shadcn Table components for all list views. No custom data grid libraries.
@@ -874,7 +887,64 @@ The command center is the control plane for the entire venture. It is what makes
 - No animations or transitions in admin pages. Instant renders.
 - Every page loads in <1 second. React Query with aggressive caching (staleTime: 60s for most data, 5s for health checks).
 - Activity Feed is the most important UX element -- feels like a live terminal.
-- Mobile responsive is nice-to-have, not required.
+- Mobile responsive is nice-to-have, not required (except `/docs` -- that MUST be mobile-friendly).
+
+### 3A. Document Access Strategy
+
+Not everyone in the founder's life uses GitHub or Notion. Documents need to be accessible where people actually are.
+
+**Two-layer system**:
+
+| Doc Type | Source of Truth | Readable At | Collaborative At | Who Reads |
+|---|---|---|---|---|
+| Company docs (FINANCIALS, KNOWLEDGE, TASKS, MASTER PLAN, AI_MODEL_REGISTRY) | `docs/*.md` in git repo | sankalpsharma.com/docs/* (P4.14) | Git PRs (founder only) | Founder, wife, future investors |
+| Agent outputs (daily briefings, weekly plans, reports) | Google Drive (`Venture HQ/`) | Google Drive link sharing | Google Docs comments | Founder, wife |
+| Trinket one-pagers | Google Docs (created from template) | Google Drive link sharing | Google Docs comments | Founder, wife, future team |
+| Trinket PRDs | Google Docs (created from template) | Google Drive link sharing | Google Docs comments | Founder, future engineers |
+| Social content drafts | Postiz queue | Postiz UI | Postiz UI | Founder |
+
+**Why not just Google Docs for everything?**
+
+Company docs (financials, master plan, tasks) change frequently via AI agents in Cursor. Markdown in git is the natural output format. Keeping them in git gives version history, PR review, and diff tracking. The Studio docs viewer (P4.14) makes them readable for anyone with a browser.
+
+**Why not just markdown for everything?**
+
+Trinket one-pagers and PRDs need collaborative review -- the founder might want to highlight a section, leave a comment like "I don't think this SEO angle works", or share with wife for a sanity check. Google Docs handles this natively. Markdown in git doesn't.
+
+**Agent output routing**:
+
+| Agent | Output Format | Destination |
+|---|---|---|
+| EA daily briefing | Google Doc | `Venture HQ/Operations/Daily Briefings/` |
+| EA weekly plan | Google Doc | `Venture HQ/Operations/Weekly Plans/` |
+| Market Discovery Agent (trinket) | Google Doc (from template) | `Venture HQ/Trinkets/One-Pagers/` |
+| PRD Agent (trinket) | Google Doc (from template) | `Venture HQ/Trinkets/PRDs/` |
+| Competitive Intel | Google Doc | `Venture HQ/Intelligence/` |
+| Analytics Reporter | Google Doc | `Venture HQ/Operations/Analytics/` |
+| Social Content bots | Postiz queue entry | Postiz |
+| Decision logging (EA) | Markdown commit | `docs/KNOWLEDGE.md` in git |
+| Expense logging (EA) | Markdown commit | `docs/FINANCIALS.md` in git |
+| Task updates (EA) | Markdown commit | `docs/TASKS.md` in git |
+
+**Google Drive folder structure** (set up in P0.4):
+
+```
+Venture HQ/
+├── Operations/
+│   ├── Daily Briefings/
+│   └── Weekly Plans/
+├── Trinkets/
+│   ├── One-Pagers/
+│   └── PRDs/
+├── Intelligence/
+│   ├── Competitive/
+│   └── Analytics/
+├── Content/
+│   └── Social Drafts/
+└── Legal/
+    ├── LLC Docs/
+    └── Compliance/
+```
 
 ---
 
@@ -1917,6 +1987,7 @@ The command center is the control plane for the entire venture. It is what makes
 | P4.4 Mission Control dashboard | `/admin`                | n8n + Render + Vercel + Hetzner + Stripe + PostHog APIs | High       |
 | P4.5 Agent Monitor             | `/admin/agents`         | n8n API (workflows + executions)                        | Medium     |
 | P4.6 Infrastructure health     | `/admin/infrastructure` | Render + Vercel + Hetzner + Neon + Upstash APIs         | Medium     |
+| P4.14 Docs viewer              | `/docs/*` (public)      | GitHub raw content API -> react-markdown                | Low        |
 
 
 **Tier 2 -- Build Next (enables growth operations):**

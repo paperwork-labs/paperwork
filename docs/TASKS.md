@@ -1251,6 +1251,7 @@ Add dependent data model, child tax credit calculation. Eventually: 1099 support
 | P4.4 Mission Control dashboard | Not started | n8n + Render + Vercel + Hetzner + Stripe + PostHog APIs |
 | P4.5 Agent Monitor | Not started | n8n API (workflows + executions) |
 | P4.6 Infrastructure health | Not started | Render + Vercel + Hetzner + Neon + Upstash APIs |
+| P4.14 Docs viewer | Not started | `/docs/*` public -- renders company markdown as readable HTML via react-markdown |
 
 **Tier 2 (build next):**
 

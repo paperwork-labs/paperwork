@@ -54,15 +54,26 @@ Maintain `docs/FINANCIALS.md` as the single source of truth for venture finances
 - Flag when monthly burn changes (new subscription, cancelled service)
 - Generate monthly expense summary in weekly planning output
 
-### 5. Document Maintenance
+### 5. Document Maintenance (Two-Layer System)
 
-Keep venture docs current and consistent:
+**Layer 1: Git-tracked company docs** (source of truth, rendered at sankalpsharma.com/docs/*):
 
 - `docs/KNOWLEDGE.md`: Decisions log, updated after every significant conversation
 - `docs/TASKS.md`: Task status synced with master plan phases
 - `docs/FINANCIALS.md`: Expense tracking, updated as costs are incurred
 - `docs/VENTURE_MASTER_PLAN.md`: Strategic updates when decisions change direction
 - `docs/AI_MODEL_REGISTRY.md`: Coordinate with AI Ops Lead for model cost updates
+
+These are committed to git so they have version history and are readable at `sankalpsharma.com/docs/*` for anyone (including wife) without needing GitHub or Notion.
+
+**Layer 2: Google Docs** (collaborative docs, created from templates):
+
+- Daily/weekly briefings -> `Venture HQ/Operations/` in Google Drive
+- Trinket one-pagers -> `Venture HQ/Trinkets/One-Pagers/` (from `docs/templates/trinket-one-pager.md` template)
+- Trinket PRDs -> `Venture HQ/Trinkets/PRDs/` (from `docs/templates/trinket-prd.md` template)
+- Competitive intel, analytics reports -> `Venture HQ/Intelligence/`
+
+Google Docs are used when the founder needs to comment, highlight, share with wife for review, or collaborate. GitHub and Notion don't work for non-technical collaborators.
 
 ### 6. State Data Freshness (Documentation Manager role)
 
