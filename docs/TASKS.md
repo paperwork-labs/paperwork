@@ -1164,12 +1164,177 @@ Add dependent data model, child tax credit calculation. Eventually: 1099 support
 
 
 </details>
+---
+
+## Venture Phases (from Master Plan v1)
+
+> The following phases cover the full venture (FileFree + LaunchFree + Trinkets + Studio). FileFree Sprints 0-6 above are historical record. Sprint 4 tasks (state tax calcs, PDF polish) fold into Phase 7. See `docs/VENTURE_MASTER_PLAN.md` for full context.
+
+### Phase 0: Infrastructure (This Week)
+
+| Task | Owner | Status | Details |
+|---|---|---|---|
+| P0.1 Buy domains | Founder 1 | DONE | launchfree.ai + filefree.ai purchased (March 2026) |
+| P0.2 Migrate FileFree domain | Founder 1 | Not started | filefree.tax -> filefree.ai (Vercel, DNS, 301s) |
+| P0.3 Google Workspace | Founder 1 | Not started | Set up on sankalpsharma.com, add secondary domains |
+| P0.4 Google Drive HQ | Founder 1 | Not started | Create Venture HQ folder structure, add GDrive MCP |
+| P0.5 Secure social handles | Founder 1 | Not started | @launchfree on TikTok, IG, X, YouTube |
+| P0.6 Form LLC | Founder 1 | Not started | California LLC (name TBD). File DBAs for FileFree, LaunchFree, Trinkets |
+| P0.7 Migrate DNS subdomains | Founder 1 | Not started | ops/social.sankalpsharma.com -> Hetzner |
+| P0.8 File trademarks | Founder 1 | Not started | FILEFREE + LAUNCHFREE on USPTO Supplemental Register (~$2,100) |
+| P0.9 Legal compliance setup | Founder 1 | Not started | Content Review Gate checklist, update privacy/terms |
+
+### Phase 1: Monorepo Restructure (Week 2-3)
+
+| Task | Status | Details |
+|---|---|---|
+| P1.1 Init pnpm workspace | Not started | Root package.json, pnpm-workspace.yaml |
+| P1.2 Extract packages/ui | Not started | 22 shadcn components + utils. 4-theme system (filefree, launchfree, studio, trinkets) |
+| P1.3 Extract packages/auth | Not started | use-auth, use-idle-timeout, api.ts, session-timeout-dialog |
+| P1.4 Extract packages/analytics | Not started | posthog.ts, attribution.ts, posthog-provider |
+| P1.5 Move web/ -> apps/filefree/ | Not started | Update imports to @venture/* packages |
+| P1.6 Move api/ -> apis/filefree/ | Not started | Update compose, render.yaml, Makefile paths |
+| P1.7 Scaffold apps/launchfree/ | Not started | Copy structure, strip product-specific pages |
+| P1.8 Scaffold apis/launchfree/ | Not started | Copy base patterns (auth, repo, config) |
+| P1.9 Scaffold apps/studio/ | Not started | Next.js app for sankalpsharma.com |
+| P1.9b Scaffold apps/trinkets/ | Not started | Next.js SSG, Vercel free tier, AdSense placeholder |
+| P1.10 Update infra | Not started | compose.dev.yaml, render.yaml, Makefile, CI for monorepo |
+| P1.11 Verify | Not started | All 4 dev commands work |
+
+### Phase 1.5: First Trinket + Agent Pipeline Test (Week 3-4)
+
+| Task | Status | Details |
+|---|---|---|
+| P1.5.1 Build financial calculator trinket | Not started | Mortgage, compound interest, savings goal, budget planner |
+| P1.5.2 Create tool-layout component | Not started | Shared layout: header, ad slots, SEO head, footer |
+| P1.5.3 Create trinket templates | Not started | One-pager + PRD templates for agent pipeline |
+| P1.5.4 Test Trinket Factory pipeline | Not started | 3-stage agent pipeline validation |
+| P1.5.5 Deploy to Vercel | Not started | SSG, AdSense, SEO verification |
+
+### Phase 2: 50-State Data Infrastructure (Week 4-7)
+
+| Task | Status | Details |
+|---|---|---|
+| P2.1 Create packages/data scaffold | Not started | TypeScript types, Zod schemas, state engine API |
+| P2.2 Build Source Registry | Not started | 50 state configs: SOS URL, DOR URL, scrape methods |
+| P2.3 AI-extract 50-state tax data | Not started | Tax Foundation -> GPT-4o -> 50 JSONs -> cross-validate |
+| P2.4 AI-extract 50-state formation data | Not started | Aggregator tables -> GPT-4o -> 50 JSONs -> cross-validate |
+| P2.5 Human review + approval | Not started | ~4-6 hours total, batch review |
+| P2.6 Build state engine | Not started | getStateFormationRules(), calculateStateTax(), etc. |
+| P2.7 Validation suite | Not started | Zod + sanity checks + 100% coverage + CI |
+| P2.8 n8n: Source Monitor | Not started | Weekly cron: detect state fee/rule changes |
+| P2.9 n8n: Deep Validator | Not started | Monthly cron: cross-validate all 50 states |
+| P2.10 n8n: Annual Update | Not started | October cron: full federal + state refresh |
+
+### Phase 3: LaunchFree MVP (Week 6-10)
+
+| Task | Status | Details |
+|---|---|---|
+| P3.1 LaunchFree landing page | Not started | Hero, how it works, state selector, pricing, trust |
+| P3.2 Formation wizard | Not started | State selection -> name check -> details -> review -> submit |
+| P3.3 Articles of Organization PDF | Not started | @react-pdf/renderer, state-specific templates |
+| P3.4 Backend: formation service | Not started | Create formation, store state, generate PDF, track status |
+| P3.5 RA credit system | Not started | $49/yr base, earn credits via partner actions |
+| P3.6 Stripe integration | Not started | RA subscription, one-time formation fees |
+| P3.7 LaunchFree dashboard | Not started | LLC status, compliance checklist, RA status, next steps |
+| P3.8 Legal pages | Not started | Privacy policy, ToS (adapt from FileFree) |
+
+### Phase 4: Command Center (Week 8-14, parallel with Phase 3)
+
+**Tier 1 (build first):**
+
+| Task | Status | Details |
+|---|---|---|
+| P4.1 Studio landing page | Not started | Public portfolio page at sankalpsharma.com |
+| P4.2 Admin auth | Not started | Hardcoded admin email check |
+| P4.3 Studio API scaffold | Not started | FastAPI + Redis on Hetzner |
+| P4.4 Mission Control dashboard | Not started | n8n + Render + Vercel + Hetzner + Stripe + PostHog APIs |
+| P4.5 Agent Monitor | Not started | n8n API (workflows + executions) |
+| P4.6 Infrastructure health | Not started | Render + Vercel + Hetzner + Neon + Upstash APIs |
+
+**Tier 2 (build next):**
+
+| Task | Status | Details |
+|---|---|---|
+| P4.7 Analytics | Not started | PostHog API or embeds |
+| P4.8 Support inbox | Not started | Support bot PostgreSQL |
+| P4.9 Social media command | Not started | Postiz API |
+| P4.10 State Data observatory | Not started | packages/data JSON + n8n results |
+
+**Tier 3 (build when revenue flows):**
+
+| Task | Status | Details |
+|---|---|---|
+| P4.11 Revenue intelligence | Not started | Stripe API + affiliate dashboards |
+| P4.12 Campaign control | Not started | Campaign tables in studio DB |
+| P4.13 User intelligence | Not started | Venture identity DB + cross-product queries |
+
+### Phase 5: User Intelligence Platform (Week 10-12)
+
+| Task | Status | Details |
+|---|---|---|
+| P5.1 Venture identity data model | Not started | VentureIdentity, IdentityProduct, UserEvent tables |
+| P5.2 Cross-product opt-in consent | Not started | CAN-SPAM compliant checkbox |
+| P5.3 packages/cross-sell engine | Not started | Rules-based recommendation engine |
+| P5.4 packages/email templates | Not started | React Email: onboarding + cross-sell + partner offers |
+| P5.5 LaunchFree onboarding emails | Not started | 5-email welcome series via n8n + Gmail |
+| P5.6 LaunchFree -> FileFree campaigns | Not started | Tax season blast, post-formation nudge |
+| P5.7 User event tracking | Not started | Emit UserEvents on key milestones |
+| P5.8 Campaign analytics + admin | Not started | PostHog events, UTM tracking, campaign performance |
+
+### Phase 6: Agent Restructure + Social Pipeline (Week 10-14)
+
+| Task | Status | Details |
+|---|---|---|
+| P6.1 Update 9 venture-level personas | Not started | Expand to venture-wide scope |
+| P6.2 Split 3 personas into product-specific | Not started | social, brand, growth -> product splits |
+| P6.3 Create 6 new personas | Not started | formation-domain, launchfree-social/growth/brand, studio, agent-ops |
+| P6.4 Update 6 existing n8n workflows | Not started | Rename, output to GDrive instead of Notion |
+| P6.5 Build faceless content pipeline | Not started | n8n: topics -> GPT script -> ElevenLabs -> video -> Postiz |
+| P6.6 Build 12 new n8n workflows | Not started | Support bots, validators, intel, analytics, infra, campaigns |
+| P6.7 Migrate Notion to Google Drive | Not started | Move docs, update n8n output nodes |
+
+### Phase 7: FileFree Season Prep (October 2026)
+
+| Task | Status | Details |
+|---|---|---|
+| P7.1 Resume FileFree Sprint 4 | Not started | All 50 state tax calcs, PDF polish |
+| P7.2 Column Tax integration | Not started | SDK integration, sandbox testing |
+| P7.3 TaxAudit partnership | Not started | White-label audit shield (if deal closed) |
+| P7.4 Refund Plan screen | Not started | HYSA referrals, financial product recs, audit shield |
+| P7.5 Transactional emails | Not started | Welcome, filing confirmation, abandonment drip |
+| P7.6 FileFree -> LaunchFree campaigns | Not started | Post-filing cross-sell for biz income users |
+| P7.7 Marketing page refresh | Not started | Social proof, filing counter, comparison table |
+
+### Phase 8: FileFree Launch (January 2027)
+
+| Task | Status | Details |
+|---|---|---|
+| P8.1 MeF transmitter | Not started | Build XML generator, pass IRS ATS testing (Oct), comms test (Nov) |
+| P8.2 E-file go-live | Not started | Switch from Column Tax to own transmitter |
+| P8.3 Tax Optimization Plan | Not started | Stripe, $29/yr, premium dashboard |
+| P8.4 Product Hunt + HN launch | Not started | Coordinate with filing season start |
+| P8.5 Paid amplification | Not started | TikTok Spark Ads + Meta boost on winners |
+
+### Background Tasks (Continuous)
+
+| Task | Owner | Status | Timeline |
+|---|---|---|---|
+| EFIN application (Form 8633) | Founder 1 | Not started | Apply NOW, 45-day processing |
+| Column Tax partnership | Founder 2 | Not started | Book demo, negotiate by June 2026 |
+| TaxAudit partnership | Founder 2 | Not started | 3-6 month lead time, start Q2 2026 |
+| HYSA affiliate applications | Founder 2 | Not started | Marcus, Wealthfront via Impact |
+| MeF certification prep | Founder 1 | Not started | XML generator June, ATS testing October |
+
+---
+
 ## How to Use This Document
 
 1. Start each task by creating a branch: `feat/{task-number}-short-description`
 2. Read [.cursorrules](../.cursorrules) for coding conventions
 3. Reference [PRODUCT_SPEC.md](PRODUCT_SPEC.md) for detailed UX specs
 4. Reference [PRD.md](PRD.md) for business context and competitive strategy
-5. Complete the task, test it, create a PR, merge, move on
-6. Each PR should be self-contained and deployable
-7. After each sprint, review analytics and adjust priorities based on data
+5. Reference [VENTURE_MASTER_PLAN.md](VENTURE_MASTER_PLAN.md) for venture-wide strategy and phase details
+6. Complete the task, test it, create a PR, merge, move on
+7. Each PR should be self-contained and deployable
+8. After each sprint, review analytics and adjust priorities based on data
