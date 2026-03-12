@@ -311,3 +311,45 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 - **Impact**: Single source of truth for every `process.env` read. New credentials must be added to `CREDENTIALS.md` before merge. CI catches accidental secret commits. Backend config unchanged (already solid with Pydantic).
 - **PR**: #14
 - **Reversibility**: Easy. Config modules are drop-in wrappers — can revert to raw `process.env` reads if needed.
+
+### D35 — Venture Master Plan v1 (2026-03-12)
+- **Context**: Multi-product venture strategy finalized after 5 plan iterations and 2 deep research sessions.
+- **Decision**: Single authoritative master plan covering FileFree, LaunchFree, Trinkets, and command center. pnpm workspace monorepo. Federated identity. 50-state AI data pipeline. Faceless social pipeline. 30+ AI agents.
+- **Alternatives**: Separate repos (rejected: 70% frontend sharing), Turborepo (rejected: overkill for <5 apps), Series LLC (rejected: limited precedent).
+- **Reversibility**: Major architectural decision — reversing monorepo would be expensive.
+
+### D36 — Company Structure: Single LLC + DBAs (2026-03-12)
+- **Context**: Evaluated single LLC, holding company + subsidiaries, and Series LLC.
+- **Decision**: Single Wyoming LLC ($103 filing fee) with DBA filings for "FileFree", "LaunchFree", and "Trinkets". Convert to holding company structure when combined revenue exceeds $50K. LLC name TBD (founder researching toast-themed options).
+- **Alternatives**: Personal name LLC (rejected: signals "small operation"), Series LLC (rejected: limited legal precedent).
+- **Reversibility**: Easy to convert to holding company later.
+
+### D37 — Domain Strategy: .ai Brand Family (2026-03-12)
+- **Context**: Needed unified brand presence across products.
+- **Decision**: Purchased launchfree.ai + filefree.ai (March 2026, ~$440 for 2-year reg). Migrate filefree.tax to filefree.ai. Pattern: [product]free.ai.
+- **Alternatives**: Keep .tax (rejected: .ai signals AI differentiator), .com (rejected: filefree.com is Intuit's).
+- **Reversibility**: Permanent redirect from .tax preserves old links.
+
+### D38 — Trinkets Product Line + Agent Pipeline (2026-03-12)
+- **Context**: Wanted to test AI agent infrastructure end-to-end while generating passive revenue.
+- **Decision**: "Trinkets" = collection of client-side utility tools (financial calculators first). 3-stage Trinket Factory agent pipeline: GPT-5.4 Discovery -> Claude Sonnet PRD -> Claude Sonnet Build. Phase 1.5 in execution plan.
+- **Alternatives**: Manual tool selection (rejected: doesn't test agent pipeline), full SaaS tools (rejected: too complex for testing purposes).
+- **Reversibility**: Low-cost experiment, easy to abandon.
+
+### D39 — AI Model Routing Strategy: 9 Models, 7 Roles (2026-03-12)
+- **Context**: Multiple AI models available with varying cost/quality tradeoffs. Needed systematic assignment.
+- **Decision**: 9-model routing strategy owned by AI Ops Lead persona. Decision tree prioritizes cheapest model that achieves required quality. Gemini 2.5 Flash as default workhorse. Claude Sonnet for code/compliance. GPT-4o for creative. See Section 0E of master plan.
+- **Alternatives**: Single model for everything (rejected: wasteful), ad-hoc selection (rejected: inconsistent costs).
+- **Reversibility**: Easy — swap models in n8n workflow nodes.
+
+### D40 — AI Operations Lead Persona (2026-03-12)
+- **Context**: Model routing decisions were ad-hoc across different conversations.
+- **Decision**: Created `agent-ops.mdc` persona that owns all model routing, cost monitoring, persona audits, and new model evaluation. Has final say on model assignments — engineering implements but doesn't choose.
+- **Alternatives**: Engineering chooses models (rejected: no cost accountability), single model policy (rejected: too rigid).
+- **Reversibility**: Persona file is just a .mdc — easy to modify or remove.
+
+### D41 — RA Pricing Strategy: Wholesale Volume Tiers (2026-03-12)
+- **Context**: Initial RA pricing assumed $125/yr wholesale from Northwest RA. Research showed this was only for Wyoming; nationwide wholesale pricing varies significantly.
+- **Decision**: Partner RA with CorpNet volume pricing. Charge $99/yr initially (cheaper than ZenBusiness $199, LegalZoom $299). Drop to $79/yr at 500+ users, $49/yr at 1,000+ users. DIY RA deferred indefinitely.
+- **Alternatives**: DIY RA (rejected: requires 50-state physical addresses + E&O insurance), flat $49/yr from day 1 (rejected: not profitable until 1,000+ volume).
+- **Reversibility**: Can switch RA partners or adjust pricing at any time.
