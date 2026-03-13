@@ -58,7 +58,7 @@
 | Metric | Value |
 |---|---|
 | Total monthly burn (real) | ~$284/mo |
-| Annual fixed costs | ~$3,408/yr (monthly) + $800/yr franchise tax = ~$4,208/yr |
+| Annual fixed costs | ~$3,408/yr ($284/mo x 12, includes amortized $800/yr CA franchise tax) |
 | Cash invested to date | ~$452 (domains: filefree.ai, launchfree.ai, paperworklabs.com) |
 | Planned one-time expenses | ~$2,701-$2,746 (LLC + trademarks) + ~$300-500 (attorney consult) + ~$1,800 (first year cyber insurance) = ~$4,801-$5,046 |
 | Months of runway at $0 revenue | Indefinite (bootstrapped, costs covered by founder) |
@@ -89,7 +89,7 @@ Track ALL venture expenses by category. EA agent logs expenses as they occur. CF
 | **AI/ML** | Anthropic API usage | TBD | Track from console.anthropic.com |
 | **Infra** | Hetzner VPS | $6 | |
 | **Infra** | Render (FileFree API) | $7 | |
-| **Ops** | Google Workspace | $6 | |
+| **Ops** | Google Workspace | $6 | 1 seat in March; $12/mo recurring from April (2 seats: Sankalp + Olga) |
 | **TOTAL** | | TBD | Fill in at month end |
 
 ### Categories

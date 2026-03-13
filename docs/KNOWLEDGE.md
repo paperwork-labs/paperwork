@@ -318,9 +318,9 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 - **Alternatives**: Separate repos (rejected: 70% frontend sharing), Turborepo (rejected: overkill for <5 apps), Series LLC (rejected: limited precedent).
 - **Reversibility**: Major architectural decision — reversing monorepo would be expensive.
 
-### D36 — Company Structure: Single LLC + DBAs (2026-03-12)
+### D36 — Company Structure: Single LLC + DBAs (2026-03-12) — SUPERSEDED by D54
 - **Context**: Evaluated single LLC, holding company + subsidiaries, and Series LLC.
-- **Decision**: Single Wyoming LLC ($103 filing fee) with DBA filings for "FileFree", "LaunchFree", and "Trinkets". Convert to holding company structure when combined revenue exceeds $50K. LLC name TBD (founder researching toast-themed options).
+- **Original Decision**: Single Wyoming LLC ($103 filing fee). **SUPERSEDED**: See D54 -- decided Paperwork Labs LLC in California instead. Wyoming rejected because founder is a CA resident (would require foreign registration, double RA fees, and CA franchise tax anyway).
 - **Alternatives**: Personal name LLC (rejected: signals "small operation"), Series LLC (rejected: limited legal precedent).
 - **Reversibility**: Easy to convert to holding company later.
 
@@ -449,3 +449,27 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 - **Decision**: Stay on tools.filefree.ai. SEO research confirms subdomain inherits some parent authority, individual domains start at DA 0. At Year 1 revenue of $50-300, buying 15+ domains is negative ROI. Use subdirectory-style paths (tools.filefree.ai/calculators/mortgage) for topical clustering. Graduation criteria: if a trinket exceeds 10K monthly visits, consider standalone domain with 301 redirect.
 - **Alternatives**: Individual domains per trinket (rejected: negative ROI, DA 0 startup, Google EMD devaluation since 2012), subdirectories on filefree.ai (rejected: tighter coupling with main product).
 - **Reversibility**: Can always buy standalone domains later and 301 redirect.
+
+### D58 — Experimentation Platform: PostHog-First (2026-03-13)
+- **Context**: CK's Darwin runs 22K models/month. Needed a lightweight experimentation framework that grows with us. Researched Google's user simulation paper (2024), Capital One's FinTRec (2025), Meta's PEX framework.
+- **Decision**: Three-phase approach. Phase 1: PostHog feature flags + simple A/B (already in stack, free tier 1M events/mo). Phase 2 (10K+ users): Thompson Sampling bandit for partner ranking (~200 lines Python). Phase 3 (50K+ users): ML collaborative filtering. FTC compliance constraint baked in: never test "pre-approved" language.
+- **Alternatives**: Build custom experimentation platform (rejected: premature at our scale), Optimizely/LaunchDarkly (rejected: paid, unnecessary complexity for Phase 1).
+- **Reversibility**: PostHog feature flags are config, trivial to change. Bandit/ML layers are additive.
+
+### D59 — Data Intelligence: Design for Post-Production from Day One (2026-03-13)
+- **Context**: Tax filing is seasonal, LLC formation is one-time. Without retention and data intelligence, users churn after the transaction. The data compounds year-over-year and becomes the moat.
+- **Decision**: Broaden from "retention" to full "Data Intelligence & Analytics" layer (Section 4L). Track company KPIs from day one (activation rate, MAU, partner conversion, churn, LTV). Build lifecycle campaigns (7 trigger-based via n8n). Deploy churn prediction via ChurnGuard AI (open-source, PostHog+Stripe) at Phase 2. Web push notifications (Phase 2+, opt-in, max 2/week).
+- **Alternatives**: Build custom analytics (rejected: PostHog does this), defer analytics to Year 2 (rejected: lose data compounding advantage).
+- **Reversibility**: Event taxonomy is append-only. KPI definitions can be adjusted. Campaign triggers are n8n config.
+
+### D60 — Credit Score: Phase 1.5 Not Phase 2 (2026-03-13)
+- **Context**: CK's moat was 2,500 data points/user, not the credit score itself. FileFree uniquely sees actual tax return data (W-2 Box 1 income, filing status, dependents, refund amount). Adding credit score creates the richest financial profile in fintech. Every month delayed = lost data compounding.
+- **Decision**: Move credit score integration from Phase 2 to Phase 1.5 (Launch + 3 months). Soft pull only via TransUnion reseller (Array or SavvyMoney, $0.50-2.00/pull). FCRA compliance review ($500-1K). UX: opt-in, value-first framing ("Won't affect your score").
+- **Alternatives**: Wait until Phase 2 (rejected: lose 12 months of credit trajectory data for Year 1 filers), skip credit score entirely (rejected: dramatically limits partner matching quality and revenue).
+- **Reversibility**: Soft pull integration is additive. Can be removed if FCRA compliance proves too costly.
+
+### D61 — Package Rename: cross-sell -> intelligence (2026-03-13)
+- **Context**: `packages/cross-sell/` was too narrow for the expanded intelligence engine that now includes profile building, partner matching, experimentation, data intelligence, churn prediction, and campaign triggers.
+- **Decision**: Rename to `packages/intelligence/`. Updated monorepo structure in Section 2 and Phase 5 tasks. Modules: profile builder, partner matcher, experimentation, data intelligence, campaign triggers.
+- **Alternatives**: `packages/recommendation/` (rejected: still too narrow), `packages/analytics/` (rejected: conflicts with existing analytics package for PostHog).
+- **Reversibility**: Package rename is a refactor, trivial in a monorepo.

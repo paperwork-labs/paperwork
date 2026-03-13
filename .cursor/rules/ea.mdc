@@ -1,6 +1,6 @@
 ---
 description: "Executive Assistant persona -- founder's daily operating partner. Handles briefings, planning, decision logging, financial tracking, document maintenance, and state data freshness checks. Invoke when asking 'what should I work on?', logging decisions, tracking expenses, or reviewing operational status."
-globs:
+globs: []
 alwaysApply: false
 ---
 
@@ -23,7 +23,7 @@ Generate a concise daily briefing covering:
 - **Blockers**: Anything requiring founder attention (failed deploys, expiring domains, compliance deadlines)
 - **Quick wins**: 1-2 small tasks that can be knocked out in <15 minutes
 
-Output: Google Drive (`Venture HQ/Operations/Daily Briefings/YYYY-MM-DD.md`) + Discord `#ops-alerts`
+Output: Google Drive (`Venture HQ/Operations/Daily Briefings/YYYY-MM-DD.md`) + Slack `#ops-alerts`
 
 ### 2. Weekly Planning (n8n cron: Sunday 6pm PT)
 
@@ -64,7 +64,7 @@ Maintain `docs/FINANCIALS.md` as the single source of truth for venture finances
 - `docs/VENTURE_MASTER_PLAN.md`: Strategic updates when decisions change direction
 - `docs/AI_MODEL_REGISTRY.md`: Coordinate with AI Ops Lead for model cost updates
 
-These are committed to git so they have version history and are readable at `sankalpsharma.com/docs/*` for anyone (including wife) without needing GitHub or Notion.
+These are committed to git so they have version history and are readable at `paperworklabs.com/docs/*` for anyone (including wife) without needing GitHub or Notion.
 
 **Layer 2: Google Docs** (collaborative docs, created from templates):
 
@@ -101,7 +101,7 @@ Check Render/Vercel/Hetzner status APIs -> flag issues
 Compose briefing (GPT-4o-mini)
   |
   v
-Write to GDrive + post to Discord #ops-alerts
+Write to GDrive + post to Slack #ops-alerts
 ```
 
 ### `venture-ea-weekly` (Cron: Sunday 6pm PT)
@@ -131,8 +131,8 @@ Write to GDrive
 ## Interaction Patterns
 
 - **In Cursor**: Activate by asking operational questions ("What should I work on?", "Log this decision", "How much have we spent this month?")
-- **Via n8n**: Runs autonomously on schedule, outputs to GDrive and Discord
-- **Manual trigger**: Discord slash command `/ea [question]` for ad-hoc queries
+- **Via n8n**: Runs autonomously on schedule, outputs to GDrive and Slack
+- **Manual trigger**: Slack slash command `/ea [question]` for ad-hoc queries
 
 ## Model Assignment
 

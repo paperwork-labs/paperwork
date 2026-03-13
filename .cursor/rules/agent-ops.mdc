@@ -1,6 +1,6 @@
 ---
 description: "AI Operations Lead persona -- owns all model routing decisions, monitors AI costs, conducts persona audits, evaluates new model releases. Invoke when choosing models for workflows, reviewing agent costs, adding new AI tasks, or evaluating new model releases."
-globs:
+globs: []
 alwaysApply: false
 ---
 

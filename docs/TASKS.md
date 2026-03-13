@@ -1181,7 +1181,7 @@ Add dependent data model, child tax credit calculation. Eventually: 1099 support
 
 | Action | Owner | Deadline | Status | Blocks |
 |---|---|---|---|---|
-| Decide LLC name | Founder 1 | 2 weeks from now | NOT STARTED | Phase 0.6 -> EIN -> bank -> Stripe -> trademarks |
+| Decide LLC name | Founder 1 | 2 weeks from now | DONE | **Paperwork Labs LLC** (California). See KNOWLEDGE.md D54. |
 | Apply for EFIN (Form 8633) | Founder 1 | THIS WEEK | NOT STARTED | Phase 8 (MeF transmitter). 45-day processing. |
 | Get cyber liability insurance | Founder 1 | Before first SSN collected | NOT STARTED | Phase 7 (FileFree launch). Non-negotiable. |
 | Draft data breach response plan | Founder 1 | Before first SSN collected | NOT STARTED | Phase 7. SANS/NIST template. |
@@ -1194,11 +1194,11 @@ Add dependent data model, child tax credit calculation. Eventually: 1099 support
 |---|---|---|---|---|
 | P0.1 Buy domains | Founder 1 | DONE | N/A | launchfree.ai + filefree.ai purchased (March 2026) |
 | P0.2 Migrate FileFree domain | Founder 1 | Not started | `chore/domain-migration` | filefree.tax -> filefree.ai (Vercel, DNS, 301s) |
-| P0.3 Google Workspace | Founder 1 | Not started | N/A | Set up on sankalpsharma.com, add secondary domains, SPF/DKIM/DMARC |
+| P0.3 Google Workspace | Founder 1 | Not started | N/A | Set up on sankalpsharma.com (primary), add paperworklabs.com as alias domain, SPF/DKIM/DMARC |
 | P0.4 Google Drive HQ | Founder 1 | Not started | N/A | Create Venture HQ folder structure, add GDrive MCP |
 | P0.5 Secure social handles | Founder 1 | Not started | N/A | @launchfree on TikTok, IG, X, YouTube |
-| P0.6 Form LLC | Founder 1 | BLOCKED | N/A | California LLC (name TBD). File DBAs. Blocked on LLC name decision. |
-| P0.7 Migrate DNS subdomains | Founder 1 | Not started | `chore/dns-migration` | ops/social.sankalpsharma.com -> Hetzner |
+| P0.6 Form LLC | Founder 1 | Not started | N/A | California LLC: Paperwork Labs LLC (DECIDED). File DBAs for FileFree, LaunchFree, Trinkets. |
+| P0.7 Migrate DNS subdomains | Founder 1 | Not started | `chore/dns-migration` | ops.paperworklabs.com, social.paperworklabs.com -> Hetzner |
 | P0.8 File trademarks | Founder 1 | DEFERRED | N/A | Needs specimen of use (after product launch) |
 | P0.9 Legal compliance setup | Founder 1 | Not started | `chore/legal-compliance` | Content Review Gate checklist, update privacy/terms per Section 0C |
 
@@ -1214,7 +1214,7 @@ Add dependent data model, child tax credit calculation. Eventually: 1099 support
 | P1.6 Move api/ -> apis/filefree/ | Not started | `feat/move-filefree-api` | Update compose, render.yaml, Makefile paths | P1.5 |
 | P1.7 Scaffold apps/launchfree/ | Not started | `feat/scaffold-launchfree` | Copy structure, strip product-specific pages, teal-cyan theme | P1.5 |
 | P1.8 Scaffold apis/launchfree/ | Not started | `feat/scaffold-launchfree-api` | Copy base patterns (auth, repo, config) | P1.6 |
-| P1.9 Scaffold apps/studio/ | Not started | `feat/scaffold-studio` | Next.js app for sankalpsharma.com + docs viewer | P1.5 |
+| P1.9 Scaffold apps/studio/ | Not started | `feat/scaffold-studio` | Next.js app for paperworklabs.com + docs viewer | P1.5 |
 | P1.9b Scaffold apps/trinkets/ | Not started | `feat/scaffold-trinkets` | Next.js SSG, Vercel free tier, AdSense placeholder | P1.5 |
 | P1.10 Update infra | Not started | `feat/monorepo-infra` | compose.dev.yaml, render.yaml, Makefile, CI (dorny/paths-filter) | P1.6-P1.9b |
 | P1.11 Verify | Not started | N/A | All 6 dev processes run on correct ports: 3001-3004, 8001-8002 | P1.10 |
@@ -1266,7 +1266,7 @@ Note: "Submit LLC" is a misnomer for most states. See master plan "LaunchFree Su
 
 | Task | Status | Details |
 |---|---|---|
-| P4.1 Studio landing page | Not started | Public portfolio page at sankalpsharma.com |
+| P4.1 Studio landing page | Not started | Public company portfolio page at paperworklabs.com |
 | P4.2 Admin auth | Not started | Hardcoded admin email check |
 | P4.3 Studio API scaffold | Not started | FastAPI + Redis on Hetzner |
 | P4.4 Mission Control dashboard | Not started | n8n + Render + Vercel + Hetzner + Stripe + PostHog APIs |
@@ -1362,7 +1362,7 @@ Sprint 6 tasks (5.1-5.7) contain the detailed implementation specs for these ite
 | Banking partner (at least 1) | Either | October 2026 | NOT STARTED | For refund routing in first tax season. |
 | MeF certification prep | Founder 1 | Start June 2026 | NOT STARTED | XML generator -> ATS (Oct) -> Comms (Nov). |
 | Pre-launch audience building | Founder 1 | Ongoing NOW | NOT STARTED | SEO blog posts, Reddit, waitlist growth per Section 5K. |
-| TikTok Spark Ads | Founder 1 | At LaunchFree launch | NOT STARTED | $200-500/mo. |
+| TikTok Spark Ads | Founder 1 | At LaunchFree launch | NOT STARTED | $100-300/mo max. |
 
 ---
 
