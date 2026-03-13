@@ -14,7 +14,7 @@
 - **FileFree** (filefree.ai) -- Free tax filing. Revenue: refund routing, financial referrals, audit shield, Tax Opt Plan. Launches January 2027.
 - **Trinkets** (tools.filefree.ai) -- Collection of simple utility tools (financial calculators, converters, generators). Revenue: AdSense + cross-sell to main products. Complexity: LOW. Built as `apps/trinkets/` in monorepo. See Section 0F.
 
-**HQ**: paperworklabs.com -- Venture command center, admin dashboard, agent monitor, cross-sell campaigns. Public portfolio page + authenticated `/admin/` panel.
+**HQ**: paperworklabs.com -- Venture command center, admin dashboard, agent monitor, intelligence campaigns. Public portfolio page + authenticated `/admin/` panel.
 
 **Personal site**: sankalpsharma.com -- Founder's personal portfolio/blog. Links to Paperwork Labs and products. Separate from company ops.
 
@@ -211,7 +211,7 @@ Every piece of user-facing content (email, social post, in-app message, landing 
 | **50-state data errors -> incorrect LLC filings** | CRITICAL | Disclaimers cover opinions, not facts. Wrong filing fees or deadlines = negligence exposure even with disclaimers.                                                                                                  | Add source-linking on every data point ("Fee: $70, source: CA SOS, last verified: 2026-03-01"). Add prominent "last verified" date on every state page. Add user confirmation step ("I confirm I've verified this fee on [state SOS link]"). Add ToS data accuracy disclaimer: "Filing fees and deadlines are sourced from state government websites and verified monthly. We make every effort to keep this data current but cannot guarantee accuracy. Always verify with your state's Secretary of State before filing." |
 | **FTC "Free" scrutiny**                           | HIGH     | "Free LLC" headline is misleading re: state fees. RA credit system is a landmine ("free RA" claim). Intuit precedent heightens FTC scrutiny of "free" claims in adjacent spaces.                                    | **RULES**: (1) NEVER use "Free LLC" as a standalone headline. Always: "Free LLC Formation Service" or "$0 Service Fee." (2) State filing fees must appear in the same visual field as any "free" claim -- not below the fold, not on a different page. (3) RA credits: NEVER say "Free RA." Always: "RA starting at $49/yr. Earn credits to reduce your cost." (4) Every landing page with "free" in the headline must pass FTC Free Guide compliance review.                                                               |
 | **AI operating agreements (UPL risk)**            | HIGH     | "AI-generated, state-specific operating agreement" crosses from template fill-in to document drafting. LegalZoom survived UPL challenges specifically because they did NOT auto-generate -- they offered templates. | **DECISION**: Use template model, not generation. LaunchFree provides state-specific operating agreement TEMPLATES (pre-written by a licensed attorney, stored as PDFs). AI EXPLAINS clauses ("This section covers member voting rights. Most single-member LLCs use...") but does NOT select, modify, or draft clause language. Marketing: "Operating agreement template included" not "AI-generated operating agreement." The attorney consultation (Section 0G #3) should validate this approach.                        |
-| **Cross-sell consent language**                   | MEDIUM   | Current: "I'd like to hear about other [LLC Name] products." Too vague for CCPA and lacks per-brand granularity. Missing TCPA gap if SMS is ever added.                                                             | **FIX**: Replace with explicit cross-product data use: "I consent to [LLC Name] using my information across FileFree, LaunchFree, and related services to send me product updates and recommendations. I can unsubscribe from any product at any time." Add separate SMS consent checkbox if SMS is ever added (TCPA requires express written consent for marketing texts). Add per-brand unsubscribe capability in email footer. |
+| **Cross-sell consent language**                   | MEDIUM   | Current: "I'd like to hear about other [LLC Name] products." Too vague for CCPA and lacks per-brand granularity. Missing TCPA gap if SMS is ever added.                                                             | **FIX**: Replace with explicit cross-product data use: "I consent to [LLC Name] using my information across FileFree, LaunchFree, and related services to send me product updates and recommendations. I can unsubscribe from any product at any time." Add separate SMS consent checkbox if SMS is ever added (TCPA requires express written consent for marketing texts). Add per-brand unsubscribe capability in email footer.                                                                                           |
 
 
 ### Legal Protection Checklist (Stress Test Addition)
@@ -406,7 +406,7 @@ Default ──> Gemini 2.5 Flash ($0.30/$2.50)
 | Content calendar  | Gemini 2.5 Flash | 1.5     | Analytical, not creative                  | $0.002    |
 
 
-**Cross-Sell & Marketing**
+**Intelligence & Marketing**
 
 
 | Workflow            | Model            | Tier | Why                             | ~Cost/Run |
@@ -613,7 +613,7 @@ These are existential risk mitigations that cost under $5K total. Complete befor
 | 1   | **Get cyber liability insurance** (E&O + cyber, $1M coverage) | $1,500-3,000/yr                             | Before first SSN is collected     | Phase 7 (FileFree launch). Non-negotiable for handling SSNs. A single breach without it is company-ending.                                                                                                                     |
 | 2   | **Draft data breach response plan**                           | $0 (self-authored from SANS/NIST templates) | Before first SSN is collected     | Phase 7. Need: notification timeline by state tier, template notification letter, forensics firm contact, first-call list.                                                                                                     |
 | 3   | **1-hour startup attorney consultation**                      | ~$300-500                                   | Before Phase 3 (LaunchFree MVP)   | Two specific questions: (a) does AI-assisted operating agreement survive UPL analysis in CA, TX, NY, FL? (b) is wholesale RA arrangement structured to minimize agency liability?                                              |
-| 4   | **Decide LLC name**                                           | $0                                          | Hard deadline: 2 weeks from today | Phase 0.6 (LLC filing) -> EIN -> bank account -> Stripe -> trademarks. On the critical path. Stop researching, pick one, file.                                                                                                 |
+| 4   | ~~**Decide LLC name**~~                                       | $0                                          | ~~Hard deadline: 2 weeks from today~~ | **DONE** -- Paperwork Labs LLC (California). See Section 0B.                                                                                                                                                                   |
 | 5   | **Apply for EFIN (Form 8633)**                                | $0                                          | THIS WEEK                         | Phase 8 (MeF transmitter). 45-day IRS processing. Chain: EFIN -> Software Developer ID -> ATS testing (October 2026) -> Comms test (November) -> Go-live (January 2027). Every day of delay compresses the October ATS window. |
 
 
@@ -638,16 +638,16 @@ The repo is currently named `fileFree` (the original product). Now that "Paperwo
 ### Data Inventory
 
 
-| Data Element | Product | Sensitivity | Storage | Encryption |
-| --- | --- | --- | --- | --- |
-| SSN | FileFree | Critical | Neon DB (encrypted column) | AES-256, separate key |
-| W-2 images | FileFree | Critical | GCP Cloud Storage | At-rest encryption, 24hr auto-delete |
-| Name, email, address | All | High | Neon DB | At-rest encryption |
-| Filing status, income | FileFree | High | Neon DB | At-rest encryption |
-| LLC owner info | LaunchFree | High | Neon DB | At-rest encryption |
-| Credit score | Future (Phase 1.5) | High | Neon DB (encrypted column) | AES-256, separate key |
-| Refund/owed amount | FileFree | Medium | Neon DB | At-rest encryption |
-| Event/behavioral data | All | Low | PostHog + Neon | Standard |
+| Data Element          | Product            | Sensitivity | Storage                    | Encryption                           |
+| --------------------- | ------------------ | ----------- | -------------------------- | ------------------------------------ |
+| SSN                   | FileFree           | Critical    | Neon DB (encrypted column) | AES-256, separate key                |
+| W-2 images            | FileFree           | Critical    | GCP Cloud Storage          | At-rest encryption, 24hr auto-delete |
+| Name, email, address  | All                | High        | Neon DB                    | At-rest encryption                   |
+| Filing status, income | FileFree           | High        | Neon DB                    | At-rest encryption                   |
+| LLC owner info        | LaunchFree         | High        | Neon DB                    | At-rest encryption                   |
+| Credit score          | Future (Phase 1.5) | High        | Neon DB (encrypted column) | AES-256, separate key                |
+| Refund/owed amount    | FileFree           | Medium      | Neon DB                    | At-rest encryption                   |
+| Event/behavioral data | All                | Low         | PostHog + Neon             | Standard                             |
 
 
 ### Retention Policy
@@ -662,13 +662,15 @@ The repo is currently named `fileFree` (the original product). Now that "Paperwo
 ### Deletion Rights
 
 Account deletion endpoint available from day one (CCPA requirement). Cascade:
+
 1. Neon DB: soft-delete user record, hard-delete PII fields after 30-day grace period
 2. GCP Cloud Storage: delete any remaining W-2 images (should already be auto-deleted)
 3. Upstash Redis: clear all session data for user
 4. Venture identity: remove cross-product links
-5. PostHog: delete user profile (events retained in anonymized form for aggregate analytics)
-6. Confirmation email sent to user upon completion
-7. 30-day response window (CCPA requirement)
+5. Credit score provider: request data deletion via reseller API (Array/SavvyMoney) if user opted in to credit score. Required by FCRA.
+6. PostHog: delete user profile (events retained in anonymized form for aggregate analytics)
+7. Confirmation email sent to user upon completion
+8. 30-day response window (CCPA requirement)
 
 ### Consent Architecture
 
@@ -681,6 +683,7 @@ Account deletion endpoint available from day one (CCPA requirement). Cascade:
 ### ADMT Disclosure
 
 Since we use AI for tax calculations, OCR field extraction, LLC formation guidance, and financial recommendations, CCPA 2026 rules require Automated Decision-Making Technology (ADMT) notices. Add to privacy policy:
+
 - What decisions AI makes (tax calculations, document data extraction, partner recommendations)
 - How the AI reaches those decisions (rule-based + ML models)
 - Right to opt out of automated profiling for partner recommendations
@@ -688,7 +691,8 @@ Since we use AI for tax calculations, OCR field extraction, LLC formation guidan
 
 ### Risk Assessments
 
-Required by CPRA for sensitive data processing:
+Required by CPRA for sensitive data processing. Assessments must be completed **before processing begins** for each data category:
+
 1. **SSN Processing Assessment** (FileFree): document purpose (tax filing), necessity (IRS requirement), safeguards (AES-256, never sent to LLMs, regex extraction, 24hr image deletion), and risk mitigation
 2. **Credit Score Processing Assessment** (Phase 1.5): document purpose (personalized recommendations), consent flow (explicit opt-in), data minimization (score + range only, not full report), and FCRA compliance
 
@@ -947,12 +951,12 @@ VENTURE DATABASE (studio, never sold):
 
 - Same Google OAuth flow as users. After OAuth, middleware checks if the authenticated email is in the admin allowlist. If yes, admin routes accessible. If no, 403.
 - Admin allowlist stored in environment variable: `ADMIN_EMAILS=sankalp@sankalpsharma.com,olga@sankalpsharma.com` (Google Workspace primary emails)
-- Admin routes: `/admin/*` on paperworklabs.com, `/admin/*` on FileFree, `/admin/*` on LaunchFree. All protected by the same `packages/auth/withAdminAuth` middleware.
+- Admin routes: `/admin/`* on paperworklabs.com, `/admin/*` on FileFree, `/admin/*` on LaunchFree. All protected by the same `packages/auth/withAdminAuth` middleware.
 - No separate admin login page. Same SSO, just an authorization check on top.
 
 **Trinkets Auth**: No auth. Public utility tools. Cross-sell CTAs link to FileFree/LaunchFree where users sign up. If we ever want saved preferences, use localStorage or add optional Google sign-in later.
 
-**`packages/auth/` exports**: `AuthProvider`, `useSession`, `useAdmin`, `withAdminAuth` (middleware), `isAdmin` (server-side check).
+`**packages/auth/` exports**: `AuthProvider`, `useSession`, `useAdmin`, `withAdminAuth` (middleware), `isAdmin` (server-side check).
 
 ### Cursor Workspace Scoping
 
@@ -1050,7 +1054,7 @@ The command center is the control plane for the entire venture. It is what makes
 - Footer: legal info ("Paperwork Labs LLC | California"), social links, contact email
 - Data source: Static
 
-**P4.2 Admin Auth** (`/admin/*` -- protected)
+**P4.2 Admin Auth** (`/admin/`* -- protected)
 
 - Google OAuth via `packages/auth/` shared library (Auth.js v5)
 - Admin gate: `ADMIN_EMAILS` env var allowlist (Sankalp + Olga's Google Workspace primary emails)
@@ -1405,7 +1409,8 @@ identity_products: venture_identity_id, product, product_user_id, first_used
 user_events: id, venture_identity_id, event_type, product, metadata, timestamp
 user_segments: venture_identity_id, segment, computed_at
 user_financial_profile: venture_identity_id, income_bracket, filing_status, has_biz_income,
-                        state, refund_amount_bracket, partner_interests[], updated_at
+                        state, refund_amount_bracket, partner_interests[], updated_at,
+                        credit_score, credit_score_band, credit_score_date, credit_score_provider
 campaigns: id, name, segment_target, message_template, channel, status, schedule
 campaign_events: id, campaign_id, venture_identity_id, event_type, timestamp
 recommendations: id, venture_identity_id, partner_product, score, status, created_at
@@ -1457,6 +1462,12 @@ TRINKETS EVENTS:
   tool_used                 -- tool_slug, input_params_hash (no PII)
   tool_result_viewed        -- tool_slug, time_on_page_ms
   cross_sell_cta_clicked    -- tool_slug, target_product
+
+CREDIT SCORE EVENTS (Phase 1.5):
+  credit_score_opt_in       -- consent_timestamp, provider (Array/SavvyMoney)
+  credit_score_requested    -- provider, request_type (soft_pull)
+  credit_score_received     -- score_band (e.g., 700-749), provider
+  credit_score_changed      -- previous_band, new_band, direction (up/down/stable)
 
 CROSS-PRODUCT EVENTS:
   cross_product_opt_in      -- source_product, consent_timestamp
@@ -1616,8 +1627,8 @@ How user intelligence events drive the 77% of revenue from referrals:
 - Opt-in checkbox (unchecked by default) on every signup form
 - Consent stored per user, per product, with timestamp
 - Cross-product emails only sent to users who explicitly opted in
-- Single unsubscribe covers all brands (same legal entity)
-- Consent audit trail maintained for CCPA/GDPR compliance
+- Per-product unsubscribe in email footer: users can unsubscribe from FileFree emails without affecting LaunchFree (and vice versa). Consistent with Section 0C consent language and Section 0I consent architecture.
+- Consent audit trail maintained for CCPA compliance
 - Re-consent required if privacy policy materially changes
 
 ### 4I. Campaign System
@@ -1652,18 +1663,21 @@ How user intelligence events drive the 77% of revenue from referrals:
 Credit Karma's Darwin runs 22,000 models/month and 60B predictions/day powering ~80% of operations. We need a lightweight experimentation framework that grows with us. Research context: Google's 2024 user simulation paper (YouTube Music), Capital One's FinTRec (2025, transformer-based contextual targeting), Meta's PEX framework (heterogeneous treatment effects).
 
 **Phase 1 -- Feature Flags + Simple A/B (Launch)**:
+
 - PostHog feature flags (already in stack, free tier: 1M events/mo)
 - A/B test: recommendation card placement, partner ordering, CTA copy
 - Track: click-through rate, conversion rate, revenue per impression
 - No ML needed. Just measure which recommendation layout converts better.
 
 **Phase 2 -- Multi-Armed Bandit (10K+ users)**:
+
 - Replace static A/B tests with Thompson Sampling bandit for partner ranking
 - Auto-allocates traffic to higher-converting partners
 - Personalized ranking: different users see different partner orders based on their profile
 - Implementation: Python (`scipy.stats.beta`) in the recommendation API, ~200 lines of code
 
 **Phase 3 -- ML Recommendation Models (50K+ users)**:
+
 - Collaborative filtering on user-partner interaction data
 - Input: financial profile (income, credit score, state, age, filing status) + behavioral signals (clicks, time on page, past conversions)
 - Output: ranked partner list with predicted conversion probability
@@ -1678,32 +1692,35 @@ The intelligence engine is not just recommendations and retention -- it is the f
 **Company KPIs (tracked from day one via PostHog + event taxonomy)**:
 
 
-| KPI | Definition | Source Events | Target |
-| --- | --- | --- | --- |
-| Activation rate | Signups -> first completed action (filed taxes / formed LLC) | signup, filing_completed, formation_completed | >40% |
-| Completion rate | Started action -> completed | filing_started -> filing_completed | >80% |
-| Monthly active users (MAU) | Unique users with any event in 30 days | All events | Growth metric |
-| DAU/MAU ratio | Daily active / monthly active (stickiness) | All events | >15% |
-| Revenue per user (RPU) | Total revenue / active users | partner_signup_completed, tax_opt_plan_purchased | Track trend |
-| Lifetime value (LTV) | Predicted total revenue per user over lifetime | All revenue events + retention | Compute at Phase 2 |
-| Partner conversion rate | Partner CTA views -> partner signups, per partner, per segment | partner_cta_viewed, partner_signup_completed | >5% |
-| Churn rate (30-day) | Users with no activity in 30 days / total users | All events | <20% off-season |
-| Seasonal return rate | Users who file in Year N who return in Year N+1 | filing_completed (year-over-year) | >50% |
-| Net Promoter Score | Quarterly in-app survey | Custom event | >50 |
+| KPI                        | Definition                                                     | Source Events                                    | Target             |
+| -------------------------- | -------------------------------------------------------------- | ------------------------------------------------ | ------------------ |
+| Activation rate            | Signups -> first completed action (filed taxes / formed LLC)   | signup, filing_completed, formation_completed    | >40%               |
+| Completion rate            | Started action -> completed                                    | filing_started -> filing_completed               | >80%               |
+| Monthly active users (MAU) | Unique users with any event in 30 days                         | All events                                       | Growth metric      |
+| DAU/MAU ratio              | Daily active / monthly active (stickiness)                     | All events                                       | >15%               |
+| Revenue per user (RPU)     | Total revenue / active users                                   | partner_signup_completed, tax_opt_plan_purchased | Track trend        |
+| Lifetime value (LTV)       | Predicted total revenue per user over lifetime                 | All revenue events + retention                   | Compute at Phase 2 |
+| Partner conversion rate    | Partner CTA views -> partner signups, per partner, per segment | partner_cta_viewed, partner_signup_completed     | >5%                |
+| Churn rate (30-day)        | Users with no activity in 30 days / total users                | All events                                       | <20% off-season    |
+| Seasonal return rate       | Users who file in Year N who return in Year N+1                | filing_completed (year-over-year)                | >50%               |
+| Net Promoter Score         | Quarterly in-app survey                                        | Custom event                                     | >50                |
 
 
 **Cohort analysis (built into PostHog, no custom code)**:
+
 - Signup cohort retention: what % of Jan 2027 signups are active in Feb, Mar, Apr...
 - Filing cohort: users who filed in Season 1 vs Season 2 (income growth, product adoption)
 - Partner cohort: users who engaged with partner recommendations vs those who didn't (LTV difference)
 
 **Funnel metrics (PostHog funnels)**:
+
 - Filing funnel: signup -> W-2 upload -> OCR complete -> review -> submit -> accepted
 - Formation funnel: state selected -> name search -> formation started -> completed -> RA purchased
 - Partner funnel: CTA viewed -> CTA clicked -> partner signup completed
 - Trinket-to-product funnel: tool used -> cross-sell CTA clicked -> signup -> activation
 
 **Churn prediction signals**:
+
 - Days since last login
 - Repeat vs one-time filer
 - Recommendation engagement (click, convert, ignore)
@@ -1711,7 +1728,8 @@ The intelligence engine is not just recommendations and retention -- it is the f
 - Credit score change (score drops = financial stress = re-engagement opportunity)
 
 **Churn prediction model (Phase 2+)**:
-- MVP: ChurnGuard AI (open-source, connects PostHog + Stripe, 15-min setup)
+
+- MVP: ChurnGuard AI (open-source, connects PostHog + Stripe, 15-min setup). Fallback if unmaintained at implementation time: PostHog's built-in retention analysis + custom churn scoring via Python (~1 day of engineering).
 - Features: login frequency, recommendation engagement, email open rate, conversion history
 - Output: risk score (Critical >80% / High 60-80% / Medium 40-60% / Low <40%) per user
 - Critical risk users get personalized re-engagement (AI-drafted, founder-approved email)
@@ -1719,18 +1737,19 @@ The intelligence engine is not just recommendations and retention -- it is the f
 **Lifecycle campaigns (n8n workflows + packages/email)**:
 
 
-| Trigger | Campaign | Channel | Timing |
-| --- | --- | --- | --- |
-| Filed taxes, no refund action | "Your $X refund is coming -- here's where to put it" | Email + in-app | 3 days post-filing |
-| Filed taxes, 6 months no return | "Your tax profile is getting smarter" (mid-year check-in) | Email | July |
-| Formed LLC, no banking setup | "Your LLC needs a bank account" | Email + push | 7 days post-formation |
-| Credit score dropped >20 pts | "Your credit score changed -- here's what to know" | Email + in-app | Within 48 hours |
-| Tax season approaching, returning user | "Your W-2 info is pre-filled from last year" | Email + push | January |
-| Annual report deadline approaching | "Your [state] annual report is due in X days" | Email + push | 30 days before |
-| No login for 90 days | Value recap: "Here's what we know about your financial profile" | Email | At 90 days |
+| Trigger                                | Campaign                                                        | Channel        | Timing                |
+| -------------------------------------- | --------------------------------------------------------------- | -------------- | --------------------- |
+| Filed taxes, no refund action          | "Your $X refund is coming -- here's where to put it"            | Email + in-app | 3 days post-filing    |
+| Filed taxes, 6 months no return        | "Your tax profile is getting smarter" (mid-year check-in)       | Email          | July                  |
+| Formed LLC, no banking setup           | "Your LLC needs a bank account"                                 | Email + push   | 7 days post-formation |
+| Credit score dropped >20 pts           | "Your credit score changed -- here's what to know"              | Email + in-app | Within 48 hours       |
+| Tax season approaching, returning user | "Your W-2 info is pre-filled from last year"                    | Email + push   | January               |
+| Annual report deadline approaching     | "Your [state] annual report is due in X days"                   | Email + push   | 30 days before        |
+| No login for 90 days                   | Value recap: "Here's what we know about your financial profile" | Email          | At 90 days            |
 
 
 **Push notifications (Phase 2+)**:
+
 - Web push via service worker (no app store needed)
 - Opt-in only, max 2/week, always actionable
 - High-value triggers only: credit score change, tax season reminder, deadline alert
@@ -1742,6 +1761,7 @@ The intelligence engine is not just recommendations and retention -- it is the f
 Credit Karma's moat wasn't the credit score itself -- Intuit, NerdWallet, and every bank now offer free scores. CK's moat was **2,500 data points per user** accumulated over time. We have a unique advantage CK never had: **we see the user's actual tax return.** That's the most complete financial snapshot that exists.
 
 **What FileFree knows from a single filing that CK doesn't**:
+
 - Exact income (actual W-2 Box 1, not self-reported range)
 - Filing status (single, married, HOH -- household composition)
 - Dependents (family size, child ages)
@@ -1750,6 +1770,7 @@ Credit Karma's moat wasn't the credit score itself -- Intuit, NerdWallet, and ev
 - Employer (stability signal)
 
 **Add credit score to that and we have**:
+
 - Income + creditworthiness = approval odds for any financial product
 - Refund amount + credit score = right HYSA vs right credit card recommendation
 - Business owner (LaunchFree) + credit score = business credit card, business loan eligibility
@@ -1761,6 +1782,7 @@ Partners will pay a premium to reach users we can describe as "W-2 income $75K, 
 Every month we delay credit score integration, we lose data compounding. A user who files in January 2027 and gives us credit score permission immediately has 12 months of credit trajectory by January 2028. If we wait until Year 2, we have zero trajectory data for returning users. The moat starts building the day we turn on soft pulls.
 
 **Credit score integration research**:
+
 - **Soft pull only**: We only ever do soft pulls. Never affects user's score. Users must understand this.
 - **TransUnion reseller (Array, SavvyMoney)**: Easiest path for startups. $0.50-2.00 per pull. No direct bureau contract needed. Array provides embeddable credit score widget.
 - **Plaid LendScore**: Cash-flow based scoring (not traditional credit score). Trained on ~1B transactions, 25% better predictive performance than traditional scores. Good for users with thin credit files.
@@ -1772,7 +1794,10 @@ Every month we delay credit score integration, we lose data compounding. A user 
 
 ### 4N. Partner Dashboard (Phase 2+, paperworklabs.com/admin/partners)
 
+**Implementation note**: Built as a tab within P4.11 Revenue & Spend Intelligence (`/admin/revenue`), or elevated to P4.15 in Tier 3 if scope warrants a standalone page.
+
 Show partners their performance data:
+
 - Referral volume, conversion rate, revenue generated
 - User demographics (anonymized: age range, income bracket, state distribution)
 - Comparison to category average (e.g., "your HYSA converts 2x the average partner")
@@ -2208,9 +2233,9 @@ Agents are organized into three tiers. **All venture-level personas must be avai
 - FileFree: SEO targets "free tax filing", "file taxes online free", competitor comparison pages vs TurboTax
 - LaunchFree: SEO targets "free LLC formation", "how to start an LLC", state-specific landing pages, competitor comparisons vs LegalZoom/ZenBusiness
 
-### 6D. Current Agents (18 -- Already Built)
+### 6D. Current Agents (20 -- Already Built)
 
-12 Cursor personas + 6 n8n workflows:
+14 Cursor personas + 6 n8n workflows (12 original personas + EA Interactive + AI Ops Lead):
 
 
 | #     | Agent                                                                                           | Type                     | Status                                                  |
@@ -2222,23 +2247,23 @@ Agents are organized into three tiers. **All venture-level personas must be avai
 ### 6E. New Agents to Build (12+)
 
 
-| #   | Agent                         | Type                    | Trigger                                                                               | Purpose                                                                                                                                                                                                                                                                   |
-| --- | ----------------------------- | ----------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 19  | L1 Support (DocBot)           | n8n webhook             | User message                                                                          | Answer from knowledge base (60% resolution target)                                                                                                                                                                                                                        |
-| 20  | L2 Support (OpsBot)           | n8n webhook             | DocBot escalation                                                                     | Execute actions: check status, resend email, reset password                                                                                                                                                                                                               |
-| 21  | State Data Validator          | n8n cron (daily/weekly) | Daily for volatile states (CA, NY, TX, FL, IL, WA, NJ, MA, GA, PA), weekly for others | Check state SOS websites for fee/rule changes. Flag stale data (>30 days) to Compliance Monitor.                                                                                                                                                                          |
-| 22  | IRS Update Monitor            | n8n cron (October)      | Annual                                                                                | Parse new Revenue Procedure for bracket changes                                                                                                                                                                                                                           |
-| 23  | Competitive Intel             | n8n cron (weekly)       | Mondays                                                                               | Monitor LegalZoom/ZenBusiness/TurboTax pricing + features                                                                                                                                                                                                                 |
-| 24  | Analytics Reporter            | n8n cron (weekly)       | Sundays                                                                               | Pull PostHog data, generate weekly metrics report                                                                                                                                                                                                                         |
-| 25  | Infra Health Monitor          | n8n cron (hourly)       | Continuous                                                                            | Check Render/Vercel/Hetzner status, alert on issues (see Section 7B)                                                                                                                                                                                                      |
-| 26  | Affiliate Revenue Tracker     | n8n cron (daily)        | Daily                                                                                 | Check affiliate dashboards, report conversions                                                                                                                                                                                                                            |
-| 27  | LaunchFree Social Bot         | n8n cron (daily)        | 8am                                                                                   | Draft LaunchFree social content for Postiz                                                                                                                                                                                                                                |
-| 28  | LaunchFree Growth Bot         | n8n cron (weekly)       | Mondays                                                                               | Draft LaunchFree SEO articles                                                                                                                                                                                                                                             |
-| 29  | LaunchFree Compliance Bot     | n8n cron (monthly)      | 1st                                                                                   | State filing deadline alerts for users                                                                                                                                                                                                                                    |
-| 30  | Knowledge Base Sync           | n8n cron (nightly)      | 2am                                                                                   | Sync Google Drive docs to support agent context                                                                                                                                                                                                                           |
-| 31  | AI Ops Lead                   | Cursor persona (.mdc)   | On demand                                                                             | Model routing, cost tracking, persona audits                                                                                                                                                                                                                              |
-| 32  | Executive Assistant (EA)      | Cursor persona + n8n    | Daily cron + on-demand                                                                | Daily briefing, weekly planning, decision tracking, financial tracking, doc maintenance. See Section 6J1.                                                                                                                                                                 |
-| 33  | Compliance & Security Monitor | n8n cron (daily)        | 6am                                                                                   | Tracks: cyber insurance status, data breach plan currency, EFIN cert status, 50-state data freshness, legal doc expiry (ToS, privacy policy last-reviewed dates). Outputs daily compliance status to Slack #compliance-alerts and weekly summary to Mission Control P4.4. |
+| #   | Agent                         | Type                    | Trigger                                                                               | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| --- | ----------------------------- | ----------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 19  | L1 Support (DocBot)           | n8n webhook             | User message                                                                          | Answer from knowledge base (60% resolution target)                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| 20  | L2 Support (OpsBot)           | n8n webhook             | DocBot escalation                                                                     | Execute actions: check status, resend email, reset password                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| 21  | State Data Validator          | n8n cron (daily/weekly) | Daily for volatile states (CA, NY, TX, FL, IL, WA, NJ, MA, GA, PA), weekly for others | Check state SOS websites for fee/rule changes. Flag stale data (>30 days) to Compliance Monitor.                                                                                                                                                                                                                                                                                                                                                                            |
+| 22  | IRS Update Monitor            | n8n cron (October)      | Annual                                                                                | Parse new Revenue Procedure for bracket changes                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| 23  | Competitive Intel             | n8n cron (weekly)       | Mondays                                                                               | Monitor LegalZoom/ZenBusiness/TurboTax pricing + features                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 24  | Analytics Reporter            | n8n cron (weekly)       | Sundays                                                                               | Pull PostHog data, generate weekly metrics report                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| 25  | Infra Health Monitor          | n8n cron (hourly)       | Continuous                                                                            | Check Render/Vercel/Hetzner status, alert on issues (see Section 7B)                                                                                                                                                                                                                                                                                                                                                                                                        |
+| 26  | Affiliate Revenue Tracker     | n8n cron (daily)        | Daily                                                                                 | Check affiliate dashboards, report conversions                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| 27  | LaunchFree Social Bot         | n8n cron (daily)        | 8am                                                                                   | Draft LaunchFree social content for Postiz                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| 28  | LaunchFree Growth Bot         | n8n cron (weekly)       | Mondays                                                                               | Draft LaunchFree SEO articles                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| 29  | LaunchFree Compliance Bot     | n8n cron (monthly)      | 1st                                                                                   | State filing deadline alerts for users                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| 30  | Knowledge Base Sync           | n8n cron (nightly)      | 2am                                                                                   | Sync Google Drive docs to support agent context                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| 31  | AI Ops Lead                   | Cursor persona (.mdc)   | On demand                                                                             | Model routing, cost tracking, persona audits                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| 32  | Executive Assistant (EA)      | Cursor persona + n8n    | Daily cron + on-demand                                                                | Daily briefing, weekly planning, decision tracking, financial tracking, doc maintenance. See Section 6J1.                                                                                                                                                                                                                                                                                                                                                                   |
+| 33  | Compliance & Security Monitor | n8n cron (daily)        | 6am                                                                                   | Tracks: cyber insurance status, data breach plan currency, EFIN cert status, 50-state data freshness, legal doc expiry (ToS, privacy policy last-reviewed dates). Outputs daily compliance status to Slack #compliance-alerts and weekly summary to Mission Control P4.4.                                                                                                                                                                                                   |
 | 34  | Partnership Intelligence      | n8n cron (weekly)       | Mondays                                                                               | Scans affiliate networks (Impact.com, CJ Affiliate, ShareASale, Partnerize) for new fintech programs. Compares commission rates across similar partners. Monitors existing affiliate performance (clicks, conversions, revenue). Tracks program changes (rate changes, terms, closures). Generates weekly "Partnership Opportunities" report to Slack #partnerships. Generates compatibility scores based on user profile data. Supports Olga but works fully autonomously. |
 
 
@@ -2571,17 +2596,19 @@ No agent is currently assigned to write production code for FileFree or LaunchFr
 **Autonomous engineering tasks (suitable for background agents)**:
 
 
-| Task | Agent Model | Input | Output | Human Review |
-| --- | --- | --- | --- | --- |
-| State tax JSON configs (Tier 1 conforming, ~30 states) | Claude Sonnet | Template from first state + state tax docs | `packages/data/tax/{state}.json` | PR review |
-| State formation JSON (50 states) | Claude Sonnet | Template + SOS website data | `packages/data/formation/{state}.json` | PR review |
-| Shared UI components from designs | Claude Sonnet | Figma specs or component descriptions | `packages/ui/components/*.tsx` | PR review |
-| Test suites for tax calculations | Claude Sonnet | Tax calc implementation + IRS Pub 17 examples | `packages/data/__tests__/*.test.ts` | PR review |
-| MeF XML schema -> Zod types | Claude Sonnet | Downloaded IRS XML schemas | `packages/data/mef/schemas/*.ts` | PR review |
-| API endpoint scaffolding | Claude Sonnet | OpenAPI spec or route descriptions | `apis/*/routes/*.py` | PR review |
+| Task                                                   | Agent Model   | Input                                         | Output                                 | Human Review |
+| ------------------------------------------------------ | ------------- | --------------------------------------------- | -------------------------------------- | ------------ |
+| State tax JSON configs (Tier 1 conforming, ~30 states) | Claude Sonnet | Template from first state + state tax docs    | `packages/data/tax/{state}.json`       | PR review    |
+| State formation JSON (50 states)                       | Claude Sonnet | Template + SOS website data                   | `packages/data/formation/{state}.json` | PR review    |
+| Shared UI components from designs                      | Claude Sonnet | Figma specs or component descriptions         | `packages/ui/components/*.tsx`         | PR review    |
+| Test suites for tax calculations                       | Claude Sonnet | Tax calc implementation + IRS Pub 17 examples | `packages/data/__tests__/*.test.ts`    | PR review    |
+| MeF XML schema -> Zod types                            | Claude Sonnet | Downloaded IRS XML schemas                    | `packages/data/mef/schemas/*.ts`       | PR review    |
+| API endpoint scaffolding                               | Claude Sonnet | OpenAPI spec or route descriptions            | `apis/*/routes/*.py`                   | PR review    |
 
 
 **Key principle**: The agent IS the engineering team; the founder IS the tech lead who reviews. Agent writes code, creates PR. Human reviews and merges. Never auto-merge production code.
+
+**Quality gates for sensitive domains**: Tax calculation and formation data PRs require 100% test coverage and validation against IRS Publication 17 worked examples before merge. FCRA-touching code (credit score integration) requires Legal persona review. These gates apply to both human and agent-generated PRs.
 
 **Workflow**: Cursor Background Agents (already available) can run multi-file tasks, create PRs, run tests. Ideal for well-scoped tasks with clear specs and established patterns.
 
@@ -2603,7 +2630,7 @@ No agent is currently assigned to write production code for FileFree or LaunchFr
 | P0.3 Google Workspace        | Founder 1 | N/A (no code)            | Google Admin console: add filefree.ai, launchfree.ai as secondary domains. Create aliases: hello@, support@, legal@ for each.                                                                                                                      | Emails received at [hello@filefree.ai](mailto:hello@filefree.ai), [hello@launchfree.ai](mailto:hello@launchfree.ai). SPF/DKIM/DMARC configured for all domains.                                    | P0.1                                   | NOT STARTED        |
 | P0.4 Google Drive HQ         | Founder 1 | N/A (no code)            | Create folder structure: `Venture HQ/Operations/Daily Briefings/`, `Venture HQ/Operations/Weekly Plans/`, `Venture HQ/Trinkets/One-Pagers/`, `Venture HQ/Trinkets/PRDs/`, `Venture HQ/Intelligence/`. Add GDrive MCP server to `.cursor/mcp.json`. | GDrive accessible from Cursor via MCP. Folder structure matches EA spec in `ea.mdc`.                                                                                                               | P0.3                                   | NOT STARTED        |
 | P0.5 Secure social handles   | Founder 1 | N/A (no code)            | Register @launchfree on TikTok, Instagram, X, YouTube. Set profile pic to monogram, link to launchfree.ai.                                                                                                                                         | All 4 accounts created, profile pics set, bios written, URLs point to launchfree.ai.                                                                                                               | P0.1                                   | NOT STARTED        |
-| P0.6 Form LLC                | Founder 1 | N/A (no code)            | California SOS online filing. DBA filings at county clerk (FileFree, LaunchFree, Trinkets).                                                                                                                                                        | Articles of Organization filed with CA SOS. Confirmation number received. DBA filings submitted. EIN applied for on IRS.gov (same day as LLC confirmation). Bank account opened.                   | LLC name decided (Section 0G #4)       | BLOCKED (name TBD) |
+| P0.6 Form LLC                | Founder 1 | N/A (no code)            | California SOS online filing. DBA filings at county clerk (FileFree, LaunchFree, Trinkets).                                                                                                                                                        | Articles of Organization filed with CA SOS. Confirmation number received. DBA filings submitted. EIN applied for on IRS.gov (same day as LLC confirmation). Bank account opened.                   | LLC name decided (Section 0G #4) -- DONE | NOT STARTED        |
 | P0.7 Migrate DNS subdomains  | Founder 1 | `chore/dns-migration`    | DNS provider records: ops.paperworklabs.com -> Hetzner (n8n), social.paperworklabs.com -> Hetzner (Postiz). Point paperworklabs.com -> Vercel (apps/studio). Remove old filefree.tax subdomains.                                                   | n8n accessible at ops.paperworklabs.com. Postiz accessible at social.paperworklabs.com. paperworklabs.com serves studio app. Old subdomains return 404 or redirect.                                | P0.2                                   | NOT STARTED        |
 | P0.8 File trademarks         | Founder 1 | N/A (no code)            | USPTO TEAS Plus application. FILEFREE: Class 036 + 042. LAUNCHFREE: Class 035 + 042. Supplemental Register.                                                                                                                                        | Applications filed. Serial numbers received. Docket dates noted in TASKS.md.                                                                                                                       | Product launch (needs specimen of use) | DEFERRED           |
 | P0.9 Legal compliance setup  | Founder 1 | `chore/legal-compliance` | Update `.cursor/rules/social.mdc`, `growth.mdc`, `brand.mdc` to include Content Review Gate checklist from Section 0C. Create/update `web/src/app/(legal)/privacy/page.tsx`, `web/src/app/(legal)/terms/page.tsx`.                                 | Every content-producing persona .mdc includes the Content Review Gate checklist verbatim. Privacy policy and ToS pages updated with cross-sell consent language from Section 0C Legal Risk Matrix. | None (can start immediately)           | NOT STARTED        |
@@ -2682,7 +2709,7 @@ This is not a coding task with a side of research. This is an AI-powered data pi
 
 ### Phase 4: Command Center (Week 8-14, parallel with Phase 3)
 
-The command center is the control plane for the entire venture. It is what makes the "one human + 37 agents" model operationally viable. Every page is spec'd in detail in Section 3.
+The command center is the control plane for the entire venture. It is what makes the "one human + 44 agents" model operationally viable. Every page is spec'd in detail in Section 3.
 
 **Tier 1 -- Build First (enables daily operations):**
 
@@ -2923,7 +2950,7 @@ The Infra Health Monitor (Agent #25) needs a clear alerting hierarchy:
 
 **Alert routing**:
 
-- All alerts go to Slack `#ops-alerts` channel (see Section 14 for full Slack hub architecture)
+- All alerts go to Slack `#ops-alerts` channel (see Section 12 for full Slack hub architecture)
 - CRITICAL also sends email to founder + SMS via Twilio ($0.0075/SMS, ~$2/month max)
 - n8n handles all alert routing logic (Slack API nodes + Twilio API)
 
@@ -3052,7 +3079,7 @@ All 12 findings from the self-review have been addressed and implemented. Detail
 
 ---
 
-## 14. Agent Communication Hub: Slack + Email Aliases
+## 12. Agent Communication Hub: Slack + Email Aliases
 
 ### Why Slack
 
@@ -3109,12 +3136,14 @@ Department-level email aliases on Google Workspace. All route to founder's inbox
 
 | Alias                                                       | Domain        | Purpose                                   |
 | ----------------------------------------------------------- | ------------- | ----------------------------------------- |
-| [hello@filefree.tax](mailto:hello@filefree.tax)             | filefree.tax  | General FileFree inquiries                |
-| [support@filefree.tax](mailto:support@filefree.tax)         | filefree.tax  | FileFree user support                     |
+| [hello@filefree.ai](mailto:hello@filefree.ai)               | filefree.ai   | General FileFree inquiries                |
+| [support@filefree.ai](mailto:support@filefree.ai)           | filefree.ai   | FileFree user support                     |
 | [legal@filefree.ai](mailto:legal@filefree.ai)               | filefree.ai   | Legal inquiries, DMCA, compliance         |
 | [partnerships@filefree.ai](mailto:partnerships@filefree.ai) | filefree.ai   | Partnership inquiries (Founder 2 primary) |
 | [hello@launchfree.ai](mailto:hello@launchfree.ai)           | launchfree.ai | General LaunchFree inquiries              |
 | [support@launchfree.ai](mailto:support@launchfree.ai)       | launchfree.ai | LaunchFree user support                   |
+
+**Note**: filefree.tax aliases (hello@, support@) retained as forwards to filefree.ai equivalents post-migration (P0.2).
 
 
 **Outbound Email Flow**:

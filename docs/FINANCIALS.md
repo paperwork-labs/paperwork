@@ -16,7 +16,8 @@
 | TBD | DBA filings (x3: FileFree, LaunchFree, Trinkets) | ~$30-75 | Legal | ~$10-25 per name |
 | TBD | Registered Agent (first year) | ~$49 | Legal | Annual, first year |
 | TBD | USPTO trademark filing (FILEFREE + LAUNCHFREE) | ~$2,100 | Legal | Supplemental Register, Class 036+042 and 035+042 |
-| **TOTAL ONE-TIME** | | **~$2,701-$2,746** | | |
+| TBD | FCRA compliance review (credit score integration) | ~$500-1,000 | Legal | Required before Phase 1.5 credit score soft pulls. See Master Plan Section 4M. |
+| **TOTAL ONE-TIME** | | **~$3,201-$3,746** | | |
 
 ## Monthly Recurring
 
@@ -60,7 +61,7 @@
 | Total monthly burn (real) | ~$284/mo |
 | Annual fixed costs | ~$3,408/yr ($284/mo x 12, includes amortized $800/yr CA franchise tax) |
 | Cash invested to date | ~$452 (domains: filefree.ai, launchfree.ai, paperworklabs.com) |
-| Planned one-time expenses | ~$2,701-$2,746 (LLC + trademarks) + ~$300-500 (attorney consult) + ~$1,800 (first year cyber insurance) = ~$4,801-$5,046 |
+| Planned one-time expenses | ~$3,201-$3,746 (LLC + trademarks + FCRA review) + ~$300-500 (attorney consult) + ~$1,800 (first year cyber insurance) = ~$5,301-$6,046 |
 | Months of runway at $0 revenue | Indefinite (bootstrapped, costs covered by founder) |
 
 ## Revenue Projections (from Master Plan Section 1 — Stress Tested)

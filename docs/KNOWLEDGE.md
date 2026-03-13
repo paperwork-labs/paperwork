@@ -356,7 +356,7 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 
 ### D42 — Agent Org Chart: Full Company from Day One (2026-03-12)
 - **Context**: Stress test recommended right-sizing agents from 43 to 20. Founder pushed back -- agents are employees and the company structure should be complete.
-- **Decision**: All 43 agents (24 Cursor personas + 19 n8n workflows) defined in a hierarchical org chart from day one. Agents have Active/Standby/Planned status. Standby = system prompt ready but not deployed. Full governance protocol: multi-agent consensus with APPROVE/CONCERN/BLOCK verdicts and escalation to parent nodes.
+- **Decision**: All 44 agents (24 Cursor personas + 20 n8n workflows) defined in a hierarchical org chart from day one. Agents have Active/Standby/Planned status. Standby = system prompt ready but not deployed. Full governance protocol: multi-agent consensus with APPROVE/CONCERN/BLOCK verdicts and escalation to parent nodes.
 - **Alternatives**: Right-size to 20 with build triggers (rejected: doesn't model a real company), flat structure with no governance (rejected: no checks and balances).
 - **Reversibility**: Can always defer/shelve Planned agents. Governance protocol is process, not infrastructure.
 
