@@ -11,11 +11,12 @@
 |---|---|---|---|---|
 | Mar 2026 | filefree.ai domain (2yr) | ~$220 | Domain | Purchased |
 | Mar 2026 | launchfree.ai domain (2yr) | ~$220 | Domain | Purchased |
-| TBD | California LLC filing fee | $70 | Legal | State dependent on name availability |
+| Mar 2026 | paperworklabs.com domain | ~$12 | Domain | Purchased. Holding company site |
+| TBD | California LLC filing fee (Paperwork Labs LLC) | $70 | Legal | |
 | TBD | DBA filings (x3: FileFree, LaunchFree, Trinkets) | ~$30-75 | Legal | ~$10-25 per name |
 | TBD | Registered Agent (first year) | ~$49 | Legal | Annual, first year |
 | TBD | USPTO trademark filing (FILEFREE + LAUNCHFREE) | ~$2,100 | Legal | Supplemental Register, Class 036+042 and 035+042 |
-| **TOTAL ONE-TIME** | | **~$2,689-$2,734** | | |
+| **TOTAL ONE-TIME** | | **~$2,701-$2,746** | | |
 
 ## Monthly Recurring
 
@@ -24,13 +25,13 @@
 | Hetzner VPS (CX33) | $6/mo | Infrastructure | n8n + Postiz + Redis + PostgreSQL |
 | Render (FileFree API) | $7/mo | Infrastructure | Starter plan, 512MB |
 | Render (LaunchFree API) | $7/mo | Infrastructure | Starter plan (when launched) |
-| Google Workspace | $6/mo | Operations | sankalpsharma.com + aliases |
+| Google Workspace (x2 seats) | $12/mo | Operations | sankalpsharma.com + alias domains (paperworklabs.com, filefree.ai, launchfree.ai). Sankalp + Olga seats. |
 | Domain renewals (avg) | ~$20/mo | Domain | Spread across year |
 | OpenAI API (dev usage) | ~$10/mo | AI/ML | GPT-4o, GPT-4o-mini, DALL-E |
 | ElevenLabs (voice clone) | $5/mo | Content | Starter plan. Apply for startup grant (33M chars free/12mo). |
 | Cyber liability insurance (amortized) | ~$150/mo | Legal/Insurance | ~$1,800/yr for $1M E&O + cyber coverage. GET THIS BEFORE FIRST SSN. |
 | CA franchise tax (amortized) | ~$67/mo | Legal | $800/yr minimum, due April 15 annually |
-| **TOTAL MONTHLY (REAL)** | **~$278/mo** | | |
+| **TOTAL MONTHLY (REAL)** | **~$284/mo** | | |
 
 ### At-Scale Variable Costs (not yet incurred)
 
@@ -56,10 +57,10 @@
 
 | Metric | Value |
 |---|---|
-| Total monthly burn (real) | ~$278/mo |
-| Annual fixed costs | ~$3,336/yr (monthly) + $800/yr franchise tax = ~$4,136/yr |
-| Cash invested to date | ~$440 (domains) |
-| Planned one-time expenses | ~$2,689-$2,734 (LLC + trademarks) + ~$300-500 (attorney consult) + ~$1,800 (first year cyber insurance) = ~$4,789-$5,034 |
+| Total monthly burn (real) | ~$284/mo |
+| Annual fixed costs | ~$3,408/yr (monthly) + $800/yr franchise tax = ~$4,208/yr |
+| Cash invested to date | ~$452 (domains: filefree.ai, launchfree.ai, paperworklabs.com) |
+| Planned one-time expenses | ~$2,701-$2,746 (LLC + trademarks) + ~$300-500 (attorney consult) + ~$1,800 (first year cyber insurance) = ~$4,801-$5,046 |
 | Months of runway at $0 revenue | Indefinite (bootstrapped, costs covered by founder) |
 
 ## Revenue Projections (from Master Plan Section 1 — Stress Tested)
@@ -71,7 +72,7 @@
 | **Year 1 Total** | **$11K** | **$44.5K** | **$175K** |
 | Year 2 (2028) | $50K | $200K | $600K |
 
-**Plan B (zero partnerships)**: $6.5K-37K Year 1 from Tax Optimization Plan direct sales + AdSense + self-serve affiliates (Betterment, SoFi, Wealthfront, Ally, Robinhood, Chime, Acorns -- all self-serve applications). Survivable at $278/mo burn.
+**Plan B (zero partnerships)**: $6.5K-37K Year 1 from Tax Optimization Plan direct sales + AdSense + self-serve affiliates (Betterment, SoFi, Wealthfront, Ally, Robinhood, Chime, Acorns -- all self-serve applications). Survivable at $284/mo burn.
 
 ## Monthly Actuals
 
@@ -113,6 +114,7 @@ Track all purchases here as they happen. EA agent updates this section.
 |---|---|---|---|---|
 | Mar 2026 | filefree.ai domain registration (2yr) | ~$220 | Domain | Registrar confirmation |
 | Mar 2026 | launchfree.ai domain registration (2yr) | ~$220 | Domain | Registrar confirmation |
+| Mar 2026 | paperworklabs.com domain registration | ~$12 | Domain | Holding company domain. Registrar confirmation |
 
 ---
 

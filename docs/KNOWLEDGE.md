@@ -425,3 +425,27 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 - **Decision**: All alerts route through Slack #ops-alerts. Discord references removed. Consistent with Section 14 Slack hub architecture.
 - **Alternatives**: Keep both Slack and Discord (rejected: unnecessary tool sprawl), use Discord only (rejected: Slack is already the company hub).
 - **Reversibility**: Channel routing is n8n config, trivial to change.
+
+### D54 — LLC Name: Paperwork Labs LLC (2026-03-12)
+- **Context**: Naming research across multiple sessions. Toast-themed names rejected (Toast Inc. litigation risk). Butterside Labs rejected ("butters" slang). Founder discovered paperworklabs.com available.
+- **Decision**: Register as "Paperwork Labs LLC" in California. Domain: paperworklabs.com (purchased). Thematic fit: both products eliminate paperwork. "Labs" differentiates from Canadian "Paperwork Forms" company and follows tech holding company convention. Zero trademark risk in our classes.
+- **Alternatives**: Paperwork LLC (no "Labs" -- Canadian company overlap), Toastworks LLC (Toast Inc. risk), Crisp Labs LLC (less thematic fit), Sharma Ventures LLC (personal name signals small operation).
+- **Reversibility**: LLC name is permanent but can be amended (~$30 CA filing fee). Domain is just DNS.
+
+### D55 — Command Center: paperworklabs.com (2026-03-12)
+- **Context**: Command center was on sankalpsharma.com. With Paperwork Labs as the holding company, the admin dashboard should live on company infrastructure, not the founder's personal domain.
+- **Decision**: Move command center (apps/studio) to paperworklabs.com. sankalpsharma.com becomes the founder's personal portfolio/blog site. Cleaner separation: company ops on company domain, personal brand on personal domain.
+- **Alternatives**: Keep on sankalpsharma.com (rejected: mixing personal and company, awkward for Olga's admin access and future team/investors).
+- **Reversibility**: DNS change, trivial.
+
+### D56 — Auth Architecture: Admin Allowlist (2026-03-12)
+- **Context**: Need admin access for two founders (Sankalp + Olga) across all products.
+- **Decision**: Shared `packages/auth/` using Auth.js v5 (NextAuth). User auth: Google OAuth + Apple Sign-In. Admin auth: same OAuth flow + email allowlist check (`ADMIN_EMAILS` env var). No separate admin login, no role system. Olga gets a Google Workspace seat ($6/mo). Trinkets have no auth -- public tools with cross-sell CTAs.
+- **Alternatives**: Separate admin app (over-engineered), personal Gmail for auth (messy separation of concerns), role-based system (unnecessary for 2 admins).
+- **Reversibility**: Allowlist is an env var, trivial to update.
+
+### D57 — Trinkets Domain: Subdomain + Graduation (2026-03-12)
+- **Context**: Considered individual SEO-friendly domains per trinket vs tools.filefree.ai subdomain.
+- **Decision**: Stay on tools.filefree.ai. SEO research confirms subdomain inherits some parent authority, individual domains start at DA 0. At Year 1 revenue of $50-300, buying 15+ domains is negative ROI. Use subdirectory-style paths (tools.filefree.ai/calculators/mortgage) for topical clustering. Graduation criteria: if a trinket exceeds 10K monthly visits, consider standalone domain with 301 redirect.
+- **Alternatives**: Individual domains per trinket (rejected: negative ROI, DA 0 startup, Google EMD devaluation since 2012), subdirectories on filefree.ai (rejected: tighter coupling with main product).
+- **Reversibility**: Can always buy standalone domains later and 301 redirect.

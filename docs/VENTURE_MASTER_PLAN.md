@@ -15,79 +15,60 @@ Source of truth: .cursor/plans/venture_master_plan_v1_61fe6d89.plan.md (Cursor p
 - **FileFree** (filefree.ai) -- Free tax filing. Revenue: refund routing, financial referrals, audit shield, Tax Opt Plan. Launches January 2027.
 - **Trinkets** (tools.filefree.ai) -- Collection of simple utility tools (financial calculators, converters, generators). Revenue: AdSense + cross-sell to main products. Complexity: LOW. Built as `apps/trinkets/` in monorepo. See Section 0F.
 
-**HQ**: sankalpsharma.com -- Venture command center, admin dashboard, agent monitor, cross-sell campaigns.
+**HQ**: paperworklabs.com -- Venture command center, admin dashboard, agent monitor, cross-sell campaigns. Public portfolio page + authenticated `/admin/` panel.
 
-**Entity**: Single California LLC with DBA for each brand. Name TBD (founder researching -- see Section 0B). California chosen over Wyoming because founder is a CA resident (see Section 0B for full comparison). See Section 0B for naming research and legal structure.
+**Personal site**: sankalpsharma.com -- Founder's personal portfolio/blog. Links to Paperwork Labs and products. Separate from company ops.
+
+**Entity**: Paperwork Labs LLC (California). DBA filings for "FileFree", "LaunchFree", and "Trinkets". See Section 0B for naming research, legal structure, and CA vs WY comparison.
 
 **Trademark status**: "FILEFREE" and "LAUNCHFREE" to be filed on USPTO Supplemental Register. See Section 0C for full trademark and legal risk framework.
 
-**Domains purchased**: filefree.ai, launchfree.ai (March 2026). Existing: filefree.tax, sankalpsharma.com.
+**Domains purchased**: paperworklabs.com, filefree.ai, launchfree.ai (March 2026). Existing: filefree.tax, sankalpsharma.com. Also owned: axiomfolio.com, launchfree.llc, taxfilefree.com (not actively used).
 
 **AI Model Strategy**: 9 models across 7 roles. See Section 0E for authoritative routing registry (owned by AI Ops Lead persona).
 
-**Monthly burn (real)**: ~$278/mo. Breakdown: Hetzner $6 + Render x2 $14 + Google Workspace $6 + domains ~$20 + OpenAI ~$10 + ElevenLabs $5 + cyber insurance ~$150 (est. $1,800/yr amortized) + CA franchise tax ~$67 (est. $800/yr amortized). At scale add: Stripe fees (2.9%+$0.30 per transaction), variable AI costs (~$0.005-0.02/OCR doc, ~$15-17/mo social pipeline), partner wholesale costs. Vercel/Neon/Upstash all free tier until scale triggers listed in FINANCIALS.md.
+**Monthly burn (real)**: ~$284/mo. Breakdown: Hetzner $6 + Render x2 $14 + Google Workspace x2 $12 + domains ~$20 + OpenAI ~$10 + ElevenLabs $5 + cyber insurance ~$150 (est. $1,800/yr amortized) + CA franchise tax ~$67 (est. $800/yr amortized). At scale add: Stripe fees (2.9%+$0.30 per transaction), variable AI costs (~$0.005-0.02/OCR doc, ~$15-17/mo social pipeline), partner wholesale costs. Vercel/Neon/Upstash all free tier until scale triggers listed in FINANCIALS.md.
 
 ---
 
 ## 0B. LLC Naming: Research-Backed Decision
 
-### The Question
+### DECIDED: Paperwork Labs LLC (March 2026)
 
-Should the parent LLC be "Sharma Ventures LLC" (personal) or a branded name?
+**Name**: Paperwork Labs LLC
+**Domain**: paperworklabs.com (purchased March 2026)
+**Website**: Clean static portfolio page at paperworklabs.com (see spec below)
 
-### Research Findings
+### Why "Paperwork Labs"
 
-**Against personal names in holding companies:**
+**Thematic fit**: Both FileFree and LaunchFree literally eliminate paperwork (tax forms, LLC filings). The name is a wink at the problem we solve. "Labs" signals "we build things" -- the standard convention for multi-product tech holding companies.
 
-- Investors perceive branded names as more scalable and strategic ([source: TechBullion](https://techbullion.com/how-business-naming-affects-investor-perception-and-market-value/))
-- Personal-name LLCs signal "small operation" and give no indication of what the business does ([source: TaxSharkInc](https://taxsharkinc.com/can-you-make-your-name-an-llc/))
-- Harder to sell or bring in investors -- the brand is tied to one person
-- Privacy: your full legal name is now on every state filing, partnership agreement, and public record
+**Research-backed**:
 
-**For personal names:**
+- "Labs" suffix is the #2 most common compound naming pattern in successful tech companies (23% of YC-backed companies use compound constructions) ([source: TradmarkLens](https://trademarklens.com/guides/us-tech-startup-naming-trends))
+- .com available (paperworklabs.com) -- critical since 67%+ of successful startups use .com
+- Zero existing companies named "Paperwork Labs" in US tech/fintech
+- "PAPERWORKS" trademark (Serial #98659864) is Class 016 (paper stationery) -- no conflict with our Class 036/042
+- paperwork.to (Dubai Document AI startup) is in a completely different market/country -- no confusion for a US holding LLC
+- "Paperwork Forms" (Canada, 1 employee, municipality forms) is a different name -- "Labs" differentiates
 
-- Simple, authentic, no naming research needed
-- Common pattern for personal brand ventures (think: "Bezos Expeditions", "Thiel Capital")
-- BUT those are billionaire investment vehicles, not product companies
+**Names considered and rejected**:
 
-**Real examples of multi-product tech holding companies:**
+- Toastworks LLC -- Toast Inc. (NYSE: TOST, $25B) sued Toast Labs Inc. in 2016. Too risky.
+- Halftoast LLC -- Still in Toast Inc. blast radius.
+- Butterside Labs -- "Butters" is British slang for ugly. Unnecessary baggage.
+- Crisp Labs LLC -- Clean but less thematically connected than "Paperwork."
+- Sharma Ventures LLC -- Personal name signals "small operation," not scalable.
 
-- Oktopii (creative tech holding)
-- Upsilon Holdings (AI product studio)
-- Rexmore (AI-native holding company)
-- Q6 Technology Holdings (multi-product AI)
-- None of them use founder names.
+### paperworklabs.com Static Site
 
-### Naming Criteria for Our LLC
+Clean, minimal holding company portfolio page. Not a product site -- a company page.
 
-1. **Abstract/brandable** -- no one needs to know or care what the parent LLC is called
-2. **Not confusable** with any product name (not "FreeSoft LLC" or "FileLaunch LLC")
-3. **Short** -- you'll type this on contracts, bank forms, invoices
-4. **Available** in California (check: bizfileonline.sos.ca.gov)
-5. **Domain not needed** -- this entity never faces the public. `sankalpsharma.com` is the public HQ.
-6. **Neutral** enough to hold future products beyond tax/formation
-
-### Status: NAME TBD (Founder Researching Separately)
-
-The founder's almost-three-year-old daughter's favorite word is "toast," inspiring toast-themed name exploration. Multiple rounds of research have narrowed the field. Key findings that ruled out options:
-
-**Toast Inc conflict**: Toast Inc (NYSE: TOST, $25B market cap) owns 28 USPTO trademarks including "TOAST" (Class 009). They sued "Toast Labs, Inc." in January 2016 (SDNY, Case 1:16-cv-00168), dismissed March 2016 (likely settlement). Any "Toast [X]" name carries medium-to-high risk of cease & desist.
-
-**"Butters" slang**: "Butterside Labs" was a leading candidate until research revealed "butters" is British slang for "ugly/unattractive" ([Cambridge Dictionary](https://dictionary.cambridge.org/dictionary/english/butters)). Low risk for a holding company but unnecessary baggage.
-
-**Names still under consideration** (no existing companies found for any):
-
-
-| Name               | Vibe                                             | Risk     |
-| ------------------ | ------------------------------------------------ | -------- |
-| **Toastworks LLC** | Toast + "we build things." No slang issue.       | Very Low |
-| **Halftoast LLC**  | Playful, "work in progress" energy.              | Very Low |
-| **Crisp Labs LLC** | Toast gets crisp. "Crisp" = clean/sharp in tech. | Very Low |
-
-
-**Key decision**: The holding company does NOT need a matching domain. Products have their own domains. The LLC name appears only on legal docs, privacy policies, bank accounts, and tax returns. Never customer-facing.
-
-Founder is exploring additional options via separate brainstorming session. Name will be confirmed before LLC filing (Phase 0.6).
+- **Content**: Company name, one-liner ("We build tools that eliminate paperwork"), portfolio cards for FileFree / LaunchFree / Trinkets with links, team section (Sankalp + Olga), legal footer
+- **Tech**: Static page served from `apps/studio/` on Vercel free tier with `paperworklabs.com` custom domain
+- **Design**: Studio/Command Center zinc palette (neutral, professional)
+- **Legal footer**: "Paperwork Labs LLC | California | FileFree, LaunchFree, and Trinkets are products of Paperwork Labs LLC"
+- **Cost**: $0/yr hosting (Vercel free), ~$12/yr domain renewal
 
 ### Structure (Confirmed -- California LLC)
 
@@ -113,7 +94,7 @@ The original plan recommended Wyoming. After analysis, California is the clear c
 
 **Revisit trigger**: When revenue exceeds $250K and asset protection justifies dual-state cost, consider Wyoming holding company with CA subsidiary.
 
-**Now (pre-revenue):** Single California LLC + DBA filings for "FileFree", "LaunchFree", and "Trinkets"
+**Now (pre-revenue):** Single California LLC (Paperwork Labs LLC) + DBA filings for "FileFree", "LaunchFree", and "Trinkets"
 
 - California filing: $70
 - DBA filing: ~$10-25 per name
@@ -123,7 +104,7 @@ The original plan recommended Wyoming. After analysis, California is the clear c
 
 **At $50K+ combined revenue:** Convert to holding company structure
 
-- Parent LLC ([TBD] or chosen name) stays as-is
+- Parent LLC (Paperwork Labs LLC) stays as-is
 - Create FileFree LLC (subsidiary)
 - Create LaunchFree LLC (subsidiary)
 - Each subsidiary has its own bank account, EIN, and liability shield
@@ -562,19 +543,35 @@ Pre-decided idea (agent validates, not selects). Includes:
 ### Technical Pattern
 
 ```
-apps/trinkets/                  (Next.js SSG, Vercel free)
+apps/trinkets/                  (Next.js SSG, Vercel free, tools.filefree.ai)
   src/app/
-    mortgage-calculator/page.tsx
-    compound-interest/page.tsx
-    savings-goal/page.tsx
-    budget-planner/page.tsx
+    calculators/
+      mortgage/page.tsx
+      compound-interest/page.tsx
+      savings-goal/page.tsx
+      budget-planner/page.tsx
+    converters/                  (future: pdf-to-word, image converters)
+    generators/                  (future: qr-code, invoice, etc.)
   src/components/
-    tool-layout.tsx              (shared: header, ad slots, footer)
+    tool-layout.tsx              (shared: header, cross-sell CTA, ad slots, footer)
     seo-head.tsx                 (per-tool JSON-LD, meta tags)
     ad-unit.tsx                  (Google AdSense)
+    cross-sell-cta.tsx           (links to FileFree/LaunchFree)
 ```
 
-All processing is browser-based (pdf-lib, heic2any, browser-image-compression, qrcode.js). Zero server cost. Zero backend needed.
+**URL structure**: Use subdirectory-style paths for topical clustering (helps Google understand authority):
+
+- `tools.filefree.ai/calculators/mortgage`
+- `tools.filefree.ai/calculators/compound-interest`
+- `tools.filefree.ai/converters/pdf-to-word` (future)
+
+All processing is browser-based (pdf-lib, heic2any, browser-image-compression, qrcode.js). Zero server cost. Zero backend needed. No auth required -- cross-sell CTAs funnel traffic to FileFree/LaunchFree.
+
+### Domain Strategy
+
+Stay on `tools.filefree.ai` subdomain. Do NOT buy individual domains per trinket. SEO research confirms: subdomain inherits some authority from parent domain, individual domains start at DA 0 and cost $10-15/yr each. At Year 1 trinkets revenue of $50-300, buying 15+ domains is negative ROI.
+
+**Graduation criteria**: If a single trinket exceeds 10K monthly visits, consider buying a standalone domain and 301-redirecting from the subdomain URL. This is a growth optimization, not a launch decision.
 
 ### Build Timing
 
@@ -627,11 +624,11 @@ These are existential risk mitigations that cost under $5K total. Complete befor
 
 ## 0H. Repo Rename (Deferred)
 
-The repo is currently named `fileFree` (the original product). When the LLC name is decided, rename to match the venture (e.g., `butterside-labs` or chosen name). Do this during a quiet period when no PRs are open, no agents are running, and no CI is in-flight.
+The repo is currently named `fileFree` (the original product). Now that "Paperwork Labs" is confirmed, rename to `paperwork-labs` when ready. Do this during a quiet period when no PRs are open, no agents are running, and no CI is in-flight. **Ask the founder before executing this rename.**
 
 **What changes**: GitHub repo name, Render blueprint references, Vercel project names, all `package.json` names, import paths referencing the repo, DNS CNAME records, and `.cursor/rules/` absolute path references.
 
-**When**: After LLC filing (Phase 0.6). Not before. Don't burn time on this until the name is locked.
+**When**: After LLC filing (Phase 0.6) and during a quiet window. Not urgent -- the rename is cosmetic and can happen anytime.
 
 ---
 
@@ -679,7 +676,7 @@ The repo is currently named `fileFree` (the original product). When the LLC name
 | Aggressive      | $25K                 | $150K                   | **$175K**  |
 
 
-**Why the pessimistic scenario matters**: It models what happens if (a) user acquisition is slow (5K filers, 2K formations), (b) attach rates are bottom-tier for an unknown brand, and (c) partnerships are self-serve affiliates only (no Founder 2 deals closed). At $11K Year 1 revenue, the venture survives (burn is ~$278/mo real cost) but takes longer to reach meaningful revenue. This is the floor, not the target.
+**Why the pessimistic scenario matters**: It models what happens if (a) user acquisition is slow (5K filers, 2K formations), (b) attach rates are bottom-tier for an unknown brand, and (c) partnerships are self-serve affiliates only (no Founder 2 deals closed). At $11K Year 1 revenue, the venture survives (burn is ~$284/mo real cost) but takes longer to reach meaningful revenue. This is the floor, not the target.
 
 **Year 2 (2028)**: $150K-600K (dependent on retention, growth trajectory, and partnership maturity)
 
@@ -818,7 +815,7 @@ venture/
   apps/
     filefree/            (filefree.ai -- Next.js, existing code from web/)
     launchfree/          (launchfree.ai -- Next.js, scaffolded)
-    studio/              (sankalpsharma.com -- Next.js, COMMAND CENTER)
+    studio/              (paperworklabs.com -- Next.js, COMMAND CENTER + portfolio)
     trinkets/            (utility tools -- Next.js SSG, Vercel free, Phase 1.5)
   packages/
     ui/                  (22 shadcn components + theme + chat widget)
@@ -874,6 +871,26 @@ VENTURE DATABASE (studio, never sold):
 **How SSO works**: User signs up on FileFree -> FileFree creates its local user -> event fires to studio -> studio creates/updates venture_identity -> if user later signs up on LaunchFree with same email -> LaunchFree creates its local user, sends event -> studio links both product accounts to one venture_identity.
 
 **If FileFree is acquired**: Remove the `venture_identity_id` column. FileFree still works independently. The buyer gets a complete product with its own user system.
+
+### Authentication Architecture
+
+**User Auth (FileFree, LaunchFree)**:
+
+- Providers: Google OAuth + Apple Sign-In (cover 95%+ of users). Optional email/password fallback.
+- Implementation: `packages/auth/` using Auth.js v5 (NextAuth), shared across all Next.js apps.
+- SSO across subdomains: Cookie domain set to `.filefree.ai` (covers `filefree.ai` and `tools.filefree.ai`). LaunchFree on `launchfree.ai` cannot share cookies (different domain) -- cross-product linking via venture identity system (email match in Studio DB).
+- Each product keeps its own user table (separable-by-design). The `venture_identity_id` nullable FK links them.
+
+**Admin Auth (paperworklabs.com + admin panels on all products)**:
+
+- Same Google OAuth flow as users. After OAuth, middleware checks if the authenticated email is in the admin allowlist. If yes, admin routes accessible. If no, 403.
+- Admin allowlist stored in environment variable: `ADMIN_EMAILS=sankalp@sankalpsharma.com,olga@sankalpsharma.com` (Google Workspace primary emails)
+- Admin routes: `/admin/*` on paperworklabs.com, `/admin/*` on FileFree, `/admin/*` on LaunchFree. All protected by the same `packages/auth/withAdminAuth` middleware.
+- No separate admin login page. Same SSO, just an authorization check on top.
+
+**Trinkets Auth**: No auth. Public utility tools. Cross-sell CTAs link to FileFree/LaunchFree where users sign up. If we ever want saved preferences, use localStorage or add optional Google sign-in later.
+
+**`packages/auth/` exports**: `AuthProvider`, `useSession`, `useAdmin`, `withAdminAuth` (middleware), `isAdmin` (server-side check).
 
 ### Cursor Workspace Scoping
 
@@ -956,23 +973,26 @@ Each dev command uses `concurrently` to start both frontend and backend. Trinket
 
 ---
 
-## 3. sankalpsharma.com: The Command Center (Detailed Spec)
+## 3. paperworklabs.com: The Command Center (Detailed Spec)
 
 The command center is the control plane for the entire venture. It is what makes the "one human + AI agents" model operationally viable. 14 admin pages organized in 3 tiers based on operational priority, plus a public docs viewer.
 
 ### Tier 1 -- Build First (enables daily operations)
 
-**P4.1 Studio Landing Page** (`/` -- public)
+**P4.1 Company Landing Page** (`/` -- public, paperworklabs.com)
 
-- Hero: Name, one-liner ("I build AI-powered tools that make adulting free"), photo/avatar
-- Portfolio: Cards linking to LaunchFree and FileFree with descriptions
-- Footer: social links, email
+- Hero: "Paperwork Labs" wordmark, one-liner ("We build tools that eliminate paperwork")
+- Portfolio: Cards linking to FileFree, LaunchFree, and Trinkets with descriptions and status badges
+- Team: Sankalp + Olga
+- Footer: legal info ("Paperwork Labs LLC | California"), social links, contact email
 - Data source: Static
 
-**P4.2 Admin Auth** (`/admin/`* -- protected)
+**P4.2 Admin Auth** (`/admin/*` -- protected)
 
-- Hardcoded admin email check (no role system needed for one human)
-- Auth via shared `packages/auth/`
+- Google OAuth via `packages/auth/` shared library (Auth.js v5)
+- Admin gate: `ADMIN_EMAILS` env var allowlist (Sankalp + Olga's Google Workspace primary emails)
+- `withAdminAuth` middleware on all `/admin/*` routes -- same OAuth flow, authorization check on top
+- No separate admin login page, no role system (two founders only)
 
 **P4.3 Studio-API Scaffold** (Backend)
 
@@ -1068,7 +1088,7 @@ The command center is the control plane for the entire venture. It is what makes
 - Clean typography, table styling, anchor links for section navigation
 - Responsive and mobile-friendly -- designed for non-technical readers
 - No GitHub account needed to read
-- **Primary use case**: Founder shares `sankalpsharma.com/docs/financials` with wife to review company finances, or `sankalpsharma.com/docs/master-plan` to read the full strategy
+- **Primary use case**: Founder shares `paperworklabs.com/docs/financials` with wife to review company finances, or `paperworklabs.com/docs/master-plan` to read the full strategy
 - Data source: GitHub raw content API (e.g., `https://raw.githubusercontent.com/{owner}/{repo}/main/docs/FINANCIALS.md`)
 - Cached with React Query (staleTime: 5 min) so pages load instantly after first visit
 - Table of contents sidebar generated from markdown headings
@@ -1091,7 +1111,7 @@ Not everyone in the founder's life uses GitHub or Notion. Documents need to be a
 
 | Doc Type                                                                    | Source of Truth                     | Readable At                      | Collaborative At       | Who Reads                       |
 | --------------------------------------------------------------------------- | ----------------------------------- | -------------------------------- | ---------------------- | ------------------------------- |
-| Company docs (FINANCIALS, KNOWLEDGE, TASKS, MASTER PLAN, AI_MODEL_REGISTRY) | `docs/*.md` in git repo             | sankalpsharma.com/docs/* (P4.14) | Git PRs (founder only) | Founder, wife, future investors |
+| Company docs (FINANCIALS, KNOWLEDGE, TASKS, MASTER PLAN, AI_MODEL_REGISTRY) | `docs/*.md` in git repo             | paperworklabs.com/docs/* (P4.14) | Git PRs (founder only) | Founder, wife, future investors |
 | Agent outputs (daily briefings, weekly plans, reports)                      | Google Drive (`Venture HQ/`)        | Google Drive link sharing        | Google Docs comments   | Founder, wife                   |
 | Trinket one-pagers                                                          | Google Docs (created from template) | Google Drive link sharing        | Google Docs comments   | Founder, wife, future team      |
 | Trinket PRDs                                                                | Google Docs (created from template) | Google Drive link sharing        | Google Docs comments   | Founder, future engineers       |
@@ -1865,7 +1885,7 @@ The plan projects 10K-30K FileFree filers and 2K-5K LaunchFree users but never m
 | Action                                                 | Owner          | Timeline           | Goal                                         |
 | ------------------------------------------------------ | -------------- | ------------------ | -------------------------------------------- |
 | Start LLC Journey content series (Section 5J)          | Founder 1      | March-April 2026   | 500+ followers before LaunchFree launch      |
-| Publish 3 SEO blog posts on sankalpsharma.com/blog     | Founder 1 + AI | April 2026         | Index in Google for long-tail LLC keywords   |
+| Publish 3 SEO blog posts on paperworklabs.com/blog     | Founder 1 + AI | April 2026         | Index in Google for long-tail LLC keywords   |
 | Post in r/smallbusiness and r/Entrepreneur weekly      | Founder 1      | Ongoing            | Build credibility, understand user language  |
 | Launch waitlist with referral incentive                | Founder 1      | Already live       | Grow to 500+ emails before LaunchFree launch |
 | Submit to BetaList, Indie Hackers, Startup directories | Founder 1      | 1 month pre-launch | 200-500 signups from startup community       |
@@ -1920,7 +1940,7 @@ All 12 Cursor personas and 6 n8n workflows were built for FileFree as a standalo
 - `partnerships.mdc` references HYSA referrals, tax partnerships only
 - n8n workflows all output to FileFree-specific databases
 
-Now that we're a venture with LaunchFree, Trinkets, and sankalpsharma.com, the agent architecture needs to be **product-aware, not product-locked**.
+Now that we're a venture with LaunchFree, Trinkets, and paperworklabs.com, the agent architecture needs to be **product-aware, not product-locked**.
 
 ### 6B. Three-Tier Persona Model
 
@@ -1956,7 +1976,7 @@ Agents are organized into three tiers:
 | 16  | **LaunchFree Social**       | `launchfree-social.mdc` (NEW)                     | `apps/launchfree/**/social/`**                                             | LaunchFree content: @launchfree handles, formation hooks, LegalZoom positioning |
 | 17  | **LaunchFree Growth**       | `launchfree-growth.mdc` (NEW)                     | `apps/launchfree/`**                                                       | Formation-specific SEO, "free LLC" keywords, LegalZoom/ZenBusiness positioning  |
 | 18  | **LaunchFree Brand**        | `launchfree-brand.mdc` (NEW)                      | `apps/launchfree/`**                                                       | Teal-cyan palette, LaunchFree voice                                             |
-| 19  | **Studio**                  | `studio.mdc` (NEW)                                | `apps/studio/`**                                                           | sankalpsharma.com portfolio/venture site, command center UX                     |
+| 19  | **Studio**                  | `studio.mdc` (NEW)                                | `apps/studio/`**                                                           | paperworklabs.com company site + command center UX                              |
 
 
 ### 6C. Persona Split Specs
@@ -2356,7 +2376,7 @@ The EA is the founder's most frequently used agent. It bridges Cursor (interacti
 | P0.4 Google Drive HQ         | Founder 1 | N/A (no code)            | Create folder structure: `Venture HQ/Operations/Daily Briefings/`, `Venture HQ/Operations/Weekly Plans/`, `Venture HQ/Trinkets/One-Pagers/`, `Venture HQ/Trinkets/PRDs/`, `Venture HQ/Intelligence/`. Add GDrive MCP server to `.cursor/mcp.json`. | GDrive accessible from Cursor via MCP. Folder structure matches EA spec in `ea.mdc`.                                                                                                               | P0.3                                   | NOT STARTED        |
 | P0.5 Secure social handles   | Founder 1 | N/A (no code)            | Register @launchfree on TikTok, Instagram, X, YouTube. Set profile pic to monogram, link to launchfree.ai.                                                                                                                                         | All 4 accounts created, profile pics set, bios written, URLs point to launchfree.ai.                                                                                                               | P0.1                                   | NOT STARTED        |
 | P0.6 Form LLC                | Founder 1 | N/A (no code)            | California SOS online filing. DBA filings at county clerk (FileFree, LaunchFree, Trinkets).                                                                                                                                                        | Articles of Organization filed with CA SOS. Confirmation number received. DBA filings submitted. EIN applied for on IRS.gov (same day as LLC confirmation). Bank account opened.                   | LLC name decided (Section 0G #4)       | BLOCKED (name TBD) |
-| P0.7 Migrate DNS subdomains  | Founder 1 | `chore/dns-migration`    | DNS provider records: ops.sankalpsharma.com -> Hetzner (n8n), social.sankalpsharma.com -> Hetzner (Postiz). Remove old filefree.tax subdomains.                                                                                                    | n8n accessible at ops.sankalpsharma.com. Postiz accessible at social.sankalpsharma.com. Old subdomains return 404 or redirect.                                                                     | P0.2                                   | NOT STARTED        |
+| P0.7 Migrate DNS subdomains  | Founder 1 | `chore/dns-migration`    | DNS provider records: ops.paperworklabs.com -> Hetzner (n8n), social.paperworklabs.com -> Hetzner (Postiz). Point paperworklabs.com -> Vercel (apps/studio). Remove old filefree.tax subdomains.                                                   | n8n accessible at ops.paperworklabs.com. Postiz accessible at social.paperworklabs.com. paperworklabs.com serves studio app. Old subdomains return 404 or redirect.                                | P0.2                                   | NOT STARTED        |
 | P0.8 File trademarks         | Founder 1 | N/A (no code)            | USPTO TEAS Plus application. FILEFREE: Class 036 + 042. LAUNCHFREE: Class 035 + 042. Supplemental Register.                                                                                                                                        | Applications filed. Serial numbers received. Docket dates noted in TASKS.md.                                                                                                                       | Product launch (needs specimen of use) | DEFERRED           |
 | P0.9 Legal compliance setup  | Founder 1 | `chore/legal-compliance` | Update `.cursor/rules/social.mdc`, `growth.mdc`, `brand.mdc` to include Content Review Gate checklist from Section 0C. Create/update `web/src/app/(legal)/privacy/page.tsx`, `web/src/app/(legal)/terms/page.tsx`.                                 | Every content-producing persona .mdc includes the Content Review Gate checklist verbatim. Privacy policy and ToS pages updated with cross-sell consent language from Section 0C Legal Risk Matrix. | None (can start immediately)           | NOT STARTED        |
 
@@ -2686,16 +2706,21 @@ The Infra Health Monitor (Agent #25) needs a clear alerting hierarchy:
 
 ### 7C. Trinkets Domain Decision
 
-**Decision**: Use `tools.filefree.ai` subdomain.
+**Decision**: Use `tools.filefree.ai` subdomain. Do NOT buy individual domains per trinket.
 
-**Rationale**:
+**Rationale** (SEO research-backed):
 
 - No domain purchase needed (we own filefree.ai)
 - Easy DNS setup (CNAME to Vercel)
-- Clear brand connection (FileFree family)
-- SEO benefit: subdomain inherits some domain authority from filefree.ai
-- Can be separated to standalone domain later if trinkets grow significantly
-- Cross-sell CTA naturally points back to filefree.ai
+- Subdomain inherits some domain authority from filefree.ai (confirmed: subdirectories > subdomains > new domains for SEO authority)
+- Individual exact-match domains (e.g., `freemortgagecalculator.com`) have been devalued by Google since 2012 EMD update
+- New domains start at DA 0 -- won't outrank established tools (NerdWallet, Bankrate, Calculator.net) for years
+- At Year 1 trinkets revenue of $50-300, buying 15+ domains at $10-15/yr each is negative ROI
+- Cross-sell CTAs naturally funnel traffic from trinkets to FileFree/LaunchFree
+
+**Graduation criteria**: If a single trinket exceeds 10K monthly visits, consider buying a standalone domain and 301-redirecting. This is a growth optimization, not a launch decision.
+
+**URL structure**: Subdirectory-style paths on the subdomain for topical clustering: `tools.filefree.ai/calculators/mortgage`, `tools.filefree.ai/converters/pdf-to-word`. See Section 0F for full technical pattern.
 
 **Vercel config**: Add `tools.filefree.ai` as a custom domain to the `apps/trinkets/` Vercel project.
 
@@ -2995,12 +3020,12 @@ Voice clones require the founder to record 30+ minutes of clean audio for a qual
 
 ## 10. Key Decisions Still Needed (Founder Input Required)
 
-1. **LLC Name**: TBD. Founder brainstorming separately. Toast-themed names under consideration (see Section 0B). Must confirm before Phase 0.6.
+1. ~~**LLC Name**~~: DECIDED -- **Paperwork Labs LLC** (California). Domain: paperworklabs.com (purchased March 2026). DBA filings for FileFree, LaunchFree, Trinkets. See Section 0B.
 2. ~~**RA Strategy**~~: DECIDED -- Partner RA with wholesale volume pricing. $99/yr initial, drop with scale. See revised F7.
 3. ~~**Phase 4 Scope**~~: DECIDED -- Full 13-page command center in 3 tiers. See Section 3.
 4. ~~**Social Content Validation**~~: DECIDED -- Build pipeline first, validate with actual output for 2 weeks. See F3.
 5. ~~**Founder 2 Priority**~~: DECIDED -- Scale with traction. Zero work needed pre-product. See F5.
-6. ~~**Domain purchases**~~: DECIDED -- launchfree.ai + filefree.ai PURCHASED (March 2026, ~$440 for 2-year reg).
+6. ~~**Domain purchases**~~: DECIDED -- paperworklabs.com + launchfree.ai + filefree.ai PURCHASED (March 2026). Also own: axiomfolio.com, launchfree.llc, taxfilefree.com.
 7. **Trademark filing timing**: File immediately after product launch (need specimen of use) or file intent-to-use now ($350 extra per class)?
 8. ~~**AI Model Routing**~~: DECIDED -- 9-model strategy. See Section 0E. Owned by AI Ops Lead persona.
 9. ~~**Trinkets product line**~~: DECIDED -- Phase 1.5, financial calculators first, then agent pipeline validates subsequent ideas. See Section 0F.
@@ -3087,7 +3112,7 @@ Department-level email aliases on Google Workspace. All route to founder's inbox
 3. Founder approves -> Agent sends via Gmail API (n8n Gmail node) from appropriate alias
 4. Sent email logged in Slack thread for audit trail
 
-**Setup**: Google Workspace already active on sankalpsharma.com. Add filefree.tax, filefree.ai, and launchfree.ai as alias domains in Google Workspace Admin. Create group aliases for each department. Route all to founder's primary inbox.
+**Setup**: Google Workspace already active on sankalpsharma.com. Add paperworklabs.com, filefree.tax, filefree.ai, and launchfree.ai as alias domains in Google Workspace Admin. Create Olga a Workspace seat ($6/mo). Create group aliases for each department. Route all to founder's primary inbox.
 
 ### Stress Test: Communication Overload
 
