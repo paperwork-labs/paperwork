@@ -53,6 +53,8 @@
 | GCP Cloud Vision | 1K pages/mo | 1K+ OCR pages/mo |
 | PostHog | 1M events/mo | 1M+ events |
 | Sentry | 5K errors/mo | 5K+ errors |
+| Grafana Cloud | 50GB traces/mo, 50GB logs/mo, 10K metrics | Exceeds free limits (unlikely at MVP) |
+| k6 Cloud | Local execution (unlimited) | Use k6 Cloud only if CI integration needed ($0 for local runs) |
 
 ## Runway
 
@@ -68,10 +70,80 @@
 
 | Period | Pessimistic | Moderate | Aggressive |
 |---|---|---|---|
-| LaunchFree H2 2026 | $4K | $15.5K | $25K |
+| LaunchFree H2 2026 (incl. Compliance SaaS) | $7.9K | $34.5K | $114K |
 | FileFree Jan-Apr 2027 | $7K | $29K | $150K |
-| **Year 1 Total** | **$11K** | **$44.5K** | **$175K** |
-| Year 2 (2028) | $50K | $200K | $600K |
+| **Year 1 Total** | **$14.9K** | **$63.5K** | **$264K** |
+| Year 2 (2028) | $75K | $300K | $750K |
+
+Note: Year 1 increase driven by Compliance-as-a-Service recurring revenue ($49-99/yr per LLC). Year 2 reflects CaaS renewals + refund splitting affiliate revenue + quarterly estimator engagement uplift. See Master Plan Sections 1B.1-1B.3.
+
+### Year 2-5 Marketplace Revenue (from Master Plan Section 4O)
+
+| Year | Stage | Est. Users | ARPU | Marketplace Rev | Product Rev | Total Revenue |
+|---|---|---|---|---|---|---|
+| Y1 (2027) | Stage 1 | 2K-5K | $3-7 | $6K-35K | $15K-264K | **$21K-299K** |
+| Y2 (2028) | Stage 1-2 | 10K-25K | $8-15 | $80K-375K | $75K-750K | **$155K-$1.1M** |
+| Y3 (2029) | Stage 2-3 | 25K-50K | $15-35 | $375K-$1.75M | $300K-$1.5M | **$675K-$3.25M** |
+| Y4 (2030) | Stage 3-4 | 50K-100K | $25-50 | $1.25M-$5M | $500K-$2M | **$1.75M-$7M** |
+| Y5 (2031) | Stage 4 | 100K-200K | $35-80 | $3.5M-$16M | $1M-$4M | **$4.5M-$20M** |
+
+Key inflection: Year 3 is where marketplace revenue overtakes product revenue. See Master Plan Section 4O for stage gates and competitive moat analysis.
+
+### FileFree Pro B2B SaaS Revenue (from Master Plan Section 1C)
+
+| Year | CPA Firms | Avg Plan | Monthly Rev | Annual Rev |
+|---|---|---|---|---|
+| Y1 (2027) | 30-100 | $79-99/mo | $2.4K-9.9K | **$28K-119K** |
+| Y2 (2028) | 100-300 | $99-129/mo | $9.9K-38.7K | **$119K-464K** |
+| Y3 (2029) | 300-600 | $119-149/mo | $35.7K-89.4K | **$428K-$1.07M** |
+| Y4 (2030) | 600-1,000 | $139-169/mo | $83.4K-169K | **$1M-$2M** |
+| Y5 (2031) | 1,000-2,000 | $149-179/mo | $149K-358K | **$1.8M-$4.3M** |
+
+This is immediate, predictable SaaS revenue -- not marketplace ARPU that requires consumer scale. Revenue starts the moment a CPA firm signs up. ~80% tech overlap with consumer FileFree means near-zero marginal infrastructure cost.
+
+### Business Tax Filing Revenue (from Master Plan Phase 10)
+
+| Year | Business Returns | Avg Fee | Annual Rev |
+|---|---|---|---|
+| Y2 (2028) | 200-500 | $65 | **$13K-33K** |
+| Y3 (2029) | 500-2,000 | $70 | **$35K-140K** |
+| Y4 (2030) | 2,000-5,000 | $75 | **$150K-375K** |
+| Y5 (2031) | 5,000-15,000 | $75 | **$375K-$1.1M** |
+
+Business returns (Form 1065, 1120-S) are NOT free. Priced at $49/return (1065) and $99/return (1120-S). Free for FileFree Pro Firm subscribers. LaunchFree cross-sell: first business return free for LLC formers who selected partnership/S-Corp tax election.
+
+### B2B Tax-as-a-Service API Revenue (from Master Plan Section 5L, Year 2+)
+
+| Year | API Partners | Avg Returns/Partner | Per-Return Fee | Annual Rev |
+|---|---|---|---|---|
+| Y2 (2028) | 2-5 | 5K-10K | $8 | **$80K-400K** |
+| Y3 (2029) | 5-15 | 10K-30K | $7 | **$350K-$3.2M** |
+| Y4 (2030) | 15-30 | 20K-50K | $6 | **$1.8M-$9M** |
+| Y5 (2031) | 30-50 | 30K-80K | $5.50 | **$5M-$22M** |
+
+API distribution is the 2M-user unlock. Per-return pricing decreases at volume (volume discounts). This revenue stream is speculative until own MeF transmitter is proven (January 2027).
+
+### Combined Revenue Summary (All Streams)
+
+| Year | Consumer Product | Marketplace | B2B Pro SaaS | Biz Tax Filing | API Distribution | **Total** |
+|---|---|---|---|---|---|---|
+| Y1 | $15K-264K | $6K-35K | $28K-119K | $0 | $0 | **$49K-418K** |
+| Y2 | $75K-750K | $80K-375K | $119K-464K | $13K-33K | $80K-400K | **$367K-$2M** |
+| Y3 | $300K-$1.5M | $375K-$1.75M | $428K-$1.07M | $35K-140K | $350K-$3.2M | **$1.5M-$7.7M** |
+| Y4 | $500K-$2M | $1.25M-$5M | $1M-$2M | $150K-375K | $1.8M-$9M | **$4.7M-$18.4M** |
+| Y5 | $1M-$4M | $3.5M-$16M | $1.8M-$4.3M | $375K-$1.1M | $5M-$22M | **$11.7M-$47.4M** |
+
+**Revenue diversification**: By Year 3, no single revenue stream exceeds 50% of total revenue. This de-risks the business -- marketplace dependency is balanced by SaaS, API, and product revenue.
+
+### Valuation Trajectory (from Master Plan Section 0D)
+
+| Year | Revenue (mod) | Multiple | Valuation (mod) | Stage |
+|---|---|---|---|---|
+| Y1 | $63.5K | 3-5x | $190K-317K | Stage 1 |
+| Y2 | $300K | 5-8x | $1.5M-$2.4M | Stage 2 |
+| Y3 | $1.5M | 6-10x | $9M-$15M | Stage 3 |
+| Y4 | $3.5M | 8-12x | $28M-$42M | Stage 3-4 |
+| Y5 | $10M | 10-15x | $100M-$150M | Stage 4 |
 
 **Plan B (zero partnerships)**: $6.5K-37K Year 1 from Tax Optimization Plan direct sales + AdSense + self-serve affiliates (Betterment, SoFi, Wealthfront, Ally, Robinhood, Chime, Acorns -- all self-serve applications). Survivable at $284/mo burn.
 

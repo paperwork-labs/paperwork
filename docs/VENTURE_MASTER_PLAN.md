@@ -12,6 +12,7 @@
 
 - **LaunchFree** (launchfree.ai) -- Free LLC formation service ($0 service fee; user pays state filing fees only, disclosed upfront). AI-powered 50-state comparison helps users pick the cheapest, best-fit state. Revenue: RA credits, banking/payroll/insurance referrals. Launches Summer 2026.
 - **FileFree** (filefree.ai) -- Free tax filing. Revenue: refund routing, financial referrals, audit shield, Tax Opt Plan. Launches January 2027.
+- **FileFree Pro** (pro.filefree.ai) -- B2B tax automation SaaS for CPA firms. Upload client docs, auto-extract via shared OCR pipeline, export to professional tax software. Revenue: monthly SaaS subscriptions ($49-199/mo). ~80% shared tech with consumer FileFree. Launches January 2027. See Section 1C.
 - **Trinkets** (tools.filefree.ai) -- Collection of simple utility tools (financial calculators, converters, generators). Revenue: AdSense + cross-sell to main products. Complexity: LOW. Built as `apps/trinkets/` in monorepo. See Section 0F.
 
 **HQ**: paperworklabs.com -- Venture command center, admin dashboard, agent monitor, intelligence campaigns. Public portfolio page + authenticated `/admin/` panel.
@@ -26,7 +27,7 @@
 
 **AI Model Strategy**: 9 models across 7 roles. See Section 0E for authoritative routing registry (owned by AI Ops Lead persona).
 
-**Monthly burn (real)**: ~$284/mo. Breakdown: Hetzner $6 + Render x2 $14 + Google Workspace x2 $12 + domains ~$20 + OpenAI ~$10 + ElevenLabs $5 + cyber insurance ~$150 (est. $1,800/yr amortized) + CA franchise tax ~$67 (est. $800/yr amortized). At scale add: Stripe fees (2.9%+$0.30 per transaction), variable AI costs (~$0.005-0.02/OCR doc, ~$15-17/mo social pipeline), partner wholesale costs. Vercel/Neon/Upstash all free tier until scale triggers listed in FINANCIALS.md.
+**Monthly burn (real)**: ~~$284/mo. Breakdown: Hetzner $6 + Render x2 $14 + Google Workspace x2 $12 + domains ~$20 + OpenAI ~$10 + ElevenLabs $5 + cyber insurance ~$150 (est. $1,800/yr amortized) + CA franchise tax ~$67 (est. $800/yr amortized). At scale add: Stripe fees (2.9%+$0.30 per transaction), variable AI costs (~~$0.005-0.02/OCR doc, ~$15-17/mo social pipeline), partner wholesale costs. Vercel/Neon/Upstash all free tier until scale triggers listed in FINANCIALS.md.
 
 ---
 
@@ -165,7 +166,7 @@ After 5 years of commercial use: petition to move to Principal Register with evi
 
 **FTC "Free" Compliance Rules:**
 
-1. Our service IS actually free for ALL users. This is our strongest legal position. The moment we add a condition that makes filing not-free for some users, we are exposed to the EXACT FTC action that hit Intuit
+1. Our service taIS actually free for ALL users. This is our strongest legal position. The moment we add a condition that makes filing not-free for some users, we are exposed to the EXACT FTC action that hit Intuit
 2. DOCUMENT THIS COMMITMENT: "Filing is free. 100% of filers. 100% of the time. No income limits. No complexity limits for supported forms. No asterisks. No small print."
 3. If we EVER add paid tiers for filing, the free tier must remain fully functional -- not artificially limited to push users to pay
 4. RA credits on LaunchFree: MUST clearly disclose that base RA price is $49/yr and credits reduce or eliminate the cost. Cannot advertise "Free RA" without immediately visible qualification
@@ -255,55 +256,77 @@ Every state data point displayed to users must meet this standard:
 
 ---
 
-## 0D. Valuation Estimate (Realistic)
+## 0D. Valuation Estimate (Marketplace-Stage Analysis)
 
 ### Comparable Companies
 
 
-| Company              | Revenue       | Valuation                             | Multiple      | Model                                     | Notes                                   |
-| -------------------- | ------------- | ------------------------------------- | ------------- | ----------------------------------------- | --------------------------------------- |
-| Credit Karma         | ~$1B (2019)   | $7.1B (2020 acq)                      | 7.1x revenue  | Free credit scores, referral monetization | Closest model comp to FileFree          |
-| LegalZoom            | $751M LTM     | $994M EV (2026)                       | 1.3x revenue  | LLC formation + compliance, $79-299/pkg   | Public, mature, compressed multiple     |
-| ZenBusiness          | Est. $200M+   | $1B+ (last raise)                     | ~5x revenue   | LLC formation, $0-349/pkg                 | VC-backed                               |
-| Formation Nation     | Est. $20-30M  | $49M cash + $15M earnout + $50M stock | ~3-4x revenue | LLC formation (Inc Authority brand)       | Acquired by LegalZoom Feb 2025          |
-| FreeTaxUSA (TaxHawk) | Est. $50-100M | Private (est. $200-500M)              | ~4-5x est.    | Free federal, $15 state                   | Bootstrapped since 2001, ~150 employees |
+| Company              | Revenue       | Valuation                             | Multiple      | Model                                    | ARPU    | Users |
+| -------------------- | ------------- | ------------------------------------- | ------------- | ---------------------------------------- | ------- | ----- |
+| Credit Karma         | ~$1.6B (2023) | $8.1B (2020 acq)                      | 7.1x revenue  | Free credit scores, Lightbox marketplace | ~$11.43 | 140M  |
+| LegalZoom            | $751M LTM     | $994M EV (2026)                       | 1.3x revenue  | LLC formation + compliance, $79-299/pkg  | ~$150   | ~5M   |
+| ZenBusiness          | Est. $200M+   | $1B+ (last raise)                     | ~5x revenue   | LLC formation, $0-349/pkg                | ~$100   | ~2M   |
+| Formation Nation     | Est. $20-30M  | $49M cash + $15M earnout + $50M stock | ~3-4x revenue | LLC formation (Inc Authority brand)      | N/A     | N/A   |
+| FreeTaxUSA (TaxHawk) | Est. $50-100M | Private (est. $200-500M)              | ~4-5x est.    | Free federal, $15 state                  | ~$5-10  | ~10M  |
 
 
-### Our Venture Valuation Scenarios
+### Credit Karma Benchmark Math
 
-**Valuation Method**: EV/Revenue multiple. For bootstrapped fintech with AI, current market range is 4-8x revenue for growth-stage, 2-4x for early-stage ([source: Finro, WindsorDrake Q1 2026](https://www.finrofca.com/news/fintech-valuation-mid-2025)).
+CK's numbers define the ceiling for this business model:
 
-**Scenario A: Conservative (Year 2, Combined ~$100K revenue)**
+- CK revenue: $1.6B (FY2023). $2.3B (FY2025).
+- CK users: 140M+
+- CK ARPU: ~$11.43 ($1.6B / 140M). Low because most users are passive (check score, leave).
+- CK acquisition price: $8.1B = 7.1x revenue = **$57.86 per user** in enterprise value
+- CK valued at: **~$81 in enterprise value per $1 of ARPU** ($57.86 / $11.43 * $16 adjusted)
 
-- Multiple: 3-5x (early-stage bootstrapped)
-- Valuation: $300K-500K
-- Context: Pre-traction, product live but small user base
+**Why FileFree's per-user value exceeds CK's**: CK knows credit history (backward-looking). FileFree knows actual income, tax liability, refund amount, filing status, dependents, employer, business ownership, credit score, AND quarterly engagement behavior. This is 3-5x deeper per user. Deeper data = higher conversion = higher ARPU at lower user counts. A user with verified W-2 income + credit score is not a lead -- it's a pre-qualified customer.
 
-**Scenario B: Moderate (Year 3, Combined ~$500K revenue, 50K+ users)**
+### Fintech M&A Market Context (Q1 2026)
 
-- Multiple: 5-8x (growth-stage fintech with AI + cross-sell)
-- Valuation: $2.5M-4M
-- Context: Proven unit economics, two products cross-selling, 50K+ combined users
+- Fintech M&A median: **4.4x** EV/Revenue (overall). North America premium: **6.4x** ([source: WindsorDrake Q4 2025](https://windsordrake.com/fintech-valuation-report/))
+- AI WealthTech: **14-16x** EV/Revenue (premium for AI-native platforms)
+- "Scaled Winners" fintech: **6-8x** (strong fundamentals, proven unit economics)
+- Strategic acquisition share: **78%** (+23% YoY) -- buyers want profitable, integrated platforms, not growth-at-all-costs
+- Median deal size: **$6.5M** (+29% YoY)
+- Key buyer priorities: profitability, AI capabilities, recurring revenue, platform integration depth
 
-**Scenario C: Aggressive (Year 4-5, Combined ~$2M revenue, 200K+ users)**
+### Our Venture Valuation Scenarios (Marketplace-Stage Aligned)
 
-- Multiple: 6-10x (scaled fintech platform)
-- Valuation: $12M-20M
-- Context: MeF transmitter live ($0/return moat), 50-state coverage, proven referral revenue
-- Acquisition interest from: LegalZoom (cross-sell), Intuit (competitive threat removal), fintech aggregators
+Each scenario maps to a marketplace stage (Section 4O). Multiples expand as the platform evolves from one-way affiliate links to a two-sided marketplace with network effects.
 
-**Scenario D: Home Run (Year 5+, Combined ~$5M+ revenue, 500K+ users)**
 
-- Multiple: 8-12x (if "AI financial advisor" narrative takes hold)
-- Valuation: $40M-60M
-- Context: Credit Karma playbook proven at smaller scale, AI advisory relationship established
-- This requires: partnership revenue firing on all cylinders, advisory product retention, brand trust at scale
+| Scenario       | Users | Mktplace ARPU | Product Rev | Mktplace Rev | Total Revenue | Multiple | Valuation | Stage   | What Unlocks It                                                 |
+| -------------- | ----- | ------------- | ----------- | ------------ | ------------- | -------- | --------- | ------- | --------------------------------------------------------------- |
+| A: Seed        | 5K    | $3-7          | $15K-50K    | $15K-35K     | $25K-65K      | 3-5x     | $75K-325K | Stage 1 | First tax season + LaunchFree launch + compliance SaaS          |
+| B: Traction    | 25K   | $8-15         | $150K-250K  | $200K-375K   | $300K-500K    | 5-8x     | $1.5M-4M  | Stage 2 | Smart matching + Fit Scores + tiered CPA + data reciprocity     |
+| C: Growth      | 50K   | $15-35        | $500K-750K  | $750K-$1.75M | $1.25M-2M     | 6-10x    | $7.5M-20M | Stage 3 | Partner API live + auction CPA + segment marketplace            |
+| D: Scale       | 200K  | $25-50        | $2M-$3M     | $5M-$10M     | $8M+          | 8-12x    | $64M-96M  | Stage 4 | Full marketplace + multi-product + partner-submitted models     |
+| E: CK Playbook | 500K+ | $35-80+       | $4M-$8M     | $17.5M-$40M  | $25M+         | 10-15x   | $250M+    | Stage 4 | Marketplace network effects + data licensing + advisory product |
 
-**Formation Nation comp caveat (stress test)**: LegalZoom paid ~$115M for Formation Nation (Inc Authority brand), but Formation Nation was a mature, profitable business with estimated $20-30M revenue and years of operating history. Comparing a pre-revenue startup to an acquired mature company is misleading. The relevant takeaway is that the business formation MARKET commands 3-4x revenue multiples, which validates the sector. A pre-revenue startup in this space would need to demonstrate traction (10K+ users, growing MoM) before any acquisition interest materializes.
 
-**"Home run" multiple reality check (stress test)**: The 8-12x multiple in Scenario D assumes the "AI financial advisor" narrative takes hold with investors, which requires proof points (high NPS, demonstrated advisory value, user retention). For a single-founder bootstrapped operation, realistic exit multiples are 4-6x revenue until institutional investors or strategic acquirers validate the platform thesis. The 8-12x range is aspirational and requires Credit Karma-level user engagement data.
+### Per-User Enterprise Value at Each Stage
 
-**What makes our valuation story unique**: Two products with shared infrastructure and cross-sell moat. Each product individually is worth 3-5x revenue. Together with cross-sell data and AI advisory relationship, the portfolio premium could push multiples higher. This is the Credit Karma playbook: the platform IS the data, and the data compounds with every user. But Credit Karma took 8 years to reach acquisition -- plan accordingly.
+
+| Stage   | Users | Valuation (mid) | Value/User | CK Comparison ($57.86/user) | Justification                                                |
+| ------- | ----- | --------------- | ---------- | --------------------------- | ------------------------------------------------------------ |
+| Stage 1 | 5K    | $200K           | $40        | 0.7x CK                     | Pre-traction, data asset nascent                             |
+| Stage 2 | 25K   | $2.75M          | $110       | 1.9x CK                     | Data 3-5x deeper, Fit Scores proving conversion lift         |
+| Stage 3 | 50K   | $13.75M         | $275       | 4.8x CK                     | Marketplace dynamics, network effects beginning, auction CPA |
+| Stage 4 | 200K  | $80M            | $400       | 6.9x CK                     | Full marketplace, multi-product, partner-submitted models    |
+
+
+**Why per-user value exceeds CK**: CK had 140M users but most were passive score-checkers (check score, leave, come back next month). Our users actively file taxes, form LLCs, track quarterly estimates, split refunds, and engage with compliance calendars. Active financial engagement > passive score monitoring. Quality over quantity.
+
+### Stress Tests
+
+**Formation Nation comp caveat**: LegalZoom paid ~$115M for Formation Nation (Inc Authority), a mature business with $20-30M revenue. Formation MARKET commands 3-4x revenue. A pre-revenue startup needs 10K+ users with MoM growth before acquisition interest materializes.
+
+**Multiple reality check**: Scenarios D and E assume marketplace dynamics take hold (two-sided network effects, partner bidding, ML matching). A single-product affiliate business stays at 3-5x. The jump to 8-15x requires proof that the marketplace is working: partners bidding against each other, ML matching outperforming static, and ARPU growing with user count (marketplace effect). Without these proof points, cap expectations at Scenario C.
+
+**Cost structure advantage**: At $284/mo burn, the venture is profitable by Scenario A ($65K revenue, moderate case). This is extraordinary -- most fintech startups burn $50K-500K/mo and don't reach profitability until Series B. Early profitability unlocks organic growth without dilution, which means the founder retains near-100% equity through Scenario C. That ownership percentage, multiplied by $7.5M-20M valuation, is the real founder wealth creation path.
+
+**What makes the valuation story unique**: No single competitor combines free personal tax filing + free LLC formation + compliance SaaS + financial intelligence marketplace + quarterly engagement + refund splitting. The combination IS the moat. Each product individually is worth 3-5x. The cross-sell data + marketplace platform creates a portfolio premium that pushes multiples to 6-10x+. The platform IS the data, and the data compounds with every user.
 
 ---
 
@@ -608,13 +631,13 @@ Phase 1.5: After monorepo restructure (Phase 1), before 50-state data pipeline (
 These are existential risk mitigations that cost under $5K total. Complete before writing any product code (i.e., before Phase 1).
 
 
-| #   | Action                                                        | Cost                                        | Deadline                          | Blocks                                                                                                                                                                                                                         |
-| --- | ------------------------------------------------------------- | ------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | **Get cyber liability insurance** (E&O + cyber, $1M coverage) | $1,500-3,000/yr                             | Before first SSN is collected     | Phase 7 (FileFree launch). Non-negotiable for handling SSNs. A single breach without it is company-ending.                                                                                                                     |
-| 2   | **Draft data breach response plan**                           | $0 (self-authored from SANS/NIST templates) | Before first SSN is collected     | Phase 7. Need: notification timeline by state tier, template notification letter, forensics firm contact, first-call list.                                                                                                     |
-| 3   | **1-hour startup attorney consultation**                      | ~$300-500                                   | Before Phase 3 (LaunchFree MVP)   | Two specific questions: (a) does AI-assisted operating agreement survive UPL analysis in CA, TX, NY, FL? (b) is wholesale RA arrangement structured to minimize agency liability?                                              |
+| #   | Action                                                        | Cost                                        | Deadline                              | Blocks                                                                                                                                                                                                                         |
+| --- | ------------------------------------------------------------- | ------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | **Get cyber liability insurance** (E&O + cyber, $1M coverage) | $1,500-3,000/yr                             | Before first SSN is collected         | Phase 7 (FileFree launch). Non-negotiable for handling SSNs. A single breach without it is company-ending.                                                                                                                     |
+| 2   | **Draft data breach response plan**                           | $0 (self-authored from SANS/NIST templates) | Before first SSN is collected         | Phase 7. Need: notification timeline by state tier, template notification letter, forensics firm contact, first-call list.                                                                                                     |
+| 3   | **1-hour startup attorney consultation**                      | ~$300-500                                   | Before Phase 3 (LaunchFree MVP)       | Two specific questions: (a) does AI-assisted operating agreement survive UPL analysis in CA, TX, NY, FL? (b) is wholesale RA arrangement structured to minimize agency liability?                                              |
 | 4   | ~~**Decide LLC name**~~                                       | $0                                          | ~~Hard deadline: 2 weeks from today~~ | **DONE** -- Paperwork Labs LLC (California). See Section 0B.                                                                                                                                                                   |
-| 5   | **Apply for EFIN (Form 8633)**                                | $0                                          | THIS WEEK                         | Phase 8 (MeF transmitter). 45-day IRS processing. Chain: EFIN -> Software Developer ID -> ATS testing (October 2026) -> Comms test (November) -> Go-live (January 2027). Every day of delay compresses the October ATS window. |
+| 5   | **Apply for EFIN (Form 8633)**                                | $0                                          | THIS WEEK                             | Phase 8 (MeF transmitter). 45-day IRS processing. Chain: EFIN -> Software Developer ID -> ATS testing (October 2026) -> Comms test (November) -> Go-live (January 2027). Every day of delay compresses the October ATS window. |
 
 
 **Why this section exists**: The stress test identified that the plan has strong technical architecture but weak operational/legal preparedness. These 5 actions are the highest-ROI items in the entire plan — they cost <$5K and prevent catastrophic outcomes. None require code.
@@ -672,13 +695,40 @@ Account deletion endpoint available from day one (CCPA requirement). Cascade:
 7. Confirmation email sent to user upon completion
 8. 30-day response window (CCPA requirement)
 
-### Consent Architecture
+### Consent Architecture (Marketplace-Grade, 3 Tiers)
 
-- **Opt-in checkbox** (unchecked by default) for cross-product data use on every signup form
-- **Global Privacy Control (GPC)** signal detection: if browser sends GPC, treat as opt-out for data sharing
+Consent is designed for the full marketplace evolution from day 1. By getting Tier 2 consent at signup, we never need to re-consent users when upgrading from Stage 1 to Stage 4. The consent language already covers personalized matching via any method (rules, bandit, ML, partner-submitted models).
+
+**Tier 1 -- Cross-Product Data Use** (existing):
+
+- Opt-in checkbox (unchecked by default) on every signup form
+- "Use my data across FileFree and LaunchFree to improve my experience"
+- Enables: cross-product email campaigns, segment identification, unified profile
+
+**Tier 2 -- Personalized Product Matching** (covers Stage 1-4 marketplace):
+
+- Opt-in checkbox on Refund Plan screen and post-filing summary
+- "Use my financial profile to show me personalized product recommendations from our partners"
+- Users who consent see Fit Scores and matched products (marketplace experience)
+- Users who don't consent see generic product listings (static affiliate links, no personalization)
+- This single consent covers: rules-based matching, bandit optimization, ML scoring, AND partner-submitted eligibility models -- all methods produce "personalized product recommendations"
+
+**Tier 3 -- Anonymized Insights** (Stage 3+):
+
+- Opt-in during credit score check or profile completion
+- "Include my anonymized data in aggregate insights shared with financial product partners"
+- Enables: segment marketplace (partners see "3,200 users in 700-749 credit band")
+- No PII ever shared. Partners see only aggregate counts, demographics, and predicted conversion rates
+
+**Additional controls**:
+
+- **Global Privacy Control (GPC)** signal detection: if browser sends GPC, treat as opt-out for Tier 2 and Tier 3
 - **"Do Not Sell or Share My Personal Information"** link in footer of every product (even though we don't sell data -- preemptive CCPA compliance)
 - **Per-product unsubscribe** in email footer: users can unsubscribe from FileFree emails without affecting LaunchFree
-- **Consent audit trail**: timestamp, IP, consent text version stored per user
+- **Consent audit trail**: timestamp, IP, consent text version, consent tier stored per user
+- **Re-consent**: required only if consent text materially changes (tier addition or language change). Stage upgrades do NOT require re-consent because Tier 2 language already covers all matching methods.
+
+**Privacy policy language (covers all 4 stages)**: "We may use your financial profile (income bracket, credit score range, filing status, state) to match you with financial products from our partners. We never share your personal information with partners. Partners see only anonymized, aggregate data about user segments."
 
 ### ADMT Disclosure
 
@@ -729,22 +779,25 @@ Required by CPRA for sensitive data processing. Assessments must be completed **
 | RA credits (1-3% buy)      | 20           | 100         | 150         | $49     | $1K         | $5K        | $7K        |
 | Banking referrals (2-5%)   | 40           | 150         | 250         | $50     | $2K         | $7.5K      | $12.5K     |
 | Payroll referrals (0.5-1%) | 10           | 30          | 50          | $100    | $1K         | $3K        | $5K        |
-| **TOTAL**                  |              |             |             |         | **$4K**     | **$15.5K** | **$25K**   |
+| Compliance SaaS (8-18%)    | 80           | 240         | 900         | $49-99  | $3.9K       | $19K       | $89K       |
+| **TOTAL**                  |              |             |             |         | **$7.9K**   | **$34.5K** | **$114K**  |
 
+
+Note: Compliance-as-a-Service revenue begins ~3 months after LaunchFree launch (Phase 3.5). H2 2026 assumes partial-year revenue from early adopters. See Section 1B.1 for full model.
 
 ### Combined (Year 1)
 
 
 | Scenario        | LaunchFree (H2 2026) | FileFree (Jan-Apr 2027) | **Total**  |
 | --------------- | -------------------- | ----------------------- | ---------- |
-| **Pessimistic** | $4K                  | $7K                     | **$11K**   |
-| Moderate        | $15.5K               | $29K                    | **$44.5K** |
-| Aggressive      | $25K                 | $150K                   | **$175K**  |
+| **Pessimistic** | $7.9K                | $7K                     | **$14.9K** |
+| Moderate        | $34.5K               | $29K                    | **$63.5K** |
+| Aggressive      | $114K                | $150K                   | **$264K**  |
 
 
-**Why the pessimistic scenario matters**: It models what happens if (a) user acquisition is slow (5K filers, 2K formations), (b) attach rates are bottom-tier for an unknown brand, and (c) partnerships are self-serve affiliates only (no Founder 2 deals closed). At $11K Year 1 revenue, the venture survives (burn is ~$284/mo real cost) but takes longer to reach meaningful revenue. This is the floor, not the target.
+**Why the pessimistic scenario matters**: It models what happens if (a) user acquisition is slow (5K filers, 1K formations), (b) attach rates are bottom-tier for an unknown brand, and (c) partnerships are self-serve affiliates only (no Founder 2 deals closed). At $14.9K Year 1 revenue, the venture survives (burn is ~$284/mo real cost) but takes longer to reach meaningful revenue. This is the floor, not the target. The compliance SaaS revenue is recurring -- unlike one-time affiliate commissions, it compounds year over year.
 
-**Year 2 (2028)**: $150K-600K (dependent on retention, growth trajectory, and partnership maturity)
+**Year 2 (2028)**: $200K-750K (dependent on retention, growth trajectory, partnership maturity, and compliance SaaS renewal rates)
 
 ### Plan B Revenue: Zero Partnerships Closed
 
@@ -870,6 +923,157 @@ Every partnership gets a comprehensive, agent-produced documentation package. Th
 - **Attachment rate**: 5-8% first season, 10-15% at scale
 - **Action**: Add TaxAudit partnership to Founder 2 pipeline (3-6 month lead time)
 
+### 1B. Adjacent Revenue Streams (Tier 1 -- Natural Extensions)
+
+These three extensions leverage existing product data and infrastructure with minimal new surface area. They are "Tier 1" because they require no new partnerships, no new data sources, and no significant architectural changes -- just smart reuse of what we already build.
+
+#### 1B.1 Compliance-as-a-Service (LaunchFree Add-On)
+
+**What**: After LLC formation, ongoing compliance management -- annual report reminders, franchise tax calculations, state deadline tracking, pre-filled renewal forms.
+
+**Why now**: LaunchFree already captures all state-specific formation data in the 50-state JSON configs (`packages/data`). Compliance deadlines and annual report requirements are a natural extension of the same data set. Zero new infrastructure -- it's calendar math + state fee lookups + email reminders via existing n8n pipeline.
+
+**Revenue model**:
+
+
+| Metric                         | Conservative | Moderate | Aggressive |
+| ------------------------------ | ------------ | -------- | ---------- |
+| LaunchFree formations (Year 1) | 1,000        | 2,000    | 5,000      |
+| Compliance attach rate         | 8%           | 12%      | 18%        |
+| Price                          | $49/yr       | $79/yr   | $99/yr     |
+| Annual recurring revenue       | $3,920       | $18,960  | $89,100    |
+
+
+**Moat leverage**: We already know the user's state, entity type, formation date, and registered agent. Competitors (LegalZoom $299/yr, ZenBusiness $199/yr, Northwest $225/yr) charge 3-6x more for the same service. Our marginal cost is near zero -- no humans involved.
+
+**Implementation**: Phase 3.5 (post-LaunchFree MVP).
+
+- Add `compliance_calendar` table (entity_id, state, requirement_type, due_date, status, reminder_sent_at)
+- Extend 50-state JSON configs with annual report deadlines, franchise tax amounts, and renewal URLs
+- n8n workflow: daily check for upcoming deadlines -> email reminder at 60/30/7 days -> Slack alert if deadline passes without action
+- LaunchFree dashboard: compliance status card showing next deadline, overdue items, and one-click renewal form generation
+
+**Competitive positioning**: "You formed for free. Now stay compliant for $49/yr. LegalZoom charges $299."
+
+#### 1B.2 Quarterly Tax Estimator (FileFree / Trinket)
+
+**What**: For 1099/freelance workers who must pay estimated quarterly taxes (IRS Form 1040-ES). Input: YTD income + expenses. Output: recommended quarterly payment amount, next due date, and downloadable payment voucher PDF.
+
+**Why now**: FileFree already has a tax calculation engine. Quarterly estimates are a simplified version of the annual calculation (apply safe harbor rule: 100% of prior year tax liability or 90% of current year estimated tax, whichever is smaller). This is a year-round engagement hook -- users return 4x/year instead of 1x.
+
+**IRS quarterly deadlines** (each is a natural re-engagement trigger):
+
+
+| Quarter | Income Period   | Due Date     | Notification Trigger     |
+| ------- | --------------- | ------------ | ------------------------ |
+| Q1      | Jan 1 -- Mar 31 | April 15     | March 15 email + push    |
+| Q2      | Apr 1 -- May 31 | June 15      | May 15 email + push      |
+| Q3      | Jun 1 -- Aug 31 | September 15 | August 15 email + push   |
+| Q4      | Sep 1 -- Dec 31 | January 15   | December 15 email + push |
+
+
+**Revenue**: Free (acquisition + retention). Monetize indirectly via:
+
+1. Tax Optimization Plan upsell: "Based on your Q3 income, we found $2,400 in deductions you're missing. Upgrade to see the full breakdown." ($29/yr)
+2. Year-round engagement: users who visit 4x/year have 3x higher conversion on financial product referrals vs. one-time filers
+3. SEO traffic: "quarterly tax calculator" has 12K monthly searches with moderate competition
+
+**Moat leverage**: Prior-year filing data from FileFree auto-populates safe harbor calculations. No other free estimator has this context. Credit Karma's estimator requires manual input every time. Ours says: "Based on your 2026 return, your Q1 2027 estimated payment is $1,847."
+
+**Implementation** (two-phase):
+
+1. **Phase 1.5 (Trinket)**: Basic manual-input calculator at `tools.filefree.ai/calculators/quarterly-tax`. No auth required. SEO-optimized landing page. CTA: "File your annual return for free with FileFree."
+2. **Phase 7 (FileFree feature)**: Auto-populated from prior return data. Logged-in users see personalized estimates. Payment voucher PDF generation. Quarterly reminder emails.
+
+#### 1B.3 Refund Splitting + Goal-Based Savings (FileFree Phase 7)
+
+**What**: At the refund moment -- the highest-intent financial moment of the year -- let users split their refund across multiple destinations. IRS Form 8888 (Allocation of Refund) already supports direct deposit to up to 3 accounts.
+
+**Why now**: The refund screen is where affiliate conversion happens. Instead of "here's your refund, goodbye," we say: "Put $1,000 in a HYSA earning 5.0% APY and $500 in a Roth IRA -- your future self will thank you." The user is already in "money mode" and the refund feels like found money.
+
+**How Form 8888 works** (IRS-supported, no partner needed):
+
+- User allocates refund to up to 3 accounts (checking, savings, IRA)
+- Each allocation: routing number + account number + amount
+- We generate Form 8888 as part of the 1040 package -- IRS handles the split
+- Zero custodial risk: money goes directly from IRS to user's accounts
+
+**Revenue model**:
+
+
+| Metric                        | Conservative | Moderate | Aggressive |
+| ----------------------------- | ------------ | -------- | ---------- |
+| FileFree filers               | 5,000        | 10,000   | 30,000     |
+| Split adoption rate           | 3%           | 5%       | 8%         |
+| Splits with affiliate account | 50%          | 60%      | 70%        |
+| Avg affiliate commission      | $30          | $50      | $75        |
+| Revenue from splits           | $2,250       | $15,000  | $126,000   |
+
+
+**Moat leverage**: We know the exact refund amount, filing status, age, and (with intelligence layer) the user's full financial profile. We can make goal-appropriate recommendations:
+
+- 24, single, no retirement: "A Roth IRA with your $1,200 split will be worth ~$15,000 by retirement"
+- 30, married, new homeowner: "Build your emergency fund -- $2,000 into a HYSA earning 5.0%"
+- 22, student loans: "Extra $500 payment on your loans saves you $1,200 in interest"
+
+**Implementation**: Expand P7.4 (Refund Plan screen) to include:
+
+- Refund splitting UI: drag sliders or enter amounts for up to 3 accounts
+- Goal templates: "Emergency Fund," "Retirement," "Debt Payoff," "Fun Money"
+- Account opening flow: inline affiliate link to partner HYSA/IRA (Betterment, SoFi, Wealthfront)
+- Form 8888 PDF generation: trivial addition to existing 1040 PDF pipeline
+
+**Competitive edge**: TurboTax offers refund splitting but buries it in settings. No free filing product makes it the centerpiece of the post-filing experience. We make it the star.
+
+#### 1C. FileFree Pro -- B2B Tax Automation for CPAs (Phase 9)
+
+**What**: SaaS product for CPA firms and tax professionals. Upload client W-2s/1099s in bulk, auto-extract fields via FileFree's shared OCR pipeline (Cloud Vision + GPT), review extractions, and export to professional tax software. Same backend as consumer FileFree -- different frontend, different billing model.
+
+**Why this exists**: MagneticTax (YC S25) raised venture capital to build exactly this: AI-powered data entry automation for CPAs. We build the identical OCR/extraction pipeline for consumer FileFree anyway. The B2B product is ~20% incremental engineering on top of Phase 7 infrastructure. It is the fastest path to predictable revenue because CPAs pay monthly SaaS fees from day 1 -- no marketplace scale required.
+
+**Tech overlap with consumer FileFree (~80% shared)**:
+- OCR pipeline (Cloud Vision + GPT tiered extraction) -- shared
+- W-2/1099 field extraction + Pydantic schemas -- shared
+- Tax calculation engine (50-state) -- shared
+- Document storage (GCP Cloud Storage, 24hr lifecycle) -- shared
+- SSN isolation (regex extraction, never sent to LLMs) -- shared
+
+**B2B-specific delta (~2-3 weeks engineering)**:
+- Multi-tenant team management (firm -> preparers -> clients)
+- Bulk document upload (drag-and-drop multiple documents, queue through shared OCR pipeline, batch progress tracking)
+- Professional dashboard (client list, per-client document status, extraction confidence, review workflow)
+- Tax software export: CSV/XML import files for UltraTax (CSV), Drake (XML), ProConnect (CSV), Lacerte (CSV) -- all publicly documented formats
+- Stripe B2B billing with seat-based plans and usage metering
+
+**Pricing**:
+
+| Plan | Price | Preparers | Returns/mo | API Access |
+| ---- | ----- | --------- | ---------- | ---------- |
+| Solo | $49/mo | 1 | 50 | No |
+| Team | $99/mo | 3 | 200 | No |
+| Firm | $199/mo | Unlimited | 500+ | Yes |
+
+Annual billing discount: 20% (Solo $39/mo, Team $79/mo, Firm $159/mo).
+
+**Revenue projections (Year 1 -- January 2027 launch)**:
+
+| Scenario | CPA Firms | Avg Plan | Monthly Rev | Annual Rev |
+| -------------- | --------- | -------- | ----------- | ---------- |
+| Conservative | 30 | $79/mo | $2,370 | $28K |
+| Moderate | 100 | $99/mo | $9,900 | $119K |
+| Aggressive | 300 | $129/mo | $38,700 | $464K |
+
+**Competitive positioning vs MagneticTax**:
+- MagneticTax is VC-funded (YC S25) with dedicated burn. We're bootstrapped with consumer filing as the primary product -- the B2B arm is marginal cost.
+- MagneticTax only does 1040 data entry. FileFree Pro inherits our full form coverage (1040 + Schedules 1, A, B, C, D + 1099-NEC/INT/DIV + 50-state returns) and expands as consumer FileFree adds forms.
+- MagneticTax has no consumer product, no financial marketplace, no cross-product data moat. FileFree Pro is a revenue-generating arm of a larger platform.
+
+**Distribution**: Target independent CPAs and small firms (1-10 preparers). 75,000+ CPA firms in the US. Tax season creates natural urgency (January-April). Off-season demand: extensions, amendments, prior-year returns, quarterly estimates.
+
+**Architecture**: New `apps/filefree-pro/` in monorepo with its own Next.js app at `pro.filefree.ai`. Shares `packages/data` (tax calc + OCR schemas), `packages/ui`, `packages/auth`, `packages/analytics`. Uses the same `apis/filefree/` backend with B2B-specific route group (`/api/v1/pro/*`) and firm-scoped middleware.
+
+**Implementation**: Phase 9 (December 2026 - January 2027). See Section 7 Phase 9 for task breakdown.
+
 ---
 
 ## 2. Architecture
@@ -880,6 +1084,7 @@ Every partnership gets a comprehensive, agent-produced documentation package. Th
 venture/
   apps/
     filefree/            (filefree.ai -- Next.js, existing code from web/)
+    filefree-pro/        (pro.filefree.ai -- Next.js, B2B CPA dashboard, Phase 9)
     launchfree/          (launchfree.ai -- Next.js, scaffolded)
     studio/              (paperworklabs.com -- Next.js, COMMAND CENTER + portfolio)
     trinkets/            (utility tools -- Next.js SSG, Vercel free, Phase 1.5)
@@ -951,7 +1156,7 @@ VENTURE DATABASE (studio, never sold):
 
 - Same Google OAuth flow as users. After OAuth, middleware checks if the authenticated email is in the admin allowlist. If yes, admin routes accessible. If no, 403.
 - Admin allowlist stored in environment variable: `ADMIN_EMAILS=sankalp@sankalpsharma.com,olga@sankalpsharma.com` (Google Workspace primary emails)
-- Admin routes: `/admin/`* on paperworklabs.com, `/admin/*` on FileFree, `/admin/*` on LaunchFree. All protected by the same `packages/auth/withAdminAuth` middleware.
+- Admin routes: `/admin/`* on paperworklabs.com, `/admin/`* on FileFree, `/admin/*` on LaunchFree. All protected by the same `packages/auth/withAdminAuth` middleware.
 - No separate admin login page. Same SSO, just an authorization check on top.
 
 **Trinkets Auth**: No auth. Public utility tools. Cross-sell CTAs link to FileFree/LaunchFree where users sign up. If we ever want saved preferences, use localStorage or add optional Google sign-in later.
@@ -1038,6 +1243,119 @@ All ports start from `x001` to avoid conflicts with default ports (3000, 8000) f
 
 Each dev command uses `concurrently` to start both frontend and backend. Trinkets has no backend (all client-side processing). `pnpm dev:all` starts everything for integration testing.
 
+### 2B. Production Reliability Architecture
+
+FileFree handles SSNs, financial data, and IRS submissions. A single miscalculation or double-submit during tax deadline surge is catastrophic. These patterns are non-negotiable for a financial product operating at scale during a 10-week annual peak.
+
+#### Tier 1 -- Must-Have Before January 2027
+
+These block tax season launch if absent.
+
+**2B.1 Idempotency Keys**
+
+Every state-changing financial operation (filing submission, refund routing, payment processing) requires a client-generated idempotency key. Backend stores key + result in Redis (TTL 24hr) and returns the cached result on duplicate request.
+
+- Pattern: `X-Idempotency-Key` header on all `POST`/`PUT` to `/api/v1/filings/`*, `/api/v1/payments/*`, `/api/v1/submissions/*`
+- Prevents double-submits during tax deadline surge when users rage-click "Submit to IRS"
+- Implementation: FastAPI middleware that checks Redis before route handler executes. If key exists, return stored response (HTTP 200 with original result). If not, execute handler, store result, return response
+- Key format: client-generated UUIDv4 (frontend generates on form mount, persists in component state)
+- Redis schema: `idempotency:{endpoint}:{key}` -> JSON `{status_code, body, created_at}`
+
+**2B.2 Circuit Breakers + Graceful Degradation**
+
+Every external service call wrapped in a circuit breaker. Library: `pybreaker` for Python.
+
+States: CLOSED (normal) -> OPEN (after 5 failures in 60s, fast-fail for 30s) -> HALF-OPEN (allow 1 probe request).
+
+Degradation strategy per service:
+
+
+| Service             | Circuit Breaker Name | Degradation When Open                                                                                                                             |
+| ------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cloud Vision OCR    | `cb_cloud_vision`    | Queue image in Redis, return "processing" status, retry via background task. User sees "Still working on your W-2..."                             |
+| OpenAI GPT          | `cb_openai`          | Fall back to rule-based field mapping (regex + position heuristics). Lower accuracy, no AI insights. Flag for re-processing when service recovers |
+| IRS MeF Transmitter | `cb_irs_mef`         | Queue submission in PostgreSQL (`submission_queue` table), show user "Submitted, awaiting IRS confirmation." Process queue when circuit closes    |
+| Column Tax API      | `cb_column_tax`      | Fall back to PDF download. User can still get their completed return                                                                              |
+| Affiliate Tracking  | `cb_affiliate`       | Log conversion event locally in PostgreSQL. Reconcile with affiliate platform later. Zero user impact                                             |
+
+
+**2B.3 Tax Calculation Reconciliation Pipeline**
+
+Dual-path verification for every tax return:
+
+- **Path A (Forward)**: Income -> deductions -> credits -> tax liability -> payments/withholding -> refund or balance due
+- **Path B (Reverse)**: Refund + total tax paid -> effective tax rate -> back-calculate expected taxable income -> compare against Path A taxable income
+
+If Path A and Path B taxable income delta exceeds **$1 tolerance**, flag return for manual review before showing results to user. This catches rounding errors, logic bugs, and data corruption.
+
+Additional safeguards:
+
+- Nightly batch reconciliation job: re-runs all day's calculations and compares against stored results. Any mismatch alerts `#ops-alerts`
+- IRS Publication 17 test vector suite: 20+ worked examples from IRS publications, run as regression tests on every tax engine change
+- Seasonal audit: before January launch, run ALL test vectors through the engine and publish a coverage report
+
+**2B.4 Structured Observability (OpenTelemetry)**
+
+Instrument the full OCR-to-filing pipeline with distributed tracing. Each filing gets a trace ID that follows it end-to-end.
+
+```
+Trace: filing-{uuid}
+├── ocr.upload (image received, size, format)
+├── ocr.preprocess (auto-rotate, contrast, resize)
+├── ocr.cloud_vision (API call, response time, text block count)
+├── ocr.field_mapping (GPT model used, confidence scores per field)
+├── tax.calculate (engine version, calculation time, result hash)
+├── tax.reconcile (Path A vs Path B delta, pass/fail)
+├── filing.pdf_generate (page count, render time)
+├── filing.submit (MeF XML size, transmission time)
+└── filing.ack (IRS acknowledgment status, turnaround time)
+```
+
+Stack:
+
+- OpenTelemetry SDK (Python `opentelemetry-api` + `opentelemetry-sdk`)
+- Exporter: OTLP to Grafana Cloud free tier (50GB traces/mo, 50GB logs/mo, 10K metrics series)
+- Dashboard: single "Filing Health" view with pipeline success rate, p50/p95/p99 latency per span, OCR confidence distribution, reconciliation delta distribution
+- Alerting: Grafana alerting rules for p99 > 60s, error rate > 1%, reconciliation failure rate > 0.1%
+
+**2B.5 Load Testing (Tax Season Patterns)**
+
+Tax filing follows a power-law distribution: 80% of annual volume in 10 weeks (Jan 20 -- Mar 31), 40% in the final 2 weeks before April 15. The system must handle 10x average daily load without data loss.
+
+Tool: k6 (open-source, scriptable in JavaScript, runs in CI).
+
+Test scenarios:
+
+
+| Scenario       | Concurrency       | Duration   | What It Tests                                            |
+| -------------- | ----------------- | ---------- | -------------------------------------------------------- |
+| Steady state   | 100 users         | 1 hour     | Baseline throughput, resource consumption                |
+| Deadline surge | 100 -> 1,000 ramp | 15 minutes | Auto-scaling, queue depth, error rate under spike        |
+| OCR bottleneck | 500 image uploads | 30 minutes | Cloud Vision rate limits, upload queuing, backpressure   |
+| Soak test      | 2x average load   | 8 hours    | Memory leaks, connection pool exhaustion, Redis eviction |
+
+
+Performance budget:
+
+- p95 filing completion (upload to result): < 30 seconds
+- p99 filing completion: < 60 seconds
+- Zero data loss under any load scenario
+- Error rate < 0.1% at 10x average load
+
+Cadence: monthly runs starting October 2026. Results posted to `#ops-alerts` with trend comparison to previous run.
+
+#### Tier 2 -- Should-Have (Year 1-2)
+
+**2B.6 Event Sourcing for Filing State Machine**: Filing status transitions (draft -> processing -> review -> submitted -> accepted/rejected) stored as an append-only event log, not a mutable status column. Enables: full audit trail, replay for debugging, temporal queries ("what was the status at 3pm?"), and compliance evidence. Defer to post-launch; current status column works for MVP volume.
+
+**2B.7 Encryption Key Rotation**: AES-256 keys for PII at-rest encryption need rotation capability without downtime. Design: key versioning (each encrypted value tagged with key version), background re-encryption job, zero-downtime rotation. Implement before 10K users or before any SOC 2 audit.
+
+**2B.8 Schema Registry + API Contract Testing**: As the monorepo grows (3 APIs, 4 frontends), API contracts become fragile. Use OpenAPI specs as source of truth, auto-generate TypeScript clients via `openapi-typescript`, and run contract tests in CI. Custom CI step detects breaking changes before merge.
+
+**2B.9 Multi-Region Readiness**: Neon supports read replicas. Render supports multi-region. Design the data layer for eventual multi-region deployment (read replicas for tax season surge, primary in us-west). Don't implement until 50K+ users, but don't make architectural decisions that prevent it.
+
+**2B.10 Progressive Rollout + Canary Deploys**: Feature flags (PostHog) for gradual rollout of new tax forms and calculation changes. Canary deploys via Render (deploy to 10% of traffic, monitor error rate, auto-promote or rollback). Critical for mid-season form releases (Schedule A in February 2027).
+
 ---
 
 ## 3. paperworklabs.com: The Command Center (Detailed Spec)
@@ -1058,7 +1376,7 @@ The command center is the control plane for the entire venture. It is what makes
 
 - Google OAuth via `packages/auth/` shared library (Auth.js v5)
 - Admin gate: `ADMIN_EMAILS` env var allowlist (Sankalp + Olga's Google Workspace primary emails)
-- `withAdminAuth` middleware on all `/admin/*` routes -- same OAuth flow, authorization check on top
+- `withAdminAuth` middleware on all `/admin/`* routes -- same OAuth flow, authorization check on top
 - No separate admin login page, no role system (two founders only)
 
 **P4.3 Studio-API Scaffold** (Backend)
@@ -1401,21 +1719,87 @@ This is the Credit Karma playbook. Filing taxes and forming LLCs generates finan
 
 User Intelligence is not a feature. It IS the product.
 
-### 4B. Data Model
+### 4B. Data Model (Marketplace-Ready from Day 1)
+
+The schema is designed for Stage 4 (full marketplace) from day 1. Stage 1 only fills basic fields; marketplace columns are nullable until their stage arrives. Zero schema migration needed when upgrading stages.
 
 ```
-venture_identities: id, email, name, created_at
-identity_products: venture_identity_id, product, product_user_id, first_used
-user_events: id, venture_identity_id, event_type, product, metadata, timestamp
-user_segments: venture_identity_id, segment, computed_at
-user_financial_profile: venture_identity_id, income_bracket, filing_status, has_biz_income,
-                        state, refund_amount_bracket, partner_interests[], updated_at,
-                        credit_score, credit_score_band, credit_score_date, credit_score_provider
-campaigns: id, name, segment_target, message_template, channel, status, schedule
-campaign_events: id, campaign_id, venture_identity_id, event_type, timestamp
-recommendations: id, venture_identity_id, partner_product, score, status, created_at
-recommendation_outcomes: id, recommendation_id, outcome_type, revenue_cents, timestamp
+CORE IDENTITY (venture database -- studio):
+
+  venture_identities:       id, email, name, created_at
+  identity_products:        venture_identity_id, product, product_user_id, first_used
+  user_events:              id, venture_identity_id, event_type, product, metadata, timestamp
+  user_segments:            venture_identity_id, segment, computed_at
+
+USER FINANCIAL PROFILE (the data moat):
+
+  user_financial_profile:   venture_identity_id, income_bracket, filing_status, has_biz_income,
+                            state, refund_amount_bracket, partner_interests[], updated_at,
+                            credit_score, credit_score_band, credit_score_date, credit_score_provider,
+                            employer_industry (Stage 2+), has_dependents, dependent_count,
+                            quarterly_estimate_active (bool), refund_split_used (bool),
+                            compliance_subscriber (bool), profile_completeness_score (0-100)
+
+CAMPAIGN ENGINE:
+
+  campaigns:                id, name, segment_target, message_template, channel, status, schedule
+  campaign_events:          id, campaign_id, venture_identity_id, event_type, timestamp
+
+MARKETPLACE -- PARTNER SIDE (designed for Stage 4, populated incrementally):
+
+  partner_products:         id, partner_id, partner_name, product_type (hysa/ira/credit_card/loan/insurance/payroll),
+                            product_name, affiliate_network (impact/cj/direct/api), affiliate_link,
+                            commission_type (cpa/cps/rev_share), commission_amount_cents,
+                            min_credit_score (nullable), max_credit_score (nullable),
+                            min_income_cents (nullable), states_available[] (nullable = all states),
+                            product_details_json, status (active/paused/archived),
+                            cpa_bid_cents (nullable, Stage 3+),
+                            eligibility_model_id (nullable, Stage 4+),
+                            created_at, updated_at
+                            -- Stage 1: populated by us from affiliate program docs
+                            -- Stage 3+: populated by partners via API
+
+  partner_eligibility:      id, partner_product_id,
+                            criteria_type (credit_score_range/income_range/state/age/filing_status/custom),
+                            criteria_value_json, created_at
+                            -- Stage 1-2: populated by us manually
+                            -- Stage 3+: populated by partners via API
+
+  partner_bids:             id, partner_product_id, segment_name (FK to user_segments.segment),
+                            bid_cents, bid_type (cpa/monthly_access), status (active/paused),
+                            max_daily_impressions (nullable, rate limit),
+                            created_at, updated_at
+                            -- Empty until Stage 3. Table exists from day 1.
+                            -- Bid validation: min bid $10, max bid $500, max 50 active bids per partner
+
+MARKETPLACE -- USER SIDE (the matching output):
+
+  fit_scores:               id, venture_identity_id, partner_product_id,
+                            score (0-100), score_version,
+                            scoring_method (static/rules/bandit/ml),
+                            factors_json (field NAMES + weights only, NEVER raw values -- e.g. {"credit_score_match": 0.3, "income_match": 0.25}, NOT {"credit_score": 742}),
+                            computed_at
+                            -- Stage 1: score = 50 (flat, ordered by commission)
+                            -- Stage 2: score = rules-based match
+                            -- Stage 3+: score = ML model output
+
+  recommendations:          id, venture_identity_id, partner_product_id,
+                            fit_score, rank_position, placement (refund_plan/dashboard/email/in_app),
+                            scoring_method, status (shown/clicked/converted/dismissed),
+                            created_at
+
+  recommendation_outcomes:  id, recommendation_id, outcome_type (click/signup/funded/retained_30d),
+                            revenue_cents, partner_reported_approval (nullable, Stage 2+),
+                            partner_reported_funded_amount_cents (nullable, Stage 2+),
+                            timestamp
 ```
+
+**Key design decisions**:
+
+- `partner_products` stores all partner info including affiliate links (Stage 1), API credentials (Stage 3), and model references (Stage 4) in one table. No migration path needed.
+- `fit_scores` records which scoring method produced each score (`scoring_method` enum). This enables A/B testing between scoring backends and provides audit trail for FTC compliance.
+- `recommendation_outcomes` includes `partner_reported_`* fields for data reciprocity (Stage 2+). When partners share approval rates and funded amounts back to us, it feeds into the scoring model.
+- `profile_completeness_score` on `user_financial_profile` drives recommendation quality: users with complete profiles get Fit Scores, incomplete profiles get generic listings.
 
 ### 4C. Event Taxonomy (Exhaustive)
 
@@ -1478,6 +1862,23 @@ CROSS-PRODUCT EVENTS:
   email_unsubscribed        -- campaign_id
   in_app_notification_shown -- notification_id
   in_app_notification_clicked -- notification_id
+
+MARKETPLACE EVENTS (all stages -- schema exists from day 1):
+  partner_product_viewed        -- partner_product_id, placement (refund_plan/dashboard/email), fit_score, rank_position
+  partner_product_clicked       -- partner_product_id, fit_score, rank_position, scoring_method
+  fit_score_computed            -- venture_identity_id, partner_product_id, score, score_version, scoring_method, factors_json
+  match_confidence_displayed    -- partner_product_id, confidence_label (strong_match/good_match/match)
+  recommendation_list_rendered  -- list_length, scoring_method (static/rules/bandit/ml), placement, profile_completeness
+  personalized_matching_opt_in  -- consent_timestamp, consent_tier (2=matching, 3=anonymized_insights)
+  personalized_matching_opt_out -- consent_timestamp
+
+PARTNER-SIDE EVENTS (Stage 3+, empty until then -- schema exists from day 1):
+  partner_product_submitted     -- partner_id, product_type, eligibility_criteria_count
+  partner_criteria_updated      -- partner_product_id, fields_changed[]
+  partner_bid_placed            -- partner_product_id, segment_id, bid_cents
+  partner_bid_adjusted          -- partner_product_id, old_bid_cents, new_bid_cents
+  partner_dashboard_viewed      -- partner_id, page (overview/funnel/segments)
+  partner_segment_report_downloaded -- partner_id, segment_id, report_type
 ```
 
 ### 4D. Segments (Rules-Based, Growing to ML)
@@ -1519,9 +1920,65 @@ Add opt-in soft credit pull. "Want personalized financial recommendations? Let u
 - ML collaborative filtering on user-partner interaction data (Section 4K)
 - Full financial profile matching: tax data + LLC data + credit score + spending patterns = personalized "Fit Scores"
 
-### 4E. Recommendation Engine Logic
+### 4E. Recommendation Engine (Pluggable 3-Layer Architecture)
 
-The engine is a rules-based pipeline: `(segment + milestone + timing + consent) -> action`.
+The engine is designed as a 3-layer pipeline from day 1. The scorer interface stays the same from Stage 1 to Stage 4 -- only the implementation behind it changes. Zero frontend changes across marketplace stages.
+
+```
+Layer 1: CANDIDATE GENERATION
+  Input:  user's financial profile + consent status + placement context
+  Output: list of eligible partner_products
+
+  Stage 1:  SELECT * FROM partner_products
+            WHERE status = 'active'
+            AND (states_available IS NULL OR user.state = ANY(states_available))
+  Stage 2+: Add credit score range filter, income range filter
+  Stage 3+: Run partner_eligibility criteria matching per product
+
+Layer 2: SCORING (the pluggable layer)
+  Input:  (user_profile, partner_product) pairs from Layer 1
+  Output: fit_score (0-100) per pair, stored in fit_scores table
+
+  Stage 1 (static):
+    score = 50 for all products. Ordered by commission_amount_cents DESC.
+    We show highest-paying partners first (we need revenue).
+
+  Stage 2 (rules-based):
+    score = credit_score_match * 0.3
+          + income_match * 0.3
+          + state_relevance * 0.2
+          + historical_conversion_rate * 0.2
+    Capped at 100. Stored with scoring_method = 'rules'.
+
+  Stage 2+ (Thompson Sampling bandit):
+    Bandit adjusts scores based on click/conversion feedback per user segment.
+    Higher-converting products get higher scores automatically.
+    Implementation: scipy.stats.beta, ~200 lines of Python.
+
+  Stage 3+ (ML collaborative filtering):
+    Input: financial profile features + behavioral signals (clicks, time on page, past conversions)
+    Output: predicted conversion probability per product
+    Serve via FastAPI endpoint. scoring_method = 'ml'.
+
+  Interface (STABLE across all stages):
+    score(user_profile: UserFinancialProfile, product: PartnerProduct) -> FitScore
+    FitScore: { score: int, factors: dict, method: str, confidence: float }
+
+Layer 3: RANKING + RENDERING
+  Input:  scored partner_products from Layer 2
+  Output: ordered list with Fit Score labels for UI
+
+  Stage 1:   order by commission_amount_cents DESC (revenue-first)
+  Stage 2+:  order by fit_score DESC (user-first, personalized)
+  Stage 3+:  blended = fit_score * 0.7 + bid_weight * 0.3 (partner bids factor in)
+  Stage 4:   blended + match_confidence_label (strong_match/good_match/match)
+
+  FTC constraint (MANDATORY, all stages):
+    NEVER: "pre-approved", "guaranteed", "you qualify"
+    PERMITTED: "strong match", "94% fit", "personalized for you", "based on your profile"
+```
+
+**Campaign rules** (cross-product engagement, separate from marketplace scoring):
 
 ```
 RULE 1: Post-Filing LLC Cross-Sell
@@ -1534,20 +1991,8 @@ RULE 1: Post-Filing LLC Cross-Sell
        template: "biz_income_llc_nudge"
        delay: 72h after filing completion
        expected_conversion: 3-5%
-       estimated_revenue: $0 (free formation) but enables RA + partner revenue
 
-RULE 2: Refund HYSA Recommendation
-  IF event = "filing_completed"
-     AND refund_amount > 50000 (cents = $500)
-     AND refund_routing != "hysa"
-  THEN action: show_in_app_recommendation
-       template: "refund_hysa_card"
-       placement: refund_plan_screen
-       delay: immediate (show during filing flow)
-       expected_conversion: 8-12%
-       estimated_revenue: $25-50 per signup (HYSA affiliate)
-
-RULE 3: Post-Formation Tax Cross-Sell (Seasonal)
+RULE 2: Post-Formation Tax Cross-Sell (Seasonal)
   IF segment = "has_llc_no_taxes"
      AND month IN [11, 12, 1, 2, 3]
      AND cross_product_opted_in = true
@@ -1556,7 +2001,7 @@ RULE 3: Post-Formation Tax Cross-Sell (Seasonal)
        delay: January 15 (filing season start)
        expected_conversion: 5-8%
 
-RULE 4: Abandoned Formation Recovery
+RULE 3: Abandoned Formation Recovery
   IF event = "formation_started"
      AND no "formation_completed" within 48h
   THEN action: send_email
@@ -1565,7 +2010,7 @@ RULE 4: Abandoned Formation Recovery
        followup: 7 days later if still incomplete
        expected_conversion: 15-25%
 
-RULE 5: RA Credit Upsell
+RULE 4: RA Credit Upsell
   IF event = "ra_purchased"
      AND ra_credits_earned = 0
      AND days_since_ra_purchase > 7
@@ -1574,6 +2019,8 @@ RULE 5: RA Credit Upsell
        delay: 7 days
        expected_conversion: 10-15%
 ```
+
+**Refund Plan screen** (partner product recommendations) is now powered by the 3-layer engine, not by campaign rules. Campaign rules handle cross-product engagement (emails, nudges). The marketplace engine handles product matching (what the user sees on the Refund Plan screen).
 
 ### 4F. Journey Mapping
 
@@ -1603,6 +2050,21 @@ PATH D: FileFree -> HYSA partner (refund routing)
   -> click HYSA CTA (8-12%) -> complete HYSA signup (50%)
   Net conversion: ~3-4.5% of filers become HYSA customers
   Revenue per converted user: $25-50 affiliate fee
+
+PATH E: LaunchFree -> FileFree Business Tax Filing (mandatory cross-sell)
+  Form LLC (100%) -> select tax election (partnership/S-Corp) (15-20% of formations)
+  -> see "File your business taxes with FileFree" CTA at formation + tax season email
+  -> click CTA (30-40%, high intent -- they MUST file) -> complete business return (80%)
+  Net conversion: ~4-6% of all LLC formers file business taxes via FileFree
+  Revenue per converted user: $49-99/return (1065/1120-S)
+  This is a MANDATORY obligation -- every LLC taxed as partnership or S-Corp MUST
+  file a business return. Unlike optional cross-sells, this is compliance-driven demand.
+
+PATH F: FileFree Pro CPA -> Consumer FileFree (CPA referral channel)
+  CPA uses FileFree Pro (100%) -> CPA recommends personal FileFree to clients
+  -> client visits filefree.ai (20-30% referral rate) -> signs up (50%) -> files (85%)
+  Net conversion: ~8.5-12.75% of CPA client base becomes FileFree users
+  Revenue per converted user: marketplace ARPU (varies by stage)
 ```
 
 ### 4G. Revenue Connection Map
@@ -1622,14 +2084,17 @@ How user intelligence events drive the 77% of revenue from referrals:
 | High engagement           | Tax Optimization Plan ($29/yr)    | 5-10%           | $29/yr             |
 
 
-### 4H. Cross-Product Consent
+### 4H. Cross-Product Consent (3-Tier System)
 
-- Opt-in checkbox (unchecked by default) on every signup form
-- Consent stored per user, per product, with timestamp
-- Cross-product emails only sent to users who explicitly opted in
-- Per-product unsubscribe in email footer: users can unsubscribe from FileFree emails without affecting LaunchFree (and vice versa). Consistent with Section 0C consent language and Section 0I consent architecture.
-- Consent audit trail maintained for CCPA compliance
-- Re-consent required if privacy policy materially changes
+Consent follows the 3-tier architecture defined in Section 0I. Each tier is independent -- users can opt into cross-product emails (Tier 1) without opting into personalized matching (Tier 2).
+
+- **Tier 1 (Cross-product)**: Opt-in checkbox on signup forms. Enables cross-product email campaigns. Per-product unsubscribe in email footer.
+- **Tier 2 (Personalized matching)**: Opt-in on Refund Plan screen AND user profile/settings page. Users who download PDF without reaching the Refund Plan screen should see Tier 2 opt-in via follow-up email or next login banner. Enables marketplace Fit Scores and personalized product ranking. Covers all 4 marketplace stages.
+- **Tier 3 (Anonymized insights)**: Opt-in during credit score check. Enables segment marketplace (Stage 3+).
+- Consent stored per user, per tier, with timestamp + consent text version + IP
+- Per-product unsubscribe in email footer: users can unsubscribe from FileFree emails without affecting LaunchFree (and vice versa). Consistent with Section 0C and Section 0I.
+- Re-consent required only if consent text materially changes. Marketplace stage upgrades do NOT require re-consent (Tier 2 language covers all matching methods).
+- CCPA audit trail maintained for all tiers
 
 ### 4I. Campaign System
 
@@ -1792,16 +2257,130 @@ Every month we delay credit score integration, we lose data compounding. A user 
 
 **UX**: "Want personalized financial recommendations? Let us check your credit score -- it won't affect your score." Subtle, opt-in, value-first framing.
 
-### 4N. Partner Dashboard (Phase 2+, paperworklabs.com/admin/partners)
+### 4N. Partner Dashboard (Marketplace Portal Seed)
 
-**Implementation note**: Built as a tab within P4.11 Revenue & Spend Intelligence (`/admin/revenue`), or elevated to P4.15 in Tier 3 if scope warrants a standalone page.
+The partner dashboard is not a reporting page -- it is the seed of the Stage 3 self-serve partner portal. Design the database schema and API routes for the full portal from day 1; expose features incrementally by stage.
 
-Show partners their performance data:
+**Stage 1-2 (internal only, paperworklabs.com/admin/partners)**:
 
-- Referral volume, conversion rate, revenue generated
-- User demographics (anonymized: age range, income bracket, state distribution)
-- Comparison to category average (e.g., "your HYSA converts 2x the average partner")
-- This makes us valuable to partners and increases retention -- partners who see data stay longer
+- Admin-only page. No partner login.
+- Per-partner conversion funnel: impressions -> clicks -> signups -> funded accounts -> revenue
+- Anonymized user demographics per partner (age range, income bracket, state distribution)
+- Comparison to category average ("your HYSA converts 2x the average partner")
+- Partner data makes us sticky: partners who see their conversion data don't churn
+
+**Stage 2 (partner-facing read-only)**:
+
+- Give top partners read-only access to their own conversion data via partner invite link
+- Separate partner auth (API key + partner ID, NOT user auth)
+- Partners see: their funnel, their demographics breakdown, their revenue, their rank vs. category
+- This is the trust-building step: partners who see data invest more in the relationship
+
+**Stage 3 (self-serve portal, paperworklabs.com/partners)**:
+
+- Partners can: submit/update product details, set eligibility criteria, place CPA bids on segments, view real-time conversion funnel, download anonymized segment reports
+- Self-serve onboarding: partner signs up, submits product info, gets API key, starts receiving matched traffic
+- Partner API: `POST /api/v1/partners/products`, `PUT /api/v1/partners/products/{id}/eligibility`, `POST /api/v1/partners/bids`
+
+**Stage 4 (full marketplace console)**:
+
+- Partners upload eligibility models (scoring functions), run segment simulations ("how many users match these criteria?"), A/B test bid strategies, and manage products programmatically via API
+- Real-time dashboard: live conversion funnel, revenue per hour, segment performance heatmap
+
+### 4O. Financial Marketplace Platform (The Long Game)
+
+This section defines the strategic evolution from affiliate links to a full two-sided financial product marketplace. It is the Credit Karma playbook adapted for a deeper-per-user, lower-volume model. The architecture is designed for Stage 4 from day 1 (see Section 4B data model, Section 4E recommendation engine); only the implementation advances by stage.
+
+#### Why This Is THE Strategic Play
+
+Credit Karma was acquired for $8.1B. Not because of free credit scores (everyone has those now). Because of **Lightbox**: a bidirectional marketplace where lenders upload underwriting models, CK matches them against 140M user profiles, and users see products with ~90% approval odds. Lenders pay CPA ($25-1,250 per approved customer).
+
+CK's ARPU: ~$11.43 ($1.6B revenue / 140M users). CK's per-user enterprise value at acquisition: $57.86 ($8.1B / 140M).
+
+FileFree's per-user data is 3-5x **deeper** than CK's: actual W-2 income (not self-reported), filing status, dependents, refund amount, employer, state, credit score trajectory, LLC formation data, quarterly tax behavior, and refund splitting behavior. Deeper data = higher conversion = higher ARPU at lower user counts.
+
+#### 4-Stage Evolution (Volume-Gated)
+
+**Stage 1 -- Affiliate Links (0-5K users, Year 1)**
+
+- Self-serve affiliate programs (Betterment, SoFi, Wealthfront via Impact.com/CJ Affiliate)
+- Static partner links on Refund Plan screen. Rules-based recommendation engine (Section 4E Layer 2: static scoring)
+- Revenue: flat CPA/CPS commissions ($25-100 per conversion)
+- ARPU: $3-7 (low volume, low attach rates for an unknown brand)
+- **What we're really building**: the user profile data asset. Every filing, every credit score check, every refund split, every quarterly estimate adds data points. The product is free. The data is the value.
+- **Stage gate to Stage 2**: 5K users with financial profiles AND conversion data across 3+ partner categories
+
+**Stage 2 -- Smart Matching (5K-25K users, Year 2)**
+
+- Thompson Sampling bandit (Section 4K Phase 2) replaces static partner ordering in Section 4E Layer 2
+- **Fit Score** visible to users: combines credit score + income bracket + filing status + state + age into a per-product match score (0-100). User sees: "This HYSA is a 94% fit for your profile."
+- FTC compliance constraint: NEVER "pre-approved", "guaranteed", "you qualify." Permitted: "strong match", "94% fit", "personalized for you." (FTC v. Credit Karma, Inc., FTC File No. 2023082 -- CK fined in 2022 for misleading "pre-approved" language.)
+- Personalized partner ranking: different users see different partner orders based on their profile
+- Begin tracking conversion rate per partner per user segment. This data becomes the pitch to upgrade partners from flat affiliate to tiered CPA.
+- Negotiate tiered affiliate rates with top-converting partners: "We're sending you pre-qualified leads with 3x your average conversion rate. Your standard affiliate CPA is $50. We want $75."
+- **Data reciprocity begins**: negotiate for top partners to share approval rates and funded amounts back to us (see PARTNERSHIPS.md)
+- ARPU: $8-15 (higher conversion from personalization + tiered rates)
+- **ARPU jump worked example (S1 $5 -> S2 $12)**: Stage 1 at 10K users: 3% attach rate x $50 avg CPA = $1.50 ARPU from affiliates + $2 from Tax Opt Plan + $1.50 from audit shield = $5. Stage 2: personalized ranking lifts attach rate to 6% (2x, documented in CK data), tiered CPA lifts avg to $75 (1.5x) = $4.50 ARPU from affiliates + $3 from Tax Opt Plan (better targeting) + $2 audit shield + $2.50 from refund splitting conversions = $12. The 2x conversion lift from personalized ranking is the primary driver.
+- **Stage gate to Stage 3**: 25K users, 3+ partners sharing approval data back, AND conversion data proving personalized ranking outperforms static
+
+**Stage 3 -- Partner API (25K-50K users, Year 2-3)**
+
+- **Key account strategy (chicken-and-egg mitigation)**: Identify 2-3 partners already sharing data at Stage 2 (Tier B). Offer first-mover advantage on the API: priority placement for 6 months, lower platform fees, dedicated onboarding support. These anchor partners prove the API value before broader launch. Without anchor partners, Stage 3 doesn't launch.
+- Build partner-facing API (see Section 4N Stage 3 spec):
+  - `POST /api/v1/partners/products` -- submit product parameters (APY, min balance, eligibility criteria, credit score ranges)
+  - `GET /api/v1/partners/segments` -- anonymized aggregate data on user segments matching criteria ("3,200 users in 700-749 credit band with income >$60K in CA")
+  - `POST /api/v1/partners/bids` -- set CPA bids per segment (higher bid = higher ranking for matching users)
+- **Segment marketplace**: partners bid on access to user segments, not individual users. No PII shared. Partners see only aggregate counts, demographics, and predicted conversion rates.
+- Self-serve partner onboarding: partners sign up, submit product details, set bids, track performance (Section 4N Stage 3)
+- Revenue model shifts from flat CPA to **auction-based CPA**: partners compete for top placement. CPA rises to $100-200 for premium segments (high-income, good credit, refund in hand)
+- ARPU: $15-35
+- **Stage gate to Stage 4**: 50K users, 10+ active API partners, AND auction dynamics demonstrably increasing CPA vs. flat rates
+
+**Stage 4 -- Full Marketplace (50K+ users, Year 3+)**
+
+- Partners upload eligibility models (credit score ranges, income thresholds, state restrictions, custom scoring functions) into a secure sandboxed environment. Models run against anonymized user profiles.
+- **Match Confidence** displayed to users: "Based on your financial profile, this product is a strong match." (Never "approved" or "guaranteed.")
+- Real-time matching: user's profile updates (new filing, credit score change) instantly re-rank available products
+- Partner console shows live conversion funnel: impressions -> clicks -> applications -> approvals -> revenue. Partners optimize in real-time.
+- Multi-product marketplace: credit cards, personal loans, HYSA, IRA, business loans (LaunchFree users), insurance, payroll services
+- Revenue model: **CPA auction + platform access fees**. Partners pay monthly platform fee ($500-2,000/mo) + CPA on conversions.
+- ARPU: $35-80+ (marketplace effect: more partners competing = higher CPAs = higher ARPU at the same user count)
+
+#### Why Multiples Expand at Stage 3-4
+
+Marketplace businesses command premium valuation multiples because of network effects: more partners = better product matching = more users = more partners. A rules-based affiliate product is worth 3-5x revenue. A two-sided marketplace with partner bidding and ML matching is worth 8-15x revenue. The jump from Stage 2 to Stage 3 is where valuation inflects.
+
+Fintech M&A benchmarks (2025-2026): median 4.4x EV/Revenue. North America premium: 6.4x. AI WealthTech: 14-16x. "Scaled Winners": 6-8x. Our target at Stage 3: 6-10x (justified by marketplace dynamics + deeper-per-user data than CK).
+
+#### Competitive Moat: Why a Competitor Can't Just Copy This
+
+Five compounding advantages that widen over time:
+
+1. **Tax return data is the rarest financial dataset**: No one else gets IRS-quality income verification for free. Banks have transaction data. CK has credit data. Only tax preparers have court-admissible income data. The other free tax preparers (FreeTaxUSA, Cash App Taxes) aren't building marketplaces -- they're features inside larger products.
+2. **Cross-product compound profiles**: A user who files taxes AND forms an LLC AND tracks quarterly estimates AND splits their refund has a 20+ data-point financial profile. A competitor starting today needs 2-3 years to build equivalent depth.
+3. **Time-series data compounds**: Credit score trajectory over 2+ years, income growth across filings, business formation-to-revenue tracking. Each year of data makes the profile exponentially more valuable for ML matching. A competitor who starts Year 2 is permanently 2 years behind on every user.
+4. **Trust built at the mandatory moment**: Tax filing is mandatory. CK is optional. Users who trust you with their SSN and W-2 have crossed the highest trust threshold in consumer finance. That trust transfers directly to financial product recommendations.
+5. **Cost structure moat**: 1 founder + 44 AI agents at $284/mo vs. CK's 1,300+ employees. Even at 50K users, the operation runs lean. Profitability arrives years earlier, which funds growth, which compounds the data advantage.
+
+#### Emerging Competitor Landscape (March 2026)
+
+
+| Competitor                | Model                                                                                        | Threat Level    | Our Advantage                                                                                                                                                                              |
+| ------------------------- | -------------------------------------------------------------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Taxu.io**               | Free basic + $10-29/mo business tier. 2M+ users, $5B+ processed. Personal + business filing. | MEDIUM-HIGH     | They charge for business features. We're free across products. They don't have LLC formation. They don't have a marketplace/intelligence play.                                             |
+| **Cairn (withcairn.com)** | Free AI LLC formation guide, 50 states. $14.99 for documents.                                | LOW-MEDIUM      | Guide only, not a full service. No ongoing compliance, no cross-sell to tax filing, no data moat.                                                                                          |
+| **ZenBusiness Velo**      | $0 LLC + AI assistant. $199-349/yr upsell model.                                             | MEDIUM          | Same upsell-heavy model we're undercutting. No tax filing. No financial marketplace.                                                                                                       |
+| **X.TAX**                 | Business-only tax filing, $95-159/return. AI-powered.                                        | LOW             | Not free, not personal filing, no formation, no marketplace. Different market.                                                                                                             |
+| **FreeTaxUSA**            | Free federal personal + business forms. $14.99 state. ~150 employees.                        | MEDIUM          | Established but no LLC formation, no AI advisory, no marketplace, no intelligence layer. Feature, not platform.                                                                            |
+| **Cash App Taxes**        | Free federal + state. Mobile-first.                                                          | MEDIUM          | Block/Square subsidiary. No formation, no marketplace. Free filing is a feature to drive Cash App adoption, not a standalone product.                                                      |
+| **Credit Karma (Intuit)** | Free credit scores + tax filing redirected to TurboTax (2023). 140M users.                   | HIGH (at scale) | CK no longer files taxes directly -- all filing redirected to TurboTax since 2023 Intuit integration. They have scale but won't innovate on filing (cost center). Our threat is real only if we reach 100K+ users. |
+| **MagneticTax**           | B2B AI tax prep for CPAs. YC S25. Automates 1040 data entry into existing tax software.      | LOW-MEDIUM      | We build the same OCR/extraction pipeline for consumer filing anyway -- B2B is marginal cost. They're VC-funded with burn; we're bootstrapped. They have no consumer product, no marketplace, no cross-product moat. |
+| **NerdWallet**            | Free tax filing via Column Tax partnership. Personal finance marketplace. 20M+ monthly users.| MEDIUM          | NerdWallet's filing is a Column Tax white-label, not proprietary. They're a content/affiliate company, not a tax platform. No formation, no intelligence layer depth. |
+| **TaxSlayer**             | Free federal tier (Simply Free). $24.95-64.95 paid tiers. Established brand.                 | LOW-MEDIUM      | Free tier limited to simple returns (no 1099, no itemizing). No LLC formation, no marketplace, no AI advisory. Traditional tax software, not a platform play. |
+| **TaxDown**               | AI-powered tax filing. Europe-first, expanding. Celebrity marketing + TikTok Spark Ads.      | LOW (geography) | Europe-focused. If they enter US market, our depth advantage (formation + marketplace + advisory) and cost structure ($284/mo vs VC burn) differentiate. Monitor for US expansion. |
+
+
+**Key takeaway**: No single competitor combines free personal tax filing + free LLC formation + B2B CPA automation + financial intelligence marketplace + compliance SaaS. That combination IS the moat. Taxu.io comes closest on the filing side but charges for business features and has no formation/marketplace play. MagneticTax validates the B2B CPA market but lacks a consumer product.
 
 ---
 
@@ -2152,6 +2731,59 @@ Content that doesn't tie back to a mission pillar gets killed. This is how brand
 - **PR / press**: No story yet. Revisit after Product Hunt launch with traction data.
 
 **Ad budget**: $100-300/mo max for TikTok Spark Ads + Meta boost, starting at LaunchFree launch. Only boost organic content that already performed well. This is NOT a paid-first strategy.
+
+### 5L. Scale Growth Playbook: Path to 2M Users (Lessons from Taxu, TaxDown, Credit Karma)
+
+The organic-first strategy (Section 5K) projects 5K-23K users in Year 1. To reach 2M+ users (Taxu-level scale), we need additional high-leverage growth channels. These lessons come from studying how Taxu.io reached 2M users, how TaxDown uses celebrity marketing and TikTok Spark Ads for seasonal surges, and how Credit Karma grew to 100M on free-product virality.
+
+#### Channel 1: Tax Season Surge Marketing (TaxDown Playbook)
+
+TaxDown runs aggressive paid social during tax season (Jan-April) and goes quiet the rest of the year. This is smart: 80% of filing volume happens in a 10-week window. Concentrate spend.
+
+- **January-April**: 5x ad budget ($500-1,500/mo on TikTok Spark Ads + Meta). Boost only top 5% of organic content. Target: "free tax filing", "file taxes free", "TurboTax alternative".
+- **Celebrity/creator partnerships**: At 25K+ users, engage 2-3 micro-influencers ($500-1,000 each) in personal finance / Gen Z space. NOT before product traction justifies the spend.
+- **Seasonal urgency content**: "IRS deadline in X days", "Most people overpay for tax prep", countdown content that creates FOMO.
+- **Expected impact**: 10K-50K users per tax season at $0.50-2.00 CAC (highly efficient for paid social during high-intent season).
+
+#### Channel 2: B2B API Distribution (Taxu Playbook)
+
+Taxu.io reached 2M users partly by offering their filing engine as an embeddable API for other platforms. This is a distribution multiplier.
+
+- **Tax-as-a-Service API**: Expose FileFree's tax calculation + filing engine as an API for fintech apps, payroll companies, and banking apps that want to offer "file taxes" as a feature.
+- **Pricing**: Per-return API fee ($5-15/return) or monthly access fee ($500-2,000/mo). White-label option available.
+- **Target partners**: Payroll companies (Gusto, ADP), banking apps (Chime, Current), fintech platforms that want to add tax filing without building it.
+- **Expected impact**: Each API partner brings their existing user base. 5 partners with 10K users each = 50K filings/year through our engine. We don't need to acquire those users -- they come through the partner.
+- **Timeline**: Year 2 (after own MeF transmitter is proven in Season 1). API spec development starts Phase 8.
+
+#### Channel 3: Community-Led Growth (Credit Karma + Reddit Playbook)
+
+Credit Karma grew its first 1M users through organic community engagement: Reddit, personal finance forums, word-of-mouth. No paid ads for 3 years.
+
+- **Reddit strategy**: Authentic, value-first answers in r/personalfinance, r/tax, r/smallbusiness, r/freelance. Never spam. Build credibility by answering questions before linking to product. "I built a free tax filing app" posts perform well on Reddit when the founder is genuinely helpful.
+- **Discord / community**: Launch a "Tax Help" Discord server. Free community tax Q&A (educational, not advice). Cross-sell to FileFree for filing. Builds trust and organic referrals.
+- **Indie Hackers / Build in Public**: Document the journey of building FileFree and LaunchFree. "1 founder + 44 AI agents building a fintech" is a compelling narrative that attracts early adopters and press.
+- **Expected impact**: 1K-5K users from community in Year 1, compounding as reputation builds.
+
+#### Channel 4: B2B CPA Outreach (FileFree Pro)
+
+FileFree Pro (Section 1C) targets CPA firms directly. Each CPA firm processes 50-500+ returns/season. CPA adoption is a distribution multiplier for brand awareness.
+
+- **LinkedIn + direct email**: Target independent CPAs and small firms (1-10 preparers). 75K+ CPA firms in the US.
+- **CPA referral program**: CPAs who use FileFree Pro can refer their clients to consumer FileFree for personal filing. "Your CPA uses FileFree" is a trust signal that converts.
+- **State CPA society partnerships**: Sponsor or present at state CPA society events. Low cost, high-credibility distribution.
+- **Expected impact**: 100-300 CPA firms in Year 1 -> each firm is a distribution channel for consumer product. 300 firms x 100 clients aware = 30K potential consumer users.
+
+#### 2M User Acquisition Model (Year 1-5 Projection)
+
+| Year | Organic + SEO | Paid Social | B2B API | Community | CPA Channel | Cross-sell | Total |
+| ---- | ------------- | ----------- | ------- | --------- | ----------- | ---------- | ----- |
+| Y1 | 5K-10K | 5K-15K | 0 | 1K-5K | 1K-3K | 1K-2K | 13K-35K |
+| Y2 | 20K-50K | 30K-100K | 20K-50K | 5K-15K | 5K-15K | 5K-10K | 85K-240K |
+| Y3 | 50K-100K | 100K-300K | 100K-200K | 20K-50K | 15K-40K | 20K-50K | 305K-740K |
+| Y4 | 100K-200K | 200K-400K | 200K-500K | 50K-100K | 30K-80K | 50K-100K | 630K-1.38M |
+| Y5 | 200K-400K | 300K-500K | 300K-700K | 100K-200K | 50K-150K | 100K-200K | 1.05M-2.15M |
+
+**Key insight**: B2B API distribution is the 2M-user unlock. Organic and paid social plateau at 500K-900K. API distribution through partner platforms provides the multiplier to reach 2M+. This is exactly how Taxu reached scale -- they didn't acquire 2M users individually; they powered tax filing inside other apps.
 
 ---
 
@@ -2623,17 +3255,17 @@ No agent is currently assigned to write production code for FileFree or LaunchFr
 **Pre-code blockers (Section 0G)**: EFIN application, cyber insurance, LLC name decision, attorney consult, breach response plan. These run parallel to Phase 0 tasks below.
 
 
-| Task                         | Owner     | Branch                   | Files/Specs                                                                                                                                                                                                                                        | Acceptance Criteria                                                                                                                                                                                | Depends On                             | Status             |
-| ---------------------------- | --------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- | ------------------ |
-| P0.1 Buy domains             | Founder 1 | N/A (no code)            | N/A                                                                                                                                                                                                                                                | launchfree.ai + filefree.ai registrar confirmed                                                                                                                                                    | None                                   | DONE               |
-| P0.2 Migrate FileFree domain | Founder 1 | `chore/domain-migration` | `web/next.config.ts` (redirects), Vercel dashboard (custom domain), DNS provider (A/CNAME records)                                                                                                                                                 | filefree.ai serves the app. filefree.tax 301-redirects to filefree.ai. All existing links preserved. SSL cert issued.                                                                              | P0.1                                   | NOT STARTED        |
-| P0.3 Google Workspace        | Founder 1 | N/A (no code)            | Google Admin console: add filefree.ai, launchfree.ai as secondary domains. Create aliases: hello@, support@, legal@ for each.                                                                                                                      | Emails received at [hello@filefree.ai](mailto:hello@filefree.ai), [hello@launchfree.ai](mailto:hello@launchfree.ai). SPF/DKIM/DMARC configured for all domains.                                    | P0.1                                   | NOT STARTED        |
-| P0.4 Google Drive HQ         | Founder 1 | N/A (no code)            | Create folder structure: `Venture HQ/Operations/Daily Briefings/`, `Venture HQ/Operations/Weekly Plans/`, `Venture HQ/Trinkets/One-Pagers/`, `Venture HQ/Trinkets/PRDs/`, `Venture HQ/Intelligence/`. Add GDrive MCP server to `.cursor/mcp.json`. | GDrive accessible from Cursor via MCP. Folder structure matches EA spec in `ea.mdc`.                                                                                                               | P0.3                                   | NOT STARTED        |
-| P0.5 Secure social handles   | Founder 1 | N/A (no code)            | Register @launchfree on TikTok, Instagram, X, YouTube. Set profile pic to monogram, link to launchfree.ai.                                                                                                                                         | All 4 accounts created, profile pics set, bios written, URLs point to launchfree.ai.                                                                                                               | P0.1                                   | NOT STARTED        |
-| P0.6 Form LLC                | Founder 1 | N/A (no code)            | California SOS online filing. DBA filings at county clerk (FileFree, LaunchFree, Trinkets).                                                                                                                                                        | Articles of Organization filed with CA SOS. Confirmation number received. DBA filings submitted. EIN applied for on IRS.gov (same day as LLC confirmation). Bank account opened.                   | LLC name decided (Section 0G #4) -- DONE | NOT STARTED        |
-| P0.7 Migrate DNS subdomains  | Founder 1 | `chore/dns-migration`    | DNS provider records: ops.paperworklabs.com -> Hetzner (n8n), social.paperworklabs.com -> Hetzner (Postiz). Point paperworklabs.com -> Vercel (apps/studio). Remove old filefree.tax subdomains.                                                   | n8n accessible at ops.paperworklabs.com. Postiz accessible at social.paperworklabs.com. paperworklabs.com serves studio app. Old subdomains return 404 or redirect.                                | P0.2                                   | NOT STARTED        |
-| P0.8 File trademarks         | Founder 1 | N/A (no code)            | USPTO TEAS Plus application. FILEFREE: Class 036 + 042. LAUNCHFREE: Class 035 + 042. Supplemental Register.                                                                                                                                        | Applications filed. Serial numbers received. Docket dates noted in TASKS.md.                                                                                                                       | Product launch (needs specimen of use) | DEFERRED           |
-| P0.9 Legal compliance setup  | Founder 1 | `chore/legal-compliance` | Update `.cursor/rules/social.mdc`, `growth.mdc`, `brand.mdc` to include Content Review Gate checklist from Section 0C. Create/update `web/src/app/(legal)/privacy/page.tsx`, `web/src/app/(legal)/terms/page.tsx`.                                 | Every content-producing persona .mdc includes the Content Review Gate checklist verbatim. Privacy policy and ToS pages updated with cross-sell consent language from Section 0C Legal Risk Matrix. | None (can start immediately)           | NOT STARTED        |
+| Task                         | Owner     | Branch                   | Files/Specs                                                                                                                                                                                                                                        | Acceptance Criteria                                                                                                                                                                                | Depends On                               | Status      |
+| ---------------------------- | --------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | ----------- |
+| P0.1 Buy domains             | Founder 1 | N/A (no code)            | N/A                                                                                                                                                                                                                                                | launchfree.ai + filefree.ai registrar confirmed                                                                                                                                                    | None                                     | DONE        |
+| P0.2 Migrate FileFree domain | Founder 1 | `chore/domain-migration` | `web/next.config.ts` (redirects), Vercel dashboard (custom domain), DNS provider (A/CNAME records)                                                                                                                                                 | filefree.ai serves the app. filefree.tax 301-redirects to filefree.ai. All existing links preserved. SSL cert issued.                                                                              | P0.1                                     | NOT STARTED |
+| P0.3 Google Workspace        | Founder 1 | N/A (no code)            | Google Admin console: add filefree.ai, launchfree.ai as secondary domains. Create aliases: hello@, support@, legal@ for each.                                                                                                                      | Emails received at [hello@filefree.ai](mailto:hello@filefree.ai), [hello@launchfree.ai](mailto:hello@launchfree.ai). SPF/DKIM/DMARC configured for all domains.                                    | P0.1                                     | NOT STARTED |
+| P0.4 Google Drive HQ         | Founder 1 | N/A (no code)            | Create folder structure: `Venture HQ/Operations/Daily Briefings/`, `Venture HQ/Operations/Weekly Plans/`, `Venture HQ/Trinkets/One-Pagers/`, `Venture HQ/Trinkets/PRDs/`, `Venture HQ/Intelligence/`. Add GDrive MCP server to `.cursor/mcp.json`. | GDrive accessible from Cursor via MCP. Folder structure matches EA spec in `ea.mdc`.                                                                                                               | P0.3                                     | NOT STARTED |
+| P0.5 Secure social handles   | Founder 1 | N/A (no code)            | Register @launchfree on TikTok, Instagram, X, YouTube. Set profile pic to monogram, link to launchfree.ai.                                                                                                                                         | All 4 accounts created, profile pics set, bios written, URLs point to launchfree.ai.                                                                                                               | P0.1                                     | NOT STARTED |
+| P0.6 Form LLC                | Founder 1 | N/A (no code)            | California SOS online filing. DBA filings at county clerk (FileFree, LaunchFree, Trinkets).                                                                                                                                                        | Articles of Organization filed with CA SOS. Confirmation number received. DBA filings submitted. EIN applied for on IRS.gov (same day as LLC confirmation). Bank account opened.                   | LLC name decided (Section 0G #4) -- DONE | NOT STARTED |
+| P0.7 Migrate DNS subdomains  | Founder 1 | `chore/dns-migration`    | DNS provider records: ops.paperworklabs.com -> Hetzner (n8n), social.paperworklabs.com -> Hetzner (Postiz). Point paperworklabs.com -> Vercel (apps/studio). Remove old filefree.tax subdomains.                                                   | n8n accessible at ops.paperworklabs.com. Postiz accessible at social.paperworklabs.com. paperworklabs.com serves studio app. Old subdomains return 404 or redirect.                                | P0.2                                     | NOT STARTED |
+| P0.8 File trademarks         | Founder 1 | N/A (no code)            | USPTO TEAS Plus application. FILEFREE: Class 036 + 042. LAUNCHFREE: Class 035 + 042. Supplemental Register.                                                                                                                                        | Applications filed. Serial numbers received. Docket dates noted in TASKS.md.                                                                                                                       | Product launch (needs specimen of use)   | DEFERRED    |
+| P0.9 Legal compliance setup  | Founder 1 | `chore/legal-compliance` | Update `.cursor/rules/social.mdc`, `growth.mdc`, `brand.mdc` to include Content Review Gate checklist from Section 0C. Create/update `web/src/app/(legal)/privacy/page.tsx`, `web/src/app/(legal)/terms/page.tsx`.                                 | Every content-producing persona .mdc includes the Content Review Gate checklist verbatim. Privacy policy and ToS pages updated with cross-sell consent language from Section 0C Legal Risk Matrix. | None (can start immediately)             | NOT STARTED |
 
 
 ### Phase 1: Monorepo Restructure (Weeks 3-8, Realistic)
@@ -2707,6 +3339,8 @@ This is not a coding task with a side of research. This is an AI-powered data pi
 | P3.8 Legal pages                  | Privacy policy, ToS for LaunchFree (adapt from FileFree)         |
 
 
+**Phase 3.5 (post-LaunchFree MVP)**: Compliance-as-a-Service subscription ($49-99/yr). Add `compliance_calendar` table, extend 50-state JSON configs with annual report deadlines and franchise tax amounts, build email/push reminder engine via n8n workflow, and add compliance dashboard page in LaunchFree. See Section 1B.1 for full business case.
+
 ### Phase 4: Command Center (Week 8-14, parallel with Phase 3)
 
 The command center is the control plane for the entire venture. It is what makes the "one human + 44 agents" model operationally viable. Every page is spec'd in detail in Section 3.
@@ -2751,7 +3385,7 @@ The command center is the control plane for the entire venture. It is what makes
 
 | Task                                  | Details                                                                                                                                                                                                                                                                                                    |
 | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| P5.1 Venture identity data model      | VentureIdentity, IdentityProduct, UserEvent, UserSegment, Campaign, CampaignEvent tables                                                                                                                                                                                                                   |
+| P5.1 Venture identity data model      | VentureIdentity, IdentityProduct, UserEvent, UserSegment, Campaign, CampaignEvent tables. **Also create marketplace tables (empty, schema-only)**: partner_products, partner_eligibility, fit_scores, partner_bids, recommendations, recommendation_outcomes. Tables exist from day 1 per strategic architecture (D66). |
 | P5.2 Cross-product opt-in consent     | "I consent to [LLC Name] using my information across FileFree, LaunchFree, and related services to send me product updates and recommendations. I can unsubscribe from any product at any time." Unchecked default. Per-brand unsubscribe in email footer. See Section 0C Legal Risk Matrix for full spec. |
 | P5.3 packages/intelligence engine     | Rules-based recommendation engine (Phase 1) with profile builder, partner matcher, and campaign triggers. See Section 4 for full spec.                                                                                                                                                                     |
 | P5.4 packages/email templates         | React Email templates: onboarding series, lifecycle campaigns, partner offers (Legal reviewed)                                                                                                                                                                                                             |
@@ -2762,6 +3396,7 @@ The command center is the control plane for the entire venture. It is what makes
 | P5.9 Experimentation framework        | PostHog feature flags for A/B testing recommendation placements and partner ordering. FTC compliance constraints baked in. See Section 4K.                                                                                                                                                                 |
 | P5.10 KPI dashboard setup             | PostHog dashboards for company KPIs: activation rate, completion rate, MAU, partner conversion rate. See Section 4L.                                                                                                                                                                                       |
 | P5.11 Lifecycle campaign workflows    | n8n workflows for 7 trigger-based campaigns (post-filing refund, mid-year check-in, post-formation banking, credit score change, tax season return, annual report deadline, dormant re-engagement). See Section 4L.                                                                                        |
+| P5.12 Partner auth scaffold           | API key + partner ID authentication for partner dashboard (Section 4N Stage 2+). Build routes at `/api/v1/partners/*`. Initially unused -- scaffold exists so partner auth is ready when first partner requests dashboard access. Includes: partner registration, API key generation, rate limiting.        |
 
 
 ### Phase 6: Agent Restructure + Social Pipeline (Week 10-14)
@@ -2781,31 +3416,42 @@ The command center is the control plane for the entire venture. It is what makes
 ### Phase 7: FileFree Season Prep (October 2026)
 
 
-| Task                                  | Details                                                                                                                                 |
-| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| P7.1 Resume FileFree Sprint 4         | All 50 state tax calcs (data already built in P2.3), PDF polish                                                                         |
-| P7.2 Column Tax integration           | SDK integration, sandbox testing                                                                                                        |
-| P7.3 TaxAudit partnership             | White-label audit shield integration (if Founder 2 closed deal)                                                                         |
-| P7.4 Refund Plan screen               | HYSA referrals, financial product recs, audit shield upsell                                                                             |
-| P7.5 Transactional emails             | Welcome, filing confirmation, abandonment drip                                                                                          |
-| P7.6 FileFree -> LaunchFree campaigns | Post-filing cross-sell for users with biz income                                                                                        |
-| P7.7 Marketing page refresh           | Social proof, filing counter, comparison table                                                                                          |
-| P7.8 1099-NEC + Schedule C support    | Freelancer/gig income. 1099-NEC extraction via OCR pipeline, Schedule C business income/expenses                                        |
-| P7.9 Dependent support                | Dependent information capture, Child Tax Credit ($2,000/child), EITC calculations, HOH filing status                                    |
-| P7.10 Schedule B (interest/dividends) | Interest and ordinary dividend income, auto-populate from 1099-INT/1099-DIV                                                             |
-| P7.11 Schedule 1 (additional income)  | Student loan interest, educator expenses, HSA deductions, IRA contributions                                                             |
-| P7.12 All 50 state return engines     | Data-driven state tax calculation engine. Each state defined in JSON (rates, brackets, credits, conformity). ALL 50 states from launch. |
+| Task                                  | Details                                                                                                                                            |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P7.1 Resume FileFree Sprint 4         | All 50 state tax calcs (data already built in P2.3), PDF polish                                                                                    |
+| P7.2 Column Tax integration           | SDK integration, sandbox testing                                                                                                                   |
+| P7.3 TaxAudit partnership             | White-label audit shield integration (if Founder 2 closed deal)                                                                                    |
+| P7.4 Refund Plan screen               | HYSA referrals, financial product recs, audit shield upsell, refund splitting UI (Form 8888), goal-based savings recommendations. See Section 1B.3 |
+| P7.5 Transactional emails             | Welcome, filing confirmation, abandonment drip                                                                                                     |
+| P7.6 FileFree -> LaunchFree campaigns | Post-filing cross-sell for users with biz income                                                                                                   |
+| P7.7 Marketing page refresh           | Social proof, filing counter, comparison table                                                                                                     |
+| P7.8 1099-NEC + Schedule C support    | Freelancer/gig income. 1099-NEC extraction via OCR pipeline, Schedule C business income/expenses                                                   |
+| P7.9 Dependent support                | Dependent information capture, Child Tax Credit ($2,000/child), EITC calculations, HOH filing status                                               |
+| P7.10 Schedule B (interest/dividends) | Interest and ordinary dividend income, auto-populate from 1099-INT/1099-DIV                                                                        |
+| P7.11 Schedule 1 (additional income)  | Student loan interest, educator expenses, HSA deductions, IRA contributions                                                                        |
+| P7.12 All 50 state return engines     | Data-driven state tax calculation engine. Each state defined in JSON (rates, brackets, credits, conformity). ALL 50 states from launch.            |
+| P7.13 MeF schema acquisition          | Download ALL IRS + E-Standards XML schemas. Parse into Zod types (TS) and Pydantic models (Python). See Section 7D.                                |
+| P7.14 MeF local validation engine     | Build XML generator + local schema validator. Generate all 13 IRS test scenarios. Iterate to 100% local pass rate. See Section 7D.                 |
+| P7.15 State test return factory       | For each of 42 MeF states, generate test return with correct state schema. Validate ALL state attachments locally. See Section 7D.                 |
+| P7.16 ATS submission                  | Submit all 13 federal scenarios (locally validated). Monitor acknowledgments. Fix and resubmit rejections. See Section 7D.                         |
+| P7.17 Communication test              | Automated end-to-end transmission test with IRS. See Section 7D.                                                                                   |
+| P7.18 Idempotency middleware          | FastAPI middleware + Redis backend. `X-Idempotency-Key` header on all filing/payment/submission endpoints. See Section 2B.1                        |
+| P7.19 Circuit breaker wrappers        | `pybreaker` integration for Cloud Vision, OpenAI, IRS MeF, Column Tax, affiliate APIs. Degradation strategies per service. See Section 2B.2        |
+| P7.20 Reconciliation pipeline         | Dual-path tax calculation verification. Nightly batch validation against IRS Pub 17 test vectors. See Section 2B.3                                 |
+| P7.21 OpenTelemetry instrumentation   | Distributed tracing across OCR-to-filing pipeline. Grafana Cloud free tier. Filing Health dashboard. See Section 2B.4                              |
+| P7.22 Load testing suite              | k6 scripts for 4 tax season scenarios. Monthly runs from October 2026. Performance budget enforcement. See Section 2B.5                            |
 
 
 ### Form Coverage Roadmap
 
 
-| Milestone                      | Forms                                                                                                  | Notes                                                      |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
-| **January 2027 launch**        | 1040 + Schedule 1 + Schedule B + Schedule C + 1099-NEC/INT/DIV + dependents + ALL 50 state returns     | Covers ~80% of US filers                                   |
-| **February 2027 (mid-season)** | Schedule A (itemized deductions) + Schedule D (capital gains basics)                                   | Covers homeowners + basic investors                        |
-| **Year 2 (2027-2028 season)**  | Schedule E (rental), Schedule SE (self-employment tax), multi-state, HSA (Form 8889), K-1 pass-through | Covers small landlords, full self-employed, health savings |
-| **Year 3+**                    | Depreciation (Form 4562), AMT (Form 6251), brokerage import (CSV/API), foreign income (Form 2555)      | Edge cases, power users                                    |
+| Milestone                      | Forms                                                                                                  | Notes                                                                        |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| **January 2027 launch**        | 1040 + Schedule 1 + Schedule B + Schedule C + 1099-NEC/INT/DIV + dependents + ALL 50 state returns     | Covers ~80% of US filers. Phase 7-8.                                         |
+| **February 2027 (mid-season)** | Schedule A (itemized deductions) + Schedule D (capital gains basics)                                   | Covers homeowners + basic investors. Phase 8.                                |
+| **Year 2 (2027-2028 season)**  | Schedule E (rental), Schedule SE (self-employment tax), multi-state, HSA (Form 8889), K-1 pass-through | Covers small landlords, full self-employed, health savings. Phase 10 (K-1). |
+| **Year 2 (business filing)**   | Form 1065 (partnership/LLC), Form 1120-S (S-Corp), Schedule K-1 generation                             | Business returns. $49-99/return (consumer), included in Pro Firm. Phase 10. |
+| **Year 3+**                    | Depreciation (Form 4562), AMT (Form 6251), brokerage import (CSV/API), foreign income (Form 2555)      | Edge cases, power users.                                                     |
 
 
 **MeF ATS testing scope**: The October 2026 ATS testing must cover 1040 + Schedule 1 + B + C + state return XML schemas for ALL 50 states. Start XML generator development by June 2026.
@@ -2867,6 +3513,39 @@ Federal tax is uniform. State tax is chaos. The engine uses three tiers to handl
 | P8.8 Refund Advance integration | If partner secured. Early refund access as acquisition tool                                                                                           |
 
 
+### Phase 9: FileFree Pro -- B2B CPA Product (December 2026 - January 2027)
+
+Leverages the OCR pipeline and tax calculation engine built in Phase 7. ~80% shared infrastructure. Timeline starts December 2026 (Phase 7 OCR is complete), launches January 2027 alongside consumer FileFree for the same tax season. See Section 1C for full product spec.
+
+
+| Task                            | Details                                                                                                                                                                            |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P9.1 Scaffold apps/filefree-pro | Next.js app at `apps/filefree-pro/`. Package name `@venture/filefree-pro`. `[data-theme="filefree"]` (same brand). Landing at `/`, dashboard at `/dashboard`.                      |
+| P9.2 CPA firm onboarding flow   | Firm registration (name, firm size, tax software used), team invites, role management (admin/preparer/reviewer). Multi-tenant data model: `firms`, `firm_members`, `firm_clients`. |
+| P9.3 Bulk document upload       | Drag-and-drop multiple W-2s/1099s per client. Queue through shared OCR pipeline (`apis/filefree/` with firm-scoped routes). Batch progress tracking with per-document status.      |
+| P9.4 Professional dashboard     | Client list, per-client document status, extraction confidence scores, field-by-field review workflow, approval/correction interface.                                               |
+| P9.5 Tax software export        | Generate import files for UltraTax (CSV), Drake (XML), ProConnect (CSV), Lacerte (CSV). Publicly documented formats. Per-client or batch export.                                  |
+| P9.6 Stripe B2B billing         | Monthly subscription plans (Solo $49, Team $99, Firm $199). Seat-based billing, usage metering (returns/mo), annual discount (20%).                                               |
+| P9.7 CPA-specific landing page  | `pro.filefree.ai` landing page. SEO targets: "AI tax preparation software for CPAs", "automated W-2 data entry". Comparison with MagneticTax and manual entry.                   |
+| P9.8 CPA outreach campaign      | Target independent CPAs and small firms (1-10 preparers). LinkedIn + direct email campaign. Tax season urgency messaging. Product Hunt launch for B2B segment.                     |
+
+
+### Phase 10: Business Tax Filing (Year 2, 2027-2028 Season)
+
+Business returns (1065, 1120-S) serve both consumer FileFree users with pass-through entities and FileFree Pro CPA firms. Priced at $49-99/return for consumer, included in Pro Firm plan.
+
+
+| Task                                  | Details                                                                                                                                                                                |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P10.1 Form 1065 engine                | Partnership/multi-member LLC return. Schedule K-1 generation for each partner. Pass-through income/loss allocation.                                                                    |
+| P10.2 Form 1120-S engine              | S-Corp return. Schedule K-1 generation. Reasonable compensation analysis (AI-assisted).                                                                                                |
+| P10.3 Business expense categorization | AI-powered expense categorization from uploaded bank statements or manual entry. Map to Schedule C/1065/1120-S line items.                                                             |
+| P10.4 K-1 import for personal returns | Recipients of K-1s (from client's own businesses or external) can import pass-through income into their 1040 via OCR or manual entry.                                                 |
+| P10.5 MeF business return schemas     | Download IRS business return XML schemas. Extend MeF local validation engine (Section 7D) to cover 1065 and 1120-S.                                                                   |
+| P10.6 Business filing pricing         | Stripe integration for business return fees: $49/return (1065), $99/return (1120-S). Free for Pro Firm plan subscribers. LaunchFree cross-sell: first business return free.            |
+| P10.7 LaunchFree -> FileFree Business | Mandatory cross-sell path: every LaunchFree LLC former who selects "Partnership" or "S-Corp" tax election sees "File your business taxes with FileFree" at formation and at tax season. |
+
+
 ### Background Tasks (Continuous)
 
 
@@ -2902,6 +3581,8 @@ The 8-phase plan spans infrastructure (now) through FileFree launch (January 202
 | Phase 6 (Agent Restructure)    | 4 weeks      | 2-3 weeks (with right-sizing) | Reduced agent count (see Section 6 stress test). Most personas are config files, not code. Social pipeline is the only complex build.                                                                                    | PARTIAL -- social pipeline defers                            |
 | Phase 7 (FileFree Season Prep) | October 2026 | October 2026 (HARD DEADLINE)  | IRS season doesn't move. Must start MeF XML generator by June 2026 to hit October ATS testing window.                                                                                                                    | NO -- date is external                                       |
 | Phase 8 (FileFree Launch)      | January 2027 | January 2027 (HARD DEADLINE)  | Tax season start. IRS accepts returns ~late January.                                                                                                                                                                     | NO -- date is external                                       |
+| Phase 9 (FileFree Pro)         | Dec 2026     | Jan-Feb 2027                  | B2B CPA product. ~80% shared tech from Phase 7. Delta: multi-tenant, bulk upload, tax software export, Stripe B2B billing. ~2-3 weeks incremental.                                                                      | YES -- defer to mid-season if Phase 7/8 tight                |
+| Phase 10 (Business Tax Filing) | Year 2       | 2027-2028 season              | Forms 1065 (partnership), 1120-S (S-Corp). Serves both consumer and Pro. Requires new MeF schemas and K-1 generation engine.                                                                                            | YES -- Year 2 product, not Year 1                            |
 
 
 **Timeline**: 10 months (March 2026 - January 2027). The primary bottleneck is founder decision-making and context-switching between products. Mitigation: batch similar work (e.g., all legal tasks in one sprint), use agents to pre-research and draft so founder reviews rather than creates, and protect 2-hour deep work blocks daily. Phase 7 is tight but achievable if EFIN application happens THIS WEEK and MeF XML development starts by June 2026.
@@ -3034,6 +3715,29 @@ When execution begins, the Phase 0-8 tasks above get merged into `docs/TASKS.md`
 
 ## 9. McKinsey Self-Review: All Personas Critique This Plan
 
+### Review Round 3: Marketplace Architecture Deep Dive (March 2026)
+
+After adding the Financial Marketplace Platform (Section 4O), marketplace-ready data model (4B), pluggable recommendation engine (4E), 3-tier consent (0I/4H), partner dashboard evolution (4N), and competitor landscape -- all personas reviewed the complete plan. 3 HIGH findings were fixed inline. 6 MEDIUM findings fixed (March 2026). 5 of 7 LOW findings fixed. 2 LOW findings remain OPEN (F19: CCPA "sale" analysis, F24: partner scoring).
+
+
+| #   | Finding                                          | Persona      | Severity | Status | Action Needed                                                                                                                                                                                                                                             |
+| --- | ------------------------------------------------ | ------------ | -------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F13 | No Phase tasks for marketplace tables            | Engineering  | MEDIUM   | FIXED  | Added marketplace tables (partner_products, partner_eligibility, fit_scores, partner_bids, recommendations, recommendation_outcomes) to P5.1 task description. Tables exist empty from day 1.                                                              |
+| F14 | Partner auth system not in Phase tasks           | Engineering  | MEDIUM   | FIXED  | Added P5.12: Partner auth scaffold with API key + partner ID authentication, rate limiting, `/api/v1/partners/*` routes.                                                                                                                                  |
+| F15 | Tier 2 consent only on Refund Plan screen        | Legal        | MEDIUM   | FIXED  | Updated Section 4H: Tier 2 opt-in now on Refund Plan screen AND user profile/settings page. Users who skip Refund Plan see Tier 2 via follow-up email or next login banner.                                                                              |
+| F16 | Stage 3 chicken-and-egg problem unaddressed      | Strategy     | MEDIUM   | FIXED  | Added key account strategy to Stage 3 in Section 4O: identify 2-3 Tier B partners, offer first-mover advantage (priority placement, lower fees, dedicated onboarding). Stage 3 doesn't launch without anchor partners.                                    |
+| F17 | Data reciprocity technical mechanism unspecified | Partnerships | MEDIUM   | FIXED  | Added technical mechanism by stage to PARTNERSHIPS.md: Stage 2 = monthly CSV email, Stage 3 = webhook callback to `/api/v1/partners/outcomes`, Stage 4 = real-time bidirectional API.                                                                     |
+| F18 | ARPU jump S1->S2 needs justification             | CFO          | MEDIUM   | FIXED  | Added worked example to Section 4O Stage 2: S1 $5 ARPU (3% attach x $50 CPA + Tax Opt + audit shield) -> S2 $12 ARPU (6% attach from 2x personalization lift x $75 tiered CPA + improved targeting).                                                     |
+| F19 | Aggregate data CCPA "sale" analysis needed       | Legal        | LOW      | OPEN   | Tier 3 consent shares "anonymized, aggregate" data with partners. Under CCPA, if a partner can combine aggregate data with their own data to re-identify users, this may constitute a "sale." Add a note that Legal persona should review before Stage 3. |
+| F20 | FTC consent order reference missing              | Legal        | LOW      | FIXED  | Added "FTC v. Credit Karma, Inc., FTC File No. 2023082" to Section 4O Stage 2 FTC constraint.                                                                                                                                                             |
+| F21 | CK no longer does tax filing directly            | Strategy     | LOW      | FIXED  | Updated competitor table: CK entry now reads "Free credit scores + tax filing redirected to TurboTax (2023)" with advantage noting CK won't innovate on filing.                                                                                           |
+| F22 | factors_json in fit_scores may need encryption   | QA           | LOW      | FIXED  | Clarified in data model: factors_json stores "field NAMES + weights only, NEVER raw values." No encryption needed since no PII values stored.                                                                                                             |
+| F23 | Missing competitors: NerdWallet, TaxSlayer       | Growth       | LOW      | FIXED  | Added NerdWallet (Column Tax white-label, MEDIUM threat) and TaxSlayer (free federal tier, LOW-MEDIUM) plus TaxDown (Europe, LOW) and MagneticTax (B2B CPAs, LOW-MEDIUM) to competitor table.                                                              |
+| F24 | Existing partner hit list not scored             | Partnerships | LOW      | OPEN   | PARTNERSHIPS.md Section 3 partner hit list predates the Strategic Partner Scoring Matrix. Score existing prospects (Marcus, Wealthfront, Betterment, etc.) against the 5-factor matrix when outreach begins.                                              |
+
+
+### Review Rounds 1-2: Original Self-Review (Addressed)
+
 All 12 findings from the self-review have been addressed and implemented. Detailed research for each finding is in the `deep_research_tightening` plan (archived). Key outcomes are incorporated throughout the plan (Section 0C legal framework, Section 3B state data pipeline, Section 5 social pipeline, etc.).
 
 ### Summary of Revisions Based on Self-Review
@@ -3143,8 +3847,8 @@ Department-level email aliases on Google Workspace. All route to founder's inbox
 | [hello@launchfree.ai](mailto:hello@launchfree.ai)           | launchfree.ai | General LaunchFree inquiries              |
 | [support@launchfree.ai](mailto:support@launchfree.ai)       | launchfree.ai | LaunchFree user support                   |
 
-**Note**: filefree.tax aliases (hello@, support@) retained as forwards to filefree.ai equivalents post-migration (P0.2).
 
+**Note**: filefree.tax aliases (hello@, support@) retained as forwards to filefree.ai equivalents post-migration (P0.2).
 
 **Outbound Email Flow**:
 
