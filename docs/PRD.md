@@ -723,7 +723,7 @@ License our OCR + calculation + MeF submission engine to fintechs. API pricing $
 | Moderate | $34.5K | $29K | **$63.5K** |
 | Aggressive | $114K | $150K | **$264K** |
 
-**Why the pessimistic scenario matters**: It models 5K filers, 1K formations, bottom-tier attach rates, and self-serve affiliates only (no Founder 2 deals closed). At $14.9K Year 1 revenue, the venture survives ($284/mo burn) but takes longer to reach meaningful revenue. The compliance SaaS revenue is recurring and compounds year over year.
+**Why the pessimistic scenario matters**: It models 5K filers, 1K formations, bottom-tier attach rates, and self-serve affiliates only (no Founder 2 deals closed). At $14.9K Year 1 revenue, the venture survives ($278/mo burn) but takes longer to reach meaningful revenue. The compliance SaaS revenue is recurring and compounds year over year.
 
 ### 7.5 Unit Economics
 
@@ -761,7 +761,7 @@ If Founder 2 closes no deals, most fintech affiliate programs are self-serve (ap
 | Chime (banking) | CJ Affiliate | $10-$50 per direct deposit |
 | Acorns (micro-investing) | CJ Affiliate | $5-$10 per signup |
 
-**Plan B Year 1 revenue: $6.5K-37K.** Survivable at $284/mo burn. Founder 2 raises the ceiling (premium partnership terms, co-marketing deals), but does NOT set the floor.
+**Plan B Year 1 revenue: $6.5K-37K.** Survivable at $278/mo burn. Founder 2 raises the ceiling (premium partnership terms, co-marketing deals), but does NOT set the floor.
 
 ### 7.7 Partnership Milestones
 

@@ -58,7 +58,7 @@ Six compounding advantages:
 1. **State Filing Engine** — proprietary portal automation for all 50 states. Multi-year head start. Same engine serves consumers at $0 and B2B at $20-40/filing.
 2. **Cross-product data compound** — tax returns + LLC formations + quarterly estimates = richest compliance profile per user in fintech. Competitors have one data type; we have three.
 3. **Agent-maintained compliance data** — 50-state configs auto-updated by AI agents. Not just code but operational process that competitors can't replicate.
-4. **Cost structure moat** — 1 founder + AI agents at $284/mo total infrastructure vs. competitors with 50+ person teams.
+4. **Cost structure moat** — 1 founder + AI agents at $278/mo total infrastructure vs. competitors with 50+ person teams.
 5. **Retention lock-in** — 80% of tax filers stick with the same software year-over-year (PCMag). Capture a 22-year-old, own them for 10+ years.
 6. **B2B distribution flywheel** — CPA firms using Distill become referral channels for consumer products. Bidirectional distribution.
 
@@ -141,7 +141,7 @@ See **PARTNERSHIPS.md** for the full playbook, outreach templates, and call prep
 ## Part 4: Why This Is Real, Not a Hobby
 
 ### Infrastructure Cost Is Negligible
-Core production infra currently runs at ~\$50/month (Render: \$21 for 3 APIs, Hetzner: \$6 ops, Vercel: free → \$20 Pro). All-in monthly burn, including infra, taxes, insurance, and other ops costs, is ~\$284/month (see **FINANCIALS.md**). Both are intentionally tiny so we can run for years without revenue pressure.
+Core production infra currently runs at ~\$50/month (Render: \$21 for 3 APIs, Hetzner: \$6 ops, Vercel: free → \$20 Pro). All-in monthly burn, including infra, taxes, insurance, and other ops costs, is ~\$278/month (see **FINANCIALS.md**). Both are intentionally tiny so we can run for years without revenue pressure.
 
 ### Cost Per User Is World-Class
 $0.06/user (FileFree), ~$0.50/filing (LaunchFree). Our OCR pipeline is 150x cheaper than Google's Document AI. The State Filing Engine runs at near-zero marginal cost after build.
