@@ -1,8 +1,8 @@
-# AI Model Registry
+# Paperwork Labs — AI Model Registry
 
 **Owner**: AI Operations Lead (`agent-ops.mdc`)
 **Last updated**: March 2026
-**Authoritative routing strategy**: Venture Master Plan v1, Section 0E
+**Authoritative routing strategy**: Paperwork Labs Venture Master Plan v1, Section 0E
 
 This is a living document. The AI Ops Lead updates it monthly with actual usage data and whenever a model swap occurs.
 

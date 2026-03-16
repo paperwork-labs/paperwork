@@ -1,65 +1,131 @@
 ---
-description: "Brand identity guide — logo usage, color palette, typography, voice, and tone. Always active so all content and UI stays on-brand."
+description: "Brand identity guide — Paperwork Labs brand hierarchy, per-product palettes, logo usage, typography, voice, and tone. Always active so all content and UI stays on-brand."
 alwaysApply: true
 ---
 
-# FileFree Brand Guide
+# Paperwork Labs Brand Guide
 
-## Brand Name
+## Brand Architecture
 
-- **Product name**: FileFree (one word, camelCase capital F's)
-- **Domain**: filefree.tax
-- **Never**: File Free, Filefree, FILE FREE, File-Free, FileFree Tax
+```
+PAPERWORK LABS (Holding Company — paperworklabs.com)
+  "We build tools that eliminate paperwork."
+  │
+  ├── CONSUMER BRANDS (free, own domains, own palettes)
+  │   ├── FileFree ........... filefree.ai (free tax filing)
+  │   ├── LaunchFree ......... launchfree.ai (free LLC formation)
+  │   └── Trinkets ........... tools.filefree.ai (utility tools)
+  │
+  └── B2B BRAND (paid, one platform)
+      └── Distill ............ distill.tax (compliance automation APIs + CPA SaaS)
+          ├── Distill for CPAs (SaaS, $49-199/mo)
+          ├── Distill Tax API (per-return)
+          ├── Distill Formation API (per-filing)
+          └── Distill Compliance API (per-action)
+```
+
+**Why this architecture**: Consumer brands are free and distinct — each owns a clear paperwork category. Distill unifies all B2B under one brand (Stripe model, not Intuit model). Paperwork Labs ties it all together as the infrastructure company.
+
+## Brand Names
+
+- **Company name**: Paperwork Labs (two words, both capitalized)
+- **Legal entity**: Paperwork Labs LLC
+- **Domain**: paperworklabs.com
+- **Never**: PaperworkLabs, Paperwork labs, PAPERWORK LABS, PW Labs
+
+### Product Names
+
+- **FileFree** (one word, camelCase capital F's). Domain: filefree.ai. Never: File Free, Filefree, FILE FREE, File-Free, FileFree Tax
+- **LaunchFree** (one word, L and F capitalized). Domain: launchfree.ai. Never: Launch Free, Launchfree, LAUNCHFREE
+- **Distill** (one word, capital D). Domain: distill.tax. Never: DISTILL, distill (in brand context)
+- **Trinkets** (one word, capital T). Domain: tools.filefree.ai
+
+### Legal Footer (all products)
+
+"Paperwork Labs LLC | California | FileFree, LaunchFree, Distill, and Trinkets are products of Paperwork Labs LLC"
 
 ## Logo Assets
 
-**Status**: Logo assets pending. Generate wordmark via Ideogram v3 (prompt: stylized "FileFree" wordmark, gradient violet-to-purple, dark background, modern sans-serif with distinctive lowercase "f" ligature). Generate monogram via Figma/Canva.
+**Status**: Logo assets pending for all products.
 
-When created, place in `web/public/brand/`:
+**FileFree**: Generate wordmark via Ideogram v3 (prompt: stylized "FileFree" wordmark, gradient violet-to-purple, dark background, modern sans-serif with distinctive lowercase "f" ligature). Generate monogram via Figma/Canva. Place in `apps/filefree/public/brand/`.
 
-| Asset | File | Usage |
-|-------|------|-------|
-| Wordmark (dark bg) | `filefree-wordmark-dark.png` | Hero sections, marketing, presentations |
-| FF Monogram | `filefree-monogram.png` | App icon, social avatars, favicon source |
-| Social Avatar | `filefree-avatar.png` | TikTok, Instagram, X, YouTube profile pictures |
-| OG Image | `filefree-og.png` | Social sharing previews (1200x630) |
-| Favicon | `favicon.svg` | Browser tab icon (exists) |
+**LaunchFree**: Generate wordmark (teal-to-cyan gradient, dark background, modern sans-serif). Place in `apps/launchfree/public/brand/`.
 
-### Logo Rules
+**Distill**: Generate wordmark (deep blue-to-slate gradient, dark background, professional geometric sans-serif). Place in `apps/distill/public/brand/`.
+
+**Paperwork Labs**: Generate wordmark (neutral zinc/slate, clean professional). Place in `apps/studio/public/brand/`.
+
+### Logo Rules (all brands)
 
 - Minimum clear space: half the height of the logo on all sides
 - Never rotate, skew, add shadows, or place on busy backgrounds
 - On dark backgrounds: use the wordmark as-is (white + gradient)
-- On light backgrounds: use solid indigo (#4F46E5) for the full wordmark
-- Never use the gradient on light backgrounds — it loses contrast
+- On light backgrounds: use solid primary color for the full wordmark
+- Never use gradients on light backgrounds — they lose contrast
 
-## Color Palette
+## Color Palettes
 
-### Primary Colors
+### FileFree (Violet-Indigo — Tax / Trust / Calm)
 
-| Name | HSL | Hex | Tailwind | Usage |
-|------|-----|-----|----------|-------|
-| Indigo | `238 76% 57%` | `#4F46E5` | `indigo-600` | Primary actions, links |
-| Violet | `258 90% 66%` | `#8B5CF6` | `violet-500` | Gradient start |
-| Purple | `271 81% 56%` | `#9333EA` | `purple-600` | Gradient end |
-
-### Brand Gradient
+| Name | Hex | Tailwind | Usage |
+|------|-----|----------|-------|
+| Indigo | `#4F46E5` | `indigo-600` | Primary actions, links |
+| Violet | `#8B5CF6` | `violet-500` | Gradient start |
+| Purple | `#9333EA` | `purple-600` | Gradient end |
+| Background | `#020817` | `slate-950` | App background |
 
 ```css
+/* FileFree gradient */
 background: linear-gradient(to right, #8B5CF6, #9333EA);
 /* Tailwind: bg-gradient-to-r from-violet-500 to-purple-600 */
 ```
 
-### Semantic Colors
+### LaunchFree (Teal-Cyan — Business / Energy / Action)
+
+| Name | Hex | Tailwind | Usage |
+|------|-----|----------|-------|
+| Teal | `#0D9488` | `teal-600` | Primary actions |
+| Gradient start | `#14B8A6` | `teal-400` | Gradient start |
+| Gradient end | `#06B6D4` | `cyan-500` | Gradient end |
+| Background | `#0A0F1A` | custom deep navy | App background |
+
+### Distill (Deep Blue-Slate — B2B / Professional / Precision)
+
+| Name | Hex | Tailwind | Usage |
+|------|-----|----------|-------|
+| Blue | `#2563EB` | `blue-600` | Primary actions |
+| Gradient start | `#3B82F6` | `blue-500` | Gradient start |
+| Gradient end | `#1E40AF` | `blue-800` | Gradient end |
+| Background | `#0F172A` | `slate-900` | App background |
+
+### Paperwork Labs / Studio (Zinc-Neutral — Internal / Data / Ops)
+
+| Name | Hex | Tailwind | Usage |
+|------|-----|----------|-------|
+| Zinc | `#71717A` | `zinc-500` | Primary |
+| Background | `#09090B` | `zinc-950` | App background |
+
+### Trinkets (Amber-Orange — Utility / Approachable / Helpful)
+
+| Name | Hex | Tailwind | Usage |
+|------|-----|----------|-------|
+| Amber | `#F59E0B` | `amber-500` | Primary |
+| Gradient start | `#F59E0B` | `amber-500` | Gradient start |
+| Gradient end | `#EA580C` | `orange-600` | Gradient end |
+| Background | `#0C0A09` | `stone-950` | App background |
+
+### Shared Semantic Colors (all products)
 
 | Role | Color | Usage |
 |------|-------|-------|
-| Background (dark) | `hsl(224, 71%, 4%)` / `#020817` | App background |
-| Foreground | `hsl(213, 31%, 91%)` / `#E2E8F0` | Body text |
+| Foreground | `#E2E8F0` | Body text |
 | Muted | `hsl(215, 16%, 57%)` | Secondary text, labels |
-| Success | Green | Refund amounts, high confidence |
-| Warning | Amber | Owed amounts, medium confidence |
+| Success | Green | Positive outcomes, high confidence |
+| Warning | Amber | Caution, medium confidence |
 | Destructive | Red | Errors, low confidence |
+
+Implementation: CSS `[data-theme]` selectors in `packages/ui/themes.css`. Each app sets its theme via `<body data-theme="filefree">`.
 
 ## Typography
 
@@ -76,11 +142,45 @@ background: linear-gradient(to right, #8B5CF6, #9333EA);
 
 ## Brand Voice
 
-### Personality
+### Paperwork Labs (company voice — used on paperworklabs.com, investor comms, press)
 
-FileFree is a smart, calm friend who happens to know taxes. Not software. Not the IRS. Not a corporate accountant.
+Professional but human. We're engineers who are tired of paperwork. Speak with quiet confidence.
 
-### Tone Principles
+**Tagline**: "We build tools that eliminate paperwork."
+**Use**: build, tools, automate, infrastructure, platform, eliminate, compliance
+**Avoid**: disrupt, synergy, solution, leverage, "AI-powered" (overused)
+
+### FileFree (consumer voice — tax product)
+
+A smart, calm friend who happens to know taxes. Not software. Not the IRS. Not a corporate accountant.
+
+**Tagline**: "Taxes shouldn't cost $89."
+**Use**: free, simple, fast, yours, done, clear, secure, refund
+**Avoid**: taxpayer, file (as a noun), utilize, optimize
+
+Anxiety-killing closers: "You're done." / "That's it." / "We handle this." / "Nothing hidden." / "Free. Actually free."
+
+Headlines rotate through: Pain ("shouldn't make you cry"), Cost ("shouldn't cost $89"), Time ("shouldn't take 3 hours"), Complexity ("shouldn't feel this hard"), Access ("shouldn't require a CPA").
+
+### LaunchFree (consumer voice — LLC product)
+
+Encouraging, action-oriented. The friend who actually started a business and can walk you through it.
+
+**Tagline**: "Starting a business shouldn't require a lawyer."
+**Use**: launch, start, yours, form, register, done, protected, official
+**Avoid**: incorporate (too formal), entity (jargon), dissolution (scary)
+
+Closers: "Officially official." / "Your LLC. Filed." / "Go build something."
+
+### Distill (B2B voice — professional product)
+
+Precise, competent, developer-centric. Think Stripe docs — clear, thorough, no fluff.
+
+**Tagline**: "Compliance automation for modern platforms."
+**Use**: API, integrate, automate, compliance, formation, filing, returns
+**Avoid**: free (B2B is paid), simple (it's not — compliance is complex and we respect that)
+
+### Shared Tone Principles (all brands)
 
 | Do | Don't |
 |----|-------|
@@ -89,41 +189,38 @@ FileFree is a smart, calm friend who happens to know taxes. Not software. Not th
 | Reassuring and confident | Anxious or uncertain |
 | Honest about limitations | Overpromising or hype |
 
-### Word Choice
-
-**Use**: free, simple, fast, yours, done, clear, secure, people, money, return, refund
-**Avoid**: optimize, leverage, synergy, disrupt, taxpayer, file (as a noun), utilize, solution
-
-### Anxiety-Killing Patterns
-
-Use these short, definitive sentences to close interactions:
-- "You're done."
-- "That's it."
-- "We handle this."
-- "Nothing hidden."
-- "Free. Actually free."
-
-### Headlines / Punchlines
-
-The brand speaks in short punchy lines. Rotate through these themes:
-- Pain: "Taxes shouldn't make you cry."
-- Cost: "Taxes shouldn't cost $89."
-- Time: "Taxes shouldn't take 3 hours."
-- Complexity: "Taxes shouldn't feel this hard."
-- Access: "Taxes shouldn't require a CPA."
-
 ## Social Handles
 
-| Platform | Handle | Display Name |
-|----------|--------|-------------|
-| TikTok | `@filefree.tax` | FileFree |
-| Instagram | `filefree.tax` | FileFree |
-| X | `@filefreetax` | FileFree |
-| YouTube | `@FileFreeTax` | FileFree |
+| Platform | FileFree | LaunchFree | Paperwork Labs |
+|----------|----------|------------|----------------|
+| TikTok | `@filefree.tax` | `@launchfree.ai` | — |
+| Instagram | `filefree.tax` | `launchfree.ai` | — |
+| X | `@filefreetax` | `@launchfreeai` | `@paperworklabs` |
+| YouTube | `@FileFreeTax` | `@LaunchFreeAI` | — |
+| LinkedIn | — | — | Paperwork Labs |
+
+Distill does not have social handles. It is marketed via developer docs, blog posts on distill.tax, and B2B channels.
 
 ## Content Formatting
 
-- App name in copy: "FileFree" (never "the FileFree app" or "FileFree.tax")
-- Domain in URLs: filefree.tax (lowercase)
+### Company Level
+- Company name in copy: "Paperwork Labs" (never "Paperwork Labs LLC" in consumer-facing copy)
+- Domain: paperworklabs.com
+- Email: hello@paperworklabs.com
+
+### FileFree
+- Product name in copy: "FileFree" (never "the FileFree app" or "FileFree.ai")
+- Domain: filefree.ai
 - Hashtags: #filefree #filefreetax
-- Email: hello@filefree.tax
+- Email: hello@filefree.ai
+
+### LaunchFree
+- Product name in copy: "LaunchFree" (never "the LaunchFree app")
+- Domain: launchfree.ai
+- Hashtags: #launchfree #launchfreeai
+- Email: hello@launchfree.ai
+
+### Distill
+- Product name in copy: "Distill" (never "Distill.tax")
+- Domain: distill.tax / api.distill.tax
+- Email: hello@distill.tax / api@distill.tax

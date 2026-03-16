@@ -1,8 +1,10 @@
-# FileFree Partnership Playbook
+# Paperwork Labs — Partnership Playbook
 
 **For**: Partnerships Co-Founder (Founder 2)
-**Last Updated**: 2026-03-09
-**Companion docs**: PRD.md (Section 7: Revenue Model), STRATEGY_REPORT.md (Section 6: Team Structure)
+**Last Updated**: 2026-03-16
+**Company**: Paperwork Labs LLC (California) — paperworklabs.com
+**Products**: FileFree (filefree.ai), LaunchFree (launchfree.ai), Distill (distill.tax)
+**Companion docs**: PRD.md (Section 7: Revenue Model), VENTURE_MASTER_PLAN.md (Section 1A-1C)
 
 This is your standalone reference document. Everything you need to operate is here — no need to read code, technical docs, or engineering specs.
 
@@ -239,7 +241,7 @@ Distill (distill.tax) is a separate B2B brand from FileFree. It has its own sale
 
 Use when affiliate networks ask "Describe your audience and how you plan to promote our product."
 
-> FileFree (filefree.tax) is a free, AI-powered tax filing app built for Gen Z (ages 18-30). After users complete their tax return and see their refund amount, we present personalized financial product recommendations on our "Refund Plan" screen — the highest-intent financial decision moment of their year.
+> FileFree (filefree.ai) is a free, AI-powered tax filing app built for Gen Z (ages 18-30). After users complete their tax return and see their refund amount, we present personalized financial product recommendations on our "Refund Plan" screen — the highest-intent financial decision moment of their year.
 >
 > Our users have verified W-2 income, exact refund amounts, filing status, and state residency — the most valuable targeting data in consumer finance. We recommend products that genuinely help our users (high-yield savings for their refund, IRA accounts for first-time investors) with clear disclosures.
 >
@@ -251,7 +253,7 @@ Use when affiliate networks ask "Describe your audience and how you plan to prom
 >
 > Hi Column Tax team,
 >
-> I'm the partnerships lead at FileFree (filefree.tax), a free AI-powered tax filing app for Gen Z. We're building our own IRS MeF transmitter (target: January 2027) but need an interim e-file solution for October 2026.
+> I'm the partnerships lead at FileFree (filefree.ai), a free AI-powered tax filing app for Gen Z. We're building our own IRS MeF transmitter (target: January 2027) but need an interim e-file solution for October 2026.
 >
 > We'd love to explore the Column Tax SDK for our use case:
 > - Simple W-2 filers (single, MFJ, standard deduction)
@@ -263,7 +265,7 @@ Use when affiliate networks ask "Describe your audience and how you plan to prom
 >
 > Best,
 > [Name]
-> FileFree — filefree.tax
+> FileFree — filefree.ai
 
 ### Template C: Direct Partnership Upgrade (Phase 3)
 
@@ -284,7 +286,7 @@ Use when affiliate networks ask "Describe your audience and how you plan to prom
 >
 > Best,
 > [Name]
-> FileFree — filefree.tax
+> FileFree — filefree.ai
 
 ### Template D: Refund Advance Partner Intro
 
@@ -305,7 +307,7 @@ Use when affiliate networks ask "Describe your audience and how you plan to prom
 >
 > Best,
 > [Name]
-> FileFree — filefree.tax
+> FileFree — filefree.ai
 
 ### Template E: Follow-Up (1 week, no response)
 

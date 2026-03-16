@@ -1,7 +1,8 @@
 ## FileFree UX & Product Specification
 **Version**: 4.0 | **Updated**: 2026-03-09
+**Company**: Paperwork Labs LLC
 
-This is the UX reference bible for FileFree. It defines the design system, component specs, UX guidelines, and animation tokens. For business requirements see PRD.md. For build tasks see TASKS.md.
+This is the UX reference bible for FileFree (a Paperwork Labs product). It defines the design system, component specs, UX guidelines, and animation tokens. For business requirements see PRD.md. For build tasks see TASKS.md.
 
 ### Product Vision: Filing → Advisory → Financial Platform
 

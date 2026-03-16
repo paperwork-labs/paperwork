@@ -1,8 +1,8 @@
-# Founder Side Projects Evaluation
+# Paperwork Labs — Founder Side Projects Evaluation
 
 **Owner**: Strategy + CFO agents
 **Last updated**: March 2026
-**Purpose**: Evaluate founder's existing side projects for viability as venture products, trinkets, or shelved ideas.
+**Purpose**: Evaluate founder's existing side projects for viability as Paperwork Labs products, trinkets, or shelved ideas.
 
 **Status**: Items 5-9 have been formally integrated into the Venture Master Plan as core products/features with dedicated Phases. They are no longer "side projects." This document is retained as the evaluation record (market assessment, competitive landscape, GO/NO-GO rationale). For execution details, see their respective Phase sections in `docs/VENTURE_MASTER_PLAN.md`.
 
@@ -236,7 +236,7 @@
 
 ## 9. Distill -- B2B Tax Automation Platform (distill.tax)
 
-**What it is**: Separate B2B brand from FileFree. Two product lines: **Distill for CPAs** (SaaS dashboard for CPA firms — upload client W-2s/1099s in bulk, auto-extract fields via shared OCR pipeline, export to professional tax software) and **Distill API** (headless Tax-as-a-Service for platforms, Year 2). Built under Paperwork Labs venture umbrella.
+**What it is**: Separate B2B brand from FileFree. Two product lines: **Distill for CPAs** (SaaS dashboard for CPA firms — upload client W-2s/1099s in bulk, auto-extract fields via shared OCR pipeline, export to professional tax software) and **Distill API** (headless Tax-as-a-Service + Formation API + Compliance API, Summer 2026). Built under Paperwork Labs venture umbrella.
 
 **Why a separate brand**: "Free" in "FileFree" creates cognitive dissonance for B2B buyers paying $199/mo. Tax industry standard is separate brands (Intuit: TurboTax vs ProConnect/Lacerte). "Distill" = extract pure essence from raw material, perfect metaphor for OCR-to-structured-data.
 
@@ -267,7 +267,7 @@ Annual billing discount: 20% (Solo $39/mo, Team $79/mo, Firm $159/mo).
 
 **Differentiation**: We build the OCR/extraction pipeline for consumer filing anyway -- B2B is marginal cost. MagneticTax is VC-funded with dedicated burn for one product. We're bootstrapped with consumer filing as the primary product and B2B as an incremental revenue arm with near-zero additional infrastructure cost. Distill's audit trail logging and CPA-optimized workflows differentiate from raw API competitors.
 
-**GO / NO-GO**: **GO -- Phase 9 (January - March 2027)**. Very high alignment, low incremental effort, immediate SaaS revenue, market validated by MagneticTax YC funding. This is the fastest path to predictable revenue in the venture. See Section 5M in master plan for bootstrapped B2B GTM playbook.
+**GO / NO-GO**: **GO -- Phase 9 (Summer 2026)**. Very high alignment, low incremental effort (~80% shared infrastructure), immediate SaaS revenue, market validated by MagneticTax YC funding. This is the fastest path to predictable revenue in the venture. See Section 5M in master plan for bootstrapped B2B GTM playbook.
 
 ---
 
@@ -281,7 +281,7 @@ Annual billing discount: 20% (Solo $39/mo, Team $79/mo, Firm $159/mo).
 | Quarterly Estimator | Phase 1.5 + 7 | Section 0F (Trinkets) + Section 1A | Free |
 | Refund Splitting | Phase 7 (P7.4) | Section 1A (FileFree) | Free (affiliate rev) |
 | Business Tax Filing | Phase 10 (Year 2) | Section 1A + Phase 10 | $49-99/return |
-| Distill (B2B Tax Automation) | Phase 9 (Jan-Mar 2027) | Section 1C + Section 5M | $49-199/mo SaaS |
+| Distill (B2B Compliance Platform) | Phase 9 (Summer 2026) | Section 1C + Section 5M | $49-199/mo SaaS + API revenue |
 
 ### Shelved
 

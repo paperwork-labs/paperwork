@@ -2,7 +2,7 @@
 description: "Company operating playbooks — repeatable workflows with persona handoff chains. Invoke when starting any cross-functional process (shipping features, making decisions, publishing content, handling incidents)."
 ---
 
-# FileFree Workflow Playbooks
+# Paperwork Labs Workflow Playbooks
 
 These are the standard operating procedures for the AI team. Each workflow defines who does what, in what order, with quality gates between handoffs.
 
@@ -132,3 +132,93 @@ QA (tests) → Engineering (lints) → CFO (cost check) → deploy
 - [ ] Acceptance criteria from docs/TASKS.md met
 
 **Quality gate:** All checkboxes passed. Any failure blocks deploy.
+
+## 7. Chat Session Management
+
+Guidelines for how the founder uses AI chat sessions effectively across the venture.
+
+### When to start a new chat
+
+- **New task type**: switching from strategy/planning to code, or from docs to frontend work. Different tasks benefit from clean context.
+- **After completing a major deliverable**: plan executed, PR merged, doc regenerated. Clean break.
+- **When the conversation is long/summarized**: once a chat gets summarized, the agent loses exact wording. Fresh start = full precision.
+- **Rule of thumb**: one chat per logical unit of work. "Regenerate PRD + TASKS" = one chat. "Build Phase 1 monorepo" = another.
+
+### When to continue the same chat
+
+- Follow-up questions about what was just done ("did you update X?")
+- Small corrections to work just completed
+- Closely related "one more thing" additions
+
+### Chat naming convention
+
+Name chats by their deliverable so agent transcripts are searchable:
+- "Distill Brand + Round 4 Execution"
+- "Regenerate PRD + TASKS from Master Plan"
+- "Phase 1 Monorepo Scaffold"
+- "Fix OCR pipeline confidence scoring"
+
+### Handoff between chats
+
+When ending a chat that feeds into the next one, the agent should confirm:
+1. What files were modified (list them)
+2. Whether changes are committed or uncommitted
+3. What the recommended next chat scope is
+
+The new chat does NOT need a manual briefing -- it reads the current file state from disk and has access to agent transcripts from prior chats. Reference `docs/VENTURE_MASTER_PLAN.md` as the single source of truth for venture context.
+
+### Agent transcript reference
+
+Past chat transcripts live in the agent-transcripts folder. The current agent can search them by keyword if prior conversation context is needed. Cite transcripts as `[short title](uuid)` when referencing prior decisions.
+
+## 8. Formation Filing Operations
+
+```
+Filing Engine submits -> state portal confirms/fails
+  -> If fail: manual fallback queue -> staff submits within 4hrs -> script fix within 48hrs
+  -> If confirm: update formation status, notify user, trigger compliance calendar
+```
+
+**Steps:**
+1. User completes formation wizard and pays state filing fee via Stripe
+2. Filing Engine determines tier (API for Delaware, portal automation for ~45 states, mail for ~2 states)
+3. Engine submits to state with screenshot audit trail at every step
+4. On confirmation: update Formation status to "confirmed", store filing number, trigger compliance calendar setup
+5. On failure: auto-queue for manual fallback. Alert to #filing-engine Slack. Founder manually submits within 4-hour SLA.
+6. Script fix deployed within 48 hours for any portal automation failure
+
+**Quality gate:** Every filing has screenshot audit trail. Every failure has error log. No filing sits unresolved >4 hours.
+
+## 9. State Data Refresh
+
+```
+State Data Validator (n8n) flags stale data -> EA alerts founder
+  -> Engineering updates state JSON config -> QA validates against state SOS website
+  -> Deploy updated config
+```
+
+**Steps:**
+1. State Data Validator (n8n, weekly cron) scrapes state SOS websites for fee/requirement changes
+2. If data drift detected: flag in #data-integrity Slack, EA includes in daily briefing
+3. Engineering updates the relevant state JSON config in `packages/data/states/`
+4. QA validates updated config against the actual state SOS website
+5. Deploy updated config via PR
+
+**Quality gate:** Every state config has `last_verified` and `last_verified_source`. No state data >90 days stale.
+
+## 10. Distill B2B Onboarding
+
+```
+CPA signs up -> auto-provision firm account -> DPA acceptance flow
+  -> Onboarding email sequence -> first upload guided walkthrough
+```
+
+**Steps:**
+1. CPA firm signs up at distill.tax
+2. Auto-provision firm account with firm_id, default plan (Solo)
+3. DPA acceptance flow (must accept before processing any client data)
+4. Onboarding email sequence: welcome, first upload guide, tax software export guide
+5. First upload guided walkthrough: drag-and-drop demo, extraction confidence explained, export format selection
+6. Upgrade path: Solo -> Team -> Firm based on usage
+
+**Quality gate:** DPA signed before any client PII is processed. Firm-scoped RLS verified on first login.

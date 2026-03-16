@@ -1,16 +1,24 @@
-# FileFree
+# Paperwork Labs
 
-**Free AI-powered tax filing.** Snap your W-2, get your completed return in minutes. Actually free.
+**We build tools that eliminate paperwork.**
 
-**Live at:** [filefree.tax](https://filefree.tax)
+| Product | Domain | What It Does |
+|---------|--------|--------------|
+| **FileFree** | [filefree.ai](https://filefree.ai) | Free AI-powered tax filing |
+| **LaunchFree** | [launchfree.ai](https://launchfree.ai) | Free LLC formation + state filing |
+| **Distill** | [distill.tax](https://distill.tax) | B2B compliance automation (APIs + CPA SaaS) |
+| **Trinkets** | [tools.filefree.ai](https://tools.filefree.ai) | Free utility tools & calculators |
+
+**Company:** Paperwork Labs LLC (California) — [paperworklabs.com](https://paperworklabs.com)
 
 ## What This Is
 
-FileFree starts as free tax prep and grows into a year-round AI financial advisor. Filing earns trust. Trust enables everything else.
+Paperwork Labs builds consumer products that make painful paperwork free, then packages the underlying infrastructure as B2B APIs. Filing earns trust. Trust enables everything else.
 
-- **Phase 1 (2026):** Free tax prep — W-2 photo to completed 1040 PDF in under 5 minutes
-- **Phase 2 (2027):** Free e-file via own IRS MeF transmitter + AI tax advisor subscription
-- **Phase 3 (2028):** Embedded tax engine (B2B API) for fintechs and neobanks
+- **FileFree** starts as free tax prep and grows into a year-round AI financial advisor
+- **LaunchFree** walks you through LLC formation and files with the state on your behalf
+- **Distill** sells the compliance engines (tax, formation, compliance) to CPAs and platforms
+- **Trinkets** drives SEO traffic with free calculators and converters
 
 ## Tech Stack
 

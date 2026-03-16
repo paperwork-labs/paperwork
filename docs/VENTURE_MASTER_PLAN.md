@@ -1,4 +1,4 @@
-# Venture Master Plan v1
+# Paperwork Labs — Venture Master Plan v1
 
 **Date**: March 12, 2026 | **Supersedes**: All prior strategy plans including deep_research_tightening (5 plans archived)
 
@@ -12,18 +12,18 @@
 
 - **LaunchFree** (launchfree.ai) -- Free LLC formation service ($0 service fee; user pays state filing fees only, disclosed upfront). AI-powered 50-state comparison helps users pick the cheapest, best-fit state. Revenue: RA credits, banking/payroll/insurance referrals. Launches Summer 2026.
 - **FileFree** (filefree.ai) -- Free tax filing. Revenue: refund routing, financial referrals, audit shield, Tax Opt Plan. Launches January 2027.
-- **Distill** (distill.tax) -- B2B tax automation platform. Separate brand from FileFree. Two product lines: Distill for CPAs (SaaS dashboard, $49-199/mo) and Distill API (Tax-as-a-Service for platforms, per-return pricing). Upload client docs, auto-extract via shared OCR pipeline, export to professional tax software. ~80% shared tech with consumer FileFree. Launches March 2027. See Section 1C.
+- **Distill** (distill.tax) -- B2B compliance automation platform. Four product lines: Distill for CPAs (SaaS dashboard, $49-199/mo), Distill Tax API ($5-15/return), Distill Formation API ($20-40/filing), Distill Compliance API (per-action). Upload client docs, auto-extract via shared OCR pipeline, export to professional tax software. ~80% shared tech with consumer products. Launches Summer 2026. See Section 1C.
 - **Trinkets** (tools.filefree.ai) -- Collection of simple utility tools (financial calculators, converters, generators). Revenue: AdSense + cross-sell to main products. Complexity: LOW. Built as `apps/trinkets/` in monorepo. See Section 0F.
 
 **HQ**: paperworklabs.com -- Venture command center, admin dashboard, agent monitor, intelligence campaigns. Public portfolio page + authenticated `/admin/` panel.
 
 **Personal site**: sankalpsharma.com -- Founder's personal portfolio/blog. Links to Paperwork Labs and products. Separate from company ops.
 
-**Entity**: Paperwork Labs LLC (California). DBA filings for "FileFree", "LaunchFree", and "Trinkets". See Section 0B for naming research, legal structure, and CA vs WY comparison.
+**Entity**: Paperwork Labs LLC (California). DBA filings for "FileFree", "LaunchFree", "Trinkets", and "Distill". See Section 0B for naming research, legal structure, and CA vs WY comparison.
 
 **Trademark status**: "FILEFREE" and "LAUNCHFREE" to be filed on USPTO Supplemental Register. See Section 0C for full trademark and legal risk framework.
 
-**Domains purchased**: paperworklabs.com, filefree.ai, launchfree.ai (March 2026). Existing: filefree.tax, sankalpsharma.com. Also owned: axiomfolio.com, launchfree.llc, taxfilefree.com (not actively used).
+**Domains purchased**: paperworklabs.com, filefree.ai, launchfree.ai, distill.tax (March 2026). Existing: filefree.tax, sankalpsharma.com. Also owned: axiomfolio.com, launchfree.llc, taxfilefree.com (not actively used). Defensive purchase recommended: formationapi.com (~$12/yr, redirect to distill.tax/formation).
 
 **AI Model Strategy**: 9 models across 7 roles. See Section 0E for authoritative routing registry (owned by AI Ops Lead persona).
 
@@ -64,10 +64,10 @@
 
 Clean, minimal holding company portfolio page. Not a product site -- a company page.
 
-- **Content**: Company name, one-liner ("We build tools that eliminate paperwork"), portfolio cards for FileFree / LaunchFree / Trinkets with links, team section (Sankalp + Olga), legal footer
+- **Content**: Company name, one-liner ("We build tools that eliminate paperwork"), portfolio cards for FileFree / LaunchFree / Distill / Trinkets with links, team section (Sankalp + Olga), legal footer
 - **Tech**: Static page served from `apps/studio/` on Vercel free tier with `paperworklabs.com` custom domain
 - **Design**: Studio/Command Center zinc palette (neutral, professional)
-- **Legal footer**: "Paperwork Labs LLC | California | FileFree, LaunchFree, and Trinkets are products of Paperwork Labs LLC"
+- **Legal footer**: "Paperwork Labs LLC | California | FileFree, LaunchFree, Distill, and Trinkets are products of Paperwork Labs LLC"
 - **Cost**: $0/yr hosting (Vercel free), ~$12/yr domain renewal
 
 ### Structure (Confirmed -- California LLC)
@@ -94,7 +94,7 @@ The original plan recommended Wyoming. After analysis, California is the clear c
 
 **Revisit trigger**: When revenue exceeds $250K and asset protection justifies dual-state cost, consider Wyoming holding company with CA subsidiary.
 
-**Now (pre-revenue):** Single California LLC (Paperwork Labs LLC) + DBA filings for "FileFree", "LaunchFree", and "Trinkets"
+**Now (pre-revenue):** Single California LLC (Paperwork Labs LLC) + DBA filings for "FileFree", "LaunchFree", "Trinkets", and "Distill"
 
 - California filing: $70
 - DBA filing: ~$10-25 per name
@@ -107,6 +107,7 @@ The original plan recommended Wyoming. After analysis, California is the clear c
 - Parent LLC (Paperwork Labs LLC) stays as-is
 - Create FileFree LLC (subsidiary)
 - Create LaunchFree LLC (subsidiary)
+- Create Distill LLC (subsidiary)
 - Each subsidiary has its own bank account, EIN, and liability shield
 - Clean separation for future acquisition or investment
 
@@ -148,8 +149,9 @@ Intuit has owned this domain since before TurboTax even offered online filing. T
 | ------------------------------ | --------------------------------------------------------- | --------------------- | --------------- | ------------------------------------------------ |
 | FILEFREE (stylized wordmark)   | Class 036 (Financial services), Class 042 (SaaS)          | Supplemental Register | $350 x 2 = $700 | File after product launch (need specimen of use) |
 | LAUNCHFREE (stylized wordmark) | Class 035 (Business formation services), Class 042 (SaaS) | Supplemental Register | $350 x 2 = $700 | File after product launch                        |
+| DISTILL (stylized wordmark)    | Class 042 (SaaS), Class 035 (Business services)           | Supplemental Register | $350 x 2 = $700 | File after Distill launch (Phase 9)              |
 | FILEFREE (logo/design mark)    | Class 036, Class 042                                      | Supplemental Register | $350 x 2 = $700 | File with wordmark, separate application         |
-| Total                          |                                                           |                       | ~$2,100         | All within 90 days of launch                     |
+| Total                          |                                                           |                       | ~$2,800         | All within 90 days of respective launches        |
 
 
 After 5 years of commercial use: petition to move to Principal Register with evidence of acquired distinctiveness (user counts, media coverage, brand recognition surveys).
@@ -797,7 +799,7 @@ Note: Compliance-as-a-Service revenue begins ~3 months after LaunchFree launch (
 
 **Why the pessimistic scenario matters**: It models what happens if (a) user acquisition is slow (5K filers, 1K formations), (b) attach rates are bottom-tier for an unknown brand, and (c) partnerships are self-serve affiliates only (no Founder 2 deals closed). At $14.9K Year 1 revenue, the venture survives (burn is ~$284/mo real cost) but takes longer to reach meaningful revenue. This is the floor, not the target. The compliance SaaS revenue is recurring -- unlike one-time affiliate commissions, it compounds year over year.
 
-**Year 2 (2028)**: $200K-750K (dependent on retention, growth trajectory, partnership maturity, and compliance SaaS renewal rates)
+**Year 2 (2028)**: $215K-810K (dependent on retention, growth trajectory, partnership maturity, compliance SaaS renewal rates, and Distill Formation API adoption). Includes Distill Formation API: $15K-60K (500-2K API filings @ $30 avg target pricing).
 
 ### Plan B Revenue: Zero Partnerships Closed
 
@@ -841,7 +843,10 @@ If Founder 2 closes no deals. Key insight: MOST fintech affiliate programs are s
 | Submit self-serve affiliate apps (Marcus, Wealthfront, Betterment) | Founder 1 | April 2026     | Delays referral revenue by approval processing time (1-2 weeks) |
 | Book Column Tax demo call                                          | Founder 2 | May 2026       | No interim e-file for October extension season                  |
 | Column Tax sandbox access                                          | Founder 2 | June 2026      | Cannot test e-file integration; fallback = PDF download only    |
-| RA wholesale partner signed (CorpNet or equivalent)                | Founder 2 | July 2026      | Launch LaunchFree without RA service; add later                 |
+| RA wholesale partner signed (CorpNet or equivalent)                | Founder 2 | July 2026      | Launch LaunchFree without RA service; add later. CorpNet is both an RA wholesale partner AND a formation API alternative ($69-79/filing wholesale). We build our own State Filing Engine instead (see Section 7) to avoid $50-80K/yr wholesale cost at scale. |
+| Apply for Delaware DCIS credentials (ICIS API access)             | Founder 1 | April 2026     | Without DCIS ID: no Delaware API filing (Tier 1). Fallback: portal automation (Tier 2). ICIS PublicXMLService requires DCIS ID, RA number, IP registration, sandbox testing. Approval takes 2-4 weeks. |
+| Apply for Stripe Issuing access                                   | Founder 1 | May 2026       | Required for programmatic payment of state filing fees during automated submission. Requires Stripe account verification. |
+| Purchase formationapi.com (defensive)                             | Founder 1 | April 2026     | ~$12/yr. Redirect to distill.tax/formation. Prevents competitor from registering it. |
 | TaxAudit/audit shield partnership                                  | Founder 2 | September 2026 | Launch FileFree without audit shield; add Year 2                |
 | At least 1 banking partner confirmed                               | Either    | October 2026   | Refund routing not available for first tax season               |
 
@@ -871,7 +876,7 @@ Every partnership gets a comprehensive, agent-produced documentation package. Th
 
 **What's actually free (our service -- $0 forever)**:
 
-- LLC formation filing (prep + submit): $0
+- LLC formation filing (document preparation + state submission via Filing Engine): $0
 - Operating agreement template (state-specific, attorney-reviewed): $0
 - EIN filing walkthrough: $0
 - Compliance calendar + reminders: $0
@@ -1025,20 +1030,56 @@ These three extensions leverage existing product data and infrastructure with mi
 
 **Competitive edge**: TurboTax offers refund splitting but buries it in settings. No free filing product makes it the centerpiece of the post-filing experience. We make it the star.
 
-#### 1C. Distill -- B2B Tax Automation Platform (distill.tax) (Phase 9)
+#### 1C. Distill -- B2B Compliance Automation Platform (distill.tax) (Phase 9+)
 
-**What**: SaaS product for CPA firms and tax professionals. Upload client W-2s/1099s in bulk, auto-extract fields via FileFree's shared OCR pipeline (Cloud Vision + GPT), review extractions, and export to professional tax software. Same backend as consumer FileFree -- different frontend, different billing model.
+**What**: Distill is the B2B umbrella brand for all compliance automation products. It started as a CPA tax automation SaaS, but the same infrastructure pattern applies to every compliance vertical: tax extraction, LLC formation, and ongoing entity compliance. "Distill" = extract the pure essence from complex government paperwork. The name works across verticals: distill W-2 data into structured fields, distill 50-state requirements into one API call, distill annual report deadlines into automated filings.
 
-**Why this exists**: MagneticTax (YC S25) raised venture capital to build exactly this: AI-powered data entry automation for CPAs. We build the identical OCR/extraction pipeline for consumer FileFree anyway. The B2B product is ~20% incremental engineering on top of Phase 7 infrastructure. It is the fastest path to predictable revenue because CPAs pay monthly SaaS fees from day 1 -- no marketplace scale required.
+**Brand architecture (why one B2B brand, not separate brands per vertical):**
 
-**Tech overlap with consumer FileFree (~80% shared)**:
-- OCR pipeline (Cloud Vision + GPT tiered extraction) -- shared
-- W-2/1099 field extraction + Pydantic schemas -- shared
-- Tax calculation engine (50-state) -- shared
+Companies like Stripe (Payments, Atlas, Issuing, Identity), Twilio (SMS, Voice, Email), and Plaid (Auth, Identity, Transactions, Income) use one brand for multiple API products. This works because: (1) developers hate juggling multiple platforms -- one login, one API key, one billing relationship is a massive UX advantage; (2) cross-sell is frictionless ("add Formation API to your Distill plan"); (3) brand equity compounds with every vertical added. The Intuit model (separate brands per vertical: TurboTax, QuickBooks, ProConnect) only makes sense with separate sales teams and marketing budgets. At 2 founders, the single-brand model is correct.
+
+```
+CONSUMER BRANDS (free, own domains, own palettes):
+  filefree.ai ......... Free tax filing (violet/purple)
+  launchfree.ai ....... Free LLC formation (teal/cyan)
+  tools.filefree.ai ... Trinkets / utility tools (amber/orange)
+
+B2B BRAND (paid, one brand, one platform):
+  Distill (distill.tax)
+    distill.tax ............... Landing page + CPA SaaS dashboard
+    api.distill.tax ........... Developer API (tax + formation + compliance)
+    docs.distill.tax .......... Unified documentation
+    Product lines:
+      Distill for CPAs ...... SaaS dashboard, $49-199/mo (Phase 9)
+      Distill Tax API ....... Per-return pricing (Summer 2026, calculation-only; e-file January 2027)
+      Distill Formation API . Per-filing pricing, $20-40/filing target (Summer 2026)
+      Distill Compliance API  State compliance calendars, deadline tracking (Summer 2026)
+
+HOLDING COMPANY:
+  paperworklabs.com ... Corporate site, portfolio, command center, admin panel
+```
+
+**Four product lines under one brand:**
+
+1. **Distill for CPAs** (SaaS dashboard at distill.tax, Phase 9, Summer 2026) -- Upload client W-2s/1099s in bulk, auto-extract, review, export to tax software. Shares `packages/tax-engine/` and `packages/document-processing/` with FileFree.
+2. **Distill Tax API** (api.distill.tax/tax, Summer 2026) -- Headless Tax-as-a-Service for platforms. Per-return pricing ($5-15/return). Calculation-only at launch; e-file endpoint activates January 2027 when MeF transmitter ships. Shares `packages/tax-engine/`.
+3. **Distill Formation API** (api.distill.tax/formation, Summer 2026) -- LLC formation as a service for CPAs, law firms, HR platforms, banking apps, accounting software. Per-filing pricing ($20-40/filing target, undercutting incumbent API providers like CorpNet at ~$69-79 and FileForms at ~$30-60). Powered by the same State Filing Engine as LaunchFree (`packages/filing-engine/`).
+4. **Distill Compliance API** (api.distill.tax/compliance, Summer 2026) -- State compliance calendars, deadline tracking, annual report reminders, automated alerts. Natural extension of `packages/data/` 50-state configs.
+
+**Why the Formation API matters:** The State Filing Engine we build for LaunchFree is the same infrastructure CPAs, law firms, and fintech apps need. Today they buy from FileForms ($99-399/filing retail) or CorpNet ($99-269/filing retail). Our marginal cost is estimated at ~$0.25-0.50/filing (virtual card fees + compute). We can price at $20-40/filing wholesale and still achieve 90%+ gross margin. The consumer product (LaunchFree) subsidizes the API, and the API subsidizes the consumer product -- a flywheel that single-product API providers cannot replicate.
+
+**Why this exists**: MagneticTax (YC S25) raised venture capital to build exactly the CPA tax extraction product. We build the identical OCR/extraction pipeline for consumer FileFree anyway. The B2B product is ~20% incremental engineering on top of Phase 7 infrastructure. It is the fastest path to predictable revenue because CPAs pay monthly SaaS fees from day 1 -- no marketplace scale required.
+
+**Tech overlap with consumer products (~80% shared per vertical)**:
+- OCR pipeline (Cloud Vision + GPT tiered extraction) -- shared with FileFree
+- W-2/1099 field extraction + Pydantic schemas -- shared with FileFree
+- Tax calculation engine (50-state) -- shared with FileFree
+- State Filing Engine (portal automation, state APIs) -- shared with LaunchFree
+- 50-state data layer (`packages/data/`) -- shared with FileFree + LaunchFree
 - Document storage (GCP Cloud Storage, 24hr lifecycle) -- shared
 - SSN isolation (regex extraction, never sent to LLMs) -- shared
 
-**B2B-specific delta (~2-3 weeks engineering)**:
+**B2B-specific delta for CPA SaaS (~2-3 weeks engineering)**:
 - Multi-tenant team management (firm -> preparers -> clients)
 - Bulk document upload (drag-and-drop multiple documents, queue through shared OCR pipeline, batch progress tracking)
 - Professional dashboard (client list, per-client document status, extraction confidence, review workflow)
@@ -1074,7 +1115,7 @@ Annual billing discount: 20% (Solo $39/mo, Team $79/mo, Firm $159/mo).
 
 **Brand separation**: Distill is a separate brand from FileFree. Consumer FileFree = free, ad-free, trust-first. Distill = professional-grade paid SaaS. They share `packages/tax-engine/` and `packages/document-processing/` but have separate domains, landing pages, and marketing. The word "Free" in "FileFree" creates cognitive dissonance for B2B buyers paying $199/mo (SBI Growth research, Intuit precedent: TurboTax vs ProConnect/Lacerte). "Distill" = extract pure essence from raw material, fits naturally under Paperwork Labs (distilling paperwork).
 
-**Two product lines**: Distill has two product lines under one B2B brand: **Distill for CPAs** (SaaS dashboard at distill.tax, Phase 9) and **Distill API** (headless Tax-as-a-Service for platforms at api.distill.tax, Year 2 after MeF transmitter is proven). Both share the same `packages/tax-engine/`. The CPA SaaS is a UI product. The API is a headless engine. They are distinct from each other and both distinct from consumer FileFree.
+**Four product lines, all launching Summer 2026**: Distill has four product lines under one B2B brand: **Distill for CPAs** (SaaS dashboard at distill.tax), **Distill Tax API** (headless Tax-as-a-Service at api.distill.tax/tax, calculation-only at launch, e-file January 2027), **Distill Formation API** (LLC formation as a service at api.distill.tax/formation, powered by LaunchFree's State Filing Engine), and **Distill Compliance API** (state compliance calendars, deadline tracking at api.distill.tax/compliance). The CPA SaaS is a UI product. The APIs are headless engines. All share core infrastructure (`packages/tax-engine/`, `packages/filing-engine/`, `packages/data/`) but are distinct products with distinct pricing. AI-augmented development means the incremental B2B work (multi-tenant auth, API keys, billing, docs) ships in weeks, not quarters.
 
 **Multi-tenant data isolation (CRITICAL)**: All Distill API routes use firm-scoped middleware that injects `firm_id` from auth token into every database query. Row-level security (RLS) on PostgreSQL enforced via `SET app.current_firm_id` + RLS policies. No query can return data from a different firm. CPA firm A's client data must never leak to CPA firm B. Security audit required before Distill launch (P9.9).
 
@@ -1082,7 +1123,17 @@ Annual billing discount: 20% (Solo $39/mo, Team $79/mo, Firm $159/mo).
 
 **Audit trail logging**: Every extraction, edit, export, and submission timestamped with user ID and firm ID. Immutable audit log retained for 7 years (IRS record retention requirement). Exportable as CSV for CPA firm compliance needs. This is a differentiation feature -- CPAs face IRS audits and need proof of every step.
 
-**Implementation**: Phase 9 (January - March 2027). See Section 7 Phase 9 for task breakdown.
+**Distill Formation API revenue projections (launching Summer 2026)**:
+
+| Scenario | Year 2 (2028) | Year 3 (2029) | Basis |
+| -------------- | ------------- | ------------- | ----- |
+| Conservative | $15K | $150K | 500 API filings @ $30 avg (Year 2), 5K @ $30 (Year 3) |
+| Moderate | $36K | $360K | 1.2K API filings @ $30 avg (Year 2), 12K @ $30 (Year 3) |
+| Aggressive | $60K | $600K | 2K API filings @ $30 avg (Year 2), 20K @ $30 (Year 3) |
+
+Note: $20-40/filing is target pricing, undercutting incumbent API providers. Marginal cost estimated at ~$0.25-0.50/filing (validated during Phase 3 development). Gross margin target: 90%+.
+
+**Implementation**: Phase 9 (Summer 2026) for full Distill platform — CPA SaaS + all APIs. ~80% shared infrastructure from Phases 1-3. Incremental B2B work: multi-tenant auth, API keys, billing, docs. See TASKS.md Phase 9 + Phase 9.5 for task breakdown.
 
 ---
 
@@ -2368,14 +2419,16 @@ Fintech M&A benchmarks (2025-2026): median 4.4x EV/Revenue. North America premiu
 
 #### Competitive Moat: Why a Competitor Can't Just Copy This
 
-Five compounding advantages that widen over time:
+Eight compounding advantages that widen over time:
 
 1. **Tax return data is the rarest financial dataset**: No one else gets IRS-quality income verification for free. Banks have transaction data. CK has credit data. Only tax preparers have court-admissible income data. The other free tax preparers (FreeTaxUSA, Cash App Taxes) aren't building marketplaces -- they're features inside larger products.
 2. **Cross-product compound profiles**: A user who files taxes AND forms an LLC AND tracks quarterly estimates AND splits their refund has a 20+ data-point financial profile. A competitor starting today needs 2-3 years to build equivalent depth.
 3. **Time-series data compounds**: Credit score trajectory over 2+ years, income growth across filings, business formation-to-revenue tracking. Each year of data makes the profile exponentially more valuable for ML matching. A competitor who starts Year 2 is permanently 2 years behind on every user.
 4. **Trust built at the mandatory moment**: Tax filing is mandatory. CK is optional. Users who trust you with their SSN and W-2 have crossed the highest trust threshold in consumer finance. That trust transfers directly to financial product recommendations.
-5. **Cost structure moat**: 1 founder + 44 AI agents at $284/mo vs. CK's 1,300+ employees. Even at 50K users, the operation runs lean. Profitability arrives years earlier, which funds growth, which compounds the data advantage.
-6. **B2B distribution moat**: CPA firms using Distill become referral channels for consumer FileFree. No competitor has both a B2B product AND a free consumer product creating bidirectional distribution. Each Distill CPA firm = 50-500 potential consumer users. Each consumer user = potential CPA firm lead. The flywheel accelerates both products simultaneously.
+5. **Cost structure moat**: 1 founder + AI agents at ~$50/mo infrastructure vs. CK's 1,300+ employees. Even at 50K users, the operation runs lean. Profitability arrives years earlier, which funds growth, which compounds the data advantage.
+6. **State Filing Engine** (infrastructure moat): Proprietary portal automation for all 50 states -- the same engine serves LaunchFree consumers at $0 and Distill Formation API partners at $20-40/filing. Building and maintaining 50-state automation (Playwright scripts, state API integrations, print-and-mail fallback) is a multi-year head start. Nobody else has open-sourced this. Near-zero marginal cost means competitors can't undercut without building equivalent infrastructure.
+7. **Agent-maintained compliance data** (operational moat): 50-state formation rules, fees, filing procedures, and compliance calendars maintained by AI agents via n8n workflows. This is not just code -- it's operational process. States change fees, update forms, and modify portals continuously. Our agents detect changes automatically and update configs. A competitor would need to build both the data layer AND the maintenance system.
+8. **B2B distribution flywheel**: CPA firms using Distill become referral channels for consumer FileFree. No competitor has both a B2B product AND a free consumer product creating bidirectional distribution. Each Distill CPA firm = 50-500 potential consumer users. Each consumer user = potential CPA firm lead. The flywheel accelerates both products simultaneously.
 
 #### Emerging Competitor Landscape (March 2026)
 
@@ -2960,8 +3013,8 @@ Agents are organized into three tiers. **All venture-level personas must be avai
 | 30  | Knowledge Base Sync           | n8n cron (nightly)      | 2am                                                                                   | Sync Google Drive docs to support agent context                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | 31  | AI Ops Lead                   | Cursor persona (.mdc)   | On demand                                                                             | Model routing, cost tracking, persona audits                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | 32  | Executive Assistant (EA)      | Cursor persona + n8n    | Daily cron + on-demand                                                                | Daily briefing, weekly planning, decision tracking, financial tracking, doc maintenance. See Section 6J1.                                                                                                                                                                                                                                                                                                                                                                   |
-| 33  | Compliance & Security Monitor | n8n cron (daily)        | 6am                                                                                   | Tracks: cyber insurance status, data breach plan currency, EFIN cert status, 50-state data freshness, legal doc expiry (ToS, privacy policy last-reviewed dates). Outputs daily compliance status to Slack #compliance-alerts and weekly summary to Mission Control P4.4.                                                                                                                                                                                                   |
-| 34  | Partnership Intelligence      | n8n cron (weekly)       | Mondays                                                                               | Scans affiliate networks (Impact.com, CJ Affiliate, ShareASale, Partnerize) for new fintech programs. Compares commission rates across similar partners. Monitors existing affiliate performance (clicks, conversions, revenue). Tracks program changes (rate changes, terms, closures). Generates weekly "Partnership Opportunities" report to Slack #partnerships. Generates compatibility scores based on user profile data. Supports Olga but works fully autonomously. |
+| 33  | Compliance & Security Monitor | n8n cron (daily)        | 6am                                                                                   | Tracks: cyber insurance status, data breach plan currency, EFIN cert status, 50-state data freshness, legal doc expiry (ToS, privacy policy last-reviewed dates), **State Filing Engine health** (portal health status, filing failure rates, state-specific issues, stuck submissions). Outputs daily compliance status to Slack #compliance-alerts, filing engine alerts to #filing-engine, and weekly summary to Mission Control P4.4. Filing Engine Monitor is a function within Compliance Monitor (not a separate agent — keep agent count lean). |
+| 34  | Partnership Intelligence      | n8n cron (weekly)       | Mondays                                                                               | Scans affiliate networks (Impact.com, CJ Affiliate, ShareASale, Partnerize) for new fintech programs. Compares commission rates across similar partners. Monitors existing affiliate performance (clicks, conversions, revenue). Tracks program changes (rate changes, terms, closures). **Monitors formation API partner landscape** (FileForms, CorpNet program changes, new entrants, pricing shifts). Generates weekly "Partnership Opportunities" report to Slack #partnerships. Generates compatibility scores based on user profile data. Supports Olga but works fully autonomously. |
 
 
 ### 6F. n8n Workflow Updates (Existing 6)
@@ -2975,6 +3028,13 @@ Agents are organized into three tiers. **All venture-level personas must be avai
 | 4   | QA Security Scan             | Scan both APIs. Output to GitHub Issues (keep as-is).                    |
 | 5   | Partnership Outreach Drafter | Add LaunchFree partners. Output to GDrive.                               |
 | 6   | CPA Tax Review               | Keep FileFree-only. Output to GDrive.                                    |
+
+**New n8n Workflows (planned):**
+
+| #   | Workflow                       | Schedule       | Description                                                                                                          |
+| --- | ------------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------- |
+| 7   | `filing-engine-health`         | Hourly         | Health check of top 10 state portals. Posts failures to #filing-engine. Escalates to #ops-alerts if >2 portals down. |
+| 8   | `compliance-deadline-check`    | Daily (6am)    | Check for upcoming formation compliance deadlines (annual reports, franchise tax). Alert at 60/30/7 days.            |
 
 
 ### 6G. n8n Workflow Dependency Graph
@@ -3244,6 +3304,8 @@ How: Run on cron schedules or webhook triggers. No founder action needed.
 | 7am daily   | EA Daily Briefing                      | GDrive + Slack `#daily-briefing`     | Read (5 min)               |
 | 8am daily   | Social Content (FileFree + LaunchFree) | Postiz queue                         | Review/approve (5 min)     |
 | Hourly      | Infra Health Monitor                   | Slack `#ops-alerts` (only on issues) | Act if alerted             |
+| Hourly      | Filing Engine Health                   | Slack `#filing-engine` (only on issues) | Act if alerted          |
+| 6am daily   | Compliance Deadline Check              | Slack `#compliance-alerts`           | Review if flagged          |
 | Daily       | Affiliate Revenue Tracker              | GDrive report                        | Check weekly               |
 | Sunday 6pm  | EA Weekly Planning                     | GDrive                               | Review and adjust (10 min) |
 | Mondays     | Competitive Intel + Growth Content     | GDrive                               | Review at leisure          |
@@ -3327,7 +3389,7 @@ No agent is currently assigned to write production code for FileFree or LaunchFr
 | P0.3 Google Workspace        | Founder 1 | N/A (no code)            | Google Admin console: add filefree.ai, launchfree.ai as secondary domains. Create aliases: hello@, support@, legal@ for each.                                                                                                                      | Emails received at [hello@filefree.ai](mailto:hello@filefree.ai), [hello@launchfree.ai](mailto:hello@launchfree.ai). SPF/DKIM/DMARC configured for all domains.                                    | P0.1                                     | NOT STARTED |
 | P0.4 Google Drive HQ         | Founder 1 | N/A (no code)            | Create folder structure: `Venture HQ/Operations/Daily Briefings/`, `Venture HQ/Operations/Weekly Plans/`, `Venture HQ/Trinkets/One-Pagers/`, `Venture HQ/Trinkets/PRDs/`, `Venture HQ/Intelligence/`. Add GDrive MCP server to `.cursor/mcp.json`. | GDrive accessible from Cursor via MCP. Folder structure matches EA spec in `ea.mdc`.                                                                                                               | P0.3                                     | NOT STARTED |
 | P0.5 Secure social handles   | Founder 1 | N/A (no code)            | Register @launchfree on TikTok, Instagram, X, YouTube. Set profile pic to monogram, link to launchfree.ai.                                                                                                                                         | All 4 accounts created, profile pics set, bios written, URLs point to launchfree.ai.                                                                                                               | P0.1                                     | NOT STARTED |
-| P0.6 Form LLC                | Founder 1 | N/A (no code)            | California SOS online filing. DBA filings at county clerk (FileFree, LaunchFree, Trinkets).                                                                                                                                                        | Articles of Organization filed with CA SOS. Confirmation number received. DBA filings submitted. EIN applied for on IRS.gov (same day as LLC confirmation). Bank account opened.                   | LLC name decided (Section 0G #4) -- DONE | NOT STARTED |
+| P0.6 Form LLC                | Founder 1 | N/A (no code)            | California SOS online filing. DBA filings at county clerk (FileFree, LaunchFree, Trinkets, Distill).                                                                                                                                                        | Articles of Organization filed with CA SOS. Confirmation number received. DBA filings submitted. EIN applied for on IRS.gov (same day as LLC confirmation). Bank account opened.                   | LLC name decided (Section 0G #4) -- DONE | NOT STARTED |
 | P0.7 Migrate DNS subdomains  | Founder 1 | `chore/dns-migration`    | DNS provider records: ops.paperworklabs.com -> Hetzner (n8n), social.paperworklabs.com -> Hetzner (Postiz). Point paperworklabs.com -> Vercel (apps/studio). Remove old filefree.tax subdomains.                                                   | n8n accessible at ops.paperworklabs.com. Postiz accessible at social.paperworklabs.com. paperworklabs.com serves studio app. Old subdomains return 404 or redirect.                                | P0.2                                     | NOT STARTED |
 | P0.8 File trademarks         | Founder 1 | N/A (no code)            | USPTO TEAS Plus application. FILEFREE: Class 036 + 042. LAUNCHFREE: Class 035 + 042. Supplemental Register.                                                                                                                                        | Applications filed. Serial numbers received. Docket dates noted in TASKS.md.                                                                                                                       | Product launch (needs specimen of use)   | DEFERRED    |
 | P0.9 Legal compliance setup  | Founder 1 | `chore/legal-compliance` | Update `.cursor/rules/social.mdc`, `growth.mdc`, `brand.mdc` to include Content Review Gate checklist from Section 0C. Create/update `web/src/app/(legal)/privacy/page.tsx`, `web/src/app/(legal)/terms/page.tsx`.                                 | Every content-producing persona .mdc includes the Content Review Gate checklist verbatim. Privacy policy and ToS pages updated with cross-sell consent language from Section 0C Legal Risk Matrix. | None (can start immediately)             | NOT STARTED |
@@ -3579,9 +3641,9 @@ Federal tax is uniform. State tax is chaos. The engine uses three tiers to handl
 | P8.8 Refund Advance integration | If partner secured. Early refund access as acquisition tool                                                                                           |
 
 
-### Phase 9: Distill -- B2B Tax Automation Platform (January - March 2027)
+### Phase 9: Distill -- Full B2B Compliance Platform (Summer 2026)
 
-Leverages the OCR pipeline and tax calculation engine built in Phase 7. ~80% shared infrastructure. Distill is a separate B2B brand from FileFree (see Section 1C for rationale). Development starts January 2027 (Phase 7 OCR is complete), launches March 2027 to catch the April 15 deadline rush. See Section 1C for full product spec and Section 5M for bootstrapped GTM playbook.
+Leverages shared infrastructure from Phases 1-3 (OCR pipeline, tax engine, filing engine, 50-state data). ~80% shared tech. Distill is a separate B2B brand from FileFree (see Section 1C for rationale). Development runs in parallel with Phases 5-6, launching Summer 2026. AI-augmented development compresses the incremental B2B work (multi-tenant auth, API keys, billing, docs) into weeks, not quarters. See Section 1C for full product spec and Section 5M for bootstrapped GTM playbook.
 
 
 | Task                            | Details                                                                                                                                                                            |
@@ -3633,28 +3695,26 @@ Business returns (1065, 1120-S) serve both consumer FileFree users with pass-thr
 | Pre-launch audience building                                                  | Founder 1 | Ongoing, start NOW         | NOT STARTED | SEO blog posts, Reddit, waitlist growth. See Section 5K.                        |
 
 
-### Phase Timeline (Agent-Augmented)
+### Phase Timeline (AI-Augmented — Agents Are the Team)
 
-The 8-phase plan spans infrastructure (now) through FileFree launch (January 2027) -- 10 months. With a full AI agent workforce handling research, content, documentation, data extraction, and code generation, the human bottleneck is decision-making and review, not execution volume. The timeline below reflects agent-augmented capacity.
+One founder + AI agents (Cursor, n8n) shipping at the velocity of a full engineering team. Traditional dev estimates don't apply. Shared infrastructure (`packages/*`) is built once and consumed by all products — including Distill's B2B APIs.
 
+| Phase | Target | Hard Deadline? | Rationale |
+| --- | --- | --- | --- |
+| Phase 0 (Infrastructure) | March 2026 | NO | LLC filing, EFIN (45-day processing), domains, legal. Non-code tasks. |
+| Phase 1 (Monorepo) | April 2026 | NO | pnpm workspace restructure, shared packages, 5 apps scaffolded. Foundation for everything. |
+| Phase 1.5 (First Trinket) | April 2026 | NO | Overlaps with late Phase 1. Agent pipeline test. |
+| Phase 2 (50-State Data) | May 2026 | NO | AI extraction + human review. LaunchFree + Distill Compliance API depend on it. |
+| Phase 3 (LaunchFree MVP) | June-July 2026 | NO | Formation wizard, PDF gen, State Filing Engine, Stripe, RA credits, dashboard. First revenue product. |
+| Phase 4 (Command Center) | June 2026 | NO | Tier 1 during Phase 3. Daily ops pages. |
+| Phase 5 (User Intelligence) | July 2026 | NO | Cross-product data model, consent, campaigns. |
+| Phase 6 (Agent Restructure) | July 2026 | NO | Persona split, social pipeline, n8n workflows. |
+| Phase 9 (Distill Full Platform) | July-August 2026 | NO | CPA SaaS + Formation API + Tax API + Compliance API. ~80% shared from Phases 1-3. Incremental: multi-tenant, API keys, billing, docs. |
+| Phase 7 (FileFree Season Prep) | October 2026 | **YES** | IRS season doesn't move. MeF XML generator starts June. ATS testing October. |
+| Phase 8 (FileFree Launch) | January 2027 | **YES** | Tax season. IRS accepts returns ~late January. |
+| Phase 10 (Business Tax Filing) | 2027-2028 | NO | Forms 1065, 1120-S. Year 2 product. |
 
-| Phase                          | Aspirational | Realistic                     | Rationale                                                                                                                                                                                                                | Can Defer?                                                   |
-| ------------------------------ | ------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
-| Phase 0 (Infrastructure)       | 1 week       | 2-3 weeks                     | LLC name decision is blocking. EFIN application has 45-day processing. Non-code tasks take longer than expected.                                                                                                         | NO -- critical path                                          |
-| Phase 1 (Monorepo)             | 2-3 weeks    | 4-6 weeks                     | pnpm workspace restructure, shared package extraction, 4 apps scaffolded, infra updates. This is fiddly and breaks things.                                                                                               | NO -- everything depends on it                               |
-| Phase 1.5 (First Trinket)      | 3-5 days     | 1-2 weeks                     | Overlaps with late Phase 1. Agent pipeline testing adds uncertainty.                                                                                                                                                     | YES -- defer to after Phase 3 if behind                      |
-| Phase 2 (50-State Data)        | 3-4 weeks    | 4-6 weeks                     | AI extraction is fast but human review of 50 states is the bottleneck (4-6 hours). n8n workflows need testing.                                                                                                           | NO -- LaunchFree depends on it                               |
-| Phase 3 (LaunchFree MVP)       | 4-5 weeks    | 8-12 weeks                    | This is an entire product. Formation wizard, state-specific PDF generation, Stripe integration, RA credit system, dashboard. The "submit LLC" step is hand-waved -- most states do NOT have filing APIs. See note below. | NO -- this is the first revenue product                      |
-| Phase 4 (Command Center)       | 6 weeks      | 4-6 weeks (Tier 1 only)       | Build Tier 1 only during Phase 3. Tier 2-3 deferred until post-LaunchFree launch.                                                                                                                                        | PARTIAL -- Tier 2-3 defers                                   |
-| Phase 5 (User Intelligence)    | 2-3 weeks    | 3-4 weeks                     | Requires Phase 3 completion. Cross-product data model, consent UI, email templates, campaign engine.                                                                                                                     | YES -- can launch LaunchFree without it, add within 2 months |
-| Phase 6 (Agent Restructure)    | 4 weeks      | 2-3 weeks (with right-sizing) | Reduced agent count (see Section 6 stress test). Most personas are config files, not code. Social pipeline is the only complex build.                                                                                    | PARTIAL -- social pipeline defers                            |
-| Phase 7 (FileFree Season Prep) | October 2026 | October 2026 (HARD DEADLINE)  | IRS season doesn't move. Must start MeF XML generator by June 2026 to hit October ATS testing window.                                                                                                                    | NO -- date is external                                       |
-| Phase 8 (FileFree Launch)      | January 2027 | January 2027 (HARD DEADLINE)  | Tax season start. IRS accepts returns ~late January.                                                                                                                                                                     | NO -- date is external                                       |
-| Phase 9 (Distill)              | Jan 2027     | Mar 2027                      | B2B tax automation (distill.tax). Separate brand. ~80% shared tech from Phase 7. Delta: multi-tenant, bulk upload, tax software export, Stripe B2B billing. ~2-3 weeks incremental.                                     | YES -- defer to mid-season if Phase 7/8 tight                |
-| Phase 10 (Business Tax Filing) | Year 2       | 2027-2028 season              | Forms 1065 (partnership), 1120-S (S-Corp). Serves both consumer and Distill. Requires new MeF schemas and K-1 generation engine.                                                                                        | YES -- Year 2 product, not Year 1                            |
-
-
-**Timeline**: 10 months (March 2026 - January 2027). The primary bottleneck is founder decision-making and context-switching between products. Mitigation: batch similar work (e.g., all legal tasks in one sprint), use agents to pre-research and draft so founder reviews rather than creates, and protect 2-hour deep work blocks daily. Phase 7 is tight but achievable if EFIN application happens THIS WEEK and MeF XML development starts by June 2026.
+**Key insight**: Phase 9 (Distill) runs in parallel with Phases 5-6, not sequentially after Phase 8. The shared infrastructure from Phases 1-3 means Distill's incremental build is thin. Only two hard deadlines are external (IRS): MeF ATS testing (October 2026) and tax season start (January 2027). Everything else ships as fast as the agents can build it.
 
 ### Critical Path (Stress Test Addition)
 
@@ -3672,19 +3732,37 @@ Phase 1 (Monorepo) -> Phase 2 (50-State) -> Phase 3 (LaunchFree) -> Phase 7 (Fil
 2. **MeF ATS testing**: IRS opens ATS testing window each fall. Must have XML generator complete by June 2026 to test in October. Miss this and FileFree e-file delays to January 2028.
 3. **Tax season**: IRS starts accepting returns late January. Product must be live by then.
 
-### LaunchFree "Submit LLC" Reality Check (Stress Test Addition)
+### State Filing Engine Architecture
 
-The formation wizard says "submit" but most states do NOT have e-filing APIs for LLC Articles of Organization. The reality:
+LaunchFree files your LLC with the state on your behalf. The user provides their information; we handle document preparation AND state submission. Nearly all 50 states (~48) have online filing portals. Only ~2 states (Maine and possibly 1 other) are truly mail-only. This was confirmed via research into SmartLegalForms' state-by-state filing database (March 2026). The original claim of "20-25 mail-only states" was factually incorrect.
+
+**How competitors file (confirmed research, March 2026):** LegalZoom (NYSE: LZ), ZenBusiness, and Northwest all genuinely submit formation documents to the Secretary of State on behalf of customers -- at $0 service fee for basic tiers. They use manual staff entry into state portals (primary method), state API integrations where available, and mail for the handful of paper-only states. Revenue comes from RA ($199-249/yr), compliance upsells, and add-ons -- not from filing fees.
+
+**Why not use a formation API partner?** White-label formation APIs exist (CorpNet API, FileForms API, SwyftFilings API). CorpNet offers 20-30% off retail ($99 Basic) = ~$69-79/filing wholesale (source: CorpNet partner FAQ). FileForms wholesale is estimated at $30-60/filing (source: FileForms ROI calculator). At $0 service fee, LaunchFree would absorb $50-80K/year in wholesale costs at 1K formations -- not viable on a $284/mo burn. Building our own State Filing Engine costs ~$0 marginal per filing (just compute time) after the upfront development investment.
+
+**Three-Tier Filing Architecture:**
 
 
-| Method                                 | States                                   | Implementation                                                                                                                                        |
-| -------------------------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Online filing portal exists (web form) | ~15-20 states (e.g., CA, DE, WY, TX, FL) | We CANNOT auto-submit. We can pre-fill a printable form, generate the PDF, and provide step-by-step walkthrough with screenshots of the state portal. |
-| Mail-only filing                       | ~20-25 states                            | Generate completed PDF + cover letter. User prints, signs, mails with check. We provide pre-addressed envelope instructions.                          |
-| Registered agent submits               | ~10 states                               | Partner RA handles submission. This is the premium path.                                                                                              |
+| Tier | Method | States | Implementation |
+| ---- | ------ | ------ | -------------- |
+| 1 | State APIs (where formal third-party filing APIs exist) | Delaware (ICIS PublicXMLService confirmed), others TBD | Direct REST/SOAP integration. Delaware requires DCIS ID, Registered Agent number, IP registration, sandbox testing. Gated credential = competitive moat. Same-day programmatic filing. |
+| 2 | Portal automation (Playwright) | ~45 states with online filing portals | Headless browser automation. Per-state config: portal URL, form field mappings, fee schedule, confirmation flow. RA/agent filing paths bypass public CAPTCHAs (authorized agent access). Screenshot audit trail at every step. |
+| 3 | Print-and-mail | ~2-3 states (Maine + any holdouts) | Generate completed PDF + cover letter. Automated mailing via print-and-mail API service (e.g., Lob). Tracking number provided to user. |
 
 
-**Honest UX**: LaunchFree "prepares your LLC filing" -- it does NOT "file for you" in most states. The language must reflect this. The value is in the AI state comparison, document preparation, and compliance calendar -- not in pressing a "submit" button that doesn't exist for 35+ states.
+**Payment Orchestration:** User pays LaunchFree via Stripe checkout (state filing fee + $0 service fee). State Filing Engine pays the state during automated submission using Stripe Issuing virtual cards (programmatic card creation, pricing per Stripe's current schedule). Estimated blended marginal cost per filing: ~$0.25-0.50 (virtual card fees + CAPTCHA solving + compute -- actual costs to be validated during Phase 3 development). For high-volume states (DE, CA, FL, TX), apply for prepaid deposit accounts directly with the state for even lower cost and higher reliability.
+
+**Bottleneck Analysis (ranked by severity):**
+
+1. **Payment orchestration (CRITICAL):** Paying state fees during automated submission is the hardest part. States accept different payment methods (credit card, ACH, check, prepaid). Stripe Issuing solves this for credit card states. Prepaid deposit accounts for high-volume states.
+2. **Portal fragility (HIGH):** State portals redesign without notice, breaking automation. Mitigations: multiple selector strategies per field (CSS > XPath > text > ARIA), daily automated health checks, volume-weighted maintenance (top 10 states = ~80% of filings), manual fallback SLA (staff submits within 4 hours, script fix within 48 hours).
+3. **Anti-bot / CAPTCHA (MEDIUM):** Solved primarily by being the Registered Agent -- RA filing paths are authorized agent access, not anonymous public access. For states where we're not yet RA: CAPTCHA solving services (~$0.003/solve), rate-limited submissions (1-2 per state per hour).
+4. **State-specific quirks (MEDIUM):** NY publication requirement, CA biennial Statement of Information within 90 days, some states require notarized articles. Each quirk = a handler in the per-state JSON config + compliance calendar trigger.
+5. **Filing verification (MEDIUM):** Multi-channel: instant portal confirmation numbers, email parsing for state confirmations, periodic status polling, mail tracking for print-and-mail states.
+
+**MVP rollout (Phase 3):** Top 10 states by formation volume (CA, TX, FL, DE, WY, NY, NV, IL, GA, WA) via portal automation + Delaware ICIS API. Manual founder submission for remaining 40 states (~3-4/day at 1K formations/year). Scale rollout: 30 states by Phase 3.5, full 50-state automation by Phase 5.
+
+**Dual-use infrastructure:** The State Filing Engine powers both LaunchFree (consumer, $0) and the Distill Formation API (B2B, $20-40/filing target pricing). See Section 1C for the Distill umbrella brand architecture. This is the same pattern as FileFree + Distill Tax API sharing `packages/tax-engine/`.
 
 ### 7B. Alerting Strategy
 
@@ -3793,7 +3871,7 @@ Post-integration review after adding Distill (B2B CPA + API), business tax filin
 | H1  | packages/data/ overloaded -- needs split              | Engineering  | HIGH     | FIXED  | Split into packages/data/, packages/tax-engine/, packages/document-processing/ in Section 2 monorepo. Updated Phase task references. D70 in KNOWLEDGE.md.                                 |
 | H2  | Multi-tenant data isolation unspec'd (CRITICAL)       | Engineering  | HIGH     | FIXED  | Added RLS + firm-scoped middleware spec to Section 1C. Added P9.9 security audit task.                                                                                                   |
 | H3  | B2B creates data processing relationship needing DPA  | Legal        | HIGH     | FIXED  | Added DPA requirement to Section 1C. Added P9.10 DPA template task.                                                                                                                     |
-| M1  | Phase 9 timing unrealistic (Dec-Jan alongside launch) | Engineering  | MEDIUM   | FIXED  | Adjusted Phase 9 to "January - March 2027." Catches April 15 deadline rush.                                                                                                             |
+| M1  | Phase 9 timing unrealistic (Dec-Jan alongside launch) | Engineering  | MEDIUM   | FIXED  | Originally adjusted to January-March 2027. Subsequently accelerated to Summer 2026 (D74) — shared infrastructure from Phases 1-3 means incremental B2B work is thin.                     |
 | M2  | B2B API and CPA SaaS being conflated                  | Strategy     | MEDIUM   | FIXED  | Resolved by Distill brand architecture: two product lines (CPA SaaS + API) under one B2B brand, both distinct from consumer FileFree.                                                    |
 | M3  | Infra cost doesn't reflect 5 Vercel apps              | CFO          | MEDIUM   | FIXED  | Added Vercel Pro ($20/mo) to FINANCIALS.md variable costs.                                                                                                                               |
 | M5  | 2M user projection double-counts API volume           | Growth       | MEDIUM   | FIXED  | Split acquisition model into "Direct Users" vs "API Filing Volume" with valuation multiple note (8-15x vs 3-5x).                                                                        |
@@ -3901,6 +3979,7 @@ The venture operates like a company with AI employees. Employees need a persiste
 | #dev-feed          | GitHub PR notifications, Vercel deploys, CI results  | GitHub/Vercel integrations                  |
 | #partnerships      | Partnership pipeline updates, outreach drafts        | Partnership Outreach (n8n)                  |
 | #data-integrity    | State data validation results, stale data alerts     | State Data Validator (n8n)                  |
+| #filing-engine     | State Filing Engine health, submission status, portal failures | Filing Engine Monitor (n8n)        |
 | #revenue           | Affiliate conversions, Stripe events                 | Affiliate Tracker (n8n), Stripe integration |
 
 
@@ -3938,6 +4017,9 @@ Department-level email aliases on Google Workspace. All route to founder's inbox
 | [partnerships@filefree.ai](mailto:partnerships@filefree.ai) | filefree.ai   | Partnership inquiries (Founder 2 primary) |
 | [hello@launchfree.ai](mailto:hello@launchfree.ai)           | launchfree.ai | General LaunchFree inquiries              |
 | [support@launchfree.ai](mailto:support@launchfree.ai)       | launchfree.ai | LaunchFree user support                   |
+| [hello@distill.tax](mailto:hello@distill.tax)               | distill.tax   | General Distill inquiries                 |
+| [support@distill.tax](mailto:support@distill.tax)           | distill.tax   | Distill technical support                 |
+| [api@distill.tax](mailto:api@distill.tax)                   | distill.tax   | API partner inquiries, developer support  |
 
 
 **Note**: filefree.tax aliases (hello@, support@) retained as forwards to filefree.ai equivalents post-migration (P0.2).

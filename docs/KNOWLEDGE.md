@@ -1,8 +1,8 @@
-# FileFree Knowledge Base
+# Paperwork Labs — Knowledge Base
 
-Organizational memory for FileFree. AI agents read this at session start. Update after significant decisions, learnings, or pattern discoveries.
+Organizational memory for Paperwork Labs (FileFree, LaunchFree, Distill, Trinkets). AI agents read this at session start. Update after significant decisions, learnings, or pattern discoveries.
 
-**Last Updated**: 2026-03-12
+**Last Updated**: 2026-03-16
 
 ---
 
@@ -533,3 +533,27 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 - **Decision**: Rename B2B product to "Distill" (distill.tax). Separate brand under Paperwork Labs venture umbrella. "Distill" = extract pure essence from raw material, perfect metaphor for OCR-to-structured-data pipeline. Fits naturally under Paperwork Labs (distilling paperwork). Two product lines under one B2B brand: Distill for CPAs (SaaS dashboard, $49-199/mo) and Distill API (Tax-as-a-Service for platforms, per-return pricing). Consumer brands (FileFree, LaunchFree) remain the "Free family." B2B brand (Distill) is the professional portfolio.
 - **Alternatives**: Keep "FileFree Pro" (rejected: "Free" in B2B undermines trust), use a completely unrelated name with no connection to venture (rejected: loses thematic coherence with Paperwork Labs), create separate brands for CPA SaaS vs API (rejected: unnecessary fragmentation, same audience type).
 - **Reversibility**: High. Brand rename is documentation + domain + landing page. No architectural changes.
+
+### D72 — State Filing Engine: Build vs Buy, Three-Tier Architecture (2026-03-16)
+- **Context**: Initial LaunchFree plan claimed "LaunchFree prepares your LLC filing — it does NOT file for you in most states" due to assumption that 35+ states lacked online filing. Research disproved this: nearly all 50 states have online filing portals. Competitors (LegalZoom, ZenBusiness) DO file for users. The "honest UX" framing was actually a product gap, not a feature. Third-party formation API pricing (CorpNet ~$69-79, FileForms ~$30-60) made wholesale outsourcing incompatible with LaunchFree's "$0 service fee" model.
+- **Decision**: Build an in-house State Filing Engine with three tiers: Tier 1 (state APIs, e.g. Delaware ICIS), Tier 2 (Playwright portal automation for ~45 states), Tier 3 (print-and-mail via Lob for ~2 mail-only states). Payment via Stripe Issuing virtual cards. Estimated blended marginal cost: ~$0.25-0.50/filing (actual costs to be validated). This engine serves both LaunchFree (consumer, $0) and Distill Formation API (B2B, $20-40/filing), creating a dual-use infrastructure with near-zero marginal cost.
+- **Alternatives**: White-label via CorpNet/FileForms (rejected: $30-80/filing incompatible with free model), preparation-only "honest UX" (rejected: competitors file for users, this is a product gap not a feature), manual submission queue (rejected: doesn't scale).
+- **Reversibility**: Low. This is a significant engineering investment. But the infrastructure has dual-use value (consumer + B2B API) that justifies the investment.
+
+### D73 — Embrace "Paperwork Labs" as Company Name Everywhere (2026-03-16)
+- **Context**: Documentation and persona files used inconsistent naming — "the venture," "FileFree/LaunchFree venture," "Venture," etc. The holding company (Paperwork Labs LLC) had been registered and paperworklabs.com purchased, but the name wasn't being used consistently across agent context files, documentation headers, or architectural references. This caused agents to have fragmented understanding of the company identity.
+- **Decision**: Standardize "Paperwork Labs" as the company name across all documentation, persona files, README, and agent context. Every `.mdc` persona header now starts with "Paperwork Labs [Role]". All doc headers use "Paperwork Labs — [Title]". The `.cursorrules` header opens with "Paperwork Labs — We build tools that eliminate paperwork." Brand hierarchy: Paperwork Labs (company) > consumer brands (FileFree, LaunchFree, Trinkets) + B2B brand (Distill).
+- **Alternatives**: Keep "the venture" (rejected: too generic, no brand recognition), use "FileFree" as the umbrella name (rejected: FileFree is one product, using it for the company conflates product and company identity).
+- **Reversibility**: High. It's naming. Can change at any time.
+
+### D74 — Accelerate Full Distill Platform to Summer 2026 (2026-03-16)
+- **Context**: Original timeline placed Distill CPA SaaS at Phase 9 (January-March 2027) and Formation API at Phase 9.5 (Year 2, 2028). This was based on traditional development estimates. However, Paperwork Labs' operating model (one founder + AI agents shipping at full-team velocity) compresses timelines significantly. Furthermore, ~80% of Distill's infrastructure is shared with consumer products built in Phases 1-3 (tax engine, filing engine, document processing, 50-state data). The incremental B2B work is thin: multi-tenant auth, API keys, billing, docs.
+- **Decision**: Pull ALL Distill products to Summer 2026: CPA SaaS, Formation API, Tax API (calculation-only, e-file endpoint activates January 2027 when MeF transmitter ships), and Compliance API. Phase 9 runs in parallel with Phases 5-6, not sequentially after Phase 8. No consumer product is deprioritized. Only two hard deadlines remain external (IRS): MeF ATS testing (October 2026) and tax season (January 2027).
+- **Alternatives**: Keep Distill at March 2027+ (rejected: wastes 6+ months of potential B2B revenue, underestimates AI-augmented velocity), launch only CPA SaaS by summer (rejected: APIs are thin incremental work on top of shared infrastructure — no reason to wait).
+- **Reversibility**: High. If summer proves too aggressive, individual API launches can slip without affecting consumer products.
+
+### D75 — Agent-Driven Operations Model (2026-03-16)
+- **Context**: As Paperwork Labs scales to 4 products across 50 states with continuously changing compliance data, portal UIs, filing fees, and deadlines, manual maintenance is unsustainable for a solo founder. The same AI-augmented development model that builds the products can maintain them.
+- **Decision**: Formalize AI agents as the operations team: (1) n8n workflows auto-detect changes in 50-state formation/tax data weekly, flag for human review, (2) Playwright portal health checks run daily against live state portals, alert via Slack if scripts break, (3) Cursor agents handle ongoing code maintenance, bug fixes, and feature additions, (4) Filing Engine status checks run hourly for stuck/failed submissions. This is formalized as a moat: competitors need both the infrastructure AND the operational process to compete.
+- **Alternatives**: Hire operations staff (rejected: premature for a bootstrapped venture at this stage), manual monitoring (rejected: doesn't scale across 50 states x 4 products), outsource monitoring (rejected: no vendor covers this specific domain).
+- **Reversibility**: High. Agent workflows can be replaced with human processes at any time.

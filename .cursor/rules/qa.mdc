@@ -3,7 +3,7 @@ description: "QA Lead persona — testing, validation, security audits, PII leak
 globs: ["**/*.test.*", "**/*.spec.*", "**/tests/**"]
 ---
 
-# FileFree QA Lead Context
+# Paperwork Labs QA Lead Context
 
 ## Core Principle
 

@@ -3,7 +3,7 @@ description: "Social Media Manager persona — platform-specific content strateg
 globs: ["**/social/**", "**/content/**"]
 ---
 
-# FileFree Social Media Manager Context
+# Paperwork Labs Social Media Manager Context (FileFree-focused, pending Phase 6 split)
 
 > **SCOPE NOTE**: This persona is currently **FileFree-specific**. In Phase 6 (Agent Restructure), it will be renamed to `filefree-social.mdc` and a parallel `launchfree-social.mdc` will be created with LaunchFree-specific handles, content themes, hooks, and compliance rules (UPL instead of Circular 230). See Venture Master Plan v1, Section 6C for the full split spec.
 

@@ -1,7 +1,7 @@
-# Venture Financial Tracker
+# Paperwork Labs — Financial Tracker
 
 **Maintained by**: Executive Assistant agent (`ea.mdc`)
-**Last updated**: 2026-03-10
+**Last updated**: 2026-03-16
 
 ---
 
@@ -13,7 +13,8 @@
 | Mar 2026 | launchfree.ai domain (2yr) | ~$220 | Domain | Purchased |
 | Mar 2026 | paperworklabs.com domain | ~$12 | Domain | Purchased. Holding company site |
 | TBD | California LLC filing fee (Paperwork Labs LLC) | $70 | Legal | |
-| TBD | DBA filings (x3: FileFree, LaunchFree, Trinkets) | ~$30-75 | Legal | ~$10-25 per name |
+| Mar 2026 | distill.tax domain | ~$8 | Domain | Purchased |
+| TBD | DBA filings (x4: FileFree, LaunchFree, Trinkets, Distill) | ~$40-100 | Legal | ~$10-25 per name |
 | TBD | Registered Agent (first year) | ~$49 | Legal | Annual, first year |
 | TBD | USPTO trademark filing (FILEFREE + LAUNCHFREE) | ~$2,100 | Legal | Supplemental Register, Class 036+042 and 035+042 |
 | TBD | FCRA compliance review (credit score integration) | ~$500-1,000 | Legal | Required before Phase 1.5 credit score soft pulls. See Master Plan Section 4M. |
@@ -90,10 +91,11 @@ Note: Year 1 increase driven by Compliance-as-a-Service recurring revenue ($49-9
 
 Key inflection: Year 3 is where marketplace revenue overtakes product revenue. See Master Plan Section 4O for stage gates and competitive moat analysis.
 
-### Distill B2B SaaS Revenue (from Master Plan Section 1C)
+### Distill B2B SaaS Revenue (CPA SaaS — launching Summer 2026)
 
 | Year | CPA Firms | Avg Plan | Monthly Rev | Annual Rev |
 |---|---|---|---|---|
+| H2 2026 (launch) | 5-20 | $49-79/mo | $245-1.6K | **$1.5K-9.5K** |
 | Y1 (2027) | 30-100 | $79-99/mo | $2.4K-9.9K | **$28K-119K** |
 | Y2 (2028) | 100-300 | $99-129/mo | $9.9K-38.7K | **$119K-464K** |
 | Y3 (2029) | 300-600 | $119-149/mo | $35.7K-89.4K | **$428K-$1.07M** |
@@ -103,6 +105,17 @@ Key inflection: Year 3 is where marketplace revenue overtakes product revenue. S
 This is immediate, predictable SaaS revenue -- not marketplace ARPU that requires consumer scale. Revenue starts the moment a CPA firm signs up. ~80% tech overlap with consumer FileFree means near-zero marginal infrastructure cost.
 
 **Annual billing discount impact**: Distill offers 20% annual billing discount (Solo $39/mo, Team $79/mo, Firm $159/mo). If 50% of firms choose annual, effective monthly revenue drops ~10% from the table above. However, annual billing improves cash flow predictability and reduces churn.
+
+### Distill API Revenue (Formation + Tax + Compliance APIs — launching Summer 2026)
+
+| Year | API Filings/Calls | Avg Revenue/Unit | Annual Rev |
+|---|---|---|---|
+| H2 2026 (launch) | 50-200 filings | $30/filing avg | **$1.5K-6K** |
+| Y1 (2027) | 500-2K filings | $30/filing avg | **$15K-60K** |
+| Y2 (2028) | 2K-5K filings | $30/filing avg | **$60K-150K** |
+| Y3 (2029) | 5K-15K filings | $25/filing (volume discounts) | **$125K-375K** |
+
+Note: $20-40/filing is target pricing, undercutting incumbent API providers. Marginal cost estimated at ~$0.25-0.50/filing (actual costs to be validated). Gross margin target: 90%+. Tax API and Compliance API add incremental per-call revenue not included above.
 
 ### Business Tax Filing Revenue (from Master Plan Phase 10)
 
