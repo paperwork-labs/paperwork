@@ -1,6 +1,6 @@
 # Paperwork Labs — Venture Build Tasks
 
-**Version**: 9.0 | **Updated**: 2026-03-16
+**Version**: 9.1 | **Updated**: 2026-03-16
 
 Work through these in phase order. Each task is scoped for one PR. Reference [PRD.md](PRD.md) for business context, [PRODUCT_SPEC.md](PRODUCT_SPEC.md) for FileFree UX specs, [VENTURE_MASTER_PLAN.md](VENTURE_MASTER_PLAN.md) for deep strategy, [PARTNERSHIPS.md](PARTNERSHIPS.md) for partner playbook, [.cursorrules](../.cursorrules) for coding conventions.
 
@@ -24,8 +24,8 @@ Work through these in phase order. Each task is scoped for one PR. Reference [PR
 
 | Milestone | Deadline | Status | Notes |
 | --- | --- | --- | --- |
-| EFIN application (Form 8633) | THIS WEEK | NOT STARTED | 45-day IRS processing. Blocks entire MeF certification chain. |
-| LLC filing (CA SOS) | April 2026 | NOT STARTED | Blocks EIN, bank account, Stripe, trademarks. |
+| LLC filing (CA SOS) + EIN | TODAY | NOT STARTED | Blocks EFIN, bank account, Stripe, trademarks. Do FIRST. See instructions below. |
+| EFIN application (Form 8633) | TODAY (after LLC + EIN) | NOT STARTED | 45-day IRS processing. Blocks entire MeF certification chain. See instructions below. |
 | Cyber liability insurance ($1M) | Before first SSN collected | NOT STARTED | Non-negotiable for handling SSNs. Company-ending risk without it. |
 | MeF XML generator development | Start June 2026 | NOT STARTED | Must begin 4 months before ATS testing window. |
 | ATS testing (IRS) | October 2026 | NOT STARTED | 13 federal test scenarios + 42 state schema validations. |
@@ -64,11 +64,153 @@ These are existential risk mitigations that cost under $5K total. Complete befor
 | # | Action | Cost | Deadline | Blocks | Status |
 | --- | --- | --- | --- | --- | --- |
 | 1 | Decide LLC name | $0 | -- | -- | DONE |
-| 2 | Apply for EFIN (Form 8633) | $0 | THIS WEEK | Phase 8 (MeF transmitter). 45-day IRS processing. Chain: EFIN -> Software Dev ID -> ATS (Oct 2026) -> Comms test (Nov) -> Go-live (Jan 2027). Every day of delay compresses the October ATS window. | NOT STARTED |
+| 2 | Apply for EFIN (Form 8633) | $0 | THIS WEEK | Phase 8 (MeF transmitter). 45-day IRS processing. Chain: EFIN -> Software Dev ID -> ATS (Oct 2026) -> Comms test (Nov) -> Go-live (Jan 2027). Every day of delay compresses the October ATS window. **See detailed step-by-step below.** | NOT STARTED |
 | 3 | Get cyber liability insurance (E&O + cyber, $1M coverage) | $1,500-3,000/yr | Before first SSN collected | Phase 7 (FileFree launch). Non-negotiable for handling SSNs. A single breach without it is company-ending. | NOT STARTED |
 | 4 | Draft data breach response plan | $0 (SANS/NIST templates) | Before first SSN collected | Phase 7. Need: notification timeline by state tier, template notification letter, forensics firm contact, first-call list. | NOT STARTED |
 | 5 | 1-hour startup attorney consultation | ~$300-500 | Before Phase 3 (LaunchFree MVP) | Two questions: (a) does AI-assisted operating agreement survive UPL analysis in CA, TX, NY, FL? (b) is wholesale RA arrangement structured to minimize agency liability? | NOT STARTED |
 | 6 | Self-serve affiliate apps (Marcus, Wealthfront, Betterment via Impact.com/CJ) | $0 | April 2026 | Plan B revenue. Online forms, no calls needed. | NOT STARTED |
+
+---
+
+### EFIN Filing Instructions (Do Today — March 16, 2026)
+
+**CRITICAL**: EFIN cannot be transferred between entities. Do NOT apply as sole proprietor — you will need a second EFIN after LLC formation. The correct order is LLC -> EIN -> EFIN, all completable today.
+
+**Use `sankalp@paperworklabs.com` for ALL business registrations below.** Clean separation between personal and business from day one.
+
+#### Step 0: Form the LLC (30 minutes, blocks everything)
+
+The LLC must exist before EIN, bank account, Stripe, trademarks, and EFIN. California allows online filing.
+
+1. Go to [bizfileOnline.sos.ca.gov](https://bizfileOnline.sos.ca.gov)
+2. Create an account using `sankalp@paperworklabs.com`
+3. Select **"File" > "LLC" > "Articles of Organization - CA LLC"**
+4. Fill in:
+   - **LLC Name**: Paperwork Labs LLC
+   - **Purpose**: Any lawful purpose
+   - **Management**: Manager-managed (you are the sole manager)
+   - **Agent for Service of Process**: Your name + home address (switch to a commercial RA later when LaunchFree ships)
+   - **Organizer**: Your name, `sankalp@paperworklabs.com`
+   - **Mailing address**: Your home address (CA requires a CA address)
+5. Pay the **$70 filing fee** (credit card accepted)
+6. Save the **confirmation number** and **file number** immediately
+7. Download the stamped Articles of Organization PDF when available
+
+**Note on RA**: Using yourself as the initial RA is fine and free. You can switch to a commercial RA (Northwest, CorpNet) later. The registered agent address becomes public record.
+
+#### Step 1: Get an EIN (5 minutes, instant)
+
+You need the EIN for the EFIN application, bank account, and Stripe.
+
+1. Go to [irs.gov/businesses/small-businesses-self-employed/apply-for-an-employer-identification-number-ein-online](https://www.irs.gov/businesses/small-businesses-self-employed/apply-for-an-employer-identification-number-ein-online)
+2. Click **"Apply Online Now"**
+3. Select entity type: **"Limited Liability Company (LLC)"**
+4. Select **"Started or acquired a new business"**
+5. Fill in:
+   - **Legal name**: Paperwork Labs LLC
+   - **State**: California
+   - **Number of members**: 1 (single-member LLC)
+   - **Responsible party**: Your full legal name + SSN
+   - **Business address**: Your home address (same as LLC filing)
+   - **Business activity**: "Software development" or "Computer programming, data processing"
+   - **Date business started**: Today's date (March 16, 2026)
+6. Submit and **immediately save/print the EIN confirmation letter (CP 575)**
+7. The EIN is issued instantly — note it down
+
+#### Step 2: Get a PTIN (15 minutes, instant)
+
+Every Responsible Official on the EFIN application needs a PTIN. Even though you're building software (not preparing returns for clients), the IRS requires it for the e-file application.
+
+1. Go to [rpr.irs.gov/ptin](https://rpr.irs.gov/ptin)
+2. Click **"Create an Account"** (or sign in if you already have one)
+3. Fill in:
+   - Personal info (name, SSN, DOB, address)
+   - Business info: **Paperwork Labs LLC**, `sankalp@paperworklabs.com`
+   - Previous year tax return info (2025 return) for identity verification
+   - Professional credentials: **None** (select "Not applicable" -- you are not a CPA/attorney/EA)
+4. Pay the **$18.75 fee** (credit/debit card)
+5. **PTIN is issued immediately** — save the number (format: P########)
+
+#### Step 3: Create IRS e-Services Account (10 minutes)
+
+1. Go to [irs.gov/e-file-providers/e-services-online-tools-for-tax-professionals](https://www.irs.gov/e-file-providers/e-services-online-tools-for-tax-professionals)
+2. Click **"e-Services Login or Registration"**
+3. You will authenticate via **ID.me** (IRS's identity verification partner):
+   - Create an ID.me account with `sankalp@paperworklabs.com`
+   - Verify your identity: upload a photo of your driver's license/passport + take a selfie
+   - This may take 5-15 minutes for automated verification, or up to 24 hours if manual review is needed
+4. Once ID.me is verified, you're into e-Services
+
+#### Step 4: Submit the EFIN Application (30 minutes)
+
+This is the actual Form 8633, submitted entirely online through e-Services. There is NO paper form to mail.
+
+1. In e-Services, click **"e-file Application"**
+2. Click **"Create New Application"**
+3. **Provider types — CHECK ALL THAT APPLY**:
+   - [x] **Software Developer** — you are building tax preparation software
+   - [x] **Transmitter** — you will send electronic returns to the IRS (MeF)
+   - [x] **Online Provider** — you offer tax preparation services online (filefree.ai)
+   - [ ] ERO — skip unless you will also originate returns for walk-in clients
+   - [ ] ISP — skip
+4. **Firm Information**:
+   - Firm name: **Paperwork Labs LLC**
+   - EIN: *[the EIN you just got in Step 1]*
+   - Business address: Your home address
+   - Business phone: Your phone number
+   - Email: `sankalp@paperworklabs.com`
+   - Website: `filefree.ai`
+5. **Principal/Responsible Official Information**:
+   - Your full legal name
+   - SSN
+   - PTIN: *[the PTIN you just got in Step 2]*
+   - Title: **Managing Member** (or **CEO**)
+   - Professional certification: **None** (this triggers the fingerprinting requirement)
+6. **Fingerprinting** (since you are not a CPA/attorney/enrolled agent):
+   - The application will generate a **unique scheduling ID and program code**
+   - Use the IRS scheduling tool to find a **Livescan fingerprinting location** near you (120-mile radius search)
+   - Schedule the appointment — bring a valid photo ID (driver's license or passport)
+   - The Livescan vendor electronically submits your prints to the IRS
+   - **Do this ASAP after submitting the application** — it's required before approval
+   - Cost: ~$15-50 depending on vendor location
+7. Review everything and **Submit**
+
+#### Step 5: Track and Follow Up
+
+- **Timeline**: Up to 45 days from submission date
+- **Check status**: Log into e-Services > e-file Application > check status
+- **If approved**: You receive an EFIN number + acceptance letter
+- **If issues**: IRS e-Help Desk at **1-866-255-0654** (M-F, 7am-7pm local time)
+- **After approval**: The EFIN unlocks your Software Developer ID, which is required to begin ATS testing (October 2026)
+
+#### Timing Summary
+
+| Action | Time | Cost | Result |
+| --- | --- | --- | --- |
+| LLC filing (CA SOS online) | 30 min | $70 | Confirmation number + file number |
+| EIN (IRS.gov online) | 5 min | $0 | EIN issued instantly |
+| PTIN (rpr.irs.gov) | 15 min | $18.75 | PTIN issued instantly |
+| e-Services account (ID.me) | 10-15 min | $0 | e-Services access |
+| EFIN application (e-Services) | 30 min | $0 | Application submitted |
+| Livescan fingerprinting | 30-60 min | ~$15-50 | Prints submitted to IRS |
+| **Total today** | **~2 hours** | **~$104-139** | LLC formed, EIN in hand, EFIN clock started |
+| EFIN approval | 45 days | — | EFIN + Software Dev ID |
+
+#### Post-EFIN Checklist (Next 2 Weeks)
+
+- [ ] Open a business bank account (Chase, Mercury, or Relay) using LLC docs + EIN
+- [ ] Create Stripe account under Paperwork Labs LLC using `sankalp@paperworklabs.com`
+- [ ] File DBA statements at your county clerk for "FileFree", "LaunchFree", "Trinkets", "Distill" (~$26 each in CA)
+- [ ] Update TASKS.md P0.6 status to DONE after LLC + EIN confirmed
+- [ ] Update KNOWLEDGE.md with D78 (LLC + EFIN filing)
+
+#### References
+
+- IRS Publication 3112: [irs.gov/pub/irs-pdf/p3112.pdf](https://www.irs.gov/pub/irs-pdf/p3112.pdf) (comprehensive e-file provider guide)
+- IRS Publication 4163: [irs.gov/pub/irs-pdf/p4163.pdf](https://www.irs.gov/pub/irs-pdf/p4163.pdf) (modernized e-file guide for software developers)
+- IRS e-Services: [irs.gov/e-file-providers/e-services-online-tools-for-tax-professionals](https://www.irs.gov/e-file-providers/e-services-online-tools-for-tax-professionals)
+- California bizfile Online: [bizfileOnline.sos.ca.gov](https://bizfileOnline.sos.ca.gov)
+- EIN Online Application: [irs.gov/businesses/small-businesses-self-employed/apply-for-an-employer-identification-number-ein-online](https://www.irs.gov/businesses/small-businesses-self-employed/apply-for-an-employer-identification-number-ein-online)
 
 ---
 
@@ -1139,7 +1281,7 @@ These run in parallel with all phases. Some have hard deadlines that block downs
 
 | Task | Owner | Deadline | Status | Notes |
 | --- | --- | --- | --- | --- |
-| EFIN application (Form 8633) | Founder 1 | THIS WEEK | NOT STARTED | 45-day processing. Blocks entire MeF chain. See Section 0G. |
+| EFIN application (Form 8633) | Founder 1 | TODAY | NOT STARTED | 45-day processing. Blocks entire MeF chain. LLC + EIN must be done first (EFIN cannot transfer between entities). See detailed instructions in Section 0G above. |
 | Self-serve affiliate apps (Marcus, Wealthfront, Betterment via Impact.com/CJ) | Founder 1 | April 2026 | NOT STARTED | Plan B revenue. Online forms, no calls needed. Do this regardless of Founder 2. |
 | Cyber liability insurance ($1M E&O + cyber) | Founder 1 | Before first SSN collected | NOT STARTED | $1,500-3,000/yr. Non-negotiable. See Section 0G. |
 | Data breach response plan | Founder 1 | Before first SSN collected | NOT STARTED | 2-page doc from SANS/NIST templates. See Section 0G. |
