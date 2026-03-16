@@ -23,7 +23,7 @@ Generate a concise daily briefing covering:
 - **Blockers**: Anything requiring founder attention (failed deploys, expiring domains, compliance deadlines)
 - **Quick wins**: 1-2 small tasks that can be knocked out in <15 minutes
 
-Output: Google Drive (`Venture HQ/Operations/Daily Briefings/YYYY-MM-DD.md`) + Slack `#ops-alerts`
+Output: Google Drive (`Venture HQ/Operations/Daily Briefings/YYYY-MM-DD.md`) + Slack `#daily-briefing`
 
 ### 2. Weekly Planning (n8n cron: Sunday 6pm PT)
 
@@ -56,7 +56,7 @@ Maintain `docs/FINANCIALS.md` as the single source of truth for venture finances
 
 ### 5. Document Maintenance (Two-Layer System)
 
-**Layer 1: Git-tracked company docs** (source of truth, rendered at sankalpsharma.com/docs/*):
+**Layer 1: Git-tracked company docs** (source of truth, rendered at paperworklabs.com/docs/*):
 
 - `docs/KNOWLEDGE.md`: Decisions log, updated after every significant conversation
 - `docs/TASKS.md`: Task status synced with master plan phases

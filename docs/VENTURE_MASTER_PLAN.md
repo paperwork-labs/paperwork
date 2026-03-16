@@ -44,7 +44,7 @@
 
 **Research-backed**:
 
-- "Labs" suffix is the #2 most common compound naming pattern in successful tech companies (23% of YC-backed companies use compound constructions) ([source: TradmarkLens](https://trademarklens.com/guides/us-tech-startup-naming-trends))
+- "Labs" suffix is the #2 most common compound naming pattern in successful tech companies (23% of YC-backed companies use compound constructions) ([source: TrademarkLens](https://trademarklens.com/guides/us-tech-startup-naming-trends))
 - .com available (paperworklabs.com) -- critical since 67%+ of successful startups use .com
 - Zero existing companies named "Paperwork Labs" in US tech/fintech
 - "PAPERWORKS" trademark (Serial #98659864) is Class 016 (paper stationery) -- no conflict with our Class 036/042
