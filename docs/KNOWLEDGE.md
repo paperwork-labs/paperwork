@@ -2,7 +2,7 @@
 
 Organizational memory for Paperwork Labs (FileFree, LaunchFree, Distill, Trinkets). AI agents read this at session start. Update after significant decisions, learnings, or pattern discoveries.
 
-**Last Updated**: 2026-03-16
+**Last Updated**: 2026-03-17
 
 ---
 
@@ -557,3 +557,9 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 - **Decision**: Formalize AI agents as the operations team: (1) n8n workflows auto-detect changes in 50-state formation/tax data weekly, flag for human review, (2) Playwright portal health checks run daily against live state portals, alert via Slack if scripts break, (3) Cursor agents handle ongoing code maintenance, bug fixes, and feature additions, (4) Filing Engine status checks run hourly for stuck/failed submissions. This is formalized as a moat: competitors need both the infrastructure AND the operational process to compete.
 - **Alternatives**: Hire operations staff (rejected: premature for a bootstrapped venture at this stage), manual monitoring (rejected: doesn't scale across 50 states x 4 products), outsource monitoring (rejected: no vendor covers this specific domain).
 - **Reversibility**: High. Agent workflows can be replaced with human processes at any time.
+
+### D76 — Google Workspace Setup: 1 Seat + Aliases (2026-03-16)
+- **Context**: VMP and FINANCIALS incorrectly stated "Google Workspace already active on sankalpsharma.com." Founder did not have paid Google Workspace — was on free Gmail. Needed to create Workspace from scratch for @paperworklabs.com and product-domain emails.
+- **Decision**: Create new Google Workspace under Paperwork Labs. Sign up with "Just you" (1 seat). Primary domain: paperworklabs.com. Add filefree.ai, launchfree.ai, distill.tax as alias domains. All department emails (hello@, support@, legal@, partnerships@, api@) configured as aliases routing to founder's single inbox. Cost: **$6/mo** (Business Starter), not $12. Olga gets admin panel access via personal email in `ADMIN_EMAILS` env var — no second Workspace seat needed. Use company email (e.g. sankalp@paperworklabs.com) for Cursor, Stripe, and vendor accounts for clean expense/billing separation.
+- **Alternatives**: 2 seats ($12/mo) with Olga on olga@paperworklabs.com (rejected: aliases suffice, saves $6/mo); free Gmail + Cloudflare Email Routing (rejected: no proper admin console, SPF/DKIM setup more brittle).
+- **Reversibility**: Easy. Add second seat anytime. Update FINANCIALS.md and VMP "Professional Email Aliases" section to reflect $6/mo and "create Workspace" (not "already active").
