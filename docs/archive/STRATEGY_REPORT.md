@@ -201,7 +201,7 @@ Every assumption in the business plan, explicitly listed with validation method.
 | Column Tax   | Build SDK integration                         | Book demo, negotiate pricing                       |
 
 
-Founder 2 has FAANG partnerships experience and commits 2-3 hours/week, supported by an AI persona (partnerships.mdc) that handles research, drafts, and pipeline tracking.
+Founder 2 has FAANG partnerships experience and commits on an outcome-driven basis, supported by an AI persona (partnerships.mdc) that handles research, drafts, and pipeline tracking.
 
 #### Tiered Partnership Strategy
 
@@ -229,7 +229,7 @@ The partnership revenue streams (refund routing + financial referrals = 77% of S
 - Scope limited to simple W2 filers (not all tax situations)
 - Infrastructure is managed services (Render, Vercel, Neon) — no server management
 - TASKS.md is designed for AI-agent-assisted development (each task 4-8 hours)
-- Founder 2's partnership workflow is AI-assisted (2-3 hrs/week, all prep automated)
+- Founder 2's partnership workflow is AI-assisted (outcome-driven, all prep automated)
 
 **Mitigations needed (not yet in place):**
 

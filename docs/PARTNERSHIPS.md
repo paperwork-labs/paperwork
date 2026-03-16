@@ -1,8 +1,10 @@
-# FileFree Partnership Playbook
+# Paperwork Labs — Partnership Playbook
 
 **For**: Partnerships Co-Founder (Founder 2)
-**Last Updated**: 2026-03-09
-**Companion docs**: PRD.md (Section 7: Revenue Model), STRATEGY_REPORT.md (Section 6: Team Structure)
+**Last Updated**: 2026-03-16
+**Company**: Paperwork Labs LLC (California) — paperworklabs.com
+**Products**: FileFree (filefree.ai), LaunchFree (launchfree.ai), Distill (distill.tax)
+**Companion docs**: PRD.md (Section 7: Revenue Model), VENTURE_MASTER_PLAN.md (Section 1A-1C)
 
 This is your standalone reference document. Everything you need to operate is here — no need to read code, technical docs, or engineering specs.
 
@@ -35,57 +37,113 @@ Partnership-dependent revenue (refund routing + financial referrals + refund adv
 
 ---
 
-## 2. Tiered Partnership Strategy
+## 2. Tiered Partnership Strategy (Marketplace-Aligned)
 
-We don't need to cold-call Goldman Sachs on day one. The strategy is phased — start with self-serve affiliate programs that anyone can apply to, then upgrade to direct partnerships once we have traction and conversion data to prove our value.
+The partnership strategy aligns with the 4-stage Financial Marketplace Platform evolution (see Master Plan Section 4O). Each partnership tier maps to a marketplace stage. Partners naturally upgrade tiers as our user base grows and the platform becomes more valuable.
 
-### Phase 1 — Affiliate Applications (NOW, pre-product)
+### Tier A — Self-Serve Affiliates (Stage 1: 0-5K users)
 
-**What:** Apply to affiliate networks online. These are standardized programs — fill out a form, describe your audience, get approved, receive tracking links.
+**What:** Apply to affiliate networks online. Standard programs -- fill out a form, describe your audience, get approved, receive tracking links.
 
-**Payout:** $50-100 per funded account (standard affiliate rates).
+**Payout:** $25-100 per funded account (standard affiliate rates).
 
-**Partners:**
-- Marcus by Goldman Sachs → Impact network
-- Wealthfront → Impact network
-- Betterment → CJ Affiliate
-- Fidelity → In-house affiliate program
+**Partners:** Marcus, Wealthfront, Betterment, Fidelity, SoFi, Ally, Robinhood, Chime, Acorns via Impact.com/CJ Affiliate.
 
-**Timeline:** Apply now. No product needed. Activate links when the Refund Plan screen ships.
+**Timeline:** Apply NOW, pre-product. Activate links when Refund Plan screen ships.
 
 **Owner:** Either co-founder (online forms, 15-30 min each).
 
-**What "self-serve" means:** You go to the affiliate network's website (e.g., impact.com), create a publisher account, search for Marcus/Wealthfront, and apply. They review your application (site description, audience, traffic estimates), and if approved, you get tracking links and a dashboard showing referrals and payouts. No phone calls. No negotiation. Standard terms.
+**Data flow:** One-way (we send users to partner, partner pays us). No data back from partner.
 
-### Phase 2 — Activate + Optimize (product live, 500+ users)
+### Tier B — Managed Affiliates + Data Reciprocity (Stage 2: 5K-25K users)
 
-**What:** Affiliate links go live on the Refund Plan screen (the screen users see after their refund is calculated). Track which partners convert best. A/B test recommendation copy and placement.
+**What:** Upgrade top-performing Tier A partners to managed relationships with tiered CPA and data sharing.
 
-**Owner:** Founder 1 (product integration) + You (monitor conversion performance).
+**Pitch:** "We're driving X funded accounts per month at Y% conversion rate -- 3x your network average. We want: (1) tiered CPA ($75 instead of $50), (2) you share approval rates and funded amounts back to us."
 
-**Your role here:** Review conversion dashboards weekly. Flag underperforming partners. Suggest copy/placement changes based on what's converting.
+**Payout:** $75-200 per funded account (1.5-3x standard affiliate).
 
-### Phase 3 — Upgrade to Direct Partnerships (5K+ users, traction proven)
+**Owner:** Founder 2 (negotiation). Founder 1 joins for technical data integration.
 
-**What:** This is where your FAANG partnerships experience matters. Reach out to existing affiliate partners and pitch a direct relationship.
+**Data flow:** Two-way. We send pre-qualified users. Partner shares back:
+- Approval rate per segment (helps us compute real match quality)
+- Average funded amount (helps us estimate LTV per recommendation)
+- 30/60/90-day retention (helps us recommend products users actually keep)
 
-**Pitch:** "We're driving X funded accounts per month through your affiliate program at Y% conversion rate. We'd like to discuss a direct partnership with higher payouts, co-marketing opportunities, and API integration."
+**Why data reciprocity matters:** This data feeds back into the scoring model (Section 4E Layer 2), making recommendations better for ALL partners. Partners who share data get better-qualified leads. It's a flywheel.
 
-**Payout:** $100-200+ per funded account (2-3x affiliate rates).
+### Tier C — API Partners (Stage 3: 25K-50K users)
 
-**Owner:** You (negotiation, relationship management).
+**What:** Partners submit product details, eligibility criteria, and CPA bids via our Partner API. Self-serve onboarding portal.
 
-**Why they'll say yes:** Direct partnerships give them more control over the user experience, better conversion data, and a dedicated integration. They're already paying affiliate rates — upgrading to direct is standard as volume grows.
+**Pitch:** "Join our financial marketplace. Submit your product details via API. Bid on access to pre-qualified user segments. Get real-time conversion analytics."
 
-### Phase 4 — Expand Partnership Categories (10K+ users)
+**Payout:** Auction-based CPA ($100-200+ for premium segments) + optional platform access fee.
 
-**What:** Add new partnership categories beyond HYSA:
-- Lending partners (refund advance — Refundo, Green Dot)
-- Insurance referrals (Lemonade renters insurance)
-- Credit products (secured credit cards for first-time builders)
-- B2B API partnerships (Phase 3 of product roadmap, 2028+)
+**Owner:** Founder 2 (relationship + negotiation). Partner API built by Founder 1.
 
-**Owner:** You (sourcing, outreach, negotiation, legal review).
+**Data flow:** Bidirectional + programmatic. Partners submit eligibility criteria and bids via API. They receive anonymized segment data and real-time conversion funnels.
+
+### Tier D — Marketplace Participants (Stage 4: 50K+ users)
+
+**What:** Partners upload eligibility models, run segment simulations, and optimize in real-time via the marketplace console.
+
+**Payout:** CPA auction + monthly platform access fee ($500-2,000/mo).
+
+**Owner:** Self-serve. Founder 2 manages strategic relationships only.
+
+**Data flow:** Full marketplace integration. Partners run models against anonymized profiles. Real-time bidding and optimization.
+
+### Strategic Partner Scoring Matrix
+
+Evaluate every potential partner on 5 dimensions before pursuing:
+
+| Factor | Weight | Description | Stage 1 Focus |
+|---|---|---|---|
+| Revenue per conversion | 30% | CPA/CPS amount per funded account | Prioritize highest-paying affiliates |
+| Data reciprocity potential | 25% | Will they share approval rates, funded amounts, retention data back? | Ask upfront, even if they can't share yet |
+| User trust alignment | 20% | Does this product genuinely help our users? Would we recommend it to a friend? | Hard filter -- reject anything predatory |
+| Integration complexity | 15% | Affiliate link (trivial) vs API (medium) vs custom build (high) | Stage 1 = affiliate links only |
+| Exclusivity value | 10% | Would featuring this partner exclusively give competitive advantage? | Never grant category exclusivity |
+
+**Exclusivity strategy**: Never grant category exclusivity (e.g., "only HYSA partner"). Competition between partners drives CPA bids up at Stage 3+. DO offer "featured partner" placement for a premium -- higher bid = top position, but competitors still visible below.
+
+### Data Reciprocity Agreements (Stage 2+ Upgrade Path)
+
+When upgrading a partner from Tier A to Tier B, negotiate for them to share:
+
+1. **Approval rates per segment**: "Of the users we sent with credit scores 700-749, how many were approved?" This feeds directly into Fit Score accuracy.
+2. **Average funded amounts**: "What's the average deposit for users referred by us vs. other channels?" This helps us estimate LTV per recommendation.
+3. **30/60/90-day retention**: "What % of our referrals are still active after 90 days?" This helps us recommend products users actually keep -- not just products that convert.
+4. **Reason for rejection** (anonymized): "Were rejections due to credit score, income, state, or other?" This immediately improves our eligibility filtering.
+
+This data is the secret weapon. Partners who share data get better-qualified leads, which increases their conversion rate, which makes them more willing to pay premium CPA, which increases our revenue. The flywheel accelerates.
+
+**Technical mechanism by stage**:
+- **Stage 2 (Tier B)**: Monthly CSV email. Partner sends a spreadsheet with referral_id, approval_status, funded_amount, and retention_status (30/60/90 day). We provide a CSV template. Simple, low-friction, no integration work for the partner.
+- **Stage 3 (Tier C)**: Webhook callback. Partner sends a POST to our `/api/v1/partners/outcomes` endpoint with referral_id, event_type (approved/rejected/funded/churned), and optional metadata. Real-time data flow enables immediate scoring model updates.
+- **Stage 4 (Tier D)**: Real-time API. Full bidirectional API. Partner queries our segments, we query their outcomes. Batch and streaming modes.
+
+---
+
+## 3.5. Distill B2B CPA Sales Motion
+
+Distill (distill.tax) is a separate B2B brand from FileFree. It has its own sales motion distinct from the consumer partnership strategy above. CPA firm sales is a B2B SaaS motion (LinkedIn outreach, product demos, onboarding calls), not affiliate/marketplace partnerships.
+
+**Ownership**: Founder 1 (Product/Engineering) owns CPA outreach because it is product-led — demos, technical questions, integration support. Founder 2 (Partnerships) focuses on consumer financial product partnerships (Sections 2-3 above). If Distill scales to 100+ firms, hire a B2B sales rep.
+
+**Target Audience**: Independent CPAs and small firms (1-10 preparers). 75K+ CPA firms in the US. Tax season (January-April) creates natural urgency.
+
+**Outreach Channels**:
+- **LinkedIn**: Direct DMs to CPAs who post about tax season pain points, data entry bottleneck, AI tools. 2-3x/week content on CPA workflow automation.
+- **State CPA society directories**: Public member lists. Email outreach with free trial offer.
+- **r/taxpros + r/Accounting**: Genuine participation, answer questions, mention Distill when relevant.
+- **Accounting Today / CPA Practice Advisor**: Guest articles on AI tax prep automation.
+- **Product Hunt**: Launch "AI Tax Extraction for CPAs" in early January for tax season relevance.
+
+**CPA Referral Program**: CPAs who use Distill can refer their clients to consumer FileFree for personal filing. "Your CPA uses Distill" is a trust signal. Each CPA firm = a distribution channel for the consumer product (PATH F in master plan). This bidirectional flywheel (Distill -> FileFree -> Distill) is a competitive moat no competitor has.
+
+**See Section 5M in master plan for full bootstrapped GTM playbook.**
 
 ---
 
@@ -183,7 +241,7 @@ We don't need to cold-call Goldman Sachs on day one. The strategy is phased — 
 
 Use when affiliate networks ask "Describe your audience and how you plan to promote our product."
 
-> FileFree (filefree.tax) is a free, AI-powered tax filing app built for Gen Z (ages 18-30). After users complete their tax return and see their refund amount, we present personalized financial product recommendations on our "Refund Plan" screen — the highest-intent financial decision moment of their year.
+> FileFree (filefree.ai) is a free, AI-powered tax filing app built for Gen Z (ages 18-30). After users complete their tax return and see their refund amount, we present personalized financial product recommendations on our "Refund Plan" screen — the highest-intent financial decision moment of their year.
 >
 > Our users have verified W-2 income, exact refund amounts, filing status, and state residency — the most valuable targeting data in consumer finance. We recommend products that genuinely help our users (high-yield savings for their refund, IRA accounts for first-time investors) with clear disclosures.
 >
@@ -195,7 +253,7 @@ Use when affiliate networks ask "Describe your audience and how you plan to prom
 >
 > Hi Column Tax team,
 >
-> I'm the partnerships lead at FileFree (filefree.tax), a free AI-powered tax filing app for Gen Z. We're building our own IRS MeF transmitter (target: January 2027) but need an interim e-file solution for October 2026.
+> I'm the partnerships lead at FileFree (filefree.ai), a free AI-powered tax filing app for Gen Z. We're building our own IRS MeF transmitter (target: January 2027) but need an interim e-file solution for October 2026.
 >
 > We'd love to explore the Column Tax SDK for our use case:
 > - Simple W-2 filers (single, MFJ, standard deduction)
@@ -207,7 +265,7 @@ Use when affiliate networks ask "Describe your audience and how you plan to prom
 >
 > Best,
 > [Name]
-> FileFree — filefree.tax
+> FileFree — filefree.ai
 
 ### Template C: Direct Partnership Upgrade (Phase 3)
 
@@ -228,7 +286,7 @@ Use when affiliate networks ask "Describe your audience and how you plan to prom
 >
 > Best,
 > [Name]
-> FileFree — filefree.tax
+> FileFree — filefree.ai
 
 ### Template D: Refund Advance Partner Intro
 
@@ -249,7 +307,7 @@ Use when affiliate networks ask "Describe your audience and how you plan to prom
 >
 > Best,
 > [Name]
-> FileFree — filefree.tax
+> FileFree — filefree.ai
 
 ### Template E: Follow-Up (1 week, no response)
 
@@ -263,6 +321,74 @@ Use when affiliate networks ask "Describe your audience and how you plan to prom
 >
 > Best,
 > [Name]
+
+### Template F: Tier B Upgrade -- Tiered CPA + Data Reciprocity (Stage 2, 5K+ users)
+
+> Subject: FileFree x [Partner] — Tiered Partnership Upgrade
+>
+> Hi [Name],
+>
+> Quick update on our partnership performance: FileFree has driven [X] funded [product] accounts through your affiliate program in [timeframe], with a [Y]% conversion rate — [Z]x your network average.
+>
+> We'd like to discuss upgrading to a direct, tiered relationship:
+>
+> 1. **Tiered CPA**: $[amount] per funded account (reflecting our conversion quality)
+> 2. **Data sharing**: We'd love to receive anonymized approval rates and funded amounts for our referrals. This helps us send you even better-qualified leads — a win-win.
+> 3. **Featured placement**: Priority position on our Refund Plan screen for your product category
+>
+> Our users have verified W-2 income, credit scores, and detailed financial profiles. We can segment and pre-qualify traffic in ways affiliate networks can't.
+>
+> 20-minute call to discuss?
+>
+> Best,
+> [Name]
+> FileFree — filefree.ai
+
+### Template G: Tier C -- Partner API Introduction (Stage 3, 25K+ users)
+
+> Subject: Join FileFree's Financial Marketplace — Partner API Access
+>
+> Hi [Name],
+>
+> FileFree is opening our partner API to select financial product providers. We have [X]K active users with verified income data, credit scores, and detailed financial profiles — the richest per-user dataset in consumer fintech.
+>
+> What the Partner API offers:
+>
+> - Submit your product details and eligibility criteria programmatically
+> - Receive anonymized segment data ("X,000 users match your criteria")
+> - Set CPA bids to compete for top placement in personalized recommendations
+> - Real-time conversion analytics dashboard
+>
+> Our users see products ranked by "Fit Score" — a personalized match score based on their actual financial profile. Partners on our API see 2-3x higher conversion rates vs. standard affiliate channels because every impression is pre-qualified.
+>
+> Interested in early access? Happy to walk you through the platform.
+>
+> Best,
+> [Name]
+> FileFree — filefree.ai
+
+### Template H: Tier D -- Marketplace Invitation (Stage 4, 50K+ users)
+
+> Subject: FileFree Financial Marketplace — Premium Partner Invitation
+>
+> Hi [Name],
+>
+> FileFree's financial marketplace now serves [X]K+ users with the deepest per-user financial profiles in consumer fintech: verified income, credit scores, filing status, business ownership data, and behavioral signals from year-round engagement.
+>
+> We're inviting select partners to our premium marketplace tier:
+>
+> - Upload your eligibility models to our secure sandbox — see exactly which users match
+> - Run segment simulations before committing budget
+> - Real-time bidding on premium segments (high-income, good credit, refund in hand)
+> - Full conversion funnel analytics with partner-level A/B testing
+>
+> Current marketplace partners see [Y]% conversion rates on matched recommendations — [Z]x industry average.
+>
+> Would love to set up a demo of the marketplace console.
+>
+> Best,
+> [Name]
+> FileFree — filefree.ai
 
 ---
 
@@ -325,17 +451,20 @@ Revenue            Both            Monitor payouts, reconcile monthly, report to
 
 ---
 
-## 8. Key Dates & Milestones
+## 8. Key Dates & Milestones (Marketplace-Aligned)
 
-| Date | Milestone | Your Action |
-|---|---|---|
-| March 2026 | Sprint 0 | Submit affiliate applications (Marcus, Wealthfront, Betterment, Fidelity). Book Column Tax demo. |
-| April 2026 | Landing page live | No action needed (Founder 1 handles) |
-| June 2026 | Column Tax sandbox | Confirm pricing is locked. Ensure sandbox access. |
-| September 2026 | Refund Plan screen built | Review partner placement on the screen. Confirm affiliate links work. |
-| October 2026 | E-file goes live | Begin refund advance partner outreach (Refundo, Green Dot). |
-| January 2027 | Full season launch | Monitor conversion rates. Begin Phase 3 upgrade discussions with top-performing affiliates. |
-| Mid-2027 | 5K+ users | Initiate direct partnership negotiations with highest-converting affiliate partners. |
+| Date | Milestone | Marketplace Stage | Your Action |
+|---|---|---|---|
+| March 2026 | Sprint 0 | Pre-Stage 1 | Submit Tier A affiliate applications (Marcus, Wealthfront, Betterment, Fidelity, SoFi). Book Column Tax demo. |
+| June 2026 | Column Tax sandbox | Pre-Stage 1 | Confirm pricing locked. Ensure sandbox access. |
+| September 2026 | Refund Plan screen built | Pre-Stage 1 | Review partner placement. Confirm affiliate links. Test tracking. |
+| October 2026 | E-file goes live | Pre-Stage 1 | Begin refund advance outreach (Refundo, Green Dot). |
+| January 2027 | First tax season | Stage 1 begins | Monitor conversion rates per partner per segment. Collect baseline data. |
+| April 2027 | Post-season review | Stage 1 | Analyze: which partners converted best? For which segments? Build the Tier B upgrade pitch. |
+| Mid-2027 | 5K+ users | Stage 1 -> 2 gate | Initiate Tier B upgrade negotiations with top 3 partners. Pitch tiered CPA + data reciprocity. |
+| Late 2027 | 10K+ users | Stage 2 | Score partner roster with Strategic Partner Matrix. Identify Tier C candidates. |
+| Early 2028 | 25K+ users | Stage 2 -> 3 gate | Launch Partner API. Begin Tier C onboarding. Send Template G to prospects. |
+| Mid-2028 | 50K+ users | Stage 3 -> 4 gate | Launch marketplace console. Invite premium partners. Send Template H. |
 
 ---
 

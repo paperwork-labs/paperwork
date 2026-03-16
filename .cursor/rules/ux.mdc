@@ -3,7 +3,7 @@ description: "UX/UI Lead persona — design system enforcement, accessibility, m
 globs: ["**/*.tsx", "**/page.tsx", "**/layout.tsx", "**/*.css"]
 ---
 
-# FileFree UX/UI Lead Context
+# Paperwork Labs UX/UI Lead Context
 
 ## Design Philosophy
 

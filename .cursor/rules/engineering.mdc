@@ -4,11 +4,23 @@ description: "Staff Engineer persona — tech stack, architecture, code conventi
 globs: ["api/**/*.py", "web/**/*.ts", "web/**/*.tsx", "infra/compose.dev.yaml", "Makefile", "render.yaml"]
 ---
 
-# FileFree Engineering Context
+# Paperwork Labs Engineering Context
 
-This file mirrors and extends .cursorrules. It is the authoritative technical reference for AI coding agents.
+This file mirrors and extends .cursorrules. It is the authoritative technical reference for AI coding agents across all Paperwork Labs products (FileFree, LaunchFree, Distill, Trinkets).
 
 ## Architecture Overview
+
+### State Filing Engine (LaunchFree + Distill Formation API)
+
+Three-tier architecture for automated LLC formation submission:
+
+- **Tier 1: State APIs** — Delaware ICIS PublicXMLService (confirmed), others TBD. Direct REST/SOAP integration.
+- **Tier 2: Portal Automation** — Playwright headless browser automation for ~45 state portals. Per-state JSON config with form field mappings.
+- **Tier 3: Print-and-Mail** — Automated via print-and-mail API service (e.g., Lob) for ~2-3 mail-only states.
+
+Code lives in `packages/filing-engine/`, shared between `apis/launchfree/` (consumer, $0) and `apis/filefree/` B2B routes (Distill Formation API, $20-40/filing).
+
+Payment orchestration: Stripe Issuing virtual cards for programmatic state fee payment.
 
 ### OCR Pipeline (Cloud Vision + GPT — Tiered)
 
@@ -36,8 +48,10 @@ Google Cloud Vision does NOT store images, does NOT use them for training.
 
 ### Infrastructure (Zero AWS)
 
-- Frontend: Vercel (Hobby tier, free — upgrade to Pro when needed) — filefree.tax
-- Backend: Render Starter ($7/mo, 512MB) — api.filefree.tax. Start: `gunicorn app.main:app -k uvicorn.workers.UvicornWorker`
+- Frontend: Vercel (Hobby tier, free — upgrade to Pro when needed) — filefree.ai, launchfree.ai, distill.tax, paperworklabs.com
+- Backend: Render Starter ($7/mo, 512MB) x2 — FileFree API + LaunchFree API
+- Portal Automation: Render worker (or dedicated) — Playwright workers for state portal automation
+- Payment Orchestration: Stripe Issuing — virtual cards for state filing fees
 - Database: Neon serverless PostgreSQL (free tier MVP)
 - Sessions: Upstash serverless Redis (free tier: 500K commands/mo)
 - Storage: GCP Cloud Storage (encrypted, 24hr auto-delete lifecycle)
@@ -76,6 +90,8 @@ All conventions from .cursorrules apply. Key additions:
 - All monetary display uses CurrencyDisplay component with count-up animation
 - Use `make` commands for dev workflow (see Makefile at repo root)
 - Production infrastructure defined in render.yaml — changes go through PR review
+- Distill API routes live at `/api/v1/pro/*` in the FileFree API backend (firm-scoped middleware)
+- Filing Engine code lives in `packages/filing-engine/` — shared between LaunchFree (consumer) and Distill Formation API (B2B)
 
 ## Quality Gate (Pre-Merge Checklist)
 

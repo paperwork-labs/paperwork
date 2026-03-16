@@ -1,181 +1,160 @@
-# FileFree — Executive Pitch Package
+# Paperwork Labs — Executive Pitch Package
 
 *For co-founder review. Read time: 10 minutes.*
 
 ---
 
-## Part 1: Executive Summary (2-page overview)
+## Part 1: Executive Summary
 
 ### The Problem
 
-166 million Americans file taxes every year. 70% have simple situations (W-2 income, standard deduction) yet pay $0-170+ to TurboTax or spend hours at H&R Block for what should take 5 minutes.
+Americans spend billions annually on two categories of paperwork that should be free: **tax filing** (166M filers, $0-170+ per return) and **LLC formation** ($50-500+ in legal fees on top of state filing fees). Both industries are dominated by incumbents who profit from complexity.
 
-Three things just happened that cracked this market wide open:
+Three things just happened that cracked both markets wide open:
 
 1. **The IRS killed free filing.** Direct File ($41M spent, <300K returns) was discontinued for 2026. The only truly independent free option is gone.
-2. **TurboTax is imploding.** Three active lawsuits — deceptive pricing fraud ($141M), data breach (SSNs compromised), privacy violation (Twilio tracking). 60% of switchers cite deceptive fees.
-3. **Gen Z is desperate for help.** 67% stressed about taxes. 40% have cried over filing. 43% would trust AI over a tax professional. 70% would consider AI-based tax prep.
-
-This combination — supply gap + trust collapse + demographic wave — creates a 12-18 month window before incumbents react.
+2. **TurboTax is imploding.** Three active lawsuits — deceptive pricing fraud ($141M), data breach (SSNs), privacy violation. 60% of switchers cite deceptive fees.
+3. **5.25M new business applications in 2024.** LegalZoom charges $0 + $159-399 in forced upsells. ZenBusiness does the same. Nobody offers truly free, transparent formation.
 
 ### The Solution
 
-**FileFree** (filefree.tax) — snap a photo of your W-2, get your completed tax return in minutes, for free. Forever.
+**Paperwork Labs** builds free consumer products that eliminate paperwork, then packages the underlying infrastructure as paid B2B APIs.
 
-- AI-powered OCR reads the W-2 and fills in the return automatically
-- Tax calculation engine computes the refund/owed amount
-- User downloads their completed 1040 PDF (e-file coming January 2027)
-- Cost to serve: $0.06 per user (99.3% gross margin)
+| Product | What It Does | Revenue Model | Domain |
+|---------|-------------|---------------|--------|
+| **FileFree** | Free AI-powered tax filing. Snap W-2, get completed return in minutes. | Refund routing, financial referrals, Tax Optimization Plan | filefree.ai |
+| **LaunchFree** | Free LLC formation. AI state comparison, document prep, files with state for you. | RA credits, banking/payroll/insurance referrals, Compliance-as-a-Service | launchfree.ai |
+| **Distill** | B2B compliance automation. CPA SaaS + Formation API + Tax API + Compliance API. | SaaS subscriptions ($49-199/mo), per-filing API pricing ($20-40) | distill.tax |
+| **Trinkets** | Free utility tools (calculators, converters). SEO traffic drivers. | AdSense + cross-sell | tools.filefree.ai |
 
-**But free filing is just the acquisition channel.** The real business is what happens at the **refund moment**.
+**Consumer filing is free forever. Revenue comes from upsells, referrals, and B2B APIs.**
 
-### The Business Model (Credit Karma Playbook)
+### The Business Model
 
-When a 22-year-old sees "$3,400 refund" on screen, that's the highest-intent financial decision moment of their year. We present personalized, data-driven financial product recommendations:
+**Consumer products** use the Credit Karma playbook: free filing captures users at high-intent financial moments. At the "Your refund is $3,412" or "Your LLC is filed in Delaware" moment, we present personalized financial product recommendations. Partners pay $50-100 per funded account.
 
-> "Your refund is $3,412. Where should it go?"
-> - Put $1,000 in a 5.5% APY savings account (earn $55 by next tax season)
-> - Open a Roth IRA with $500 (your future self will thank you)
-> - Keep the rest in your checking account
-
-Partners (Marcus, Wealthfront, Betterment) pay $50-100 for each funded account. This is the exact model Credit Karma used to build a $7.1B business.
+**Distill** uses the Stripe playbook: the same infrastructure that powers our consumer products is exposed as B2B APIs. CPAs pay $49-199/mo for a SaaS dashboard. Platforms pay $20-40 per formation via API. This is the high-margin, recurring revenue that drives valuation multiples.
 
 ### The Numbers
 
-| Metric | Value |
-|---|---|
-| Cost per user | $0.060 |
-| Scenario B ARPU | $8.05 |
-| Gross margin | 99.3% |
-| 5-year LTV (80% retention) | $27.05 |
-| Fixed monthly infrastructure | $12.49 |
-| Path to $1M ARR | ~125K users (mid-2028) |
+| Metric | FileFree | LaunchFree | Distill |
+|--------|----------|------------|---------|
+| Cost to serve | $0.06/user | ~$0.50/filing (estimated blended) | ~$0.02/API call |
+| ARPU (Scenario B) | $8.05/user | $12-18/user | $99-199/mo (SaaS), $30/filing (API) |
+| Gross margin | 99.3% | 95%+ | 90%+ |
+
+| Scenario | Year 1 (2027) | Year 2 (2028) | Year 3 (2029) |
+|----------|---------------|---------------|---------------|
+| Conservative | $63K | $300K | $750K |
+| Moderate | $150K | $600K | $1.5M |
+| Aggressive | $264K | $1.2M | $3M+ |
+
+Distill B2B revenue accelerates multiples from 3-5x (consumer) to 6-10x+ (infrastructure/API).
 
 ### The Competitive Moat
 
-**80% of tax software users stick with the same program year after year** (PCMag). Whoever captures a 22-year-old filing their first return owns that customer for ~10 years. With ~4M Americans turning 22 annually, capturing just 5% = 200K users/year with compounding retention.
+Six compounding advantages:
 
-TurboTax literally cannot simplify their product without destroying $3B+ in revenue from complex filers. This is a structural constraint, not a choice.
+1. **State Filing Engine** — proprietary portal automation for all 50 states. Multi-year head start. Same engine serves consumers at $0 and B2B at $20-40/filing.
+2. **Cross-product data compound** — tax returns + LLC formations + quarterly estimates = richest compliance profile per user in fintech. Competitors have one data type; we have three.
+3. **Agent-maintained compliance data** — 50-state configs auto-updated by AI agents. Not just code but operational process that competitors can't replicate.
+4. **Cost structure moat** — 1 founder + AI agents at $284/mo total infrastructure vs. competitors with 50+ person teams.
+5. **Retention lock-in** — 80% of tax filers stick with the same software year-over-year (PCMag). Capture a 22-year-old, own them for 10+ years.
+6. **B2B distribution flywheel** — CPA firms using Distill become referral channels for consumer products. Bidirectional distribution.
 
 ### The Team
 
-Two co-founders:
-- **Founder 1 (Product/Engineering):** Builds the app, OCR pipeline, tax engine, infrastructure
-- **Founder 2 (Partnerships/Revenue):** Sources and closes financial product partnerships that drive 77% of revenue
+Two co-founders + AI agents as the extended team:
+- **Founder 1 (Product/Engineering):** Builds all products and infrastructure using AI coding agents (Cursor). One founder shipping at the velocity of a full engineering team.
+- **Founder 2 (Partnerships/Revenue):** Sources and closes financial product partnerships. FAANG partnerships background. Drives 77% of FileFree revenue.
 
 ---
 
-## Part 2: Revenue Model — Your $367K Impact
+## Part 2: Revenue Model — Your $367K+ Impact
 
-### Seven Revenue Streams
+### Revenue Streams by Product
+
+**FileFree (Tax)**
 
 | # | Stream | Evidence | Scenario B ARPU |
-|---|---|---|---|
-| 1 | Refund routing to HYSA | STRONG — Credit Karma model, Marcus $50-100/referral | $4.00 |
-| 2 | Financial product referrals | STRONG — Standard fintech affiliate model | $2.25 |
-| 3 | Refund advance | MODERATE — Requires lending partner | $0.36 |
-| 4 | Audit Shield ($19-29/yr) | MODERATE — TurboTax Max product | $0.57 |
-| 5 | Tax Optimization Plan ($29/yr) | WEAK-MODERATE — No direct comp | $0.87 |
-| 6 | Complex filing ($39) | MODERATE — Standard industry pricing | Future |
-| 7 | B2B API | STRONG validation (april $78M) | Future |
+|---|--------|----------|-----------------|
+| 1 | Refund routing to HYSA | Credit Karma model, Marcus $50-100/referral | $4.00 |
+| 2 | Financial product referrals | Standard fintech affiliate | $2.25 |
+| 3 | Refund advance | Requires lending partner | $0.36 |
+| 4 | Audit Shield ($19-29/yr) | TurboTax Max product | $0.57 |
+| 5 | Tax Optimization Plan ($29/yr) | AI advisory subscription | $0.87 |
+
+**LaunchFree (Formation)**
+
+| # | Stream | Evidence | Est. ARPU |
+|---|--------|----------|-----------|
+| 1 | Registered Agent credits | Northwest/CorpNet wholesale pricing | $5-8 |
+| 2 | Business banking referral | Mercury/Relay $50-100/funded | $3-5 |
+| 3 | Payroll/insurance referral | Gusto/Justworks $30-75/signup | $2-3 |
+| 4 | Compliance-as-a-Service ($49-99/yr) | Annual report reminders, RA renewal | $2-3 |
+
+**Distill (B2B)**
+
+| # | Stream | Pricing | Evidence |
+|---|--------|---------|----------|
+| 1 | CPA SaaS subscription | $49-199/mo | Comparable to Canopy, TaxDome |
+| 2 | Formation API per-filing | $20-40/filing | Undercuts incumbents at $30-80 |
+| 3 | Tax API per-return | $5-15/return | Calculation-only (e-file Year 2) |
+| 4 | Compliance API | Per-action | State deadline tracking |
 
 ### Your Impact = The Scenario Gap
 
-| Scenario | Description | Revenue at 100K Users |
-|---|---|---|
-| **A — Without partnerships co-founder** | Affiliate-only, no direct deals, no lending | **$438K** |
-| **B — With partnerships co-founder** | Direct deals, lending partner, optimized | **$805K** |
-| **Your delta** | | **$367K** |
-
-Streams 1, 2, and 3 are partnership-dependent. They account for 77% of Scenario B revenue. Without a dedicated partnerships person, we stay at Scenario A. With you, we reach Scenario B.
-
-### Three Scenarios at Scale
-
-| Year | Users | Scenario A | Scenario B | Scenario C |
-|---|---|---|---|---|
-| 2026 | 500 | $0 | $0 | $0 |
-| 2027 | 30,000 | $131K | $242K | $399K |
-| 2028 | 100,000 | $438K | $805K | $1.53M |
-| 2029 | 200,000 | $876K | $1.61M | $3.06M |
-
-**Scenario B crosses $1M ARR at ~125K users (mid-2028).**
-
-### What Makes This Work
-
-The 80% annual retention rate is the engine: 30K users in 2027 → 24K retained + 76K new = 100K in 2028 → 80K retained + 120K new = 200K in 2029. Users compound. Revenue compounds.
+Streams 1-3 on FileFree and streams 1-3 on LaunchFree are partnership-dependent. They account for 77% of consumer revenue. Without a dedicated partnerships person, we stay at Scenario A. With you, we reach Scenario B.
 
 ---
 
-## Part 3: Partnership Hit List — Your Action Items
+## Part 3: Partnership Action Items
 
-### Phase 1: Affiliate Applications (NOW — no product needed)
+### Immediate (no product needed)
 
-| # | Partner | Product | Payout | Network | Action |
-|---|---|---|---|---|---|
-| 1 | Marcus (Goldman Sachs) | HYSA 5%+ APY | $50-100/funded | Impact | Apply online |
-| 2 | Wealthfront | HYSA + investing | $50-150/funded | Impact | Apply online |
-| 3 | Betterment | Investing | $50-150/funded | CJ Affiliate | Apply online |
-| 4 | Fidelity | IRA/brokerage | $50-100/funded | In-house | Apply online |
+| Partner | Product | Payout | Action |
+|---------|---------|--------|--------|
+| Marcus (Goldman) | HYSA 5%+ APY | $50-100/funded | Apply on Impact |
+| Wealthfront | HYSA + investing | $50-150/funded | Apply on Impact |
+| Betterment | Investing | $50-150/funded | Apply on CJ |
+| Fidelity | IRA/brokerage | $50-100/funded | Apply online |
 
-These are self-serve applications. Fill out a form, describe the audience, submit. No calls needed. Standard affiliate terms. Activate links when the product ships.
+### Phase 2 (LaunchFree launch)
 
-### Phase 2: Negotiate (product live, requires a call)
+| Partner | Product | Target | Action |
+|---------|---------|--------|--------|
+| CorpNet | Registered Agent wholesale | $49-79/yr wholesale | Negotiate bulk pricing |
+| Mercury | Business banking | $50-100/funded | Apply for partnership |
+| Gusto | Payroll | $30-50/referral | Apply for partnership |
 
-| # | Partner | Product | Target Price | Action |
-|---|---|---|---|---|
-| 5 | Column Tax | E-file SDK | $10-15/return | Book demo, negotiate |
+### Phase 3 (Distill launch)
 
-### Phase 3: Outreach (after e-file is live)
+| Partner | Product | Model | Action |
+|---------|---------|-------|--------|
+| CPA associations | Distill CPA SaaS | Conference demos, CPE credits | Outreach + demos |
+| Tax software vendors | Distill integrations | API partnerships | BD outreach |
 
-| # | Partner | Product | Model | Action |
-|---|---|---|---|---|
-| 6 | Refundo | Refund advance | $3-5/advance rev share | Cold outreach |
-| 7 | Green Dot | Refund advance | Rev share | Cold outreach |
-
-### Phase 4: Expand (10K+ users)
-
-| # | Partner | Product | Payout |
-|---|---|---|---|
-| 8 | Lemonade | Renters insurance | $30-50/referral |
-| 9 | Discover/Capital One | Secured credit card | $50-100/approval |
-| 10 | YNAB | Cross-referral | Mutual |
-
-### Your Time Commitment
-
-**2-3 hours per week.** An AI persona handles all research, drafting, and prep work. You only do what requires a human: send emails, take calls, negotiate terms, leverage your network.
-
-- Monday (30 min): Review pipeline, approve/send outreach
-- Wednesday (60 min): Partnership calls
-- Friday (30 min): Update statuses, review next steps
-
-### The Full Playbook
-
-See **PARTNERSHIPS.md** in the repo root for:
-- Detailed research on each partner (affiliate programs, URLs, competitive intel)
-- Ready-to-send outreach email templates
-- Call prep brief format
-- Partnership lifecycle (who does what at each stage)
-- Glossary of terms (attach rate, ARPU, Form 8888, etc.)
+See **PARTNERSHIPS.md** for the full playbook, outreach templates, and call prep formats.
 
 ---
 
 ## Part 4: Why This Is Real, Not a Hobby
 
-### The Infrastructure Cost Is Negligible
-$12.49/month. Render ($7) + Hetzner (EUR 5.49). Vercel Hobby (free), Neon (free tier), Upstash (free tier). We can run this for years without revenue pressure.
+### Infrastructure Cost Is Negligible
+Core production infra currently runs at ~\$50/month (Render: \$21 for 3 APIs, Hetzner: \$6 ops, Vercel: free → \$20 Pro). All-in monthly burn, including infra, taxes, insurance, and other ops costs, is ~\$284/month (see **FINANCIALS.md**). Both are intentionally tiny so we can run for years without revenue pressure.
 
-### The Cost Per User Is World-Class
-$0.06/user. Our OCR pipeline (Cloud Vision + GPT-4o-mini) is 150x cheaper than Google's own Document AI W-2 Parser ($0.30/doc). This cost advantage is structural.
+### Cost Per User Is World-Class
+$0.06/user (FileFree), ~$0.50/filing (LaunchFree). Our OCR pipeline is 150x cheaper than Google's Document AI. The State Filing Engine runs at near-zero marginal cost after build.
 
-### The Revenue Model Is Proven
-Credit Karma built a $7.1B business on financial product referrals. Marcus pays $50-100 per funded HYSA account (public program). NerdWallet (public company) earns ~$4/user on referrals alone. Every revenue line item has a real comp.
+### Revenue Model Is Proven
+Credit Karma: $7.1B acquisition on financial referrals. LegalZoom: $751M revenue on formation upsells. Stripe: $95B valuation on infrastructure APIs. Every part of our model has a proven comp.
 
-### The Retention Is Industry-Proven
-80% of tax software users stick with the same program year after year (PCMag survey data). This isn't an assumption we're making — it's an industry fact.
+### AI-Augmented Velocity
+One founder + AI agents ships at the velocity of a 10-person team. No payroll. No hiring. No management overhead. The cost structure is the moat.
 
 ### The Timing Is Perfect
-IRS killed Direct File. TurboTax is drowning in lawsuits. Gen Z is the first generation that would rather trust an AI than a tax professional. The window is 12-18 months.
+IRS killed Direct File. TurboTax is drowning in lawsuits. 5.25M new business applications annually with no truly free option. The window is 12-18 months.
 
 ---
 
-*Questions? See PRD.md for the full product spec, STRATEGY_REPORT.md for the strategic assessment, or PARTNERSHIPS.md for your playbook.*
+*Questions? See PRD.md for product requirements, VENTURE_MASTER_PLAN.md for deep strategy, PARTNERSHIPS.md for the partnerships playbook.*

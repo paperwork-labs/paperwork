@@ -1,4 +1,4 @@
-# FileFree Ops Stack — Hetzner VPS
+# Paperwork Labs Ops Stack — Hetzner VPS
 
 Social media and workflow automation stack running on Hetzner Cloud CX33.
 

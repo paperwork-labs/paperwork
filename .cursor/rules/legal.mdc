@@ -2,7 +2,7 @@
 description: "General Counsel persona — compliance, EFIN, privacy, disclaimers, tax law boundaries, FTC disclosures. Invoke when working on legal pages, privacy policies, disclaimers, or compliance features."
 ---
 
-# FileFree Legal & Compliance Context
+# Paperwork Labs Legal & Compliance Context
 
 ## IRS Circular 230 — Tax Education vs Tax Advice
 
@@ -46,6 +46,34 @@ CRITICAL DISTINCTION: FileFree provides "tax education" and "tax information," N
 - Date of birth (encrypted at rest)
 - Filing status (not encrypted — not PII alone)
 
+## UPL (Unauthorized Practice of Law) — Formation Content Compliance
+
+CRITICAL DISTINCTION: LaunchFree provides BUSINESS FORMATION SERVICES, not LEGAL ADVICE.
+
+- LaunchFree prepares formation documents and submits them to the state on the user's behalf
+- NEVER recommend a specific state ("you should form in Delaware") — present comparison data and let the user decide
+- Operating agreements are TEMPLATES (state-specific, attorney-reviewed), NOT AI-generated legal documents
+- Every formation page must include UPL disclaimer (see below)
+- AI state comparison is information presentation, not legal counsel
+- If a user asks "should I form an LLC or S-Corp?" — present factual differences, do NOT recommend one over the other
+
+## FTC "Free" Compliance for LaunchFree
+
+- NEVER use "Free LLC" standalone — always "Free LLC Formation Service" or "$0 Service Fee"
+- State filing fees must appear in the same visual field as any "free" claim
+- RA credits: NEVER "Free RA" — always "$49/yr, earn credits to reduce"
+- All "free" claims must be accurate and unconditional per FTC guidelines
+- Filing fee range ($35-$500) must be visible before user starts formation flow
+
+## Distill B2B Legal
+
+- **Data Processing Agreement (DPA)** required for all CPA firms before processing client data
+- DPA covers: data processed, retention (24hr for images), no cross-product data usage without explicit consent, CCPA/state privacy compliance
+- **Multi-tenant data isolation**: Row-Level Security (RLS) on PostgreSQL, firm-scoped middleware
+- No cross-product data usage: Distill client data must NEVER be used for consumer product matching or training without explicit consent
+- API terms of service required for Formation API partners
+- DPA template needed before Distill launch (attorney consult scope item)
+
 ## Disclaimers Required on Key Screens
 
 ### Filing Flow (every screen with AI content)
@@ -62,6 +90,15 @@ CRITICAL DISTINCTION: FileFree provides "tax education" and "tax information," N
 
 ### Financial Product Referrals
 "FileFree may receive compensation if you sign up for recommended financial products. All recommendations are based on your tax situation." (FTC affiliate disclosure requirement)
+
+### Formation Pages (LaunchFree)
+"LaunchFree provides business formation services. We are not a law firm and do not provide legal advice. Consult a qualified attorney for legal advice specific to your situation."
+
+### State Data Accuracy (LaunchFree)
+"Filing fees and requirements sourced from state government websites. Verify current fees with your state's Secretary of State before filing."
+
+### Formation Operating Agreement
+"This operating agreement template is provided for informational purposes. It is not a substitute for legal advice. Consult an attorney licensed in your state before signing."
 
 ## FTC Compliance for Referrals
 - Clear and conspicuous disclosure near every referral link
@@ -86,6 +123,11 @@ Before shipping any feature that touches PII or financial data:
 - [ ] Every referral link has FTC disclosure
 - [ ] AI-generated content has Circular 230 disclaimer
 - [ ] Account deletion cascades verified (Neon, GCP Storage, Upstash)
+- [ ] (LaunchFree) UPL disclaimer on all formation pages
+- [ ] (LaunchFree) State filing fees visible alongside any "free" claim
+- [ ] (LaunchFree) No state recommendation language (present data, don't advise)
+- [ ] (Distill) DPA signed before processing any CPA firm's client data
+- [ ] (Distill) Multi-tenant RLS verified (firm A cannot see firm B's data)
 
 ## Trigger Condition
 
