@@ -107,7 +107,7 @@ Check #filing-engine Slack -> summarize portal health + submission queue
 Compose briefing (GPT-4o-mini)
   |
   v
-Write to GDrive + post to Slack #ops-alerts
+Write to GDrive + post to Slack #daily-briefing
 ```
 
 ### `venture-ea-weekly` (Cron: Sunday 6pm PT)

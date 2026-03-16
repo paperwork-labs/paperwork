@@ -397,13 +397,13 @@ Default ──> Gemini 2.5 Flash ($0.30/$2.50)
 **LaunchFree**
 
 
-| Workflow                   | Model            | Tier | Why                                           | ~Cost/Run |
-| -------------------------- | ---------------- | ---- | --------------------------------------------- | --------- |
-| State data structuring     | GPT-4o-mini      | 1    | Cheapest Zod schema mapping                   | $0.001    |
-| State data deep validation | Gemini 2.5 Pro   | 2    | 1M context, #1 Arena, 50% cheaper than Sonnet | $0.01     |
-| State fee lookups          | Gemini 2.5 Flash | 1.5  | Simple lookup, 90% cheaper than Sonnet        | $0.001    |
-| Formation guidance AI      | Claude Sonnet    | 2A   | UPL compliance, cautious framing              | $0.01     |
-| Operating agreement gen    | Claude Sonnet    | 2A   | Legal document, precision matters             | $0.03     |
+| Workflow                                | Model            | Tier | Why                                                                 | ~Cost/Run |
+| --------------------------------------- | ---------------- | ---- | ------------------------------------------------------------------- | --------- |
+| State data structuring                  | GPT-4o-mini      | 1    | Cheapest Zod schema mapping                                         | $0.001    |
+| State data deep validation              | Gemini 2.5 Pro   | 2    | 1M context, #1 Arena, 50% cheaper than Sonnet                       | $0.01     |
+| State fee lookups                       | Gemini 2.5 Flash | 1.5  | Simple lookup, 90% cheaper than Sonnet                              | $0.001    |
+| Formation guidance AI                   | Claude Sonnet    | 2A   | UPL compliance, cautious framing                                    | $0.01     |
+| Operating agreement template assistance | Claude Sonnet    | 2A   | Template selection/assembly + clause explanations (no drafting)     | $0.03     |
 
 
 **Trinket Factory**

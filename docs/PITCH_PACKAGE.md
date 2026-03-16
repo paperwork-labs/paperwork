@@ -141,7 +141,7 @@ See **PARTNERSHIPS.md** for the full playbook, outreach templates, and call prep
 ## Part 4: Why This Is Real, Not a Hobby
 
 ### Infrastructure Cost Is Negligible
-~$50/month total. Render ($21 for 3 APIs) + Hetzner ($6 ops) + Vercel (free → $20 Pro). Can run for years without revenue pressure.
+Core production infra currently runs at ~\$50/month (Render: \$21 for 3 APIs, Hetzner: \$6 ops, Vercel: free → \$20 Pro). All-in monthly burn, including infra, taxes, insurance, and other ops costs, is ~\$284/month (see **FINANCIALS.md**). Both are intentionally tiny so we can run for years without revenue pressure.
 
 ### Cost Per User Is World-Class
 $0.06/user (FileFree), ~$0.50/filing (LaunchFree). Our OCR pipeline is 150x cheaper than Google's Document AI. The State Filing Engine runs at near-zero marginal cost after build.

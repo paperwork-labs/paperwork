@@ -64,7 +64,7 @@
 |---|---|
 | Total monthly burn (real) | ~$284/mo |
 | Annual fixed costs | ~$3,408/yr ($284/mo x 12, includes amortized $800/yr CA franchise tax) |
-| Cash invested to date | ~$452 (domains: filefree.ai, launchfree.ai, paperworklabs.com) |
+| Cash invested to date | ~$460 (domains: filefree.ai, launchfree.ai, paperworklabs.com, distill.tax) |
 | Planned one-time expenses | ~$3,201-$3,746 (LLC + trademarks + FCRA review) + ~$300-500 (attorney consult) + ~$1,800 (first year cyber insurance) = ~$5,301-$6,046 |
 | Months of runway at $0 revenue | Indefinite (bootstrapped, costs covered by founder) |
 
