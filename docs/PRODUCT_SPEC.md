@@ -140,7 +140,7 @@ After filing, offer a shareable "tax receipt" graphic — the tax equivalent of 
 - "Refund: $X,XXX" (opt-in toggle)
 - Filing date
 - "Filed free with FileFree" footer with logo
-- filefree.tax URL
+- filefree.ai URL
 
 **Visual design**: dark card with gradient border, subtle glow effect, FileFree logo watermark. Should look premium enough that people want to share it.
 
@@ -202,7 +202,7 @@ The app must generate a downloadable IRS Form 1040 PDF using @react-pdf/renderer
 - Include: completed Form 1040 with all computed values
 - Cover page: "Your 2025 Federal Tax Return — Prepared by FileFree"
 - Instructions page: Step-by-step guide for submitting via IRS Free File or mail
-- Footer: "This return was prepared by FileFree (filefree.tax). E-file coming October 2026."
+- Footer: "This return was prepared by FileFree (filefree.ai). E-file coming October 2026."
 
 ---
 
@@ -646,7 +646,7 @@ The home base for authenticated users. Clean, card-based, informative.
 - "Tax Tips" (future) — seasonal tax tips or reminders (estimated tax payments, document checklists, etc.).
 
 **Referral Card (persistent):**
-- Small card: "You've referred {count} friends. Share your link: filefree.tax/ref/{code}" with a copy button. If count is 0: "Know someone who needs to file? Share FileFree and help them save."
+- Small card: "You've referred {count} friends. Share your link: filefree.ai/ref/{code}" with a copy button. If count is 0: "Know someone who needs to file? Share FileFree and help them save."
 
 **Empty Dashboard (new user, no filing started):**
 - Don't show empty cards. Show the welcome CTA card prominently and a brief "What to expect" section: "Grab your W-2, give us 20 minutes, and we'll handle the rest."
@@ -826,7 +826,7 @@ Building visible trust is as important as actual security for a tax product. Use
 
 ### Task 1.16 — Product Analytics Instrumentation
 
-This is the tracking code embedded in the frontend. It's invisible to users. The data flows to PostHog (hosted at `app.posthog.com` or self-hosted at `analytics.filefree.tax`), where you view dashboards, funnels, session replays, and run experiments. This is not an admin panel — it's a product intelligence layer.
+This is the tracking code embedded in the frontend. It's invisible to users. The data flows to PostHog (hosted at `app.posthog.com` or self-hosted at `analytics.filefree.ai`), where you view dashboards, funnels, session replays, and run experiments. This is not an admin panel — it's a product intelligence layer.
 
 **Setup:**
 - Install `posthog-js` and `posthog-react`. Initialize in the root layout with your project API key. Wrap the app in `<PostHogProvider>`.
@@ -910,7 +910,7 @@ Session Replay: enable session replay for users who triggered an error event or 
 
 ### Task 1.17 — Admin Dashboard (Internal Operations)
 
-This is your command center — a protected area of the app (either a `/admin` route behind role-based auth, or a separate subdomain like `admin.filefree.tax`) where you manage operations, debug user issues, and monitor system health. This is NOT the product analytics layer (that's PostHog) — this is operational tooling.
+This is your command center — a protected area of the app (either a `/admin` route behind role-based auth, or a separate subdomain like `admin.filefree.ai`) where you manage operations, debug user issues, and monitor system health. This is NOT the product analytics layer (that's PostHog) — this is operational tooling.
 
 **Access Control:**
 - Admin routes are protected by a role check. Your user model should have a `role` field (default: `user`, elevated: `admin`). Admin middleware rejects non-admin users with a 403. In production, only your account has admin access. Keep the admin user list hardcoded or in an environment variable — don't build a full RBAC system yet.
@@ -969,7 +969,7 @@ Email is your primary re-engagement channel. Users who start filing and don't fi
 
 **Email Infrastructure:**
 - Use `react-email` to build email templates as React components. They use the same design tokens (colors, fonts) as the app for brand consistency.
-- Use `resend` for delivery. Set up a verified sending domain: `notifications@filefree.tax`.
+- Use `resend` for delivery. Set up a verified sending domain: `notifications@filefree.ai`.
 - All emails include: FileFree logo, a clear subject line, the email body, an unsubscribe link (legally required and respectful), and a footer with your physical address (CAN-SPAM compliance).
 
 **Transactional Emails (triggered by user actions):**
@@ -1022,7 +1022,7 @@ A tax app grows primarily through word of mouth — "I used this free thing and 
 
 **Referral System:**
 
-Every user gets a unique referral link: `filefree.tax/ref/{code}`. The code is a short, readable string (not a UUID). Generate it on account creation.
+Every user gets a unique referral link: `filefree.ai/ref/{code}`. The code is a short, readable string (not a UUID). Generate it on account creation.
 
 The referral link is accessible from: the post-filing success screen (Task 1.9 — this is the peak happiness moment), the dashboard (small card: "Know someone who needs to file? Share FileFree."), and the settings page.
 
@@ -1069,7 +1069,7 @@ Tax season is concentrated — 80% of your annual traffic hits in a 10-week wind
 
 **Uptime Monitoring:**
 - Use an external uptime monitor (BetterStack, Pingdom, or UptimeRobot's free tier) to check the app every 60 seconds from multiple regions. If the site is down for 2+ minutes, you get notified instantly.
-- Create a public status page (status.filefree.tax) so users can check if there's a known issue. BetterStack provides this built-in.
+- Create a public status page (status.filefree.ai) so users can check if there's a known issue. BetterStack provides this built-in.
 
 **Performance Monitoring:**
 - Track Core Web Vitals (LCP, FID, CLS) via Next.js's built-in reporting or Vercel Analytics (if deployed on Vercel). Set performance budgets: LCP < 2.5s, FID < 100ms, CLS < 0.1.
@@ -1111,7 +1111,7 @@ You're a solo builder — you can't staff a support team. Design the support sys
 
 **Contact / Support Form:**
 - A simple form on the `/help` page (or `/contact`): email (pre-filled if logged in), subject dropdown (Filing Issue, Technical Problem, Account Help, Feedback, Other), description textarea.
-- On submit, this creates an email to your support inbox (support@filefree.tax). Use Resend to send the notification.
+- On submit, this creates an email to your support inbox (support@filefree.ai). Use Resend to send the notification.
 - Auto-reply to the user: "We got your message. We'll get back to you within 24 hours." Set this expectation honestly and meet it.
 - In the admin dashboard, show a feed of recent support requests so you can triage without leaving your tooling.
 

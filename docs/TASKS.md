@@ -107,15 +107,15 @@ See [VENTURE_MASTER_PLAN.md](VENTURE_MASTER_PLAN.md) Section 7 (Phase 0).
 </details>
 
 <details>
-<summary>P0.3 Google Workspace</summary>
+<summary>P0.3 Google Workspace -- DONE</summary>
 
 - **Task ID**: P0.3
 - **Owner**: Founder 1
 - **Branch**: N/A (no code)
-- **Files/Specs**: Google Admin console: add filefree.ai, launchfree.ai as secondary domains. Create aliases: hello@, support@, legal@ for each.
+- **Files/Specs**: Google Workspace Business Starter (1 seat, $6/mo). Primary domain: paperworklabs.com. Alias domains: filefree.ai, launchfree.ai, distill.tax. Department aliases (hello@, support@, legal@, partnerships@, api@) on each domain route to founder inbox (sankalp@paperworklabs.com).
 - **Acceptance Criteria**: Emails received at hello@filefree.ai, hello@launchfree.ai. SPF/DKIM/DMARC configured for all domains.
 - **Depends On**: P0.1
-- **Status**: NOT STARTED
+- **Status**: DONE (see D76 in KNOWLEDGE.md)
 
 </details>
 

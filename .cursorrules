@@ -4,7 +4,7 @@
 # Products: FileFree (filefree.ai), LaunchFree (launchfree.ai), Distill (distill.tax), Trinkets (tools.filefree.ai)
 # Command Center: paperworklabs.com (admin dashboard, portfolio, agent monitor)
 #
-# NOTE: Persona-specific context lives in .cursor/rules/*.mdc (14 personas + workflows playbook + git guardrails)
+# NOTE: Persona-specific context lives in .cursor/rules/*.mdc (16 files: personas + workflows playbook + git guardrails + brand guide)
 # - git-workflow.mdc: Git guardrails — branch-based dev, PR workflow, never push to main [alwaysApply]
 # - engineering.mdc: Staff Engineer (tech stack, architecture, code conventions) [alwaysApply]
 # - ux.mdc: UX/UI Lead (design system, accessibility, mobile-first, animations)
@@ -55,9 +55,11 @@ The holding company domain is paperworklabs.com. Product domains: filefree.ai, l
 
 ## Tech Stack (DO NOT DEVIATE)
 
-### Monorepo Structure (pnpm workspaces)
+> **Current vs Target**: The repo is currently flat (`api/` for FastAPI, `web/` for Next.js FileFree frontend, `infra/`, `docs/`). The monorepo structure below is the **target architecture** for Phase 1. When working on existing code, use the current `api/` and `web/` paths. When scaffolding new products or packages, follow the target structure.
+
+### Monorepo Structure (pnpm workspaces) — TARGET
 ```
-venture/
+paperwork/
   apps/
     filefree/            # filefree.ai — Next.js, consumer tax filing
     launchfree/          # launchfree.ai — Next.js, LLC formation

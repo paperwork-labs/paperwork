@@ -27,7 +27,7 @@
 
 **AI Model Strategy**: 9 models across 7 roles. See Section 0E for authoritative routing registry (owned by AI Ops Lead persona).
 
-**Monthly burn (real)**: ~~$284/mo. Breakdown: Hetzner $6 + Render x2 $14 + Google Workspace x2 $12 + domains ~$20 + OpenAI ~$10 + ElevenLabs $5 + cyber insurance ~$150 (est. $1,800/yr amortized) + CA franchise tax ~$67 (est. $800/yr amortized). At scale add: Stripe fees (2.9%+$0.30 per transaction), variable AI costs (~~$0.005-0.02/OCR doc, ~$15-17/mo social pipeline), partner wholesale costs. Vercel/Neon/Upstash all free tier until scale triggers listed in FINANCIALS.md.
+**Monthly burn (real)**: ~$278/mo. Breakdown: Hetzner $6 + Render x2 $14 + Google Workspace $6 (1 seat, paperworklabs.com) + domains ~$20 + OpenAI ~$10 + ElevenLabs $5 + cyber insurance ~$150 (est. $1,800/yr amortized) + CA franchise tax ~$67 (est. $800/yr amortized). At scale add: Stripe fees (2.9%+$0.30 per transaction), variable AI costs (~$0.005-0.02/OCR doc, ~$15-17/mo social pipeline), partner wholesale costs. Vercel/Neon/Upstash all free tier until scale triggers listed in FINANCIALS.md.
 
 ---
 
@@ -164,7 +164,7 @@ After 5 years of commercial use: petition to move to Principal Register with evi
 2. ALWAYS write "LaunchFree" (one word, L and F capitalized). NEVER "Launch Free", "launch free", "Launchfree"
 3. When used in a sentence, the brand name is a PROPER NOUN: "FileFree helps you file taxes" (not "file free with FileFree")
 4. NEVER use "file free" as a verb phrase in marketing copy. Say "file your taxes for free" or "file at zero cost" -- keep the brand name and the concept separate
-5. Domain references: always `filefree.tax` or `filefree.ai` -- NEVER reference `filefree.com` anywhere, ever
+5. Domain references: always `filefree.ai` (primary) -- NEVER reference `filefree.com` anywhere, ever. `filefree.tax` is retained as a redirect only.
 
 **FTC "Free" Compliance Rules:**
 
@@ -1218,7 +1218,7 @@ VENTURE DATABASE (studio, never sold):
 **Admin Auth (paperworklabs.com + admin panels on all products)**:
 
 - Same Google OAuth flow as users. After OAuth, middleware checks if the authenticated email is in the admin allowlist. If yes, admin routes accessible. If no, 403.
-- Admin allowlist stored in environment variable: `ADMIN_EMAILS=sankalp@sankalpsharma.com,olga@sankalpsharma.com` (Google Workspace primary emails)
+- Admin allowlist stored in environment variable: `ADMIN_EMAILS=sankalp@paperworklabs.com,olga@<personal-email>` (founder's Workspace email + Olga's personal email per D76)
 - Admin routes: `/admin/`* on paperworklabs.com, `/admin/`* on FileFree, `/admin/*` on LaunchFree. All protected by the same `packages/auth/withAdminAuth` middleware.
 - No separate admin login page. Same SSO, just an authorization check on top.
 
@@ -1440,7 +1440,7 @@ The command center is the control plane for the entire venture. It is what makes
 **P4.2 Admin Auth** (`/admin/`* -- protected)
 
 - Google OAuth via `packages/auth/` shared library (Auth.js v5)
-- Admin gate: `ADMIN_EMAILS` env var allowlist (Sankalp + Olga's Google Workspace primary emails)
+- Admin gate: `ADMIN_EMAILS` env var allowlist (sankalp@paperworklabs.com + Olga's personal email)
 - `withAdminAuth` middleware on all `/admin/`* routes -- same OAuth flow, authorization check on top
 - No separate admin login page, no role system (two founders only)
 
@@ -2912,7 +2912,7 @@ Distill's GTM is entirely bootstrapped -- no funding required. Consumer FileFree
 All 12 Cursor personas and 6 n8n workflows were built for FileFree as a standalone product:
 
 - `social.mdc` references @filefree handles, "Gen Z tax filing app"
-- `brand.mdc` references filefree.tax domain, FileFree-specific colors
+- `brand.mdc` references filefree.ai domain, FileFree-specific colors
 - `growth.mdc` references tax-specific SEO, TurboTax competition
 - `partnerships.mdc` references HYSA referrals, tax partnerships only
 - n8n workflows all output to FileFree-specific databases
@@ -2963,7 +2963,7 @@ Agents are organized into three tiers. **All venture-level personas must be avai
 
 | Attribute                       | filefree-social.mdc                                                           | launchfree-social.mdc                                                                 |
 | ------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Handles                         | @filefree.tax, @filefreetax                                                   | @launchfree (TikTok, IG, X, YT)                                                       |
+| Handles                         | @filefree.tax (TikTok, IG), @filefreetax (X, YT)                             | @launchfree (TikTok, IG, X, YT)                                                       |
 | Voice                           | Smart friend who makes taxes feel easy                                        | Smart friend who makes business formation feel easy                                   |
 | Content pillars                 | Tax myths, W-2 explainers, refund tips, filing demos                          | LLC tips, state comparisons, compliance, RA explained                                 |
 | Hook themes                     | Pain (TurboTax costs), curiosity (tax hacks), transformation (filed in 3 min) | Pain (LegalZoom costs), curiosity (LLC benefits), transformation (launched in 10 min) |
@@ -3386,7 +3386,7 @@ No agent is currently assigned to write production code for FileFree or LaunchFr
 | ---------------------------- | --------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | ----------- |
 | P0.1 Buy domains             | Founder 1 | N/A (no code)            | N/A                                                                                                                                                                                                                                                | launchfree.ai + filefree.ai registrar confirmed                                                                                                                                                    | None                                     | DONE        |
 | P0.2 Migrate FileFree domain | Founder 1 | `chore/domain-migration` | `web/next.config.ts` (redirects), Vercel dashboard (custom domain), DNS provider (A/CNAME records)                                                                                                                                                 | filefree.ai serves the app. filefree.tax 301-redirects to filefree.ai. All existing links preserved. SSL cert issued.                                                                              | P0.1                                     | NOT STARTED |
-| P0.3 Google Workspace        | Founder 1 | N/A (no code)            | Google Admin console: add filefree.ai, launchfree.ai as secondary domains. Create aliases: hello@, support@, legal@ for each.                                                                                                                      | Emails received at [hello@filefree.ai](mailto:hello@filefree.ai), [hello@launchfree.ai](mailto:hello@launchfree.ai). SPF/DKIM/DMARC configured for all domains.                                    | P0.1                                     | NOT STARTED |
+| P0.3 Google Workspace        | Founder 1 | N/A (no code)            | Google Workspace Business Starter (1 seat, $6/mo). Primary: paperworklabs.com. Aliases: filefree.ai, launchfree.ai, distill.tax. See D76.                                                                                                          | Emails received at [hello@filefree.ai](mailto:hello@filefree.ai), [hello@launchfree.ai](mailto:hello@launchfree.ai). SPF/DKIM/DMARC configured for all domains.                                    | P0.1                                     | DONE        |
 | P0.4 Google Drive HQ         | Founder 1 | N/A (no code)            | Create folder structure: `Venture HQ/Operations/Daily Briefings/`, `Venture HQ/Operations/Weekly Plans/`, `Venture HQ/Trinkets/One-Pagers/`, `Venture HQ/Trinkets/PRDs/`, `Venture HQ/Intelligence/`. Add GDrive MCP server to `.cursor/mcp.json`. | GDrive accessible from Cursor via MCP. Folder structure matches EA spec in `ea.mdc`.                                                                                                               | P0.3                                     | NOT STARTED |
 | P0.5 Secure social handles   | Founder 1 | N/A (no code)            | Register @launchfree on TikTok, Instagram, X, YouTube. Set profile pic to monogram, link to launchfree.ai.                                                                                                                                         | All 4 accounts created, profile pics set, bios written, URLs point to launchfree.ai.                                                                                                               | P0.1                                     | NOT STARTED |
 | P0.6 Form LLC                | Founder 1 | N/A (no code)            | California SOS online filing. DBA filings at county clerk (FileFree, LaunchFree, Trinkets, Distill).                                                                                                                                                        | Articles of Organization filed with CA SOS. Confirmation number received. DBA filings submitted. EIN applied for on IRS.gov (same day as LLC confirmation). Bank account opened.                   | LLC name decided (Section 0G #4) -- DONE | NOT STARTED |
@@ -4031,7 +4031,7 @@ Department-level email aliases on Google Workspace. All route to founder's inbox
 3. Founder approves -> Agent sends via Gmail API (n8n Gmail node) from appropriate alias
 4. Sent email logged in Slack thread for audit trail
 
-**Setup**: Google Workspace already active on sankalpsharma.com. Add paperworklabs.com, filefree.tax, filefree.ai, and launchfree.ai as alias domains in Google Workspace Admin. Create Olga a Workspace seat ($6/mo). Create group aliases for each department. Route all to founder's primary inbox.
+**Setup**: Google Workspace active on paperworklabs.com (Business Starter, 1 seat, $6/mo — see D76). Alias domains: filefree.ai, launchfree.ai, distill.tax. Department aliases (hello@, support@, legal@, partnerships@, api@) configured on each domain, all routing to founder's inbox (sankalp@paperworklabs.com). Olga gets admin panel access via personal email in `ADMIN_EMAILS` env var — no second Workspace seat needed.
 
 ### Stress Test: Communication Overload
 

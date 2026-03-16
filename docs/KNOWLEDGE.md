@@ -121,6 +121,11 @@ Postiz switched from cron to Temporal for background job scheduling in v2.12.0. 
 
 ---
 
+### Q5: Origin (Budgeting App) — Competitive Threat Analysis
+Origin is reportedly growing in the personal finance space. Evaluate as potential competitive threat or adjacent market signal. Analyze: feature set, target demographic overlap with FileFree (Gen Z / young adults), growth trajectory, and whether a budgeting-to-tax-filing pipeline could compete with FileFree's refund-moment monetization strategy. Also assess whether Origin's growth validates the broader "AI eliminates financial paperwork" thesis.
+
+---
+
 ### Q4: Postiz MCP Reliability with Self-Hosted Instances
 GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeouts, 404s) on self-hosted Postiz. Community MCP package (`mcp-postiz-server`) is third-party maintained. Fallback: Postiz REST API works reliably. Test MCP first; use REST API if needed.
 
@@ -386,7 +391,7 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 
 ### D47 — Slack as Agent Communication Hub (2026-03-12)
 - **Context**: Agents need persistent two-way communication with founder beyond ephemeral Cursor chat.
-- **Decision**: Slack as central company hub with 10 functional channels. n8n posts agent output to channels. Founder can reply/command in channels. Professional email aliases on Google Workspace (filefree.tax, filefree.ai, launchfree.ai) route to founder inbox.
+- **Decision**: Slack as central company hub with 10 functional channels. n8n posts agent output to channels. Founder can reply/command in channels. Professional email aliases on Google Workspace (filefree.ai, launchfree.ai, distill.tax, paperworklabs.com) route to founder inbox.
 - **Alternatives**: Discord (rejected: already have Slack workspace), Notion comments (rejected: wife can't use it easily), custom dashboard (rejected: unnecessary build).
 - **Reversibility**: Channel structure is config, easy to reorganize.
 
@@ -440,7 +445,7 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 
 ### D56 — Auth Architecture: Admin Allowlist (2026-03-12)
 - **Context**: Need admin access for two founders (Sankalp + Olga) across all products.
-- **Decision**: Shared `packages/auth/` using Auth.js v5 (NextAuth). User auth: Google OAuth + Apple Sign-In. Admin auth: same OAuth flow + email allowlist check (`ADMIN_EMAILS` env var). No separate admin login, no role system. Olga gets a Google Workspace seat ($6/mo). Trinkets have no auth -- public tools with cross-sell CTAs.
+- **Decision**: Shared `packages/auth/` using Auth.js v5 (NextAuth). User auth: Google OAuth + Apple Sign-In. Admin auth: same OAuth flow + email allowlist check (`ADMIN_EMAILS` env var with sankalp@paperworklabs.com + Olga's personal email). No separate admin login, no role system. Trinkets have no auth -- public tools with cross-sell CTAs. (Updated per D76: 1 Workspace seat, Olga uses personal email for admin access.)
 - **Alternatives**: Separate admin app (over-engineered), personal Gmail for auth (messy separation of concerns), role-based system (unnecessary for 2 admins).
 - **Reversibility**: Allowlist is an env var, trivial to update.
 
@@ -563,3 +568,8 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 - **Decision**: Create new Google Workspace under Paperwork Labs. Sign up with "Just you" (1 seat). Primary domain: paperworklabs.com. Add filefree.ai, launchfree.ai, distill.tax as alias domains. All department emails (hello@, support@, legal@, partnerships@, api@) configured as aliases routing to founder's single inbox. Cost: **$6/mo** (Business Starter), not $12. Olga gets admin panel access via personal email in `ADMIN_EMAILS` env var — no second Workspace seat needed. Use company email (e.g. sankalp@paperworklabs.com) for Cursor, Stripe, and vendor accounts for clean expense/billing separation.
 - **Alternatives**: 2 seats ($12/mo) with Olga on olga@paperworklabs.com (rejected: aliases suffice, saves $6/mo); free Gmail + Cloudflare Email Routing (rejected: no proper admin console, SPF/DKIM setup more brittle).
 - **Reversibility**: Easy. Add second seat anytime. Update FINANCIALS.md and VMP "Professional Email Aliases" section to reflect $6/mo and "create Workspace" (not "already active").
+
+### D77 — Repo Migration + Docs Audit (2026-03-16)
+- **Context**: Repo migrated from personal account to `paperwork-labs` GitHub org and renamed from `filefree` to `paperwork`. Google Workspace created at paperworklabs.com (D76). Many docs still referenced old repo URL (`your-org/filefree`), old Google Workspace setup (`sankalpsharma.com`, 2 seats, $12/mo), old domain (`filefree.tax` as primary), and stale admin emails (`sankalp@sankalpsharma.com`).
+- **Decision**: Full docs audit. Fixed: (1) Repo clone URL in README → `paperwork-labs/paperwork`. (2) Google Workspace references across 6 docs → 1 seat, $6/mo, paperworklabs.com primary. (3) Monthly burn recalculated $284 → $278. (4) Admin email allowlist → `sankalp@paperworklabs.com`. (5) filefree.tax → filefree.ai in all active doc URLs/emails. (6) P0.3 Google Workspace task → DONE. (7) `.cursorrules` annotated with "Current vs Target" repo structure note. (8) Removed cursor-context-backup.zip and CURSOR_BACKUP_README.md (transfer artifacts). (9) Added Origin budgeting app as open research question (Q5).
+- **Reversibility**: N/A. Cleanup commit.

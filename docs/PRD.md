@@ -12,7 +12,7 @@
 
 **Domain**: paperworklabs.com (holding company and command center).
 
-**Monthly burn (real)**: ~$284/mo. Breakdown: Hetzner $6 + Render x2 $14 + Google Workspace x2 $12 + domains ~$20 + OpenAI ~$10 + ElevenLabs $5 + cyber insurance ~$150 (est.) + CA franchise tax ~$67 (amortized). See FINANCIALS.md for full breakdown.
+**Monthly burn (real)**: ~$278/mo. Breakdown: Hetzner $6 + Render x2 $14 + Google Workspace $6 + domains ~$20 + OpenAI ~$10 + ElevenLabs $5 + cyber insurance ~$150 (est.) + CA franchise tax ~$67 (amortized). See FINANCIALS.md for full breakdown.
 
 **Founding team**: Founder 1 (Product/Engineering) builds all products, OCR pipeline, tax calculations, and infrastructure. Founder 2 (Partnerships/Revenue) sources and closes financial product partnerships -- the primary revenue engine. AI personas (44 agents) assist both co-founders across all products.
 

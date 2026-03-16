@@ -27,13 +27,13 @@
 | Hetzner VPS (CX33) | $6/mo | Infrastructure | n8n + Postiz + Redis + PostgreSQL |
 | Render (FileFree API) | $7/mo | Infrastructure | Starter plan, 512MB |
 | Render (LaunchFree API) | $7/mo | Infrastructure | Starter plan (when launched) |
-| Google Workspace (x2 seats) | $12/mo | Operations | sankalpsharma.com + alias domains (paperworklabs.com, filefree.ai, launchfree.ai). Sankalp + Olga seats. |
+| Google Workspace (1 seat) | $6/mo | Operations | paperworklabs.com primary domain + alias domains (filefree.ai, launchfree.ai, distill.tax). See D76. |
 | Domain renewals (avg) | ~$20/mo | Domain | Spread across year |
 | OpenAI API (dev usage) | ~$10/mo | AI/ML | GPT-4o, GPT-4o-mini, DALL-E |
 | ElevenLabs (voice clone) | $5/mo | Content | Starter plan. Apply for startup grant (33M chars free/12mo). |
 | Cyber liability insurance (amortized) | ~$150/mo | Legal/Insurance | ~$1,800/yr for $1M E&O + cyber coverage. GET THIS BEFORE FIRST SSN. |
 | CA franchise tax (amortized) | ~$67/mo | Legal | $800/yr minimum, due April 15 annually |
-| **TOTAL MONTHLY (REAL)** | **~$284/mo** | | |
+| **TOTAL MONTHLY (REAL)** | **~$278/mo** | | |
 
 ### At-Scale Variable Costs (not yet incurred)
 
@@ -178,7 +178,7 @@ Track ALL venture expenses by category. EA agent logs expenses as they occur. CF
 | **AI/ML** | Anthropic API usage | TBD | Track from console.anthropic.com |
 | **Infra** | Hetzner VPS | $6 | |
 | **Infra** | Render (FileFree API) | $7 | |
-| **Ops** | Google Workspace | $6 | 1 seat in March; $12/mo recurring from April (2 seats: Sankalp + Olga) |
+| **Ops** | Google Workspace | $6 | 1 seat (Business Starter), paperworklabs.com primary. Olga admin via ADMIN_EMAILS env var. |
 | **TOTAL** | | TBD | Fill in at month end |
 
 ### Categories

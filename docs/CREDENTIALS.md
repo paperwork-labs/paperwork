@@ -74,7 +74,7 @@ Single source of truth for every credential across all systems. QA audits agains
 
 ## n8n Agent Credentials (configured in n8n UI)
 
-These credentials are stored in n8n's encrypted credential store, NOT in env vars. Configure via n8n.filefree.tax > Credentials.
+These credentials are stored in n8n's encrypted credential store, NOT in env vars. Configure via n8n UI (migrating to ops.paperworklabs.com per P0.7) > Credentials.
 
 
 | Credential     | Purpose                                      | Which Workflows Use It                                                                                                  |

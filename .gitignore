@@ -1,8 +1,10 @@
 # MCP config may contain tokens
 .cursor/mcp.json
 
-# Uncompressed backup folder (zip is committed for transfer, folder is redundant)
+# Cursor context backups (used for machine transfer, not needed in repo)
 cursor-context-backup/
+cursor-context-backup.zip
+CURSOR_BACKUP_README.md
 
 # Python
 __pycache__/
