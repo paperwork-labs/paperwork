@@ -124,6 +124,27 @@ This data is the secret weapon. Partners who share data get better-qualified lea
 
 ---
 
+## 3.5. Distill B2B CPA Sales Motion
+
+Distill (distill.tax) is a separate B2B brand from FileFree. It has its own sales motion distinct from the consumer partnership strategy above. CPA firm sales is a B2B SaaS motion (LinkedIn outreach, product demos, onboarding calls), not affiliate/marketplace partnerships.
+
+**Ownership**: Founder 1 (Product/Engineering) owns CPA outreach because it is product-led — demos, technical questions, integration support. Founder 2 (Partnerships) focuses on consumer financial product partnerships (Sections 2-3 above). If Distill scales to 100+ firms, hire a B2B sales rep.
+
+**Target Audience**: Independent CPAs and small firms (1-10 preparers). 75K+ CPA firms in the US. Tax season (January-April) creates natural urgency.
+
+**Outreach Channels**:
+- **LinkedIn**: Direct DMs to CPAs who post about tax season pain points, data entry bottleneck, AI tools. 2-3x/week content on CPA workflow automation.
+- **State CPA society directories**: Public member lists. Email outreach with free trial offer.
+- **r/taxpros + r/Accounting**: Genuine participation, answer questions, mention Distill when relevant.
+- **Accounting Today / CPA Practice Advisor**: Guest articles on AI tax prep automation.
+- **Product Hunt**: Launch "AI Tax Extraction for CPAs" in early January for tax season relevance.
+
+**CPA Referral Program**: CPAs who use Distill can refer their clients to consumer FileFree for personal filing. "Your CPA uses Distill" is a trust signal. Each CPA firm = a distribution channel for the consumer product (PATH F in master plan). This bidirectional flywheel (Distill -> FileFree -> Distill) is a competitive moat no competitor has.
+
+**See Section 5M in master plan for full bootstrapped GTM playbook.**
+
+---
+
 ## 3. Partnership Hit List
 
 ### Tier 1: HYSA Partners (Primary Revenue — apply NOW)

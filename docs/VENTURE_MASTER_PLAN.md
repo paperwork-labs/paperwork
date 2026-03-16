@@ -12,7 +12,7 @@
 
 - **LaunchFree** (launchfree.ai) -- Free LLC formation service ($0 service fee; user pays state filing fees only, disclosed upfront). AI-powered 50-state comparison helps users pick the cheapest, best-fit state. Revenue: RA credits, banking/payroll/insurance referrals. Launches Summer 2026.
 - **FileFree** (filefree.ai) -- Free tax filing. Revenue: refund routing, financial referrals, audit shield, Tax Opt Plan. Launches January 2027.
-- **FileFree Pro** (pro.filefree.ai) -- B2B tax automation SaaS for CPA firms. Upload client docs, auto-extract via shared OCR pipeline, export to professional tax software. Revenue: monthly SaaS subscriptions ($49-199/mo). ~80% shared tech with consumer FileFree. Launches January 2027. See Section 1C.
+- **Distill** (distill.tax) -- B2B tax automation platform. Separate brand from FileFree. Two product lines: Distill for CPAs (SaaS dashboard, $49-199/mo) and Distill API (Tax-as-a-Service for platforms, per-return pricing). Upload client docs, auto-extract via shared OCR pipeline, export to professional tax software. ~80% shared tech with consumer FileFree. Launches March 2027. See Section 1C.
 - **Trinkets** (tools.filefree.ai) -- Collection of simple utility tools (financial calculators, converters, generators). Revenue: AdSense + cross-sell to main products. Complexity: LOW. Built as `apps/trinkets/` in monorepo. See Section 0F.
 
 **HQ**: paperworklabs.com -- Venture command center, admin dashboard, agent monitor, intelligence campaigns. Public portfolio page + authenticated `/admin/` panel.
@@ -1025,7 +1025,7 @@ These three extensions leverage existing product data and infrastructure with mi
 
 **Competitive edge**: TurboTax offers refund splitting but buries it in settings. No free filing product makes it the centerpiece of the post-filing experience. We make it the star.
 
-#### 1C. FileFree Pro -- B2B Tax Automation for CPAs (Phase 9)
+#### 1C. Distill -- B2B Tax Automation Platform (distill.tax) (Phase 9)
 
 **What**: SaaS product for CPA firms and tax professionals. Upload client W-2s/1099s in bulk, auto-extract fields via FileFree's shared OCR pipeline (Cloud Vision + GPT), review extractions, and export to professional tax software. Same backend as consumer FileFree -- different frontend, different billing model.
 
@@ -1065,14 +1065,24 @@ Annual billing discount: 20% (Solo $39/mo, Team $79/mo, Firm $159/mo).
 
 **Competitive positioning vs MagneticTax**:
 - MagneticTax is VC-funded (YC S25) with dedicated burn. We're bootstrapped with consumer filing as the primary product -- the B2B arm is marginal cost.
-- MagneticTax only does 1040 data entry. FileFree Pro inherits our full form coverage (1040 + Schedules 1, A, B, C, D + 1099-NEC/INT/DIV + 50-state returns) and expands as consumer FileFree adds forms.
-- MagneticTax has no consumer product, no financial marketplace, no cross-product data moat. FileFree Pro is a revenue-generating arm of a larger platform.
+- MagneticTax only does 1040 data entry. Distill inherits our full form coverage (1040 + Schedules 1, A, B, C, D + 1099-NEC/INT/DIV + 50-state returns) and expands as consumer FileFree adds forms.
+- MagneticTax has no consumer product, no financial marketplace, no cross-product data moat. Distill is a revenue-generating arm of a larger platform.
 
-**Distribution**: Target independent CPAs and small firms (1-10 preparers). 75,000+ CPA firms in the US. Tax season creates natural urgency (January-April). Off-season demand: extensions, amendments, prior-year returns, quarterly estimates.
+**Distribution**: Target independent CPAs and small firms (1-10 preparers). 75,000+ CPA firms in the US. Tax season creates natural urgency (January-April). Off-season demand: extensions, amendments, prior-year returns, quarterly estimates. See Section 5M for bootstrapped B2B GTM playbook.
 
-**Architecture**: New `apps/filefree-pro/` in monorepo with its own Next.js app at `pro.filefree.ai`. Shares `packages/data` (tax calc + OCR schemas), `packages/ui`, `packages/auth`, `packages/analytics`. Uses the same `apis/filefree/` backend with B2B-specific route group (`/api/v1/pro/*`) and firm-scoped middleware.
+**Architecture**: New `apps/distill/` in monorepo with its own Next.js app at `distill.tax`. Shares `packages/tax-engine` (tax calc + form generators), `packages/document-processing` (OCR pipeline + extraction schemas), `packages/ui`, `packages/auth`, `packages/analytics`. Uses the same `apis/filefree/` backend with B2B-specific route group (`/api/v1/pro/*`) and firm-scoped middleware.
 
-**Implementation**: Phase 9 (December 2026 - January 2027). See Section 7 Phase 9 for task breakdown.
+**Brand separation**: Distill is a separate brand from FileFree. Consumer FileFree = free, ad-free, trust-first. Distill = professional-grade paid SaaS. They share `packages/tax-engine/` and `packages/document-processing/` but have separate domains, landing pages, and marketing. The word "Free" in "FileFree" creates cognitive dissonance for B2B buyers paying $199/mo (SBI Growth research, Intuit precedent: TurboTax vs ProConnect/Lacerte). "Distill" = extract pure essence from raw material, fits naturally under Paperwork Labs (distilling paperwork).
+
+**Two product lines**: Distill has two product lines under one B2B brand: **Distill for CPAs** (SaaS dashboard at distill.tax, Phase 9) and **Distill API** (headless Tax-as-a-Service for platforms at api.distill.tax, Year 2 after MeF transmitter is proven). Both share the same `packages/tax-engine/`. The CPA SaaS is a UI product. The API is a headless engine. They are distinct from each other and both distinct from consumer FileFree.
+
+**Multi-tenant data isolation (CRITICAL)**: All Distill API routes use firm-scoped middleware that injects `firm_id` from auth token into every database query. Row-level security (RLS) on PostgreSQL enforced via `SET app.current_firm_id` + RLS policies. No query can return data from a different firm. CPA firm A's client data must never leak to CPA firm B. Security audit required before Distill launch (P9.9).
+
+**Data Processing Agreement (DPA)**: Consumer FileFree users consent directly. Distill is different: the CPA firm is our customer, but the individuals whose W-2s are uploaded are NOT our direct users. We process their PII on behalf of the CPA firm. CPA firms must sign a DPA covering: what data we process, how long we retain it (24hr for images per existing policy), that we do not use client data for consumer product matching, and CCPA/state privacy law compliance. DPA template needed before Distill launch (attorney consult scope item, P9.10).
+
+**Audit trail logging**: Every extraction, edit, export, and submission timestamped with user ID and firm ID. Immutable audit log retained for 7 years (IRS record retention requirement). Exportable as CSV for CPA firm compliance needs. This is a differentiation feature -- CPAs face IRS audits and need proof of every step.
+
+**Implementation**: Phase 9 (January - March 2027). See Section 7 Phase 9 for task breakdown.
 
 ---
 
@@ -1084,7 +1094,7 @@ Annual billing discount: 20% (Solo $39/mo, Team $79/mo, Firm $159/mo).
 venture/
   apps/
     filefree/            (filefree.ai -- Next.js, existing code from web/)
-    filefree-pro/        (pro.filefree.ai -- Next.js, B2B CPA dashboard, Phase 9)
+    distill/             (distill.tax -- Next.js, B2B tax automation dashboard, Phase 9)
     launchfree/          (launchfree.ai -- Next.js, scaffolded)
     studio/              (paperworklabs.com -- Next.js, COMMAND CENTER + portfolio)
     trinkets/            (utility tools -- Next.js SSG, Vercel free, Phase 1.5)
@@ -1092,7 +1102,9 @@ venture/
     ui/                  (22 shadcn components + theme + chat widget)
     auth/                (shared auth: hooks, middleware, session)
     analytics/           (PostHog + attribution + PII scrubbing)
-    data/                (50-state formation + tax data + engine)
+    data/                (50-state formation + tax JSON configs, Zod schemas, state engine API)
+    tax-engine/          (tax calculation engine, form generators, MeF XML schemas, dual-path reconciliation)
+    document-processing/ (OCR pipeline client, field extraction schemas, document storage lifecycle, bulk upload queue)
     intelligence/        (financial profile, recommendations, experimentation, data intelligence, campaigns)
     email/               (shared email templates, React Email)
   apis/
@@ -1278,6 +1290,8 @@ Degradation strategy per service:
 | Column Tax API      | `cb_column_tax`      | Fall back to PDF download. User can still get their completed return                                                                              |
 | Affiliate Tracking  | `cb_affiliate`       | Log conversion event locally in PostgreSQL. Reconcile with affiliate platform later. Zero user impact                                             |
 
+
+**B2B SLA consideration (Distill)**: Consumer users tolerate "try again later." CPA firms processing 50+ docs/day during tax season need uptime guarantees. Minimum SLA for Distill: 99.5% uptime during tax season (January-April). Circuit breaker degradation must be transparent to CPA users: show degradation status in Distill dashboard, queue requests rather than dropping them, and send email notification when service recovers. SLA is documented in Distill terms of service and monitored via the Filing Health Dashboard (Section 2B.4).
 
 **2B.3 Tax Calculation Reconciliation Pipeline**
 
@@ -2060,8 +2074,8 @@ PATH E: LaunchFree -> FileFree Business Tax Filing (mandatory cross-sell)
   This is a MANDATORY obligation -- every LLC taxed as partnership or S-Corp MUST
   file a business return. Unlike optional cross-sells, this is compliance-driven demand.
 
-PATH F: FileFree Pro CPA -> Consumer FileFree (CPA referral channel)
-  CPA uses FileFree Pro (100%) -> CPA recommends personal FileFree to clients
+PATH F: Distill CPA -> Consumer FileFree (CPA referral channel)
+  CPA uses Distill (100%) -> CPA recommends personal FileFree to clients
   -> client visits filefree.ai (20-30% referral rate) -> signs up (50%) -> files (85%)
   Net conversion: ~8.5-12.75% of CPA client base becomes FileFree users
   Revenue per converted user: marketplace ARPU (varies by stage)
@@ -2361,6 +2375,7 @@ Five compounding advantages that widen over time:
 3. **Time-series data compounds**: Credit score trajectory over 2+ years, income growth across filings, business formation-to-revenue tracking. Each year of data makes the profile exponentially more valuable for ML matching. A competitor who starts Year 2 is permanently 2 years behind on every user.
 4. **Trust built at the mandatory moment**: Tax filing is mandatory. CK is optional. Users who trust you with their SSN and W-2 have crossed the highest trust threshold in consumer finance. That trust transfers directly to financial product recommendations.
 5. **Cost structure moat**: 1 founder + 44 AI agents at $284/mo vs. CK's 1,300+ employees. Even at 50K users, the operation runs lean. Profitability arrives years earlier, which funds growth, which compounds the data advantage.
+6. **B2B distribution moat**: CPA firms using Distill become referral channels for consumer FileFree. No competitor has both a B2B product AND a free consumer product creating bidirectional distribution. Each Distill CPA firm = 50-500 potential consumer users. Each consumer user = potential CPA firm lead. The flywheel accelerates both products simultaneously.
 
 #### Emerging Competitor Landscape (March 2026)
 
@@ -2378,6 +2393,7 @@ Five compounding advantages that widen over time:
 | **NerdWallet**            | Free tax filing via Column Tax partnership. Personal finance marketplace. 20M+ monthly users.| MEDIUM          | NerdWallet's filing is a Column Tax white-label, not proprietary. They're a content/affiliate company, not a tax platform. No formation, no intelligence layer depth. |
 | **TaxSlayer**             | Free federal tier (Simply Free). $24.95-64.95 paid tiers. Established brand.                 | LOW-MEDIUM      | Free tier limited to simple returns (no 1099, no itemizing). No LLC formation, no marketplace, no AI advisory. Traditional tax software, not a platform play. |
 | **TaxDown**               | AI-powered tax filing. Europe-first, expanding. Celebrity marketing + TikTok Spark Ads.      | LOW (geography) | Europe-focused. If they enter US market, our depth advantage (formation + marketplace + advisory) and cost structure ($284/mo vs VC burn) differentiate. Monitor for US expansion. |
+| **TaxWire**               | Global sales tax compliance platform (Avalara competitor). Tax engine API + automated filing. | NONE (different market) | TaxWire handles indirect tax (sales tax/VAT/GST), not income tax. Zero overlap today. Team: ex-TaxJar, ex-Stripe Tax, ex-Avalara. Year 3+ partnership/expansion opportunity for LaunchFree LLC sales tax compliance. |
 
 
 **Key takeaway**: No single competitor combines free personal tax filing + free LLC formation + B2B CPA automation + financial intelligence marketplace + compliance SaaS. That combination IS the moat. Taxu.io comes closest on the filing side but charges for business features and has no formation/marketplace play. MagneticTax validates the B2B CPA market but lacks a consumer product.
@@ -2764,26 +2780,75 @@ Credit Karma grew its first 1M users through organic community engagement: Reddi
 - **Indie Hackers / Build in Public**: Document the journey of building FileFree and LaunchFree. "1 founder + 44 AI agents building a fintech" is a compelling narrative that attracts early adopters and press.
 - **Expected impact**: 1K-5K users from community in Year 1, compounding as reputation builds.
 
-#### Channel 4: B2B CPA Outreach (FileFree Pro)
+#### Channel 4: B2B CPA Outreach (Distill)
 
-FileFree Pro (Section 1C) targets CPA firms directly. Each CPA firm processes 50-500+ returns/season. CPA adoption is a distribution multiplier for brand awareness.
+Distill (Section 1C) targets CPA firms directly. Each CPA firm processes 50-500+ returns/season. CPA adoption is a distribution multiplier for brand awareness.
 
 - **LinkedIn + direct email**: Target independent CPAs and small firms (1-10 preparers). 75K+ CPA firms in the US.
-- **CPA referral program**: CPAs who use FileFree Pro can refer their clients to consumer FileFree for personal filing. "Your CPA uses FileFree" is a trust signal that converts.
+- **CPA referral program**: CPAs who use Distill can refer their clients to consumer FileFree for personal filing. "Your CPA uses Distill" is a trust signal that converts.
 - **State CPA society partnerships**: Sponsor or present at state CPA society events. Low cost, high-credibility distribution.
 - **Expected impact**: 100-300 CPA firms in Year 1 -> each firm is a distribution channel for consumer product. 300 firms x 100 clients aware = 30K potential consumer users.
 
 #### 2M User Acquisition Model (Year 1-5 Projection)
 
-| Year | Organic + SEO | Paid Social | B2B API | Community | CPA Channel | Cross-sell | Total |
-| ---- | ------------- | ----------- | ------- | --------- | ----------- | ---------- | ----- |
-| Y1 | 5K-10K | 5K-15K | 0 | 1K-5K | 1K-3K | 1K-2K | 13K-35K |
-| Y2 | 20K-50K | 30K-100K | 20K-50K | 5K-15K | 5K-15K | 5K-10K | 85K-240K |
-| Y3 | 50K-100K | 100K-300K | 100K-200K | 20K-50K | 15K-40K | 20K-50K | 305K-740K |
-| Y4 | 100K-200K | 200K-400K | 200K-500K | 50K-100K | 30K-80K | 50K-100K | 630K-1.38M |
-| Y5 | 200K-400K | 300K-500K | 300K-700K | 100K-200K | 50K-150K | 100K-200K | 1.05M-2.15M |
+**Direct Users** (visit filefree.ai/launchfree.ai, eligible for marketplace, financial profiles, partner matching):
 
-**Key insight**: B2B API distribution is the 2M-user unlock. Organic and paid social plateau at 500K-900K. API distribution through partner platforms provides the multiplier to reach 2M+. This is exactly how Taxu reached scale -- they didn't acquire 2M users individually; they powered tax filing inside other apps.
+| Year | Organic + SEO | Paid Social | Community | CPA Channel (Distill referrals) | Cross-sell | Direct Total |
+| ---- | ------------- | ----------- | --------- | ------------------------------- | ---------- | ------------ |
+| Y1 | 5K-10K | 5K-15K | 1K-5K | 1K-3K | 1K-2K | 13K-35K |
+| Y2 | 20K-50K | 30K-100K | 5K-15K | 5K-15K | 5K-10K | 65K-190K |
+| Y3 | 50K-100K | 100K-300K | 20K-50K | 15K-40K | 20K-50K | 205K-540K |
+| Y4 | 100K-200K | 200K-400K | 50K-100K | 30K-80K | 50K-100K | 430K-880K |
+| Y5 | 200K-400K | 300K-500K | 100K-200K | 50K-150K | 100K-200K | 750K-1.45M |
+
+**API Filing Volume** (Distill API — processed through partner platforms, per-return revenue only, no marketplace profiles):
+
+| Year | Distill API Filing Volume | Per-Return Rev |
+| ---- | ------------------------- | -------------- |
+| Y1 | 0 | $0 |
+| Y2 | 20K-50K | $100K-750K |
+| Y3 | 100K-200K | $500K-3M |
+| Y4 | 200K-500K | $1M-7.5M |
+| Y5 | 300K-700K | $1.5M-10.5M |
+
+**Why the split matters**: Direct users have financial profiles eligible for marketplace recommendations (valued at 8-15x revenue multiple). API filing volume generates per-return revenue only (valued at 3-5x revenue multiple). Conflating them inflates the user count and misrepresents the marketplace opportunity. Total "returns processed" = Direct + API, but marketplace valuation applies only to Direct users.
+
+**Key insight**: Distill API distribution is the filing volume multiplier. Organic and paid social plateau at ~750K-1.45M direct users. API distribution through partner platforms provides the per-return revenue multiplier. This is exactly how Taxu reached scale -- they powered tax filing inside other apps.
+
+#### 5M. Distill B2B Go-to-Market (Bootstrapped Playbook)
+
+Distill's GTM is entirely bootstrapped -- no funding required. Consumer FileFree's social media presence generates brand awareness; Distill rides that momentum with a product-led B2B motion.
+
+**Pre-Launch (Now - December 2026, $0 spend)**:
+
+- **Engineering-as-marketing**: Build 3 free CPA-targeted Trinkets that rank for SEO and demonstrate tech quality: (1) W-2 OCR Tester -- CPAs upload a W-2, see extraction quality instantly, no signup, this IS the product demo; (2) Tax Bracket Calculator (Professional) -- multi-scenario, side-by-side comparison, SEO magnet; (3) Filing Deadline Tracker -- every state deadline in one dashboard, embeddable widget CPAs put on their own sites. Research shows free tools generate 60K+ page views in first week (Clearbit Logo API) and compound over years (HubSpot Website Grader: 65K monthly visits after 18 years).
+- **LinkedIn content engine**: Founder posts 2-3x/week on CPA pain points, AI in tax prep, W-2 automation. Target: 500 CPA connections in 3 months. Each post ends with "DM me for early access."
+- **Waitlist at distill.tax**: Collect email + firm size + current tax software (UltraTax/Drake/Lacerte/ProConnect). This data prioritizes export format development.
+
+**Tax Season Launch (January - April 2027, $0-200/mo spend)**:
+
+- **Free tier (Trojan horse)**: 10 returns/month free, no credit card. CPAs try it during the busiest season. If it works, they're hooked.
+- **Founder-led sales (first 10-20 customers)**: Personally reach out to 50-100 independent CPAs via LinkedIn DMs (warm -- they've been consuming content for months), state CPA society directories (public member lists), r/taxpros subreddit, Accounting Twitter/X. The ask: "We built an AI tool that extracts W-2 data in seconds. Can I show you a 5-minute demo?" At $49-199/mo, 10-20 paying firms validates the product and hits $1K-3K MRR.
+- **Product Hunt launch**: "AI Tax Extraction for CPAs" -- time for early January (tax season start = maximum relevance). Product Hunt drives 500-2K signups for well-positioned B2B tools.
+- **Viral loop**: Every exported return includes "Extracted by Distill" metadata. CPAs who see it from other firms ask "what tool is this?"
+
+**Post-Tax Season Growth (May 2027+, revenue-funded)**:
+
+- **Content SEO (compounding)**: 2-4 articles/month targeting: "Best AI tax preparation software for CPAs 2027", "How to automate W-2 data entry", "UltraTax vs Drake vs Distill -- AI extraction comparison". These rank in 3-6 months and generate leads perpetually.
+- **CPA community infiltration**: Sponsor local CPA society meetups ($100-300/event). Present at state CPA conferences (often free for vendors who speak on topics). Guest articles in Accounting Today and CPA Practice Advisor.
+- **Referral program**: "Refer a CPA firm, both get one month free." CPAs talk constantly -- one happy customer = 3-5 referrals.
+- **API self-serve (Distill API)**: Developer-facing docs + API keys + usage-based billing. Developers find us via GitHub (open-source SDKs), dev.to, HackerNews, "tax filing API" Google searches (high-intent, low competition).
+
+**Revenue milestones (no funding required)**:
+
+| Milestone | Timeline | Revenue | Channel |
+| --------- | -------- | ------- | ------- |
+| 10 CPA firms | Feb 2027 | $500-2K MRR | Founder-led sales + free tier conversion |
+| 50 CPA firms | Apr 2027 | $2.5K-10K MRR | Product Hunt + content + referrals |
+| 200 CPA firms | Jan 2028 (Season 2) | $10K-40K MRR | SEO + word-of-mouth + returning firms |
+| API first customers | Q3 2027 | +$500-2K MRR | Self-serve developer signups |
+
+**Why B2B works without funding**: Consumer products need millions of users to monetize (expensive). B2B SaaS needs 200 customers at $100/mo average = $20K MRR. Achievable with founder-led sales + content + referrals. No ads needed. The B2B arm can self-fund while consumer FileFree grows organically via socials.
 
 ---
 
@@ -2826,7 +2891,7 @@ Agents are organized into three tiers. **All venture-level personas must be avai
 
 | #   | Persona                     | File                                              | Globs                                                                      | Purpose                                                                         |
 | --- | --------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| 10  | Tax Domain Expert           | `tax-domain.mdc`                                  | `apps/filefree/`**, `apis/filefree/`**, `packages/data/**/tax-*`           | IRS rules, brackets, MeF schemas                                                |
+| 10  | Tax Domain Expert           | `tax-domain.mdc`                                  | `apps/filefree/`**, `apps/distill/**`, `apis/filefree/`**, `packages/tax-engine/**`, `packages/data/**/tax-*` | IRS rules, brackets, MeF schemas                                                |
 | 11  | CPA / Tax Advisor           | `cpa.mdc`                                         | `apps/filefree/**`                                                         | Tax advisory content quality                                                    |
 | 12  | FileFree Social             | `filefree-social.mdc` (rename from `social.mdc`)  | `apps/filefree/**/social/**`                                               | FileFree content: @filefree handles, tax hooks, TurboTax positioning            |
 | 13  | FileFree Growth             | `filefree-growth.mdc` (extract from `growth.mdc`) | `apps/filefree/**`                                                         | Tax-specific SEO, TurboTax competition keywords                                 |
@@ -3233,8 +3298,8 @@ No agent is currently assigned to write production code for FileFree or LaunchFr
 | State tax JSON configs (Tier 1 conforming, ~30 states) | Claude Sonnet | Template from first state + state tax docs    | `packages/data/tax/{state}.json`       | PR review    |
 | State formation JSON (50 states)                       | Claude Sonnet | Template + SOS website data                   | `packages/data/formation/{state}.json` | PR review    |
 | Shared UI components from designs                      | Claude Sonnet | Figma specs or component descriptions         | `packages/ui/components/*.tsx`         | PR review    |
-| Test suites for tax calculations                       | Claude Sonnet | Tax calc implementation + IRS Pub 17 examples | `packages/data/__tests__/*.test.ts`    | PR review    |
-| MeF XML schema -> Zod types                            | Claude Sonnet | Downloaded IRS XML schemas                    | `packages/data/mef/schemas/*.ts`       | PR review    |
+| Test suites for tax calculations                       | Claude Sonnet | Tax calc implementation + IRS Pub 17 examples | `packages/tax-engine/__tests__/*.test.ts` | PR review    |
+| MeF XML schema -> Zod types                            | Claude Sonnet | Downloaded IRS XML schemas                    | `packages/tax-engine/mef/schemas/*.ts`    | PR review    |
 | API endpoint scaffolding                               | Claude Sonnet | OpenAPI spec or route descriptions            | `apis/*/routes/*.py`                   | PR review    |
 
 
@@ -3270,7 +3335,7 @@ No agent is currently assigned to write production code for FileFree or LaunchFr
 
 ### Phase 1: Monorepo Restructure (Weeks 3-8, Realistic)
 
-**Dependency chain**: P1.1 -> P1.2 -> P1.3, P1.4 (parallel) -> P1.5 -> P1.6 -> P1.7, P1.8, P1.9, P1.9b (parallel) -> P1.10 -> P1.11
+**Dependency chain**: P1.1 -> P1.2 -> P1.3, P1.4 (parallel) -> P1.5 -> P1.6 -> P1.7, P1.8, P1.9, P1.9b, P1.9c (parallel) -> P1.10 -> P1.11
 
 **This is the highest-risk phase**: Every file in the repo moves. Imports break. CI breaks. Expect 4-6 weeks, not 2-3.
 
@@ -3287,7 +3352,8 @@ No agent is currently assigned to write production code for FileFree or LaunchFr
 | P1.8 Scaffold apis/launchfree/   | `feat/scaffold-launchfree-api` | Copy `apis/filefree/` base patterns (auth middleware, repository pattern, response envelope, config, health endpoint). Strip FileFree-specific routes. Update compose.dev.yaml.                                                                                                                                                                                                               | `apis/launchfree/` starts on port 8002. `/health` returns 200. Auth middleware functional.                                                                                                                                                                                      | P1.6                          |
 | P1.9 Scaffold apps/studio/       | `feat/scaffold-studio`         | Next.js app at `apps/studio/`. Package name `@venture/studio`. `[data-theme="studio"]` (zinc-neutral). Pages: `/` (public portfolio/landing), `/admin` (protected, placeholder), `/docs` (public, P4.14 Docs Viewer).                                                                                                                                                                         | `pnpm dev:studio` starts on port 3004. Landing page renders. `/docs` renders a markdown file from the repo.                                                                                                                                                                     | P1.5                          |
 | P1.9b Scaffold apps/trinkets/    | `feat/scaffold-trinkets`       | Next.js SSG app at `apps/trinkets/`. Package name `@venture/trinkets`. `[data-theme="trinkets"]` (amber-orange). Pages: `/` (tool directory), `tool-layout.tsx` component, AdSense placeholder component, SEO head component.                                                                                                                                                                 | `pnpm dev:trinkets` starts on port 3003. Tool directory renders. SSG build succeeds (`pnpm build` produces static HTML).                                                                                                                                                        | P1.5                          |
-| P1.10 Update infra               | `feat/monorepo-infra`          | `infra/compose.dev.yaml` (update all service build contexts and volume mounts for new paths), `render.yaml` (update root dirs for Render deployment), `Makefile` (add `dev:filefree`, `dev:launchfree`, `dev:studio`, `dev:trinkets`, `dev:all` targets), `.github/workflows/ci.yml` (add `dorny/paths-filter@v3` per Section F11 spec).                                                      | `make dev` starts all services. `make test` runs all test suites. `make lint` lints all workspaces. CI runs path-filtered builds on PR.                                                                                                                                         | P1.6, P1.7, P1.8, P1.9, P1.9b |
+| P1.9c Scaffold apps/distill/     | `feat/scaffold-distill`        | Next.js app at `apps/distill/`. Package name `@venture/distill`. `[data-theme="distill"]` (dark professional theme). Placeholder landing at `/`, placeholder dashboard at `/dashboard`. Separate brand from FileFree — own domain `distill.tax`. ~1 hour scaffold, prevents "where does this go?" decision during Phase 9.                                                                     | `pnpm dev:distill` starts on port 3005. Landing page renders. Placeholder dashboard is protected.                                                                                                                                                                               | P1.5                          |
+| P1.10 Update infra               | `feat/monorepo-infra`          | `infra/compose.dev.yaml` (update all service build contexts and volume mounts for new paths), `render.yaml` (update root dirs for Render deployment), `Makefile` (add `dev:filefree`, `dev:launchfree`, `dev:studio`, `dev:trinkets`, `dev:distill`, `dev:all` targets), `.github/workflows/ci.yml` (add `dorny/paths-filter@v3` per Section F11 spec).                                        | `make dev` starts all services. `make test` runs all test suites. `make lint` lints all workspaces. CI runs path-filtered builds on PR.                                                                                                                                         | P1.6, P1.7, P1.8, P1.9, P1.9b, P1.9c |
 | P1.11 Verify                     | N/A (manual)                   | Run all 4 frontends + 2 APIs simultaneously. Verify port assignments: filefree :3001, launchfree :3002, trinkets :3003, studio :3004, filefree-api :8001, launchfree-api :8002.                                                                                                                                                                                                               | All 6 processes start without port conflicts. Each frontend renders its branded theme. Each API responds to `/health`. Cross-package imports resolve.                                                                                                                           | P1.10                         |
 
 
@@ -3312,7 +3378,7 @@ This is not a coding task with a side of research. This is an AI-powered data pi
 
 | Task                                    | Details                                                                                                                                      |
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| P2.1 Create packages/data scaffold      | TypeScript types, Zod schemas (formation + tax), directory structure, state engine API                                                       |
+| P2.1 Create packages/data scaffold      | TypeScript types, Zod schemas (formation + tax), directory structure, state engine API. Also scaffold `packages/tax-engine/` (empty, interfaces only) and `packages/document-processing/` (empty, interfaces only) for future phases. |
 | P2.2 Build Source Registry              | 50 state configs: SOS URL, DOR URL, Tax Foundation reference, aggregator URLs, scrape method per source                                      |
 | P2.3 AI-extract 50-state tax data       | Scrape Tax Foundation 2026 table -> GPT-4o structured extraction -> 50 JSON files -> cross-validate against state DOR sites                  |
 | P2.4 AI-extract 50-state formation data | Scrape aggregator tables (WorldPopReview, ChamberOfCommerce) -> GPT-4o extraction -> 50 JSON files -> cross-validate against state SOS sites |
@@ -3513,26 +3579,29 @@ Federal tax is uniform. State tax is chaos. The engine uses three tiers to handl
 | P8.8 Refund Advance integration | If partner secured. Early refund access as acquisition tool                                                                                           |
 
 
-### Phase 9: FileFree Pro -- B2B CPA Product (December 2026 - January 2027)
+### Phase 9: Distill -- B2B Tax Automation Platform (January - March 2027)
 
-Leverages the OCR pipeline and tax calculation engine built in Phase 7. ~80% shared infrastructure. Timeline starts December 2026 (Phase 7 OCR is complete), launches January 2027 alongside consumer FileFree for the same tax season. See Section 1C for full product spec.
+Leverages the OCR pipeline and tax calculation engine built in Phase 7. ~80% shared infrastructure. Distill is a separate B2B brand from FileFree (see Section 1C for rationale). Development starts January 2027 (Phase 7 OCR is complete), launches March 2027 to catch the April 15 deadline rush. See Section 1C for full product spec and Section 5M for bootstrapped GTM playbook.
 
 
 | Task                            | Details                                                                                                                                                                            |
 | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| P9.1 Scaffold apps/filefree-pro | Next.js app at `apps/filefree-pro/`. Package name `@venture/filefree-pro`. `[data-theme="filefree"]` (same brand). Landing at `/`, dashboard at `/dashboard`.                      |
+| P9.1 Scaffold apps/distill      | Next.js app at `apps/distill/`. Package name `@venture/distill`. `[data-theme="distill"]` (own brand, dark professional theme). Landing at `/`, dashboard at `/dashboard`.             |
 | P9.2 CPA firm onboarding flow   | Firm registration (name, firm size, tax software used), team invites, role management (admin/preparer/reviewer). Multi-tenant data model: `firms`, `firm_members`, `firm_clients`. |
 | P9.3 Bulk document upload       | Drag-and-drop multiple W-2s/1099s per client. Queue through shared OCR pipeline (`apis/filefree/` with firm-scoped routes). Batch progress tracking with per-document status.      |
 | P9.4 Professional dashboard     | Client list, per-client document status, extraction confidence scores, field-by-field review workflow, approval/correction interface.                                               |
 | P9.5 Tax software export        | Generate import files for UltraTax (CSV), Drake (XML), ProConnect (CSV), Lacerte (CSV). Publicly documented formats. Per-client or batch export.                                  |
 | P9.6 Stripe B2B billing         | Monthly subscription plans (Solo $49, Team $99, Firm $199). Seat-based billing, usage metering (returns/mo), annual discount (20%).                                               |
-| P9.7 CPA-specific landing page  | `pro.filefree.ai` landing page. SEO targets: "AI tax preparation software for CPAs", "automated W-2 data entry". Comparison with MagneticTax and manual entry.                   |
+| P9.7 CPA-specific landing page  | `distill.tax` landing page. SEO targets: "AI tax preparation software for CPAs", "automated W-2 data entry". Comparison with MagneticTax and manual entry.                        |
 | P9.8 CPA outreach campaign      | Target independent CPAs and small firms (1-10 preparers). LinkedIn + direct email campaign. Tax season urgency messaging. Product Hunt launch for B2B segment.                     |
+| P9.9 Multi-tenant security audit | Pre-launch security audit: verify RLS policies prevent cross-firm data leakage, test firm-scoped middleware injection, penetration test B2B routes, validate audit log immutability. |
+| P9.10 DPA template + onboarding | Data Processing Agreement template (attorney consult scope). Automated firm onboarding agreement flow. Covers: data processing scope, 24hr image retention, no cross-product data usage, CCPA/state privacy compliance. |
+| P9.11 Audit trail implementation | Immutable audit log for all extractions, edits, exports, submissions. 7-year retention. CSV export for CPA compliance. Timestamped with user ID + firm ID.                         |
 
 
 ### Phase 10: Business Tax Filing (Year 2, 2027-2028 Season)
 
-Business returns (1065, 1120-S) serve both consumer FileFree users with pass-through entities and FileFree Pro CPA firms. Priced at $49-99/return for consumer, included in Pro Firm plan.
+Business returns (1065, 1120-S) serve both consumer FileFree users with pass-through entities and Distill CPA firms. Priced at $49-99/return for consumer, included in Distill Firm plan.
 
 
 | Task                                  | Details                                                                                                                                                                                |
@@ -3581,8 +3650,8 @@ The 8-phase plan spans infrastructure (now) through FileFree launch (January 202
 | Phase 6 (Agent Restructure)    | 4 weeks      | 2-3 weeks (with right-sizing) | Reduced agent count (see Section 6 stress test). Most personas are config files, not code. Social pipeline is the only complex build.                                                                                    | PARTIAL -- social pipeline defers                            |
 | Phase 7 (FileFree Season Prep) | October 2026 | October 2026 (HARD DEADLINE)  | IRS season doesn't move. Must start MeF XML generator by June 2026 to hit October ATS testing window.                                                                                                                    | NO -- date is external                                       |
 | Phase 8 (FileFree Launch)      | January 2027 | January 2027 (HARD DEADLINE)  | Tax season start. IRS accepts returns ~late January.                                                                                                                                                                     | NO -- date is external                                       |
-| Phase 9 (FileFree Pro)         | Dec 2026     | Jan-Feb 2027                  | B2B CPA product. ~80% shared tech from Phase 7. Delta: multi-tenant, bulk upload, tax software export, Stripe B2B billing. ~2-3 weeks incremental.                                                                      | YES -- defer to mid-season if Phase 7/8 tight                |
-| Phase 10 (Business Tax Filing) | Year 2       | 2027-2028 season              | Forms 1065 (partnership), 1120-S (S-Corp). Serves both consumer and Pro. Requires new MeF schemas and K-1 generation engine.                                                                                            | YES -- Year 2 product, not Year 1                            |
+| Phase 9 (Distill)              | Jan 2027     | Mar 2027                      | B2B tax automation (distill.tax). Separate brand. ~80% shared tech from Phase 7. Delta: multi-tenant, bulk upload, tax software export, Stripe B2B billing. ~2-3 weeks incremental.                                     | YES -- defer to mid-season if Phase 7/8 tight                |
+| Phase 10 (Business Tax Filing) | Year 2       | 2027-2028 season              | Forms 1065 (partnership), 1120-S (S-Corp). Serves both consumer and Distill. Requires new MeF schemas and K-1 generation engine.                                                                                        | YES -- Year 2 product, not Year 1                            |
 
 
 **Timeline**: 10 months (March 2026 - January 2027). The primary bottleneck is founder decision-making and context-switching between products. Mitigation: batch similar work (e.g., all legal tasks in one sprint), use agents to pre-research and draft so founder reviews rather than creates, and protect 2-hour deep work blocks daily. Phase 7 is tight but achievable if EFIN application happens THIS WEEK and MeF XML development starts by June 2026.
@@ -3714,6 +3783,29 @@ When execution begins, the Phase 0-8 tasks above get merged into `docs/TASKS.md`
 ---
 
 ## 9. McKinsey Self-Review: All Personas Critique This Plan
+
+### Review Round 4-5: Distill Brand + Architecture Optimization (March 2026)
+
+Post-integration review after adding Distill (B2B CPA + API), business tax filing, and growth playbook. Round 4 identified architectural splits and security gaps. Round 5 renamed "FileFree Pro" to "Distill" and added bootstrapped B2B GTM playbook. All findings below are FIXED.
+
+| #   | Finding                                               | Persona      | Severity | Status | Action                                                                                                                                                                                   |
+| --- | ----------------------------------------------------- | ------------ | -------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| H1  | packages/data/ overloaded -- needs split              | Engineering  | HIGH     | FIXED  | Split into packages/data/, packages/tax-engine/, packages/document-processing/ in Section 2 monorepo. Updated Phase task references. D70 in KNOWLEDGE.md.                                 |
+| H2  | Multi-tenant data isolation unspec'd (CRITICAL)       | Engineering  | HIGH     | FIXED  | Added RLS + firm-scoped middleware spec to Section 1C. Added P9.9 security audit task.                                                                                                   |
+| H3  | B2B creates data processing relationship needing DPA  | Legal        | HIGH     | FIXED  | Added DPA requirement to Section 1C. Added P9.10 DPA template task.                                                                                                                     |
+| M1  | Phase 9 timing unrealistic (Dec-Jan alongside launch) | Engineering  | MEDIUM   | FIXED  | Adjusted Phase 9 to "January - March 2027." Catches April 15 deadline rush.                                                                                                             |
+| M2  | B2B API and CPA SaaS being conflated                  | Strategy     | MEDIUM   | FIXED  | Resolved by Distill brand architecture: two product lines (CPA SaaS + API) under one B2B brand, both distinct from consumer FileFree.                                                    |
+| M3  | Infra cost doesn't reflect 5 Vercel apps              | CFO          | MEDIUM   | FIXED  | Added Vercel Pro ($20/mo) to FINANCIALS.md variable costs.                                                                                                                               |
+| M5  | 2M user projection double-counts API volume           | Growth       | MEDIUM   | FIXED  | Split acquisition model into "Direct Users" vs "API Filing Volume" with valuation multiple note (8-15x vs 3-5x).                                                                        |
+| M6  | PARTNERSHIPS.md missing B2B CPA sales motion          | Partnerships | MEDIUM   | FIXED  | Added Section 3.5 to PARTNERSHIPS.md with Distill CPA outreach templates and ownership (Founder 1 owns CPA, Founder 2 owns consumer).                                                  |
+| L1  | Circuit breaker needs B2B SLA consideration           | QA           | LOW      | FIXED  | Added 99.5% uptime SLA note and degradation transparency requirements to Section 2B.2.                                                                                                  |
+| L2  | CPA referral flywheel under-emphasized in moat        | Strategy     | LOW      | FIXED  | Added moat point 6: bidirectional B2B distribution via Distill.                                                                                                                          |
+| L3  | Phase 1 missing Distill scaffold                      | Engineering  | LOW      | FIXED  | Added P1.9c to scaffold apps/distill/ placeholder.                                                                                                                                       |
+| L4  | Annual billing discount impact not in FINANCIALS.md   | CFO          | LOW      | FIXED  | Added annual billing discount impact note to FINANCIALS.md.                                                                                                                              |
+| R5a | "FileFree Pro" brand name creates B2B trust issue     | Growth       | HIGH     | FIXED  | Renamed to "Distill" (distill.tax). Separate B2B brand under Paperwork Labs. 35 references updated across 4 docs. D71 in KNOWLEDGE.md.                                                  |
+| R5b | B2B GTM strategy missing                              | Growth       | HIGH     | FIXED  | Added Section 5M: bootstrapped B2B GTM playbook (engineering-as-marketing, founder-led sales, Product Hunt, content SEO, CPA community).                                                 |
+| R5c | Audit trail logging needed for CPA compliance         | QA           | MEDIUM   | FIXED  | Added audit trail spec to Section 1C (7yr retention, immutable log, CSV export). Added P9.11 task.                                                                                        |
+| R5d | TaxWire missing from competitor analysis              | Strategy     | LOW      | FIXED  | Added TaxWire (sales tax compliance, NONE threat, Year 3+ partnership opportunity).                                                                                                       |
 
 ### Review Round 3: Marketplace Architecture Deep Dive (March 2026)
 

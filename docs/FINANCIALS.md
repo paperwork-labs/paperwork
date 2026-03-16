@@ -42,12 +42,13 @@
 | AI OCR at scale (Cloud Vision + GPT) | ~$0.005-0.02/doc | >1K OCR pages/mo |
 | Social content pipeline (ElevenLabs + Hetzner FFmpeg) | ~$15-17/mo | Full video pipeline active |
 | Partner wholesale costs (RA, audit shield) | Varies by partner | First partner deal closed |
+| Vercel Pro | $20/mo | 5 apps in monorepo (filefree, distill, launchfree, studio, trinkets) — Hobby tier limits to 1 project per account |
 
 ### Free Tier Services (no cost until scale)
 
 | Service | Free Tier Limit | Upgrade Trigger |
 |---|---|---|
-| Vercel (x4 apps) | Hobby tier | 100GB bandwidth or team features |
+| Vercel (x5 apps) | Hobby tier (1 project) | Phase 1 monorepo deploys multiple apps — triggers Vercel Pro ($20/mo) |
 | Neon PostgreSQL | 0.5 GB storage, 190 compute hours | 5K+ users |
 | Upstash Redis | 500K commands/mo | 500K+ commands |
 | GCP Cloud Vision | 1K pages/mo | 1K+ OCR pages/mo |
@@ -89,7 +90,7 @@ Note: Year 1 increase driven by Compliance-as-a-Service recurring revenue ($49-9
 
 Key inflection: Year 3 is where marketplace revenue overtakes product revenue. See Master Plan Section 4O for stage gates and competitive moat analysis.
 
-### FileFree Pro B2B SaaS Revenue (from Master Plan Section 1C)
+### Distill B2B SaaS Revenue (from Master Plan Section 1C)
 
 | Year | CPA Firms | Avg Plan | Monthly Rev | Annual Rev |
 |---|---|---|---|---|
@@ -101,6 +102,8 @@ Key inflection: Year 3 is where marketplace revenue overtakes product revenue. S
 
 This is immediate, predictable SaaS revenue -- not marketplace ARPU that requires consumer scale. Revenue starts the moment a CPA firm signs up. ~80% tech overlap with consumer FileFree means near-zero marginal infrastructure cost.
 
+**Annual billing discount impact**: Distill offers 20% annual billing discount (Solo $39/mo, Team $79/mo, Firm $159/mo). If 50% of firms choose annual, effective monthly revenue drops ~10% from the table above. However, annual billing improves cash flow predictability and reduces churn.
+
 ### Business Tax Filing Revenue (from Master Plan Phase 10)
 
 | Year | Business Returns | Avg Fee | Annual Rev |
@@ -110,7 +113,7 @@ This is immediate, predictable SaaS revenue -- not marketplace ARPU that require
 | Y4 (2030) | 2,000-5,000 | $75 | **$150K-375K** |
 | Y5 (2031) | 5,000-15,000 | $75 | **$375K-$1.1M** |
 
-Business returns (Form 1065, 1120-S) are NOT free. Priced at $49/return (1065) and $99/return (1120-S). Free for FileFree Pro Firm subscribers. LaunchFree cross-sell: first business return free for LLC formers who selected partnership/S-Corp tax election.
+Business returns (Form 1065, 1120-S) are NOT free. Priced at $49/return (1065) and $99/return (1120-S). Free for Distill Firm subscribers. LaunchFree cross-sell: first business return free for LLC formers who selected partnership/S-Corp tax election.
 
 ### B2B Tax-as-a-Service API Revenue (from Master Plan Section 5L, Year 2+)
 

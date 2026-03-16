@@ -4,6 +4,8 @@
 **Last updated**: March 2026
 **Purpose**: Evaluate founder's existing side projects for viability as venture products, trinkets, or shelved ideas.
 
+**Status**: Items 5-9 have been formally integrated into the Venture Master Plan as core products/features with dedicated Phases. They are no longer "side projects." This document is retained as the evaluation record (market assessment, competitive landscape, GO/NO-GO rationale). For execution details, see their respective Phase sections in `docs/VENTURE_MASTER_PLAN.md`.
+
 ---
 
 ## Evaluation Criteria
@@ -218,7 +220,7 @@
 
 **Effort**: HIGH. Business returns are significantly more complex than personal returns. Schedule K-1 generation requires partner allocation logic. MeF business return schemas are separate from 1040 schemas. Estimated: 4-6 weeks of engineering (Phase 10, Year 2).
 
-**Revenue Path**: $49/return (1065), $99/return (1120-S). Free for FileFree Pro Firm plan subscribers. LaunchFree cross-sell: first business return free.
+**Revenue Path**: $49/return (1065), $99/return (1120-S). Free for Distill Firm plan subscribers. LaunchFree cross-sell: first business return free.
 
 | Scenario | Returns | Avg Fee | Annual Rev |
 |---|---|---|---|
@@ -232,9 +234,11 @@
 
 ---
 
-## 9. FileFree Pro -- B2B CPA Automation
+## 9. Distill -- B2B Tax Automation Platform (distill.tax)
 
-**What it is**: SaaS product for CPA firms and tax professionals. Upload client W-2s/1099s in bulk, auto-extract fields via shared OCR pipeline, export to professional tax software (UltraTax, Drake, ProConnect, Lacerte).
+**What it is**: Separate B2B brand from FileFree. Two product lines: **Distill for CPAs** (SaaS dashboard for CPA firms — upload client W-2s/1099s in bulk, auto-extract fields via shared OCR pipeline, export to professional tax software) and **Distill API** (headless Tax-as-a-Service for platforms, Year 2). Built under Paperwork Labs venture umbrella.
+
+**Why a separate brand**: "Free" in "FileFree" creates cognitive dissonance for B2B buyers paying $199/mo. Tax industry standard is separate brands (Intuit: TurboTax vs ProConnect/Lacerte). "Distill" = extract pure essence from raw material, perfect metaphor for OCR-to-structured-data.
 
 **Market Assessment**:
 - 75,000+ CPA firms in the US. ~250,000 active CPAs.
@@ -247,9 +251,9 @@
 - SurePrep (Thomson Reuters): Established, $3,000-5,000+/yr. Enterprise-focused, not for small firms.
 - Gruntworx: Document processing for CPAs. $4-8/document. Established but not AI-native.
 
-**Alignment with Venture**: VERY HIGH. ~80% tech overlap with consumer FileFree. Same OCR pipeline, same field extraction, same tax calc engine. The B2B product is a different frontend on the same backend. CPA firms become a distribution channel for consumer FileFree (CPA referrals).
+**Alignment with Venture**: VERY HIGH. ~80% tech overlap with consumer FileFree. Same OCR pipeline, same field extraction, same tax calc engine. The B2B product is a different frontend on the same backend. CPA firms become a distribution channel for consumer FileFree (CPA referrals). Bidirectional flywheel: Distill CPA -> consumer FileFree -> Distill.
 
-**Effort**: LOW-MEDIUM. ~2-3 weeks of incremental engineering on top of Phase 7 infrastructure. Delta: multi-tenant team management, bulk document upload, tax software export formats, Stripe B2B billing.
+**Effort**: LOW-MEDIUM. ~2-3 weeks of incremental engineering on top of Phase 7 infrastructure. Delta: multi-tenant team management (RLS + firm-scoped middleware), bulk document upload, tax software export formats, Stripe B2B billing, audit trail logging (7yr retention), DPA onboarding flow.
 
 **Revenue Path**: Pure SaaS, monthly subscriptions.
 
@@ -259,24 +263,31 @@
 | Team | $99/mo | 3 | 200 |
 | Firm | $199/mo | Unlimited | 500+ |
 
-**Differentiation**: We build the OCR/extraction pipeline for consumer filing anyway -- B2B is marginal cost. MagneticTax is VC-funded with dedicated burn for one product. We're bootstrapped with consumer filing as the primary product and B2B as an incremental revenue arm with near-zero additional infrastructure cost.
+Annual billing discount: 20% (Solo $39/mo, Team $79/mo, Firm $159/mo).
 
-**GO / NO-GO**: **GO -- Phase 9 (December 2026 - January 2027)**. Very high alignment, low incremental effort, immediate SaaS revenue, market validated by MagneticTax YC funding. This is the fastest path to predictable revenue in the venture.
+**Differentiation**: We build the OCR/extraction pipeline for consumer filing anyway -- B2B is marginal cost. MagneticTax is VC-funded with dedicated burn for one product. We're bootstrapped with consumer filing as the primary product and B2B as an incremental revenue arm with near-zero additional infrastructure cost. Distill's audit trail logging and CPA-optimized workflows differentiate from raw API competitors.
+
+**GO / NO-GO**: **GO -- Phase 9 (January - March 2027)**. Very high alignment, low incremental effort, immediate SaaS revenue, market validated by MagneticTax YC funding. This is the fastest path to predictable revenue in the venture. See Section 5M in master plan for bootstrapped B2B GTM playbook.
 
 ---
 
 ## Summary
 
-| Project | Verdict | Timing | Notes |
-|---|---|---|---|
-| Axiomfolio | DEFER | Year 2+ | High alignment but needs Plaid investment. Revisit as Tax Optimization Plan premium feature. |
-| ReplyRunner | NO-GO | N/A | Low alignment, commodity market, no differentiation. |
-| Jointly | DEFER | Year 2+ | Good alignment, underserved market, but Plaid + UX complexity. Explore as FileFree household feature. |
-| FittingRoom | NO-GO | N/A | Zero alignment, very high complexity, Big Tech competitors. |
-| **Compliance SaaS** | **GO** | **Phase 3.5** | Very high alignment, low effort, recurring revenue. Undercuts competitors 3-6x. First true SaaS stream. |
-| **Quarterly Estimator** | **GO** | **Phase 1.5 + 7** | Very high alignment, reuses tax engine. SEO acquisition + 4x/year retention hook. |
-| **Refund Splitting** | **GO** | **Phase 7 (P7.4)** | Very high alignment, trivial effort. Transforms post-filing into revenue conversion moment. |
-| **Business Tax Filing** | **GO** | **Phase 10 (Year 2)** | Very high alignment, mandatory LaunchFree cross-sell. $49-99/return. High effort but justified by synergy. |
-| **FileFree Pro (B2B CPA)** | **GO** | **Phase 9 (Dec 2026)** | Very high alignment, ~80% shared tech. Immediate SaaS revenue. Market validated by MagneticTax (YC S25). |
+### Integrated into Venture Master Plan (no longer side projects)
 
-**Recommendation**: Focus entirely on FileFree + LaunchFree + Trinkets for Year 1. The five GO items above are natural extensions that ship within existing phases with minimal incremental effort. FileFree Pro (Phase 9) ships alongside consumer FileFree in January 2027 for the same tax season. Business Tax Filing (Phase 10) ships Year 2. Axiomfolio and Jointly become Year 2+ candidates once the core venture has revenue and user traction to justify Plaid costs and expanded product surface area.
+| Project | Phase | Master Plan Section | Pricing |
+|---|---|---|---|
+| Compliance SaaS | Phase 3.5 | Section 1B (LaunchFree) | $49-99/yr |
+| Quarterly Estimator | Phase 1.5 + 7 | Section 0F (Trinkets) + Section 1A | Free |
+| Refund Splitting | Phase 7 (P7.4) | Section 1A (FileFree) | Free (affiliate rev) |
+| Business Tax Filing | Phase 10 (Year 2) | Section 1A + Phase 10 | $49-99/return |
+| Distill (B2B Tax Automation) | Phase 9 (Jan-Mar 2027) | Section 1C + Section 5M | $49-199/mo SaaS |
+
+### Shelved
+
+| Project | Verdict | Notes |
+|---|---|---|
+| Axiomfolio | DEFER (Year 2+) | High alignment but needs Plaid investment. Revisit as Tax Optimization Plan premium feature. |
+| Jointly | DEFER (Year 2+) | Good alignment, underserved market, but Plaid + UX complexity. Explore as FileFree household feature. |
+| ReplyRunner | NO-GO | Low alignment, commodity market, no differentiation. |
+| FittingRoom | NO-GO | Zero alignment, very high complexity, Big Tech competitors. |
