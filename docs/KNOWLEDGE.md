@@ -1,8 +1,8 @@
-# FileFree Knowledge Base
+# Paperwork Labs — Knowledge Base
 
-Organizational memory for FileFree. AI agents read this at session start. Update after significant decisions, learnings, or pattern discoveries.
+Organizational memory for Paperwork Labs (FileFree, LaunchFree, Distill, Trinkets). AI agents read this at session start. Update after significant decisions, learnings, or pattern discoveries.
 
-**Last Updated**: 2026-03-12
+**Last Updated**: 2026-03-17
 
 ---
 
@@ -121,6 +121,11 @@ Postiz switched from cron to Temporal for background job scheduling in v2.12.0. 
 
 ---
 
+### Q5: Origin (Budgeting App) — Competitive Threat Analysis
+Origin is reportedly growing in the personal finance space. Evaluate as potential competitive threat or adjacent market signal. Analyze: feature set, target demographic overlap with FileFree (Gen Z / young adults), growth trajectory, and whether a budgeting-to-tax-filing pipeline could compete with FileFree's refund-moment monetization strategy. Also assess whether Origin's growth validates the broader "AI eliminates financial paperwork" thesis.
+
+---
+
 ### Q4: Postiz MCP Reliability with Self-Hosted Instances
 GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeouts, 404s) on self-hosted Postiz. Community MCP package (`mcp-postiz-server`) is third-party maintained. Fallback: Postiz REST API works reliably. Test MCP first; use REST API if needed.
 
@@ -164,7 +169,7 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 
 ### D16: Co-Founder Structure — Product/Eng + Partnerships/Revenue (2026-03-09)
 - **Context**: Solo founder risk was the #1 strategic risk (CRITICAL severity). Partnership-dependent revenue streams (refund routing + financial referrals) account for 77% of Scenario B revenue but require dedicated relationship management that a solo engineer would struggle to execute.
-- **Decision**: Two co-founder structure. Founder 1 owns product, engineering, infrastructure, tax calculations, OCR pipeline, content creation, and IRS certification. Founder 2 (FAANG partnerships background) owns partner outreach, deal negotiation, and revenue stream activation at 2-3 hours/week, supported by AI persona (partnerships.mdc).
+- **Decision**: Two co-founder structure. Founder 1 owns product, engineering, infrastructure, tax calculations, OCR pipeline, content creation, and IRS certification. Founder 2 (FAANG partnerships background) owns partner outreach, deal negotiation, and revenue stream activation on an outcome-driven basis, supported by AI persona (partnerships.mdc).
 - **Alternatives**: Solo founder + hire later, solo founder + contractor for BD, single founder doing everything.
 - **Rationale**: The delta between Scenario A (no partnerships, $438K) and Scenario B (partnerships in place, $805K) is $367K at 100K users. Having a dedicated partnerships person with enterprise deal experience directly addresses the most fragile revenue assumption (refund routing attach rate) and reduces the solo founder burnout risk from CRITICAL to HIGH. Her FAANG experience means she knows how enterprise partnership agreements, rev-share negotiations, and compliance work.
 - **Reversibility**: Easy. Roles are cleanly separated. Either founder can operate independently if needed.
@@ -311,3 +316,260 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 - **Impact**: Single source of truth for every `process.env` read. New credentials must be added to `CREDENTIALS.md` before merge. CI catches accidental secret commits. Backend config unchanged (already solid with Pydantic).
 - **PR**: #14
 - **Reversibility**: Easy. Config modules are drop-in wrappers — can revert to raw `process.env` reads if needed.
+
+### D35 — Venture Master Plan v1 (2026-03-12)
+- **Context**: Multi-product venture strategy finalized after 5 plan iterations and 2 deep research sessions.
+- **Decision**: Single authoritative master plan covering FileFree, LaunchFree, Trinkets, and command center. pnpm workspace monorepo. Federated identity. 50-state AI data pipeline. Faceless social pipeline. 30+ AI agents.
+- **Alternatives**: Separate repos (rejected: 70% frontend sharing), Turborepo (rejected: overkill for <5 apps), Series LLC (rejected: limited precedent).
+- **Reversibility**: Major architectural decision — reversing monorepo would be expensive.
+
+### D36 — Company Structure: Single LLC + DBAs (2026-03-12) — SUPERSEDED by D54
+- **Context**: Evaluated single LLC, holding company + subsidiaries, and Series LLC.
+- **Original Decision**: Single Wyoming LLC ($103 filing fee). **SUPERSEDED**: See D54 -- decided Paperwork Labs LLC in California instead. Wyoming rejected because founder is a CA resident (would require foreign registration, double RA fees, and CA franchise tax anyway).
+- **Alternatives**: Personal name LLC (rejected: signals "small operation"), Series LLC (rejected: limited legal precedent).
+- **Reversibility**: Easy to convert to holding company later.
+
+### D37 — Domain Strategy: .ai Brand Family (2026-03-12)
+- **Context**: Needed unified brand presence across products.
+- **Decision**: Purchased launchfree.ai + filefree.ai (March 2026, ~$440 for 2-year reg). Migrate filefree.tax to filefree.ai. Pattern: [product]free.ai.
+- **Alternatives**: Keep .tax (rejected: .ai signals AI differentiator), .com (rejected: filefree.com is Intuit's).
+- **Reversibility**: Permanent redirect from .tax preserves old links.
+
+### D38 — Trinkets Product Line + Agent Pipeline (2026-03-12)
+- **Context**: Wanted to test AI agent infrastructure end-to-end while generating passive revenue.
+- **Decision**: "Trinkets" = collection of client-side utility tools (financial calculators first). 3-stage Trinket Factory agent pipeline: GPT-5.4 Discovery -> Claude Sonnet PRD -> Claude Sonnet Build. Phase 1.5 in execution plan.
+- **Alternatives**: Manual tool selection (rejected: doesn't test agent pipeline), full SaaS tools (rejected: too complex for testing purposes).
+- **Reversibility**: Low-cost experiment, easy to abandon.
+
+### D39 — AI Model Routing Strategy: 9 Models, 7 Roles (2026-03-12)
+- **Context**: Multiple AI models available with varying cost/quality tradeoffs. Needed systematic assignment.
+- **Decision**: 9-model routing strategy owned by AI Ops Lead persona. Decision tree prioritizes cheapest model that achieves required quality. Gemini 2.5 Flash as default workhorse. Claude Sonnet for code/compliance. GPT-4o for creative. See Section 0E of master plan.
+- **Alternatives**: Single model for everything (rejected: wasteful), ad-hoc selection (rejected: inconsistent costs).
+- **Reversibility**: Easy — swap models in n8n workflow nodes.
+
+### D40 — AI Operations Lead Persona (2026-03-12)
+- **Context**: Model routing decisions were ad-hoc across different conversations.
+- **Decision**: Created `agent-ops.mdc` persona that owns all model routing, cost monitoring, persona audits, and new model evaluation. Has final say on model assignments — engineering implements but doesn't choose.
+- **Alternatives**: Engineering chooses models (rejected: no cost accountability), single model policy (rejected: too rigid).
+- **Reversibility**: Persona file is just a .mdc — easy to modify or remove.
+
+### D41 — RA Pricing Strategy: Wholesale Volume Tiers (2026-03-12)
+- **Context**: Initial RA pricing assumed $125/yr wholesale from Northwest RA. Research showed this was only for Wyoming; nationwide wholesale pricing varies significantly.
+- **Decision**: Partner RA with CorpNet volume pricing. Charge $99/yr initially (cheaper than ZenBusiness $199, LegalZoom $299). Drop to $79/yr at 500+ users, $49/yr at 1,000+ users. DIY RA deferred indefinitely.
+- **Alternatives**: DIY RA (rejected: requires 50-state physical addresses + E&O insurance), flat $49/yr from day 1 (rejected: not profitable until 1,000+ volume).
+- **Reversibility**: Can switch RA partners or adjust pricing at any time.
+
+### D42 — Agent Org Chart: Full Company from Day One (2026-03-12)
+- **Context**: Stress test recommended right-sizing agents from 43 to 20. Founder pushed back -- agents are employees and the company structure should be complete.
+- **Decision**: All 44 agents (24 Cursor personas + 20 n8n workflows) defined in a hierarchical org chart from day one. Agents have Active/Standby/Planned status. Standby = system prompt ready but not deployed. Full governance protocol: multi-agent consensus with APPROVE/CONCERN/BLOCK verdicts and escalation to parent nodes.
+- **Alternatives**: Right-size to 20 with build triggers (rejected: doesn't model a real company), flat structure with no governance (rejected: no checks and balances).
+- **Reversibility**: Can always defer/shelve Planned agents. Governance protocol is process, not infrastructure.
+
+### D43 — FileFree Form Coverage: All 50 States + Major Schedules at Launch (2026-03-12)
+- **Context**: Previous plan suggested launching with top 10-15 states. Founder insisted on all 50.
+- **Decision**: January 2027 launch covers 1040 + Schedule 1 + B + C + 1099-NEC/INT/DIV + dependents + ALL 50 state returns. Mid-season (Feb 2027) adds Schedule A + D. Year 2 adds E, SE, HSA, K-1. Data-driven state engine makes marginal effort per state minimal.
+- **Alternatives**: Top 10 states only (rejected: marginal effort delta not worth it), simple returns only (rejected: limits TAM significantly).
+- **Reversibility**: Can always delay specific schedules if MeF testing scope is too large.
+
+### D44 — Quality-First AI Model Philosophy (2026-03-12)
+- **Context**: Original routing principle was "cheapest model that works." Founder prefers quality over cost.
+- **Decision**: Use the BEST model for the task. Only downgrade when cheaper model produces EQUIVALENT quality, not just "good enough." GPT-5 should be evaluated immediately upon release.
+- **Alternatives**: Cost-first routing (rejected: founder willing to pay for quality), single premium model for everything (rejected: wasteful for bulk extraction).
+- **Reversibility**: Cost philosophy is a guideline, easily adjusted.
+
+### D45 — Founder 2 Framing: Outcome-Driven (2026-03-12)
+- **Context**: Plan specified "2-3 hrs/wk" for Founder 2. This felt prescriptive and limiting.
+- **Decision**: Removed all time-commitment references. Founder 2 is framed as "outcome-driven, flexible commitment" -- AI handles all prep, Founder 2 does what requires a human (calls, emails, negotiations).
+- **Alternatives**: Keep time specification (rejected: unnecessarily constraining).
+- **Reversibility**: Can always add time expectations back if needed.
+
+### D46 — AI Branding: Lead with Outcomes, Not Technology (2026-03-12)
+- **Context**: Question of whether promoting "AI-powered" helps or hurts trust in financial services.
+- **Decision**: Lead with outcomes ("free, 5 minutes, accurate"), not "AI-powered." Mention AI when it explains WHY something is free/fast, but never as headline value prop. Competitors (Credit Karma, FreeTaxUSA) barely mention AI -- users care about results.
+- **Alternatives**: AI-forward branding (rejected: research shows it hurts trust for advice/judgment), hide AI entirely (rejected: misses speed/cost explanation opportunity).
+- **Reversibility**: Easy to adjust messaging emphasis.
+
+### D47 — Slack as Agent Communication Hub (2026-03-12)
+- **Context**: Agents need persistent two-way communication with founder beyond ephemeral Cursor chat.
+- **Decision**: Slack as central company hub with 10 functional channels. n8n posts agent output to channels. Founder can reply/command in channels. Professional email aliases on Google Workspace (filefree.ai, launchfree.ai, distill.tax, paperworklabs.com) route to founder inbox.
+- **Alternatives**: Discord (rejected: already have Slack workspace), Notion comments (rejected: wife can't use it easily), custom dashboard (rejected: unnecessary build).
+- **Reversibility**: Channel structure is config, easy to reorganize.
+
+### D48 — Side Projects Evaluation (2026-03-12)
+- **Context**: Founder has 4 side projects (axiomfolio, replyrunner, jointly, fittingroom) that needed evaluation.
+- **Decision**: ReplyRunner and FittingRoom are NO-GO (low alignment, crowded/complex markets). Axiomfolio and Jointly are DEFER to Year 2+ (good alignment but require Plaid integration costs that aren't viable pre-revenue). Full analysis in docs/FOUNDER_SIDE_PROJECTS.md.
+- **Alternatives**: Build one alongside main products (rejected: context-switching risk), abandon all (rejected: axiomfolio and jointly have genuine venture alignment).
+- **Reversibility**: Can revisit deferred projects anytime when revenue supports Plaid costs.
+
+### D49 — MeF Local Validation Engine: Zero-Risk ATS Strategy (2026-03-12)
+- **Context**: Concern that testing 50 state MeF schemas in one ATS window may not be feasible.
+- **Decision**: Build a local XML validation engine BEFORE submitting to ATS. IRS publishes all schemas (irs.gov/downloads/irs-schema). State schemas from E-Standards (statemef.com). ATS only requires ~13 test scenarios for 1040. State returns piggyback on federal submission (not 50 separate tests). Local validation achieves 100% pass rate before ATS submission. CA FTB and MA DOR (independent systems) use Column Tax as e-file partner in Year 1 only.
+- **Alternatives**: Submit to ATS blind and iterate (rejected: wastes testing window cycles), federal-only in Year 1 (rejected: unnecessary since piggyback makes states trivial).
+- **Reversibility**: Pipeline is additive. Can always fall back to Column Tax for any state.
+
+### D50 — Plan B Revenue Upgrade: Self-Serve Affiliates (2026-03-12)
+- **Context**: Original Plan B ($3.5K-19K) assumed HYSA referrals require partnerships. Research shows most fintech affiliate programs (Betterment, SoFi, Wealthfront, Ally, Robinhood, Chime, Acorns) are self-serve applications on Impact.com and CJ Affiliate.
+- **Decision**: Revised Plan B to $6.5K-37K. Founder 1 applies to all self-serve programs in Phase 0 (one afternoon of form fills). Founder 2 raises revenue ceiling with premium terms but doesn't set the floor.
+- **Alternatives**: Wait for Founder 2 (rejected: unnecessary delay for self-serve programs), skip affiliates entirely (rejected: leaving money on the table).
+- **Reversibility**: Can add/remove affiliate programs at any time.
+
+### D51 — Tiered State Tax Engine Architecture (2026-03-12)
+- **Context**: 50-state tax calculations vary from trivial (flat % of federal income) to complex (CA has ~40 modification items).
+- **Decision**: Three-tier engine. Tier 1 (~30 conforming states): JSON config only. Tier 2 (~12 semi-conforming): config + modifier functions. Tier 3 (~5 independent: CA, NJ, PA, MA, NH): custom calculation modules. Budget 2 extra weeks in Phase 7 for Tier 3.
+- **Alternatives**: Single engine for all states (rejected: CA/NJ complexity can't fit in JSON config), custom module per state (rejected: massive over-engineering for conforming states).
+- **Reversibility**: Can always add more states to Tier 3 if JSON config proves insufficient.
+
+### D52 — Doc Hygiene: Anti-Bloat Rules (2026-03-12)
+- **Context**: 15 docs / 8,773 lines total. Master plan at 3,000+ lines. Risk of docs becoming unreadable.
+- **Decision**: Anti-bloat rules in Section 8: collapse completed phases to one-line summaries, rotate KNOWLEDGE.md every 6 months, archive superseded docs. Moved STRATEGY_REPORT.md, UTILITY_SITES_STRATEGY.md, SOCIAL_ROADMAP.md to docs/archive/. Master plan target: under 3,500 lines.
+- **Alternatives**: Split master plan into multiple docs (rejected: loses single source of truth), no archival (rejected: docs grow indefinitely).
+- **Reversibility**: Can always restore archived docs from git history.
+
+### D53 — Alert Routing: Slack Not Discord (2026-03-12)
+- **Context**: Section 7B routed alerts to Discord. Section 14 established Slack as the company hub. Inconsistency.
+- **Decision**: All alerts route through Slack #ops-alerts. Discord references removed. Consistent with Section 14 Slack hub architecture.
+- **Alternatives**: Keep both Slack and Discord (rejected: unnecessary tool sprawl), use Discord only (rejected: Slack is already the company hub).
+- **Reversibility**: Channel routing is n8n config, trivial to change.
+
+### D54 — LLC Name: Paperwork Labs LLC (2026-03-12)
+- **Context**: Naming research across multiple sessions. Toast-themed names rejected (Toast Inc. litigation risk). Butterside Labs rejected ("butters" slang). Founder discovered paperworklabs.com available.
+- **Decision**: Register as "Paperwork Labs LLC" in California. Domain: paperworklabs.com (purchased). Thematic fit: both products eliminate paperwork. "Labs" differentiates from Canadian "Paperwork Forms" company and follows tech holding company convention. Zero trademark risk in our classes.
+- **Alternatives**: Paperwork LLC (no "Labs" -- Canadian company overlap), Toastworks LLC (Toast Inc. risk), Crisp Labs LLC (less thematic fit), Sharma Ventures LLC (personal name signals small operation).
+- **Reversibility**: LLC name is permanent but can be amended (~$30 CA filing fee). Domain is just DNS.
+
+### D55 — Command Center: paperworklabs.com (2026-03-12)
+- **Context**: Command center was on sankalpsharma.com. With Paperwork Labs as the holding company, the admin dashboard should live on company infrastructure, not the founder's personal domain.
+- **Decision**: Move command center (apps/studio) to paperworklabs.com. sankalpsharma.com becomes the founder's personal portfolio/blog site. Cleaner separation: company ops on company domain, personal brand on personal domain.
+- **Alternatives**: Keep on sankalpsharma.com (rejected: mixing personal and company, awkward for Olga's admin access and future team/investors).
+- **Reversibility**: DNS change, trivial.
+
+### D56 — Auth Architecture: Admin Allowlist (2026-03-12)
+- **Context**: Need admin access for two founders (Sankalp + Olga) across all products.
+- **Decision**: Shared `packages/auth/` using Auth.js v5 (NextAuth). User auth: Google OAuth + Apple Sign-In. Admin auth: same OAuth flow + email allowlist check (`ADMIN_EMAILS` env var with sankalp@paperworklabs.com + Olga's personal email). No separate admin login, no role system. Trinkets have no auth -- public tools with cross-sell CTAs. (Updated per D76: 1 Workspace seat, Olga uses personal email for admin access.)
+- **Alternatives**: Separate admin app (over-engineered), personal Gmail for auth (messy separation of concerns), role-based system (unnecessary for 2 admins).
+- **Reversibility**: Allowlist is an env var, trivial to update.
+
+### D57 — Trinkets Domain: Subdomain + Graduation (2026-03-12)
+- **Context**: Considered individual SEO-friendly domains per trinket vs tools.filefree.ai subdomain.
+- **Decision**: Stay on tools.filefree.ai. SEO research confirms subdomain inherits some parent authority, individual domains start at DA 0. At Year 1 revenue of $50-300, buying 15+ domains is negative ROI. Use subdirectory-style paths (tools.filefree.ai/calculators/mortgage) for topical clustering. Graduation criteria: if a trinket exceeds 10K monthly visits, consider standalone domain with 301 redirect.
+- **Alternatives**: Individual domains per trinket (rejected: negative ROI, DA 0 startup, Google EMD devaluation since 2012), subdirectories on filefree.ai (rejected: tighter coupling with main product).
+- **Reversibility**: Can always buy standalone domains later and 301 redirect.
+
+### D58 — Experimentation Platform: PostHog-First (2026-03-13)
+- **Context**: CK's Darwin runs 22K models/month. Needed a lightweight experimentation framework that grows with us. Researched Google's user simulation paper (2024), Capital One's FinTRec (2025), Meta's PEX framework.
+- **Decision**: Three-phase approach. Phase 1: PostHog feature flags + simple A/B (already in stack, free tier 1M events/mo). Phase 2 (10K+ users): Thompson Sampling bandit for partner ranking (~200 lines Python). Phase 3 (50K+ users): ML collaborative filtering. FTC compliance constraint baked in: never test "pre-approved" language.
+- **Alternatives**: Build custom experimentation platform (rejected: premature at our scale), Optimizely/LaunchDarkly (rejected: paid, unnecessary complexity for Phase 1).
+- **Reversibility**: PostHog feature flags are config, trivial to change. Bandit/ML layers are additive.
+
+### D59 — Data Intelligence: Design for Post-Production from Day One (2026-03-13)
+- **Context**: Tax filing is seasonal, LLC formation is one-time. Without retention and data intelligence, users churn after the transaction. The data compounds year-over-year and becomes the moat.
+- **Decision**: Broaden from "retention" to full "Data Intelligence & Analytics" layer (Section 4L). Track company KPIs from day one (activation rate, MAU, partner conversion, churn, LTV). Build lifecycle campaigns (7 trigger-based via n8n). Deploy churn prediction via ChurnGuard AI (open-source, PostHog+Stripe) at Phase 2. Web push notifications (Phase 2+, opt-in, max 2/week).
+- **Alternatives**: Build custom analytics (rejected: PostHog does this), defer analytics to Year 2 (rejected: lose data compounding advantage).
+- **Reversibility**: Event taxonomy is append-only. KPI definitions can be adjusted. Campaign triggers are n8n config.
+
+### D60 — Credit Score: Phase 1.5 Not Phase 2 (2026-03-13)
+- **Context**: CK's moat was 2,500 data points/user, not the credit score itself. FileFree uniquely sees actual tax return data (W-2 Box 1 income, filing status, dependents, refund amount). Adding credit score creates the richest financial profile in fintech. Every month delayed = lost data compounding.
+- **Decision**: Move credit score integration from Phase 2 to Phase 1.5 (Launch + 3 months). Soft pull only via TransUnion reseller (Array or SavvyMoney, $0.50-2.00/pull). FCRA compliance review ($500-1K). UX: opt-in, value-first framing ("Won't affect your score").
+- **Alternatives**: Wait until Phase 2 (rejected: lose 12 months of credit trajectory data for Year 1 filers), skip credit score entirely (rejected: dramatically limits partner matching quality and revenue).
+- **Reversibility**: Soft pull integration is additive. Can be removed if FCRA compliance proves too costly.
+
+### D61 — Package Rename: cross-sell -> intelligence (2026-03-13)
+- **Context**: `packages/cross-sell/` was too narrow for the expanded intelligence engine that now includes profile building, partner matching, experimentation, data intelligence, churn prediction, and campaign triggers.
+- **Decision**: Rename to `packages/intelligence/`. Updated monorepo structure in Section 2 and Phase 5 tasks. Modules: profile builder, partner matcher, experimentation, data intelligence, campaign triggers.
+- **Alternatives**: `packages/recommendation/` (rejected: still too narrow), `packages/analytics/` (rejected: conflicts with existing analytics package for PostHog).
+- **Reversibility**: Package rename is a refactor, trivial in a monorepo.
+
+### D62 — Production Reliability Architecture: 5 Must-Haves Before Tax Season (2026-03-13)
+- **Context**: FileFree handles SSNs, financial data, and IRS submissions. Tax season concentrates 80% of annual volume into 10 weeks. A double-submit, cascading failure, or undetected calculation bug during this window is catastrophic -- both legally and reputationally.
+- **Decision**: Five non-negotiable reliability patterns must be implemented in Phase 7 (P7.18-P7.22) before January 2027 launch: (1) Idempotency keys on all financial endpoints via FastAPI middleware + Redis, (2) Circuit breakers (`pybreaker`) on all external service calls with per-service degradation strategies, (3) Dual-path tax calculation reconciliation pipeline with $1 tolerance and nightly IRS Pub 17 validation, (4) OpenTelemetry distributed tracing across OCR-to-filing pipeline exported to Grafana Cloud free tier, (5) k6 load testing with 4 tax season scenarios and monthly runs from October 2026. Five additional should-have patterns (event sourcing, key rotation, schema registry, multi-region readiness, canary deploys) deferred to Year 1-2.
+- **Alternatives**: Ship without reliability patterns (rejected: unacceptable for financial software handling SSNs), implement only observability (rejected: insufficient -- idempotency and circuit breakers prevent data corruption, not just detect it), use paid APM like Datadog (rejected: $15+/host/mo unnecessary at MVP scale when Grafana Cloud free tier covers needs).
+- **Reversibility**: All patterns are additive middleware/wrappers. Can be removed or replaced independently.
+
+### D63 — Adjacent Revenue: 3 Tier 1 Extensions (2026-03-13)
+- **Context**: The venture's data moat (tax return data, formation data, financial profiles) enables natural product extensions that require minimal new infrastructure. Three "Tier 1" ideas scored highest on alignment + effort + revenue potential.
+- **Decision**: Three GO verdicts: (1) Compliance-as-a-Service ($49-99/yr LaunchFree subscription, Phase 3.5) -- annual report reminders, franchise tax tracking, renewal forms. First true SaaS/recurring revenue. Undercuts LegalZoom 3-6x. (2) Quarterly Tax Estimator (Phase 1.5 Trinket + Phase 7 FileFree feature) -- 1040-ES calculator for 1099 workers. Free, drives 4x/year re-engagement and Tax Optimization Plan upsell. Auto-populates from prior return (unique moat). (3) Refund Splitting + Goal-Based Savings (Phase 7 P7.4 expansion) -- IRS Form 8888 for splitting refunds across up to 3 accounts. Transforms post-filing into affiliate conversion moment. $15K-126K revenue potential.
+- **Alternatives**: Portfolio tracking (deferred: needs Plaid), insurance marketplace (rejected: heavy compliance, low alignment), crypto tax (rejected: niche + volatile market).
+- **Reversibility**: All three are additive features. CaaS is a subscription that can be discontinued. Quarterly estimator is a standalone tool. Refund splitting is a form addition.
+
+### D64 — Reconciliation Strategy: Dual-Path Tax Calculation (2026-03-13)
+- **Context**: Tax calculation errors in financial software are not just bugs -- they're legal liabilities. The IRS holds the filer responsible for errors regardless of which software produced them. A single widespread calculation bug could result in penalties for thousands of users and destroy brand trust.
+- **Decision**: Every tax return runs through dual-path verification before the user sees results. Path A: forward calculation (income -> deductions -> credits -> refund). Path B: reverse verification (refund -> effective rate -> back-calculate expected income). Delta > $1 flags for manual review. Additionally: nightly batch reconciliation re-runs all day's calculations, and a suite of 20+ IRS Publication 17 worked examples runs as regression tests on every tax engine change. Zero tolerance for calculation mismatches.
+- **Alternatives**: Single-path with unit tests only (rejected: unit tests catch known bugs but miss interaction effects and rounding cascades), manual spot-checking (rejected: doesn't scale, introduces human error), third-party tax calculation audit (rejected: expensive, adds dependency, and we can build better in-house validation).
+- **Reversibility**: Reconciliation is an additive post-calculation step. Can be disabled (though it shouldn't be).
+
+### D65 — Financial Marketplace Platform: 4-Stage Evolution (2026-03-14)
+- **Context**: The venture's data moat (W-2 income, credit score, filing status, LLC data, quarterly estimates, refund splitting) creates the richest per-user financial profile in consumer fintech -- 3-5x deeper than Credit Karma. This data is the foundation for a two-sided financial product marketplace. Credit Karma's Lightbox technology (bidirectional matching between user profiles and lender underwriting models) generated $1.6B+ revenue at ~$11.43 ARPU across 140M mostly-passive users. FileFree's active users (tax filing, LLC formation, quarterly tracking) justify significantly higher per-user value.
+- **Decision**: Adopt a 4-stage marketplace evolution, volume-gated: Stage 1 (affiliate links, 0-5K users), Stage 2 (smart matching + Fit Scores + Thompson Sampling bandit, 5K-25K), Stage 3 (partner API + segment marketplace + auction-based CPA, 25K-50K), Stage 4 (full marketplace with partner-submitted eligibility models, 50K+). All architecture (data model, recommendation engine, event taxonomy, consent, partner dashboard) is designed for Stage 4 from day 1 -- only the implementation advances by stage. See Master Plan Section 4O for full roadmap.
+- **Alternatives**: Build marketplace incrementally with schema migrations at each stage (rejected: 10x more expensive to rebuild data pipelines and re-consent users than to design correctly upfront), outsource marketplace to third-party (rejected: marketplace IS the product, can't outsource the moat), skip marketplace and stay affiliate-only (rejected: leaves $30-70/user ARPU on the table).
+- **Reversibility**: Low (once partners integrate via API and users consent to matching, the marketplace becomes infrastructure). Stage gates provide natural checkpoints to slow or stop if unit economics don't support advancement.
+
+### D66 — Strategic-from-Day-1 Architecture (2026-03-14)
+- **Context**: The core insight is that it's much cheaper to design database schemas, API contracts, and data pipelines correctly upfront than to rebuild them later. Traditional startups build incrementally and refactor constantly. With AI-assisted development, we can design for the end-state from day 1 and implement incrementally without costly migrations.
+- **Decision**: Six foundational components are designed for the full marketplace end-state (Stage 4) from day 1: (1) Data model includes partner_products, partner_eligibility, fit_scores, partner_bids tables with nullable marketplace columns; (2) Recommendation engine uses a 3-layer pluggable architecture (candidate generation, scoring, ranking) with a stable score() interface; (3) Event taxonomy includes MARKETPLACE EVENTS and PARTNER-SIDE EVENTS blocks from day 1; (4) Consent architecture uses 3-tier system (cross-product, personalized matching, anonymized insights) that covers all 4 marketplace stages without re-consent; (5) Partner dashboard is designed as marketplace portal seed with Stage 1-4 evolution path; (6) PARTNERSHIPS.md uses tiered partner framework (A-D) aligned with marketplace stages. Implementation starts simple (Stage 1: static scoring, flat CPA, basic events) but the schema and interfaces never need breaking changes.
+- **Alternatives**: Standard incremental architecture with refactors at each stage (rejected: schema migrations on production data are risky and expensive, re-consenting users at each stage loses 20-40% consent rates), over-engineer everything from day 1 including implementation (rejected: premature optimization wastes time on code that may never execute).
+- **Reversibility**: High (tables can be dropped, events can be ignored, tiers can be consolidated). The architecture adds minimal overhead to day 1 development -- most marketplace columns are nullable and ignored until their stage arrives.
+
+### D67 — Business Tax Filing: 1065 + 1120-S as LaunchFree Synergy Multiplier (2026-03-16)
+- **Context**: Every LaunchFree LLC former who selects "partnership" or "S-Corp" tax election MUST file a business return (Form 1065 or 1120-S). This is a mandatory compliance obligation, not an optional cross-sell. Business returns are also high-value for Distill CPA firms. No free filing product currently covers business returns -- Taxu.io charges $10-29/mo for business features, TurboTax Business starts at $219.
+- **Decision**: Add business tax filing as Phase 10 (Year 2, 2027-2028 season). Forms 1065 (partnership/multi-member LLC) and 1120-S (S-Corp). Price: $49/return (1065), $99/return (1120-S) for consumer. Included in Distill Firm plan. LaunchFree cross-sell: first business return free for LLC formers who selected partnership/S-Corp election. K-1 generation for pass-through income allocation. MeF business return schemas extend existing validation engine.
+- **Alternatives**: Skip business filing and stay personal-only (rejected: leaves mandatory cross-sell revenue on the table and weakens LaunchFree synergy), offer free business filing (rejected: business returns are complex, charging is justified and expected -- even Taxu charges for this), partner with existing business filing service (rejected: lose data moat, lose integration tightness with LaunchFree).
+- **Reversibility**: Medium. Business filing engine is a significant build (~4-6 weeks) but modular. Can be shelved if demand is insufficient, but LaunchFree LLC data strongly predicts demand.
+
+### D68 — Scale Growth Playbook: 4 Channels to 2M Users (2026-03-16)
+- **Context**: The organic-first strategy (Section 5K) projects 5K-23K users in Year 1 -- solid for a bootstrapped launch but far from the 2M+ scale achieved by Taxu.io or Credit Karma. Research into competitor growth strategies revealed 3 patterns: (1) TaxDown's tax season surge marketing (concentrated paid spend during the 10-week filing window), (2) Taxu's B2B API distribution (powering tax filing inside other platforms multiplies user count without per-user acquisition cost), (3) Credit Karma's community-led growth (3 years of zero paid ads, grown entirely on Reddit + word-of-mouth + product virality).
+- **Decision**: Add Section 5L with 4 growth channels: (1) Tax Season Surge (5x ad budget Jan-Apr, creator partnerships at 25K+ users), (2) B2B API Distribution (Tax-as-a-Service API at $5-15/return, targeting payroll companies and banking apps in Year 2+), (3) Community-Led Growth (Reddit, Discord, build-in-public), (4) B2B CPA Outreach (Distill as distribution channel -- each CPA firm is a referral source for consumer product). Year 1-5 projection shows path to 1M-2.15M users by Year 5, with B2B API as the key unlock beyond 500K.
+- **Alternatives**: Stay organic-only (rejected: caps at ~500K-900K users), raise VC for paid acquisition (rejected: dilution, and CAC for tax filing is high outside of tax season), partner with a single large distributor (rejected: single-point dependency).
+- **Reversibility**: High. Each channel is independent. Paid spend can be dialed down. API can be deprecated. Community engagement has no sunk cost.
+
+### D69 — Distill: B2B Tax Automation as Immediate Revenue (2026-03-16)
+- **Context**: MagneticTax (YC Summer 2025 batch) raised venture capital to build AI-powered data entry automation for CPA firms -- processing 1040 individual returns into existing tax software. FileFree is building the identical OCR/extraction pipeline (Cloud Vision + GPT tiered extraction) for consumer filing. The B2B product is ~20% incremental engineering on top of Phase 7 infrastructure. Unlike consumer FileFree (free, marketplace revenue at scale), B2B SaaS generates immediate predictable revenue from CPA subscription fees.
+- **Decision**: Add "Distill" (distill.tax) as a separate B2B brand with two product lines: Distill for CPAs (SaaS dashboard) and Distill API (Tax-as-a-Service). CPA firms upload client W-2s/1099s in bulk, auto-extract fields via shared OCR pipeline, export to professional tax software (UltraTax, Drake, ProConnect, Lacerte). Pricing: $49/mo (Solo), $99/mo (Team), $199/mo (Firm). Architecture: new `apps/distill/` in monorepo at `distill.tax`, sharing `packages/tax-engine`, `packages/document-processing`, `packages/ui`, `packages/auth` with consumer FileFree. Same `apis/filefree/` backend with firm-scoped B2B routes. Separate brand rationale: "Free" in "FileFree" creates cognitive dissonance for B2B buyers; tax industry standard is separate brands (Intuit: TurboTax vs ProConnect/Lacerte); "Distill" = extract pure essence from raw material, fits naturally under Paperwork Labs (distilling paperwork).
+- **Alternatives**: Keep "FileFree Pro" naming (rejected: "Free" in brand name undermines B2B trust, SBI Growth research confirms B2B perception issues), API-only (rejected: CPAs need a UI dashboard), skip B2B (rejected: slower to revenue, wastes shared tech opportunity).
+- **Reversibility**: High. Distill is a separate app in the monorepo. Can be shut down without affecting consumer FileFree. Stripe subscriptions can be cancelled. No data coupling beyond shared packages.
+
+### D70 — Package Split Architecture: data/ -> data/ + tax-engine/ + document-processing/ (2026-03-16)
+- **Context**: `packages/data/` was overloaded -- holding 50-state formation data, 50-state tax data, tax calculation engine, MeF XML schemas, and document processing pipelines. These have different ownership cycles: tax data = annual IRS update, formation data = per-state SOS changes, tax engine = code changes with every form addition, document processing = OCR pipeline changes independent of tax rules.
+- **Decision**: Split into 3 packages: `packages/data/` (50-state formation + tax JSON configs, Zod schemas, state engine API), `packages/tax-engine/` (tax calculation engine, form generators, MeF XML schemas, dual-path reconciliation), `packages/document-processing/` (OCR pipeline client, field extraction schemas, document storage lifecycle, bulk upload queue). This separation is the architectural moat: `packages/tax-engine/` becomes the independently testable, versioned core that powers consumer FileFree, Distill for CPAs, Distill API, business filing, AND future products.
+- **Alternatives**: Keep monolithic `packages/data/` (rejected: testing becomes coupled, release cycles conflict, new developer onboarding is harder), split into more than 3 (rejected: over-engineering, interface overhead exceeds benefit at current scale).
+- **Reversibility**: Medium. Splitting is easier than re-merging. But interfaces between packages must be stable once other packages depend on them.
+
+### D71 — Distill: Separate B2B Brand for CPA SaaS + Tax API (2026-03-16)
+- **Context**: The B2B CPA product was originally named "FileFree Pro." Research revealed that "Free" literally in the brand name creates cognitive dissonance for B2B buyers paying $199/mo (SBI Growth research). Tax industry standard is separate brands (Intuit: TurboTax vs ProConnect/Lacerte). The "tax breakup" ad controversy (Oct 2024) proved consumer brands undermining CPAs creates professional backlash.
+- **Decision**: Rename B2B product to "Distill" (distill.tax). Separate brand under Paperwork Labs venture umbrella. "Distill" = extract pure essence from raw material, perfect metaphor for OCR-to-structured-data pipeline. Fits naturally under Paperwork Labs (distilling paperwork). Two product lines under one B2B brand: Distill for CPAs (SaaS dashboard, $49-199/mo) and Distill API (Tax-as-a-Service for platforms, per-return pricing). Consumer brands (FileFree, LaunchFree) remain the "Free family." B2B brand (Distill) is the professional portfolio.
+- **Alternatives**: Keep "FileFree Pro" (rejected: "Free" in B2B undermines trust), use a completely unrelated name with no connection to venture (rejected: loses thematic coherence with Paperwork Labs), create separate brands for CPA SaaS vs API (rejected: unnecessary fragmentation, same audience type).
+- **Reversibility**: High. Brand rename is documentation + domain + landing page. No architectural changes.
+
+### D72 — State Filing Engine: Build vs Buy, Three-Tier Architecture (2026-03-16)
+- **Context**: Initial LaunchFree plan claimed "LaunchFree prepares your LLC filing — it does NOT file for you in most states" due to assumption that 35+ states lacked online filing. Research disproved this: nearly all 50 states have online filing portals. Competitors (LegalZoom, ZenBusiness) DO file for users. The "honest UX" framing was actually a product gap, not a feature. Third-party formation API pricing (CorpNet ~$69-79, FileForms ~$30-60) made wholesale outsourcing incompatible with LaunchFree's "$0 service fee" model.
+- **Decision**: Build an in-house State Filing Engine with three tiers: Tier 1 (state APIs, e.g. Delaware ICIS), Tier 2 (Playwright portal automation for ~45 states), Tier 3 (print-and-mail via Lob for ~2 mail-only states). Payment via Stripe Issuing virtual cards. Estimated blended marginal cost: ~$0.25-0.50/filing (actual costs to be validated). This engine serves both LaunchFree (consumer, $0) and Distill Formation API (B2B, $20-40/filing), creating a dual-use infrastructure with near-zero marginal cost.
+- **Alternatives**: White-label via CorpNet/FileForms (rejected: $30-80/filing incompatible with free model), preparation-only "honest UX" (rejected: competitors file for users, this is a product gap not a feature), manual submission queue (rejected: doesn't scale).
+- **Reversibility**: Low. This is a significant engineering investment. But the infrastructure has dual-use value (consumer + B2B API) that justifies the investment.
+
+### D73 — Embrace "Paperwork Labs" as Company Name Everywhere (2026-03-16)
+- **Context**: Documentation and persona files used inconsistent naming — "the venture," "FileFree/LaunchFree venture," "Venture," etc. The holding company (Paperwork Labs LLC) had been registered and paperworklabs.com purchased, but the name wasn't being used consistently across agent context files, documentation headers, or architectural references. This caused agents to have fragmented understanding of the company identity.
+- **Decision**: Standardize "Paperwork Labs" as the company name across all documentation, persona files, README, and agent context. Every `.mdc` persona header now starts with "Paperwork Labs [Role]". All doc headers use "Paperwork Labs — [Title]". The `.cursorrules` header opens with "Paperwork Labs — We build tools that eliminate paperwork." Brand hierarchy: Paperwork Labs (company) > consumer brands (FileFree, LaunchFree, Trinkets) + B2B brand (Distill).
+- **Alternatives**: Keep "the venture" (rejected: too generic, no brand recognition), use "FileFree" as the umbrella name (rejected: FileFree is one product, using it for the company conflates product and company identity).
+- **Reversibility**: High. It's naming. Can change at any time.
+
+### D74 — Accelerate Full Distill Platform to Summer 2026 (2026-03-16)
+- **Context**: Original timeline placed Distill CPA SaaS at Phase 9 (January-March 2027) and Formation API at Phase 9.5 (Year 2, 2028). This was based on traditional development estimates. However, Paperwork Labs' operating model (one founder + AI agents shipping at full-team velocity) compresses timelines significantly. Furthermore, ~80% of Distill's infrastructure is shared with consumer products built in Phases 1-3 (tax engine, filing engine, document processing, 50-state data). The incremental B2B work is thin: multi-tenant auth, API keys, billing, docs.
+- **Decision**: Pull ALL Distill products to Summer 2026: CPA SaaS, Formation API, Tax API (calculation-only, e-file endpoint activates January 2027 when MeF transmitter ships), and Compliance API. Phase 9 runs in parallel with Phases 5-6, not sequentially after Phase 8. No consumer product is deprioritized. Only two hard deadlines remain external (IRS): MeF ATS testing (October 2026) and tax season (January 2027).
+- **Alternatives**: Keep Distill at March 2027+ (rejected: wastes 6+ months of potential B2B revenue, underestimates AI-augmented velocity), launch only CPA SaaS by summer (rejected: APIs are thin incremental work on top of shared infrastructure — no reason to wait).
+- **Reversibility**: High. If summer proves too aggressive, individual API launches can slip without affecting consumer products.
+
+### D75 — Agent-Driven Operations Model (2026-03-16)
+- **Context**: As Paperwork Labs scales to 4 products across 50 states with continuously changing compliance data, portal UIs, filing fees, and deadlines, manual maintenance is unsustainable for a solo founder. The same AI-augmented development model that builds the products can maintain them.
+- **Decision**: Formalize AI agents as the operations team: (1) n8n workflows auto-detect changes in 50-state formation/tax data weekly, flag for human review, (2) Playwright portal health checks run daily against live state portals, alert via Slack if scripts break, (3) Cursor agents handle ongoing code maintenance, bug fixes, and feature additions, (4) Filing Engine status checks run hourly for stuck/failed submissions. This is formalized as a moat: competitors need both the infrastructure AND the operational process to compete.
+- **Alternatives**: Hire operations staff (rejected: premature for a bootstrapped venture at this stage), manual monitoring (rejected: doesn't scale across 50 states x 4 products), outsource monitoring (rejected: no vendor covers this specific domain).
+- **Reversibility**: High. Agent workflows can be replaced with human processes at any time.
+
+### D76 — Google Workspace Setup: 1 Seat + Aliases (2026-03-16)
+- **Context**: VMP and FINANCIALS incorrectly stated "Google Workspace already active on sankalpsharma.com." Founder did not have paid Google Workspace — was on free Gmail. Needed to create Workspace from scratch for @paperworklabs.com and product-domain emails.
+- **Decision**: Create new Google Workspace under Paperwork Labs. Sign up with "Just you" (1 seat). Primary domain: paperworklabs.com. Add filefree.ai, launchfree.ai, distill.tax as alias domains. All department emails (hello@, support@, legal@, partnerships@, api@) configured as aliases routing to founder's single inbox. Cost: **$6/mo** (Business Starter), not $12. Olga gets admin panel access via personal email in `ADMIN_EMAILS` env var — no second Workspace seat needed. Use company email (e.g. sankalp@paperworklabs.com) for Cursor, Stripe, and vendor accounts for clean expense/billing separation.
+- **Alternatives**: 2 seats ($12/mo) with Olga on olga@paperworklabs.com (rejected: aliases suffice, saves $6/mo); free Gmail + Cloudflare Email Routing (rejected: no proper admin console, SPF/DKIM setup more brittle).
+- **Reversibility**: Easy. Add second seat anytime. Update FINANCIALS.md and VMP "Professional Email Aliases" section to reflect $6/mo and "create Workspace" (not "already active").
+
+### D77 — Repo Migration + Docs Audit (2026-03-16)
+- **Context**: Repo migrated from personal account to `paperwork-labs` GitHub org and renamed from `filefree` to `paperwork`. Google Workspace created at paperworklabs.com (D76). Many docs still referenced old repo URL (`your-org/filefree`), old Google Workspace setup (`sankalpsharma.com`, 2 seats, $12/mo), old domain (`filefree.tax` as primary), and stale admin emails (`sankalp@sankalpsharma.com`).
+- **Decision**: Full docs audit. Fixed: (1) Repo clone URL in README → `paperwork-labs/paperwork`. (2) Google Workspace references across 6 docs → 1 seat, $6/mo, paperworklabs.com primary. (3) Monthly burn recalculated $284 → $278. (4) Admin email allowlist → `sankalp@paperworklabs.com`. (5) filefree.tax → filefree.ai in all active doc URLs/emails. (6) P0.3 Google Workspace task → DONE. (7) `.cursorrules` annotated with "Current vs Target" repo structure note. (8) Removed cursor-context-backup.zip and CURSOR_BACKUP_README.md (transfer artifacts). (9) Added Origin budgeting app as open research question (Q5).
+- **Reversibility**: N/A. Cleanup commit.

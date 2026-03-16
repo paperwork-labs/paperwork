@@ -1,16 +1,24 @@
-# FileFree
+# Paperwork Labs
 
-**Free AI-powered tax filing.** Snap your W-2, get your completed return in minutes. Actually free.
+**We build tools that eliminate paperwork.**
 
-**Live at:** [filefree.tax](https://filefree.tax)
+| Product | Domain | What It Does |
+|---------|--------|--------------|
+| **FileFree** | [filefree.ai](https://filefree.ai) | Free AI-powered tax filing |
+| **LaunchFree** | [launchfree.ai](https://launchfree.ai) | Free LLC formation + state filing |
+| **Distill** | [distill.tax](https://distill.tax) | B2B compliance automation (APIs + CPA SaaS) |
+| **Trinkets** | [tools.filefree.ai](https://tools.filefree.ai) | Free utility tools & calculators |
+
+**Company:** Paperwork Labs LLC (California) — [paperworklabs.com](https://paperworklabs.com)
 
 ## What This Is
 
-FileFree starts as free tax prep and grows into a year-round AI financial advisor. Filing earns trust. Trust enables everything else.
+Paperwork Labs builds consumer products that make painful paperwork free, then packages the underlying infrastructure as B2B APIs. Filing earns trust. Trust enables everything else.
 
-- **Phase 1 (2026):** Free tax prep — W-2 photo to completed 1040 PDF in under 5 minutes
-- **Phase 2 (2027):** Free e-file via own IRS MeF transmitter + AI tax advisor subscription
-- **Phase 3 (2028):** Embedded tax engine (B2B API) for fintechs and neobanks
+- **FileFree** starts as free tax prep and grows into a year-round AI financial advisor
+- **LaunchFree** walks you through LLC formation and files with the state on your behalf
+- **Distill** sells the compliance engines (tax, formation, compliance) to CPAs and platforms
+- **Trinkets** drives SEO traffic with free calculators and converters
 
 ## Tech Stack
 
@@ -38,8 +46,8 @@ FileFree starts as free tax prep and grows into a year-round AI financial adviso
 
 ```bash
 # Clone
-git clone https://github.com/your-org/filefree.git
-cd filefree
+git clone https://github.com/paperwork-labs/paperwork.git
+cd paperwork
 
 # First-time setup (copies env files)
 make setup
@@ -119,7 +127,7 @@ filefree/
 │   ├── PRODUCT_SPEC.md    # UX & Product Specification
 │   ├── PARTNERSHIPS.md    # Partnership playbook for co-founder
 │   ├── PITCH_PACKAGE.md   # Co-founder pitch package
-│   ├── STRATEGY_REPORT.md # Strategic assessment
+│   ├── archive/           # Superseded docs (strategy report, social roadmap)
 │   └── KNOWLEDGE.md       # Organizational memory (decisions log)
 ├── infra/                 # Infrastructure configs
 │   ├── compose.dev.yaml   # Docker Compose (local dev only)
@@ -139,8 +147,9 @@ filefree/
 - **[docs/TASKS.md](docs/TASKS.md)** — Sprint-by-sprint build plan with acceptance criteria
 - **[docs/PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md)** — UX specification, design system, component specs
 - **[docs/KNOWLEDGE.md](docs/KNOWLEDGE.md)** — Organizational memory: decisions, learnings, patterns
-- **[docs/STRATEGY_REPORT.md](docs/STRATEGY_REPORT.md)** — McKinsey-style strategic assessment
+- **[docs/VENTURE_MASTER_PLAN.md](docs/VENTURE_MASTER_PLAN.md)** — Master strategy, valuation, growth, agent architecture
 - **[docs/PARTNERSHIPS.md](docs/PARTNERSHIPS.md)** — Partnership playbook for the partnerships co-founder
+- **[docs/FINANCIALS.md](docs/FINANCIALS.md)** — Expenses, runway, revenue projections
 - **[.cursorrules](.cursorrules)** — AI coding conventions and tech stack rules
 
 ## Architecture Highlights
@@ -149,4 +158,4 @@ filefree/
 - **Zero AWS**: Entire stack runs on Vercel + Render Starter ($7/mo) + Neon + Upstash + GCP Cloud Storage/Vision.
 - **Docker = Dev Only**: Docker Compose (`infra/compose.dev.yaml`) for local dev. Production uses Render native buildpack (render.yaml) + Vercel git deploy.
 - **North Star**: Own IRS MeF transmitter for free e-file (January 2027). Currently in IRS certification process.
-- **AI Personas**: `.cursor/rules/` contains 11 persona files + workflow playbooks. Each persona has trigger conditions, quality gates, and handoff protocols.
+- **AI Personas**: `.cursor/rules/` contains 16 persona files + workflow playbooks. Each persona has trigger conditions, quality gates, and handoff protocols.

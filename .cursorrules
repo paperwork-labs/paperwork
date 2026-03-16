@@ -1,111 +1,161 @@
-# filefree.tax - AI-Powered Free Tax Filing → Year-Round Tax Advisor
+# Paperwork Labs — We build tools that eliminate paperwork.
 #
-# NOTE: Persona-specific context lives in .cursor/rules/*.mdc (12 personas + workflows playbook + git guardrails)
+# Company: Paperwork Labs LLC (California) — paperworklabs.com
+# Products: FileFree (filefree.ai), LaunchFree (launchfree.ai), Distill (distill.tax), Trinkets (tools.filefree.ai)
+# Command Center: paperworklabs.com (admin dashboard, portfolio, agent monitor)
+#
+# NOTE: Persona-specific context lives in .cursor/rules/*.mdc (16 files: personas + workflows playbook + git guardrails + brand guide)
 # - git-workflow.mdc: Git guardrails — branch-based dev, PR workflow, never push to main [alwaysApply]
 # - engineering.mdc: Staff Engineer (tech stack, architecture, code conventions) [alwaysApply]
 # - ux.mdc: UX/UI Lead (design system, accessibility, mobile-first, animations)
 # - growth.mdc: Head of Growth (marketing, content, SEO, viral mechanics)
 # - social.mdc: Social Media Manager (platform playbooks, paid ads, analytics, creator outreach, content pipeline)
 # - strategy.mdc: Chief of Staff (business strategy, planning, Notion)
-# - legal.mdc: General Counsel (compliance, EFIN, privacy, tax law)
+# - legal.mdc: General Counsel (compliance, EFIN, privacy, tax law, UPL, FTC "free")
 # - cfo.mdc: CFO / Cost Optimizer (unit economics, infrastructure spend, vendor evaluation)
 # - qa.mdc: QA Lead (testing, validation, security audits, PII leak detection)
 # - tax-domain.mdc: Tax Domain Expert (IRS rules, brackets, MeF schemas, form layouts)
 # - cpa.mdc: CPA / Tax Advisor (tax planning strategy, advisory quality, accuracy review, client guidance)
 # - partnerships.mdc: Partnership Development Assistant (outreach drafts, pipeline tracking, deal summaries for partnerships co-founder)
-# - workflows.mdc: Company playbooks (ship feature, strategic decision, publish content, production issue)
+# - agent-ops.mdc: AI Operations Lead (model routing, cost tracking, persona audits)
+# - ea.mdc: Executive Assistant (daily briefings, decision logging, financial tracking)
+# - workflows.mdc: Company playbooks (ship feature, strategic decision, publish content, production issue, formation filing ops)
 #
 # Organizational memory lives in docs/KNOWLEDGE.md.
 # After any significant decision, update docs/KNOWLEDGE.md with date, rationale, and alternatives considered.
 # Partnership playbook lives in docs/PARTNERSHIPS.md (co-founder reference doc).
 
 ## Project Context
-filefree.tax starts as a mobile-first free tax prep app — snap a W2, get your completed return in minutes. But the long-term product is an AI financial advisor that uses tax filing as the trust-building entry point. Free filing is the acquisition channel. The AI advisory relationship is the product. Primary audience: first-time and early-career filers (18-30), but the product works for anyone with a simple return.
+Paperwork Labs builds products that eliminate paperwork. The venture has four products: FileFree (free tax filing), LaunchFree (free LLC formation), Distill (B2B compliance automation APIs + CPA SaaS), and Trinkets (utility tools). All share infrastructure via a pnpm monorepo.
 
-Two co-founders: Founder 1 (Product/Engineering) builds the app and infrastructure. Founder 2 (Partnerships/Revenue) sources and closes financial product partnerships that drive 77% of revenue. See docs/PARTNERSHIPS.md for the partnerships playbook and docs/STRATEGY_REPORT.md Section 6 for the team structure.
+FileFree starts as a mobile-first free tax prep app — snap a W2, get your completed return in minutes. The long-term product is an AI financial advisor that uses tax filing as the trust-building entry point. LaunchFree files your LLC with the state on your behalf via our State Filing Engine. Distill packages the same infrastructure as B2B APIs for CPAs, law firms, and fintech platforms.
 
-The domain is filefree.tax. The brand name is "FileFree" when written as a product name.
+Two co-founders: Founder 1 (Product/Engineering) builds all products and infrastructure. Founder 2 (Partnerships/Revenue) sources and closes financial product partnerships that drive 77% of FileFree revenue. See docs/PARTNERSHIPS.md for the partnerships playbook.
 
-## North Star: Own IRS MeF Transmitter (January 2027)
-The ultimate strategic goal is owning our e-file infrastructure at $0/return. We are actively going through the rigorous IRS certification process (EFIN, ATS testing). Until certified, users can download their completed 1040 PDF for free, or e-file via our partner at cost. Once our transmitter passes IRS testing (target: January 2027), e-file becomes free forever.
+The holding company domain is paperworklabs.com. Product domains: filefree.ai, launchfree.ai, distill.tax, tools.filefree.ai.
 
-## Core Philosophy
+## North Stars (Per Product)
+- **FileFree**: Own IRS MeF Transmitter (January 2027) — e-file at $0/return. EFIN + ATS certification in progress.
+- **LaunchFree**: State Filing Engine covering all 50 states (Summer 2026) — automate LLC formation submission via state APIs, portal automation, and print-and-mail.
+- **Distill**: Full B2B compliance automation platform (Summer 2026) — CPA SaaS + Formation API + Tax API + Compliance API at api.distill.tax.
+- **Venture-wide**: Build shared compliance infrastructure that powers both free consumer products and paid B2B APIs. The infrastructure IS the product.
+
+## Core Philosophy (Paperwork Labs — applies to all products)
 - "Photo to Done in 5 minutes" — every design decision optimizes for speed and simplicity
 - Mobile-first, desktop-responsive
 - Dark mode by default with vibrant gradients (Linear/Raycast aesthetic, NOT TurboTax boomer energy)
 - AI does the work, user just confirms
-- Filing is FREE FOREVER (federal + state) — this is the acquisition channel, never gate it
-- Anxiety-killer — every interaction reduces tax stress, never adds to it
-- Revenue comes from refund routing to partner accounts (HYSA/IRA), financial product referrals, Tax Optimization Plan ($29/yr), refund advances, and audit shield — NOT from filing fees
-- Every screen should build toward the advisory relationship: "FileFree knows my finances and helps me make better decisions"
+- Consumer products are FREE FOREVER — this is the acquisition channel, never gate it
+- Anxiety-killer — every interaction reduces stress, never adds to it
+- Revenue comes from upsells, referrals, and B2B APIs — NOT from consumer filing fees
+- FileFree: refund routing, financial referrals, Tax Optimization Plan ($29/yr), audit shield
+- LaunchFree: RA credits, banking/payroll/insurance referrals, Compliance-as-a-Service ($49-99/yr)
+- Distill: CPA SaaS ($49-199/mo), Formation API ($20-40/filing), Tax API ($5-15/return)
+- Every screen should build toward the advisory relationship: "Paperwork Labs knows my finances and helps me make better decisions"
 
 ## Tech Stack (DO NOT DEVIATE)
 
-### Frontend
+> **Current vs Target**: The repo is currently flat (`api/` for FastAPI, `web/` for Next.js FileFree frontend, `infra/`, `docs/`). The monorepo structure below is the **target architecture** for Phase 1. When working on existing code, use the current `api/` and `web/` paths. When scaffolding new products or packages, follow the target structure.
+
+### Monorepo Structure (pnpm workspaces) — TARGET
+```
+paperwork/
+  apps/
+    filefree/            # filefree.ai — Next.js, consumer tax filing
+    launchfree/          # launchfree.ai — Next.js, LLC formation
+    distill/             # distill.tax — Next.js, B2B compliance automation
+    studio/              # paperworklabs.com — Next.js, command center + portfolio
+    trinkets/            # tools.filefree.ai — Next.js SSG, utility tools
+  packages/
+    ui/                  # shadcn components + 4 brand themes + shared chat widget
+    auth/                # shared auth: hooks, middleware, session management
+    analytics/           # PostHog + attribution + PII scrubbing
+    data/                # 50-state formation + tax JSON configs, Zod schemas
+    tax-engine/          # tax calculation, form generators, MeF XML, reconciliation
+    document-processing/ # OCR pipeline client, field extraction schemas, bulk upload
+    filing-engine/       # State Filing Engine: portal automation, state APIs, Stripe Issuing
+    intelligence/        # financial profile, recommendations, campaigns
+    email/               # shared email templates (React Email)
+  apis/
+    filefree/            # Python/FastAPI — consumer tax + Distill B2B routes
+    launchfree/          # Python/FastAPI — formation service
+    studio/              # Python/FastAPI — command center aggregator
+  infra/
+    compose.dev.yaml     # Docker Compose (local dev only)
+    hetzner/             # n8n + Postiz ops stack
+```
+
+### Frontend (all apps)
 - **Framework**: Next.js 14+ (App Router)
 - **Language**: TypeScript (strict mode)
 - **Component System**: shadcn/ui (Radix primitives + Tailwind — copy-paste, we own the code)
-- **Styling**: Tailwind CSS 4+
+- **Shared Components**: `packages/ui/` — shared across all apps via pnpm workspace
+- **Styling**: Tailwind CSS 4+ with per-product themes via `<body data-theme="filefree|launchfree|distill|studio|trinkets">`
 - **Animations**: Framer Motion
-- **AI Streaming**: Vercel AI SDK (`ai` + `@ai-sdk/react`) — for streaming AI insights and explanations
+- **AI Streaming**: Vercel AI SDK (`ai` + `@ai-sdk/react`)
 - **Charts**: Recharts
-- **Icons**: Lucide React (shadcn default, keep consistent)
-- **Forms**: React Hook Form + Zod validation (shadcn Form component wraps this)
-- **Server State**: @tanstack/react-query — for all API calls, caching, polling, optimistic updates
-- **Client State**: Zustand — for minimal client-only state (auth session, filing step index, theme). NOT for server data.
+- **Icons**: Lucide React
+- **Forms**: React Hook Form + Zod validation (shadcn Form component)
+- **Server State**: @tanstack/react-query — all API calls, caching, polling, optimistic updates
+- **Client State**: Zustand — minimal client-only state (auth session, step index, theme)
 - **Camera**: Browser MediaDevices API (navigator.mediaDevices.getUserMedia)
-- **PDF Generation**: @react-pdf/renderer (for downloadable tax return PDFs)
+- **PDF Generation**: @react-pdf/renderer
 
-### Backend
+### Backend (all APIs)
 - **Framework**: FastAPI (Python 3.11+)
 - **ORM**: SQLAlchemy 2.0 with async support
-- **Database**: PostgreSQL 15+
-- **Cache/Sessions**: Redis (used for session storage; add caching later as needed)
-- **Async Processing**: FastAPI BackgroundTasks for MVP (migrate to Celery with Redis broker at scale)
-- **Migrations**: Alembic
+- **Database**: PostgreSQL 15+ (per-product databases + venture database)
+- **Cache/Sessions**: Redis
+- **Async Processing**: FastAPI BackgroundTasks for MVP (Celery at scale)
+- **Migrations**: Alembic (per-API migration chains)
+- **B2B Auth**: API key authentication for Distill endpoints (`/api/v1/pro/*`), firm-scoped middleware
 
-### AI/ML Pipeline — Tiered OCR (Cloud Vision + GPT)
-- **OCR Engine**: GCP Cloud Vision API (`DOCUMENT_TEXT_DETECTION`) — returns hierarchical text (pages/blocks/paragraphs/words) with bounding box coordinates. $0.0015/page, 1K free pages/mo. Google does NOT store images or use them for training.
-- **Image Preprocessing**: Pillow — auto-rotate (EXIF), contrast normalization, resize to optimal OCR dimensions
-- **Field Mapping**: OpenAI GPT-4o-mini (structured outputs) — receives OCR text + positions, maps to W-2 Pydantic schema (~$0.001/doc)
-- **Vision Fallback**: OpenAI GPT-4o vision — for low-confidence extractions (<85%), send actual image for direct field extraction (~$0.02/doc)
-- **AI Insights**: OpenAI GPT-4o — plain-English tax explanations, personalized tips, advisory content (where quality matters)
-- **SSN Isolation**: SSN is extracted via regex from Cloud Vision text output locally — NEVER sent to OpenAI. Masked placeholder (XXX-XX-XXXX) used in all GPT contexts.
-- **Blended OCR cost**: ~$0.005/doc (90% handled by Cloud Vision+GPT-4o-mini at $0.002, 10% escalated to GPT-4o vision at $0.02)
+### AI/ML Pipeline
+- **Document OCR (FileFree + Distill)**: GCP Cloud Vision (`DOCUMENT_TEXT_DETECTION`) → GPT-4o-mini structured extraction → GPT-4o vision fallback (<85% confidence)
+- **Image Preprocessing**: Pillow — auto-rotate (EXIF), contrast normalization, resize
+- **State Data Extraction (LaunchFree + Distill)**: Gemini 2.5 Flash — extract formation rules, fees, filing steps from state SOS websites
+- **Document Generation (LaunchFree)**: GPT-4o-mini — generate Articles of Organization, Operating Agreements from templates
+- **Tax Advisory (FileFree)**: GPT-4o — plain-English explanations, personalized tips, advisory content
+- **SSN Isolation**: SSN regex-extracted locally from Cloud Vision output — NEVER sent to any LLM. Masked placeholder (XXX-XX-XXXX) in all GPT contexts.
+- **Portal Automation (State Filing Engine)**: No AI — Playwright browser automation with deterministic scripts
+- **Blended OCR cost**: ~$0.005/doc
 
 ### Infrastructure (Zero AWS)
-- **Frontend Hosting**: Vercel (Hobby tier, free — upgrade to Pro when needed)
-- **Backend Hosting**: Render (Starter plan, $7/mo, 512MB — sufficient for FastAPI making HTTP calls to Cloud Vision/OpenAI)
-- **Database (Production)**: Neon serverless PostgreSQL (free tier for MVP, scales to paid at 5K+ users)
-- **Sessions (Production)**: Upstash serverless Redis (free tier: 500K commands/mo, sufficient for MVP)
-- **File Storage**: GCP Cloud Storage (encrypted, auto-delete via lifecycle policy after 24hrs)
+- **Frontend (5 apps)**: Vercel (Hobby → Pro at 5 apps, ~$20/mo)
+- **Backend (FileFree API)**: Render Starter ($7/mo, 512MB)
+- **Backend (LaunchFree API)**: Render Starter ($7/mo)
+- **Portal Automation Worker**: Render (dedicated worker for Playwright, $7/mo)
+- **Database**: Neon serverless PostgreSQL (free tier MVP)
+- **Sessions**: Upstash serverless Redis (free tier: 500K commands/mo)
+- **File Storage**: GCP Cloud Storage (encrypted, 24hr auto-delete lifecycle)
+- **Payment Orchestration**: Stripe Issuing — virtual cards for automated state filing fee payment
+- **Ops Stack**: Hetzner CX33 ($6/mo) — n8n workflows, Postiz social scheduler, Redis, PostgreSQL
+- **DNS/Domains**: filefree.ai, launchfree.ai, distill.tax, paperworklabs.com, tools.filefree.ai
 - **Secrets**: Environment variables via .env (never commit)
-- **Local Dev**: Docker Compose (postgres, redis, api, web — DEV ONLY, all containerized)
-- **Production Deploy**: render.yaml (Render Blueprints IaC) + Vercel git deploy. No production Dockerfiles.
-- **Dev Tooling**: Makefile (dev, test, lint, format, migrate), `.python-version` (3.11), `.node-version` (20)
-- **No AWS**: All cloud services run on GCP + Render + serverless providers. No AWS account needed.
+- **Local Dev**: Docker Compose (`infra/compose.dev.yaml`) — postgres, redis, all APIs, all web apps
+- **Production Deploy**: render.yaml (Render Blueprints) + Vercel git deploy
+- **Dev Tooling**: Makefile, `.python-version` (3.11), `.node-version` (20), pnpm
+- **No AWS**: GCP + Render + serverless providers only
 
-### Tax Data
-- Tax brackets, standard deductions, and credits stored in `api/tax-data/{year}.json`
-- Each file includes source citations (IRS Revenue Procedure number, Public Law number)
-- 2025 data sourced from Rev. Proc. 2024-40 as amended by P.L. 119-21 (One Big Beautiful Bill)
-- Updated annually each October when IRS releases new Revenue Procedure
-- Validated against IRS Publication 17 worked examples
+### 50-State Data Layer
+- Tax brackets, deductions, credits stored in `packages/data/tax/{year}.json`
+- Formation rules, fees, filing steps stored in `packages/data/formation/{state}.json`
+- Compliance calendars stored in `packages/data/compliance/{state}.json`
+- Each config includes source citations (IRS Rev Proc, state statute)
+- Maintained by AI agents via n8n workflows — auto-detect changes, flag for human review
+- Validated against IRS Pub 17 (tax) and state SOS websites (formation)
 
-### AI UX Patterns (IMPORTANT — this is what makes us feel different)
-- AI insights stream in with a typewriter effect using Vercel AI SDK's useCompletion hook
-- Show a pulsing "AI thinking" indicator (animated gradient orb) while waiting for AI responses
-- Confidence scores on OCR fields use animated color transitions (red → yellow → green)
-- The tax summary explanation should stream in word-by-word, not appear all at once
-- Use subtle particle/glow effects around AI-generated content to distinguish it from static content
-- Every AI interaction should feel fast — optimistic UI, stream partial results, never show a blank loading state
+### AI UX Patterns (makes us feel different from TurboTax/LegalZoom)
+- AI insights stream in with typewriter effect (Vercel AI SDK useCompletion)
+- Pulsing "AI thinking" indicator (animated gradient orb, product-themed color)
+- Confidence scores with animated color transitions (red → yellow → green)
+- Subtle particle/glow effects around AI-generated content
+- Every AI interaction: optimistic UI, stream partial results, never blank loading state
 
 ### shadcn/ui Conventions
-- Initialize with: `npx shadcn-ui@latest init` (New York style, Slate base color, CSS variables: yes)
-- Add components as needed: `npx shadcn-ui@latest add button card dialog input form toast`
-- Components live in `src/components/ui/` — this is shadcn's default, don't move them
-- Build custom components in `src/components/` — compose from shadcn primitives
-- Override shadcn theme in `src/app/globals.css` CSS variables to match our dark indigo/violet brand
+- Components shared via `packages/ui/` across all apps
+- Per-app theme via CSS variables in `globals.css` + `data-theme` attribute (see brand.mdc for palettes)
+- Build custom components in each app's `src/components/` — compose from `packages/ui` primitives
 - Never install Radix packages directly — always go through shadcn
 
 ## Code Style & Conventions
@@ -133,40 +183,58 @@ The ultimate strategic goal is owning our e-file infrastructure at $0/return. We
 ### Styling Rules
 - Mobile-first Tailwind (start with base, add `md:` and `lg:` breakpoints)
 - Use CSS variables for theme colors defined in `globals.css` (Tailwind v4 CSS-based config, no tailwind.config.ts)
-- Gradient accents: primary gradient is `from-violet-500 to-purple-600`
+- Gradient accents per product: FileFree `from-violet-500 to-purple-600`, LaunchFree `from-teal-400 to-cyan-500`, Distill `from-blue-500 to-blue-800`
 - Card backgrounds: use shadcn Card component with dark overrides
 - Never use arbitrary Tailwind values like `w-[400px]` — use standard utilities
 - All interactive elements need hover and focus states
 - Minimum touch target: 44x44px for mobile
 
-### Security Rules (CRITICAL — we handle SSNs and financial data)
-- NEVER log PII (SSN, full name + address combos, financial data) — implement PII-scrubbing middleware on all log output
-- NEVER store W2 images longer than necessary (GCP Cloud Storage lifecycle policy: auto-delete after 24hrs)
+### Security Rules (CRITICAL — we handle SSNs, EINs, and financial data)
+- NEVER log PII (SSN, EIN, full name + address combos, financial data) — PII-scrubbing middleware on all log output
+- NEVER store uploaded images longer than necessary (GCP Cloud Storage lifecycle: auto-delete after 24hrs)
 - All PII fields encrypted at rest using application-level AES-256 encryption (separate key from DB encryption)
-- SSN displayed as masked (XXX-XX-1234) in UI, never fully visible after initial entry
-- SSNs are never sent to OpenAI or other LLM providers — W2 images (which may contain SSNs) are sent only to GCP Cloud Vision for OCR; SSNs are regex-extracted locally and masked before any LLM call
-- All API routes require authentication except /health, /auth/login, /auth/register, /documents/demo-upload, /waitlist, /api/v1/waitlist
-- Rate limit all endpoints: 5 req/min auth, 20 req/min upload, 5 uploads/day/user
-- CSRF tokens on all state-changing endpoints (SameSite=Lax cookies require CSRF protection)
-- hCaptcha on sign-up to prevent bot abuse
-- CORS restricted to frontend domain only
+- SSN/EIN displayed as masked in UI, never fully visible after initial entry
+- SSNs are never sent to any LLM provider — regex-extracted locally, masked placeholder in all GPT contexts
+- Auth exceptions (unauthenticated routes): `/health`, `/auth/*`, `/waitlist`, `/api/v1/waitlist` (per-API)
+- Distill B2B routes (`/api/v1/pro/*`): API key auth, firm-scoped middleware, rate limited per key
+- Rate limit all endpoints: 5 req/min auth, 20 req/min upload, 5 uploads/day/user, 100 req/min API keys
+- CSRF tokens on all state-changing cookie-authenticated endpoints
+- hCaptcha on consumer sign-up to prevent bot abuse
+- CORS restricted to product's own frontend domain (no cross-product CORS)
 - Input validation on EVERY endpoint using Pydantic models
-- Account deletion endpoint available from day one (CCPA/GDPR) — must cascade: Neon DB, GCP Cloud Storage, Upstash sessions
-- Never validate SSN against external sources — prevents stolen SSN abuse
+- Account deletion available from day one (CCPA/GDPR) — cascades: Neon DB, GCP Cloud Storage, Upstash sessions
+- B2B data isolation: Distill firm data is tenant-isolated. No cross-firm access. No cross-product data usage without explicit consent.
+- Never validate SSN/EIN against external sources — prevents stolen identity abuse
 
 ## Key Domain Concepts
-- **Filing**: A single tax return filing attempt (has status: draft, processing, review, submitted, accepted, rejected)
+
+### FileFree (Tax)
+- **Filing**: A single tax return filing attempt (status: draft, processing, review, submitted, accepted, rejected)
 - **TaxProfile**: User's tax-relevant information extracted from documents
-- **Document**: An uploaded document (W2, DL, 1099, etc.) with its extraction results
-- **TaxCalculation**: The computed tax return data (income, deductions, credits, refund/owed)
+- **Document**: An uploaded document (W2, DL, 1099, etc.) with extraction results
+- **TaxCalculation**: The computed return data (income, deductions, credits, refund/owed)
 - **Submission**: The e-file submission record with IRS tracking
+
+### LaunchFree (Formation)
+- **Formation**: An LLC formation request (status: draft, documents_ready, submitted, confirmed, failed)
+- **StatePortalConfig**: Per-state filing rules, fees, portal URLs, automation tier (API/portal/mail)
+- **FilingSubmission**: State filing submission record with tracking and receipt
+- **ComplianceCalendar**: Post-formation deadlines (annual reports, franchise tax, RA renewals)
+
+### Distill (B2B)
+- **Firm**: A CPA firm or partner organization (multi-tenant root entity)
+- **Client**: A firm's client with their tax/formation documents
+- **Partner**: A B2B API consumer with API keys and usage tracking
+- **BulkUpload**: A batch document upload from a firm for multiple clients
 
 ## API Design
 - RESTful with consistent response envelope: `{ success: boolean, data: T, error?: string }`
 - API versioning via URL prefix: `/api/v1/`
-- Auth via HTTP-only secure cookies with SameSite=Lax + CSRF tokens
+- Consumer auth (FileFree, LaunchFree): HTTP-only secure cookies with SameSite=Lax + CSRF tokens
+- B2B auth (Distill): API key in `Authorization: Bearer <key>` header, firm-scoped middleware injects `firm_id`
 - File uploads via multipart/form-data to dedicated upload endpoints
-- Long-running operations (OCR) processed via FastAPI BackgroundTasks, client polls for result via react-query
+- Long-running operations (OCR, state filing) processed via FastAPI BackgroundTasks, client polls via react-query
+- Distill API docs hosted at docs.distill.tax (OpenAPI spec, code examples, SDKs)
 
 ## Error Handling
 - Frontend: sonner toast for user-facing errors, never raw error messages

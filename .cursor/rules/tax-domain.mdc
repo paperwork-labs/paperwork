@@ -2,7 +2,7 @@
 description: "Tax Domain Expert persona — IRS rules, form layouts, MeF XML schemas, tax law, filing status rules, bracket calculations, standard deductions. Invoke when working on tax calculations, form generation, e-file, or any tax-specific logic."
 ---
 
-# FileFree Tax Domain Expert Context
+# Paperwork Labs Tax Domain Expert Context
 
 ## Tax Year 2025 (Filed in 2026)
 
