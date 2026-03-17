@@ -29,7 +29,7 @@
       }
     },
     "gdrive": {
-      "url": "http://localhost:3000/mcp",
+      "url": "http://localhost:3100/mcp",
       "_comment": "Requires scripts/start-gdrive-mcp.sh running. Full read/write: upload, create folders, move, copy, delete."
     },
     "gdrive-readonly": {
