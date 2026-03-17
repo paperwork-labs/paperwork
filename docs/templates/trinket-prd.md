@@ -4,7 +4,7 @@
 **Status**: Draft | Approved | Rejected
 **Agent**: PRD Agent (Claude Sonnet 4.6)
 **Source**: [Link to approved one-pager Google Doc]
-**Output**: Google Doc in `Venture HQ/Trinkets/PRDs/`
+**Output**: Google Doc in `Paperwork Labs HQ/Trinkets/PRDs/`
 
 > This markdown template is used by the PRD Agent to generate a Google Doc. The agent creates a new Google Doc from this structure so the founder can comment, review with wife, and approve for build.
 

@@ -1,6 +1,9 @@
 # MCP config may contain tokens
 .cursor/mcp.json
 
+# GCP OAuth credentials (client secret + refresh tokens)
+infra/gcp/*.json
+
 # Cursor context backups (used for machine transfer, not needed in repo)
 cursor-context-backup/
 cursor-context-backup.zip
@@ -37,7 +40,8 @@ infra/env.prod
 .env
 .env.local
 .env.*.local
-web/.env.local
+apps/*/.env.local
+apis/*/.env
 
 # IDE
 .vscode/
