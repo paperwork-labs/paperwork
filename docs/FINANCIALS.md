@@ -62,8 +62,8 @@
 
 | Metric | Value |
 |---|---|
-| Total monthly burn (real) | ~$284/mo |
-| Annual fixed costs | ~$3,408/yr ($284/mo x 12, includes amortized $800/yr CA franchise tax) |
+| Total monthly burn (real) | ~$278/mo |
+| Annual fixed costs | ~$3,336/yr ($278/mo x 12, includes amortized $800/yr CA franchise tax) |
 | Cash invested to date | ~$460 (domains: filefree.ai, launchfree.ai, paperworklabs.com, distill.tax) |
 | Planned one-time expenses | ~$3,201-$3,746 (LLC + trademarks + FCRA review) + ~$300-500 (attorney consult) + ~$1,800 (first year cyber insurance) = ~$5,301-$6,046 |
 | Months of runway at $0 revenue | Indefinite (bootstrapped, costs covered by founder) |
@@ -161,7 +161,7 @@ API distribution is the 2M-user unlock. Per-return pricing decreases at volume (
 | Y4 | $3.5M | 8-12x | $28M-$42M | Stage 3-4 |
 | Y5 | $10M | 10-15x | $100M-$150M | Stage 4 |
 
-**Plan B (zero partnerships)**: $6.5K-37K Year 1 from Tax Optimization Plan direct sales + AdSense + self-serve affiliates (Betterment, SoFi, Wealthfront, Ally, Robinhood, Chime, Acorns -- all self-serve applications). Survivable at $284/mo burn.
+**Plan B (zero partnerships)**: $6.5K-37K Year 1 from Tax Optimization Plan direct sales + AdSense + self-serve affiliates (Betterment, SoFi, Wealthfront, Ally, Robinhood, Chime, Acorns -- all self-serve applications). Survivable at $278/mo burn.
 
 ## Monthly Actuals
 
