@@ -46,7 +46,7 @@ We use **google-drive-mcp** (domdomegg) — supports `folder_create`, `file_uplo
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com) → **APIs & Services** → **Credentials**
 2. Open your OAuth 2.0 Client ID
-3. Under **Authorized redirect URIs**, add: `http://localhost:3000/callback`
+3. Under **Authorized redirect URIs**, add: `http://localhost:3100/callback`
 4. Save
 
 ### Start the Server (Required Before Using in Cursor)
@@ -57,7 +57,7 @@ The server runs on HTTP and must be running before Cursor can use it:
 ./scripts/start-gdrive-mcp.sh
 ```
 
-Keep that terminal open. Cursor connects to `http://localhost:3000/mcp`.
+Keep that terminal open. Cursor connects to `http://localhost:3100/mcp`.
 
 ### mcp.json
 
