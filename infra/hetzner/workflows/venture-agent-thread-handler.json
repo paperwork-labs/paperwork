@@ -1,0 +1,182 @@
+{
+  "name": "Venture — Agent Thread Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "slack-events",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-thread",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\n\nif (body.type === 'url_verification') {\n  return [];\n}\n\nconst event = body.event || {};\n\nif (event.bot_id || event.subtype === 'bot_message') {\n  return [];\n}\n\nif (!event.thread_ts && !(event.text && event.text.includes('<@'))) {\n  return [];\n}\n\nreturn [{\n  json: {\n    channel: event.channel,\n    thread_ts: event.thread_ts || event.ts,\n    user: event.user,\n    text: event.text\n  }\n}];"
+      },
+      "id": "filter-events",
+      "name": "Filter Events",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://slack.com/api/conversations.replies",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "channel", "value": "={{ $json.channel }}" },
+            { "name": "ts", "value": "={{ $json.thread_ts }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-thread-history",
+      "name": "Fetch Thread History",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [750, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "slack-cred",
+          "name": "Slack Bot Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const channel = $('Filter Events').first().json.channel;\nconst text = $('Filter Events').first().json.text || '';\n\nconst channelMap = {\n  'C0ALLJWR1HV': 'ea',\n  'C0ALLEKR9FZ': 'engineering',\n  'C0AM2310P8A': 'strategy',\n  'C0AMWB887KJ': 'engineering'\n};\n\nlet persona = channelMap[channel] || 'ea';\n\nif (channel === 'C0AM01NHQ3Y') {\n  const lower = text.toLowerCase();\n  if (/cost|spend|burn|budget/.test(lower)) persona = 'cfo';\n  else if (/legal|compliance|efin|privacy/.test(lower)) persona = 'legal';\n  else if (/partner|outreach|deal/.test(lower)) persona = 'partnerships';\n  else if (/tax|irs|filing|deduction|refund/.test(lower)) persona = 'tax-domain';\n  else if (/design|ux|ui|mobile/.test(lower)) persona = 'ux';\n  else if (/pr |deploy|code|bug|test/.test(lower)) persona = 'engineering';\n  else persona = 'ea';\n}\n\nconst personaConfig = {\n  'ea': { file: 'ea.mdc', username: 'EA / Operator', icon: ':clipboard:' },\n  'engineering': { file: 'engineering.mdc', username: 'Engineering', icon: ':gear:' },\n  'strategy': { file: 'strategy.mdc', username: 'Strategy', icon: ':chess_pawn:' },\n  'legal': { file: 'legal.mdc', username: 'Legal', icon: ':scales:' },\n  'cfo': { file: 'cfo.mdc', username: 'Finance', icon: ':chart_with_upwards_trend:' },\n  'qa': { file: 'qa.mdc', username: 'QA', icon: ':mag:' },\n  'growth': { file: 'growth.mdc', username: 'Growth', icon: ':rocket:' },\n  'social': { file: 'social.mdc', username: 'Social', icon: ':speech_balloon:' },\n  'tax-domain': { file: 'tax-domain.mdc', username: 'Tax Domain', icon: ':receipt:' },\n  'cpa': { file: 'cpa.mdc', username: 'CPA Advisor', icon: ':bar_chart:' },\n  'partnerships': { file: 'partnerships.mdc', username: 'Partnerships', icon: ':handshake:' },\n  'ux': { file: 'ux.mdc', username: 'UX Lead', icon: ':art:' }\n};\n\nconst config = personaConfig[persona] || personaConfig['ea'];\nreturn [{ json: { persona, ...config } }];"
+      },
+      "id": "route-persona",
+      "name": "Route Persona",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.github.com/repos/paperwork-labs/paperwork/contents/.cursor/rules/{{ $json.file }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Accept", "value": "application/vnd.github.v3.raw" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-persona-rules",
+      "name": "Fetch Persona Rules",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1250, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "github-cred",
+          "name": "GitHub PAT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const threadResponse = $('Fetch Thread History').first().json;\nconst messages = (threadResponse.messages || []).map(m => {\n  const role = m.bot_id ? 'Assistant' : 'User';\n  return `${role}: ${m.text}`;\n}).join('\\n\\n');\n\nconst rulesRaw = $('Fetch Persona Rules').first().json;\nconst rulesText = typeof rulesRaw === 'string' ? rulesRaw : (rulesRaw.data || JSON.stringify(rulesRaw));\n\nconst persona = $('Route Persona').first().json;\n\nconst systemPrompt = `You are the ${persona.username} persona for Paperwork Labs. Respond in Slack mrkdwn format (*bold*, bullet points with •, _italic_). Be concise and actionable.\\n\\n--- PERSONA RULES ---\\n${rulesText}\\n--- END RULES ---`;\n\nconst userMessage = `Thread conversation:\\n\\n${messages}\\n\\nRespond to the latest message in the thread.`;\n\nreturn [{ json: { systemPrompt, userMessage, persona } }];"
+      },
+      "id": "build-thread-context",
+      "name": "Build Thread Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1500, 300]
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "model": "gpt-4o",
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.systemPrompt }}",
+              "role": "system"
+            },
+            {
+              "content": "={{ $json.userMessage }}",
+              "role": "user"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.6
+        }
+      },
+      "id": "generate-response",
+      "name": "Generate Response",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [1750, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-cred",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ channel: $('Filter Events').first().json.channel, text: $('Generate Response').first().json.message.content, thread_ts: $('Filter Events').first().json.thread_ts, username: $('Route Persona').first().json.username, icon_emoji: $('Route Persona').first().json.icon }) }}",
+        "options": {}
+      },
+      "id": "post-reply",
+      "name": "Post Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2000, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "slack-cred",
+          "name": "Slack Bot Token"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Filter Events", "type": "main", "index": 0 }]]
+    },
+    "Filter Events": {
+      "main": [[{ "node": "Fetch Thread History", "type": "main", "index": 0 }]]
+    },
+    "Fetch Thread History": {
+      "main": [[{ "node": "Route Persona", "type": "main", "index": 0 }]]
+    },
+    "Route Persona": {
+      "main": [[{ "node": "Fetch Persona Rules", "type": "main", "index": 0 }]]
+    },
+    "Fetch Persona Rules": {
+      "main": [[{ "node": "Build Thread Context", "type": "main", "index": 0 }]]
+    },
+    "Build Thread Context": {
+      "main": [[{ "node": "Generate Response", "type": "main", "index": 0 }]]
+    },
+    "Generate Response": {
+      "main": [[{ "node": "Post Reply", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "agent" }, { "name": "slack" }],
+  "id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+}
