@@ -2,7 +2,7 @@
 
 Organizational memory for Paperwork Labs (FileFree, LaunchFree, Distill, Trinkets). AI agents read this at session start. Update after significant decisions, learnings, or pattern discoveries.
 
-**Last Updated**: 2026-03-17
+**Last Updated**: 2026-03-16
 
 ---
 
@@ -90,6 +90,9 @@ GPT-4o-mini achieves 100% schema adherence with Structured Outputs (`response_fo
 ### L7: Google Cloud Vision Layout Preservation (2026-03-09)
 `DOCUMENT_TEXT_DETECTION` returns hierarchical structure: Pages -> Blocks -> Paragraphs -> Words -> Symbols, each with bounding box coordinates. Sufficient spatial information for GPT to map text to W-2 fields.
 
+### L8: Postiz v2.12+ Requires Temporal (2026-03-10)
+Postiz switched from cron to Temporal for background job scheduling in v2.12.0. The `ghcr.io/gitroomhq/postiz-app:latest` image requires a Temporal server at port 7233. Without it, the backend fails to start: `Error: connect ECONNREFUSED ::1:7233`. Fix: add `temporalio/auto-setup:1.28.1` + its own `postgres:16-alpine` to Docker Compose, set `TEMPORAL_ADDRESS: temporal:7233` in Postiz env. Reference: https://docs.postiz.com/installation/docker-compose
+
 ---
 
 ## Patterns
@@ -116,18 +119,20 @@ FastAPI + deps need ~200-300MB. Under concurrent requests during tax season peak
 ### Q3: Column Tax SDK Availability and Pricing
 Need to book demo call and negotiate pricing. Target: $10-15/return cost-passthrough. Sandbox access needed by September 2026 for October launch.
 
-### L8: Postiz v2.12+ Requires Temporal (2026-03-10)
-Postiz switched from cron to Temporal for background job scheduling in v2.12.0. The `ghcr.io/gitroomhq/postiz-app:latest` image requires a Temporal server at port 7233. Without it, the backend fails to start: `Error: connect ECONNREFUSED ::1:7233`. Fix: add `temporalio/auto-setup:1.28.1` + its own `postgres:16-alpine` to Docker Compose, set `TEMPORAL_ADDRESS: temporal:7233` in Postiz env. Reference: https://docs.postiz.com/installation/docker-compose
-
----
-
-### Q5: Origin (Budgeting App) — Competitive Threat Analysis
-Origin is reportedly growing in the personal finance space. Evaluate as potential competitive threat or adjacent market signal. Analyze: feature set, target demographic overlap with FileFree (Gen Z / young adults), growth trajectory, and whether a budgeting-to-tax-filing pipeline could compete with FileFree's refund-moment monetization strategy. Also assess whether Origin's growth validates the broader "AI eliminates financial paperwork" thesis.
-
----
-
 ### Q4: Postiz MCP Reliability with Self-Hosted Instances
 GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeouts, 404s) on self-hosted Postiz. Community MCP package (`mcp-postiz-server`) is third-party maintained. Fallback: Postiz REST API works reliably. Test MCP first; use REST API if needed.
+
+### Q5: Origin Financial — Competitive Threat Analysis (HIGH THREAT)
+**Threat Level**: HIGH. Origin (useorigin.com) is a VC-backed all-in-one financial platform with ~100K users, SEC-registered investment advisor (RIA), and AI-powered tax filing via April Tax partnership. $12.99/mo subscription model. Features: budgeting, investing, tax filing, AI financial advisor, credit monitoring. Target demographic overlaps directly with FileFree (young professionals, 25-40).
+
+**Why HIGH**: (1) SEC RIA registration gives them legal authority to provide personalized financial advice -- something FileFree cannot do without similar registration. (2) April Tax partnership (getapril.com) provides IRS-authorized e-file capability TODAY, not January 2027. (3) 100K user base proves willingness to pay for all-in-one financial management. (4) VC funding enables aggressive growth that bootstrapped Paperwork Labs cannot match dollar-for-dollar.
+
+**Why NOT fatal**: (1) Origin charges $12.99/mo ($156/yr) -- FileFree is free forever. Price-sensitive Gen Z and young adults (our core demographic) won't pay $156/yr when free exists. (2) Origin has no LLC formation product -- LaunchFree is uncontested. (3) Origin's tax filing is a white-label (April Tax), not proprietary -- they don't control the filing engine. We will own ours (MeF transmitter). (4) No B2B play -- Distill is uncontested. (5) The "all-in-one" approach requires $12.99/mo subscription economics; our free-tier + marketplace model can reach 10x their volume.
+
+**Strategic response**: Don't try to out-Origin Origin on the advisory/investment side. Own "free tax filing for young people" and "free LLC formation" as category-defining positions. Let Origin validate the "AI financial platform" market category while we capture the price-sensitive majority they can't serve profitably. Revisit SEC RIA registration at 100K+ users if advisory revenue justifies it.
+
+### Q6: April Tax (getapril.com) as Column Tax Alternative
+April Tax is an AI-native tax filing infrastructure provider. IRS-authorized e-file transmitter. Powers Origin's 100K-user tax filing (proving production readiness at scale). Offers embeddable tax filing API for platforms. Evaluate as potential Column Tax alternative for interim e-file partnership. Key questions: (1) API pricing vs Column Tax? (2) Embeddable SDK quality? (3) State coverage? (4) Do they accept bootstrapped partners or only VC-backed? Contact: getapril.com. This does NOT change the MeF transmitter north star (D4) -- April Tax would be an interim partner like Column Tax, replaced by our own transmitter in January 2027.
 
 ---
 
@@ -571,5 +576,5 @@ GitHub issues #846 and #984 report MCP connection failures (SSE handshake timeou
 
 ### D77 — Repo Migration + Docs Audit (2026-03-16)
 - **Context**: Repo migrated from personal account to `paperwork-labs` GitHub org and renamed from `filefree` to `paperwork`. Google Workspace created at paperworklabs.com (D76). Many docs still referenced old repo URL (`your-org/filefree`), old Google Workspace setup (`sankalpsharma.com`, 2 seats, $12/mo), old domain (`filefree.tax` as primary), and stale admin emails (`sankalp@sankalpsharma.com`).
-- **Decision**: Full docs audit. Fixed: (1) Repo clone URL in README → `paperwork-labs/paperwork`. (2) Google Workspace references across 6 docs → 1 seat, $6/mo, paperworklabs.com primary. (3) Monthly burn recalculated $284 → $278. (4) Admin email allowlist → `sankalp@paperworklabs.com`. (5) filefree.tax → filefree.ai in all active doc URLs/emails. (6) P0.3 Google Workspace task → DONE. (7) `.cursorrules` annotated with "Current vs Target" repo structure note. (8) Removed cursor-context-backup.zip and CURSOR_BACKUP_README.md (transfer artifacts). (9) Added Origin budgeting app as open research question (Q5).
+- **Decision**: Full docs audit. Fixed: (1) Repo clone URL in README → `paperwork-labs/paperwork`. (2) Google Workspace references across 6 docs → 1 seat, $6/mo, paperworklabs.com primary. (3) Monthly burn recalculated to $278. (4) Admin email allowlist → `sankalp@paperworklabs.com`. (5) filefree.tax → filefree.ai in all active doc URLs/emails. (6) P0.3 Google Workspace task → DONE. (7) `.cursorrules` annotated with "Current vs Target" repo structure note. (8) Removed cursor-context-backup.zip and CURSOR_BACKUP_README.md (transfer artifacts). (9) Added Origin budgeting app as open research question (Q5).
 - **Reversibility**: N/A. Cleanup commit.
