@@ -8,6 +8,8 @@ globs: ["api/**/*.py", "web/**/*.ts", "web/**/*.tsx", "infra/compose.dev.yaml", 
 
 This file mirrors and extends .cursorrules. It is the authoritative technical reference for AI coding agents across all Paperwork Labs products (FileFree, LaunchFree, Distill, Trinkets).
 
+**Current vs Target**: The repo is currently flat (`api/` for FastAPI, `web/` for Next.js FileFree frontend, `infra/`, `docs/`). The monorepo structure (apps/, packages/) is the **target architecture**. When working on existing code, use current paths. When scaffolding new products or packages, follow the target structure.
+
 ## Architecture Overview
 
 ### State Filing Engine (LaunchFree + Distill Formation API)

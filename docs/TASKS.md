@@ -64,7 +64,7 @@ These are existential risk mitigations that cost under $5K total. Complete befor
 | # | Action | Cost | Deadline | Blocks | Status |
 | --- | --- | --- | --- | --- | --- |
 | 1 | Decide LLC name | $0 | -- | -- | DONE |
-| 2 | Apply for EFIN (Form 8633) | $0 | THIS WEEK | Phase 8 (MeF transmitter). 45-day IRS processing. Chain: EFIN -> Software Dev ID -> ATS (Oct 2026) -> Comms test (Nov) -> Go-live (Jan 2027). Every day of delay compresses the October ATS window. **See detailed step-by-step below.** | NOT STARTED |
+| 2 | Apply for EFIN (Form 8633) | $0 | THIS WEEK | Phase 8 (MeF transmitter). 45-day IRS processing. Chain: EFIN -> Software Dev ID -> ATS (Oct 2026) -> Comms test (Nov) -> Go-live (Jan 2027). Every day of delay compresses the October ATS window. **See [EFIN_FILING_INSTRUCTIONS.md](EFIN_FILING_INSTRUCTIONS.md) for full step-by-step guide.** | NOT STARTED |
 | 3 | Get cyber liability insurance (E&O + cyber, $1M coverage) | $1,500-3,000/yr | Before first SSN collected | Phase 7 (FileFree launch). Non-negotiable for handling SSNs. A single breach without it is company-ending. | NOT STARTED |
 | 4 | Draft data breach response plan | $0 (SANS/NIST templates) | Before first SSN collected | Phase 7. Need: notification timeline by state tier, template notification letter, forensics firm contact, first-call list. | NOT STARTED |
 | 5 | 1-hour startup attorney consultation | ~$300-500 | Before Phase 3 (LaunchFree MVP) | Two questions: (a) does AI-assisted operating agreement survive UPL analysis in CA, TX, NY, FL? (b) is wholesale RA arrangement structured to minimize agency liability? | NOT STARTED |
@@ -72,11 +72,13 @@ These are existential risk mitigations that cost under $5K total. Complete befor
 
 ---
 
-### EFIN Filing Instructions (Do Today — March 16, 2026)
+### EFIN Filing Instructions (Do Today)
+
+**Full guide**: [EFIN_FILING_INSTRUCTIONS.md](EFIN_FILING_INSTRUCTIONS.md) — step-by-step, email guidance (use sankalp@paperworklabs.com), prerequisites, checklist.
 
 **CRITICAL**: EFIN cannot be transferred between entities. Do NOT apply as sole proprietor — you will need a second EFIN after LLC formation. The correct order is LLC -> EIN -> EFIN, all completable today.
 
-**Use `sankalp@paperworklabs.com` for ALL business registrations below.** Clean separation between personal and business from day one.
+**Use `sankalp@paperworklabs.com` for ALL business registrations.** Clean separation between personal and business from day one.
 
 #### Step 0: Form the LLC (30 minutes, blocks everything)
 
