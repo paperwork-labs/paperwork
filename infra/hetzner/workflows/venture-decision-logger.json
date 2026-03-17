@@ -1,0 +1,190 @@
+{
+  "name": "Venture — Decision Logger",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "slack-decisions",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-decisions",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst event = body.event || {};\n\nif (body.type === 'url_verification') {\n  return [];\n}\n\nif (event.bot_id || event.subtype === 'bot_message') {\n  return [];\n}\n\nif (event.channel !== 'C0AM2310P8A') {\n  return [];\n}\n\nconst text = (event.text || '').toLowerCase();\nif (!text.includes('log this') && !text.includes('decided:')) {\n  return [];\n}\n\nreturn [{\n  json: {\n    channel: event.channel,\n    thread_ts: event.thread_ts || event.ts,\n    ts: event.ts,\n    user: event.user,\n    text: event.text\n  }\n}];"
+      },
+      "id": "filter-decision-messages",
+      "name": "Filter Decision Messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://slack.com/api/conversations.replies",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "channel", "value": "={{ $json.channel }}" },
+            { "name": "ts", "value": "={{ $json.thread_ts }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-decision-thread",
+      "name": "Fetch Thread History",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [750, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "slack-cred",
+          "name": "Slack Bot Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/paperwork-labs/paperwork/contents/docs/KNOWLEDGE.md",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "fetch-knowledge-for-decision",
+      "name": "Fetch KNOWLEDGE.md",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "github-cred",
+          "name": "GitHub PAT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "content": "You format decisions for the Paperwork Labs knowledge base (KNOWLEDGE.md). Given thread context and the current KNOWLEDGE.md content, determine the next D## number and format the decision.\n\nReturn ONLY valid JSON with these keys:\n- entry_number: string like \"D35\"\n- title: short title for the decision\n- formatted_entry: the full markdown block to append, formatted as:\n\n### D## — Title (YYYY-MM-DD)\n**Context**: Why this decision came up\n**Decision**: What was decided\n**Alternatives**: Other options considered (if mentioned in thread)\n**Reversibility**: Easy / Medium / Hard\n\nUse today's date. Parse the thread carefully to extract the actual decision, context, and any alternatives discussed.",
+              "role": "system"
+            },
+            {
+              "content": "=Thread conversation:\n{{ JSON.stringify(($('Fetch Thread History').first().json.messages || []).map(m => ({ user: m.user || 'bot', text: m.text }))) }}\n\nCurrent KNOWLEDGE.md (to determine next D## number):\n{{ Buffer.from($('Fetch KNOWLEDGE.md').first().json.content || '', 'base64').toString('utf8').slice(-2000) }}\n\nToday's date: {{ new Date().toISOString().slice(0, 10) }}\n\nFormat this decision for KNOWLEDGE.md.",
+              "role": "user"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.3,
+          "responseFormat": "json_object"
+        }
+      },
+      "id": "format-decision",
+      "name": "Format Decision",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [1250, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-cred",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const knowledgeResponse = $('Fetch KNOWLEDGE.md').first().json;\nconst currentContentBase64 = knowledgeResponse.content || '';\nconst sha = knowledgeResponse.sha;\n\nconst currentContent = Buffer.from(currentContentBase64, 'base64').toString('utf8');\n\nconst aiResponse = JSON.parse($('Format Decision').first().json.message.content);\nconst formattedEntry = aiResponse.formatted_entry;\nconst entryNumber = aiResponse.entry_number;\nconst title = aiResponse.title;\n\nconst updatedContent = currentContent.trimEnd() + '\\n\\n' + formattedEntry + '\\n';\nconst updatedBase64 = Buffer.from(updatedContent, 'utf8').toString('base64');\n\nreturn [{\n  json: {\n    content: updatedBase64,\n    sha: sha,\n    message: `docs: log ${entryNumber} — ${title}`,\n    entry_number: entryNumber,\n    title: title\n  }\n}];"
+      },
+      "id": "prepare-commit",
+      "name": "Prepare Commit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1500, 300]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://api.github.com/repos/paperwork-labs/paperwork/contents/docs/KNOWLEDGE.md",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message: $json.message, content: $json.content, sha: $json.sha }) }}",
+        "options": {}
+      },
+      "id": "commit-to-github",
+      "name": "Commit to GitHub",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1750, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "github-cred",
+          "name": "GitHub PAT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ channel: $('Filter Decision Messages').first().json.channel, text: ':white_check_mark: Logged as *' + $('Prepare Commit').first().json.entry_number + '* in KNOWLEDGE.md — _' + $('Prepare Commit').first().json.title + '_', thread_ts: $('Filter Decision Messages').first().json.thread_ts, username: 'Strategy', icon_emoji: ':chess_pawn:' }) }}",
+        "options": {}
+      },
+      "id": "confirm-in-thread",
+      "name": "Confirm in Thread",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2000, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "slack-cred",
+          "name": "Slack Bot Token"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Filter Decision Messages", "type": "main", "index": 0 }]]
+    },
+    "Filter Decision Messages": {
+      "main": [[{ "node": "Fetch Thread History", "type": "main", "index": 0 }]]
+    },
+    "Fetch Thread History": {
+      "main": [[{ "node": "Fetch KNOWLEDGE.md", "type": "main", "index": 0 }]]
+    },
+    "Fetch KNOWLEDGE.md": {
+      "main": [[{ "node": "Format Decision", "type": "main", "index": 0 }]]
+    },
+    "Format Decision": {
+      "main": [[{ "node": "Prepare Commit", "type": "main", "index": 0 }]]
+    },
+    "Prepare Commit": {
+      "main": [[{ "node": "Commit to GitHub", "type": "main", "index": 0 }]]
+    },
+    "Commit to GitHub": {
+      "main": [[{ "node": "Confirm in Thread", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "agent" }, { "name": "strategy" }, { "name": "decisions" }],
+  "id": "e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b"
+}
