@@ -56,18 +56,46 @@
 
 ## Step 1: File LLC (CA SOS) — ~30 minutes
 
-1. Go to [bizfile.sos.ca.gov](https://bizfile.sos.ca.gov)
-2. Create account or sign in
-3. File **Articles of Organization** for a **Domestic LLC**
-4. **LLC name**: Paperwork Labs LLC
-5. **Business address**: Use your business address (or home if no office yet)
-6. **Registered Agent**: You can be your own RA initially, or use a service (e.g. Northwest, ~$49/yr)
-7. **Manager/Organizer**: Sankalp (you)
-8. **Email for correspondence**: sankalp@paperworklabs.com
-9. Pay $70 filing fee
-10. **Save the confirmation number** — you'll need it for EIN
+### Getting to the right place
 
-**Timeline**: Often same-day or next business day. Check CA SOS status page.
+**Important**: The bizfile site has two main areas — **Search** (look up existing businesses) and **File** (create new filings). To form a new LLC, you must use **File**, not Search.
+
+1. Go to [bizfile.sos.ca.gov](https://bizfile.sos.ca.gov) (or [bizfileOnline.sos.ca.gov](https://bizfileOnline.sos.ca.gov))
+2. **Sign in** with your account (created with sankalp@paperworklabs.com)
+3. In the top menu, click **"File"** (not "Search")
+4. Under **File**, select **"LLC"** → **"Articles of Organization - CA LLC"**
+5. You'll go through a multi-step wizard. Work through each step in order.
+
+### Step-by-step: What to enter at each screen
+
+| Step | What it means | What to enter |
+|------|---------------|---------------|
+| **Privacy Warning / Terms** | Legal disclaimer | Check the box to accept, continue |
+| **Submitter** | Contact person for this filing (optional but recommended) | **Name**: Sankalp Sharma<br>**Email**: sankalp@paperworklabs.com<br>**Phone**: Your phone number<br>**Extension**: Leave blank |
+| **No Professional Services** | Confirms you're not using a registered agent service for this filing | Check the box (you're filing yourself) |
+| **Limited Liability Company Name** | The legal name of your LLC | **Paperwork Labs LLC** |
+| **Business Addresses** | Where the LLC is located | Your home address (CA requires a California address). Use the same address for principal office and mailing if you have no separate office. |
+| **Agent for Service of Process** | Who receives legal papers for the LLC | **Your name** (Sankalp Sharma) + **your home address** — you can be your own RA initially. Switch to a commercial RA (Northwest, CorpNet) later when LaunchFree ships. |
+| **Purpose, Management and File Date** | Business purpose and who runs it | **Purpose**: Any lawful purpose<br>**Management**: Manager-managed (you are the sole manager)<br>**Organizer**: Sankalp Sharma, sankalp@paperworklabs.com<br>**File date**: Today's date |
+| **Attachments** | Optional supporting docs | Usually none needed for a standard LLC |
+| **Review and Signature** | Final review | Review all entries, sign electronically |
+| **Processing Fees** | $70 filing fee | Pay by credit card |
+| **File Document** | Submit | Click to file. **Save the confirmation number and file number immediately.** |
+
+### Submitter info — do I add my name?
+
+**Yes.** The Submitter section is for contact about this specific filing. Enter:
+- **Name**: Your full legal name (Sankalp Sharma)
+- **Email**: sankalp@paperworklabs.com
+- **Phone**: Your phone number
+
+These fields are optional, but the Secretary of State may use them to contact you about the filing. Using your name and company email is correct.
+
+### After filing
+
+- **Confirmation**: You'll get a confirmation number and file number. Save both.
+- **Stamped Articles**: Download the stamped PDF when it becomes available (often same day or next business day).
+- **Timeline**: Often same-day or next business day. Check the CA SOS status page if needed.
 
 ---
 
