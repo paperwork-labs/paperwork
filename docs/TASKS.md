@@ -211,7 +211,7 @@ See [VENTURE_MASTER_PLAN.md](VENTURE_MASTER_PLAN.md) Section 7 (Phase 0).
 
 ## Phase 1: Monorepo Restructure -- COMPLETE
 
-All 11 tasks done. pnpm workspace with 5 apps (`apps/filefree`, `apps/launchfree`, `apps/studio`, `apps/trinkets`, `apps/distill`), 2 APIs (`apis/filefree`, `apis/launchfree`), and 3 shared packages (`packages/ui`, `packages/auth`, `packages/analytics`). Original `web/` → `apps/filefree/`, `api/` → `apis/filefree/`. Per-product themes via `[data-theme]` CSS variables.
+All 13 tasks done (P1.1–P1.11 including P1.9b, P1.9c). pnpm workspace with 5 apps (`apps/filefree`, `apps/launchfree`, `apps/studio`, `apps/trinkets`, `apps/distill`), 2 APIs (`apis/filefree`, `apis/launchfree`), and 3 shared packages (`packages/ui`, `packages/auth`, `packages/analytics`). Original `web/` → `apps/filefree/`, `api/` → `apis/filefree/`. Per-product themes via `[data-theme]` CSS variables.
 
 **Completed tasks**: P1.1 (pnpm init), P1.2 (packages/ui, 22 shadcn components), P1.3 (packages/auth), P1.4 (packages/analytics), P1.5 (move filefree frontend), P1.6 (move filefree API), P1.7 (scaffold launchfree), P1.8 (scaffold launchfree API), P1.9 (scaffold studio), P1.9b (scaffold trinkets), P1.9c (scaffold distill), P1.10 (infra updates), P1.11 (verification).
 

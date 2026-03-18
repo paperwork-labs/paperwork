@@ -115,8 +115,14 @@ n8n OpenAI nodes use a dropdown for model selection and do not support dynamic m
 | cpa-tax-review | gpt-4o | CPA_REVIEW_MODEL | Tax accuracy (future: Claude) |
 | qa-security-scan | gpt-4o | QA_SCAN_MODEL | Security (future: Claude) |
 | weekly-strategy-checkin | gpt-4o | STRATEGY_MODEL | Strategic analysis |
-| decision-logger | gpt-4o-mini | DECISION_MODEL | Structured formatting |
+| decision-logger | N/A | N/A | No AI node — deterministic formatting only |
 
-**To change a model:** Edit the workflow in the n8n UI, select the OpenAI node, and change the model dropdown. For n8n Cloud or programmatic updates, use the n8n API to patch the workflow JSON.
+### Required n8n Environment Variables
+
+Workflows that fetch docs inline (ea-daily, ea-weekly, agent-thread-handler) require `GITHUB_TOKEN` set in the n8n environment. This is the same GitHub PAT used by the `github-cred` HTTP Header Auth credential. Set it in the n8n `.env` file or Docker Compose environment. Without it, VMP-SUMMARY.md and persona doc fetches will silently fall back to placeholders (the repo is private).
+
+### Changing Models
+
+Edit the workflow in the n8n UI, select the OpenAI node, and change the model dropdown. For n8n Cloud or programmatic updates, use the n8n API to patch the workflow JSON.
 
 **Note:** CPA Tax Review and QA Security Scan are candidates for Claude migration when Anthropic API access is set up. See AI_MODEL_REGISTRY.md for the activation roadmap.
