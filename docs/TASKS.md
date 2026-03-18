@@ -269,7 +269,7 @@ See [VENTURE_MASTER_PLAN.md](VENTURE_MASTER_PLAN.md) Section 7 (Phase 0).
 - **Task ID**: P0.4
 - **Owner**: Founder 1
 - **Branch**: N/A (no code)
-- **Files/Specs**: Create folder structure: `Venture HQ/Operations/Daily Briefings/`, `Venture HQ/Operations/Weekly Plans/`, `Venture HQ/Trinkets/One-Pagers/`, `Venture HQ/Trinkets/PRDs/`, `Venture HQ/Intelligence/`. Add GDrive MCP server to `.cursor/mcp.json`.
+- **Files/Specs**: Create folder structure: `Paperwork Labs HQ/Operations/Daily Briefings/`, `Paperwork Labs HQ/Operations/Weekly Plans/`, `Paperwork Labs HQ/Trinkets/One-Pagers/`, `Paperwork Labs HQ/Trinkets/PRDs/`, `Paperwork Labs HQ/Intelligence/`. Add GDrive MCP server to `.cursor/mcp.json`.
 - **Acceptance Criteria**: GDrive accessible from Cursor via MCP. Folder structure matches EA spec in `ea.mdc`.
 - **Depends On**: P0.3
 - **Status**: NOT STARTED

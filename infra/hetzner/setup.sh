@@ -3,7 +3,7 @@ set -euo pipefail
 
 SERVER_IP="${1:?Usage: ./setup.sh <server-ip>}"
 
-echo "=== FileFree Ops Stack Setup ==="
+echo "=== Paperwork Labs Ops Stack Setup ==="
 echo "Target: $SERVER_IP"
 echo ""
 
@@ -54,29 +54,29 @@ else
 fi
 
 echo "--- Creating app directory ---"
-mkdir -p /opt/filefree-ops
-echo "Directory ready: /opt/filefree-ops"
+mkdir -p /opt/paperwork-ops
+echo "Directory ready: /opt/paperwork-ops"
 
 echo ""
 echo "=== Server bootstrap complete ==="
 echo "Next steps:"
-echo "  1. scp infra/hetzner/compose.yaml root@$HOSTNAME:/opt/filefree-ops/"
-echo "  2. scp infra/hetzner/env.example root@$HOSTNAME:/opt/filefree-ops/.env"
-echo "  3. ssh root@$HOSTNAME 'cd /opt/filefree-ops && nano .env'  # fill in secrets"
-echo "  4. ssh root@$HOSTNAME 'cd /opt/filefree-ops && docker compose up -d'"
+echo "  1. scp infra/hetzner/compose.yaml root@$HOSTNAME:/opt/paperwork-ops/"
+echo "  2. scp infra/hetzner/env.example root@$HOSTNAME:/opt/paperwork-ops/.env"
+echo "  3. ssh root@$HOSTNAME 'cd /opt/paperwork-ops && nano .env'  # fill in secrets"
+echo "  4. ssh root@$HOSTNAME 'cd /opt/paperwork-ops && docker compose up -d'"
 REMOTE
 
 echo ""
 echo "=== Copying deployment files ==="
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-scp "$SCRIPT_DIR/compose.yaml" root@"$SERVER_IP":/opt/filefree-ops/
-scp "$SCRIPT_DIR/env.example" root@"$SERVER_IP":/opt/filefree-ops/.env
+scp "$SCRIPT_DIR/compose.yaml" root@"$SERVER_IP":/opt/paperwork-ops/
+scp "$SCRIPT_DIR/env.example" root@"$SERVER_IP":/opt/paperwork-ops/.env
 
 echo ""
 echo "=== Done! ==="
 echo "SSH in and configure:"
 echo "  ssh root@$SERVER_IP"
-echo "  cd /opt/filefree-ops"
+echo "  cd /opt/paperwork-ops"
 echo "  nano .env          # fill in all REQUIRED values"
 echo "  docker compose up -d"
 echo "  docker compose logs -f"

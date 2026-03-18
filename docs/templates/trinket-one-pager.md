@@ -3,7 +3,7 @@
 **Date**: [YYYY-MM-DD]
 **Status**: Draft | Approved | Rejected
 **Agent**: Market Discovery (GPT-5.4)
-**Output**: Google Doc in `Venture HQ/Trinkets/One-Pagers/`
+**Output**: Google Doc in `Paperwork Labs HQ/Trinkets/One-Pagers/`
 
 > This markdown template is used by the Market Discovery Agent to generate a Google Doc. The agent creates a new Google Doc from this structure so the founder can comment, review, and share for feedback.
 

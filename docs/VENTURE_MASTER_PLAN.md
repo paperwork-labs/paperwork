@@ -1562,7 +1562,7 @@ Not everyone in the founder's life uses GitHub or Notion. Documents need to be a
 | Doc Type                                                                    | Source of Truth                     | Readable At                      | Collaborative At       | Who Reads                       |
 | --------------------------------------------------------------------------- | ----------------------------------- | -------------------------------- | ---------------------- | ------------------------------- |
 | Company docs (FINANCIALS, KNOWLEDGE, TASKS, MASTER PLAN, AI_MODEL_REGISTRY) | `docs/*.md` in git repo             | paperworklabs.com/docs/* (P4.14) | Git PRs (founder only) | Founder, wife, future investors |
-| Agent outputs (daily briefings, weekly plans, reports)                      | Google Drive (`Venture HQ/`)        | Google Drive link sharing        | Google Docs comments   | Founder, wife                   |
+| Agent outputs (daily briefings, weekly plans, reports)                      | Google Drive (`Paperwork Labs HQ/`)        | Google Drive link sharing        | Google Docs comments   | Founder, wife                   |
 | Trinket one-pagers                                                          | Google Docs (created from template) | Google Drive link sharing        | Google Docs comments   | Founder, wife, future team      |
 | Trinket PRDs                                                                | Google Docs (created from template) | Google Drive link sharing        | Google Docs comments   | Founder, future engineers       |
 | Social content drafts                                                       | Postiz queue                        | Postiz UI                        | Postiz UI              | Founder                         |
@@ -1581,12 +1581,12 @@ Trinket one-pagers and PRDs need collaborative review -- the founder might want 
 
 | Agent                            | Output Format              | Destination                              |
 | -------------------------------- | -------------------------- | ---------------------------------------- |
-| EA daily briefing                | Google Doc                 | `Venture HQ/Operations/Daily Briefings/` |
-| EA weekly plan                   | Google Doc                 | `Venture HQ/Operations/Weekly Plans/`    |
-| Market Discovery Agent (trinket) | Google Doc (from template) | `Venture HQ/Trinkets/One-Pagers/`        |
-| PRD Agent (trinket)              | Google Doc (from template) | `Venture HQ/Trinkets/PRDs/`              |
-| Competitive Intel                | Google Doc                 | `Venture HQ/Intelligence/`               |
-| Analytics Reporter               | Google Doc                 | `Venture HQ/Operations/Analytics/`       |
+| EA daily briefing                | Google Doc                 | `Paperwork Labs HQ/Operations/Daily Briefings/` |
+| EA weekly plan                   | Google Doc                 | `Paperwork Labs HQ/Operations/Weekly Plans/`    |
+| Market Discovery Agent (trinket) | Google Doc (from template) | `Paperwork Labs HQ/Trinkets/One-Pagers/`        |
+| PRD Agent (trinket)              | Google Doc (from template) | `Paperwork Labs HQ/Trinkets/PRDs/`              |
+| Competitive Intel                | Google Doc                 | `Paperwork Labs HQ/Intelligence/`               |
+| Analytics Reporter               | Google Doc                 | `Paperwork Labs HQ/Operations/Analytics/`       |
 | Social Content bots              | Postiz queue entry         | Postiz                                   |
 | Decision logging (EA)            | Markdown commit            | `docs/KNOWLEDGE.md` in git               |
 | Expense logging (EA)             | Markdown commit            | `docs/FINANCIALS.md` in git              |
@@ -1596,7 +1596,7 @@ Trinket one-pagers and PRDs need collaborative review -- the founder might want 
 **Google Drive folder structure** (set up in P0.4):
 
 ```
-Venture HQ/
+Paperwork Labs HQ/
 ├── Operations/
 │   ├── Daily Briefings/
 │   └── Weekly Plans/
@@ -3389,7 +3389,7 @@ No agent is currently assigned to write production code for FileFree or LaunchFr
 | P0.1 Buy domains             | Founder 1 | N/A (no code)            | N/A                                                                                                                                                                                                                                                | launchfree.ai + filefree.ai registrar confirmed                                                                                                                                                    | None                                     | DONE        |
 | P0.2 Migrate FileFree domain | Founder 1 | `chore/domain-migration` | `web/next.config.ts` (redirects), Vercel dashboard (custom domain), DNS provider (A/CNAME records)                                                                                                                                                 | filefree.ai serves the app. filefree.tax 301-redirects to filefree.ai. All existing links preserved. SSL cert issued.                                                                              | P0.1                                     | NOT STARTED |
 | P0.3 Google Workspace        | Founder 1 | N/A (no code)            | Google Workspace Business Starter (1 seat, $6/mo). Primary: paperworklabs.com. Aliases: filefree.ai, launchfree.ai, distill.tax. See D76.                                                                                                          | Emails received at [hello@filefree.ai](mailto:hello@filefree.ai), [hello@launchfree.ai](mailto:hello@launchfree.ai). SPF/DKIM/DMARC configured for all domains.                                    | P0.1                                     | DONE        |
-| P0.4 Google Drive HQ         | Founder 1 | N/A (no code)            | Create folder structure: `Venture HQ/Operations/Daily Briefings/`, `Venture HQ/Operations/Weekly Plans/`, `Venture HQ/Trinkets/One-Pagers/`, `Venture HQ/Trinkets/PRDs/`, `Venture HQ/Intelligence/`. Add GDrive MCP server to `.cursor/mcp.json`. | GDrive accessible from Cursor via MCP. Folder structure matches EA spec in `ea.mdc`.                                                                                                               | P0.3                                     | NOT STARTED |
+| P0.4 Google Drive HQ         | Founder 1 | N/A (no code)            | Create folder structure: `Paperwork Labs HQ/Operations/Daily Briefings/`, `Paperwork Labs HQ/Operations/Weekly Plans/`, `Paperwork Labs HQ/Trinkets/One-Pagers/`, `Paperwork Labs HQ/Trinkets/PRDs/`, `Paperwork Labs HQ/Intelligence/`. Add GDrive MCP server to `.cursor/mcp.json`. | GDrive accessible from Cursor via MCP. Folder structure matches EA spec in `ea.mdc`.                                                                                                               | P0.3                                     | NOT STARTED |
 | P0.5 Secure social handles   | Founder 1 | N/A (no code)            | Register @launchfree on TikTok, Instagram, X, YouTube. Set profile pic to monogram, link to launchfree.ai.                                                                                                                                         | All 4 accounts created, profile pics set, bios written, URLs point to launchfree.ai.                                                                                                               | P0.1                                     | NOT STARTED |
 | P0.6 Form LLC                | Founder 1 | N/A (no code)            | California SOS online filing. DBA filings at county clerk (FileFree, LaunchFree, Trinkets, Distill).                                                                                                                                                        | Articles of Organization filed with CA SOS. Confirmation number received. DBA filings submitted. EIN applied for on IRS.gov (same day as LLC confirmation). Bank account opened.                   | LLC name decided (Section 0G #4) -- DONE | NOT STARTED |
 | P0.7 Migrate DNS subdomains  | Founder 1 | `chore/dns-migration`    | DNS provider records: ops.paperworklabs.com -> Hetzner (n8n), social.paperworklabs.com -> Hetzner (Postiz). Point paperworklabs.com -> Vercel (apps/studio). Remove old filefree.tax subdomains.                                                   | n8n accessible at ops.paperworklabs.com. Postiz accessible at social.paperworklabs.com. paperworklabs.com serves studio app. Old subdomains return 404 or redirect.                                | P0.2                                     | NOT STARTED |
