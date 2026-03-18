@@ -30,6 +30,14 @@ Slack is the founder's primary workspace. The EA operates on Slack in two modes:
 - DMs to the bot work as a private channel to the EA
 - Thread history provides conversation continuity — no need to re-explain context
 
+**Session bookend mode** (Cursor agent sessions):
+
+At the **start** of a significant work session (multi-task, infra changes, or multi-PR work), post a concise status to `#daily-briefing` covering: current infra health (n8n workflow count, key service status), what's about to be worked on, and any blockers.
+
+At the **end** of the session, post a wrap-up to `#daily-briefing` covering: what was completed, current infra status (GREEN/YELLOW/RED items), and what's next. Use the Engineering persona. Keep it scannable — bullets, not paragraphs.
+
+Both posts go as standalone messages (not thread replies to the 7am briefing) so they're visible in the channel timeline. Use `./scripts/slack-persona.sh engineering C0ALLJWR1HV "<message>"`.
+
 ### Sending Messages from Cursor
 
 **NEVER use the Slack MCP `slack_send_message` tool for posting** — it sends as the founder's personal account. Instead, use the persona script:
