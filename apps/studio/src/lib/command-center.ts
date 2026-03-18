@@ -1,16 +1,27 @@
-type N8nWorkflow = {
+export type N8nWorkflow = {
   id: string;
   name: string;
   active: boolean;
 };
 
-type N8nExecution = {
+export type N8nExecution = {
   id: string;
   finished: boolean;
   mode: string;
   startedAt?: string;
   stoppedAt?: string;
   workflowId?: string;
+  status?: string;
+};
+
+export type PullRequestSummary = {
+  number: number;
+  title: string;
+  html_url: string;
+  created_at: string;
+  updated_at: string;
+  draft: boolean;
+  user?: { login?: string };
 };
 
 export type InfraStatus = {
@@ -86,7 +97,7 @@ export async function getN8nExecutions(limit = 20) {
 export async function getRecentPullRequests(limit = 5) {
   const token = process.env.GITHUB_TOKEN;
   if (!token) return [];
-  const data = await fetchJson<Array<{ number: number; title: string; html_url: string }>>(
+  const data = await fetchJson<PullRequestSummary[]>(
     `https://api.github.com/repos/paperwork-labs/paperwork/pulls?state=open&per_page=${limit}`,
     {
       headers: {

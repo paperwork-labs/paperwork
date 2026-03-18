@@ -1,6 +1,6 @@
 # Paperwork Labs — Venture Build Tasks
 
-**Version**: 9.1 | **Updated**: 2026-03-16
+**Version**: 9.1 | **Updated**: 2026-03-18
 
 Work through these in phase order. Each task is scoped for one PR. Reference [PRD.md](PRD.md) for business context, [PRODUCT_SPEC.md](PRODUCT_SPEC.md) for FileFree UX specs, [VENTURE_MASTER_PLAN.md](VENTURE_MASTER_PLAN.md) for deep strategy, [PARTNERSHIPS.md](PARTNERSHIPS.md) for partner playbook, [.cursorrules](../.cursorrules) for coding conventions.
 
@@ -360,7 +360,7 @@ See [VENTURE_MASTER_PLAN.md](VENTURE_MASTER_PLAN.md) Section 2 (Architecture) an
 - **Files/Specs**: `package.json` (root, workspaces config), `pnpm-workspace.yaml` (packages: `apps/*`, `apis/*`, `packages/*`), `.npmrc` (shamefully-hoist=true if needed). Remove root `node_modules/` and `package-lock.json`.
 - **Acceptance Criteria**: `pnpm install` succeeds from root. `pnpm -r list` shows all workspace packages. No npm lockfile present.
 - **Depends On**: None
-- **Status**: NOT STARTED
+- **Status**: DONE
 
 </details>
 
@@ -373,7 +373,7 @@ See [VENTURE_MASTER_PLAN.md](VENTURE_MASTER_PLAN.md) Section 2 (Architecture) an
 - **Files/Specs**: `packages/ui/package.json`, `packages/ui/src/components/` (22 shadcn components from `web/src/components/ui/`), `packages/ui/src/lib/utils.ts`, `packages/ui/src/lib/motion.ts`, `packages/ui/src/themes.css` (4 brand themes with `[data-theme]` selectors -- see Section 2 palettes), `packages/ui/tsconfig.json`, `packages/ui/tailwind.config.ts` (if needed, or Tailwind v4 CSS config).
 - **Acceptance Criteria**: `import { Button } from '@venture/ui'` works from any app. All 22 components render correctly. `themes.css` provides filefree (violet-indigo), launchfree (teal-cyan), studio (zinc-neutral), trinkets (amber-orange) CSS variable sets. `pnpm build` succeeds for packages/ui.
 - **Depends On**: P1.1
-- **Status**: NOT STARTED
+- **Status**: DONE
 
 </details>
 
@@ -386,7 +386,7 @@ See [VENTURE_MASTER_PLAN.md](VENTURE_MASTER_PLAN.md) Section 2 (Architecture) an
 - **Files/Specs**: `packages/auth/package.json`, `packages/auth/src/hooks/use-auth.ts`, `packages/auth/src/hooks/use-idle-timeout.ts`, `packages/auth/src/lib/api.ts` (base API client with auth headers), `packages/auth/src/components/session-timeout-dialog.tsx`.
 - **Acceptance Criteria**: `import { useAuth } from '@venture/auth'` works. Auth flow (login, logout, session refresh) functional from any app.
 - **Depends On**: P1.1
-- **Status**: NOT STARTED
+- **Status**: DONE
 
 </details>
 
@@ -399,7 +399,7 @@ See [VENTURE_MASTER_PLAN.md](VENTURE_MASTER_PLAN.md) Section 2 (Architecture) an
 - **Files/Specs**: `packages/analytics/package.json`, `packages/analytics/src/posthog.ts`, `packages/analytics/src/attribution.ts`, `packages/analytics/src/components/posthog-provider.tsx`, `packages/analytics/src/components/providers.tsx`.
 - **Acceptance Criteria**: `import { PostHogProvider } from '@venture/analytics'` works. Events fire to PostHog from any app.
 - **Depends On**: P1.1
-- **Status**: NOT STARTED
+- **Status**: DONE
 
 </details>
 
@@ -596,19 +596,19 @@ The command center is the control plane for the entire venture. It is what makes
 
 | Task | Owner | Page | Data Sources | Complexity | Depends On | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| P4.1 Studio landing page | Founder 1 | `/` public | Static | Low | P1.9 | NOT STARTED |
-| P4.2 Admin auth | Founder 1 | `/admin/*` | Hardcoded admin email check | Low | P4.1 | NOT STARTED |
-| P4.3 Studio API scaffold | Founder 1 | Backend | FastAPI + Redis on Hetzner | Medium | P4.2 | NOT STARTED |
-| P4.4 Mission Control dashboard | Founder 1 | `/admin` | n8n + Render + Vercel + Hetzner + Stripe + PostHog APIs | High | P4.3 | NOT STARTED |
-| P4.5 Agent Monitor | Founder 1 | `/admin/agents` | n8n API (workflows + executions) | Medium | P4.3 | NOT STARTED |
-| P4.6 Infrastructure health | Founder 1 | `/admin/infrastructure` | Render + Vercel + Hetzner + Neon + Upstash APIs | Medium | P4.3 | NOT STARTED |
-| P4.14 Docs viewer | Founder 1 | `/docs/*` (public) | GitHub raw content API -> react-markdown | Low | P1.9 | NOT STARTED |
+| P4.1 Studio landing page | Founder 1 | `/` public | Static | Low | P1.9 | DONE |
+| P4.2 Admin auth | Founder 1 | `/admin/*` | Hardcoded admin email check | Low | P4.1 | DONE |
+| P4.3 Studio API scaffold | Founder 1 | Backend | FastAPI + Redis on Hetzner | Medium | P4.2 | DEFERRED (server components cover Tier 1) |
+| P4.4 Mission Control dashboard | Founder 1 | `/admin` | n8n + Render + Vercel + Hetzner + Stripe + PostHog APIs | High | P4.3 | DONE |
+| P4.5 Agent Monitor | Founder 1 | `/admin/agents` | n8n API (workflows + executions) | Medium | P4.3 | DONE |
+| P4.6 Infrastructure health | Founder 1 | `/admin/infrastructure` | Render + Vercel + Hetzner + Neon + Upstash APIs | Medium | P4.3 | DONE |
+| P4.14 Docs viewer | Founder 1 | `/docs/*` (public) | GitHub raw content API -> react-markdown | Low | P1.9 | DONE |
 
 ### Tier 2 -- Build Next (enables growth operations)
 
 | Task | Owner | Page | Data Sources | Complexity | Depends On | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| P4.7 Analytics | Founder 1 | `/admin/analytics` | PostHog API or embeds | Medium | P4.3 | NOT STARTED |
+| P4.7 Analytics | Founder 1 | `/admin/analytics` | PostHog API or embeds | Medium | P4.3 | DONE |
 | P4.8 Support inbox | Founder 1 | `/admin/support` | Support bot PostgreSQL (Hetzner) | Medium | P4.3 | NOT STARTED |
 | P4.9 Social media command | Founder 1 | `/admin/social` | Postiz API | Medium | P4.3 | NOT STARTED |
 | P4.10 State Data observatory | Founder 1 | `/admin/data` | packages/data JSON + n8n validator results | Low | P2.7 | NOT STARTED |
