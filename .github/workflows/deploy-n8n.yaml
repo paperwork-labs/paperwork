@@ -8,7 +8,7 @@ on:
 
 concurrency:
   group: deploy-n8n
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -21,29 +21,32 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Create remote temp directory
-        uses: appleboy/ssh-action@v1
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: root
           key: ${{ secrets.HETZNER_SSH_KEY }}
+          fingerprint: ${{ secrets.HETZNER_HOST_FINGERPRINT }}
           script: mkdir -p /tmp/paperwork-workflows
 
       - name: Upload workflow files
-        uses: appleboy/scp-action@v0.1.7
+        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: root
           key: ${{ secrets.HETZNER_SSH_KEY }}
+          fingerprint: ${{ secrets.HETZNER_HOST_FINGERPRINT }}
           source: "infra/hetzner/workflows/*.json"
           target: "/tmp/paperwork-workflows"
           strip_components: 3
 
       - name: Import, activate, and restart n8n
-        uses: appleboy/ssh-action@v1
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: root
           key: ${{ secrets.HETZNER_SSH_KEY }}
+          fingerprint: ${{ secrets.HETZNER_HOST_FINGERPRINT }}
           script: |
             set -e
             CONTAINER="paperwork-ops-n8n-1"
@@ -57,7 +60,7 @@ jobs:
             done
 
             echo "Activating workflows..."
-            IDS=$(docker exec "$CONTAINER" n8n list:workflow --json 2>/dev/null | grep -o '"id":"[^"]*"' | cut -d'"' -f4 || true)
+            IDS=$(docker exec "$CONTAINER" n8n list:workflow --json 2>/dev/null | jq -r '.[].id' || true)
             for id in $IDS; do
               if ! docker exec "$CONTAINER" n8n update:workflow --id="$id" --active=true 2>&1; then
                 echo "ERROR: Failed to activate workflow $id"
