@@ -27,15 +27,15 @@ test: ## Run all tests
 	$(COMPOSE) run --rm api pytest -v
 
 test-local: ## Run backend tests locally (no Docker)
-	cd api && python -m pytest -v
+	cd apis/filefree && python -m pytest -v
 
 lint: ## Run linters (ruff + eslint)
 	$(COMPOSE) run --rm api ruff check .
 	$(COMPOSE) run --rm web npm run lint
 
 lint-local: ## Run linters locally (no Docker)
-	cd api && ruff check .
-	cd web && npm run lint
+	cd apis/filefree && ruff check .
+	pnpm --filter @venture/filefree lint
 
 format: ## Auto-format code (ruff + prettier)
 	$(COMPOSE) run --rm api ruff format .
@@ -43,14 +43,14 @@ format: ## Auto-format code (ruff + prettier)
 	$(COMPOSE) run --rm web npm run format
 
 format-local: ## Auto-format locally (no Docker)
-	cd api && ruff format . && ruff check --fix .
-	cd web && npm run format
+	cd apis/filefree && ruff format . && ruff check --fix .
+	pnpm --filter @venture/filefree format
 
 migrate: ## Run database migrations
 	$(COMPOSE) run --rm api alembic upgrade head
 
 migrate-local: ## Run migrations locally (no Docker)
-	cd api && alembic upgrade head
+	cd apis/filefree && alembic upgrade head
 
 migration: ## Create a new migration (usage: make migration MSG="description")
 	$(COMPOSE) run --rm api alembic revision --autogenerate -m "$(MSG)"
