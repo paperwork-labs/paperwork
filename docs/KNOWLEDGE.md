@@ -578,3 +578,9 @@ April Tax is an AI-native tax filing infrastructure provider. IRS-authorized e-f
 - **Context**: Repo migrated from personal account to `paperwork-labs` GitHub org and renamed from `filefree` to `paperwork`. Google Workspace created at paperworklabs.com (D76). Many docs still referenced old repo URL (`your-org/filefree`), old Google Workspace setup (`sankalpsharma.com`, 2 seats, $12/mo), old domain (`filefree.tax` as primary), and stale admin emails (`sankalp@sankalpsharma.com`).
 - **Decision**: Full docs audit. Fixed: (1) Repo clone URL in README → `paperwork-labs/paperwork`. (2) Google Workspace references across 6 docs → 1 seat, $6/mo, paperworklabs.com primary. (3) Monthly burn recalculated to $278. (4) Admin email allowlist → `sankalp@paperworklabs.com`. (5) filefree.tax → filefree.ai in all active doc URLs/emails. (6) P0.3 Google Workspace task → DONE. (7) `.cursorrules` annotated with "Current vs Target" repo structure note. (8) Removed cursor-context-backup.zip and CURSOR_BACKUP_README.md (transfer artifacts). (9) Added Origin budgeting app as open research question (Q5).
 - **Reversibility**: N/A. Cleanup commit.
+
+### D78 — final deterministic decision route test (2026-03-18)
+**Context**: Decision captured from #decisions Slack thread.
+**Decision**: log this: final deterministic decision route test
+**Alternatives**: Not explicitly documented in thread.
+**Reversibility**: Medium
