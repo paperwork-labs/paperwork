@@ -23,8 +23,8 @@ Architecture is **Slack-first**:
 | QA Security Scan | `qa-security-scan.json` | POST /qa-scan | GPT-4o | #engineering + GitHub Issue |
 | Partnership Outreach | `partnership-outreach-drafter.json` | POST /partnership-outreach | GPT-4o | #general |
 | CPA Tax Review | `cpa-tax-review.json` | POST /cpa-review | GPT-4o | #general |
-| Sprint Kickoff | `sprint-kickoff.json` | Cron Mon/Thu 7am PT | GPT-4o | #sprints + #all-paperwork-labs |
-| Sprint Close | `sprint-close.json` | Cron Wed/Sat 9pm PT | GPT-4o | #sprints + KNOWLEDGE.md |
+| Sprint Kickoff | `sprint-kickoff.json` | Cron Mon 7am PT | GPT-4o | #sprints + #all-paperwork-labs |
+| Sprint Close | `sprint-close.json` | Cron Fri 9pm PT | GPT-4o | #sprints + KNOWLEDGE.md |
 
 ## Credential Setup
 
@@ -68,8 +68,20 @@ Slack Event Subscriptions must point to a **single** request URL (thread handler
 5. Click **Save Changes**. Slack will start delivering events to n8n immediately.
 6. Ensure the bot is invited to all channels where it should listen (`#decisions`, `#daily-briefing`, `#engineering`, `#all-paperwork-labs`, `#general`).
 
+## PR Thread Persona Routing
+
+- PR Summary posts are sent to `#engineering` and include a thread router hint.
+- Reply in the PR thread with persona cues like `legal`, `growth`, `social`, `qa`, `strategy`, `engineering`, `cpa`, `partnerships`, or `ea`.
+- `agent-thread-handler.json` uses cue-based override routing so requested personas reply in the same thread.
+
 ## Security Notes
 
 - Slack signature verification and timestamp replay protection are required for production hardening.
 - GitHub webhook signature verification (`X-Hub-Signature-256`) is required for `pr-summary.json`.
 - Current workflows run in a trusted internal environment; add these checks in Phase 2 before wider exposure.
+
+## Sprint Operations
+
+- Sprint execution is agent-first in `#sprints`.
+- Monday kickoff and Friday close are generated and posted by n8n workflows.
+- Updates, blockers, and decisions should be posted as high-signal thread replies under the kickoff post.
