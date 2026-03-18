@@ -163,7 +163,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const output = $json.output || [];\nconst aiText = (output[0]?.content || []).find(c => c.type === 'output_text')?.text || '';\nconst date = new Date().toISOString().split('T')[0];\nconst header = '*Weekly Plan \u2014 ' + date + '*\\n\\n';\nconst footer = '\\n\\n_Thread router: reply with a persona name for a focused take._';\nconst fallback = ':warning: No output generated. Check workflow logs.';\nconst body = aiText.trim() ? aiText.trim() : fallback;\nreturn [{ json: { text: header + body + footer } }];"
+        "jsCode": "function sanitizeSlackMrkdwn(text) {\n  return String(text || '')\n    .replace(/\\*\\*(.+?)\\*\\*/g, '*$1*')\n    .replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, '<$2|$1>');\n}\n\nconst output = $json.output || [];\nconst aiText = (output[0]?.content || []).find(c => c.type === 'output_text')?.text || '';\nconst date = new Date().toISOString().split('T')[0];\nconst header = '*Weekly Plan \u2014 ' + date + '*\\n\\n';\nconst footer = '\\n\\n_Thread router: reply with a persona name for a focused take._';\nconst fallback = ':warning: No output generated. Check workflow logs.';\nconst body = aiText.trim() ? aiText.trim() : fallback;\nreturn [{ json: { text: sanitizeSlackMrkdwn(header + body + footer) } }];"
       },
       "id": "format-weekly-plan",
       "name": "Format Weekly Plan",
@@ -182,7 +182,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ channel: 'C0AMEQV199P', text: $json.text, username: 'EA / Operator', icon_emoji: ':clipboard:' }) }}",
+        "jsonBody": "={{ JSON.stringify({ channel: 'C0AMEQV199P', text: $json.text, username: 'EA / Operator', icon_emoji: ':crystal_ball:' }) }}",
         "options": {}
       },
       "id": "post-weekly-plan",

@@ -149,7 +149,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ channel: $('Filter Decision Messages').first().json.channel, text: ':white_check_mark: Logged as *' + $('Prepare Commit').first().json.entry_number + '* in KNOWLEDGE.md \u2014 _' + $('Prepare Commit').first().json.title + '_', thread_ts: $('Filter Decision Messages').first().json.thread_ts, username: 'Strategy', icon_emoji: ':chess_pawn:' }) }}",
+        "jsonBody": "={{ JSON.stringify({ channel: $('Filter Decision Messages').first().json.channel, text: ':white_check_mark: Logged as *' + $('Prepare Commit').first().json.entry_number + '* in KNOWLEDGE.md \u2014 _' + $('Prepare Commit').first().json.title + '_', thread_ts: $('Filter Decision Messages').first().json.thread_ts, username: 'Strategy', icon_emoji: ':brain:' }) }}",
         "options": {}
       },
       "id": "confirm-in-thread",
