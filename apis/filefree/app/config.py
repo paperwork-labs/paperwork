@@ -51,5 +51,14 @@ class Settings(BaseSettings):
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
+    @model_validator(mode="after")
+    def check_production_secrets(self) -> "Settings":
+        if self.ENVIRONMENT != "development":
+            if self.SECRET_KEY == "change-me-to-a-random-64-char-string":
+                raise ValueError("SECRET_KEY must be changed from default in production")
+            if self.ENCRYPTION_KEY == "change-me-generate-with-fernet":
+                raise ValueError("ENCRYPTION_KEY must be changed from default in production")
+        return self
+
 
 settings = Settings()

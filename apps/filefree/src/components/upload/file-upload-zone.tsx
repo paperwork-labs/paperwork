@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { useDropzone, type FileRejection } from "react-dropzone";
 import { Upload, FileImage, AlertCircle, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@venture/ui";
+import { cn } from "@paperwork-labs/ui";
 
 interface FileUploadZoneProps {
   onFileAccepted: (file: File) => void;

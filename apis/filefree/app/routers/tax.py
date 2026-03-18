@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -8,6 +8,7 @@ from app.dependencies import get_current_user, require_csrf
 from app.models.filing import FilingStatus
 from app.models.tax_calculation import TaxCalculation
 from app.models.user import User
+from app.rate_limit import get_user_rate_limit_key, limiter
 from app.repositories.filing import FilingRepository
 from app.schemas.base import success_response
 from app.services import tax_calculator
@@ -26,7 +27,9 @@ def _parse_uuid(filing_id: str):
 
 
 @router.post("/calculate/{filing_id}")
+@limiter.limit("5/minute", key_func=get_user_rate_limit_key)
 async def calculate(
+    request: Request,
     filing_id: str,
     user: User = Depends(get_current_user),
     _csrf: None = Depends(require_csrf),
@@ -96,7 +99,9 @@ async def calculate(
 
 
 @router.get("/calculation/{filing_id}")
+@limiter.limit("5/minute", key_func=get_user_rate_limit_key)
 async def get_calculation(
+    request: Request,
     filing_id: str,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

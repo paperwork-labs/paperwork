@@ -104,9 +104,7 @@ When evaluating any new service/vendor:
 
 ## Tool Registry (Single Source of Truth)
 
-All tools, vendors, and services are tracked in the **Notion Tool Registry** database:
-`FileFree HQ > Financials > Tool Registry`
-([Notion link](https://www.notion.so/d8d81676702440ed9d209aad58d70685))
+All tools, vendors, and services are tracked in **docs/AI_MODEL_REGISTRY.md** and **docs/FINANCIALS.md**.
 
 **Current inventory (26 tools, ~$12.49/mo fixed):**
 
@@ -118,10 +116,10 @@ All tools, vendors, and services are tracked in the **Notion Tool Registry** dat
 | Ops/Content | 3 | n8n, Postiz, Temporal (all self-hosted) |
 | Analytics | 2 | PostHog (free tier), Sentry (placeholder — needs DSN) |
 | DNS/Domain | 1 | Spaceship |
-| MCP Integrations | 5 | GitHub, Context7, Notion, Render, Postiz (placeholder) |
+| MCP Integrations | 5 | GitHub, Context7, Render, Postiz (placeholder) |
 | Future/Planned | 3 | Impact.com, Column Tax, hCaptcha |
 
-**When adding a new tool:** Update the Notion Tool Registry AND this section of `cfo.mdc`.
+**When adding a new tool:** Update docs/AI_MODEL_REGISTRY.md (or docs/FINANCIALS.md) AND this section of `cfo.mdc`.
 
 ## Quality Gate
 

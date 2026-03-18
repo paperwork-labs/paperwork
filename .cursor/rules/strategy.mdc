@@ -1,5 +1,5 @@
 ---
-description: "Chief of Staff persona — business strategy, planning, Notion workspace management, decision logging, operating cadence. Invoke when making strategic decisions, planning sprints, or managing the business."
+description: "Chief of Staff persona — business strategy, planning, Slack + Google Drive operations, decision logging, operating cadence. Invoke when making strategic decisions, planning sprints, or managing the business."
 ---
 
 # Paperwork Labs Strategy Context
@@ -14,16 +14,16 @@ Paperwork Labs is built and operated by two co-founders with AI agents as the ex
 - **Strategy**: AI analyzes data, drafts plans, logs decisions. Both co-founders make final calls.
 - **Legal**: AI drafts policies, checklists, disclaimers. Founder 1 executes filings. Founder 2 reviews partnership agreements.
 
-## Notion Workspace Structure (Company HQ)
+## Slack + Google Drive Workspace Structure (Company HQ)
 
-**Pages:**
-- Strategy & Vision — north star, competitive landscape, moats
-- Product Roadmap — sprint board, task status, blockers
-- Decision Log — every strategic decision with date, rationale, alternatives
-- Content Calendar — social posts, articles, video scripts (planned/published)
-- Legal & Compliance — EFIN status, privacy policy drafts, ToS, disclaimers
-- Financials — costs, revenue tracking, unit economics
-- Partnerships — Column Tax, financial product referrals, creator outreach
+**Structure:**
+- Strategy & Vision — north star, competitive landscape, moats (Google Drive)
+- Product Roadmap — sprint board, task status, blockers (docs/TASKS.md, #engineering)
+- Decision Log — every strategic decision with date, rationale, alternatives (docs/KNOWLEDGE.md)
+- Content Calendar — social posts, articles, video scripts (planned/published) (Google Drive)
+- Legal & Compliance — EFIN status, privacy policy drafts, ToS, disclaimers (Google Drive)
+- Financials — costs, revenue tracking, unit economics (docs/FINANCIALS.md)
+- Partnerships — Column Tax, financial product referrals, creator outreach (docs/PARTNERSHIPS.md, #general)
 
 ## Decision Log Format
 
@@ -43,7 +43,7 @@ Reversibility: [Easy/Medium/Hard to undo]
 **Monday**: Review metrics (PostHog), check Sentry errors, plan the week's code tasks
 **Tuesday-Thursday**: Build (AI-agent-assisted coding sessions)
 **Friday**: Content day — record videos, publish articles, social posts
-**Weekend**: Strategy review — update Notion, log decisions, plan next week
+**Weekend**: Strategy review — update Google Drive docs, log decisions, plan next week
 
 ## Key Business Metrics
 
@@ -84,7 +84,7 @@ Invoke this persona when:
 - Making strategic business decisions
 - Planning sprints or adjusting timeline
 - Reviewing competitive landscape
-- Managing the Notion workspace or operating cadence
+- Managing Slack + Google Drive operations or operating cadence
 
 ## Handoff Protocol
 

@@ -2,7 +2,7 @@
 
 import { useState, forwardRef, type ChangeEvent } from "react";
 import { Eye, EyeOff, Lock } from "lucide-react";
-import { Input, cn } from "@venture/ui";
+import { Input, cn } from "@paperwork-labs/ui";
 
 interface SSNInputProps {
   value: string;

@@ -1,0 +1,45 @@
+name: Auto-merge on approval
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  auto-merge:
+    if: github.event.review.state == 'approved'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const { data: checks } = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: pr.head.sha,
+            });
+            const notReady = checks.check_runs.filter(
+              (c) => c.name !== 'auto-merge' &&
+                !(c.status === 'completed' && ['success', 'skipped', 'neutral'].includes(c.conclusion))
+            );
+            if (notReady.length > 0) {
+              const blockers = notReady.map((c) =>
+                c.status !== 'completed' ? `${c.name} (${c.status})` : `${c.name} (${c.conclusion})`
+              );
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body: `:x: Auto-merge blocked \u2014 waiting on: ${blockers.join(', ')}`,
+              });
+              return;
+            }
+            await github.rest.pulls.merge({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              merge_method: 'squash',
+            });

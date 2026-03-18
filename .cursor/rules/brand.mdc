@@ -224,3 +224,16 @@ Distill does not have social handles. It is marketed via developer docs, blog po
 - Product name in copy: "Distill" (never "Distill.tax")
 - Domain: distill.tax / api.distill.tax
 - Email: hello@distill.tax / api@distill.tax
+
+## Content Review Gate (Mandatory)
+
+Every piece of user-facing content (email, social post, in-app message, landing page copy) must pass this checklist before publishing:
+
+- Brand names spelled correctly (FileFree, LaunchFree -- proper nouns, correct casing)
+- "Free" claims are 100% accurate with no hidden conditions
+- Tax content uses education framing, not advice ("many do X" not "you should X")
+- Legal content uses services framing, not advice
+- Circular 230 / UPL disclaimer present where applicable
+- FTC affiliate disclosure present if recommending partner products
+- CAN-SPAM compliant (unsubscribe, physical address, honest subject line)
+- No reference to filefree.com anywhere

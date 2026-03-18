@@ -1,5 +1,5 @@
 import { Shield } from "lucide-react";
-import { cn } from "@venture/ui";
+import { cn } from "@paperwork-labs/ui";
 
 interface SecureBadgeProps {
   className?: string;

@@ -8,7 +8,7 @@ import { toast } from "sonner";
 
 import axios from "axios";
 
-import { Button } from "@venture/ui";
+import { Button } from "@paperwork-labs/ui";
 import { DocumentCamera } from "@/components/camera/document-camera";
 import { FileUploadZone } from "@/components/upload/file-upload-zone";
 import { CurrencyDisplay } from "@/components/shared/currency-display";

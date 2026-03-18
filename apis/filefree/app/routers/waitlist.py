@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.rate_limit import limiter
 from app.schemas.base import success_response
 from app.schemas.waitlist import WaitlistCreate
 from app.services.waitlist import WaitlistService
@@ -10,7 +11,9 @@ router = APIRouter(prefix="/waitlist", tags=["waitlist"])
 
 
 @router.post("")
+@limiter.limit("5/minute")
 async def join_waitlist(
+    request: Request,
     data: WaitlistCreate,
     db: AsyncSession = Depends(get_db),
 ):

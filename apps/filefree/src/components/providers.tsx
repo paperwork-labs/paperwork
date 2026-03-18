@@ -4,9 +4,8 @@ import { Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { useState } from "react";
-import { Toaster } from "@venture/ui";
-import { AttributionProvider } from "@/lib/attribution";
-import { PostHogProvider } from "@/components/posthog-provider";
+import { Toaster } from "@paperwork-labs/ui";
+import { AttributionProvider, PostHogProvider } from "@paperwork-labs/analytics";
 import { AuthProvider } from "@/components/auth-provider";
 import { SessionTimeoutDialog } from "@/components/session-timeout-dialog";
 
