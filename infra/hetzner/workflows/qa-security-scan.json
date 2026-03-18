@@ -1,5 +1,5 @@
 {
-  "name": "Paperwork Labs — QA Security Scan",
+  "name": "QA Security Scan",
   "nodes": [
     {
       "parameters": {
@@ -11,31 +11,51 @@
       "id": "webhook-qa",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [250, 300]
+      "typeVersion": 2.1,
+      "position": [
+        250,
+        300
+      ]
     },
     {
       "parameters": {
-        "resource": "chat",
-        "model": "gpt-4o",
-        "messages": {
+        "resource": "text",
+        "operation": "response",
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o"
+        },
+        "responses": {
           "values": [
             {
-              "content": "You are the QA Lead for Paperwork Labs (paperworklabs.com), which builds financial products that handle SSNs, EINs, and sensitive business data. Products: FileFree (filefree.ai) — tax filing, LaunchFree (launchfree.ai) — LLC formation, Distill (distill.tax) — B2B compliance APIs. Bugs have real consequences: wrong refund amounts, IRS rejections, identity exposure, failed state filings.\n\nSecurity priorities:\n- PII Leak Detection: SSN/EIN must never appear in logs, analytics, console, error messages, API responses (except masked), URL params, or LLM API payloads.\n- Authentication: All protected routes need 401 without session, CSRF on state-changing endpoints, rate limiting. Distill B2B routes need API key auth with firm-scoped isolation.\n- Input Validation: Every endpoint tested with malformed input, SQL injection, XSS.\n- Tax Calculations: 100% test coverage required. All in cents (integers), no floats.\n- Formation Data: State filing submissions must be validated against per-state schemas.\n- B2B Isolation: Distill firm data must be tenant-isolated, no cross-firm access.\n\nWhen given code or a feature description, produce a structured security audit:\n1. critical_issues: Must fix before shipping\n2. high_issues: Important but not blocking\n3. medium_issues: Should fix soon\n4. test_cases: Specific test cases to add\n5. checklist: Pre-merge checklist items\n\nReturn as structured JSON.",
-              "role": "system"
+              "type": "text",
+              "role": "system",
+              "content": "You are the QA Lead for Paperwork Labs (paperworklabs.com), which builds financial products that handle SSNs, EINs, and sensitive business data. Products: FileFree (filefree.ai) \u2014 tax filing, LaunchFree (launchfree.ai) \u2014 LLC formation, Distill (distill.tax) \u2014 B2B compliance APIs. Bugs have real consequences: wrong refund amounts, IRS rejections, identity exposure, failed state filings.\n\nSecurity priorities:\n- PII Leak Detection: SSN/EIN must never appear in logs, analytics, console, error messages, API responses (except masked), URL params, or LLM API payloads.\n- Authentication: All protected routes need 401 without session, CSRF on state-changing endpoints, rate limiting. Distill B2B routes need API key auth with firm-scoped isolation.\n- Input Validation: Every endpoint tested with malformed input, SQL injection, XSS.\n- Tax Calculations: 100% test coverage required. All in cents (integers), no floats.\n- Formation Data: State filing submissions must be validated against per-state schemas.\n- B2B Isolation: Distill firm data must be tenant-isolated, no cross-firm access.\n\nWhen given code or a feature description, produce a structured security audit:\n1. critical_issues: Must fix before shipping\n2. high_issues: Important but not blocking\n3. medium_issues: Should fix soon\n4. test_cases: Specific test cases to add\n5. checklist: Pre-merge checklist items\n\nReturn as structured JSON."
             }
           ]
         },
+        "simplify": true,
         "options": {
           "temperature": 0.3,
-          "responseFormat": "json_object"
+          "textFormat": {
+            "textOptions": [
+              {
+                "type": "json_object"
+              }
+            ]
+          },
+          "store": false
         }
       },
       "id": "openai-qa",
       "name": "Security Audit",
       "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 1.8,
-      "position": [500, 300],
+      "typeVersion": 2.1,
+      "position": [
+        500,
+        300
+      ],
       "credentials": {
         "openAiApi": {
           "id": "openai-cred",
@@ -47,15 +67,21 @@
       "parameters": {
         "owner": "paperwork-labs",
         "repository": "paperwork",
-        "title": "={{ '[QA] Security Scan — ' + new Date().toISOString().slice(0,10) }}",
-        "body": "={{ JSON.stringify(JSON.parse($json.message.content), null, 2) }}",
-        "labels": ["security", "qa-scan"]
+        "title": "={{ '[QA] Security Scan \u2014 ' + new Date().toISOString().slice(0,10) }}",
+        "body": "={{ ((($json.output || [])[0]?.content || []).find(c => c.type === 'output_text')?.text || '') }}",
+        "labels": [
+          "security",
+          "qa-scan"
+        ]
       },
       "id": "github-qa",
       "name": "Create GitHub Issue",
       "type": "n8n-nodes-base.github",
       "typeVersion": 1,
-      "position": [750, 300],
+      "position": [
+        750,
+        300
+      ],
       "credentials": {
         "githubApi": {
           "id": "github-cred",
@@ -71,13 +97,16 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ channel: 'C0ALLEKR9FZ', text: '*QA Security Scan — ' + new Date().toISOString().slice(0,10) + '*\\n\\n' + (typeof $json.message.content === 'string' ? $json.message.content : JSON.stringify($json.message.content, null, 2)), username: 'QA', icon_emoji: ':mag:' }) }}"
+        "jsonBody": "={{ JSON.stringify({ channel: 'C0ALLEKR9FZ', text: '*QA Security Scan \u2014 ' + new Date().toISOString().slice(0,10) + '*\\n\\n' + ((($json.output || [])[0]?.content || []).find(c => c.type === 'output_text')?.text || ''), username: 'QA', icon_emoji: ':mag:' }) }}"
       },
       "id": "slack-qa",
       "name": "Post to Slack",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [750, 500],
+      "typeVersion": 4.4,
+      "position": [
+        750,
+        500
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "slack-cred",
@@ -88,16 +117,46 @@
   ],
   "connections": {
     "Webhook": {
-      "main": [[{ "node": "Security Audit", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Security Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Security Audit": {
-      "main": [[
-        { "node": "Create GitHub Issue", "type": "main", "index": 0 },
-        { "node": "Post to Slack", "type": "main", "index": 0 }
-      ]]
+      "main": [
+        [
+          {
+            "node": "Create GitHub Issue",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Post to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "tags": [{ "name": "persona" }, { "name": "qa" }, { "name": "slack" }],
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "persona"
+    },
+    {
+      "name": "qa"
+    },
+    {
+      "name": "slack"
+    }
+  ],
   "id": "22ba64df-255d-4a42-a3a2-8d97ce884b1d"
 }

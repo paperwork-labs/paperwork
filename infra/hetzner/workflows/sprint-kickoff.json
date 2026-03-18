@@ -1,0 +1,335 @@
+{
+  "name": "Sprint Kickoff",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * 1,4"
+            }
+          ]
+        }
+      },
+      "id": "schedule-sprint-kickoff",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        250,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/paperwork-labs/paperwork/contents/docs/TASKS.md",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github.v3.raw"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-tasks",
+      "name": "Fetch TASKS.md",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        500,
+        220
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "github-cred",
+          "name": "GitHub PAT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/paperwork-labs/paperwork/contents/docs/KNOWLEDGE.md",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github.v3.raw"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-knowledge",
+      "name": "Fetch KNOWLEDGE.md",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        500,
+        420
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "github-cred",
+          "name": "GitHub PAT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/paperwork-labs/paperwork/commits?per_page=20",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "fetch-commits",
+      "name": "Fetch Recent Commits",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        750,
+        320
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "github-cred",
+          "name": "GitHub PAT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const tasks = $('Fetch TASKS.md').first().json.data || JSON.stringify($('Fetch TASKS.md').first().json);\nconst knowledge = $('Fetch KNOWLEDGE.md').first().json.data || JSON.stringify($('Fetch KNOWLEDGE.md').first().json);\nconst commits = $('Fetch Recent Commits').first().json || [];\n\nconst commitSummary = (Array.isArray(commits) ? commits : []).slice(0, 10).map((c) => `- ${c.commit?.message || 'No message'} (${c.sha?.slice(0,7) || 'n/a'})`).join('\\n');\n\nconst prompt = `Today starts a new 3-day sprint at Paperwork Labs.\\n\\nTASKS.md:\\n${tasks}\\n\\nRecent decisions:\\n${knowledge.slice(-3000)}\\n\\nRecent commits:\\n${commitSummary}\\n\\nCreate a sprint kickoff with sections:\\n1) *Sprint Goals*\\n2) *Engineering Plan*\\n3) *Risk Assessment*\\n4) *Strategic Priority*\\n5) *Top 3 priorities*`;\n\nreturn [{ json: { prompt } }];"
+      },
+      "id": "build-kickoff-prompt",
+      "name": "Build Kickoff Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "text",
+        "operation": "response",
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o"
+        },
+        "responses": {
+          "values": [
+            {
+              "type": "text",
+              "role": "system",
+              "content": "You are the Sprint Planning Panel for Paperwork Labs. Write concise, actionable Slack markdown for a 3-day sprint kickoff."
+            },
+            {
+              "type": "text",
+              "role": "user",
+              "content": "={{ $json.prompt }}"
+            }
+          ]
+        },
+        "simplify": true,
+        "options": {
+          "temperature": 0.4,
+          "store": false
+        }
+      },
+      "id": "generate-kickoff",
+      "name": "Generate Kickoff",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        1250,
+        320
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-cred",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $json.output || [];\nconst text = output[0]?.content?.find((part) => part.type === 'output_text')?.text || 'Sprint kickoff generated but empty.';\nconst condensed = text.split('\\n').slice(0,2).join(' ');\nreturn [{ json: { text, condensed } }];"
+      },
+      "id": "format-kickoff-output",
+      "name": "Format Kickoff Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ channel: '#sprints', text: '*Sprint Kickoff*\\n\\n' + $json.text, username: 'Sprint Planning', icon_emoji: ':rocket:' }) }}",
+        "options": {}
+      },
+      "id": "post-sprints",
+      "name": "Post to #sprints",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1750,
+        240
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "slack-cred",
+          "name": "Slack Bot Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ channel: 'C0AMEQV199P', text: ':rocket: New 3-day sprint kickoff posted in #sprints. ' + $json.condensed, username: 'Sprint Planning', icon_emoji: ':rocket:' }) }}",
+        "options": {}
+      },
+      "id": "post-all",
+      "name": "Post to #all-paperwork-labs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1750,
+        400
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "slack-cred",
+          "name": "Slack Bot Token"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch TASKS.md",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch KNOWLEDGE.md",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch TASKS.md": {
+      "main": [
+        [
+          {
+            "node": "Fetch Recent Commits",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch KNOWLEDGE.md": {
+      "main": [
+        [
+          {
+            "node": "Fetch Recent Commits",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Recent Commits": {
+      "main": [
+        [
+          {
+            "node": "Build Kickoff Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Kickoff Prompt": {
+      "main": [
+        [
+          {
+            "node": "Generate Kickoff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Kickoff": {
+      "main": [
+        [
+          {
+            "node": "Format Kickoff Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Kickoff Output": {
+      "main": [
+        [
+          {
+            "node": "Post to #sprints",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Post to #all-paperwork-labs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "agent"
+    },
+    {
+      "name": "sprint"
+    }
+  ],
+  "id": "f7a8b9c0-d1e2-4f3a-b4c5-d6e7f8a9b0c1"
+}

@@ -1,5 +1,5 @@
 {
-  "name": "Paperwork Labs — Weekly Strategy Check-in",
+  "name": "Weekly Strategy Check-in",
   "nodes": [
     {
       "parameters": {
@@ -15,35 +15,56 @@
       "id": "cron-strategy",
       "name": "Monday 9am",
       "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [250, 300]
+      "typeVersion": 1.3,
+      "position": [
+        250,
+        300
+      ]
     },
     {
       "parameters": {
-        "resource": "chat",
-        "model": "gpt-4o",
-        "messages": {
+        "resource": "text",
+        "operation": "response",
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o"
+        },
+        "responses": {
           "values": [
             {
-              "content": "You are the Chief of Staff for Paperwork Labs (paperworklabs.com), a venture that builds tools to eliminate paperwork. Products: FileFree (filefree.ai) — free tax filing, LaunchFree (launchfree.ai) — free LLC formation, Distill (distill.tax) — B2B compliance automation, Trinkets (tools.filefree.ai) — utility tools.\n\nCo-founder model:\n- Founder 1 (Product/Engineering): AI-assisted coding, owns all products and infrastructure.\n- Founder 2 (Partnerships/Revenue): FAANG partnerships background, 2-3 hrs/week, owns partner outreach and deal negotiation.\n\nNorth Star milestones:\nFileFree:\n1. Landing page live — filefree.ai (March 2026)\n2. OCR demo — try-before-signup (March 2026)\n3. Full MVP — complete filing flow (May 2026)\n4. Column Tax e-file live (October 2026)\n5. Own MeF transmitter — FREE E-FILE (January 2027)\n6. 50,000 filers (April 2027)\n\nLaunchFree:\n1. Landing page live — launchfree.ai (April 2026)\n2. State Filing Engine MVP — 5 states (Summer 2026)\n3. All 50 states automated (End of 2026)\n\nDistill:\n1. API docs + developer portal — distill.tax (Summer 2026)\n2. CPA SaaS beta (Summer 2026)\n3. Formation API + Tax API live (Fall 2026)\n\nKey metrics: Cost per user $0.06, ARPU $8.05, gross margin 99.3%, fixed infra ~$32.50/mo.\n\nGenerate a weekly strategy check-in report with:\n1. progress_summary: What should have been accomplished this week across all products based on the sprint timeline\n2. risks: Top 3 risks or blockers to flag (across the venture)\n3. priorities_next_week: Top 3 priorities for the coming week\n4. founder2_actions: 1-2 specific actions for the partnerships co-founder (each <10 min)\n5. decision_needed: Any strategic decisions that need to be made this week\n\nReturn as structured JSON.",
-              "role": "system"
+              "type": "text",
+              "role": "system",
+              "content": "You are the Chief of Staff for Paperwork Labs (paperworklabs.com), a venture that builds tools to eliminate paperwork. Products: FileFree (filefree.ai) \u2014 free tax filing, LaunchFree (launchfree.ai) \u2014 free LLC formation, Distill (distill.tax) \u2014 B2B compliance automation, Trinkets (tools.filefree.ai) \u2014 utility tools.\n\nCo-founder model:\n- Founder 1 (Product/Engineering): AI-assisted coding, owns all products and infrastructure.\n- Founder 2 (Partnerships/Revenue): FAANG partnerships background, 2-3 hrs/week, owns partner outreach and deal negotiation.\n\nNorth Star milestones:\nFileFree:\n1. Landing page live \u2014 filefree.ai (March 2026)\n2. OCR demo \u2014 try-before-signup (March 2026)\n3. Full MVP \u2014 complete filing flow (May 2026)\n4. Column Tax e-file live (October 2026)\n5. Own MeF transmitter \u2014 FREE E-FILE (January 2027)\n6. 50,000 filers (April 2027)\n\nLaunchFree:\n1. Landing page live \u2014 launchfree.ai (April 2026)\n2. State Filing Engine MVP \u2014 5 states (Summer 2026)\n3. All 50 states automated (End of 2026)\n\nDistill:\n1. API docs + developer portal \u2014 distill.tax (Summer 2026)\n2. CPA SaaS beta (Summer 2026)\n3. Formation API + Tax API live (Fall 2026)\n\nKey metrics: Cost per user $0.06, ARPU $8.05, gross margin 99.3%, fixed infra ~$32.50/mo.\n\nGenerate a weekly strategy check-in report with:\n1. progress_summary: What should have been accomplished this week across all products based on the sprint timeline\n2. risks: Top 3 risks or blockers to flag (across the venture)\n3. priorities_next_week: Top 3 priorities for the coming week\n4. founder2_actions: 1-2 specific actions for the partnerships co-founder (each <10 min)\n5. decision_needed: Any strategic decisions that need to be made this week\n\nReturn as structured JSON."
             },
             {
-              "content": "Generate the weekly strategy check-in for this Monday. Consider the current date and where we should be in the sprint timeline across all Paperwork Labs products.",
-              "role": "user"
+              "type": "text",
+              "role": "user",
+              "content": "Generate the weekly strategy check-in for this Monday. Consider the current date and where we should be in the sprint timeline across all Paperwork Labs products."
             }
           ]
         },
+        "simplify": true,
         "options": {
           "temperature": 0.5,
-          "responseFormat": "json_object"
+          "textFormat": {
+            "textOptions": [
+              {
+                "type": "json_object"
+              }
+            ]
+          },
+          "store": false
         }
       },
       "id": "openai-strategy",
       "name": "Generate Strategy Report",
       "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 1.8,
-      "position": [500, 300],
+      "typeVersion": 2.1,
+      "position": [
+        500,
+        300
+      ],
       "credentials": {
         "openAiApi": {
           "id": "openai-cred",
@@ -59,13 +80,16 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ channel: 'C0AMEQV199P', text: '*Weekly Strategy Check-in — ' + new Date().toISOString().slice(0,10) + '*\\n\\n' + (typeof $json.message.content === 'string' ? $json.message.content : JSON.stringify($json.message.content, null, 2)), username: 'Strategy', icon_emoji: ':chess_pawn:' }) }}"
+        "jsonBody": "={{ JSON.stringify({ channel: 'C0AMEQV199P', text: '*Weekly Strategy Check-in \u2014 ' + new Date().toISOString().slice(0,10) + '*\\n\\n' + ((($json.output || [])[0]?.content || []).find(c => c.type === 'output_text')?.text || ''), username: 'Strategy', icon_emoji: ':chess_pawn:' }) }}"
       },
       "id": "slack-strategy",
       "name": "Post to Slack",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [750, 300],
+      "typeVersion": 4.4,
+      "position": [
+        750,
+        300
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "slack-cred",
@@ -76,13 +100,41 @@
   ],
   "connections": {
     "Monday 9am": {
-      "main": [[{ "node": "Generate Strategy Report", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Generate Strategy Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Generate Strategy Report": {
-      "main": [[{ "node": "Post to Slack", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Post to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "tags": [{ "name": "persona" }, { "name": "strategy" }, { "name": "slack" }],
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "persona"
+    },
+    {
+      "name": "strategy"
+    },
+    {
+      "name": "slack"
+    }
+  ],
   "id": "d9314236-808d-4cb1-aec9-fc738e16f23d"
 }
