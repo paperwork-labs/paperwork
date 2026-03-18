@@ -1,0 +1,68 @@
+name: Deploy n8n workflows
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infra/hetzner/workflows/*.json'
+
+concurrency:
+  group: deploy-n8n
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to Hetzner
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy workflows and import
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: root
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            set -e
+            CONTAINER="paperwork-ops-n8n-1"
+            REMOTE_TMP="/tmp/paperwork-workflows"
+            mkdir -p "$REMOTE_TMP"
+
+      - name: Upload workflow files
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: root
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          source: "infra/hetzner/workflows/*.json"
+          target: "/tmp/paperwork-workflows"
+          strip_components: 3
+
+      - name: Import, activate, and restart n8n
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: root
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            set -e
+            CONTAINER="paperwork-ops-n8n-1"
+
+            echo "Importing workflows..."
+            for f in /tmp/paperwork-workflows/*.json; do
+              name=$(basename "$f")
+              docker cp "$f" "$CONTAINER:/tmp/$name"
+              docker exec "$CONTAINER" n8n import:workflow --input="/tmp/$name"
+            done
+
+            echo "Activating workflows..."
+            IDS=$(docker exec "$CONTAINER" n8n list:workflow --active=false --json 2>/dev/null | grep -o '"id":"[^"]*"' | cut -d'"' -f4 || true)
+            for id in $IDS; do
+              docker exec "$CONTAINER" n8n update:workflow --id="$id" --active=true 2>/dev/null || true
+            done
+
+            echo "Restarting n8n..."
+            docker restart "$CONTAINER"
+
+            echo "Done."
