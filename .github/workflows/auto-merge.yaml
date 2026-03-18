@@ -21,17 +21,14 @@ jobs:
               repo: context.repo.repo,
               ref: pr.head.sha,
             });
-            const pending = checks.check_runs.filter(
-              (c) => c.name !== 'auto-merge' && c.status === 'in_progress'
+            const notReady = checks.check_runs.filter(
+              (c) => c.name !== 'auto-merge' &&
+                !(c.status === 'completed' && ['success', 'skipped', 'neutral'].includes(c.conclusion))
             );
-            const failed = checks.check_runs.filter(
-              (c) => c.name !== 'auto-merge' && c.conclusion === 'failure'
-            );
-            if (failed.length > 0 || pending.length > 0) {
-              const blockers = [
-                ...failed.map((c) => `${c.name} (failed)`),
-                ...pending.map((c) => `${c.name} (running)`),
-              ];
+            if (notReady.length > 0) {
+              const blockers = notReady.map((c) =>
+                c.status !== 'completed' ? `${c.name} (${c.status})` : `${c.name} (${c.conclusion})`
+              );
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,

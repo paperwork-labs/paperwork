@@ -107,15 +107,19 @@ async function checkPublicUrl(
   }
 
   try {
-    const response = await fetch(url, { method: "GET", cache: "no-store" });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const response = await fetch(url, { method: "GET", cache: "no-store", signal: controller.signal });
+    clearTimeout(timeout);
     return {
       service,
       configured: true,
       healthy: response.ok,
       detail: response.ok ? "Reachable" : `HTTP ${response.status}`,
     };
-  } catch {
-    return { service, configured: true, healthy: false, detail: "Unreachable" };
+  } catch (err) {
+    const detail = err instanceof DOMException && err.name === "AbortError" ? "Timeout (8s)" : "Unreachable";
+    return { service, configured: true, healthy: false, detail };
   }
 }
 
@@ -134,18 +138,23 @@ async function checkTokenBackedApi(
   }
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
     const response = await fetch(url, {
       cache: "no-store",
       headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
     return {
       service,
       configured: true,
       healthy: response.ok,
       detail: response.ok ? "API reachable" : `HTTP ${response.status}`,
     };
-  } catch {
-    return { service, configured: true, healthy: false, detail: "API unreachable" };
+  } catch (err) {
+    const detail = err instanceof DOMException && err.name === "AbortError" ? "Timeout (8s)" : "API unreachable";
+    return { service, configured: true, healthy: false, detail };
   }
 }
 
