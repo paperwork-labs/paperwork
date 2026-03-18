@@ -182,7 +182,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ channel: 'C0ALLJWR1HV', text: $json.text, username: 'EA / Operator', icon_emoji: ':crystal_ball:' }) }}",
+        "jsonBody": "={{ JSON.stringify({ channel: 'C0ALLJWR1HV', text: $json.text, username: 'EA / Operator', icon_emoji: ':astronaut:' }) }}",
         "options": {}
       },
       "id": "post-daily-briefing",
