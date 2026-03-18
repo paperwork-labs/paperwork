@@ -23,8 +23,7 @@ Organizational memory for Paperwork Labs (FileFree, LaunchFree, Distill, Trinket
 - **D25 — Legal review**: Privacy/Terms pages need counsel review before January 2027
 - **D34 — n8n credentials**: Workflows imported but some credentials need manual setup in n8n UI
 - **D24 — Sentry**: Error tracking not yet integrated (PostHog analytics is live)
-- **AI SDK upgrade**: Evaluate Vercel AI SDK 5+ migration (typed messages, agentic loop control, Zod 4)
-- **UI components**: Evaluate PrismUI / SmoothUI for animated shadcn components when building product UIs
+- **UI components**: Evaluate PrismUI / SmoothUI for pre-built animated shadcn components when building product UIs (Phase 2+). Current stack: framer-motion + tailwindcss-animate.
 
 ### Open Architecture Questions
 

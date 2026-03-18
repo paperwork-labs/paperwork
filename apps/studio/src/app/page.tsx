@@ -46,8 +46,6 @@ const team = [
 ];
 
 export default function HomePage() {
-  const showAdminLink = process.env.NEXT_PUBLIC_SHOW_ADMIN_LINK === "true";
-
   return (
     <div className="min-h-screen">
       <header className="border-b border-border/40">
@@ -81,14 +79,12 @@ export default function HomePage() {
             wants to do. We automate it so you never have to think about it
             again. Consumer products are free forever.
           </p>
-          {showAdminLink ? (
-            <a
-              href="/admin"
-              className="mt-8 inline-flex rounded-md border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-100 hover:bg-zinc-800"
-            >
-              Open Command Center
-            </a>
-          ) : null}
+          <a
+            href="/admin"
+            className="mt-8 inline-flex rounded-md border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-100 hover:bg-zinc-800"
+          >
+            Open Command Center
+          </a>
         </section>
 
         <section className="mx-auto max-w-5xl px-6 pb-24">
