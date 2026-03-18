@@ -32,11 +32,29 @@ Slack is the founder's primary workspace. The EA operates on Slack in two modes:
 
 **Session bookend mode** (Cursor agent sessions):
 
-At the **start** of a significant work session (multi-task, infra changes, or multi-PR work), post a concise status to `#daily-briefing` covering: current infra health (n8n workflow count, key service status), what's about to be worked on, and any blockers.
+At the **start and end** of significant work sessions (multi-task, infra changes, or multi-PR work), post a status update to `#daily-briefing`. Use the **EA persona** and match the clean briefing format:
 
-At the **end** of the session, post a wrap-up to `#daily-briefing` covering: what was completed, current infra status (GREEN/YELLOW/RED items), and what's next. Use the Engineering persona. Keep it scannable — bullets, not paragraphs.
+```
+*Session [Start|End] — YYYY-MM-DD*
 
-Both posts go as standalone messages (not thread replies to the 7am briefing) so they're visible in the channel timeline. Use `./scripts/slack-persona.sh engineering C0ALLJWR1HV "<message>"`.
+*Phase X (Name)* progress_description
+• DONE: [completed items]
+• IN PROGRESS: [active items]
+• Blocker: [if any]
+
+*Completed this session:*
+• [bullet list of what was done]
+
+*Next:*
+• [what's coming next]
+```
+
+Rules:
+- Use `./scripts/slack-persona.sh ea C0ALLJWR1HV "<message>"` (EA persona, `#daily-briefing`)
+- Keep it concise — bullets, not paragraphs
+- Include phase status with completion indicators
+- Call out blockers explicitly
+- Post as standalone messages (not thread replies) so they're visible in the timeline
 
 ### Sending Messages from Cursor
 
@@ -64,6 +82,7 @@ The Slack MCP is still used for **reading** channels, searching messages, and lo
 | `#daily-briefing` | `C0ALLJWR1HV` | EA | Morning briefing at 7am PT |
 | `#decisions` | `C0AM2310P8A` | Strategy | Decision logging ("log this") |
 | `#filing-engine` | `C0AMWB887KJ` | Engineering | State portal health, stuck submissions |
+| `#alerts` | `C0ALVM4PAE7` | Engineering | Automated infra alerts: deploy results, health check failures, outages |
 | `#general` | `C0AM01NHQ3Y` | Auto-route | Ad-hoc questions, routed to right persona |
 
 ### Smart Persona Routing
