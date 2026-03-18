@@ -1,24 +1,30 @@
 # n8n Agent Workflows — Paperwork Labs
 
-AI agent workflows deployed on the Hetzner VPS at `n8n.paperworklabs.com`. All workflows follow a **Slack-first architecture**: every agent posts its output to a Slack channel rather than writing to Notion or external systems. This keeps the team in one place, makes outputs immediately visible, and lets us react in threads.
+AI agent workflows run on the Hetzner VPS at `n8n.paperworklabs.com`.
 
-The **Agent Thread Handler** is the backbone — it listens for Slack events (thread replies and @mentions) and routes them to GPT-4o for contextual responses. Other workflows run on cron schedules or webhook triggers and post their results to designated channels.
+Architecture is **Slack-first**:
+- One Slack Event Subscriptions endpoint (`slack-events`) handled by `agent-thread-handler.json`
+- Persona-routed thread responses in Slack
+- Scheduled briefings, sprint kickoff/close, and operational alerts posted to Slack channels
+- Decision logging routed from the thread handler to the decision workflow
 
 ## Workflows
 
 | Workflow | File | Trigger | AI Model | Output |
 |---|---|---|---|---|
-| Agent Thread Handler | `venture-agent-thread-handler.json` | Slack event (thread/mention) | GPT-4o | Reply in Slack thread |
-| EA Daily Briefing | `venture-ea-daily.json` | Cron 7am PT | GPT-4o-mini | #daily-briefing |
-| EA Weekly Plan | `venture-ea-weekly.json` | Cron Sunday 6pm PT | GPT-4o | #all-paperwork-labs |
-| PR Summary | `venture-pr-summary.json` | GitHub webhook (PR opened) | GPT-4o-mini | #engineering |
-| Decision Logger | `venture-decision-logger.json` | Slack event ("log this" in #decisions) | GPT-4o-mini | KNOWLEDGE.md + thread confirm |
+| Agent Thread Handler | `agent-thread-handler.json` | Slack event (thread/mention) | GPT-4o | Reply in Slack thread |
+| EA Daily Briefing | `ea-daily.json` | Cron 7am PT | GPT-4o | #daily-briefing |
+| EA Weekly Plan | `ea-weekly.json` | Cron Sunday 6pm PT | GPT-4o | #all-paperwork-labs |
+| PR Summary | `pr-summary.json` | GitHub webhook (PR opened) | GPT-4o-mini | #engineering |
+| Decision Logger | `decision-logger.json` | Triggered by thread handler (`log this` / `decided:` in #decisions) | deterministic formatter | KNOWLEDGE.md + thread confirm |
 | Social Content Generator | `social-content-generator.json` | POST /social-content | GPT-4o-mini | #general |
 | Growth Content Writer | `growth-content-writer.json` | POST /growth-content | GPT-4o-mini | #general |
 | Weekly Strategy Check-in | `weekly-strategy-checkin.json` | Cron Monday 9am | GPT-4o | #all-paperwork-labs |
 | QA Security Scan | `qa-security-scan.json` | POST /qa-scan | GPT-4o | #engineering + GitHub Issue |
 | Partnership Outreach | `partnership-outreach-drafter.json` | POST /partnership-outreach | GPT-4o | #general |
 | CPA Tax Review | `cpa-tax-review.json` | POST /cpa-review | GPT-4o | #general |
+| Sprint Kickoff | `sprint-kickoff.json` | Cron Mon/Thu 7am PT | GPT-4o | #sprints + #all-paperwork-labs |
+| Sprint Close | `sprint-close.json` | Cron Wed/Sat 9pm PT | GPT-4o | #sprints + KNOWLEDGE.md |
 
 ## Credential Setup
 
@@ -33,22 +39,37 @@ After adding credentials, open each workflow in the n8n editor, select the corre
 ## Deploying Updates
 
 ```bash
-for f in infra/hetzner/workflows/*.json; do
-  scp "$f" root@204.168.147.100:/tmp/
-done
-ssh root@204.168.147.100 'cd /opt/paperwork-ops && for f in /tmp/*.json; do docker compose exec -T n8n n8n import:workflow --input="$f"; done'
+# Copy workflow files to server
+scp infra/hetzner/workflows/*.json root@204.168.147.100:/tmp/paperwork-workflows/
+
+# Import each workflow from inside container filesystem
+ssh root@204.168.147.100 'for f in /tmp/paperwork-workflows/*.json; do
+  docker cp "$f" paperwork-ops-n8n-1:/tmp/$(basename "$f")
+  docker exec paperwork-ops-n8n-1 n8n import:workflow --input="/tmp/$(basename "$f")"
+done'
+
+# Publish all imported workflows (required for production webhooks)
+ssh root@204.168.147.100 'ids=$(docker exec paperwork-ops-postgres-1 psql -U filefree_ops -d n8n -At -c "SELECT id FROM workflow_entity;"); for id in $ids; do docker exec paperwork-ops-n8n-1 n8n publish:workflow --id=$id >/dev/null; done'
 ```
 
 ## Slack Event Subscriptions
 
-The **Agent Thread Handler** and **Decision Logger** workflows require Slack Event Subscriptions to receive real-time events.
+Slack Event Subscriptions must point to a **single** request URL (thread handler webhook):
 
 1. Go to [api.slack.com/apps](https://api.slack.com/apps) and select your Paperwork Labs app.
 2. Navigate to **Event Subscriptions** and toggle "Enable Events" on.
-3. Set the **Request URL** to the n8n webhook URL for the Agent Thread Handler workflow (e.g., `https://n8n.paperworklabs.com/webhook/agent-thread-handler`). Slack will send a verification challenge — n8n handles this automatically.
+3. Set the **Request URL** to:
+   `https://n8n.paperworklabs.com/webhook/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/webhook/slack-events`
+   Slack sends a `url_verification` challenge; this workflow returns the `challenge` payload automatically.
 4. Under **Subscribe to bot events**, add:
-   - `message.channels` — messages in public channels (for Decision Logger listening in #decisions)
+   - `message.channels` — messages in public channels (thread replies and #decisions triggers)
    - `app_mention` — @mentions of the bot (for Agent Thread Handler)
    - `message.groups` — messages in private channels (if the bot is invited to any)
 5. Click **Save Changes**. Slack will start delivering events to n8n immediately.
 6. Ensure the bot is invited to all channels where it should listen (`#decisions`, `#daily-briefing`, `#engineering`, `#all-paperwork-labs`, `#general`).
+
+## Security Notes
+
+- Slack signature verification and timestamp replay protection are required for production hardening.
+- GitHub webhook signature verification (`X-Hub-Signature-256`) is required for `pr-summary.json`.
+- Current workflows run in a trusted internal environment; add these checks in Phase 2 before wider exposure.

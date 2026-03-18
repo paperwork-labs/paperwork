@@ -1,5 +1,5 @@
 {
-  "name": "Paperwork Labs — CPA Tax Review",
+  "name": "CPA Tax Review",
   "nodes": [
     {
       "parameters": {
@@ -11,31 +11,51 @@
       "id": "webhook-cpa",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [250, 300]
+      "typeVersion": 2.1,
+      "position": [
+        250,
+        300
+      ]
     },
     {
       "parameters": {
-        "resource": "chat",
-        "model": "gpt-4o",
-        "messages": {
+        "resource": "text",
+        "operation": "response",
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o"
+        },
+        "responses": {
           "values": [
             {
-              "content": "You are a CPA reviewing tax content for Paperwork Labs (paperworklabs.com). FileFree (filefree.ai) is the consumer tax filing product; Distill (distill.tax) is the B2B compliance automation platform that also serves CPA firms. Every insight must pass this test: 'Would I stake my CPA license on this being correct and helpful?'\n\nAdvisory quality standards — every AI tip must be:\n1. Specific to the user's data\n2. Actionable\n3. Correct (verified against current tax law)\n4. Conservative (understate when in doubt)\n5. Within Circular 230 bounds (education, not 'advice')\n\nReview checklist:\n- Dollar amounts mathematically correct\n- Tax law citations current (2025 tax year)\n- Specific to THIS user\n- Actionable\n- Within Circular 230 bounds\n- Appropriate caveats\n- No guarantees ('you WILL save' -> 'you could save')\n- Consistent across FileFree (consumer) and Distill (B2B) contexts\n\nWhen given tax content, produce:\n1. accuracy_verdict: pass/fail with explanation\n2. issues: list of problems found\n3. suggested_fixes: corrected versions\n4. circular_230_check: education vs advice\n5. tone_check: user-friendly and jargon-free\n\nReturn as structured JSON.",
-              "role": "system"
+              "type": "text",
+              "role": "system",
+              "content": "You are a CPA reviewing tax content for Paperwork Labs (paperworklabs.com). FileFree (filefree.ai) is the consumer tax filing product; Distill (distill.tax) is the B2B compliance automation platform that also serves CPA firms. Every insight must pass this test: 'Would I stake my CPA license on this being correct and helpful?'\n\nAdvisory quality standards \u2014 every AI tip must be:\n1. Specific to the user's data\n2. Actionable\n3. Correct (verified against current tax law)\n4. Conservative (understate when in doubt)\n5. Within Circular 230 bounds (education, not 'advice')\n\nReview checklist:\n- Dollar amounts mathematically correct\n- Tax law citations current (2025 tax year)\n- Specific to THIS user\n- Actionable\n- Within Circular 230 bounds\n- Appropriate caveats\n- No guarantees ('you WILL save' -> 'you could save')\n- Consistent across FileFree (consumer) and Distill (B2B) contexts\n\nWhen given tax content, produce:\n1. accuracy_verdict: pass/fail with explanation\n2. issues: list of problems found\n3. suggested_fixes: corrected versions\n4. circular_230_check: education vs advice\n5. tone_check: user-friendly and jargon-free\n\nReturn as structured JSON."
             }
           ]
         },
+        "simplify": true,
         "options": {
           "temperature": 0.3,
-          "responseFormat": "json_object"
+          "textFormat": {
+            "textOptions": [
+              {
+                "type": "json_object"
+              }
+            ]
+          },
+          "store": false
         }
       },
       "id": "openai-cpa",
       "name": "CPA Review",
       "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 1.8,
-      "position": [500, 300],
+      "typeVersion": 2.1,
+      "position": [
+        500,
+        300
+      ],
       "credentials": {
         "openAiApi": {
           "id": "openai-cred",
@@ -51,13 +71,16 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ channel: 'C0AM01NHQ3Y', text: '*CPA Tax Review — ' + new Date().toISOString().slice(0,10) + '*\\n\\n' + (typeof $json.message.content === 'string' ? $json.message.content : JSON.stringify($json.message.content, null, 2)), username: 'CPA Advisor', icon_emoji: ':bar_chart:' }) }}"
+        "jsonBody": "={{ JSON.stringify({ channel: 'C0AM01NHQ3Y', text: '*CPA Tax Review \u2014 ' + new Date().toISOString().slice(0,10) + '*\\n\\n' + ((($json.output || [])[0]?.content || []).find(c => c.type === 'output_text')?.text || ''), username: 'CPA Advisor', icon_emoji: ':bar_chart:' }) }}"
       },
       "id": "slack-cpa",
       "name": "Post to Slack",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [750, 300],
+      "typeVersion": 4.4,
+      "position": [
+        750,
+        300
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "slack-cred",
@@ -68,13 +91,41 @@
   ],
   "connections": {
     "Webhook": {
-      "main": [[{ "node": "CPA Review", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "CPA Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "CPA Review": {
-      "main": [[{ "node": "Post to Slack", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Post to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "tags": [{ "name": "persona" }, { "name": "cpa" }, { "name": "slack" }],
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "persona"
+    },
+    {
+      "name": "cpa"
+    },
+    {
+      "name": "slack"
+    }
+  ],
   "id": "4db09e98-3543-4b8c-9f3e-dc85a261937a"
 }

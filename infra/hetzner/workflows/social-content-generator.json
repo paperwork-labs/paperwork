@@ -1,5 +1,5 @@
 {
-  "name": "Paperwork Labs — Social Content Generator",
+  "name": "Social Content Generator",
   "nodes": [
     {
       "parameters": {
@@ -11,31 +11,51 @@
       "id": "webhook-social",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [250, 300]
+      "typeVersion": 2.1,
+      "position": [
+        250,
+        300
+      ]
     },
     {
       "parameters": {
-        "resource": "chat",
-        "model": "gpt-4o-mini",
-        "messages": {
+        "resource": "text",
+        "operation": "response",
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "responses": {
           "values": [
             {
-              "content": "You are the social media manager for Paperwork Labs (paperworklabs.com), a venture that builds tools to eliminate paperwork. Products: FileFree (filefree.ai) — free AI-powered tax filing, LaunchFree (launchfree.ai) — free LLC formation, Distill (distill.tax) — B2B compliance automation APIs.\n\nYour job: create content that makes taxes and business formation feel approachable, build trust through founder authenticity, and drive users to the appropriate product.\n\nPlatform rules:\n- TikTok: 15-60s vertical video scripts with hook in first 0.5s. Use trending formats. Founder-led, casual.\n- Instagram Reels: Same video re-edited with 20-30 hashtags and long save-bait caption.\n- X/Twitter: Sharp, concise text. Threads for explainers. Anti-TurboTax/anti-LegalZoom energy.\n- YouTube Shorts: Same video with subscribe CTA and keyword-rich description.\n\nContent pillars: (1) Tax Myths Busted, (2) 'I Filed in X Minutes' Reactions, (3) W-2 Explainers, (4) Money Tips, (5) Founder Journey, (6) LLC Formation Guides, (7) Business Tips for New Founders.\n\nTone: Smart, calm friend who knows taxes and business. Use 'you/your'. Contractions always. Anti-TurboTax/anti-LegalZoom but comparative not aggressive.\n\nReturn JSON with keys: title, product (filefree|launchfree|distill), tiktok_script, instagram_caption, instagram_hashtags, x_tweet, x_thread (array), youtube_description.",
-              "role": "system"
+              "type": "text",
+              "role": "system",
+              "content": "You are the social media manager for Paperwork Labs (paperworklabs.com), a venture that builds tools to eliminate paperwork. Products: FileFree (filefree.ai) \u2014 free AI-powered tax filing, LaunchFree (launchfree.ai) \u2014 free LLC formation, Distill (distill.tax) \u2014 B2B compliance automation APIs.\n\nYour job: create content that makes taxes and business formation feel approachable, build trust through founder authenticity, and drive users to the appropriate product.\n\nPlatform rules:\n- TikTok: 15-60s vertical video scripts with hook in first 0.5s. Use trending formats. Founder-led, casual.\n- Instagram Reels: Same video re-edited with 20-30 hashtags and long save-bait caption.\n- X/Twitter: Sharp, concise text. Threads for explainers. Anti-TurboTax/anti-LegalZoom energy.\n- YouTube Shorts: Same video with subscribe CTA and keyword-rich description.\n\nContent pillars: (1) Tax Myths Busted, (2) 'I Filed in X Minutes' Reactions, (3) W-2 Explainers, (4) Money Tips, (5) Founder Journey, (6) LLC Formation Guides, (7) Business Tips for New Founders.\n\nTone: Smart, calm friend who knows taxes and business. Use 'you/your'. Contractions always. Anti-TurboTax/anti-LegalZoom but comparative not aggressive.\n\nReturn JSON with keys: title, product (filefree|launchfree|distill), tiktok_script, instagram_caption, instagram_hashtags, x_tweet, x_thread (array), youtube_description."
             }
           ]
         },
+        "simplify": true,
         "options": {
           "temperature": 0.8,
-          "responseFormat": "json_object"
+          "textFormat": {
+            "textOptions": [
+              {
+                "type": "json_object"
+              }
+            ]
+          },
+          "store": false
         }
       },
       "id": "openai-social",
       "name": "Generate Social Content",
       "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 1.8,
-      "position": [500, 300],
+      "typeVersion": 2.1,
+      "position": [
+        500,
+        300
+      ],
       "credentials": {
         "openAiApi": {
           "id": "openai-cred",
@@ -51,13 +71,16 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ channel: 'C0AM01NHQ3Y', text: '*' + (typeof $json.message.content === 'string' ? (JSON.parse($json.message.content).title || 'New Content') : ($json.message.content.title || 'New Content')) + '*\\n\\n' + (typeof $json.message.content === 'string' ? $json.message.content : JSON.stringify($json.message.content, null, 2)), username: 'Social', icon_emoji: ':speech_balloon:' }) }}"
+        "jsonBody": "={{ JSON.stringify({ channel: 'C0AM01NHQ3Y', text: ((($json.output || [])[0]?.content || []).find(c => c.type === 'output_text')?.text || ''), username: 'Social', icon_emoji: ':speech_balloon:' }) }}"
       },
       "id": "slack-social",
       "name": "Post to Slack",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [750, 300],
+      "typeVersion": 4.4,
+      "position": [
+        750,
+        300
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "slack-cred",
@@ -68,13 +91,41 @@
   ],
   "connections": {
     "Webhook": {
-      "main": [[{ "node": "Generate Social Content", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Generate Social Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Generate Social Content": {
-      "main": [[{ "node": "Post to Slack", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Post to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "tags": [{ "name": "persona" }, { "name": "social" }, { "name": "slack" }],
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "persona"
+    },
+    {
+      "name": "social"
+    },
+    {
+      "name": "slack"
+    }
+  ],
   "id": "88f84de7-9b05-4203-826d-af5299a4a834"
 }

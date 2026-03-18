@@ -1,6 +1,6 @@
 # Paperwork Labs — Agent Instructions
 
-Paperwork Labs builds tools that eliminate paperwork. This repo contains 4 products (FileFree, LaunchFree, Distill, Trinkets) in a pnpm monorepo.
+Paperwork Labs builds tools that eliminate paperwork. This repo contains 4 products (FileFree, LaunchFree, Distill, Trinkets). Current code is transitioning from the legacy `api/` + `web/` layout to the target `apps/` + `packages/` pnpm monorepo structure.
 
 ## Quick Start
 

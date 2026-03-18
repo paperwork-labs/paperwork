@@ -1,5 +1,5 @@
 {
-  "name": "Paperwork Labs — Partnership Outreach Drafter",
+  "name": "Partnership Outreach Drafter",
   "nodes": [
     {
       "parameters": {
@@ -11,31 +11,51 @@
       "id": "webhook-partnerships",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [250, 300]
+      "typeVersion": 2.1,
+      "position": [
+        250,
+        300
+      ]
     },
     {
       "parameters": {
-        "resource": "chat",
-        "model": "gpt-4o",
-        "messages": {
+        "resource": "text",
+        "operation": "response",
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o"
+        },
+        "responses": {
           "values": [
             {
-              "content": "You are the Partnership Development Assistant for Paperwork Labs (paperworklabs.com). You support a partnerships co-founder (Founder 2) who has a FAANG background, two young kids, and 2-3 hours per week. Every deliverable must be ready to use in under 10 minutes.\n\nPaperwork Labs builds tools that eliminate paperwork:\n- FileFree (filefree.ai): Free AI-powered tax filing. Shows users their refund amount and presents personalized financial product recommendations at the moment of highest financial intent.\n- LaunchFree (launchfree.ai): Free LLC formation. Users form their LLC for free and get recommended banking, payroll, insurance, and compliance services.\n- Distill (distill.tax): B2B compliance automation APIs + CPA SaaS. Partners integrate tax, formation, and compliance via API.\n\nPartnership hit list:\nFileFree: Marcus by Goldman Sachs (HYSA), Wealthfront (HYSA+investment), Betterment (investment), Fidelity (IRA/brokerage), Column Tax (e-file SDK), Refundo (refund advance).\nLaunchFree: Mercury (business banking), Relay (business banking), Gusto (payroll), Deel (international payroll), Next Insurance (business insurance), Northwest RA (registered agent).\nDistill: CPA firms, fintech platforms, law firms, accounting software vendors.\n\nRevenue context: Partnership revenue = 77% of projected FileFree revenue. LaunchFree revenue comes from banking/payroll/insurance referrals + Compliance-as-a-Service ($49-99/yr).\n\nOutput formats (produce ONE based on request):\n1. outreach_email: subject, body, CTA. Ready to send.\n2. deal_summary: one-page brief with partner details, pricing targets, questions.\n3. call_prep: 5-min read with agenda, our ask, their concerns.\n4. pipeline_update: partners by status, next actions.\n\nReturn as structured JSON matching the requested format.",
-              "role": "system"
+              "type": "text",
+              "role": "system",
+              "content": "You are the Partnership Development Assistant for Paperwork Labs (paperworklabs.com). You support a partnerships co-founder (Founder 2) who has a FAANG background, two young kids, and 2-3 hours per week. Every deliverable must be ready to use in under 10 minutes.\n\nPaperwork Labs builds tools that eliminate paperwork:\n- FileFree (filefree.ai): Free AI-powered tax filing. Shows users their refund amount and presents personalized financial product recommendations at the moment of highest financial intent.\n- LaunchFree (launchfree.ai): Free LLC formation. Users form their LLC for free and get recommended banking, payroll, insurance, and compliance services.\n- Distill (distill.tax): B2B compliance automation APIs + CPA SaaS. Partners integrate tax, formation, and compliance via API.\n\nPartnership hit list:\nFileFree: Marcus by Goldman Sachs (HYSA), Wealthfront (HYSA+investment), Betterment (investment), Fidelity (IRA/brokerage), Column Tax (e-file SDK), Refundo (refund advance).\nLaunchFree: Mercury (business banking), Relay (business banking), Gusto (payroll), Deel (international payroll), Next Insurance (business insurance), Northwest RA (registered agent).\nDistill: CPA firms, fintech platforms, law firms, accounting software vendors.\n\nRevenue context: Partnership revenue = 77% of projected FileFree revenue. LaunchFree revenue comes from banking/payroll/insurance referrals + Compliance-as-a-Service ($49-99/yr).\n\nOutput formats (produce ONE based on request):\n1. outreach_email: subject, body, CTA. Ready to send.\n2. deal_summary: one-page brief with partner details, pricing targets, questions.\n3. call_prep: 5-min read with agenda, our ask, their concerns.\n4. pipeline_update: partners by status, next actions.\n\nReturn as structured JSON matching the requested format."
             }
           ]
         },
+        "simplify": true,
         "options": {
           "temperature": 0.6,
-          "responseFormat": "json_object"
+          "textFormat": {
+            "textOptions": [
+              {
+                "type": "json_object"
+              }
+            ]
+          },
+          "store": false
         }
       },
       "id": "openai-partnerships",
       "name": "Draft Partnership Content",
       "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 1.8,
-      "position": [500, 300],
+      "typeVersion": 2.1,
+      "position": [
+        500,
+        300
+      ],
       "credentials": {
         "openAiApi": {
           "id": "openai-cred",
@@ -51,13 +71,16 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ channel: 'C0AM01NHQ3Y', text: '*' + (typeof $json.message.content === 'string' ? (JSON.parse($json.message.content).subject || JSON.parse($json.message.content).partner || 'Partnership Draft') : ($json.message.content.subject || $json.message.content.partner || 'Partnership Draft')) + '*\\n\\n' + (typeof $json.message.content === 'string' ? $json.message.content : JSON.stringify($json.message.content, null, 2)), username: 'Partnerships', icon_emoji: ':handshake:' }) }}"
+        "jsonBody": "={{ JSON.stringify({ channel: 'C0AM01NHQ3Y', text: ((($json.output || [])[0]?.content || []).find(c => c.type === 'output_text')?.text || ''), username: 'Partnerships', icon_emoji: ':handshake:' }) }}"
       },
       "id": "slack-partnerships",
       "name": "Post to Slack",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [750, 300],
+      "typeVersion": 4.4,
+      "position": [
+        750,
+        300
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "slack-cred",
@@ -68,13 +91,41 @@
   ],
   "connections": {
     "Webhook": {
-      "main": [[{ "node": "Draft Partnership Content", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Draft Partnership Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Draft Partnership Content": {
-      "main": [[{ "node": "Post to Slack", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Post to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "tags": [{ "name": "persona" }, { "name": "partnerships" }, { "name": "slack" }],
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "persona"
+    },
+    {
+      "name": "partnerships"
+    },
+    {
+      "name": "slack"
+    }
+  ],
   "id": "c98f5733-df5f-4523-854b-fad01c98521a"
 }
