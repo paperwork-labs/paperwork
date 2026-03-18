@@ -12,13 +12,13 @@ Architecture is **Slack-first**:
 
 | Workflow | File | Trigger | AI Model | Output |
 |---|---|---|---|---|
-| Agent Thread Handler | `agent-thread-handler.json` | Slack event (thread/mention) | GPT-4o | Reply in Slack thread |
-| EA Daily Briefing | `ea-daily.json` | Cron 7am PT | GPT-4o | #daily-briefing |
-| EA Weekly Plan | `ea-weekly.json` | Cron Sunday 6pm PT | GPT-4o | #all-paperwork-labs |
+| Agent Thread Handler | `agent-thread-handler.json` | Slack event (thread/mention/reaction) | GPT-4o-mini | Reply in thread / merge PR |
+| EA Daily Briefing | `ea-daily.json` | Cron 7am PT | GPT-4o-mini | #daily-briefing |
+| EA Weekly Plan | `ea-weekly.json` | Cron Sunday 6pm PT | GPT-4o-mini | #weekly-plan |
 | PR Summary | `pr-summary.json` | GitHub webhook (PR opened) | GPT-4o-mini | #engineering |
-| Decision Logger | `decision-logger.json` | Triggered by thread handler (`log this` / `decided:` in #decisions) | deterministic formatter | KNOWLEDGE.md + thread confirm |
-| Social Content Generator | `social-content-generator.json` | POST /social-content | GPT-4o-mini | #general |
-| Growth Content Writer | `growth-content-writer.json` | POST /growth-content | GPT-4o-mini | #general |
+| Decision Logger | `decision-logger.json` | Triggered by thread handler (`log this` / `decided:` in #decisions) | N/A | KNOWLEDGE.md + thread confirm |
+| Social Content Generator | `social-content-generator.json` | POST /social-content | GPT-4o | #general |
+| Growth Content Writer | `growth-content-writer.json` | POST /growth-content | GPT-4o | #general |
 | Weekly Strategy Check-in | `weekly-strategy-checkin.json` | Cron Monday 9am | GPT-4o | #all-paperwork-labs |
 | QA Security Scan | `qa-security-scan.json` | POST /qa-scan | GPT-4o | #engineering + GitHub Issue |
 | Partnership Outreach | `partnership-outreach-drafter.json` | POST /partnership-outreach | GPT-4o | #general |
@@ -74,10 +74,28 @@ Slack Event Subscriptions must point to a **single** request URL (thread handler
    Slack sends a `url_verification` challenge; this workflow returns the `challenge` payload automatically.
 4. Under **Subscribe to bot events**, add:
    - `message.channels` — messages in public channels (thread replies and #decisions triggers)
-   - `app_mention` — @mentions of the bot (for Agent Thread Handler)
-   - `message.groups` — messages in private channels (if the bot is invited to any)
+   - `message.groups` — messages in private channels
+   - `message.im` — direct messages to the bot
+   - `message.mpim` — group DMs with the bot
+   - `app_mention` — @mentions of the bot
+   - `reaction_added` — emoji reactions (powers the Slack reaction merge flow)
 5. Click **Save Changes**. Slack will start delivering events to n8n immediately.
 6. Ensure the bot is invited to all channels where it should listen (`#decisions`, `#daily-briefing`, `#engineering`, `#all-paperwork-labs`, `#general`).
+
+## Slack Reaction Merge
+
+React to a **PR Summary** message in `#engineering` with an emoji to trigger actions:
+
+| Emoji | Action | Details |
+|---|---|---|
+| :white_check_mark: | Squash merge | CI must be green; posts confirmation or blocker list |
+| :rocket: | Squash merge (alt) | Same as checkmark — for when you want to ship fast |
+| :eyes: | Request Copilot re-review | Posts confirmation in thread |
+| :no_entry_sign: | Hold merge | Posts "merge held by founder" in thread |
+
+**Flow**: Reaction → `agent-thread-handler.json` extracts PR number from the message → checks CI status → merges or posts blockers.
+
+**Requirements**: `GITHUB_TOKEN` and `SLACK_BOT_TOKEN` must be set in the n8n environment. `reaction_added` must be subscribed in Slack Event Subscriptions.
 
 ## PR Thread Persona Routing
 
