@@ -1,0 +1,369 @@
+{
+  "name": "Agent Thread Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "slack-events",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-thread",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || {};\n\nif (body.type === 'url_verification' && body.challenge) {\n  return [{ json: { mode: 'challenge', challenge: body.challenge } }];\n}\n\nconst event = body.event || {};\nif (event.bot_id || event.subtype === 'bot_message') return [];\n\nconst text = event.text || '';\nconst isMention = text.includes('<@');\nif (!event.thread_ts && !isMention) return [];\n\nreturn [{\n  json: {\n    mode: 'event',\n    channel: event.channel,\n    thread_ts: event.thread_ts || event.ts,\n    ts: event.ts || event.thread_ts,\n    text,\n    user: event.user || '',\n    is_mention: isMention\n  }\n}];"
+      },
+      "id": "filter-events",
+      "name": "Filter Events",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-to-slack",
+      "name": "Respond to Slack",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        750,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "if ($json.mode !== 'event') return [];\n\nconst channel = $json.channel;\nconst text = $json.text || '';\nconst isDecision = channel === 'C0AM2310P8A' && /(log this|decided:)/i.test(text);\n\nconst personaMap = {\n  C0ALLEKR9FZ: { name: 'Engineering', icon: ':gear:', prompt: 'You are the Staff Engineer persona for Paperwork Labs. Give practical implementation guidance, call out risks, and keep answers concise.' },\n  C0ALLJWR1HV: { name: 'EA / Operator', icon: ':clipboard:', prompt: 'You are the EA / Operator persona for Paperwork Labs. Provide clear operational guidance and next actions.' },\n  C0AM2310P8A: { name: 'Strategy', icon: ':chess_pawn:', prompt: 'You are the Strategy persona for Paperwork Labs. Focus on tradeoffs, prioritization, and milestone alignment.' },\n  C0ALLD3P3A9: { name: 'QA', icon: ':shield:', prompt: 'You are the QA persona for Paperwork Labs. Focus on bugs, regressions, testing gaps, and security risks.' },\n  C0AMEQV199P: { name: 'Strategy', icon: ':chess_pawn:', prompt: 'You are the Strategy persona for Paperwork Labs. Focus on high-leverage priorities and company-level execution.' },\n  C0AM01NHQ3Y: { name: 'Engineering', icon: ':gear:', prompt: 'You are the Engineering persona for Paperwork Labs. Provide technically sound, executable guidance.' },\n};\n\nconst persona = personaMap[channel] || personaMap.C0AM01NHQ3Y;\n\nreturn [{\n  json: {\n    ...$json,\n    route: isDecision ? 'decision' : 'reply',\n    persona_name: persona.name,\n    persona_icon: persona.icon,\n    persona_prompt: persona.prompt\n  }\n}];"
+      },
+      "id": "route-persona",
+      "name": "Route Persona",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "if ($json.route !== 'decision') return [];\nreturn [{ json: $json }];"
+      },
+      "id": "filter-decision",
+      "name": "Filter Decision Route",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1210,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n.paperworklabs.com/webhook/e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b/webhook/slack-decisions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ type: \"event_callback\", event: { channel: $json.channel, thread_ts: $json.thread_ts, ts: $json.ts, user: $json.user, text: $json.text } }) }}",
+        "options": {}
+      },
+      "id": "execute-decision",
+      "name": "Execute Decision Logger",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1450,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "if ($json.route !== 'reply') return [];\nreturn [{ json: $json }];"
+      },
+      "id": "filter-reply",
+      "name": "Filter Reply Route",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1210,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://slack.com/api/conversations.replies",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "channel",
+              "value": "={{ $json.channel }}"
+            },
+            {
+              "name": "ts",
+              "value": "={{ $json.thread_ts }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-thread",
+      "name": "Fetch Thread History",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1450,
+        420
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "slack-cred",
+          "name": "Slack Bot Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const routed = $('Route Persona').first().json;\nconst thread = $('Fetch Thread History').first().json;\nconst messages = (thread.messages || []).slice(-20).map((m) => `${m.user || 'bot'}: ${m.text || ''}`).join('\\n');\n\nconst userPrompt = `Channel: ${routed.channel}\\nThread TS: ${routed.thread_ts}\\nLatest message: ${routed.text}\\n\\nRecent thread context:\\n${messages}\\n\\nRespond in Slack-ready markdown. Keep it concise and actionable.`;\n\nreturn [{\n  json: {\n    channel: routed.channel,\n    thread_ts: routed.thread_ts,\n    persona_name: routed.persona_name,\n    persona_icon: routed.persona_icon,\n    system_prompt: routed.persona_prompt,\n    user_prompt: userPrompt\n  }\n}];"
+      },
+      "id": "build-context",
+      "name": "Build Thread Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1690,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "text",
+        "operation": "response",
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "responses": {
+          "values": [
+            {
+              "type": "text",
+              "role": "system",
+              "content": "={{ $json.system_prompt }}"
+            },
+            {
+              "type": "text",
+              "role": "user",
+              "content": "={{ $json.user_prompt }}"
+            }
+          ]
+        },
+        "simplify": true,
+        "options": {
+          "temperature": 0.4,
+          "store": false
+        }
+      },
+      "id": "generate-response",
+      "name": "Generate Response",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        1930,
+        420
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-cred",
+          "name": "OpenAI"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const routed = $('Build Thread Context').first().json;\nconst output = $json.output || [];\nconst aiText = output[0]?.content?.find((part) => part.type === 'output_text')?.text;\nconst text = aiText || 'I could not reach the AI model right now. Please retry in a minute.';\n\nreturn [{\n  json: {\n    channel: routed.channel,\n    thread_ts: routed.thread_ts,\n    text,\n    username: routed.persona_name,\n    icon_emoji: routed.persona_icon\n  }\n}];"
+      },
+      "id": "build-outbound",
+      "name": "Build Outbound Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2170,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ channel: $json.channel, text: $json.text, thread_ts: $json.thread_ts, username: $json.username, icon_emoji: $json.icon_emoji }) }}",
+        "options": {}
+      },
+      "id": "post-reply",
+      "name": "Post Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2410,
+        420
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "slack-cred",
+          "name": "Slack Bot Token"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Filter Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Events": {
+      "main": [
+        [
+          {
+            "node": "Respond to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Slack": {
+      "main": [
+        [
+          {
+            "node": "Route Persona",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Persona": {
+      "main": [
+        [
+          {
+            "node": "Filter Decision Route",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter Reply Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Decision Route": {
+      "main": [
+        [
+          {
+            "node": "Execute Decision Logger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Reply Route": {
+      "main": [
+        [
+          {
+            "node": "Fetch Thread History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Thread History": {
+      "main": [
+        [
+          {
+            "node": "Build Thread Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Thread Context": {
+      "main": [
+        [
+          {
+            "node": "Generate Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Response": {
+      "main": [
+        [
+          {
+            "node": "Build Outbound Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Outbound Message": {
+      "main": [
+        [
+          {
+            "node": "Post Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "agent"
+    },
+    {
+      "name": "slack"
+    }
+  ],
+  "id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+}

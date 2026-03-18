@@ -1,0 +1,263 @@
+{
+  "name": "EA Daily Briefing",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-daily",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/paperwork-labs/paperwork/contents/docs/TASKS.md",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github.v3.raw"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-tasks",
+      "name": "Fetch TASKS.md",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        500,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "github-cred",
+          "name": "GitHub PAT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/paperwork-labs/paperwork/contents/docs/VENTURE_MASTER_PLAN.md",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github.v3.raw"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-master-plan",
+      "name": "Fetch VENTURE_MASTER_PLAN.md",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1000,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "github-cred",
+          "name": "GitHub PAT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/paperwork-labs/paperwork/contents/docs/KNOWLEDGE.md",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github.v3.raw"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-knowledge",
+      "name": "Fetch KNOWLEDGE.md",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        750,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "github-cred",
+          "name": "GitHub PAT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "text",
+        "operation": "response",
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o"
+        },
+        "responses": {
+          "values": [
+            {
+              "type": "text",
+              "role": "system",
+              "content": "You are a panel of senior advisors for Paperwork Labs. Generate a daily briefing in Slack mrkdwn that is concise, specific, and actionable.\\n\\nRequired sections:\\n1. *Sprint Status* (EA / Operator) \u2014 tasks due today, progress, blockers\\n2. *Code Review* (Staff Engineer) \u2014 recent commits/PR quality, architecture concerns, tech debt\\n3. *Risk Flags* (QA Lead) \u2014 untested changes, security gaps, PII exposure risks\\n4. *Strategic Alignment* (Chief of Staff) \u2014 progress against VENTURE_MASTER_PLAN milestones\\n5. *Action Items* \u2014 top 3 priorities for today\\n\\nUse bullets. Reference actual task names, commits, and milestones. No generic filler."
+            },
+            {
+              "type": "text",
+              "role": "user",
+              "content": "=Today is {{ new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Los_Angeles' }) }}.\\n\\n--- TASKS.md ---\\n{{ $('Fetch TASKS.md').first().json.data || JSON.stringify($('Fetch TASKS.md').first().json) }}\\n--- END TASKS ---\\n\\n--- KNOWLEDGE.md ---\\n{{ $('Fetch KNOWLEDGE.md').first().json.data || JSON.stringify($('Fetch KNOWLEDGE.md').first().json) }}\\n--- END KNOWLEDGE ---\\n\\n--- VENTURE_MASTER_PLAN.md ---\\n{{ $('Fetch VENTURE_MASTER_PLAN.md').first().json.data || JSON.stringify($('Fetch VENTURE_MASTER_PLAN.md').first().json) }}\\n--- END MASTER PLAN ---\\n\\nGenerate today's multi-persona daily briefing."
+            }
+          ]
+        },
+        "simplify": true,
+        "options": {
+          "temperature": 0.4,
+          "store": false
+        }
+      },
+      "id": "generate-briefing",
+      "name": "Generate Briefing",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        1000,
+        300
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-cred",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ channel: 'C0ALLJWR1HV', text: ((($json.output || [])[0]?.content || []).find(c => c.type === 'output_text')?.text || ''), username: 'EA / Operator', icon_emoji: ':clipboard:' }) }}",
+        "options": {}
+      },
+      "id": "post-daily-briefing",
+      "name": "Post to Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1500,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "slack-cred",
+          "name": "Slack Bot Token"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch TASKS.md",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch TASKS.md": {
+      "main": [
+        [
+          {
+            "node": "Fetch KNOWLEDGE.md",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch KNOWLEDGE.md": {
+      "main": [
+        [
+          {
+            "node": "Fetch VENTURE_MASTER_PLAN.md",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Briefing": {
+      "main": [
+        [
+          {
+            "node": "Post to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch VENTURE_MASTER_PLAN.md": {
+      "main": [
+        [
+          {
+            "node": "Generate Briefing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "agent"
+    },
+    {
+      "name": "ea"
+    },
+    {
+      "name": "daily"
+    }
+  ],
+  "id": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e"
+}

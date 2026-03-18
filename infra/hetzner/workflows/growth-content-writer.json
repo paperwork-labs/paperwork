@@ -1,5 +1,5 @@
 {
-  "name": "FileFree — Growth Content Writer",
+  "name": "Growth Content Writer",
   "nodes": [
     {
       "parameters": {
@@ -11,31 +11,51 @@
       "id": "webhook-growth",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [250, 300]
+      "typeVersion": 2.1,
+      "position": [
+        250,
+        300
+      ]
     },
     {
       "parameters": {
-        "resource": "chat",
-        "model": "gpt-4o-mini",
-        "messages": {
+        "resource": "text",
+        "operation": "response",
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "responses": {
           "values": [
             {
-              "content": "You are the Head of Growth for FileFree (filefree.tax), a free AI-powered tax filing app.\n\nYour job: create marketing content that drives signups, builds trust, and positions FileFree as the anti-TurboTax.\n\nTarget audience: First-time and early-career filers (18-30), mobile-first, skeptical of 'free' claims.\n\nBrand voice: Smart, calm friend who knows taxes. Use 'you/your'. Contractions always. Never 'the taxpayer'. Celebrate wins. Anti-TurboTax energy: honest, simple, transparent.\n\nSEO target keywords: 'how to file taxes for free 2026', 'what is a W2 form', 'standard deduction 2025 amount', 'first time filing taxes guide', 'tax refund calculator 2026'.\n\nReturn structured JSON with keys: title, content_type, body, meta_description, target_keyword, cta.",
-              "role": "system"
+              "type": "text",
+              "role": "system",
+              "content": "You are the Head of Growth for Paperwork Labs (paperworklabs.com), focused primarily on FileFree (filefree.ai) \u2014 a free AI-powered tax filing app. Paperwork Labs also builds LaunchFree (launchfree.ai) for free LLC formation and Distill (distill.tax) for B2B compliance automation.\n\nYour job: create marketing content that drives signups, builds trust, and positions FileFree as the anti-TurboTax and LaunchFree as the anti-LegalZoom.\n\nTarget audience: First-time and early-career filers (18-30), mobile-first, skeptical of 'free' claims. New business owners (25-40) for LaunchFree.\n\nBrand voice: Smart, calm friend who knows taxes and business formation. Use 'you/your'. Contractions always. Never 'the taxpayer'. Celebrate wins. Anti-TurboTax/anti-LegalZoom energy: honest, simple, transparent.\n\nSEO target keywords: 'how to file taxes for free 2026', 'what is a W2 form', 'standard deduction 2025 amount', 'first time filing taxes guide', 'tax refund calculator 2026', 'how to form an LLC for free', 'LLC formation guide 2026'.\n\nReturn structured JSON with keys: title, product (filefree|launchfree), content_type, body, meta_description, target_keyword, cta."
             }
           ]
         },
+        "simplify": true,
         "options": {
           "temperature": 0.7,
-          "responseFormat": "json_object"
+          "textFormat": {
+            "textOptions": [
+              {
+                "type": "json_object"
+              }
+            ]
+          },
+          "store": false
         }
       },
       "id": "openai-growth",
       "name": "Generate Growth Content",
       "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 1.8,
-      "position": [500, 300],
+      "typeVersion": 2.1,
+      "position": [
+        500,
+        300
+      ],
       "credentials": {
         "openAiApi": {
           "id": "openai-cred",
@@ -45,56 +65,67 @@
     },
     {
       "parameters": {
-        "resource": "page",
-        "databaseId": { "__rl": true, "mode": "list", "value": "" },
-        "title": "={{ $json.message.content.title || 'Growth Content Draft' }}",
-        "propertiesUi": {
-          "propertyValues": [
-            {
-              "key": "Status|select",
-              "selectValue": "Draft"
-            },
-            {
-              "key": "Type|select",
-              "selectValue": "Blog Post"
-            }
-          ]
-        },
-        "blockUi": {
-          "blockValues": [
-            {
-              "type": "paragraph",
-              "richTextUi": {
-                "richTextValues": [
-                  { "text": "={{ $json.message.content }}" }
-                ]
-              }
-            }
-          ]
-        }
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ channel: 'C0AM01NHQ3Y', text: ((($json.output || [])[0]?.content || []).find(c => c.type === 'output_text')?.text || ''), username: 'Growth', icon_emoji: ':rocket:' }) }}"
       },
-      "id": "notion-growth",
-      "name": "Save to Notion",
-      "type": "n8n-nodes-base.notion",
-      "typeVersion": 2.2,
-      "position": [750, 300],
+      "id": "slack-growth",
+      "name": "Post to Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        750,
+        300
+      ],
       "credentials": {
-        "notionApi": {
-          "id": "notion-cred",
-          "name": "Notion"
+        "httpHeaderAuth": {
+          "id": "slack-cred",
+          "name": "Slack Bot Token"
         }
       }
     }
   ],
   "connections": {
     "Webhook": {
-      "main": [[{ "node": "Generate Growth Content", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Generate Growth Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Generate Growth Content": {
-      "main": [[{ "node": "Save to Notion", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Post to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "tags": [{ "name": "persona" }, { "name": "growth" }],
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "persona"
+    },
+    {
+      "name": "growth"
+    },
+    {
+      "name": "slack"
+    }
+  ],
   "id": "3d31bf77-136c-4a84-8853-e37e31f2c66b"
 }
