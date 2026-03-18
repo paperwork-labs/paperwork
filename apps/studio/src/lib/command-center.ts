@@ -13,6 +13,13 @@ type N8nExecution = {
   workflowId?: string;
 };
 
+export type InfraStatus = {
+  service: string;
+  configured: boolean;
+  healthy: boolean;
+  detail: string;
+};
+
 function normalizeBaseUrl(raw: string | undefined) {
   if (!raw) return undefined;
   return raw.trim().replace(/\/+$/, "");
@@ -89,5 +96,100 @@ export async function getRecentPullRequests(limit = 5) {
     },
   );
   return data ?? [];
+}
+
+async function checkPublicUrl(
+  service: string,
+  url: string | undefined
+): Promise<InfraStatus> {
+  if (!url) {
+    return { service, configured: false, healthy: false, detail: "Missing URL" };
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const response = await fetch(url, { method: "GET", cache: "no-store", signal: controller.signal });
+    clearTimeout(timeout);
+    return {
+      service,
+      configured: true,
+      healthy: response.ok,
+      detail: response.ok ? "Reachable" : `HTTP ${response.status}`,
+    };
+  } catch (err) {
+    const detail = err instanceof DOMException && err.name === "AbortError" ? "Timeout (8s)" : "Unreachable";
+    return { service, configured: true, healthy: false, detail };
+  }
+}
+
+async function checkTokenBackedApi(
+  service: string,
+  url: string,
+  token: string | undefined
+): Promise<InfraStatus> {
+  if (!token) {
+    return {
+      service,
+      configured: false,
+      healthy: false,
+      detail: "Missing API token",
+    };
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const response = await fetch(url, {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    return {
+      service,
+      configured: true,
+      healthy: response.ok,
+      detail: response.ok ? "API reachable" : `HTTP ${response.status}`,
+    };
+  } catch (err) {
+    const detail = err instanceof DOMException && err.name === "AbortError" ? "Timeout (8s)" : "API unreachable";
+    return { service, configured: true, healthy: false, detail };
+  }
+}
+
+export async function getInfrastructureStatus() {
+  const n8nUrl = normalizeBaseUrl(process.env.N8N_API_URL || process.env.N8N_HOST);
+  const socialUrl = normalizeBaseUrl(process.env.POSTIZ_URL) || "https://social.paperworklabs.com";
+  const renderToken = process.env.RENDER_API_KEY?.trim();
+  const vercelToken = process.env.VERCEL_TOKEN?.trim();
+  const neonApiKey = process.env.NEON_API_KEY?.trim();
+  const upstashUrl = process.env.UPSTASH_REDIS_REST_URL?.trim();
+  const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
+
+  const checks: Promise<InfraStatus>[] = [
+    checkPublicUrl("n8n", n8nUrl),
+    checkPublicUrl("Postiz", socialUrl),
+    checkTokenBackedApi("Render", "https://api.render.com/v1/services", renderToken),
+    checkTokenBackedApi("Vercel", "https://api.vercel.com/v9/projects", vercelToken),
+    checkTokenBackedApi("Neon", "https://console.neon.tech/api/v2/projects", neonApiKey),
+  ];
+
+  if (upstashUrl && upstashToken) {
+    checks.push(
+      checkTokenBackedApi("Upstash Redis", `${upstashUrl}/ping`, upstashToken)
+    );
+  } else {
+    checks.push(
+      Promise.resolve({
+        service: "Upstash Redis",
+        configured: false,
+        healthy: false,
+        detail: "Missing REST URL or token",
+      })
+    );
+  }
+
+  return Promise.all(checks);
 }
 

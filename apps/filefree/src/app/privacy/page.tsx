@@ -146,6 +146,22 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-foreground">
+              Cross-product consent
+            </h2>
+            <p className="mt-2">
+              Cross-product emails are only sent when you explicitly opt in. The
+              consent language is:
+              <span className="block rounded-lg border border-border/50 bg-card/30 p-3 mt-2 text-xs">
+                I consent to Paperwork Labs using my information across
+                FileFree, LaunchFree, and related services to send me product
+                updates and recommendations. I can unsubscribe from any product
+                at any time.
+              </span>
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-foreground">
               Your rights
             </h2>
             <ul className="mt-2 list-inside list-disc space-y-1">
@@ -171,10 +187,10 @@ export default function PrivacyPage() {
               These rights apply under CCPA (California), GDPR (EU), and similar
               privacy laws. To exercise any right, email{" "}
               <a
-                href="mailto:privacy@filefree.tax"
+                href="mailto:privacy@filefree.ai"
                 className="text-violet-500 hover:underline"
               >
-                privacy@filefree.tax
+                privacy@filefree.ai
               </a>
               .
             </p>
@@ -231,10 +247,10 @@ export default function PrivacyPage() {
             <p className="mt-2">
               Questions?{" "}
               <a
-                href="mailto:privacy@filefree.tax"
+                href="mailto:privacy@filefree.ai"
                 className="text-violet-500 hover:underline"
               >
-                privacy@filefree.tax
+                privacy@filefree.ai
               </a>
             </p>
           </section>

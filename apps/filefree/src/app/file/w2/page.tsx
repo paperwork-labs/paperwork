@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button, Card, CardContent, CardHeader, CardTitle } from "@venture/ui";
+import { Button, Card, CardContent, CardHeader, CardTitle } from "@paperwork-labs/ui";
 import { FileUploadZone } from "@/components/upload/file-upload-zone";
 import { useFilingStore, type W2Data } from "@/stores/filing-store";
 import { trackEvent } from "@/lib/posthog";

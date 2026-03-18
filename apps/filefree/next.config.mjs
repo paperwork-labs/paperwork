@@ -3,7 +3,7 @@ import { withSentryConfig } from "@sentry/nextjs";
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
-  transpilePackages: ["@venture/ui"],
+  transpilePackages: ["@paperwork-labs/ui"],
 };
 
 export default withSentryConfig(nextConfig, {

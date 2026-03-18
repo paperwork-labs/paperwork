@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { User, Users, UserMinus, Home } from "lucide-react";
 
-import { Button } from "@venture/ui";
+import { Button } from "@paperwork-labs/ui";
 import { useFilingStore } from "@/stores/filing-store";
 import { useUpdateFiling } from "@/hooks/use-filing";
 import { trackEvent } from "@/lib/posthog";

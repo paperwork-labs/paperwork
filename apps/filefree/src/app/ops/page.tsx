@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-import { Button } from "@venture/ui";
+import { Button } from "@paperwork-labs/ui";
 import { useReducedMotion } from "@/lib/motion";
 import type { ServiceCheck, N8nWorkflow, CIRun, OpsData } from "@/types/ops";
 

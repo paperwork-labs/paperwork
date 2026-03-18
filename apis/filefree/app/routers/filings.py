@@ -1,11 +1,12 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import get_current_user, require_csrf
 from app.models.user import User
+from app.rate_limit import get_user_rate_limit_key, limiter
 from app.schemas.base import success_response
 from app.schemas.filing import (
     ConfirmDataRequest,
@@ -26,7 +27,9 @@ def _parse_uuid(filing_id: str) -> UUID:
 
 
 @router.post("")
+@limiter.limit("5/minute", key_func=get_user_rate_limit_key)
 async def create_filing(
+    request: Request,
     data: CreateFilingRequest,
     user: User = Depends(get_current_user),
     _csrf: None = Depends(require_csrf),
@@ -38,7 +41,9 @@ async def create_filing(
 
 
 @router.get("")
+@limiter.limit("20/minute", key_func=get_user_rate_limit_key)
 async def list_filings(
+    request: Request,
     tax_year: int | None = None,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -48,7 +53,9 @@ async def list_filings(
 
 
 @router.get("/{filing_id}")
+@limiter.limit("20/minute", key_func=get_user_rate_limit_key)
 async def get_filing(
+    request: Request,
     filing_id: str,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -58,7 +65,9 @@ async def get_filing(
 
 
 @router.patch("/{filing_id}")
+@limiter.limit("5/minute", key_func=get_user_rate_limit_key)
 async def update_filing(
+    request: Request,
     filing_id: str,
     data: UpdateFilingRequest,
     user: User = Depends(get_current_user),
@@ -80,7 +89,9 @@ async def update_filing(
 
 
 @router.post("/{filing_id}/confirm")
+@limiter.limit("5/minute", key_func=get_user_rate_limit_key)
 async def confirm_data(
+    request: Request,
     filing_id: str,
     data: ConfirmDataRequest,
     user: User = Depends(get_current_user),

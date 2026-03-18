@@ -33,7 +33,7 @@ Partnership-dependent revenue (refund routing + financial referrals + refund adv
 - Gross margin: 99.3%
 - 5-year LTV: $27.05 (80% annual retention, PCMag data)
 - Max sustainable CAC: $9.02
-- Fixed monthly infrastructure: $12.49/mo
+- Fixed monthly infrastructure: $278/mo
 
 ---
 
@@ -395,7 +395,7 @@ Use when affiliate networks ask "Describe your audience and how you plan to prom
 ## 5. Your Weekly Cadence (2-3 Hours Total)
 
 ### Monday — Pipeline Review (30 min)
-- Check Notion Partnership Pipeline for status updates
+- Check PARTNERSHIPS.md and #general in Slack for status updates
 - Review any AI-drafted outreach emails in your queue
 - Approve and send outreach (personalize if needed)
 - Flag any partners that need product/engineering input
@@ -403,10 +403,10 @@ Use when affiliate networks ask "Describe your audience and how you plan to prom
 ### Wednesday — Calls & Meetings (60 min)
 - AI preps call briefs the night before (deal summary + agenda + key questions)
 - Take 1-2 partnership calls
-- After each call: update Notion with notes, next steps, and status change
+- After each call: update PARTNERSHIPS.md or #general with notes, next steps, and status change
 
 ### Friday — Status Update (30 min)
-- Update Notion pipeline statuses
+- Update PARTNERSHIPS.md pipeline statuses
 - Review any incoming partnership responses
 - Flag anything for the Monday pipeline review
 - If no active outreach: review hit list for next targets

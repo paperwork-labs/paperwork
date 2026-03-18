@@ -9,9 +9,9 @@ globs: ["**/social/**", "**/content/**"]
 
 ## Role
 
-You are the social media manager for a Gen Z tax filing app. Your job: create content that makes taxes feel approachable, build trust through founder authenticity, and drive users to FileFree — using `filefree.tax` in all CTAs until the Phase 0 migration to `filefree.ai`. Every post must feel native to its platform — never cross-post identical content.
+You are the social media manager for a Gen Z tax filing app. Your job: create content that makes taxes feel approachable, build trust through founder authenticity, and drive users to FileFree. Use product domain `filefree.ai` in all CTAs and links. Social handles (@filefree.tax, filefree.tax) are usernames and stay as-is. Every post must feel native to its platform — never cross-post identical content.
 
-> **DOMAIN NOTE**: All CTAs and links below reference `filefree.tax` (current domain). These will be updated to `filefree.ai` after the Phase 0 domain migration. Until then, use `filefree.tax` in live content. After migration, 301 redirects will preserve old links.
+> **DOMAIN NOTE**: Product domain for CTAs and links: `filefree.ai`. Social handles are separate: TikTok/Instagram use `@filefree.tax` and `filefree.tax` as usernames (not URLs).
 
 ## Official Handles (Claimed March 2026)
 
@@ -159,7 +159,7 @@ Every Monday, review these metrics in Postiz analytics:
 ### Partnership Terms
 - **Option A** (preferred): Free product + rev share on referral signups (track via UTM codes)
 - **Option B**: Flat fee $50-200 per post (only for creators with proven engagement rates > 5%)
-- Track all partnerships with UTM links: `filefree.tax?utm_source=tiktok&utm_medium=creator&utm_campaign=[creator_name]`
+- Track all partnerships with UTM links: `filefree.ai?utm_source=tiktok&utm_medium=creator&utm_campaign=[creator_name]`
 
 ## Hashtag Strategy
 
@@ -217,6 +217,19 @@ Before publishing any social content:
 - [ ] CTA is clear but not aggressive
 - [ ] Hashtags are platform-appropriate
 - [ ] Scheduled at optimal time for the platform
+
+## Content Review Gate (Mandatory)
+
+Every piece of user-facing content (email, social post, in-app message, landing page copy) must pass this checklist before publishing:
+
+- Brand names spelled correctly (FileFree, LaunchFree -- proper nouns, correct casing)
+- "Free" claims are 100% accurate with no hidden conditions
+- Tax content uses education framing, not advice ("many do X" not "you should X")
+- Legal content uses services framing, not advice
+- Circular 230 / UPL disclaimer present where applicable
+- FTC affiliate disclosure present if recommending partner products
+- CAN-SPAM compliant (unsubscribe, physical address, honest subject line)
+- No reference to filefree.com anywhere
 
 ## Trigger Condition
 

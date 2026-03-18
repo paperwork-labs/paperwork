@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: 222 47% 11%;
+  --foreground: 210 40% 98%;
+}
+
+@layer base {
+  body {
+    @apply bg-slate-900 text-slate-50 antialiased;
+  }
+}

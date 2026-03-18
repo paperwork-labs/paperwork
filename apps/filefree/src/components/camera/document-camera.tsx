@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Camera, RotateCcw, Check, X, Loader2 } from "lucide-react";
-import { Button, cn } from "@venture/ui";
+import { Button, cn } from "@paperwork-labs/ui";
 
 interface DocumentCameraProps {
   onCapture: (file: File) => void;

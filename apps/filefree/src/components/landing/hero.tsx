@@ -5,7 +5,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 
-import { Button } from "@venture/ui";
+import { Button } from "@paperwork-labs/ui";
 import { fadeIn, slideInUp } from "@/lib/motion";
 
 const PUNCHLINES = [

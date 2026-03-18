@@ -218,9 +218,25 @@ async function fetchGitHubCI(): Promise<CIRun[]> {
   }
 }
 
-// TODO: Add auth guard — this endpoint exposes service inventory and triggers outbound health checks.
-// Currently acceptable (no secrets leaked, internal tool) but should require admin session before launch.
-export async function GET() {
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+const OPS_API_KEY = process.env.OPS_API_KEY;
+
+export async function GET(req: Request) {
+  if (process.env.NODE_ENV === "production") {
+    const authHeader = req.headers.get("authorization");
+    if (OPS_API_KEY && authHeader === `Bearer ${OPS_API_KEY}`) {
+      // API key auth passes
+    } else if (ADMIN_EMAILS.length > 0) {
+      const cookieHeader = req.headers.get("cookie") ?? "";
+      const sessionToken = cookieHeader.split(";").map((c) => c.trim()).find((c) => c.startsWith("session="))?.split("=")[1];
+      if (!sessionToken) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    } else {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
+
   const [services, workflows, ciRuns] = await Promise.all([
     Promise.all(PRODUCTION_SERVICES.map(checkService)),
     fetchN8nWorkflows(),

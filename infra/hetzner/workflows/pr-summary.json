@@ -44,7 +44,7 @@
             {
               "type": "text",
               "role": "system",
-              "content": "You are the Engineering persona for Paperwork Labs. Summarize pull requests for the team in Slack.\n\nRules:\n- 2-3 bullet points of what changed and why\n- Flag any concerns: security implications, breaking changes, missing tests, PII exposure\n- Format for Slack mrkdwn (*bold*, \u2022 bullets, _italic_)\n- Be concise \u2014 engineers skim these\n- If the PR touches auth, PII, or financial logic, add a :warning: flag\n- End with the PR link"
+              "content": "You are the Engineering persona for Paperwork Labs. Summarize pull requests for the team in Slack.\n\nRules:\n- 2-3 bullet points of what changed and why\n- Flag any concerns: security implications, breaking changes, missing tests, PII exposure\n- Format for Slack mrkdwn (*bold*, \u2022 bullets, _italic_)\n- Be concise \u2014 engineers skim these\n- If the PR touches auth, PII, or financial logic, add a :warning: flag\n- End with the PR link\n- Use Slack mrkdwn only: *bold* (never **bold**) and <url|text> (never [text](url))"
             },
             {
               "type": "text",
@@ -83,7 +83,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ channel: 'C0ALLEKR9FZ', text: $json.text, username: 'Engineering', icon_emoji: ':gear:' }) }}",
+        "jsonBody": "={{ JSON.stringify({ channel: 'C0ALLEKR9FZ', text: $json.text, username: 'Engineering', icon_emoji: ':mage:' }) }}",
         "options": {}
       },
       "id": "post-pr-summary",
@@ -103,7 +103,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const src = $('Filter PR Events').first().json;\nconst output = $json.output || [];\nconst aiText = output[0]?.content?.find((part) => part.type === 'output_text')?.text || '';\n\nconst fallback = `*PR #${src.pr_number || '?'} \u2014 ${src.title || 'Untitled'}*\\n<${src.html_url || ''}|View PR>\\nRepo: ${src.repo_full_name} | ${src.head_branch || '?'} -> ${src.base_branch || '?'}\\nChanges: ${src.changed_files} files | +${src.additions} / -${src.deletions}\\n\\n_No AI summary available. Ask in thread for engineering, legal, QA, growth, social, strategy, partnerships, CPA, or EA._`;\n\nconst text = aiText.trim() ? aiText : fallback;\nconst routerHint = '_Thread router: reply with `legal`, `growth`, `social`, `qa`, `strategy`, `engineering`, `cpa`, `partnerships`, or `ea` for a focused take._';\n\nreturn [{ json: { text: `${text}\\n\\n${routerHint}` } }];"
+        "jsCode": "function sanitizeSlackMrkdwn(text) {\n  return String(text || '')\n    .replace(/\\*\\*(.+?)\\*\\*/g, '*$1*')\n    .replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, '<$2|$1>');\n}\n\nconst src = $('Filter PR Events').first().json;\nconst output = $json.output || [];\nconst aiText = output[0]?.content?.find((part) => part.type === 'output_text')?.text || '';\n\nconst fallback = `<${src.html_url || ''}|PR #${src.pr_number || '?'}: ${src.title || 'Untitled'}>\\nRepo: ${src.repo_full_name} | ${src.head_branch || '?'} -> ${src.base_branch || '?'}\\nChanges: ${src.changed_files} files | +${src.additions} / -${src.deletions}\\n\\n_No AI summary available. Ask in thread for engineering, legal, QA, growth, social, strategy, partnerships, CPA, or EA._`;\n\nconst text = aiText.trim() ? sanitizeSlackMrkdwn(aiText) : sanitizeSlackMrkdwn(fallback);\nconst routerHint = '_Thread router: reply with `legal`, `growth`, `social`, `qa`, `strategy`, `engineering`, `cpa`, `partnerships`, or `ea` for a focused take._';\n\nreturn [{ json: { text: sanitizeSlackMrkdwn(`${text}\\n\\n${routerHint}`) } }];"
       },
       "id": "format-pr-message",
       "name": "Format Slack Message",

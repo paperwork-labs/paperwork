@@ -33,11 +33,11 @@ describe("advisory route", () => {
     generateTextMock.mockReset();
     openaiMock.mockClear();
     process.env.OPENAI_API_KEY = "test-key";
-    process.env.NODE_ENV = "test";
+    (process.env as Record<string, string>).NODE_ENV = "test";
   });
 
   it("returns 401 when session cookie is missing", async () => {
-    process.env.NODE_ENV = "production";
+    (process.env as Record<string, string>).NODE_ENV = "production";
     const response = await callPost("hello", "");
     expect(response.status).toBe(401);
   });

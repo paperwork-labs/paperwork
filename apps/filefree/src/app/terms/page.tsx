@@ -116,6 +116,21 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-foreground">
+              Cross-product communication consent
+            </h2>
+            <p className="mt-2">
+              Cross-product recommendations and updates are sent only to users
+              who explicitly opt in with this language:
+            </p>
+            <p className="mt-2 rounded-lg border border-border/50 bg-card/30 p-4 text-xs">
+              I consent to Paperwork Labs using my information across FileFree,
+              LaunchFree, and related services to send me product updates and
+              recommendations. I can unsubscribe from any product at any time.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-foreground">
               Account and data
             </h2>
             <ul className="mt-2 list-inside list-disc space-y-1">
@@ -193,10 +208,10 @@ export default function TermsPage() {
             <p className="mt-2">
               Questions?{" "}
               <a
-                href="mailto:legal@filefree.tax"
+                href="mailto:legal@filefree.ai"
                 className="text-violet-500 hover:underline"
               >
-                legal@filefree.tax
+                legal@filefree.ai
               </a>
             </p>
           </section>
