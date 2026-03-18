@@ -178,7 +178,7 @@ Track ALL venture expenses by category. EA agent logs expenses as they occur. CF
 | **AI/ML** | Anthropic API usage | TBD | Track from console.anthropic.com |
 | **Infra** | Hetzner VPS | $6 | |
 | **Infra** | Render (FileFree API) | $7 | |
-| **Ops** | Google Workspace | $6 | 1 seat (Business Starter), paperworklabs.com primary. Olga admin via ADMIN_EMAILS env var. |
+| **Ops** | Google Workspace | $6 | 1 seat (Business Starter), paperworklabs.com primary. Olga Sharma admin via ADMIN_EMAILS env var. |
 | **TOTAL** | | TBD | Fill in at month end |
 
 ### Categories

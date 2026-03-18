@@ -7,7 +7,7 @@
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "0 7 * * 1,4"
+              "expression": "0 7 * * 1"
             }
           ]
         }
@@ -110,7 +110,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const tasks = $('Fetch TASKS.md').first().json.data || JSON.stringify($('Fetch TASKS.md').first().json);\nconst knowledge = $('Fetch KNOWLEDGE.md').first().json.data || JSON.stringify($('Fetch KNOWLEDGE.md').first().json);\nconst commits = $('Fetch Recent Commits').first().json || [];\n\nconst commitSummary = (Array.isArray(commits) ? commits : []).slice(0, 10).map((c) => `- ${c.commit?.message || 'No message'} (${c.sha?.slice(0,7) || 'n/a'})`).join('\\n');\n\nconst prompt = `Today starts a new 3-day sprint at Paperwork Labs.\\n\\nTASKS.md:\\n${tasks}\\n\\nRecent decisions:\\n${knowledge.slice(-3000)}\\n\\nRecent commits:\\n${commitSummary}\\n\\nCreate a sprint kickoff with sections:\\n1) *Sprint Goals*\\n2) *Engineering Plan*\\n3) *Risk Assessment*\\n4) *Strategic Priority*\\n5) *Top 3 priorities*`;\n\nreturn [{ json: { prompt } }];"
+        "jsCode": "const tasks = $('Fetch TASKS.md').first().json.data || JSON.stringify($('Fetch TASKS.md').first().json);\nconst knowledge = $('Fetch KNOWLEDGE.md').first().json.data || JSON.stringify($('Fetch KNOWLEDGE.md').first().json);\nconst commits = $('Fetch Recent Commits').first().json || [];\n\nconst commitSummary = (Array.isArray(commits) ? commits : []).slice(0, 10).map((c) => `- ${c.commit?.message || 'No message'} (${c.sha?.slice(0,7) || 'n/a'})`).join('\\n');\n\nconst prompt = `Today starts a new 5-day sprint at Paperwork Labs (Monday kickoff, Friday close).\\n\\nTASKS.md:\\n${tasks}\\n\\nRecent decisions:\\n${knowledge.slice(-3000)}\\n\\nRecent commits:\\n${commitSummary}\\n\\nCreate a sprint kickoff with sections:\\n1) *Sprint Goals*\\n2) *Engineering Plan*\\n3) *Risk Assessment*\\n4) *Strategic Priority*\\n5) *Top 3 priorities*`;\n\nreturn [{ json: { prompt } }];"
       },
       "id": "build-kickoff-prompt",
       "name": "Build Kickoff Prompt",
@@ -135,7 +135,7 @@
             {
               "type": "text",
               "role": "system",
-              "content": "You are the Sprint Planning Panel for Paperwork Labs. Write concise, actionable Slack markdown for a 3-day sprint kickoff."
+              "content": "You are the Sprint Planning Panel for Paperwork Labs. Write concise, actionable Slack markdown for a 5-day sprint kickoff (Monday to Friday)."
             },
             {
               "type": "text",
@@ -186,7 +186,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ channel: '#sprints', text: '*Sprint Kickoff*\\n\\n' + $json.text, username: 'Sprint Planning', icon_emoji: ':rocket:' }) }}",
+        "jsonBody": "={{ JSON.stringify({ channel: 'C0AM3APFP99', text: '*Sprint Kickoff*\\n\\n' + $json.text, username: 'Sprint Planning', icon_emoji: ':rocket:' }) }}",
         "options": {}
       },
       "id": "post-sprints",
@@ -212,7 +212,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ channel: 'C0AMEQV199P', text: ':rocket: New 3-day sprint kickoff posted in #sprints. ' + $json.condensed, username: 'Sprint Planning', icon_emoji: ':rocket:' }) }}",
+        "jsonBody": "={{ JSON.stringify({ channel: 'C0AMEQV199P', text: ':rocket: New 5-day sprint kickoff posted in #sprints. ' + $json.condensed, username: 'Sprint Planning', icon_emoji: ':rocket:' }) }}",
         "options": {}
       },
       "id": "post-all",
