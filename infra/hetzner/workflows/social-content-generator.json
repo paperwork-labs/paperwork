@@ -31,7 +31,7 @@
             {
               "type": "text",
               "role": "system",
-              "content": "You are the social media manager for Paperwork Labs (paperworklabs.com), a venture that builds tools to eliminate paperwork. Products: FileFree (filefree.ai) \u2014 free AI-powered tax filing, LaunchFree (launchfree.ai) \u2014 free LLC formation, Distill (distill.tax) \u2014 B2B compliance automation APIs.\n\nYour job: create content that makes taxes and business formation feel approachable, build trust through founder authenticity, and drive users to the appropriate product.\n\nPlatform rules:\n- TikTok: 15-60s vertical video scripts with hook in first 0.5s. Use trending formats. Founder-led, casual.\n- Instagram Reels: Same video re-edited with 20-30 hashtags and long save-bait caption.\n- X/Twitter: Sharp, concise text. Threads for explainers. Anti-TurboTax/anti-LegalZoom energy.\n- YouTube Shorts: Same video with subscribe CTA and keyword-rich description.\n\nContent pillars: (1) Tax Myths Busted, (2) 'I Filed in X Minutes' Reactions, (3) W-2 Explainers, (4) Money Tips, (5) Founder Journey, (6) LLC Formation Guides, (7) Business Tips for New Founders.\n\nTone: Smart, calm friend who knows taxes and business. Use 'you/your'. Contractions always. Anti-TurboTax/anti-LegalZoom but comparative not aggressive.\n\nReturn JSON with keys: title, product (filefree|launchfree|distill), tiktok_script, instagram_caption, instagram_hashtags, x_tweet, x_thread (array), youtube_description."
+              "content": "You are the social media manager for Paperwork Labs (paperworklabs.com), a venture that builds tools to eliminate paperwork. Products: FileFree (filefree.ai) — free AI-powered tax filing, LaunchFree (launchfree.ai) — free LLC formation, Distill (distill.tax) — B2B compliance automation APIs.\n\nYour job: create content that makes taxes and business formation feel approachable, build trust through founder authenticity, and drive users to the appropriate product.\n\nPlatform rules:\n- TikTok: 15-60s vertical video scripts with hook in first 0.5s. Use trending formats. Founder-led, casual.\n- Instagram Reels: Same video re-edited with 20-30 hashtags and long save-bait caption.\n- X/Twitter: Sharp, concise text. Threads for explainers. Anti-TurboTax/anti-LegalZoom energy.\n- YouTube Shorts: Same video with subscribe CTA and keyword-rich description.\n\nContent pillars: (1) Tax Myths Busted, (2) 'I Filed in X Minutes' Reactions, (3) W-2 Explainers, (4) Money Tips, (5) Founder Journey, (6) LLC Formation Guides, (7) Business Tips for New Founders.\n\nTone: Smart, calm friend who knows taxes and business. Use 'you/your'. Contractions always. Anti-TurboTax/anti-LegalZoom but comparative not aggressive.\n\nReturn JSON with keys: title, product (filefree|launchfree|distill), tiktok_script, instagram_caption, instagram_hashtags, x_tweet, x_thread (array), youtube_description."
             }
           ]
         },
@@ -65,20 +65,33 @@
     },
     {
       "parameters": {
+        "jsCode": "const raw = (($json.output || [])[0]?.content || []).find(c => c.type === 'output_text')?.text || '';\nconst date = new Date().toISOString().slice(0, 10);\nconst header = '*Social Content \\u2014 ' + date + '*';\nconst footer = '_Thread router: reply with a persona name for a focused take._';\nif (!raw.trim()) {\n  return [{ json: { formatted: ':warning: No output generated. Check workflow logs.\\n\\n' + footer } }];\n}\nlet body;\ntry {\n  const obj = JSON.parse(raw);\n  body = Object.entries(obj).map(([k, v]) => {\n    const label = k.replace(/_/g, ' ').replace(/\\b\\w/g, c => c.toUpperCase());\n    if (Array.isArray(v)) {\n      return '\\u2022 *' + label + '*:\\n' + v.map(item => '  - ' + (typeof item === 'object' ? JSON.stringify(item) : item)).join('\\n');\n    }\n    if (typeof v === 'object' && v !== null) {\n      return '\\u2022 *' + label + '*: ' + JSON.stringify(v);\n    }\n    return '\\u2022 *' + label + '*: ' + v;\n  }).join('\\n');\n} catch (e) {\n  body = raw;\n}\nreturn [{ json: { formatted: header + '\\n\\n' + body + '\\n\\n' + footer } }];"
+      },
+      "id": "format-social-slack",
+      "name": "Format for Slack",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        750,
+        300
+      ]
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "https://slack.com/api/chat.postMessage",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ channel: 'C0AM01NHQ3Y', text: ((($json.output || [])[0]?.content || []).find(c => c.type === 'output_text')?.text || ''), username: 'Social', icon_emoji: ':speech_balloon:' }) }}"
+        "jsonBody": "={{ JSON.stringify({ channel: 'C0AM01NHQ3Y', text: $json.formatted, username: 'Social', icon_emoji: ':speech_balloon:' }) }}"
       },
       "id": "slack-social",
       "name": "Post to Slack",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        750,
+        1000,
         300
       ],
       "credentials": {
@@ -102,6 +115,17 @@
       ]
     },
     "Generate Social Content": {
+      "main": [
+        [
+          {
+            "node": "Format for Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format for Slack": {
       "main": [
         [
           {

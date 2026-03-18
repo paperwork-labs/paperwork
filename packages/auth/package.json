@@ -1,0 +1,17 @@
+{
+  "name": "@paperwork-labs/auth",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0"
+  },
+  "dependencies": {
+    "@paperwork-labs/ui": "workspace:*"
+  }
+}

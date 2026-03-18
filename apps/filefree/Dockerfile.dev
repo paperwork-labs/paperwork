@@ -1,12 +1,9 @@
 FROM node:20-alpine
-
+RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
-
-COPY package.json package-lock.json* ./
-RUN npm install
-
-COPY . .
-
-EXPOSE 3000
-
-CMD ["npm", "run", "dev"]
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY packages/ ./packages/
+COPY apps/ ./apps/
+RUN pnpm install --frozen-lockfile
+WORKDIR /app/apps/filefree
+CMD ["pnpm", "dev"]

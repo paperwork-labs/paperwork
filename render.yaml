@@ -30,7 +30,25 @@ services:
       - key: GCS_BUCKET_NAME
         sync: false
       - key: FRONTEND_URL
-        value: https://filefree.tax
+        value: https://filefree.ai
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+
+  - type: web
+    name: launchfree-api
+    runtime: python
+    region: oregon
+    plan: starter
+    buildCommand: cd apis/launchfree && pip install -r requirements.txt
+    startCommand: cd apis/launchfree && gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
+    healthCheckPath: /health
+    envVars:
+      - key: FRONTEND_URL
+        value: https://launchfree.ai
       - key: ENVIRONMENT
         value: production
       - key: DEBUG

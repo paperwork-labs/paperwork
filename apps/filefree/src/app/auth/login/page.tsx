@@ -22,7 +22,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@venture/ui";
+} from "@paperwork-labs/ui";
 import { GoogleSignIn } from "@/components/auth/google-sign-in";
 import { AppleSignIn } from "@/components/auth/apple-sign-in";
 import { OrDivider } from "@/components/auth/or-divider";

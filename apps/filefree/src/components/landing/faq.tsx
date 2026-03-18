@@ -6,7 +6,7 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@venture/ui";
+} from "@paperwork-labs/ui";
 import { fadeIn } from "@/lib/motion";
 
 const faqs = [

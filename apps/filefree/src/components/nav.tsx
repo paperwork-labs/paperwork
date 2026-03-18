@@ -6,7 +6,7 @@ import { LogOut, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-import { Button } from "@venture/ui";
+import { Button } from "@paperwork-labs/ui";
 import { useAuthStore } from "@/stores/auth-store";
 import { useLogout } from "@/hooks/use-auth";
 

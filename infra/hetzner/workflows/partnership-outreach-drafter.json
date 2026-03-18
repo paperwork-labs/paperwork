@@ -65,20 +65,33 @@
     },
     {
       "parameters": {
+        "jsCode": "const raw = (($json.output || [])[0]?.content || []).find(c => c.type === 'output_text')?.text || '';\nconst date = new Date().toISOString().slice(0, 10);\nconst header = '*Partnership Outreach \\u2014 ' + date + '*';\nconst footer = '_Thread router: reply with a persona name for a focused take._';\nif (!raw.trim()) {\n  return [{ json: { formatted: ':warning: No output generated. Check workflow logs.\\n\\n' + footer } }];\n}\nlet body;\ntry {\n  const obj = JSON.parse(raw);\n  body = Object.entries(obj).map(([k, v]) => {\n    const label = k.replace(/_/g, ' ').replace(/\\b\\w/g, c => c.toUpperCase());\n    if (Array.isArray(v)) {\n      return '\\u2022 *' + label + '*:\\n' + v.map(item => '  - ' + (typeof item === 'object' ? JSON.stringify(item) : item)).join('\\n');\n    }\n    if (typeof v === 'object' && v !== null) {\n      return '\\u2022 *' + label + '*: ' + JSON.stringify(v);\n    }\n    return '\\u2022 *' + label + '*: ' + v;\n  }).join('\\n');\n} catch (e) {\n  body = raw;\n}\nreturn [{ json: { formatted: header + '\\n\\n' + body + '\\n\\n' + footer } }];"
+      },
+      "id": "format-partnerships-slack",
+      "name": "Format for Slack",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        750,
+        300
+      ]
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "https://slack.com/api/chat.postMessage",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ channel: 'C0AM01NHQ3Y', text: ((($json.output || [])[0]?.content || []).find(c => c.type === 'output_text')?.text || ''), username: 'Partnerships', icon_emoji: ':handshake:' }) }}"
+        "jsonBody": "={{ JSON.stringify({ channel: 'C0AM01NHQ3Y', text: $json.formatted, username: 'Partnerships', icon_emoji: ':handshake:' }) }}"
       },
       "id": "slack-partnerships",
       "name": "Post to Slack",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        750,
+        1000,
         300
       ],
       "credentials": {
@@ -102,6 +115,17 @@
       ]
     },
     "Draft Partnership Content": {
+      "main": [
+        [
+          {
+            "node": "Format for Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format for Slack": {
       "main": [
         [
           {

@@ -30,46 +30,153 @@ services:
       timeout: 5s
       retries: 5
 
-  api:
+  api-filefree:
     container_name: filefree-api
     build:
       context: ../apis/filefree
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "8001:8001"
     volumes:
       - ../apis/filefree:/app
       - ../pyproject.toml:/pyproject.toml:ro
     env_file:
       - env.dev
+    environment:
+      PORT: 8001
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import httpx; r = httpx.get('http://localhost:8000/health'); assert r.status_code == 200"]
+      test: ["CMD", "python", "-c", "import httpx; r = httpx.get('http://localhost:8001/health'); assert r.status_code == 200"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
 
-  web:
-    container_name: filefree-web
+  api-launchfree:
+    container_name: launchfree-api
     build:
-      context: ../apps/filefree
-      dockerfile: Dockerfile.dev
+      context: ../apis/launchfree
+      dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "8002:8002"
     volumes:
-      - ../apps/filefree:/app
-      - /app/node_modules
-      - /app/.next
+      - ../apis/launchfree:/app
     env_file:
       - env.dev
+    environment:
+      PORT: 8002
+      FRONTEND_URL: http://localhost:3002
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8002", "--reload"]
     depends_on:
-      api:
+      postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; r = httpx.get('http://localhost:8002/health'); assert r.status_code == 200"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  web-filefree:
+    container_name: filefree-web
+    build:
+      context: ..
+      dockerfile: apps/filefree/Dockerfile.dev
+    ports:
+      - "3001:3001"
+    volumes:
+      - ../:/app
+      - /app/node_modules
+      - /app/apps/filefree/.next
+    env_file:
+      - env.dev
+    environment:
+      PORT: 3001
+    command: ["pnpm", "dev:filefree"]
+    depends_on:
+      api-filefree:
+        condition: service_healthy
+
+  web-launchfree:
+    container_name: launchfree-web
+    build:
+      context: ..
+      dockerfile: apps/launchfree/Dockerfile.dev
+    ports:
+      - "3002:3002"
+    volumes:
+      - ../:/app
+      - /app/node_modules
+      - /app/apps/launchfree/.next
+    env_file:
+      - env.dev
+    environment:
+      PORT: 3002
+    command: ["pnpm", "dev:launchfree"]
+    depends_on:
+      api-launchfree:
+        condition: service_healthy
+
+  web-trinkets:
+    container_name: trinkets-web
+    build:
+      context: ..
+      dockerfile: apps/trinkets/Dockerfile.dev
+    ports:
+      - "3003:3003"
+    volumes:
+      - ../:/app
+      - /app/node_modules
+      - /app/apps/trinkets/.next
+    env_file:
+      - env.dev
+    environment:
+      PORT: 3003
+    command: ["pnpm", "dev:trinkets"]
+
+  web-studio:
+    container_name: studio-web
+    build:
+      context: ..
+      dockerfile: apps/studio/Dockerfile.dev
+    ports:
+      - "3004:3004"
+    volumes:
+      - ../:/app
+      - /app/node_modules
+      - /app/apps/studio/.next
+    env_file:
+      - env.dev
+    environment:
+      PORT: 3004
+    command: ["pnpm", "dev:studio"]
+    depends_on:
+      api-filefree:
+        condition: service_healthy
+
+  web-distill:
+    container_name: distill-web
+    build:
+      context: ..
+      dockerfile: apps/distill/Dockerfile.dev
+    ports:
+      - "3005:3005"
+    volumes:
+      - ../:/app
+      - /app/node_modules
+      - /app/apps/distill/.next
+    env_file:
+      - env.dev
+    environment:
+      PORT: 3005
+    command: ["pnpm", "dev:distill"]
 
 volumes:
   pgdata:

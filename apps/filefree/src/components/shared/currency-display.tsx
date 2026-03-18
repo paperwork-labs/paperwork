@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { cn } from "@venture/ui";
+import { cn } from "@paperwork-labs/ui";
 
 interface CurrencyDisplayProps {
   cents: number;

@@ -1,4 +1,4 @@
-import { cn } from "@venture/ui";
+import { cn } from "@paperwork-labs/ui";
 
 interface SkeletonCardProps {
   lines?: number;

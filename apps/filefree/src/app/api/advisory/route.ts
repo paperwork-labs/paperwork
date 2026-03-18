@@ -123,7 +123,7 @@ export async function POST(req: Request) {
       );
     }
 
-    console.error("Advisory request failed", error);
+    console.error("Advisory request failed:", message);
     return NextResponse.json(
       {
         success: false,

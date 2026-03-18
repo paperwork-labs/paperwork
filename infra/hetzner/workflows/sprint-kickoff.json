@@ -167,7 +167,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const output = $json.output || [];\nconst text = output[0]?.content?.find((part) => part.type === 'output_text')?.text || 'Sprint kickoff generated but empty.';\nconst condensed = text.split('\\n').slice(0,2).join(' ');\nreturn [{ json: { text, condensed } }];"
+        "jsCode": "const output = $json.output || [];\nconst aiText = output[0]?.content?.find((part) => part.type === 'output_text')?.text || '';\nconst date = new Date().toISOString().split('T')[0];\nconst header = '*Sprint Kickoff \u2014 ' + date + '*\\n\\n';\nconst footer = '\\n\\n_Thread router: reply with a persona name for a focused take._';\nconst fallback = ':warning: No output generated. Check workflow logs.';\nconst body = aiText.trim() ? aiText.trim() : fallback;\nconst text = header + body + footer;\nconst condensed = aiText.split('\\n').slice(0,2).join(' ');\nreturn [{ json: { text, condensed, date } }];"
       },
       "id": "format-kickoff-output",
       "name": "Format Kickoff Output",
@@ -186,7 +186,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ channel: 'C0AM3APFP99', text: '*Sprint Kickoff*\\n\\n' + $json.text, username: 'Sprint Planning', icon_emoji: ':rocket:' }) }}",
+        "jsonBody": "={{ JSON.stringify({ channel: 'C0AM3APFP99', text: $json.text, username: 'Sprint Planning', icon_emoji: ':rocket:' }) }}",
         "options": {}
       },
       "id": "post-sprints",
@@ -212,7 +212,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ channel: 'C0AMEQV199P', text: ':rocket: New 5-day sprint kickoff posted in #sprints. ' + $json.condensed, username: 'Sprint Planning', icon_emoji: ':rocket:' }) }}",
+        "jsonBody": "={{ JSON.stringify({ channel: 'C0AMEQV199P', text: ':rocket: New 5-day sprint kickoff posted in #sprints. ' + $json.condensed + '\\n\\n_Thread router: reply with a persona name for a focused take._', username: 'Sprint Planning', icon_emoji: ':rocket:' }) }}",
         "options": {}
       },
       "id": "post-all",

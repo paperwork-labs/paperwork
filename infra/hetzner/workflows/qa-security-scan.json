@@ -65,10 +65,23 @@
     },
     {
       "parameters": {
+        "jsCode": "const output = $json.output || [];\nconst rawText = (output[0]?.content || []).find(c => c.type === 'output_text')?.text || '';\nconst date = new Date().toISOString().split('T')[0];\nconst header = '*QA Security Scan \u2014 ' + date + '*\\n\\n';\nconst footer = '\\n\\n_Thread router: reply with a persona name for a focused take._';\nconst fallback = ':warning: No output generated. Check workflow logs.';\nlet body;\nif (!rawText.trim()) {\n  body = fallback;\n} else {\n  try {\n    const data = JSON.parse(rawText);\n    const sections = [];\n    for (const [key, value] of Object.entries(data)) {\n      const label = key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');\n      if (Array.isArray(value)) {\n        sections.push('*' + label + '*\\n' + value.map(v => '\\u2022 ' + (typeof v === 'object' ? (v.description || v.title || JSON.stringify(v)) : String(v))).join('\\n'));\n      } else if (typeof value === 'object' && value !== null) {\n        sections.push('*' + label + '*\\n' + Object.entries(value).map(([k, v]) => '\\u2022 *' + k + '*: ' + String(v)).join('\\n'));\n      } else {\n        sections.push('*' + label + '*: ' + String(value));\n      }\n    }\n    body = sections.join('\\n\\n');\n  } catch (e) {\n    body = rawText;\n  }\n}\nreturn [{ json: { text: header + body + footer, rawText: rawText || fallback, date } }];"
+      },
+      "id": "format-qa-report",
+      "name": "Format QA Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        625,
+        400
+      ]
+    },
+    {
+      "parameters": {
         "owner": "paperwork-labs",
         "repository": "paperwork",
-        "title": "={{ '[QA] Security Scan \u2014 ' + new Date().toISOString().slice(0,10) }}",
-        "body": "={{ ((($json.output || [])[0]?.content || []).find(c => c.type === 'output_text')?.text || '') }}",
+        "title": "={{ '[QA] Security Scan \u2014 ' + $json.date }}",
+        "body": "={{ $json.rawText }}",
         "labels": [
           "security",
           "qa-scan"
@@ -97,7 +110,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ channel: 'C0ALLEKR9FZ', text: '*QA Security Scan \u2014 ' + new Date().toISOString().slice(0,10) + '*\\n\\n' + ((($json.output || [])[0]?.content || []).find(c => c.type === 'output_text')?.text || ''), username: 'QA', icon_emoji: ':mag:' }) }}"
+        "jsonBody": "={{ JSON.stringify({ channel: 'C0ALLEKR9FZ', text: $json.text, username: 'QA', icon_emoji: ':shield:' }) }}"
       },
       "id": "slack-qa",
       "name": "Post to Slack",
@@ -128,6 +141,17 @@
       ]
     },
     "Security Audit": {
+      "main": [
+        [
+          {
+            "node": "Format QA Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format QA Report": {
       "main": [
         [
           {

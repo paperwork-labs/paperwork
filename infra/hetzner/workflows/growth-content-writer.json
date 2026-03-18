@@ -31,7 +31,7 @@
             {
               "type": "text",
               "role": "system",
-              "content": "You are the Head of Growth for Paperwork Labs (paperworklabs.com), focused primarily on FileFree (filefree.ai) \u2014 a free AI-powered tax filing app. Paperwork Labs also builds LaunchFree (launchfree.ai) for free LLC formation and Distill (distill.tax) for B2B compliance automation.\n\nYour job: create marketing content that drives signups, builds trust, and positions FileFree as the anti-TurboTax and LaunchFree as the anti-LegalZoom.\n\nTarget audience: First-time and early-career filers (18-30), mobile-first, skeptical of 'free' claims. New business owners (25-40) for LaunchFree.\n\nBrand voice: Smart, calm friend who knows taxes and business formation. Use 'you/your'. Contractions always. Never 'the taxpayer'. Celebrate wins. Anti-TurboTax/anti-LegalZoom energy: honest, simple, transparent.\n\nSEO target keywords: 'how to file taxes for free 2026', 'what is a W2 form', 'standard deduction 2025 amount', 'first time filing taxes guide', 'tax refund calculator 2026', 'how to form an LLC for free', 'LLC formation guide 2026'.\n\nReturn structured JSON with keys: title, product (filefree|launchfree), content_type, body, meta_description, target_keyword, cta."
+              "content": "You are the Head of Growth for Paperwork Labs (paperworklabs.com), focused primarily on FileFree (filefree.ai) — a free AI-powered tax filing app. Paperwork Labs also builds LaunchFree (launchfree.ai) for free LLC formation and Distill (distill.tax) for B2B compliance automation.\n\nYour job: create marketing content that drives signups, builds trust, and positions FileFree as the anti-TurboTax and LaunchFree as the anti-LegalZoom.\n\nTarget audience: First-time and early-career filers (18-30), mobile-first, skeptical of 'free' claims. New business owners (25-40) for LaunchFree.\n\nBrand voice: Smart, calm friend who knows taxes and business formation. Use 'you/your'. Contractions always. Never 'the taxpayer'. Celebrate wins. Anti-TurboTax/anti-LegalZoom energy: honest, simple, transparent.\n\nSEO target keywords: 'how to file taxes for free 2026', 'what is a W2 form', 'standard deduction 2025 amount', 'first time filing taxes guide', 'tax refund calculator 2026', 'how to form an LLC for free', 'LLC formation guide 2026'.\n\nReturn structured JSON with keys: title, product (filefree|launchfree), content_type, body, meta_description, target_keyword, cta."
             }
           ]
         },
@@ -65,20 +65,33 @@
     },
     {
       "parameters": {
+        "jsCode": "const raw = (($json.output || [])[0]?.content || []).find(c => c.type === 'output_text')?.text || '';\nconst date = new Date().toISOString().slice(0, 10);\nconst header = '*Growth Content \\u2014 ' + date + '*';\nconst footer = '_Thread router: reply with a persona name for a focused take._';\nif (!raw.trim()) {\n  return [{ json: { formatted: ':warning: No output generated. Check workflow logs.\\n\\n' + footer } }];\n}\nlet body;\ntry {\n  const obj = JSON.parse(raw);\n  body = Object.entries(obj).map(([k, v]) => {\n    const label = k.replace(/_/g, ' ').replace(/\\b\\w/g, c => c.toUpperCase());\n    if (Array.isArray(v)) {\n      return '\\u2022 *' + label + '*:\\n' + v.map(item => '  - ' + (typeof item === 'object' ? JSON.stringify(item) : item)).join('\\n');\n    }\n    if (typeof v === 'object' && v !== null) {\n      return '\\u2022 *' + label + '*: ' + JSON.stringify(v);\n    }\n    return '\\u2022 *' + label + '*: ' + v;\n  }).join('\\n');\n} catch (e) {\n  body = raw;\n}\nreturn [{ json: { formatted: header + '\\n\\n' + body + '\\n\\n' + footer } }];"
+      },
+      "id": "format-growth-slack",
+      "name": "Format for Slack",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        750,
+        300
+      ]
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "https://slack.com/api/chat.postMessage",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ channel: 'C0AM01NHQ3Y', text: ((($json.output || [])[0]?.content || []).find(c => c.type === 'output_text')?.text || ''), username: 'Growth', icon_emoji: ':rocket:' }) }}"
+        "jsonBody": "={{ JSON.stringify({ channel: 'C0AM01NHQ3Y', text: $json.formatted, username: 'Growth', icon_emoji: ':chart_with_upwards_trend:' }) }}"
       },
       "id": "slack-growth",
       "name": "Post to Slack",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        750,
+        1000,
         300
       ],
       "credentials": {
@@ -102,6 +115,17 @@
       ]
     },
     "Generate Growth Content": {
+      "main": [
+        [
+          {
+            "node": "Format for Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format for Slack": {
       "main": [
         [
           {

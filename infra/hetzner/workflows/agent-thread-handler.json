@@ -19,7 +19,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const body = $input.first().json.body || {};\n\nif (body.type === 'url_verification' && body.challenge) {\n  return [{ json: { mode: 'challenge', challenge: body.challenge } }];\n}\n\nconst event = body.event || {};\nif (event.bot_id || event.subtype === 'bot_message') return [];\n\nconst text = event.text || '';\nconst isMention = text.includes('<@');\nif (!event.thread_ts && !isMention) return [];\n\nreturn [{\n  json: {\n    mode: 'event',\n    channel: event.channel,\n    thread_ts: event.thread_ts || event.ts,\n    ts: event.ts || event.thread_ts,\n    text,\n    user: event.user || '',\n    is_mention: isMention\n  }\n}];"
+        "jsCode": "const body = $input.first().json.body || {};\n\nif (body.type === 'url_verification' && body.challenge) {\n  return [{ json: { mode: 'challenge', challenge: body.challenge } }];\n}\n\nconst event = body.event || {};\nif (event.bot_id || event.subtype === 'bot_message') return [];\n\nif (event.type === 'reaction_added' && event.item) {\n  return [{\n    json: {\n      mode: 'reaction',\n      reaction: event.reaction,\n      channel: event.item.channel,\n      message_ts: event.item.ts,\n      user: event.user || ''\n    }\n  }];\n}\n\nconst text = event.text || '';\nconst isMention = text.includes('<@');\nif (!event.thread_ts && !isMention) return [];\n\nreturn [{\n  json: {\n    mode: 'event',\n    channel: event.channel,\n    thread_ts: event.thread_ts || event.ts,\n    ts: event.ts || event.thread_ts,\n    text,\n    user: event.user || '',\n    is_mention: isMention\n  }\n}];"
       },
       "id": "filter-events",
       "name": "Filter Events",
@@ -235,6 +235,141 @@
           "name": "Slack Bot Token"
         }
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "if ($json.mode !== 'reaction') return [];\nif ($json.reaction !== 'white_check_mark') return [];\nif ($json.channel !== 'C0ALLEKR9FZ') return [];\n\nreturn [{\n  json: {\n    channel: $json.channel,\n    message_ts: $json.message_ts\n  }\n}];"
+      },
+      "id": "route-reaction",
+      "name": "Route Reaction Events",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://slack.com/api/conversations.history",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "channel",
+              "value": "={{ $json.channel }}"
+            },
+            {
+              "name": "latest",
+              "value": "={{ $json.message_ts }}"
+            },
+            {
+              "name": "limit",
+              "value": "1"
+            },
+            {
+              "name": "inclusive",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-reacted-msg",
+      "name": "Fetch Reacted Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1210,
+        660
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "slack-cred",
+          "name": "Slack Bot Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const slackResp = $input.first().json;\nconst messages = slackResp.messages || [];\nif (!messages.length) return [];\n\nconst msgText = messages[0].text || '';\nconst msgTs = messages[0].ts || '';\nconst channel = $('Route Reaction Events').first().json.channel;\n\nconst prMatch = msgText.match(/github\\.com\\/[^\\/]+\\/[^\\/]+\\/pull\\/(\\d+)/);\nif (!prMatch) return [];\n\nconst prNumber = parseInt(prMatch[1], 10);\nconst owner = 'paperwork-labs';\nconst repo = 'paperwork';\n\nconst ghHeaders = {\n  Authorization: `Bearer ${$env.GITHUB_TOKEN}`,\n  Accept: 'application/vnd.github.v3+json',\n  'User-Agent': 'n8n-paperwork'\n};\n\nconst prResp = await this.helpers.httpRequest({\n  method: 'GET',\n  url: `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,\n  headers: ghHeaders\n});\n\nconst sha = prResp.head.sha;\n\nconst checksResp = await this.helpers.httpRequest({\n  method: 'GET',\n  url: `https://api.github.com/repos/${owner}/${repo}/commits/${sha}/check-runs`,\n  headers: ghHeaders\n});\n\nconst runs = checksResp.check_runs || [];\nconst failed = runs.filter(c => c.conclusion === 'failure');\nconst pending = runs.filter(c => c.status === 'in_progress' || c.status === 'queued');\n\nif (failed.length > 0 || pending.length > 0) {\n  const blockers = [\n    ...failed.map(c => `${c.name} (failed)`),\n    ...pending.map(c => `${c.name} (${c.status})`)\n  ];\n  await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://slack.com/api/chat.postMessage',\n    headers: {\n      Authorization: `Bearer ${$env.SLACK_BOT_TOKEN}`,\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({\n      channel,\n      text: `:x: CI checks haven't passed yet - ${blockers.join(', ')}`,\n      thread_ts: msgTs\n    })\n  });\n  return [];\n}\n\nreturn [{\n  json: {\n    pr_number: prNumber,\n    sha,\n    channel,\n    message_ts: msgTs,\n    pr_title: prResp.title || `#${prNumber}`\n  }\n}];"
+      },
+      "id": "extract-pr-check-ci",
+      "name": "Extract PR and Check CI",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1450,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ 'https://api.github.com/repos/paperwork-labs/paperwork/pulls/' + $json.pr_number + '/merge' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ merge_method: 'squash' }) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github.v3+json"
+            },
+            {
+              "name": "User-Agent",
+              "value": "n8n-paperwork"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "merge-pr",
+      "name": "Merge PR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1690,
+        660
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "github-cred",
+          "name": "GitHub Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ channel: $('Extract PR and Check CI').first().json.channel, text: ':white_check_mark: PR #' + $('Extract PR and Check CI').first().json.pr_number + ' (' + ($('Extract PR and Check CI').first().json.pr_title || '') + ') merged via squash.', thread_ts: $('Extract PR and Check CI').first().json.message_ts, username: 'Engineering', icon_emoji: ':gear:' }) }}",
+        "options": {}
+      },
+      "id": "post-merge-confirm",
+      "name": "Post Merge Confirmation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1930,
+        660
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "slack-cred",
+          "name": "Slack Bot Token"
+        }
+      }
     }
   ],
   "connections": {
@@ -265,6 +400,11 @@
         [
           {
             "node": "Route Persona",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Route Reaction Events",
             "type": "main",
             "index": 0
           }
@@ -347,6 +487,50 @@
         [
           {
             "node": "Post Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Reaction Events": {
+      "main": [
+        [
+          {
+            "node": "Fetch Reacted Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Reacted Message": {
+      "main": [
+        [
+          {
+            "node": "Extract PR and Check CI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PR and Check CI": {
+      "main": [
+        [
+          {
+            "node": "Merge PR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge PR": {
+      "main": [
+        [
+          {
+            "node": "Post Merge Confirmation",
             "type": "main",
             "index": 0
           }

@@ -163,13 +163,26 @@
     },
     {
       "parameters": {
+        "jsCode": "const output = $json.output || [];\nconst aiText = (output[0]?.content || []).find(c => c.type === 'output_text')?.text || '';\nconst date = new Date().toISOString().split('T')[0];\nconst header = '*Daily Briefing \u2014 ' + date + '*\\n\\n';\nconst footer = '\\n\\n_Thread router: reply with a persona name for a focused take._';\nconst fallback = ':warning: No output generated. Check workflow logs.';\nconst body = aiText.trim() ? aiText.trim() : fallback;\nreturn [{ json: { text: header + body + footer } }];"
+      },
+      "id": "format-daily-briefing",
+      "name": "Format Briefing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1250,
+        300
+      ]
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "https://slack.com/api/chat.postMessage",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ channel: 'C0ALLJWR1HV', text: ((($json.output || [])[0]?.content || []).find(c => c.type === 'output_text')?.text || ''), username: 'EA / Operator', icon_emoji: ':clipboard:' }) }}",
+        "jsonBody": "={{ JSON.stringify({ channel: 'C0ALLJWR1HV', text: $json.text, username: 'EA / Operator', icon_emoji: ':clipboard:' }) }}",
         "options": {}
       },
       "id": "post-daily-briefing",
@@ -223,6 +236,17 @@
       ]
     },
     "Generate Briefing": {
+      "main": [
+        [
+          {
+            "node": "Format Briefing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Briefing": {
       "main": [
         [
           {

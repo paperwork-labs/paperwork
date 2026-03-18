@@ -1,4 +1,4 @@
-export { cn } from "@venture/ui";
+export { cn } from "@paperwork-labs/ui";
 
 export function formatCurrency(cents: number): string {
   const dollars = cents / 100;

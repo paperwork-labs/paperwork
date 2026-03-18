@@ -181,7 +181,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const output = $json.output || [];\nconst text = output[0]?.content?.find((part) => part.type === 'output_text')?.text || 'Sprint retrospective generated but empty.';\nconst date = $('Build Close Prompt').first().json.date;\nconst title = `Sprint Close \u2014 ${date}`;\nconst entry = `### ${title}\\n\\n${text}\\n`;\nconst knowledge = $('Build Close Prompt').first().json.knowledge || '';\nconst updated = knowledge.trimEnd() + '\\n\\n' + entry + '\\n';\nconst encoded = Buffer.from(updated, 'utf8').toString('base64');\nconst sha = $('Fetch KNOWLEDGE.md').first().json.sha;\nreturn [{ json: { text, date, entry, encoded, sha } }];"
+        "jsCode": "const output = $json.output || [];\nconst text = output[0]?.content?.find((part) => part.type === 'output_text')?.text || ':warning: No output generated. Check workflow logs.';\nconst date = $('Build Close Prompt').first().json.date;\nconst title = `Sprint Close \u2014 ${date}`;\nconst entry = `### ${title}\\n\\n${text}\\n`;\nconst knowledge = $('Build Close Prompt').first().json.knowledge || '';\nconst updated = knowledge.trimEnd() + '\\n\\n' + entry + '\\n';\nconst encoded = Buffer.from(updated, 'utf8').toString('base64');\nconst sha = $('Fetch KNOWLEDGE.md').first().json.sha;\nreturn [{ json: { text, date, entry, encoded, sha } }];"
       },
       "id": "prepare-close-output",
       "name": "Prepare Close Output",
@@ -200,7 +200,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ channel: 'C0AM3APFP99', text: '*Sprint Retro*\\n\\n' + $json.text, username: 'Sprint Retro', icon_emoji: ':bar_chart:' }) }}",
+        "jsonBody": "={{ JSON.stringify({ channel: 'C0AM3APFP99', text: '*Sprint Retro \u2014 ' + $json.date + '*\\n\\n' + $json.text + '\\n\\n_Thread router: reply with a persona name for a focused take._', username: 'Sprint Retro', icon_emoji: ':checkered_flag:' }) }}",
         "options": {}
       },
       "id": "post-close-sprints",
