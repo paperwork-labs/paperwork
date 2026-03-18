@@ -445,12 +445,12 @@ April Tax is an AI-native tax filing infrastructure provider. IRS-authorized e-f
 ### D55 — Command Center: paperworklabs.com (2026-03-12)
 - **Context**: Command center was on sankalpsharma.com. With Paperwork Labs as the holding company, the admin dashboard should live on company infrastructure, not the founder's personal domain.
 - **Decision**: Move command center (apps/studio) to paperworklabs.com. sankalpsharma.com becomes the founder's personal portfolio/blog site. Cleaner separation: company ops on company domain, personal brand on personal domain.
-- **Alternatives**: Keep on sankalpsharma.com (rejected: mixing personal and company, awkward for Olga's admin access and future team/investors).
+- **Alternatives**: Keep on sankalpsharma.com (rejected: mixing personal and company, awkward for Olga Sharma's admin access and future team/investors).
 - **Reversibility**: DNS change, trivial.
 
 ### D56 — Auth Architecture: Admin Allowlist (2026-03-12)
-- **Context**: Need admin access for two founders (Sankalp + Olga) across all products.
-- **Decision**: Shared `packages/auth/` using Auth.js v5 (NextAuth). User auth: Google OAuth + Apple Sign-In. Admin auth: same OAuth flow + email allowlist check (`ADMIN_EMAILS` env var with sankalp@paperworklabs.com + Olga's personal email). No separate admin login, no role system. Trinkets have no auth -- public tools with cross-sell CTAs. (Updated per D76: 1 Workspace seat, Olga uses personal email for admin access.)
+- **Context**: Need admin access for two founders (Sankalp + Olga Sharma) across all products.
+- **Decision**: Shared `packages/auth/` using Auth.js v5 (NextAuth). User auth: Google OAuth + Apple Sign-In. Admin auth: same OAuth flow + email allowlist check (`ADMIN_EMAILS` env var with sankalp@paperworklabs.com + Olga Sharma's personal email). No separate admin login, no role system. Trinkets have no auth -- public tools with cross-sell CTAs. (Updated per D76: 1 Workspace seat, Olga Sharma uses personal email for admin access.)
 - **Alternatives**: Separate admin app (over-engineered), personal Gmail for auth (messy separation of concerns), role-based system (unnecessary for 2 admins).
 - **Reversibility**: Allowlist is an env var, trivial to update.
 
@@ -570,8 +570,8 @@ April Tax is an AI-native tax filing infrastructure provider. IRS-authorized e-f
 
 ### D76 — Google Workspace Setup: 1 Seat + Aliases (2026-03-16)
 - **Context**: VMP and FINANCIALS incorrectly stated "Google Workspace already active on sankalpsharma.com." Founder did not have paid Google Workspace — was on free Gmail. Needed to create Workspace from scratch for @paperworklabs.com and product-domain emails.
-- **Decision**: Create new Google Workspace under Paperwork Labs. Sign up with "Just you" (1 seat). Primary domain: paperworklabs.com. Add filefree.ai, launchfree.ai, distill.tax as alias domains. All department emails (hello@, support@, legal@, partnerships@, api@) configured as aliases routing to founder's single inbox. Cost: **$6/mo** (Business Starter), not $12. Olga gets admin panel access via personal email in `ADMIN_EMAILS` env var — no second Workspace seat needed. Use company email (e.g. sankalp@paperworklabs.com) for Cursor, Stripe, and vendor accounts for clean expense/billing separation.
-- **Alternatives**: 2 seats ($12/mo) with Olga on olga@paperworklabs.com (rejected: aliases suffice, saves $6/mo); free Gmail + Cloudflare Email Routing (rejected: no proper admin console, SPF/DKIM setup more brittle).
+- **Decision**: Create new Google Workspace under Paperwork Labs. Sign up with "Just you" (1 seat). Primary domain: paperworklabs.com. Add filefree.ai, launchfree.ai, distill.tax as alias domains. All department emails (hello@, support@, legal@, partnerships@, api@) configured as aliases routing to founder's single inbox. Cost: **$6/mo** (Business Starter), not $12. Olga Sharma gets admin panel access via personal email in `ADMIN_EMAILS` env var — no second Workspace seat needed. Use company email (e.g. sankalp@paperworklabs.com) for Cursor, Stripe, and vendor accounts for clean expense/billing separation.
+- **Alternatives**: 2 seats ($12/mo) with Olga Sharma on olga@paperworklabs.com (rejected: aliases suffice, saves $6/mo); free Gmail + Cloudflare Email Routing (rejected: no proper admin console, SPF/DKIM setup more brittle).
 - **Reversibility**: Easy. Add second seat anytime. Update FINANCIALS.md and VMP "Professional Email Aliases" section to reflect $6/mo and "create Workspace" (not "already active").
 
 ### D77 — Repo Migration + Docs Audit (2026-03-16)
@@ -584,3 +584,9 @@ April Tax is an AI-native tax filing infrastructure provider. IRS-authorized e-f
 - **Decision**: (1) Transferred existing Hetzner server from personal account to Paperwork Labs project (billing@paperworklabs.com). Renamed from `filefree-ops` to `paperwork-ops`. (2) Built 5 new Slack-first n8n workflows: Agent Thread Handler (core brain — routes Slack thread replies to personas via GPT-4o), EA Daily Briefing (7am PT cron), EA Weekly Plan (Sunday 6pm PT cron), PR Summary (GitHub webhook), Decision Logger (auto-commits to KNOWLEDGE.md). (3) Updated all 6 existing workflows: replaced Notion output with Slack `chat.postMessage` nodes with persona attribution (custom username + icon), rebranded from "FileFree" to "Paperwork Labs", expanded system prompts to cover all 4 products. (4) Added AGENTS.md at repo root (cross-tool agent instruction standard, works in Cursor/Claude Code/Copilot/Windsurf). (5) Updated all Hetzner infra docs and env.example for paperworklabs.com domains. DNS: n8n.paperworklabs.com, social.paperworklabs.com → 204.168.147.100.
 - **Alternatives**: Keep Notion output (rejected: Notion MCP removed, Slack is primary interface), use GitHub Agentic Workflows instead of n8n (rejected: gh-aw cannot receive Slack events as triggers, n8n is the only self-hosted tool for Slack-first agent orchestration), provision new Hetzner server (rejected: existing CX33 is adequate, EUR 5.49/mo).
 - **Reversibility**: High. Workflows are independent JSON files. Server transfer is reversible via Hetzner support.
+
+### D79 — AI Advisory + Internal Animation Primitives (2026-03-18)
+- **Context**: Two future tasks were queued: migrate to modern AI SDK patterns for advisory/chat work, and evaluate animated UI component options. No dedicated chat stack existed yet, but immediate progress was needed without introducing new vendor lock-in or dependency bloat.
+- **Decision**: Implement a lightweight advisory baseline now in FileFree: add an AI SDK-powered advisory API route (`/api/advisory`) and a small advisory playground UI (`/advisory`) that exercises it. For animation components, standardize on internal primitives built with existing `framer-motion` (`FadeIn`, `GlowCard`, `TypingDots`) instead of adding third-party animation kits right now.
+- **Alternatives**: Add external animation libraries (PrismUI/SmoothUI/AnimateX) immediately (rejected: extra dependency risk and unclear ROI before broader UI rollout), delay AI SDK work entirely (rejected: loses momentum and keeps advisory integration unvalidated).
+- **Reversibility**: High. Internal primitives can be swapped later, and advisory route can be extended or replaced with provider routing.
