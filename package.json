@@ -4,16 +4,16 @@
   "private": true,
   "scripts": {
     "dev:filefree": "pnpm --filter @venture/filefree dev",
-    "dev:studio": "pnpm --filter @venture/studio dev",
+    "dev:studio": "pnpm --filter @paperwork/studio dev",
     "build:filefree": "pnpm --filter @venture/filefree build",
-    "build:studio": "pnpm --filter @venture/studio build",
+    "build:studio": "pnpm --filter @paperwork/studio build",
     "build:all": "pnpm -r build",
     "lint": "pnpm -r lint",
     "format": "pnpm -r format",
     "clean": "pnpm -r exec rm -rf node_modules .next out dist"
   },
   "engines": {
-    "node": ">=20",
+    "node": ">=20.9.0",
     "pnpm": ">=10"
   }
 }
