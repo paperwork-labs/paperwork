@@ -10,6 +10,9 @@ concurrency:
   group: deploy-n8n
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     name: Deploy to Hetzner
@@ -17,17 +20,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Copy workflows and import
+      - name: Create remote temp directory
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: root
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          script: |
-            set -e
-            CONTAINER="paperwork-ops-n8n-1"
-            REMOTE_TMP="/tmp/paperwork-workflows"
-            mkdir -p "$REMOTE_TMP"
+          script: mkdir -p /tmp/paperwork-workflows
 
       - name: Upload workflow files
         uses: appleboy/scp-action@v0.1.7
@@ -48,6 +47,7 @@ jobs:
           script: |
             set -e
             CONTAINER="paperwork-ops-n8n-1"
+            FAILED=0
 
             echo "Importing workflows..."
             for f in /tmp/paperwork-workflows/*.json; do
@@ -57,12 +57,20 @@ jobs:
             done
 
             echo "Activating workflows..."
-            IDS=$(docker exec "$CONTAINER" n8n list:workflow --active=false --json 2>/dev/null | grep -o '"id":"[^"]*"' | cut -d'"' -f4 || true)
+            IDS=$(docker exec "$CONTAINER" n8n list:workflow --json 2>/dev/null | grep -o '"id":"[^"]*"' | cut -d'"' -f4 || true)
             for id in $IDS; do
-              docker exec "$CONTAINER" n8n update:workflow --id="$id" --active=true 2>/dev/null || true
+              if ! docker exec "$CONTAINER" n8n update:workflow --id="$id" --active=true 2>&1; then
+                echo "ERROR: Failed to activate workflow $id"
+                FAILED=1
+              fi
             done
 
             echo "Restarting n8n..."
             docker restart "$CONTAINER"
 
-            echo "Done."
+            if [ "$FAILED" -ne 0 ]; then
+              echo "Some workflows failed to activate — check logs above."
+              exit 1
+            fi
+
+            echo "Done. All workflows imported, activated, and n8n restarted."

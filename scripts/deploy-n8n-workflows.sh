@@ -44,17 +44,25 @@ ssh "$HOST" "mkdir -p $REMOTE_TMP"
 scp -q "$WORKFLOWS_DIR"/*.json "$HOST:$REMOTE_TMP/"
 
 echo "[2/4] Importing workflows..."
-ssh "$HOST" "for f in $REMOTE_TMP/*.json; do
-  name=\$(basename \"\$f\")
-  docker cp \"\$f\" $N8N_CONTAINER:/tmp/\$name
-  docker exec $N8N_CONTAINER n8n import:workflow --input=\"/tmp/\$name\"
-done"
+ssh "$HOST" 'for f in '"$REMOTE_TMP"'/*.json; do
+  name=$(basename "$f")
+  docker cp "$f" '"$N8N_CONTAINER"':/tmp/$name
+  docker exec '"$N8N_CONTAINER"' n8n import:workflow --input="/tmp/$name"
+done'
 
 echo "[3/4] Activating workflows..."
-ssh "$HOST" "IDS=\$(docker exec $N8N_CONTAINER n8n list:workflow --json 2>/dev/null | grep -o '\"id\":\"[^\"]*\"' | cut -d'\"' -f4 || true)
-for id in \$IDS; do
-  docker exec $N8N_CONTAINER n8n update:workflow --id=\"\$id\" --active=true 2>/dev/null || true
-done"
+FAILED=0
+IDS=$(ssh "$HOST" "docker exec $N8N_CONTAINER n8n list:workflow --json 2>/dev/null | grep -o '\"id\":\"[^\"]*\"' | cut -d'\"' -f4" || true)
+for id in $IDS; do
+  if ! ssh "$HOST" "docker exec $N8N_CONTAINER n8n update:workflow --id=\"$id\" --active=true" 2>&1; then
+    echo "ERROR: Failed to activate workflow $id"
+    FAILED=1
+  fi
+done
+
+if [[ "$FAILED" -ne 0 ]]; then
+  echo "WARNING: Some workflows failed to activate — check output above." >&2
+fi
 
 echo "[4/4] Restarting n8n..."
 ssh "$HOST" "docker restart $N8N_CONTAINER"
