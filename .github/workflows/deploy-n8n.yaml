@@ -1,0 +1,112 @@
+name: Deploy n8n workflows
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infra/hetzner/workflows/*.json'
+
+concurrency:
+  group: deploy-n8n
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to Hetzner
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create remote temp directory
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: root
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          fingerprint: ${{ secrets.HETZNER_HOST_FINGERPRINT }}
+          script: mkdir -p /tmp/paperwork-workflows
+
+      - name: Upload workflow files
+        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: root
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          fingerprint: ${{ secrets.HETZNER_HOST_FINGERPRINT }}
+          source: "infra/hetzner/workflows/*.json"
+          target: "/tmp/paperwork-workflows"
+          strip_components: 3
+
+      - name: Import, publish, restart, and verify
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        env:
+          SLACK_ALERTS_WEBHOOK_URL: ${{ secrets.SLACK_ALERTS_WEBHOOK_URL }}
+          DEPLOY_COMMIT: ${{ github.sha }}
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: root
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          fingerprint: ${{ secrets.HETZNER_HOST_FINGERPRINT }}
+          envs: SLACK_ALERTS_WEBHOOK_URL,DEPLOY_COMMIT
+          script: |
+            set -e
+            CONTAINER="paperwork-ops-n8n-1"
+            FAILED=0
+
+            echo "=== Importing workflows ==="
+            JSON_COUNT=$(ls /tmp/paperwork-workflows/*.json 2>/dev/null | wc -l | tr -d ' ')
+            if [ "$JSON_COUNT" -eq 0 ]; then
+              echo "No JSON files found in /tmp/paperwork-workflows/"
+              exit 1
+            fi
+            for f in /tmp/paperwork-workflows/*.json; do
+              name=$(basename "$f")
+              docker cp "$f" "$CONTAINER:/tmp/$name"
+              docker exec "$CONTAINER" n8n import:workflow --input="/tmp/$name"
+              echo "  Imported: $name"
+            done
+
+            echo "=== Publishing workflows ==="
+            IDS=$(docker exec "$CONTAINER" n8n list:workflow --onlyId 2>/dev/null || true)
+            for id in $IDS; do
+              if ! docker exec "$CONTAINER" n8n publish:workflow --id="$id" 2>&1; then
+                echo "ERROR: Failed to publish workflow $id"
+                FAILED=1
+              fi
+            done
+
+            echo "=== Restarting n8n ==="
+            docker restart "$CONTAINER"
+
+            echo "=== Verifying activation (waiting 15s) ==="
+            sleep 15
+            TOTAL=$(docker exec "$CONTAINER" n8n list:workflow --onlyId 2>/dev/null | wc -l | tr -d ' ')
+            ACTIVE=$(docker exec "$CONTAINER" n8n list:workflow --active=true --onlyId 2>/dev/null | wc -l | tr -d ' ')
+            N8N_STATUS=$(curl -sf -o /dev/null -w '%{http_code}' https://n8n.paperworklabs.com/ --max-time 10 || echo "000")
+
+            if [ "$ACTIVE" -ne "$TOTAL" ] || [ "$FAILED" -ne 0 ]; then
+              INACTIVE=$(docker exec "$CONTAINER" n8n list:workflow --active=false 2>/dev/null | tr '\n' ', ' || echo "unknown")
+              if [ -n "$SLACK_ALERTS_WEBHOOK_URL" ]; then
+                jq -n --arg text ":rotating_light: *n8n deploy FAILED*
+            $ACTIVE/$TOTAL workflows active.
+            Inactive: $INACTIVE
+            n8n reachable: $N8N_STATUS" '{text: $text}' | \
+                  curl -sf -X POST "$SLACK_ALERTS_WEBHOOK_URL" -H 'Content-type: application/json' -d @- || true
+              fi
+              echo "DEPLOY FAILED: $ACTIVE/$TOTAL workflows active"
+              exit 1
+            fi
+
+            if [ -n "$SLACK_ALERTS_WEBHOOK_URL" ]; then
+              COMMIT_SHORT=$(echo "${DEPLOY_COMMIT:-unknown}" | cut -c1-7)
+              jq -n --arg text ":white_check_mark: *n8n deploy complete*
+            • $ACTIVE/$TOTAL workflows active
+            • n8n reachable ($N8N_STATUS)
+            • Commit: $COMMIT_SHORT" '{text: $text}' | \
+                curl -sf -X POST "$SLACK_ALERTS_WEBHOOK_URL" -H 'Content-type: application/json' -d @- || true
+            fi
+
+            echo "Deploy complete. $ACTIVE/$TOTAL workflows active. n8n: $N8N_STATUS"
