@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "dev:filefree": "pnpm --filter @venture/filefree dev",
-    "dev:studio": "pnpm --filter @venture/studio dev",
+    "dev:studio": "pnpm --filter @paperwork/studio dev",
     "build:filefree": "pnpm --filter @venture/filefree build",
-    "build:studio": "pnpm --filter @venture/studio build",
+    "build:studio": "pnpm --filter @paperwork/studio build",
     "build:all": "pnpm -r build",
     "lint": "pnpm -r lint",
     "format": "pnpm -r format",
