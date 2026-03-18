@@ -13,7 +13,7 @@
 #   N8N_DEPLOY_HOST     SSH target (default: root@204.168.147.100)
 #   N8N_CONTAINER       n8n container name (default: paperwork-ops-n8n-1)
 #   POSTGRES_CONTAINER   Postgres container name (default: paperwork-ops-postgres-1)
-#   POSTGRES_USER       Postgres user for n8n DB (default: filefree_ops)
+#   POSTGRES_USER       Postgres user for n8n DB (default: ops, per hetzner/env.example)
 #   WORKFLOWS_DIR       Local workflows directory (default: infra/hetzner/workflows)
 
 set -euo pipefail
@@ -24,7 +24,7 @@ ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 HOST="${1:-${N8N_DEPLOY_HOST:-root@204.168.147.100}}"
 N8N_CONTAINER="${N8N_CONTAINER:-paperwork-ops-n8n-1}"
 POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-paperwork-ops-postgres-1}"
-POSTGRES_USER="${POSTGRES_USER:-filefree_ops}"
+POSTGRES_USER="${POSTGRES_USER:-ops}"
 WORKFLOWS_DIR="${WORKFLOWS_DIR:-$ROOT_DIR/infra/hetzner/workflows}"
 REMOTE_TMP="/tmp/paperwork-workflows"
 
