@@ -1,0 +1,49 @@
+name: Infrastructure health check
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    name: Check n8n and webhooks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check n8n reachability
+        run: |
+          STATUS=$(curl -sf -o /dev/null -w '%{http_code}' \
+            https://n8n.paperworklabs.com/ --max-time 10 2>/dev/null || echo "000")
+          echo "n8n_status=$STATUS" >> "$GITHUB_ENV"
+          echo "n8n status: $STATUS"
+
+      - name: Check webhook delivery health
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          FAILURES=$(gh api repos/paperwork-labs/paperwork/hooks/601343195/deliveries \
+            --jq '[.[:5] | .[] | select(.status_code != 200)] | length' 2>/dev/null || echo "-1")
+          echo "webhook_failures=$FAILURES" >> "$GITHUB_ENV"
+          echo "Webhook failures (last 5 deliveries): $FAILURES"
+
+      - name: Alert on failure
+        if: env.n8n_status != '200' || (env.webhook_failures != '0' && env.webhook_failures != '-1')
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_ALERTS_WEBHOOK_URL }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK" ]; then
+            echo "SLACK_ALERTS_WEBHOOK_URL secret not set — skipping Slack alert"
+            exit 0
+          fi
+          curl -sf -X POST "$SLACK_WEBHOOK" \
+            -H 'Content-type: application/json' \
+            -d "{\"text\":\":warning: *External Health Check*\nn8n: ${{ env.n8n_status }}\nWebhook failures (last 5): ${{ env.webhook_failures }}\nDashboard: https://n8n.paperworklabs.com\"}"
+
+      - name: Fail job if unhealthy
+        if: env.n8n_status != '200'
+        run: |
+          echo "n8n is unreachable (status: ${{ env.n8n_status }})"
+          exit 1

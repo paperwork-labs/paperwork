@@ -40,40 +40,64 @@ jobs:
           target: "/tmp/paperwork-workflows"
           strip_components: 3
 
-      - name: Import, activate, and restart n8n
+      - name: Import, publish, restart, and verify
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        env:
+          SLACK_ALERTS_WEBHOOK_URL: ${{ secrets.SLACK_ALERTS_WEBHOOK_URL }}
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: root
           key: ${{ secrets.HETZNER_SSH_KEY }}
           fingerprint: ${{ secrets.HETZNER_HOST_FINGERPRINT }}
+          envs: SLACK_ALERTS_WEBHOOK_URL
           script: |
             set -e
             CONTAINER="paperwork-ops-n8n-1"
             FAILED=0
+            COMMIT="${GITHUB_SHA:-unknown}"
 
-            echo "Importing workflows..."
+            echo "=== Importing workflows ==="
             for f in /tmp/paperwork-workflows/*.json; do
               name=$(basename "$f")
               docker cp "$f" "$CONTAINER:/tmp/$name"
               docker exec "$CONTAINER" n8n import:workflow --input="/tmp/$name"
+              echo "  Imported: $name"
             done
 
-            echo "Activating workflows..."
-            IDS=$(docker exec "$CONTAINER" n8n list:workflow --json 2>/dev/null | jq -r '.[].id' || true)
+            echo "=== Publishing workflows ==="
+            IDS=$(docker exec "$CONTAINER" n8n list:workflow --onlyId 2>/dev/null || true)
             for id in $IDS; do
-              if ! docker exec "$CONTAINER" n8n update:workflow --id="$id" --active=true 2>&1; then
-                echo "ERROR: Failed to activate workflow $id"
+              if ! docker exec "$CONTAINER" n8n publish:workflow --id="$id" 2>&1; then
+                echo "ERROR: Failed to publish workflow $id"
                 FAILED=1
               fi
             done
 
-            echo "Restarting n8n..."
+            echo "=== Restarting n8n ==="
             docker restart "$CONTAINER"
 
-            if [ "$FAILED" -ne 0 ]; then
-              echo "Some workflows failed to activate — check logs above."
+            echo "=== Verifying activation (waiting 15s for startup) ==="
+            sleep 15
+            TOTAL=$(docker exec "$CONTAINER" n8n list:workflow --onlyId 2>/dev/null | wc -l | tr -d ' ')
+            ACTIVE=$(docker exec "$CONTAINER" n8n list:workflow --active=true --onlyId 2>/dev/null | wc -l | tr -d ' ')
+
+            N8N_STATUS=$(curl -sf -o /dev/null -w '%{http_code}' https://n8n.paperworklabs.com/ --max-time 10 || echo "000")
+
+            if [ "$ACTIVE" -ne "$TOTAL" ] || [ "$FAILED" -ne 0 ]; then
+              INACTIVE=$(docker exec "$CONTAINER" n8n list:workflow --active=false 2>/dev/null || echo "unknown")
+              if [ -n "$SLACK_ALERTS_WEBHOOK_URL" ]; then
+                curl -sf -X POST "$SLACK_ALERTS_WEBHOOK_URL" \
+                  -H 'Content-type: application/json' \
+                  -d "{\"text\":\":rotating_light: *n8n deploy FAILED*\n$ACTIVE/$TOTAL workflows active after deploy.\nInactive: $INACTIVE\nn8n reachable: $N8N_STATUS\"}"
+              fi
+              echo "DEPLOY FAILED: $ACTIVE/$TOTAL workflows active"
               exit 1
             fi
 
-            echo "Done. All workflows imported, activated, and n8n restarted."
+            if [ -n "$SLACK_ALERTS_WEBHOOK_URL" ]; then
+              curl -sf -X POST "$SLACK_ALERTS_WEBHOOK_URL" \
+                -H 'Content-type: application/json' \
+                -d "{\"text\":\":white_check_mark: *n8n deploy complete*\n• $ACTIVE/$TOTAL workflows active\n• n8n reachable ($N8N_STATUS)\n• Commit: $COMMIT\"}"
+            fi
+
+            echo "Deploy complete. $ACTIVE/$TOTAL workflows active. n8n status: $N8N_STATUS"

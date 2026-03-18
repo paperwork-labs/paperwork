@@ -45,6 +45,7 @@ services:
       N8N_PORT: 5678
       N8N_PROTOCOL: https
       WEBHOOK_URL: https://${N8N_HOST:-localhost}/
+      SLACK_ALERTS_WEBHOOK_URL: ${SLACK_ALERTS_WEBHOOK_URL:-}
       GENERIC_TIMEZONE: America/Los_Angeles
     volumes:
       - n8ndata:/home/node/.n8n

@@ -7,6 +7,7 @@ Architecture is **Slack-first**:
 - Persona-routed thread responses in Slack
 - Scheduled briefings, sprint kickoff/close, and operational alerts posted to Slack channels
 - Decision logging routed from the thread handler to the decision workflow
+- 5-layer observability system ensures failures are caught within minutes (see below)
 
 ## Workflows
 
@@ -25,6 +26,24 @@ Architecture is **Slack-first**:
 | CPA Tax Review | `cpa-tax-review.json` | POST /cpa-review | GPT-4o | #general |
 | Sprint Kickoff | `sprint-kickoff.json` | Cron Mon 7am PT | GPT-4o | #sprints + #all-paperwork-labs |
 | Sprint Close | `sprint-close.json` | Cron Fri 9pm PT | GPT-4o | #sprints + KNOWLEDGE.md |
+| **Infra Health Check** | `infra-health-check.json` | Cron every 30 min | N/A | #alerts (on failure only) |
+
+## Observability Architecture (5 Layers)
+
+Infrastructure monitoring uses 5 layers. Each catches what the layer above might miss.
+
+| Layer | What | Runs On | Frequency | Alert Channel |
+|---|---|---|---|---|
+| 0: Native Integrations | GitHub for Slack, Vercel for Slack, Google Drive for Slack | Third-party (GitHub, Vercel, Google) | Real-time | #engineering |
+| 1: Deploy Verification | Post-deploy active count + liveness check | deploy-n8n.yaml / deploy script | On deploy | #alerts (failure) / incoming webhook |
+| 2: n8n Self-Health | Workflow count, liveness, dedup alerts | infra-health-check.json (n8n cron) | Every 30 min | #alerts via Slack Bot Token |
+| 3: External Canary | Ping n8n, check webhook deliveries | infra-health.yaml (GitHub Action) | Every 6 hours | #alerts via incoming webhook |
+| 4: Daily Briefing | Infra health section in EA briefing | ea-daily.json (n8n cron) | 7am PT daily | #daily-briefing |
+
+**Layer 0 setup** (one-time, in Slack):
+- GitHub for Slack: `/github subscribe paperwork-labs/paperwork` in `#engineering`
+- Vercel for Slack: Install from vercel.com/integrations/slack, configure for all apps
+- Google Drive for Slack: Already installed (doc previews auto-unfurl)
 
 ## Credential Setup
 
@@ -38,7 +57,7 @@ After adding credentials, open each workflow in the n8n editor, select the corre
 
 ## Deploying Updates
 
-Use the deploy script (recommended; imports, publishes, activates, and restarts n8n):
+Use the deploy script (recommended; imports, publishes, verifies, and notifies):
 
 ```bash
 ./scripts/deploy-n8n-workflows.sh
@@ -50,18 +69,20 @@ Or with a custom host:
 ./scripts/deploy-n8n-workflows.sh root@your-server.example.com
 ```
 
-The script runs: import → publish → activate all workflows → restart n8n. n8n deactivates workflows on import; the script reactivates them and restarts n8n so activation takes effect (per [n8n docs](https://docs.n8n.io/reference/start-workflows-via-cli.html)).
+The script runs: import → `publish:workflow` → restart n8n → verify all workflows are active → post result to Slack. If verification fails (not all workflows active), the script exits non-zero and posts a failure alert to `#alerts`.
 
-**Manual deploy** (if you need to run steps separately): Copy JSON files, import via `n8n import:workflow`, publish via `n8n publish:workflow`, then activate via `n8n update:workflow --all --active=true` and restart the n8n container.
+**Manual deploy** (if you need to run steps separately): Copy JSON files, import via `n8n import:workflow`, publish via `n8n publish:workflow --id=<id>`, then restart the n8n container. Verify with `n8n list:workflow --active=true`.
+
+**Note**: `n8n update:workflow` is deprecated in n8n 2.11+. Use `n8n publish:workflow --id=<id>` instead.
 
 ## Daily Briefing Troubleshooting
 
 If the 7am PT daily briefing did not post to #daily-briefing:
 
-1. **Workflow inactive**: If you deployed manually without running the activate step (or an older deploy before auto-activate existed), workflows stay deactivated. Use `./scripts/deploy-n8n-workflows.sh` for a full deploy, or open the workflow in n8n and toggle it active.
-2. **OpenAI quota**: The briefing uses GPT-4o. If OpenAI returns "insufficient_quota", top up billing at platform.openai.com and ensure the API key in n8n credentials has access.
-3. **Cron timezone**: The workflow runs at 7:00 in the timezone set by `GENERIC_TIMEZONE` (see `infra/hetzner/compose.yaml`). Ensure production has `GENERIC_TIMEZONE=America/Los_Angeles` so 7am is Pacific.
-4. **Execution history**: In n8n, check Executions for "EA Daily Briefing" to see if it ran and whether it failed (e.g. credential error, HTTP error).
+1. **Workflow inactive**: Check with `n8n list:workflow --active=true`. If inactive, run `./scripts/deploy-n8n-workflows.sh` for a full deploy.
+2. **OpenAI quota**: The briefing uses GPT-4o-mini. If OpenAI returns "insufficient_quota", top up billing at platform.openai.com.
+3. **Cron timezone**: Ensure `GENERIC_TIMEZONE=America/Los_Angeles` in the n8n environment.
+4. **Execution history**: In n8n, check Executions for "EA Daily Briefing" to see if it ran and whether it failed.
 
 ## Slack Event Subscriptions
 
@@ -71,16 +92,15 @@ Slack Event Subscriptions must point to a **single** request URL (thread handler
 2. Navigate to **Event Subscriptions** and toggle "Enable Events" on.
 3. Set the **Request URL** to:
    `https://n8n.paperworklabs.com/webhook/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/webhook/slack-events`
-   Slack sends a `url_verification` challenge; this workflow returns the `challenge` payload automatically.
 4. Under **Subscribe to bot events**, add:
-   - `message.channels` — messages in public channels (thread replies and #decisions triggers)
+   - `message.channels` — messages in public channels
    - `message.groups` — messages in private channels
    - `message.im` — direct messages to the bot
    - `message.mpim` — group DMs with the bot
    - `app_mention` — @mentions of the bot
    - `reaction_added` — emoji reactions (powers the Slack reaction merge flow)
-5. Click **Save Changes**. Slack will start delivering events to n8n immediately.
-6. Ensure the bot is invited to all channels where it should listen (`#decisions`, `#daily-briefing`, `#engineering`, `#all-paperwork-labs`, `#general`).
+5. Click **Save Changes**.
+6. Ensure the bot is invited to all channels where it should listen (`#decisions`, `#daily-briefing`, `#engineering`, `#all-paperwork-labs`, `#general`, `#alerts`).
 
 ## Slack Reaction Merge
 
@@ -89,58 +109,59 @@ React to a **PR Summary** message in `#engineering` with an emoji to trigger act
 | Emoji | Action | Details |
 |---|---|---|
 | :white_check_mark: | Squash merge | CI must be green; posts confirmation or blocker list |
-| :rocket: | Squash merge (alt) | Same as checkmark — for when you want to ship fast |
-| :eyes: | Request Copilot re-review | Posts confirmation in thread |
+| :rocket: | Squash merge (alt) | Same as checkmark |
+| :eyes: | Request Copilot re-review | Posts confirmation or failure reason in thread |
 | :no_entry_sign: | Hold merge | Posts "merge held by founder" in thread |
 
-**Flow**: Reaction → `agent-thread-handler.json` extracts PR number from the message → checks CI status → merges or posts blockers.
+**Flow**: Reaction → `agent-thread-handler.json` extracts PR number → checks CI status → merges or posts blockers.
 
-**Requirements**: `GITHUB_TOKEN` and `SLACK_BOT_TOKEN` must be set in the n8n environment. `reaction_added` must be subscribed in Slack Event Subscriptions.
+**Requirements**: `GITHUB_TOKEN` and `SLACK_BOT_TOKEN` must be set in the n8n environment.
 
-## PR Thread Persona Routing
+## Model Configuration
 
-- PR Summary posts are sent to `#engineering` and include a thread router hint.
-- Reply in the PR thread with persona cues like `legal`, `growth`, `social`, `qa`, `strategy`, `engineering`, `cpa`, `partnerships`, or `ea`.
-- `agent-thread-handler.json` uses cue-based override routing so requested personas reply in the same thread.
+n8n OpenAI nodes use a dropdown for model selection. Model choices are configured per workflow in the n8n UI.
+
+| Workflow | Current Model | Env Var | Notes |
+|---|---|---|---|
+| agent-thread-handler | gpt-4o-mini | THREAD_HANDLER_MODEL | Default for thread replies |
+| ea-daily | gpt-4o-mini | EA_DAILY_MODEL | Briefings |
+| ea-weekly | gpt-4o-mini | EA_WEEKLY_MODEL | Weekly plans |
+| sprint-kickoff | gpt-4o | SPRINT_KICKOFF_MODEL | Sprint planning |
+| sprint-close | gpt-4o | SPRINT_CLOSE_MODEL | Sprint retrospectives |
+| pr-summary | gpt-4o-mini | PR_SUMMARY_MODEL | PR summaries |
+| social-content-generator | gpt-4o | SOCIAL_CONTENT_MODEL | Brand voice |
+| growth-content-writer | gpt-4o | GROWTH_CONTENT_MODEL | Brand voice |
+| partnership-outreach-drafter | gpt-4o | PARTNERSHIP_MODEL | Professional outreach |
+| cpa-tax-review | gpt-4o | CPA_REVIEW_MODEL | Tax accuracy (future: Claude) |
+| qa-security-scan | gpt-4o | QA_SCAN_MODEL | Security (future: Claude) |
+| weekly-strategy-checkin | gpt-4o | STRATEGY_MODEL | Strategic analysis |
+| decision-logger | N/A | N/A | No AI — deterministic formatting |
+| infra-health-check | N/A | N/A | No AI — deterministic checks |
+
+### Required n8n Environment Variables
+
+| Variable | Purpose | Required By |
+|---|---|---|
+| `GITHUB_TOKEN` | GitHub PAT for inline doc fetches (repo is private) | ea-daily, ea-weekly, agent-thread-handler |
+| `SLACK_BOT_TOKEN` | Slack Bot Token for posting messages | agent-thread-handler, infra-health-check |
+| `SLACK_ALERTS_WEBHOOK_URL` | Incoming webhook for #alerts channel | deploy scripts (external), compose.yaml passthrough |
+
+Set these in the Hetzner `.env` file and in `infra/hetzner/compose.yaml` environment block.
+
+### Changing Models
+
+Edit the workflow in the n8n UI, select the OpenAI node, and change the model dropdown.
+
+**Note:** CPA Tax Review and QA Security Scan are candidates for Claude migration when Anthropic API access is set up. See AI_MODEL_REGISTRY.md for the activation roadmap.
 
 ## Security Notes
 
 - Slack signature verification and timestamp replay protection are required for production hardening.
 - GitHub webhook signature verification (`X-Hub-Signature-256`) is required for `pr-summary.json`.
-- Current workflows run in a trusted internal environment; add these checks in Phase 2 before wider exposure.
+- Current workflows run in a trusted internal environment; add these checks before wider exposure.
 
 ## Sprint Operations
 
 - Sprint execution is agent-first in `#sprints`.
 - Monday kickoff and Friday close are generated and posted by n8n workflows.
-- Updates, blockers, and decisions should be posted as high-signal thread replies under the kickoff post.
-
-## Model Configuration
-
-n8n OpenAI nodes use a dropdown for model selection and do not support dynamic model IDs via expressions. Model choices are configured per workflow in the n8n UI and documented here for reference and programmatic updates.
-
-| Workflow | Current Model | Env Var | Notes |
-|---|---|---|---|
-| agent-thread-handler | gpt-4o-mini | THREAD_HANDLER_MODEL | Default for thread replies |
-| ea-daily | gpt-4o-mini | EA_DAILY_MODEL | Briefings don't need full gpt-4o |
-| ea-weekly | gpt-4o-mini | EA_WEEKLY_MODEL | Weekly plans |
-| sprint-kickoff | gpt-4o | SPRINT_KICKOFF_MODEL | Sprint planning |
-| sprint-close | gpt-4o | SPRINT_CLOSE_MODEL | Sprint retrospectives |
-| pr-summary | gpt-4o-mini | PR_SUMMARY_MODEL | PR summaries |
-| social-content-generator | gpt-4o | SOCIAL_CONTENT_MODEL | Brand voice requires gpt-4o |
-| growth-content-writer | gpt-4o | GROWTH_CONTENT_MODEL | Brand voice requires gpt-4o |
-| partnership-outreach-drafter | gpt-4o | PARTNERSHIP_MODEL | Professional outreach |
-| cpa-tax-review | gpt-4o | CPA_REVIEW_MODEL | Tax accuracy (future: Claude) |
-| qa-security-scan | gpt-4o | QA_SCAN_MODEL | Security (future: Claude) |
-| weekly-strategy-checkin | gpt-4o | STRATEGY_MODEL | Strategic analysis |
-| decision-logger | N/A | N/A | No AI node — deterministic formatting only |
-
-### Required n8n Environment Variables
-
-Workflows that fetch docs inline (ea-daily, ea-weekly, agent-thread-handler) require `GITHUB_TOKEN` set in the n8n environment. This is the same GitHub PAT used by the `github-cred` HTTP Header Auth credential. Set it in the n8n `.env` file or Docker Compose environment. Without it, VMP-SUMMARY.md and persona doc fetches will silently fall back to placeholders (the repo is private).
-
-### Changing Models
-
-Edit the workflow in the n8n UI, select the OpenAI node, and change the model dropdown. For n8n Cloud or programmatic updates, use the n8n API to patch the workflow JSON.
-
-**Note:** CPA Tax Review and QA Security Scan are candidates for Claude migration when Anthropic API access is set up. See AI_MODEL_REGISTRY.md for the activation roadmap.
+- Updates, blockers, and decisions should be posted as thread replies under the kickoff post.
