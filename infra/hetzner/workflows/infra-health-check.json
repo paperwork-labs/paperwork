@@ -47,7 +47,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "=Bearer {{ $env.SLACK_BOT_TOKEN }}"
+              "value": "={{ 'Bearer ' + $env.SLACK_BOT_TOKEN }}"
             }
           ]
         },

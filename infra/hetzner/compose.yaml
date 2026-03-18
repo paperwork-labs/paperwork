@@ -45,7 +45,12 @@ services:
       N8N_PORT: 5678
       N8N_PROTOCOL: https
       WEBHOOK_URL: https://${N8N_HOST:-localhost}/
+      GITHUB_TOKEN: ${GITHUB_PAT:-}
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
       SLACK_ALERTS_WEBHOOK_URL: ${SLACK_ALERTS_WEBHOOK_URL:-}
+      # SECURITY: child_process is required for health-check and daily-briefing
+      # Code nodes (n8n CLI queries). Only admin-authored workflows run here;
+      # no user-supplied code paths exist. Review before adding more builtins.
       NODE_FUNCTION_ALLOW_BUILTIN: child_process
       GENERIC_TIMEZONE: America/Los_Angeles
     volumes:
