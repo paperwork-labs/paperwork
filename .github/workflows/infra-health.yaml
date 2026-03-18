@@ -38,12 +38,14 @@ jobs:
             echo "SLACK_ALERTS_WEBHOOK_URL secret not set — skipping Slack alert"
             exit 0
           fi
-          curl -sf -X POST "$SLACK_WEBHOOK" \
-            -H 'Content-type: application/json' \
-            -d "{\"text\":\":warning: *External Health Check*\nn8n: ${{ env.n8n_status }}\nWebhook failures (last 5): ${{ env.webhook_failures }}\nDashboard: https://n8n.paperworklabs.com\"}"
+          jq -n \
+            --arg n8n "${{ env.n8n_status }}" \
+            --arg wh "${{ env.webhook_failures }}" \
+            '{text: ":warning: *External Health Check*\nn8n: \($n8n)\nWebhook failures (last 5): \($wh)\nDashboard: https://n8n.paperworklabs.com"}' | \
+            curl -sf -X POST "$SLACK_WEBHOOK" -H 'Content-type: application/json' -d @-
 
       - name: Fail job if unhealthy
-        if: env.n8n_status != '200'
+        if: env.n8n_status != '200' || (env.webhook_failures != '0' && env.webhook_failures != '-1')
         run: |
-          echo "n8n is unreachable (status: ${{ env.n8n_status }})"
+          echo "Infrastructure unhealthy: n8n=${{ env.n8n_status }}, webhook_failures=${{ env.webhook_failures }}"
           exit 1

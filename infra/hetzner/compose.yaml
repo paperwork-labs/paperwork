@@ -46,6 +46,7 @@ services:
       N8N_PROTOCOL: https
       WEBHOOK_URL: https://${N8N_HOST:-localhost}/
       SLACK_ALERTS_WEBHOOK_URL: ${SLACK_ALERTS_WEBHOOK_URL:-}
+      NODE_FUNCTION_ALLOW_BUILTIN: child_process
       GENERIC_TIMEZONE: America/Los_Angeles
     volumes:
       - n8ndata:/home/node/.n8n
