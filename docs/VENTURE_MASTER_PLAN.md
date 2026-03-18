@@ -1866,85 +1866,11 @@ MARKETPLACE -- USER SIDE (the matching output):
 - `recommendation_outcomes` includes `partner_reported_`* fields for data reciprocity (Stage 2+). When partners share approval rates and funded amounts back to us, it feeds into the scoring model.
 - `profile_completeness_score` on `user_financial_profile` drives recommendation quality: users with complete profiles get Fit Scores, incomplete profiles get generic listings.
 
-### 4C. Event Taxonomy (Exhaustive)
+### 4C. Event Taxonomy
 
-Every user action that has intelligence value is captured as a UserEvent. Events are immutable (append-only log).
+Every user action with intelligence value captured as an immutable UserEvent. 7 event categories: Acquisition (signup, attribution, referral), FileFree (W2 upload/OCR, filing lifecycle, partner CTAs, e-file), LaunchFree (formation lifecycle, RA, banking/payroll CTAs), Trinkets (tool usage, cross-sell), Credit Score (opt-in, pull, changes), Cross-Product (consent, email lifecycle, notifications), and Marketplace (partner product views/clicks, fit scores, partner-side bidding).
 
-```
-ACQUISITION EVENTS:
-  signup                    -- product, source (organic/referral/paid/social), utm_params
-  signup_source_attributed  -- final attribution after dedup
-  referral_click            -- referrer_id, referred_product
-
-FILEFREE EVENTS:
-  w2_uploaded               -- document_id, upload_method (camera/file)
-  w2_ocr_completed          -- document_id, confidence_score, field_count
-  w2_manual_edit            -- document_id, field_name (signals OCR quality)
-  filing_started            -- filing_id, filing_status_type
-  filing_completed          -- filing_id, refund_or_owed, amount_cents
-  refund_routing_selected   -- routing_type (direct_deposit/hysa/ira)
-  pdf_downloaded            -- filing_id
-  efile_submitted           -- filing_id, transmitter (column_tax/own_mef)
-  efile_accepted            -- filing_id, acceptance_date
-  partner_cta_viewed        -- partner_id, placement (refund_plan/dashboard/email)
-  partner_cta_clicked       -- partner_id, placement
-  partner_signup_completed  -- partner_id, estimated_revenue_cents
-  tax_opt_plan_purchased    -- plan_tier, amount_cents
-  tax_opt_plan_cancelled    -- plan_tier, reason
-
-LAUNCHFREE EVENTS:
-  state_selected            -- state_code, is_home_state
-  name_search_started       -- query_text
-  name_available            -- query_text, state_code
-  formation_started         -- formation_id, state_code, entity_type
-  formation_completed       -- formation_id, total_cost_cents
-  ra_purchased              -- formation_id, ra_provider, annual_cost_cents
-  ra_credit_earned          -- credit_type, amount_cents
-  operating_agreement_generated -- formation_id
-  ein_filing_started        -- formation_id
-  compliance_calendar_viewed -- formation_id
-  banking_cta_clicked       -- partner_id (Mercury, Relay, etc.)
-  payroll_cta_clicked       -- partner_id (Gusto, etc.)
-  insurance_cta_clicked     -- partner_id
-
-TRINKETS EVENTS:
-  tool_used                 -- tool_slug, input_params_hash (no PII)
-  tool_result_viewed        -- tool_slug, time_on_page_ms
-  cross_sell_cta_clicked    -- tool_slug, target_product
-
-CREDIT SCORE EVENTS (Phase 1.5):
-  credit_score_opt_in       -- consent_timestamp, provider (Array/SavvyMoney)
-  credit_score_requested    -- provider, request_type (soft_pull)
-  credit_score_received     -- score_band (e.g., 700-749), provider
-  credit_score_changed      -- previous_band, new_band, direction (up/down/stable)
-
-CROSS-PRODUCT EVENTS:
-  cross_product_opt_in      -- source_product, consent_timestamp
-  cross_product_opt_out     -- source_product
-  email_sent                -- campaign_id, template_id
-  email_opened              -- campaign_id
-  email_clicked             -- campaign_id, link_id
-  email_unsubscribed        -- campaign_id
-  in_app_notification_shown -- notification_id
-  in_app_notification_clicked -- notification_id
-
-MARKETPLACE EVENTS (all stages -- schema exists from day 1):
-  partner_product_viewed        -- partner_product_id, placement (refund_plan/dashboard/email), fit_score, rank_position
-  partner_product_clicked       -- partner_product_id, fit_score, rank_position, scoring_method
-  fit_score_computed            -- venture_identity_id, partner_product_id, score, score_version, scoring_method, factors_json
-  match_confidence_displayed    -- partner_product_id, confidence_label (strong_match/good_match/match)
-  recommendation_list_rendered  -- list_length, scoring_method (static/rules/bandit/ml), placement, profile_completeness
-  personalized_matching_opt_in  -- consent_timestamp, consent_tier (2=matching, 3=anonymized_insights)
-  personalized_matching_opt_out -- consent_timestamp
-
-PARTNER-SIDE EVENTS (Stage 3+, empty until then -- schema exists from day 1):
-  partner_product_submitted     -- partner_id, product_type, eligibility_criteria_count
-  partner_criteria_updated      -- partner_product_id, fields_changed[]
-  partner_bid_placed            -- partner_product_id, segment_id, bid_cents
-  partner_bid_adjusted          -- partner_product_id, old_bid_cents, new_bid_cents
-  partner_dashboard_viewed      -- partner_id, page (overview/funnel/segments)
-  partner_segment_report_downloaded -- partner_id, segment_id, report_type
-```
+**Full event taxonomy**: [docs/archive/VMP-ARCHIVE.md](../archive/VMP-ARCHIVE.md) Section "4C Event Taxonomy"
 
 ### 4D. Segments (Rules-Based, Growing to ML)
 
@@ -1987,105 +1913,15 @@ Add opt-in soft credit pull. "Want personalized financial recommendations? Let u
 
 ### 4E. Recommendation Engine (Pluggable 3-Layer Architecture)
 
-The engine is designed as a 3-layer pipeline from day 1. The scorer interface stays the same from Stage 1 to Stage 4 -- only the implementation behind it changes. Zero frontend changes across marketplace stages.
+3-layer pipeline designed for Stage 4 from day 1. Interface stays stable across all marketplace stages:
 
-```
-Layer 1: CANDIDATE GENERATION
-  Input:  user's financial profile + consent status + placement context
-  Output: list of eligible partner_products
+- **Layer 1 (Candidate Generation)**: Eligible products filtered by status, state, credit/income range (Stage 2+), eligibility criteria (Stage 3+)
+- **Layer 2 (Scoring)**: Pluggable scorer: static (S1) → rules-based (S2) → Thompson Sampling bandit (S2+) → ML collaborative filtering (S3+). Stable interface: `score(user_profile, product) → FitScore{score, factors, method, confidence}`
+- **Layer 3 (Ranking + Rendering)**: Commission-first (S1) → fit-score-first (S2+) → blended fit+bid (S3+). FTC constraint: NEVER "pre-approved"/"guaranteed"; PERMITTED "strong match", "94% fit"
 
-  Stage 1:  SELECT * FROM partner_products
-            WHERE status = 'active'
-            AND (states_available IS NULL OR user.state = ANY(states_available))
-  Stage 2+: Add credit score range filter, income range filter
-  Stage 3+: Run partner_eligibility criteria matching per product
+4 campaign rules handle cross-product engagement (post-filing LLC nudge, post-formation tax nudge, abandoned formation recovery, RA credit upsell). Marketplace engine handles product matching on Refund Plan screen.
 
-Layer 2: SCORING (the pluggable layer)
-  Input:  (user_profile, partner_product) pairs from Layer 1
-  Output: fit_score (0-100) per pair, stored in fit_scores table
-
-  Stage 1 (static):
-    score = 50 for all products. Ordered by commission_amount_cents DESC.
-    We show highest-paying partners first (we need revenue).
-
-  Stage 2 (rules-based):
-    score = credit_score_match * 0.3
-          + income_match * 0.3
-          + state_relevance * 0.2
-          + historical_conversion_rate * 0.2
-    Capped at 100. Stored with scoring_method = 'rules'.
-
-  Stage 2+ (Thompson Sampling bandit):
-    Bandit adjusts scores based on click/conversion feedback per user segment.
-    Higher-converting products get higher scores automatically.
-    Implementation: scipy.stats.beta, ~200 lines of Python.
-
-  Stage 3+ (ML collaborative filtering):
-    Input: financial profile features + behavioral signals (clicks, time on page, past conversions)
-    Output: predicted conversion probability per product
-    Serve via FastAPI endpoint. scoring_method = 'ml'.
-
-  Interface (STABLE across all stages):
-    score(user_profile: UserFinancialProfile, product: PartnerProduct) -> FitScore
-    FitScore: { score: int, factors: dict, method: str, confidence: float }
-
-Layer 3: RANKING + RENDERING
-  Input:  scored partner_products from Layer 2
-  Output: ordered list with Fit Score labels for UI
-
-  Stage 1:   order by commission_amount_cents DESC (revenue-first)
-  Stage 2+:  order by fit_score DESC (user-first, personalized)
-  Stage 3+:  blended = fit_score * 0.7 + bid_weight * 0.3 (partner bids factor in)
-  Stage 4:   blended + match_confidence_label (strong_match/good_match/match)
-
-  FTC constraint (MANDATORY, all stages):
-    NEVER: "pre-approved", "guaranteed", "you qualify"
-    PERMITTED: "strong match", "94% fit", "personalized for you", "based on your profile"
-```
-
-**Campaign rules** (cross-product engagement, separate from marketplace scoring):
-
-```
-RULE 1: Post-Filing LLC Cross-Sell
-  IF segment = "filed_taxes_no_llc"
-     AND income > 50000
-     AND has_1099_income = true
-     AND days_since_filing > 14
-     AND cross_product_opted_in = true
-  THEN action: send_email
-       template: "biz_income_llc_nudge"
-       delay: 72h after filing completion
-       expected_conversion: 3-5%
-
-RULE 2: Post-Formation Tax Cross-Sell (Seasonal)
-  IF segment = "has_llc_no_taxes"
-     AND month IN [11, 12, 1, 2, 3]
-     AND cross_product_opted_in = true
-  THEN action: send_email
-       template: "llc_tax_season_nudge"
-       delay: January 15 (filing season start)
-       expected_conversion: 5-8%
-
-RULE 3: Abandoned Formation Recovery
-  IF event = "formation_started"
-     AND no "formation_completed" within 48h
-  THEN action: send_email
-       template: "formation_almost_done"
-       delay: 48h after start
-       followup: 7 days later if still incomplete
-       expected_conversion: 15-25%
-
-RULE 4: RA Credit Upsell
-  IF event = "ra_purchased"
-     AND ra_credits_earned = 0
-     AND days_since_ra_purchase > 7
-  THEN action: send_email
-       template: "earn_ra_credits"
-       delay: 7 days
-       expected_conversion: 10-15%
-```
-
-**Refund Plan screen** (partner product recommendations) is now powered by the 3-layer engine, not by campaign rules. Campaign rules handle cross-product engagement (emails, nudges). The marketplace engine handles product matching (what the user sees on the Refund Plan screen).
+**Full recommendation engine spec + campaign rules**: [docs/archive/VMP-ARCHIVE.md](../archive/VMP-ARCHIVE.md) Section "4E Recommendation Engine"
 
 ### 4F. Journey Mapping
 
@@ -3090,243 +2926,19 @@ LaunchFree Compliance Bot (monthly) --> user emails
 
 ### 6I. Company Org Chart: Agents as Employees
 
-Agents are employees. The full company is staffed from day one -- every role is defined with a system prompt and clear domain, even if some are initially in **Standby** (activated when workload appears). This is not premature scaling; this is organizational design. A company defines all roles before hiring into them.
+**Total: 24 Cursor personas + 20 n8n workflows = 44 agents** (15 Active, 10 Standby, 9 Planned). Hierarchical org chart under Founder as root. Key departments: Engineering (tax/formation domain + AI ops + QA), Product (UX), Growth (per-product social + content pipelines), Brand (per-product), Legal (content review gate + compliance bot), CFO (affiliate tracking), Partnerships (outreach + intelligence), CPA (tax review), Customer Success (L1/L2 support bots), Competitive Intel, Strategy, Workflows, Infra Health.
 
-#### Org Chart (Tree Structure)
+**Governance Protocol**: PROPOSE → ROUTE to affected agents → REVIEW → VERDICT (APPROVE/CONCERN/BLOCK) → RESOLVE. Founder is final arbiter. Used for: architecture, new forms, legal decisions, partner integrations.
 
-```
-FOUNDER (Root -- final arbiter on all escalations)
-├── CHIEF OF STAFF (EA Interactive -- ea.mdc)
-│   ├── EA Ops Monitor (n8n: ea-daily, ea-weekly)
-│   └── Compliance & Security Monitor (n8n: daily)
-│
-├── VP ENGINEERING (engineering.mdc)
-│   ├── Tax Domain Expert (tax-domain.mdc)
-│   ├── Formation Domain Expert (formation-domain.mdc)
-│   ├── Studio Lead (studio.mdc)
-│   ├── AI Ops Lead (agent-ops.mdc)
-│   └── QA Lead (qa.mdc)
-│       ├── QA Security Scanner (n8n)
-│       └── State Data Validator (n8n: daily/weekly)
-│           └── IRS Update Monitor (n8n: annual October)
-│
-├── VP PRODUCT (ux.mdc)
-│   └── UX/UI decisions for all products
-│
-├── VP GROWTH
-│   ├── FileFree Growth (filefree-growth.mdc)
-│   │   ├── FileFree Social (filefree-social.mdc)
-│   │   └── FileFree Content Pipeline (n8n: daily)
-│   ├── LaunchFree Growth (launchfree-growth.mdc)
-│   │   ├── LaunchFree Social (launchfree-social.mdc)
-│   │   └── LaunchFree Content Pipeline (n8n: daily)
-│   └── Analytics Reporter (n8n: weekly)
-│
-├── VP BRAND
-│   ├── FileFree Brand (filefree-brand.mdc)
-│   └── LaunchFree Brand (launchfree-brand.mdc)
-│
-├── GENERAL COUNSEL (legal.mdc)
-│   ├── Content Review Gate (built into all content personas)
-│   └── LaunchFree Compliance Bot (n8n: monthly)
-│
-├── CFO (cfo.mdc)
-│   └── Affiliate Revenue Tracker (n8n: daily)
-│
-├── VP PARTNERSHIPS (partnerships.mdc -- Founder 2 primary)
-│   ├── Partnership Outreach Drafter (n8n)
-│   └── Partnership Intelligence (n8n: weekly cron)
-│
-├── CPA / TAX ADVISOR (cpa.mdc)
-│   └── CPA Tax Review (n8n)
-│
-├── CUSTOMER SUCCESS
-│   ├── L1 Support Bot (n8n: webhook)
-│   ├── L2 Support Bot (n8n: webhook)
-│   └── Knowledge Base Sync (n8n: nightly)
-│
-├── COMPETITIVE INTEL (n8n: weekly)
-│
-├── STRATEGY (strategy.mdc)
-│   └── Weekly Strategy Check-in (n8n)
-│
-├── WORKFLOWS (workflows.mdc)
-│
-└── INFRA HEALTH MONITOR (n8n: hourly)
-```
+**EA Split**: EA Interactive (ea.mdc, Cursor) handles decisions/queries. EA Ops Monitor (n8n cron) handles briefings. They do NOT overlap responsibilities.
 
-**Total: 24 Cursor personas + 20 n8n workflows = 44 agents**
-
-#### Agent Status Levels
-
-Every agent has one of three statuses:
-
-
-| Status      | Meaning                                                    | System Prompt         | Runs?                                       |
-| ----------- | ---------------------------------------------------------- | --------------------- | ------------------------------------------- |
-| **Active**  | Role is live, executing work                               | Written and deployed  | Yes                                         |
-| **Standby** | Role is defined, system prompt ready, waiting for workload | Written, NOT deployed | No -- activated by founder when needed      |
-| **Planned** | Role is defined in org chart only                          | Not yet written       | No -- write system prompt before activation |
-
-
-
-| Agent                       | Type   | Status  | Notes                                               |
-| --------------------------- | ------ | ------- | --------------------------------------------------- |
-| Engineering                 | Cursor | Active  | Existing                                            |
-| UX/UI Lead                  | Cursor | Active  | Existing                                            |
-| Strategy                    | Cursor | Active  | Existing                                            |
-| Legal                       | Cursor | Active  | Existing                                            |
-| CFO                         | Cursor | Active  | Existing                                            |
-| QA Lead                     | Cursor | Active  | Existing                                            |
-| Partnerships                | Cursor | Active  | Existing                                            |
-| Workflows                   | Cursor | Active  | Existing                                            |
-| Tax Domain                  | Cursor | Active  | Existing                                            |
-| CPA / Tax Advisor           | Cursor | Active  | Existing                                            |
-| Social (general)            | Cursor | Active  | Existing -- splits into product-specific in Phase 6 |
-| Growth (general)            | Cursor | Active  | Existing -- splits into product-specific in Phase 6 |
-| Brand (general)             | Cursor | Active  | Existing -- splits into product-specific in Phase 6 |
-| EA Interactive              | Cursor | Active  | ea.mdc                                              |
-| AI Ops Lead                 | Cursor | Active  | agent-ops.mdc                                       |
-| Formation Domain            | Cursor | Standby | Write system prompt in Phase 2                      |
-| Studio Lead                 | Cursor | Standby | Write system prompt in Phase 1                      |
-| FileFree Social             | Cursor | Planned | Phase 6 split                                       |
-| FileFree Growth             | Cursor | Planned | Phase 6 split                                       |
-| FileFree Brand              | Cursor | Planned | Phase 6 split                                       |
-| LaunchFree Social           | Cursor | Planned | Phase 6 split                                       |
-| LaunchFree Growth           | Cursor | Planned | Phase 6 split                                       |
-| LaunchFree Brand            | Cursor | Planned | Phase 6 split                                       |
-| Compliance Monitor          | n8n    | Standby | Activate in Phase 3                                 |
-| 6 existing n8n workflows    | n8n    | Active  | Social, Growth, Strategy, QA, Partnership, CPA      |
-| EA Daily / EA Weekly        | n8n    | Standby | Activate after Slack hub is set up                  |
-| State Data Validator        | n8n    | Standby | Activate in Phase 2                                 |
-| Infra Health Monitor        | n8n    | Standby | Activate in Phase 1                                 |
-| L1/L2 Support Bots          | n8n    | Planned | Activate when support volume justifies              |
-| Competitive Intel           | n8n    | Standby | Activate before first product launch                |
-| Analytics Reporter          | n8n    | Standby | Activate when PostHog events > 1K/week              |
-| Affiliate Revenue Tracker   | n8n    | Planned | Activate when affiliate revenue exists              |
-| LaunchFree Content Pipeline | n8n    | Planned | Activate in Phase 6                                 |
-| LaunchFree Compliance Bot   | n8n    | Standby | Activate in Phase 3                                 |
-| Knowledge Base Sync         | n8n    | Planned | Activate with support bot                           |
-| Partnership Intelligence    | n8n    | Standby | Activate when first affiliate program is live       |
-| IRS Update Monitor          | n8n    | Standby | Activate October 2026                               |
-
-
-#### 6I-1. Governance Protocol: Multi-Agent Consensus
-
-When a significant change is proposed (new feature, architecture decision, legal/compliance change, content strategy shift), it must pass through the relevant agents in the org chart before implementation. This prevents single-persona blind spots.
-
-**Protocol** (inspired by RACI matrix + hierarchical consensus):
-
-```
-1. PROPOSE: Founder or agent proposes a change
-       |
-       v
-2. ROUTE: EA routes the proposal to all AFFECTED leaf-node agents
-   (e.g., "add 1099 support" routes to: Tax Domain, Engineering, QA, Legal, CPA)
-       |
-       v
-3. REVIEW: Each agent reviews from its domain perspective
-   - Tax Domain: "Are the IRS rules correct?"
-   - Engineering: "Is the architecture sound?"
-   - QA: "Are there security/PII implications?"
-   - Legal: "Are there compliance risks?"
-   - CPA: "Is the tax logic accurate?"
-       |
-       v
-4. VERDICT: Each agent returns APPROVE / CONCERN / BLOCK
-   - APPROVE: No issues in my domain
-   - CONCERN: Minor issue, can proceed with noted caveat
-   - BLOCK: Serious issue, must resolve before proceeding
-       |
-       v
-5. RESOLVE:
-   - All APPROVE -> implement
-   - Any CONCERN -> implement with caveats logged to KNOWLEDGE.md
-   - Any BLOCK -> escalate to parent node in org chart
-     - Parent resolves or escalates further
-     - Founder is final arbiter (root node)
-```
-
-**When to use full governance**: Architecture changes, new form/schedule support, legal/compliance decisions, partner integrations, security-affecting changes. NOT for: bug fixes, copy changes, routine tasks.
-
-**Implementation**: In Cursor, the founder invokes relevant personas sequentially or asks a "review council" question that triggers multiple personas. In n8n, automated governance runs as a workflow for content (e.g., social post -> Legal Content Review Gate -> approve/reject).
-
-#### 6I-2. Overlap Resolution
-
-
-| Overlap            | Personas                            | Resolution                                                                                                                                                   |
-| ------------------ | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Financial tracking | CFO + EA                            | **EA owns operational tracking** (logging expenses, updating FINANCIALS.md). **CFO owns analysis** (unit economics, vendor evaluation, scaling projections). |
-| Strategic planning | Strategy + EA                       | **EA owns tactical planning** (daily/weekly). **Strategy owns strategic direction** (product roadmap, market positioning).                                   |
-| Persona audits     | Agent-Ops + QA                      | **Agent-Ops owns model/prompt optimization**. **QA owns security/compliance review**. Different audit dimensions.                                            |
-| Social content     | filefree-social + launchfree-social | **Separate globs** prevent co-activation. Shared social infra uses `social-infra.mdc` stub.                                                                  |
-
-
-#### 6I-3. EA Agent Split
-
-
-| Role               | Implementation                                 | Responsibilities                                                                                              | Trigger                                      |
-| ------------------ | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| **EA Interactive** | `ea.mdc` (Cursor persona)                      | Decision logging, task status queries, ad-hoc ops questions, expense logging, routing proposals to governance | Founder asks operational questions in Cursor |
-| **EA Ops Monitor** | `venture-ea-daily` + `venture-ea-weekly` (n8n) | Daily briefing (7am -> Slack #daily-briefing), weekly planning (Sunday 6pm -> GDrive), n8n health checks      | Cron schedules                               |
-
-
-The interactive EA should NOT generate briefings. The ops monitor should NOT update docs -- it produces reports for the founder to act on.
-
-**Social pipeline cost**: ElevenLabs Starter ($5/mo or startup grant) + Hetzner for FFmpeg (~$6/mo) = **$11-17/mo**.
+**Full org chart, agent status table, governance protocol, overlap resolution**: [docs/archive/VMP-ARCHIVE.md](../archive/VMP-ARCHIVE.md) Section "6I Agent Org Chart"
 
 ### 6J. Agent Interaction Model
 
-The founder needs a clear mental model for how to communicate with the AI workforce. Three interaction patterns:
+Three patterns: (1) **Cursor Personas** — activate via file globs or domain questions, real-time collaborators during coding/strategy; (2) **n8n Autonomous** — cron-triggered, work while you sleep (EA briefing 7am, social content 8am, infra/filing health hourly, compliance daily, strategy/intel weekly, state validator monthly); (3) **On-Demand n8n** — Slack slash commands for trinket discovery, support, competitive checks, EA queries. Daily founder time: ~15-20 minutes.
 
-**Pattern 1: CURSOR PERSONAS (interactive -- they join your conversation)**
-
-How: Open a file matching a persona's glob pattern, or explicitly invoke by asking a relevant question.
-
-
-| Action                                           | What Happens                                     |
-| ------------------------------------------------ | ------------------------------------------------ |
-| Open `apps/filefree/...`                         | Engineering + FileFree product personas activate |
-| Ask "review this for legal compliance"           | `legal.mdc` activates                            |
-| Ask "what should I work on today?"               | `ea.mdc` activates                               |
-| Ask "is this model the right choice?"            | `agent-ops.mdc` activates                        |
-| Ask "log this decision: we chose California LLC" | `ea.mdc` logs to `docs/KNOWLEDGE.md`             |
-
-
-When: During coding/strategy sessions in Cursor IDE. These are your real-time collaborators.
-
-**Pattern 2: N8N AUTONOMOUS WORKFLOWS (they work while you sleep)**
-
-How: Run on cron schedules or webhook triggers. No founder action needed.
-
-
-| Time        | Workflow                               | Output Location                      | Founder Action             |
-| ----------- | -------------------------------------- | ------------------------------------ | -------------------------- |
-| 2am daily   | Knowledge Base Sync                    | Internal DB                          | None (background)          |
-| 7am daily   | EA Daily Briefing                      | GDrive + Slack `#daily-briefing`     | Read (5 min)               |
-| 8am daily   | Social Content (FileFree + LaunchFree) | Postiz queue                         | Review/approve (5 min)     |
-| Hourly      | Infra Health Monitor                   | Slack `#ops-alerts` (only on issues) | Act if alerted             |
-| Hourly      | Filing Engine Health                   | Slack `#filing-engine` (only on issues) | Act if alerted          |
-| 6am daily   | Compliance Deadline Check              | Slack `#compliance-alerts`           | Review if flagged          |
-| Daily       | Affiliate Revenue Tracker              | GDrive report                        | Check weekly               |
-| Sunday 6pm  | EA Weekly Planning                     | GDrive                               | Review and adjust (10 min) |
-| Mondays     | Competitive Intel + Growth Content     | GDrive                               | Review at leisure          |
-| Monthly 1st | State Data Validator + Compliance Bot  | GitHub Issues + user emails          | Review issues              |
-
-
-Daily founder time: ~15-20 minutes reviewing agent outputs. Mostly reading briefings and approving social content.
-
-**Pattern 3: ON-DEMAND N8N WORKFLOWS (you trigger them)**
-
-How: n8n webhook URL, Slack slash command, or direct n8n execution.
-
-
-| Command                       | What Runs                                                                        | Output            |
-| ----------------------------- | -------------------------------------------------------------------------------- | ----------------- |
-| `/trinket-discover [keyword]` | Market Discovery Agent: researches keyword, finds competitors, sizes opportunity | 1-pager in GDrive |
-| `/support [user question]`    | L1 DocBot: answers from knowledge base                                           | Slack response    |
-| `/competitive-check`          | Competitive Intel: immediate scan of competitor pricing/features                 | GDrive report     |
-| `/ea [question]`              | EA agent: ad-hoc operational query                                               | Slack response    |
+**Full interaction model with schedules and commands**: [docs/archive/VMP-ARCHIVE.md](../archive/VMP-ARCHIVE.md) Section "6J Agent Interaction Model"
 
 
 ### 6J1. Executive Assistant Agent (#32) -- Detail Spec
@@ -3397,28 +3009,9 @@ No agent is currently assigned to write production code for FileFree or LaunchFr
 | P0.9 Legal compliance setup  | Founder 1 | `chore/legal-compliance` | Update `.cursor/rules/social.mdc`, `growth.mdc`, `brand.mdc` to include Content Review Gate checklist from Section 0C. Create/update `web/src/app/(legal)/privacy/page.tsx`, `web/src/app/(legal)/terms/page.tsx`.                                 | Every content-producing persona .mdc includes the Content Review Gate checklist verbatim. Privacy policy and ToS pages updated with cross-sell consent language from Section 0C Legal Risk Matrix. | None (can start immediately)             | NOT STARTED |
 
 
-### Phase 1: Monorepo Restructure (Weeks 3-8, Realistic)
+### Phase 1: Monorepo Restructure — COMPLETE
 
-**Dependency chain**: P1.1 -> P1.2 -> P1.3, P1.4 (parallel) -> P1.5 -> P1.6 -> P1.7, P1.8, P1.9, P1.9b, P1.9c (parallel) -> P1.10 -> P1.11
-
-**This is the highest-risk phase**: Every file in the repo moves. Imports break. CI breaks. Expect 4-6 weeks, not 2-3.
-
-
-| Task                             | Branch                         | Files/Specs                                                                                                                                                                                                                                                                                                                                                                                   | Acceptance Criteria                                                                                                                                                                                                                                                             | Depends On                    |
-| -------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| P1.1 Init pnpm workspace         | `feat/monorepo-init`           | `package.json` (root, workspaces config), `pnpm-workspace.yaml` (packages: `apps/`*, `apis/`*, `packages/*`), `.npmrc` (shamefully-hoist=true if needed). Remove root `node_modules/` and `package-lock.json`.                                                                                                                                                                                | `pnpm install` succeeds from root. `pnpm -r list` shows all workspace packages. No npm lockfile present.                                                                                                                                                                        | None                          |
-| P1.2 Extract packages/ui         | `feat/shared-ui`               | `packages/ui/package.json`, `packages/ui/src/components/` (22 shadcn components from `web/src/components/ui/`), `packages/ui/src/lib/utils.ts`, `packages/ui/src/lib/motion.ts`, `packages/ui/src/themes.css` (4 brand themes with `[data-theme]` selectors -- see Section 2 palettes), `packages/ui/tsconfig.json`, `packages/ui/tailwind.config.ts` (if needed, or Tailwind v4 CSS config). | `import { Button } from '@venture/ui'` works from any app. All 22 components render correctly. `themes.css` provides filefree (violet-indigo), launchfree (teal-cyan), studio (zinc-neutral), trinkets (amber-orange) CSS variable sets. `pnpm build` succeeds for packages/ui. | P1.1                          |
-| P1.3 Extract packages/auth       | `feat/shared-auth`             | `packages/auth/package.json`, `packages/auth/src/hooks/use-auth.ts`, `packages/auth/src/hooks/use-idle-timeout.ts`, `packages/auth/src/lib/api.ts` (base API client with auth headers), `packages/auth/src/components/session-timeout-dialog.tsx`.                                                                                                                                            | `import { useAuth } from '@venture/auth'` works. Auth flow (login, logout, session refresh) functional from any app.                                                                                                                                                            | P1.1                          |
-| P1.4 Extract packages/analytics  | `feat/shared-analytics`        | `packages/analytics/package.json`, `packages/analytics/src/posthog.ts`, `packages/analytics/src/attribution.ts`, `packages/analytics/src/components/posthog-provider.tsx`, `packages/analytics/src/components/providers.tsx`.                                                                                                                                                                 | `import { PostHogProvider } from '@venture/analytics'` works. Events fire to PostHog from any app.                                                                                                                                                                              | P1.1                          |
-| P1.5 Move web/ -> apps/filefree/ | `feat/move-filefree`           | Move entire `web/` directory to `apps/filefree/`. Update ALL internal imports from `@/components/ui/*` to `@venture/ui`, `@/hooks/use-auth` to `@venture/auth`, etc. Update `apps/filefree/package.json` name to `@venture/filefree`.                                                                                                                                                         | `pnpm dev:filefree` starts on port 3001. All pages render. No broken imports. Tests pass.                                                                                                                                                                                       | P1.2, P1.3, P1.4              |
-| P1.6 Move api/ -> apis/filefree/ | `feat/move-filefree-api`       | Move entire `api/` directory to `apis/filefree/`. Update `infra/compose.dev.yaml` volume mounts and build context. Update `render.yaml` root directory. Update Makefile targets.                                                                                                                                                                                                              | `make dev` starts the API on port 8001. All existing endpoints return correct responses. Alembic migrations run.                                                                                                                                                                | P1.5                          |
-| P1.7 Scaffold apps/launchfree/   | `feat/scaffold-launchfree`     | Copy `apps/filefree/` structure. Strip product-specific pages (keep: layout, auth, landing). Update package.json name to `@venture/launchfree`. Set `[data-theme="launchfree"]` in root layout. Bare landing page with teal-cyan branding.                                                                                                                                                    | `pnpm dev:launchfree` starts on port 3002. Landing page renders with teal-cyan theme. Auth flow works via shared packages.                                                                                                                                                      | P1.5                          |
-| P1.8 Scaffold apis/launchfree/   | `feat/scaffold-launchfree-api` | Copy `apis/filefree/` base patterns (auth middleware, repository pattern, response envelope, config, health endpoint). Strip FileFree-specific routes. Update compose.dev.yaml.                                                                                                                                                                                                               | `apis/launchfree/` starts on port 8002. `/health` returns 200. Auth middleware functional.                                                                                                                                                                                      | P1.6                          |
-| P1.9 Scaffold apps/studio/       | `feat/scaffold-studio`         | Next.js app at `apps/studio/`. Package name `@venture/studio`. `[data-theme="studio"]` (zinc-neutral). Pages: `/` (public portfolio/landing), `/admin` (protected, placeholder), `/docs` (public, P4.14 Docs Viewer).                                                                                                                                                                         | `pnpm dev:studio` starts on port 3004. Landing page renders. `/docs` renders a markdown file from the repo.                                                                                                                                                                     | P1.5                          |
-| P1.9b Scaffold apps/trinkets/    | `feat/scaffold-trinkets`       | Next.js SSG app at `apps/trinkets/`. Package name `@venture/trinkets`. `[data-theme="trinkets"]` (amber-orange). Pages: `/` (tool directory), `tool-layout.tsx` component, AdSense placeholder component, SEO head component.                                                                                                                                                                 | `pnpm dev:trinkets` starts on port 3003. Tool directory renders. SSG build succeeds (`pnpm build` produces static HTML).                                                                                                                                                        | P1.5                          |
-| P1.9c Scaffold apps/distill/     | `feat/scaffold-distill`        | Next.js app at `apps/distill/`. Package name `@venture/distill`. `[data-theme="distill"]` (dark professional theme). Placeholder landing at `/`, placeholder dashboard at `/dashboard`. Separate brand from FileFree — own domain `distill.tax`. ~1 hour scaffold, prevents "where does this go?" decision during Phase 9.                                                                     | `pnpm dev:distill` starts on port 3005. Landing page renders. Placeholder dashboard is protected.                                                                                                                                                                               | P1.5                          |
-| P1.10 Update infra               | `feat/monorepo-infra`          | `infra/compose.dev.yaml` (update all service build contexts and volume mounts for new paths), `render.yaml` (update root dirs for Render deployment), `Makefile` (add `dev:filefree`, `dev:launchfree`, `dev:studio`, `dev:trinkets`, `dev:distill`, `dev:all` targets), `.github/workflows/ci.yml` (add `dorny/paths-filter@v3` per Section F11 spec).                                        | `make dev` starts all services. `make test` runs all test suites. `make lint` lints all workspaces. CI runs path-filtered builds on PR.                                                                                                                                         | P1.6, P1.7, P1.8, P1.9, P1.9b, P1.9c |
-| P1.11 Verify                     | N/A (manual)                   | Run all 4 frontends + 2 APIs simultaneously. Verify port assignments: filefree :3001, launchfree :3002, trinkets :3003, studio :3004, filefree-api :8001, launchfree-api :8002.                                                                                                                                                                                                               | All 6 processes start without port conflicts. Each frontend renders its branded theme. Each API responds to `/health`. Cross-package imports resolve.                                                                                                                           | P1.10                         |
+pnpm monorepo with 5 apps (filefree, launchfree, studio, trinkets, distill) + 2 APIs (filefree, launchfree) + 3 shared packages (ui, auth, analytics). All 11 tasks (P1.1-P1.11) done. Imports resolved, CI path-filtered, port assignments verified. See TASKS.md for remaining polish items.
 
 
 ### Phase 1.5: First Trinket + Agent Pipeline Test (Week 3-4, 3-5 days)
@@ -3475,18 +3068,7 @@ This is not a coding task with a side of research. This is an AI-powered data pi
 
 The command center is the control plane for the entire venture. It is what makes the "one human + 44 agents" model operationally viable. Every page is spec'd in detail in Section 3.
 
-**Tier 1 -- Build First (enables daily operations):**
-
-
-| Task                           | Page                    | Data Sources                                            | Complexity |
-| ------------------------------ | ----------------------- | ------------------------------------------------------- | ---------- |
-| P4.1 Studio landing page       | `/` public              | Static                                                  | Low        |
-| P4.2 Admin auth                | `/admin/`*              | Hardcoded admin email check                             | Low        |
-| P4.3 Studio API scaffold       | Backend                 | FastAPI + Redis on Hetzner                              | Medium     |
-| P4.4 Mission Control dashboard | `/admin`                | n8n + Render + Vercel + Hetzner + Stripe + PostHog APIs | High       |
-| P4.5 Agent Monitor             | `/admin/agents`         | n8n API (workflows + executions)                        | Medium     |
-| P4.6 Infrastructure health     | `/admin/infrastructure` | Render + Vercel + Hetzner + Neon + Upstash APIs         | Medium     |
-| P4.14 Docs viewer              | `/docs/`* (public)      | GitHub raw content API -> react-markdown                | Low        |
+**Tier 1 — COMPLETE**: Studio landing page, admin auth, Mission Control dashboard, Agent Monitor, Infrastructure health, Docs viewer. All deployed at paperworklabs.com. P4.3 (Studio API) deferred.
 
 
 **Tier 2 -- Build Next (enables growth operations):**
@@ -3816,142 +3398,21 @@ The Infra Health Monitor (Agent #25) needs a clear alerting hierarchy:
 
 ## 8. Plan Hygiene
 
-### Plans to Archive (Superseded by This Document)
-
-These plans from the venture strategy conversations are fully superseded:
-
-1. `venture_master_strategy_ceeba1fd.plan.md`
-2. `definitive_execution_plan_d3b7c878.plan.md`
-3. `consolidated_strategic_review_11e18e9f.plan.md`
-4. `revenue_social_agents_review_2da9fa89.plan.md`
-5. `adjacent_business_opportunities_6683a5fc.plan.md`
-6. `bizfree_stress_test_deep_a5395931.plan.md`
-7. `bizfree_credit_model_review_46727fa1.plan.md`
-8. `bizfree_naming_strategy_5fb6b573.plan.md`
-9. `naming_strategy_deep_dive_ddcb53aa.plan.md`
-10. `company_structure_deep_dive_f2e01bce.plan.md`
-11. `adulting_os_strategic_master_plan_1a3a9b0d.plan.md` (+ duplicate `_262c0a19`)
-12. `support_automation_strategy_3ed0ae08.plan.md` (+ duplicate `_590011fb`)
-13. `deep_research_tightening_cc2f702c.plan.md`
-14. `utility_tool_empire_strategy_383c8c1f.plan.md` (+ `_37aa2741`)
-15. `naming_ra_trinkets_updates_ef9d6883.plan.md`
-
-### Plan Ordering Rule
-
-Create a Cursor rule (`.cursor/rules/plans.mdc`) that enforces:
-
-- **One master plan per venture decision cycle** (this document is v1)
-- Plans are prefixed with version and date: "Venture Master Plan v1 (2026-03-11)"
-- Sub-plans for specific coding tasks reference the master plan section
-- When a plan is superseded, move it to `.cursor/plans/archive/` (create dir)
-- Never create a plan without checking if an existing one covers the scope
-
-### Anti-Bloat Rules
-
-This plan is the company OS. It must stay readable. Rules:
-
-1. **Phase Completion Collapse**: When a Phase is COMPLETE, collapse its task table to a single summary line: "Phase 1: COMPLETE -- monorepo restructure, 14 tasks, merged via PRs #15-28." Detailed tasks live in git history and TASKS.md.
-2. **KNOWLEDGE.md Rotation**: Every 6 months, archive decisions older than 6 months to `docs/archive/KNOWLEDGE_YYYY_HN.md`. Keep the active file under 500 lines.
-3. **TASKS.md Sprint Archive**: Completed sprints collapse to a one-line summary. Detailed task history lives in git. Keep TASKS.md under 500 lines of active content.
-4. **Superseded Doc Archive**: Any doc fully superseded by this master plan moves to `docs/archive/`. Currently superseded: STRATEGY_REPORT.md, UTILITY_SITES_STRATEGY.md, SOCIAL_ROADMAP.md.
-5. **Master Plan Target**: Keep under 3,500 lines. If approaching, collapse completed phases and merge redundant sections.
-
-### docs/TASKS.md Update
-
-When execution begins, the Phase 0-8 tasks above get merged into `docs/TASKS.md` as new sprints, replacing the current Sprint 4+ sections with the corrected venture-wide roadmap. The existing Sprint 0-3 (completed work) stays as historical record.
+**Anti-Bloat Rules** (D52): (1) Collapse completed phase tables to one-line summaries. (2) Rotate KNOWLEDGE.md every 6 months, keep under 500 lines. (3) Archive superseded docs. (4) Master plan target: under 3,500 lines.
 
 ---
 
-## 9. McKinsey Self-Review: All Personas Critique This Plan
+## 9. Self-Review Findings (Archived)
 
-### Review Round 4-5: Distill Brand + Architecture Optimization (March 2026)
+5 rounds of self-review (all personas) produced 30+ findings. All but 2 LOW findings are FIXED. Open items: F19 (CCPA "sale" analysis for Stage 3 aggregate data) and F24 (score existing partner hit list against 5-factor matrix when outreach begins).
 
-Post-integration review after adding Distill (B2B CPA + API), business tax filing, and growth playbook. Round 4 identified architectural splits and security gaps. Round 5 renamed "FileFree Pro" to "Distill" and added bootstrapped B2B GTM playbook. All findings below are FIXED.
-
-| #   | Finding                                               | Persona      | Severity | Status | Action                                                                                                                                                                                   |
-| --- | ----------------------------------------------------- | ------------ | -------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| H1  | packages/data/ overloaded -- needs split              | Engineering  | HIGH     | FIXED  | Split into packages/data/, packages/tax-engine/, packages/document-processing/ in Section 2 monorepo. Updated Phase task references. D70 in KNOWLEDGE.md.                                 |
-| H2  | Multi-tenant data isolation unspec'd (CRITICAL)       | Engineering  | HIGH     | FIXED  | Added RLS + firm-scoped middleware spec to Section 1C. Added P9.9 security audit task.                                                                                                   |
-| H3  | B2B creates data processing relationship needing DPA  | Legal        | HIGH     | FIXED  | Added DPA requirement to Section 1C. Added P9.10 DPA template task.                                                                                                                     |
-| M1  | Phase 9 timing unrealistic (Dec-Jan alongside launch) | Engineering  | MEDIUM   | FIXED  | Originally adjusted to January-March 2027. Subsequently accelerated to Summer 2026 (D74) — shared infrastructure from Phases 1-3 means incremental B2B work is thin.                     |
-| M2  | B2B API and CPA SaaS being conflated                  | Strategy     | MEDIUM   | FIXED  | Resolved by Distill brand architecture: two product lines (CPA SaaS + API) under one B2B brand, both distinct from consumer FileFree.                                                    |
-| M3  | Infra cost doesn't reflect 5 Vercel apps              | CFO          | MEDIUM   | FIXED  | Added Vercel Pro ($20/mo) to FINANCIALS.md variable costs.                                                                                                                               |
-| M5  | 2M user projection double-counts API volume           | Growth       | MEDIUM   | FIXED  | Split acquisition model into "Direct Users" vs "API Filing Volume" with valuation multiple note (8-15x vs 3-5x).                                                                        |
-| M6  | PARTNERSHIPS.md missing B2B CPA sales motion          | Partnerships | MEDIUM   | FIXED  | Added Section 3.5 to PARTNERSHIPS.md with Distill CPA outreach templates and ownership (Founder 1 owns CPA, Founder 2 owns consumer).                                                  |
-| L1  | Circuit breaker needs B2B SLA consideration           | QA           | LOW      | FIXED  | Added 99.5% uptime SLA note and degradation transparency requirements to Section 2B.2.                                                                                                  |
-| L2  | CPA referral flywheel under-emphasized in moat        | Strategy     | LOW      | FIXED  | Added moat point 6: bidirectional B2B distribution via Distill.                                                                                                                          |
-| L3  | Phase 1 missing Distill scaffold                      | Engineering  | LOW      | FIXED  | Added P1.9c to scaffold apps/distill/ placeholder.                                                                                                                                       |
-| L4  | Annual billing discount impact not in FINANCIALS.md   | CFO          | LOW      | FIXED  | Added annual billing discount impact note to FINANCIALS.md.                                                                                                                              |
-| R5a | "FileFree Pro" brand name creates B2B trust issue     | Growth       | HIGH     | FIXED  | Renamed to "Distill" (distill.tax). Separate B2B brand under Paperwork Labs. 35 references updated across 4 docs. D71 in KNOWLEDGE.md.                                                  |
-| R5b | B2B GTM strategy missing                              | Growth       | HIGH     | FIXED  | Added Section 5M: bootstrapped B2B GTM playbook (engineering-as-marketing, founder-led sales, Product Hunt, content SEO, CPA community).                                                 |
-| R5c | Audit trail logging needed for CPA compliance         | QA           | MEDIUM   | FIXED  | Added audit trail spec to Section 1C (7yr retention, immutable log, CSV export). Added P9.11 task.                                                                                        |
-| R5d | TaxWire missing from competitor analysis              | Strategy     | LOW      | FIXED  | Added TaxWire (sales tax compliance, NONE threat, Year 3+ partnership opportunity).                                                                                                       |
-
-### Review Round 3: Marketplace Architecture Deep Dive (March 2026)
-
-After adding the Financial Marketplace Platform (Section 4O), marketplace-ready data model (4B), pluggable recommendation engine (4E), 3-tier consent (0I/4H), partner dashboard evolution (4N), and competitor landscape -- all personas reviewed the complete plan. 3 HIGH findings were fixed inline. 6 MEDIUM findings fixed (March 2026). 5 of 7 LOW findings fixed. 2 LOW findings remain OPEN (F19: CCPA "sale" analysis, F24: partner scoring).
-
-
-| #   | Finding                                          | Persona      | Severity | Status | Action Needed                                                                                                                                                                                                                                             |
-| --- | ------------------------------------------------ | ------------ | -------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| F13 | No Phase tasks for marketplace tables            | Engineering  | MEDIUM   | FIXED  | Added marketplace tables (partner_products, partner_eligibility, fit_scores, partner_bids, recommendations, recommendation_outcomes) to P5.1 task description. Tables exist empty from day 1.                                                              |
-| F14 | Partner auth system not in Phase tasks           | Engineering  | MEDIUM   | FIXED  | Added P5.12: Partner auth scaffold with API key + partner ID authentication, rate limiting, `/api/v1/partners/*` routes.                                                                                                                                  |
-| F15 | Tier 2 consent only on Refund Plan screen        | Legal        | MEDIUM   | FIXED  | Updated Section 4H: Tier 2 opt-in now on Refund Plan screen AND user profile/settings page. Users who skip Refund Plan see Tier 2 via follow-up email or next login banner.                                                                              |
-| F16 | Stage 3 chicken-and-egg problem unaddressed      | Strategy     | MEDIUM   | FIXED  | Added key account strategy to Stage 3 in Section 4O: identify 2-3 Tier B partners, offer first-mover advantage (priority placement, lower fees, dedicated onboarding). Stage 3 doesn't launch without anchor partners.                                    |
-| F17 | Data reciprocity technical mechanism unspecified | Partnerships | MEDIUM   | FIXED  | Added technical mechanism by stage to PARTNERSHIPS.md: Stage 2 = monthly CSV email, Stage 3 = webhook callback to `/api/v1/partners/outcomes`, Stage 4 = real-time bidirectional API.                                                                     |
-| F18 | ARPU jump S1->S2 needs justification             | CFO          | MEDIUM   | FIXED  | Added worked example to Section 4O Stage 2: S1 $5 ARPU (3% attach x $50 CPA + Tax Opt + audit shield) -> S2 $12 ARPU (6% attach from 2x personalization lift x $75 tiered CPA + improved targeting).                                                     |
-| F19 | Aggregate data CCPA "sale" analysis needed       | Legal        | LOW      | OPEN   | Tier 3 consent shares "anonymized, aggregate" data with partners. Under CCPA, if a partner can combine aggregate data with their own data to re-identify users, this may constitute a "sale." Add a note that Legal persona should review before Stage 3. |
-| F20 | FTC consent order reference missing              | Legal        | LOW      | FIXED  | Added "FTC v. Credit Karma, Inc., FTC File No. 2023082" to Section 4O Stage 2 FTC constraint.                                                                                                                                                             |
-| F21 | CK no longer does tax filing directly            | Strategy     | LOW      | FIXED  | Updated competitor table: CK entry now reads "Free credit scores + tax filing redirected to TurboTax (2023)" with advantage noting CK won't innovate on filing.                                                                                           |
-| F22 | factors_json in fit_scores may need encryption   | QA           | LOW      | FIXED  | Clarified in data model: factors_json stores "field NAMES + weights only, NEVER raw values." No encryption needed since no PII values stored.                                                                                                             |
-| F23 | Missing competitors: NerdWallet, TaxSlayer       | Growth       | LOW      | FIXED  | Added NerdWallet (Column Tax white-label, MEDIUM threat) and TaxSlayer (free federal tier, LOW-MEDIUM) plus TaxDown (Europe, LOW) and MagneticTax (B2B CPAs, LOW-MEDIUM) to competitor table.                                                              |
-| F24 | Existing partner hit list not scored             | Partnerships | LOW      | OPEN   | PARTNERSHIPS.md Section 3 partner hit list predates the Strategic Partner Scoring Matrix. Score existing prospects (Marcus, Wealthfront, Betterment, etc.) against the 5-factor matrix when outreach begins.                                              |
-
-
-### Review Rounds 1-2: Original Self-Review (Addressed)
-
-All 12 findings from the self-review have been addressed and implemented. Detailed research for each finding is in the `deep_research_tightening` plan (archived). Key outcomes are incorporated throughout the plan (Section 0C legal framework, Section 3B state data pipeline, Section 5 social pipeline, etc.).
-
-### Summary of Revisions Based on Self-Review
-
-
-| #   | Finding                      | Severity | Action                                                                                                                    | Impact on Plan                              |
-| --- | ---------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| F1  | Scope risk                   | CRITICAL | Build all 13 admin pages in 3 tiers (Tier 1 with MVP, Tier 2 post-launch, Tier 3 with revenue)                            | Managed via tiering, no scope cut           |
-| F2  | CAN-SPAM + company structure | CRITICAL | Single LLC + DBAs. Opt-in checkbox exceeds CAN-SPAM (opt-out law) but satisfies state privacy laws                        | Section 0B-0C added. Privacy policy updated |
-| F3  | Social content pipeline      | HIGH     | DIY n8n pipeline ($0.10/video). Build pipeline first, validate with actual output for 2 weeks                             | No deferral -- pipeline IS the test         |
-| F4  | 50-state data pipeline       | RESOLVED | All 50 states day one via AI extraction from structured sources (Section 3B). ~6 hrs human review                         | No scope reduction. Full coverage.          |
-| F5  | Founder 2 bandwidth          | RESOLVED | Scale with traction. Zero work needed until products have live users.                                                     | Acknowledged as pre-product stage           |
-| F6  | studio + brand palettes      | HIGH     | Hetzner-hosted studio. Multi-brand CSS variable theming (violet/teal/zinc/amber -- 4 products)                            | Section 2 palettes added to P1.2            |
-| F7  | RA legal + trademark risk    | CRITICAL | Partner RA for v1. filefree.com is Intuit's (confirmed). File Supplemental Register. Full legal guidelines in Section 0C. | New Section 0C added. Strict brand rules.   |
-| F8  | Cross-sell compliance        | HIGH     | 4 regulatory frameworks (CAN-SPAM, FTC Free, Circular 230, UPL). Content Review Gate checklist mandatory.                 | Section 0C contains master checklist        |
-| F9  | Admin UX approach            | MEDIUM   | Functional over beautiful: shadcn tables, Recharts, no animations                                                         | UX guideline, no scope change               |
-| F10 | Content compliance           | LOW      | 30-day manual review period                                                                                               | Delays full automation by 30 days           |
-| F11 | CI path filters              | MEDIUM   | `dorny/paths-filter@v3`. Shared pkg changes trigger all apps. 2-3 min per app vs 10+ min total.                           | Detailed YAML spec in F11                   |
-| F12 | Voice clone quality          | LOW      | Test ElevenLabs free tier (10K chars) before committing. Startup grants program: 12mo free with 33M chars.                | Apply for ElevenLabs startup grant          |
-
+**Full review findings**: [docs/archive/VMP-ARCHIVE.md](../archive/VMP-ARCHIVE.md) Sections 9 and 10
 
 ---
 
-## 10. Key Decisions Still Needed (Founder Input Required)
+## 10. Key Decisions — All Decided
 
-1. ~~**LLC Name**~~: DECIDED -- **Paperwork Labs LLC** (California). Domain: paperworklabs.com (purchased March 2026). DBA filings for FileFree, LaunchFree, Trinkets. See Section 0B.
-2. ~~**RA Strategy**~~: DECIDED -- Partner RA with wholesale volume pricing. $99/yr initial, drop with scale. See revised F7.
-3. ~~**Phase 4 Scope**~~: DECIDED -- Full 13-page command center in 3 tiers. See Section 3.
-4. ~~**Social Content Validation**~~: DECIDED -- Build pipeline first, validate with actual output for 2 weeks. See F3.
-5. ~~**Founder 2 Priority**~~: DECIDED -- Scale with traction. Zero work needed pre-product. See F5.
-6. ~~**Domain purchases**~~: DECIDED -- paperworklabs.com + launchfree.ai + filefree.ai PURCHASED (March 2026). Also own: axiomfolio.com, launchfree.llc, taxfilefree.com.
-7. **Trademark filing timing**: File immediately after product launch (need specimen of use) or file intent-to-use now ($350 extra per class)?
-8. ~~**AI Model Routing**~~: DECIDED -- 9-model strategy. See Section 0E. Owned by AI Ops Lead persona.
-9. ~~**Trinkets product line**~~: DECIDED -- Phase 1.5, financial calculators first, then agent pipeline validates subsequent ideas. See Section 0F.
-10. ~~**Trinkets domain**~~: DECIDED -- `tools.filefree.ai` subdomain. No purchase needed, inherits domain authority, easy DNS. See Section 7C.
-11. ~~**LLC State**~~: DECIDED -- **California LLC** (March 2026). Founder is a CA resident; Wyoming would require foreign registration, double RA, and CA franchise tax anyway. CA year 1: ~$119 vs WY year 1: ~$1,094. See Section 0B for full comparison. Revisit Wyoming when revenue >$250K and asset protection justifies dual-state cost.
-
----
-
-## 11. Valuation Estimate
-
-**MERGED**: This section previously duplicated Section 0D. See **Section 0D** for the single authoritative valuation analysis with comparable companies, scenario modeling, and comp rationale.
+10 of 11 decisions resolved. Only open item: **#7 Trademark filing timing** (file post-launch with specimen vs intent-to-use now at $350/class extra). All other decisions logged in KNOWLEDGE.md (D38-D57).
 
 ---
 

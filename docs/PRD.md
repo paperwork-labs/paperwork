@@ -1,34 +1,22 @@
-# Paperwork Labs -- Product Requirements Document
+# Paperwork Labs — Product Requirements Document
 
-**Version**: 7.0
-**Last Updated**: 2026-03-16
-**Status**: Venture-Level PRD (supersedes FileFree-only v6.0)
+**Version**: 7.1 | **Last Updated**: 2026-03-18
+**Status**: Venture-Level PRD
 
----
+**Entity**: Paperwork Labs LLC (California). Products: FileFree, LaunchFree, Distill, Trinkets.
+**Monthly burn**: ~$278/mo (see FINANCIALS.md for breakdown).
+**Team**: Founder 1 (Product/Engineering), Founder 2 (Partnerships/Revenue), 44 AI agent personas.
 
-## 1. Venture Overview
+For full venture strategy, valuation, marketplace evolution, and agent architecture, see VENTURE_MASTER_PLAN.md.
+For AI model routing, see AI_MODEL_REGISTRY.md.
 
-**Entity**: Paperwork Labs LLC (California). DBA filings for "FileFree", "LaunchFree", "Trinkets", and "Distill".
-
-**Domain**: paperworklabs.com (holding company and command center).
-
-**Monthly burn (real)**: ~$278/mo. Breakdown: Hetzner $6 + Render x2 $14 + Google Workspace $6 + domains ~$20 + OpenAI ~$10 + ElevenLabs $5 + cyber insurance ~$150 (est.) + CA franchise tax ~$67 (amortized). See FINANCIALS.md for full breakdown.
-
-**Founding team**: Founder 1 (Product/Engineering) builds all products, OCR pipeline, tax calculations, and infrastructure. Founder 2 (Partnerships/Revenue) sources and closes financial product partnerships -- the primary revenue engine. AI personas (44 agents) assist both co-founders across all products.
-
-**AI model strategy**: 9 models across 7 roles with quality-first routing. See AI_MODEL_REGISTRY.md and VENTURE_MASTER_PLAN.md Section 0E for the authoritative routing registry.
-
-For deep strategy, valuation scenarios, marketplace evolution, and agent architecture, see VENTURE_MASTER_PLAN.md (source of truth for all strategic decisions).
-
-### Products
-
-| Product | Domain | Description | Target Launch | Status |
+| Product | Domain | Description | Launch | Status |
 |---|---|---|---|---|
-| FileFree | filefree.ai | Free AI-powered tax filing. W2 photo to completed 1040 in minutes. Year-round AI tax advisor. Revenue: refund routing, financial referrals, audit shield, Tax Optimization Plan. | January 2027 | In development |
-| LaunchFree | launchfree.ai | Free LLC formation service ($0 service fee; user pays state filing fees only). AI-powered 50-state comparison. Revenue: RA credits, banking/payroll/insurance referrals, compliance SaaS. | Summer 2026 | In development |
-| Distill | distill.tax | B2B compliance automation platform. Umbrella brand for tax, formation, and compliance APIs + CPA SaaS dashboard. Four lines: Distill for CPAs (SaaS), Distill Tax API, Distill Formation API, Distill Compliance API. ~80% shared tech per vertical. | Summer 2026 | Planned |
-| Trinkets | tools.filefree.ai | Collection of utility tools (financial calculators, converters, generators). Revenue: AdSense + cross-sell to main products. | Phase 1.5 | Planned |
-| Studio / Command Center | paperworklabs.com | Venture command center, admin dashboard, agent monitor, docs viewer. Public portfolio page + authenticated `/admin/` panel. | Phase 4 | Planned |
+| FileFree | filefree.ai | Free AI tax filing | January 2027 | In development |
+| LaunchFree | launchfree.ai | Free LLC formation | Summer 2026 | In development |
+| Distill | distill.tax | B2B compliance APIs + CPA SaaS | Summer 2026 | Planned |
+| Trinkets | tools.filefree.ai | Utility tools (calculators) | Phase 1.5 | Planned |
+| Studio | paperworklabs.com | Command center + portfolio | Phase 4 | Tier 1 complete |
 
 ---
 
@@ -62,18 +50,10 @@ FileFree is a mobile-first web application that starts as free, AI-powered tax p
 
 ### 2.4 Why This User -- The Data
 
-- 67% of Gen Z report stress about filing taxes (vs 57% all Americans) -- Stagwell 2026
-- 62% of Gen Z say tax season is their #1 financial stressor -- AOL/Yahoo Finance
-- 52% fear making errors; only 33% feel confident filing correctly
-- 45% say filing negatively impacts their mental health
-- 55% consider filing taxes "one of the hardest parts of adulting"
-- 44% have already used AI for tax help (vs 4% of Boomers) -- Stagwell 2026
-- 70% would consider using AI-based tax prep -- Stagwell 2026
-- 40% procrastinate until the last minute; 50%+ had unfiled returns 3 days after April 15
-- 50% of Gen Z have faced IRS fees, penalties, or collections -- LendEDU
-- 80% of tax software users stick with the same program year after year -- PCMag
-
-That last stat is the business case: whoever captures a 22-year-old owns their tax relationship for a decade.
+- 67% Gen Z stress about filing (vs 57% all Americans); 62% say tax season is #1 financial stressor
+- 44% have used AI for tax help (vs 4% Boomers); 70% would consider AI-based prep
+- 80% stick with same program year after year — whoever captures a 22-year-old owns that relationship for ~10 years
+- 40% procrastinate until deadline; 50%+ had unfiled returns 3 days after April 15
 
 ### 2.5 Competitive Landscape
 
@@ -95,38 +75,11 @@ That last stat is the business case: whoever captures a 22-year-old owns their t
 
 ### 2.6 The april Threat
 
-april raised $78M ($38M Series B in July 2025). They are the first new company in 15+ years to achieve national e-file coverage in all 50 states. They're embedded in Chime, Gusto, and 30+ fintech platforms. They show users only 36 screens for federal + state combined. 60+ NPS.
-
-**Why april doesn't kill us:** april is B2B2C -- they're an API that other companies embed. They don't have a consumer brand. They don't show up when someone Googles "file taxes free." We're B2C. Different distribution, different positioning. A user who opens the App Store or Google looking for "free tax filing" will never find april.
-
-**What we can learn from april:** Their 36-screen flow proves "ask only what's needed" works. Their success validates the market. Their embedded model is our Phase 3 -- we should build toward B2B API as a revenue diversification play.
-
-**E-file note:** We're building our own IRS MeF transmitter (NORTH STAR). Column Tax is our interim e-file partner (October 2026) at cost-passthrough while we complete IRS certification.
+april ($78M raised) is B2B2C -- embedded in Chime, Gusto, 30+ fintechs. They don't have a consumer brand; we're B2C. Users Googling "file taxes free" never find april. We're building our own IRS MeF transmitter (NORTH STAR). Column Tax is interim e-file partner (October 2026) at cost-passthrough.
 
 ### 2.7 Honest Moat Assessment
 
-**What is NOT a moat (but IS a differentiator):**
-
-- Emotional design / anxiety-focused UX -- any well-funded competitor can hire good designers. This buys 6-12 months, not permanent advantage.
-- Speed -- april already does 36 screens. Speed is compressible. But incumbents can't strip down without losing revenue from complex filers.
-- "Privacy-first" claims -- any startup can say this. Proving it requires time and track record.
-
-**What IS defensible:**
-
-**Moat 1: First-Filer Lock-In (STRUCTURAL)**
-80% annual retention means whoever captures a 22-year-old filing their first return owns that customer for ~10 years. With ~4M Americans turning 22 each year, the first-filer market is ~4M/year. If we capture 5% of first-time filers, that's 200K users/year with 80% retention -- compounding to 670K active users by year 5 without any other acquisition.
-
-**Moat 2: Trust-to-Advisory Pipeline (RELATIONSHIP)**
-Free filing earns trust. Trust enables financial advisory. Advisory creates ongoing relationship (monthly engagement) that is 10x stickier than annual filing. Once a user relies on FileFree for "should I open a Roth IRA?" and "how much should I put in my 401k?", they're not switching for a $5/year savings on filing.
-
-**Moat 3: Network Effects via Social Proof (DISTRIBUTION)**
-Tax filing is social -- "who do you use?" is a common question. The viral tax receipt card, referral system, and TikTok/Instagram content create compounding distribution. If 15% of users share their card and 5% of viewers convert, each user generates 0.0075 new users. At 100K users, that's 750 organic acquisitions per cycle -- growing exponentially.
-
-**Moat 4: Data Compound Interest (LONG-TERM)**
-Each year of filing data makes the AI advisor smarter: "You made $12K more than last year -- here's how to adjust your W-4 withholding so you're not giving the IRS an interest-free loan." Multi-year data is something new competitors can never have for existing users.
-
-**Moat 5: Proprietary OCR Intelligence Layer (COST STRUCTURE)**
-The moat isn't the OCR engine itself -- it's the post-processing intelligence layer on top. Our pipeline: GCP Cloud Vision for text extraction + local SSN isolation (regex, never sent to AI) + GPT-4o-mini structured field mapping + GPT-4o vision fallback for edge cases. Cost: ~$0.004/doc vs competitors' $0.30+ (GCP Document AI W-2 Parser). This 75x cost advantage means we can offer truly free filing at any scale.
+Full competitive analysis in VENTURE_MASTER_PLAN.md Section 4O.
 
 ### 2.8 User Flow (MVP)
 
@@ -242,7 +195,6 @@ The #1 long-term strategic priority. Owning our e-file infrastructure means $0/r
 | **February 2027 (mid-season)** | Schedule A (itemized deductions) + Schedule D (capital gains basics) | Covers homeowners + basic investors |
 | **Year 2 (2027-2028 season)** | Schedule E (rental), Schedule SE (self-employment tax), multi-state, HSA (Form 8889), K-1 pass-through | Covers small landlords, full self-employed, health savings |
 | **Year 2 (business filing)** | Form 1065 (partnership/LLC), Form 1120-S (S-Corp), Schedule K-1 generation | Business returns. $49-99/return (consumer), included in Pro Firm |
-| **Year 3+** | Depreciation (Form 4562), AMT (Form 6251), brokerage import (CSV/API), foreign income (Form 2555) | Edge cases, power users |
 
 ### 2.11 Success Metrics
 
@@ -410,13 +362,7 @@ LaunchFree already captures all state-specific formation data in the 50-state JS
 
 ### 4.1 What It Is
 
-Distill is the B2B umbrella brand for all compliance automation products. It started as a CPA tax automation SaaS, but the same infrastructure pattern applies to every compliance vertical: tax extraction, LLC formation, and ongoing entity compliance. "Distill" = extract the pure essence from complex government paperwork.
-
-**Why a separate brand**: The word "Free" in "FileFree" creates cognitive dissonance for B2B buyers paying $199/mo. "Distill" = extract pure essence from raw material, fits naturally under Paperwork Labs (distilling paperwork).
-
-**Why one B2B brand (not separate brands per vertical):** Companies like Stripe (Payments, Atlas, Issuing, Identity), Twilio (SMS, Voice, Email), and Plaid (Auth, Identity, Transactions, Income) use one brand for multiple API products. Developers hate juggling multiple platforms -- one login, one API key, one billing relationship. Cross-sell is frictionless. At 2 founders, the single-brand model is correct.
-
-**Why this exists**: MagneticTax (YC S25) raised venture capital to build exactly the CPA tax extraction product. We build the identical OCR/extraction pipeline for consumer FileFree anyway. The B2B product is ~20% incremental engineering. It is the fastest path to predictable revenue because CPAs pay monthly SaaS fees from day 1.
+Distill is the B2B umbrella brand for all compliance automation: tax extraction, LLC formation, ongoing entity compliance. "Distill" = extract pure essence from complex government paperwork. Separate brand because "Free" in FileFree creates cognitive dissonance for B2B buyers paying $199/mo. One B2B brand (Stripe/Plaid model): one login, one API key, frictionless cross-sell. MagneticTax (YC S25) builds the same CPA extraction product; we have the OCR pipeline for FileFree — B2B is ~20% incremental engineering and fastest path to predictable revenue.
 
 ### 4.2 Four Product Lines
 
@@ -579,7 +525,6 @@ All client-side JavaScript. Zero API costs, zero server costs. Aligns with FileF
 |---|---|---|
 | Year 1 | $50-300 | New domain, minimal traffic. SEO takes 6-12 months. |
 | Year 2 | $5K-20K | Long-tail SEO begins compounding. Cross-sell conversions. |
-| Year 3+ | $20K-100K | SEO compounds. Portfolio of 15+ tools. |
 
 **Market context**: iLovePDF (216M monthly visits, ~$4M/yr), SmallPDF (61M monthly visits, ~$11M/yr), PDF2Go (5-12M monthly visits, ~$670K/yr). These are established players with 10+ year head starts. Revenue projections are conservative.
 
@@ -635,85 +580,19 @@ The command center is the control plane for the entire venture. It is what makes
 
 ## 7. Revenue Model
 
-### 7.1 FileFree Revenue Streams
+Full revenue model in VENTURE_MASTER_PLAN.md Section 1.
 
-**The Core Insight:** Free tax filing is the acquisition channel, not the product. The monetization event is the refund moment -- the instant a 22-year-old sees "$3,400 refund" on screen is the highest-intent financial decision moment of their year. This is the Credit Karma playbook ($8.1B acquisition by Intuit).
+### 7.1 FileFree
 
-**Free Forever (Acquisition Layer):**
+Free filing = acquisition; refund moment = monetization. Streams: refund routing ($50-100/funded), referrals ($50-200), Audit Shield ($19-29/yr), Tax Optimization Plan ($29/yr).
 
-- Federal tax preparation -- free
-- State tax preparation (all 50 income-tax states) -- free
-- All filing statuses, up to 3 W2s -- free
-- AI-powered OCR + plain-English explanation -- free
-- 1040 PDF download -- free
-- E-file via own MeF transmitter (January 2027+) -- free
-- E-file via Column Tax (October-December 2026) -- at cost (passthrough, ~$10-15, no markup)
+### 7.2 LaunchFree
 
-**Stream 1: Refund Routing to Partner Accounts ($50-100/funded account)**
+RA credits, banking/payroll referrals, Compliance SaaS ($49-99/yr). H2 2026: $7.9K–$114K range by scenario.
 
-After calculating the refund, show a "Refund Plan" screen with IRS Form 8888 split options. HYSA partners pay $50-100 per funded account. Investment account partners pay $50-150.
+### 7.3 Distill
 
-Projected conversion: 8-12% of users with refunds. At $75 avg = $4.00-6.00/user.
-
-**Stream 2: Financial Product Referrals ($50-200/referral)**
-
-Post-filing recommendations based on user's actual tax data. HYSA: $50-100/referral. Roth IRA: $50-150. Credit cards: $50-100/approval. Renters insurance: $30-50.
-
-Projected conversion: 2-4% effective referral rate. At $75 avg = $1.50-3.00/user.
-
-**Stream 3: Refund Advance ($3-5/advance revenue share)**
-
-Partner with a fintech lender. $0 cost to user, 0% APR. We earn $3-5 per advance. Requires e-file capability (October 2026+).
-
-Projected conversion: 10-15% at $3-5 = $0.30-0.75/user.
-
-**Stream 4: Audit Shield ($19-29/year)**
-
-AI-assisted audit response prep + $1M coverage via insurance partner (TaxAudit/Protection Plus). Our cost: ~$10/return wholesale. Our price: $19-24. Margin: 47-58%.
-
-Projected conversion: 2-4% at $19-29 = $0.38-1.16/user.
-
-**Stream 5: Tax Optimization Plan ($29/year, annual)**
-
-Annual one-time purchase at filing time. W-4 adjustment calculator, IRA contribution optimizer, year-over-year comparison, quarterly estimate reminders, priority support.
-
-Projected conversion: 2-5% at $29 = $0.58-1.45/user.
-
-**Stream 6: Complex Filing ($39 one-time, Phase 2+)**
-
-1099 income, itemized deductions, investment income, multi-state. Core simple filing stays free forever.
-
-Projected conversion: 1-5% at $39 = $0.39-1.95/user.
-
-**Stream 7: B2B Embedded Tax API (Phase 3, 2028+)**
-
-License our OCR + calculation + MeF submission engine to fintechs. API pricing $5-25 per return (volume-tiered).
-
-**Three Revenue Scenarios at 100K Users:**
-
-| Scenario | Blended ARPU | Annual Revenue |
-|---|---|---|
-| A -- Conservative (referrals only) | $4.38 | $438K |
-| B -- Moderate (partnerships in place) | $8.05 | $805K |
-| C -- Aggressive (full stack + B2B) | $13.31 | $1.331M + $200K B2B |
-
-### 7.2 LaunchFree Revenue Streams
-
-| Stream | Pessimistic | Moderate | Aggressive |
-|---|---|---|---|
-| RA credits (1-3% buy) | $1K | $5K | $7K |
-| Banking referrals (2-5%) | $2K | $7.5K | $12.5K |
-| Payroll referrals (0.5-1%) | $1K | $3K | $5K |
-| Compliance SaaS (8-18%) | $3.9K | $19K | $89K |
-| **H2 2026 Total** | **$7.9K** | **$34.5K** | **$114K** |
-
-### 7.3 Distill Revenue (SaaS Subscriptions)
-
-| Year | CPA Firms | Avg Plan | Monthly Rev | Annual Rev |
-|---|---|---|---|---|
-| Y1 (2027) | 30-100 | $79-99/mo | $2.4K-9.9K | $28K-119K |
-| Y2 (2028) | 100-300 | $99-129/mo | $9.9K-38.7K | $119K-464K |
-| Y3 (2029) | 300-600 | $119-149/mo | $35.7K-89.4K | $428K-$1.07M |
+CPA SaaS ($49–199/mo tiers), Formation API ($20-40/filing). Y1: $28K–119K; Y2: $119K–464K.
 
 ### 7.4 Combined Year 1 Projections
 
@@ -1477,93 +1356,37 @@ NEVER say "you should form in Delaware" or "you need an operating agreement." AL
 
 ## 12. Content and Distribution Strategy
 
-### 12.1 SEO
+**SEO:** FileFree: "how to file taxes for free", "first time filing taxes", "tax refund calculator" — 3-5 guides at launch, FAQ schema, "First Time Filing" hub. LaunchFree: "free LLC formation", "cheapest state for LLC", 50 state landing pages.
 
-**FileFree targets:**
-- "how to file taxes for free", "what is a W2", "standard deduction 2025"
-- "first time filing taxes", "tax refund calculator"
-- 3-5 genuinely helpful guides at launch, add 2/month
-- FAQ schema markup for featured snippets
-- "First Time Filing" hub page -- beachhead keyword cluster
+**Social:** TikTok + IG Reels + YouTube Shorts + X. Faceless AI content daily + weekly founder video. 7-10 posts/week tax season (FileFree), 3-5/week year-round (LaunchFree). n8n pipeline: trend research → script/image/voice → Postiz → founder review (5 min/day). ~$3/mo for 30 videos.
 
-**LaunchFree targets:**
-- "free LLC formation", "how to start an LLC", "cheapest state for LLC"
-- State-specific landing pages for all 50 states
-- "LLC vs sole proprietorship", "do I need a registered agent"
+**Paid ($200-500/mo tax season):** TikTok Spark Ads primary, Meta Boost secondary. Only boost organically validated posts. Kill: TikTok CPC >$0.50, Meta CPC >$1.00. Off-season: $0.
 
-### 12.2 Social Media
+**Viral loops:** Tax receipt card (FileFree, 15% share target), LLC celebration certificate (LaunchFree), referral program, try-before-signup, comparison calculator (Trinket).
 
-**Strategy**: Faceless AI-generated content (daily, zero founder time) + weekly founder-face video (10 min).
-
-- TikTok (primary) + Instagram Reels + YouTube Shorts + X
-- 7-10 posts/week during tax season, 2-3/week off-season (FileFree)
-- 3-5 posts/week consistent year-round (LaunchFree)
-- 5 content pillars: tax myths busted, "I filed in X minutes" reactions, W-2 explainers, money tips for Gen Z, founder journey (build-in-public)
-
-**Pipeline cost**: ~$3/month for 30 videos (GPT-4o script $0.01 + DALL-E 3 image $0.04 + ElevenLabs voice $0.05 = ~$0.10/video). n8n orchestrates the pipeline: trend research -> script generation -> image/voice generation -> FFmpeg assembly -> Postiz queue -> founder review (5 min/day).
-
-### 12.3 Paid Amplification ($200-500/mo tax season)
-
-- **TikTok Spark Ads** (primary, $3-10 CPM): Boost organic posts with >1K views. Intermittent 3-5 day bursts at $20-50/day.
-- **Meta/Instagram Boost** (secondary, $8-12 CPM): Boost top Reels. Better targeting for retargeting.
-- **Key rule**: Never create ad-first content. Only boost posts the algorithm already validated organically.
-- **Kill criteria**: TikTok CPC > $0.50 after $20 spend = stop. Meta CPC > $1.00 after $15 spend = stop.
-- Off-season (May+): $0 paid. Organic only.
-
-### 12.4 Viral Loops
-
-**Tax receipt card (FileFree):** Shareable filing summary with filing time, opt-in refund amount, FileFree branding. Target: 15% share rate. Formats: IG Story (1080x1920), X (1200x675), square (1080x1080).
-
-**LLC formation celebration (LaunchFree):** "I just started my business!" shareable certificate with LaunchFree branding.
-
-**Referral program:** "Share FileFree" from dashboard, track with unique codes + UTM. Both referrer and referee get benefit (priority support, Tax Optimization Plan discount).
-
-**Try-before-signup:** The demo IS the marketing. Users snap a W2 without signing up, see the OCR magic, share the "wow" moment.
-
-**Comparison calculator (Trinket):** "How much are you overpaying for tax prep?" Interactive widget that generates a shareable result.
-
-### 12.5 Autonomous Content (n8n workflows)
-
-- **Daily**: Auto-draft 3 posts from trending topics via OpenAI + persona prompts -> queue in Postiz as drafts -> founder reviews/approves (5 min)
-- **Weekly**: Pull Postiz analytics -> OpenAI generates growth report -> email summary
-- **Monthly**: Pull infrastructure costs -> OpenAI checks vs budget -> alert if overspending
-
-Content Review Gate (mandatory): Every piece of content passes Circular 230 compliance, UPL compliance, FTC disclosure, CAN-SPAM compliance, and brand name verification before publishing. First 30 days: founder reviews every post manually. After 30 days: pre-approved templates can auto-publish.
+**Content Review Gate (mandatory):** Circular 230, UPL, FTC, CAN-SPAM, brand verification. First 30 days: manual review. After: pre-approved templates can auto-publish.
 
 ---
 
 ## 13. Realistic Timeline
 
-| Phase | Description | Target | Hard Deadline? |
+| Phase | Description | Target | Hard? |
 |---|---|---|---|
-| Phase 0 | Infrastructure (domains, LLC, EFIN, legal) | March 2026 | NO |
-| Phase 1 | Monorepo Restructure (pnpm workspaces, 5 apps, shared packages) | April 2026 | NO |
-| Phase 1.5 | First Trinket + Agent Pipeline Test | April 2026 | NO |
-| Phase 2 | 50-State Data Infrastructure (AI extraction, validation, n8n monitoring) | May 2026 | NO |
-| Phase 3 | LaunchFree MVP (formation wizard, State Filing Engine, Stripe, RA credits) | June-July 2026 | NO |
-| Phase 4 | Command Center (Tier 1 daily ops pages) | June 2026 | NO |
-| Phase 5 | User Intelligence Platform (venture identity, campaigns, marketplace) | July 2026 | NO |
-| Phase 6 | Agent Restructure + Social Pipeline (persona splits, n8n workflows) | July 2026 | NO |
-| Phase 9 | Distill Full B2B Platform (CPA SaaS + Formation API + Tax API + Compliance API) | July-August 2026 | NO |
-| Phase 7 | FileFree Season Prep (50-state tax calcs, MeF XML, forms, reliability) | October 2026 | **YES** -- IRS |
-| Phase 8 | FileFree Launch (MeF go-live, Tax Opt Plan, marketing) | January 2027 | **YES** -- IRS |
-| Phase 10 | Business Tax Filing (1065, 1120-S, K-1 generation) | 2027-2028 | NO |
+| 0 | Infrastructure (domains, LLC, EFIN, legal) | Mar 2026 | — |
+| 1 | Monorepo Restructure (pnpm, 5 apps, shared packages) | Apr 2026 | — |
+| 1.5 | First Trinket + Agent Pipeline Test | Apr 2026 | — |
+| 2 | 50-State Data Infrastructure | May 2026 | — |
+| 3 | LaunchFree MVP (Filing Engine, Stripe, RA) | Jun-Jul 2026 | — |
+| 4 | Command Center (Tier 1) | Jun 2026 | — |
+| 5-6 | User Intelligence + Agent Restructure | Jul 2026 | — |
+| 9 | Distill B2B Platform (parallel) | Jul-Aug 2026 | — |
+| 7 | FileFree Season Prep (MeF XML, forms) | Oct 2026 | **YES** (IRS ATS) |
+| 8 | FileFree Launch | Jan 2027 | **YES** (tax season) |
+| 10 | Business Tax Filing (1065, 1120-S, K-1) | 2027-2028 | — |
 
-Phase 9 (Distill) runs in parallel with Phases 5-6 — shared infrastructure from Phases 1-3 means the incremental B2B work is thin.
+**Critical path:** EFIN (NOW) → 45 days → ATS Oct 2026 → MeF Jan 2027. Phase 0→1→2→3→9(parallel)→7→8.
 
-**Critical Path:**
-
-```
-EFIN Application (NOW) ---- 45 days ----> Software Dev ID -> ATS Testing (Oct 2026) -> MeF Launch (Jan 2027)
-
-Phase 0 -> Phase 1 -> Phase 2 -> Phase 3 (LaunchFree + Filing Engine) -> Phase 9 (Distill APIs, parallel) -> Phase 7 (FileFree Prep) -> Phase 8 (Launch)
-```
-
-**Three hard deadlines that cannot move:**
-
-1. **EFIN approval**: Must apply NOW. 45-day processing. Late application compresses the October ATS testing window.
-2. **MeF ATS testing**: IRS opens ATS testing window each fall. Must have XML generator complete by June 2026 to test in October. Miss this and FileFree e-file delays to January 2028.
-3. **Tax season**: IRS starts accepting returns late January 2027. Product must be live.
+**Hard deadlines:** EFIN apply NOW; MeF XML by Jun 2026 for Oct ATS; product live by late Jan 2027. Full phase details: VENTURE_MASTER_PLAN.md.
 
 ---
 

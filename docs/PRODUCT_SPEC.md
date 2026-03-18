@@ -1,49 +1,22 @@
 ## FileFree UX & Product Specification
-**Version**: 4.0 | **Updated**: 2026-03-09
+**Version**: 4.1 | **Updated**: 2026-03-18
 **Company**: Paperwork Labs LLC
 
 This is the UX reference bible for FileFree (a Paperwork Labs product). It defines the design system, component specs, UX guidelines, and animation tokens. For business requirements see PRD.md. For build tasks see TASKS.md.
 
 ### Product Vision: Filing → Advisory → Financial Platform
 
-FileFree is NOT just a tax filing tool. The UX must lay groundwork for the full journey:
-1. **Filing** (2026): Free, fast, anxiety-free tax prep. Earns trust.
-2. **Advisory** (2027): AI tax advisor that helps users optimize year-round. Monetizes trust.
-3. **Financial Platform** (2028+): Recommended financial products, embedded in the advisory relationship.
-
-Every screen in the filing flow should subtly build toward the advisory relationship. After filing, the user should feel: "This app understands my finances better than I do. I want it to help me year-round."
+- **Filing** (2026): Free, fast, anxiety-free tax prep. Earns trust.
+- **Advisory** (2027): AI tax advisor for year-round optimization. Monetizes trust.
+- **Financial Platform** (2028+): Recommended financial products embedded in the advisory relationship.
 
 ### MVP vs Phase 2+ Delineation
 
-**Sprint 1-2 (must ship by April 15)**:
-- Landing page with email waitlist
-- Camera capture with document overlay (the "wow" moment)
-- OCR pipeline with demo endpoint (try-before-signup)
-- Animated field cascade on extraction
-- /pricing page with free-forever guarantee
+**Sprint 1-2 (shipped):** Landing page, camera capture, OCR demo endpoint, animated field cascade, /pricing page.
 
-**Sprint 3 (must ship by May 31)**:
-- Full filing flow with auth
-- OCR auto-fill with manual entry fallback
-- Tax calculator (100% test coverage)
-- Return summary with refund reveal animation
-- 1040 PDF generation with submission instructions
-- AI insights (static, not streaming)
-- Tax receipt viral card
-- Mobile-first responsive design
-- Dark mode with indigo/violet aesthetic
-- Advisory teaser on post-filing screen
+**Sprint 3 (shipped):** Full filing flow with auth, OCR auto-fill + manual fallback, tax calculator, return summary + refund reveal, 1040 PDF, AI insights (static), tax receipt card, mobile-first dark mode, advisory teaser.
 
-**Phase 2+ (cut for MVP speed)**:
-- Streaming AI insights (static first)
-- E-file via transmitter partner (October 2026)
-- State tax calculation (June-September 2026)
-- Referral system with tracking
-- Email lifecycle / drip campaigns
-- Tax Optimization Plan ($29/year) annual purchase
-- Financial product referrals
-- Admin dashboard
-- PWA setup
+**Phase 2+ (deferred):** Items below are deferred to future phases. Some may already be partially implemented. Streaming AI insights, e-file via transmitter partner, state tax calculation, referral system, email lifecycle, Tax Optimization Plan ($29/yr), financial product referrals, admin dashboard, PWA setup.
 
 ---
 
@@ -170,11 +143,7 @@ The biggest trust barrier is asking users to create an account before they see v
 - Extracted data stored in browser sessionStorage until account creation
 - On account creation, POST extracted data to create Filing + TaxProfile
 
-**Why this matters:**
-- Reduces friction to zero for first experience
-- Creates shareable "wow" moments ("look what this app does!")
-- Builds trust through demonstration, not promises
-- Natural conversion point with immediate value
+Eliminates signup friction and creates shareable "wow" moments that build trust through demonstration.
 
 ---
 
@@ -429,7 +398,7 @@ All layout transitions (sidebar collapse, tab bar hide/show, page transitions) u
 
 ### Task 1.3 — Landing / Marketing Page
 
-The public-facing page for unauthenticated users. This is the first impression. It must load fast, feel premium, and convey trust.
+Public-facing for unauthenticated users. Load fast, feel premium, convey trust.
 
 **Hero Section:**
 - Headline: "File Your Taxes. Free. No Tricks." (or equally direct — A/B test this later via PostHog).
@@ -448,7 +417,7 @@ The public-facing page for unauthenticated users. This is the first impression. 
 - Steps animate in (stagger fade-in) as user scrolls into view.
 
 **Comparison Section:**
-- A simple, honest comparison table: FileFree vs. TurboTax vs. H&R Block vs. IRS Direct File. Columns: Price (federal), Price (state), OCR document scanning, form coverage, mobile experience. Don't trash competitors — let the facts speak. FileFree wins on price and features; competitors win on brand recognition and breadth. Be honest about your current form coverage limitations.
+- Honest comparison table: FileFree vs. TurboTax vs. H&R Block vs. IRS Direct File. Columns: Price (federal), Price (state), OCR, form coverage, mobile. Let facts speak. Be honest about form coverage limitations.
 
 **Trust Section:**
 - Security badges / statements: IRS-authorized e-file provider (when applicable), 256-bit encryption, "Your data is never sold."
@@ -557,8 +526,6 @@ For sections with multiple items (e.g., multiple W-2s, multiple dependents), use
 
 ### Task 1.7 — Document Upload & OCR UX
 
-This is one of the strongest "wow" moments in the product. A user drops a W-2, and their form fills itself in. Make this feel magical.
-
 **Upload Screen:**
 - The FileUploadZone component takes center stage. Large drop zone, friendly copy.
 - Below the drop zone, show a visual list of document types with icons: W-2, 1099-NEC, 1099-INT, 1099-DIV, etc. User can click one to set the expected type before uploading, or let the system auto-detect from OCR.
@@ -584,8 +551,6 @@ This is one of the strongest "wow" moments in the product. A user drops a W-2, a
 
 ### Task 1.8 — Review & Submission Flow
 
-The most nerve-wracking part for users. They're about to submit something to the IRS. The UX must feel thorough, reassuring, and double-checked.
-
 **Review Screen:**
 - Full summary organized by phase. Each phase is a collapsible card: "About You" (shows name, filing status, dependents), "Income" (shows each income source and amount), "Deductions" (shows standard or itemized, total), "Credits" (shows each credit claimed).
 - Every section has an "Edit" button that jumps directly to that part of the interview.
@@ -609,8 +574,6 @@ The most nerve-wracking part for users. They're about to submit something to the
 
 ### Task 1.9 — Refund / Owed Reveal & Post-Filing
 
-The emotional climax. Treat this like a product launch moment.
-
 **Refund Reveal Screen:**
 - Full-screen takeover. Clean background (slight gradient or radial glow).
 - Brief suspense: a 1-second delay with a subtle "calculating" shimmer, then the number animates in.
@@ -631,8 +594,6 @@ The emotional climax. Treat this like a product launch moment.
 ---
 
 ### Task 1.10 — Dashboard & Return Status
-
-The home base for authenticated users. Clean, card-based, informative.
 
 **Primary Card — Current Filing Status:**
 - If no return started: large CTA card. "Ready to file your 2024 taxes?" + "Start Filing" button.
@@ -656,8 +617,6 @@ All cards use subtle entrance animations (stagger fade-in-up) on page load. Stat
 ---
 
 ### Task 1.11 — Micro-Interactions & Motion System
-
-This task is about implementing the global motion rules, not individual component animations (those are part of each component's task).
 
 Configure Framer Motion's `<AnimatePresence>` at the top level of the app layout for page transition support.
 
@@ -687,8 +646,6 @@ All of this must respect `prefers-reduced-motion`. When reduced motion is active
 ---
 
 ### Task 1.12 — Error & Edge Case UX
-
-Design and implement error handling as a first-class UX concern, not an afterthought.
 
 **Validation Errors:**
 - Inline, below the field. Red text, text-sm. Field border turns destructive color. Field shakes gently on error appear (x-axis, 3px amplitude, 300ms, ease-out — using Framer Motion).
@@ -721,7 +678,7 @@ Design and implement error handling as a first-class UX concern, not an aftertho
 
 ### Task 1.13 — Mobile UX
 
-Mobile is not a responsive afterthought — it's a primary platform. Many users will file their taxes on their phone. Every screen must be designed and tested on a 375px-wide viewport.
+Primary platform. Every screen designed and tested at 375px viewport.
 
 **Touch Targets:**
 - Minimum 44x44px for all interactive elements. Audit every button, link, icon button, and checkbox.
@@ -752,7 +709,7 @@ Mobile is not a responsive afterthought — it's a primary platform. Many users 
 
 ### Task 1.14 — Accessibility
 
-WCAG 2.1 AA compliance is the minimum. Tax filing must be accessible to everyone — this is also a legal concern for a tax product.
+WCAG 2.1 AA minimum. Legal concern for tax product.
 
 **Keyboard Navigation:**
 - Every interactive element is reachable via Tab. Tab order follows visual order.
@@ -798,8 +755,6 @@ WCAG 2.1 AA compliance is the minimum. Tax filing must be accessible to everyone
 
 ### Task 1.15 — Trust & Security UX
 
-Building visible trust is as important as actual security for a tax product. Users need to feel safe entering their most sensitive data.
-
 **Visible Security Indicators:**
 - Lock icon in the browser bar (HTTPS — handled by infrastructure, but don't break it with mixed content).
 - SecureBadge component appears near: SSN input, bank account input, document upload zone, and the e-signature section.
@@ -826,7 +781,7 @@ Building visible trust is as important as actual security for a tax product. Use
 
 ### Task 1.16 — Product Analytics Instrumentation
 
-This is the tracking code embedded in the frontend. It's invisible to users. The data flows to PostHog (hosted at `app.posthog.com` or self-hosted at `analytics.filefree.ai`), where you view dashboards, funnels, session replays, and run experiments. This is not an admin panel — it's a product intelligence layer.
+PostHog for product intelligence (dashboards, funnels, session replays, experiments). Data at `app.posthog.com` or self-hosted `analytics.filefree.ai`.
 
 **Setup:**
 - Install `posthog-js` and `posthog-react`. Initialize in the root layout with your project API key. Wrap the app in `<PostHogProvider>`.
@@ -835,7 +790,7 @@ This is the tracking code embedded in the frontend. It's invisible to users. The
 
 **Events to Track:**
 
-Filing funnel (the most critical data — this tells you where you're losing people):
+Filing funnel:
 - `signup_started` — user lands on sign-up page
 - `signup_completed` — account created successfully
 - `email_verified` — clicked verification link
@@ -884,21 +839,7 @@ Performance:
 - `page_load` — with `page_name`, `load_time_ms`, `time_to_interactive_ms`
 - `step_transition` — with `from_step`, `to_step`, `transition_time_ms`
 
-**PostHog Dashboards to Create:**
-
-Acquisition Funnel: landing page visit → signup started → signup completed → email verified → filing started. Shows conversion rate at each step and overall. Filter by date range, traffic source (UTM params), and referral vs organic.
-
-Filing Completion Funnel: filing started → each phase completed → review reached → submitted → accepted. This is the money dashboard. If 60% of people start filing but only 30% submit, you have a problem in the middle. Drill into which phase/step has the biggest drop.
-
-OCR Performance: upload volume by document type, average confidence scores, correction rate (how often users change OCR values), failure rate. If correction rate is high for a specific field, your OCR model needs tuning for that field.
-
-Referral Dashboard: referral links shared, signups via referral, conversion rate from referral signup to completed filing, top referrers. This tells you if the referral system is working and who your power advocates are.
-
-Revenue Dashboard (when applicable): state filing conversions, audit protection conversions, ARPU, revenue by cohort. Tie back to acquisition source — which channels produce users who pay for add-ons?
-
-Error Dashboard: error events grouped by type and screen. Spike detection — if errors jump 3x from the prior day, something broke.
-
-Session Replay: enable session replay for users who triggered an error event or abandoned the filing flow. Watch what happened. This is the most underrated debugging tool — you'll find UX problems in 10 minutes of watching that you'd never catch from metrics alone.
+**PostHog Dashboards:** Acquisition Funnel (landing → signup → filing started); Filing Completion Funnel (phase-by-phase to submitted → accepted); OCR Performance (volume, confidence, correction rate, failure rate); Referral Dashboard (links shared, signups, top referrers); Revenue Dashboard (when applicable); Error Dashboard (grouped by type/screen, spike detection); Session Replay (for error/abandonment sessions).
 
 **Feature Flags:**
 - Set up PostHog feature flags from day one. Use them for: A/B testing landing page headlines, rolling out new interview questions to a percentage of users, enabling/disabling experimental features (magic link auth, new deduction types), gating paid features (state filing). Create a `useFeatureFlag(flag: string)` hook that returns a boolean. Gate features in the UI with this hook.
@@ -910,7 +851,7 @@ Session Replay: enable session replay for users who triggered an error event or 
 
 ### Task 1.17 — Admin Dashboard (Internal Operations)
 
-This is your command center — a protected area of the app (either a `/admin` route behind role-based auth, or a separate subdomain like `admin.filefree.ai`) where you manage operations, debug user issues, and monitor system health. This is NOT the product analytics layer (that's PostHog) — this is operational tooling.
+Protected `/admin` route (or `admin.filefree.ai`). Operational tooling for debugging, user management, and system health — not product analytics (that's PostHog).
 
 **Access Control:**
 - Admin routes are protected by a role check. Your user model should have a `role` field (default: `user`, elevated: `admin`). Admin middleware rejects non-admin users with a 403. In production, only your account has admin access. Keep the admin user list hardcoded or in an environment variable — don't build a full RBAC system yet.
@@ -965,7 +906,7 @@ This is your command center — a protected area of the app (either a `/admin` r
 
 ### Task 1.18 — Email Lifecycle System
 
-Email is your primary re-engagement channel. Users who start filing and don't finish need a nudge. Users who filed need to come back next year. This is critical for retention and growth.
+Primary re-engagement channel: abandonment nudges, tax deadline reminders, next-year kickoff. Critical for retention.
 
 **Email Infrastructure:**
 - Use `react-email` to build email templates as React components. They use the same design tokens (colors, fonts) as the app for brand consistency.
@@ -1018,49 +959,21 @@ Annual receipt: sent after filing. Subject: "Your 2024 tax filing summary." Body
 
 ### Task 1.19 — Referral & Growth Mechanics
 
-A tax app grows primarily through word of mouth — "I used this free thing and it actually worked." Build lightweight growth loops into the product from day one.
+**Referral System:** Unique link `filefree.ai/ref/{code}` (short, readable) on account creation. Accessible from post-filing screen (Task 1.9), dashboard card, settings. When referred user completes filing: "Thanks for spreading the word" + counter. Options: priority support, badge, free upgrade for paid features. Track chain in PostHog and admin dashboard.
 
-**Referral System:**
+**SEO & Organic Search:** `/blog` or `/guides` with tax education. Target: "how to file taxes for free," "what is a W-2," "standard deduction vs itemized," etc. Genuinely helpful content, natural product links, meta tags, Open Graph, FAQ schema. Sitemap.xml, structured data, canonical URLs, fast site (Task 1.3).
 
-Every user gets a unique referral link: `filefree.ai/ref/{code}`. The code is a short, readable string (not a UUID). Generate it on account creation.
+**Social Proof:** Post-filing prompt: "How was your experience?" 1-5 stars + optional comment. Aggregate on landing page. With enough sentiment: Product Hunt, Hacker News, r/personalfinance, r/tax.
 
-The referral link is accessible from: the post-filing success screen (Task 1.9 — this is the peak happiness moment), the dashboard (small card: "Know someone who needs to file? Share FileFree."), and the settings page.
+**Viral Content:** Tax receipt graphics (Task spec above). Shareable card: "I filed in {X} min with @FileFree" — Instagram story (1080x1920), Twitter (1200x675).
 
-When a referred user signs up and completes their filing, both the referrer and the referred user get a benefit. Since FileFree is free, the benefit isn't a discount — it needs to be something else. Options to consider: priority support, early access to new features, a "FileFree Champion" badge on their profile (gamification), or if you ever add paid features (state filing, audit protection), a free upgrade. For launch, a simple "Thanks for spreading the word" acknowledgment + a counter showing how many people they've referred is sufficient. The social proof of "I've helped 5 friends file for free" is motivating.
-
-Track referral chain: who referred whom, when, and whether the referred user completed filing. This data goes to PostHog and is visible in the admin dashboard.
-
-**SEO & Organic Search:**
-
-Create a `/blog` or `/guides` section with tax education content. This is your long-term organic growth channel. Write (or generate and heavily edit) articles targeting common search queries: "how to file taxes for free," "what is a W-2," "standard deduction vs itemized 2025," "how to find your AGI from last year," "first time filing taxes guide."
-
-Each article should: be genuinely helpful (not thin SEO bait), link to the product naturally ("Ready to file? Start with FileFree"), have proper meta tags and Open Graph images for social sharing, and be structured with headers and FAQ schema for featured snippets.
-
-Technical SEO foundations: generate a sitemap.xml via Next.js, add structured data (Organization, FAQProduct, FAQ) to key pages, ensure all pages have unique meta titles and descriptions, implement canonical URLs, and make sure the site is fast (see performance requirements in Task 1.3).
-
-**Social Proof:**
-
-After a user files successfully, prompt them (gently, optionally) to leave a rating or testimonial. "How was your experience? A quick rating helps others find FileFree." Star rating (1-5) + optional text. Don't gate this — ask everyone, not just happy users.
-
-Display aggregate rating on the landing page: "Rated 4.8/5 by X filers." Display select testimonials (with user permission) on the landing page.
-
-If you accumulate enough positive sentiment, submit to Product Hunt, Hacker News (Show HN), and relevant subreddits (r/personalfinance, r/tax). Timing matters — do this when the product is polished, ideally in early February when people are starting to think about taxes.
-
-**Viral Content & Distribution:**
-
-Create shareable "tax receipt" graphics. After filing, offer users an option to generate a visual card: "I filed my taxes in {X} minutes for free with @FileFree" with their (non-sensitive) stats — filing time, refund amount (if they opt in). These are designed for social sharing (Instagram story format, Twitter card format). This is the tax equivalent of Spotify Wrapped — low effort to create, high viral potential.
-
-**Partnerships (future, note for later):**
-
-Partner with financial literacy nonprofits, VITA (Volunteer Income Tax Assistance) programs, or community organizations. Offer FileFree as a tool they can recommend. This drives volume and is aligned with the "free tax filing" mission.
-
-Partner with payroll providers (Gusto, ADP) to offer FileFree as a suggested filing tool when employees download their W-2s. This is a longer-term play but has massive distribution potential.
+**Partnerships (future):** VITA, financial literacy nonprofits, payroll providers (Gusto, ADP).
 
 ---
 
 ### Task 1.20 — Monitoring, Alerting & Operational Readiness
 
-Tax season is concentrated — 80% of your annual traffic hits in a 10-week window (late January through mid-April). If the system goes down during this window, people miss deadlines and you lose all credibility. Operational readiness isn't optional.
+80% of traffic hits in a 10-week tax window. Downtime = missed deadlines and lost credibility.
 
 **Application Monitoring:**
 - Integrate Sentry (`@sentry/nextjs`) for frontend error tracking. Capture unhandled exceptions, rejected promises, and component error boundaries. Set up source maps so stack traces point to your actual code.
@@ -1101,7 +1014,7 @@ Tax season is concentrated — 80% of your annual traffic hits in a 10-week wind
 
 ### Task 1.21 — Feedback & Support System
 
-You're a solo builder — you can't staff a support team. Design the support system to be self-serve first, with a lightweight escape hatch to you for real issues.
+Self-serve first (FAQ, InfoTooltips), escape hatch for real issues (contact form).
 
 **In-App Help:**
 - The InfoTooltip system (Task 1.1) handles contextual help for tax terms.
@@ -1168,15 +1081,7 @@ For a solo builder, sequence matters. Each task builds on the ones before it. Th
 
 ### How to Use This Document in Cursor
 
-This file is designed to be your AI coding partner's context. When you start a task:
-
-1. Open this file in your project root as `SPEC.md` (or `PRODUCT_SPEC.md`).
-2. When starting a new task, tell Claude/Cursor: "I'm working on Task 1.X. Read SPEC.md for full context."
-3. The strategic sections (Part 1) give the AI context about WHY you're building something — this leads to better code decisions.
-4. The UX task descriptions give enough detail that the AI can implement without ambiguity.
-5. The design system spec means the AI will use the right tokens, components, and patterns from the start.
-
-For each task, create a branch: `feat/task-1.X-short-description`. Complete it, test it, merge it, move to the next one.
+1. Open as `SPEC.md` or `PRODUCT_SPEC.md`. 2. Tell Cursor: "I'm working on Task 1.X. Read SPEC.md for full context." 3. Use strategic sections for WHY; task sections for implementation detail. 4. Branch: `feat/task-1.X-short-description`.
 
 ---
 

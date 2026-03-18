@@ -108,6 +108,28 @@ The State Filing Engine (shared by LaunchFree and Distill Formation API) has spe
 - ALWAYS prefer Gemini 2.5 Flash as the default when no specialized capability is needed -- it's the best price/performance ratio
 - n8n is the implementation layer for all model routing -- no separate orchestration platform needed
 
+## New Workflow / AI Task Checklist
+
+Before shipping any new n8n workflow or API endpoint that uses an AI model:
+
+1. [ ] Consult the decision tree above to select the right model
+2. [ ] Document in `docs/AI_MODEL_REGISTRY.md` Deployed Assignments table
+3. [ ] Add env var name to `infra/hetzner/workflows/README.md` Model Configuration table
+4. [ ] Estimate cost-per-run and add to Registry
+5. [ ] If workflow handles PII, confirm SSN masking is applied BEFORE model call
+6. [ ] If brand voice task, confirm GPT-4o (not mini) is used
+7. [ ] If compliance/legal task, confirm Claude is used (or document why not)
+
+## Model Swap Protocol
+
+When swapping a model in a running workflow:
+
+1. Update the model in n8n UI
+2. Update `docs/AI_MODEL_REGISTRY.md` Deployed Assignments table (model + date)
+3. Update `infra/hetzner/workflows/README.md` Model Configuration table
+4. Test with 2-3 sample inputs before marking complete
+5. Monitor output quality for 48 hours post-swap
+
 ## Communication Style
 
 When presenting model recommendations:
