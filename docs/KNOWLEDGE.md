@@ -450,9 +450,9 @@ April Tax is an AI-native tax filing infrastructure provider. IRS-authorized e-f
 
 ### D56 — Auth Architecture: Admin Allowlist (2026-03-12)
 - **Context**: Need admin access for two founders (Sankalp + Olga Sharma) across all products.
-- **Decision**: Shared `packages/auth/` using Auth.js v5 (NextAuth). User auth: Google OAuth + Apple Sign-In. Admin auth: same OAuth flow + email allowlist check (`ADMIN_EMAILS` env var with sankalp@paperworklabs.com + Olga Sharma's personal email). No separate admin login, no role system. Trinkets have no auth -- public tools with cross-sell CTAs. (Updated per D76: 1 Workspace seat, Olga Sharma uses personal email for admin access.)
+- **Decision**: Shared `packages/auth/` using Auth.js v5 (NextAuth) remains the target architecture. Current Studio implementation protects `/admin` with Basic Auth (`ADMIN_EMAILS` username allowlist + `ADMIN_ACCESS_PASSWORD`) while shared auth package migration is still pending. User auth stays Google OAuth + Apple Sign-In. No role system for now (two founders only). Trinkets have no auth -- public tools with cross-sell CTAs. (Updated per D76: 1 Workspace seat, Olga Sharma uses personal email for admin access.)
 - **Alternatives**: Separate admin app (over-engineered), personal Gmail for auth (messy separation of concerns), role-based system (unnecessary for 2 admins).
-- **Reversibility**: Allowlist is an env var, trivial to update.
+- **Reversibility**: High. Basic Auth can be replaced by shared OAuth middleware once `packages/auth` is extracted.
 
 ### D57 — Trinkets Domain: Subdomain + Graduation (2026-03-12)
 - **Context**: Considered individual SEO-friendly domains per trinket vs tools.filefree.ai subdomain.

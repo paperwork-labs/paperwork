@@ -186,7 +186,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={ JSON.stringify({ channel: 'C0AM3APFP99', text: '*Sprint Kickoff*\\n\\n' + $json.text, username: 'Sprint Planning', icon_emoji: ':rocket:' }) }",
+        "jsonBody": "={{ JSON.stringify({ channel: 'C0AM3APFP99', text: '*Sprint Kickoff*\\n\\n' + $json.text, username: 'Sprint Planning', icon_emoji: ':rocket:' }) }}",
         "options": {}
       },
       "id": "post-sprints",

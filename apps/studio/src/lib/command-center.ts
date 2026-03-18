@@ -83,7 +83,7 @@ export async function getRecentPullRequests(limit = 5) {
     `https://api.github.com/repos/paperwork-labs/paperwork/pulls?state=open&per_page=${limit}`,
     {
       headers: {
-        Authorization: `token ${token}`,
+        Authorization: `Bearer ${token}`,
         Accept: "application/vnd.github+json",
       },
     },
