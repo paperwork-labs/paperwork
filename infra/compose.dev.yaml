@@ -33,12 +33,12 @@ services:
   api:
     container_name: filefree-api
     build:
-      context: ../api
+      context: ../apis/filefree
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
     volumes:
-      - ../api:/app
+      - ../apis/filefree:/app
       - ../pyproject.toml:/pyproject.toml:ro
     env_file:
       - env.dev
@@ -57,12 +57,12 @@ services:
   web:
     container_name: filefree-web
     build:
-      context: ../web
+      context: ../apps/filefree
       dockerfile: Dockerfile.dev
     ports:
       - "3000:3000"
     volumes:
-      - ../web:/app
+      - ../apps/filefree:/app
       - /app/node_modules
       - /app/.next
     env_file:
