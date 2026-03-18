@@ -1,6 +1,6 @@
 # Paperwork Labs — Venture Build Tasks
 
-**Version**: 9.1 | **Updated**: 2026-03-18
+**Version**: 10.0 | **Updated**: 2026-03-18
 
 Work through these in phase order. Each task is scoped for one PR. Reference [PRD.md](PRD.md) for business context, [PRODUCT_SPEC.md](PRODUCT_SPEC.md) for FileFree UX specs, [VENTURE_MASTER_PLAN.md](VENTURE_MASTER_PLAN.md) for deep strategy, [PARTNERSHIPS.md](PARTNERSHIPS.md) for partner playbook, [.cursorrules](../.cursorrules) for coding conventions.
 
@@ -72,147 +72,13 @@ These are existential risk mitigations that cost under $5K total. Complete befor
 
 ---
 
-### EFIN Filing Instructions (Do Today)
+### EFIN Filing Instructions
 
-**Full guide**: [EFIN_FILING_INSTRUCTIONS.md](EFIN_FILING_INSTRUCTIONS.md) — step-by-step, email guidance (use sankalp@paperworklabs.com), prerequisites, checklist.
+**Full step-by-step guide**: [EFIN_FILING_INSTRUCTIONS.md](EFIN_FILING_INSTRUCTIONS.md)
 
-**CRITICAL**: EFIN cannot be transferred between entities. Do NOT apply as sole proprietor — you will need a second EFIN after LLC formation. The correct order is LLC -> EIN -> EFIN, all completable today.
+**Order**: LLC (CA SOS, $70) → EIN (IRS.gov, instant) → PTIN ($18.75) → e-Services account (ID.me) → EFIN application (Form 8633) → Livescan fingerprinting. Total: ~2 hours, ~$104-139. EFIN approval takes up to 45 days.
 
-**Use `sankalp@paperworklabs.com` for ALL business registrations.** Clean separation between personal and business from day one.
-
-#### Step 0: Form the LLC (30 minutes, blocks everything)
-
-The LLC must exist before EIN, bank account, Stripe, trademarks, and EFIN. California allows online filing.
-
-1. Go to [bizfileOnline.sos.ca.gov](https://bizfileOnline.sos.ca.gov)
-2. Create an account using `sankalp@paperworklabs.com`
-3. Select **"File" > "LLC" > "Articles of Organization - CA LLC"**
-4. Fill in:
-   - **LLC Name**: Paperwork Labs LLC
-   - **Purpose**: Any lawful purpose
-   - **Management**: Manager-managed (you are the sole manager)
-   - **Agent for Service of Process**: Your name + home address (switch to a commercial RA later when LaunchFree ships)
-   - **Organizer**: Your name, `sankalp@paperworklabs.com`
-   - **Mailing address**: Your home address (CA requires a CA address)
-5. Pay the **$70 filing fee** (credit card accepted)
-6. Save the **confirmation number** and **file number** immediately
-7. Download the stamped Articles of Organization PDF when available
-
-**Note on RA**: Using yourself as the initial RA is fine and free. You can switch to a commercial RA (Northwest, CorpNet) later. The registered agent address becomes public record.
-
-#### Step 1: Get an EIN (5 minutes, instant)
-
-You need the EIN for the EFIN application, bank account, and Stripe.
-
-1. Go to [irs.gov/businesses/small-businesses-self-employed/apply-for-an-employer-identification-number-ein-online](https://www.irs.gov/businesses/small-businesses-self-employed/apply-for-an-employer-identification-number-ein-online)
-2. Click **"Apply Online Now"**
-3. Select entity type: **"Limited Liability Company (LLC)"**
-4. Select **"Started or acquired a new business"**
-5. Fill in:
-   - **Legal name**: Paperwork Labs LLC
-   - **State**: California
-   - **Number of members**: 1 (single-member LLC)
-   - **Responsible party**: Your full legal name + SSN
-   - **Business address**: Your home address (same as LLC filing)
-   - **Business activity**: "Software development" or "Computer programming, data processing"
-   - **Date business started**: Today's date (March 16, 2026)
-6. Submit and **immediately save/print the EIN confirmation letter (CP 575)**
-7. The EIN is issued instantly — note it down
-
-#### Step 2: Get a PTIN (15 minutes, instant)
-
-Every Responsible Official on the EFIN application needs a PTIN. Even though you're building software (not preparing returns for clients), the IRS requires it for the e-file application.
-
-1. Go to [rpr.irs.gov/ptin](https://rpr.irs.gov/ptin)
-2. Click **"Create an Account"** (or sign in if you already have one)
-3. Fill in:
-   - Personal info (name, SSN, DOB, address)
-   - Business info: **Paperwork Labs LLC**, `sankalp@paperworklabs.com`
-   - Previous year tax return info (2025 return) for identity verification
-   - Professional credentials: **None** (select "Not applicable" -- you are not a CPA/attorney/EA)
-4. Pay the **$18.75 fee** (credit/debit card)
-5. **PTIN is issued immediately** — save the number (format: P########)
-
-#### Step 3: Create IRS e-Services Account (10 minutes)
-
-1. Go to [irs.gov/e-file-providers/e-services-online-tools-for-tax-professionals](https://www.irs.gov/e-file-providers/e-services-online-tools-for-tax-professionals)
-2. Click **"e-Services Login or Registration"**
-3. You will authenticate via **ID.me** (IRS's identity verification partner):
-   - Create an ID.me account with `sankalp@paperworklabs.com`
-   - Verify your identity: upload a photo of your driver's license/passport + take a selfie
-   - This may take 5-15 minutes for automated verification, or up to 24 hours if manual review is needed
-4. Once ID.me is verified, you're into e-Services
-
-#### Step 4: Submit the EFIN Application (30 minutes)
-
-This is the actual Form 8633, submitted entirely online through e-Services. There is NO paper form to mail.
-
-1. In e-Services, click **"e-file Application"**
-2. Click **"Create New Application"**
-3. **Provider types — CHECK ALL THAT APPLY**:
-   - [x] **Software Developer** — you are building tax preparation software
-   - [x] **Transmitter** — you will send electronic returns to the IRS (MeF)
-   - [x] **Online Provider** — you offer tax preparation services online (filefree.ai)
-   - [ ] ERO — skip unless you will also originate returns for walk-in clients
-   - [ ] ISP — skip
-4. **Firm Information**:
-   - Firm name: **Paperwork Labs LLC**
-   - EIN: *[the EIN you just got in Step 1]*
-   - Business address: Your home address
-   - Business phone: Your phone number
-   - Email: `sankalp@paperworklabs.com`
-   - Website: `filefree.ai`
-5. **Principal/Responsible Official Information**:
-   - Your full legal name
-   - SSN
-   - PTIN: *[the PTIN you just got in Step 2]*
-   - Title: **Managing Member** (or **CEO**)
-   - Professional certification: **None** (this triggers the fingerprinting requirement)
-6. **Fingerprinting** (since you are not a CPA/attorney/enrolled agent):
-   - The application will generate a **unique scheduling ID and program code**
-   - Use the IRS scheduling tool to find a **Livescan fingerprinting location** near you (120-mile radius search)
-   - Schedule the appointment — bring a valid photo ID (driver's license or passport)
-   - The Livescan vendor electronically submits your prints to the IRS
-   - **Do this ASAP after submitting the application** — it's required before approval
-   - Cost: ~$15-50 depending on vendor location
-7. Review everything and **Submit**
-
-#### Step 5: Track and Follow Up
-
-- **Timeline**: Up to 45 days from submission date
-- **Check status**: Log into e-Services > e-file Application > check status
-- **If approved**: You receive an EFIN number + acceptance letter
-- **If issues**: IRS e-Help Desk at **1-866-255-0654** (M-F, 7am-7pm local time)
-- **After approval**: The EFIN unlocks your Software Developer ID, which is required to begin ATS testing (October 2026)
-
-#### Timing Summary
-
-| Action | Time | Cost | Result |
-| --- | --- | --- | --- |
-| LLC filing (CA SOS online) | 30 min | $70 | Confirmation number + file number |
-| EIN (IRS.gov online) | 5 min | $0 | EIN issued instantly |
-| PTIN (rpr.irs.gov) | 15 min | $18.75 | PTIN issued instantly |
-| e-Services account (ID.me) | 10-15 min | $0 | e-Services access |
-| EFIN application (e-Services) | 30 min | $0 | Application submitted |
-| Livescan fingerprinting | 30-60 min | ~$15-50 | Prints submitted to IRS |
-| **Total today** | **~2 hours** | **~$104-139** | LLC formed, EIN in hand, EFIN clock started |
-| EFIN approval | 45 days | — | EFIN + Software Dev ID |
-
-#### Post-EFIN Checklist (Next 2 Weeks)
-
-- [ ] Open a business bank account (Chase, Mercury, or Relay) using LLC docs + EIN
-- [ ] Create Stripe account under Paperwork Labs LLC using `sankalp@paperworklabs.com`
-- [ ] File DBA statements at your county clerk for "FileFree", "LaunchFree", "Trinkets", "Distill" (~$26 each in CA)
-- [ ] Update TASKS.md P0.6 status to DONE after LLC + EIN confirmed
-- [ ] Update KNOWLEDGE.md with D78 (LLC + EFIN filing)
-
-#### References
-
-- IRS Publication 3112: [irs.gov/pub/irs-pdf/p3112.pdf](https://www.irs.gov/pub/irs-pdf/p3112.pdf) (comprehensive e-file provider guide)
-- IRS Publication 4163: [irs.gov/pub/irs-pdf/p4163.pdf](https://www.irs.gov/pub/irs-pdf/p4163.pdf) (modernized e-file guide for software developers)
-- IRS e-Services: [irs.gov/e-file-providers/e-services-online-tools-for-tax-professionals](https://www.irs.gov/e-file-providers/e-services-online-tools-for-tax-professionals)
-- California bizfile Online: [bizfileOnline.sos.ca.gov](https://bizfileOnline.sos.ca.gov)
-- EIN Online Application: [irs.gov/businesses/small-businesses-self-employed/apply-for-an-employer-identification-number-ein-online](https://www.irs.gov/businesses/small-businesses-self-employed/apply-for-an-employer-identification-number-ein-online)
+**CRITICAL**: EFIN cannot transfer between entities. Do NOT apply as sole proprietor. Use `sankalp@paperworklabs.com` for ALL registrations.
 
 ---
 
@@ -343,182 +209,15 @@ See [VENTURE_MASTER_PLAN.md](VENTURE_MASTER_PLAN.md) Section 7 (Phase 0).
 
 ---
 
-## Phase 1: Monorepo Restructure (Weeks 3-8)
+## Phase 1: Monorepo Restructure -- COMPLETE
 
-**Dependency chain**: P1.1 -> P1.2 -> P1.3, P1.4 (parallel) -> P1.5 -> P1.6 -> P1.7, P1.8, P1.9, P1.9b, P1.9c (parallel) -> P1.10 -> P1.11
+All 11 tasks done. pnpm workspace with 5 apps (`apps/filefree`, `apps/launchfree`, `apps/studio`, `apps/trinkets`, `apps/distill`), 2 APIs (`apis/filefree`, `apis/launchfree`), and 3 shared packages (`packages/ui`, `packages/auth`, `packages/analytics`). Original `web/` → `apps/filefree/`, `api/` → `apis/filefree/`. Per-product themes via `[data-theme]` CSS variables.
 
-**This is the highest-risk phase**: Every file in the repo moves. Imports break. CI breaks. Expect 4-6 weeks, not 2-3.
+**Completed tasks**: P1.1 (pnpm init), P1.2 (packages/ui, 22 shadcn components), P1.3 (packages/auth), P1.4 (packages/analytics), P1.5 (move filefree frontend), P1.6 (move filefree API), P1.7 (scaffold launchfree), P1.8 (scaffold launchfree API), P1.9 (scaffold studio), P1.9b (scaffold trinkets), P1.9c (scaffold distill), P1.10 (infra updates), P1.11 (verification).
 
-See [VENTURE_MASTER_PLAN.md](VENTURE_MASTER_PLAN.md) Section 2 (Architecture) and Section 7 (Phase 1).
-
-<details>
-<summary>P1.1 Init pnpm workspace</summary>
-
-- **Task ID**: P1.1
-- **Owner**: Founder 1
-- **Branch**: `feat/monorepo-init`
-- **Files/Specs**: `package.json` (root, workspaces config), `pnpm-workspace.yaml` (packages: `apps/*`, `apis/*`, `packages/*`), `.npmrc` (shamefully-hoist=true if needed). Remove root `node_modules/` and `package-lock.json`.
-- **Acceptance Criteria**: `pnpm install` succeeds from root. `pnpm -r list` shows all workspace packages. No npm lockfile present.
-- **Depends On**: None
-- **Status**: DONE
-
-</details>
-
-<details>
-<summary>P1.2 Extract packages/ui</summary>
-
-- **Task ID**: P1.2
-- **Owner**: Founder 1
-- **Branch**: `feat/shared-ui`
-- **Files/Specs**: `packages/ui/package.json`, `packages/ui/src/components/` (22 shadcn components from `web/src/components/ui/`), `packages/ui/src/lib/utils.ts`, `packages/ui/src/lib/motion.ts`, `packages/ui/src/themes.css` (4 brand themes with `[data-theme]` selectors -- see Section 2 palettes), `packages/ui/tsconfig.json`, `packages/ui/tailwind.config.ts` (if needed, or Tailwind v4 CSS config).
-- **Acceptance Criteria**: `import { Button } from '@venture/ui'` works from any app. All 22 components render correctly. `themes.css` provides filefree (violet-indigo), launchfree (teal-cyan), studio (zinc-neutral), trinkets (amber-orange) CSS variable sets. `pnpm build` succeeds for packages/ui.
-- **Depends On**: P1.1
-- **Status**: DONE
-
-</details>
-
-<details>
-<summary>P1.3 Extract packages/auth</summary>
-
-- **Task ID**: P1.3
-- **Owner**: Founder 1
-- **Branch**: `feat/shared-auth`
-- **Files/Specs**: `packages/auth/package.json`, `packages/auth/src/hooks/use-auth.ts`, `packages/auth/src/hooks/use-idle-timeout.ts`, `packages/auth/src/lib/api.ts` (base API client with auth headers), `packages/auth/src/components/session-timeout-dialog.tsx`.
-- **Acceptance Criteria**: `import { useAuth } from '@venture/auth'` works. Auth flow (login, logout, session refresh) functional from any app.
-- **Depends On**: P1.1
-- **Status**: DONE
-
-</details>
-
-<details>
-<summary>P1.4 Extract packages/analytics</summary>
-
-- **Task ID**: P1.4
-- **Owner**: Founder 1
-- **Branch**: `feat/shared-analytics`
-- **Files/Specs**: `packages/analytics/package.json`, `packages/analytics/src/posthog.ts`, `packages/analytics/src/attribution.ts`, `packages/analytics/src/components/posthog-provider.tsx`, `packages/analytics/src/components/providers.tsx`.
-- **Acceptance Criteria**: `import { PostHogProvider } from '@venture/analytics'` works. Events fire to PostHog from any app.
-- **Depends On**: P1.1
-- **Status**: DONE
-
-</details>
-
-<details>
-<summary>P1.5 Move web/ -> apps/filefree/</summary>
-
-- **Task ID**: P1.5
-- **Owner**: Founder 1
-- **Branch**: `feat/move-filefree`
-- **Files/Specs**: Move entire `web/` directory to `apps/filefree/`. Update ALL internal imports from `@/components/ui/*` to `@venture/ui`, `@/hooks/use-auth` to `@venture/auth`, etc. Update `apps/filefree/package.json` name to `@venture/filefree`.
-- **Acceptance Criteria**: `pnpm dev:filefree` starts on port 3001. All pages render. No broken imports. Tests pass.
-- **Depends On**: P1.2, P1.3, P1.4
-- **Status**: NOT STARTED
-
-</details>
-
-<details>
-<summary>P1.6 Move api/ -> apis/filefree/</summary>
-
-- **Task ID**: P1.6
-- **Owner**: Founder 1
-- **Branch**: `feat/move-filefree-api`
-- **Files/Specs**: Move entire `api/` directory to `apis/filefree/`. Update `infra/compose.dev.yaml` volume mounts and build context. Update `render.yaml` root directory. Update Makefile targets.
-- **Acceptance Criteria**: `make dev` starts the API on port 8001. All existing endpoints return correct responses. Alembic migrations run.
-- **Depends On**: P1.5
-- **Status**: NOT STARTED
-
-</details>
-
-<details>
-<summary>P1.7 Scaffold apps/launchfree/</summary>
-
-- **Task ID**: P1.7
-- **Owner**: Founder 1
-- **Branch**: `feat/scaffold-launchfree`
-- **Files/Specs**: Copy `apps/filefree/` structure. Strip product-specific pages (keep: layout, auth, landing). Update package.json name to `@venture/launchfree`. Set `[data-theme="launchfree"]` in root layout. Bare landing page with teal-cyan branding.
-- **Acceptance Criteria**: `pnpm dev:launchfree` starts on port 3002. Landing page renders with teal-cyan theme. Auth flow works via shared packages.
-- **Depends On**: P1.5
-- **Status**: NOT STARTED
-
-</details>
-
-<details>
-<summary>P1.8 Scaffold apis/launchfree/</summary>
-
-- **Task ID**: P1.8
-- **Owner**: Founder 1
-- **Branch**: `feat/scaffold-launchfree-api`
-- **Files/Specs**: Copy `apis/filefree/` base patterns (auth middleware, repository pattern, response envelope, config, health endpoint). Strip FileFree-specific routes. Update compose.dev.yaml.
-- **Acceptance Criteria**: `apis/launchfree/` starts on port 8002. `/health` returns 200. Auth middleware functional.
-- **Depends On**: P1.6
-- **Status**: NOT STARTED
-
-</details>
-
-<details>
-<summary>P1.9 Scaffold apps/studio/</summary>
-
-- **Task ID**: P1.9
-- **Owner**: Founder 1
-- **Branch**: `feat/scaffold-studio`
-- **Files/Specs**: Next.js app at `apps/studio/`. Package name `@venture/studio`. `[data-theme="studio"]` (zinc-neutral). Pages: `/` (public portfolio/landing), `/admin` (protected, placeholder), `/docs` (public, P4.14 Docs Viewer).
-- **Acceptance Criteria**: `pnpm dev:studio` starts on port 3004. Landing page renders. `/docs` renders a markdown file from the repo.
-- **Depends On**: P1.5
-- **Status**: NOT STARTED
-
-</details>
-
-<details>
-<summary>P1.9b Scaffold apps/trinkets/</summary>
-
-- **Task ID**: P1.9b
-- **Owner**: Founder 1
-- **Branch**: `feat/scaffold-trinkets`
-- **Files/Specs**: Next.js SSG app at `apps/trinkets/`. Package name `@venture/trinkets`. `[data-theme="trinkets"]` (amber-orange). Pages: `/` (tool directory), `tool-layout.tsx` component, AdSense placeholder component, SEO head component.
-- **Acceptance Criteria**: `pnpm dev:trinkets` starts on port 3003. Tool directory renders. SSG build succeeds (`pnpm build` produces static HTML).
-- **Depends On**: P1.5
-- **Status**: NOT STARTED
-
-</details>
-
-<details>
-<summary>P1.9c Scaffold apps/distill/</summary>
-
-- **Task ID**: P1.9c
-- **Owner**: Founder 1
-- **Branch**: `feat/scaffold-distill`
-- **Files/Specs**: Next.js app at `apps/distill/`. Package name `@venture/distill`. `[data-theme="distill"]` (dark professional theme). Placeholder landing at `/`, placeholder dashboard at `/dashboard`. Separate brand from FileFree -- own domain `distill.tax`. ~1 hour scaffold, prevents "where does this go?" decision during Phase 9.
-- **Acceptance Criteria**: `pnpm dev:distill` starts on port 3005. Landing page renders. Placeholder dashboard is protected.
-- **Depends On**: P1.5
-- **Status**: NOT STARTED
-
-</details>
-
-<details>
-<summary>P1.10 Update infra</summary>
-
-- **Task ID**: P1.10
-- **Owner**: Founder 1
-- **Branch**: `feat/monorepo-infra`
-- **Files/Specs**: `infra/compose.dev.yaml` (update all service build contexts and volume mounts for new paths), `render.yaml` (update root dirs for Render deployment), `Makefile` (add `dev:filefree`, `dev:launchfree`, `dev:studio`, `dev:trinkets`, `dev:distill`, `dev:all` targets), `.github/workflows/ci.yml` (add `dorny/paths-filter@v3` per Section F11 spec).
-- **Acceptance Criteria**: `make dev` starts all services. `make test` runs all test suites. `make lint` lints all workspaces. CI runs path-filtered builds on PR.
-- **Depends On**: P1.6, P1.7, P1.8, P1.9, P1.9b, P1.9c
-- **Status**: NOT STARTED
-
-</details>
-
-<details>
-<summary>P1.11 Verify</summary>
-
-- **Task ID**: P1.11
-- **Owner**: Founder 1
-- **Branch**: N/A (manual)
-- **Files/Specs**: Run all 4 frontends + 2 APIs simultaneously. Verify port assignments: filefree :3001, launchfree :3002, trinkets :3003, studio :3004, filefree-api :8001, launchfree-api :8002.
-- **Acceptance Criteria**: All 6 processes start without port conflicts. Each frontend renders its branded theme. Each API responds to `/health`. Cross-package imports resolve.
-- **Depends On**: P1.10
-- **Status**: NOT STARTED
-
-</details>
+**Remaining polish** (non-blocking):
+- [ ] P1.10a: Add `dorny/paths-filter@v3` to CI for path-filtered builds per workspace
+- [ ] P1.10b: Verify Docker Compose dev environment with new monorepo paths
 
 ---
 
@@ -592,17 +291,9 @@ See [VENTURE_MASTER_PLAN.md](VENTURE_MASTER_PLAN.md) Section 1B (LaunchFree busi
 
 The command center is the control plane for the entire venture. It is what makes the "one human + 44 agents" model operationally viable. Every page is spec'd in detail in [VENTURE_MASTER_PLAN.md](VENTURE_MASTER_PLAN.md) Section 3.
 
-### Tier 1 -- Build First (enables daily operations)
+### Tier 1 -- COMPLETE (daily operations enabled)
 
-| Task | Owner | Page | Data Sources | Complexity | Depends On | Status |
-| --- | --- | --- | --- | --- | --- | --- |
-| P4.1 Studio landing page | Founder 1 | `/` public | Static | Low | P1.9 | DONE |
-| P4.2 Admin auth | Founder 1 | `/admin/*` | Hardcoded admin email check | Low | P4.1 | DONE |
-| P4.3 Studio API scaffold | Founder 1 | Backend | FastAPI + Redis on Hetzner | Medium | P4.2 | DEFERRED (server components cover Tier 1) |
-| P4.4 Mission Control dashboard | Founder 1 | `/admin` | n8n + Render + Vercel + Hetzner + Stripe + PostHog APIs | High | P4.3 | DONE |
-| P4.5 Agent Monitor | Founder 1 | `/admin/agents` | n8n API (workflows + executions) | Medium | P4.3 | DONE |
-| P4.6 Infrastructure health | Founder 1 | `/admin/infrastructure` | Render + Vercel + Hetzner + Neon + Upstash APIs | Medium | P4.3 | DONE |
-| P4.14 Docs viewer | Founder 1 | `/docs/*` (public) | GitHub raw content API -> react-markdown | Low | P1.9 | DONE |
+Studio app live at paperworklabs.com. Completed: P4.1 (landing page), P4.2 (admin auth via Basic Auth + ADMIN_EMAILS), P4.4 (Mission Control dashboard), P4.5 (Agent Monitor), P4.6 (Infrastructure health), P4.14 (Docs viewer at `/docs/*`). P4.3 (Studio API) DEFERRED -- server components cover Tier 1.
 
 ### Tier 2 -- Build Next (enables growth operations)
 
@@ -654,13 +345,13 @@ See [VENTURE_MASTER_PLAN.md](VENTURE_MASTER_PLAN.md) Section 6 (Team) and Sectio
 
 | Task | Owner | Details | Depends On | Status |
 | --- | --- | --- | --- | --- |
-| P6.1 Update 9 venture-level personas | Founder 1 | engineering, strategy, legal, cfo, qa, partnerships, ux, workflows (update content for venture-wide scope) | None | NOT STARTED |
+| P6.1 Update 9 venture-level personas | Founder 1 | engineering, strategy, legal, cfo, qa, partnerships, ux, workflows (update content for venture-wide scope) | None | DONE (D73, D78) |
 | P6.2 Split 3 personas into product-specific | Founder 1 | social -> filefree-social + launchfree-social; brand -> split; growth -> split | P6.1 | NOT STARTED |
-| P6.3 Create 6 new personas | Founder 1 | formation-domain, launchfree-social, launchfree-growth, launchfree-brand, studio, agent-ops | P6.2 | NOT STARTED |
-| P6.4 Update 6 existing n8n workflows | Founder 1 | Rename, update outputs from Notion to GDrive | P0.4 | NOT STARTED |
+| P6.3 Create 6 new personas | Founder 1 | formation-domain, launchfree-social, launchfree-growth, launchfree-brand, studio, agent-ops | P6.2 | PARTIAL (agent-ops created D40) |
+| P6.4 Update 6 existing n8n workflows | Founder 1 | Rewritten for Slack-first output (D78). Now: Agent Thread Handler, EA Daily, EA Weekly, PR Summary, Decision Logger. | None | DONE (D78) |
 | P6.5 Build faceless content pipeline | Founder 1 | n8n workflow: topics -> GPT script -> ElevenLabs -> video assembly -> Postiz | P6.4 | NOT STARTED |
 | P6.6 Build 12 new n8n workflows | Founder 1 | Support bots, state validator, competitive intel, analytics, infra monitor, campaign engine | P6.4 | NOT STARTED |
-| P6.7 Migrate Notion to Google Drive | Founder 1 | Move docs, update n8n output nodes | P0.4 | NOT STARTED |
+| P6.7 Migrate Notion to Google Drive | Founder 1 | Move docs, update n8n output nodes. Notion removed from stack; GDrive via MCP pending. | P0.4 | NOT STARTED |
 
 ---
 
@@ -1300,55 +991,21 @@ These run in parallel with all phases. Some have hard deadlines that block downs
 
 ---
 
-## Phase Timeline (AI-Augmented — Agents Are the Team)
+## Phase Timeline Summary
 
-One founder + AI agents (Cursor, n8n) shipping at the velocity of a full engineering team. Traditional dev estimates don't apply. Shared infrastructure (`packages/*`) is built once and consumed by all products.
+**Only two hard deadlines**: IRS MeF ATS testing (October 2026) and tax season start (January 2027). Everything else ships as fast as agents can build it. Phase 9 (Distill) runs parallel with Phases 5-6, not sequentially.
 
-| Phase | Target | Hard Deadline? | Rationale |
-| --- | --- | --- | --- |
-| Phase 0 (Infrastructure) | March 2026 | NO | LLC filing, EFIN (45-day processing), domains, legal. Non-code tasks. |
-| Phase 1 (Monorepo) | April 2026 | NO | pnpm workspace restructure, shared packages, 5 apps scaffolded. Foundation for everything. |
-| Phase 1.5 (First Trinket) | April 2026 | NO | Overlaps with late Phase 1. Agent pipeline test. |
-| Phase 2 (50-State Data) | May 2026 | NO | AI extraction + human review. LaunchFree + Distill Compliance API depend on it. |
-| Phase 3 (LaunchFree MVP) | June-July 2026 | NO | Formation wizard, PDF gen, State Filing Engine, Stripe, RA credits, dashboard. First revenue product. |
-| Phase 4 (Command Center) | June 2026 | NO | Tier 1 during Phase 3. Daily ops pages. |
-| Phase 5 (User Intelligence) | July 2026 | NO | Cross-product data model, consent, campaigns. |
-| Phase 6 (Agent Restructure) | July 2026 | NO | Persona split, social pipeline, n8n workflows. |
-| Phase 9 (Distill Full Platform) | July-August 2026 | NO | CPA SaaS + Formation API + Tax API + Compliance API. ~80% shared from Phases 1-3. Incremental: multi-tenant, API keys, billing, docs. |
-| Phase 7 (FileFree Season Prep) | October 2026 | **YES** | IRS season doesn't move. MeF XML generator starts June. ATS testing October. |
-| Phase 8 (FileFree Launch) | January 2027 | **YES** | Tax season. IRS accepts returns ~late January. |
-| Phase 10 (Business Tax Filing) | 2027-2028 | NO | Forms 1065, 1120-S. Year 2 product. |
-
-**Key insight**: Phase 9 (Distill) runs in parallel with Phases 5-6, not sequentially after Phase 8. The shared infrastructure from Phases 1-3 means Distill's incremental build is thin — multi-tenant auth, firm scoping, API keys, billing, and docs. The Filing Engine, tax engine, OCR pipeline, and 50-state data layer already exist.
-
-**Only two hard deadlines**: IRS MeF ATS testing (October 2026) and tax season start (January 2027). Everything else ships as fast as the agents can build it.
-
----
-
-## Port Map (Local Development)
-
-| Service | Port | Notes |
+| Phase | Target | Status |
 | --- | --- | --- |
-| apps/filefree | 3001 | Next.js `--port 3001` |
-| apps/launchfree | 3002 | Next.js `--port 3002` |
-| apps/trinkets | 3003 | Next.js `--port 3003` |
-| apps/studio | 3004 | Next.js `--port 3004` |
-| apps/distill | 3005 | Next.js `--port 3005` |
-| apis/filefree | 8001 | uvicorn `--port 8001` |
-| apis/launchfree | 8002 | uvicorn `--port 8002` |
-| apis/studio | 8003 | uvicorn `--port 8003` |
-| PostgreSQL | 5432 | Default (shared, schema-isolated) |
-| Redis | 6379 | Default (shared, key-prefixed) |
-
----
-
-## How to Use This Document
-
-1. Start each task by creating a branch: `feat/{task-id}-short-description` (or `chore/`, `fix/`, `docs/` per [git-workflow.mdc](../.cursor/rules/git-workflow.mdc))
-2. Read [.cursorrules](../.cursorrules) for coding conventions
-3. Reference [PRD.md](PRD.md) for business context, [PRODUCT_SPEC.md](PRODUCT_SPEC.md) for UX specs
-4. Reference [VENTURE_MASTER_PLAN.md](VENTURE_MASTER_PLAN.md) for deep strategy context (section numbers noted per task)
-5. Complete the task, test it, create a PR, merge, move on
-6. Each PR should be self-contained and deployable
-7. Update task status in this file as you progress
-8. For partnership tasks (Founder 2), see [PARTNERSHIPS.md](PARTNERSHIPS.md) for the full playbook
+| Phase 0 (Infrastructure) | March 2026 | PARTIAL (LLC/EFIN pending) |
+| Phase 1 (Monorepo) | April 2026 | **COMPLETE** |
+| Phase 4 Tier 1 (Command Center) | March 2026 | **COMPLETE** |
+| Phase 6 Partial (Agent Restructure) | March 2026 | **PARTIAL** (workflows done, personas pending) |
+| Phase 1.5 (First Trinket) | April 2026 | NOT STARTED |
+| Phase 2 (50-State Data) | May 2026 | NOT STARTED |
+| Phase 3 (LaunchFree MVP) | June-July 2026 | NOT STARTED |
+| Phase 5 (User Intelligence) | July 2026 | NOT STARTED |
+| Phase 9 (Distill Platform) | July-August 2026 | NOT STARTED |
+| Phase 7 (FileFree Prep) | **October 2026 (HARD)** | NOT STARTED |
+| Phase 8 (FileFree Launch) | **January 2027 (HARD)** | NOT STARTED |
+| Phase 10 (Business Filing) | 2027-2028 | NOT STARTED |

@@ -96,3 +96,27 @@ Slack Event Subscriptions must point to a **single** request URL (thread handler
 - Sprint execution is agent-first in `#sprints`.
 - Monday kickoff and Friday close are generated and posted by n8n workflows.
 - Updates, blockers, and decisions should be posted as high-signal thread replies under the kickoff post.
+
+## Model Configuration
+
+n8n OpenAI nodes use a dropdown for model selection and do not support dynamic model IDs via expressions. Model choices are configured per workflow in the n8n UI and documented here for reference and programmatic updates.
+
+| Workflow | Current Model | Env Var | Notes |
+|---|---|---|---|
+| agent-thread-handler | gpt-4o-mini | THREAD_HANDLER_MODEL | Default for thread replies |
+| ea-daily | gpt-4o-mini | EA_DAILY_MODEL | Briefings don't need full gpt-4o |
+| ea-weekly | gpt-4o-mini | EA_WEEKLY_MODEL | Weekly plans |
+| sprint-kickoff | gpt-4o | SPRINT_KICKOFF_MODEL | Sprint planning |
+| sprint-close | gpt-4o | SPRINT_CLOSE_MODEL | Sprint retrospectives |
+| pr-summary | gpt-4o-mini | PR_SUMMARY_MODEL | PR summaries |
+| social-content-generator | gpt-4o | SOCIAL_CONTENT_MODEL | Brand voice requires gpt-4o |
+| growth-content-writer | gpt-4o | GROWTH_CONTENT_MODEL | Brand voice requires gpt-4o |
+| partnership-outreach-drafter | gpt-4o | PARTNERSHIP_MODEL | Professional outreach |
+| cpa-tax-review | gpt-4o | CPA_REVIEW_MODEL | Tax accuracy (future: Claude) |
+| qa-security-scan | gpt-4o | QA_SCAN_MODEL | Security (future: Claude) |
+| weekly-strategy-checkin | gpt-4o | STRATEGY_MODEL | Strategic analysis |
+| decision-logger | gpt-4o-mini | DECISION_MODEL | Structured formatting |
+
+**To change a model:** Edit the workflow in the n8n UI, select the OpenAI node, and change the model dropdown. For n8n Cloud or programmatic updates, use the n8n API to patch the workflow JSON.
+
+**Note:** CPA Tax Review and QA Security Scan are candidates for Claude migration when Anthropic API access is set up. See AI_MODEL_REGISTRY.md for the activation roadmap.

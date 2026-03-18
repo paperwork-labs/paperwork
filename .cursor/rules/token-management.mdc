@@ -1,0 +1,63 @@
+---
+description: "Token management, work delegation, and chat lifecycle rules. Governs how expensive models delegate to cheaper subagents, quality gates for delegated work, and when to suggest starting a fresh chat."
+alwaysApply: true
+---
+
+# Token Management & Work Delegation
+
+## Delegation Rules
+
+When working on bulk file edits, doc rewrites, search-heavy exploration, multi-file rename/refactor, or mechanical restructuring — spawn fast subagents via the Task tool. The expensive model (Opus) orchestrates and reviews; subagents do the heavy lifting.
+
+**Never delegate**: strategic decisions, architecture design, multi-file reasoning that requires cross-referencing, compliance/legal content edits, security-sensitive changes, or anything touching PII handling.
+
+**Always delegate**: file searches across >5 files, doc trimming/reformatting, repetitive edits across many files, content migration between locations, boilerplate generation.
+
+## Quality Gates for Delegated Work
+
+Two-phase workflow for any doc rewrite or content change by a subagent:
+
+1. **Phase 1 (subagent)**: Produce draft with structural changes and explicit trim rules only. No free-form summarization of legal, compliance, or strategic sections. Preserve all cross-references, decision IDs (D##), task IDs (P#.#), and archive pointers.
+
+2. **Phase 2 (orchestrator review)**: Before applying subagent output, verify:
+   - Cross-references still resolve (links to other docs, archive files)
+   - Compliance keywords preserved (FTC, Circular 230, DPA, CCPA, UPL, CAN-SPAM)
+   - Brand consistency (Distill not "FileFree Pro", LaunchFree not "Launch Free")
+   - Archive pointers present for any removed content
+   - No PII or secrets introduced
+
+## Doc Hygiene (Passive Freshness Check)
+
+During any session that touches `docs/` files, check:
+- Does `KNOWLEDGE.md` Front-and-Center section reflect current state?
+- Do `TASKS.md` phase statuses match what's actually built?
+- Is any doc's "Last Updated" header >30 days old? Flag it.
+- Are there decisions or phase completions that should be logged but aren't?
+
+After any strategic decision or phase completion, remind the user to update KNOWLEDGE.md.
+
+## Chat Lifecycle Management
+
+After ~15+ substantive tool calls, or when you detect the conversation summary has kicked in (context from earlier in the chat feels incomplete), proactively suggest starting a fresh chat. Provide a carry-forward prompt:
+
+```
+Suggested prompt for new chat:
+
+Continue work on branch `[branch-name]`.
+
+Completed: [bullet list of what's done]
+Next up: [bullet list of remaining work]
+Key files touched: [list]
+Current state: [any important context]
+```
+
+This prevents context fog in long sessions and ensures important details survive the handoff.
+
+## Model Routing Awareness
+
+When spawning subagents or choosing tools, reference the AI Model Registry (`docs/AI_MODEL_REGISTRY.md`) decision tree:
+- Bulk extraction/summarization → fast model
+- Brand voice/creative copy → GPT-4o tier
+- Code generation/compliance review → Claude tier
+- Tax/financial reasoning → o4-mini tier
+- Default for everything else → Gemini Flash tier

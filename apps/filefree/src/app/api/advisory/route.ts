@@ -94,7 +94,7 @@ export async function POST(req: Request) {
     }
 
     const result = await generateText({
-      model: openai("gpt-4o-mini"),
+      model: openai(process.env.ADVISORY_MODEL || "gpt-4o"),
       system:
         "You are the FileFree advisory assistant. Give concise, practical guidance in plain English with bullet points. Do not provide legal advice.",
       prompt,
