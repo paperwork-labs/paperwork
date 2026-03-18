@@ -38,27 +38,27 @@ After adding credentials, open each workflow in the n8n editor, select the corre
 
 ## Deploying Updates
 
+Use the deploy script (recommended; imports, publishes, activates, and restarts n8n):
+
 ```bash
-# Copy workflow files to server
-scp infra/hetzner/workflows/*.json root@204.168.147.100:/tmp/paperwork-workflows/
-
-# Import each workflow from inside container filesystem
-ssh root@204.168.147.100 'for f in /tmp/paperwork-workflows/*.json; do
-  docker cp "$f" paperwork-ops-n8n-1:/tmp/$(basename "$f")
-  docker exec paperwork-ops-n8n-1 n8n import:workflow --input="/tmp/$(basename "$f")"
-done'
-
-# Publish all imported workflows (required for production webhooks)
-ssh root@204.168.147.100 'ids=$(docker exec paperwork-ops-postgres-1 psql -U filefree_ops -d n8n -At -c "SELECT id FROM workflow_entity;"); for id in $ids; do docker exec paperwork-ops-n8n-1 n8n publish:workflow --id=$id >/dev/null; done'
+./scripts/deploy-n8n-workflows.sh
 ```
 
-**Important**: `n8n import:workflow` **deactivates** workflows. After deploy, go to `n8n.paperworklabs.com` and reactivate any schedule-based workflows (EA Daily Briefing, EA Weekly Plan, Sprint Kickoff, Sprint Close, Weekly Strategy Check-in). The bot will not run until they are active.
+Or with a custom host:
+
+```bash
+./scripts/deploy-n8n-workflows.sh root@your-server.example.com
+```
+
+The script runs: import → publish → activate all workflows → restart n8n. n8n deactivates workflows on import; the script reactivates them and restarts n8n so activation takes effect (per [n8n docs](https://docs.n8n.io/reference/start-workflows-via-cli.html)).
+
+**Manual deploy** (if you need to run steps separately): Copy JSON files, import via `n8n import:workflow`, publish via `n8n publish:workflow`, then activate via `n8n update:workflow --all --active=true` and restart the n8n container.
 
 ## Daily Briefing Troubleshooting
 
 If the 7am PT daily briefing did not post to #daily-briefing:
 
-1. **Workflow inactive**: After any `n8n import:workflow` deploy, EA Daily Briefing is deactivated. Open the workflow in n8n and toggle it active.
+1. **Workflow inactive**: If you deployed manually without running the activate step (or an older deploy before auto-activate existed), workflows stay deactivated. Use `./scripts/deploy-n8n-workflows.sh` for a full deploy, or open the workflow in n8n and toggle it active.
 2. **OpenAI quota**: The briefing uses GPT-4o. If OpenAI returns "insufficient_quota", top up billing at platform.openai.com and ensure the API key in n8n credentials has access.
 3. **Cron timezone**: The workflow runs at 7:00 in the timezone set by `GENERIC_TIMEZONE` (see `infra/hetzner/compose.yaml`). Ensure production has `GENERIC_TIMEZONE=America/Los_Angeles` so 7am is Pacific.
 4. **Execution history**: In n8n, check Executions for "EA Daily Briefing" to see if it ran and whether it failed (e.g. credential error, HTTP error).
