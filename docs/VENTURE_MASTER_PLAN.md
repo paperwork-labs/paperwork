@@ -1217,14 +1217,14 @@ VENTURE DATABASE (studio, never sold):
 
 **Admin Auth (paperworklabs.com + admin panels on all products)**:
 
-- Same Google OAuth flow as users. After OAuth, middleware checks if the authenticated email is in the admin allowlist. If yes, admin routes accessible. If no, 403.
+- Current implementation: Basic Auth for Studio admin routes. Username must be in `ADMIN_EMAILS`, password must match `ADMIN_ACCESS_PASSWORD`.
 - Admin allowlist stored in environment variable: `ADMIN_EMAILS=sankalp@paperworklabs.com,olga@<personal-email>` (founder's Workspace email + Olga Sharma's personal email per D76)
-- Admin routes: `/admin/`* on paperworklabs.com, `/admin/`* on FileFree, `/admin/*` on LaunchFree. All protected by the same `packages/auth/withAdminAuth` middleware.
-- No separate admin login page. Same SSO, just an authorization check on top.
+- Admin routes: `/admin/`* on paperworklabs.com, `/admin/`* on FileFree, `/admin/*` on LaunchFree.
+- Migration target: move admin protection to shared `packages/auth` OAuth middleware once `packages/auth` is extracted.
 
 **Trinkets Auth**: No auth. Public utility tools. Cross-sell CTAs link to FileFree/LaunchFree where users sign up. If we ever want saved preferences, use localStorage or add optional Google sign-in later.
 
-`**packages/auth/` exports**: `AuthProvider`, `useSession`, `useAdmin`, `withAdminAuth` (middleware), `isAdmin` (server-side check).
+`**packages/auth/` target exports**: `AuthProvider`, `useSession`, `useAdmin`, `withAdminAuth` (middleware), `isAdmin` (server-side check).
 
 ### Cursor Workspace Scoping
 
@@ -1439,10 +1439,10 @@ The command center is the control plane for the entire venture. It is what makes
 
 **P4.2 Admin Auth** (`/admin/`* -- protected)
 
-- Google OAuth via `packages/auth/` shared library (Auth.js v5)
-- Admin gate: `ADMIN_EMAILS` env var allowlist (sankalp@paperworklabs.com + Olga Sharma's personal email)
-- `withAdminAuth` middleware on all `/admin/`* routes -- same OAuth flow, authorization check on top
-- No separate admin login page, no role system (two founders only)
+- Current: Basic Auth guard in `apps/studio/src/middleware.ts`
+- Admin gate: `ADMIN_EMAILS` env var allowlist + shared `ADMIN_ACCESS_PASSWORD`
+- Target: migrate to `withAdminAuth` from shared `packages/auth/` after package extraction
+- No role system for now (two founders only)
 
 **P4.3 Studio-API Scaffold** (Backend)
 

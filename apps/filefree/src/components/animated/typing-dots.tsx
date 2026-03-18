@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 
 export function TypingDots() {
   return (
-    <div className="inline-flex items-center gap-1 align-middle">
+    <div aria-hidden="true" className="inline-flex items-center gap-1 align-middle">
       {[0, 1, 2].map((dot) => (
         <motion.span
           // Stable index keys are fine for static decorative elements.

@@ -12,12 +12,12 @@ export default async function SprintsPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight">Sprint Tracker</h1>
-      <p className="text-zinc-400">3-day sprint cadence in Slack (#sprints).</p>
+      <p className="text-zinc-400">5-day sprint cadence in Slack (#sprints).</p>
 
       <section className="grid gap-4 md:grid-cols-3">
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
           <p className="text-xs uppercase tracking-wide text-zinc-400">Current cadence</p>
-          <p className="mt-2 text-xl font-semibold">Mon-Thu + Thu-Sat</p>
+          <p className="mt-2 text-xl font-semibold">Mon-Fri</p>
         </div>
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
           <p className="text-xs uppercase tracking-wide text-zinc-400">Kickoff runs</p>

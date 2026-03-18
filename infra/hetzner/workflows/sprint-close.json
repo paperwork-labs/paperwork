@@ -200,7 +200,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={ JSON.stringify({ channel: 'C0AM3APFP99', text: '*Sprint Retro*\\n\\n' + $json.text, username: 'Sprint Retro', icon_emoji: ':bar_chart:' }) }",
+        "jsonBody": "={{ JSON.stringify({ channel: 'C0AM3APFP99', text: '*Sprint Retro*\\n\\n' + $json.text, username: 'Sprint Retro', icon_emoji: ':bar_chart:' }) }}",
         "options": {}
       },
       "id": "post-close-sprints",
