@@ -9,7 +9,6 @@
     "lint": "next build"
   },
   "dependencies": {
-    "@venture/ui": "workspace:*",
     "@tanstack/react-query": "^5.90.21",
     "framer-motion": "^12.35.2",
     "lucide-react": "^0.577.0",
