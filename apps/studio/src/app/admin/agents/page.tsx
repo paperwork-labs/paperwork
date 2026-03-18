@@ -53,6 +53,7 @@ export default async function AgentsPage({ searchParams }: AgentsPageProps) {
   });
 
   const now = Date.now();
+  const workflowNameById = new Map(workflows.map((w) => [w.id, w.name]));
   const workflowStats = workflows.map((workflow) => {
     const runs = executionsWithDerivedStatus
       .filter((execution) => execution.workflowId === workflow.id)
@@ -169,7 +170,7 @@ export default async function AgentsPage({ searchParams }: AgentsPageProps) {
                 <tr key={execution.id}>
                   <td className="py-2 pr-3 text-zinc-300">{relativeTime(execution.timestamp)}</td>
                   <td className="py-2 pr-3 text-zinc-200">
-                    {workflows.find((workflow) => workflow.id === execution.workflowId)?.name ??
+                    {workflowNameById.get(execution.workflowId ?? "") ??
                       execution.workflowId ??
                       "unknown"}
                   </td>

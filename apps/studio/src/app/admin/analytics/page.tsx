@@ -49,6 +49,8 @@ export default function AnalyticsPage() {
                 title={`PostHog dashboard ${url}`}
                 src={url}
                 className="h-96 w-full rounded-lg border border-zinc-800 bg-zinc-950"
+                sandbox="allow-scripts allow-same-origin allow-forms"
+                referrerPolicy="strict-origin-when-cross-origin"
               />
             </div>
           ))}

@@ -52,6 +52,17 @@ done'
 ssh root@204.168.147.100 'ids=$(docker exec paperwork-ops-postgres-1 psql -U filefree_ops -d n8n -At -c "SELECT id FROM workflow_entity;"); for id in $ids; do docker exec paperwork-ops-n8n-1 n8n publish:workflow --id=$id >/dev/null; done'
 ```
 
+**Important**: `n8n import:workflow` **deactivates** workflows. After deploy, go to `n8n.paperworklabs.com` and reactivate any schedule-based workflows (EA Daily Briefing, EA Weekly Plan, Sprint Kickoff, Sprint Close, Weekly Strategy Check-in). The bot will not run until they are active.
+
+## Daily Briefing Troubleshooting
+
+If the 7am PT daily briefing did not post to #daily-briefing:
+
+1. **Workflow inactive**: After any `n8n import:workflow` deploy, EA Daily Briefing is deactivated. Open the workflow in n8n and toggle it active.
+2. **OpenAI quota**: The briefing uses GPT-4o. If OpenAI returns "insufficient_quota", top up billing at platform.openai.com and ensure the API key in n8n credentials has access.
+3. **Cron timezone**: The workflow runs at 7:00 in the timezone set by `GENERIC_TIMEZONE` (see `infra/hetzner/compose.yaml`). Ensure production has `GENERIC_TIMEZONE=America/Los_Angeles` so 7am is Pacific.
+4. **Execution history**: In n8n, check Executions for "EA Daily Briefing" to see if it ran and whether it failed (e.g. credential error, HTTP error).
+
 ## Slack Event Subscriptions
 
 Slack Event Subscriptions must point to a **single** request URL (thread handler webhook):

@@ -1,10 +1,25 @@
 import Link from "next/link";
+import { unstable_cache } from "next/cache";
 import {
   getInfrastructureStatus,
   getN8nExecutions,
   getN8nWorkflows,
   getRecentPullRequests,
 } from "@/lib/command-center";
+
+const getCachedAdminData = unstable_cache(
+  async () => {
+    const [workflows, executions, prs, infrastructure] = await Promise.all([
+      getN8nWorkflows(),
+      getN8nExecutions(50),
+      getRecentPullRequests(10),
+      getInfrastructureStatus(),
+    ]);
+    return { workflows, executions, prs, infrastructure };
+  },
+  ["admin-overview"],
+  { revalidate: 60 },
+);
 
 type ActivityItem = {
   id: string;
@@ -35,12 +50,7 @@ function relativeTime(value?: string) {
 }
 
 export default async function AdminOverviewPage() {
-  const [workflows, executions, prs, infrastructure] = await Promise.all([
-    getN8nWorkflows(),
-    getN8nExecutions(50),
-    getRecentPullRequests(10),
-    getInfrastructureStatus(),
-  ]);
+  const { workflows, executions, prs, infrastructure } = await getCachedAdminData();
 
   const activeWorkflows = workflows.filter((workflow) => workflow.active).length;
   const workflowHealthLabel = workflows.length > 0 ? `${activeWorkflows}/${workflows.length}` : "n/a";
@@ -53,8 +63,8 @@ export default async function AdminOverviewPage() {
   });
   const successfulLastDay = executionsLastDay.filter((execution) => {
     const status = (execution.status ?? "").toLowerCase();
-    if (status) return status === "success";
-    return execution.finished;
+    if (!status) return false;
+    return status === "success";
   }).length;
   const failedLastDay = executionsLastDay.filter((execution) => {
     const status = (execution.status ?? "").toLowerCase();
