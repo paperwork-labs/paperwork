@@ -6,6 +6,7 @@ export default async function OpsPage() {
   const [workflows, executions] = await Promise.all([getN8nWorkflows(), getN8nExecutions(25)]);
 
   const latest = executions.slice(0, 10);
+  const workflowCountLabel = workflows.length > 0 ? String(workflows.length) : "n/a";
 
   return (
     <div className="space-y-6">
@@ -13,7 +14,7 @@ export default async function OpsPage() {
       <p className="text-zinc-400">Slack-first agent operations and infra heartbeat.</p>
 
       <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
-        <p className="mb-3 text-sm font-medium text-zinc-200">Workflow Roster (13)</p>
+        <p className="mb-3 text-sm font-medium text-zinc-200">Workflow Roster ({workflowCountLabel})</p>
         <div className="grid gap-2 md:grid-cols-2">
           {workflows.map((workflow) => (
             <div key={workflow.id} className="rounded-md bg-zinc-800/60 px-3 py-2 text-sm">

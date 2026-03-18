@@ -64,7 +64,7 @@
 
 Clean, minimal holding company portfolio page. Not a product site -- a company page.
 
-- **Content**: Company name, one-liner ("We build tools that eliminate paperwork"), portfolio cards for FileFree / LaunchFree / Distill / Trinkets with links, team section (Sankalp + Olga), legal footer
+- **Content**: Company name, one-liner ("We build tools that eliminate paperwork"), portfolio cards for FileFree / LaunchFree / Distill / Trinkets with links, team section (Sankalp + Olga Sharma), legal footer
 - **Tech**: Static page served from `apps/studio/` on Vercel free tier with `paperworklabs.com` custom domain
 - **Design**: Studio/Command Center zinc palette (neutral, professional)
 - **Legal footer**: "Paperwork Labs LLC | California | FileFree, LaunchFree, Distill, and Trinkets are products of Paperwork Labs LLC"
@@ -1218,7 +1218,7 @@ VENTURE DATABASE (studio, never sold):
 **Admin Auth (paperworklabs.com + admin panels on all products)**:
 
 - Same Google OAuth flow as users. After OAuth, middleware checks if the authenticated email is in the admin allowlist. If yes, admin routes accessible. If no, 403.
-- Admin allowlist stored in environment variable: `ADMIN_EMAILS=sankalp@paperworklabs.com,olga@<personal-email>` (founder's Workspace email + Olga's personal email per D76)
+- Admin allowlist stored in environment variable: `ADMIN_EMAILS=sankalp@paperworklabs.com,olga@<personal-email>` (founder's Workspace email + Olga Sharma's personal email per D76)
 - Admin routes: `/admin/`* on paperworklabs.com, `/admin/`* on FileFree, `/admin/*` on LaunchFree. All protected by the same `packages/auth/withAdminAuth` middleware.
 - No separate admin login page. Same SSO, just an authorization check on top.
 
@@ -1433,14 +1433,14 @@ The command center is the control plane for the entire venture. It is what makes
 
 - Hero: "Paperwork Labs" wordmark, one-liner ("We build tools that eliminate paperwork")
 - Portfolio: Cards linking to FileFree, LaunchFree, and Trinkets with descriptions and status badges
-- Team: Sankalp + Olga
+- Team: Sankalp + Olga Sharma
 - Footer: legal info ("Paperwork Labs LLC | California"), social links, contact email
 - Data source: Static
 
 **P4.2 Admin Auth** (`/admin/`* -- protected)
 
 - Google OAuth via `packages/auth/` shared library (Auth.js v5)
-- Admin gate: `ADMIN_EMAILS` env var allowlist (sankalp@paperworklabs.com + Olga's personal email)
+- Admin gate: `ADMIN_EMAILS` env var allowlist (sankalp@paperworklabs.com + Olga Sharma's personal email)
 - `withAdminAuth` middleware on all `/admin/`* routes -- same OAuth flow, authorization check on top
 - No separate admin login page, no role system (two founders only)
 
@@ -3016,7 +3016,7 @@ Agents are organized into three tiers. **All venture-level personas must be avai
 | 31  | AI Ops Lead                   | Cursor persona (.mdc)   | On demand                                                                             | Model routing, cost tracking, persona audits                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | 32  | Executive Assistant (EA)      | Cursor persona + n8n    | Daily cron + on-demand                                                                | Daily briefing, weekly planning, decision tracking, financial tracking, doc maintenance. See Section 6J1.                                                                                                                                                                                                                                                                                                                                                                   |
 | 33  | Compliance & Security Monitor | n8n cron (daily)        | 6am                                                                                   | Tracks: cyber insurance status, data breach plan currency, EFIN cert status, 50-state data freshness, legal doc expiry (ToS, privacy policy last-reviewed dates), **State Filing Engine health** (portal health status, filing failure rates, state-specific issues, stuck submissions). Outputs daily compliance status to Slack #compliance-alerts, filing engine alerts to #filing-engine, and weekly summary to Mission Control P4.4. Filing Engine Monitor is a function within Compliance Monitor (not a separate agent — keep agent count lean). |
-| 34  | Partnership Intelligence      | n8n cron (weekly)       | Mondays                                                                               | Scans affiliate networks (Impact.com, CJ Affiliate, ShareASale, Partnerize) for new fintech programs. Compares commission rates across similar partners. Monitors existing affiliate performance (clicks, conversions, revenue). Tracks program changes (rate changes, terms, closures). **Monitors formation API partner landscape** (FileForms, CorpNet program changes, new entrants, pricing shifts). Generates weekly "Partnership Opportunities" report to Slack #partnerships. Generates compatibility scores based on user profile data. Supports Olga but works fully autonomously. |
+| 34  | Partnership Intelligence      | n8n cron (weekly)       | Mondays                                                                               | Scans affiliate networks (Impact.com, CJ Affiliate, ShareASale, Partnerize) for new fintech programs. Compares commission rates across similar partners. Monitors existing affiliate performance (clicks, conversions, revenue). Tracks program changes (rate changes, terms, closures). **Monitors formation API partner landscape** (FileForms, CorpNet program changes, new entrants, pricing shifts). Generates weekly "Partnership Opportunities" report to Slack #partnerships. Generates compatibility scores based on user profile data. Supports Olga Sharma but works fully autonomously. |
 
 
 ### 6F. n8n Workflow Updates (Existing 6)
@@ -4033,7 +4033,7 @@ Department-level email aliases on Google Workspace. All route to founder's inbox
 3. Founder approves -> Agent sends via Gmail API (n8n Gmail node) from appropriate alias
 4. Sent email logged in Slack thread for audit trail
 
-**Setup**: Google Workspace active on paperworklabs.com (Business Starter, 1 seat, $6/mo — see D76). Alias domains: filefree.ai, launchfree.ai, distill.tax. Department aliases (hello@, support@, legal@, partnerships@, api@) configured on each domain, all routing to founder's inbox (sankalp@paperworklabs.com). Olga gets admin panel access via personal email in `ADMIN_EMAILS` env var — no second Workspace seat needed.
+**Setup**: Google Workspace active on paperworklabs.com (Business Starter, 1 seat, $6/mo — see D76). Alias domains: filefree.ai, launchfree.ai, distill.tax. Department aliases (hello@, support@, legal@, partnerships@, api@) configured on each domain, all routing to founder's inbox (sankalp@paperworklabs.com). Olga Sharma gets admin panel access via personal email in `ADMIN_EMAILS` env var — no second Workspace seat needed.
 
 ### Stress Test: Communication Overload
 

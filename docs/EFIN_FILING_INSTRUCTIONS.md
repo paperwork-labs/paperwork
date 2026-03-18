@@ -18,7 +18,7 @@
 | **IRS e-Services / EFIN** | sankalp@paperworklabs.com | All e-file provider correspondence, EFIN approval, and future ATS/MeF communications. |
 
 **Why not personal Gmail?**
-- Mixing personal and business creates confusion when you scale (Olga, future team, auditors)
+- Mixing personal and business creates confusion when you scale (Olga Sharma, future team, auditors)
 - D76 decision: use company email for Cursor, Stripe, vendor accounts — same principle applies
 - IRS and state correspondence will reference "Paperwork Labs LLC" — having it land in the business inbox is cleaner
 - If you ever need to hand off or delegate, the account is already business-scoped

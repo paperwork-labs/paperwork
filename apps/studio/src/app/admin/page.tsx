@@ -9,6 +9,7 @@ export default async function AdminOverviewPage() {
   ]);
 
   const healthy = workflows.filter((w) => w.active).length;
+  const workflowHealthLabel = workflows.length > 0 ? `${healthy}/${workflows.length}` : "n/a";
   const sprintRuns = executions.filter(
     (e) => e.workflowId === "f7a8b9c0-d1e2-4f3a-b4c5-d6e7f8a9b0c1" || e.workflowId === "a9b0c1d2-e3f4-4a5b-b6c7-d8e9f0a1b2c3",
   ).length;
@@ -21,14 +22,12 @@ export default async function AdminOverviewPage() {
       <section className="grid gap-4 md:grid-cols-3">
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
           <p className="text-xs uppercase tracking-wide text-zinc-400">Service Health</p>
-          <p className="mt-2 text-2xl font-semibold">
-            {healthy}/{workflows.length || 13}
-          </p>
+          <p className="mt-2 text-2xl font-semibold">{workflowHealthLabel}</p>
           <p className="text-sm text-zinc-400">Active n8n workflows</p>
         </div>
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
           <p className="text-xs uppercase tracking-wide text-zinc-400">Current Sprint</p>
-          <p className="mt-2 text-2xl font-semibold">3-day cadence</p>
+          <p className="mt-2 text-2xl font-semibold">5-day cadence</p>
           <p className="text-sm text-zinc-400">{sprintRuns} kickoff/close executions tracked</p>
         </div>
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
