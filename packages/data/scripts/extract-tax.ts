@@ -2,7 +2,8 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { StateTaxRulesSchema } from "../src/schemas/tax.schema";
-import type { StateCode, StateSources } from "../src/schemas/source-registry.schema";
+import type { StateCode } from "../src/types/common";
+import type { StateSources } from "../src/schemas/source-registry.schema";
 import { openai, fetchPageContent, sleep, STATE_CODES } from "./extract-utils";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -60,8 +61,6 @@ function isRetryableError(error: any): boolean {
 async function extractTaxData(
   stateCode: StateCode,
   stateName: string,
-  taxFoundationUrl: string,
-  dorUrl: string | undefined,
   pageContent: string,
   validationRetryCount = 0,
   apiRetryCount = 0
@@ -100,8 +99,6 @@ async function extractTaxData(
       return extractTaxData(
         stateCode,
         stateName,
-        taxFoundationUrl,
-        dorUrl,
         pageContent,
         validationRetryCount,
         apiRetryCount + 1
@@ -115,8 +112,6 @@ async function extractTaxData(
       return extractTaxData(
         stateCode,
         stateName,
-        taxFoundationUrl,
-        dorUrl,
         `${pageContent}\n\nPrevious attempt failed validation:\n${errorDetails}\n\nPlease fix these errors and return valid JSON.`,
         validationRetryCount + 1,
         apiRetryCount
@@ -166,13 +161,7 @@ async function main() {
       // Extract tax data
       let taxData: any;
       try {
-        taxData = await extractTaxData(
-          stateCode,
-          sources.state_name,
-          taxFoundationSource.url,
-          dorSource?.url,
-          pageContent
-        );
+        taxData = await extractTaxData(stateCode, sources.state_name, pageContent);
       } catch (error: any) {
         console.error(`${stateCode}: Failed to extract tax data after 3 attempts:`, error.message);
         continue;

@@ -2,7 +2,8 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FormationRulesSchema } from "../src/schemas/formation.schema";
-import type { StateCode, StateSources } from "../src/schemas/source-registry.schema";
+import type { StateCode } from "../src/types/common";
+import type { StateSources } from "../src/schemas/source-registry.schema";
 import { openai, fetchPageContent, sleep, STATE_CODES } from "./extract-utils";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -50,7 +51,6 @@ function isRetryableError(error: any): boolean {
 async function extractFormationData(
   stateCode: StateCode,
   stateName: string,
-  sosUrl: string,
   pageContent: string,
   validationRetryCount = 0,
   apiRetryCount = 0
@@ -89,7 +89,6 @@ async function extractFormationData(
       return extractFormationData(
         stateCode,
         stateName,
-        sosUrl,
         pageContent,
         validationRetryCount,
         apiRetryCount + 1
@@ -103,7 +102,6 @@ async function extractFormationData(
       return extractFormationData(
         stateCode,
         stateName,
-        sosUrl,
         `${pageContent}\n\nPrevious attempt failed validation:\n${errorDetails}\n\nPlease fix these errors and return valid JSON.`,
         validationRetryCount + 1,
         apiRetryCount
@@ -150,7 +148,7 @@ async function main() {
       // Extract formation data
       let formationData: any;
       try {
-        formationData = await extractFormationData(stateCode, sources.state_name, sosSource.url, pageContent);
+        formationData = await extractFormationData(stateCode, sources.state_name, pageContent);
       } catch (error: any) {
         console.error(`${stateCode}: Failed to extract formation data after 3 attempts:`, error.message);
         continue;
