@@ -1,0 +1,35 @@
+{
+  "$schema": "State tax rules template — see StateTaxRulesSchema",
+  "state": "XX",
+  "state_name": "",
+  "tax_year": 2026,
+  "income_tax": {
+    "type": "none",
+    "brackets": {
+      "single": [],
+      "married_filing_jointly": [],
+      "married_filing_separately": [],
+      "head_of_household": []
+    }
+  },
+  "standard_deductions": [],
+  "personal_exemption": {
+    "amount_cents": 0,
+    "phases_out": false
+  },
+  "notable_credits": [],
+  "notable_deductions": [],
+  "local_taxes": {
+    "has_local_income_tax": false
+  },
+  "reciprocity": {
+    "has_reciprocity": false
+  },
+  "dor_url": "",
+  "verification": {
+    "last_verified": "",
+    "sources": [],
+    "verified_by": "ai_extraction",
+    "confidence": 0
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "$schema": "Compliance calendar template",
+  "state": "XX",
+  "state_name": "",
+  "annual_report": {
+    "required": false,
+    "due_date": null,
+    "fee_cents": 0,
+    "filing_url": null
+  },
+  "franchise_tax": {
+    "required": false,
+    "due_date": null,
+    "amount_cents": 0
+  },
+  "registered_agent": {
+    "required": true,
+    "renewal_date": null
+  },
+  "verification": {
+    "last_verified": "",
+    "sources": [],
+    "verified_by": "ai_extraction",
+    "confidence": 0
+  }
+}

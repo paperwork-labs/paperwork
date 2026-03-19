@@ -1,0 +1,45 @@
+{
+  "$schema": "Formation rules template — see FormationRulesSchema",
+  "state": "XX",
+  "state_name": "",
+  "entity_type": "LLC",
+  "sos_url": "",
+  "filing_office": "",
+  "fees": {
+    "standard": {
+      "amount_cents": 0,
+      "description": "Standard filing fee",
+      "is_expedited": false,
+      "processing_days": null
+    }
+  },
+  "filing": {
+    "primary": {
+      "method": "portal",
+      "url": null,
+      "notes": null
+    }
+  },
+  "requirements": {
+    "articles_of_organization": true,
+    "operating_agreement_required": false,
+    "publication_required": false,
+    "registered_agent_required": true,
+    "annual_report_required": false,
+    "franchise_tax": false
+  },
+  "processing": {
+    "standard_days": 0
+  },
+  "naming": {
+    "required_suffix": ["LLC", "L.L.C."],
+    "restricted_words": []
+  },
+  "compliance": {},
+  "verification": {
+    "last_verified": "",
+    "sources": [],
+    "verified_by": "ai_extraction",
+    "confidence": 0
+  }
+}
