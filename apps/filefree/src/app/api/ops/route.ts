@@ -14,7 +14,7 @@ const PRODUCTION_SERVICES: {
 }[] = [
   {
     name: "Render API",
-    url: "https://api.filefree.tax/health",
+    url: "https://api.filefree.ai/health",
     dashboardUrl: "https://dashboard.render.com",
     accessHint: "Render dashboard > filefree-api service. Manage deploys, env vars, logs.",
     category: "core",
@@ -31,22 +31,22 @@ const PRODUCTION_SERVICES: {
   },
   {
     name: "Vercel Frontend",
-    url: "https://filefree.tax",
+    url: "https://filefree.ai",
     dashboardUrl: "https://vercel.com/dashboard",
     accessHint: "Vercel dashboard > filefree project. Auto-deploys from main.",
     category: "core",
   },
   {
     name: "n8n (Agents)",
-    url: "https://n8n.filefree.tax/healthz",
-    dashboardUrl: "https://n8n.filefree.tax",
+    url: "https://n8n.filefree.ai/healthz",
+    dashboardUrl: "https://n8n.filefree.ai",
     accessHint: "Login with N8N_USER / N8N_PASSWORD from Hetzner env. Manage AI agent workflows.",
     category: "ops",
   },
   {
     name: "Postiz (Social)",
-    url: "https://social.filefree.tax",
-    dashboardUrl: "https://social.filefree.tax",
+    url: "https://social.filefree.ai",
+    dashboardUrl: "https://social.filefree.ai",
     accessHint: "Login, then connect TikTok / IG / X / YouTube accounts to start posting.",
     category: "ops",
   },

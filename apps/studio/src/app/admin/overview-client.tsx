@@ -10,10 +10,17 @@ import {
   XCircle,
   Activity,
   GitPullRequest,
+  GitBranch,
   Zap,
   Shield,
   Radio,
   ArrowRight,
+  Globe,
+  Server,
+  Database,
+  Cpu,
+  Workflow,
+  Clock,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -48,12 +55,22 @@ type InfraService = {
   latencyMs: number | null;
   dashboardUrl: string | null;
 };
+type CIRun = {
+  id: number;
+  name: string;
+  status: string;
+  conclusion: string | null;
+  url: string;
+  createdAt: string;
+  updatedAt: string;
+};
 
 type OverviewData = {
   workflows: N8nWorkflow[];
   executions: N8nExecution[];
   prs: PullRequest[];
   infrastructure: InfraService[];
+  ciRuns: CIRun[];
   fetchedAt: string;
 };
 
@@ -137,7 +154,7 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
     return () => clearInterval(interval);
   }, [refresh]);
 
-  const { workflows, executions, prs, infrastructure, fetchedAt } = data;
+  const { workflows, executions, prs, infrastructure, ciRuns, fetchedAt } = data;
 
   const activeWorkflows = workflows.filter((w) => w.active).length;
   const workflowNameById = useMemo(
@@ -388,6 +405,114 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
           <p className="text-sm text-zinc-500">provider checks passing</p>
         </motion.div>
       </motion.section>
+
+      {/* Architecture + CI Runs */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
+          <p className="mb-4 text-sm font-medium text-zinc-200">System Architecture</p>
+          <div className="space-y-4 text-xs">
+            <div>
+              <p className="mb-1.5 font-medium uppercase tracking-wider text-zinc-600">User Flow</p>
+              <div className="flex flex-wrap items-center gap-1.5 text-zinc-400">
+                <Globe className="h-3.5 w-3.5 text-zinc-300" />
+                <span>User</span>
+                <ArrowRight className="h-3 w-3 text-zinc-600" />
+                <span className="rounded bg-zinc-700/50 px-1.5 py-0.5 text-zinc-300">Vercel (5 apps)</span>
+                <ArrowRight className="h-3 w-3 text-zinc-600" />
+                <span className="rounded bg-blue-500/10 px-1.5 py-0.5 text-blue-400">Render API</span>
+                <ArrowRight className="h-3 w-3 text-zinc-600" />
+                <span className="rounded bg-green-500/10 px-1.5 py-0.5 text-green-400">Neon DB</span>
+                <span className="text-zinc-700">+</span>
+                <span className="rounded bg-orange-500/10 px-1.5 py-0.5 text-orange-400">Upstash Redis</span>
+              </div>
+            </div>
+            <div>
+              <p className="mb-1.5 font-medium uppercase tracking-wider text-zinc-600">AI Agents</p>
+              <div className="flex flex-wrap items-center gap-1.5 text-zinc-400">
+                <Workflow className="h-3.5 w-3.5 text-amber-400" />
+                <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-amber-400">n8n (16 workflows)</span>
+                <ArrowRight className="h-3 w-3 text-zinc-600" />
+                <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-emerald-400">OpenAI</span>
+                <span className="text-zinc-700">+</span>
+                <span className="text-zinc-400">Slack</span>
+                <span className="text-zinc-700">+</span>
+                <span className="text-zinc-400">GitHub</span>
+              </div>
+            </div>
+            <div>
+              <p className="mb-1.5 font-medium uppercase tracking-wider text-zinc-600">Social</p>
+              <div className="flex flex-wrap items-center gap-1.5 text-zinc-400">
+                <Cpu className="h-3.5 w-3.5 text-pink-400" />
+                <span className="rounded bg-pink-500/10 px-1.5 py-0.5 text-pink-400">Postiz</span>
+                <ArrowRight className="h-3 w-3 text-zinc-600" />
+                <span className="text-zinc-400">TikTok, Instagram, X, YouTube</span>
+              </div>
+            </div>
+            <div>
+              <p className="mb-1.5 font-medium uppercase tracking-wider text-zinc-600">Infra</p>
+              <div className="flex flex-wrap items-center gap-1.5 text-zinc-400">
+                <Server className="h-3.5 w-3.5 text-zinc-300" />
+                <span className="rounded bg-zinc-700/50 px-1.5 py-0.5 text-zinc-300">Hetzner VPS</span>
+                <span className="text-zinc-700">hosts</span>
+                <span className="text-zinc-400">n8n + Postiz + PostgreSQL + Redis</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <GitBranch className="h-4 w-4 text-zinc-500" />
+            <p className="text-sm font-medium text-zinc-200">Recent CI Runs</p>
+            <a
+              href="https://github.com/paperwork-labs/paperwork/actions"
+              target="_blank"
+              rel="noreferrer"
+              className="ml-auto text-xs text-zinc-500 transition hover:text-zinc-300"
+            >
+              All runs <ExternalLink className="ml-1 inline h-3 w-3" />
+            </a>
+          </div>
+          <div className="space-y-1.5 max-h-72 overflow-y-auto">
+            {ciRuns.length === 0 ? (
+              <p className="py-2 text-sm text-zinc-500">No CI runs found.</p>
+            ) : (
+              ciRuns.map((run) => (
+                <a
+                  key={run.id}
+                  href={run.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 rounded-md bg-zinc-800/40 px-3 py-2 text-xs transition hover:bg-zinc-800/60"
+                >
+                  {run.status === "in_progress" || run.status === "queued" ? (
+                    <Clock className="h-3.5 w-3.5 animate-spin text-amber-400" />
+                  ) : run.conclusion === "success" ? (
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                  ) : run.conclusion === "failure" ? (
+                    <XCircle className="h-3.5 w-3.5 text-rose-400" />
+                  ) : (
+                    <AlertTriangle className="h-3.5 w-3.5 text-zinc-400" />
+                  )}
+                  <span className="truncate font-medium text-zinc-200">{run.name}</span>
+                  <span
+                    className={`ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                      run.conclusion === "success"
+                        ? "bg-emerald-500/10 text-emerald-400"
+                        : run.conclusion === "failure"
+                          ? "bg-rose-500/10 text-rose-400"
+                          : "bg-zinc-500/10 text-zinc-400"
+                    }`}
+                  >
+                    {run.conclusion || run.status}
+                  </span>
+                  <span className="shrink-0 text-zinc-600">{relativeTime(run.updatedAt)}</span>
+                </a>
+              ))
+            )}
+          </div>
+        </section>
+      </div>
 
       {/* Activity Feed + Quick Links */}
       <div className="grid gap-4 md:grid-cols-2">

@@ -6,7 +6,14 @@
         "httpMethod": "POST",
         "path": "partnership-outreach",
         "responseMode": "lastNode",
-        "options": {}
+        "options": {},
+        "authentication": "headerAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "webhook-secret",
+          "name": "Webhook Secret"
+        }
       },
       "id": "webhook-partnerships",
       "name": "Webhook",

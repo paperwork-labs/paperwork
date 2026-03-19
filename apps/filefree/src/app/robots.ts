@@ -9,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/api/", "/design/"],
       },
     ],
-    sitemap: "https://filefree.tax/sitemap.xml",
+    sitemap: "https://filefree.ai/sitemap.xml",
   };
 }

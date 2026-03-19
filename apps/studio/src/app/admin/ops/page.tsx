@@ -1,4 +1,4 @@
-import { getN8nWorkflows, getN8nExecutions } from "@/lib/command-center";
+import { getN8nWorkflows, getN8nExecutions, WORKFLOW_META } from "@/lib/command-center";
 import OpsClient from "./ops-client";
 
 async function checkSlackToken() {
@@ -76,6 +76,7 @@ export default async function OpsPage() {
         workflows,
         executions,
         serviceTokens: [slack, github, vercel, gdrive],
+        workflowMeta: WORKFLOW_META,
         fetchedAt: new Date().toISOString(),
       }}
     />

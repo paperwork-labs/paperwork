@@ -96,7 +96,10 @@
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 2.1,
       "position": [1250, 300],
-      "credentials": { "openAiApi": { "id": "openai-cred", "name": "OpenAI" } }
+      "credentials": { "openAiApi": { "id": "openai-cred", "name": "OpenAI" } },
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
