@@ -173,7 +173,7 @@ export async function getInfrastructureStatus() {
   const n8nUrl = normalizeBaseUrl(process.env.N8N_API_URL || process.env.N8N_HOST);
   const socialUrl = normalizeBaseUrl(process.env.POSTIZ_URL) || "https://social.paperworklabs.com";
   const renderToken = process.env.RENDER_API_KEY?.trim();
-  const vercelToken = process.env.VERCEL_TOKEN?.trim();
+  const vercelToken = process.env.VERCEL_API_TOKEN?.trim();
   const neonApiKey = process.env.NEON_API_KEY?.trim();
   const upstashUrl = process.env.UPSTASH_REDIS_REST_URL?.trim();
   const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
