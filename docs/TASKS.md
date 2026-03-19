@@ -32,6 +32,7 @@ Work through these in phase order. Each task is scoped for one PR. Reference [PR
 | Column Tax partnership | October 2026 | NOT STARTED | Fallback e-file partner for CA/MA and unsupported forms. |
 | Communication test (IRS) | November 2026 | NOT STARTED | End-to-end transmission verification. |
 | Tax season launch | January 2027 | NOT STARTED | IRS accepts returns ~late January. Hard external deadline. |
+| GitHub PAT rotation | June 1, 2026 | NOT STARTED | n8n.paperworklabs.com fine-grained PAT expires Jun 15, 2026. Rotate 2 weeks early. Update: n8n credentials UI + Hetzner .env + GitHub Actions secrets. |
 
 ---
 
@@ -138,7 +139,7 @@ See [VENTURE_MASTER_PLAN.md](VENTURE_MASTER_PLAN.md) Section 7 (Phase 0).
 - **Files/Specs**: Create folder structure: `Paperwork Labs HQ/Operations/Daily Briefings/`, `Paperwork Labs HQ/Operations/Weekly Plans/`, `Paperwork Labs HQ/Trinkets/One-Pagers/`, `Paperwork Labs HQ/Trinkets/PRDs/`, `Paperwork Labs HQ/Intelligence/`. Add GDrive MCP server to `.cursor/mcp.json`.
 - **Acceptance Criteria**: GDrive accessible from Cursor via MCP. Folder structure matches EA spec in `ea.mdc`.
 - **Depends On**: P0.3
-- **Status**: NOT STARTED
+- **Status**: PARTIAL — GDrive MCP working, Strategy folder created, PARTNERSHIPS.md + PITCH_PACKAGE.md uploaded. Remaining: create Operations/Daily Briefings/, Operations/Weekly Plans/, Trinkets/ subfolders.
 
 </details>
 
@@ -293,7 +294,7 @@ The command center is the control plane for the entire venture. It is what makes
 
 ### Tier 1 -- COMPLETE (daily operations enabled)
 
-Studio app live at paperworklabs.com. Completed: P4.1 (landing page), P4.2 (admin auth via Basic Auth + ADMIN_EMAILS), P4.4 (Mission Control dashboard), P4.5 (Agent Monitor), P4.6 (Infrastructure health), P4.14 (Docs viewer at `/docs/*`). P4.3 (Studio API) DEFERRED -- server components cover Tier 1.
+Studio app live at paperworklabs.com. Completed: P4.1 (landing page), P4.2 (admin auth via Basic Auth + ADMIN_EMAILS), P4.4 (Mission Control dashboard), P4.5 (Agent Monitor), P4.6 (Infrastructure health), P4.14 (Docs viewer at `/docs/*`). P4.3 (Studio API) DEFERRED -- server components cover Tier 1. **Infra additions (Mar 18)**: 5-layer Slack-first observability (PR #25), auto-deploy n8n workflows via GitHub Action, infra health check workflow (n8n self-monitor every 30min), external canary (GH Action every 6h), native Slack integrations (GitHub, Vercel, Google Drive for Slack).
 
 ### Tier 2 -- Build Next (enables growth operations)
 

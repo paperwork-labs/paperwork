@@ -30,6 +30,32 @@ Slack is the founder's primary workspace. The EA operates on Slack in two modes:
 - DMs to the bot work as a private channel to the EA
 - Thread history provides conversation continuity — no need to re-explain context
 
+**Session bookend mode** (Cursor agent sessions):
+
+At the **start and end** of significant work sessions (multi-task, infra changes, or multi-PR work), post a status update to `#daily-briefing`. Use the **EA persona** and match the clean briefing format:
+
+```
+*Session [Start|End] — YYYY-MM-DD*
+
+*Phase X (Name)* progress_description
+• DONE: [completed items]
+• IN PROGRESS: [active items]
+• Blocker: [if any]
+
+*Completed this session:*
+• [bullet list of what was done]
+
+*Next:*
+• [what's coming next]
+```
+
+Rules:
+- Use `./scripts/slack-persona.sh ea C0ALLJWR1HV "<message>"` (EA persona, `#daily-briefing`)
+- Keep it concise — bullets, not paragraphs
+- Include phase status with completion indicators
+- Call out blockers explicitly
+- Post as standalone messages (not thread replies) so they're visible in the timeline
+
 ### Sending Messages from Cursor
 
 **NEVER use the Slack MCP `slack_send_message` tool for posting** — it sends as the founder's personal account. Instead, use the persona script:
@@ -56,6 +82,7 @@ The Slack MCP is still used for **reading** channels, searching messages, and lo
 | `#daily-briefing` | `C0ALLJWR1HV` | EA | Morning briefing at 7am PT |
 | `#decisions` | `C0AM2310P8A` | Strategy | Decision logging ("log this") |
 | `#filing-engine` | `C0AMWB887KJ` | Engineering | State portal health, stuck submissions |
+| `#alerts` | `C0ALVM4PAE7` | Engineering | Automated infra alerts: deploy results, health check failures, outages |
 | `#general` | `C0AM01NHQ3Y` | Auto-route | Ad-hoc questions, routed to right persona |
 
 ### Smart Persona Routing

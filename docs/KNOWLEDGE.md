@@ -21,7 +21,7 @@ Organizational memory for Paperwork Labs (FileFree, LaunchFree, Distill, Trinket
 
 - **Q1 — OCR accuracy**: Cloud Vision + GPT-4o-mini on real W-2s is UNVALIDATED. Test with 20+ real W-2s in Sprint 2.
 - **D25 — Legal review**: Privacy/Terms pages need counsel review before January 2027
-- **D34 — n8n credentials**: Workflows imported but some credentials need manual setup in n8n UI
+- **D34 — n8n credentials**: RESOLVED (D80). All credentials in n8n UI + wired to container env vars for Code nodes.
 - **D24 — Sentry**: Error tracking not yet integrated (PostHog analytics is live)
 - **UI components**: Evaluate PrismUI / SmoothUI for pre-built animated shadcn components when building product UIs (Phase 2+). Current stack: framer-motion + tailwindcss-animate.
 
@@ -219,6 +219,11 @@ Full text in [docs/archive/KNOWLEDGE-ARCHIVE.md](archive/KNOWLEDGE-ARCHIVE.md).
 
 ### D79 — AI Advisory + Internal Animation Primitives (2026-03-18)
 - **Decision**: Lightweight advisory baseline (`/api/advisory` + `/advisory` playground). Internal framer-motion primitives over third-party animation kits.
+
+### D80 — Infra Observability System + Credential Wiring (2026-03-18)
+- **Decision**: Implemented 5-layer Slack-first observability: Layer 0 (native GitHub/Vercel/GDrive Slack apps), Layer 1 (deploy-time verification with Slack notifications), Layer 2 (n8n self-health check every 30min), Layer 3 (external GH Action canary every 6h), Layer 4 (daily briefing infra section). Auto-deploy n8n workflows via GitHub Action on merge to main. Wired n8n credentials (GitHub PAT + Slack Bot Token) to container env vars for Code node access. Infra score: ~90%. Remaining gaps: domain DNS (filefree.ai, launchfree.ai), LLC/EFIN business blockers. Ready for Phase 2.
+- **Alternatives**: Datadog/PagerDuty (overkill + expensive), single-layer alerting (too fragile), manual checks (what we were doing — failed silently).
+- **Reversibility**: Fully reversible — each layer is independent.
 
 ---
 
