@@ -2,6 +2,8 @@ export type N8nWorkflow = {
   id: string;
   name: string;
   active: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type N8nExecution = {
@@ -12,6 +14,7 @@ export type N8nExecution = {
   stoppedAt?: string;
   workflowId?: string;
   status?: string;
+  workflowData?: { name?: string };
 };
 
 export type PullRequestSummary = {
@@ -26,9 +29,12 @@ export type PullRequestSummary = {
 
 export type InfraStatus = {
   service: string;
+  category: "core" | "ops" | "data" | "cache" | "hosting";
   configured: boolean;
   healthy: boolean;
   detail: string;
+  latencyMs: number | null;
+  dashboardUrl: string | null;
 };
 
 function normalizeBaseUrl(raw: string | undefined) {
@@ -109,67 +115,67 @@ export async function getRecentPullRequests(limit = 5) {
   return data ?? [];
 }
 
-async function checkPublicUrl(
+async function checkWithLatency(
   service: string,
-  url: string | undefined
+  category: InfraStatus["category"],
+  url: string | undefined,
+  dashboardUrl: string | null,
+  options?: { headers?: Record<string, string>; validateJson?: boolean }
 ): Promise<InfraStatus> {
   if (!url) {
-    return { service, configured: false, healthy: false, detail: "Missing URL" };
+    return { service, category, configured: false, healthy: false, detail: "Not configured", latencyMs: null, dashboardUrl };
   }
 
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
-    const response = await fetch(url, { method: "GET", cache: "no-store", signal: controller.signal });
+    const start = performance.now();
+    const response = await fetch(url, {
+      method: "GET",
+      cache: "no-store",
+      signal: controller.signal,
+      headers: options?.headers,
+    });
+    const latencyMs = Math.round(performance.now() - start);
     clearTimeout(timeout);
-    return {
-      service,
-      configured: true,
-      healthy: response.ok,
-      detail: response.ok ? "Reachable" : `HTTP ${response.status}`,
-    };
+
+    let detail = response.ok ? "Reachable" : `HTTP ${response.status}`;
+
+    if (response.ok && options?.validateJson) {
+      try {
+        const json = await response.json();
+        if (json.status === "healthy") {
+          detail = `Healthy (db: ${json.db_connected ? "connected" : "disconnected"})`;
+        }
+      } catch {
+        // JSON parse failed but endpoint is reachable
+      }
+    }
+
+    return { service, category, configured: true, healthy: response.ok, detail, latencyMs, dashboardUrl };
   } catch (err) {
     const detail = err instanceof DOMException && err.name === "AbortError" ? "Timeout (8s)" : "Unreachable";
-    return { service, configured: true, healthy: false, detail };
+    return { service, category, configured: true, healthy: false, detail, latencyMs: null, dashboardUrl };
   }
 }
 
-async function checkTokenBackedApi(
+async function checkTokenApi(
   service: string,
+  category: InfraStatus["category"],
   url: string,
-  token: string | undefined
+  token: string | undefined,
+  dashboardUrl: string | null,
 ): Promise<InfraStatus> {
   if (!token) {
-    return {
-      service,
-      configured: false,
-      healthy: false,
-      detail: "Missing API token",
-    };
+    return { service, category, configured: false, healthy: false, detail: "Missing API token", latencyMs: null, dashboardUrl };
   }
 
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-    const response = await fetch(url, {
-      cache: "no-store",
-      headers: { Authorization: `Bearer ${token}` },
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-    return {
-      service,
-      configured: true,
-      healthy: response.ok,
-      detail: response.ok ? "API reachable" : `HTTP ${response.status}`,
-    };
-  } catch (err) {
-    const detail = err instanceof DOMException && err.name === "AbortError" ? "Timeout (8s)" : "API unreachable";
-    return { service, configured: true, healthy: false, detail };
-  }
+  return checkWithLatency(service, category, url, dashboardUrl, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
 }
 
-export async function getInfrastructureStatus() {
+export async function getInfrastructureStatus(): Promise<InfraStatus[]> {
   const n8nUrl = normalizeBaseUrl(process.env.N8N_API_URL || process.env.N8N_HOST);
   const socialUrl = normalizeBaseUrl(process.env.POSTIZ_URL) || "https://social.paperworklabs.com";
   const renderToken = process.env.RENDER_API_KEY?.trim();
@@ -179,28 +185,56 @@ export async function getInfrastructureStatus() {
   const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
 
   const checks: Promise<InfraStatus>[] = [
-    checkPublicUrl("n8n", n8nUrl),
-    checkPublicUrl("Postiz", socialUrl),
-    checkTokenBackedApi("Render", "https://api.render.com/v1/services", renderToken),
-    checkTokenBackedApi("Vercel", "https://api.vercel.com/v9/projects", vercelToken),
-    checkTokenBackedApi("Neon", "https://console.neon.tech/api/v2/projects", neonApiKey),
+    // Core services
+    checkWithLatency(
+      "FileFree API",
+      "core",
+      "https://api.filefree.tax/health",
+      "https://dashboard.render.com",
+      { validateJson: true },
+    ),
+    checkWithLatency(
+      "Hetzner VPS (n8n)",
+      "ops",
+      n8nUrl,
+      "https://n8n.paperworklabs.com",
+    ),
+    checkWithLatency(
+      "Postiz",
+      "ops",
+      socialUrl,
+      "https://social.paperworklabs.com",
+    ),
+
+    // Provider APIs
+    checkTokenApi("Render", "hosting", "https://api.render.com/v1/services", renderToken, "https://dashboard.render.com"),
+    checkTokenApi("Vercel", "hosting", "https://api.vercel.com/v9/projects", vercelToken, "https://vercel.com/paperwork-labs"),
+    checkTokenApi("Neon", "data", "https://console.neon.tech/api/v2/projects", neonApiKey, "https://console.neon.tech"),
   ];
 
   if (upstashUrl && upstashToken) {
     checks.push(
-      checkTokenBackedApi("Upstash Redis", `${upstashUrl}/ping`, upstashToken)
+      checkWithLatency(
+        "Upstash Redis",
+        "cache",
+        `${upstashUrl}/ping`,
+        "https://console.upstash.com",
+        { headers: { Authorization: `Bearer ${upstashToken}` } },
+      )
     );
   } else {
     checks.push(
       Promise.resolve({
         service: "Upstash Redis",
+        category: "cache" as const,
         configured: false,
         healthy: false,
-        detail: "Missing REST URL or token",
+        detail: "Not configured",
+        latencyMs: null,
+        dashboardUrl: "https://console.upstash.com",
       })
     );
   }
 
   return Promise.all(checks);
 }
-

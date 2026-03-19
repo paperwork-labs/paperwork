@@ -1,7 +1,16 @@
+import { NextResponse } from "next/server";
 import { getN8nWorkflows, getN8nExecutions } from "@/lib/command-center";
-import OpsClient from "./ops-client";
 
-async function checkSlackToken() {
+export const dynamic = "force-dynamic";
+
+type ServiceToken = {
+  service: string;
+  configured: boolean;
+  verified: boolean;
+  detail: string;
+};
+
+async function checkSlackToken(): Promise<ServiceToken> {
   const token = process.env.SLACK_BOT_TOKEN?.trim();
   if (!token) return { service: "Slack", configured: false, verified: false, detail: "No token" };
   try {
@@ -22,7 +31,7 @@ async function checkSlackToken() {
   }
 }
 
-async function checkGithubToken() {
+async function checkGithubToken(): Promise<ServiceToken> {
   const token = process.env.GITHUB_TOKEN?.trim();
   if (!token) return { service: "GitHub", configured: false, verified: false, detail: "No token" };
   try {
@@ -38,7 +47,7 @@ async function checkGithubToken() {
   }
 }
 
-async function checkVercelToken() {
+async function checkVercelToken(): Promise<ServiceToken> {
   const token = process.env.VERCEL_API_TOKEN?.trim();
   if (!token) return { service: "Vercel", configured: false, verified: false, detail: "No token" };
   try {
@@ -54,7 +63,7 @@ async function checkVercelToken() {
   }
 }
 
-export default async function OpsPage() {
+export async function GET() {
   const [workflows, executions, slack, github, vercel] = await Promise.all([
     getN8nWorkflows(),
     getN8nExecutions(50),
@@ -63,21 +72,17 @@ export default async function OpsPage() {
     checkVercelToken(),
   ]);
 
-  const gdrive = {
+  const gdrive: ServiceToken = {
     service: "Google Drive",
     configured: true,
     verified: true,
     detail: "Configured via MCP",
   };
 
-  return (
-    <OpsClient
-      initial={{
-        workflows,
-        executions,
-        serviceTokens: [slack, github, vercel, gdrive],
-        fetchedAt: new Date().toISOString(),
-      }}
-    />
-  );
+  return NextResponse.json({
+    workflows,
+    executions,
+    serviceTokens: [slack, github, vercel, gdrive],
+    fetchedAt: new Date().toISOString(),
+  });
 }
