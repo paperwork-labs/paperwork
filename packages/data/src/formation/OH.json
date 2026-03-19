@@ -1,0 +1,66 @@
+{
+  "state": "OH",
+  "state_name": "Ohio",
+  "entity_type": "LLC",
+  "sos_url": "https://www.ohiosos.gov/businesses",
+  "filing_office": "Ohio Secretary of State",
+  "fees": {
+    "standard": {
+      "amount_cents": 9900,
+      "description": "Standard LLC filing fee",
+      "is_expedited": false,
+      "processing_days": 10
+    },
+    "expedited": {
+      "amount_cents": 20000,
+      "description": "Expedited processing fee",
+      "is_expedited": true,
+      "processing_days": 2
+    }
+  },
+  "filing": {
+    "primary": {
+      "method": "portal",
+      "url": "https://www.ohiosos.gov/businesses",
+      "notes": "Online filing through Ohio Business Central"
+    }
+  },
+  "requirements": {
+    "articles_of_organization": true,
+    "operating_agreement_required": false,
+    "publication_required": false,
+    "registered_agent_required": true,
+    "annual_report_required": false,
+    "franchise_tax": false
+  },
+  "processing": {
+    "standard_days": 10,
+    "expedited_days": 2
+  },
+  "naming": {
+    "required_suffix": [
+      "LLC",
+      "L.L.C."
+    ],
+    "restricted_words": [
+      "Bank",
+      "Insurance",
+      "Trust"
+    ]
+  },
+  "compliance": {
+    "franchise_tax_due": "Not applicable"
+  },
+  "verification": {
+    "last_verified": "2026-03-19T22:17:21.558Z",
+    "sources": [
+      {
+        "name": "Ohio Secretary of State",
+        "url": "https://www.ohiosos.gov/businesses",
+        "accessed_at": "2026-03-19T22:17:21.558Z"
+      }
+    ],
+    "verified_by": "ai_extraction_fallback",
+    "confidence": 0.55
+  }
+}

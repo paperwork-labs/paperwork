@@ -1,0 +1,66 @@
+{
+  "state": "IL",
+  "state_name": "Illinois",
+  "entity_type": "LLC",
+  "sos_url": "https://www.ilsos.gov/departments/business_services",
+  "filing_office": "Illinois Secretary of State",
+  "fees": {
+    "standard": {
+      "amount_cents": 15000,
+      "description": "Standard LLC filing fee",
+      "is_expedited": false,
+      "processing_days": 10
+    },
+    "expedited": {
+      "amount_cents": 25000,
+      "description": "Expedited LLC filing fee",
+      "is_expedited": true,
+      "processing_days": 1
+    }
+  },
+  "filing": {
+    "primary": {
+      "method": "portal",
+      "url": "https://apps.ilsos.gov",
+      "notes": "Online filing through the Illinois Secretary of State portal"
+    }
+  },
+  "requirements": {
+    "articles_of_organization": true,
+    "operating_agreement_required": false,
+    "publication_required": false,
+    "registered_agent_required": true,
+    "annual_report_required": true,
+    "franchise_tax": false
+  },
+  "processing": {
+    "standard_days": 10,
+    "expedited_days": 1
+  },
+  "naming": {
+    "required_suffix": [
+      "LLC",
+      "L.L.C."
+    ],
+    "restricted_words": [
+      "Bank",
+      "Insurance",
+      "Trust"
+    ]
+  },
+  "compliance": {
+    "annual_report_due": "Annually by the anniversary month of formation"
+  },
+  "verification": {
+    "last_verified": "2026-03-19T22:15:40.231Z",
+    "sources": [
+      {
+        "name": "Illinois Secretary of State",
+        "url": "https://www.ilsos.gov/departments/business_services",
+        "accessed_at": "2026-03-19T22:15:40.231Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.85
+  }
+}

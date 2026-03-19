@@ -1,0 +1,71 @@
+{
+  "state": "MN",
+  "state_name": "Minnesota",
+  "entity_type": "LLC",
+  "sos_url": "https://www.sos.state.mn.us/business-liens",
+  "filing_office": "Office of the Minnesota Secretary of State",
+  "fees": {
+    "standard": {
+      "amount_cents": 15500,
+      "description": "Standard LLC filing fee",
+      "is_expedited": false,
+      "processing_days": 5
+    },
+    "expedited": {
+      "amount_cents": 20500,
+      "description": "Expedited LLC filing fee",
+      "is_expedited": true,
+      "processing_days": 1
+    }
+  },
+  "filing": {
+    "primary": {
+      "method": "portal",
+      "url": "https://mblsportal.sos.state.mn.us/Business/Search",
+      "notes": "Minnesota Business and Lien System Portal"
+    },
+    "fallback": {
+      "method": "mail",
+      "url": "https://www.sos.state.mn.us/business-liens/business-forms-fees/",
+      "notes": "Forms can be mailed to the Business Services office"
+    }
+  },
+  "requirements": {
+    "articles_of_organization": true,
+    "operating_agreement_required": false,
+    "publication_required": false,
+    "registered_agent_required": true,
+    "annual_report_required": true,
+    "franchise_tax": false
+  },
+  "processing": {
+    "standard_days": 5,
+    "expedited_days": 1
+  },
+  "naming": {
+    "required_suffix": [
+      "LLC",
+      "L.L.C."
+    ],
+    "restricted_words": [
+      "Bank",
+      "Insurance",
+      "Trust"
+    ]
+  },
+  "compliance": {
+    "annual_report_due": "December 31"
+  },
+  "verification": {
+    "last_verified": "2026-03-19T22:05:56.093Z",
+    "sources": [
+      {
+        "name": "Minnesota Secretary of State",
+        "url": "https://www.sos.state.mn.us/business-liens",
+        "accessed_at": "2026-03-19T22:05:56.093Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.85
+  }
+}

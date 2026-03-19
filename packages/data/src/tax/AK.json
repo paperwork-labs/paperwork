@@ -1,0 +1,40 @@
+{
+  "state": "AK",
+  "state_name": "Alaska",
+  "tax_year": 2026,
+  "income_tax": {
+    "type": "none"
+  },
+  "standard_deductions": [],
+  "personal_exemption": {
+    "amount_cents": 0,
+    "phases_out": false
+  },
+  "notable_credits": [],
+  "notable_deductions": [],
+  "local_taxes": {
+    "has_local_income_tax": false
+  },
+  "reciprocity": {
+    "has_reciprocity": false
+  },
+  "dor_url": "https://tax.alaska.gov",
+  "tax_foundation_url": "https://taxfoundation.org/location/alaska/",
+  "verification": {
+    "last_verified": "2026-03-19T21:53:21.559Z",
+    "sources": [
+      {
+        "name": "Tax Foundation - Alaska",
+        "url": "https://taxfoundation.org/location/alaska/",
+        "accessed_at": "2026-03-19T21:53:21.559Z"
+      },
+      {
+        "name": "Alaska Department of Revenue",
+        "url": "https://tax.alaska.gov",
+        "accessed_at": "2026-03-19T21:53:21.559Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.85
+  }
+}

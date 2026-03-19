@@ -127,7 +127,13 @@ async function main() {
 
   const now = new Date().toISOString();
 
-  for (const stateCode of STATE_CODES) {
+  const onlyRaw = process.env.EXTRACT_ONLY_STATE?.trim().toUpperCase();
+  const codes: StateCode[] =
+    onlyRaw && (STATE_CODES as readonly string[]).includes(onlyRaw)
+      ? ([onlyRaw] as StateCode[])
+      : [...STATE_CODES];
+
+  for (const stateCode of codes) {
     try {
       // Read source registry
       const sourcePath = join(__dirname, "../src/sources", `${stateCode}.json`);

@@ -1,0 +1,77 @@
+{
+  "state": "TX",
+  "state_name": "Texas",
+  "entity_type": "LLC",
+  "sos_url": "https://www.sos.state.tx.us/corp",
+  "filing_office": "Texas Secretary of State",
+  "fees": {
+    "standard": {
+      "amount_cents": 30000,
+      "description": "Standard LLC filing fee",
+      "is_expedited": false,
+      "processing_days": 10
+    },
+    "expedited": {
+      "amount_cents": 50000,
+      "description": "Expedited LLC filing fee",
+      "is_expedited": true,
+      "processing_days": 2
+    },
+    "name_reservation": {
+      "amount_cents": 4000,
+      "description": "Name reservation fee",
+      "is_expedited": false,
+      "processing_days": 1
+    }
+  },
+  "filing": {
+    "primary": {
+      "method": "portal",
+      "url": "https://www.sos.state.tx.us/corp/forms_boc.shtml",
+      "notes": "Texas Secretary of State online filing system"
+    },
+    "fallback": {
+      "method": "mail",
+      "url": "https://www.sos.state.tx.us/corp/forms_boc.shtml",
+      "notes": "Mail filings are accepted at the Texas Secretary of State"
+    }
+  },
+  "requirements": {
+    "articles_of_organization": true,
+    "operating_agreement_required": false,
+    "publication_required": false,
+    "registered_agent_required": true,
+    "annual_report_required": true,
+    "franchise_tax": true
+  },
+  "processing": {
+    "standard_days": 10,
+    "expedited_days": 2
+  },
+  "naming": {
+    "required_suffix": [
+      "LLC",
+      "L.L.C."
+    ],
+    "restricted_words": [
+      "Bank",
+      "Insurance",
+      "Trust"
+    ]
+  },
+  "compliance": {
+    "franchise_tax_due": "May 15"
+  },
+  "verification": {
+    "last_verified": "2026-03-19T22:17:37.824Z",
+    "sources": [
+      {
+        "name": "Texas Secretary of State",
+        "url": "https://www.sos.state.tx.us/corp",
+        "accessed_at": "2026-03-19T22:17:37.824Z"
+      }
+    ],
+    "verified_by": "ai_extraction_fallback",
+    "confidence": 0.55
+  }
+}

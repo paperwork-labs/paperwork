@@ -1,0 +1,59 @@
+{
+  "state": "FL",
+  "state_name": "Florida",
+  "entity_type": "LLC",
+  "sos_url": "https://dos.fl.gov/sunbiz/",
+  "filing_office": "Division of Corporations",
+  "fees": {
+    "standard": {
+      "amount_cents": 12500,
+      "description": "Standard LLC filing fee",
+      "is_expedited": false,
+      "processing_days": 5
+    }
+  },
+  "filing": {
+    "primary": {
+      "method": "portal",
+      "url": "https://efile.sunbiz.org/llc_file.html",
+      "notes": "Florida Sunbiz E-Filing Portal"
+    }
+  },
+  "requirements": {
+    "articles_of_organization": true,
+    "operating_agreement_required": false,
+    "publication_required": false,
+    "registered_agent_required": true,
+    "annual_report_required": true,
+    "franchise_tax": false
+  },
+  "processing": {
+    "standard_days": 5
+  },
+  "naming": {
+    "required_suffix": [
+      "LLC",
+      "L.L.C."
+    ],
+    "restricted_words": [
+      "Bank",
+      "Insurance",
+      "Trust"
+    ]
+  },
+  "compliance": {
+    "annual_report_due": "May 1"
+  },
+  "verification": {
+    "last_verified": "2026-03-19T22:05:56.093Z",
+    "sources": [
+      {
+        "name": "Florida Division of Corporations",
+        "url": "https://dos.fl.gov/sunbiz/",
+        "accessed_at": "2026-03-19T22:05:56.093Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.85
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "state": "DC",
+  "state_name": "District of Columbia",
+  "entity_type": "LLC",
+  "sos_url": "https://dcra.dc.gov/service/corporate-registration",
+  "filing_office": "Department of Licensing and Consumer Protection",
+  "fees": {
+    "standard": {
+      "amount_cents": 22000,
+      "description": "Standard LLC filing fee",
+      "is_expedited": false,
+      "processing_days": 15
+    }
+  },
+  "filing": {
+    "primary": {
+      "method": "portal",
+      "url": "https://corponline.dcra.dc.gov",
+      "notes": "DC Business Portal for LLC formation"
+    }
+  },
+  "requirements": {
+    "articles_of_organization": true,
+    "operating_agreement_required": false,
+    "publication_required": false,
+    "registered_agent_required": true,
+    "annual_report_required": true,
+    "franchise_tax": false
+  },
+  "processing": {
+    "standard_days": 15
+  },
+  "naming": {
+    "required_suffix": [
+      "LLC",
+      "L.L.C."
+    ],
+    "restricted_words": [
+      "Bank",
+      "Insurance",
+      "Trust"
+    ]
+  },
+  "compliance": {
+    "annual_report_due": "April 1"
+  },
+  "verification": {
+    "last_verified": "2026-03-19T22:05:56.093Z",
+    "sources": [
+      {
+        "name": "District of Columbia Department of Consumer and Regulatory Affairs",
+        "url": "https://dcra.dc.gov/service/corporate-registration",
+        "accessed_at": "2026-03-19T22:05:56.093Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.85
+  }
+}

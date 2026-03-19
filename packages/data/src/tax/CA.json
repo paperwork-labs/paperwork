@@ -1,0 +1,247 @@
+{
+  "state": "CA",
+  "state_name": "California",
+  "tax_year": 2026,
+  "income_tax": {
+    "type": "progressive",
+    "brackets": {
+      "single": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 932500,
+          "rate_bps": 100
+        },
+        {
+          "min_income_cents": 932500,
+          "max_income_cents": 2217000,
+          "rate_bps": 200
+        },
+        {
+          "min_income_cents": 2217000,
+          "max_income_cents": 3483500,
+          "rate_bps": 400
+        },
+        {
+          "min_income_cents": 3483500,
+          "max_income_cents": 4843500,
+          "rate_bps": 600
+        },
+        {
+          "min_income_cents": 4843500,
+          "max_income_cents": 6127300,
+          "rate_bps": 800
+        },
+        {
+          "min_income_cents": 6127300,
+          "max_income_cents": 31230000,
+          "rate_bps": 930
+        },
+        {
+          "min_income_cents": 31230000,
+          "max_income_cents": 37522000,
+          "rate_bps": 1030
+        },
+        {
+          "min_income_cents": 37522000,
+          "max_income_cents": 62537000,
+          "rate_bps": 1130
+        },
+        {
+          "min_income_cents": 62537000,
+          "max_income_cents": null,
+          "rate_bps": 1330
+        }
+      ],
+      "married_filing_jointly": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 1865000,
+          "rate_bps": 100
+        },
+        {
+          "min_income_cents": 1865000,
+          "max_income_cents": 4434000,
+          "rate_bps": 200
+        },
+        {
+          "min_income_cents": 4434000,
+          "max_income_cents": 6967000,
+          "rate_bps": 400
+        },
+        {
+          "min_income_cents": 6967000,
+          "max_income_cents": 9687000,
+          "rate_bps": 600
+        },
+        {
+          "min_income_cents": 9687000,
+          "max_income_cents": 12254600,
+          "rate_bps": 800
+        },
+        {
+          "min_income_cents": 12254600,
+          "max_income_cents": 62460000,
+          "rate_bps": 930
+        },
+        {
+          "min_income_cents": 62460000,
+          "max_income_cents": 75044000,
+          "rate_bps": 1030
+        },
+        {
+          "min_income_cents": 75044000,
+          "max_income_cents": 125074000,
+          "rate_bps": 1130
+        },
+        {
+          "min_income_cents": 125074000,
+          "max_income_cents": null,
+          "rate_bps": 1330
+        }
+      ],
+      "married_filing_separately": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 932500,
+          "rate_bps": 100
+        },
+        {
+          "min_income_cents": 932500,
+          "max_income_cents": 2217000,
+          "rate_bps": 200
+        },
+        {
+          "min_income_cents": 2217000,
+          "max_income_cents": 3483500,
+          "rate_bps": 400
+        },
+        {
+          "min_income_cents": 3483500,
+          "max_income_cents": 4843500,
+          "rate_bps": 600
+        },
+        {
+          "min_income_cents": 4843500,
+          "max_income_cents": 6127300,
+          "rate_bps": 800
+        },
+        {
+          "min_income_cents": 6127300,
+          "max_income_cents": 31230000,
+          "rate_bps": 930
+        },
+        {
+          "min_income_cents": 31230000,
+          "max_income_cents": 37522000,
+          "rate_bps": 1030
+        },
+        {
+          "min_income_cents": 37522000,
+          "max_income_cents": 62537000,
+          "rate_bps": 1130
+        },
+        {
+          "min_income_cents": 62537000,
+          "max_income_cents": null,
+          "rate_bps": 1330
+        }
+      ],
+      "head_of_household": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 1865000,
+          "rate_bps": 100
+        },
+        {
+          "min_income_cents": 1865000,
+          "max_income_cents": 4434000,
+          "rate_bps": 200
+        },
+        {
+          "min_income_cents": 4434000,
+          "max_income_cents": 6967000,
+          "rate_bps": 400
+        },
+        {
+          "min_income_cents": 6967000,
+          "max_income_cents": 9687000,
+          "rate_bps": 600
+        },
+        {
+          "min_income_cents": 9687000,
+          "max_income_cents": 12254600,
+          "rate_bps": 800
+        },
+        {
+          "min_income_cents": 12254600,
+          "max_income_cents": 62460000,
+          "rate_bps": 930
+        },
+        {
+          "min_income_cents": 62460000,
+          "max_income_cents": 75044000,
+          "rate_bps": 1030
+        },
+        {
+          "min_income_cents": 75044000,
+          "max_income_cents": 125074000,
+          "rate_bps": 1130
+        },
+        {
+          "min_income_cents": 125074000,
+          "max_income_cents": null,
+          "rate_bps": 1330
+        }
+      ]
+    }
+  },
+  "standard_deductions": [
+    {
+      "filing_status": "single",
+      "amount_cents": 540000
+    },
+    {
+      "filing_status": "married_filing_jointly",
+      "amount_cents": 1080000
+    },
+    {
+      "filing_status": "married_filing_separately",
+      "amount_cents": 540000
+    },
+    {
+      "filing_status": "head_of_household",
+      "amount_cents": 1080000
+    }
+  ],
+  "personal_exemption": {
+    "amount_cents": 12900,
+    "phases_out": true
+  },
+  "notable_credits": [],
+  "notable_deductions": [],
+  "local_taxes": {
+    "has_local_income_tax": true
+  },
+  "reciprocity": {
+    "has_reciprocity": false
+  },
+  "dor_url": "https://www.ftb.ca.gov",
+  "tax_foundation_url": "https://taxfoundation.org/location/california/",
+  "verification": {
+    "last_verified": "2026-03-19T21:53:21.559Z",
+    "sources": [
+      {
+        "name": "Tax Foundation - California",
+        "url": "https://taxfoundation.org/location/california/",
+        "accessed_at": "2026-03-19T21:53:21.559Z"
+      },
+      {
+        "name": "California Franchise Tax Board",
+        "url": "https://www.ftb.ca.gov",
+        "accessed_at": "2026-03-19T21:53:21.559Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.85
+  }
+}

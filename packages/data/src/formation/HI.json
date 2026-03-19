@@ -1,0 +1,63 @@
+{
+  "state": "HI",
+  "state_name": "Hawaii",
+  "entity_type": "LLC",
+  "sos_url": "https://cca.hawaii.gov/breg/",
+  "filing_office": "Business Registration Division",
+  "fees": {
+    "standard": {
+      "amount_cents": 50000,
+      "description": "Standard LLC filing fee",
+      "is_expedited": false,
+      "processing_days": 10
+    }
+  },
+  "filing": {
+    "primary": {
+      "method": "portal",
+      "url": "https://hbe.ehawaii.gov/documents/business.html",
+      "notes": "Online filing through Hawaii Business Express"
+    },
+    "fallback": {
+      "method": "mail",
+      "notes": "Mail filings are accepted but may have delayed processing times"
+    }
+  },
+  "requirements": {
+    "articles_of_organization": true,
+    "operating_agreement_required": false,
+    "publication_required": false,
+    "registered_agent_required": true,
+    "annual_report_required": true,
+    "franchise_tax": false
+  },
+  "processing": {
+    "standard_days": 10
+  },
+  "naming": {
+    "required_suffix": [
+      "LLC",
+      "L.L.C."
+    ],
+    "restricted_words": [
+      "Bank",
+      "Insurance",
+      "Trust"
+    ]
+  },
+  "compliance": {
+    "annual_report_due": "Annually by the end of the quarter of formation"
+  },
+  "verification": {
+    "last_verified": "2026-03-19T22:05:56.093Z",
+    "sources": [
+      {
+        "name": "Hawaii Business Registration Division",
+        "url": "https://cca.hawaii.gov/breg/",
+        "accessed_at": "2026-03-19T22:05:56.093Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.85
+  }
+}
