@@ -1,0 +1,207 @@
+{
+  "state": "NY",
+  "state_name": "New York",
+  "tax_year": 2025,
+  "income_tax": {
+    "type": "progressive",
+    "brackets": {
+      "single": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 850000,
+          "rate_bps": 400
+        },
+        {
+          "min_income_cents": 850000,
+          "max_income_cents": 1170000,
+          "rate_bps": 450
+        },
+        {
+          "min_income_cents": 1170000,
+          "max_income_cents": 1390000,
+          "rate_bps": 600
+        },
+        {
+          "min_income_cents": 1390000,
+          "max_income_cents": 2140000,
+          "rate_bps": 645
+        },
+        {
+          "min_income_cents": 2140000,
+          "max_income_cents": 5375000,
+          "rate_bps": 685
+        },
+        {
+          "min_income_cents": 5375000,
+          "max_income_cents": 21500000,
+          "rate_bps": 1090
+        },
+        {
+          "min_income_cents": 21500000,
+          "max_income_cents": null,
+          "rate_bps": 1090
+        }
+      ],
+      "married_filing_jointly": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 1710000,
+          "rate_bps": 400
+        },
+        {
+          "min_income_cents": 1710000,
+          "max_income_cents": 2340000,
+          "rate_bps": 450
+        },
+        {
+          "min_income_cents": 2340000,
+          "max_income_cents": 2790000,
+          "rate_bps": 600
+        },
+        {
+          "min_income_cents": 2790000,
+          "max_income_cents": 4300000,
+          "rate_bps": 645
+        },
+        {
+          "min_income_cents": 4300000,
+          "max_income_cents": 10750000,
+          "rate_bps": 685
+        },
+        {
+          "min_income_cents": 10750000,
+          "max_income_cents": 21500000,
+          "rate_bps": 1090
+        },
+        {
+          "min_income_cents": 21500000,
+          "max_income_cents": null,
+          "rate_bps": 1090
+        }
+      ],
+      "married_filing_separately": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 850000,
+          "rate_bps": 400
+        },
+        {
+          "min_income_cents": 850000,
+          "max_income_cents": 1170000,
+          "rate_bps": 450
+        },
+        {
+          "min_income_cents": 1170000,
+          "max_income_cents": 1390000,
+          "rate_bps": 600
+        },
+        {
+          "min_income_cents": 1390000,
+          "max_income_cents": 2140000,
+          "rate_bps": 645
+        },
+        {
+          "min_income_cents": 2140000,
+          "max_income_cents": 5375000,
+          "rate_bps": 685
+        },
+        {
+          "min_income_cents": 5375000,
+          "max_income_cents": 21500000,
+          "rate_bps": 1090
+        },
+        {
+          "min_income_cents": 21500000,
+          "max_income_cents": null,
+          "rate_bps": 1090
+        }
+      ],
+      "head_of_household": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 1285000,
+          "rate_bps": 400
+        },
+        {
+          "min_income_cents": 1285000,
+          "max_income_cents": 1755000,
+          "rate_bps": 450
+        },
+        {
+          "min_income_cents": 1755000,
+          "max_income_cents": 2085000,
+          "rate_bps": 600
+        },
+        {
+          "min_income_cents": 2085000,
+          "max_income_cents": 3220000,
+          "rate_bps": 645
+        },
+        {
+          "min_income_cents": 3220000,
+          "max_income_cents": 8062500,
+          "rate_bps": 685
+        },
+        {
+          "min_income_cents": 8062500,
+          "max_income_cents": 21500000,
+          "rate_bps": 1090
+        },
+        {
+          "min_income_cents": 21500000,
+          "max_income_cents": null,
+          "rate_bps": 1090
+        }
+      ]
+    }
+  },
+  "standard_deductions": [
+    {
+      "filing_status": "single",
+      "amount_cents": 8000
+    },
+    {
+      "filing_status": "married_filing_jointly",
+      "amount_cents": 16000
+    },
+    {
+      "filing_status": "married_filing_separately",
+      "amount_cents": 8000
+    },
+    {
+      "filing_status": "head_of_household",
+      "amount_cents": 11200
+    }
+  ],
+  "personal_exemption": {
+    "amount_cents": 1000,
+    "phases_out": true
+  },
+  "notable_credits": [],
+  "notable_deductions": [],
+  "local_taxes": {
+    "has_local_income_tax": true
+  },
+  "reciprocity": {
+    "has_reciprocity": false
+  },
+  "dor_url": "https://www.tax.ny.gov",
+  "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
+  "verification": {
+    "last_verified": "2026-03-19T23:01:14.173Z",
+    "sources": [
+      {
+        "name": "Tax Foundation 2025 Rates",
+        "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
+        "accessed_at": "2026-03-19T23:01:14.173Z"
+      },
+      {
+        "name": "New York State Department of Taxation and Finance",
+        "url": "https://www.tax.ny.gov",
+        "accessed_at": "2026-03-19T23:01:14.173Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.85
+  }
+}

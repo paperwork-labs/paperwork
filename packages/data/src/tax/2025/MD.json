@@ -1,0 +1,199 @@
+{
+  "state": "MD",
+  "state_name": "Maryland",
+  "tax_year": 2025,
+  "income_tax": {
+    "type": "progressive",
+    "brackets": {
+      "single": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 100000,
+          "rate_bps": 200
+        },
+        {
+          "min_income_cents": 100000,
+          "max_income_cents": 200000,
+          "rate_bps": 300
+        },
+        {
+          "min_income_cents": 200000,
+          "max_income_cents": 300000,
+          "rate_bps": 400
+        },
+        {
+          "min_income_cents": 300000,
+          "max_income_cents": 10000000,
+          "rate_bps": 475
+        },
+        {
+          "min_income_cents": 10000000,
+          "max_income_cents": 12500000,
+          "rate_bps": 500
+        },
+        {
+          "min_income_cents": 12500000,
+          "max_income_cents": 15000000,
+          "rate_bps": 525
+        },
+        {
+          "min_income_cents": 15000000,
+          "max_income_cents": null,
+          "rate_bps": 575
+        }
+      ],
+      "married_filing_jointly": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 150000,
+          "rate_bps": 200
+        },
+        {
+          "min_income_cents": 150000,
+          "max_income_cents": 225000,
+          "rate_bps": 300
+        },
+        {
+          "min_income_cents": 225000,
+          "max_income_cents": 300000,
+          "rate_bps": 400
+        },
+        {
+          "min_income_cents": 300000,
+          "max_income_cents": 10000000,
+          "rate_bps": 475
+        },
+        {
+          "min_income_cents": 10000000,
+          "max_income_cents": 12500000,
+          "rate_bps": 500
+        },
+        {
+          "min_income_cents": 12500000,
+          "max_income_cents": 15000000,
+          "rate_bps": 525
+        },
+        {
+          "min_income_cents": 15000000,
+          "max_income_cents": null,
+          "rate_bps": 575
+        }
+      ],
+      "married_filing_separately": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 100000,
+          "rate_bps": 200
+        },
+        {
+          "min_income_cents": 100000,
+          "max_income_cents": 150000,
+          "rate_bps": 300
+        },
+        {
+          "min_income_cents": 150000,
+          "max_income_cents": 200000,
+          "rate_bps": 400
+        },
+        {
+          "min_income_cents": 200000,
+          "max_income_cents": 10000000,
+          "rate_bps": 475
+        },
+        {
+          "min_income_cents": 10000000,
+          "max_income_cents": 12500000,
+          "rate_bps": 500
+        },
+        {
+          "min_income_cents": 12500000,
+          "max_income_cents": 15000000,
+          "rate_bps": 525
+        },
+        {
+          "min_income_cents": 15000000,
+          "max_income_cents": null,
+          "rate_bps": 575
+        }
+      ],
+      "head_of_household": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 100000,
+          "rate_bps": 200
+        },
+        {
+          "min_income_cents": 100000,
+          "max_income_cents": 200000,
+          "rate_bps": 300
+        },
+        {
+          "min_income_cents": 200000,
+          "max_income_cents": 300000,
+          "rate_bps": 400
+        },
+        {
+          "min_income_cents": 300000,
+          "max_income_cents": 10000000,
+          "rate_bps": 475
+        },
+        {
+          "min_income_cents": 10000000,
+          "max_income_cents": 12500000,
+          "rate_bps": 500
+        },
+        {
+          "min_income_cents": 12500000,
+          "max_income_cents": 15000000,
+          "rate_bps": 525
+        },
+        {
+          "min_income_cents": 15000000,
+          "max_income_cents": null,
+          "rate_bps": 575
+        }
+      ]
+    }
+  },
+  "standard_deductions": [
+    {
+      "filing_status": "single",
+      "amount_cents": 270000
+    },
+    {
+      "filing_status": "married_filing_jointly",
+      "amount_cents": 545000
+    }
+  ],
+  "personal_exemption": {
+    "amount_cents": 32000,
+    "phases_out": false
+  },
+  "notable_credits": [],
+  "notable_deductions": [],
+  "local_taxes": {
+    "has_local_income_tax": true
+  },
+  "reciprocity": {
+    "has_reciprocity": false
+  },
+  "dor_url": "https://www.marylandtaxes.gov",
+  "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
+  "verification": {
+    "last_verified": "2026-03-19T23:01:14.173Z",
+    "sources": [
+      {
+        "name": "Tax Foundation 2025 Rates",
+        "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
+        "accessed_at": "2026-03-19T23:01:14.173Z"
+      },
+      {
+        "name": "Maryland Comptroller",
+        "url": "https://www.marylandtaxes.gov",
+        "accessed_at": "2026-03-19T23:01:14.173Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.85
+  }
+}

@@ -23,14 +23,16 @@ function buildSystemPrompt(stateCode: StateCode, stateName: string): string {
     ? "This state has a FLAT income tax rate. Use income_tax: { type: 'flat', flat_rate_bps: <rate_in_basis_points> }"
     : "This state has a PROGRESSIVE income tax with brackets. Use income_tax: { type: 'progressive', brackets: { single: [...], married_filing_jointly: [...], married_filing_separately: [...], head_of_household: [...] } }";
 
-  return `You are extracting state tax data for ${stateName} (${stateCode}) for tax year 2026.
+  const taxYear = parseInt(process.env.EXTRACT_TAX_YEAR || "2026", 10);
+
+  return `You are extracting state tax data for ${stateName} (${stateCode}) for tax year ${taxYear}.
 
 ${taxTypeHint}
 
 CRITICAL REQUIREMENTS:
 - All monetary amounts must be in CENTS (e.g., $5,000 = 500000 cents)
 - All tax rates must be in BASIS POINTS (e.g., 4.40% = 440 basis points)
-- tax_year must be 2026
+- tax_year must be ${taxYear}
 - For progressive tax states, you MUST include brackets for all 4 filing statuses: single, married_filing_jointly, married_filing_separately, head_of_household
 - Each bracket must have min_income_cents, max_income_cents (null for top bracket), and rate_bps
 - standard_deductions is an array with at least one entry per filing status
@@ -122,8 +124,11 @@ async function extractTaxData(
 }
 
 async function main() {
-  const outputDir = join(__dirname, "../src/tax");
+  const taxYear = parseInt(process.env.EXTRACT_TAX_YEAR || "2026", 10);
+  const outputDir = join(__dirname, `../src/tax/${taxYear}`);
   mkdirSync(outputDir, { recursive: true });
+
+  console.log(`Extracting tax data for TY${taxYear}...`);
 
   const now = new Date().toISOString();
 
@@ -145,9 +150,18 @@ async function main() {
         continue;
       }
 
-      // Find Tax Foundation URL
+      // For non-current years, use the Tax Foundation aggregate rates page
+      // 2025 = base URL (current); 2024 and earlier = year-suffixed URL
+      const tfRatesUrl =
+        taxYear === 2025
+          ? "https://taxfoundation.org/data/all/state/state-income-tax-rates"
+          : taxYear < 2025
+            ? `https://taxfoundation.org/data/all/state/state-income-tax-rates-${taxYear}`
+            : undefined;
+
+      // Find Tax Foundation URL (per-state page for current year, aggregate for prior years)
       const taxFoundationSource = sources.tax_sources.find((s) => s.type === "tax_foundation");
-      if (!taxFoundationSource) {
+      if (!taxFoundationSource && !tfRatesUrl) {
         console.error(`${stateCode}: No Tax Foundation URL found`);
         continue;
       }
@@ -155,10 +169,12 @@ async function main() {
       // Find DOR URL
       const dorSource = sources.tax_sources.find((s) => s.type === "dor");
 
+      const fetchUrl = tfRatesUrl || taxFoundationSource!.url;
+
       // Fetch page content
       let pageContent: string;
       try {
-        pageContent = await fetchPageContent(taxFoundationSource.url);
+        pageContent = await fetchPageContent(fetchUrl);
       } catch (error: any) {
         console.error(`${stateCode}: Failed to fetch page:`, error.message);
         continue;
@@ -176,8 +192,8 @@ async function main() {
       // Build verification metadata
       const verificationSources = [
         {
-          name: taxFoundationSource.name,
-          url: taxFoundationSource.url,
+          name: tfRatesUrl ? `Tax Foundation ${taxYear} Rates` : (taxFoundationSource?.name ?? "Tax Foundation"),
+          url: fetchUrl,
           accessed_at: now,
         },
       ];
@@ -197,13 +213,13 @@ async function main() {
       };
 
       // Set URLs from source registry (dor_url is required, so use a placeholder if missing)
-      taxData.dor_url = dorSource?.url || taxFoundationSource.url; // Fallback to Tax Foundation URL if DOR missing
-      taxData.tax_foundation_url = taxFoundationSource.url;
+      taxData.dor_url = dorSource?.url || taxFoundationSource?.url || fetchUrl;
+      taxData.tax_foundation_url = tfRatesUrl || taxFoundationSource?.url;
 
       // Ensure state and state_name match
       taxData.state = stateCode;
       taxData.state_name = sources.state_name;
-      taxData.tax_year = 2026;
+      taxData.tax_year = taxYear;
 
       // Validate final tax data against schema before writing
       const finalTaxData = StateTaxRulesSchema.parse(taxData);
