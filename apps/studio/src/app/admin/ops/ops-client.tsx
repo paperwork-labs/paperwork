@@ -15,6 +15,14 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 
+type WorkflowMeta = {
+  model: string | null;
+  costPerRun: string;
+  trigger: string;
+  role: string;
+  deviation?: string;
+};
+
 type Workflow = {
   id: string;
   name: string;
@@ -44,6 +52,7 @@ type OpsData = {
   workflows: Workflow[];
   executions: Execution[];
   serviceTokens: ServiceToken[];
+  workflowMeta: Record<string, WorkflowMeta>;
   fetchedAt: string;
 };
 
@@ -128,11 +137,11 @@ export default function OpsClient({ initial }: { initial: OpsData }) {
   }, []);
 
   useEffect(() => {
-    const interval = setInterval(refresh, 30000);
+    const interval = setInterval(refresh, 60000);
     return () => clearInterval(interval);
   }, [refresh]);
 
-  const { workflows, executions, serviceTokens, fetchedAt } = data;
+  const { workflows, executions, serviceTokens, workflowMeta, fetchedAt } = data;
 
   const activeCount = workflows.filter((w) => w.active).length;
   const workflowNameById = useMemo(
@@ -204,6 +213,7 @@ export default function OpsClient({ initial }: { initial: OpsData }) {
             workflows.map((w) => {
               const lastExec = executions.find((e) => e.workflowId === w.id);
               const lastStatus = lastExec ? executionStatusStyle(lastExec.status) : null;
+              const meta = workflowMeta?.[w.name];
               return (
                 <motion.div
                   key={w.id}
@@ -223,18 +233,33 @@ export default function OpsClient({ initial }: { initial: OpsData }) {
                         {w.name}
                       </span>
                     </div>
-                    {lastStatus && (
-                      <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${lastStatus.bg}`} />
+                    <div className="flex items-center gap-2 shrink-0">
+                      {meta?.model && (
+                        <span className="rounded-full bg-zinc-700/60 px-1.5 py-0.5 text-[10px] font-mono text-zinc-300">
+                          {meta.model}
+                        </span>
+                      )}
+                      {lastStatus && (
+                        <span className={`inline-block h-2 w-2 rounded-full ${lastStatus.bg}`} />
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-1 pl-[22px]">
+                    {lastExec && (
+                      <p className="text-xs text-zinc-500">
+                        Last: {relativeTime(lastExec.startedAt || lastExec.stoppedAt)}{" "}
+                        <span className={lastStatus?.color}>
+                          {lastExec.status || (lastExec.finished ? "finished" : "running")}
+                        </span>
+                        {meta?.costPerRun && meta.costPerRun !== "$0" && (
+                          <span className="ml-1.5 text-zinc-600">{meta.costPerRun}/run</span>
+                        )}
+                      </p>
+                    )}
+                    {meta?.deviation && (
+                      <p className="mt-0.5 text-[10px] text-amber-400/70">{meta.deviation}</p>
                     )}
                   </div>
-                  {lastExec && (
-                    <p className="mt-1 pl-[22px] text-xs text-zinc-500">
-                      Last: {relativeTime(lastExec.startedAt || lastExec.stoppedAt)}{" "}
-                      <span className={lastStatus?.color}>
-                        {lastExec.status || (lastExec.finished ? "finished" : "running")}
-                      </span>
-                    </p>
-                  )}
                 </motion.div>
               );
             })

@@ -80,10 +80,8 @@ const fadeUp = {
 
 export default function SecretsClient({
   secrets,
-  apiKey,
 }: {
   secrets: SecretMeta[];
-  apiKey: string;
 }) {
   const [search, setSearch] = useState("");
   const [revealed, setRevealed] = useState<Record<string, RevealedSecret>>({});
@@ -149,9 +147,7 @@ export default function SecretsClient({
     }));
 
     try {
-      const res = await fetch(`/api/secrets/${id}`, {
-        headers: { Authorization: `Bearer ${apiKey}` },
-      });
+      const res = await fetch(`/api/admin/secrets/${id}`);
       const json = await res.json();
       if (!res.ok || !json.success) {
         throw new Error(json.error || "Failed to decrypt");

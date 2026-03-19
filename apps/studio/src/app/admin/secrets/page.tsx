@@ -50,7 +50,5 @@ export default async function SecretsPage() {
     );
   }
 
-  const apiKey = process.env.SECRETS_API_KEY || "";
-
-  return <SecretsClient secrets={secrets} apiKey={apiKey} />;
+  return <SecretsClient secrets={secrets} />;
 }

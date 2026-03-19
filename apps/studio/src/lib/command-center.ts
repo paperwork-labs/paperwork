@@ -1,3 +1,13 @@
+const responseCache = new Map<string, { data: unknown; ts: number }>();
+export function cached<T>(key: string, ttlMs: number, fn: () => Promise<T>): Promise<T> {
+  const hit = responseCache.get(key);
+  if (hit && Date.now() - hit.ts < ttlMs) return Promise.resolve(hit.data as T);
+  return fn().then((data) => {
+    responseCache.set(key, { data, ts: Date.now() });
+    return data;
+  });
+}
+
 export type N8nWorkflow = {
   id: string;
   name: string;
@@ -35,6 +45,116 @@ export type InfraStatus = {
   detail: string;
   latencyMs: number | null;
   dashboardUrl: string | null;
+};
+
+export type WorkflowMeta = {
+  model: string | null;
+  costPerRun: string;
+  trigger: string;
+  role: string;
+  deviation?: string;
+};
+
+// Source: docs/AI_MODEL_REGISTRY.md + infra/hetzner/workflows/*.json
+export const WORKFLOW_META: Record<string, WorkflowMeta> = {
+  "Agent Thread Handler": {
+    model: "gpt-4o-mini",
+    costPerRun: "~$0.002",
+    trigger: "Slack webhook",
+    role: "Intern",
+  },
+  "EA Daily Briefing": {
+    model: "gpt-4o-mini",
+    costPerRun: "~$0.003",
+    trigger: "Cron 7am PT",
+    role: "Intern",
+  },
+  "EA Weekly Plan": {
+    model: "gpt-4o-mini",
+    costPerRun: "~$0.005",
+    trigger: "Cron Sun 6pm PT",
+    role: "Intern",
+  },
+  "PR Summary": {
+    model: "gpt-4o-mini",
+    costPerRun: "~$0.001",
+    trigger: "GitHub webhook",
+    role: "Intern",
+  },
+  "Decision Logger": {
+    model: null,
+    costPerRun: "$0",
+    trigger: "Slack webhook",
+    role: "No AI",
+  },
+  "Social Content Generator": {
+    model: "gpt-4o",
+    costPerRun: "~$0.05",
+    trigger: "POST webhook",
+    role: "Creative Director",
+  },
+  "Growth Content Writer": {
+    model: "gpt-4o",
+    costPerRun: "~$0.05",
+    trigger: "POST webhook",
+    role: "Creative Director",
+  },
+  "Partnership Outreach Drafter": {
+    model: "gpt-4o",
+    costPerRun: "~$0.03",
+    trigger: "POST webhook",
+    role: "Creative Director",
+  },
+  "CPA Tax Review": {
+    model: "gpt-4o",
+    costPerRun: "~$0.04",
+    trigger: "POST webhook",
+    role: "Creative Director",
+    deviation: "Should be Claude Sonnet (compliance)",
+  },
+  "QA Security Scan": {
+    model: "gpt-4o",
+    costPerRun: "~$0.04",
+    trigger: "POST webhook",
+    role: "Creative Director",
+    deviation: "Should be Claude Sonnet (code/security)",
+  },
+  "Weekly Strategy Check-in": {
+    model: "gpt-4o",
+    costPerRun: "~$0.04",
+    trigger: "Cron Mon 9am PT",
+    role: "Creative Director",
+  },
+  "Sprint Kickoff": {
+    model: "gpt-4o",
+    costPerRun: "~$0.04",
+    trigger: "Cron Mon 7am PT",
+    role: "Creative Director",
+  },
+  "Sprint Close": {
+    model: "gpt-4o",
+    costPerRun: "~$0.04",
+    trigger: "Cron Fri 9pm PT",
+    role: "Creative Director",
+  },
+  "Infra Health Check": {
+    model: null,
+    costPerRun: "$0",
+    trigger: "Cron every 30m",
+    role: "No AI",
+  },
+  "Infra Heartbeat": {
+    model: null,
+    costPerRun: "$0",
+    trigger: "Cron daily",
+    role: "No AI",
+  },
+  "Infra Status Slash Command": {
+    model: null,
+    costPerRun: "$0",
+    trigger: "Slack slash command",
+    role: "No AI",
+  },
 };
 
 function normalizeBaseUrl(raw: string | undefined) {
@@ -115,6 +235,47 @@ export async function getRecentPullRequests(limit = 5) {
   return data ?? [];
 }
 
+export type CIRun = {
+  id: number;
+  name: string;
+  status: string;
+  conclusion: string | null;
+  url: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export async function getRecentCIRuns(limit = 10): Promise<CIRun[]> {
+  const token = process.env.GITHUB_TOKEN;
+  if (!token) return [];
+  const data = await fetchJson<{ workflow_runs?: Array<{
+    id: number;
+    name: string;
+    status: string;
+    conclusion: string | null;
+    html_url: string;
+    created_at: string;
+    updated_at: string;
+  }> }>(
+    `https://api.github.com/repos/paperwork-labs/paperwork/actions/runs?per_page=${limit}&branch=main`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+      },
+    },
+  );
+  return (data?.workflow_runs ?? []).map((r) => ({
+    id: r.id,
+    name: r.name,
+    status: r.status,
+    conclusion: r.conclusion,
+    url: r.html_url,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  }));
+}
+
 async function checkWithLatency(
   service: string,
   category: InfraStatus["category"],
@@ -126,9 +287,9 @@ async function checkWithLatency(
     return { service, category, configured: false, healthy: false, detail: "Not configured", latencyMs: null, dashboardUrl };
   }
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
     const start = performance.now();
     const response = await fetch(url, {
       method: "GET",
@@ -137,7 +298,6 @@ async function checkWithLatency(
       headers: options?.headers,
     });
     const latencyMs = Math.round(performance.now() - start);
-    clearTimeout(timeout);
 
     let detail = response.ok ? "Reachable" : `HTTP ${response.status}`;
 
@@ -156,6 +316,8 @@ async function checkWithLatency(
   } catch (err) {
     const detail = err instanceof DOMException && err.name === "AbortError" ? "Timeout (8s)" : "Unreachable";
     return { service, category, configured: true, healthy: false, detail, latencyMs: null, dashboardUrl };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -189,7 +351,7 @@ export async function getInfrastructureStatus(): Promise<InfraStatus[]> {
     checkWithLatency(
       "FileFree API",
       "core",
-      "https://api.filefree.tax/health",
+      "https://api.filefree.ai/health",
       "https://dashboard.render.com",
       { validateJson: true },
     ),

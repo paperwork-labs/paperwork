@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { getN8nWorkflows, getN8nExecutions } from "@/lib/command-center";
+import { cached, getN8nWorkflows, getN8nExecutions, WORKFLOW_META } from "@/lib/command-center";
 
 export const dynamic = "force-dynamic";
+
+const CACHE_TTL = 60_000;
 
 type ServiceToken = {
   service: string;
@@ -64,25 +66,32 @@ async function checkVercelToken(): Promise<ServiceToken> {
 }
 
 export async function GET() {
-  const [workflows, executions, slack, github, vercel] = await Promise.all([
-    getN8nWorkflows(),
-    getN8nExecutions(50),
-    checkSlackToken(),
-    checkGithubToken(),
-    checkVercelToken(),
-  ]);
+  const data = await cached("admin:ops", CACHE_TTL, async () => {
+    const [workflows, executions, slack, github, vercel] = await Promise.all([
+      getN8nWorkflows(),
+      getN8nExecutions(50),
+      checkSlackToken(),
+      checkGithubToken(),
+      checkVercelToken(),
+    ]);
 
-  const gdrive: ServiceToken = {
-    service: "Google Drive",
-    configured: true,
-    verified: true,
-    detail: "Configured via MCP",
-  };
+    const gdrive: ServiceToken = {
+      service: "Google Drive",
+      configured: true,
+      verified: true,
+      detail: "Configured via MCP",
+    };
+
+    return {
+      workflows,
+      executions,
+      serviceTokens: [slack, github, vercel, gdrive],
+      workflowMeta: WORKFLOW_META,
+    };
+  });
 
   return NextResponse.json({
-    workflows,
-    executions,
-    serviceTokens: [slack, github, vercel, gdrive],
+    ...data,
     fetchedAt: new Date().toISOString(),
   });
 }
