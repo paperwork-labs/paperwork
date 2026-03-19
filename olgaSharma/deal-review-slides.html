@@ -1,0 +1,591 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deal Review: Olga Klinger</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --text: #ebebeb;
+    --text-muted: #888;
+    --accent: #94a3b8;
+    --accent-soft: rgba(148, 163, 184, 0.10);
+    --green: #94a3b8;
+    --green-soft: rgba(148, 163, 184, 0.08);
+    --border: #252525;
+  }
+
+  html { font-size: 16px; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  @page {
+    size: landscape;
+    margin: 0;
+  }
+
+  .slide {
+    width: 100vw;
+    height: 100vh;
+    padding: 56px 72px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    page-break-after: always;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .slide::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #64748b, #94a3b8, #64748b);
+  }
+
+  .slide-number {
+    position: absolute;
+    bottom: 28px;
+    right: 48px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+  }
+
+  .footer-name {
+    position: absolute;
+    bottom: 28px;
+    left: 48px;
+    font-size: 12px;
+    color: #555;
+    letter-spacing: 0.03em;
+  }
+
+  .slide-title {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+
+  .slide-subtitle {
+    font-size: 15px;
+    color: var(--text-muted);
+    margin-bottom: 36px;
+    font-weight: 400;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    flex: 1;
+  }
+
+  .three-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 32px;
+    flex: 1;
+  }
+
+  .col-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin-bottom: 14px;
+  }
+
+  .content-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px 28px;
+  }
+
+  .content-block h3 {
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+
+  ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  ul li {
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--text);
+    padding-left: 18px;
+    position: relative;
+    margin-bottom: 10px;
+    font-weight: 400;
+  }
+
+  ul li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 9px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-top: 20px;
+  }
+
+  .stat-card {
+    background: var(--accent-soft);
+    border: 1px solid rgba(148, 163, 184, 0.20);
+    border-radius: 8px;
+    padding: 16px 20px;
+    text-align: center;
+  }
+
+  .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -0.02em;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+  }
+
+  .result-stat {
+    background: var(--accent-soft);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 8px;
+    padding: 16px 20px;
+    text-align: center;
+  }
+
+  .result-stat .stat-value {
+    color: var(--green);
+  }
+
+  .result-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .timeline-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  .step-num {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    border: 1.5px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .step-text {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text);
+    padding-top: 3px;
+  }
+
+  .step-text strong {
+    font-weight: 600;
+  }
+
+  .bridge-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px 28px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .bridge-card h3 {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--accent);
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .bridge-card ul li {
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+
+  .callout {
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 20px;
+    margin-top: auto;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text);
+    font-style: italic;
+  }
+
+  .challenge-box {
+    background: rgba(148, 163, 184, 0.06);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-bottom: 20px;
+  }
+
+  .challenge-box h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: #b0b8c4;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
+
+  .challenge-box p {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  .response-box {
+    background: var(--accent-soft);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 8px;
+    padding: 18px 22px;
+  }
+
+  .response-box h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
+
+  @media print {
+    body { background: var(--bg); }
+    .slide {
+      width: 100%;
+      height: 100vh;
+      page-break-after: always;
+      page-break-inside: avoid;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- SLIDE 1: Deal Overview -->
+<div class="slide">
+  <div class="slide-title">$1.5M Lifestyle Developer Initiative</div>
+  <div class="slide-subtitle">Meta Reality Labs &bull; Quest VR Marketplace &bull; 2024&ndash;2025</div>
+
+  <div class="two-col">
+    <div>
+      <div class="content-block" style="margin-bottom: 20px;">
+        <h3>What I Owned</h3>
+        <ul>
+          <li>Identified content gap in Meta's VR marketplace</li>
+          <li>Conceived initiative, built business case, secured $1.5M in executive funding</li>
+          <li>Ran end-to-end competitive process: global sourcing, evaluation, selection, contracting</li>
+          <li>Managed all 8 partnerships through delivery against revenue targets</li>
+        </ul>
+      </div>
+      <div class="content-block">
+        <h3>Business Objective</h3>
+        <ul>
+          <li>Grow high-quality lifestyle content on Quest VR marketplace</li>
+          <li>Drive store revenue and user engagement</li>
+          <li>Differentiate against Roblox and Apple</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="stat-row" style="margin-top: 0; grid-template-columns: 1fr 1fr;">
+        <div class="stat-card">
+          <div class="stat-value">89</div>
+          <div class="stat-label">Applications</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">180%</div>
+          <div class="stat-label">Above Forecast</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">40%</div>
+          <div class="stat-label">Net-New Partners</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">9%</div>
+          <div class="stat-label">Acceptance Rate</div>
+        </div>
+      </div>
+      <div style="margin-top: 16px;">
+        <div class="stat-card" style="text-align: left; padding: 18px 22px;">
+          <div style="font-size: 14px; color: var(--text-muted); line-height: 1.6;">
+            <strong style="color: var(--text);">8 partners selected</strong> globally across EMEA, APAC, and North America. All contracts closed within <strong style="color: var(--accent);">2 weeks</strong> (org record).
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <span class="footer-name">Olga Klinger</span>
+  <span class="slide-number">1 / 5</span>
+</div>
+
+<!-- SLIDE 2: Internal Competition -->
+<div class="slide">
+  <div class="slide-title">Navigating Internal Competition</div>
+  <div class="slide-subtitle">Protecting the deal in a matrixed organization</div>
+
+  <div class="two-col" style="flex: 1;">
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      <div class="challenge-box">
+        <h4>The Challenge</h4>
+        <p>A competing team launched a parallel developer initiative. Risk: resource dilution, strategic confusion, or the RFP getting cancelled entirely.</p>
+      </div>
+
+      <div class="content-block" style="flex: 1;">
+        <h3>What I Did</h3>
+        <ul>
+          <li>Did not escalate reactively or lobby against the other team</li>
+          <li>Independently met with executive, product, and strategy leads</li>
+          <li>Presented structured differentiation with data</li>
+          <li>Built deal framework showing incremental ecosystem value from both deals</li>
+        </ul>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      <div class="content-block">
+        <h3>Differentiated Positioning</h3>
+        <div class="two-col" style="gap: 16px;">
+          <div style="background: rgba(148,163,184,0.06); border-radius: 6px; padding: 14px 16px;">
+            <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #777; margin-bottom: 6px; font-weight: 600;">Their Initiative</div>
+            <div style="font-size: 14px; color: var(--text-muted); line-height: 1.5;">VC-adjacent partners<br>North America only</div>
+          </div>
+          <div style="background: rgba(148,163,184,0.10); border-radius: 6px; padding: 14px 16px;">
+            <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); margin-bottom: 6px; font-weight: 600;">My Initiative</div>
+            <div style="font-size: 14px; color: var(--text); line-height: 1.5;">Global tech studios<br>EMEA, APAC, NORAM</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="response-box" style="flex: 1;">
+        <h4>Outcome</h4>
+        <ul style="margin-top: 4px;">
+          <li>Secured executive endorsement</li>
+          <li>Both deals proceeded without consolidation</li>
+          <li>Maintained full ownership of the RFP</li>
+          <li>Deal framework adopted as an org template for future evaluations</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <span class="footer-name">Olga Klinger</span>
+  <span class="slide-number">2 / 5</span>
+</div>
+
+<!-- SLIDE 3: Commercial Structure & Execution -->
+<div class="slide">
+  <div class="slide-title">Sourcing, Selection, and Deal Terms</div>
+  <div class="slide-subtitle">How I built and closed the deals</div>
+
+  <div class="three-col" style="flex: 1;">
+    <div class="content-block">
+      <h3>Pipeline Generation</h3>
+      <ul>
+        <li>Global outbound across Discord, social channels, Meta developer comms, and personal network</li>
+        <li>89 inbound submissions</li>
+        <li>40% net-new to Meta's ecosystem</li>
+        <li>180% above pipeline forecast</li>
+      </ul>
+    </div>
+
+    <div class="content-block">
+      <h3>Qualification</h3>
+      <ul>
+        <li>Designed cross-functional scoring framework</li>
+        <li>Four dimensions: technical feasibility, commercial viability, ecosystem contribution, roadmap alignment</li>
+        <li>Review committee: Product, Merchandising, PMM, Engineering, Partnerships</li>
+        <li>9% acceptance rate (8 of 89)</li>
+      </ul>
+    </div>
+
+    <div class="content-block">
+      <h3>Deal Structure</h3>
+      <div class="timeline-step">
+        <div class="step-num">1</div>
+        <div class="step-text"><strong>Prototype delivery</strong></div>
+      </div>
+      <div class="timeline-step">
+        <div class="step-num">2</div>
+        <div class="step-text"><strong>Technical validation</strong></div>
+      </div>
+      <div class="timeline-step">
+        <div class="step-num">3</div>
+        <div class="step-text"><strong>Store readiness</strong></div>
+      </div>
+      <div class="timeline-step">
+        <div class="step-num">4</div>
+        <div class="step-text"><strong>Revenue milestone</strong><br>Top 20 Quest VR marketplace in 6 months</div>
+      </div>
+      <div style="font-size: 13px; color: var(--text-muted); margin-top: 8px; padding-left: 4px;">
+        Pre-aligned legal templates enabled 2-week close cycle (org record)
+      </div>
+    </div>
+  </div>
+
+  <span class="footer-name">Olga Klinger</span>
+  <span class="slide-number">3 / 5</span>
+</div>
+
+<!-- SLIDE 4: Results -->
+<div class="slide">
+  <div class="slide-title">Results</div>
+  <div class="slide-subtitle">Performance against targets and lasting organizational impact</div>
+
+  <div class="result-row">
+    <div class="result-stat">
+      <div class="stat-value">112%</div>
+      <div class="stat-label">Game Sales Target</div>
+    </div>
+    <div class="result-stat">
+      <div class="stat-value">140%</div>
+      <div class="stat-label">MAP &amp; MAU Targets</div>
+    </div>
+    <div class="result-stat">
+      <div class="stat-value">100%</div>
+      <div class="stat-label">Partner Completion</div>
+    </div>
+  </div>
+
+  <div class="two-col" style="flex: 1;">
+    <div class="content-block">
+      <h3>Performance Highlights</h3>
+      <ul>
+        <li>$1.5M deployed across 8 global partnerships</li>
+        <li>Targo's "Crafting Crimes" reached Top 5 across two key demographics</li>
+        <li>Sustained Top 5 ranking for 4 consecutive weeks</li>
+        <li>Zero partner drop-off. All 8 partners delivered and launched successfully.</li>
+      </ul>
+    </div>
+
+    <div class="content-block">
+      <h3>Lasting Impact</h3>
+      <ul>
+        <li>Created repeatable capital deployment framework</li>
+        <li>Scoring model + milestone template + onboarding playbook</li>
+        <li>Adopted org-wide for future investment initiatives</li>
+        <li>Pipeline of 89 developers available for future programs</li>
+      </ul>
+    </div>
+  </div>
+
+  <span class="footer-name">Olga Klinger</span>
+  <span class="slide-number">4 / 5</span>
+</div>
+
+<!-- SLIDE 5: Why This Deal & Why OpenAI -->
+<div class="slide">
+  <div class="slide-title">Why This Deal, Why OpenAI</div>
+  <div class="slide-subtitle">Connecting the experience to the Account Director role</div>
+
+  <div class="three-col" style="flex: 1;">
+    <div class="bridge-card">
+      <h3>What This Deal Proves</h3>
+      <ul>
+        <li>I identify market gaps and build business cases to fill them</li>
+        <li>I navigate internal competition and protect my deal under pressure</li>
+        <li>I design commercial structures tied to measurable revenue outcomes</li>
+        <li>I manage a portfolio of accounts through delivery, hitting targets across all of them</li>
+        <li>I build repeatable frameworks that scale beyond a single initiative</li>
+      </ul>
+    </div>
+
+    <div class="bridge-card">
+      <h3>My Sales Foundation</h3>
+      <ul>
+        <li><strong>Contentful:</strong> Closed new logos: SmileDirectClub ($351K), MLB, Medtronic, Asurion. 140% of annual quota.</li>
+        <li><strong>Khoros:</strong> 220% of quota across 15 enterprise accounts (Visa, Square, Sephora, EA). Multi-year platform agreements.</li>
+      </ul>
+      <div class="callout" style="margin-top: 20px;">
+        Full-cycle SaaS sales + complex strategic partnerships at scale
+      </div>
+    </div>
+
+    <div class="bridge-card">
+      <h3>Why OpenAI</h3>
+      <ul>
+        <li>Deep strategic partnerships with 5 high-value accounts (not 50 transactional ones)</li>
+        <li>Consumption revenue: I succeed when my customers succeed</li>
+        <li>AI is the most important platform shift since cloud, and OpenAI is at the center of it</li>
+      </ul>
+      <div class="callout" style="margin-top: 20px;">
+        Milestone-based funding where revenue grows with partner success is the same economic model as consumption revenue. We win when the customer wins.
+      </div>
+    </div>
+  </div>
+
+  <span class="footer-name">Olga Klinger</span>
+  <span class="slide-number">5 / 5</span>
+</div>
+
+</body>
+</html>

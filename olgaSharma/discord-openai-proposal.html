@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<!--
+  TO CREATE PDF:
+  1. Open this file in Chrome or Safari
+  2. Press Cmd+P (or Ctrl+P on Windows)
+  3. Set destination to "Save as PDF"
+  4. Uncheck "Headers and footers" in More Settings
+  5. Set margins to "Default" (CSS handles the margins)
+  6. Click Save
+
+  The output will be a clean, professional 2-page PDF.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Discord × OpenAI — Community Intelligence Engine</title>
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    @page {
+      size: letter;
+      margin: 0.65in 0.75in;
+    }
+
+    html {
+      font-size: 10pt;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Helvetica, Arial, sans-serif;
+      color: #1a1a1a;
+      line-height: 1.52;
+      background: #e8e8e8;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+    }
+
+    .page {
+      page-break-after: always;
+    }
+
+    .page:last-child {
+      page-break-after: auto;
+    }
+
+    @media screen {
+      .page {
+        width: 8.5in;
+        min-height: 11in;
+        padding: 0.65in 0.75in;
+        margin: 24px auto;
+        background: white;
+        box-shadow: 0 1px 12px rgba(0, 0, 0, 0.12);
+        border-radius: 2px;
+      }
+    }
+
+    @media print {
+      body {
+        background: white;
+      }
+      .page {
+        width: auto;
+        min-height: auto;
+        padding: 0;
+        margin: 0;
+        box-shadow: none;
+      }
+    }
+
+    /* ---- Header ---- */
+    .header {
+      margin-bottom: 0.22in;
+      padding-bottom: 0.1in;
+      border-bottom: 2.5px solid #111;
+    }
+
+    .header-title {
+      font-size: 15.5pt;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+      color: #0a0a0a;
+      line-height: 1.2;
+    }
+
+    .header-subtitle {
+      font-size: 10pt;
+      color: #555;
+      font-weight: 400;
+      margin-top: 3px;
+    }
+
+    /* ---- Section headers ---- */
+    h2 {
+      font-size: 9.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #111;
+      margin-top: 0.17in;
+      margin-bottom: 0.05in;
+    }
+
+    h2:first-child {
+      margin-top: 0;
+    }
+
+    /* ---- Body text ---- */
+    p {
+      margin-bottom: 0.07in;
+      font-size: 10pt;
+      text-align: justify;
+      hyphens: auto;
+      -webkit-hyphens: auto;
+    }
+
+    /* ---- Capability items ---- */
+    .capability {
+      margin-bottom: 0.06in;
+    }
+
+    .capability-name {
+      font-weight: 700;
+    }
+
+    /* ---- Bullet lists ---- */
+    ul {
+      padding-left: 0.22in;
+      margin-bottom: 0.07in;
+    }
+
+    ul li {
+      font-size: 10pt;
+      margin-bottom: 0.025in;
+    }
+
+    ul li strong {
+      font-weight: 600;
+    }
+
+    /* ---- Data flow diagram ---- */
+    .data-flow {
+      background: #f5f5f5;
+      border-left: 3px solid #222;
+      padding: 0.08in 0.14in;
+      margin: 0.07in 0 0.09in;
+      font-size: 9pt;
+      line-height: 1.65;
+    }
+
+    .flow-line {
+      margin-bottom: 1px;
+    }
+
+    .flow-arrow {
+      color: #999;
+      margin: 0 1px;
+    }
+
+    .flow-line strong {
+      font-weight: 700;
+    }
+
+    /* ---- Risk table ---- */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9.5pt;
+      margin: 0.05in 0 0.07in;
+    }
+
+    thead th {
+      text-align: left;
+      font-weight: 700;
+      font-size: 8.5pt;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      padding: 0.04in 0.07in;
+      border-bottom: 1.5px solid #222;
+      color: #111;
+    }
+
+    tbody td {
+      padding: 0.035in 0.07in;
+      border-bottom: 0.5px solid #ddd;
+      vertical-align: top;
+      line-height: 1.45;
+    }
+
+    tbody td:first-child {
+      font-weight: 600;
+      white-space: nowrap;
+      width: 20%;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* ---- Closing section ---- */
+    .closing {
+      margin-top: 0.15in;
+      padding-top: 0.08in;
+      border-top: 1px solid #ccc;
+    }
+
+    .closing h2 {
+      margin-top: 0;
+    }
+
+    /* ---- Print-specific cleanup ---- */
+    @media print {
+      h2 {
+        page-break-after: avoid;
+      }
+      table {
+        page-break-inside: avoid;
+      }
+      p {
+        orphans: 3;
+        widows: 3;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== PAGE 1 ==================== -->
+  <div class="page">
+
+    <div class="header">
+      <div class="header-title">Discord × OpenAI: Community Intelligence Engine</div>
+      <div class="header-subtitle">Olga Klinger&ensp;&bull;&ensp;Account Director, Digital Native Large Enterprise&ensp;&bull;&ensp;March 2026</div>
+      <div class="header-subtitle" style="margin-top: 2px; font-size: 9pt;">Video walkthrough: <a href="https://www.loom.com/share/38db63930f3b494d9dc980d4ca086273" style="color: #555;">loom.com/share/38db63930f3b494d9dc980d4ca086273</a></div>
+    </div>
+
+    <h2>The Company</h2>
+    <p>
+      I would sell to Discord. I led the strategic platform partnership with Discord at Meta Reality Labs, 
+      where I shaped product strategy and drove developer integrations at scale. I know where this platform 
+      excels and where AI can move the needle. With 200M+ monthly active users and $600M+ in annual
+      revenue, Discord has become the operating system for online communities, and enterprise
+      adoption is its next frontier. AI is the key.
+    </p>
+    <p style="font-style: italic; font-size: 9.5pt; color: #444; margin-bottom: 0.07in;">
+      Note: Discord already uses OpenAI for Clyde and AutoMod AI. This proposal focuses on
+      expanding that partnership into voice intelligence, semantic search, and community analytics.
+    </p>
+
+    <h2>The Problem: Knowledge Dies in the Scroll</h2>
+    <p>
+      Discord's core strength, real-time low-friction conversation, becomes its biggest liability
+      at scale. A large server generates tens of thousands of messages daily. Critical information
+      (product decisions, answered questions, community guidelines) gets buried within hours.
+    </p>
+    <p>
+      Members ask the same questions over and over. Moderators burn out repeating themselves. And
+      for Discord's business, this puts a hard ceiling on enterprise adoption: organizations
+      evaluating Discord against Slack and Teams consistently point to the missing knowledge
+      layer as a dealbreaker. Voice channels, Discord's sharpest competitive edge, produce
+      nothing searchable or referenceable.
+    </p>
+
+    <h2>What Discord Should Build</h2>
+    <p>
+      A Community Intelligence Engine, powered by OpenAI, that turns conversation into lasting,
+      searchable knowledge:
+    </p>
+    <p class="capability">
+      <span class="capability-name">Conversation Catch-Up.</span> OpenAI models generate contextual
+      "what you missed" summaries per channel, tailored to the member's role and activity.
+      GPT-5 mini handles routine daily digests at minimal cost; GPT-5 takes on complex
+      multi-day threads when deeper analysis is needed. A moderator returning after a weekend
+      gets a focused brief instead of thousands of unread messages.
+    </p>
+    <p class="capability">
+      <span class="capability-name">Voice Intelligence.</span> Whisper transcribes voice channels
+      and Stage events; the Realtime API enables live captioning and translation for multilingual
+      communities. GPT-5 turns transcripts into searchable summaries with decisions and action
+      items highlighted. Discord becomes the only platform where voice is as discoverable as text.
+    </p>
+    <p class="capability">
+      <span class="capability-name">Smart Q&amp;A.</span> When a member asks a question, OpenAI's
+      Embeddings API semantically searches past conversations and generates answers via
+      retrieval-augmented generation. Moderators spend less time on repetitive questions; members
+      get faster, better responses. Comparable deployments show 40–60% reductions in repeat questions.
+    </p>
+    <p class="capability">
+      <span class="capability-name">Community Health Insights.</span> Admins ask their server questions
+      in plain language: "What topics drove engagement this week?" or "Which channels need
+      attention?" Models with structured outputs return clear, formatted answers instead of
+      dashboards that need interpretation.
+    </p>
+
+    <h2>Why This Matters Commercially</h2>
+    <ul>
+      <li><strong>Premium monetization:</strong> AI features become a paid tier for large servers, expanding ARPU beyond Nitro.</li>
+      <li><strong>Enterprise unlock:</strong> A knowledge layer directly addresses the #1 objection enterprises raise against Discord vs. Slack and Teams.</li>
+      <li><strong>Switching costs:</strong> Accumulated, AI-organized knowledge creates server-level lock-in that raw chat history can't.</li>
+      <li><strong>Competitive moat:</strong> Voice + community + AI intelligence is a combination no other platform can assemble today.</li>
+    </ul>
+
+  </div>
+
+  <!-- ==================== PAGE 2 ==================== -->
+  <div class="page">
+
+    <h2>How the Solution Works Technically</h2>
+    <p>
+      The architecture draws a clean line between reliable infrastructure (permissions, routing,
+      compliance) and model-driven behavior (summarization, search, classification). Models
+      suggest; the system executes.
+    </p>
+
+    <div class="data-flow">
+      <div class="flow-line">Text messages <span class="flow-arrow">&rarr;</span> <strong>GPT-5 mini</strong> (classification, filtering) / <strong>GPT-5</strong> (complex summarization) <span class="flow-arrow">&rarr;</span> Structured Outputs</div>
+      <div class="flow-line">Voice channels <span class="flow-arrow">&rarr;</span> <strong>Whisper</strong> + <strong>Realtime API</strong> <span class="flow-arrow">&rarr;</span> Transcription <span class="flow-arrow">&rarr;</span> <strong>GPT-5</strong> <span class="flow-arrow">&rarr;</span> Voice summaries</div>
+      <div class="flow-line">All content <span class="flow-arrow">&rarr;</span> <strong>Embeddings API</strong> <span class="flow-arrow">&rarr;</span> Vector store <span class="flow-arrow">&rarr;</span> RAG-powered semantic search</div>
+      <div class="flow-line">All messages <span class="flow-arrow">&rarr;</span> <strong>Moderation API</strong> <span class="flow-arrow">&rarr;</span> Real-time safety and policy enforcement</div>
+      <div class="flow-line">Server patterns <span class="flow-arrow">&rarr;</span> <strong>Fine-tuning API</strong> <span class="flow-arrow">&rarr;</span> Community-specific relevance and tone models</div>
+    </div>
+
+    <p><strong>Key architectural principles:</strong></p>
+    <ul>
+      <li><strong>Retrieval-only generation:</strong> Models work strictly from server content, with no external knowledge injection, minimizing hallucination risk.</li>
+      <li><strong>Structured Outputs:</strong> All model responses conform to predefined JSON schemas, ensuring consistent UI rendering and predictable downstream processing.</li>
+      <li><strong>Human-in-the-loop:</strong> Moderators review and edit AI outputs before they reach members. The system supports moderation. It never replaces moderators.</li>
+      <li><strong>Privacy by design:</strong> All processing scoped to the individual server. No cross-server data leakage. Server admins control what gets processed.</li>
+      <li><strong>Cost discipline:</strong> Model tiering is key. GPT-5 mini handles high-volume classification and filtering at a fraction of the cost; GPT-5 is reserved for complex synthesis. Caching and batching keep costs in line with value.</li>
+    </ul>
+
+    <h2>Risks and Mitigations</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Risk</th>
+          <th>Mitigation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Hallucination</td>
+          <td>RAG-only inputs (no external knowledge), confidence scoring, human review before posting</td>
+        </tr>
+        <tr>
+          <td>Privacy &amp; trust</td>
+          <td>Opt-in at server and channel level, transparent AI content labeling, clear data retention policies</td>
+        </tr>
+        <tr>
+          <td>Cost at scale</td>
+          <td>Model tiering (GPT-5 mini for routine tasks, GPT-5 for complex analysis), relevance filtering, response caching</td>
+        </tr>
+        <tr>
+          <td>Adoption resistance</td>
+          <td>Beta with Discord's top 1,000 highest-value servers, prove ROI, then expand through Nitro tiers (land-and-expand)</td>
+        </tr>
+        <tr>
+          <td>Over-automation</td>
+          <td>AI suggests but never posts autonomously without explicit admin permission</td>
+        </tr>
+        <tr>
+          <td>Competitive response</td>
+          <td>Whisper-powered voice intelligence combined with server-scoped context is native to Discord's structure; flat-channel competitors can't replicate it easily</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="closing">
+      <h2>The Opportunity</h2>
+      <p>
+        This is a full-stack OpenAI partnership spanning seven products (GPT-5, GPT-5 mini,
+        Whisper, the Realtime API, Embeddings, Moderation, and Fine-tuning) across text, voice,
+        safety, and search. The consumption math is straightforward: every channel summary, voice
+        transcription, semantic search, and moderation check generates API volume. With 200M+
+        monthly active users, even 5% server adoption creates a multi-million dollar annual
+        contract that grows as Discord grows.
+      </p>
+      <p>
+        Discord doesn't need to build its own models. It needs an intelligence partner that makes
+        every server smarter, and only OpenAI delivers across text, voice, safety, and structured
+        reasoning from one platform.
+      </p>
+    </div>
+
+  </div>
+
+</body>
+</html>
