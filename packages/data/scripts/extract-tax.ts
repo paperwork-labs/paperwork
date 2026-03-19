@@ -45,13 +45,26 @@ ${JSON.stringify(templateExample, null, 2)}
 Extract the tax data from the provided web page content and return a valid JSON object matching this structure.`;
 }
 
+function isRetryableError(error: any): boolean {
+  // Check for OpenAI API errors that are retryable
+  if (error.status === 429 || error.status === 500 || error.status === 502 || error.status === 503 || error.status === 504) {
+    return true;
+  }
+  // Check for network/timeout errors
+  if (error.code === "ECONNRESET" || error.code === "ETIMEDOUT" || error.message?.includes("timeout")) {
+    return true;
+  }
+  return false;
+}
+
 async function extractTaxData(
   stateCode: StateCode,
   stateName: string,
   taxFoundationUrl: string,
   dorUrl: string | undefined,
   pageContent: string,
-  retryCount = 0
+  validationRetryCount = 0,
+  apiRetryCount = 0
 ): Promise<any> {
   const systemPrompt = buildSystemPrompt(stateCode, stateName);
   const userPrompt = `Extract tax data for ${stateName} (${stateCode}) from the following web page content:\n\n${pageContent}`;
@@ -79,17 +92,34 @@ async function extractTaxData(
 
     return validated;
   } catch (error: any) {
+    // Handle retryable API errors (429, 5xx, timeouts) with exponential backoff
+    if (isRetryableError(error) && apiRetryCount < 2) {
+      const backoffMs = Math.pow(2, apiRetryCount) * 1000; // 1s, 2s, 4s
+      console.error(`${stateCode}: API error (${error.status || error.code}), retrying after ${backoffMs}ms (${apiRetryCount + 1}/2)...`);
+      await sleep(backoffMs);
+      return extractTaxData(
+        stateCode,
+        stateName,
+        taxFoundationUrl,
+        dorUrl,
+        pageContent,
+        validationRetryCount,
+        apiRetryCount + 1
+      );
+    }
+
     // If validation error and we have retries left, retry with error message
-    if (error.name === "ZodError" && retryCount < 2) {
+    if (error.name === "ZodError" && validationRetryCount < 2) {
       const errorDetails = error.errors.map((e: any) => `${e.path.join(".")}: ${e.message}`).join("\n");
-      console.error(`${stateCode}: Validation failed, retrying (${retryCount + 1}/2)...`);
+      console.error(`${stateCode}: Validation failed, retrying (${validationRetryCount + 1}/2)...`);
       return extractTaxData(
         stateCode,
         stateName,
         taxFoundationUrl,
         dorUrl,
         `${pageContent}\n\nPrevious attempt failed validation:\n${errorDetails}\n\nPlease fix these errors and return valid JSON.`,
-        retryCount + 1
+        validationRetryCount + 1,
+        apiRetryCount
       );
     }
     throw error;
@@ -171,8 +201,8 @@ async function main() {
         confidence: 0.85,
       };
 
-      // Set URLs from source registry
-      taxData.dor_url = dorSource?.url || "";
+      // Set URLs from source registry (dor_url is required, so use a placeholder if missing)
+      taxData.dor_url = dorSource?.url || taxFoundationSource.url; // Fallback to Tax Foundation URL if DOR missing
       taxData.tax_foundation_url = taxFoundationSource.url;
 
       // Ensure state and state_name match
@@ -180,9 +210,12 @@ async function main() {
       taxData.state_name = sources.state_name;
       taxData.tax_year = 2026;
 
+      // Validate final tax data against schema before writing
+      const finalTaxData = StateTaxRulesSchema.parse(taxData);
+
       // Write output file
       const outputPath = join(outputDir, `${stateCode}.json`);
-      writeFileSync(outputPath, JSON.stringify(taxData, null, 2) + "\n", "utf8");
+      writeFileSync(outputPath, JSON.stringify(finalTaxData, null, 2) + "\n", "utf8");
 
       console.log(`✓ ${stateCode}: ${sources.state_name}`);
 

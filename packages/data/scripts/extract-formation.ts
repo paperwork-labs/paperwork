@@ -35,12 +35,25 @@ ${JSON.stringify(templateExample, null, 2)}
 Extract the LLC formation rules from the provided web page content and return a valid JSON object matching this structure.`;
 }
 
+function isRetryableError(error: any): boolean {
+  // Check for OpenAI API errors that are retryable
+  if (error.status === 429 || error.status === 500 || error.status === 502 || error.status === 503 || error.status === 504) {
+    return true;
+  }
+  // Check for network/timeout errors
+  if (error.code === "ECONNRESET" || error.code === "ETIMEDOUT" || error.message?.includes("timeout")) {
+    return true;
+  }
+  return false;
+}
+
 async function extractFormationData(
   stateCode: StateCode,
   stateName: string,
   sosUrl: string,
   pageContent: string,
-  retryCount = 0
+  validationRetryCount = 0,
+  apiRetryCount = 0
 ): Promise<any> {
   const systemPrompt = buildSystemPrompt(stateName);
   const userPrompt = `Extract LLC formation rules for ${stateName} (${stateCode}) from the following web page content:\n\n${pageContent}`;
@@ -68,16 +81,32 @@ async function extractFormationData(
 
     return validated;
   } catch (error: any) {
+    // Handle retryable API errors (429, 5xx, timeouts) with exponential backoff
+    if (isRetryableError(error) && apiRetryCount < 2) {
+      const backoffMs = Math.pow(2, apiRetryCount) * 1000; // 1s, 2s, 4s
+      console.error(`${stateCode}: API error (${error.status || error.code}), retrying after ${backoffMs}ms (${apiRetryCount + 1}/2)...`);
+      await sleep(backoffMs);
+      return extractFormationData(
+        stateCode,
+        stateName,
+        sosUrl,
+        pageContent,
+        validationRetryCount,
+        apiRetryCount + 1
+      );
+    }
+
     // If validation error and we have retries left, retry with error message
-    if (error.name === "ZodError" && retryCount < 2) {
+    if (error.name === "ZodError" && validationRetryCount < 2) {
       const errorDetails = error.errors.map((e: any) => `${e.path.join(".")}: ${e.message}`).join("\n");
-      console.error(`${stateCode}: Validation failed, retrying (${retryCount + 1}/2)...`);
+      console.error(`${stateCode}: Validation failed, retrying (${validationRetryCount + 1}/2)...`);
       return extractFormationData(
         stateCode,
         stateName,
         sosUrl,
         `${pageContent}\n\nPrevious attempt failed validation:\n${errorDetails}\n\nPlease fix these errors and return valid JSON.`,
-        retryCount + 1
+        validationRetryCount + 1,
+        apiRetryCount
       );
     }
     throw error;
@@ -147,9 +176,12 @@ async function main() {
       formationData.entity_type = "LLC";
       formationData.sos_url = sosSource.url;
 
+      // Validate final formation data against schema before writing
+      const finalFormationData = FormationRulesSchema.parse(formationData);
+
       // Write output file
       const outputPath = join(outputDir, `${stateCode}.json`);
-      writeFileSync(outputPath, JSON.stringify(formationData, null, 2) + "\n", "utf8");
+      writeFileSync(outputPath, JSON.stringify(finalFormationData, null, 2) + "\n", "utf8");
 
       console.log(`✓ ${stateCode}: ${sources.state_name}`);
 
