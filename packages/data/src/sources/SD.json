@@ -1,0 +1,27 @@
+{
+  "state": "SD",
+  "state_name": "South Dakota",
+  "tax_sources": [
+    {
+      "name": "South Dakota Department of Revenue",
+      "url": "https://dor.sd.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - South Dakota",
+      "url": "https://taxfoundation.org/location/south-dakota/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "South Dakota Secretary of State",
+      "url": "https://sdsos.gov/business-services",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

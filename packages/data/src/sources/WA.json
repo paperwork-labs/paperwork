@@ -1,0 +1,27 @@
+{
+  "state": "WA",
+  "state_name": "Washington",
+  "tax_sources": [
+    {
+      "name": "Washington Department of Revenue",
+      "url": "https://dor.wa.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Washington",
+      "url": "https://taxfoundation.org/location/washington/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Washington Secretary of State",
+      "url": "https://www.sos.wa.gov/corps",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

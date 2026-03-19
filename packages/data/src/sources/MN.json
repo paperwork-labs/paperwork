@@ -1,0 +1,27 @@
+{
+  "state": "MN",
+  "state_name": "Minnesota",
+  "tax_sources": [
+    {
+      "name": "Minnesota Department of Revenue",
+      "url": "https://www.revenue.state.mn.us",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Minnesota",
+      "url": "https://taxfoundation.org/location/minnesota/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Minnesota Secretary of State",
+      "url": "https://www.sos.state.mn.us/business-liens",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

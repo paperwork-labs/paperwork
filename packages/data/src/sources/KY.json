@@ -1,0 +1,27 @@
+{
+  "state": "KY",
+  "state_name": "Kentucky",
+  "tax_sources": [
+    {
+      "name": "Kentucky Department of Revenue",
+      "url": "https://revenue.ky.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Kentucky",
+      "url": "https://taxfoundation.org/location/kentucky/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Kentucky Secretary of State",
+      "url": "https://www.sos.ky.gov/bus",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

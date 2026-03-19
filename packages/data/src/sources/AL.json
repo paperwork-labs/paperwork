@@ -1,0 +1,27 @@
+{
+  "state": "AL",
+  "state_name": "Alabama",
+  "tax_sources": [
+    {
+      "name": "Alabama Department of Revenue",
+      "url": "https://revenue.alabama.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Alabama",
+      "url": "https://taxfoundation.org/location/alabama/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Alabama Secretary of State",
+      "url": "https://www.sos.alabama.gov/business-services",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

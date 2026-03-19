@@ -1,0 +1,27 @@
+{
+  "state": "IA",
+  "state_name": "Iowa",
+  "tax_sources": [
+    {
+      "name": "Iowa Department of Revenue",
+      "url": "https://tax.iowa.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Iowa",
+      "url": "https://taxfoundation.org/location/iowa/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Iowa Secretary of State",
+      "url": "https://sos.iowa.gov/business",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

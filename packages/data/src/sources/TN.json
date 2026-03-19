@@ -1,0 +1,27 @@
+{
+  "state": "TN",
+  "state_name": "Tennessee",
+  "tax_sources": [
+    {
+      "name": "Tennessee Department of Revenue",
+      "url": "https://www.tn.gov/revenue.html",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Tennessee",
+      "url": "https://taxfoundation.org/location/tennessee/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Tennessee Secretary of State",
+      "url": "https://sos.tn.gov/business-services",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

@@ -1,0 +1,27 @@
+{
+  "state": "CA",
+  "state_name": "California",
+  "tax_sources": [
+    {
+      "name": "California Franchise Tax Board",
+      "url": "https://www.ftb.ca.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - California",
+      "url": "https://taxfoundation.org/location/california/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "California Secretary of State",
+      "url": "https://www.sos.ca.gov/business-programs/business-entities",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

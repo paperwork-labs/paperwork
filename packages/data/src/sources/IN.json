@@ -1,0 +1,27 @@
+{
+  "state": "IN",
+  "state_name": "Indiana",
+  "tax_sources": [
+    {
+      "name": "Indiana Department of Revenue",
+      "url": "https://www.in.gov/dor",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Indiana",
+      "url": "https://taxfoundation.org/location/indiana/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Indiana Secretary of State",
+      "url": "https://www.in.gov/sos/business",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

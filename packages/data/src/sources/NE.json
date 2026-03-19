@@ -1,0 +1,27 @@
+{
+  "state": "NE",
+  "state_name": "Nebraska",
+  "tax_sources": [
+    {
+      "name": "Nebraska Department of Revenue",
+      "url": "https://revenue.nebraska.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Nebraska",
+      "url": "https://taxfoundation.org/location/nebraska/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Nebraska Secretary of State",
+      "url": "https://sos.nebraska.gov/business-services",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

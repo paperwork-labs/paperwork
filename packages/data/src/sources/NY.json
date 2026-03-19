@@ -1,0 +1,27 @@
+{
+  "state": "NY",
+  "state_name": "New York",
+  "tax_sources": [
+    {
+      "name": "New York State Department of Taxation and Finance",
+      "url": "https://www.tax.ny.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - New York",
+      "url": "https://taxfoundation.org/location/new-york/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "New York Department of State",
+      "url": "https://dos.ny.gov/business-filings",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}
