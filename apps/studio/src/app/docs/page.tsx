@@ -18,9 +18,13 @@ type DocsPageProps = {
   searchParams: Promise<{ doc?: string }>;
 };
 
+function getRepoRoot() {
+  return path.join(process.cwd(), "..", "..");
+}
+
 async function docExists(relativePath: string) {
   try {
-    await fs.access(path.join(process.cwd(), relativePath));
+    await fs.access(path.join(getRepoRoot(), relativePath));
     return true;
   } catch {
     return false;
@@ -43,7 +47,7 @@ export default async function DocsPage({ searchParams }: DocsPageProps) {
     defaultDoc ??
     ({ key: "readme", label: "Repository README", file: "README.md" } as const);
   const relativePath = selectedDoc.file;
-  const absolutePath = path.join(process.cwd(), relativePath);
+  const absolutePath = path.join(getRepoRoot(), relativePath);
   const markdown = await fs.readFile(absolutePath, "utf8");
 
   return (
