@@ -1,4 +1,4 @@
-import { getN8nExecutions, getN8nWorkflows } from "@/lib/command-center";
+import { getN8nExecutions, getN8nWorkflows, WORKFLOW_META } from "@/lib/command-center";
 import Link from "next/link";
 
 type AgentsPageProps = {
@@ -93,6 +93,7 @@ export default async function AgentsPage({ searchParams }: AgentsPageProps) {
         <p className="mb-3 text-sm font-medium text-zinc-200">Workflow Health + Stats</p>
         <div className="grid gap-3 md:grid-cols-2">
           {workflowStats.map(({ workflow, latest, successCount, failureCount, healthLabel, healthTone }) => {
+            const meta = WORKFLOW_META[workflow.name];
             return (
               <div key={workflow.id} className="rounded-md bg-zinc-800/60 px-3 py-3 text-sm">
                 <div className="flex items-center justify-between">
@@ -102,12 +103,37 @@ export default async function AgentsPage({ searchParams }: AgentsPageProps) {
                     {healthLabel}
                   </span>
                 </div>
-                <p className="mt-1 text-zinc-400">
-                  {workflow.active ? "active workflow" : "inactive workflow"} - last run{" "}
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  {meta?.model && (
+                    <span className="rounded-full bg-zinc-700/60 px-2 py-0.5 text-xs font-mono text-zinc-300">
+                      {meta.model}
+                    </span>
+                  )}
+                  {meta?.trigger && (
+                    <span className="rounded-full bg-zinc-700/40 px-2 py-0.5 text-xs text-zinc-400">
+                      {meta.trigger}
+                    </span>
+                  )}
+                  {meta?.costPerRun && meta.costPerRun !== "$0" && (
+                    <span className="rounded-full bg-zinc-700/40 px-2 py-0.5 text-xs text-zinc-500">
+                      {meta.costPerRun}/run
+                    </span>
+                  )}
+                  {meta?.deviation && (
+                    <span className="rounded-full bg-amber-900/30 px-2 py-0.5 text-xs text-amber-400">
+                      {meta.deviation}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1.5 text-zinc-400">
+                  {workflow.active ? "active" : "inactive"} · last run{" "}
                   {relativeTime(latest?.timestamp)}
                 </p>
-                <p className="mt-2 text-xs text-zinc-500">
+                <p className="mt-1 text-xs text-zinc-500">
                   {successCount} success / {failureCount} failed
+                  {meta?.role && meta.role !== "No AI" && (
+                    <span className="ml-2 text-zinc-600">· role: {meta.role}</span>
+                  )}
                 </p>
               </div>
             );

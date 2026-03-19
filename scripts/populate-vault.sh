@@ -97,7 +97,7 @@ push_secret "VERCEL_TEAM_ID" "team_RwfzJ9ySyLuVcoWdKJfXC7h5" "vercel" "Vercel AP
 # ---------- FileFree ----------
 echo ""
 echo "=== FileFree ==="
-push_secret "FILEFREE_API_URL" "https://api.filefree.tax" "filefree" "apps/filefree/.env.production" "FileFree backend API URL"
+push_secret "FILEFREE_API_URL" "https://api.filefree.ai" "filefree" "apps/filefree/.env.production" "FileFree backend API URL"
 
 echo ""
 echo "=========================================="

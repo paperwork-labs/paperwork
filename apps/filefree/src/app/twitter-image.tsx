@@ -72,7 +72,7 @@ export default async function Image() {
               display: "flex",
             }}
           >
-            filefree.tax
+            filefree.ai
           </div>
         </div>
       </div>

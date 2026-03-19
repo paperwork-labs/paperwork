@@ -1,6 +1,13 @@
-.PHONY: dev dev-d dev-all dev-filefree dev-launchfree dev-studio dev-trinkets dev-distill stop test lint format migrate seed clean setup setup-hooks help
+.PHONY: dev dev-d dev-all dev-filefree dev-launchfree dev-studio dev-trinkets dev-distill \
+	dev-local-filefree dev-local-launchfree dev-local-studio dev-local-trinkets dev-local-distill \
+	stop test test-local lint lint-local format format-local migrate migrate-local migration seed clean \
+	setup setup-hooks help logs logs-api logs-web shell-api shell-web db
 
-COMPOSE = docker compose -p filefree -f infra/compose.dev.yaml
+COMPOSE_PROJECT ?= paperwork
+COMPOSE = docker compose -p $(COMPOSE_PROJECT) -f infra/compose.dev.yaml
+API ?= filefree
+API_SERVICE ?= api-$(API)
+WEB_SERVICE ?= web-filefree
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -29,7 +36,7 @@ dev-launchfree: setup ## Start LaunchFree app + API + deps
 	$(COMPOSE) up --build postgres redis api-launchfree web-launchfree
 
 dev-studio: setup ## Start Studio app + deps
-	$(COMPOSE) up --build postgres redis api-filefree web-studio
+	$(COMPOSE) up --build postgres redis web-studio
 
 dev-trinkets: setup ## Start Trinkets app only
 	$(COMPOSE) up --build web-trinkets
@@ -37,40 +44,66 @@ dev-trinkets: setup ## Start Trinkets app only
 dev-distill: setup ## Start Distill app only
 	$(COMPOSE) up --build web-distill
 
+dev-local-filefree: ## Run FileFree app locally (no Docker)
+	pnpm dev:filefree
+
+dev-local-launchfree: ## Run LaunchFree app locally (no Docker)
+	pnpm dev:launchfree
+
+dev-local-studio: ## Run Studio app locally (no Docker)
+	pnpm dev:studio
+
+dev-local-trinkets: ## Run Trinkets app locally (no Docker)
+	pnpm dev:trinkets
+
+dev-local-distill: ## Run Distill app locally (no Docker)
+	pnpm dev:distill
+
 stop: ## Stop all services
 	$(COMPOSE) down
 
 test: ## Run all tests
 	$(COMPOSE) run --rm api-filefree pytest -v
+	$(COMPOSE) run --rm api-launchfree sh -lc 'if [ -d tests ]; then pytest -v; else echo "No tests found for launchfree"; fi'
 
 test-local: ## Run backend tests locally (no Docker)
 	cd apis/filefree && python -m pytest -v
+	cd apis/launchfree && if [ -d tests ]; then python -m pytest -v; else echo "No tests found for launchfree"; fi
 
-lint: ## Run linters (ruff + eslint)
+lint: ## Run linters across APIs + apps
 	$(COMPOSE) run --rm api-filefree ruff check .
-	$(COMPOSE) run --rm web-filefree npm run lint
+	$(COMPOSE) run --rm api-launchfree ruff check .
+	$(COMPOSE) run --rm web-filefree pnpm run lint
+	$(COMPOSE) run --rm web-launchfree pnpm run lint
+	$(COMPOSE) run --rm web-studio pnpm run lint
+	$(COMPOSE) run --rm web-trinkets pnpm run lint
+	$(COMPOSE) run --rm web-distill pnpm run lint
 
-lint-local: ## Run linters locally (no Docker)
+lint-local: ## Run linters locally across workspace
 	cd apis/filefree && ruff check .
-	pnpm --filter @paperwork-labs/filefree lint
+	cd apis/launchfree && ruff check .
+	pnpm -r --if-present lint
 
-format: ## Auto-format code (ruff + prettier)
+format: ## Auto-format code across APIs + apps
 	$(COMPOSE) run --rm api-filefree ruff format .
 	$(COMPOSE) run --rm api-filefree ruff check --fix .
-	$(COMPOSE) run --rm web-filefree npm run format
+	$(COMPOSE) run --rm api-launchfree ruff format .
+	$(COMPOSE) run --rm api-launchfree ruff check --fix .
+	$(COMPOSE) run --rm web-filefree sh -lc "cd /app && pnpm -r --if-present format"
 
-format-local: ## Auto-format locally (no Docker)
+format-local: ## Auto-format locally across workspace
 	cd apis/filefree && ruff format . && ruff check --fix .
-	pnpm --filter @paperwork-labs/filefree format
+	cd apis/launchfree && ruff format . && ruff check --fix .
+	pnpm -r --if-present format
 
-migrate: ## Run database migrations
-	$(COMPOSE) run --rm api-filefree alembic upgrade head
+migrate: ## Run database migrations (usage: make migrate API=filefree|launchfree)
+	$(COMPOSE) run --rm $(API_SERVICE) alembic upgrade head
 
-migrate-local: ## Run migrations locally (no Docker)
-	cd apis/filefree && alembic upgrade head
+migrate-local: ## Run migrations locally (usage: make migrate-local API=filefree|launchfree)
+	cd apis/$(API) && alembic upgrade head
 
-migration: ## Create a new migration (usage: make migration MSG="description")
-	$(COMPOSE) run --rm api-filefree alembic revision --autogenerate -m "$(MSG)"
+migration: ## Create a migration (usage: make migration API=filefree MSG="desc")
+	$(COMPOSE) run --rm $(API_SERVICE) alembic revision --autogenerate -m "$(MSG)"
 
 seed: ## Seed test data (requires seed module — see Sprint 1)
 	@echo "⚠ Seed module not yet implemented. See docs/TASKS.md Sprint 1."
@@ -89,10 +122,10 @@ logs-web: ## Tail frontend logs only
 	$(COMPOSE) logs -f web-filefree web-launchfree web-trinkets web-studio web-distill
 
 shell-api: ## Open a shell in the API container
-	$(COMPOSE) exec api-filefree bash
+	$(COMPOSE) exec $(API_SERVICE) bash
 
-shell-web: ## Open a shell in the web container
-	$(COMPOSE) exec web-filefree sh
+shell-web: ## Open a shell in a web container (default: web-filefree)
+	$(COMPOSE) exec $(WEB_SERVICE) sh
 
-db: ## Open psql in the database container
+db: ## Open psql in shared dev database
 	$(COMPOSE) exec postgres psql -U filefree -d filefree_dev

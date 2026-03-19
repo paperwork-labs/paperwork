@@ -6,7 +6,14 @@
         "httpMethod": "POST",
         "path": "qa-scan",
         "responseMode": "lastNode",
-        "options": {}
+        "options": {},
+        "authentication": "headerAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "webhook-secret",
+          "name": "Webhook Secret"
+        }
       },
       "id": "webhook-qa",
       "name": "Webhook",
