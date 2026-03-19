@@ -16,6 +16,7 @@ export function getAllSourceStates(): StateCode[] {
 }
 
 // Test helper: clear cache for isolation
+// Not exported from engine/index.ts to avoid leaking test helpers into public API
 export function clearSourcesCache(): void {
   sourcesCache.clear();
 }

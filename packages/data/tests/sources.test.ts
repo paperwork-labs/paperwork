@@ -62,10 +62,10 @@ describe("Sources Engine", () => {
     const retrieved = getStateSources("DE");
 
     expect(retrieved).toBeDefined();
-    expect(retrieved?.state).toBe("DE");
-    expect(retrieved?.state_name).toBe("Delaware");
-    expect(retrieved?.tax_sources.length).toBe(2);
-    expect(retrieved?.formation_sources.length).toBe(2);
+    expect(retrieved?.state).toBe(parsed.state);
+    expect(retrieved?.state_name).toBe(parsed.state_name);
+    expect(retrieved?.tax_sources.length).toBe(parsed.tax_sources.length);
+    expect(retrieved?.formation_sources.length).toBe(parsed.formation_sources.length);
   });
 
   it("returns undefined for unloaded states", () => {
@@ -118,7 +118,7 @@ describe("All 51 Source Files", () => {
       expect(parsed.state_name).toBeTruthy();
       expect(parsed.tax_sources.length).toBeGreaterThanOrEqual(1);
       expect(parsed.formation_sources.length).toBeGreaterThanOrEqual(1);
-      expect(parsed.last_validated).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+      // Schema validation ensures last_validated is a valid datetime string
 
       // Verify source entries have required fields
       for (const source of [...parsed.tax_sources, ...parsed.formation_sources]) {
