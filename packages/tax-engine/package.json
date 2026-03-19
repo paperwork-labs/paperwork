@@ -1,0 +1,15 @@
+{
+  "name": "@paperwork-labs/tax-engine",
+  "version": "0.0.1",
+  "private": true,
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@paperwork-labs/data": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}
