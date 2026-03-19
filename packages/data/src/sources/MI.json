@@ -1,0 +1,27 @@
+{
+  "state": "MI",
+  "state_name": "Michigan",
+  "tax_sources": [
+    {
+      "name": "Michigan Department of Treasury",
+      "url": "https://www.michigan.gov/treasury",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Michigan",
+      "url": "https://taxfoundation.org/location/michigan/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Michigan Department of Licensing and Regulatory Affairs",
+      "url": "https://www.michigan.gov/lara/bureau-list/cscl",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

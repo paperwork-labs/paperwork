@@ -1,0 +1,27 @@
+{
+  "state": "IL",
+  "state_name": "Illinois",
+  "tax_sources": [
+    {
+      "name": "Illinois Department of Revenue",
+      "url": "https://tax.illinois.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Illinois",
+      "url": "https://taxfoundation.org/location/illinois/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Illinois Secretary of State",
+      "url": "https://www.ilsos.gov/departments/business_services",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

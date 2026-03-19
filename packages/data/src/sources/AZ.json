@@ -1,0 +1,27 @@
+{
+  "state": "AZ",
+  "state_name": "Arizona",
+  "tax_sources": [
+    {
+      "name": "Arizona Department of Revenue",
+      "url": "https://azdor.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Arizona",
+      "url": "https://taxfoundation.org/location/arizona/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Arizona Secretary of State",
+      "url": "https://azsos.gov/business",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

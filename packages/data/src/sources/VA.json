@@ -1,0 +1,27 @@
+{
+  "state": "VA",
+  "state_name": "Virginia",
+  "tax_sources": [
+    {
+      "name": "Virginia Department of Taxation",
+      "url": "https://www.tax.virginia.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Virginia",
+      "url": "https://taxfoundation.org/location/virginia/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Virginia State Corporation Commission",
+      "url": "https://www.scc.virginia.gov/pages/Business-Entity-Search",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

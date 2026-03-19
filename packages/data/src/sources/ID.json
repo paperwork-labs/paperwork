@@ -1,0 +1,27 @@
+{
+  "state": "ID",
+  "state_name": "Idaho",
+  "tax_sources": [
+    {
+      "name": "Idaho State Tax Commission",
+      "url": "https://tax.idaho.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Idaho",
+      "url": "https://taxfoundation.org/location/idaho/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Idaho Secretary of State",
+      "url": "https://sos.idaho.gov/business",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

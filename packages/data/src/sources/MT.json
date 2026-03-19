@@ -1,0 +1,27 @@
+{
+  "state": "MT",
+  "state_name": "Montana",
+  "tax_sources": [
+    {
+      "name": "Montana Department of Revenue",
+      "url": "https://mtrevenue.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Montana",
+      "url": "https://taxfoundation.org/location/montana/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Montana Secretary of State",
+      "url": "https://sosmt.gov/business",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

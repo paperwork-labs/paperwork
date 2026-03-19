@@ -1,0 +1,27 @@
+{
+  "state": "MA",
+  "state_name": "Massachusetts",
+  "tax_sources": [
+    {
+      "name": "Massachusetts Department of Revenue",
+      "url": "https://www.mass.gov/orgs/department-of-revenue",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Massachusetts",
+      "url": "https://taxfoundation.org/location/massachusetts/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Massachusetts Secretary of State",
+      "url": "https://www.sec.state.ma.us/cor",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

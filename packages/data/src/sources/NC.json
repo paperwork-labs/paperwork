@@ -1,0 +1,27 @@
+{
+  "state": "NC",
+  "state_name": "North Carolina",
+  "tax_sources": [
+    {
+      "name": "North Carolina Department of Revenue",
+      "url": "https://www.ncdor.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - North Carolina",
+      "url": "https://taxfoundation.org/location/north-carolina/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "North Carolina Secretary of State",
+      "url": "https://www.sosnc.gov/divisions/business_registration",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

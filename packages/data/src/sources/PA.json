@@ -1,0 +1,27 @@
+{
+  "state": "PA",
+  "state_name": "Pennsylvania",
+  "tax_sources": [
+    {
+      "name": "Pennsylvania Department of Revenue",
+      "url": "https://www.revenue.pa.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Pennsylvania",
+      "url": "https://taxfoundation.org/location/pennsylvania/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Pennsylvania Department of State",
+      "url": "https://www.dos.pa.gov/BusinessCharities",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

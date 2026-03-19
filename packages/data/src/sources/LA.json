@@ -1,0 +1,27 @@
+{
+  "state": "LA",
+  "state_name": "Louisiana",
+  "tax_sources": [
+    {
+      "name": "Louisiana Department of Revenue",
+      "url": "https://revenue.louisiana.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Louisiana",
+      "url": "https://taxfoundation.org/location/louisiana/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Louisiana Secretary of State",
+      "url": "https://www.sos.la.gov/businessservices",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}
