@@ -52,6 +52,7 @@ services:
       # Code nodes (n8n CLI queries). Only admin-authored workflows run here;
       # no user-supplied code paths exist. Review before adding more builtins.
       NODE_FUNCTION_ALLOW_BUILTIN: child_process
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
       GENERIC_TIMEZONE: America/Los_Angeles
     volumes:
       - n8ndata:/home/node/.n8n

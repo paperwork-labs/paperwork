@@ -9,7 +9,7 @@ const appJsonLd = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
   name: "FileFree",
-  url: "https://filefree.tax",
+  url: "https://filefree.ai",
   description:
     "Free AI-powered tax filing. Snap your W-2, get your completed return in minutes.",
   applicationCategory: "FinanceApplication",

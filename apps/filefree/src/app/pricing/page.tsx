@@ -274,10 +274,10 @@ export default function PricingPage() {
           <p className="mt-3 text-muted-foreground">
             Reach out at{" "}
             <a
-              href="mailto:hello@filefree.tax"
+              href="mailto:hello@filefree.ai"
               className="text-violet-400 hover:text-violet-300"
             >
-              hello@filefree.tax
+              hello@filefree.ai
             </a>{" "}
             and we&apos;ll get back to you within 24 hours.
           </p>

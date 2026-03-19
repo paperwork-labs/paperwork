@@ -1,8 +1,8 @@
 import Link from "next/link";
 
 const socials = [
-  { label: "TikTok", href: "https://tiktok.com/@filefree.tax" },
-  { label: "Instagram", href: "https://instagram.com/filefree.tax" },
+  { label: "TikTok", href: "https://tiktok.com/@filefree.ai" },
+  { label: "Instagram", href: "https://instagram.com/filefree.ai" },
   { label: "X", href: "https://x.com/filefreetax" },
   { label: "YouTube", href: "https://youtube.com/@FileFreeTax" },
 ];

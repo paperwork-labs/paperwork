@@ -6,7 +6,14 @@
         "httpMethod": "POST",
         "path": "cpa-review",
         "responseMode": "lastNode",
-        "options": {}
+        "options": {},
+        "authentication": "headerAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "webhook-secret",
+          "name": "Webhook Secret"
+        }
       },
       "id": "webhook-cpa",
       "name": "Webhook",

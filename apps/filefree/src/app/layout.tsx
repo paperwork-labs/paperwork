@@ -17,7 +17,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://filefree.tax"),
+  metadataBase: new URL("https://filefree.ai"),
   title: {
     default: "FileFree — Free AI Tax Filing",
     template: "%s | FileFree",
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     title: "FileFree — Free AI Tax Filing",
     description:
       "Snap your W-2, get your completed return in minutes. Actually free.",
-    url: "https://filefree.tax",
+    url: "https://filefree.ai",
     siteName: "FileFree",
     type: "website",
     locale: "en_US",
