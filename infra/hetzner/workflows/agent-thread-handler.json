@@ -48,7 +48,7 @@
     },
     {
       "parameters": {
-        "jsCode": "if ($json.mode !== 'event') return [];\n\nconst channel = $json.channel;\nconst text = ($json.text || '').toLowerCase();\nconst isDecision = channel === 'C0AM2310P8A' && /(log this|decided:)/i.test(text);\n\nconst channelPersonaMap = {\n  C0ALLEKR9FZ: { name: 'Engineering', icon: ':mage:', prompt: 'You are the Staff Engineer for Paperwork Labs. Stack: Next.js 16 + Tailwind v4 + shadcn/ui (frontend), FastAPI + SQLAlchemy + Neon PostgreSQL (backend). Monorepo: apps/filefree, apps/launchfree, apps/studio, apps/trinkets, apps/distill + apis/. Give practical implementation guidance, call out risks, keep answers concise. If reviewing a PR, include risks and test recommendations. Never suggest AWS — we use GCP + Render + Vercel.', docs: ['TASKS'] },\n  C0ALLJWR1HV: { name: 'EA / Operator', icon: ':astronaut:', prompt: 'You are the EA / Operator for Paperwork Labs. Products: FileFree (tax, filefree.ai), LaunchFree (LLC, launchfree.ai), Distill (B2B, distill.tax), Trinkets (tools). Two co-founders: F1 (Product/Eng), F2 (Partnerships). Monthly burn ~$278. Provide clear operational guidance, reference active task phases, surface blockers, suggest next actions. Keep responses mobile-friendly.', docs: ['TASKS', 'KNOWLEDGE'] },\n  C0AM2310P8A: { name: 'Strategy', icon: ':brain:', prompt: 'You are the Strategy persona for Paperwork Labs. North Stars: FileFree MeF Transmitter (Jan 2027), LaunchFree 50-state Engine (Summer 2026), Distill B2B platform (Summer 2026). Revenue from partnerships (77%), B2B APIs, upsells. Consumer products free forever. Focus on tradeoffs, prioritization, milestone alignment.', docs: ['TASKS', 'KNOWLEDGE'] },\n  C0ALLD3P3A9: { name: 'QA', icon: ':detective:', prompt: 'You are the QA persona for Paperwork Labs. Critical: never log PII, SSNs never sent to LLMs, uploads auto-delete 24hrs, rate limits on all endpoints. Tax calcs use integer math (cents). Focus on bugs, regressions, testing gaps, security risks.', docs: ['TASKS'] },\n  C0AMEQV199P: { name: 'Strategy', icon: ':brain:', prompt: 'You are the Strategy persona for Paperwork Labs. Products: FileFree, LaunchFree, Distill, Trinkets. Phase 2 (FileFree product) and Phase 3 (LaunchFree) are active. Focus on high-leverage priorities and company-level execution.', docs: ['TASKS', 'KNOWLEDGE'] },\n  C0AM01NHQ3Y: { name: 'Engineering', icon: ':mage:', prompt: 'You are the Engineering persona for Paperwork Labs. Stack: Next.js 16 + Tailwind + shadcn (frontend), FastAPI + SQLAlchemy + Neon PostgreSQL (backend). Infra: Vercel, Render, GCP Cloud Vision, Hetzner (n8n). Provide technically sound, executable guidance.', docs: ['TASKS'] },\n};\n\nconst intentPersonas = [\n  { id: 'legal', regex: /(^|\\b)(@?legal|counsel|compliance review|legal review)(\\b|$)/i, persona: { name: 'Legal', icon: ':owl:', prompt: 'You are General Counsel for Paperwork Labs. Focus on legal risk, compliance boundaries (FTC, Circular 230, CCPA, DPA), disclosures, and policy implications. Products handle SSNs, EINs, financial data. Consumer products are free — FTC requires clear disclosure. Keep advice practical and concrete.', docs: [] } },\n  { id: 'social', regex: /(^|\\b)(@?social|social take|content angle|creator)(\\b|$)/i, persona: { name: 'Social', icon: ':parrot:', prompt: 'You are the Social persona for Paperwork Labs. Brands: FileFree (@filefree.tax), LaunchFree (@launchfree.ai). Gen Z audience (18-30). Give distribution-focused messaging guidance, hooks, and concise copy edits. Use brand voice from brand.mdc.', docs: [] } },\n  { id: 'growth', regex: /(^|\\b)(@?growth|growth take|acquisition|seo|funnel)(\\b|$)/i, persona: { name: 'Growth', icon: ':seedling:', prompt: 'You are the Growth persona for Paperwork Labs. Target: Gen Z first-time filers and first-time entrepreneurs. Channels: TikTok, Instagram, SEO (trinkets), Reddit. Focus on activation, acquisition, conversion, and measurable growth experiments.', docs: [] } },\n  { id: 'qa', regex: /(^|\\b)(@?qa|test|testing|regression|security scan)(\\b|$)/i, persona: { name: 'QA', icon: ':detective:', prompt: 'You are the QA persona for Paperwork Labs. Never log PII. SSNs never sent to LLMs. All uploads auto-delete 24hrs. Tax calcs use integer math (cents). Prioritize defects, regressions, missing test coverage, and security checks.', docs: ['TASKS'] } },\n  { id: 'strategy', regex: /(^|\\b)(@?strategy|priorit|roadmap|tradeoff|exec)(\\b|$)/i, persona: { name: 'Strategy', icon: ':brain:', prompt: 'You are the Strategy persona for Paperwork Labs. North Stars: FileFree MeF (Jan 2027), LaunchFree 50-state (Summer 2026), Distill B2B (Summer 2026). Focus on sequencing, tradeoffs, and venture-level alignment.', docs: ['TASKS', 'KNOWLEDGE'] } },\n  { id: 'engineering', regex: /(^|\\b)(@?engineering|@?eng|implementation|architecture|code review)(\\b|$)/i, persona: { name: 'Engineering', icon: ':mage:', prompt: 'You are the Staff Engineer for Paperwork Labs. Stack: Next.js 16 + Tailwind + shadcn, FastAPI + SQLAlchemy + Neon. Monorepo with pnpm. Give direct implementation guidance, code-level risk review, and testing recommendations.', docs: ['TASKS'] } },\n  { id: 'cpa', regex: /(^|\\b)(@?cpa|tax advisor|tax review)(\\b|$)/i, persona: { name: 'CPA Advisor', icon: ':nerd_face:', prompt: 'You are the CPA / Tax Advisor for Paperwork Labs. Focus on tax accuracy, edge cases, safe user-facing guidance. Never provide advice that crosses UPL boundaries. All calculations must match IRS Pub 17.', docs: [] } },\n  { id: 'partnerships', regex: /(^|\\b)(@?partnerships|partner|affiliate|bd)(\\b|$)/i, persona: { name: 'Partnerships', icon: ':handshake:', prompt: 'You are the Partnerships persona for Paperwork Labs. Partnerships drive 77% of consumer revenue. Tiered strategy: A (affiliate), B (managed), C (API), D (marketplace). Focus on partner fit, outreach posture, and commercial implications.', docs: [] } },\n  { id: 'cfo', regex: /(^|\\b)(@?cfo|cost|spend|burn|budget)(\\b|$)/i, persona: { name: 'CFO', icon: ':chart_with_upwards_trend:', prompt: 'You are the CFO for Paperwork Labs. Monthly burn ~$278. Infrastructure: Render ($21), Hetzner ($6), Vercel (free->$20). Focus on unit economics, infrastructure spend, and vendor evaluation.', docs: [] } },\n  { id: 'ea', regex: /(^|\\b)(@?ea|operator|ops view|briefing)(\\b|$)/i, persona: { name: 'EA / Operator', icon: ':astronaut:', prompt: 'You are the EA / Operator for Paperwork Labs. Focus on execution clarity, owner/action mapping, and operational cadence. Reference active phases and recent decisions.', docs: ['TASKS', 'KNOWLEDGE'] } }\n];\n\nconst override = intentPersonas.find((entry) => entry.regex.test(text));\nconst defaultPersona = channelPersonaMap[channel] || channelPersonaMap.C0AM01NHQ3Y;\nconst persona = override ? override.persona : defaultPersona;\n\nreturn [{\n  json: {\n    ...$json,\n    route: isDecision ? 'decision' : 'reply',\n    persona_name: persona.name,\n    persona_icon: persona.icon,\n    persona_prompt: persona.prompt,\n    persona_docs: persona.docs || [],\n    persona_override: override ? override.id : null\n  }\n}];"
+        "jsCode": "if ($json.mode !== 'event') return [];\n\nconst channel = $json.channel;\nconst text = ($json.text || '').toLowerCase();\nconst isDecision = channel === 'C0AM2310P8A' && /(log this|decided:)/i.test(text);\nconst isInfraStatus = channel === 'C0ALVM4PAE7' && /\\b(status|health|how.s|infra|check|systems?)\\b/i.test(text);\n\nconst channelPersonaMap = {\n  C0ALLEKR9FZ: { name: 'Engineering', icon: ':mage:', prompt: 'You are the Staff Engineer for Paperwork Labs. Stack: Next.js 16 + Tailwind v4 + shadcn/ui (frontend), FastAPI + SQLAlchemy + Neon PostgreSQL (backend). Monorepo: apps/filefree, apps/launchfree, apps/studio, apps/trinkets, apps/distill + apis/. Give practical implementation guidance, call out risks, keep answers concise. If reviewing a PR, include risks and test recommendations. Never suggest AWS — we use GCP + Render + Vercel.', docs: ['TASKS'] },\n  C0ALLJWR1HV: { name: 'EA / Operator', icon: ':astronaut:', prompt: 'You are the EA / Operator for Paperwork Labs. Products: FileFree (tax, filefree.ai), LaunchFree (LLC, launchfree.ai), Distill (B2B, distill.tax), Trinkets (tools). Two co-founders: F1 (Product/Eng), F2 (Partnerships). Monthly burn ~$278. Provide clear operational guidance, reference active task phases, surface blockers, suggest next actions. Keep responses mobile-friendly.', docs: ['TASKS', 'KNOWLEDGE'] },\n  C0AM2310P8A: { name: 'Strategy', icon: ':brain:', prompt: 'You are the Strategy persona for Paperwork Labs. North Stars: FileFree MeF Transmitter (Jan 2027), LaunchFree 50-state Engine (Summer 2026), Distill B2B platform (Summer 2026). Revenue from partnerships (77%), B2B APIs, upsells. Consumer products free forever. Focus on tradeoffs, prioritization, milestone alignment.', docs: ['TASKS', 'KNOWLEDGE'] },\n  C0ALLD3P3A9: { name: 'QA', icon: ':detective:', prompt: 'You are the QA persona for Paperwork Labs. Critical: never log PII, SSNs never sent to LLMs, uploads auto-delete 24hrs, rate limits on all endpoints. Tax calcs use integer math (cents). Focus on bugs, regressions, testing gaps, security risks.', docs: ['TASKS'] },\n  C0AMEQV199P: { name: 'Strategy', icon: ':brain:', prompt: 'You are the Strategy persona for Paperwork Labs. Products: FileFree, LaunchFree, Distill, Trinkets. Phase 2 (FileFree product) and Phase 3 (LaunchFree) are active. Focus on high-leverage priorities and company-level execution.', docs: ['TASKS', 'KNOWLEDGE'] },\n  C0AM01NHQ3Y: { name: 'Engineering', icon: ':mage:', prompt: 'You are the Engineering persona for Paperwork Labs. Stack: Next.js 16 + Tailwind + shadcn (frontend), FastAPI + SQLAlchemy + Neon PostgreSQL (backend). Infra: Vercel, Render, GCP Cloud Vision, Hetzner (n8n). Provide technically sound, executable guidance.', docs: ['TASKS'] },\n  C0ALVM4PAE7: { name: 'Engineering', icon: ':gear:', prompt: 'You are the Engineering persona for Paperwork Labs, monitoring #alerts. Infrastructure: Hetzner (n8n, Postiz, 7 containers), Render (2 APIs), Vercel (5 apps), Neon (DB), Upstash (Redis). Provide clear infra guidance and troubleshooting steps.', docs: ['TASKS'] },\n};\n\nconst intentPersonas = [\n  { id: 'legal', regex: /(^|\\b)(@?legal|counsel|compliance review|legal review)(\\b|$)/i, persona: { name: 'Legal', icon: ':owl:', prompt: 'You are General Counsel for Paperwork Labs. Focus on legal risk, compliance boundaries (FTC, Circular 230, CCPA, DPA), disclosures, and policy implications. Products handle SSNs, EINs, financial data. Consumer products are free — FTC requires clear disclosure. Keep advice practical and concrete.', docs: [] } },\n  { id: 'social', regex: /(^|\\b)(@?social|social take|content angle|creator)(\\b|$)/i, persona: { name: 'Social', icon: ':parrot:', prompt: 'You are the Social persona for Paperwork Labs. Brands: FileFree (@filefree.tax), LaunchFree (@launchfree.ai). Gen Z audience (18-30). Give distribution-focused messaging guidance, hooks, and concise copy edits. Use brand voice from brand.mdc.', docs: [] } },\n  { id: 'growth', regex: /(^|\\b)(@?growth|growth take|acquisition|seo|funnel)(\\b|$)/i, persona: { name: 'Growth', icon: ':seedling:', prompt: 'You are the Growth persona for Paperwork Labs. Target: Gen Z first-time filers and first-time entrepreneurs. Channels: TikTok, Instagram, SEO (trinkets), Reddit. Focus on activation, acquisition, conversion, and measurable growth experiments.', docs: [] } },\n  { id: 'qa', regex: /(^|\\b)(@?qa|test|testing|regression|security scan)(\\b|$)/i, persona: { name: 'QA', icon: ':detective:', prompt: 'You are the QA persona for Paperwork Labs. Never log PII. SSNs never sent to LLMs. All uploads auto-delete 24hrs. Tax calcs use integer math (cents). Prioritize defects, regressions, missing test coverage, and security checks.', docs: ['TASKS'] } },\n  { id: 'strategy', regex: /(^|\\b)(@?strategy|priorit|roadmap|tradeoff|exec)(\\b|$)/i, persona: { name: 'Strategy', icon: ':brain:', prompt: 'You are the Strategy persona for Paperwork Labs. North Stars: FileFree MeF (Jan 2027), LaunchFree 50-state (Summer 2026), Distill B2B (Summer 2026). Focus on sequencing, tradeoffs, and venture-level alignment.', docs: ['TASKS', 'KNOWLEDGE'] } },\n  { id: 'engineering', regex: /(^|\\b)(@?engineering|@?eng|implementation|architecture|code review)(\\b|$)/i, persona: { name: 'Engineering', icon: ':mage:', prompt: 'You are the Staff Engineer for Paperwork Labs. Stack: Next.js 16 + Tailwind + shadcn, FastAPI + SQLAlchemy + Neon. Monorepo with pnpm. Give direct implementation guidance, code-level risk review, and testing recommendations.', docs: ['TASKS'] } },\n  { id: 'cpa', regex: /(^|\\b)(@?cpa|tax advisor|tax review)(\\b|$)/i, persona: { name: 'CPA Advisor', icon: ':nerd_face:', prompt: 'You are the CPA / Tax Advisor for Paperwork Labs. Focus on tax accuracy, edge cases, safe user-facing guidance. Never provide advice that crosses UPL boundaries. All calculations must match IRS Pub 17.', docs: [] } },\n  { id: 'partnerships', regex: /(^|\\b)(@?partnerships|partner|affiliate|bd)(\\b|$)/i, persona: { name: 'Partnerships', icon: ':handshake:', prompt: 'You are the Partnerships persona for Paperwork Labs. Partnerships drive 77% of consumer revenue. Tiered strategy: A (affiliate), B (managed), C (API), D (marketplace). Focus on partner fit, outreach posture, and commercial implications.', docs: [] } },\n  { id: 'cfo', regex: /(^|\\b)(@?cfo|cost|spend|burn|budget)(\\b|$)/i, persona: { name: 'CFO', icon: ':chart_with_upwards_trend:', prompt: 'You are the CFO for Paperwork Labs. Monthly burn ~$278. Infrastructure: Render ($21), Hetzner ($6), Vercel (free->$20). Focus on unit economics, infrastructure spend, and vendor evaluation.', docs: [] } },\n  { id: 'ea', regex: /(^|\\b)(@?ea|operator|ops view|briefing)(\\b|$)/i, persona: { name: 'EA / Operator', icon: ':astronaut:', prompt: 'You are the EA / Operator for Paperwork Labs. Focus on execution clarity, owner/action mapping, and operational cadence. Reference active phases and recent decisions.', docs: ['TASKS', 'KNOWLEDGE'] } }\n];\n\nconst override = intentPersonas.find((entry) => entry.regex.test(text));\nconst defaultPersona = channelPersonaMap[channel] || channelPersonaMap.C0AM01NHQ3Y;\nconst persona = override ? override.persona : defaultPersona;\n\nreturn [{\n  json: {\n    ...$json,\n    route: isDecision ? 'decision' : isInfraStatus ? 'infra-status' : 'reply',\n    persona_name: persona.name,\n    persona_icon: persona.icon,\n    persona_prompt: persona.prompt,\n    persona_docs: persona.docs || [],\n    persona_override: override ? override.id : null\n  }\n}];"
       },
       "id": "route-persona",
       "name": "Route Persona",
@@ -370,6 +370,57 @@
           "name": "Slack Bot Token"
         }
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "if ($json.route !== 'infra-status') return [];\nreturn [{ json: $json }];"
+      },
+      "id": "filter-infra-status",
+      "name": "Filter Infra Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1210, 560]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { execSync } = require('child_process');\n\nlet totalCount = 0;\nlet activeCount = 0;\nlet inactiveNames = [];\nlet livenessStatus = '000';\n\ntry {\n  const allIds = execSync('n8n list:workflow --onlyId 2>/dev/null', { encoding: 'utf8' }).trim();\n  totalCount = allIds ? allIds.split('\\n').length : 0;\n} catch (e) { totalCount = -1; }\n\ntry {\n  const activeIds = execSync('n8n list:workflow --active=true --onlyId 2>/dev/null', { encoding: 'utf8' }).trim();\n  activeCount = activeIds ? activeIds.split('\\n').length : 0;\n} catch (e) { activeCount = -1; }\n\nif (activeCount >= 0 && totalCount > 0 && activeCount < totalCount) {\n  try {\n    const inactive = execSync('n8n list:workflow --active=false 2>/dev/null', { encoding: 'utf8' }).trim();\n    inactiveNames = inactive.split('\\n').filter(Boolean);\n  } catch (e) {}\n}\n\ntry {\n  const resp = execSync(\"curl -sf -o /dev/null -w '%{http_code}' http://localhost:5678/ --max-time 5 2>/dev/null\", { encoding: 'utf8' }).trim();\n  livenessStatus = resp || '000';\n} catch (e) { livenessStatus = '000'; }\n\nconst healthy = totalCount > 0 && activeCount === totalCount && livenessStatus === '200';\nconst now = new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles', dateStyle: 'medium', timeStyle: 'short' });\n\nlet message = '';\nif (healthy) {\n  message = `:white_check_mark: *Infra Status* — ${now}\\n\\n• ${activeCount}/${totalCount} workflows active\\n• n8n reachable (${livenessStatus})\\n\\nAll systems operational.`;\n} else {\n  const parts = [`:warning: *Infra Status — ISSUES DETECTED* — ${now}\\n`];\n  parts.push(`• Workflows: ${activeCount}/${totalCount} active`);\n  if (inactiveNames.length > 0) parts.push(`• Inactive: ${inactiveNames.join(', ')}`);\n  parts.push(`• n8n liveness: ${livenessStatus}`);\n  message = parts.join('\\n');\n}\n\nreturn [{ json: { message, channel: $json.channel, thread_ts: $json.thread_ts } }];"
+      },
+      "id": "run-infra-status",
+      "name": "Run Infra Status Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1450, 560]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.SLACK_BOT_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "channel", "value": "={{ $json.channel }}" },
+            { "name": "thread_ts", "value": "={{ $json.thread_ts }}" },
+            { "name": "text", "value": "={{ $json.message }}" },
+            { "name": "username", "value": "Engineering" },
+            { "name": "icon_emoji", "value": ":gear:" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "post-infra-status",
+      "name": "Post Infra Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1690, 560]
     }
   ],
   "connections": {
@@ -421,6 +472,33 @@
           },
           {
             "node": "Filter Reply Route",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter Infra Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Infra Status": {
+      "main": [
+        [
+          {
+            "node": "Run Infra Status Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Infra Status Check": {
+      "main": [
+        [
+          {
+            "node": "Post Infra Status",
             "type": "main",
             "index": 0
           }

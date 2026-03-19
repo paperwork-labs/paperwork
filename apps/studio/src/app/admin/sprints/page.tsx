@@ -1,13 +1,19 @@
-import { getN8nExecutions } from "@/lib/command-center";
-
-const KICKOFF_ID = "f7a8b9c0-d1e2-4f3a-b4c5-d6e7f8a9b0c1";
-const CLOSE_ID = "a9b0c1d2-e3f4-4a5b-b6c7-d8e9f0a1b2c3";
+import { getN8nExecutions, getN8nWorkflows } from "@/lib/command-center";
 
 export default async function SprintsPage() {
-  const executions = await getN8nExecutions(50);
+  const [workflows, executions] = await Promise.all([getN8nWorkflows(), getN8nExecutions(50)]);
 
-  const kickoffRuns = executions.filter((e) => e.workflowId === KICKOFF_ID);
-  const closeRuns = executions.filter((e) => e.workflowId === CLOSE_ID);
+  const kickoffWorkflow = workflows.find(
+    (w) => w.name.toLowerCase().includes("sprint") && w.name.toLowerCase().includes("kickoff")
+  );
+  const closeWorkflow = workflows.find(
+    (w) => w.name.toLowerCase().includes("sprint") && w.name.toLowerCase().includes("close")
+  );
+  const kickoffId = kickoffWorkflow?.id;
+  const closeId = closeWorkflow?.id;
+
+  const kickoffRuns = kickoffId ? executions.filter((e) => e.workflowId === kickoffId) : [];
+  const closeRuns = closeId ? executions.filter((e) => e.workflowId === closeId) : [];
 
   return (
     <div className="space-y-6">
@@ -32,15 +38,25 @@ export default async function SprintsPage() {
       <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
         <p className="mb-3 text-sm font-medium text-zinc-200">Recent Sprint Executions</p>
         <div className="space-y-2">
-          {executions
-            .filter((e) => e.workflowId === KICKOFF_ID || e.workflowId === CLOSE_ID)
+          {(kickoffId || closeId
+            ? executions.filter(
+                (e) =>
+                  (kickoffId && e.workflowId === kickoffId) || (closeId && e.workflowId === closeId)
+              )
+            : []
+          )
             .slice(0, 10)
             .map((e) => (
               <div key={e.id} className="rounded-md bg-zinc-800/60 px-3 py-2 text-sm">
-                #{e.id} - {e.workflowId === KICKOFF_ID ? "Kickoff" : "Close"} -{" "}
+                #{e.id} - {e.workflowId === kickoffId ? "Kickoff" : "Close"} -{" "}
                 {e.finished ? "finished" : "running"}
               </div>
             ))}
+          {!kickoffId && !closeId && (
+            <p className="text-sm text-zinc-400">
+              No Sprint Kickoff or Sprint Close workflows found. Add them in n8n to track executions.
+            </p>
+          )}
         </div>
       </section>
     </div>

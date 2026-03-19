@@ -57,4 +57,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: ["/admin/:path*"],
+  // Note: /api/secrets/* routes handle their own auth via secrets-auth.ts
+  // (supports both Basic Auth and Bearer token for machine access)
 };
