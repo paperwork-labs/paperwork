@@ -1,7 +1,7 @@
 .PHONY: dev dev-d dev-all dev-filefree dev-launchfree dev-studio dev-trinkets dev-distill \
 	dev-local-filefree dev-local-launchfree dev-local-studio dev-local-trinkets dev-local-distill \
 	stop test test-local lint lint-local format format-local migrate migrate-local migration seed clean \
-	setup setup-hooks help logs logs-api logs-web shell-api shell-web db
+	setup setup-hooks help logs logs-api logs-web shell-api shell-web db env-pull env-check
 
 COMPOSE_PROJECT ?= paperwork
 COMPOSE = docker compose -p $(COMPOSE_PROJECT) -f infra/compose.dev.yaml
@@ -129,3 +129,10 @@ shell-web: ## Open a shell in a web container (default: web-filefree)
 
 db: ## Open psql in shared dev database
 	$(COMPOSE) exec postgres psql -U filefree -d filefree_dev
+
+env-pull: ## Pull Vercel production env vars to Studio .env.local
+	cd apps/studio && vercel env pull .env.local --environment=production
+	@echo "✓ Studio .env.local synced with Vercel production."
+
+env-check: ## Validate env vars across all environments (Vercel, local, Hetzner)
+	@bash scripts/env-check.sh
