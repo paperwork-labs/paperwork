@@ -13,12 +13,12 @@
   :root {
     --bg: #0f0f0f;
     --surface: #1a1a1a;
-    --text: #ebebeb;
+    --text: #f0f0f0;
     --text-muted: #888;
     --accent: #94a3b8;
     --accent-soft: rgba(148, 163, 184, 0.10);
-    --green: #94a3b8;
-    --green-soft: rgba(148, 163, 184, 0.08);
+    --green: #34d399;
+    --green-soft: rgba(52, 211, 153, 0.08);
     --border: #252525;
   }
 
@@ -29,6 +29,8 @@
     background: var(--bg);
     color: var(--text);
     -webkit-font-smoothing: antialiased;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 
   @page {
@@ -55,7 +57,7 @@
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, #64748b, #94a3b8, #64748b);
+    background: linear-gradient(90deg, #059669, #34d399, #059669);
   }
 
   .slide-number {
@@ -175,7 +177,7 @@
   .stat-value {
     font-size: 28px;
     font-weight: 700;
-    color: var(--accent);
+    color: var(--green);
     letter-spacing: -0.02em;
   }
 
@@ -189,8 +191,8 @@
   }
 
   .result-stat {
-    background: var(--accent-soft);
-    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: var(--green-soft);
+    border: 1px solid rgba(52, 211, 153, 0.18);
     border-radius: 8px;
     padding: 16px 20px;
     text-align: center;
@@ -219,14 +221,14 @@
     height: 28px;
     min-width: 28px;
     border-radius: 50%;
-    background: var(--accent-soft);
-    border: 1.5px solid var(--accent);
+    background: var(--green-soft);
+    border: 1.5px solid var(--green);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 13px;
     font-weight: 600;
-    color: var(--accent);
+    color: var(--green);
   }
 
   .step-text {
@@ -377,7 +379,7 @@
       <div style="margin-top: 16px;">
         <div class="stat-card" style="text-align: left; padding: 18px 22px;">
           <div style="font-size: 14px; color: var(--text-muted); line-height: 1.6;">
-            <strong style="color: var(--text);">8 partners selected</strong> globally across EMEA, APAC, and North America. All contracts closed within <strong style="color: var(--accent);">2 weeks</strong> (org record).
+            <strong style="color: var(--text);">8 partners selected</strong> globally across EMEA, APAC, and North America. All contracts closed within <strong style="color: var(--green);">2 weeks</strong> (org record).
           </div>
         </div>
       </div>
