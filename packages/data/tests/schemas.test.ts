@@ -155,4 +155,27 @@ describe("StateTaxRulesSchema", () => {
     const invalid = { ...validTaxRules, tax_year: 2020 };
     expect(() => StateTaxRulesSchema.parse(invalid)).toThrow();
   });
+
+  it("accepts valid flat tax rules", () => {
+    const flatRules = {
+      ...validTaxRules,
+      state: "CO",
+      state_name: "Colorado",
+      income_tax: {
+        type: "flat",
+        flat_rate_bps: 440,
+      },
+    };
+    expect(() => StateTaxRulesSchema.parse(flatRules)).not.toThrow();
+  });
+
+  it("rejects flat tax without flat_rate_bps", () => {
+    const invalid = {
+      ...validTaxRules,
+      income_tax: {
+        type: "flat",
+      },
+    };
+    expect(() => StateTaxRulesSchema.parse(invalid)).toThrow();
+  });
 });

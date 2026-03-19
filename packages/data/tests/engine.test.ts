@@ -73,7 +73,6 @@ describe("Tax Engine", () => {
     tax_year: 2026,
     income_tax: {
       type: "flat",
-      brackets: { single: [], married_filing_jointly: [], married_filing_separately: [], head_of_household: [] },
       flat_rate_bps: 440,
     },
     standard_deductions: [
@@ -106,7 +105,7 @@ describe("Tax Engine", () => {
       ...flatTax,
       state: "TX",
       state_name: "Texas",
-      income_tax: { type: "none", brackets: { single: [], married_filing_jointly: [], married_filing_separately: [], head_of_household: [] } },
+      income_tax: { type: "none" },
     };
     loadTaxData("TX", noTax);
     expect(calculateStateTax("TX", 10000000, "single")).toBe(0);
@@ -130,5 +129,17 @@ describe("Freshness", () => {
     const result = checkFreshness("CA", "tax", oldDate.toISOString());
     expect(result.is_stale).toBe(true);
     expect(result.days_since_verification).toBeGreaterThanOrEqual(100);
+  });
+
+  it("treats invalid date as stale", () => {
+    const result = checkFreshness("CA", "tax", "not-a-date");
+    expect(result.is_stale).toBe(true);
+    expect(result.days_since_verification).toBe(Infinity);
+  });
+
+  it("treats empty string date as stale", () => {
+    const result = checkFreshness("CA", "formation", "");
+    expect(result.is_stale).toBe(true);
+    expect(result.days_since_verification).toBe(Infinity);
   });
 });

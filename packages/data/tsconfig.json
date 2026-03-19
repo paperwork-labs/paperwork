@@ -11,9 +11,6 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "composite": true,
-    "declaration": true,
-    "declarationMap": true,
     "paths": {
       "@/*": ["./src/*"]
     }

@@ -1,20 +1,54 @@
 {
   "$schema": "State tax rules template — see StateTaxRulesSchema",
-  "state": "XX",
-  "state_name": "",
+  "state": "DE",
+  "state_name": "Delaware",
   "tax_year": 2026,
   "income_tax": {
-    "type": "none",
+    "type": "progressive",
     "brackets": {
-      "single": [],
-      "married_filing_jointly": [],
-      "married_filing_separately": [],
-      "head_of_household": []
+      "single": [
+        { "min_income_cents": 0, "max_income_cents": 200000, "rate_bps": 0 },
+        { "min_income_cents": 200000, "max_income_cents": 500000, "rate_bps": 220 },
+        { "min_income_cents": 500000, "max_income_cents": 1000000, "rate_bps": 390 },
+        { "min_income_cents": 1000000, "max_income_cents": 2000000, "rate_bps": 480 },
+        { "min_income_cents": 2000000, "max_income_cents": 2500000, "rate_bps": 520 },
+        { "min_income_cents": 2500000, "max_income_cents": 6000000, "rate_bps": 555 },
+        { "min_income_cents": 6000000, "max_income_cents": null, "rate_bps": 660 }
+      ],
+      "married_filing_jointly": [
+        { "min_income_cents": 0, "max_income_cents": 200000, "rate_bps": 0 },
+        { "min_income_cents": 200000, "max_income_cents": 500000, "rate_bps": 220 },
+        { "min_income_cents": 500000, "max_income_cents": 1000000, "rate_bps": 390 },
+        { "min_income_cents": 1000000, "max_income_cents": 2000000, "rate_bps": 480 },
+        { "min_income_cents": 2000000, "max_income_cents": 2500000, "rate_bps": 520 },
+        { "min_income_cents": 2500000, "max_income_cents": 6000000, "rate_bps": 555 },
+        { "min_income_cents": 6000000, "max_income_cents": null, "rate_bps": 660 }
+      ],
+      "married_filing_separately": [
+        { "min_income_cents": 0, "max_income_cents": 200000, "rate_bps": 0 },
+        { "min_income_cents": 200000, "max_income_cents": 500000, "rate_bps": 220 },
+        { "min_income_cents": 500000, "max_income_cents": 1000000, "rate_bps": 390 },
+        { "min_income_cents": 1000000, "max_income_cents": 2000000, "rate_bps": 480 },
+        { "min_income_cents": 2000000, "max_income_cents": 2500000, "rate_bps": 520 },
+        { "min_income_cents": 2500000, "max_income_cents": 6000000, "rate_bps": 555 },
+        { "min_income_cents": 6000000, "max_income_cents": null, "rate_bps": 660 }
+      ],
+      "head_of_household": [
+        { "min_income_cents": 0, "max_income_cents": 200000, "rate_bps": 0 },
+        { "min_income_cents": 200000, "max_income_cents": 500000, "rate_bps": 220 },
+        { "min_income_cents": 500000, "max_income_cents": 1000000, "rate_bps": 390 },
+        { "min_income_cents": 1000000, "max_income_cents": 2000000, "rate_bps": 480 },
+        { "min_income_cents": 2000000, "max_income_cents": 2500000, "rate_bps": 520 },
+        { "min_income_cents": 2500000, "max_income_cents": 6000000, "rate_bps": 555 },
+        { "min_income_cents": 6000000, "max_income_cents": null, "rate_bps": 660 }
+      ]
     }
   },
-  "standard_deductions": [],
+  "standard_deductions": [
+    { "filing_status": "single", "amount_cents": 325000 }
+  ],
   "personal_exemption": {
-    "amount_cents": 0,
+    "amount_cents": 11000,
     "phases_out": false
   },
   "notable_credits": [],
@@ -25,11 +59,17 @@
   "reciprocity": {
     "has_reciprocity": false
   },
-  "dor_url": "",
+  "dor_url": "https://revenue.delaware.gov",
   "verification": {
-    "last_verified": "",
-    "sources": [],
+    "last_verified": "2026-03-18T00:00:00.000Z",
+    "sources": [
+      {
+        "name": "Delaware Division of Revenue",
+        "url": "https://revenue.delaware.gov",
+        "accessed_at": "2026-03-18T00:00:00.000Z"
+      }
+    ],
     "verified_by": "ai_extraction",
-    "confidence": 0
+    "confidence": 0.85
   }
 }

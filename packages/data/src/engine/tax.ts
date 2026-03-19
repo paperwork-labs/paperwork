@@ -29,19 +29,22 @@ export function calculateStateTax(
 
   if (rules.income_tax.type === "none") return 0;
 
-  if (rules.income_tax.type === "flat" && rules.income_tax.flat_rate_bps !== undefined) {
+  if (rules.income_tax.type === "flat") {
     const deduction = rules.standard_deductions.find(d => d.filing_status === filingStatus);
     const taxableIncome = Math.max(0, grossIncomeCents - (deduction?.amount_cents ?? 0));
     return Math.round((taxableIncome * rules.income_tax.flat_rate_bps) / 10000);
   }
 
-  const brackets = rules.income_tax.brackets[filingStatus];
-  if (!brackets || brackets.length === 0) return undefined;
+  if (rules.income_tax.type === "progressive") {
+    const brackets = rules.income_tax.brackets[filingStatus];
+    if (!brackets || brackets.length === 0) return undefined;
 
-  const deduction = rules.standard_deductions.find(d => d.filing_status === filingStatus);
-  const taxableIncome = Math.max(0, grossIncomeCents - (deduction?.amount_cents ?? 0));
+    const deduction = rules.standard_deductions.find(d => d.filing_status === filingStatus);
+    const taxableIncome = Math.max(0, grossIncomeCents - (deduction?.amount_cents ?? 0));
+    return calculateProgressiveTax(taxableIncome, brackets);
+  }
 
-  return calculateProgressiveTax(taxableIncome, brackets);
+  return undefined;
 }
 
 function calculateProgressiveTax(taxableIncomeCents: number, brackets: TaxBracket[]): number {

@@ -1,7 +1,7 @@
 {
   "$schema": "Compliance calendar template",
-  "state": "XX",
-  "state_name": "",
+  "state": "DE",
+  "state_name": "Delaware",
   "annual_report": {
     "required": false,
     "due_date": null,
@@ -9,18 +9,24 @@
     "filing_url": null
   },
   "franchise_tax": {
-    "required": false,
-    "due_date": null,
-    "amount_cents": 0
+    "required": true,
+    "due_date": "June 1",
+    "amount_cents": 30000
   },
   "registered_agent": {
     "required": true,
     "renewal_date": null
   },
   "verification": {
-    "last_verified": "",
-    "sources": [],
+    "last_verified": "2026-03-18T00:00:00.000Z",
+    "sources": [
+      {
+        "name": "Delaware Division of Corporations",
+        "url": "https://corp.delaware.gov",
+        "accessed_at": "2026-03-18T00:00:00.000Z"
+      }
+    ],
     "verified_by": "ai_extraction",
-    "confidence": 0
+    "confidence": 0.9
   }
 }

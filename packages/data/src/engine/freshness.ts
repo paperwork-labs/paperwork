@@ -10,6 +10,15 @@ export function checkFreshness(
   lastVerified: string,
 ): DataFreshness {
   const verifiedDate = new Date(lastVerified);
+  if (Number.isNaN(verifiedDate.getTime())) {
+    return {
+      state,
+      dataset,
+      last_verified: lastVerified,
+      days_since_verification: Infinity,
+      is_stale: true,
+    };
+  }
   const now = new Date();
   const daysSince = Math.floor((now.getTime() - verifiedDate.getTime()) / (1000 * 60 * 60 * 24));
 

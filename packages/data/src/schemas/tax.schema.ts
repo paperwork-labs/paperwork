@@ -21,16 +21,32 @@ const StandardDeductionSchema = z.object({
   amount_cents: z.number().int().nonnegative(),
 });
 
+const IncomeTaxNone = z.object({
+  type: z.literal("none"),
+});
+
+const IncomeTaxFlat = z.object({
+  type: z.literal("flat"),
+  flat_rate_bps: z.number().int().nonnegative().max(10000),
+});
+
+const IncomeTaxProgressive = z.object({
+  type: z.literal("progressive"),
+  brackets: z.record(FilingStatusSchema, z.array(TaxBracketSchema)),
+});
+
+const IncomeTaxSchema = z.discriminatedUnion("type", [
+  IncomeTaxNone,
+  IncomeTaxFlat,
+  IncomeTaxProgressive,
+]);
+
 export const StateTaxRulesSchema = z.object({
   state: StateCodeSchema,
   state_name: z.string().min(1),
   tax_year: z.number().int().min(2024).max(2030),
 
-  income_tax: z.object({
-    type: TaxTypeSchema,
-    brackets: z.record(FilingStatusSchema, z.array(TaxBracketSchema)),
-    flat_rate_bps: z.number().int().nonnegative().max(10000).optional(),
-  }),
+  income_tax: IncomeTaxSchema,
 
   standard_deductions: z.array(StandardDeductionSchema),
 

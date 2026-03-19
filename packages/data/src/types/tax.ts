@@ -28,11 +28,10 @@ export type StateTaxRules = {
   state_name: string;
   tax_year: number;
 
-  income_tax: {
-    type: TaxType;
-    brackets: Record<FilingStatus, TaxBracket[]>;
-    flat_rate_bps?: number;
-  };
+  income_tax:
+    | { type: "none" }
+    | { type: "flat"; flat_rate_bps: number }
+    | { type: "progressive"; brackets: Record<FilingStatus, TaxBracket[]> };
 
   standard_deductions: StandardDeduction[];
 
