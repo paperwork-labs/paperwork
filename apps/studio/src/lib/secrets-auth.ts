@@ -1,4 +1,16 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+
+function safeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a, "utf8");
+  const bufB = Buffer.from(b, "utf8");
+  if (bufA.length !== bufB.length) return false;
+  try {
+    return timingSafeEqual(bufA, bufB);
+  } catch {
+    return false;
+  }
+}
 
 type AuthResult =
   | { ok: true }
@@ -41,7 +53,7 @@ function validateBearerToken(token: string): AuthResult {
     };
   }
 
-  if (token.trim() !== expectedKey) {
+  if (!safeEqual(token.trim(), expectedKey)) {
     return {
       ok: false,
       response: NextResponse.json({ error: "Invalid API key" }, { status: 403 }),
@@ -79,7 +91,7 @@ function validateBasicAuth(encoded: string): AuthResult {
     const email = decoded.slice(0, sep).trim().toLowerCase();
     const password = decoded.slice(sep + 1);
 
-    if (!allowedEmails.has(email) || password !== requiredPassword) {
+    if (!allowedEmails.has(email) || !safeEqual(password, requiredPassword)) {
       return { ok: false, response: NextResponse.json({ error: "Invalid credentials" }, { status: 403 }) };
     }
 

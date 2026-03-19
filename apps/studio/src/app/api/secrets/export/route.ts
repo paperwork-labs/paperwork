@@ -3,6 +3,14 @@ import { sql, ensureSecretsTable } from "@/lib/db";
 import { decrypt } from "@/lib/crypto";
 import { authenticateSecretsRequest } from "@/lib/secrets-auth";
 
+function dotenvSafe(name: string, value: string): string {
+  if (/[\n\r"\\]/.test(value) || value !== value.trim()) {
+    const escaped = value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n").replace(/\r/g, "\\r");
+    return `${name}="${escaped}"`;
+  }
+  return `${name}=${value}`;
+}
+
 export async function GET(request: NextRequest) {
   const auth = authenticateSecretsRequest(request);
   if (!auth.ok) return auth.response;
@@ -45,7 +53,7 @@ export async function GET(request: NextRequest) {
       if (row.expires_at) {
         lines.push(`# Expires: ${new Date(row.expires_at as string).toISOString().split("T")[0]}`);
       }
-      lines.push(`${row.name}=${value}`);
+      lines.push(dotenvSafe(row.name as string, value));
       lines.push("");
     }
 

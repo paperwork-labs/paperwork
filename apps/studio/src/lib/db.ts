@@ -12,6 +12,7 @@ export function sql() {
 
 export async function ensureSecretsTable() {
   const db = sql();
+  await db`CREATE EXTENSION IF NOT EXISTS pgcrypto`;
   await db`
     CREATE TABLE IF NOT EXISTS secrets (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

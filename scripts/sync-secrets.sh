@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -29,5 +30,6 @@ if [ "$HTTP_CODE" != "200" ]; then
   exit 1
 fi
 
+chmod 600 "$OUTPUT_FILE"
 SECRET_COUNT=$(grep -c "^[A-Z]" "$OUTPUT_FILE" 2>/dev/null || echo "0")
 echo "Synced $SECRET_COUNT secrets to $OUTPUT_FILE"

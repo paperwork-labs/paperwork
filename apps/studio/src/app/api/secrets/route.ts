@@ -38,6 +38,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const NAME_PATTERN = /^[A-Z_][A-Z0-9_]*$/;
+    if (!NAME_PATTERN.test(name)) {
+      return NextResponse.json(
+        { success: false, error: "name must be uppercase with underscores (e.g. MY_SECRET_KEY)" },
+        { status: 400 },
+      );
+    }
+
     await ensureSecretsTable();
     const db = sql();
     const { encrypted, iv, authTag } = encrypt(value);
@@ -58,7 +66,9 @@ export async function POST(request: NextRequest) {
       RETURNING id, name, service, location, description, expires_at, last_rotated_at, created_at, updated_at
     `;
 
-    return NextResponse.json({ success: true, data: rows[0] }, { status: 201 });
+    const row = rows[0];
+    const isNew = new Date(row.created_at as string).getTime() === new Date(row.updated_at as string).getTime();
+    return NextResponse.json({ success: true, data: row }, { status: isNew ? 201 : 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ success: false, error: message }, { status: 500 });

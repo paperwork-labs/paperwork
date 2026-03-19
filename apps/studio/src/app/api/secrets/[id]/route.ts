@@ -3,6 +3,8 @@ import { sql, ensureSecretsTable } from "@/lib/db";
 import { decrypt } from "@/lib/crypto";
 import { authenticateSecretsRequest } from "@/lib/secrets-auth";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -12,6 +14,9 @@ export async function GET(
 
   try {
     const { id } = await params;
+    if (!UUID_RE.test(id)) {
+      return NextResponse.json({ success: false, error: "Invalid secret ID format" }, { status: 400 });
+    }
     await ensureSecretsTable();
     const db = sql();
 
@@ -60,6 +65,9 @@ export async function DELETE(
 
   try {
     const { id } = await params;
+    if (!UUID_RE.test(id)) {
+      return NextResponse.json({ success: false, error: "Invalid secret ID format" }, { status: 400 });
+    }
     await ensureSecretsTable();
     const db = sql();
 
