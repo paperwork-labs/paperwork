@@ -1,0 +1,84 @@
+{
+  "name": "Infra Status Slash Command",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "infra-status",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-status",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { execSync } = require('child_process');\n\nlet totalCount = 0;\nlet activeCount = 0;\nlet inactiveNames = [];\nlet livenessStatus = '000';\n\ntry {\n  const allIds = execSync('n8n list:workflow --onlyId 2>/dev/null', { encoding: 'utf8' }).trim();\n  totalCount = allIds ? allIds.split('\\n').length : 0;\n} catch (e) {\n  totalCount = -1;\n}\n\ntry {\n  const activeIds = execSync('n8n list:workflow --active=true --onlyId 2>/dev/null', { encoding: 'utf8' }).trim();\n  activeCount = activeIds ? activeIds.split('\\n').length : 0;\n} catch (e) {\n  activeCount = -1;\n}\n\nif (activeCount >= 0 && totalCount > 0 && activeCount < totalCount) {\n  try {\n    const inactive = execSync('n8n list:workflow --active=false 2>/dev/null', { encoding: 'utf8' }).trim();\n    inactiveNames = inactive.split('\\n').filter(Boolean);\n  } catch (e) {}\n}\n\ntry {\n  const resp = execSync(\"curl -sf -o /dev/null -w '%{http_code}' http://localhost:5678/ --max-time 5 2>/dev/null\", { encoding: 'utf8' }).trim();\n  livenessStatus = resp || '000';\n} catch (e) {\n  livenessStatus = '000';\n}\n\nconst healthy = totalCount > 0 && activeCount === totalCount && livenessStatus === '200';\n\nreturn [{\n  json: {\n    healthy,\n    totalCount,\n    activeCount,\n    inactiveNames,\n    livenessStatus\n  }\n}];"
+      },
+      "id": "run-health-checks",
+      "name": "Run Health Checks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const check = $input.first().json;\nconst now = new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles', dateStyle: 'medium', timeStyle: 'short' });\n\nlet text = '';\nif (check.healthy) {\n  text = `:white_check_mark: *Infra Status* — ${now}\\n\\n• ${check.activeCount}/${check.totalCount} workflows active\\n• n8n reachable (${check.livenessStatus})\\n\\nAll systems operational.`;\n} else {\n  const parts = [`:warning: *Infra Status — ISSUES DETECTED* — ${now}\\n`];\n  parts.push(`• Workflows: ${check.activeCount}/${check.totalCount} active`);\n  if (check.inactiveNames && check.inactiveNames.length > 0) {\n    parts.push(`• Inactive: ${check.inactiveNames.join(', ')}`);\n  }\n  parts.push(`• n8n liveness: ${check.livenessStatus}`);\n  text = parts.join('\\n');\n}\n\nreturn [{ json: { response_type: 'in_channel', text } }];"
+      },
+      "id": "format-response",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-status",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [1000, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          { "node": "Run Health Checks", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Run Health Checks": {
+      "main": [
+        [
+          { "node": "Format Response", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          { "node": "Respond", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": [],
+  "pinData": {},
+  "id": "s1t2a3t4-u5s6-4s7l-8a9s-0h1c2m3d4s5l"
+}
