@@ -3,7 +3,7 @@ import { getN8nExecutions, getN8nWorkflows } from "@/lib/command-center";
 function getMcpConnectionStatus() {
   const slackConfigured = !!process.env.SLACK_BOT_TOKEN?.trim();
   const githubConfigured = !!process.env.GITHUB_TOKEN?.trim();
-  const vercelConfigured = !!process.env.VERCEL_TOKEN?.trim();
+  const vercelConfigured = !!process.env.VERCEL_API_TOKEN?.trim();
   return [
     { service: "Slack", configured: slackConfigured },
     { service: "GitHub", configured: githubConfigured },
