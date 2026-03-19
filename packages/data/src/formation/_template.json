@@ -1,0 +1,61 @@
+{
+  "$schema": "Formation rules template — see FormationRulesSchema",
+  "state": "DE",
+  "state_name": "Delaware",
+  "entity_type": "LLC",
+  "sos_url": "https://corp.delaware.gov",
+  "filing_office": "Division of Corporations",
+  "fees": {
+    "standard": {
+      "amount_cents": 9000,
+      "description": "Standard LLC filing fee",
+      "is_expedited": false,
+      "processing_days": 15
+    },
+    "expedited": {
+      "amount_cents": 10000,
+      "description": "24-hour expedited filing",
+      "is_expedited": true,
+      "processing_days": 1
+    }
+  },
+  "filing": {
+    "primary": {
+      "method": "api",
+      "url": "https://icis.corp.delaware.gov/publicxmlservice",
+      "notes": "Delaware ICIS Public XML Service"
+    }
+  },
+  "requirements": {
+    "articles_of_organization": true,
+    "operating_agreement_required": false,
+    "publication_required": false,
+    "registered_agent_required": true,
+    "annual_report_required": false,
+    "franchise_tax": true,
+    "franchise_tax_amount_cents": 30000
+  },
+  "processing": {
+    "standard_days": 15,
+    "expedited_days": 1
+  },
+  "naming": {
+    "required_suffix": ["LLC", "L.L.C."],
+    "restricted_words": []
+  },
+  "compliance": {
+    "franchise_tax_due": "June 1"
+  },
+  "verification": {
+    "last_verified": "2026-03-18T00:00:00.000Z",
+    "sources": [
+      {
+        "name": "Delaware Division of Corporations",
+        "url": "https://corp.delaware.gov",
+        "accessed_at": "2026-03-18T00:00:00.000Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.92
+  }
+}
