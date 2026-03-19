@@ -8,6 +8,8 @@ export type { StateTaxRules, TaxType, TaxBracket, FilingStatus, StandardDeductio
 export { StateCodeSchema, SourceSchema, VerificationMetaSchema } from "./schemas/common.schema";
 export { FormationRulesSchema } from "./schemas/formation.schema";
 export { StateTaxRulesSchema } from "./schemas/tax.schema";
+export { StateSourcesSchema } from "./schemas/source-registry.schema";
+export type { StateSources, SourceEntry } from "./schemas/source-registry.schema";
 
 // Engine
 export {
@@ -23,3 +25,6 @@ export {
   getFormationFreshness,
   getTaxFreshness,
 } from "./engine";
+
+// Sources
+export { loadSources, getStateSources, getAllSourceStates } from "./sources";

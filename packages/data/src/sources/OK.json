@@ -1,0 +1,27 @@
+{
+  "state": "OK",
+  "state_name": "Oklahoma",
+  "tax_sources": [
+    {
+      "name": "Oklahoma Tax Commission",
+      "url": "https://oklahoma.gov/tax.html",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Oklahoma",
+      "url": "https://taxfoundation.org/location/oklahoma/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Oklahoma Secretary of State",
+      "url": "https://www.sos.ok.gov/business",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

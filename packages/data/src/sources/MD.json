@@ -1,0 +1,27 @@
+{
+  "state": "MD",
+  "state_name": "Maryland",
+  "tax_sources": [
+    {
+      "name": "Maryland Comptroller",
+      "url": "https://www.marylandtaxes.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Maryland",
+      "url": "https://taxfoundation.org/location/maryland/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Maryland Department of Assessments and Taxation",
+      "url": "https://dat.maryland.gov/businesses",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

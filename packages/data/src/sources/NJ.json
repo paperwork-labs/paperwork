@@ -1,0 +1,27 @@
+{
+  "state": "NJ",
+  "state_name": "New Jersey",
+  "tax_sources": [
+    {
+      "name": "New Jersey Division of Taxation",
+      "url": "https://www.nj.gov/treasury/taxation",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - New Jersey",
+      "url": "https://taxfoundation.org/location/new-jersey/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "New Jersey Division of Revenue",
+      "url": "https://www.njportal.com/DOR/BusinessFormation",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

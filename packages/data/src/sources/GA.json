@@ -1,0 +1,27 @@
+{
+  "state": "GA",
+  "state_name": "Georgia",
+  "tax_sources": [
+    {
+      "name": "Georgia Department of Revenue",
+      "url": "https://dor.georgia.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Georgia",
+      "url": "https://taxfoundation.org/location/georgia/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Georgia Secretary of State",
+      "url": "https://sos.ga.gov/corporations-division",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

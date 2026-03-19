@@ -1,0 +1,27 @@
+{
+  "state": "AR",
+  "state_name": "Arkansas",
+  "tax_sources": [
+    {
+      "name": "Arkansas Department of Finance and Administration",
+      "url": "https://www.dfa.arkansas.gov/income-tax",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Arkansas",
+      "url": "https://taxfoundation.org/location/arkansas/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Arkansas Secretary of State",
+      "url": "https://www.sos.arkansas.gov/business-commercial-services",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

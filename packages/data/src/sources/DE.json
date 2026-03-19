@@ -1,0 +1,33 @@
+{
+  "state": "DE",
+  "state_name": "Delaware",
+  "tax_sources": [
+    {
+      "name": "Delaware Division of Revenue",
+      "url": "https://revenue.delaware.gov/frequently-asked-questions/personal-income-tax-faqs/",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Delaware",
+      "url": "https://taxfoundation.org/location/delaware/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Delaware Division of Corporations",
+      "url": "https://corp.delaware.gov/howtoform/",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Delaware ICIS Filing",
+      "url": "https://icis.corp.delaware.gov/Ecorp/EntitySearch/NameSearch.aspx",
+      "type": "official",
+      "scrape_method": "api"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

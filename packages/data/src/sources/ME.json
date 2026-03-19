@@ -1,0 +1,27 @@
+{
+  "state": "ME",
+  "state_name": "Maine",
+  "tax_sources": [
+    {
+      "name": "Maine Revenue Services",
+      "url": "https://www.maine.gov/revenue",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Maine",
+      "url": "https://taxfoundation.org/location/maine/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Maine Secretary of State",
+      "url": "https://www.maine.gov/sos/cec/corp",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

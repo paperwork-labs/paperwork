@@ -1,0 +1,27 @@
+{
+  "state": "TX",
+  "state_name": "Texas",
+  "tax_sources": [
+    {
+      "name": "Texas Comptroller of Public Accounts",
+      "url": "https://comptroller.texas.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Texas",
+      "url": "https://taxfoundation.org/location/texas/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Texas Secretary of State",
+      "url": "https://www.sos.state.tx.us/corp",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

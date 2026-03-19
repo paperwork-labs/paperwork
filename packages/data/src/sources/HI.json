@@ -1,0 +1,27 @@
+{
+  "state": "HI",
+  "state_name": "Hawaii",
+  "tax_sources": [
+    {
+      "name": "Hawaii Department of Taxation",
+      "url": "https://tax.hawaii.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Hawaii",
+      "url": "https://taxfoundation.org/location/hawaii/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Hawaii Business Registration Division",
+      "url": "https://cca.hawaii.gov/breg/",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

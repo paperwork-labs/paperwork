@@ -1,0 +1,27 @@
+{
+  "state": "OH",
+  "state_name": "Ohio",
+  "tax_sources": [
+    {
+      "name": "Ohio Department of Taxation",
+      "url": "https://tax.ohio.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Ohio",
+      "url": "https://taxfoundation.org/location/ohio/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Ohio Secretary of State",
+      "url": "https://www.ohiosos.gov/businesses",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

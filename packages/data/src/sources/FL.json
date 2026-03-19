@@ -1,0 +1,27 @@
+{
+  "state": "FL",
+  "state_name": "Florida",
+  "tax_sources": [
+    {
+      "name": "Florida Department of Revenue",
+      "url": "https://floridarevenue.com",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Florida",
+      "url": "https://taxfoundation.org/location/florida/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Florida Division of Corporations",
+      "url": "https://dos.fl.gov/sunbiz/",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

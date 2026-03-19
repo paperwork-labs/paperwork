@@ -1,0 +1,27 @@
+{
+  "state": "OR",
+  "state_name": "Oregon",
+  "tax_sources": [
+    {
+      "name": "Oregon Department of Revenue",
+      "url": "https://www.oregon.gov/dor",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Oregon",
+      "url": "https://taxfoundation.org/location/oregon/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Oregon Secretary of State",
+      "url": "https://sos.oregon.gov/business",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

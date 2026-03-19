@@ -1,0 +1,27 @@
+{
+  "state": "ND",
+  "state_name": "North Dakota",
+  "tax_sources": [
+    {
+      "name": "North Dakota Office of State Tax Commissioner",
+      "url": "https://www.tax.nd.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - North Dakota",
+      "url": "https://taxfoundation.org/location/north-dakota/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "North Dakota Secretary of State",
+      "url": "https://sos.nd.gov/business",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

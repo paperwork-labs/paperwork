@@ -1,0 +1,27 @@
+{
+  "state": "VT",
+  "state_name": "Vermont",
+  "tax_sources": [
+    {
+      "name": "Vermont Department of Taxes",
+      "url": "https://tax.vermont.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Vermont",
+      "url": "https://taxfoundation.org/location/vermont/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Vermont Secretary of State",
+      "url": "https://sos.vermont.gov/corporations",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

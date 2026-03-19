@@ -1,0 +1,27 @@
+{
+  "state": "WY",
+  "state_name": "Wyoming",
+  "tax_sources": [
+    {
+      "name": "Wyoming Department of Revenue",
+      "url": "https://revenue.wyo.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Wyoming",
+      "url": "https://taxfoundation.org/location/wyoming/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Wyoming Secretary of State",
+      "url": "https://sos.wyo.gov/Business",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

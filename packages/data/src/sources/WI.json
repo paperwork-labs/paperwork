@@ -1,0 +1,27 @@
+{
+  "state": "WI",
+  "state_name": "Wisconsin",
+  "tax_sources": [
+    {
+      "name": "Wisconsin Department of Revenue",
+      "url": "https://www.revenue.wi.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Wisconsin",
+      "url": "https://taxfoundation.org/location/wisconsin/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Wisconsin Department of Financial Institutions",
+      "url": "https://www.wdfi.org/corporations",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

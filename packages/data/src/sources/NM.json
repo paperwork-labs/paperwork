@@ -1,0 +1,27 @@
+{
+  "state": "NM",
+  "state_name": "New Mexico",
+  "tax_sources": [
+    {
+      "name": "New Mexico Taxation and Revenue Department",
+      "url": "https://www.tax.newmexico.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - New Mexico",
+      "url": "https://taxfoundation.org/location/new-mexico/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "New Mexico Secretary of State",
+      "url": "https://www.sos.state.nm.us/business-services",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

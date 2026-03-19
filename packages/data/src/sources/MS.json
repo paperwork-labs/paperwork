@@ -1,0 +1,27 @@
+{
+  "state": "MS",
+  "state_name": "Mississippi",
+  "tax_sources": [
+    {
+      "name": "Mississippi Department of Revenue",
+      "url": "https://www.dor.ms.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - Mississippi",
+      "url": "https://taxfoundation.org/location/mississippi/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "Mississippi Secretary of State",
+      "url": "https://www.sos.ms.gov/business-services",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

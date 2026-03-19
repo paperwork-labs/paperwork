@@ -1,0 +1,27 @@
+{
+  "state": "SC",
+  "state_name": "South Carolina",
+  "tax_sources": [
+    {
+      "name": "South Carolina Department of Revenue",
+      "url": "https://dor.sc.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - South Carolina",
+      "url": "https://taxfoundation.org/location/south-carolina/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "South Carolina Secretary of State",
+      "url": "https://sos.sc.gov/online-filings",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}

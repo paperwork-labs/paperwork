@@ -1,0 +1,27 @@
+{
+  "state": "DC",
+  "state_name": "District of Columbia",
+  "tax_sources": [
+    {
+      "name": "District of Columbia Office of Tax and Revenue",
+      "url": "https://otr.cfo.dc.gov",
+      "type": "dor",
+      "scrape_method": "page_parse"
+    },
+    {
+      "name": "Tax Foundation - District of Columbia",
+      "url": "https://taxfoundation.org/location/district-of-columbia/",
+      "type": "tax_foundation",
+      "scrape_method": "table_extract"
+    }
+  ],
+  "formation_sources": [
+    {
+      "name": "District of Columbia Department of Consumer and Regulatory Affairs",
+      "url": "https://dcra.dc.gov/service/corporate-registration",
+      "type": "sos",
+      "scrape_method": "page_parse"
+    }
+  ],
+  "last_validated": "2026-03-19T00:00:00.000Z"
+}
