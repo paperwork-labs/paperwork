@@ -1,0 +1,73 @@
+{
+  "state": "GA",
+  "state_name": "Georgia",
+  "entity_type": "LLC",
+  "sos_url": "https://sos.ga.gov/corporations-division",
+  "filing_office": "Corporations Division",
+  "fees": {
+    "standard": {
+      "amount_cents": 10000,
+      "description": "Standard LLC filing fee",
+      "is_expedited": false,
+      "processing_days": 15
+    },
+    "expedited": {
+      "amount_cents": 25000,
+      "description": "Expedited LLC filing fee",
+      "is_expedited": true,
+      "processing_days": 2
+    },
+    "name_reservation": {
+      "amount_cents": 2500,
+      "description": "Name reservation fee",
+      "is_expedited": false,
+      "processing_days": 15
+    }
+  },
+  "filing": {
+    "primary": {
+      "method": "portal",
+      "url": "https://ecorp.sos.ga.gov",
+      "notes": "Georgia Corporations Division eCorp portal"
+    }
+  },
+  "requirements": {
+    "articles_of_organization": true,
+    "operating_agreement_required": false,
+    "publication_required": false,
+    "registered_agent_required": true,
+    "annual_report_required": true,
+    "franchise_tax": false
+  },
+  "processing": {
+    "standard_days": 15,
+    "expedited_days": 2
+  },
+  "naming": {
+    "required_suffix": [
+      "LLC",
+      "L.L.C."
+    ],
+    "restricted_words": [
+      "Bank",
+      "Insurance",
+      "Corporation",
+      "Incorporated"
+    ]
+  },
+  "compliance": {
+    "annual_report_due": "April 1"
+  },
+  "verification": {
+    "last_verified": "2026-03-19T22:15:23.175Z",
+    "sources": [
+      {
+        "name": "Georgia Secretary of State",
+        "url": "https://sos.ga.gov/corporations-division",
+        "accessed_at": "2026-03-19T22:15:23.175Z"
+      }
+    ],
+    "verified_by": "ai_extraction_fallback",
+    "confidence": 0.55
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "state": "ND",
+  "state_name": "North Dakota",
+  "entity_type": "LLC",
+  "sos_url": "https://sos.nd.gov/business",
+  "filing_office": "Office of the North Dakota Secretary of State",
+  "fees": {
+    "standard": {
+      "amount_cents": 13500,
+      "description": "Standard LLC filing fee",
+      "is_expedited": false,
+      "processing_days": 30
+    },
+    "expedited": {
+      "amount_cents": 50000,
+      "description": "Expedited LLC filing fee",
+      "is_expedited": true,
+      "processing_days": 1
+    }
+  },
+  "filing": {
+    "primary": {
+      "method": "portal",
+      "url": "https://firststop.sos.nd.gov",
+      "notes": "North Dakota FirstStop online filing system"
+    },
+    "fallback": {
+      "method": "mail",
+      "notes": "Paper forms can be mailed to the Secretary of State's office"
+    }
+  },
+  "requirements": {
+    "articles_of_organization": true,
+    "operating_agreement_required": false,
+    "publication_required": false,
+    "registered_agent_required": true,
+    "annual_report_required": true,
+    "franchise_tax": false
+  },
+  "processing": {
+    "standard_days": 30,
+    "expedited_days": 1
+  },
+  "naming": {
+    "required_suffix": [
+      "LLC",
+      "L.L.C."
+    ],
+    "restricted_words": [
+      "Bank",
+      "Trust",
+      "Insurance"
+    ]
+  },
+  "compliance": {
+    "annual_report_due": "November 15"
+  },
+  "verification": {
+    "last_verified": "2026-03-19T22:05:56.093Z",
+    "sources": [
+      {
+        "name": "North Dakota Secretary of State",
+        "url": "https://sos.nd.gov/business",
+        "accessed_at": "2026-03-19T22:05:56.093Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.85
+  }
+}

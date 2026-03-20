@@ -18,7 +18,11 @@ export const STATE_CODES: StateCode[] = [
 export type VerificationMeta = {
   last_verified: string;
   sources: Source[];
-  verified_by: "ai_extraction" | "human_review" | "automated_validation";
+  verified_by:
+    | "ai_extraction"
+    | "ai_extraction_fallback"
+    | "human_review"
+    | "automated_validation";
   confidence: number;
 };
 

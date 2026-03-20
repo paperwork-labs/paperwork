@@ -18,6 +18,11 @@ export const SourceSchema = z.object({
 export const VerificationMetaSchema = z.object({
   last_verified: z.string().datetime(),
   sources: z.array(SourceSchema).min(1),
-  verified_by: z.enum(["ai_extraction", "human_review", "automated_validation"]),
+  verified_by: z.enum([
+    "ai_extraction",
+    "ai_extraction_fallback",
+    "human_review",
+    "automated_validation",
+  ]),
   confidence: z.number().min(0).max(1),
 });

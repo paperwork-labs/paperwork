@@ -1,0 +1,71 @@
+{
+  "state": "MT",
+  "state_name": "Montana",
+  "entity_type": "LLC",
+  "sos_url": "https://sosmt.gov/business",
+  "filing_office": "Montana Secretary of State",
+  "fees": {
+    "standard": {
+      "amount_cents": 7000,
+      "description": "Standard LLC filing fee",
+      "is_expedited": false,
+      "processing_days": 10
+    },
+    "expedited": {
+      "amount_cents": 20000,
+      "description": "24-hour expedited filing",
+      "is_expedited": true,
+      "processing_days": 1
+    },
+    "name_reservation": {
+      "amount_cents": 1000,
+      "description": "Name reservation fee",
+      "is_expedited": false
+    }
+  },
+  "filing": {
+    "primary": {
+      "method": "portal",
+      "url": "https://sosmt.gov/business",
+      "notes": "Montana Business Services Online Portal"
+    }
+  },
+  "requirements": {
+    "articles_of_organization": true,
+    "operating_agreement_required": false,
+    "publication_required": false,
+    "registered_agent_required": true,
+    "annual_report_required": true,
+    "franchise_tax": false
+  },
+  "processing": {
+    "standard_days": 10,
+    "expedited_days": 1
+  },
+  "naming": {
+    "required_suffix": [
+      "LLC",
+      "L.L.C."
+    ],
+    "restricted_words": [
+      "Bank",
+      "Insurance",
+      "Trust"
+    ]
+  },
+  "compliance": {
+    "annual_report_due": "April 15"
+  },
+  "verification": {
+    "last_verified": "2026-03-19T22:16:39.597Z",
+    "sources": [
+      {
+        "name": "Montana Secretary of State",
+        "url": "https://sosmt.gov/business",
+        "accessed_at": "2026-03-19T22:16:39.597Z"
+      }
+    ],
+    "verified_by": "ai_extraction_fallback",
+    "confidence": 0.55
+  }
+}

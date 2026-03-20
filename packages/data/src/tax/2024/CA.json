@@ -1,0 +1,276 @@
+{
+  "state": "CA",
+  "state_name": "California",
+  "tax_year": 2024,
+  "income_tax": {
+    "type": "progressive",
+    "brackets": {
+      "single": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 1041200,
+          "rate_bps": 100
+        },
+        {
+          "min_income_cents": 1041200,
+          "max_income_cents": 2468400,
+          "rate_bps": 200
+        },
+        {
+          "min_income_cents": 2468400,
+          "max_income_cents": 3895900,
+          "rate_bps": 400
+        },
+        {
+          "min_income_cents": 3895900,
+          "max_income_cents": 5408100,
+          "rate_bps": 600
+        },
+        {
+          "min_income_cents": 5408100,
+          "max_income_cents": 6835000,
+          "rate_bps": 800
+        },
+        {
+          "min_income_cents": 6835000,
+          "max_income_cents": 34913700,
+          "rate_bps": 930
+        },
+        {
+          "min_income_cents": 34913700,
+          "max_income_cents": 41896100,
+          "rate_bps": 1030
+        },
+        {
+          "min_income_cents": 41896100,
+          "max_income_cents": 69827100,
+          "rate_bps": 1130
+        },
+        {
+          "min_income_cents": 69827100,
+          "max_income_cents": 100000000,
+          "rate_bps": 1230
+        },
+        {
+          "min_income_cents": 100000000,
+          "max_income_cents": null,
+          "rate_bps": 1330
+        }
+      ],
+      "married_filing_jointly": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 2082400,
+          "rate_bps": 100
+        },
+        {
+          "min_income_cents": 2082400,
+          "max_income_cents": 4936800,
+          "rate_bps": 200
+        },
+        {
+          "min_income_cents": 4936800,
+          "max_income_cents": 7791800,
+          "rate_bps": 400
+        },
+        {
+          "min_income_cents": 7791800,
+          "max_income_cents": 10816200,
+          "rate_bps": 600
+        },
+        {
+          "min_income_cents": 10816200,
+          "max_income_cents": 13670000,
+          "rate_bps": 800
+        },
+        {
+          "min_income_cents": 13670000,
+          "max_income_cents": 69827400,
+          "rate_bps": 930
+        },
+        {
+          "min_income_cents": 69827400,
+          "max_income_cents": 83792200,
+          "rate_bps": 1030
+        },
+        {
+          "min_income_cents": 83792200,
+          "max_income_cents": 100000000,
+          "rate_bps": 1130
+        },
+        {
+          "min_income_cents": 100000000,
+          "max_income_cents": 139654200,
+          "rate_bps": 1230
+        },
+        {
+          "min_income_cents": 139654200,
+          "max_income_cents": null,
+          "rate_bps": 1330
+        }
+      ],
+      "married_filing_separately": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 1041200,
+          "rate_bps": 100
+        },
+        {
+          "min_income_cents": 1041200,
+          "max_income_cents": 2468400,
+          "rate_bps": 200
+        },
+        {
+          "min_income_cents": 2468400,
+          "max_income_cents": 3895900,
+          "rate_bps": 400
+        },
+        {
+          "min_income_cents": 3895900,
+          "max_income_cents": 5408100,
+          "rate_bps": 600
+        },
+        {
+          "min_income_cents": 5408100,
+          "max_income_cents": 6835000,
+          "rate_bps": 800
+        },
+        {
+          "min_income_cents": 6835000,
+          "max_income_cents": 34913700,
+          "rate_bps": 930
+        },
+        {
+          "min_income_cents": 34913700,
+          "max_income_cents": 41896100,
+          "rate_bps": 1030
+        },
+        {
+          "min_income_cents": 41896100,
+          "max_income_cents": 69827100,
+          "rate_bps": 1130
+        },
+        {
+          "min_income_cents": 69827100,
+          "max_income_cents": 100000000,
+          "rate_bps": 1230
+        },
+        {
+          "min_income_cents": 100000000,
+          "max_income_cents": null,
+          "rate_bps": 1330
+        }
+      ],
+      "head_of_household": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 2082400,
+          "rate_bps": 100
+        },
+        {
+          "min_income_cents": 2082400,
+          "max_income_cents": 4936800,
+          "rate_bps": 200
+        },
+        {
+          "min_income_cents": 4936800,
+          "max_income_cents": 7791800,
+          "rate_bps": 400
+        },
+        {
+          "min_income_cents": 7791800,
+          "max_income_cents": 10816200,
+          "rate_bps": 600
+        },
+        {
+          "min_income_cents": 10816200,
+          "max_income_cents": 13670000,
+          "rate_bps": 800
+        },
+        {
+          "min_income_cents": 13670000,
+          "max_income_cents": 69827400,
+          "rate_bps": 930
+        },
+        {
+          "min_income_cents": 69827400,
+          "max_income_cents": 83792200,
+          "rate_bps": 1030
+        },
+        {
+          "min_income_cents": 83792200,
+          "max_income_cents": 100000000,
+          "rate_bps": 1130
+        },
+        {
+          "min_income_cents": 100000000,
+          "max_income_cents": 139654200,
+          "rate_bps": 1230
+        },
+        {
+          "min_income_cents": 139654200,
+          "max_income_cents": null,
+          "rate_bps": 1330
+        }
+      ]
+    }
+  },
+  "standard_deductions": [
+    {
+      "filing_status": "single",
+      "amount_cents": 536300
+    },
+    {
+      "filing_status": "married_filing_jointly",
+      "amount_cents": 1072600
+    },
+    {
+      "filing_status": "married_filing_separately",
+      "amount_cents": 536300
+    },
+    {
+      "filing_status": "head_of_household",
+      "amount_cents": 536300
+    }
+  ],
+  "personal_exemption": {
+    "amount_cents": 0,
+    "phases_out": false
+  },
+  "notable_credits": [
+    {
+      "name": "Single Filer Credit",
+      "description": "A credit for single filers."
+    },
+    {
+      "name": "Married Filer Credit",
+      "description": "A credit for married filers."
+    }
+  ],
+  "notable_deductions": [],
+  "local_taxes": {
+    "has_local_income_tax": false
+  },
+  "reciprocity": {
+    "has_reciprocity": false
+  },
+  "dor_url": "https://www.ftb.ca.gov",
+  "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
+  "verification": {
+    "last_verified": "2026-03-19T23:16:52.542Z",
+    "sources": [
+      {
+        "name": "Tax Foundation 2024 Rates",
+        "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
+        "accessed_at": "2026-03-19T23:16:52.542Z"
+      },
+      {
+        "name": "California Franchise Tax Board",
+        "url": "https://www.ftb.ca.gov",
+        "accessed_at": "2026-03-19T23:16:52.542Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.85
+  }
+}

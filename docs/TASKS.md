@@ -246,10 +246,10 @@ See [VENTURE_MASTER_PLAN.md](VENTURE_MASTER_PLAN.md) Section 3B (50-state archit
 
 | Task | Owner | Details | Depends On | Status |
 | --- | --- | --- | --- | --- |
-| P2.1 Create packages/data scaffold | Founder 1 | TypeScript types, Zod schemas (formation + tax), directory structure, state engine API. Also scaffold `packages/tax-engine/` (empty, interfaces only) and `packages/document-processing/` (empty, interfaces only) for future phases. | P1.1 | NOT STARTED |
-| P2.2 Build Source Registry | Founder 1 | 50 state configs: SOS URL, DOR URL, Tax Foundation reference, aggregator URLs, scrape method per source | P2.1 | NOT STARTED |
-| P2.3 AI-extract 50-state tax data | Founder 1 | Scrape Tax Foundation 2026 table -> GPT-4o structured extraction -> 50 JSON files -> cross-validate against state DOR sites | P2.2 | NOT STARTED |
-| P2.4 AI-extract 50-state formation data | Founder 1 | Scrape aggregator tables (WorldPopReview, ChamberOfCommerce) -> GPT-4o extraction -> 50 JSON files -> cross-validate against state SOS sites | P2.2 | NOT STARTED |
+| P2.1 Create packages/data scaffold | Founder 1 | TypeScript types, Zod schemas (formation + tax), directory structure, state engine API. Also scaffold `packages/tax-engine/` (empty, interfaces only) and `packages/document-processing/` (empty, interfaces only) for future phases. | P1.1 | **DONE** (PR #28) |
+| P2.2 Build Source Registry | Founder 1 | 50 state configs: SOS URL, DOR URL, Tax Foundation reference, aggregator URLs, scrape method per source | P2.1 | **DONE** (PR #34) |
+| P2.3 AI-extract 50-state tax data | Founder 1 | Scrape Tax Foundation 2026 table -> GPT-4o structured extraction -> 50 JSON files -> cross-validate against state DOR sites | P2.2 | **DONE** (vault-backed `OPENAI_API_KEY`, 51 jurisdictions incl. DC; DC uses TF state rates page) |
+| P2.4 AI-extract 50-state formation data | Founder 1 | Scrape aggregator tables (WorldPopReview, ChamberOfCommerce) -> GPT-4o extraction -> 50 JSON files -> cross-validate against state SOS sites | P2.2 | **DONE** (SOS fetch + `ai_extraction_fallback` when sites block bots; human review in P2.5) |
 | P2.5 Human review + approval | Founder 1 | Founder reviews AI extractions in batch (est. 4-6 hours total). Each state JSON gets `last_verified`, `sources[]`, `verified_by` | P2.3, P2.4 | NOT STARTED |
 | P2.6 Build state engine | Founder 1 | getStateFormationRules(), getStateTaxRules(), calculateStateTax(), getAllStates(), getStateFreshness() | P2.5 | NOT STARTED |
 | P2.7 Validation suite | Founder 1 | Zod schemas + sanity checks + 100% test coverage + CI enforcement | P2.6 | NOT STARTED |

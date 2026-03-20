@@ -1,0 +1,147 @@
+{
+  "state": "OR",
+  "state_name": "Oregon",
+  "tax_year": 2025,
+  "income_tax": {
+    "type": "progressive",
+    "brackets": {
+      "single": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 365000,
+          "rate_bps": 475
+        },
+        {
+          "min_income_cents": 365000,
+          "max_income_cents": 920000,
+          "rate_bps": 675
+        },
+        {
+          "min_income_cents": 920000,
+          "max_income_cents": 1250000,
+          "rate_bps": 875
+        },
+        {
+          "min_income_cents": 1250000,
+          "max_income_cents": null,
+          "rate_bps": 990
+        }
+      ],
+      "married_filing_jointly": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 730000,
+          "rate_bps": 475
+        },
+        {
+          "min_income_cents": 730000,
+          "max_income_cents": 1840000,
+          "rate_bps": 675
+        },
+        {
+          "min_income_cents": 1840000,
+          "max_income_cents": 2500000,
+          "rate_bps": 875
+        },
+        {
+          "min_income_cents": 2500000,
+          "max_income_cents": null,
+          "rate_bps": 990
+        }
+      ],
+      "married_filing_separately": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 365000,
+          "rate_bps": 475
+        },
+        {
+          "min_income_cents": 365000,
+          "max_income_cents": 920000,
+          "rate_bps": 675
+        },
+        {
+          "min_income_cents": 920000,
+          "max_income_cents": 1250000,
+          "rate_bps": 875
+        },
+        {
+          "min_income_cents": 1250000,
+          "max_income_cents": null,
+          "rate_bps": 990
+        }
+      ],
+      "head_of_household": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 365000,
+          "rate_bps": 475
+        },
+        {
+          "min_income_cents": 365000,
+          "max_income_cents": 920000,
+          "rate_bps": 675
+        },
+        {
+          "min_income_cents": 920000,
+          "max_income_cents": 1250000,
+          "rate_bps": 875
+        },
+        {
+          "min_income_cents": 1250000,
+          "max_income_cents": null,
+          "rate_bps": 990
+        }
+      ]
+    }
+  },
+  "standard_deductions": [
+    {
+      "filing_status": "single",
+      "amount_cents": 247500
+    },
+    {
+      "filing_status": "married_filing_jointly",
+      "amount_cents": 495000
+    },
+    {
+      "filing_status": "married_filing_separately",
+      "amount_cents": 247500
+    },
+    {
+      "filing_status": "head_of_household",
+      "amount_cents": 495000
+    }
+  ],
+  "personal_exemption": {
+    "amount_cents": 23600,
+    "phases_out": true
+  },
+  "notable_credits": [],
+  "notable_deductions": [],
+  "local_taxes": {
+    "has_local_income_tax": false
+  },
+  "reciprocity": {
+    "has_reciprocity": false
+  },
+  "dor_url": "https://www.oregon.gov/dor",
+  "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
+  "verification": {
+    "last_verified": "2026-03-19T23:01:14.173Z",
+    "sources": [
+      {
+        "name": "Tax Foundation 2025 Rates",
+        "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
+        "accessed_at": "2026-03-19T23:01:14.173Z"
+      },
+      {
+        "name": "Oregon Department of Revenue",
+        "url": "https://www.oregon.gov/dor",
+        "accessed_at": "2026-03-19T23:01:14.173Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.85
+  }
+}

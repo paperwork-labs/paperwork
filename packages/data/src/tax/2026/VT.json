@@ -1,0 +1,147 @@
+{
+  "state": "VT",
+  "state_name": "Vermont",
+  "tax_year": 2026,
+  "income_tax": {
+    "type": "progressive",
+    "brackets": {
+      "single": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 400000,
+          "rate_bps": 335
+        },
+        {
+          "min_income_cents": 400000,
+          "max_income_cents": 900000,
+          "rate_bps": 675
+        },
+        {
+          "min_income_cents": 900000,
+          "max_income_cents": 1900000,
+          "rate_bps": 765
+        },
+        {
+          "min_income_cents": 1900000,
+          "max_income_cents": null,
+          "rate_bps": 875
+        }
+      ],
+      "married_filing_jointly": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 400000,
+          "rate_bps": 335
+        },
+        {
+          "min_income_cents": 400000,
+          "max_income_cents": 900000,
+          "rate_bps": 675
+        },
+        {
+          "min_income_cents": 900000,
+          "max_income_cents": 1900000,
+          "rate_bps": 765
+        },
+        {
+          "min_income_cents": 1900000,
+          "max_income_cents": null,
+          "rate_bps": 875
+        }
+      ],
+      "married_filing_separately": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 400000,
+          "rate_bps": 335
+        },
+        {
+          "min_income_cents": 400000,
+          "max_income_cents": 900000,
+          "rate_bps": 675
+        },
+        {
+          "min_income_cents": 900000,
+          "max_income_cents": 1900000,
+          "rate_bps": 765
+        },
+        {
+          "min_income_cents": 1900000,
+          "max_income_cents": null,
+          "rate_bps": 875
+        }
+      ],
+      "head_of_household": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 400000,
+          "rate_bps": 335
+        },
+        {
+          "min_income_cents": 400000,
+          "max_income_cents": 900000,
+          "rate_bps": 675
+        },
+        {
+          "min_income_cents": 900000,
+          "max_income_cents": 1900000,
+          "rate_bps": 765
+        },
+        {
+          "min_income_cents": 1900000,
+          "max_income_cents": null,
+          "rate_bps": 875
+        }
+      ]
+    }
+  },
+  "standard_deductions": [
+    {
+      "filing_status": "single",
+      "amount_cents": 650000
+    },
+    {
+      "filing_status": "married_filing_jointly",
+      "amount_cents": 1300000
+    },
+    {
+      "filing_status": "married_filing_separately",
+      "amount_cents": 650000
+    },
+    {
+      "filing_status": "head_of_household",
+      "amount_cents": 975000
+    }
+  ],
+  "personal_exemption": {
+    "amount_cents": 41500,
+    "phases_out": false
+  },
+  "notable_credits": [],
+  "notable_deductions": [],
+  "local_taxes": {
+    "has_local_income_tax": false
+  },
+  "reciprocity": {
+    "has_reciprocity": false
+  },
+  "dor_url": "https://tax.vermont.gov",
+  "tax_foundation_url": "https://taxfoundation.org/location/vermont/",
+  "verification": {
+    "last_verified": "2026-03-19T21:53:21.559Z",
+    "sources": [
+      {
+        "name": "Tax Foundation - Vermont",
+        "url": "https://taxfoundation.org/location/vermont/",
+        "accessed_at": "2026-03-19T21:53:21.559Z"
+      },
+      {
+        "name": "Vermont Department of Taxes",
+        "url": "https://tax.vermont.gov",
+        "accessed_at": "2026-03-19T21:53:21.559Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.85
+  }
+}

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { loadFormationData, getStateFormationRules, getAllFormationStates, getFormationFee } from "../src/engine/formation";
-import { loadTaxData, getStateTaxRules, calculateStateTax } from "../src/engine/tax";
+import { loadTaxData, getStateTaxRules, calculateStateTax, getAvailableTaxYears, clearTaxCache } from "../src/engine/tax";
 import { checkFreshness } from "../src/engine/freshness";
 import type { FormationRules } from "../src/types/formation";
 import type { StateTaxRules } from "../src/types/tax";
@@ -88,15 +88,12 @@ describe("Tax Engine", () => {
   };
 
   beforeEach(() => {
+    clearTaxCache();
     loadTaxData("CO", flatTax);
   });
 
   it("calculates flat tax correctly", () => {
-    // $100,000 income = 10,000,000 cents
-    // Standard deduction: $15,100 = 1,510,000 cents
-    // Taxable: $84,900 = 8,490,000 cents
-    // Tax: 8,490,000 * 440 / 10000 = 373,560 cents = $3,735.60
-    const tax = calculateStateTax("CO", 10000000, "single");
+    const tax = calculateStateTax("CO", 10000000, "single", 2026);
     expect(tax).toBe(373560);
   });
 
@@ -108,11 +105,28 @@ describe("Tax Engine", () => {
       income_tax: { type: "none" },
     };
     loadTaxData("TX", noTax);
-    expect(calculateStateTax("TX", 10000000, "single")).toBe(0);
+    expect(calculateStateTax("TX", 10000000, "single", 2026)).toBe(0);
   });
 
   it("returns undefined for unloaded states", () => {
-    expect(calculateStateTax("NY", 5000000, "single")).toBeUndefined();
+    expect(calculateStateTax("NY", 5000000, "single", 2026)).toBeUndefined();
+  });
+
+  it("loads multiple years for same state", () => {
+    const co2025: StateTaxRules = { ...flatTax, tax_year: 2025, income_tax: { type: "flat", flat_rate_bps: 455 } };
+    loadTaxData("CO", co2025);
+    expect(getStateTaxRules("CO", 2025)?.income_tax).toEqual({ type: "flat", flat_rate_bps: 455 });
+    expect(getStateTaxRules("CO", 2026)?.income_tax).toEqual({ type: "flat", flat_rate_bps: 440 });
+  });
+
+  it("getAvailableTaxYears returns loaded years", () => {
+    const co2025: StateTaxRules = { ...flatTax, tax_year: 2025 };
+    loadTaxData("CO", co2025);
+    expect(getAvailableTaxYears("CO")).toEqual([2025, 2026]);
+  });
+
+  it("defaults to 2026 when no year specified", () => {
+    expect(calculateStateTax("CO", 10000000, "single")).toBe(373560);
   });
 });
 
