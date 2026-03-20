@@ -21,6 +21,8 @@ export {
   getStateTaxRules,
   getAllTaxStates,
   calculateStateTax,
+  getAvailableTaxYears,
+  loadAllStates,
   checkFreshness,
   getFormationFreshness,
   getTaxFreshness,
