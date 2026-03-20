@@ -124,6 +124,19 @@ function loadFormationFiles(srcDir: string): {
   return { formationFiles, validationErrors };
 }
 
+function topRateBps(rules: TaxRulesParsed): number {
+  const it = rules.income_tax;
+  if (it.type === "none") return 0;
+  if (it.type === "flat") return it.flat_rate_bps;
+  let max = 0;
+  for (const brackets of Object.values(it.brackets)) {
+    for (const b of brackets) {
+      if (b.rate_bps > max) max = b.rate_bps;
+    }
+  }
+  return max;
+}
+
 function topTaxRateDisplay(rules: TaxRulesParsed): string {
   const it = rules.income_tax;
   if (it.type === "none") return "-";
@@ -246,6 +259,45 @@ function runSanityChecks(
     const fee = ff.data.fees.standard.amount_cents;
     if (fee <= 0) {
       failures.push(`${ff.relPath}: standard filing fee must be > 0 (got ${fee})`);
+    }
+  }
+
+  // Cross-year consistency: flag suspicious year-over-year jumps
+  const years = Array.from(taxByYear.keys()).sort((a, b) => a - b);
+  for (let yi = 0; yi < years.length - 1; yi++) {
+    const yearA = years[yi]!;
+    const yearB = years[yi + 1]!;
+    const mapA = taxByYear.get(yearA)!;
+    const mapB = taxByYear.get(yearB)!;
+
+    for (const [code, tfA] of mapA) {
+      const tfB = mapB.get(code);
+      if (!tfB) continue;
+      const dataA = tfA.data;
+      const dataB = tfB.data;
+
+      const rateA = topRateBps(dataA);
+      const rateB = topRateBps(dataB);
+      const rateDelta = Math.abs(rateB - rateA);
+      if (rateDelta > 1000) {
+        failures.push(`${code} ${yearA}->${yearB}: top rate jumped ${rateDelta} bps (${rateA}->${rateB}) — almost certainly wrong`);
+      } else if (rateDelta > 200) {
+        // eslint-disable-next-line no-console
+        console.warn(`ADVISORY: ${code} ${yearA}->${yearB}: top rate changed ${rateDelta} bps (${rateA}->${rateB}) — verify legislation`);
+      }
+
+      // Filing-status rate consistency
+      const itB = dataB.income_tax;
+      if (itB.type === "progressive" && itB.brackets.single) {
+        const singleRates = itB.brackets.single.map((b) => b.rate_bps);
+        for (const [status, brackets] of Object.entries(itB.brackets)) {
+          if (status === "single") continue;
+          const rates = brackets.map((b) => b.rate_bps);
+          if (JSON.stringify(rates) !== JSON.stringify(singleRates)) {
+            failures.push(`tax/${yearB}/${code}.json: ${status} rates differ from single — likely extraction error`);
+          }
+        }
+      }
     }
   }
 

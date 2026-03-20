@@ -230,6 +230,22 @@ Full text in [docs/archive/KNOWLEDGE-ARCHIVE.md](archive/KNOWLEDGE-ARCHIVE.md).
 - **Alternatives**: Only Vercel env / only n8n UI credentials (fragmented); committing keys (never).
 - **Reversibility**: Vault remains source of truth; local files gitignored.
 
+### D82 — Six-Layer Data Quality Strategy (2026-03-19)
+
+**Context**: AI extraction of 50-state tax data for TY2024-2026 produced unit conversion errors (dollars stored as cents, basis points off by 10-100x). Oklahoma rates were completely fabricated. Idaho rate was 10x too high.
+
+**Decision**: Implement defense-in-depth with 6 layers:
+1. **Extraction guardrails**: Better prompts with unit examples
+2. **Range checks** (P2.5 review CLI): rate_bps ≤ 1500, deductions ≥ $1K, exemptions ≥ $100
+3. **Cross-year consistency** (P2.7+): Advisory warnings when rate delta > 200 bps or deduction change > 25%. Hard fail at catastrophic thresholds (rate delta > 1000 bps, deduction change > 1000%).
+4. **Known-good anchors** (P2.7+): Hardcoded expected values for CA, TX, CO, NY, OK, IL, GA, ID — canary tests that fail immediately if extraction drifts.
+5. **External cross-validation** (P2.8-P2.10): n8n workflows scraping Tax Foundation and state DOR sites for automated comparison.
+6. **Human review gate**: `pnpm review:approve` refuses to stamp data unless all checks pass.
+
+**Alternatives**: (a) Manual CPA review of all 153 JSONs — doesn't scale, (b) Only range checks — misses plausible-but-wrong values like OK at 8% vs correct 4.75%.
+
+**Reversibility**: Fully reversible. Test thresholds can be adjusted. Anchor values can be updated with legislation changes.
+
 ---
 
 ## Open Questions
