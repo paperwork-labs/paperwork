@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync, statSync } from "fs";
-import { join } from "path";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 import { StateTaxRulesSchema } from "../schemas/tax.schema";
 import { FormationRulesSchema } from "../schemas/formation.schema";
 import { loadTaxData } from "./tax";
@@ -26,12 +27,16 @@ export function discoverTaxYearDirs(taxRootDir: string): number[] {
   }
 }
 
+function defaultDataSrcDir(): string {
+  return join(dirname(fileURLToPath(import.meta.url)), "..");
+}
+
 export function loadAllStates(dataDir?: string): {
   tax: StateCode[];
   formation: StateCode[];
   errors: { file: string; error: string }[];
 } {
-  const baseSrc = dataDir ?? join(__dirname, "..");
+  const baseSrc = dataDir ?? defaultDataSrcDir();
   const errors: { file: string; error: string }[] = [];
   const taxStates = new Set<StateCode>();
   const formationStates = new Set<StateCode>();
@@ -92,8 +97,13 @@ export function loadAllStates(dataDir?: string): {
         errors.push({ file: `formation/${file}`, error: String(e) });
       }
     }
-  } catch {
-    /* directory may not exist */
+  } catch (e) {
+    const err = e as NodeJS.ErrnoException;
+    if (err?.code === "ENOENT") {
+      /* formation directory may not exist */
+    } else {
+      errors.push({ file: "formation", error: String(e) });
+    }
   }
 
   return {

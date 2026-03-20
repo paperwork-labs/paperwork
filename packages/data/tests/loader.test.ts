@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { join } from "path";
-import { existsSync } from "fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { existsSync } from "node:fs";
 import { loadAllStates, discoverTaxYearDirs } from "../src/engine/loader";
 import {
   getStateTaxRules,
@@ -10,6 +11,7 @@ import {
 import { clearFormationCache } from "../src/engine/formation";
 import { STATE_CODES } from "../src/types/common";
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const srcDir = join(__dirname, "../src");
 const taxRoot = join(srcDir, "tax");
 

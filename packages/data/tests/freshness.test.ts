@@ -1,8 +1,10 @@
-import { readFileSync, readdirSync, statSync } from "fs";
-import { join } from "path";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
 import { discoverTaxYearDirs } from "../src/engine/loader";
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const srcDir = join(__dirname, "../src");
 const taxRoot = join(srcDir, "tax");
 
@@ -25,9 +27,11 @@ describe("Data freshness", () => {
     const lastVerified = new Date(data.verification?.last_verified ?? "");
     const ageMs = now.getTime() - lastVerified.getTime();
     const ageDays = ageMs / (1000 * 60 * 60 * 24);
+    expect(Number.isFinite(ageDays), `${path} missing or invalid last_verified`).toBe(true);
+    expect(ageDays, `${path} last_verified must not be in the future`).toBeGreaterThanOrEqual(0);
     if (ageDays > STALE_DAYS) {
       console.warn(`STALE: ${path} — ${Math.round(ageDays)} days old`);
     }
-    expect(ageDays, `${path} missing or invalid last_verified`).toBeLessThan(365);
+    expect(ageDays, `${path} verification older than 365 days`).toBeLessThan(365);
   });
 });

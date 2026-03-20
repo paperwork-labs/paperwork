@@ -1,11 +1,13 @@
-import { readFileSync, readdirSync, statSync } from "fs";
-import { join } from "path";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
 import { StateTaxRulesSchema } from "../src/schemas/tax.schema";
 import { FormationRulesSchema } from "../src/schemas/formation.schema";
 import { discoverTaxYearDirs } from "../src/engine/loader";
 import { STATE_CODES } from "../src/types/common";
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const srcDir = join(__dirname, "../src");
 const taxRoot = join(srcDir, "tax");
 const formationDir = join(srcDir, "formation");

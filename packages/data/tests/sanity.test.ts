@@ -1,5 +1,6 @@
-import { readFileSync, readdirSync, statSync } from "fs";
-import { join } from "path";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
 import { StateTaxRulesSchema } from "../src/schemas/tax.schema";
@@ -10,13 +11,14 @@ import { discoverTaxYearDirs } from "../src/engine/loader";
 type TaxRulesParsed = z.infer<typeof StateTaxRulesSchema>;
 type FormationRulesParsed = z.infer<typeof FormationRulesSchema>;
 
-const NO_INCOME_TAX_STATES: StateCode[] = ["AK", "FL", "NV", "SD", "TN", "TX", "WA", "WY"];
+const NO_INCOME_TAX_STATES: StateCode[] = ["AK", "FL", "NH", "NV", "SD", "TN", "TX", "WA", "WY"];
 
 const MIN_STANDARD_DEDUCTION_CENTS = 100_000;
 const MIN_PERSONAL_EXEMPTION_CENTS = 10_000;
 const MIN_NON_FIRST_BRACKET_MIN_CENTS = 10_000;
 const MAX_RATE_BPS = 1500;
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const srcDir = join(__dirname, "../src");
 
 type ParsedTaxFile = { relPath: string; data: TaxRulesParsed };
