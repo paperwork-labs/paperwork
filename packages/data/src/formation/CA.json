@@ -6,70 +6,70 @@
   "filing_office": "California Secretary of State",
   "fees": {
     "standard": {
-      "amount_cents": 7500,
-      "description": "Standard LLC filing fee",
+      "amount_cents": 7000,
+      "description": "LLC Articles of Organization filing fee",
       "is_expedited": false,
-      "processing_days": 15
-    },
-    "expedited": {
-      "amount_cents": 8500,
-      "description": "24-hour expedited filing",
-      "is_expedited": true,
-      "processing_days": 1
-    },
-    "name_reservation": {
-      "amount_cents": 1000,
-      "description": "Name reservation fee",
-      "is_expedited": false
+      "processing_days": 10
     }
   },
   "filing": {
     "primary": {
       "method": "portal",
       "url": "https://bizfileonline.sos.ca.gov",
-      "notes": "California Business Entities Online Services"
+      "notes": "California Secretary of State online filing"
+    },
+    "fallback": {
+      "method": "mail",
+      "url": "https://www.sos.ca.gov/business-programs/business-entities",
+      "notes": "Mail filing to California Secretary of State"
     }
   },
   "requirements": {
     "articles_of_organization": true,
-    "operating_agreement_required": false,
+    "operating_agreement_required": true,
     "publication_required": false,
     "registered_agent_required": true,
     "annual_report_required": true,
+    "annual_report_fee_cents": 80000,
     "franchise_tax": true,
-    "franchise_tax_amount_cents": 80000,
-    "annual_report_fee_cents": 2000
+    "franchise_tax_amount_cents": 80000
   },
   "processing": {
-    "standard_days": 15,
-    "expedited_days": 1
+    "standard_days": 10
   },
   "naming": {
     "required_suffix": [
       "LLC",
-      "L.L.C."
+      "L.L.C.",
+      "Limited Liability Company"
     ],
     "restricted_words": [
       "Bank",
-      "Trust",
-      "Insurance"
+      "Insurance",
+      "Trust"
     ]
   },
   "compliance": {
-    "franchise_tax_due": "April 15"
+    "annual_report_due": "15th day of 4th month after tax year begins",
+    "franchise_tax_due": "Apr 15"
   },
   "verification": {
-    "last_verified": "2026-03-20T05:26:19.035Z",
+    "last_verified": "2026-03-20T05:53:21.857Z",
     "sources": [
+      {
+        "name": "LLC Requirements by State (llcrequirements.com)",
+        "url": "https://llcrequirements.com/",
+        "accessed_at": "2026-03-20T05:53:21.857Z"
+      },
+      {
+        "name": "Discern Franchise Tax by State",
+        "url": "https://www.discern.com/resources/franchise-tax-information",
+        "accessed_at": "2026-03-20T05:53:21.857Z"
+      },
       {
         "name": "California Secretary of State",
         "url": "https://www.sos.ca.gov/business-programs/business-entities",
-        "accessed_at": "2026-03-19T22:05:56.093Z"
-      },
-      {
-        "name": "World Population Review LLC Cost Table",
-        "url": "https://worldpopulationreview.com/state-rankings/llc-cost-by-state",
-        "accessed_at": "2026-03-20T05:26:19.035Z"
+        "accessed_at": "2026-03-20T05:53:21.857Z"
       }
     ],
     "verified_by": "deterministic_parse",

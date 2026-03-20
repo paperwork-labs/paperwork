@@ -3,26 +3,25 @@
   "state_name": "Arkansas",
   "entity_type": "LLC",
   "sos_url": "https://www.sos.arkansas.gov/business-commercial-services",
-  "filing_office": "Business & Commercial Services (BCS)",
+  "filing_office": "Arkansas Secretary of State",
   "fees": {
     "standard": {
-      "amount_cents": 5000,
-      "description": "Standard LLC filing fee",
+      "amount_cents": 4500,
+      "description": "LLC Articles of Organization filing fee",
       "is_expedited": false,
       "processing_days": 3
-    },
-    "expedited": {
-      "amount_cents": 10000,
-      "description": "24-hour expedited filing",
-      "is_expedited": true,
-      "processing_days": 1
     }
   },
   "filing": {
     "primary": {
       "method": "portal",
-      "url": "https://www.sos.arkansas.gov/business-commercial-services-bcs",
-      "notes": "Arkansas Secretary of State Online Filing System"
+      "url": "https://www.sos.arkansas.gov/business-commercial-services",
+      "notes": "Arkansas Secretary of State online filing"
+    },
+    "fallback": {
+      "method": "mail",
+      "url": "https://www.sos.arkansas.gov/business-commercial-services",
+      "notes": "Mail filing to Arkansas Secretary of State"
     }
   },
   "requirements": {
@@ -31,35 +30,44 @@
     "publication_required": false,
     "registered_agent_required": true,
     "annual_report_required": true,
-    "franchise_tax": true,
-    "annual_report_fee_cents": 15000
+    "annual_report_fee_cents": 15000,
+    "franchise_tax": false
   },
   "processing": {
-    "standard_days": 3,
-    "expedited_days": 1
+    "standard_days": 3
   },
   "naming": {
     "required_suffix": [
       "LLC",
-      "L.L.C."
+      "L.L.C.",
+      "Limited Liability Company"
     ],
-    "restricted_words": []
+    "restricted_words": [
+      "Bank",
+      "Insurance",
+      "Trust"
+    ]
   },
   "compliance": {
-    "franchise_tax_due": "May 1"
+    "annual_report_due": "May 1"
   },
   "verification": {
-    "last_verified": "2026-03-20T05:26:19.035Z",
+    "last_verified": "2026-03-20T05:53:21.856Z",
     "sources": [
+      {
+        "name": "LLC Requirements by State (llcrequirements.com)",
+        "url": "https://llcrequirements.com/",
+        "accessed_at": "2026-03-20T05:53:21.856Z"
+      },
+      {
+        "name": "Discern Franchise Tax by State",
+        "url": "https://www.discern.com/resources/franchise-tax-information",
+        "accessed_at": "2026-03-20T05:53:21.856Z"
+      },
       {
         "name": "Arkansas Secretary of State",
         "url": "https://www.sos.arkansas.gov/business-commercial-services",
-        "accessed_at": "2026-03-19T22:05:56.093Z"
-      },
-      {
-        "name": "World Population Review LLC Cost Table",
-        "url": "https://worldpopulationreview.com/state-rankings/llc-cost-by-state",
-        "accessed_at": "2026-03-20T05:26:19.035Z"
+        "accessed_at": "2026-03-20T05:53:21.856Z"
       }
     ],
     "verified_by": "deterministic_parse",

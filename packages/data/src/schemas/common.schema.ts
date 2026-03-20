@@ -19,8 +19,8 @@ export const VerificationMetaSchema = z.object({
   last_verified: z.string().datetime(),
   sources: z.array(SourceSchema).min(1),
   verified_by: z.enum([
-    "ai_extraction",
-    "ai_extraction_fallback",
+    "sos_extraction",
+    "sos_extraction_unverified",
     "human_review",
     "automated_validation",
     "tax_foundation_parse",

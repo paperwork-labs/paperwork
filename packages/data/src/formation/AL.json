@@ -6,34 +6,22 @@
   "filing_office": "Alabama Secretary of State",
   "fees": {
     "standard": {
-      "amount_cents": 16500,
-      "description": "Standard LLC filing fee",
-      "is_expedited": false,
-      "processing_days": 10
-    },
-    "expedited": {
       "amount_cents": 20000,
-      "description": "Expedited LLC filing fee",
-      "is_expedited": true,
-      "processing_days": 1
-    },
-    "name_reservation": {
-      "amount_cents": 2800,
-      "description": "Name reservation fee",
+      "description": "LLC Articles of Organization filing fee",
       "is_expedited": false,
-      "processing_days": 1
+      "processing_days": 5
     }
   },
   "filing": {
     "primary": {
       "method": "portal",
-      "url": "https://www.sos.alabama.gov/business-services/llc-formation",
-      "notes": "Filing through Alabama Secretary of State's online portal"
+      "url": "https://www.sos.alabama.gov/business-services",
+      "notes": "Alabama Secretary of State online filing"
     },
     "fallback": {
       "method": "mail",
       "url": "https://www.sos.alabama.gov/business-services",
-      "notes": "Mail filings are accepted"
+      "notes": "Mail filing to Alabama Secretary of State"
     }
   },
   "requirements": {
@@ -42,40 +30,43 @@
     "publication_required": false,
     "registered_agent_required": true,
     "annual_report_required": false,
-    "franchise_tax": false,
-    "annual_report_fee_cents": 0
+    "franchise_tax": true
   },
   "processing": {
-    "standard_days": 10,
-    "expedited_days": 1
+    "standard_days": 5
   },
   "naming": {
     "required_suffix": [
       "LLC",
-      "L.L.C."
+      "L.L.C.",
+      "Limited Liability Company"
     ],
     "restricted_words": [
       "Bank",
       "Insurance",
-      "Corporation",
-      "Incorporated"
+      "Trust"
     ]
   },
   "compliance": {
-    "annual_report_due": "April 15"
+    "franchise_tax_due": "Corps: Apr 15; LLCs: Mar 15"
   },
   "verification": {
-    "last_verified": "2026-03-20T05:26:19.035Z",
+    "last_verified": "2026-03-20T05:53:21.853Z",
     "sources": [
+      {
+        "name": "LLC Requirements by State (llcrequirements.com)",
+        "url": "https://llcrequirements.com/",
+        "accessed_at": "2026-03-20T05:53:21.853Z"
+      },
+      {
+        "name": "Discern Franchise Tax by State",
+        "url": "https://www.discern.com/resources/franchise-tax-information",
+        "accessed_at": "2026-03-20T05:53:21.853Z"
+      },
       {
         "name": "Alabama Secretary of State",
         "url": "https://www.sos.alabama.gov/business-services",
-        "accessed_at": "2026-03-19T22:15:05.729Z"
-      },
-      {
-        "name": "World Population Review LLC Cost Table",
-        "url": "https://worldpopulationreview.com/state-rankings/llc-cost-by-state",
-        "accessed_at": "2026-03-20T05:26:19.035Z"
+        "accessed_at": "2026-03-20T05:53:21.853Z"
       }
     ],
     "verified_by": "deterministic_parse",

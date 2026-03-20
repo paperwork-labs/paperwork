@@ -3,32 +3,25 @@
   "state_name": "Georgia",
   "entity_type": "LLC",
   "sos_url": "https://sos.ga.gov/corporations-division",
-  "filing_office": "Corporations Division",
+  "filing_office": "Georgia Secretary of State",
   "fees": {
     "standard": {
       "amount_cents": 10000,
-      "description": "Standard LLC filing fee",
+      "description": "LLC Articles of Organization filing fee",
       "is_expedited": false,
-      "processing_days": 15
-    },
-    "expedited": {
-      "amount_cents": 25000,
-      "description": "Expedited LLC filing fee",
-      "is_expedited": true,
-      "processing_days": 2
-    },
-    "name_reservation": {
-      "amount_cents": 2500,
-      "description": "Name reservation fee",
-      "is_expedited": false,
-      "processing_days": 15
+      "processing_days": 250
     }
   },
   "filing": {
     "primary": {
       "method": "portal",
-      "url": "https://ecorp.sos.ga.gov",
-      "notes": "Georgia Corporations Division eCorp portal"
+      "url": "https://sos.ga.gov/corporations-division",
+      "notes": "Georgia Secretary of State online filing"
+    },
+    "fallback": {
+      "method": "mail",
+      "url": "https://sos.ga.gov/corporations-division",
+      "notes": "Mail filing to Georgia Secretary of State"
     }
   },
   "requirements": {
@@ -37,40 +30,44 @@
     "publication_required": false,
     "registered_agent_required": true,
     "annual_report_required": true,
-    "franchise_tax": false,
-    "annual_report_fee_cents": 5000
+    "annual_report_fee_cents": 5000,
+    "franchise_tax": false
   },
   "processing": {
-    "standard_days": 15,
-    "expedited_days": 2
+    "standard_days": 250
   },
   "naming": {
     "required_suffix": [
       "LLC",
-      "L.L.C."
+      "L.L.C.",
+      "Limited Liability Company"
     ],
     "restricted_words": [
       "Bank",
       "Insurance",
-      "Corporation",
-      "Incorporated"
+      "Trust"
     ]
   },
   "compliance": {
     "annual_report_due": "April 1"
   },
   "verification": {
-    "last_verified": "2026-03-20T05:26:19.035Z",
+    "last_verified": "2026-03-20T05:53:21.857Z",
     "sources": [
+      {
+        "name": "LLC Requirements by State (llcrequirements.com)",
+        "url": "https://llcrequirements.com/",
+        "accessed_at": "2026-03-20T05:53:21.857Z"
+      },
+      {
+        "name": "Discern Franchise Tax by State",
+        "url": "https://www.discern.com/resources/franchise-tax-information",
+        "accessed_at": "2026-03-20T05:53:21.857Z"
+      },
       {
         "name": "Georgia Secretary of State",
         "url": "https://sos.ga.gov/corporations-division",
-        "accessed_at": "2026-03-19T22:15:23.175Z"
-      },
-      {
-        "name": "World Population Review LLC Cost Table",
-        "url": "https://worldpopulationreview.com/state-rankings/llc-cost-by-state",
-        "accessed_at": "2026-03-20T05:26:19.035Z"
+        "accessed_at": "2026-03-20T05:53:21.857Z"
       }
     ],
     "verified_by": "deterministic_parse",

@@ -3,20 +3,25 @@
   "state_name": "Utah",
   "entity_type": "LLC",
   "sos_url": "https://corporations.utah.gov",
-  "filing_office": "Utah Department of Commerce",
+  "filing_office": "Utah Division of Corporations",
   "fees": {
     "standard": {
-      "amount_cents": 7200,
-      "description": "Standard LLC filing fee",
+      "amount_cents": 5900,
+      "description": "LLC Articles of Organization filing fee",
       "is_expedited": false,
-      "processing_days": 4
+      "processing_days": 1
     }
   },
   "filing": {
     "primary": {
       "method": "portal",
-      "url": "https://secure.utah.gov/account/log-in.html",
-      "notes": "Utah Business Registration Portal"
+      "url": "https://corporations.utah.gov",
+      "notes": "Utah Division of Corporations online filing"
+    },
+    "fallback": {
+      "method": "mail",
+      "url": "https://corporations.utah.gov",
+      "notes": "Mail filing to Utah Division of Corporations"
     }
   },
   "requirements": {
@@ -25,34 +30,44 @@
     "publication_required": false,
     "registered_agent_required": true,
     "annual_report_required": true,
-    "franchise_tax": false,
-    "annual_report_fee_cents": 1500
+    "annual_report_fee_cents": 1800,
+    "franchise_tax": false
   },
   "processing": {
-    "standard_days": 4
+    "standard_days": 1
   },
   "naming": {
     "required_suffix": [
       "LLC",
-      "L.L.C."
+      "L.L.C.",
+      "Limited Liability Company"
     ],
-    "restricted_words": []
+    "restricted_words": [
+      "Bank",
+      "Insurance",
+      "Trust"
+    ]
   },
   "compliance": {
-    "annual_report_due": "Annually on the anniversary of formation"
+    "annual_report_due": "Anniversary date"
   },
   "verification": {
-    "last_verified": "2026-03-20T05:26:19.035Z",
+    "last_verified": "2026-03-20T05:53:21.864Z",
     "sources": [
+      {
+        "name": "LLC Requirements by State (llcrequirements.com)",
+        "url": "https://llcrequirements.com/",
+        "accessed_at": "2026-03-20T05:53:21.864Z"
+      },
+      {
+        "name": "Discern Franchise Tax by State",
+        "url": "https://www.discern.com/resources/franchise-tax-information",
+        "accessed_at": "2026-03-20T05:53:21.864Z"
+      },
       {
         "name": "Utah Division of Corporations",
         "url": "https://corporations.utah.gov",
-        "accessed_at": "2026-03-19T22:05:56.093Z"
-      },
-      {
-        "name": "World Population Review LLC Cost Table",
-        "url": "https://worldpopulationreview.com/state-rankings/llc-cost-by-state",
-        "accessed_at": "2026-03-20T05:26:19.035Z"
+        "accessed_at": "2026-03-20T05:53:21.864Z"
       }
     ],
     "verified_by": "deterministic_parse",

@@ -19,8 +19,8 @@ export type VerificationMeta = {
   last_verified: string;
   sources: Source[];
   verified_by:
-    | "ai_extraction"
-    | "ai_extraction_fallback"
+    | "sos_extraction"
+    | "sos_extraction_unverified"
     | "human_review"
     | "automated_validation"
     | "tax_foundation_parse"

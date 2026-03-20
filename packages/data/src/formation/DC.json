@@ -3,20 +3,25 @@
   "state_name": "District of Columbia",
   "entity_type": "LLC",
   "sos_url": "https://dcra.dc.gov/service/corporate-registration",
-  "filing_office": "Department of Licensing and Consumer Protection",
+  "filing_office": "DC Department of Licensing and Consumer Protection",
   "fees": {
     "standard": {
-      "amount_cents": 22000,
-      "description": "Standard LLC filing fee",
+      "amount_cents": 9900,
+      "description": "LLC Articles of Organization filing fee",
       "is_expedited": false,
-      "processing_days": 15
+      "processing_days": 5
     }
   },
   "filing": {
     "primary": {
       "method": "portal",
-      "url": "https://corponline.dcra.dc.gov",
-      "notes": "DC Business Portal for LLC formation"
+      "url": "https://dcra.dc.gov/service/corporate-registration",
+      "notes": "DC Department of Licensing and Consumer Protection online filing"
+    },
+    "fallback": {
+      "method": "mail",
+      "url": "https://dcra.dc.gov/service/corporate-registration",
+      "notes": "Mail filing to DC Department of Licensing and Consumer Protection"
     }
   },
   "requirements": {
@@ -25,16 +30,17 @@
     "publication_required": false,
     "registered_agent_required": true,
     "annual_report_required": true,
-    "franchise_tax": false,
-    "annual_report_fee_cents": 30000
+    "annual_report_fee_cents": 30000,
+    "franchise_tax": false
   },
   "processing": {
-    "standard_days": 15
+    "standard_days": 5
   },
   "naming": {
     "required_suffix": [
       "LLC",
-      "L.L.C."
+      "L.L.C.",
+      "Limited Liability Company"
     ],
     "restricted_words": [
       "Bank",
@@ -43,20 +49,25 @@
     ]
   },
   "compliance": {
-    "annual_report_due": "April 1"
+    "annual_report_due": "September 30 (biennial)"
   },
   "verification": {
-    "last_verified": "2026-03-20T05:26:19.035Z",
+    "last_verified": "2026-03-20T05:53:21.865Z",
     "sources": [
+      {
+        "name": "LLC Requirements by State (llcrequirements.com)",
+        "url": "https://llcrequirements.com/",
+        "accessed_at": "2026-03-20T05:53:21.865Z"
+      },
+      {
+        "name": "Discern Franchise Tax by State",
+        "url": "https://www.discern.com/resources/franchise-tax-information",
+        "accessed_at": "2026-03-20T05:53:21.865Z"
+      },
       {
         "name": "District of Columbia Department of Consumer and Regulatory Affairs",
         "url": "https://dcra.dc.gov/service/corporate-registration",
-        "accessed_at": "2026-03-19T22:05:56.093Z"
-      },
-      {
-        "name": "World Population Review LLC Cost Table",
-        "url": "https://worldpopulationreview.com/state-rankings/llc-cost-by-state",
-        "accessed_at": "2026-03-20T05:26:19.035Z"
+        "accessed_at": "2026-03-20T05:53:21.865Z"
       }
     ],
     "verified_by": "deterministic_parse",

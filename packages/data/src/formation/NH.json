@@ -3,26 +3,25 @@
   "state_name": "New Hampshire",
   "entity_type": "LLC",
   "sos_url": "https://www.sos.nh.gov/corporation-division",
-  "filing_office": "Corporation Division",
+  "filing_office": "New Hampshire Secretary of State",
   "fees": {
     "standard": {
       "amount_cents": 10000,
-      "description": "Standard LLC filing fee",
+      "description": "LLC Articles of Organization filing fee",
       "is_expedited": false,
       "processing_days": 5
-    },
-    "expedited": {
-      "amount_cents": 15000,
-      "description": "Expedited LLC filing fee",
-      "is_expedited": true,
-      "processing_days": 1
     }
   },
   "filing": {
     "primary": {
       "method": "portal",
       "url": "https://www.sos.nh.gov/corporation-division",
-      "notes": "New Hampshire online filing portal"
+      "notes": "New Hampshire Secretary of State online filing"
+    },
+    "fallback": {
+      "method": "mail",
+      "url": "https://www.sos.nh.gov/corporation-division",
+      "notes": "Mail filing to New Hampshire Secretary of State"
     }
   },
   "requirements": {
@@ -31,17 +30,17 @@
     "publication_required": false,
     "registered_agent_required": true,
     "annual_report_required": true,
-    "franchise_tax": false,
-    "annual_report_fee_cents": 10000
+    "annual_report_fee_cents": 10000,
+    "franchise_tax": false
   },
   "processing": {
-    "standard_days": 5,
-    "expedited_days": 1
+    "standard_days": 5
   },
   "naming": {
     "required_suffix": [
       "LLC",
-      "L.L.C."
+      "L.L.C.",
+      "Limited Liability Company"
     ],
     "restricted_words": [
       "Bank",
@@ -53,17 +52,22 @@
     "annual_report_due": "April 1"
   },
   "verification": {
-    "last_verified": "2026-03-20T05:26:19.035Z",
+    "last_verified": "2026-03-20T05:53:21.862Z",
     "sources": [
+      {
+        "name": "LLC Requirements by State (llcrequirements.com)",
+        "url": "https://llcrequirements.com/",
+        "accessed_at": "2026-03-20T05:53:21.862Z"
+      },
+      {
+        "name": "Discern Franchise Tax by State",
+        "url": "https://www.discern.com/resources/franchise-tax-information",
+        "accessed_at": "2026-03-20T05:53:21.862Z"
+      },
       {
         "name": "New Hampshire Secretary of State",
         "url": "https://www.sos.nh.gov/corporation-division",
-        "accessed_at": "2026-03-19T22:16:55.455Z"
-      },
-      {
-        "name": "World Population Review LLC Cost Table",
-        "url": "https://worldpopulationreview.com/state-rankings/llc-cost-by-state",
-        "accessed_at": "2026-03-20T05:26:19.035Z"
+        "accessed_at": "2026-03-20T05:53:21.862Z"
       }
     ],
     "verified_by": "deterministic_parse",

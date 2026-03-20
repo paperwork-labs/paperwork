@@ -3,20 +3,25 @@
   "state_name": "Florida",
   "entity_type": "LLC",
   "sos_url": "https://dos.fl.gov/sunbiz/",
-  "filing_office": "Division of Corporations",
+  "filing_office": "Florida Division of Corporations",
   "fees": {
     "standard": {
-      "amount_cents": 15500,
-      "description": "Standard LLC filing fee",
+      "amount_cents": 12500,
+      "description": "LLC Articles of Organization filing fee",
       "is_expedited": false,
-      "processing_days": 5
+      "processing_days": 3
     }
   },
   "filing": {
     "primary": {
       "method": "portal",
-      "url": "https://efile.sunbiz.org/llc_file.html",
-      "notes": "Florida Sunbiz E-Filing Portal"
+      "url": "https://dos.fl.gov/sunbiz/",
+      "notes": "Florida Division of Corporations online filing"
+    },
+    "fallback": {
+      "method": "mail",
+      "url": "https://dos.fl.gov/sunbiz/",
+      "notes": "Mail filing to Florida Division of Corporations"
     }
   },
   "requirements": {
@@ -25,16 +30,17 @@
     "publication_required": false,
     "registered_agent_required": true,
     "annual_report_required": true,
-    "franchise_tax": false,
-    "annual_report_fee_cents": 13900
+    "annual_report_fee_cents": 13875,
+    "franchise_tax": false
   },
   "processing": {
-    "standard_days": 5
+    "standard_days": 3
   },
   "naming": {
     "required_suffix": [
       "LLC",
-      "L.L.C."
+      "L.L.C.",
+      "Limited Liability Company"
     ],
     "restricted_words": [
       "Bank",
@@ -46,17 +52,22 @@
     "annual_report_due": "May 1"
   },
   "verification": {
-    "last_verified": "2026-03-20T05:26:19.035Z",
+    "last_verified": "2026-03-20T05:53:21.857Z",
     "sources": [
+      {
+        "name": "LLC Requirements by State (llcrequirements.com)",
+        "url": "https://llcrequirements.com/",
+        "accessed_at": "2026-03-20T05:53:21.857Z"
+      },
+      {
+        "name": "Discern Franchise Tax by State",
+        "url": "https://www.discern.com/resources/franchise-tax-information",
+        "accessed_at": "2026-03-20T05:53:21.857Z"
+      },
       {
         "name": "Florida Division of Corporations",
         "url": "https://dos.fl.gov/sunbiz/",
-        "accessed_at": "2026-03-19T22:05:56.093Z"
-      },
-      {
-        "name": "World Population Review LLC Cost Table",
-        "url": "https://worldpopulationreview.com/state-rankings/llc-cost-by-state",
-        "accessed_at": "2026-03-20T05:26:19.035Z"
+        "accessed_at": "2026-03-20T05:53:21.857Z"
       }
     ],
     "verified_by": "deterministic_parse",

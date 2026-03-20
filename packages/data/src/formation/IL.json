@@ -6,23 +6,22 @@
   "filing_office": "Illinois Secretary of State",
   "fees": {
     "standard": {
-      "amount_cents": 50000,
-      "description": "Standard LLC filing fee",
+      "amount_cents": 15000,
+      "description": "LLC Articles of Organization filing fee",
       "is_expedited": false,
-      "processing_days": 10
-    },
-    "expedited": {
-      "amount_cents": 25000,
-      "description": "Expedited LLC filing fee",
-      "is_expedited": true,
       "processing_days": 1
     }
   },
   "filing": {
     "primary": {
       "method": "portal",
-      "url": "https://apps.ilsos.gov",
-      "notes": "Online filing through the Illinois Secretary of State portal"
+      "url": "https://www.ilsos.gov/departments/business_services",
+      "notes": "Illinois Secretary of State online filing"
+    },
+    "fallback": {
+      "method": "mail",
+      "url": "https://www.ilsos.gov/departments/business_services",
+      "notes": "Mail filing to Illinois Secretary of State"
     }
   },
   "requirements": {
@@ -31,17 +30,17 @@
     "publication_required": false,
     "registered_agent_required": true,
     "annual_report_required": true,
-    "franchise_tax": false,
-    "annual_report_fee_cents": 30500
+    "annual_report_fee_cents": 7500,
+    "franchise_tax": false
   },
   "processing": {
-    "standard_days": 10,
-    "expedited_days": 1
+    "standard_days": 1
   },
   "naming": {
     "required_suffix": [
       "LLC",
-      "L.L.C."
+      "L.L.C.",
+      "Limited Liability Company"
     ],
     "restricted_words": [
       "Bank",
@@ -50,20 +49,25 @@
     ]
   },
   "compliance": {
-    "annual_report_due": "Annually by the anniversary month of formation"
+    "annual_report_due": "Anniversary month"
   },
   "verification": {
-    "last_verified": "2026-03-20T05:26:19.035Z",
+    "last_verified": "2026-03-20T05:53:21.859Z",
     "sources": [
+      {
+        "name": "LLC Requirements by State (llcrequirements.com)",
+        "url": "https://llcrequirements.com/",
+        "accessed_at": "2026-03-20T05:53:21.859Z"
+      },
+      {
+        "name": "Discern Franchise Tax by State",
+        "url": "https://www.discern.com/resources/franchise-tax-information",
+        "accessed_at": "2026-03-20T05:53:21.859Z"
+      },
       {
         "name": "Illinois Secretary of State",
         "url": "https://www.ilsos.gov/departments/business_services",
-        "accessed_at": "2026-03-19T22:15:40.231Z"
-      },
-      {
-        "name": "World Population Review LLC Cost Table",
-        "url": "https://worldpopulationreview.com/state-rankings/llc-cost-by-state",
-        "accessed_at": "2026-03-20T05:26:19.035Z"
+        "accessed_at": "2026-03-20T05:53:21.859Z"
       }
     ],
     "verified_by": "deterministic_parse",

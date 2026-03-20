@@ -3,26 +3,25 @@
   "state_name": "Oklahoma",
   "entity_type": "LLC",
   "sos_url": "https://www.sos.ok.gov/business",
-  "filing_office": "Business Filing Department",
+  "filing_office": "Oklahoma Secretary of State",
   "fees": {
     "standard": {
-      "amount_cents": 10400,
-      "description": "Standard LLC filing fee",
+      "amount_cents": 10000,
+      "description": "LLC Articles of Organization filing fee",
       "is_expedited": false,
-      "processing_days": 5
-    },
-    "expedited": {
-      "amount_cents": 5000,
-      "description": "Same Day Service fee",
-      "is_expedited": true,
-      "processing_days": 1
+      "processing_days": 3
     }
   },
   "filing": {
     "primary": {
       "method": "portal",
-      "url": "https://www.sos.ok.gov",
-      "notes": "Documents may be submitted online, by mail, or in person."
+      "url": "https://www.sos.ok.gov/business",
+      "notes": "Oklahoma Secretary of State online filing"
+    },
+    "fallback": {
+      "method": "mail",
+      "url": "https://www.sos.ok.gov/business",
+      "notes": "Mail filing to Oklahoma Secretary of State"
     }
   },
   "requirements": {
@@ -31,35 +30,44 @@
     "publication_required": false,
     "registered_agent_required": true,
     "annual_report_required": true,
-    "franchise_tax": false,
-    "annual_report_fee_cents": 2500
+    "annual_report_fee_cents": 2500,
+    "franchise_tax": false
   },
   "processing": {
-    "standard_days": 5,
-    "expedited_days": 1
+    "standard_days": 3
   },
   "naming": {
     "required_suffix": [
       "LLC",
-      "L.L.C."
+      "L.L.C.",
+      "Limited Liability Company"
     ],
-    "restricted_words": []
+    "restricted_words": [
+      "Bank",
+      "Insurance",
+      "Trust"
+    ]
   },
   "compliance": {
-    "annual_report_due": "Annually"
+    "annual_report_due": "Anniversary date"
   },
   "verification": {
-    "last_verified": "2026-03-20T05:26:19.035Z",
+    "last_verified": "2026-03-20T05:53:21.863Z",
     "sources": [
+      {
+        "name": "LLC Requirements by State (llcrequirements.com)",
+        "url": "https://llcrequirements.com/",
+        "accessed_at": "2026-03-20T05:53:21.863Z"
+      },
+      {
+        "name": "Discern Franchise Tax by State",
+        "url": "https://www.discern.com/resources/franchise-tax-information",
+        "accessed_at": "2026-03-20T05:53:21.863Z"
+      },
       {
         "name": "Oklahoma Secretary of State",
         "url": "https://www.sos.ok.gov/business",
-        "accessed_at": "2026-03-19T22:05:56.093Z"
-      },
-      {
-        "name": "World Population Review LLC Cost Table",
-        "url": "https://worldpopulationreview.com/state-rankings/llc-cost-by-state",
-        "accessed_at": "2026-03-20T05:26:19.035Z"
+        "accessed_at": "2026-03-20T05:53:21.863Z"
       }
     ],
     "verified_by": "deterministic_parse",
