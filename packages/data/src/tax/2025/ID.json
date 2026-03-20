@@ -3,37 +3,8 @@
   "state_name": "Idaho",
   "tax_year": 2025,
   "income_tax": {
-    "type": "progressive",
-    "brackets": {
-      "single": [
-        {
-          "min_income_cents": 467300,
-          "max_income_cents": null,
-          "rate_bps": 5695
-        }
-      ],
-      "married_filing_jointly": [
-        {
-          "min_income_cents": 934600,
-          "max_income_cents": null,
-          "rate_bps": 5695
-        }
-      ],
-      "married_filing_separately": [
-        {
-          "min_income_cents": 467300,
-          "max_income_cents": null,
-          "rate_bps": 5695
-        }
-      ],
-      "head_of_household": [
-        {
-          "min_income_cents": 467300,
-          "max_income_cents": null,
-          "rate_bps": 5695
-        }
-      ]
-    }
+    "type": "flat",
+    "flat_rate_bps": 570
   },
   "standard_deductions": [
     {
