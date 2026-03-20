@@ -256,8 +256,7 @@ function main(): void {
       validationErrors.some((e) => e.file === tf.relPath) ||
       sanityFailures.some((m) => m.includes(tf.relPath) || m.includes(`tax/${tf.data.tax_year}/${st}.json`));
     const globalFail = sanityFailures.some((m) => m.startsWith("Completeness:"));
-    const status =
-      validationErrors.some((e) => e.file === tf.relPath) || failed || globalFail ? "INVALID" : "VALID";
+    const status = failed || globalFail ? "INVALID" : "VALID";
 
     rows.push({
       State: st,
@@ -276,7 +275,9 @@ function main(): void {
     }
     const conf = ff.data.verification.confidence;
     const st = ff.data.state;
-    const failed = validationErrors.some((e) => e.file === ff.relPath);
+    const failed =
+      validationErrors.some((e) => e.file === ff.relPath) ||
+      sanityFailures.some((m) => m.includes(ff.relPath));
     const globalFail = sanityFailures.some((m) => m.startsWith("Completeness:"));
     const status = failed || globalFail ? "INVALID" : "VALID";
     rows.push({
