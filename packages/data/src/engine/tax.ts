@@ -1,11 +1,15 @@
 import type { StateCode } from "../types/common";
 import type { StateTaxRules, FilingStatus, TaxBracket } from "../types/tax";
 
-const taxCache = new Map<string, StateTaxRules>();
+type TaxCacheKey = `${StateCode}:${number}`;
 
+const taxCache = new Map<TaxCacheKey, StateTaxRules>();
+
+// Intentional hardcode: tax products target a specific filing year.
+// Updated annually alongside new data extraction runs.
 const DEFAULT_TAX_YEAR = 2026;
 
-function cacheKey(state: StateCode, taxYear: number): string {
+function cacheKey(state: StateCode, taxYear: number): TaxCacheKey {
   return `${state}:${taxYear}`;
 }
 
@@ -35,7 +39,7 @@ export function getAvailableTaxYears(state?: StateCode): number[] {
       years.add(data.tax_year);
     }
   }
-  return Array.from(years).sort();
+  return Array.from(years).sort((a, b) => a - b);
 }
 
 /**
