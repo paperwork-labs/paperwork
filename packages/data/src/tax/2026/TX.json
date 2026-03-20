@@ -19,22 +19,17 @@
     "has_reciprocity": false
   },
   "dor_url": "https://comptroller.texas.gov",
-  "tax_foundation_url": "https://taxfoundation.org/location/texas/",
+  "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2026",
   "verification": {
-    "last_verified": "2026-03-19T21:53:21.559Z",
+    "last_verified": "2026-03-20T06:19:13.613Z",
     "sources": [
       {
-        "name": "Tax Foundation - Texas",
-        "url": "https://taxfoundation.org/location/texas/",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
-      },
-      {
-        "name": "Texas Comptroller of Public Accounts",
-        "url": "https://comptroller.texas.gov",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
+        "name": "Tax Foundation State Income Tax Rates and Brackets (multi-year XLSX, 2026 sheet)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T06:19:13.613Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

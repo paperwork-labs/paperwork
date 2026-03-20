@@ -2,8 +2,8 @@
 
 Organizational memory for Paperwork Labs (FileFree, LaunchFree, Distill, Trinkets). AI agents read this at session start. Update after significant decisions, learnings, or pattern discoveries.
 
-**Last Updated**: 2026-03-19
-**Version**: 10.0 (cleaned per D52 anti-bloat rules)
+**Last Updated**: 2026-03-20
+**Version**: 10.2 (D84 — 100% deterministic data, zero AI)
 
 ---
 
@@ -229,6 +229,75 @@ Full text in [docs/archive/KNOWLEDGE-ARCHIVE.md](archive/KNOWLEDGE-ARCHIVE.md).
 - **Decision**: Studio Secrets Vault is the **canonical** store for API keys and credentials. Agents and scripts use `./scripts/sync-secrets.sh` → `.env.secrets` (or `./scripts/vault-get.sh NAME`); Bearer `SECRETS_API_KEY` is primary auth, **Basic Auth** (Studio admin) is fallback when local Bearer is stale. Extraction scripts load `.env.secrets` via `dotenv` (shell `source` breaks on `&` in values). Documented in `.cursor/rules/secrets-ops.mdc`. Completed AI extraction of **51 jurisdictions** tax + formation JSON into `packages/data` (DC tax uses Tax Foundation state rates page; formation uses `ai_extraction_fallback` when SOS sites block bots — P2.5 human review required for those rows).
 - **Alternatives**: Only Vercel env / only n8n UI credentials (fragmented); committing keys (never).
 - **Reversibility**: Vault remains source of truth; local files gitignored.
+
+### D82 — Six-Layer Data Quality Strategy (2026-03-19)
+
+**Context**: AI extraction of 50-state tax data for TY2024-2026 produced unit conversion errors (dollars stored as cents, basis points off by 10-100x). Oklahoma rates were completely fabricated. Idaho rate was 10x too high.
+
+**Decision**: Implement defense-in-depth with 6 layers:
+1. **Extraction guardrails**: Better prompts with unit examples
+2. **Range checks** (P2.5 review CLI): rate_bps ≤ 1500, deductions ≥ $1K, exemptions ≥ $100
+3. **Cross-year consistency** (P2.7+): Advisory warnings when rate delta > 200 bps or deduction change > 25%. Hard fail at catastrophic thresholds (rate delta > 1000 bps, deduction change > 1000%).
+4. **Known-good anchors** (P2.7+): Hardcoded expected values for CA, TX, CO, NY, OK, IL, GA, ID — canary tests that fail immediately if extraction drifts.
+5. **External cross-validation** (P2.8-P2.10): n8n workflows scraping Tax Foundation and state DOR sites for automated comparison.
+6. **Human review gate**: `pnpm review:approve` refuses to stamp data unless all checks pass.
+
+**Alternatives**: (a) Manual CPA review of all 153 JSONs — doesn't scale, (b) Only range checks — misses plausible-but-wrong values like OK at 8% vs correct 4.75%.
+
+**Reversibility**: Fully reversible. Test thresholds can be adjusted. Anchor values can be updated with legislation changes.
+
+### D83 — Deterministic Data Over AI Extraction (2026-03-19)
+
+**Context**: AI extraction of 50-state tax data (TY2024-2026) produced widespread errors — wrong rates (MO 250 bps vs correct 495), missing brackets (NY 6.85% vs correct 10.9%), wrong tax types (ID listed as progressive, actually flat since 2023), hallucinated standard deductions (GA $12K vs correct $5.4K). Root cause: for TY2024/2025, the extraction script fetched only the Tax Foundation **aggregate** rates page (a summary table with top marginal rates only), and GPT hallucinated bracket data, standard deductions, and filing-status breakdowns from insufficient context.
+
+**Discovery**: Tax Foundation publishes **structured HTML tables** with exact rates, brackets (single + MFJ), standard deductions, and personal exemptions for all 51 jurisdictions, for every tax year. This data is deterministically parseable — no AI needed for core fields.
+
+**Decision**: Replace AI-dependent extraction with **deterministic parsing** for all compliance data:
+
+- **Tax data**: Parse Tax Foundation HTML tables directly in TypeScript. Unit conversion (`$` → cents, `%` → bps) in code, not by AI. AI only used for supplementary fields TF doesn't publish (notable credits/deductions, local tax details, reciprocity).
+- **Formation data**: Parse aggregated fee tables (worldpopulationreview.com, chamberofcommerce.org) for numeric fields (filing fees, annual report fees). AI extraction only for non-numeric fields (naming rules, filing methods, RA requirements) from individual SOS sites — these are strings/booleans, not unit-conversion-prone numbers.
+- **Principle**: Authoritative structured sources over AI extraction for compliance data. AI fills gaps only. The data layer should be rock-solid infrastructure, not probabilistic output.
+- **Implication for Distill**: Raw data was never the product. The product is computation (tax engine), automation (State Filing Engine), and compliance infrastructure (monitoring, e-file). This realization sharpens Distill's value proposition.
+
+**Supersedes**: D82's Layer 1 ("better prompts") is replaced by "no AI in the core data path." Layers 2-6 (range checks, cross-year, anchors, monitoring, human review) still apply as defense-in-depth.
+
+**Alternatives**: (a) Re-extract with better AI prompts — still probabilistic, ~96-98% ceiling, (b) Manual CPA review — doesn't scale, (c) Deterministic parse + AI only for gaps — chosen, ~99.9% for core fields.
+
+**Reversibility**: Fully reversible. AI extraction scripts remain in repo for supplementary data and fallback.
+
+**Status**: SUPERSEDED by D84 — all supplementary data now also deterministic. Zero AI extraction paths remain.
+
+### D84 — 100% Deterministic Data Pipeline, Zero AI (2026-03-20)
+
+**Context**: D83 replaced AI extraction for core tax/formation data but preserved AI-extracted supplementary fields (DOR URLs, local tax flags, reciprocity agreements, personal exemption phase-outs) from old JSONs. The founder's directive: "build as if this was the first time" — no AI inheritance.
+
+**Decision**: Eliminate all AI-extracted data. Every field in every JSON is now sourced from either a deterministic parser or a curated constant map.
+
+**Tax data** (153 JSONs across TY2024-2026):
+- Core fields (brackets, rates, deductions, exemptions): Tax Foundation XLSX — deterministic parse
+- DOR URLs: Curated `DOR_URLS` map (51 official state revenue department URLs)
+- Local income tax: Curated `LOCAL_INCOME_TAX_STATES` set (15 states, sourced from Tax Foundation + FTA)
+- Reciprocity: Curated `RECIPROCITY_MAP` (16 states with specific state-pair lists, sourced from FTA + state DOR)
+- Personal exemption phase-outs: Curated `PERSONAL_EXEMPTION_PHASES_OUT` set (5 states: CA, CT, NY, OR, RI)
+- Implicit 0% brackets: Explicitly added for states where first bracket starts above $0 (DE, MO, ND, OK, ID, MS)
+
+**Formation data** (51 JSONs):
+- Filing fees, annual fees, deadlines, processing times, publication: llcrequirements.com HTML table
+- Franchise tax: discern.com HTML table
+- Filing offices, SOS URLs: Source registry + curated overrides (AZ=ACC, DE=Division of Corps, etc.)
+- Operating agreements, naming rules, RA requirements: Curated constants
+
+**What was deleted**:
+- `extract-tax.ts`, `extract-formation.ts`, `extract-utils.ts`, `parse-formation-fees.ts` — all AI extraction scripts
+- `openai` and `dotenv` from devDependencies
+- All existing-JSON fallback logic from `parse-tax-foundation.ts`
+- `ai_extraction` and `ai_extraction_fallback` enum values → renamed to `sos_extraction` / `sos_extraction_unverified`
+
+**Verification**: 4-persona review (Engineering, Tax Domain, CPA, QA) — all PASS. 1,757 tests pass. Zero `ai_extraction` strings remain in `packages/data/`.
+
+**Maintenance model**: `pnpm parse:tax` + `pnpm parse:formation` are idempotent scripts. n8n `data-source-monitor` watches Tax Foundation, llcrequirements.com, and discern.com for changes. When a source updates: re-run parser, review diff, commit. No AI drift to worry about.
+
+**Supersedes**: D83 (which still used AI for supplementary fields). D82 Layers 2-6 still apply as defense-in-depth.
 
 ---
 

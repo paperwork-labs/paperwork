@@ -7,19 +7,7 @@
   "fees": {
     "standard": {
       "amount_cents": 10000,
-      "description": "Standard LLC filing fee",
-      "is_expedited": false,
-      "processing_days": 7
-    },
-    "expedited": {
-      "amount_cents": 20000,
-      "description": "Expedited LLC filing fee",
-      "is_expedited": true,
-      "processing_days": 1
-    },
-    "name_reservation": {
-      "amount_cents": 2000,
-      "description": "Name reservation fee",
+      "description": "LLC Articles of Organization filing fee",
       "is_expedited": false,
       "processing_days": 1
     }
@@ -27,13 +15,13 @@
   "filing": {
     "primary": {
       "method": "portal",
-      "url": "https://sosbiz.idaho.gov",
-      "notes": "Idaho SOSBiz portal for online filings"
+      "url": "https://sos.idaho.gov/business",
+      "notes": "Idaho Secretary of State online filing"
     },
     "fallback": {
       "method": "mail",
       "url": "https://sos.idaho.gov/business",
-      "notes": "Mail filings to Idaho Secretary of State"
+      "notes": "Mail filing to Idaho Secretary of State"
     }
   },
   "requirements": {
@@ -45,13 +33,13 @@
     "franchise_tax": false
   },
   "processing": {
-    "standard_days": 7,
-    "expedited_days": 1
+    "standard_days": 1
   },
   "naming": {
     "required_suffix": [
       "LLC",
-      "L.L.C."
+      "L.L.C.",
+      "Limited Liability Company"
     ],
     "restricted_words": [
       "Bank",
@@ -60,18 +48,28 @@
     ]
   },
   "compliance": {
-    "annual_report_due": "Annually by the end of the anniversary month"
+    "annual_report_due": "Anniversary month"
   },
   "verification": {
-    "last_verified": "2026-03-19T22:15:30.985Z",
+    "last_verified": "2026-03-20T05:53:21.858Z",
     "sources": [
+      {
+        "name": "LLC Requirements by State (llcrequirements.com)",
+        "url": "https://llcrequirements.com/",
+        "accessed_at": "2026-03-20T05:53:21.858Z"
+      },
+      {
+        "name": "Discern Franchise Tax by State",
+        "url": "https://www.discern.com/resources/franchise-tax-information",
+        "accessed_at": "2026-03-20T05:53:21.858Z"
+      },
       {
         "name": "Idaho Secretary of State",
         "url": "https://sos.idaho.gov/business",
-        "accessed_at": "2026-03-19T22:15:30.985Z"
+        "accessed_at": "2026-03-20T05:53:21.858Z"
       }
     ],
-    "verified_by": "ai_extraction_fallback",
-    "confidence": 0.55
+    "verified_by": "deterministic_parse",
+    "confidence": 0.99
   }
 }

@@ -7,22 +7,21 @@
   "fees": {
     "standard": {
       "amount_cents": 9900,
-      "description": "Standard LLC filing fee",
+      "description": "LLC Articles of Organization filing fee",
       "is_expedited": false,
-      "processing_days": 10
-    },
-    "expedited": {
-      "amount_cents": 20000,
-      "description": "Expedited processing fee",
-      "is_expedited": true,
-      "processing_days": 2
+      "processing_days": 5
     }
   },
   "filing": {
     "primary": {
       "method": "portal",
       "url": "https://www.ohiosos.gov/businesses",
-      "notes": "Online filing through Ohio Business Central"
+      "notes": "Ohio Secretary of State online filing"
+    },
+    "fallback": {
+      "method": "mail",
+      "url": "https://www.ohiosos.gov/businesses",
+      "notes": "Mail filing to Ohio Secretary of State"
     }
   },
   "requirements": {
@@ -34,13 +33,13 @@
     "franchise_tax": false
   },
   "processing": {
-    "standard_days": 10,
-    "expedited_days": 2
+    "standard_days": 5
   },
   "naming": {
     "required_suffix": [
       "LLC",
-      "L.L.C."
+      "L.L.C.",
+      "Limited Liability Company"
     ],
     "restricted_words": [
       "Bank",
@@ -48,19 +47,27 @@
       "Trust"
     ]
   },
-  "compliance": {
-    "franchise_tax_due": "Not applicable"
-  },
+  "compliance": {},
   "verification": {
-    "last_verified": "2026-03-19T22:17:21.558Z",
+    "last_verified": "2026-03-20T05:53:21.863Z",
     "sources": [
+      {
+        "name": "LLC Requirements by State (llcrequirements.com)",
+        "url": "https://llcrequirements.com/",
+        "accessed_at": "2026-03-20T05:53:21.863Z"
+      },
+      {
+        "name": "Discern Franchise Tax by State",
+        "url": "https://www.discern.com/resources/franchise-tax-information",
+        "accessed_at": "2026-03-20T05:53:21.863Z"
+      },
       {
         "name": "Ohio Secretary of State",
         "url": "https://www.ohiosos.gov/businesses",
-        "accessed_at": "2026-03-19T22:17:21.558Z"
+        "accessed_at": "2026-03-20T05:53:21.863Z"
       }
     ],
-    "verified_by": "ai_extraction_fallback",
-    "confidence": 0.55
+    "verified_by": "deterministic_parse",
+    "confidence": 0.99
   }
 }

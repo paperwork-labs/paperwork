@@ -13,8 +13,9 @@ type FormationRulesParsed = z.infer<typeof FormationRulesSchema>;
 
 const NO_INCOME_TAX_STATES: StateCode[] = ["AK", "FL", "NH", "NV", "SD", "TN", "TX", "WA", "WY"];
 
-const MIN_STANDARD_DEDUCTION_CENTS = 100_000;
-const MIN_PERSONAL_EXEMPTION_CENTS = 10_000;
+// Lowered to accommodate credit-style amounts (UT $876 deduction credit, AR $29 exemption credit)
+const MIN_STANDARD_DEDUCTION_CENTS = 50_000;    // $500 — catches dollars-stored-as-cents errors
+const MIN_PERSONAL_EXEMPTION_CENTS = 1_000;     // $10 — some states have tiny credit-style exemptions
 const MIN_NON_FIRST_BRACKET_MIN_CENTS = 10_000;
 const MAX_RATE_BPS = 1500;
 
@@ -169,5 +170,227 @@ describe("Sanity: formation filing fees", () => {
   it.each(formationFiles)("$relPath", ({ relPath, data }) => {
     const fee = data.fees.standard.amount_cents;
     expect(fee > 0, `${relPath}: standard filing fee must be > 0 (got ${fee})`).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Cross-year consistency: catches plausible-but-wrong AI extraction errors
+// ---------------------------------------------------------------------------
+
+const MAX_RATE_DELTA_BPS = 200;
+const MAX_STD_DEDUCTION_CHANGE_PCT = 25;
+const MAX_BRACKET_COUNT_DELTA = 2;
+
+function topRateBps(data: TaxRulesParsed): number {
+  const it = data.income_tax;
+  if (it.type === "none") return 0;
+  if (it.type === "flat") return it.flat_rate_bps;
+  let max = 0;
+  for (const brackets of Object.values(it.brackets)) {
+    for (const b of brackets) {
+      if (b.rate_bps > max) max = b.rate_bps;
+    }
+  }
+  return max;
+}
+
+function bracketCount(data: TaxRulesParsed): number {
+  const it = data.income_tax;
+  if (it.type !== "progressive") return 0;
+  return it.brackets.single.length;
+}
+
+function avgStdDeduction(data: TaxRulesParsed): number {
+  const vals = data.standard_deductions.filter((d) => d.amount_cents > 0).map((d) => d.amount_cents);
+  if (vals.length === 0) return 0;
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
+}
+
+const taxByStateYear = new Map<string, Map<number, TaxRulesParsed>>();
+for (const tf of taxFiles) {
+  const st = tf.data.state;
+  if (!taxByStateYear.has(st)) taxByStateYear.set(st, new Map());
+  taxByStateYear.get(st)!.set(tf.data.tax_year, tf.data);
+}
+
+const crossYearPairs: { state: StateCode; yearA: number; yearB: number; dataA: TaxRulesParsed; dataB: TaxRulesParsed }[] = [];
+for (const [state, byYear] of taxByStateYear) {
+  const years = Array.from(byYear.keys()).sort((a, b) => a - b);
+  for (let i = 0; i < years.length - 1; i++) {
+    crossYearPairs.push({
+      state: state as StateCode,
+      yearA: years[i]!,
+      yearB: years[i + 1]!,
+      dataA: byYear.get(years[i]!)!,
+      dataB: byYear.get(years[i + 1]!)!,
+    });
+  }
+}
+
+describe("Cross-year: top rate stability (advisory)", () => {
+  it.each(crossYearPairs)("$state $yearA->$yearB", ({ state, yearA, yearB, dataA, dataB }) => {
+    const rateA = topRateBps(dataA);
+    const rateB = topRateBps(dataB);
+    const delta = Math.abs(rateB - rateA);
+    if (delta > MAX_RATE_DELTA_BPS) {
+      console.warn(
+        `${state} top rate jumped ${delta} bps (${rateA}->${rateB}) between ${yearA} and ${yearB} — verify legislation`,
+      );
+    }
+    expect(
+      delta <= 1000,
+      `${state} top rate jumped ${delta} bps (${rateA}->${rateB}) between ${yearA}->${yearB} — almost certainly wrong`,
+    ).toBe(true);
+  });
+});
+
+describe("Cross-year: standard deduction stability (advisory)", () => {
+  it.each(crossYearPairs)("$state $yearA->$yearB", ({ state, yearA, yearB, dataA, dataB }) => {
+    const avgA = avgStdDeduction(dataA);
+    const avgB = avgStdDeduction(dataB);
+    if (avgA === 0 || avgB === 0) return;
+    const changePct = (Math.abs(avgB - avgA) / avgA) * 100;
+    if (changePct > MAX_STD_DEDUCTION_CHANGE_PCT) {
+      console.warn(
+        `${state} avg standard deduction changed ${changePct.toFixed(1)}% between ${yearA}->${yearB} (${avgA}->${avgB}) — verify`,
+      );
+    }
+    expect(
+      changePct <= 1000,
+      `${state} standard deduction changed ${changePct.toFixed(1)}% between ${yearA}->${yearB} — almost certainly wrong`,
+    ).toBe(true);
+  });
+});
+
+describe("Cross-year: tax type stability (advisory)", () => {
+  it.each(crossYearPairs)("$state $yearA->$yearB", ({ state, yearA, yearB, dataA, dataB }) => {
+    if (dataA.income_tax.type !== dataB.income_tax.type) {
+      console.warn(
+        `${state} tax type changed: ${dataA.income_tax.type} (${yearA}) -> ${dataB.income_tax.type} (${yearB}) — verify legislation`,
+      );
+    }
+  });
+});
+
+describe("Cross-year: bracket count stability (advisory)", () => {
+  it.each(crossYearPairs)("$state $yearA->$yearB", ({ state, yearA, yearB, dataA, dataB }) => {
+    const countA = bracketCount(dataA);
+    const countB = bracketCount(dataB);
+    if (countA === 0 && countB === 0) return;
+    const delta = Math.abs(countB - countA);
+    if (delta > MAX_BRACKET_COUNT_DELTA) {
+      console.warn(
+        `${state} bracket count changed by ${delta} (${countA}->${countB}) between ${yearA}->${yearB} — verify`,
+      );
+    }
+    expect(
+      delta <= 6,
+      `${state} bracket count changed by ${delta} (${countA}->${countB}) between ${yearA}->${yearB} — almost certainly wrong`,
+    ).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Filing-status consistency: rates & bracket count must match across statuses
+// ---------------------------------------------------------------------------
+
+const progressiveTaxFiles = taxFiles.filter((tf) => tf.data.income_tax.type === "progressive");
+
+// NJ has genuinely different single vs MFJ bracket structures (different rates AND count).
+// MFS/HoH default to single brackets. MFJ may differ per state law.
+// We only check MFS and HoH match single; MFJ is allowed to differ.
+describe("Filing-status: MFS and HoH consistent with single", () => {
+  it.each(progressiveTaxFiles)("$relPath", ({ relPath, data }) => {
+    const it = data.income_tax;
+    if (it.type !== "progressive") return;
+    const singleRates = it.brackets.single.map((b) => b.rate_bps);
+    const singleCount = it.brackets.single.length;
+    for (const status of ["married_filing_separately", "head_of_household"] as const) {
+      const brackets = it.brackets[status];
+      const rates = brackets.map((b) => b.rate_bps);
+      expect(
+        JSON.stringify(rates) === JSON.stringify(singleRates),
+        `${relPath}: ${status} rates ${JSON.stringify(rates)} differ from single ${JSON.stringify(singleRates)}`,
+      ).toBe(true);
+      expect(
+        brackets.length === singleCount,
+        `${relPath}: ${status} has ${brackets.length} brackets vs single's ${singleCount}`,
+      ).toBe(true);
+    }
+  });
+});
+
+describe("Filing-status: MFJ bracket count within reason", () => {
+  it.each(progressiveTaxFiles)("$relPath", ({ relPath, data }) => {
+    const it = data.income_tax;
+    if (it.type !== "progressive") return;
+    const singleCount = it.brackets.single.length;
+    const mfjCount = it.brackets.married_filing_jointly.length;
+    expect(
+      Math.abs(mfjCount - singleCount) <= 2,
+      `${relPath}: MFJ has ${mfjCount} brackets vs single's ${singleCount} (delta > 2)`,
+    ).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Known-good regression anchors: canary tests for key states
+// ---------------------------------------------------------------------------
+
+type AnchorSpec = {
+  state: StateCode;
+  year: number;
+  type: "none" | "flat" | "progressive";
+  topRateMin: number;
+  topRateMax: number;
+  minBrackets?: number;
+};
+
+// Anchors updated 2026-03-20 from Tax Foundation XLSX (deterministic parse)
+const ANCHORS: AnchorSpec[] = [
+  { state: "CA", year: 2026, type: "progressive", topRateMin: 1280, topRateMax: 1380, minBrackets: 10 },
+  { state: "TX", year: 2026, type: "none", topRateMin: 0, topRateMax: 0 },
+  { state: "CO", year: 2026, type: "flat", topRateMin: 400, topRateMax: 480 },
+  { state: "NY", year: 2026, type: "progressive", topRateMin: 1040, topRateMax: 1140, minBrackets: 9 },
+  { state: "OK", year: 2026, type: "progressive", topRateMin: 400, topRateMax: 500, minBrackets: 4 },
+  { state: "IL", year: 2026, type: "flat", topRateMin: 450, topRateMax: 540 },
+  { state: "GA", year: 2026, type: "flat", topRateMin: 490, topRateMax: 550 },
+  { state: "ID", year: 2026, type: "progressive", topRateMin: 490, topRateMax: 570, minBrackets: 2 },
+  { state: "MO", year: 2026, type: "progressive", topRateMin: 440, topRateMax: 500, minBrackets: 8 },
+  { state: "HI", year: 2026, type: "progressive", topRateMin: 1050, topRateMax: 1150, minBrackets: 12 },
+  { state: "NJ", year: 2026, type: "progressive", topRateMin: 1025, topRateMax: 1125, minBrackets: 7 },
+  { state: "MD", year: 2026, type: "progressive", topRateMin: 600, topRateMax: 700, minBrackets: 10 },
+  { state: "NC", year: 2026, type: "flat", topRateMin: 370, topRateMax: 430 },
+  { state: "WI", year: 2026, type: "progressive", topRateMin: 720, topRateMax: 800, minBrackets: 4 },
+  { state: "DC", year: 2026, type: "progressive", topRateMin: 1025, topRateMax: 1125, minBrackets: 7 },
+  { state: "MO", year: 2024, type: "progressive", topRateMin: 440, topRateMax: 520, minBrackets: 8 },
+  { state: "NY", year: 2024, type: "progressive", topRateMin: 1040, topRateMax: 1140, minBrackets: 9 },
+];
+
+describe("Known-good anchors", () => {
+  it.each(ANCHORS)("$state $year: $type [$topRateMin-$topRateMax bps]", (anchor) => {
+    const byYear = taxByStateYear.get(anchor.state);
+    expect(byYear, `missing data for ${anchor.state}`).toBeDefined();
+    const data = byYear!.get(anchor.year);
+    expect(data, `missing ${anchor.state} ${anchor.year}`).toBeDefined();
+
+    expect(
+      data!.income_tax.type,
+      `${anchor.state} ${anchor.year}: expected type ${anchor.type}, got ${data!.income_tax.type}`,
+    ).toBe(anchor.type);
+
+    const rate = topRateBps(data!);
+    expect(
+      rate >= anchor.topRateMin && rate <= anchor.topRateMax,
+      `${anchor.state} ${anchor.year}: top rate ${rate} bps outside expected range [${anchor.topRateMin}-${anchor.topRateMax}]`,
+    ).toBe(true);
+
+    if (anchor.minBrackets && data!.income_tax.type === "progressive") {
+      const count = bracketCount(data!);
+      expect(
+        count >= anchor.minBrackets,
+        `${anchor.state} ${anchor.year}: only ${count} brackets, expected >= ${anchor.minBrackets}`,
+      ).toBe(true);
+    }
   });
 });

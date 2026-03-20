@@ -38,6 +38,11 @@
         },
         {
           "min_income_cents": 15000000,
+          "max_income_cents": 25000000,
+          "rate_bps": 550
+        },
+        {
+          "min_income_cents": 25000000,
           "max_income_cents": null,
           "rate_bps": 575
         }
@@ -45,36 +50,41 @@
       "married_filing_jointly": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 150000,
+          "max_income_cents": 100000,
           "rate_bps": 200
         },
         {
-          "min_income_cents": 150000,
-          "max_income_cents": 300000,
+          "min_income_cents": 100000,
+          "max_income_cents": 200000,
           "rate_bps": 300
         },
         {
-          "min_income_cents": 300000,
-          "max_income_cents": 450000,
+          "min_income_cents": 200000,
+          "max_income_cents": 300000,
           "rate_bps": 400
         },
         {
-          "min_income_cents": 450000,
-          "max_income_cents": 10000000,
+          "min_income_cents": 300000,
+          "max_income_cents": 15000000,
           "rate_bps": 475
         },
         {
-          "min_income_cents": 10000000,
-          "max_income_cents": 12500000,
+          "min_income_cents": 15000000,
+          "max_income_cents": 17500000,
           "rate_bps": 500
         },
         {
-          "min_income_cents": 12500000,
-          "max_income_cents": 15000000,
+          "min_income_cents": 17500000,
+          "max_income_cents": 22500000,
           "rate_bps": 525
         },
         {
-          "min_income_cents": 15000000,
+          "min_income_cents": 22500000,
+          "max_income_cents": 30000000,
+          "rate_bps": 550
+        },
+        {
+          "min_income_cents": 30000000,
           "max_income_cents": null,
           "rate_bps": 575
         }
@@ -112,6 +122,11 @@
         },
         {
           "min_income_cents": 15000000,
+          "max_income_cents": 25000000,
+          "rate_bps": 550
+        },
+        {
+          "min_income_cents": 25000000,
           "max_income_cents": null,
           "rate_bps": 575
         }
@@ -119,21 +134,21 @@
       "head_of_household": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 150000,
+          "max_income_cents": 100000,
           "rate_bps": 200
         },
         {
-          "min_income_cents": 150000,
-          "max_income_cents": 300000,
+          "min_income_cents": 100000,
+          "max_income_cents": 200000,
           "rate_bps": 300
         },
         {
-          "min_income_cents": 300000,
-          "max_income_cents": 450000,
+          "min_income_cents": 200000,
+          "max_income_cents": 300000,
           "rate_bps": 400
         },
         {
-          "min_income_cents": 450000,
+          "min_income_cents": 300000,
           "max_income_cents": 10000000,
           "rate_bps": 475
         },
@@ -149,6 +164,11 @@
         },
         {
           "min_income_cents": 15000000,
+          "max_income_cents": 25000000,
+          "rate_bps": 550
+        },
+        {
+          "min_income_cents": 25000000,
           "max_income_cents": null,
           "rate_bps": 575
         }
@@ -174,7 +194,7 @@
     }
   ],
   "personal_exemption": {
-    "amount_cents": 32000,
+    "amount_cents": 320000,
     "phases_out": false
   },
   "notable_credits": [],
@@ -183,25 +203,26 @@
     "has_local_income_tax": true
   },
   "reciprocity": {
-    "has_reciprocity": false
+    "has_reciprocity": true,
+    "states": [
+      "DC",
+      "PA",
+      "VA",
+      "WV"
+    ]
   },
   "dor_url": "https://www.marylandtaxes.gov",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
   "verification": {
-    "last_verified": "2026-03-19T23:16:52.542Z",
+    "last_verified": "2026-03-20T06:19:13.598Z",
     "sources": [
       {
-        "name": "Tax Foundation 2024 Rates",
-        "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
-        "accessed_at": "2026-03-19T23:16:52.542Z"
-      },
-      {
-        "name": "Maryland Comptroller",
-        "url": "https://www.marylandtaxes.gov",
-        "accessed_at": "2026-03-19T23:16:52.542Z"
+        "name": "Tax Foundation State Income Tax Rates and Brackets (multi-year XLSX, 2024 sheet)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T06:19:13.598Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

@@ -32,7 +32,7 @@ describe("VerificationMetaSchema", () => {
     const invalid = {
       last_verified: "2026-03-18T00:00:00.000Z",
       sources: [{ name: "Source", url: "https://example.com", accessed_at: "2026-03-18T00:00:00.000Z" }],
-      verified_by: "ai_extraction",
+      verified_by: "sos_extraction",
       confidence: 1.5,
     };
     expect(() => VerificationMetaSchema.parse(invalid)).toThrow();
@@ -42,7 +42,7 @@ describe("VerificationMetaSchema", () => {
     const invalid = {
       last_verified: "2026-03-18T00:00:00.000Z",
       sources: [],
-      verified_by: "ai_extraction",
+      verified_by: "sos_extraction",
       confidence: 0.8,
     };
     expect(() => VerificationMetaSchema.parse(invalid)).toThrow();
@@ -136,7 +136,7 @@ describe("StateTaxRulesSchema", () => {
     verification: {
       last_verified: "2026-03-18T00:00:00.000Z",
       sources: [{ name: "CA FTB", url: "https://www.ftb.ca.gov", accessed_at: "2026-03-18T00:00:00.000Z" }],
-      verified_by: "ai_extraction",
+      verified_by: "sos_extraction",
       confidence: 0.9,
     },
   };
