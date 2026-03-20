@@ -3,7 +3,7 @@
 Organizational memory for Paperwork Labs (FileFree, LaunchFree, Distill, Trinkets). AI agents read this at session start. Update after significant decisions, learnings, or pattern discoveries.
 
 **Last Updated**: 2026-03-19
-**Version**: 10.0 (cleaned per D52 anti-bloat rules)
+**Version**: 10.1 (D83 — deterministic data pipeline)
 
 ---
 
@@ -245,6 +245,25 @@ Full text in [docs/archive/KNOWLEDGE-ARCHIVE.md](archive/KNOWLEDGE-ARCHIVE.md).
 **Alternatives**: (a) Manual CPA review of all 153 JSONs — doesn't scale, (b) Only range checks — misses plausible-but-wrong values like OK at 8% vs correct 4.75%.
 
 **Reversibility**: Fully reversible. Test thresholds can be adjusted. Anchor values can be updated with legislation changes.
+
+### D83 — Deterministic Data Over AI Extraction (2026-03-19)
+
+**Context**: AI extraction of 50-state tax data (TY2024-2026) produced widespread errors — wrong rates (MO 250 bps vs correct 495), missing brackets (NY 6.85% vs correct 10.9%), wrong tax types (ID listed as progressive, actually flat since 2023), hallucinated standard deductions (GA $12K vs correct $5.4K). Root cause: for TY2024/2025, the extraction script fetched only the Tax Foundation **aggregate** rates page (a summary table with top marginal rates only), and GPT hallucinated bracket data, standard deductions, and filing-status breakdowns from insufficient context.
+
+**Discovery**: Tax Foundation publishes **structured HTML tables** with exact rates, brackets (single + MFJ), standard deductions, and personal exemptions for all 51 jurisdictions, for every tax year. This data is deterministically parseable — no AI needed for core fields.
+
+**Decision**: Replace AI-dependent extraction with **deterministic parsing** for all compliance data:
+
+- **Tax data**: Parse Tax Foundation HTML tables directly in TypeScript. Unit conversion (`$` → cents, `%` → bps) in code, not by AI. AI only used for supplementary fields TF doesn't publish (notable credits/deductions, local tax details, reciprocity).
+- **Formation data**: Parse aggregated fee tables (worldpopulationreview.com, chamberofcommerce.org) for numeric fields (filing fees, annual report fees). AI extraction only for non-numeric fields (naming rules, filing methods, RA requirements) from individual SOS sites — these are strings/booleans, not unit-conversion-prone numbers.
+- **Principle**: Authoritative structured sources over AI extraction for compliance data. AI fills gaps only. The data layer should be rock-solid infrastructure, not probabilistic output.
+- **Implication for Distill**: Raw data was never the product. The product is computation (tax engine), automation (State Filing Engine), and compliance infrastructure (monitoring, e-file). This realization sharpens Distill's value proposition.
+
+**Supersedes**: D82's Layer 1 ("better prompts") is replaced by "no AI in the core data path." Layers 2-6 (range checks, cross-year, anchors, monitoring, human review) still apply as defense-in-depth.
+
+**Alternatives**: (a) Re-extract with better AI prompts — still probabilistic, ~96-98% ceiling, (b) Manual CPA review — doesn't scale, (c) Deterministic parse + AI only for gaps — chosen, ~99.9% for core fields.
+
+**Reversibility**: Fully reversible. AI extraction scripts remain in repo for supplementary data and fallback.
 
 ---
 
