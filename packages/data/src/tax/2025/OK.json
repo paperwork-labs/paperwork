@@ -8,109 +8,109 @@
       "single": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 1000000,
-          "rate_bps": 500
+          "max_income_cents": 100000,
+          "rate_bps": 25
         },
         {
-          "min_income_cents": 1000000,
-          "max_income_cents": 2500000,
-          "rate_bps": 1000
+          "min_income_cents": 100000,
+          "max_income_cents": 250000,
+          "rate_bps": 75
         },
         {
-          "min_income_cents": 2500000,
-          "max_income_cents": 3750000,
-          "rate_bps": 2000
+          "min_income_cents": 250000,
+          "max_income_cents": 375000,
+          "rate_bps": 175
         },
         {
-          "min_income_cents": 3750000,
-          "max_income_cents": 4900000,
-          "rate_bps": 3000
+          "min_income_cents": 375000,
+          "max_income_cents": 490000,
+          "rate_bps": 275
         },
         {
-          "min_income_cents": 4900000,
+          "min_income_cents": 490000,
           "max_income_cents": null,
-          "rate_bps": 5000
+          "rate_bps": 475
         }
       ],
       "married_filing_jointly": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 2000000,
-          "rate_bps": 500
+          "max_income_cents": 200000,
+          "rate_bps": 25
         },
         {
-          "min_income_cents": 2000000,
-          "max_income_cents": 5000000,
-          "rate_bps": 1000
+          "min_income_cents": 200000,
+          "max_income_cents": 500000,
+          "rate_bps": 75
         },
         {
-          "min_income_cents": 5000000,
-          "max_income_cents": 7500000,
-          "rate_bps": 2000
+          "min_income_cents": 500000,
+          "max_income_cents": 750000,
+          "rate_bps": 175
         },
         {
-          "min_income_cents": 7500000,
-          "max_income_cents": 9800000,
-          "rate_bps": 3000
+          "min_income_cents": 750000,
+          "max_income_cents": 980000,
+          "rate_bps": 275
         },
         {
-          "min_income_cents": 9800000,
+          "min_income_cents": 980000,
           "max_income_cents": null,
-          "rate_bps": 5000
+          "rate_bps": 475
         }
       ],
       "married_filing_separately": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 1000000,
-          "rate_bps": 500
+          "max_income_cents": 100000,
+          "rate_bps": 25
         },
         {
-          "min_income_cents": 1000000,
-          "max_income_cents": 2500000,
-          "rate_bps": 1000
+          "min_income_cents": 100000,
+          "max_income_cents": 250000,
+          "rate_bps": 75
         },
         {
-          "min_income_cents": 2500000,
-          "max_income_cents": 3750000,
-          "rate_bps": 2000
+          "min_income_cents": 250000,
+          "max_income_cents": 375000,
+          "rate_bps": 175
         },
         {
-          "min_income_cents": 3750000,
-          "max_income_cents": 4900000,
-          "rate_bps": 3000
+          "min_income_cents": 375000,
+          "max_income_cents": 490000,
+          "rate_bps": 275
         },
         {
-          "min_income_cents": 4900000,
+          "min_income_cents": 490000,
           "max_income_cents": null,
-          "rate_bps": 5000
+          "rate_bps": 475
         }
       ],
       "head_of_household": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 1000000,
-          "rate_bps": 500
+          "max_income_cents": 100000,
+          "rate_bps": 25
         },
         {
-          "min_income_cents": 1000000,
-          "max_income_cents": 2500000,
-          "rate_bps": 1000
+          "min_income_cents": 100000,
+          "max_income_cents": 250000,
+          "rate_bps": 75
         },
         {
-          "min_income_cents": 2500000,
-          "max_income_cents": 3750000,
-          "rate_bps": 2000
+          "min_income_cents": 250000,
+          "max_income_cents": 375000,
+          "rate_bps": 175
         },
         {
-          "min_income_cents": 3750000,
-          "max_income_cents": 4900000,
-          "rate_bps": 3000
+          "min_income_cents": 375000,
+          "max_income_cents": 490000,
+          "rate_bps": 275
         },
         {
-          "min_income_cents": 4900000,
+          "min_income_cents": 490000,
           "max_income_cents": null,
-          "rate_bps": 5000
+          "rate_bps": 475
         }
       ]
     }
@@ -134,7 +134,7 @@
     }
   ],
   "personal_exemption": {
-    "amount_cents": 1000,
+    "amount_cents": 100000,
     "phases_out": false
   },
   "notable_credits": [],

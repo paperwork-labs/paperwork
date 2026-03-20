@@ -54,7 +54,7 @@
     }
   ],
   "personal_exemption": {
-    "amount_cents": 2700,
+    "amount_cents": 270000,
     "phases_out": false
   },
   "notable_credits": [],
