@@ -1,0 +1,71 @@
+{
+  "state": "IA",
+  "state_name": "Iowa",
+  "entity_type": "LLC",
+  "sos_url": "https://sos.iowa.gov/business",
+  "filing_office": "Iowa Secretary of State",
+  "fees": {
+    "standard": {
+      "amount_cents": 5000,
+      "description": "Standard LLC filing fee",
+      "is_expedited": false,
+      "processing_days": 7
+    },
+    "expedited": {
+      "amount_cents": 10000,
+      "description": "Expedited LLC filing fee",
+      "is_expedited": true,
+      "processing_days": 1
+    }
+  },
+  "filing": {
+    "primary": {
+      "method": "portal",
+      "url": "https://sos.iowa.gov/business",
+      "notes": "Iowa Business Services Portal"
+    },
+    "fallback": {
+      "method": "mail",
+      "url": "https://sos.iowa.gov/business",
+      "notes": "Mail filings to Iowa Secretary of State"
+    }
+  },
+  "requirements": {
+    "articles_of_organization": true,
+    "operating_agreement_required": false,
+    "publication_required": false,
+    "registered_agent_required": true,
+    "annual_report_required": true,
+    "franchise_tax": false
+  },
+  "processing": {
+    "standard_days": 7,
+    "expedited_days": 1
+  },
+  "naming": {
+    "required_suffix": [
+      "LLC",
+      "L.L.C."
+    ],
+    "restricted_words": [
+      "Bank",
+      "Insurance",
+      "Trust"
+    ]
+  },
+  "compliance": {
+    "annual_report_due": "April 1"
+  },
+  "verification": {
+    "last_verified": "2026-03-19T22:15:49.368Z",
+    "sources": [
+      {
+        "name": "Iowa Secretary of State",
+        "url": "https://sos.iowa.gov/business",
+        "accessed_at": "2026-03-19T22:15:49.368Z"
+      }
+    ],
+    "verified_by": "ai_extraction_fallback",
+    "confidence": 0.55
+  }
+}

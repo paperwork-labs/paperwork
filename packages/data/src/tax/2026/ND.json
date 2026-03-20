@@ -1,0 +1,87 @@
+{
+  "state": "ND",
+  "state_name": "North Dakota",
+  "tax_year": 2026,
+  "income_tax": {
+    "type": "progressive",
+    "brackets": {
+      "single": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": null,
+          "rate_bps": 195
+        }
+      ],
+      "married_filing_jointly": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": null,
+          "rate_bps": 195
+        }
+      ],
+      "married_filing_separately": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": null,
+          "rate_bps": 195
+        }
+      ],
+      "head_of_household": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": null,
+          "rate_bps": 195
+        }
+      ]
+    }
+  },
+  "standard_deductions": [
+    {
+      "filing_status": "single",
+      "amount_cents": 400000
+    },
+    {
+      "filing_status": "married_filing_jointly",
+      "amount_cents": 800000
+    },
+    {
+      "filing_status": "married_filing_separately",
+      "amount_cents": 400000
+    },
+    {
+      "filing_status": "head_of_household",
+      "amount_cents": 600000
+    }
+  ],
+  "personal_exemption": {
+    "amount_cents": 0,
+    "phases_out": false
+  },
+  "notable_credits": [],
+  "notable_deductions": [],
+  "local_taxes": {
+    "has_local_income_tax": false
+  },
+  "reciprocity": {
+    "has_reciprocity": false
+  },
+  "dor_url": "https://www.tax.nd.gov",
+  "tax_foundation_url": "https://taxfoundation.org/location/north-dakota/",
+  "verification": {
+    "last_verified": "2026-03-19T21:53:21.559Z",
+    "sources": [
+      {
+        "name": "Tax Foundation - North Dakota",
+        "url": "https://taxfoundation.org/location/north-dakota/",
+        "accessed_at": "2026-03-19T21:53:21.559Z"
+      },
+      {
+        "name": "North Dakota Office of State Tax Commissioner",
+        "url": "https://www.tax.nd.gov",
+        "accessed_at": "2026-03-19T21:53:21.559Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.85
+  }
+}

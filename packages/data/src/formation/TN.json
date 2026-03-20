@@ -1,0 +1,66 @@
+{
+  "state": "TN",
+  "state_name": "Tennessee",
+  "entity_type": "LLC",
+  "sos_url": "https://sos.tn.gov/business-services",
+  "filing_office": "Business Services Division",
+  "fees": {
+    "standard": {
+      "amount_cents": 30000,
+      "description": "Standard LLC filing fee",
+      "is_expedited": false,
+      "processing_days": 10
+    },
+    "expedited": {
+      "amount_cents": 50000,
+      "description": "Expedited processing fee",
+      "is_expedited": true,
+      "processing_days": 2
+    }
+  },
+  "filing": {
+    "primary": {
+      "method": "portal",
+      "url": "https://tnbear.tn.gov/ecommerce/default.aspx",
+      "notes": "Tennessee Secretary of State Business Services Online Portal"
+    }
+  },
+  "requirements": {
+    "articles_of_organization": true,
+    "operating_agreement_required": false,
+    "publication_required": false,
+    "registered_agent_required": true,
+    "annual_report_required": true,
+    "franchise_tax": true
+  },
+  "processing": {
+    "standard_days": 10,
+    "expedited_days": 2
+  },
+  "naming": {
+    "required_suffix": [
+      "LLC",
+      "L.L.C."
+    ],
+    "restricted_words": [
+      "Bank",
+      "Insurance",
+      "Trust"
+    ]
+  },
+  "compliance": {
+    "franchise_tax_due": "April 15"
+  },
+  "verification": {
+    "last_verified": "2026-03-19T22:05:56.093Z",
+    "sources": [
+      {
+        "name": "Tennessee Secretary of State",
+        "url": "https://sos.tn.gov/business-services",
+        "accessed_at": "2026-03-19T22:05:56.093Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.85
+  }
+}

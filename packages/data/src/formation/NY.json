@@ -1,0 +1,77 @@
+{
+  "state": "NY",
+  "state_name": "New York",
+  "entity_type": "LLC",
+  "sos_url": "https://dos.ny.gov/business-filings",
+  "filing_office": "New York Department of State, Division of Corporations",
+  "fees": {
+    "standard": {
+      "amount_cents": 20000,
+      "description": "Standard LLC filing fee",
+      "is_expedited": false,
+      "processing_days": 7
+    },
+    "expedited": {
+      "amount_cents": 75000,
+      "description": "Same-day expedited filing",
+      "is_expedited": true,
+      "processing_days": 1
+    },
+    "name_reservation": {
+      "amount_cents": 2000,
+      "description": "Name reservation fee",
+      "is_expedited": false,
+      "processing_days": 1
+    }
+  },
+  "filing": {
+    "primary": {
+      "method": "portal",
+      "url": "https://dos.ny.gov/business-filings",
+      "notes": "New York Business Express portal"
+    },
+    "fallback": {
+      "method": "mail",
+      "url": "https://dos.ny.gov/business-filings",
+      "notes": "Paper forms can be mailed to the Division of Corporations"
+    }
+  },
+  "requirements": {
+    "articles_of_organization": true,
+    "operating_agreement_required": false,
+    "publication_required": true,
+    "registered_agent_required": true,
+    "annual_report_required": true,
+    "franchise_tax": false
+  },
+  "processing": {
+    "standard_days": 7,
+    "expedited_days": 1
+  },
+  "naming": {
+    "required_suffix": [
+      "LLC",
+      "L.L.C."
+    ],
+    "restricted_words": [
+      "Bank",
+      "Insurance",
+      "University"
+    ]
+  },
+  "compliance": {
+    "annual_report_due": "Biennially by the end of the anniversary month"
+  },
+  "verification": {
+    "last_verified": "2026-03-19T22:17:12.418Z",
+    "sources": [
+      {
+        "name": "New York Department of State",
+        "url": "https://dos.ny.gov/business-filings",
+        "accessed_at": "2026-03-19T22:17:12.418Z"
+      }
+    ],
+    "verified_by": "ai_extraction_fallback",
+    "confidence": 0.55
+  }
+}

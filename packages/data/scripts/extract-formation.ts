@@ -117,7 +117,13 @@ async function main() {
 
   const now = new Date().toISOString();
 
-  for (const stateCode of STATE_CODES) {
+  const onlyRaw = process.env.EXTRACT_ONLY_STATE?.trim().toUpperCase();
+  const codes: StateCode[] =
+    onlyRaw && (STATE_CODES as readonly string[]).includes(onlyRaw)
+      ? ([onlyRaw] as StateCode[])
+      : [...STATE_CODES];
+
+  for (const stateCode of codes) {
     try {
       // Read source registry
       const sourcePath = join(__dirname, "../src/sources", `${stateCode}.json`);
@@ -136,13 +142,17 @@ async function main() {
         continue;
       }
 
-      // Fetch page content
+      // Fetch page content (many SOS sites block bots with 403; fall back to model-only extraction)
       let pageContent: string;
+      let usedFetchFallback = false;
       try {
         pageContent = await fetchPageContent(sosSource.url);
       } catch (error: any) {
-        console.error(`${stateCode}: Failed to fetch page:`, error.message);
-        continue;
+        console.error(
+          `${stateCode}: Failed to fetch SOS page (${error.message}); using model-only fallback (lower confidence).`,
+        );
+        usedFetchFallback = true;
+        pageContent = `Official SOS URL: ${sosSource.url}. Live HTML was not available (403/404/timeout or bot protection). Using public knowledge only: produce schema-valid LLC formation rules for ${sources.state_name} (${stateCode}) for 2026 — typical filing fees, processing times, registered agent rules, LLC naming suffixes, and filing methods (online/portal/mail) as generally applicable for this jurisdiction.`;
       }
 
       // Extract formation data
@@ -164,8 +174,8 @@ async function main() {
             accessed_at: now,
           },
         ],
-        verified_by: "ai_extraction",
-        confidence: 0.85,
+        verified_by: usedFetchFallback ? "ai_extraction_fallback" : "ai_extraction",
+        confidence: usedFetchFallback ? 0.55 : 0.85,
       };
 
       // Set URLs and required fields from source registry

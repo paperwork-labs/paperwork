@@ -1,0 +1,66 @@
+{
+  "state": "MI",
+  "state_name": "Michigan",
+  "entity_type": "LLC",
+  "sos_url": "https://www.michigan.gov/lara/bureau-list/cscl",
+  "filing_office": "Corporations, Securities & Commercial Licensing Bureau",
+  "fees": {
+    "standard": {
+      "amount_cents": 5000,
+      "description": "Standard LLC filing fee",
+      "is_expedited": false,
+      "processing_days": 10
+    },
+    "expedited": {
+      "amount_cents": 10000,
+      "description": "24-hour expedited filing",
+      "is_expedited": true,
+      "processing_days": 1
+    }
+  },
+  "filing": {
+    "primary": {
+      "method": "portal",
+      "url": "https://www.michigan.gov/lara",
+      "notes": "Michigan LARA online filing system"
+    }
+  },
+  "requirements": {
+    "articles_of_organization": true,
+    "operating_agreement_required": false,
+    "publication_required": false,
+    "registered_agent_required": true,
+    "annual_report_required": true,
+    "franchise_tax": false
+  },
+  "processing": {
+    "standard_days": 10,
+    "expedited_days": 1
+  },
+  "naming": {
+    "required_suffix": [
+      "LLC",
+      "L.L.C."
+    ],
+    "restricted_words": [
+      "Bank",
+      "Insurance",
+      "Trust"
+    ]
+  },
+  "compliance": {
+    "annual_report_due": "February 15"
+  },
+  "verification": {
+    "last_verified": "2026-03-19T22:16:09.460Z",
+    "sources": [
+      {
+        "name": "Michigan Department of Licensing and Regulatory Affairs",
+        "url": "https://www.michigan.gov/lara/bureau-list/cscl",
+        "accessed_at": "2026-03-19T22:16:09.460Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.85
+  }
+}

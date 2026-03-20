@@ -1,0 +1,69 @@
+{
+  "state": "DE",
+  "state_name": "Delaware",
+  "entity_type": "LLC",
+  "sos_url": "https://corp.delaware.gov/howtoform/",
+  "filing_office": "Division of Corporations",
+  "fees": {
+    "standard": {
+      "amount_cents": 9000,
+      "description": "Standard LLC filing fee",
+      "is_expedited": false,
+      "processing_days": 15
+    },
+    "expedited": {
+      "amount_cents": 10000,
+      "description": "24-hour expedited filing",
+      "is_expedited": true,
+      "processing_days": 1
+    },
+    "name_reservation": {
+      "amount_cents": 7500,
+      "description": "Name reservation fee for 120 days",
+      "is_expedited": false,
+      "processing_days": 1
+    }
+  },
+  "filing": {
+    "primary": {
+      "method": "portal",
+      "url": "https://icis.corp.delaware.gov/Ecorp/Login.aspx",
+      "notes": "Delaware Division of Corporations portal for filing"
+    }
+  },
+  "requirements": {
+    "articles_of_organization": true,
+    "operating_agreement_required": false,
+    "publication_required": false,
+    "registered_agent_required": true,
+    "annual_report_required": false,
+    "franchise_tax": true,
+    "franchise_tax_amount_cents": 30000
+  },
+  "processing": {
+    "standard_days": 15,
+    "expedited_days": 1
+  },
+  "naming": {
+    "required_suffix": [
+      "LLC",
+      "L.L.C."
+    ],
+    "restricted_words": []
+  },
+  "compliance": {
+    "franchise_tax_due": "June 1"
+  },
+  "verification": {
+    "last_verified": "2026-03-19T22:05:56.093Z",
+    "sources": [
+      {
+        "name": "Delaware Division of Corporations",
+        "url": "https://corp.delaware.gov/howtoform/",
+        "accessed_at": "2026-03-19T22:05:56.093Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.85
+  }
+}

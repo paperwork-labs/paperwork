@@ -1,0 +1,41 @@
+{
+  "state": "MI",
+  "state_name": "Michigan",
+  "tax_year": 2026,
+  "income_tax": {
+    "type": "flat",
+    "flat_rate_bps": 425
+  },
+  "standard_deductions": [],
+  "personal_exemption": {
+    "amount_cents": 0,
+    "phases_out": false
+  },
+  "notable_credits": [],
+  "notable_deductions": [],
+  "local_taxes": {
+    "has_local_income_tax": true
+  },
+  "reciprocity": {
+    "has_reciprocity": false
+  },
+  "dor_url": "https://www.michigan.gov/treasury",
+  "tax_foundation_url": "https://taxfoundation.org/location/michigan/",
+  "verification": {
+    "last_verified": "2026-03-19T21:53:21.559Z",
+    "sources": [
+      {
+        "name": "Tax Foundation - Michigan",
+        "url": "https://taxfoundation.org/location/michigan/",
+        "accessed_at": "2026-03-19T21:53:21.559Z"
+      },
+      {
+        "name": "Michigan Department of Treasury",
+        "url": "https://www.michigan.gov/treasury",
+        "accessed_at": "2026-03-19T21:53:21.559Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.85
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "state": "VA",
+  "state_name": "Virginia",
+  "entity_type": "LLC",
+  "sos_url": "https://www.scc.virginia.gov/pages/Business-Entity-Search",
+  "filing_office": "Virginia State Corporation Commission",
+  "fees": {
+    "standard": {
+      "amount_cents": 10000,
+      "description": "Standard LLC filing fee",
+      "is_expedited": false,
+      "processing_days": 15
+    },
+    "expedited": {
+      "amount_cents": 20000,
+      "description": "Next-day expedited filing",
+      "is_expedited": true,
+      "processing_days": 1
+    },
+    "name_reservation": {
+      "amount_cents": 1000,
+      "description": "Name reservation fee",
+      "is_expedited": false,
+      "processing_days": 5
+    }
+  },
+  "filing": {
+    "primary": {
+      "method": "portal",
+      "url": "https://cis.scc.virginia.gov",
+      "notes": "Virginia SCC Clerk's Information System"
+    },
+    "fallback": {
+      "method": "mail",
+      "notes": "Paper filings can be mailed to the Virginia State Corporation Commission"
+    }
+  },
+  "requirements": {
+    "articles_of_organization": true,
+    "operating_agreement_required": false,
+    "publication_required": false,
+    "registered_agent_required": true,
+    "annual_report_required": true,
+    "franchise_tax": false
+  },
+  "processing": {
+    "standard_days": 15,
+    "expedited_days": 1
+  },
+  "naming": {
+    "required_suffix": [
+      "LLC",
+      "L.L.C."
+    ],
+    "restricted_words": [
+      "Bank",
+      "Insurance",
+      "Corporation",
+      "Incorporated"
+    ]
+  },
+  "compliance": {
+    "annual_report_due": "April 1"
+  },
+  "verification": {
+    "last_verified": "2026-03-19T22:17:48.184Z",
+    "sources": [
+      {
+        "name": "Virginia State Corporation Commission",
+        "url": "https://www.scc.virginia.gov/pages/Business-Entity-Search",
+        "accessed_at": "2026-03-19T22:17:48.184Z"
+      }
+    ],
+    "verified_by": "ai_extraction_fallback",
+    "confidence": 0.55
+  }
+}

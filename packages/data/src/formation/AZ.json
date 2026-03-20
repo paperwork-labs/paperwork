@@ -1,0 +1,65 @@
+{
+  "state": "AZ",
+  "state_name": "Arizona",
+  "entity_type": "LLC",
+  "sos_url": "https://azsos.gov/business",
+  "filing_office": "Arizona Corporation Commission",
+  "fees": {
+    "standard": {
+      "amount_cents": 5000,
+      "description": "Standard LLC filing fee",
+      "is_expedited": false,
+      "processing_days": 30
+    },
+    "expedited": {
+      "amount_cents": 8500,
+      "description": "Expedited LLC filing fee",
+      "is_expedited": true,
+      "processing_days": 7
+    }
+  },
+  "filing": {
+    "primary": {
+      "method": "portal",
+      "url": "https://ecorp.azcc.gov",
+      "notes": "Arizona Corporation Commission eCorp portal"
+    }
+  },
+  "requirements": {
+    "articles_of_organization": true,
+    "operating_agreement_required": false,
+    "publication_required": true,
+    "registered_agent_required": true,
+    "annual_report_required": false,
+    "franchise_tax": false
+  },
+  "processing": {
+    "standard_days": 30,
+    "expedited_days": 7
+  },
+  "naming": {
+    "required_suffix": [
+      "LLC",
+      "L.L.C."
+    ],
+    "restricted_words": [
+      "Bank",
+      "Trust",
+      "Insurance",
+      "Corporation"
+    ]
+  },
+  "compliance": {},
+  "verification": {
+    "last_verified": "2026-03-19T22:15:15.608Z",
+    "sources": [
+      {
+        "name": "Arizona Secretary of State",
+        "url": "https://azsos.gov/business",
+        "accessed_at": "2026-03-19T22:15:15.608Z"
+      }
+    ],
+    "verified_by": "ai_extraction_fallback",
+    "confidence": 0.55
+  }
+}

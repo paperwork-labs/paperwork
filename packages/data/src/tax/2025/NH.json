@@ -1,0 +1,40 @@
+{
+  "state": "NH",
+  "state_name": "New Hampshire",
+  "tax_year": 2025,
+  "income_tax": {
+    "type": "none"
+  },
+  "standard_deductions": [],
+  "personal_exemption": {
+    "amount_cents": 0,
+    "phases_out": false
+  },
+  "notable_credits": [],
+  "notable_deductions": [],
+  "local_taxes": {
+    "has_local_income_tax": false
+  },
+  "reciprocity": {
+    "has_reciprocity": false
+  },
+  "dor_url": "https://www.revenue.nh.gov",
+  "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
+  "verification": {
+    "last_verified": "2026-03-19T23:01:14.173Z",
+    "sources": [
+      {
+        "name": "Tax Foundation 2025 Rates",
+        "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
+        "accessed_at": "2026-03-19T23:01:14.173Z"
+      },
+      {
+        "name": "New Hampshire Department of Revenue Administration",
+        "url": "https://www.revenue.nh.gov",
+        "accessed_at": "2026-03-19T23:01:14.173Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.85
+  }
+}

@@ -2,7 +2,7 @@
 
 Organizational memory for Paperwork Labs (FileFree, LaunchFree, Distill, Trinkets). AI agents read this at session start. Update after significant decisions, learnings, or pattern discoveries.
 
-**Last Updated**: 2026-03-18
+**Last Updated**: 2026-03-19
 **Version**: 10.0 (cleaned per D52 anti-bloat rules)
 
 ---
@@ -224,6 +224,11 @@ Full text in [docs/archive/KNOWLEDGE-ARCHIVE.md](archive/KNOWLEDGE-ARCHIVE.md).
 - **Decision**: Implemented 5-layer Slack-first observability: Layer 0 (native GitHub/Vercel/GDrive Slack apps), Layer 1 (deploy-time verification with Slack notifications), Layer 2 (n8n self-health check every 30min), Layer 3 (external GH Action canary every 6h), Layer 4 (daily briefing infra section). Auto-deploy n8n workflows via GitHub Action on merge to main. Wired n8n credentials (GitHub PAT + Slack Bot Token) to container env vars for Code node access. Infra score: ~90%. Remaining gaps: domain DNS (filefree.ai, launchfree.ai), LLC/EFIN business blockers. Ready for Phase 2.
 - **Alternatives**: Datadog/PagerDuty (overkill + expensive), single-layer alerting (too fragile), manual checks (what we were doing — failed silently).
 - **Reversibility**: Fully reversible — each layer is independent.
+
+### D81 — Vault-First Credentials + P2.3/P2.4 State Data (2026-03-19)
+- **Decision**: Studio Secrets Vault is the **canonical** store for API keys and credentials. Agents and scripts use `./scripts/sync-secrets.sh` → `.env.secrets` (or `./scripts/vault-get.sh NAME`); Bearer `SECRETS_API_KEY` is primary auth, **Basic Auth** (Studio admin) is fallback when local Bearer is stale. Extraction scripts load `.env.secrets` via `dotenv` (shell `source` breaks on `&` in values). Documented in `.cursor/rules/secrets-ops.mdc`. Completed AI extraction of **51 jurisdictions** tax + formation JSON into `packages/data` (DC tax uses Tax Foundation state rates page; formation uses `ai_extraction_fallback` when SOS sites block bots — P2.5 human review required for those rows).
+- **Alternatives**: Only Vercel env / only n8n UI credentials (fragmented); committing keys (never).
+- **Reversibility**: Vault remains source of truth; local files gitignored.
 
 ---
 

@@ -1,0 +1,41 @@
+{
+  "state": "IL",
+  "state_name": "Illinois",
+  "tax_year": 2024,
+  "income_tax": {
+    "type": "flat",
+    "flat_rate_bps": 495
+  },
+  "standard_deductions": [],
+  "personal_exemption": {
+    "amount_cents": 277500,
+    "phases_out": false
+  },
+  "notable_credits": [],
+  "notable_deductions": [],
+  "local_taxes": {
+    "has_local_income_tax": false
+  },
+  "reciprocity": {
+    "has_reciprocity": false
+  },
+  "dor_url": "https://tax.illinois.gov",
+  "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
+  "verification": {
+    "last_verified": "2026-03-19T23:16:52.542Z",
+    "sources": [
+      {
+        "name": "Tax Foundation 2024 Rates",
+        "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
+        "accessed_at": "2026-03-19T23:16:52.542Z"
+      },
+      {
+        "name": "Illinois Department of Revenue",
+        "url": "https://tax.illinois.gov",
+        "accessed_at": "2026-03-19T23:16:52.542Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.85
+  }
+}

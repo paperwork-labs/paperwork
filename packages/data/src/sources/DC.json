@@ -9,8 +9,8 @@
       "scrape_method": "page_parse"
     },
     {
-      "name": "Tax Foundation - District of Columbia",
-      "url": "https://taxfoundation.org/location/district-of-columbia/",
+      "name": "Tax Foundation - State Income Tax Rates 2026 (includes DC)",
+      "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2026/",
       "type": "tax_foundation",
       "scrape_method": "table_extract"
     }

@@ -1,0 +1,62 @@
+{
+  "state": "WV",
+  "state_name": "West Virginia",
+  "entity_type": "LLC",
+  "sos_url": "https://sos.wv.gov/business",
+  "filing_office": "West Virginia Secretary of State",
+  "fees": {
+    "standard": {
+      "amount_cents": 10000,
+      "description": "Standard LLC filing fee",
+      "is_expedited": false,
+      "processing_days": 3
+    },
+    "expedited": {
+      "amount_cents": 25000,
+      "description": "1-hour expedited filing",
+      "is_expedited": true,
+      "processing_days": 1
+    }
+  },
+  "filing": {
+    "primary": {
+      "method": "portal",
+      "url": "https://onestop.wv.gov",
+      "notes": "West Virginia One Stop Business Portal"
+    }
+  },
+  "requirements": {
+    "articles_of_organization": true,
+    "operating_agreement_required": false,
+    "publication_required": false,
+    "registered_agent_required": true,
+    "annual_report_required": true,
+    "franchise_tax": false
+  },
+  "processing": {
+    "standard_days": 3,
+    "expedited_days": 1
+  },
+  "naming": {
+    "required_suffix": [
+      "LLC",
+      "L.L.C."
+    ],
+    "restricted_words": []
+  },
+  "compliance": {
+    "annual_report_due": "July 1"
+  },
+  "verification": {
+    "last_verified": "2026-03-19T22:05:56.093Z",
+    "sources": [
+      {
+        "name": "West Virginia Secretary of State",
+        "url": "https://sos.wv.gov/business",
+        "accessed_at": "2026-03-19T22:05:56.093Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.85
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "state": "MA",
+  "state_name": "Massachusetts",
+  "tax_year": 2026,
+  "income_tax": {
+    "type": "progressive",
+    "brackets": {
+      "single": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 5000000,
+          "rate_bps": 500
+        },
+        {
+          "min_income_cents": 5000000,
+          "max_income_cents": null,
+          "rate_bps": 900
+        }
+      ],
+      "married_filing_jointly": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 5000000,
+          "rate_bps": 500
+        },
+        {
+          "min_income_cents": 5000000,
+          "max_income_cents": null,
+          "rate_bps": 900
+        }
+      ],
+      "married_filing_separately": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 5000000,
+          "rate_bps": 500
+        },
+        {
+          "min_income_cents": 5000000,
+          "max_income_cents": null,
+          "rate_bps": 900
+        }
+      ],
+      "head_of_household": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 5000000,
+          "rate_bps": 500
+        },
+        {
+          "min_income_cents": 5000000,
+          "max_income_cents": null,
+          "rate_bps": 900
+        }
+      ]
+    }
+  },
+  "standard_deductions": [
+    {
+      "filing_status": "single",
+      "amount_cents": 440000
+    },
+    {
+      "filing_status": "married_filing_jointly",
+      "amount_cents": 880000
+    },
+    {
+      "filing_status": "married_filing_separately",
+      "amount_cents": 440000
+    },
+    {
+      "filing_status": "head_of_household",
+      "amount_cents": 660000
+    }
+  ],
+  "personal_exemption": {
+    "amount_cents": 440000,
+    "phases_out": false
+  },
+  "notable_credits": [],
+  "notable_deductions": [],
+  "local_taxes": {
+    "has_local_income_tax": false
+  },
+  "reciprocity": {
+    "has_reciprocity": false
+  },
+  "dor_url": "https://www.mass.gov/orgs/department-of-revenue",
+  "tax_foundation_url": "https://taxfoundation.org/location/massachusetts/",
+  "verification": {
+    "last_verified": "2026-03-19T21:53:21.559Z",
+    "sources": [
+      {
+        "name": "Tax Foundation - Massachusetts",
+        "url": "https://taxfoundation.org/location/massachusetts/",
+        "accessed_at": "2026-03-19T21:53:21.559Z"
+      },
+      {
+        "name": "Massachusetts Department of Revenue",
+        "url": "https://www.mass.gov/orgs/department-of-revenue",
+        "accessed_at": "2026-03-19T21:53:21.559Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.85
+  }
+}

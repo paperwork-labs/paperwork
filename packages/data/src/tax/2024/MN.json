@@ -1,0 +1,147 @@
+{
+  "state": "MN",
+  "state_name": "Minnesota",
+  "tax_year": 2024,
+  "income_tax": {
+    "type": "progressive",
+    "brackets": {
+      "single": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 3169000,
+          "rate_bps": 535
+        },
+        {
+          "min_income_cents": 3169000,
+          "max_income_cents": 10409000,
+          "rate_bps": 680
+        },
+        {
+          "min_income_cents": 10409000,
+          "max_income_cents": 19324000,
+          "rate_bps": 785
+        },
+        {
+          "min_income_cents": 19324000,
+          "max_income_cents": null,
+          "rate_bps": 985
+        }
+      ],
+      "married_filing_jointly": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 4633000,
+          "rate_bps": 535
+        },
+        {
+          "min_income_cents": 4633000,
+          "max_income_cents": 18404000,
+          "rate_bps": 680
+        },
+        {
+          "min_income_cents": 18404000,
+          "max_income_cents": 32145000,
+          "rate_bps": 785
+        },
+        {
+          "min_income_cents": 32145000,
+          "max_income_cents": null,
+          "rate_bps": 985
+        }
+      ],
+      "married_filing_separately": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 2316500,
+          "rate_bps": 535
+        },
+        {
+          "min_income_cents": 2316500,
+          "max_income_cents": 9202000,
+          "rate_bps": 680
+        },
+        {
+          "min_income_cents": 9202000,
+          "max_income_cents": 16072500,
+          "rate_bps": 785
+        },
+        {
+          "min_income_cents": 16072500,
+          "max_income_cents": null,
+          "rate_bps": 985
+        }
+      ],
+      "head_of_household": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 3169000,
+          "rate_bps": 535
+        },
+        {
+          "min_income_cents": 3169000,
+          "max_income_cents": 10409000,
+          "rate_bps": 680
+        },
+        {
+          "min_income_cents": 10409000,
+          "max_income_cents": 19324000,
+          "rate_bps": 785
+        },
+        {
+          "min_income_cents": 19324000,
+          "max_income_cents": null,
+          "rate_bps": 985
+        }
+      ]
+    }
+  },
+  "standard_deductions": [
+    {
+      "filing_status": "single",
+      "amount_cents": 1457500
+    },
+    {
+      "filing_status": "married_filing_jointly",
+      "amount_cents": 2915000
+    },
+    {
+      "filing_status": "married_filing_separately",
+      "amount_cents": 1457500
+    },
+    {
+      "filing_status": "head_of_household",
+      "amount_cents": 1457500
+    }
+  ],
+  "personal_exemption": {
+    "amount_cents": 505000,
+    "phases_out": false
+  },
+  "notable_credits": [],
+  "notable_deductions": [],
+  "local_taxes": {
+    "has_local_income_tax": false
+  },
+  "reciprocity": {
+    "has_reciprocity": false
+  },
+  "dor_url": "https://www.revenue.state.mn.us",
+  "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
+  "verification": {
+    "last_verified": "2026-03-19T23:16:52.542Z",
+    "sources": [
+      {
+        "name": "Tax Foundation 2024 Rates",
+        "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
+        "accessed_at": "2026-03-19T23:16:52.542Z"
+      },
+      {
+        "name": "Minnesota Department of Revenue",
+        "url": "https://www.revenue.state.mn.us",
+        "accessed_at": "2026-03-19T23:16:52.542Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.85
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "state": "CT",
+  "state_name": "Connecticut",
+  "entity_type": "LLC",
+  "sos_url": "https://portal.ct.gov/sots/business-services",
+  "filing_office": "Commercial Recording Division",
+  "fees": {
+    "standard": {
+      "amount_cents": 12000,
+      "description": "Standard LLC filing fee",
+      "is_expedited": false,
+      "processing_days": 15
+    }
+  },
+  "filing": {
+    "primary": {
+      "method": "portal",
+      "url": "https://portal.ct.gov/SOTS/Business-Services/Business-Services",
+      "notes": "Connecticut Business Services Portal"
+    }
+  },
+  "requirements": {
+    "articles_of_organization": true,
+    "operating_agreement_required": false,
+    "publication_required": false,
+    "registered_agent_required": true,
+    "annual_report_required": true,
+    "franchise_tax": false
+  },
+  "processing": {
+    "standard_days": 15
+  },
+  "naming": {
+    "required_suffix": [
+      "LLC",
+      "L.L.C."
+    ],
+    "restricted_words": [
+      "Bank",
+      "Insurance",
+      "Trust"
+    ]
+  },
+  "compliance": {
+    "annual_report_due": "Annually on the anniversary of formation"
+  },
+  "verification": {
+    "last_verified": "2026-03-19T22:05:56.093Z",
+    "sources": [
+      {
+        "name": "Connecticut Secretary of State",
+        "url": "https://portal.ct.gov/sots/business-services",
+        "accessed_at": "2026-03-19T22:05:56.093Z"
+      }
+    ],
+    "verified_by": "ai_extraction",
+    "confidence": 0.85
+  }
+}
