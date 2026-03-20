@@ -17,8 +17,8 @@ import { discoverTaxYearDirs } from "../src/engine/loader";
 
 const NO_INCOME_TAX_STATES: StateCode[] = ["AK", "FL", "NH", "NV", "SD", "TN", "TX", "WA", "WY"];
 
-const MIN_STANDARD_DEDUCTION_CENTS = 100_000; // $1,000 — catch dollar-as-cents mistakes
-const MIN_PERSONAL_EXEMPTION_CENTS = 10_000; // $100 if non-zero
+const MIN_STANDARD_DEDUCTION_CENTS = 50_000; // $500 — some states use credit-style deductions (UT: $966)
+const MIN_PERSONAL_EXEMPTION_CENTS = 1_000; // $10 — some states have small credit-style exemptions (AR: $29, IA: $40)
 const MIN_NON_FIRST_BRACKET_MIN_CENTS = 10_000; // $100
 const MAX_RATE_BPS = 1500;
 
@@ -286,7 +286,7 @@ function runSanityChecks(
         console.warn(`ADVISORY: ${code} ${yearA}->${yearB}: top rate changed ${rateDelta} bps (${rateA}->${rateB}) — verify legislation`);
       }
 
-      // Filing-status rate consistency
+      // Filing-status rate consistency (advisory — some states like NJ genuinely differ)
       const itB = dataB.income_tax;
       if (itB.type === "progressive" && itB.brackets.single) {
         const singleRates = itB.brackets.single.map((b) => b.rate_bps);
@@ -294,7 +294,8 @@ function runSanityChecks(
           if (status === "single") continue;
           const rates = brackets.map((b) => b.rate_bps);
           if (JSON.stringify(rates) !== JSON.stringify(singleRates)) {
-            failures.push(`tax/${yearB}/${code}.json: ${status} rates differ from single — likely extraction error`);
+            // eslint-disable-next-line no-console
+            console.warn(`ADVISORY: tax/${yearB}/${code}.json: ${status} rates differ from single — verify if intentional`);
           }
         }
       }
