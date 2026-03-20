@@ -253,9 +253,9 @@ See [VENTURE_MASTER_PLAN.md](VENTURE_MASTER_PLAN.md) Section 3B (50-state archit
 | P2.5 Human review + approval | Founder 1 | Founder reviews AI extractions in batch (est. 4-6 hours total). Each state JSON gets `last_verified`, `sources[]`, `verified_by` | P2.3, P2.4 | **DONE** (PR #37 review CLI + PR #38 data fixes) |
 | P2.6 Build state engine | Founder 1 | getStateFormationRules(), getStateTaxRules(), calculateStateTax(), getAllStates(), getStateFreshness() | P2.5 | **DONE** (PR #37 engine loader + clearCache + loadAllStates) |
 | P2.7 Validation suite | Founder 1 | Zod schemas + sanity checks + 100% test coverage + CI enforcement | P2.6 | **DONE** (PR #38 CI enforcement + 1769 tests) |
-| P2.8 n8n: Source Monitor workflow | Founder 1 | Weekly cron: scrape Tax Foundation + aggregator sites, compute content hashes, detect changes, alert on diffs | P2.5 | NOT STARTED |
-| P2.9 n8n: Deep Validator workflow | Founder 1 | Monthly cron: scrape all 50 state SOS + DOR sites directly, AI cross-validate against our stored data, flag discrepancies | P2.5 | NOT STARTED |
-| P2.10 n8n: Annual Update workflow | Founder 1 | October cron: triggered by IRS Revenue Procedure release, full federal + state refresh cycle | P2.9 | NOT STARTED |
+| P2.8 n8n: Source Monitor workflow | Founder 1 | Weekly cron: scrape Tax Foundation + aggregator sites, compute content hashes, detect changes, alert on diffs | P2.5 | **DONE** (n8n workflow JSON: data-source-monitor.json) |
+| P2.9 n8n: Deep Validator workflow | Founder 1 | Monthly cron: scrape all 50 state SOS + DOR sites directly, AI cross-validate against our stored data, flag discrepancies | P2.5 | **DONE** (n8n workflow JSON: data-deep-validator.json) |
+| P2.10 n8n: Annual Update workflow | Founder 1 | October cron: triggered by IRS Revenue Procedure release, full federal + state refresh cycle | P2.9 | **DONE** (n8n workflow JSON: data-annual-update.json) |
 
 ---
 

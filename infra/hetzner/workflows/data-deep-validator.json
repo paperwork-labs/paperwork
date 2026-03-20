@@ -1,0 +1,116 @@
+{
+  "name": "Data Deep Validator (P2.9)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 3 1 * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-monthly",
+      "name": "Monthly Trigger (1st, 3am PT)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/paperwork-labs/paperwork/contents/packages/data/src/sources",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Accept", "value": "application/vnd.github.v3+json" }] },
+        "options": {}
+      },
+      "id": "list-sources",
+      "name": "List Source Files",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [500, 300],
+      "credentials": { "httpHeaderAuth": { "id": "github-cred", "name": "GitHub PAT" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const files = $input.first().json;\nif (!Array.isArray(files)) return [{ json: { error: 'Could not list source files' } }];\n\nconst SAMPLE_SIZE = 10;\nconst jsonFiles = files.filter(f => f.name.endsWith('.json') && !f.name.startsWith('_'));\n\n// Pick a random sample to avoid hitting all 51 DOR sites monthly\nconst shuffled = jsonFiles.sort(() => Math.random() - 0.5);\nconst sample = shuffled.slice(0, SAMPLE_SIZE);\n\nconst statesToValidate = [];\nfor (const f of sample) {\n  try {\n    const rawResp = await this.helpers.httpRequest({\n      method: 'GET',\n      url: f.download_url,\n      headers: { 'User-Agent': 'n8n-paperwork' }\n    });\n    const source = typeof rawResp === 'string' ? JSON.parse(rawResp) : rawResp;\n    statesToValidate.push({\n      state: source.state,\n      state_name: source.state_name,\n      dor_url: source.dor?.url || null,\n      tax_foundation_url: source.tax_foundation?.url || null\n    });\n  } catch (e) {\n    // skip\n  }\n}\n\nreturn [{ json: { states: statesToValidate } }];"
+      },
+      "id": "pick-sample",
+      "name": "Pick Random Sample (10 states)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { states } = $input.first().json;\nif (!states || states.length === 0) return [{ json: { results: [], error: 'No states to validate' } }];\n\nconst ghToken = $env.GITHUB_TOKEN || '';\nconst ghHeaders = { Accept: 'application/vnd.github.v3.raw', 'User-Agent': 'n8n-paperwork' };\nif (ghToken) ghHeaders.Authorization = `Bearer ${ghToken}`;\n\nconst results = [];\n\nfor (const st of states) {\n  const result = { state: st.state, state_name: st.state_name, issues: [], status: 'ok' };\n\n  // Fetch our stored tax data for the latest year\n  let storedData = null;\n  for (const year of [2026, 2025, 2024]) {\n    try {\n      const resp = await this.helpers.httpRequest({\n        method: 'GET',\n        url: `https://api.github.com/repos/paperwork-labs/paperwork/contents/packages/data/src/tax/${year}/${st.state}.json`,\n        headers: ghHeaders\n      });\n      storedData = typeof resp === 'string' ? JSON.parse(resp) : resp;\n      break;\n    } catch (e) { /* try next year */ }\n  }\n\n  if (!storedData) {\n    result.status = 'error';\n    result.issues.push('Could not fetch stored tax data from GitHub');\n    results.push(result);\n    continue;\n  }\n\n  // Fetch DOR page content if available\n  let dorContent = '';\n  if (st.dor_url) {\n    try {\n      const resp = await this.helpers.httpRequest({\n        method: 'GET',\n        url: st.dor_url,\n        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PaperworkLabs/1.0; data-validator)', Accept: 'text/html' },\n        timeout: 15000\n      });\n      dorContent = String(typeof resp === 'string' ? resp : (resp.body || ''))\n        .replace(/<script[^>]*>[\\s\\S]*?<\\/script>/gi, '')\n        .replace(/<style[^>]*>[\\s\\S]*?<\\/style>/gi, '')\n        .replace(/<[^>]+>/g, ' ')\n        .replace(/\\s+/g, ' ')\n        .trim()\n        .slice(0, 20000);\n    } catch (e) {\n      result.issues.push(`DOR page fetch failed: ${String(e).slice(0, 100)}`);\n    }\n  }\n\n  // Basic cross-validation: check if our stored top rate appears on the DOR page\n  if (dorContent && storedData.income_tax) {\n    const it = storedData.income_tax;\n    let topRatePct = '0';\n    if (it.type === 'flat') topRatePct = (it.flat_rate_bps / 100).toFixed(2);\n    if (it.type === 'progressive') {\n      let max = 0;\n      for (const brackets of Object.values(it.brackets || {})) {\n        for (const b of brackets) {\n          if (b.rate_bps > max) max = b.rate_bps;\n        }\n      }\n      topRatePct = (max / 100).toFixed(2);\n    }\n\n    if (it.type !== 'none') {\n      const rateStr = topRatePct.replace(/0$/, '');\n      const altRateStr = (parseFloat(topRatePct)).toString();\n      const found = dorContent.includes(rateStr) || dorContent.includes(altRateStr) || dorContent.includes(topRatePct + '%') || dorContent.includes(altRateStr + '%');\n      if (!found && dorContent.length > 500) {\n        result.issues.push(`Top rate ${topRatePct}% not found on DOR page (may be layout change)`);\n      }\n    }\n  }\n\n  results.push(result);\n}\n\nreturn [{ json: { results, timestamp: new Date().toISOString() } }];"
+      },
+      "id": "cross-validate",
+      "name": "Cross-Validate Against DOR",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { results, timestamp } = $input.first().json;\nconst botToken = $env.SLACK_BOT_TOKEN || '';\nif (!botToken) return [];\n\nconst withIssues = results.filter(r => r.issues && r.issues.length > 0);\nconst clean = results.filter(r => r.issues.length === 0 && r.status === 'ok');\n\nconst parts = [`*Monthly Data Validator — ${results.length} states sampled*\\n`];\n\nif (withIssues.length > 0) {\n  parts.push(':warning: *Issues Found*');\n  for (const r of withIssues) {\n    parts.push(`\\u2022 *${r.state}* (${r.state_name}): ${r.issues.join('; ')}`);\n  }\n  parts.push('');\n}\n\nparts.push(`:white_check_mark: ${clean.length}/${results.length} states validated clean`);\n\nif (withIssues.length > 0) {\n  parts.push('\\n:point_right: Investigate flagged states. Run `pnpm review` for full check.');\n}\n\nconst message = parts.join('\\n');\nreturn [{ json: { message, channel: 'C0ALVM4PAE7' } }];"
+      },
+      "id": "format-report",
+      "name": "Format Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.SLACK_BOT_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ channel: $json.channel, text: $json.message, unfurl_links: false }) }}"
+      },
+      "id": "post-slack",
+      "name": "Post to Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1500, 300]
+    }
+  ],
+  "connections": {
+    "Monthly Trigger (1st, 3am PT)": {
+      "main": [[{ "node": "List Source Files", "type": "main", "index": 0 }]]
+    },
+    "List Source Files": {
+      "main": [[{ "node": "Pick Random Sample (10 states)", "type": "main", "index": 0 }]]
+    },
+    "Pick Random Sample (10 states)": {
+      "main": [[{ "node": "Cross-Validate Against DOR", "type": "main", "index": 0 }]]
+    },
+    "Cross-Validate Against DOR": {
+      "main": [[{ "node": "Format Report", "type": "main", "index": 0 }]]
+    },
+    "Format Report": {
+      "main": [[{ "node": "Post to Slack", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Los_Angeles",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  },
+  "tags": [{ "name": "data-quality" }]
+}
