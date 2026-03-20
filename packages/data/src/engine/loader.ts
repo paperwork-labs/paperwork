@@ -52,9 +52,18 @@ export function loadAllStates(dataDir?: string): {
     for (const file of files) {
       if (!file.endsWith(".json") || file.startsWith("_")) continue;
       const rel = `tax/${year}/${file}`;
+      const expectedState = file.replace(".json", "");
       try {
         const raw = JSON.parse(readFileSync(join(yearDir, file), "utf-8"));
         const parsed = StateTaxRulesSchema.parse(raw);
+        if (parsed.state !== expectedState) {
+          errors.push({ file: rel, error: `state mismatch: file=${expectedState}, data=${parsed.state}` });
+          continue;
+        }
+        if (parsed.tax_year !== year) {
+          errors.push({ file: rel, error: `tax_year mismatch: dir=${year}, data=${parsed.tax_year}` });
+          continue;
+        }
         loadTaxData(parsed.state, parsed as StateTaxRules);
         taxStates.add(parsed.state);
       } catch (e) {
@@ -69,9 +78,14 @@ export function loadAllStates(dataDir?: string): {
       (f) => f.endsWith(".json") && !f.startsWith("_"),
     );
     for (const file of formationFiles) {
+      const expectedState = file.replace(".json", "");
       try {
         const raw = JSON.parse(readFileSync(join(formationDir, file), "utf-8"));
         const parsed = FormationRulesSchema.parse(raw);
+        if (parsed.state !== expectedState) {
+          errors.push({ file: `formation/${file}`, error: `state mismatch: file=${expectedState}, data=${parsed.state}` });
+          continue;
+        }
         loadFormationData(parsed.state, parsed as FormationRules);
         formationStates.add(parsed.state);
       } catch (e) {
