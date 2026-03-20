@@ -3,7 +3,7 @@
   "state_name": "Arizona",
   "entity_type": "LLC",
   "sos_url": "https://azsos.gov/business",
-  "filing_office": "Arizona Secretary of State",
+  "filing_office": "Arizona Corporation Commission",
   "fees": {
     "standard": {
       "amount_cents": 5000,
@@ -15,13 +15,13 @@
   "filing": {
     "primary": {
       "method": "portal",
-      "url": "https://azsos.gov/business",
-      "notes": "Arizona Secretary of State online filing"
+      "url": "https://ecorp.azcc.gov",
+      "notes": "Arizona Corporation Commission online filing"
     },
     "fallback": {
       "method": "mail",
       "url": "https://azsos.gov/business",
-      "notes": "Mail filing to Arizona Secretary of State"
+      "notes": "Mail filing to Arizona Corporation Commission"
     }
   },
   "requirements": {
@@ -49,22 +49,22 @@
   },
   "compliance": {},
   "verification": {
-    "last_verified": "2026-03-20T05:53:21.856Z",
+    "last_verified": "2026-03-20T06:19:15.222Z",
     "sources": [
       {
         "name": "LLC Requirements by State (llcrequirements.com)",
         "url": "https://llcrequirements.com/",
-        "accessed_at": "2026-03-20T05:53:21.856Z"
+        "accessed_at": "2026-03-20T06:19:15.222Z"
       },
       {
         "name": "Discern Franchise Tax by State",
         "url": "https://www.discern.com/resources/franchise-tax-information",
-        "accessed_at": "2026-03-20T05:53:21.856Z"
+        "accessed_at": "2026-03-20T06:19:15.222Z"
       },
       {
         "name": "Arizona Secretary of State",
         "url": "https://azsos.gov/business",
-        "accessed_at": "2026-03-20T05:53:21.856Z"
+        "accessed_at": "2026-03-20T06:19:15.222Z"
       }
     ],
     "verified_by": "deterministic_parse",

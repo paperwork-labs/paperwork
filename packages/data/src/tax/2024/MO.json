@@ -7,6 +7,11 @@
     "brackets": {
       "single": [
         {
+          "min_income_cents": 0,
+          "max_income_cents": 127300,
+          "rate_bps": 0
+        },
+        {
           "min_income_cents": 127300,
           "max_income_cents": 254600,
           "rate_bps": 200
@@ -43,6 +48,11 @@
         }
       ],
       "married_filing_jointly": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 120700,
+          "rate_bps": 0
+        },
         {
           "min_income_cents": 120700,
           "max_income_cents": 241400,
@@ -81,6 +91,11 @@
       ],
       "married_filing_separately": [
         {
+          "min_income_cents": 0,
+          "max_income_cents": 127300,
+          "rate_bps": 0
+        },
+        {
           "min_income_cents": 127300,
           "max_income_cents": 254600,
           "rate_bps": 200
@@ -117,6 +132,11 @@
         }
       ],
       "head_of_household": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 127300,
+          "rate_bps": 0
+        },
         {
           "min_income_cents": 127300,
           "max_income_cents": 254600,
@@ -188,12 +208,12 @@
   "dor_url": "https://dor.mo.gov",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
   "verification": {
-    "last_verified": "2026-03-20T06:13:41.131Z",
+    "last_verified": "2026-03-20T06:19:13.598Z",
     "sources": [
       {
-        "name": "Tax Foundation 2024 Rates and Brackets (XLSX)",
+        "name": "Tax Foundation State Income Tax Rates and Brackets (multi-year XLSX, 2024 sheet)",
         "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
-        "accessed_at": "2026-03-20T06:13:41.131Z"
+        "accessed_at": "2026-03-20T06:19:13.598Z"
       }
     ],
     "verified_by": "tax_foundation_parse",

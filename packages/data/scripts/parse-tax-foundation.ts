@@ -186,11 +186,26 @@ function extractFootnotes(rawName: string): string {
 function buildBrackets(rawBrackets: Array<{ rate: number; threshold: number }>): Bracket[] {
   if (rawBrackets.length === 0) return [];
   const sorted = [...rawBrackets].sort((a, b) => a.threshold - b.threshold);
-  return sorted.map((b, i) => ({
-    min_income_cents: dollarsToCents(b.threshold),
-    max_income_cents: i < sorted.length - 1 ? dollarsToCents(sorted[i + 1].threshold) : null,
-    rate_bps: rateToBps(b.rate),
-  }));
+  const brackets: Bracket[] = [];
+
+  // If first bracket starts above $0, insert explicit 0% bracket
+  if (sorted[0].threshold > 0) {
+    brackets.push({
+      min_income_cents: 0,
+      max_income_cents: dollarsToCents(sorted[0].threshold),
+      rate_bps: 0,
+    });
+  }
+
+  for (let i = 0; i < sorted.length; i++) {
+    brackets.push({
+      min_income_cents: dollarsToCents(sorted[i].threshold),
+      max_income_cents: i < sorted.length - 1 ? dollarsToCents(sorted[i + 1].threshold) : null,
+      rate_bps: rateToBps(sorted[i].rate),
+    });
+  }
+
+  return brackets;
 }
 
 function parseSheet(workbook: XLSX.WorkBook, yearStr: string): Map<StateCode, RawStateData> {
@@ -269,10 +284,12 @@ function parseSheet(workbook: XLSX.WorkBook, yearStr: string): Map<StateCode, Ra
 
         // First bracket row for this state
         if (typeof colB === "number") {
-          singleRaw.push({ rate: colB, threshold: (typeof row[COL.S_BRACKET] === "number" ? row[COL.S_BRACKET] : 0) });
+          const sBracket = row[COL.S_BRACKET];
+          singleRaw.push({ rate: colB, threshold: typeof sBracket === "number" ? sBracket : 0 });
         }
         if (typeof colE === "number") {
-          mfjRaw.push({ rate: colE, threshold: (typeof row[COL.MFJ_BRACKET] === "number" ? row[COL.MFJ_BRACKET] : 0) });
+          const mBracket = row[COL.MFJ_BRACKET];
+          mfjRaw.push({ rate: colE, threshold: typeof mBracket === "number" ? mBracket : 0 });
         }
         continue;
       }
@@ -292,10 +309,12 @@ function parseSheet(workbook: XLSX.WorkBook, yearStr: string): Map<StateCode, Ra
 
     // Bracket data (single and/or MFJ)
     if (typeof colB === "number") {
-      singleRaw.push({ rate: colB, threshold: (typeof row[COL.S_BRACKET] === "number" ? row[COL.S_BRACKET] : 0) });
+      const sBracket = row[COL.S_BRACKET];
+      singleRaw.push({ rate: colB, threshold: typeof sBracket === "number" ? sBracket : 0 });
     }
     if (typeof colE === "number") {
-      mfjRaw.push({ rate: colE, threshold: (typeof row[COL.MFJ_BRACKET] === "number" ? row[COL.MFJ_BRACKET] : 0) });
+      const mBracket = row[COL.MFJ_BRACKET];
+      mfjRaw.push({ rate: colE, threshold: typeof mBracket === "number" ? mBracket : 0 });
     }
   }
 
@@ -306,7 +325,13 @@ function parseSheet(workbook: XLSX.WorkBook, yearStr: string): Map<StateCode, Ra
 function determineTaxType(data: RawStateData): "none" | "flat" | "progressive" {
   if (NO_INCOME_TAX_STATES.includes(data.code)) return "none";
   if (data.singleBrackets.length === 0) return "none";
-  if (data.singleBrackets.length === 1) return "flat";
+  // Flat = exactly one non-zero rate bracket starting at $0.
+  // If there's a 0% bracket prepended, the state has 2+ brackets and is progressive.
+  const nonZeroRate = data.singleBrackets.filter((b) => b.rate_bps > 0);
+  if (nonZeroRate.length === 1 && data.singleBrackets[0].min_income_cents === 0 && data.singleBrackets[0].rate_bps > 0) {
+    return "flat";
+  }
+  if (nonZeroRate.length === 1 && data.singleBrackets.length === 1) return "flat";
   return "progressive";
 }
 
@@ -376,7 +401,7 @@ function buildStateTaxJson(data: RawStateData, taxYear: number) {
       last_verified: now,
       sources: [
         {
-          name: `Tax Foundation ${taxYear} Rates and Brackets (XLSX)`,
+          name: `Tax Foundation State Income Tax Rates and Brackets (multi-year XLSX, ${taxYear} sheet)`,
           url: "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
           accessed_at: now,
         },

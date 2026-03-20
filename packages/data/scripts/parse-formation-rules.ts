@@ -42,10 +42,11 @@ FULL_NAME_TO_CODE["Washington, DC"] = "DC";
 const OPERATING_AGREEMENT_REQUIRED: StateCode[] = ["CA", "MO", "NY", "ME"];
 
 const FILING_OFFICE_OVERRIDES: Partial<Record<StateCode, string>> = {
+  AZ: "Arizona Corporation Commission",
   DE: "Delaware Division of Corporations",
   DC: "DC Department of Licensing and Consumer Protection",
-  NY: "New York Department of State, Division of Corporations",
   HI: "Hawaii Department of Commerce and Consumer Affairs",
+  NY: "New York Department of State, Division of Corporations",
 };
 
 const FILING_METHOD_OVERRIDES: Partial<Record<StateCode, "api" | "portal" | "mail">> = {
@@ -53,8 +54,9 @@ const FILING_METHOD_OVERRIDES: Partial<Record<StateCode, "api" | "portal" | "mai
 };
 
 const PORTAL_URL_OVERRIDES: Partial<Record<StateCode, string>> = {
-  DE: "https://icis.corp.delaware.gov/publicxmlservice",
+  AZ: "https://ecorp.azcc.gov",
   CA: "https://bizfileonline.sos.ca.gov",
+  DE: "https://icis.corp.delaware.gov/publicxmlservice",
 };
 
 // ─── Parsing utilities ───────────────────────────────────────────────────────

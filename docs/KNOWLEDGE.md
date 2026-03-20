@@ -2,8 +2,8 @@
 
 Organizational memory for Paperwork Labs (FileFree, LaunchFree, Distill, Trinkets). AI agents read this at session start. Update after significant decisions, learnings, or pattern discoveries.
 
-**Last Updated**: 2026-03-19
-**Version**: 10.1 (D83 — deterministic data pipeline)
+**Last Updated**: 2026-03-20
+**Version**: 10.2 (D84 — 100% deterministic data, zero AI)
 
 ---
 
@@ -264,6 +264,40 @@ Full text in [docs/archive/KNOWLEDGE-ARCHIVE.md](archive/KNOWLEDGE-ARCHIVE.md).
 **Alternatives**: (a) Re-extract with better AI prompts — still probabilistic, ~96-98% ceiling, (b) Manual CPA review — doesn't scale, (c) Deterministic parse + AI only for gaps — chosen, ~99.9% for core fields.
 
 **Reversibility**: Fully reversible. AI extraction scripts remain in repo for supplementary data and fallback.
+
+**Status**: SUPERSEDED by D84 — all supplementary data now also deterministic. Zero AI extraction paths remain.
+
+### D84 — 100% Deterministic Data Pipeline, Zero AI (2026-03-20)
+
+**Context**: D83 replaced AI extraction for core tax/formation data but preserved AI-extracted supplementary fields (DOR URLs, local tax flags, reciprocity agreements, personal exemption phase-outs) from old JSONs. The founder's directive: "build as if this was the first time" — no AI inheritance.
+
+**Decision**: Eliminate all AI-extracted data. Every field in every JSON is now sourced from either a deterministic parser or a curated constant map.
+
+**Tax data** (153 JSONs across TY2024-2026):
+- Core fields (brackets, rates, deductions, exemptions): Tax Foundation XLSX — deterministic parse
+- DOR URLs: Curated `DOR_URLS` map (51 official state revenue department URLs)
+- Local income tax: Curated `LOCAL_INCOME_TAX_STATES` set (15 states, sourced from Tax Foundation + FTA)
+- Reciprocity: Curated `RECIPROCITY_MAP` (16 states with specific state-pair lists, sourced from FTA + state DOR)
+- Personal exemption phase-outs: Curated `PERSONAL_EXEMPTION_PHASES_OUT` set (5 states: CA, CT, NY, OR, RI)
+- Implicit 0% brackets: Explicitly added for states where first bracket starts above $0 (DE, MO, ND, OK, ID, MS)
+
+**Formation data** (51 JSONs):
+- Filing fees, annual fees, deadlines, processing times, publication: llcrequirements.com HTML table
+- Franchise tax: discern.com HTML table
+- Filing offices, SOS URLs: Source registry + curated overrides (AZ=ACC, DE=Division of Corps, etc.)
+- Operating agreements, naming rules, RA requirements: Curated constants
+
+**What was deleted**:
+- `extract-tax.ts`, `extract-formation.ts`, `extract-utils.ts`, `parse-formation-fees.ts` — all AI extraction scripts
+- `openai` and `dotenv` from devDependencies
+- All existing-JSON fallback logic from `parse-tax-foundation.ts`
+- `ai_extraction` and `ai_extraction_fallback` enum values → renamed to `sos_extraction` / `sos_extraction_unverified`
+
+**Verification**: 4-persona review (Engineering, Tax Domain, CPA, QA) — all PASS. 1,757 tests pass. Zero `ai_extraction` strings remain in `packages/data/`.
+
+**Maintenance model**: `pnpm parse:tax` + `pnpm parse:formation` are idempotent scripts. n8n `data-source-monitor` watches Tax Foundation, llcrequirements.com, and discern.com for changes. When a source updates: re-run parser, review diff, commit. No AI drift to worry about.
+
+**Supersedes**: D83 (which still used AI for supplementary fields). D82 Layers 2-6 still apply as defense-in-depth.
 
 ---
 

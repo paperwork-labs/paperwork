@@ -7,6 +7,11 @@
     "brackets": {
       "single": [
         {
+          "min_income_cents": 0,
+          "max_income_cents": 375000,
+          "rate_bps": 0
+        },
+        {
           "min_income_cents": 375000,
           "max_income_cents": 490000,
           "rate_bps": 250
@@ -23,6 +28,11 @@
         }
       ],
       "married_filing_jointly": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 750000,
+          "rate_bps": 0
+        },
         {
           "min_income_cents": 750000,
           "max_income_cents": 980000,
@@ -41,6 +51,11 @@
       ],
       "married_filing_separately": [
         {
+          "min_income_cents": 0,
+          "max_income_cents": 375000,
+          "rate_bps": 0
+        },
+        {
           "min_income_cents": 375000,
           "max_income_cents": 490000,
           "rate_bps": 250
@@ -57,6 +72,11 @@
         }
       ],
       "head_of_household": [
+        {
+          "min_income_cents": 0,
+          "max_income_cents": 375000,
+          "rate_bps": 0
+        },
         {
           "min_income_cents": 375000,
           "max_income_cents": 490000,
@@ -108,12 +128,12 @@
   "dor_url": "https://oklahoma.gov/tax.html",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2026",
   "verification": {
-    "last_verified": "2026-03-20T06:13:41.147Z",
+    "last_verified": "2026-03-20T06:19:13.612Z",
     "sources": [
       {
-        "name": "Tax Foundation 2026 Rates and Brackets (XLSX)",
+        "name": "Tax Foundation State Income Tax Rates and Brackets (multi-year XLSX, 2026 sheet)",
         "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
-        "accessed_at": "2026-03-20T06:13:41.147Z"
+        "accessed_at": "2026-03-20T06:19:13.612Z"
       }
     ],
     "verified_by": "tax_foundation_parse",
