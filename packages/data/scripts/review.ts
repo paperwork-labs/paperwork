@@ -15,7 +15,7 @@ type TaxRulesParsed = z.infer<typeof StateTaxRulesSchema>;
 type FormationRulesParsed = z.infer<typeof FormationRulesSchema>;
 import { discoverTaxYearDirs } from "../src/engine/loader";
 
-const NO_INCOME_TAX_STATES: StateCode[] = ["AK", "FL", "NV", "SD", "TN", "TX", "WA", "WY"];
+const NO_INCOME_TAX_STATES: StateCode[] = ["AK", "FL", "NH", "NV", "SD", "TN", "TX", "WA", "WY"];
 
 const MIN_STANDARD_DEDUCTION_CENTS = 100_000; // $1,000 — catch dollar-as-cents mistakes
 const MIN_PERSONAL_EXEMPTION_CENTS = 10_000; // $100 if non-zero
@@ -61,9 +61,24 @@ function loadTaxFiles(srcDir: string): {
       const absPath = join(yearDir, file);
       if (!statSync(absPath).isFile()) continue;
       const relPath = `tax/${year}/${file}`;
+      const expectedState = file.replace(".json", "");
       try {
         const raw: unknown = JSON.parse(readFileSync(absPath, "utf-8"));
         const data = StateTaxRulesSchema.parse(raw);
+        if (data.state !== expectedState) {
+          validationErrors.push({
+            file: relPath,
+            error: `state mismatch: file=${expectedState}, data=${data.state}`,
+          });
+          continue;
+        }
+        if (data.tax_year !== year) {
+          validationErrors.push({
+            file: relPath,
+            error: `tax_year mismatch: dir=${year}, data=${data.tax_year}`,
+          });
+          continue;
+        }
         taxFiles.push({ relPath, absPath, data });
       } catch (e) {
         validationErrors.push({ file: relPath, error: String(e) });
@@ -87,9 +102,17 @@ function loadFormationFiles(srcDir: string): {
       const absPath = join(formationDir, file);
       if (!statSync(absPath).isFile()) continue;
       const relPath = `formation/${file}`;
+      const expectedState = file.replace(".json", "");
       try {
         const raw: unknown = JSON.parse(readFileSync(absPath, "utf-8"));
         const data = FormationRulesSchema.parse(raw);
+        if (data.state !== expectedState) {
+          validationErrors.push({
+            file: relPath,
+            error: `state mismatch: file=${expectedState}, data=${data.state}`,
+          });
+          continue;
+        }
         formationFiles.push({ relPath, absPath, data });
       } catch (e) {
         validationErrors.push({ file: relPath, error: String(e) });

@@ -134,6 +134,31 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python -m pytest --tb=short -q
 
+  data-validate:
+    name: Data Package Validate
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.sharedPackages == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Type check (src + scripts)
+        run: pnpm typecheck
+        working-directory: packages/data
+      - name: Unit + integration tests
+        run: pnpm test
+        working-directory: packages/data
+      - name: Review CLI (sanity checks)
+        run: pnpm review
+        working-directory: packages/data
+
   api-launchfree-lint:
     name: LaunchFree API Lint
     runs-on: ubuntu-latest
