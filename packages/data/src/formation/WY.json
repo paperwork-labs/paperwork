@@ -7,16 +7,21 @@
   "fees": {
     "standard": {
       "amount_cents": 10000,
-      "description": "Standard LLC filing fee",
+      "description": "LLC Articles of Organization filing fee",
       "is_expedited": false,
-      "processing_days": 15
+      "processing_days": 1
     }
   },
   "filing": {
     "primary": {
       "method": "portal",
-      "url": "https://wyobiz.wyo.gov",
-      "notes": "File your Wyoming LLC online through WyoBiz"
+      "url": "https://sos.wyo.gov/Business",
+      "notes": "Wyoming Secretary of State online filing"
+    },
+    "fallback": {
+      "method": "mail",
+      "url": "https://sos.wyo.gov/Business",
+      "notes": "Mail filing to Wyoming Secretary of State"
     }
   },
   "requirements": {
@@ -25,31 +30,49 @@
     "publication_required": false,
     "registered_agent_required": true,
     "annual_report_required": true,
-    "franchise_tax": false
+    "annual_report_fee_cents": 6000,
+    "franchise_tax": true,
+    "franchise_tax_amount_cents": 6000
   },
   "processing": {
-    "standard_days": 15
+    "standard_days": 1
   },
   "naming": {
     "required_suffix": [
       "LLC",
-      "L.L.C."
+      "L.L.C.",
+      "Limited Liability Company"
     ],
-    "restricted_words": []
+    "restricted_words": [
+      "Bank",
+      "Insurance",
+      "Trust"
+    ]
   },
   "compliance": {
-    "annual_report_due": "Annually on the anniversary of formation"
+    "annual_report_due": "First day of anniversary month",
+    "franchise_tax_due": "Same as the annual report"
   },
   "verification": {
-    "last_verified": "2026-03-19T22:05:56.093Z",
+    "last_verified": "2026-03-20T05:53:21.864Z",
     "sources": [
+      {
+        "name": "LLC Requirements by State (llcrequirements.com)",
+        "url": "https://llcrequirements.com/",
+        "accessed_at": "2026-03-20T05:53:21.864Z"
+      },
+      {
+        "name": "Discern Franchise Tax by State",
+        "url": "https://www.discern.com/resources/franchise-tax-information",
+        "accessed_at": "2026-03-20T05:53:21.864Z"
+      },
       {
         "name": "Wyoming Secretary of State",
         "url": "https://sos.wyo.gov/Business",
-        "accessed_at": "2026-03-19T22:05:56.093Z"
+        "accessed_at": "2026-03-20T05:53:21.864Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "deterministic_parse",
+    "confidence": 0.99
   }
 }

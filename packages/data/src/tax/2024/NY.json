@@ -23,28 +23,43 @@
         },
         {
           "min_income_cents": 1390000,
-          "max_income_cents": 2140000,
-          "rate_bps": 585
+          "max_income_cents": 8065000,
+          "rate_bps": 550
         },
         {
-          "min_income_cents": 2140000,
-          "max_income_cents": 5370000,
-          "rate_bps": 645
+          "min_income_cents": 8065000,
+          "max_income_cents": 21540000,
+          "rate_bps": 600
         },
         {
-          "min_income_cents": 5370000,
-          "max_income_cents": null,
+          "min_income_cents": 21540000,
+          "max_income_cents": 107755000,
           "rate_bps": 685
+        },
+        {
+          "min_income_cents": 107755000,
+          "max_income_cents": 500000000,
+          "rate_bps": 965
+        },
+        {
+          "min_income_cents": 500000000,
+          "max_income_cents": 2500000000,
+          "rate_bps": 1030
+        },
+        {
+          "min_income_cents": 2500000000,
+          "max_income_cents": null,
+          "rate_bps": 1090
         }
       ],
       "married_filing_jointly": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 1710000,
+          "max_income_cents": 1715000,
           "rate_bps": 400
         },
         {
-          "min_income_cents": 1710000,
+          "min_income_cents": 1715000,
           "max_income_cents": 2360000,
           "rate_bps": 450
         },
@@ -55,18 +70,33 @@
         },
         {
           "min_income_cents": 2790000,
-          "max_income_cents": 4280000,
-          "rate_bps": 585
+          "max_income_cents": 16155000,
+          "rate_bps": 550
         },
         {
-          "min_income_cents": 4280000,
-          "max_income_cents": 10740000,
-          "rate_bps": 645
+          "min_income_cents": 16155000,
+          "max_income_cents": 32320000,
+          "rate_bps": 600
         },
         {
-          "min_income_cents": 10740000,
-          "max_income_cents": null,
+          "min_income_cents": 32320000,
+          "max_income_cents": 215535000,
           "rate_bps": 685
+        },
+        {
+          "min_income_cents": 215535000,
+          "max_income_cents": 500000000,
+          "rate_bps": 965
+        },
+        {
+          "min_income_cents": 500000000,
+          "max_income_cents": 2500000000,
+          "rate_bps": 1030
+        },
+        {
+          "min_income_cents": 2500000000,
+          "max_income_cents": null,
+          "rate_bps": 1090
         }
       ],
       "married_filing_separately": [
@@ -87,50 +117,80 @@
         },
         {
           "min_income_cents": 1390000,
-          "max_income_cents": 2140000,
-          "rate_bps": 585
+          "max_income_cents": 8065000,
+          "rate_bps": 550
         },
         {
-          "min_income_cents": 2140000,
-          "max_income_cents": 5370000,
-          "rate_bps": 645
+          "min_income_cents": 8065000,
+          "max_income_cents": 21540000,
+          "rate_bps": 600
         },
         {
-          "min_income_cents": 5370000,
-          "max_income_cents": null,
+          "min_income_cents": 21540000,
+          "max_income_cents": 107755000,
           "rate_bps": 685
+        },
+        {
+          "min_income_cents": 107755000,
+          "max_income_cents": 500000000,
+          "rate_bps": 965
+        },
+        {
+          "min_income_cents": 500000000,
+          "max_income_cents": 2500000000,
+          "rate_bps": 1030
+        },
+        {
+          "min_income_cents": 2500000000,
+          "max_income_cents": null,
+          "rate_bps": 1090
         }
       ],
       "head_of_household": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 1285000,
+          "max_income_cents": 850000,
           "rate_bps": 400
         },
         {
-          "min_income_cents": 1285000,
-          "max_income_cents": 1760000,
+          "min_income_cents": 850000,
+          "max_income_cents": 1170000,
           "rate_bps": 450
         },
         {
-          "min_income_cents": 1760000,
-          "max_income_cents": 2085000,
+          "min_income_cents": 1170000,
+          "max_income_cents": 1390000,
           "rate_bps": 525
         },
         {
-          "min_income_cents": 2085000,
-          "max_income_cents": 3210000,
-          "rate_bps": 585
+          "min_income_cents": 1390000,
+          "max_income_cents": 8065000,
+          "rate_bps": 550
         },
         {
-          "min_income_cents": 3210000,
-          "max_income_cents": 8055000,
-          "rate_bps": 645
+          "min_income_cents": 8065000,
+          "max_income_cents": 21540000,
+          "rate_bps": 600
         },
         {
-          "min_income_cents": 8055000,
-          "max_income_cents": null,
+          "min_income_cents": 21540000,
+          "max_income_cents": 107755000,
           "rate_bps": 685
+        },
+        {
+          "min_income_cents": 107755000,
+          "max_income_cents": 500000000,
+          "rate_bps": 965
+        },
+        {
+          "min_income_cents": 500000000,
+          "max_income_cents": 2500000000,
+          "rate_bps": 1030
+        },
+        {
+          "min_income_cents": 2500000000,
+          "max_income_cents": null,
+          "rate_bps": 1090
         }
       ]
     }
@@ -142,7 +202,7 @@
     },
     {
       "filing_status": "married_filing_jointly",
-      "amount_cents": 1600000
+      "amount_cents": 1605000
     },
     {
       "filing_status": "married_filing_separately",
@@ -150,12 +210,12 @@
     },
     {
       "filing_status": "head_of_household",
-      "amount_cents": 1125000
+      "amount_cents": 800000
     }
   ],
   "personal_exemption": {
-    "amount_cents": 100000,
-    "phases_out": false
+    "amount_cents": 0,
+    "phases_out": true
   },
   "notable_credits": [],
   "notable_deductions": [],
@@ -168,20 +228,15 @@
   "dor_url": "https://www.tax.ny.gov",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
   "verification": {
-    "last_verified": "2026-03-19T23:16:52.542Z",
+    "last_verified": "2026-03-20T06:19:13.599Z",
     "sources": [
       {
-        "name": "Tax Foundation 2024 Rates",
-        "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
-        "accessed_at": "2026-03-19T23:16:52.542Z"
-      },
-      {
-        "name": "New York State Department of Taxation and Finance",
-        "url": "https://www.tax.ny.gov",
-        "accessed_at": "2026-03-19T23:16:52.542Z"
+        "name": "Tax Foundation State Income Tax Rates and Brackets (multi-year XLSX, 2024 sheet)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T06:19:13.599Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

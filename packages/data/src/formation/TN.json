@@ -3,26 +3,25 @@
   "state_name": "Tennessee",
   "entity_type": "LLC",
   "sos_url": "https://sos.tn.gov/business-services",
-  "filing_office": "Business Services Division",
+  "filing_office": "Tennessee Secretary of State",
   "fees": {
     "standard": {
       "amount_cents": 30000,
-      "description": "Standard LLC filing fee",
+      "description": "LLC Articles of Organization filing fee",
       "is_expedited": false,
-      "processing_days": 10
-    },
-    "expedited": {
-      "amount_cents": 50000,
-      "description": "Expedited processing fee",
-      "is_expedited": true,
-      "processing_days": 2
+      "processing_days": 3
     }
   },
   "filing": {
     "primary": {
       "method": "portal",
-      "url": "https://tnbear.tn.gov/ecommerce/default.aspx",
-      "notes": "Tennessee Secretary of State Business Services Online Portal"
+      "url": "https://sos.tn.gov/business-services",
+      "notes": "Tennessee Secretary of State online filing"
+    },
+    "fallback": {
+      "method": "mail",
+      "url": "https://sos.tn.gov/business-services",
+      "notes": "Mail filing to Tennessee Secretary of State"
     }
   },
   "requirements": {
@@ -31,16 +30,18 @@
     "publication_required": false,
     "registered_agent_required": true,
     "annual_report_required": true,
-    "franchise_tax": true
+    "annual_report_fee_cents": 30000,
+    "franchise_tax": true,
+    "franchise_tax_amount_cents": 10000
   },
   "processing": {
-    "standard_days": 10,
-    "expedited_days": 2
+    "standard_days": 3
   },
   "naming": {
     "required_suffix": [
       "LLC",
-      "L.L.C."
+      "L.L.C.",
+      "Limited Liability Company"
     ],
     "restricted_words": [
       "Bank",
@@ -49,18 +50,29 @@
     ]
   },
   "compliance": {
-    "franchise_tax_due": "April 15"
+    "annual_report_due": "April 1",
+    "franchise_tax_due": "Apr 15"
   },
   "verification": {
-    "last_verified": "2026-03-19T22:05:56.093Z",
+    "last_verified": "2026-03-20T05:53:21.864Z",
     "sources": [
+      {
+        "name": "LLC Requirements by State (llcrequirements.com)",
+        "url": "https://llcrequirements.com/",
+        "accessed_at": "2026-03-20T05:53:21.864Z"
+      },
+      {
+        "name": "Discern Franchise Tax by State",
+        "url": "https://www.discern.com/resources/franchise-tax-information",
+        "accessed_at": "2026-03-20T05:53:21.864Z"
+      },
       {
         "name": "Tennessee Secretary of State",
         "url": "https://sos.tn.gov/business-services",
-        "accessed_at": "2026-03-19T22:05:56.093Z"
+        "accessed_at": "2026-03-20T05:53:21.864Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "deterministic_parse",
+    "confidence": 0.99
   }
 }

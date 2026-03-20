@@ -14,18 +14,17 @@
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "dotenv": "^17.3.1",
-    "openai": "^4.80.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
-    "vitest": "^3.2.0"
+    "vitest": "^3.2.0",
+    "xlsx": "^0.18.5"
   },
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit --project tsconfig.json && tsc --noEmit --project tsconfig.scripts.json",
-    "extract:tax": "tsx scripts/extract-tax.ts",
-    "extract:formation": "tsx scripts/extract-formation.ts",
+    "parse:tax": "tsx scripts/parse-tax-foundation.ts",
+    "parse:formation": "tsx scripts/parse-formation-rules.ts",
     "review": "tsx scripts/review.ts",
     "review:approve": "tsx scripts/review.ts --approve"
   }

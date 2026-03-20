@@ -8,16 +8,16 @@
       "single": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 2300000,
+          "max_income_cents": 2739900,
           "rate_bps": 580
         },
         {
-          "min_income_cents": 2300000,
-          "max_income_cents": 5400000,
+          "min_income_cents": 2739900,
+          "max_income_cents": 6484900,
           "rate_bps": 675
         },
         {
-          "min_income_cents": 5400000,
+          "min_income_cents": 6484900,
           "max_income_cents": null,
           "rate_bps": 715
         }
@@ -25,16 +25,16 @@
       "married_filing_jointly": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 2300000,
+          "max_income_cents": 5484900,
           "rate_bps": 580
         },
         {
-          "min_income_cents": 2300000,
-          "max_income_cents": 5400000,
+          "min_income_cents": 5484900,
+          "max_income_cents": 12974900,
           "rate_bps": 675
         },
         {
-          "min_income_cents": 5400000,
+          "min_income_cents": 12974900,
           "max_income_cents": null,
           "rate_bps": 715
         }
@@ -42,16 +42,16 @@
       "married_filing_separately": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 2300000,
+          "max_income_cents": 2739900,
           "rate_bps": 580
         },
         {
-          "min_income_cents": 2300000,
-          "max_income_cents": 5400000,
+          "min_income_cents": 2739900,
+          "max_income_cents": 6484900,
           "rate_bps": 675
         },
         {
-          "min_income_cents": 5400000,
+          "min_income_cents": 6484900,
           "max_income_cents": null,
           "rate_bps": 715
         }
@@ -59,16 +59,16 @@
       "head_of_household": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 2300000,
+          "max_income_cents": 2739900,
           "rate_bps": 580
         },
         {
-          "min_income_cents": 2300000,
-          "max_income_cents": 5400000,
+          "min_income_cents": 2739900,
+          "max_income_cents": 6484900,
           "rate_bps": 675
         },
         {
-          "min_income_cents": 5400000,
+          "min_income_cents": 6484900,
           "max_income_cents": null,
           "rate_bps": 715
         }
@@ -78,23 +78,23 @@
   "standard_deductions": [
     {
       "filing_status": "single",
-      "amount_cents": 1350000
+      "amount_cents": 835000
     },
     {
       "filing_status": "married_filing_jointly",
-      "amount_cents": 2700000
+      "amount_cents": 1670000
     },
     {
       "filing_status": "married_filing_separately",
-      "amount_cents": 1350000
+      "amount_cents": 835000
     },
     {
       "filing_status": "head_of_household",
-      "amount_cents": 2025000
+      "amount_cents": 835000
     }
   ],
   "personal_exemption": {
-    "amount_cents": 440000,
+    "amount_cents": 530000,
     "phases_out": false
   },
   "notable_credits": [],
@@ -106,22 +106,17 @@
     "has_reciprocity": false
   },
   "dor_url": "https://www.maine.gov/revenue",
-  "tax_foundation_url": "https://taxfoundation.org/location/maine/",
+  "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2026",
   "verification": {
-    "last_verified": "2026-03-19T21:53:21.559Z",
+    "last_verified": "2026-03-20T06:19:13.610Z",
     "sources": [
       {
-        "name": "Tax Foundation - Maine",
-        "url": "https://taxfoundation.org/location/maine/",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
-      },
-      {
-        "name": "Maine Revenue Services",
-        "url": "https://www.maine.gov/revenue",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
+        "name": "Tax Foundation State Income Tax Rates and Brackets (multi-year XLSX, 2026 sheet)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T06:19:13.610Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

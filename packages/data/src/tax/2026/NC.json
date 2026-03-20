@@ -4,9 +4,26 @@
   "tax_year": 2026,
   "income_tax": {
     "type": "flat",
-    "flat_rate_bps": 425
+    "flat_rate_bps": 399
   },
-  "standard_deductions": [],
+  "standard_deductions": [
+    {
+      "filing_status": "single",
+      "amount_cents": 1275000
+    },
+    {
+      "filing_status": "married_filing_jointly",
+      "amount_cents": 2550000
+    },
+    {
+      "filing_status": "married_filing_separately",
+      "amount_cents": 1275000
+    },
+    {
+      "filing_status": "head_of_household",
+      "amount_cents": 1275000
+    }
+  ],
   "personal_exemption": {
     "amount_cents": 0,
     "phases_out": false
@@ -20,22 +37,17 @@
     "has_reciprocity": false
   },
   "dor_url": "https://www.ncdor.gov",
-  "tax_foundation_url": "https://taxfoundation.org/location/north-carolina/",
+  "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2026",
   "verification": {
-    "last_verified": "2026-03-19T21:53:21.559Z",
+    "last_verified": "2026-03-20T06:19:13.612Z",
     "sources": [
       {
-        "name": "Tax Foundation - North Carolina",
-        "url": "https://taxfoundation.org/location/north-carolina/",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
-      },
-      {
-        "name": "North Carolina Department of Revenue",
-        "url": "https://www.ncdor.gov",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
+        "name": "Tax Foundation State Income Tax Rates and Brackets (multi-year XLSX, 2026 sheet)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T06:19:13.612Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

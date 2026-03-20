@@ -6,7 +6,24 @@
     "type": "flat",
     "flat_rate_bps": 425
   },
-  "standard_deductions": [],
+  "standard_deductions": [
+    {
+      "filing_status": "single",
+      "amount_cents": 0
+    },
+    {
+      "filing_status": "married_filing_jointly",
+      "amount_cents": 0
+    },
+    {
+      "filing_status": "married_filing_separately",
+      "amount_cents": 0
+    },
+    {
+      "filing_status": "head_of_household",
+      "amount_cents": 0
+    }
+  ],
   "personal_exemption": {
     "amount_cents": 560000,
     "phases_out": false
@@ -14,28 +31,31 @@
   "notable_credits": [],
   "notable_deductions": [],
   "local_taxes": {
-    "has_local_income_tax": false
+    "has_local_income_tax": true
   },
   "reciprocity": {
-    "has_reciprocity": false
+    "has_reciprocity": true,
+    "states": [
+      "IL",
+      "IN",
+      "KY",
+      "MN",
+      "OH",
+      "WI"
+    ]
   },
   "dor_url": "https://www.michigan.gov/treasury",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
   "verification": {
-    "last_verified": "2026-03-19T23:16:52.542Z",
+    "last_verified": "2026-03-20T06:19:13.598Z",
     "sources": [
       {
-        "name": "Tax Foundation 2024 Rates",
-        "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
-        "accessed_at": "2026-03-19T23:16:52.542Z"
-      },
-      {
-        "name": "Michigan Department of Treasury",
-        "url": "https://www.michigan.gov/treasury",
-        "accessed_at": "2026-03-19T23:16:52.542Z"
+        "name": "Tax Foundation State Income Tax Rates and Brackets (multi-year XLSX, 2024 sheet)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T06:19:13.598Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

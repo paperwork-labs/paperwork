@@ -21,20 +21,15 @@
   "dor_url": "https://tax.nv.gov",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
   "verification": {
-    "last_verified": "2026-03-19T23:16:52.542Z",
+    "last_verified": "2026-03-20T06:19:13.599Z",
     "sources": [
       {
-        "name": "Tax Foundation 2024 Rates",
-        "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
-        "accessed_at": "2026-03-19T23:16:52.542Z"
-      },
-      {
-        "name": "Nevada Department of Taxation",
-        "url": "https://tax.nv.gov",
-        "accessed_at": "2026-03-19T23:16:52.542Z"
+        "name": "Tax Foundation State Income Tax Rates and Brackets (multi-year XLSX, 2024 sheet)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T06:19:13.599Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

@@ -1,0 +1,83 @@
+{
+  "name": "Annual Data Update Trigger (P2.10)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 1 10 *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-october",
+      "name": "October 1 Trigger (9am PT)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $getWorkflowStaticData('global');\nconst currentYear = new Date().getFullYear();\nconst nextTaxYear = currentYear + 1;\n\nconst checklist = [\n  `1. IRS Revenue Procedure for TY${nextTaxYear} — check if released at <https://www.irs.gov/irb|IRS Internal Revenue Bulletin>`,\n  `2. Download new Tax Foundation XLSX to packages/data/scripts/fixtures/, then run \\`EXTRACT_TAX_YEAR=${nextTaxYear} pnpm parse:tax\\` in \\`packages/data\\``,\n  `3. Run formation update: \\`pnpm parse:formation\\` (fees change annually)`,\n  `4. Run full review: \\`pnpm review\\` — fix all failures`,\n  `5. Run test suite: \\`pnpm test\\` — all 1700+ tests must pass`,\n  `6. Add known-good anchor values for TY${nextTaxYear} in \\`tests/sanity.test.ts\\``,\n  `7. Run \\`pnpm review:approve\\` to stamp all data as human-reviewed`,\n  `8. Create PR and merge to main`,\n  `9. Verify CI passes on the PR`,\n  `10. Post confirmation to #engineering when done`\n];\n\nconst taxFoundationUrl = `https://taxfoundation.org/data/all/state/state-income-tax-rates`;\n\nstate.lastTriggered = new Date().toISOString();\nstate.targetTaxYear = nextTaxYear;\n\nreturn [{ json: { checklist, nextTaxYear, taxFoundationUrl } }];"
+      },
+      "id": "build-checklist",
+      "name": "Build Update Checklist",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { checklist, nextTaxYear, taxFoundationUrl } = $input.first().json;\nconst botToken = $env.SLACK_BOT_TOKEN || '';\nif (!botToken) return [];\n\nconst parts = [\n  `:calendar: *Annual Tax Data Update — TY${nextTaxYear}*\\n`,\n  `It's October! Time to extract and validate tax data for the upcoming filing season.\\n`,\n  '*Checklist:*'\n];\n\nfor (const item of checklist) {\n  parts.push(`\\u2022 ${item}`);\n}\n\nparts.push(`\\n*Key resource*: <${taxFoundationUrl}|Tax Foundation State Income Tax Rates>`);\nparts.push(`\\n:thread: Reply in this thread with progress updates.`);\n\nconst message = parts.join('\\n');\nreturn [{ json: { message, channel: 'C0ALLEKR9FZ' } }];"
+      },
+      "id": "format-message",
+      "name": "Format Checklist Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.SLACK_BOT_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ channel: $json.channel, text: $json.message, unfurl_links: false }) }}"
+      },
+      "id": "post-slack",
+      "name": "Post to Slack #engineering",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1000, 300]
+    }
+  ],
+  "connections": {
+    "October 1 Trigger (9am PT)": {
+      "main": [[{ "node": "Build Update Checklist", "type": "main", "index": 0 }]]
+    },
+    "Build Update Checklist": {
+      "main": [[{ "node": "Format Checklist Message", "type": "main", "index": 0 }]]
+    },
+    "Format Checklist Message": {
+      "main": [[{ "node": "Post to Slack #engineering", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Los_Angeles",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  },
+  "tags": [{ "name": "data-quality" }]
+}

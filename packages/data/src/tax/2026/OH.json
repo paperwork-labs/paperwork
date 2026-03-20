@@ -8,49 +8,49 @@
       "single": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 2500000,
-          "rate_bps": 275
+          "max_income_cents": 2605000,
+          "rate_bps": 0
         },
         {
-          "min_income_cents": 2500000,
+          "min_income_cents": 2605000,
           "max_income_cents": null,
-          "rate_bps": 312
+          "rate_bps": 275
         }
       ],
       "married_filing_jointly": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 2500000,
-          "rate_bps": 275
+          "max_income_cents": 2605000,
+          "rate_bps": 0
         },
         {
-          "min_income_cents": 2500000,
+          "min_income_cents": 2605000,
           "max_income_cents": null,
-          "rate_bps": 312
+          "rate_bps": 275
         }
       ],
       "married_filing_separately": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 2500000,
-          "rate_bps": 275
+          "max_income_cents": 2605000,
+          "rate_bps": 0
         },
         {
-          "min_income_cents": 2500000,
+          "min_income_cents": 2605000,
           "max_income_cents": null,
-          "rate_bps": 312
+          "rate_bps": 275
         }
       ],
       "head_of_household": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 2500000,
-          "rate_bps": 275
+          "max_income_cents": 2605000,
+          "rate_bps": 0
         },
         {
-          "min_income_cents": 2500000,
+          "min_income_cents": 2605000,
           "max_income_cents": null,
-          "rate_bps": 312
+          "rate_bps": 275
         }
       ]
     }
@@ -58,23 +58,23 @@
   "standard_deductions": [
     {
       "filing_status": "single",
-      "amount_cents": 375000
+      "amount_cents": 0
     },
     {
       "filing_status": "married_filing_jointly",
-      "amount_cents": 750000
+      "amount_cents": 0
     },
     {
       "filing_status": "married_filing_separately",
-      "amount_cents": 375000
+      "amount_cents": 0
     },
     {
       "filing_status": "head_of_household",
-      "amount_cents": 375000
+      "amount_cents": 0
     }
   ],
   "personal_exemption": {
-    "amount_cents": 0,
+    "amount_cents": 240000,
     "phases_out": false
   },
   "notable_credits": [],
@@ -84,7 +84,7 @@
   },
   "reciprocity": {
     "has_reciprocity": true,
-    "reciprocal_states": [
+    "states": [
       "IN",
       "KY",
       "MI",
@@ -93,22 +93,17 @@
     ]
   },
   "dor_url": "https://tax.ohio.gov",
-  "tax_foundation_url": "https://taxfoundation.org/location/ohio/",
+  "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2026",
   "verification": {
-    "last_verified": "2026-03-19T21:53:21.559Z",
+    "last_verified": "2026-03-20T06:19:13.612Z",
     "sources": [
       {
-        "name": "Tax Foundation - Ohio",
-        "url": "https://taxfoundation.org/location/ohio/",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
-      },
-      {
-        "name": "Ohio Department of Taxation",
-        "url": "https://tax.ohio.gov",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
+        "name": "Tax Foundation State Income Tax Rates and Brackets (multi-year XLSX, 2026 sheet)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T06:19:13.612Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

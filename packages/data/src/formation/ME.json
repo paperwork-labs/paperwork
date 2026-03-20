@@ -3,44 +3,44 @@
   "state_name": "Maine",
   "entity_type": "LLC",
   "sos_url": "https://www.maine.gov/sos/cec/corp",
-  "filing_office": "Maine Secretary of State, Division of Corporations",
+  "filing_office": "Maine Secretary of State",
   "fees": {
     "standard": {
       "amount_cents": 17500,
-      "description": "Standard LLC filing fee",
+      "description": "LLC Articles of Organization filing fee",
       "is_expedited": false,
-      "processing_days": 10
-    },
-    "expedited": {
-      "amount_cents": 50000,
-      "description": "Expedited LLC filing fee",
-      "is_expedited": true,
-      "processing_days": 1
+      "processing_days": 5
     }
   },
   "filing": {
     "primary": {
       "method": "portal",
       "url": "https://www.maine.gov/sos/cec/corp",
-      "notes": "Maine Secretary of State online filing portal"
+      "notes": "Maine Secretary of State online filing"
+    },
+    "fallback": {
+      "method": "mail",
+      "url": "https://www.maine.gov/sos/cec/corp",
+      "notes": "Mail filing to Maine Secretary of State"
     }
   },
   "requirements": {
     "articles_of_organization": true,
-    "operating_agreement_required": false,
+    "operating_agreement_required": true,
     "publication_required": false,
     "registered_agent_required": true,
     "annual_report_required": true,
+    "annual_report_fee_cents": 8500,
     "franchise_tax": false
   },
   "processing": {
-    "standard_days": 10,
-    "expedited_days": 1
+    "standard_days": 5
   },
   "naming": {
     "required_suffix": [
       "LLC",
-      "L.L.C."
+      "L.L.C.",
+      "Limited Liability Company"
     ],
     "restricted_words": [
       "Bank",
@@ -52,15 +52,25 @@
     "annual_report_due": "June 1"
   },
   "verification": {
-    "last_verified": "2026-03-19T22:16:00.545Z",
+    "last_verified": "2026-03-20T05:53:21.860Z",
     "sources": [
+      {
+        "name": "LLC Requirements by State (llcrequirements.com)",
+        "url": "https://llcrequirements.com/",
+        "accessed_at": "2026-03-20T05:53:21.860Z"
+      },
+      {
+        "name": "Discern Franchise Tax by State",
+        "url": "https://www.discern.com/resources/franchise-tax-information",
+        "accessed_at": "2026-03-20T05:53:21.860Z"
+      },
       {
         "name": "Maine Secretary of State",
         "url": "https://www.maine.gov/sos/cec/corp",
-        "accessed_at": "2026-03-19T22:16:00.545Z"
+        "accessed_at": "2026-03-20T05:53:21.860Z"
       }
     ],
-    "verified_by": "ai_extraction_fallback",
-    "confidence": 0.55
+    "verified_by": "deterministic_parse",
+    "confidence": 0.99
   }
 }

@@ -7,14 +7,8 @@
   "fees": {
     "standard": {
       "amount_cents": 5000,
-      "description": "Standard LLC filing fee",
+      "description": "LLC Articles of Organization filing fee",
       "is_expedited": false,
-      "processing_days": 30
-    },
-    "expedited": {
-      "amount_cents": 8500,
-      "description": "Expedited LLC filing fee",
-      "is_expedited": true,
       "processing_days": 7
     }
   },
@@ -22,7 +16,12 @@
     "primary": {
       "method": "portal",
       "url": "https://ecorp.azcc.gov",
-      "notes": "Arizona Corporation Commission eCorp portal"
+      "notes": "Arizona Corporation Commission online filing"
+    },
+    "fallback": {
+      "method": "mail",
+      "url": "https://azsos.gov/business",
+      "notes": "Mail filing to Arizona Corporation Commission"
     }
   },
   "requirements": {
@@ -34,32 +33,41 @@
     "franchise_tax": false
   },
   "processing": {
-    "standard_days": 30,
-    "expedited_days": 7
+    "standard_days": 7
   },
   "naming": {
     "required_suffix": [
       "LLC",
-      "L.L.C."
+      "L.L.C.",
+      "Limited Liability Company"
     ],
     "restricted_words": [
       "Bank",
-      "Trust",
       "Insurance",
-      "Corporation"
+      "Trust"
     ]
   },
   "compliance": {},
   "verification": {
-    "last_verified": "2026-03-19T22:15:15.608Z",
+    "last_verified": "2026-03-20T06:19:15.222Z",
     "sources": [
+      {
+        "name": "LLC Requirements by State (llcrequirements.com)",
+        "url": "https://llcrequirements.com/",
+        "accessed_at": "2026-03-20T06:19:15.222Z"
+      },
+      {
+        "name": "Discern Franchise Tax by State",
+        "url": "https://www.discern.com/resources/franchise-tax-information",
+        "accessed_at": "2026-03-20T06:19:15.222Z"
+      },
       {
         "name": "Arizona Secretary of State",
         "url": "https://azsos.gov/business",
-        "accessed_at": "2026-03-19T22:15:15.608Z"
+        "accessed_at": "2026-03-20T06:19:15.222Z"
       }
     ],
-    "verified_by": "ai_extraction_fallback",
-    "confidence": 0.55
+    "verified_by": "deterministic_parse",
+    "confidence": 0.99
   }
 }

@@ -8,29 +8,49 @@
       "single": [
         {
           "min_income_cents": 0,
+          "max_income_cents": 4750000,
+          "rate_bps": 470
+        },
+        {
+          "min_income_cents": 4750000,
           "max_income_cents": null,
-          "rate_bps": 590
+          "rate_bps": 565
         }
       ],
       "married_filing_jointly": [
         {
           "min_income_cents": 0,
+          "max_income_cents": 9500000,
+          "rate_bps": 470
+        },
+        {
+          "min_income_cents": 9500000,
           "max_income_cents": null,
-          "rate_bps": 590
+          "rate_bps": 565
         }
       ],
       "married_filing_separately": [
         {
           "min_income_cents": 0,
+          "max_income_cents": 4750000,
+          "rate_bps": 470
+        },
+        {
+          "min_income_cents": 4750000,
           "max_income_cents": null,
-          "rate_bps": 590
+          "rate_bps": 565
         }
       ],
       "head_of_household": [
         {
           "min_income_cents": 0,
+          "max_income_cents": 4750000,
+          "rate_bps": 470
+        },
+        {
+          "min_income_cents": 4750000,
           "max_income_cents": null,
-          "rate_bps": 590
+          "rate_bps": 565
         }
       ]
     }
@@ -38,19 +58,19 @@
   "standard_deductions": [
     {
       "filing_status": "single",
-      "amount_cents": 480000
+      "amount_cents": 1610000
     },
     {
       "filing_status": "married_filing_jointly",
-      "amount_cents": 960000
+      "amount_cents": 3220000
     },
     {
       "filing_status": "married_filing_separately",
-      "amount_cents": 480000
+      "amount_cents": 1610000
     },
     {
       "filing_status": "head_of_household",
-      "amount_cents": 720000
+      "amount_cents": 1610000
     }
   ],
   "personal_exemption": {
@@ -63,25 +83,23 @@
     "has_local_income_tax": false
   },
   "reciprocity": {
-    "has_reciprocity": false
+    "has_reciprocity": true,
+    "states": [
+      "ND"
+    ]
   },
   "dor_url": "https://mtrevenue.gov",
-  "tax_foundation_url": "https://taxfoundation.org/location/montana/",
+  "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2026",
   "verification": {
-    "last_verified": "2026-03-19T21:53:21.559Z",
+    "last_verified": "2026-03-20T06:19:13.611Z",
     "sources": [
       {
-        "name": "Tax Foundation - Montana",
-        "url": "https://taxfoundation.org/location/montana/",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
-      },
-      {
-        "name": "Montana Department of Revenue",
-        "url": "https://mtrevenue.gov",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
+        "name": "Tax Foundation State Income Tax Rates and Brackets (multi-year XLSX, 2026 sheet)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T06:19:13.611Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

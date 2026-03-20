@@ -98,19 +98,19 @@
   "standard_deductions": [
     {
       "filing_status": "single",
-      "amount_cents": 460000
+      "amount_cents": 800000
     },
     {
       "filing_status": "married_filing_jointly",
-      "amount_cents": 920000
+      "amount_cents": 1600000
     },
     {
       "filing_status": "married_filing_separately",
-      "amount_cents": 460000
+      "amount_cents": 800000
     },
     {
       "filing_status": "head_of_household",
-      "amount_cents": 460000
+      "amount_cents": 800000
     }
   ],
   "personal_exemption": {
@@ -123,25 +123,27 @@
     "has_local_income_tax": false
   },
   "reciprocity": {
-    "has_reciprocity": false
+    "has_reciprocity": true,
+    "states": [
+      "DC",
+      "KY",
+      "MD",
+      "PA",
+      "WV"
+    ]
   },
   "dor_url": "https://www.tax.virginia.gov",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
   "verification": {
-    "last_verified": "2026-03-19T23:16:52.542Z",
+    "last_verified": "2026-03-20T06:19:13.601Z",
     "sources": [
       {
-        "name": "Tax Foundation 2024 Rates",
-        "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
-        "accessed_at": "2026-03-19T23:16:52.542Z"
-      },
-      {
-        "name": "Virginia Department of Taxation",
-        "url": "https://www.tax.virginia.gov",
-        "accessed_at": "2026-03-19T23:16:52.542Z"
+        "name": "Tax Foundation State Income Tax Rates and Brackets (multi-year XLSX, 2024 sheet)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T06:19:13.601Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

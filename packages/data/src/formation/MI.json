@@ -3,26 +3,25 @@
   "state_name": "Michigan",
   "entity_type": "LLC",
   "sos_url": "https://www.michigan.gov/lara/bureau-list/cscl",
-  "filing_office": "Corporations, Securities & Commercial Licensing Bureau",
+  "filing_office": "Michigan Department of Licensing and Regulatory Affairs",
   "fees": {
     "standard": {
       "amount_cents": 5000,
-      "description": "Standard LLC filing fee",
+      "description": "LLC Articles of Organization filing fee",
       "is_expedited": false,
-      "processing_days": 10
-    },
-    "expedited": {
-      "amount_cents": 10000,
-      "description": "24-hour expedited filing",
-      "is_expedited": true,
-      "processing_days": 1
+      "processing_days": 5
     }
   },
   "filing": {
     "primary": {
       "method": "portal",
-      "url": "https://www.michigan.gov/lara",
-      "notes": "Michigan LARA online filing system"
+      "url": "https://www.michigan.gov/lara/bureau-list/cscl",
+      "notes": "Michigan Department of Licensing and Regulatory Affairs online filing"
+    },
+    "fallback": {
+      "method": "mail",
+      "url": "https://www.michigan.gov/lara/bureau-list/cscl",
+      "notes": "Mail filing to Michigan Department of Licensing and Regulatory Affairs"
     }
   },
   "requirements": {
@@ -31,16 +30,17 @@
     "publication_required": false,
     "registered_agent_required": true,
     "annual_report_required": true,
+    "annual_report_fee_cents": 2500,
     "franchise_tax": false
   },
   "processing": {
-    "standard_days": 10,
-    "expedited_days": 1
+    "standard_days": 5
   },
   "naming": {
     "required_suffix": [
       "LLC",
-      "L.L.C."
+      "L.L.C.",
+      "Limited Liability Company"
     ],
     "restricted_words": [
       "Bank",
@@ -52,15 +52,25 @@
     "annual_report_due": "February 15"
   },
   "verification": {
-    "last_verified": "2026-03-19T22:16:09.460Z",
+    "last_verified": "2026-03-20T05:53:21.860Z",
     "sources": [
+      {
+        "name": "LLC Requirements by State (llcrequirements.com)",
+        "url": "https://llcrequirements.com/",
+        "accessed_at": "2026-03-20T05:53:21.860Z"
+      },
+      {
+        "name": "Discern Franchise Tax by State",
+        "url": "https://www.discern.com/resources/franchise-tax-information",
+        "accessed_at": "2026-03-20T05:53:21.860Z"
+      },
       {
         "name": "Michigan Department of Licensing and Regulatory Affairs",
         "url": "https://www.michigan.gov/lara/bureau-list/cscl",
-        "accessed_at": "2026-03-19T22:16:09.460Z"
+        "accessed_at": "2026-03-20T05:53:21.860Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "deterministic_parse",
+    "confidence": 0.99
   }
 }

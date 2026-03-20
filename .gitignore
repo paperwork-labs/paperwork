@@ -59,6 +59,9 @@ docker-volumes/
 # Uploads (temporary file storage)
 uploads/
 
+# Data pipeline fixtures (large binary source files, not version-controlled)
+packages/data/scripts/fixtures/
+
 # Test / Coverage
 .coverage
 htmlcov/

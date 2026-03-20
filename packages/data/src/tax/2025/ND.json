@@ -8,11 +8,16 @@
       "single": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 4050000,
-          "rate_bps": 110
+          "max_income_cents": 4847500,
+          "rate_bps": 0
         },
         {
-          "min_income_cents": 4050000,
+          "min_income_cents": 4847500,
+          "max_income_cents": 24482500,
+          "rate_bps": 195
+        },
+        {
+          "min_income_cents": 24482500,
           "max_income_cents": null,
           "rate_bps": 250
         }
@@ -20,11 +25,16 @@
       "married_filing_jointly": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 4050000,
-          "rate_bps": 110
+          "max_income_cents": 8097500,
+          "rate_bps": 0
         },
         {
-          "min_income_cents": 4050000,
+          "min_income_cents": 8097500,
+          "max_income_cents": 29807500,
+          "rate_bps": 195
+        },
+        {
+          "min_income_cents": 29807500,
           "max_income_cents": null,
           "rate_bps": 250
         }
@@ -32,11 +42,16 @@
       "married_filing_separately": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 4050000,
-          "rate_bps": 110
+          "max_income_cents": 4847500,
+          "rate_bps": 0
         },
         {
-          "min_income_cents": 4050000,
+          "min_income_cents": 4847500,
+          "max_income_cents": 24482500,
+          "rate_bps": 195
+        },
+        {
+          "min_income_cents": 24482500,
           "max_income_cents": null,
           "rate_bps": 250
         }
@@ -44,11 +59,16 @@
       "head_of_household": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 4050000,
-          "rate_bps": 110
+          "max_income_cents": 4847500,
+          "rate_bps": 0
         },
         {
-          "min_income_cents": 4050000,
+          "min_income_cents": 4847500,
+          "max_income_cents": 24482500,
+          "rate_bps": 195
+        },
+        {
+          "min_income_cents": 24482500,
           "max_income_cents": null,
           "rate_bps": 250
         }
@@ -58,19 +78,19 @@
   "standard_deductions": [
     {
       "filing_status": "single",
-      "amount_cents": 1500000
+      "amount_cents": 1575000
     },
     {
       "filing_status": "married_filing_jointly",
-      "amount_cents": 3000000
+      "amount_cents": 2362500
     },
     {
       "filing_status": "married_filing_separately",
-      "amount_cents": 1500000
+      "amount_cents": 1575000
     },
     {
       "filing_status": "head_of_household",
-      "amount_cents": 2250000
+      "amount_cents": 1575000
     }
   ],
   "personal_exemption": {
@@ -83,25 +103,24 @@
     "has_local_income_tax": false
   },
   "reciprocity": {
-    "has_reciprocity": false
+    "has_reciprocity": true,
+    "states": [
+      "MN",
+      "MT"
+    ]
   },
   "dor_url": "https://www.tax.nd.gov",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
   "verification": {
-    "last_verified": "2026-03-19T23:01:14.173Z",
+    "last_verified": "2026-03-20T06:19:13.606Z",
     "sources": [
       {
-        "name": "Tax Foundation 2025 Rates",
-        "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
-        "accessed_at": "2026-03-19T23:01:14.173Z"
-      },
-      {
-        "name": "North Dakota Office of State Tax Commissioner",
-        "url": "https://www.tax.nd.gov",
-        "accessed_at": "2026-03-19T23:01:14.173Z"
+        "name": "Tax Foundation State Income Tax Rates and Brackets (multi-year XLSX, 2025 sheet)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T06:19:13.606Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

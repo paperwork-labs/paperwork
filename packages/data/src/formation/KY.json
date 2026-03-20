@@ -3,20 +3,25 @@
   "state_name": "Kentucky",
   "entity_type": "LLC",
   "sos_url": "https://www.sos.ky.gov/bus",
-  "filing_office": "Office of the Kentucky Secretary of State",
+  "filing_office": "Kentucky Secretary of State",
   "fees": {
     "standard": {
       "amount_cents": 4000,
-      "description": "Standard LLC filing fee",
+      "description": "LLC Articles of Organization filing fee",
       "is_expedited": false,
-      "processing_days": 15
+      "processing_days": 2
     }
   },
   "filing": {
     "primary": {
       "method": "portal",
-      "url": "https://sos.ky.gov/business/filings",
-      "notes": "Online filing through Kentucky Secretary of State portal"
+      "url": "https://www.sos.ky.gov/bus",
+      "notes": "Kentucky Secretary of State online filing"
+    },
+    "fallback": {
+      "method": "mail",
+      "url": "https://www.sos.ky.gov/bus",
+      "notes": "Mail filing to Kentucky Secretary of State"
     }
   },
   "requirements": {
@@ -25,15 +30,17 @@
     "publication_required": false,
     "registered_agent_required": true,
     "annual_report_required": true,
-    "franchise_tax": false
+    "annual_report_fee_cents": 1500,
+    "franchise_tax": true
   },
   "processing": {
-    "standard_days": 15
+    "standard_days": 2
   },
   "naming": {
     "required_suffix": [
       "LLC",
-      "L.L.C."
+      "L.L.C.",
+      "Limited Liability Company"
     ],
     "restricted_words": [
       "Bank",
@@ -45,15 +52,25 @@
     "annual_report_due": "June 30"
   },
   "verification": {
-    "last_verified": "2026-03-19T22:05:56.093Z",
+    "last_verified": "2026-03-20T05:53:21.860Z",
     "sources": [
+      {
+        "name": "LLC Requirements by State (llcrequirements.com)",
+        "url": "https://llcrequirements.com/",
+        "accessed_at": "2026-03-20T05:53:21.860Z"
+      },
+      {
+        "name": "Discern Franchise Tax by State",
+        "url": "https://www.discern.com/resources/franchise-tax-information",
+        "accessed_at": "2026-03-20T05:53:21.860Z"
+      },
       {
         "name": "Kentucky Secretary of State",
         "url": "https://www.sos.ky.gov/bus",
-        "accessed_at": "2026-03-19T22:05:56.093Z"
+        "accessed_at": "2026-03-20T05:53:21.860Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "deterministic_parse",
+    "confidence": 0.99
   }
 }

@@ -3,41 +3,29 @@
   "state_name": "Iowa",
   "tax_year": 2026,
   "income_tax": {
-    "type": "progressive",
-    "brackets": {
-      "single": [
-        {
-          "min_income_cents": 0,
-          "max_income_cents": null,
-          "rate_bps": 380
-        }
-      ],
-      "married_filing_jointly": [
-        {
-          "min_income_cents": 0,
-          "max_income_cents": null,
-          "rate_bps": 380
-        }
-      ],
-      "married_filing_separately": [
-        {
-          "min_income_cents": 0,
-          "max_income_cents": null,
-          "rate_bps": 380
-        }
-      ],
-      "head_of_household": [
-        {
-          "min_income_cents": 0,
-          "max_income_cents": null,
-          "rate_bps": 380
-        }
-      ]
-    }
+    "type": "flat",
+    "flat_rate_bps": 380
   },
-  "standard_deductions": [],
+  "standard_deductions": [
+    {
+      "filing_status": "single",
+      "amount_cents": 1610000
+    },
+    {
+      "filing_status": "married_filing_jointly",
+      "amount_cents": 3220000
+    },
+    {
+      "filing_status": "married_filing_separately",
+      "amount_cents": 1610000
+    },
+    {
+      "filing_status": "head_of_household",
+      "amount_cents": 1610000
+    }
+  ],
   "personal_exemption": {
-    "amount_cents": 0,
+    "amount_cents": 4000,
     "phases_out": false
   },
   "notable_credits": [],
@@ -46,25 +34,23 @@
     "has_local_income_tax": true
   },
   "reciprocity": {
-    "has_reciprocity": false
+    "has_reciprocity": true,
+    "states": [
+      "IL"
+    ]
   },
   "dor_url": "https://tax.iowa.gov",
-  "tax_foundation_url": "https://taxfoundation.org/location/iowa/",
+  "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2026",
   "verification": {
-    "last_verified": "2026-03-19T21:53:21.559Z",
+    "last_verified": "2026-03-20T06:19:13.610Z",
     "sources": [
       {
-        "name": "Tax Foundation - Iowa",
-        "url": "https://taxfoundation.org/location/iowa/",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
-      },
-      {
-        "name": "Iowa Department of Revenue",
-        "url": "https://tax.iowa.gov",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
+        "name": "Tax Foundation State Income Tax Rates and Brackets (multi-year XLSX, 2026 sheet)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T06:19:13.610Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

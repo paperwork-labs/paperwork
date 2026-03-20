@@ -6,7 +6,24 @@
     "type": "flat",
     "flat_rate_bps": 495
   },
-  "standard_deductions": [],
+  "standard_deductions": [
+    {
+      "filing_status": "single",
+      "amount_cents": 0
+    },
+    {
+      "filing_status": "married_filing_jointly",
+      "amount_cents": 0
+    },
+    {
+      "filing_status": "married_filing_separately",
+      "amount_cents": 0
+    },
+    {
+      "filing_status": "head_of_household",
+      "amount_cents": 0
+    }
+  ],
   "personal_exemption": {
     "amount_cents": 285000,
     "phases_out": false
@@ -17,25 +34,26 @@
     "has_local_income_tax": false
   },
   "reciprocity": {
-    "has_reciprocity": false
+    "has_reciprocity": true,
+    "states": [
+      "IA",
+      "KY",
+      "MI",
+      "WI"
+    ]
   },
   "dor_url": "https://tax.illinois.gov",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
   "verification": {
-    "last_verified": "2026-03-19T23:01:14.173Z",
+    "last_verified": "2026-03-20T06:19:13.604Z",
     "sources": [
       {
-        "name": "Tax Foundation 2025 Rates",
-        "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
-        "accessed_at": "2026-03-19T23:01:14.173Z"
-      },
-      {
-        "name": "Illinois Department of Revenue",
-        "url": "https://tax.illinois.gov",
-        "accessed_at": "2026-03-19T23:01:14.173Z"
+        "name": "Tax Foundation State Income Tax Rates and Brackets (multi-year XLSX, 2025 sheet)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T06:19:13.604Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }
