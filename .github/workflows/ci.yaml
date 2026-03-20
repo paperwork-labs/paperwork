@@ -53,6 +53,7 @@ jobs:
               - 'pnpm-workspace.yaml'
               - 'package.json'
               - 'pnpm-lock.yaml'
+              - 'turbo.json'
             infra:
               - 'infra/**'
               - 'Makefile'

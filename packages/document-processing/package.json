@@ -9,6 +9,10 @@
   "dependencies": {
     "@paperwork-labs/data": "workspace:*"
   },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "type-check": "tsc --noEmit"
+  },
   "devDependencies": {
     "typescript": "^5.6.0"
   }
