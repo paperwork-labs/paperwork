@@ -158,23 +158,23 @@
   "standard_deductions": [
     {
       "filing_status": "single",
-      "amount_cents": 8000
+      "amount_cents": 800000
     },
     {
       "filing_status": "married_filing_jointly",
-      "amount_cents": 16000
+      "amount_cents": 1600000
     },
     {
       "filing_status": "married_filing_separately",
-      "amount_cents": 8000
+      "amount_cents": 800000
     },
     {
       "filing_status": "head_of_household",
-      "amount_cents": 11200
+      "amount_cents": 1120000
     }
   ],
   "personal_exemption": {
-    "amount_cents": 1000,
+    "amount_cents": 100000,
     "phases_out": true
   },
   "notable_credits": [],

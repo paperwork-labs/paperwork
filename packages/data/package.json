@@ -25,6 +25,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit --project tsconfig.json && tsc --noEmit --project tsconfig.scripts.json",
     "extract:tax": "tsx scripts/extract-tax.ts",
-    "extract:formation": "tsx scripts/extract-formation.ts"
+    "extract:formation": "tsx scripts/extract-formation.ts",
+    "review": "tsx scripts/review.ts",
+    "review:approve": "tsx scripts/review.ts --approve"
   }
 }

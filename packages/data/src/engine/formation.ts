@@ -22,3 +22,8 @@ export function getFormationFee(state: StateCode, expedited = false): number | u
     ? rules.fees.expedited.amount_cents
     : rules.fees.standard.amount_cents;
 }
+
+/** Test helper / hot reload */
+export function clearFormationCache(): void {
+  formationCache.clear();
+}
