@@ -175,7 +175,7 @@
   ],
   "personal_exemption": {
     "amount_cents": 1500000,
-    "phases_out": false
+    "phases_out": true
   },
   "notable_credits": [],
   "notable_deductions": [],
@@ -188,17 +188,12 @@
   "dor_url": "https://portal.ct.gov/drs",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
   "verification": {
-    "last_verified": "2026-03-20T05:23:31.031Z",
+    "last_verified": "2026-03-20T06:13:41.136Z",
     "sources": [
       {
         "name": "Tax Foundation 2025 Rates and Brackets (XLSX)",
         "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
-        "accessed_at": "2026-03-20T05:23:31.031Z"
-      },
-      {
-        "name": "Connecticut Department of Revenue Services",
-        "url": "https://portal.ct.gov/drs",
-        "accessed_at": "2026-03-19T23:01:14.173Z"
+        "accessed_at": "2026-03-20T06:13:41.136Z"
       }
     ],
     "verified_by": "tax_foundation_parse",

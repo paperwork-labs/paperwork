@@ -39,12 +39,12 @@
   "dor_url": "https://tax.utah.gov",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
   "verification": {
-    "last_verified": "2026-03-20T05:23:31.038Z",
+    "last_verified": "2026-03-20T06:13:41.142Z",
     "sources": [
       {
         "name": "Tax Foundation 2025 Rates and Brackets (XLSX)",
         "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
-        "accessed_at": "2026-03-20T05:23:31.038Z"
+        "accessed_at": "2026-03-20T06:13:41.142Z"
       }
     ],
     "verified_by": "tax_foundation_parse",

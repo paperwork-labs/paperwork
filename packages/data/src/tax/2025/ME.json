@@ -97,12 +97,7 @@
     "amount_cents": 515000,
     "phases_out": false
   },
-  "notable_credits": [
-    {
-      "name": "Maine Earned Income Tax Credit",
-      "description": "A refundable tax credit for low to moderate income working individuals and families."
-    }
-  ],
+  "notable_credits": [],
   "notable_deductions": [],
   "local_taxes": {
     "has_local_income_tax": false
@@ -113,12 +108,12 @@
   "dor_url": "https://www.maine.gov/revenue",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
   "verification": {
-    "last_verified": "2026-03-20T05:23:31.034Z",
+    "last_verified": "2026-03-20T06:13:41.138Z",
     "sources": [
       {
         "name": "Tax Foundation 2025 Rates and Brackets (XLSX)",
         "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
-        "accessed_at": "2026-03-20T05:23:31.034Z"
+        "accessed_at": "2026-03-20T06:13:41.138Z"
       }
     ],
     "verified_by": "tax_foundation_parse",

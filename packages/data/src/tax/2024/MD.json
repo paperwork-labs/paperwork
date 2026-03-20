@@ -203,17 +203,23 @@
     "has_local_income_tax": true
   },
   "reciprocity": {
-    "has_reciprocity": false
+    "has_reciprocity": true,
+    "states": [
+      "DC",
+      "PA",
+      "VA",
+      "WV"
+    ]
   },
   "dor_url": "https://www.marylandtaxes.gov",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
   "verification": {
-    "last_verified": "2026-03-20T05:23:31.023Z",
+    "last_verified": "2026-03-20T06:13:41.131Z",
     "sources": [
       {
         "name": "Tax Foundation 2024 Rates and Brackets (XLSX)",
         "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
-        "accessed_at": "2026-03-20T05:23:31.023Z"
+        "accessed_at": "2026-03-20T06:13:41.131Z"
       }
     ],
     "verified_by": "tax_foundation_parse",

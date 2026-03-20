@@ -88,17 +88,12 @@
   "dor_url": "https://www.mass.gov/orgs/department-of-revenue",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2026",
   "verification": {
-    "last_verified": "2026-03-20T05:23:31.043Z",
+    "last_verified": "2026-03-20T06:13:41.145Z",
     "sources": [
       {
         "name": "Tax Foundation 2026 Rates and Brackets (XLSX)",
         "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
-        "accessed_at": "2026-03-20T05:23:31.043Z"
-      },
-      {
-        "name": "Massachusetts Department of Revenue",
-        "url": "https://www.mass.gov/orgs/department-of-revenue",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
+        "accessed_at": "2026-03-20T06:13:41.145Z"
       }
     ],
     "verified_by": "tax_foundation_parse",

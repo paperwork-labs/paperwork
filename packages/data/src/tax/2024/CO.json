@@ -31,7 +31,7 @@
   "notable_credits": [],
   "notable_deductions": [],
   "local_taxes": {
-    "has_local_income_tax": false
+    "has_local_income_tax": true
   },
   "reciprocity": {
     "has_reciprocity": false
@@ -39,17 +39,12 @@
   "dor_url": "https://tax.colorado.gov",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
   "verification": {
-    "last_verified": "2026-03-20T05:23:31.020Z",
+    "last_verified": "2026-03-20T06:13:41.128Z",
     "sources": [
       {
         "name": "Tax Foundation 2024 Rates and Brackets (XLSX)",
         "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
-        "accessed_at": "2026-03-20T05:23:31.020Z"
-      },
-      {
-        "name": "Colorado Department of Revenue",
-        "url": "https://tax.colorado.gov",
-        "accessed_at": "2026-03-19T23:16:52.542Z"
+        "accessed_at": "2026-03-20T06:13:41.128Z"
       }
     ],
     "verified_by": "tax_foundation_parse",

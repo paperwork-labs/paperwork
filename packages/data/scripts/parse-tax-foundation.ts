@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as XLSX from "xlsx";
@@ -41,6 +41,70 @@ const CODE_TO_FULL_NAME: Record<StateCode, string> = {
 
 // States with NO wage/salary income tax (capital gains or interest-only states treated as "none" for our purposes)
 const NO_INCOME_TAX_STATES: StateCode[] = ["AK", "FL", "NV", "NH", "SD", "TN", "TX", "WA", "WY"];
+
+// ─── Curated supplementary constants (all deterministic, no AI) ──────────────
+
+// Source: Tax Foundation, Federation of Tax Administrators, state DOR websites
+const DOR_URLS: Record<StateCode, string> = {
+  AL: "https://revenue.alabama.gov", AK: "https://tax.alaska.gov",
+  AZ: "https://azdor.gov", AR: "https://www.dfa.arkansas.gov/income-tax",
+  CA: "https://www.ftb.ca.gov", CO: "https://tax.colorado.gov",
+  CT: "https://portal.ct.gov/drs", DE: "https://revenue.delaware.gov",
+  FL: "https://floridarevenue.com", GA: "https://dor.georgia.gov",
+  HI: "https://tax.hawaii.gov", ID: "https://tax.idaho.gov",
+  IL: "https://tax.illinois.gov", IN: "https://www.in.gov/dor",
+  IA: "https://tax.iowa.gov", KS: "https://www.ksrevenue.gov",
+  KY: "https://revenue.ky.gov", LA: "https://revenue.louisiana.gov",
+  ME: "https://www.maine.gov/revenue", MD: "https://www.marylandtaxes.gov",
+  MA: "https://www.mass.gov/orgs/department-of-revenue", MI: "https://www.michigan.gov/treasury",
+  MN: "https://www.revenue.state.mn.us", MS: "https://www.dor.ms.gov",
+  MO: "https://dor.mo.gov", MT: "https://mtrevenue.gov",
+  NE: "https://revenue.nebraska.gov", NV: "https://tax.nv.gov",
+  NH: "https://www.revenue.nh.gov", NJ: "https://www.nj.gov/treasury/taxation",
+  NM: "https://www.tax.newmexico.gov", NY: "https://www.tax.ny.gov",
+  NC: "https://www.ncdor.gov", ND: "https://www.tax.nd.gov",
+  OH: "https://tax.ohio.gov", OK: "https://oklahoma.gov/tax.html",
+  OR: "https://www.oregon.gov/dor", PA: "https://www.revenue.pa.gov",
+  RI: "https://tax.ri.gov", SC: "https://dor.sc.gov",
+  SD: "https://dor.sd.gov", TN: "https://www.tn.gov/revenue.html",
+  TX: "https://comptroller.texas.gov", UT: "https://tax.utah.gov",
+  VT: "https://tax.vermont.gov", VA: "https://www.tax.virginia.gov",
+  WA: "https://dor.wa.gov", WV: "https://tax.wv.gov",
+  WI: "https://www.revenue.wi.gov", WY: "https://revenue.wyo.gov",
+  DC: "https://otr.cfo.dc.gov",
+};
+
+// Source: Tax Foundation "Local Income Taxes in 2025" + state DOR websites
+// These states authorize cities/counties to levy local income taxes
+const LOCAL_INCOME_TAX_STATES: Set<StateCode> = new Set([
+  "AL", "CO", "DE", "IN", "IA", "KY", "MD", "MI", "MO", "NJ", "NY", "OH", "OR", "PA", "WV",
+]);
+
+// Source: Federation of Tax Administrators, state DOR reciprocity pages
+// Maps each state to the list of states it has reciprocal agreements with
+const RECIPROCITY_MAP: Partial<Record<StateCode, StateCode[]>> = {
+  DC: ["MD", "VA"],
+  IL: ["IA", "KY", "MI", "WI"],
+  IN: ["KY", "MI", "OH", "PA", "WI"],
+  IA: ["IL"],
+  KY: ["IL", "IN", "MI", "OH", "VA", "WV", "WI"],
+  MD: ["DC", "PA", "VA", "WV"],
+  MI: ["IL", "IN", "KY", "MN", "OH", "WI"],
+  MN: ["MI", "ND"],
+  MT: ["ND"],
+  ND: ["MN", "MT"],
+  NJ: ["PA"],
+  OH: ["IN", "KY", "MI", "PA", "WV"],
+  PA: ["IN", "MD", "NJ", "OH", "VA", "WV"],
+  VA: ["DC", "KY", "MD", "PA", "WV"],
+  WV: ["KY", "MD", "OH", "PA", "VA"],
+  WI: ["IL", "IN", "KY", "MI", "MN"],
+};
+
+// Source: State tax codes — states where personal exemption/credit phases out at higher incomes
+const PERSONAL_EXEMPTION_PHASES_OUT: Set<StateCode> = new Set([
+  "CA", "CT", "NY", "OR", "RI",
+]);
 
 type Bracket = { min_income_cents: number; max_income_cents: number | null; rate_bps: number };
 
@@ -246,7 +310,7 @@ function determineTaxType(data: RawStateData): "none" | "flat" | "progressive" {
   return "progressive";
 }
 
-function buildStateTaxJson(data: RawStateData, taxYear: number, existingJson: any | null) {
+function buildStateTaxJson(data: RawStateData, taxYear: number) {
   const taxType = determineTaxType(data);
   const now = new Date().toISOString();
 
@@ -259,7 +323,6 @@ function buildStateTaxJson(data: RawStateData, taxYear: number, existingJson: an
       flat_rate_bps: data.singleBrackets[0].rate_bps,
     };
   } else {
-    // MFS = single brackets, HoH = single brackets (correct for ~45 states)
     incomeTax = {
       type: "progressive",
       brackets: {
@@ -273,7 +336,6 @@ function buildStateTaxJson(data: RawStateData, taxYear: number, existingJson: an
 
   const stdDedSingle = dollarsToCents(data.stdDeductionSingle);
   const stdDedCouple = dollarsToCents(data.stdDeductionCouple);
-  // MFS deduction typically = single; HoH varies but defaults to single
   const stdDedMfs = stdDedSingle;
   const stdDedHoh = stdDedSingle;
 
@@ -285,15 +347,9 @@ function buildStateTaxJson(data: RawStateData, taxYear: number, existingJson: an
   ];
 
   const personalExemptionCents = dollarsToCents(data.personalExemptionSingle);
-
-  // Preserve supplementary fields from existing JSON (AI-extracted)
-  const existing = existingJson ?? {};
-  const notableCredits = existing.notable_credits ?? [];
-  const notableDeductions = existing.notable_deductions ?? [];
-  const localTaxes = existing.local_taxes ?? { has_local_income_tax: false };
-  const reciprocity = existing.reciprocity ?? { has_reciprocity: false };
-  const dorUrl = existing.dor_url ?? `https://www.google.com/search?q=${encodeURIComponent(CODE_TO_FULL_NAME[data.code] + " department of revenue")}`;
-  const notes = existing.notes;
+  const hasLocalTax = LOCAL_INCOME_TAX_STATES.has(data.code);
+  const reciprocityStates = RECIPROCITY_MAP[data.code];
+  const phasesOut = PERSONAL_EXEMPTION_PHASES_OUT.has(data.code);
 
   const tfUrlBase = "https://taxfoundation.org/data/all/state/state-income-tax-rates";
   const tfUrl = taxYear === 2025 ? tfUrlBase : `${tfUrlBase}-${taxYear}`;
@@ -306,18 +362,16 @@ function buildStateTaxJson(data: RawStateData, taxYear: number, existingJson: an
     standard_deductions: standardDeductions,
     personal_exemption: {
       amount_cents: personalExemptionCents,
-      phases_out: existing.personal_exemption?.phases_out ?? false,
-      ...(existing.personal_exemption?.phase_out_threshold_cents != null
-        ? { phase_out_threshold_cents: existing.personal_exemption.phase_out_threshold_cents }
-        : {}),
+      phases_out: phasesOut,
     },
-    notable_credits: notableCredits,
-    notable_deductions: notableDeductions,
-    local_taxes: localTaxes,
-    reciprocity: reciprocity,
-    dor_url: dorUrl,
+    notable_credits: [],
+    notable_deductions: [],
+    local_taxes: { has_local_income_tax: hasLocalTax },
+    reciprocity: reciprocityStates
+      ? { has_reciprocity: true, states: reciprocityStates }
+      : { has_reciprocity: false },
+    dor_url: DOR_URLS[data.code],
     tax_foundation_url: tfUrl,
-    ...(notes ? { notes } : {}),
     verification: {
       last_verified: now,
       sources: [
@@ -326,7 +380,6 @@ function buildStateTaxJson(data: RawStateData, taxYear: number, existingJson: an
           url: "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
           accessed_at: now,
         },
-        ...(existing.verification?.sources?.filter((s: any) => s.name?.includes("Department")) ?? []),
       ],
       verified_by: "tax_foundation_parse" as const,
       confidence: 0.99,
@@ -377,16 +430,8 @@ async function main() {
         continue;
       }
 
-      // Load existing JSON for supplementary fields
       const existingPath = join(outputDir, `${stateCode}.json`);
-      let existingJson: any = null;
-      if (existsSync(existingPath)) {
-        try {
-          existingJson = JSON.parse(readFileSync(existingPath, "utf8"));
-        } catch { /* start fresh */ }
-      }
-
-      const result = buildStateTaxJson(data, taxYear, existingJson);
+      const result = buildStateTaxJson(data, taxYear);
 
       // Validate against schema
       try {

@@ -35,7 +35,7 @@
   },
   "reciprocity": {
     "has_reciprocity": true,
-    "reciprocal_states": [
+    "states": [
       "IN",
       "MD",
       "NJ",
@@ -47,17 +47,12 @@
   "dor_url": "https://www.revenue.pa.gov",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
   "verification": {
-    "last_verified": "2026-03-20T05:23:31.027Z",
+    "last_verified": "2026-03-20T06:13:41.133Z",
     "sources": [
       {
         "name": "Tax Foundation 2024 Rates and Brackets (XLSX)",
         "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
-        "accessed_at": "2026-03-20T05:23:31.027Z"
-      },
-      {
-        "name": "Pennsylvania Department of Revenue",
-        "url": "https://www.revenue.pa.gov",
-        "accessed_at": "2026-03-19T23:16:52.542Z"
+        "accessed_at": "2026-03-20T06:13:41.133Z"
       }
     ],
     "verified_by": "tax_foundation_parse",
