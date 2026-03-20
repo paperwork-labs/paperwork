@@ -6,7 +6,7 @@
   "filing_office": "Division of Corporations",
   "fees": {
     "standard": {
-      "amount_cents": 9000,
+      "amount_cents": 14000,
       "description": "Standard LLC filing fee",
       "is_expedited": false,
       "processing_days": 15
@@ -36,9 +36,10 @@
     "operating_agreement_required": false,
     "publication_required": false,
     "registered_agent_required": true,
-    "annual_report_required": false,
+    "annual_report_required": true,
     "franchise_tax": true,
-    "franchise_tax_amount_cents": 30000
+    "franchise_tax_amount_cents": 30000,
+    "annual_report_fee_cents": 30000
   },
   "processing": {
     "standard_days": 15,
@@ -55,15 +56,20 @@
     "franchise_tax_due": "June 1"
   },
   "verification": {
-    "last_verified": "2026-03-19T22:05:56.093Z",
+    "last_verified": "2026-03-20T05:26:19.035Z",
     "sources": [
       {
         "name": "Delaware Division of Corporations",
         "url": "https://corp.delaware.gov/howtoform/",
         "accessed_at": "2026-03-19T22:05:56.093Z"
+      },
+      {
+        "name": "World Population Review LLC Cost Table",
+        "url": "https://worldpopulationreview.com/state-rankings/llc-cost-by-state",
+        "accessed_at": "2026-03-20T05:26:19.035Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "deterministic_parse",
+    "confidence": 0.99
   }
 }

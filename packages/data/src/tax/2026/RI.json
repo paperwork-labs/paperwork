@@ -8,16 +8,16 @@
       "single": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 667500,
+          "max_income_cents": 8205000,
           "rate_bps": 375
         },
         {
-          "min_income_cents": 667500,
-          "max_income_cents": 1500000,
+          "min_income_cents": 8205000,
+          "max_income_cents": 18645000,
           "rate_bps": 475
         },
         {
-          "min_income_cents": 1500000,
+          "min_income_cents": 18645000,
           "max_income_cents": null,
           "rate_bps": 599
         }
@@ -25,16 +25,16 @@
       "married_filing_jointly": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 667500,
+          "max_income_cents": 8205000,
           "rate_bps": 375
         },
         {
-          "min_income_cents": 667500,
-          "max_income_cents": 1500000,
+          "min_income_cents": 8205000,
+          "max_income_cents": 18645000,
           "rate_bps": 475
         },
         {
-          "min_income_cents": 1500000,
+          "min_income_cents": 18645000,
           "max_income_cents": null,
           "rate_bps": 599
         }
@@ -42,16 +42,16 @@
       "married_filing_separately": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 667500,
+          "max_income_cents": 8205000,
           "rate_bps": 375
         },
         {
-          "min_income_cents": 667500,
-          "max_income_cents": 1500000,
+          "min_income_cents": 8205000,
+          "max_income_cents": 18645000,
           "rate_bps": 475
         },
         {
-          "min_income_cents": 1500000,
+          "min_income_cents": 18645000,
           "max_income_cents": null,
           "rate_bps": 599
         }
@@ -59,16 +59,16 @@
       "head_of_household": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 667500,
+          "max_income_cents": 8205000,
           "rate_bps": 375
         },
         {
-          "min_income_cents": 667500,
-          "max_income_cents": 1500000,
+          "min_income_cents": 8205000,
+          "max_income_cents": 18645000,
           "rate_bps": 475
         },
         {
-          "min_income_cents": 1500000,
+          "min_income_cents": 18645000,
           "max_income_cents": null,
           "rate_bps": 599
         }
@@ -78,23 +78,23 @@
   "standard_deductions": [
     {
       "filing_status": "single",
-      "amount_cents": 875000
+      "amount_cents": 1120000
     },
     {
       "filing_status": "married_filing_jointly",
-      "amount_cents": 1750000
+      "amount_cents": 2240000
     },
     {
       "filing_status": "married_filing_separately",
-      "amount_cents": 875000
+      "amount_cents": 1120000
     },
     {
       "filing_status": "head_of_household",
-      "amount_cents": 1250000
+      "amount_cents": 1120000
     }
   ],
   "personal_exemption": {
-    "amount_cents": 400000,
+    "amount_cents": 525000,
     "phases_out": true
   },
   "notable_credits": [],
@@ -106,22 +106,17 @@
     "has_reciprocity": false
   },
   "dor_url": "https://tax.ri.gov",
-  "tax_foundation_url": "https://taxfoundation.org/location/rhode-island/",
+  "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2026",
   "verification": {
-    "last_verified": "2026-03-19T21:53:21.559Z",
+    "last_verified": "2026-03-20T05:23:31.046Z",
     "sources": [
       {
-        "name": "Tax Foundation - Rhode Island",
-        "url": "https://taxfoundation.org/location/rhode-island/",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
-      },
-      {
-        "name": "Rhode Island Division of Taxation",
-        "url": "https://tax.ri.gov",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
+        "name": "Tax Foundation 2026 Rates and Brackets (XLSX)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T05:23:31.046Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

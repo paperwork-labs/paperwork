@@ -13,6 +13,21 @@
         },
         {
           "min_income_cents": 1000000,
+          "max_income_cents": 2500000,
+          "rate_bps": 296
+        },
+        {
+          "min_income_cents": 2500000,
+          "max_income_cents": 4000000,
+          "rate_bps": 333
+        },
+        {
+          "min_income_cents": 4000000,
+          "max_income_cents": 6000000,
+          "rate_bps": 444
+        },
+        {
+          "min_income_cents": 6000000,
           "max_income_cents": null,
           "rate_bps": 482
         }
@@ -25,6 +40,21 @@
         },
         {
           "min_income_cents": 1000000,
+          "max_income_cents": 2500000,
+          "rate_bps": 296
+        },
+        {
+          "min_income_cents": 2500000,
+          "max_income_cents": 4000000,
+          "rate_bps": 333
+        },
+        {
+          "min_income_cents": 4000000,
+          "max_income_cents": 6000000,
+          "rate_bps": 444
+        },
+        {
+          "min_income_cents": 6000000,
           "max_income_cents": null,
           "rate_bps": 482
         }
@@ -37,6 +67,21 @@
         },
         {
           "min_income_cents": 1000000,
+          "max_income_cents": 2500000,
+          "rate_bps": 296
+        },
+        {
+          "min_income_cents": 2500000,
+          "max_income_cents": 4000000,
+          "rate_bps": 333
+        },
+        {
+          "min_income_cents": 4000000,
+          "max_income_cents": 6000000,
+          "rate_bps": 444
+        },
+        {
+          "min_income_cents": 6000000,
           "max_income_cents": null,
           "rate_bps": 482
         }
@@ -49,6 +94,21 @@
         },
         {
           "min_income_cents": 1000000,
+          "max_income_cents": 2500000,
+          "rate_bps": 296
+        },
+        {
+          "min_income_cents": 2500000,
+          "max_income_cents": 4000000,
+          "rate_bps": 333
+        },
+        {
+          "min_income_cents": 4000000,
+          "max_income_cents": 6000000,
+          "rate_bps": 444
+        },
+        {
+          "min_income_cents": 6000000,
           "max_income_cents": null,
           "rate_bps": 482
         }
@@ -58,23 +118,23 @@
   "standard_deductions": [
     {
       "filing_status": "single",
-      "amount_cents": 300000
+      "amount_cents": 0
     },
     {
       "filing_status": "married_filing_jointly",
-      "amount_cents": 600000
+      "amount_cents": 0
     },
     {
       "filing_status": "married_filing_separately",
-      "amount_cents": 300000
+      "amount_cents": 0
     },
     {
       "filing_status": "head_of_household",
-      "amount_cents": 450000
+      "amount_cents": 0
     }
   ],
   "personal_exemption": {
-    "amount_cents": 20000,
+    "amount_cents": 200000,
     "phases_out": false
   },
   "notable_credits": [],
@@ -86,14 +146,14 @@
     "has_reciprocity": false
   },
   "dor_url": "https://tax.wv.gov",
-  "tax_foundation_url": "https://taxfoundation.org/location/west-virginia/",
+  "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2026",
   "verification": {
-    "last_verified": "2026-03-19T21:53:21.559Z",
+    "last_verified": "2026-03-20T05:23:31.047Z",
     "sources": [
       {
-        "name": "Tax Foundation - West Virginia",
-        "url": "https://taxfoundation.org/location/west-virginia/",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
+        "name": "Tax Foundation 2026 Rates and Brackets (XLSX)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T05:23:31.047Z"
       },
       {
         "name": "West Virginia State Tax Department",
@@ -101,7 +161,7 @@
         "accessed_at": "2026-03-19T21:53:21.559Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

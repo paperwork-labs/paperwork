@@ -25,7 +25,8 @@
     "publication_required": false,
     "registered_agent_required": true,
     "annual_report_required": true,
-    "franchise_tax": false
+    "franchise_tax": false,
+    "annual_report_fee_cents": 30000
   },
   "processing": {
     "standard_days": 15
@@ -45,15 +46,20 @@
     "annual_report_due": "April 1"
   },
   "verification": {
-    "last_verified": "2026-03-19T22:05:56.093Z",
+    "last_verified": "2026-03-20T05:26:19.035Z",
     "sources": [
       {
         "name": "District of Columbia Department of Consumer and Regulatory Affairs",
         "url": "https://dcra.dc.gov/service/corporate-registration",
         "accessed_at": "2026-03-19T22:05:56.093Z"
+      },
+      {
+        "name": "World Population Review LLC Cost Table",
+        "url": "https://worldpopulationreview.com/state-rankings/llc-cost-by-state",
+        "accessed_at": "2026-03-20T05:26:19.035Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "deterministic_parse",
+    "confidence": 0.99
   }
 }

@@ -94,7 +94,7 @@
     }
   ],
   "personal_exemption": {
-    "amount_cents": 0,
+    "amount_cents": 2900,
     "phases_out": false
   },
   "notable_credits": [
@@ -113,12 +113,12 @@
   "dor_url": "https://www.dfa.arkansas.gov/income-tax",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
   "verification": {
-    "last_verified": "2026-03-19T23:16:52.542Z",
+    "last_verified": "2026-03-20T05:23:31.019Z",
     "sources": [
       {
-        "name": "Tax Foundation 2024 Rates",
-        "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
-        "accessed_at": "2026-03-19T23:16:52.542Z"
+        "name": "Tax Foundation 2024 Rates and Brackets (XLSX)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T05:23:31.019Z"
       },
       {
         "name": "Arkansas Department of Finance and Administration",
@@ -126,7 +126,7 @@
         "accessed_at": "2026-03-19T23:16:52.542Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

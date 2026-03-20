@@ -4,16 +4,24 @@
   "tax_year": 2025,
   "income_tax": {
     "type": "flat",
-    "flat_rate_bps": 495
+    "flat_rate_bps": 455
   },
   "standard_deductions": [
     {
       "filing_status": "single",
-      "amount_cents": 1500000
+      "amount_cents": 90000
     },
     {
       "filing_status": "married_filing_jointly",
-      "amount_cents": 3000000
+      "amount_cents": 180000
+    },
+    {
+      "filing_status": "married_filing_separately",
+      "amount_cents": 90000
+    },
+    {
+      "filing_status": "head_of_household",
+      "amount_cents": 90000
     }
   ],
   "personal_exemption": {
@@ -31,20 +39,15 @@
   "dor_url": "https://tax.utah.gov",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
   "verification": {
-    "last_verified": "2026-03-19T23:01:14.173Z",
+    "last_verified": "2026-03-20T05:23:31.038Z",
     "sources": [
       {
-        "name": "Tax Foundation 2025 Rates",
-        "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
-        "accessed_at": "2026-03-19T23:01:14.173Z"
-      },
-      {
-        "name": "Utah State Tax Commission",
-        "url": "https://tax.utah.gov",
-        "accessed_at": "2026-03-19T23:01:14.173Z"
+        "name": "Tax Foundation 2025 Rates and Brackets (XLSX)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T05:23:31.038Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

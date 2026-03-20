@@ -22,7 +22,9 @@ export type VerificationMeta = {
     | "ai_extraction"
     | "ai_extraction_fallback"
     | "human_review"
-    | "automated_validation";
+    | "automated_validation"
+    | "tax_foundation_parse"
+    | "deterministic_parse";
   confidence: number;
 };
 

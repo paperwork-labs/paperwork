@@ -8,16 +8,16 @@
       "single": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 2680000,
+          "max_income_cents": 2739900,
           "rate_bps": 580
         },
         {
-          "min_income_cents": 2680000,
-          "max_income_cents": 6345000,
+          "min_income_cents": 2739900,
+          "max_income_cents": 6484900,
           "rate_bps": 675
         },
         {
-          "min_income_cents": 6345000,
+          "min_income_cents": 6484900,
           "max_income_cents": null,
           "rate_bps": 715
         }
@@ -25,16 +25,16 @@
       "married_filing_jointly": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 2680000,
+          "max_income_cents": 5484900,
           "rate_bps": 580
         },
         {
-          "min_income_cents": 2680000,
-          "max_income_cents": 6345000,
+          "min_income_cents": 5484900,
+          "max_income_cents": 12974900,
           "rate_bps": 675
         },
         {
-          "min_income_cents": 6345000,
+          "min_income_cents": 12974900,
           "max_income_cents": null,
           "rate_bps": 715
         }
@@ -42,16 +42,16 @@
       "married_filing_separately": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 2680000,
+          "max_income_cents": 2739900,
           "rate_bps": 580
         },
         {
-          "min_income_cents": 2680000,
-          "max_income_cents": 6345000,
+          "min_income_cents": 2739900,
+          "max_income_cents": 6484900,
           "rate_bps": 675
         },
         {
-          "min_income_cents": 6345000,
+          "min_income_cents": 6484900,
           "max_income_cents": null,
           "rate_bps": 715
         }
@@ -59,16 +59,16 @@
       "head_of_household": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 2680000,
+          "max_income_cents": 2739900,
           "rate_bps": 580
         },
         {
-          "min_income_cents": 2680000,
-          "max_income_cents": 6345000,
+          "min_income_cents": 2739900,
+          "max_income_cents": 6484900,
           "rate_bps": 675
         },
         {
-          "min_income_cents": 6345000,
+          "min_income_cents": 6484900,
           "max_income_cents": null,
           "rate_bps": 715
         }
@@ -94,7 +94,7 @@
     }
   ],
   "personal_exemption": {
-    "amount_cents": 51500,
+    "amount_cents": 515000,
     "phases_out": false
   },
   "notable_credits": [
@@ -113,20 +113,15 @@
   "dor_url": "https://www.maine.gov/revenue",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
   "verification": {
-    "last_verified": "2026-03-19T23:01:14.173Z",
+    "last_verified": "2026-03-20T05:23:31.034Z",
     "sources": [
       {
-        "name": "Tax Foundation 2025 Rates",
-        "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
-        "accessed_at": "2026-03-19T23:01:14.173Z"
-      },
-      {
-        "name": "Maine Revenue Services",
-        "url": "https://www.maine.gov/revenue",
-        "accessed_at": "2026-03-19T23:01:14.173Z"
+        "name": "Tax Foundation 2025 Rates and Brackets (XLSX)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T05:23:31.034Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

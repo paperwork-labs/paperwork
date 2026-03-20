@@ -23,6 +23,8 @@ export const VerificationMetaSchema = z.object({
     "ai_extraction_fallback",
     "human_review",
     "automated_validation",
+    "tax_foundation_parse",
+    "deterministic_parse",
   ]),
   confidence: z.number().min(0).max(1),
 });

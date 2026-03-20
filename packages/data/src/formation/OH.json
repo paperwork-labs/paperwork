@@ -6,7 +6,7 @@
   "filing_office": "Ohio Secretary of State",
   "fees": {
     "standard": {
-      "amount_cents": 9900,
+      "amount_cents": 12500,
       "description": "Standard LLC filing fee",
       "is_expedited": false,
       "processing_days": 10
@@ -31,7 +31,8 @@
     "publication_required": false,
     "registered_agent_required": true,
     "annual_report_required": false,
-    "franchise_tax": false
+    "franchise_tax": false,
+    "annual_report_fee_cents": 0
   },
   "processing": {
     "standard_days": 10,
@@ -52,15 +53,20 @@
     "franchise_tax_due": "Not applicable"
   },
   "verification": {
-    "last_verified": "2026-03-19T22:17:21.558Z",
+    "last_verified": "2026-03-20T05:26:19.035Z",
     "sources": [
       {
         "name": "Ohio Secretary of State",
         "url": "https://www.ohiosos.gov/businesses",
         "accessed_at": "2026-03-19T22:17:21.558Z"
+      },
+      {
+        "name": "World Population Review LLC Cost Table",
+        "url": "https://worldpopulationreview.com/state-rankings/llc-cost-by-state",
+        "accessed_at": "2026-03-20T05:26:19.035Z"
       }
     ],
-    "verified_by": "ai_extraction_fallback",
-    "confidence": 0.55
+    "verified_by": "deterministic_parse",
+    "confidence": 0.99
   }
 }

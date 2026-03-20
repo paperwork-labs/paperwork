@@ -13,8 +13,33 @@
         },
         {
           "min_income_cents": 1000000,
-          "max_income_cents": null,
+          "max_income_cents": 4000000,
+          "rate_bps": 600
+        },
+        {
+          "min_income_cents": 4000000,
+          "max_income_cents": 6000000,
+          "rate_bps": 650
+        },
+        {
+          "min_income_cents": 6000000,
+          "max_income_cents": 25000000,
           "rate_bps": 850
+        },
+        {
+          "min_income_cents": 25000000,
+          "max_income_cents": 50000000,
+          "rate_bps": 925
+        },
+        {
+          "min_income_cents": 50000000,
+          "max_income_cents": 100000000,
+          "rate_bps": 975
+        },
+        {
+          "min_income_cents": 100000000,
+          "max_income_cents": null,
+          "rate_bps": 1075
         }
       ],
       "married_filing_jointly": [
@@ -25,8 +50,33 @@
         },
         {
           "min_income_cents": 1000000,
-          "max_income_cents": null,
+          "max_income_cents": 4000000,
+          "rate_bps": 600
+        },
+        {
+          "min_income_cents": 4000000,
+          "max_income_cents": 6000000,
+          "rate_bps": 650
+        },
+        {
+          "min_income_cents": 6000000,
+          "max_income_cents": 25000000,
           "rate_bps": 850
+        },
+        {
+          "min_income_cents": 25000000,
+          "max_income_cents": 50000000,
+          "rate_bps": 925
+        },
+        {
+          "min_income_cents": 50000000,
+          "max_income_cents": 100000000,
+          "rate_bps": 975
+        },
+        {
+          "min_income_cents": 100000000,
+          "max_income_cents": null,
+          "rate_bps": 1075
         }
       ],
       "married_filing_separately": [
@@ -37,8 +87,33 @@
         },
         {
           "min_income_cents": 1000000,
-          "max_income_cents": null,
+          "max_income_cents": 4000000,
+          "rate_bps": 600
+        },
+        {
+          "min_income_cents": 4000000,
+          "max_income_cents": 6000000,
+          "rate_bps": 650
+        },
+        {
+          "min_income_cents": 6000000,
+          "max_income_cents": 25000000,
           "rate_bps": 850
+        },
+        {
+          "min_income_cents": 25000000,
+          "max_income_cents": 50000000,
+          "rate_bps": 925
+        },
+        {
+          "min_income_cents": 50000000,
+          "max_income_cents": 100000000,
+          "rate_bps": 975
+        },
+        {
+          "min_income_cents": 100000000,
+          "max_income_cents": null,
+          "rate_bps": 1075
         }
       ],
       "head_of_household": [
@@ -49,8 +124,33 @@
         },
         {
           "min_income_cents": 1000000,
-          "max_income_cents": null,
+          "max_income_cents": 4000000,
+          "rate_bps": 600
+        },
+        {
+          "min_income_cents": 4000000,
+          "max_income_cents": 6000000,
+          "rate_bps": 650
+        },
+        {
+          "min_income_cents": 6000000,
+          "max_income_cents": 25000000,
           "rate_bps": 850
+        },
+        {
+          "min_income_cents": 25000000,
+          "max_income_cents": 50000000,
+          "rate_bps": 925
+        },
+        {
+          "min_income_cents": 50000000,
+          "max_income_cents": 100000000,
+          "rate_bps": 975
+        },
+        {
+          "min_income_cents": 100000000,
+          "max_income_cents": null,
+          "rate_bps": 1075
         }
       ]
     }
@@ -86,22 +186,17 @@
     "has_reciprocity": false
   },
   "dor_url": "https://otr.cfo.dc.gov",
-  "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2026/",
+  "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2026",
   "verification": {
-    "last_verified": "2026-03-19T22:05:31.984Z",
+    "last_verified": "2026-03-20T05:23:31.048Z",
     "sources": [
       {
-        "name": "Tax Foundation - State Income Tax Rates 2026 (includes DC)",
-        "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2026/",
-        "accessed_at": "2026-03-19T22:05:31.984Z"
-      },
-      {
-        "name": "District of Columbia Office of Tax and Revenue",
-        "url": "https://otr.cfo.dc.gov",
-        "accessed_at": "2026-03-19T22:05:31.984Z"
+        "name": "Tax Foundation 2026 Rates and Brackets (XLSX)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T05:23:31.048Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

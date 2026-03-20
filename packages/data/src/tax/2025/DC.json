@@ -9,10 +9,35 @@
         {
           "min_income_cents": 0,
           "max_income_cents": 1000000,
-          "rate_bps": 660
+          "rate_bps": 400
         },
         {
           "min_income_cents": 1000000,
+          "max_income_cents": 4000000,
+          "rate_bps": 600
+        },
+        {
+          "min_income_cents": 4000000,
+          "max_income_cents": 6000000,
+          "rate_bps": 650
+        },
+        {
+          "min_income_cents": 6000000,
+          "max_income_cents": 25000000,
+          "rate_bps": 850
+        },
+        {
+          "min_income_cents": 25000000,
+          "max_income_cents": 50000000,
+          "rate_bps": 925
+        },
+        {
+          "min_income_cents": 50000000,
+          "max_income_cents": 100000000,
+          "rate_bps": 975
+        },
+        {
+          "min_income_cents": 100000000,
           "max_income_cents": null,
           "rate_bps": 1075
         }
@@ -21,10 +46,35 @@
         {
           "min_income_cents": 0,
           "max_income_cents": 1000000,
-          "rate_bps": 660
+          "rate_bps": 400
         },
         {
           "min_income_cents": 1000000,
+          "max_income_cents": 4000000,
+          "rate_bps": 600
+        },
+        {
+          "min_income_cents": 4000000,
+          "max_income_cents": 6000000,
+          "rate_bps": 650
+        },
+        {
+          "min_income_cents": 6000000,
+          "max_income_cents": 25000000,
+          "rate_bps": 850
+        },
+        {
+          "min_income_cents": 25000000,
+          "max_income_cents": 50000000,
+          "rate_bps": 925
+        },
+        {
+          "min_income_cents": 50000000,
+          "max_income_cents": 100000000,
+          "rate_bps": 975
+        },
+        {
+          "min_income_cents": 100000000,
           "max_income_cents": null,
           "rate_bps": 1075
         }
@@ -33,10 +83,35 @@
         {
           "min_income_cents": 0,
           "max_income_cents": 1000000,
-          "rate_bps": 660
+          "rate_bps": 400
         },
         {
           "min_income_cents": 1000000,
+          "max_income_cents": 4000000,
+          "rate_bps": 600
+        },
+        {
+          "min_income_cents": 4000000,
+          "max_income_cents": 6000000,
+          "rate_bps": 650
+        },
+        {
+          "min_income_cents": 6000000,
+          "max_income_cents": 25000000,
+          "rate_bps": 850
+        },
+        {
+          "min_income_cents": 25000000,
+          "max_income_cents": 50000000,
+          "rate_bps": 925
+        },
+        {
+          "min_income_cents": 50000000,
+          "max_income_cents": 100000000,
+          "rate_bps": 975
+        },
+        {
+          "min_income_cents": 100000000,
           "max_income_cents": null,
           "rate_bps": 1075
         }
@@ -45,10 +120,35 @@
         {
           "min_income_cents": 0,
           "max_income_cents": 1000000,
-          "rate_bps": 660
+          "rate_bps": 400
         },
         {
           "min_income_cents": 1000000,
+          "max_income_cents": 4000000,
+          "rate_bps": 600
+        },
+        {
+          "min_income_cents": 4000000,
+          "max_income_cents": 6000000,
+          "rate_bps": 650
+        },
+        {
+          "min_income_cents": 6000000,
+          "max_income_cents": 25000000,
+          "rate_bps": 850
+        },
+        {
+          "min_income_cents": 25000000,
+          "max_income_cents": 50000000,
+          "rate_bps": 925
+        },
+        {
+          "min_income_cents": 50000000,
+          "max_income_cents": 100000000,
+          "rate_bps": 975
+        },
+        {
+          "min_income_cents": 100000000,
           "max_income_cents": null,
           "rate_bps": 1075
         }
@@ -58,19 +158,19 @@
   "standard_deductions": [
     {
       "filing_status": "single",
-      "amount_cents": 1500000
+      "amount_cents": 1575000
     },
     {
       "filing_status": "married_filing_jointly",
-      "amount_cents": 3000000
+      "amount_cents": 3150000
     },
     {
       "filing_status": "married_filing_separately",
-      "amount_cents": 1500000
+      "amount_cents": 1575000
     },
     {
       "filing_status": "head_of_household",
-      "amount_cents": 2250000
+      "amount_cents": 1575000
     }
   ],
   "personal_exemption": {
@@ -88,20 +188,15 @@
   "dor_url": "https://otr.cfo.dc.gov",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
   "verification": {
-    "last_verified": "2026-03-19T23:01:14.173Z",
+    "last_verified": "2026-03-20T05:23:31.039Z",
     "sources": [
       {
-        "name": "Tax Foundation 2025 Rates",
-        "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
-        "accessed_at": "2026-03-19T23:01:14.173Z"
-      },
-      {
-        "name": "District of Columbia Office of Tax and Revenue",
-        "url": "https://otr.cfo.dc.gov",
-        "accessed_at": "2026-03-19T23:01:14.173Z"
+        "name": "Tax Foundation 2025 Rates and Brackets (XLSX)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T05:23:31.039Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

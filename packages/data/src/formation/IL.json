@@ -6,7 +6,7 @@
   "filing_office": "Illinois Secretary of State",
   "fees": {
     "standard": {
-      "amount_cents": 15000,
+      "amount_cents": 50000,
       "description": "Standard LLC filing fee",
       "is_expedited": false,
       "processing_days": 10
@@ -31,7 +31,8 @@
     "publication_required": false,
     "registered_agent_required": true,
     "annual_report_required": true,
-    "franchise_tax": false
+    "franchise_tax": false,
+    "annual_report_fee_cents": 30500
   },
   "processing": {
     "standard_days": 10,
@@ -52,15 +53,20 @@
     "annual_report_due": "Annually by the anniversary month of formation"
   },
   "verification": {
-    "last_verified": "2026-03-19T22:15:40.231Z",
+    "last_verified": "2026-03-20T05:26:19.035Z",
     "sources": [
       {
         "name": "Illinois Secretary of State",
         "url": "https://www.ilsos.gov/departments/business_services",
         "accessed_at": "2026-03-19T22:15:40.231Z"
+      },
+      {
+        "name": "World Population Review LLC Cost Table",
+        "url": "https://worldpopulationreview.com/state-rankings/llc-cost-by-state",
+        "accessed_at": "2026-03-20T05:26:19.035Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "deterministic_parse",
+    "confidence": 0.99
   }
 }

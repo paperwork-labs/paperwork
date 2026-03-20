@@ -8,11 +8,11 @@
       "single": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 450000,
+          "max_income_cents": 460000,
           "rate_bps": 200
         },
         {
-          "min_income_cents": 450000,
+          "min_income_cents": 460000,
           "max_income_cents": null,
           "rate_bps": 390
         }
@@ -20,11 +20,11 @@
       "married_filing_jointly": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 450000,
+          "max_income_cents": 460000,
           "rate_bps": 200
         },
         {
-          "min_income_cents": 450000,
+          "min_income_cents": 460000,
           "max_income_cents": null,
           "rate_bps": 390
         }
@@ -32,11 +32,11 @@
       "married_filing_separately": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 450000,
+          "max_income_cents": 460000,
           "rate_bps": 200
         },
         {
-          "min_income_cents": 450000,
+          "min_income_cents": 460000,
           "max_income_cents": null,
           "rate_bps": 390
         }
@@ -44,11 +44,11 @@
       "head_of_household": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 450000,
+          "max_income_cents": 460000,
           "rate_bps": 200
         },
         {
-          "min_income_cents": 450000,
+          "min_income_cents": 460000,
           "max_income_cents": null,
           "rate_bps": 390
         }
@@ -74,7 +74,7 @@
     }
   ],
   "personal_exemption": {
-    "amount_cents": 0,
+    "amount_cents": 2900,
     "phases_out": false
   },
   "notable_credits": [
@@ -93,12 +93,12 @@
   "dor_url": "https://www.dfa.arkansas.gov/income-tax",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
   "verification": {
-    "last_verified": "2026-03-19T23:01:14.173Z",
+    "last_verified": "2026-03-20T05:23:31.031Z",
     "sources": [
       {
-        "name": "Tax Foundation 2025 Rates",
-        "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
-        "accessed_at": "2026-03-19T23:01:14.173Z"
+        "name": "Tax Foundation 2025 Rates and Brackets (XLSX)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T05:23:31.031Z"
       },
       {
         "name": "Arkansas Department of Finance and Administration",
@@ -106,7 +106,7 @@
         "accessed_at": "2026-03-19T23:01:14.173Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

@@ -7,30 +7,50 @@
     "brackets": {
       "single": [
         {
-          "min_income_cents": 0,
-          "max_income_cents": null,
+          "min_income_cents": 4847500,
+          "max_income_cents": 24482500,
           "rate_bps": 195
+        },
+        {
+          "min_income_cents": 24482500,
+          "max_income_cents": null,
+          "rate_bps": 250
         }
       ],
       "married_filing_jointly": [
         {
-          "min_income_cents": 0,
-          "max_income_cents": null,
+          "min_income_cents": 8097500,
+          "max_income_cents": 29807500,
           "rate_bps": 195
+        },
+        {
+          "min_income_cents": 29807500,
+          "max_income_cents": null,
+          "rate_bps": 250
         }
       ],
       "married_filing_separately": [
         {
-          "min_income_cents": 0,
-          "max_income_cents": null,
+          "min_income_cents": 4847500,
+          "max_income_cents": 24482500,
           "rate_bps": 195
+        },
+        {
+          "min_income_cents": 24482500,
+          "max_income_cents": null,
+          "rate_bps": 250
         }
       ],
       "head_of_household": [
         {
-          "min_income_cents": 0,
-          "max_income_cents": null,
+          "min_income_cents": 4847500,
+          "max_income_cents": 24482500,
           "rate_bps": 195
+        },
+        {
+          "min_income_cents": 24482500,
+          "max_income_cents": null,
+          "rate_bps": 250
         }
       ]
     }
@@ -38,19 +58,19 @@
   "standard_deductions": [
     {
       "filing_status": "single",
-      "amount_cents": 400000
+      "amount_cents": 1610000
     },
     {
       "filing_status": "married_filing_jointly",
-      "amount_cents": 800000
+      "amount_cents": 3220000
     },
     {
       "filing_status": "married_filing_separately",
-      "amount_cents": 400000
+      "amount_cents": 1610000
     },
     {
       "filing_status": "head_of_household",
-      "amount_cents": 600000
+      "amount_cents": 1610000
     }
   ],
   "personal_exemption": {
@@ -66,22 +86,17 @@
     "has_reciprocity": false
   },
   "dor_url": "https://www.tax.nd.gov",
-  "tax_foundation_url": "https://taxfoundation.org/location/north-dakota/",
+  "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2026",
   "verification": {
-    "last_verified": "2026-03-19T21:53:21.559Z",
+    "last_verified": "2026-03-20T05:23:31.045Z",
     "sources": [
       {
-        "name": "Tax Foundation - North Dakota",
-        "url": "https://taxfoundation.org/location/north-dakota/",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
-      },
-      {
-        "name": "North Dakota Office of State Tax Commissioner",
-        "url": "https://www.tax.nd.gov",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
+        "name": "Tax Foundation 2026 Rates and Brackets (XLSX)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T05:23:31.045Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

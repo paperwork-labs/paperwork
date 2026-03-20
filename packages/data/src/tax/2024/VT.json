@@ -8,21 +8,21 @@
       "single": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 409500,
+          "max_income_cents": 4540000,
           "rate_bps": 335
         },
         {
-          "min_income_cents": 409500,
-          "max_income_cents": 990200,
-          "rate_bps": 675
+          "min_income_cents": 4540000,
+          "max_income_cents": 11005000,
+          "rate_bps": 660
         },
         {
-          "min_income_cents": 990200,
-          "max_income_cents": 2063500,
+          "min_income_cents": 11005000,
+          "max_income_cents": 22955000,
           "rate_bps": 760
         },
         {
-          "min_income_cents": 2063500,
+          "min_income_cents": 22955000,
           "max_income_cents": null,
           "rate_bps": 875
         }
@@ -30,21 +30,21 @@
       "married_filing_jointly": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 684200,
+          "max_income_cents": 7585000,
           "rate_bps": 335
         },
         {
-          "min_income_cents": 684200,
-          "max_income_cents": 1485300,
-          "rate_bps": 675
+          "min_income_cents": 7585000,
+          "max_income_cents": 18340000,
+          "rate_bps": 660
         },
         {
-          "min_income_cents": 1485300,
-          "max_income_cents": 2483500,
+          "min_income_cents": 18340000,
+          "max_income_cents": 27945000,
           "rate_bps": 760
         },
         {
-          "min_income_cents": 2483500,
+          "min_income_cents": 27945000,
           "max_income_cents": null,
           "rate_bps": 875
         }
@@ -52,21 +52,21 @@
       "married_filing_separately": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 342100,
+          "max_income_cents": 4540000,
           "rate_bps": 335
         },
         {
-          "min_income_cents": 342100,
-          "max_income_cents": 742650,
-          "rate_bps": 675
+          "min_income_cents": 4540000,
+          "max_income_cents": 11005000,
+          "rate_bps": 660
         },
         {
-          "min_income_cents": 742650,
-          "max_income_cents": 1241750,
+          "min_income_cents": 11005000,
+          "max_income_cents": 22955000,
           "rate_bps": 760
         },
         {
-          "min_income_cents": 1241750,
+          "min_income_cents": 22955000,
           "max_income_cents": null,
           "rate_bps": 875
         }
@@ -74,21 +74,21 @@
       "head_of_household": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 547750,
+          "max_income_cents": 4540000,
           "rate_bps": 335
         },
         {
-          "min_income_cents": 547750,
-          "max_income_cents": 1241750,
-          "rate_bps": 675
+          "min_income_cents": 4540000,
+          "max_income_cents": 11005000,
+          "rate_bps": 660
         },
         {
-          "min_income_cents": 1241750,
-          "max_income_cents": 2063500,
+          "min_income_cents": 11005000,
+          "max_income_cents": 22955000,
           "rate_bps": 760
         },
         {
-          "min_income_cents": 2063500,
+          "min_income_cents": 22955000,
           "max_income_cents": null,
           "rate_bps": 875
         }
@@ -98,23 +98,23 @@
   "standard_deductions": [
     {
       "filing_status": "single",
-      "amount_cents": 146000
+      "amount_cents": 700000
     },
     {
       "filing_status": "married_filing_jointly",
-      "amount_cents": 292000
+      "amount_cents": 1405000
     },
     {
       "filing_status": "married_filing_separately",
-      "amount_cents": 146000
+      "amount_cents": 700000
     },
     {
       "filing_status": "head_of_household",
-      "amount_cents": 219000
+      "amount_cents": 700000
     }
   ],
   "personal_exemption": {
-    "amount_cents": 0,
+    "amount_cents": 485000,
     "phases_out": false
   },
   "notable_credits": [],
@@ -128,12 +128,12 @@
   "dor_url": "https://tax.vermont.gov",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
   "verification": {
-    "last_verified": "2026-03-19T23:16:52.542Z",
+    "last_verified": "2026-03-20T05:23:31.028Z",
     "sources": [
       {
-        "name": "Tax Foundation 2024 Rates",
-        "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
-        "accessed_at": "2026-03-19T23:16:52.542Z"
+        "name": "Tax Foundation 2024 Rates and Brackets (XLSX)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T05:23:31.028Z"
       },
       {
         "name": "Vermont Department of Taxes",
@@ -141,7 +141,7 @@
         "accessed_at": "2026-03-19T23:16:52.542Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

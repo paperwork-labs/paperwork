@@ -13,26 +13,31 @@
         },
         {
           "min_income_cents": 2000000,
-          "max_income_cents": 5000000,
+          "max_income_cents": 3500000,
           "rate_bps": 175
         },
         {
-          "min_income_cents": 5000000,
-          "max_income_cents": 8000000,
-          "rate_bps": 245
+          "min_income_cents": 3500000,
+          "max_income_cents": 4000000,
+          "rate_bps": 350
         },
         {
-          "min_income_cents": 8000000,
-          "max_income_cents": 11000000,
-          "rate_bps": 375
+          "min_income_cents": 4000000,
+          "max_income_cents": 7500000,
+          "rate_bps": 553
         },
         {
-          "min_income_cents": 11000000,
+          "min_income_cents": 7500000,
           "max_income_cents": 50000000,
           "rate_bps": 637
         },
         {
           "min_income_cents": 50000000,
+          "max_income_cents": 100000000,
+          "rate_bps": 897
+        },
+        {
+          "min_income_cents": 100000000,
           "max_income_cents": null,
           "rate_bps": 1075
         }
@@ -50,21 +55,31 @@
         },
         {
           "min_income_cents": 5000000,
-          "max_income_cents": 8000000,
+          "max_income_cents": 7000000,
           "rate_bps": 245
         },
         {
-          "min_income_cents": 8000000,
-          "max_income_cents": 11000000,
-          "rate_bps": 375
+          "min_income_cents": 7000000,
+          "max_income_cents": 8000000,
+          "rate_bps": 350
         },
         {
-          "min_income_cents": 11000000,
+          "min_income_cents": 8000000,
+          "max_income_cents": 15000000,
+          "rate_bps": 553
+        },
+        {
+          "min_income_cents": 15000000,
           "max_income_cents": 50000000,
           "rate_bps": 637
         },
         {
           "min_income_cents": 50000000,
+          "max_income_cents": 100000000,
+          "rate_bps": 897
+        },
+        {
+          "min_income_cents": 100000000,
           "max_income_cents": null,
           "rate_bps": 1075
         }
@@ -77,26 +92,31 @@
         },
         {
           "min_income_cents": 2000000,
-          "max_income_cents": 5000000,
+          "max_income_cents": 3500000,
           "rate_bps": 175
         },
         {
-          "min_income_cents": 5000000,
-          "max_income_cents": 8000000,
-          "rate_bps": 245
+          "min_income_cents": 3500000,
+          "max_income_cents": 4000000,
+          "rate_bps": 350
         },
         {
-          "min_income_cents": 8000000,
-          "max_income_cents": 11000000,
-          "rate_bps": 375
+          "min_income_cents": 4000000,
+          "max_income_cents": 7500000,
+          "rate_bps": 553
         },
         {
-          "min_income_cents": 11000000,
+          "min_income_cents": 7500000,
           "max_income_cents": 50000000,
           "rate_bps": 637
         },
         {
           "min_income_cents": 50000000,
+          "max_income_cents": 100000000,
+          "rate_bps": 897
+        },
+        {
+          "min_income_cents": 100000000,
           "max_income_cents": null,
           "rate_bps": 1075
         }
@@ -109,26 +129,31 @@
         },
         {
           "min_income_cents": 2000000,
-          "max_income_cents": 5000000,
+          "max_income_cents": 3500000,
           "rate_bps": 175
         },
         {
-          "min_income_cents": 5000000,
-          "max_income_cents": 8000000,
-          "rate_bps": 245
+          "min_income_cents": 3500000,
+          "max_income_cents": 4000000,
+          "rate_bps": 350
         },
         {
-          "min_income_cents": 8000000,
-          "max_income_cents": 11000000,
-          "rate_bps": 375
+          "min_income_cents": 4000000,
+          "max_income_cents": 7500000,
+          "rate_bps": 553
         },
         {
-          "min_income_cents": 11000000,
+          "min_income_cents": 7500000,
           "max_income_cents": 50000000,
           "rate_bps": 637
         },
         {
           "min_income_cents": 50000000,
+          "max_income_cents": 100000000,
+          "rate_bps": 897
+        },
+        {
+          "min_income_cents": 100000000,
           "max_income_cents": null,
           "rate_bps": 1075
         }
@@ -166,22 +191,17 @@
     "has_reciprocity": false
   },
   "dor_url": "https://www.nj.gov/treasury/taxation",
-  "tax_foundation_url": "https://taxfoundation.org/location/new-jersey/",
+  "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2026",
   "verification": {
-    "last_verified": "2026-03-19T21:53:21.559Z",
+    "last_verified": "2026-03-20T05:23:31.044Z",
     "sources": [
       {
-        "name": "Tax Foundation - New Jersey",
-        "url": "https://taxfoundation.org/location/new-jersey/",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
-      },
-      {
-        "name": "New Jersey Division of Taxation",
-        "url": "https://www.nj.gov/treasury/taxation",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
+        "name": "Tax Foundation 2026 Rates and Brackets (XLSX)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T05:23:31.044Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

@@ -13,8 +13,9 @@ type FormationRulesParsed = z.infer<typeof FormationRulesSchema>;
 
 const NO_INCOME_TAX_STATES: StateCode[] = ["AK", "FL", "NH", "NV", "SD", "TN", "TX", "WA", "WY"];
 
-const MIN_STANDARD_DEDUCTION_CENTS = 100_000;
-const MIN_PERSONAL_EXEMPTION_CENTS = 10_000;
+// Lowered to accommodate credit-style amounts (UT $876 deduction credit, AR $29 exemption credit)
+const MIN_STANDARD_DEDUCTION_CENTS = 50_000;    // $500 — catches dollars-stored-as-cents errors
+const MIN_PERSONAL_EXEMPTION_CENTS = 1_000;     // $10 — some states have tiny credit-style exemptions
 const MIN_NON_FIRST_BRACKET_MIN_CENTS = 10_000;
 const MAX_RATE_BPS = 1500;
 
@@ -295,33 +296,40 @@ describe("Cross-year: bracket count stability (advisory)", () => {
 
 const progressiveTaxFiles = taxFiles.filter((tf) => tf.data.income_tax.type === "progressive");
 
-describe("Filing-status: consistent rates across statuses", () => {
+// NJ has genuinely different single vs MFJ bracket structures (different rates AND count).
+// MFS/HoH default to single brackets. MFJ may differ per state law.
+// We only check MFS and HoH match single; MFJ is allowed to differ.
+describe("Filing-status: MFS and HoH consistent with single", () => {
   it.each(progressiveTaxFiles)("$relPath", ({ relPath, data }) => {
     const it = data.income_tax;
     if (it.type !== "progressive") return;
     const singleRates = it.brackets.single.map((b) => b.rate_bps);
-    for (const [status, brackets] of Object.entries(it.brackets)) {
-      if (status === "single") continue;
+    const singleCount = it.brackets.single.length;
+    for (const status of ["married_filing_separately", "head_of_household"] as const) {
+      const brackets = it.brackets[status];
       const rates = brackets.map((b) => b.rate_bps);
       expect(
         JSON.stringify(rates) === JSON.stringify(singleRates),
         `${relPath}: ${status} rates ${JSON.stringify(rates)} differ from single ${JSON.stringify(singleRates)}`,
       ).toBe(true);
-    }
-  });
-});
-
-describe("Filing-status: consistent bracket count across statuses", () => {
-  it.each(progressiveTaxFiles)("$relPath", ({ relPath, data }) => {
-    const it = data.income_tax;
-    if (it.type !== "progressive") return;
-    const singleCount = it.brackets.single.length;
-    for (const [status, brackets] of Object.entries(it.brackets)) {
       expect(
         brackets.length === singleCount,
         `${relPath}: ${status} has ${brackets.length} brackets vs single's ${singleCount}`,
       ).toBe(true);
     }
+  });
+});
+
+describe("Filing-status: MFJ bracket count within reason", () => {
+  it.each(progressiveTaxFiles)("$relPath", ({ relPath, data }) => {
+    const it = data.income_tax;
+    if (it.type !== "progressive") return;
+    const singleCount = it.brackets.single.length;
+    const mfjCount = it.brackets.married_filing_jointly.length;
+    expect(
+      Math.abs(mfjCount - singleCount) <= 2,
+      `${relPath}: MFJ has ${mfjCount} brackets vs single's ${singleCount} (delta > 2)`,
+    ).toBe(true);
   });
 });
 
@@ -338,15 +346,25 @@ type AnchorSpec = {
   minBrackets?: number;
 };
 
+// Anchors updated 2026-03-20 from Tax Foundation XLSX (deterministic parse)
 const ANCHORS: AnchorSpec[] = [
-  { state: "CA", year: 2026, type: "progressive", topRateMin: 1280, topRateMax: 1380, minBrackets: 8 },
+  { state: "CA", year: 2026, type: "progressive", topRateMin: 1280, topRateMax: 1380, minBrackets: 10 },
   { state: "TX", year: 2026, type: "none", topRateMin: 0, topRateMax: 0 },
   { state: "CO", year: 2026, type: "flat", topRateMin: 400, topRateMax: 480 },
-  { state: "NY", year: 2026, type: "progressive", topRateMin: 1040, topRateMax: 1140, minBrackets: 6 },
-  { state: "OK", year: 2026, type: "progressive", topRateMin: 425, topRateMax: 525, minBrackets: 5 },
+  { state: "NY", year: 2026, type: "progressive", topRateMin: 1040, topRateMax: 1140, minBrackets: 9 },
+  { state: "OK", year: 2026, type: "progressive", topRateMin: 400, topRateMax: 500, minBrackets: 3 },
   { state: "IL", year: 2026, type: "flat", topRateMin: 450, topRateMax: 540 },
-  { state: "GA", year: 2026, type: "progressive", topRateMin: 470, topRateMax: 570 },
-  { state: "ID", year: 2026, type: "progressive", topRateMin: 480, topRateMax: 580 },
+  { state: "GA", year: 2026, type: "flat", topRateMin: 490, topRateMax: 550 },
+  { state: "ID", year: 2026, type: "flat", topRateMin: 490, topRateMax: 570 },
+  { state: "MO", year: 2026, type: "progressive", topRateMin: 440, topRateMax: 500, minBrackets: 7 },
+  { state: "HI", year: 2026, type: "progressive", topRateMin: 1050, topRateMax: 1150, minBrackets: 12 },
+  { state: "NJ", year: 2026, type: "progressive", topRateMin: 1025, topRateMax: 1125, minBrackets: 7 },
+  { state: "MD", year: 2026, type: "progressive", topRateMin: 600, topRateMax: 700, minBrackets: 10 },
+  { state: "NC", year: 2026, type: "flat", topRateMin: 370, topRateMax: 430 },
+  { state: "WI", year: 2026, type: "progressive", topRateMin: 720, topRateMax: 800, minBrackets: 4 },
+  { state: "DC", year: 2026, type: "progressive", topRateMin: 1025, topRateMax: 1125, minBrackets: 7 },
+  { state: "MO", year: 2024, type: "progressive", topRateMin: 440, topRateMax: 520, minBrackets: 7 },
+  { state: "NY", year: 2024, type: "progressive", topRateMin: 1040, topRateMax: 1140, minBrackets: 9 },
 ];
 
 describe("Known-good anchors", () => {

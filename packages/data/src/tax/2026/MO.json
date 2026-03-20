@@ -7,48 +7,148 @@
     "brackets": {
       "single": [
         {
-          "min_income_cents": 0,
-          "max_income_cents": 1000000,
+          "min_income_cents": 134800,
+          "max_income_cents": 269600,
           "rate_bps": 200
         },
         {
-          "min_income_cents": 1000000,
+          "min_income_cents": 269600,
+          "max_income_cents": 404400,
+          "rate_bps": 250
+        },
+        {
+          "min_income_cents": 404400,
+          "max_income_cents": 539200,
+          "rate_bps": 300
+        },
+        {
+          "min_income_cents": 539200,
+          "max_income_cents": 674000,
+          "rate_bps": 350
+        },
+        {
+          "min_income_cents": 674000,
+          "max_income_cents": 808800,
+          "rate_bps": 400
+        },
+        {
+          "min_income_cents": 808800,
+          "max_income_cents": 943600,
+          "rate_bps": 450
+        },
+        {
+          "min_income_cents": 943600,
           "max_income_cents": null,
           "rate_bps": 470
         }
       ],
       "married_filing_jointly": [
         {
-          "min_income_cents": 0,
-          "max_income_cents": 1000000,
+          "min_income_cents": 134800,
+          "max_income_cents": 269600,
           "rate_bps": 200
         },
         {
-          "min_income_cents": 1000000,
+          "min_income_cents": 269600,
+          "max_income_cents": 404400,
+          "rate_bps": 250
+        },
+        {
+          "min_income_cents": 404400,
+          "max_income_cents": 539200,
+          "rate_bps": 300
+        },
+        {
+          "min_income_cents": 539200,
+          "max_income_cents": 674000,
+          "rate_bps": 350
+        },
+        {
+          "min_income_cents": 674000,
+          "max_income_cents": 808800,
+          "rate_bps": 400
+        },
+        {
+          "min_income_cents": 808800,
+          "max_income_cents": 943600,
+          "rate_bps": 450
+        },
+        {
+          "min_income_cents": 943600,
           "max_income_cents": null,
           "rate_bps": 470
         }
       ],
       "married_filing_separately": [
         {
-          "min_income_cents": 0,
-          "max_income_cents": 1000000,
+          "min_income_cents": 134800,
+          "max_income_cents": 269600,
           "rate_bps": 200
         },
         {
-          "min_income_cents": 1000000,
+          "min_income_cents": 269600,
+          "max_income_cents": 404400,
+          "rate_bps": 250
+        },
+        {
+          "min_income_cents": 404400,
+          "max_income_cents": 539200,
+          "rate_bps": 300
+        },
+        {
+          "min_income_cents": 539200,
+          "max_income_cents": 674000,
+          "rate_bps": 350
+        },
+        {
+          "min_income_cents": 674000,
+          "max_income_cents": 808800,
+          "rate_bps": 400
+        },
+        {
+          "min_income_cents": 808800,
+          "max_income_cents": 943600,
+          "rate_bps": 450
+        },
+        {
+          "min_income_cents": 943600,
           "max_income_cents": null,
           "rate_bps": 470
         }
       ],
       "head_of_household": [
         {
-          "min_income_cents": 0,
-          "max_income_cents": 1000000,
+          "min_income_cents": 134800,
+          "max_income_cents": 269600,
           "rate_bps": 200
         },
         {
-          "min_income_cents": 1000000,
+          "min_income_cents": 269600,
+          "max_income_cents": 404400,
+          "rate_bps": 250
+        },
+        {
+          "min_income_cents": 404400,
+          "max_income_cents": 539200,
+          "rate_bps": 300
+        },
+        {
+          "min_income_cents": 539200,
+          "max_income_cents": 674000,
+          "rate_bps": 350
+        },
+        {
+          "min_income_cents": 674000,
+          "max_income_cents": 808800,
+          "rate_bps": 400
+        },
+        {
+          "min_income_cents": 808800,
+          "max_income_cents": 943600,
+          "rate_bps": 450
+        },
+        {
+          "min_income_cents": 943600,
           "max_income_cents": null,
           "rate_bps": 470
         }
@@ -58,19 +158,19 @@
   "standard_deductions": [
     {
       "filing_status": "single",
-      "amount_cents": 1300000
+      "amount_cents": 1610000
     },
     {
       "filing_status": "married_filing_jointly",
-      "amount_cents": 2600000
+      "amount_cents": 3220000
     },
     {
       "filing_status": "married_filing_separately",
-      "amount_cents": 1300000
+      "amount_cents": 1610000
     },
     {
       "filing_status": "head_of_household",
-      "amount_cents": 1950000
+      "amount_cents": 1610000
     }
   ],
   "personal_exemption": {
@@ -86,14 +186,14 @@
     "has_reciprocity": false
   },
   "dor_url": "https://dor.mo.gov",
-  "tax_foundation_url": "https://taxfoundation.org/location/missouri/",
+  "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2026",
   "verification": {
-    "last_verified": "2026-03-19T21:53:21.559Z",
+    "last_verified": "2026-03-20T05:23:31.044Z",
     "sources": [
       {
-        "name": "Tax Foundation - Missouri",
-        "url": "https://taxfoundation.org/location/missouri/",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
+        "name": "Tax Foundation 2026 Rates and Brackets (XLSX)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T05:23:31.044Z"
       },
       {
         "name": "Missouri Department of Revenue",
@@ -101,7 +201,7 @@
         "accessed_at": "2026-03-19T21:53:21.559Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

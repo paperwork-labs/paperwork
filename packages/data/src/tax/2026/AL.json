@@ -8,16 +8,16 @@
       "single": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 500000,
+          "max_income_cents": 50000,
           "rate_bps": 200
         },
         {
-          "min_income_cents": 500000,
-          "max_income_cents": 3000000,
+          "min_income_cents": 50000,
+          "max_income_cents": 300000,
           "rate_bps": 400
         },
         {
-          "min_income_cents": 3000000,
+          "min_income_cents": 300000,
           "max_income_cents": null,
           "rate_bps": 500
         }
@@ -25,16 +25,16 @@
       "married_filing_jointly": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 1000000,
+          "max_income_cents": 100000,
           "rate_bps": 200
         },
         {
-          "min_income_cents": 1000000,
-          "max_income_cents": 6000000,
+          "min_income_cents": 100000,
+          "max_income_cents": 600000,
           "rate_bps": 400
         },
         {
-          "min_income_cents": 6000000,
+          "min_income_cents": 600000,
           "max_income_cents": null,
           "rate_bps": 500
         }
@@ -42,16 +42,16 @@
       "married_filing_separately": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 500000,
+          "max_income_cents": 50000,
           "rate_bps": 200
         },
         {
-          "min_income_cents": 500000,
-          "max_income_cents": 3000000,
+          "min_income_cents": 50000,
+          "max_income_cents": 300000,
           "rate_bps": 400
         },
         {
-          "min_income_cents": 3000000,
+          "min_income_cents": 300000,
           "max_income_cents": null,
           "rate_bps": 500
         }
@@ -59,16 +59,16 @@
       "head_of_household": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 500000,
+          "max_income_cents": 50000,
           "rate_bps": 200
         },
         {
-          "min_income_cents": 500000,
-          "max_income_cents": 3000000,
+          "min_income_cents": 50000,
+          "max_income_cents": 300000,
           "rate_bps": 400
         },
         {
-          "min_income_cents": 3000000,
+          "min_income_cents": 300000,
           "max_income_cents": null,
           "rate_bps": 500
         }
@@ -78,23 +78,23 @@
   "standard_deductions": [
     {
       "filing_status": "single",
-      "amount_cents": 250000
+      "amount_cents": 300000
     },
     {
       "filing_status": "married_filing_jointly",
-      "amount_cents": 750000
+      "amount_cents": 850000
     },
     {
       "filing_status": "married_filing_separately",
-      "amount_cents": 375000
+      "amount_cents": 300000
     },
     {
       "filing_status": "head_of_household",
-      "amount_cents": 500000
+      "amount_cents": 300000
     }
   ],
   "personal_exemption": {
-    "amount_cents": 15000,
+    "amount_cents": 150000,
     "phases_out": false
   },
   "notable_credits": [],
@@ -106,14 +106,14 @@
     "has_reciprocity": false
   },
   "dor_url": "https://revenue.alabama.gov",
-  "tax_foundation_url": "https://taxfoundation.org/location/alabama/",
+  "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2026",
   "verification": {
-    "last_verified": "2026-03-19T21:53:21.559Z",
+    "last_verified": "2026-03-20T05:23:31.040Z",
     "sources": [
       {
-        "name": "Tax Foundation - Alabama",
-        "url": "https://taxfoundation.org/location/alabama/",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
+        "name": "Tax Foundation 2026 Rates and Brackets (XLSX)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T05:23:31.040Z"
       },
       {
         "name": "Alabama Department of Revenue",
@@ -121,7 +121,7 @@
         "accessed_at": "2026-03-19T21:53:21.559Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

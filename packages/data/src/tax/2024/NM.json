@@ -23,13 +23,13 @@
         },
         {
           "min_income_cents": 1600000,
-          "max_income_cents": 2100000,
+          "max_income_cents": 21000000,
           "rate_bps": 490
         },
         {
-          "min_income_cents": 2100000,
+          "min_income_cents": 21000000,
           "max_income_cents": null,
-          "rate_bps": 540
+          "rate_bps": 590
         }
       ],
       "married_filing_jointly": [
@@ -50,40 +50,40 @@
         },
         {
           "min_income_cents": 2400000,
-          "max_income_cents": 3200000,
+          "max_income_cents": 31500000,
           "rate_bps": 490
         },
         {
-          "min_income_cents": 3200000,
+          "min_income_cents": 31500000,
           "max_income_cents": null,
-          "rate_bps": 540
+          "rate_bps": 590
         }
       ],
       "married_filing_separately": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 400000,
+          "max_income_cents": 550000,
           "rate_bps": 170
         },
         {
-          "min_income_cents": 400000,
-          "max_income_cents": 800000,
+          "min_income_cents": 550000,
+          "max_income_cents": 1100000,
           "rate_bps": 320
         },
         {
-          "min_income_cents": 800000,
-          "max_income_cents": 1200000,
+          "min_income_cents": 1100000,
+          "max_income_cents": 1600000,
           "rate_bps": 470
         },
         {
-          "min_income_cents": 1200000,
-          "max_income_cents": 1600000,
+          "min_income_cents": 1600000,
+          "max_income_cents": 21000000,
           "rate_bps": 490
         },
         {
-          "min_income_cents": 1600000,
+          "min_income_cents": 21000000,
           "max_income_cents": null,
-          "rate_bps": 540
+          "rate_bps": 590
         }
       ],
       "head_of_household": [
@@ -104,13 +104,13 @@
         },
         {
           "min_income_cents": 1600000,
-          "max_income_cents": 2100000,
+          "max_income_cents": 21000000,
           "rate_bps": 490
         },
         {
-          "min_income_cents": 2100000,
+          "min_income_cents": 21000000,
           "max_income_cents": null,
-          "rate_bps": 540
+          "rate_bps": 590
         }
       ]
     }
@@ -130,7 +130,7 @@
     },
     {
       "filing_status": "head_of_household",
-      "amount_cents": 2190000
+      "amount_cents": 1460000
     }
   ],
   "personal_exemption": {
@@ -148,12 +148,12 @@
   "dor_url": "https://www.tax.newmexico.gov",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
   "verification": {
-    "last_verified": "2026-03-19T23:16:52.542Z",
+    "last_verified": "2026-03-20T05:23:31.025Z",
     "sources": [
       {
-        "name": "Tax Foundation 2024 Rates",
-        "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
-        "accessed_at": "2026-03-19T23:16:52.542Z"
+        "name": "Tax Foundation 2024 Rates and Brackets (XLSX)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T05:23:31.025Z"
       },
       {
         "name": "New Mexico Taxation and Revenue Department",
@@ -161,7 +161,7 @@
         "accessed_at": "2026-03-19T23:16:52.542Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

@@ -8,89 +8,89 @@
       "single": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 1275000,
-          "rate_bps": 352
+          "max_income_cents": 1432000,
+          "rate_bps": 350
         },
         {
-          "min_income_cents": 1275000,
-          "max_income_cents": 2550000,
-          "rate_bps": 465
+          "min_income_cents": 1432000,
+          "max_income_cents": 2864000,
+          "rate_bps": 440
         },
         {
-          "min_income_cents": 2550000,
-          "max_income_cents": 2800000,
-          "rate_bps": 535
+          "min_income_cents": 2864000,
+          "max_income_cents": 31531000,
+          "rate_bps": 530
         },
         {
-          "min_income_cents": 2800000,
+          "min_income_cents": 31531000,
           "max_income_cents": null,
-          "rate_bps": 764
+          "rate_bps": 765
         }
       ],
       "married_filing_jointly": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 2550000,
-          "rate_bps": 352
+          "max_income_cents": 1909000,
+          "rate_bps": 350
         },
         {
-          "min_income_cents": 2550000,
-          "max_income_cents": 5100000,
-          "rate_bps": 465
+          "min_income_cents": 1909000,
+          "max_income_cents": 3819000,
+          "rate_bps": 440
         },
         {
-          "min_income_cents": 5100000,
-          "max_income_cents": 5600000,
-          "rate_bps": 535
+          "min_income_cents": 3819000,
+          "max_income_cents": 42042000,
+          "rate_bps": 530
         },
         {
-          "min_income_cents": 5600000,
+          "min_income_cents": 42042000,
           "max_income_cents": null,
-          "rate_bps": 764
+          "rate_bps": 765
         }
       ],
       "married_filing_separately": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 1275000,
-          "rate_bps": 352
+          "max_income_cents": 1432000,
+          "rate_bps": 350
         },
         {
-          "min_income_cents": 1275000,
-          "max_income_cents": 2550000,
-          "rate_bps": 465
+          "min_income_cents": 1432000,
+          "max_income_cents": 2864000,
+          "rate_bps": 440
         },
         {
-          "min_income_cents": 2550000,
-          "max_income_cents": 2800000,
-          "rate_bps": 535
+          "min_income_cents": 2864000,
+          "max_income_cents": 31531000,
+          "rate_bps": 530
         },
         {
-          "min_income_cents": 2800000,
+          "min_income_cents": 31531000,
           "max_income_cents": null,
-          "rate_bps": 764
+          "rate_bps": 765
         }
       ],
       "head_of_household": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 1275000,
-          "rate_bps": 352
+          "max_income_cents": 1432000,
+          "rate_bps": 350
         },
         {
-          "min_income_cents": 1275000,
-          "max_income_cents": 2550000,
-          "rate_bps": 465
+          "min_income_cents": 1432000,
+          "max_income_cents": 2864000,
+          "rate_bps": 440
         },
         {
-          "min_income_cents": 2550000,
-          "max_income_cents": 2800000,
-          "rate_bps": 535
+          "min_income_cents": 2864000,
+          "max_income_cents": 31531000,
+          "rate_bps": 530
         },
         {
-          "min_income_cents": 2800000,
+          "min_income_cents": 31531000,
           "max_income_cents": null,
-          "rate_bps": 764
+          "rate_bps": 765
         }
       ]
     }
@@ -98,19 +98,19 @@
   "standard_deductions": [
     {
       "filing_status": "single",
-      "amount_cents": 1150000
+      "amount_cents": 1323000
     },
     {
       "filing_status": "married_filing_jointly",
-      "amount_cents": 2150000
+      "amount_cents": 2449000
     },
     {
       "filing_status": "married_filing_separately",
-      "amount_cents": 1075000
+      "amount_cents": 1323000
     },
     {
       "filing_status": "head_of_household",
-      "amount_cents": 1500000
+      "amount_cents": 1323000
     }
   ],
   "personal_exemption": {
@@ -134,12 +134,12 @@
   "dor_url": "https://www.revenue.wi.gov",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
   "verification": {
-    "last_verified": "2026-03-19T23:16:52.542Z",
+    "last_verified": "2026-03-20T05:23:31.028Z",
     "sources": [
       {
-        "name": "Tax Foundation 2024 Rates",
-        "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2024",
-        "accessed_at": "2026-03-19T23:16:52.542Z"
+        "name": "Tax Foundation 2024 Rates and Brackets (XLSX)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T05:23:31.028Z"
       },
       {
         "name": "Wisconsin Department of Revenue",
@@ -147,7 +147,7 @@
         "accessed_at": "2026-03-19T23:16:52.542Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

@@ -3,78 +3,29 @@
   "state_name": "Ohio",
   "tax_year": 2026,
   "income_tax": {
-    "type": "progressive",
-    "brackets": {
-      "single": [
-        {
-          "min_income_cents": 0,
-          "max_income_cents": 2500000,
-          "rate_bps": 275
-        },
-        {
-          "min_income_cents": 2500000,
-          "max_income_cents": null,
-          "rate_bps": 312
-        }
-      ],
-      "married_filing_jointly": [
-        {
-          "min_income_cents": 0,
-          "max_income_cents": 2500000,
-          "rate_bps": 275
-        },
-        {
-          "min_income_cents": 2500000,
-          "max_income_cents": null,
-          "rate_bps": 312
-        }
-      ],
-      "married_filing_separately": [
-        {
-          "min_income_cents": 0,
-          "max_income_cents": 2500000,
-          "rate_bps": 275
-        },
-        {
-          "min_income_cents": 2500000,
-          "max_income_cents": null,
-          "rate_bps": 312
-        }
-      ],
-      "head_of_household": [
-        {
-          "min_income_cents": 0,
-          "max_income_cents": 2500000,
-          "rate_bps": 275
-        },
-        {
-          "min_income_cents": 2500000,
-          "max_income_cents": null,
-          "rate_bps": 312
-        }
-      ]
-    }
+    "type": "flat",
+    "flat_rate_bps": 275
   },
   "standard_deductions": [
     {
       "filing_status": "single",
-      "amount_cents": 375000
+      "amount_cents": 0
     },
     {
       "filing_status": "married_filing_jointly",
-      "amount_cents": 750000
+      "amount_cents": 0
     },
     {
       "filing_status": "married_filing_separately",
-      "amount_cents": 375000
+      "amount_cents": 0
     },
     {
       "filing_status": "head_of_household",
-      "amount_cents": 375000
+      "amount_cents": 0
     }
   ],
   "personal_exemption": {
-    "amount_cents": 0,
+    "amount_cents": 240000,
     "phases_out": false
   },
   "notable_credits": [],
@@ -93,14 +44,14 @@
     ]
   },
   "dor_url": "https://tax.ohio.gov",
-  "tax_foundation_url": "https://taxfoundation.org/location/ohio/",
+  "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2026",
   "verification": {
-    "last_verified": "2026-03-19T21:53:21.559Z",
+    "last_verified": "2026-03-20T05:23:31.045Z",
     "sources": [
       {
-        "name": "Tax Foundation - Ohio",
-        "url": "https://taxfoundation.org/location/ohio/",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
+        "name": "Tax Foundation 2026 Rates and Brackets (XLSX)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T05:23:31.045Z"
       },
       {
         "name": "Ohio Department of Taxation",
@@ -108,7 +59,7 @@
         "accessed_at": "2026-03-19T21:53:21.559Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

@@ -19,25 +19,35 @@
         {
           "min_income_cents": 1170000,
           "max_income_cents": 1390000,
-          "rate_bps": 600
+          "rate_bps": 525
         },
         {
           "min_income_cents": 1390000,
-          "max_income_cents": 2140000,
-          "rate_bps": 645
+          "max_income_cents": 8065000,
+          "rate_bps": 550
         },
         {
-          "min_income_cents": 2140000,
-          "max_income_cents": 5375000,
+          "min_income_cents": 8065000,
+          "max_income_cents": 21540000,
+          "rate_bps": 600
+        },
+        {
+          "min_income_cents": 21540000,
+          "max_income_cents": 107755000,
           "rate_bps": 685
         },
         {
-          "min_income_cents": 5375000,
-          "max_income_cents": 21500000,
-          "rate_bps": 1090
+          "min_income_cents": 107755000,
+          "max_income_cents": 500000000,
+          "rate_bps": 965
         },
         {
-          "min_income_cents": 21500000,
+          "min_income_cents": 500000000,
+          "max_income_cents": 2500000000,
+          "rate_bps": 1030
+        },
+        {
+          "min_income_cents": 2500000000,
           "max_income_cents": null,
           "rate_bps": 1090
         }
@@ -45,36 +55,46 @@
       "married_filing_jointly": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 1710000,
+          "max_income_cents": 1715000,
           "rate_bps": 400
         },
         {
-          "min_income_cents": 1710000,
-          "max_income_cents": 2340000,
+          "min_income_cents": 1715000,
+          "max_income_cents": 2360000,
           "rate_bps": 450
         },
         {
-          "min_income_cents": 2340000,
+          "min_income_cents": 2360000,
           "max_income_cents": 2790000,
-          "rate_bps": 600
+          "rate_bps": 525
         },
         {
           "min_income_cents": 2790000,
-          "max_income_cents": 4300000,
-          "rate_bps": 645
+          "max_income_cents": 16155000,
+          "rate_bps": 550
         },
         {
-          "min_income_cents": 4300000,
-          "max_income_cents": 10750000,
+          "min_income_cents": 16155000,
+          "max_income_cents": 32320000,
+          "rate_bps": 600
+        },
+        {
+          "min_income_cents": 32320000,
+          "max_income_cents": 215535000,
           "rate_bps": 685
         },
         {
-          "min_income_cents": 10750000,
-          "max_income_cents": 21500000,
-          "rate_bps": 1090
+          "min_income_cents": 215535000,
+          "max_income_cents": 500000000,
+          "rate_bps": 965
         },
         {
-          "min_income_cents": 21500000,
+          "min_income_cents": 500000000,
+          "max_income_cents": 2500000000,
+          "rate_bps": 1030
+        },
+        {
+          "min_income_cents": 2500000000,
           "max_income_cents": null,
           "rate_bps": 1090
         }
@@ -93,25 +113,35 @@
         {
           "min_income_cents": 1170000,
           "max_income_cents": 1390000,
-          "rate_bps": 600
+          "rate_bps": 525
         },
         {
           "min_income_cents": 1390000,
-          "max_income_cents": 2140000,
-          "rate_bps": 645
+          "max_income_cents": 8065000,
+          "rate_bps": 550
         },
         {
-          "min_income_cents": 2140000,
-          "max_income_cents": 5375000,
+          "min_income_cents": 8065000,
+          "max_income_cents": 21540000,
+          "rate_bps": 600
+        },
+        {
+          "min_income_cents": 21540000,
+          "max_income_cents": 107755000,
           "rate_bps": 685
         },
         {
-          "min_income_cents": 5375000,
-          "max_income_cents": 21500000,
-          "rate_bps": 1090
+          "min_income_cents": 107755000,
+          "max_income_cents": 500000000,
+          "rate_bps": 965
         },
         {
-          "min_income_cents": 21500000,
+          "min_income_cents": 500000000,
+          "max_income_cents": 2500000000,
+          "rate_bps": 1030
+        },
+        {
+          "min_income_cents": 2500000000,
           "max_income_cents": null,
           "rate_bps": 1090
         }
@@ -119,36 +149,46 @@
       "head_of_household": [
         {
           "min_income_cents": 0,
-          "max_income_cents": 1285000,
+          "max_income_cents": 850000,
           "rate_bps": 400
         },
         {
-          "min_income_cents": 1285000,
-          "max_income_cents": 1755000,
+          "min_income_cents": 850000,
+          "max_income_cents": 1170000,
           "rate_bps": 450
         },
         {
-          "min_income_cents": 1755000,
-          "max_income_cents": 2085000,
+          "min_income_cents": 1170000,
+          "max_income_cents": 1390000,
+          "rate_bps": 525
+        },
+        {
+          "min_income_cents": 1390000,
+          "max_income_cents": 8065000,
+          "rate_bps": 550
+        },
+        {
+          "min_income_cents": 8065000,
+          "max_income_cents": 21540000,
           "rate_bps": 600
         },
         {
-          "min_income_cents": 2085000,
-          "max_income_cents": 3220000,
-          "rate_bps": 645
-        },
-        {
-          "min_income_cents": 3220000,
-          "max_income_cents": 8062500,
+          "min_income_cents": 21540000,
+          "max_income_cents": 107755000,
           "rate_bps": 685
         },
         {
-          "min_income_cents": 8062500,
-          "max_income_cents": 21500000,
-          "rate_bps": 1090
+          "min_income_cents": 107755000,
+          "max_income_cents": 500000000,
+          "rate_bps": 965
         },
         {
-          "min_income_cents": 21500000,
+          "min_income_cents": 500000000,
+          "max_income_cents": 2500000000,
+          "rate_bps": 1030
+        },
+        {
+          "min_income_cents": 2500000000,
           "max_income_cents": null,
           "rate_bps": 1090
         }
@@ -162,7 +202,7 @@
     },
     {
       "filing_status": "married_filing_jointly",
-      "amount_cents": 1600000
+      "amount_cents": 1605000
     },
     {
       "filing_status": "married_filing_separately",
@@ -170,11 +210,11 @@
     },
     {
       "filing_status": "head_of_household",
-      "amount_cents": 1120000
+      "amount_cents": 800000
     }
   ],
   "personal_exemption": {
-    "amount_cents": 100000,
+    "amount_cents": 0,
     "phases_out": true
   },
   "notable_credits": [],
@@ -188,12 +228,12 @@
   "dor_url": "https://www.tax.ny.gov",
   "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
   "verification": {
-    "last_verified": "2026-03-19T23:01:14.173Z",
+    "last_verified": "2026-03-20T05:23:31.036Z",
     "sources": [
       {
-        "name": "Tax Foundation 2025 Rates",
-        "url": "https://taxfoundation.org/data/all/state/state-income-tax-rates",
-        "accessed_at": "2026-03-19T23:01:14.173Z"
+        "name": "Tax Foundation 2025 Rates and Brackets (XLSX)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T05:23:31.036Z"
       },
       {
         "name": "New York State Department of Taxation and Finance",
@@ -201,7 +241,7 @@
         "accessed_at": "2026-03-19T23:01:14.173Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }

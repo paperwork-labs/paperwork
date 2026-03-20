@@ -7,130 +7,70 @@
     "brackets": {
       "single": [
         {
-          "min_income_cents": 0,
-          "max_income_cents": 1000000,
-          "rate_bps": 25
+          "min_income_cents": 375000,
+          "max_income_cents": 490000,
+          "rate_bps": 250
         },
         {
-          "min_income_cents": 1000000,
-          "max_income_cents": 2500000,
-          "rate_bps": 75
+          "min_income_cents": 490000,
+          "max_income_cents": 720000,
+          "rate_bps": 350
         },
         {
-          "min_income_cents": 2500000,
-          "max_income_cents": 3750000,
-          "rate_bps": 175
-        },
-        {
-          "min_income_cents": 3750000,
-          "max_income_cents": 4900000,
-          "rate_bps": 275
-        },
-        {
-          "min_income_cents": 4900000,
-          "max_income_cents": 7200000,
-          "rate_bps": 375
-        },
-        {
-          "min_income_cents": 7200000,
+          "min_income_cents": 720000,
           "max_income_cents": null,
-          "rate_bps": 475
+          "rate_bps": 450
         }
       ],
       "married_filing_jointly": [
         {
-          "min_income_cents": 0,
-          "max_income_cents": 2000000,
-          "rate_bps": 25
+          "min_income_cents": 750000,
+          "max_income_cents": 980000,
+          "rate_bps": 250
         },
         {
-          "min_income_cents": 2000000,
-          "max_income_cents": 5000000,
-          "rate_bps": 75
+          "min_income_cents": 980000,
+          "max_income_cents": 1440000,
+          "rate_bps": 350
         },
         {
-          "min_income_cents": 5000000,
-          "max_income_cents": 7500000,
-          "rate_bps": 175
-        },
-        {
-          "min_income_cents": 7500000,
-          "max_income_cents": 9800000,
-          "rate_bps": 275
-        },
-        {
-          "min_income_cents": 9800000,
-          "max_income_cents": 14400000,
-          "rate_bps": 375
-        },
-        {
-          "min_income_cents": 14400000,
+          "min_income_cents": 1440000,
           "max_income_cents": null,
-          "rate_bps": 475
+          "rate_bps": 450
         }
       ],
       "married_filing_separately": [
         {
-          "min_income_cents": 0,
-          "max_income_cents": 1000000,
-          "rate_bps": 25
+          "min_income_cents": 375000,
+          "max_income_cents": 490000,
+          "rate_bps": 250
         },
         {
-          "min_income_cents": 1000000,
-          "max_income_cents": 2500000,
-          "rate_bps": 75
+          "min_income_cents": 490000,
+          "max_income_cents": 720000,
+          "rate_bps": 350
         },
         {
-          "min_income_cents": 2500000,
-          "max_income_cents": 3750000,
-          "rate_bps": 175
-        },
-        {
-          "min_income_cents": 3750000,
-          "max_income_cents": 4900000,
-          "rate_bps": 275
-        },
-        {
-          "min_income_cents": 4900000,
-          "max_income_cents": 7200000,
-          "rate_bps": 375
-        },
-        {
-          "min_income_cents": 7200000,
+          "min_income_cents": 720000,
           "max_income_cents": null,
-          "rate_bps": 475
+          "rate_bps": 450
         }
       ],
       "head_of_household": [
         {
-          "min_income_cents": 0,
-          "max_income_cents": 1000000,
-          "rate_bps": 25
+          "min_income_cents": 375000,
+          "max_income_cents": 490000,
+          "rate_bps": 250
         },
         {
-          "min_income_cents": 1000000,
-          "max_income_cents": 2500000,
-          "rate_bps": 75
+          "min_income_cents": 490000,
+          "max_income_cents": 720000,
+          "rate_bps": 350
         },
         {
-          "min_income_cents": 2500000,
-          "max_income_cents": 3750000,
-          "rate_bps": 175
-        },
-        {
-          "min_income_cents": 3750000,
-          "max_income_cents": 4900000,
-          "rate_bps": 275
-        },
-        {
-          "min_income_cents": 4900000,
-          "max_income_cents": 7200000,
-          "rate_bps": 375
-        },
-        {
-          "min_income_cents": 7200000,
+          "min_income_cents": 720000,
           "max_income_cents": null,
-          "rate_bps": 475
+          "rate_bps": 450
         }
       ]
     }
@@ -150,7 +90,7 @@
     },
     {
       "filing_status": "head_of_household",
-      "amount_cents": 935000
+      "amount_cents": 635000
     }
   ],
   "personal_exemption": {
@@ -166,22 +106,17 @@
     "has_reciprocity": false
   },
   "dor_url": "https://oklahoma.gov/tax.html",
-  "tax_foundation_url": "https://taxfoundation.org/location/oklahoma/",
+  "tax_foundation_url": "https://taxfoundation.org/data/all/state/state-income-tax-rates-2026",
   "verification": {
-    "last_verified": "2026-03-19T21:53:21.559Z",
+    "last_verified": "2026-03-20T05:23:31.045Z",
     "sources": [
       {
-        "name": "Tax Foundation - Oklahoma",
-        "url": "https://taxfoundation.org/location/oklahoma/",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
-      },
-      {
-        "name": "Oklahoma Tax Commission",
-        "url": "https://oklahoma.gov/tax.html",
-        "accessed_at": "2026-03-19T21:53:21.559Z"
+        "name": "Tax Foundation 2026 Rates and Brackets (XLSX)",
+        "url": "https://taxfoundation.org/wp-content/uploads/2026/02/2026-State-Individual-Income-Tax-Rates-Brackets.xlsx",
+        "accessed_at": "2026-03-20T05:23:31.045Z"
       }
     ],
-    "verified_by": "ai_extraction",
-    "confidence": 0.85
+    "verified_by": "tax_foundation_parse",
+    "confidence": 0.99
   }
 }
