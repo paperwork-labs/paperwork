@@ -20,9 +20,11 @@
     "xlsx": "^0.18.5"
   },
   "scripts": {
+    "build": "pnpm run typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit --project tsconfig.json && tsc --noEmit --project tsconfig.scripts.json",
+    "type-check": "pnpm run typecheck",
     "parse:tax": "tsx scripts/parse-tax-foundation.ts",
     "parse:formation": "tsx scripts/parse-formation-rules.ts",
     "review": "tsx scripts/review.ts",
