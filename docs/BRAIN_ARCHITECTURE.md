@@ -7,11 +7,11 @@ The brain of Paperwork Labs — and eventually, everyone. A channel-agnostic AI 
 **Meta-product** (F90): Brain IS the long-term platform. FileFree ("file your taxes"), LaunchFree ("form your LLC"), axiomfolio ("manage your portfolio") are skills/capabilities within it. The AI financial advisor that FileFree was always meant to become IS the Brain. Products are the hands, Brain is the mind.
 **Strategic anchors** (v9): Memory Moat (D49) — accumulated context IS the product. Brain Fill Meter (D51) — psychology makes the moat visible and viral. Tiered Email Processing (D52) — metadata-only free tier at $0.03/mo makes the economics work at any scale.
 
-Stress-tested from 9 review lenses: Anthropic safety (Amodei), OpenAI scaling (Altman), Perplexity retrieval (Srinivas), DeepMind intelligence (Hassabis), CTO production review, Top 5 AI Leads (Karpathy/Fan/Chase/Weng/Askell), Jony Ive/Steve Jobs B2C UX, Andrew Chen Growth/Social, brain.ai competitive analysis. 9 rounds, 195 findings, all integrated. 54 design decisions. 14 hierarchical personas in 4 tiers. 7-agent automated content engine for psychology-driven GTM. No supplemental docs. This is the single source of truth.
+Stress-tested from 9 review lenses: Anthropic safety (Amodei), OpenAI scaling (Altman), Perplexity retrieval (Srinivas), DeepMind intelligence (Hassabis), CTO production review, Top 5 AI Leads (Karpathy/Fan/Chase/Weng/Askell), Jony Ive/Steve Jobs B2C UX, Andrew Chen Growth/Social, brain.ai competitive analysis. 10 rounds, 210 findings, all integrated. 57 design decisions. 14 hierarchical personas in 4 tiers. 7-agent automated content engine for psychology-driven GTM. No supplemental docs. This is the single source of truth.
 
 ---
 
-## 1. Design Decisions (D1-D54)
+## 1. Design Decisions (D1-D57)
 
 ### D1. Brain API is its own Render service
 
@@ -295,20 +295,28 @@ A "Circle" is a lightweight sharing group between 2+ users — couples, roommate
 
 **The `shared` visibility in D6 becomes real.** Episodes with `visibility: 'shared'` and a `circle_id` are visible to all circle members. Each person's personal Brain stays private. The Circle creates a "Third Brain" — a shared entity that knows things neither individual Brain knows alone (total household spending across both accounts).
 
-**Auto-sharing by circle type:**
+**Sharing suggestions by circle type (owner must approve every share — no auto-sharing, ever):**
 
-| Circle Type | Auto-Shared | Opt-In | Never Shared |
-|-------------|-------------|--------|--------------|
+| Circle Type | Suggested for Sharing | Owner Opt-In Only | Never Shared (structurally blocked) |
+|-------------|----------------------|-------------------|-------------------------------------|
 | Household (couple) | Calendar, contacts, subscriptions, shopping, travel, home | Bank accounts, investments | SSN, passwords, vault items |
 | Family (parents+kids) | Calendar, school/activities, health | Shopping, contacts | Finances, vault |
 | Roommates | Shared bills, rent, subscriptions | Calendar | Everything else |
 | Business partners | Business calendar, shared tools, clients | Personal | Everything personal |
 
-**Conversational interface:** "Share my Amazon spending with Olga" → tags connection as shared. "How much did we spend on food?" → queries circle scope. "What are we doing Saturday?" → shared calendar. In circle context, the Brain speaks as "we/us/our" — not "you." This isn't cosmetic; it validates the partnership.
+**The Brain detects, the owner decides.** No data moves between scopes without explicit human action. The Brain SUGGESTS: "I noticed you both get emails from State Farm. Want to share this?" The owner must tap to confirm. No background auto-tagging, no "smart defaults," no bulk-approve.
 
-**Auto-detection from email metadata:** When two Circle members both receive emails from Netflix, Amazon, State Farm, their landlord — the Brain auto-detects overlapping services. "You and Olga both receive emails from State Farm. Track as shared?" Zero manual setup. The metadata pipeline (D52) makes this free.
+**Conversational interface:** "Share my Amazon spending with Olga" → owner explicitly tags connection as shared. "How much did we spend on food?" → queries circle scope. "What are we doing Saturday?" → shared calendar. In circle context, the Brain speaks as "we/us/our" — not "you." This isn't cosmetic; it validates the partnership.
+
+**Overlap detection from email metadata:** When two Circle members both receive emails from Netflix, Amazon, State Farm, their landlord — the Brain detects the overlap and SUGGESTS sharing. Owner must approve each one individually. Detection itself is opt-in during circle setup — owner can disable it entirely. The metadata pipeline (D52) makes detection free.
 
 **Privacy within the Circle is sacred:** Circle members see shared episodes, NEVER each other's personal data. Brain proactively reassures: "Your personal data stays private. Only shared items are visible to both."
+
+**Circle Safety Protocol:**
+- **Offboarding**: Either member can leave unilaterally. Access to shared episodes revoked immediately. Shared episodes remain for other members, marked "former." No data is deleted.
+- **Anti-abuse**: No member can delete another's data. No member can see another's personal episodes. Circle creator has no admin override on privacy.
+- **No auto-sharing**: All sharing requires explicit owner action. Brain suggests, never acts. First circle setup includes a consent flow explaining what detection and sharing mean.
+- **Constitutional enforcement**: P006 (circle privacy) and P007 (delegate scope) — see Section 5.
 
 **12 strategic properties of Circles:**
 
@@ -318,16 +326,16 @@ A "Circle" is a lightweight sharing group between 2+ users — couples, roommate
 4. **Kids are the lock-in multiplier** — school emails, pediatrician, activities, daycare. The Brain becomes the family operating system.
 5. **Family pricing = 3x stickier** — Family plan: $39/yr for 2 ($19.50/person). Spotify Family: 10% churn vs 30% individual.
 6. **Asymmetric contribution** — the "organizer" partner's work benefits both. The "disorganized" partner gets organized without effort. Both are satisfied.
-7. **Auto-detection is the "wow"** — overlapping services detected from metadata. Zero setup required.
+7. **Overlap detection is the "wow"** — overlapping services detected from metadata, surfaced as suggestions. Owner approves each one. Zero setup required.
 8. **The "we" pronoun IS the product** — "Our Brain says we spent $1,200 on food" is shared discovery. "Your Brain says you spent too much" is judgment.
 9. **"Our Year in Review"** — couple Wrapped variant. "Together you spent $47K. Visited 4 cities. Cooked more in Q4." Couples love sharing their life together. Extremely viral.
-10. **Circle > Household** — co-founders, freelancer + bookkeeper, roommates, parent + adult child managing elder care. `circle_type` determines auto-sharing rules.
+10. **Circle > Household** — co-founders, freelancer + bookkeeper, roommates, parent + adult child managing elder care. `circle_type` determines sharing suggestion defaults.
 11. **The Third Brain** — each person has a personal Brain. The Circle creates a third entity. It knows things neither individual knows alone.
 12. **2x the moat** — two people locked in, not one. Social pressure to stay ("we have 2 years of shared history") is stronger in couples than individuals.
 
 **Pricing:** Free tier: personal brain only. Pro ($29/yr): personal + 1 circle. Family ($39/yr for 2): personal + household circle + shared calendar. Team ($19/user): org brain. Natural couple upsell: "Your Brain detected you and @olga share 3 accounts. Upgrade to see shared insights."
 
-Phase: P9 (schema + basic sharing + calendar), P10 (auto-detection, joint meter, "Our Year in Review").
+Phase: P9 (schema + owner-approved sharing + calendar + safety protocol), P10 (overlap detection suggestions, joint meter, "Our Year in Review").
 
 ### D54. Dual-Context Architecture (Founder Dogfood)
 
@@ -340,6 +348,103 @@ Same person, multiple brain contexts. Sankalp has: (1) personal Brain (B2C app) 
 **Strategic importance:** Sankalp and Olga are the first customers of every tier — Free (personal brain), Pro (circles), Team (org brain). They exercise every feature before any external user touches it. If it works for two co-founders who share both a business and personal expenses, it works for anyone.
 
 Phase: Already supported by D12/D19 architecture. Context switching UI in P9.
+
+### D55. Cross-Context Query Composition
+
+When a question spans multiple scopes (personal + circle + org), the Brain composes intelligence from all accessible contexts via parallel retrieval and scope-aware fusion.
+
+**Retrieval scope by active context:**
+
+| Active Context | Retrieval Scope | Example |
+|----------------|-----------------|---------|
+| Personal | personal + circle(s)' shared + org visible | "What are my deductions?" |
+| Circle | shared circle episodes only (privacy-safe) | "What did we spend on food?" |
+| Org | org + team(s)' + personal (D19) | "What's our deploy schedule?" |
+| Cross-context (auto-detected) | all accessible scopes, composed with attribution | "Can we afford to hire?" |
+
+**Cross-context detection:** ClassifyAndRoute (D20 Pattern 3) adds a scope classifier. When a question touches 2+ scopes, the Brain: (1) Detects scope overlap via keywords + entity graph. (2) Retrieves from all relevant scopes in parallel (`asyncio.gather`). (3) Composes response with clear source attribution: "[Personal]" / "[Household]" / "[Paperwork Labs]". (4) Respects privacy boundaries — never leaks one circle member's personal data into shared context.
+
+**Scope-aware RRF weights:**
+
+| Context Mode | Personal Weight | Circle Weight | Org Weight |
+|-------------|-----------------|---------------|------------|
+| Personal | 0.55 | 0.25 | 0.20 |
+| Circle | 0.20 | 0.80 | — |
+| Org | 0.20 | — | 0.50 (team 0.30) |
+
+**Five real-world scenarios:**
+
+1. **Tax Time**: "What are my deductions?" → personal deductions + business expenses (org) + shared home office pro-rata (circle). Response: "Your personal deductions: $12,400. Business deductions through Paperwork Labs: $3,200. From your household, the home office may qualify for $1,800."
+2. **Budget**: "What did we spend on food?" → circle-only. Never leaks individual spending. Response: "Your shared food spending: $440 groceries + $361 dining."
+3. **Investment**: "Should we invest in better servers?" → Brain detects cross-context ambiguity, clarifies: "Are you asking about Paperwork Labs infrastructure, or a personal investment?"
+4. **Overlap detection**: Both Circle members get State Farm emails → Brain SUGGESTS: "You and Olga both receive emails from State Farm. Want to share this as a household expense?" Owner must approve.
+5. **Hiring**: "Can we afford to hire?" → Requires org Brain (budget) + personal awareness (runway). Response: "[Paperwork Labs] Current monthly burn: $58. [Personal] Your runway covers 18 months. A $2K/mo contractor is viable for both."
+
+Phase: P9 (scope classifier in ClassifyAndRoute), P10 (cross-context golden test set).
+
+### D56. Brain Identity System
+
+Each context has a visual identity so the user always knows which Brain they're talking to at a glance.
+
+**Visual specification:**
+
+| Context | Avatar | Ring Color | Label |
+|---------|--------|------------|-------|
+| Personal | User's avatar | Product gradient (violet-purple) | "[Personal Brain]" |
+| Circle | Two overlapping circles (merged member avatars) | Dual-color gradient (both members' colors) | "[Household]" or circle name |
+| Org | Company logo | Org-themed ring | "[Paperwork Labs]" |
+| Delegate view | Owner's avatar + lock icon | Muted gray | "[Shared with you by Sankalp]" |
+
+**Context pill**: Below message input, small tappable pill showing the active context. Tap opens context picker with all available brains. Always visible — the user should never be confused about scope.
+
+**Response attribution**: Each message carries a subtle context badge in the header. Cross-context responses (D55) show multiple badges: "[Personal + Household]".
+
+**Conversational switching**: "Switch to our shared Brain" / "Ask my work Brain about the deploy." Brain confirms switch: "Switched to [Paperwork Labs]. What do you need?"
+
+Phase: P9 (context pill + avatar + switching), P10 (delegate view, cross-context badges).
+
+### D57. Delegated Access (Controlled Sharing)
+
+One-directional, purpose-scoped, time-limited, fully audited sharing. You share specific knowledge FROM your Brain TO someone else (CPA, advisor, lawyer, friend), with comprehensive misuse prevention.
+
+**Two sharing patterns coexist:**
+- **Circle (D53)** = joint bank account — mutual, ongoing, bidirectional, owner-approved per item
+- **Delegated Access (D57)** = power of attorney — one-way, category-scoped, time-limited, revocable, fully audited
+
+**Three-layer anti-misuse architecture:**
+
+**Layer 1 — Against data leaks (someone copies/exports your data):**
+- No bulk export for delegates — data rendered in-app only, no download
+- Watermarking: all data shown to delegates carries owner identity ("Shared by Sankalp")
+- Mobile: `FLAG_SECURE` (Android) + screen capture notification (iOS) on delegate views
+- Suspicious access detection: Brain monitors patterns (200+ episodes in 5 min = scraping → auto-revoke + alert owner)
+- Full audit trail: every data access logged with timestamp, IP, device fingerprint
+- Rate limiting: max 20 queries/day, 100 episodes viewed/day per delegate
+
+**Layer 2 — Against over-access (they see more than intended):**
+- Category-scoped: owner defines EXACTLY which categories ("tax + income + deductions" but NOT "personal + health + vault")
+- Structurally impossible categories: SSN, passwords, vault items can NEVER be shared, even if owner tries to grant it
+- Share preview: before activating, owner sees exactly what the delegate will see
+- Progressive disclosure: delegate starts at summary level, must REQUEST detail access (owner notified + must approve)
+- Never-share list enforced at the query layer — delegate queries that would return forbidden categories get filtered
+
+**Layer 3 — Against lingering access (they keep access after you're done):**
+- Mandatory expiration: every share has an expiry (default 30 days, max 1 year, no "forever" option)
+- Auto-revocation triggers: purpose completed ("until return is filed"), inactivity (14 days no access), instant owner revoke
+- Expiration reminders: "Sarah's access to your tax data expires in 7 days. Extend or let expire?"
+- Nightly zombie detection: flags shares not accessed in 30+ days, suggests cleanup
+- Grace period: ZERO — revocation is instant
+
+**Conversational interface:**
+- "Share my tax data with Sarah for 30 days" → creates delegated access, sends invite
+- "What can Sarah see?" → shows current share scope + access log
+- "Revoke Sarah's access" → instant revocation, Sarah notified
+- "Who has access to my Brain?" → full audit view (delegates + circles)
+- "Show me Sarah's access history" → timestamped log of every query and view
+
+**Delegates cannot query the Brain conversationally** — they see a read-only dashboard of category-scoped data. Cannot create episodes, modify entities, or interact with the Brain on the owner's behalf.
+
+Phase: P9 (basic delegated access + audit trail), P10 (progressive disclosure, suspicious pattern detection, delegate dashboard).
 
 ---
 
@@ -396,6 +501,7 @@ CREATE TABLE agent_episodes (
     id BIGSERIAL PRIMARY KEY,
     organization_id TEXT DEFAULT 'paperwork-labs',
     team_id INT REFERENCES agent_teams(id),
+    circle_id INT,  -- D53/D55: nullable, set for shared circle episodes
     user_id TEXT,
     visibility TEXT DEFAULT 'organization',
     verified BOOLEAN DEFAULT false,
@@ -428,6 +534,7 @@ CREATE TABLE agent_entities (
     id BIGSERIAL PRIMARY KEY,
     organization_id TEXT DEFAULT 'paperwork-labs',
     team_id INT REFERENCES agent_teams(id),
+    circle_id INT,  -- D53/D55: nullable, set for shared circle entities
     name TEXT NOT NULL,
     entity_type TEXT NOT NULL,
     canonical_name TEXT,
@@ -449,6 +556,7 @@ CREATE TABLE agent_entities (
 CREATE TABLE agent_entity_edges (
     id BIGSERIAL PRIMARY KEY,
     organization_id TEXT DEFAULT 'paperwork-labs',
+    circle_id INT,  -- D53/D55: nullable, set for shared circle edges
     source_entity_id BIGINT REFERENCES agent_entities(id) ON DELETE CASCADE,
     target_entity_id BIGINT REFERENCES agent_entities(id) ON DELETE CASCADE,
     relationship TEXT NOT NULL,
@@ -657,6 +765,40 @@ CREATE TABLE agent_connections (
 --     UNIQUE(circle_id, user_id)
 -- );
 
+-- P9 addition: delegated access for controlled sharing with external parties (D57)
+-- CREATE TABLE agent_delegated_access (
+--     id SERIAL PRIMARY KEY,
+--     owner_user_id TEXT NOT NULL,
+--     owner_org_id TEXT NOT NULL,
+--     delegate_email TEXT NOT NULL,
+--     delegate_user_id TEXT,           -- populated when delegate creates account
+--     purpose TEXT NOT NULL,           -- tax_preparation, financial_planning, legal_review
+--     categories TEXT[] NOT NULL,      -- scoped: ["tax", "income", "deductions"]
+--     never_share TEXT[] DEFAULT ARRAY['ssn', 'passwords', 'vault'],
+--     access_level TEXT DEFAULT 'read_summary',  -- read_summary, read_detail
+--     expires_at TIMESTAMPTZ NOT NULL,
+--     revoked_at TIMESTAMPTZ,
+--     revoked_reason TEXT,
+--     access_count INT DEFAULT 0,
+--     last_accessed_at TIMESTAMPTZ,
+--     created_at TIMESTAMPTZ DEFAULT NOW(),
+--     metadata JSONB DEFAULT '{}'
+-- );
+--
+-- CREATE TABLE agent_access_audit_log (
+--     id BIGSERIAL PRIMARY KEY,
+--     delegated_access_id INT REFERENCES agent_delegated_access(id),
+--     circle_id INT REFERENCES agent_circles(id),
+--     accessed_by TEXT NOT NULL,
+--     access_type TEXT NOT NULL,       -- view_episode, view_entity, query, export_attempt
+--     resource_type TEXT,
+--     resource_id TEXT,
+--     ip_address TEXT,
+--     device_fingerprint TEXT,
+--     flagged BOOLEAN DEFAULT false,   -- suspicious access pattern detected
+--     created_at TIMESTAMPTZ DEFAULT NOW()
+-- );
+
 -- Indexes
 CREATE INDEX ON agent_episodes USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX ON agent_entities USING hnsw (embedding vector_cosine_ops);
@@ -675,6 +817,13 @@ CREATE INDEX ON agent_audit_log (organization_id, created_at DESC);
 CREATE INDEX ON agent_audit_log (experiment_id) WHERE experiment_id IS NOT NULL;
 CREATE INDEX ON agent_connections (organization_id, provider);
 CREATE INDEX ON agent_admin_audit_log (organization_id, created_at DESC);
+-- D53/D55: circle-scope indexes for shared episodes and entities
+CREATE INDEX ON agent_episodes (circle_id, created_at DESC) WHERE circle_id IS NOT NULL;
+CREATE INDEX ON agent_entities (circle_id) WHERE circle_id IS NOT NULL;
+-- D57: delegated access audit trail
+-- CREATE INDEX ON agent_access_audit_log (delegated_access_id, created_at DESC);
+-- CREATE INDEX ON agent_access_audit_log (circle_id, created_at DESC) WHERE circle_id IS NOT NULL;
+-- CREATE INDEX ON agent_delegated_access (owner_user_id, expires_at);
 
 -- Seed
 INSERT INTO agent_organizations (organization_id, name, industry, plan) VALUES
@@ -780,18 +929,28 @@ principles:
     name: no_guarantees
     rule: "Never guarantee specific refund amounts or outcomes"
     severity: high
+  - id: P006
+    name: circle_privacy
+    rule: "Never expose Circle member personal data to another member. Never auto-share — all sharing requires explicit owner action."
+    severity: critical
+  - id: P007
+    name: delegate_scope
+    rule: "Never allow delegate access outside granted categories. SSN/passwords/vault structurally blocked."
+    severity: critical
 ```
 
 At inference: after LLM generates response, critique step evaluates against active constitution version. Violations trigger auto-revise with principle citation. All violations logged with `principle_id`. Phase: P1 (file + logging), P2 (critique-revise loop).
 
 **Output monitoring (F102)**: Lightweight filter in response pipeline — regex for dangerous financial/legal/medical advice without citations. System prompt: "Never recommend specific financial products without citing a source. Frame as information not advice."
 
-**Constitutional principles** (5 testable assertions monitored by Safety Lead):
+**Constitutional principles** (7 testable assertions monitored by Safety Lead):
 1. Never prioritize one user's interests over another without transparency
 2. Never claim certainty when evidence is thin — communicate confidence
 3. Never take irreversible actions (Tier 3) without explicit approval
 4. Never access data outside the user's authorized scope — enforce structurally
 5. Always preserve the option to undo
+6. **(P006 — Circle privacy, D53)**: Never expose one Circle member's personal data to another, even if explicitly requested. Never auto-share data — all sharing requires explicit owner action. The Brain detects, the owner decides.
+7. **(P007 — Delegate scope, D57)**: Never allow a delegate to access categories outside their granted scope, even if the owner's query context would normally include them. SSN, passwords, and vault items are structurally impossible to share.
 
 Wisdom behaviors (cached prefix): RESTRAINT, CONVICTION, HUMILITY (with confidence calibration — F100), CONNECTION, LEARNING, ANTICIPATION, SILENCE (acknowledge AND offer when uncertain — F53), CITATION, PROVENANCE.
 
@@ -927,6 +1086,19 @@ Question → Founder's Mind (context) → ClassifyAndRoute to Tier 1 → Tier 1 
 ### Persona Memory
 
 Episodes tagged with `persona` field. Each persona recalls its own history. The Legal persona remembers every compliance decision it's made for this org. The CTO remembers every architecture choice.
+
+### Context-Mode Persona Adaptation (D55)
+
+The Brain's personality shifts by active context — not just pronouns, but emotional register:
+
+| Context | Pronouns | Tone | Example |
+|---------|----------|------|---------|
+| Personal | "your", "you" | Warm, encouraging, celebratory | "Your refund estimate: $2,100!" |
+| Circle | "we", "us", "our" | Inclusive, partnership-validating | "Our shared spending this month: $3,200" |
+| Org | "the team", company name | Professional, direct, efficient | "[Paperwork Labs] Deploy succeeded. 3 services updated." |
+| Delegate view | "Sankalp's", owner attribution | Neutral, factual, read-only | "Sankalp's tax deductions: 12 items, $14,200 total" |
+
+Implementation: `context_mode` field injected into system prompt prefix alongside persona. The cached prefix (D3) includes context-appropriate voice rules. Switching context mid-conversation triggers a prefix swap.
 
 ---
 
@@ -1193,6 +1365,20 @@ All cards: 1080x1920 for Stories, product gradient, JetBrains Mono for numbers, 
 6. **"The Brain Character"** — Duolingo-style mascot energy, slightly unhinged personality
 7. **Demographic hooks** — "POV: you're a freelancer and your Brain finds $4K in deductions"
 
+### Joint Circle Meter (D53)
+
+When two users share a Circle, the fill meter becomes three bars:
+
+| Meter | Source | Psychology |
+|-------|--------|-----------|
+| Your Brain | Your personal data only | Individual progress |
+| Partner's Brain | Their count (no detail) | Competitive motivation |
+| Our Brain | Union of shared items | Always highest — motivates the person who's behind |
+
+"Together you know 1,847 things." The combined number is always larger than either individual's, reinforcing that the Circle adds value. The partner who's behind sees the gap and is motivated to connect more sources. Shareable card: "Our Brain knows 1,847 things about our life together."
+
+**Circle milestone notifications**: "Your shared Brain just hit 500 things learned! Here are 3 insights about your household." Sent to both members simultaneously.
+
 ### Monthly Brain Report Card
 
 ```
@@ -1202,6 +1388,12 @@ Brain fill: 73% → 81%
 Biggest insight: $847/mo in subscriptions
 Tax impact: HSA could save you $1,200
 Top 22% of Brain users in California
+
+OUR BRAIN — MARCH 2026 (Household)
+Shared facts this month: 34
+Household fill: 61% → 68%
+Shared subscriptions: $287/mo across 12 services
+Biggest joint insight: You both overpay for car insurance
 ```
 
 Rolling cadence, not annual. Spotify Wrapped got 500M shares in 24 hours (2025). Rolling captures demand year-round.
@@ -1291,7 +1483,7 @@ Free tier: "We never read your emails." Honest claim. TikTok hook: "My AI knows 
 
 ---
 
-## 19. All Findings Index (F1-F195)
+## 19. All Findings Index (F1-F210)
 
 ### Rounds 1-3 (F1-F48)
 
@@ -1543,6 +1735,26 @@ Free tier: "We never read your emails." Honest claim. TikTok hook: "My AI knows 
 | F194 | Dual-context architecture: same person in personal Brain + org Brain + household Circle (D54) | High | P9 |
 | F195 | The "we" pronoun: circle context uses "we/us/our" language, validates partnership | Med | P9 |
 
+### Round 10: Brain Interaction Model + Delegated Access (F196-F210)
+
+| # | Finding | Sev | Phase |
+|---|---------|-----|-------|
+| F196 | Cross-context query composition: questions spanning personal + circle + org need parallel retrieval + scope-aware RRF fusion (D55) | High | P9 |
+| F197 | Scope classifier needed in ClassifyAndRoute to detect multi-scope queries automatically | High | P9 |
+| F198 | Brain Identity System: visual context indicators (avatar rings, context pill, response badges) so user always knows which brain they're talking to (D56) | High | P9 |
+| F199 | Delegated access: one-way, category-scoped, time-limited sharing with CPAs/advisors/lawyers (D57) | High | P9 |
+| F200 | Anti-data-leak: no export for delegates, watermarking, FLAG_SECURE on mobile, scraping detection (200+ episodes in 5 min = auto-revoke) | Critical | P9 |
+| F201 | Anti-over-access: category scoping, structurally impossible categories (SSN/vault never sharable), share preview before activation | Critical | P9 |
+| F202 | Anti-lingering: mandatory expiration (max 1 year), auto-revoke on inactivity (14 days), zombie detection in nightly consolidation | High | P9 |
+| F203 | Delegates see read-only dashboard, cannot query Brain conversationally or modify data | High | P9 |
+| F204 | No auto-sharing in circles — Brain detects overlaps and SUGGESTS, owner must approve every share individually | Critical | P9 |
+| F205 | Circle offboarding: either member leaves unilaterally, access revoked immediately, shared episodes marked "former" | High | P9 |
+| F206 | Constitutional principles P006 (circle privacy) and P007 (delegate scope enforcement) added to constitution.yaml | Critical | P1 |
+| F207 | Entity merge protocol: two personal entities resolve to shared entity with circle_id when owner approves overlap | Med | P10 |
+| F208 | Joint Circle Meter: three bars (yours, partner's, "Our Brain") — combined always highest, motivates the person behind | High | P9 |
+| F209 | Context-mode persona adaptation: pronouns + emotional register shift by active context (personal/circle/org/delegate) | Med | P9 |
+| F210 | Access audit log: every delegate and circle data access logged with timestamp, IP, device fingerprint, suspicious pattern flagging | High | P9 |
+
 ---
 
 ## 20. Phased Execution Plan
@@ -1747,6 +1959,14 @@ Branch: `feat/brain-phase-2-memory`
 - Family plan pricing tier: $39/yr for 2 (F192)
 - "Our Year in Review" couple Wrapped variant (F193)
 - Dual-context UI: context switching between personal/org/circle brains (D54/F194)
+- **Cross-context query composition** (D55/F196): scope classifier in ClassifyAndRoute, parallel retrieval, scope-aware RRF weights, source attribution in responses
+- **Brain Identity System** (D56/F198): avatar rings per context, context pill, response badges, conversational switching
+- **Delegated access** (D57/F199): category-scoped sharing with CPAs/advisors, three-layer anti-misuse (no export, watermarking, scraping detection, mandatory expiry, auto-revoke), read-only delegate dashboard
+- Access audit log for all circle and delegate data access (F210)
+- No auto-sharing enforcement: overlap detection as suggestions only, owner-approved (F204)
+- Circle offboarding: unilateral leave, immediate access revocation (F205)
+- Joint Circle Meter: three-bar visualization (F208)
+- Context-mode persona adaptation: pronoun and tone switching (F209)
 - Brain Moments infrastructure (D32): insight detection, card generation, share UI
 - 7-agent content pipeline on n8n (D33): Trend Scout, Writer, Compliance, Visual, Publisher
 - Postiz integration for multi-platform publishing
@@ -1892,6 +2112,11 @@ Cross-user template amortization: cost per paid user decreases with scale (10 us
 | Procedural memory | COMPLETE (D40, F119) |
 | **Circle/household sharing** | **COMPLETE (D53, F188-F193 — auto-detection, calendar, family plan, couple Wrapped)** |
 | Dual-context architecture | COMPLETE (D54, F194 — personal + org + circle) |
+| **Cross-context query composition** | **COMPLETE (D55, F196-F197 — scope classifier, parallel retrieval, scope-aware RRF)** |
+| Brain Identity System | COMPLETE (D56, F198 — avatar rings, context pill, response badges) |
+| **Delegated access + anti-misuse** | **COMPLETE (D57, F199-F203 — three-layer anti-misuse, category scoping, audit trail)** |
+| No-auto-share enforcement | COMPLETE (F204 — owner approves every share, detection opt-in) |
+| Access audit trail | COMPLETE (F210 — full audit log for circle + delegate access) |
 
 ---
 
@@ -1945,13 +2170,15 @@ Support burden (mitigated by Brain Knowledge State communication, F40). Model co
 | Scaling | Altman | B+ | A- | **A** | Circuit breaker + Langfuse + gateway + Protocol abstractions |
 | Product/GTM | Composite | — | A- | **A** | 40+ connections + "See vs Understand" + cross-product moat |
 
-**Overall: A** (2x A+, 5x A, zero below A). Up from B+/A- range in v7.
+**Overall: A+ (5x A+, 2x A, zero below A).** Up from A (2x A+, 5x A) after Round 10. Design/UX A→A+ (Brain Identity System), Growth A→A+ (joint meter, circle viral), Safety A→A+ (three-layer anti-misuse, P006/P007, delegated access).
 
 **Strategic throughline (D49 + D51 + D52)**: Memory Moat (accumulated context is the switching cost) + Brain Fill Meter (psychology makes the moat visible and viral) + Tiered Processing (metadata-only free tier makes economics work at any scale). D52 is the unlock: $0.03/mo per free user, 100K free users for $3K/month, break-even at 1.5% conversion, "we never read your emails" as competitive weapon.
 
 **Round 9**: Circle Sharing + Dual-Context. 8 findings (F188-F195). D53 Circle sharing: lightweight B2C sharing primitive for couples/family/partners with auto-detection from email metadata, calendar auto-sharing, "we/us/our" pronoun design, family plan pricing, "Our Year in Review" couple Wrapped. D54 Dual-Context: same person in personal Brain + org Brain + household Circle. The couple moat is 2x the individual moat.
 
-All 195 findings integrated. No finding dismissed.
+**Round 10**: Brain Interaction Model + Delegated Access. 15 findings (F196-F210). D55 Cross-context query composition: scope classifier in ClassifyAndRoute, parallel retrieval, scope-aware RRF weights. D56 Brain Identity System: visual context indicators (avatar rings, context pill, response badges). D57 Delegated Access: three-layer anti-misuse architecture (anti-leak, anti-over-access, anti-linger), category-scoped, time-limited, fully audited. No auto-sharing — Brain detects, owner decides. P006 + P007 constitutional principles. Joint Circle Meter. Context-mode persona adaptation.
+
+All 210 findings integrated. No finding dismissed.
 
 ---
 
@@ -1971,3 +2198,4 @@ This v9 document is the single source of truth. Delete all prior versions:
 - `.cursor/plans/brain_fill_meter_strategy_824bf148.plan.md` (v9 fill meter strategy)
 - `.cursor/plans/consolidate_brain_architecture_69aca229.plan.md` (v9 consolidation plan)
 - `.cursor/plans/shared_brain_+_naming_2f4ffd4c.plan.md` (v9 circle sharing plan)
+- `.cursor/plans/brain_interaction_+_final_review_28401130.plan.md` (v9 interaction model + final review plan)
