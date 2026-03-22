@@ -7,11 +7,11 @@ The brain of Paperwork Labs — and eventually, everyone. A channel-agnostic AI 
 **Meta-product** (F90): Brain IS the long-term platform. FileFree ("file your taxes"), LaunchFree ("form your LLC"), axiomfolio ("manage your portfolio") are skills/capabilities within it. The AI financial advisor that FileFree was always meant to become IS the Brain. Products are the hands, Brain is the mind.
 **Strategic anchors** (v9): Memory Moat (D49) — accumulated context IS the product. Brain Fill Meter (D51) — psychology makes the moat visible and viral. Tiered Email Processing (D52) — metadata-only free tier at $0.03/mo makes the economics work at any scale.
 
-Stress-tested from 9 review lenses: Anthropic safety (Amodei), OpenAI scaling (Altman), Perplexity retrieval (Srinivas), DeepMind intelligence (Hassabis), CTO production review, Top 5 AI Leads (Karpathy/Fan/Chase/Weng/Askell), Jony Ive/Steve Jobs B2C UX, Andrew Chen Growth/Social, brain.ai competitive analysis. 8 rounds, 187 findings, all integrated. 52 design decisions. 14 hierarchical personas in 4 tiers. 7-agent automated content engine for psychology-driven GTM. No supplemental docs. This is the single source of truth.
+Stress-tested from 9 review lenses: Anthropic safety (Amodei), OpenAI scaling (Altman), Perplexity retrieval (Srinivas), DeepMind intelligence (Hassabis), CTO production review, Top 5 AI Leads (Karpathy/Fan/Chase/Weng/Askell), Jony Ive/Steve Jobs B2C UX, Andrew Chen Growth/Social, brain.ai competitive analysis. 9 rounds, 195 findings, all integrated. 54 design decisions. 14 hierarchical personas in 4 tiers. 7-agent automated content engine for psychology-driven GTM. No supplemental docs. This is the single source of truth.
 
 ---
 
-## 1. Design Decisions (D1-D52)
+## 1. Design Decisions (D1-D54)
 
 ### D1. Brain API is its own Render service
 
@@ -35,7 +35,7 @@ Four paths merged with reciprocal rank fusion. Weights: vector=0.4, FTS=0.35, en
 
 ### D6. Multi-user with privacy from day one
 
-Episodes have `visibility`: `organization`, `team`, `personal`, `shared`. Defaults: public Slack=org, DMs with brain=personal, personal email=personal, work email=org.
+Episodes have `visibility`: `organization`, `team`, `personal`, `shared`. Defaults: public Slack=org, DMs with brain=personal, personal email=personal, work email=org. `shared` visibility (D53): episodes scoped to a Circle (couples, family, partners) — visible to all circle members but not the broader org. Recall query: user sees personal + their team(s)' + org + their circle(s)' episodes.
 
 ### D7. Cost philosophy: excellence first, track always
 
@@ -275,7 +275,7 @@ iOS + Android via Expo in pnpm monorepo. 60-75% code sharing with Next.js via So
 
 ### D49. The Memory Moat: Brain as Universal Vault
 
-**The single most important design decision.** Intelligence is commodity. Accumulated personal context is irreplaceable. The Brain's memory IS the user's vault — financial identity, documents, credentials (encrypted vault column, biometric-gated), financial accounts, business data, personal context, professional contacts. The moat equation: `Switching cost = Σ(accumulated memories × time × trust)`. Day 0: connect Gmail. Day 30: knows subscriptions, contacts, finances. Day 365: irreplaceable. Email-first onboarding inverts the model: passive ingestion → user amazed → wants more. One Google OAuth = years of life data. Brain Fill Meter shows accumulation. Free tier: unlimited ingestion + 10 queries/month. Pro: unlimited queries + full vault. Revenue: paying to TALK TO your own accumulated context. Phase: core concept P1, vault encryption P2, email ingestion P7, fill meter P9.
+**The single most important design decision.** Intelligence is commodity. Accumulated personal context is irreplaceable. The Brain's memory IS the user's vault — financial identity, documents, credentials (encrypted vault column, biometric-gated), financial accounts, business data, personal context, professional contacts. The moat equation: `Switching cost = Σ(accumulated memories × time × trust)`. Day 0: connect Gmail. Day 30: knows subscriptions, contacts, finances. Day 365: irreplaceable. **The couple moat is 2x** (D53): Day 30 — Brain detects shared Amazon account with partner. Day 90 — "Our Brain" knows shared subscriptions, joint spending, shared calendar. Day 180 — shared financial + life context deeply entangled, BOTH people need to switch. Two people locked in, not one. Social pressure to stay is stronger in couples. Email-first onboarding inverts the model: passive ingestion → user amazed → wants more. One Google OAuth = years of life data. Brain Fill Meter shows accumulation. Free tier: unlimited ingestion + 10 queries/month. Pro: unlimited queries + full vault. Revenue: paying to TALK TO your own accumulated context. Phase: core concept P1, vault encryption P2, email ingestion P7, fill meter P9.
 
 ### D50. Email Ingestion Pipeline
 
@@ -288,6 +288,58 @@ Eight stacked psychological effects: (1) Endowed Progress (Nunes & Dreze 2006, 3
 ### D52. Tiered Email Processing ("See vs. Understand")
 
 **Cost breakthrough.** Free-user onboarding: $5.45 → $0.05 (99% reduction). Metadata alone (sender, subject, timestamp, labels, snippet) contains 60-70% of knowledge value. MIT Immersion (2013): 3 metadata fields reveal "deaths, transitions, former loves." Free tier uses `gmail.metadata` scope (less scary OAuth): sender-domain classification (500+ known domains), subject-line regex (amounts, order #s), frequency analysis (subscriptions), timestamp analysis (behaviors), thread analysis (social graph). Result: 600-800 items in 30 seconds, zero LLM. Paid tier adds 5 optimization layers: metadata-first skip 40%, sender templates skip 20%, representative sampling reduces LLM 90%, Gemini Flash 33% cheaper, Batch API 50% off. Cross-user template amortization: User #1's Chase template serves Users #2-10K. Cost decreases with scale. Privacy advantage: "We never read your emails" for free tier. Upgrade prompt: "Your Brain detected 14 subscriptions. Upgrade to see what they cost." Break-even: 1.5% conversion (vs 13% before). 100K free users: $3K/month. Phase: metadata pipeline P7, tiered logic P9.
+
+### D53. Circle Sharing (Couples, Family, Partners)
+
+A "Circle" is a lightweight sharing group between 2+ users — couples, roommates, family, co-founders. Not an org, not a team. A personal-scope sharing primitive for B2C that creates a shared life context.
+
+**The `shared` visibility in D6 becomes real.** Episodes with `visibility: 'shared'` and a `circle_id` are visible to all circle members. Each person's personal Brain stays private. The Circle creates a "Third Brain" — a shared entity that knows things neither individual Brain knows alone (total household spending across both accounts).
+
+**Auto-sharing by circle type:**
+
+| Circle Type | Auto-Shared | Opt-In | Never Shared |
+|-------------|-------------|--------|--------------|
+| Household (couple) | Calendar, contacts, subscriptions, shopping, travel, home | Bank accounts, investments | SSN, passwords, vault items |
+| Family (parents+kids) | Calendar, school/activities, health | Shopping, contacts | Finances, vault |
+| Roommates | Shared bills, rent, subscriptions | Calendar | Everything else |
+| Business partners | Business calendar, shared tools, clients | Personal | Everything personal |
+
+**Conversational interface:** "Share my Amazon spending with Olga" → tags connection as shared. "How much did we spend on food?" → queries circle scope. "What are we doing Saturday?" → shared calendar. In circle context, the Brain speaks as "we/us/our" — not "you." This isn't cosmetic; it validates the partnership.
+
+**Auto-detection from email metadata:** When two Circle members both receive emails from Netflix, Amazon, State Farm, their landlord — the Brain auto-detects overlapping services. "You and Olga both receive emails from State Farm. Track as shared?" Zero manual setup. The metadata pipeline (D52) makes this free.
+
+**Privacy within the Circle is sacred:** Circle members see shared episodes, NEVER each other's personal data. Brain proactively reassures: "Your personal data stays private. Only shared items are visible to both."
+
+**12 strategic properties of Circles:**
+
+1. **Micro-network effect** — one person's email contribution benefits both. Olga's insurance renewal email becomes knowledge Sankalp's Brain also has.
+2. **The invitation IS the viral mechanic** — "Join my Circle" is functional, not promotional. Cash App grew on "send me money via Cash App." Brain's version: "I need you on this so our Brain works for both of us." k-factor built into the product.
+3. **Calendar is the trojan horse** — immediately useful Day 1 ("What are we doing Saturday?"), before financial intelligence kicks in.
+4. **Kids are the lock-in multiplier** — school emails, pediatrician, activities, daycare. The Brain becomes the family operating system.
+5. **Family pricing = 3x stickier** — Family plan: $39/yr for 2 ($19.50/person). Spotify Family: 10% churn vs 30% individual.
+6. **Asymmetric contribution** — the "organizer" partner's work benefits both. The "disorganized" partner gets organized without effort. Both are satisfied.
+7. **Auto-detection is the "wow"** — overlapping services detected from metadata. Zero setup required.
+8. **The "we" pronoun IS the product** — "Our Brain says we spent $1,200 on food" is shared discovery. "Your Brain says you spent too much" is judgment.
+9. **"Our Year in Review"** — couple Wrapped variant. "Together you spent $47K. Visited 4 cities. Cooked more in Q4." Couples love sharing their life together. Extremely viral.
+10. **Circle > Household** — co-founders, freelancer + bookkeeper, roommates, parent + adult child managing elder care. `circle_type` determines auto-sharing rules.
+11. **The Third Brain** — each person has a personal Brain. The Circle creates a third entity. It knows things neither individual knows alone.
+12. **2x the moat** — two people locked in, not one. Social pressure to stay ("we have 2 years of shared history") is stronger in couples than individuals.
+
+**Pricing:** Free tier: personal brain only. Pro ($29/yr): personal + 1 circle. Family ($39/yr for 2): personal + household circle + shared calendar. Team ($19/user): org brain. Natural couple upsell: "Your Brain detected you and @olga share 3 accounts. Upgrade to see shared insights."
+
+Phase: P9 (schema + basic sharing + calendar), P10 (auto-detection, joint meter, "Our Year in Review").
+
+### D54. Dual-Context Architecture (Founder Dogfood)
+
+Same person, multiple brain contexts. Sankalp has: (1) personal Brain (B2C app) for personal finances, (2) Paperwork Labs org Brain (B2B Slack) for company ops, (3) household Circle (shared with Olga) for joint life. Same backend, different org/circle scopes per request.
+
+**Channel determines context:** Slack `#engineering` → `organization_id: 'paperwork-labs'`. App chat (default) → `organization_id: 'sankalp-personal'` (auto-created). Shared finances query → includes `circle_id` scope.
+
+**Context switching in app:** Default is personal brain. Tap org avatar in header to switch. Or conversational: "Ask my work Brain about the deploy schedule." "Switch to our shared Brain." Brain responds with context indicator: "[Personal]" or "[Paperwork Labs]" or "[Household]".
+
+**Strategic importance:** Sankalp and Olga are the first customers of every tier — Free (personal brain), Pro (circles), Team (org brain). They exercise every feature before any external user touches it. If it works for two co-founders who share both a business and personal expenses, it works for anyone.
+
+Phase: Already supported by D12/D19 architecture. Context switching UI in P9.
 
 ---
 
@@ -585,6 +637,26 @@ CREATE TABLE agent_connections (
 --     created_at TIMESTAMPTZ DEFAULT NOW()
 -- );
 
+-- P9 addition: circles for couples/family/partner sharing (D53)
+-- CREATE TABLE agent_circles (
+--     id SERIAL PRIMARY KEY,
+--     name TEXT NOT NULL,
+--     circle_type TEXT DEFAULT 'household',  -- household, family, roommates, business
+--     created_by TEXT NOT NULL,
+--     auto_share_config JSONB DEFAULT '{}',  -- per-type defaults
+--     created_at TIMESTAMPTZ DEFAULT NOW()
+-- );
+--
+-- CREATE TABLE agent_circle_members (
+--     id SERIAL PRIMARY KEY,
+--     circle_id INT REFERENCES agent_circles(id) ON DELETE CASCADE,
+--     user_id TEXT NOT NULL,
+--     role TEXT DEFAULT 'member',  -- owner, member
+--     sharing_config JSONB DEFAULT '{}',  -- per-connection sharing overrides
+--     joined_at TIMESTAMPTZ DEFAULT NOW(),
+--     UNIQUE(circle_id, user_id)
+-- );
+
 -- Indexes
 CREATE INDEX ON agent_episodes USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX ON agent_entities USING hnsw (embedding vector_cosine_ops);
@@ -817,6 +889,8 @@ Brain surfaces Paperwork Labs products as capabilities. Revenue compounds: brain
 **brain.ai cautionary tale (F164)**: brain.ai raised $51.5M (Emerson Collective, Scott Cook) to build a horizontal "generative interface." Result: no vertical depth, no data moat. Deutsche Telekom partnership replaced by ElevenLabs in 2026. App Store rating: 4.7 → 2.4. Lesson: vision without vertical depth fails even with $50M. The Brain avoids every mistake: vertical wedge (taxes), genuine switching cost (email + financial data + accumulated memory), own distribution (consumer-direct), infrastructure IS the product.
 
 **The "See vs. Understand" moat (D52)**: Free tier uses metadata-only email processing — 847 things learned without reading a single email. No competitor offers this. The privacy claim ("We never read your emails") is both technically true and competitively unique.
+
+**Couples/household moat (D53)**: No AI financial advisor handles couples natively. Origin: no couples. Monarch: basic shared accounts (manual). Peas/Smoov/Opto: manual splitting, no memory, no tax, no email. Brain: auto-detects shared accounts from email metadata, conversational sharing, joint Brain Meter, shared calendar, plus tax + LLC. The Circle creates a "Third Brain" that knows things neither individual Brain knows alone. The invitation ("Join my Circle") is a built-in viral mechanic with functional motivation.
 
 ---
 
@@ -1217,7 +1291,7 @@ Free tier: "We never read your emails." Honest claim. TikTok hook: "My AI knows 
 
 ---
 
-## 19. All Findings Index (F1-F187)
+## 19. All Findings Index (F1-F195)
 
 ### Rounds 1-3 (F1-F48)
 
@@ -1456,6 +1530,19 @@ Free tier: "We never read your emails." Honest claim. TikTok hook: "My AI knows 
 | F186 | "See vs Understand" upgrade prompt: shows value gap, not feature gate | High | P9 |
 | F187 | Privacy-as-marketing: "847 things, never read a single email" TikTok hook | High | Pre-launch |
 
+### Round 9: Circle Sharing + Dual-Context (F188-F195)
+
+| # | Finding | Sev | Phase |
+|---|---------|-----|-------|
+| F188 | Circle sharing: lightweight B2C sharing primitive for couples/family/partners (D53) | High | P9 |
+| F189 | Auto-detection of shared services from overlapping email metadata across Circle members | High | P10 |
+| F190 | Calendar auto-sharing is Day 1 value for Circles — more frequent than financial queries | High | P9 |
+| F191 | Kids/family lock-in: school, pediatrician, activities, daycare = family OS | Med | P10 |
+| F192 | Family plan pricing ($39/yr for 2): Spotify Family proves 10% churn vs 30% individual | High | P9 |
+| F193 | "Our Year in Review": couple Wrapped variant, extremely shareable | High | P9 |
+| F194 | Dual-context architecture: same person in personal Brain + org Brain + household Circle (D54) | High | P9 |
+| F195 | The "we" pronoun: circle context uses "we/us/our" language, validates partnership | Med | P9 |
+
 ---
 
 ## 20. Phased Execution Plan
@@ -1655,6 +1742,11 @@ Branch: `feat/brain-phase-2-memory`
 - Cross-user template amortization from launch (D52/F183)
 - Tiered "See vs Understand" processing logic (D52)
 - **Mobile app**: `apps/brain-mobile/` via Expo + NativeWind + Solito (D48/F149)
+- **Circle sharing** (D53/F188): circle schema, invitation flow, per-connection sharing controls, "we/us/our" pronoun in circle context
+- Calendar auto-sharing for household circles (F190)
+- Family plan pricing tier: $39/yr for 2 (F192)
+- "Our Year in Review" couple Wrapped variant (F193)
+- Dual-context UI: context switching between personal/org/circle brains (D54/F194)
 - Brain Moments infrastructure (D32): insight detection, card generation, share UI
 - 7-agent content pipeline on n8n (D33): Trend Scout, Writer, Compliance, Visual, Publisher
 - Postiz integration for multi-platform publishing
@@ -1798,6 +1890,8 @@ Cross-user template amortization: cost per paid user decreases with scale (10 us
 | Constitutional AI | COMPLETE (D36-D37, F121 — defense-in-depth, versioned constitution) |
 | Production observability | COMPLETE (D38, D41, F117-F118 — circuit breaker, Langfuse) |
 | Procedural memory | COMPLETE (D40, F119) |
+| **Circle/household sharing** | **COMPLETE (D53, F188-F193 — auto-detection, calendar, family plan, couple Wrapped)** |
+| Dual-context architecture | COMPLETE (D54, F194 — personal + org + circle) |
 
 ---
 
@@ -1855,7 +1949,9 @@ Support burden (mitigated by Brain Knowledge State communication, F40). Model co
 
 **Strategic throughline (D49 + D51 + D52)**: Memory Moat (accumulated context is the switching cost) + Brain Fill Meter (psychology makes the moat visible and viral) + Tiered Processing (metadata-only free tier makes economics work at any scale). D52 is the unlock: $0.03/mo per free user, 100K free users for $3K/month, break-even at 1.5% conversion, "we never read your emails" as competitive weapon.
 
-All 187 findings integrated. No finding dismissed.
+**Round 9**: Circle Sharing + Dual-Context. 8 findings (F188-F195). D53 Circle sharing: lightweight B2C sharing primitive for couples/family/partners with auto-detection from email metadata, calendar auto-sharing, "we/us/our" pronoun design, family plan pricing, "Our Year in Review" couple Wrapped. D54 Dual-Context: same person in personal Brain + org Brain + household Circle. The couple moat is 2x the individual moat.
+
+All 195 findings integrated. No finding dismissed.
 
 ---
 
@@ -1874,3 +1970,4 @@ This v9 document is the single source of truth. Delete all prior versions:
 - `.cursor/plans/brain_a+_push_3cf07375.plan.md` (v9 A+ push amendments)
 - `.cursor/plans/brain_fill_meter_strategy_824bf148.plan.md` (v9 fill meter strategy)
 - `.cursor/plans/consolidate_brain_architecture_69aca229.plan.md` (v9 consolidation plan)
+- `.cursor/plans/shared_brain_+_naming_2f4ffd4c.plan.md` (v9 circle sharing plan)
