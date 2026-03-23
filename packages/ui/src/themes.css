@@ -1,0 +1,184 @@
+/*
+ * Paperwork Labs — Shared Product Themes
+ *
+ * Each product palette is scoped via [data-theme="<product>"] on <body>.
+ * Apps import this file and set the attribute in their root layout.
+ *
+ * Palette source: .cursor/rules/brand.mdc
+ */
+
+/* ─── FileFree (Violet-Indigo) ─── */
+[data-theme="filefree"] {
+  --background: 224 71% 4%;
+  --foreground: 213 31% 91%;
+  --card: 224 71% 6%;
+  --card-foreground: 213 31% 91%;
+  --popover: 224 71% 6%;
+  --popover-foreground: 213 31% 91%;
+  --primary: 238 76% 57%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 222.2 47.4% 11.2%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 223 47% 11%;
+  --muted-foreground: 215.4 16.3% 56.9%;
+  --accent: 216 34% 17%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 63% 31%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 216 34% 17%;
+  --input: 216 34% 17%;
+  --ring: 263 70% 50%;
+  --brand-gradient: linear-gradient(to right, #8B5CF6, #9333EA);
+  --brand-shadow: rgba(124, 58, 237, 0.15);
+}
+
+/* ─── LaunchFree (Teal-Cyan) ─── */
+[data-theme="launchfree"] {
+  --background: 224 47% 7%;
+  --foreground: 210 40% 98%;
+  --card: 224 47% 9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 224 47% 9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 174 70% 35%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 222 47% 11%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 223 47% 11%;
+  --muted-foreground: 215 16% 57%;
+  --accent: 216 34% 17%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 63% 31%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 216 34% 17%;
+  --input: 216 34% 17%;
+  --ring: 174 70% 40%;
+  --brand-gradient: linear-gradient(to right, #14B8A6, #06B6D4);
+  --brand-shadow: rgba(20, 184, 166, 0.15);
+}
+
+/* ─── Distill (Deep Blue-Slate) ─── */
+[data-theme="distill"] {
+  --background: 222 47% 11%;
+  --foreground: 210 40% 98%;
+  --card: 222 47% 13%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222 47% 13%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 217 91% 60%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 222 47% 15%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 222 47% 15%;
+  --muted-foreground: 215 16% 57%;
+  --accent: 216 34% 20%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 63% 31%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 216 34% 20%;
+  --input: 216 34% 20%;
+  --ring: 217 91% 60%;
+  --brand-gradient: linear-gradient(to right, #3B82F6, #1E40AF);
+  --brand-shadow: rgba(59, 130, 246, 0.15);
+}
+
+/* ─── Studio / Paperwork Labs (Zinc-Neutral) ─── */
+[data-theme="studio"] {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  --card: 240 10% 5.5%;
+  --card-foreground: 0 0% 98%;
+  --popover: 240 10% 5.5%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 0 0% 98%;
+  --primary-foreground: 240 5.9% 10%;
+  --secondary: 240 3.7% 15.9%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
+  --accent: 240 3.7% 15.9%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --ring: 240 4.9% 83.9%;
+  --brand-gradient: linear-gradient(to right, #71717A, #52525B);
+  --brand-shadow: rgba(113, 113, 122, 0.15);
+}
+
+/* ─── Trinkets (Amber-Orange) ─── */
+[data-theme="trinkets"] {
+  --background: 20 14% 4%;
+  --foreground: 45 100% 97%;
+  --card: 20 14% 6%;
+  --card-foreground: 45 100% 97%;
+  --popover: 20 14% 6%;
+  --popover-foreground: 45 100% 97%;
+  --primary: 38 92% 50%;
+  --primary-foreground: 20 14% 4%;
+  --secondary: 20 14% 12%;
+  --secondary-foreground: 45 100% 97%;
+  --muted: 20 14% 12%;
+  --muted-foreground: 30 10% 55%;
+  --accent: 20 14% 15%;
+  --accent-foreground: 45 100% 97%;
+  --destructive: 0 63% 31%;
+  --destructive-foreground: 45 100% 97%;
+  --border: 20 14% 15%;
+  --input: 20 14% 15%;
+  --ring: 38 92% 50%;
+  --brand-gradient: linear-gradient(to right, #F59E0B, #EA580C);
+  --brand-shadow: rgba(245, 158, 11, 0.15);
+}
+
+/* ─── Brain (Rose-Orange) ─── */
+[data-theme="brain"] {
+  --background: 0 0% 5%;
+  --foreground: 0 0% 95%;
+  --card: 0 0% 7%;
+  --card-foreground: 0 0% 95%;
+  --popover: 0 0% 7%;
+  --popover-foreground: 0 0% 95%;
+  --primary: 350 89% 60%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 0 0% 12%;
+  --secondary-foreground: 0 0% 95%;
+  --muted: 0 0% 12%;
+  --muted-foreground: 0 0% 55%;
+  --accent: 0 0% 15%;
+  --accent-foreground: 0 0% 95%;
+  --destructive: 0 63% 31%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 0 0% 15%;
+  --input: 0 0% 15%;
+  --ring: 350 89% 60%;
+  --brand-gradient: linear-gradient(to right, #F43F5E, #F97316);
+  --brand-shadow: rgba(244, 63, 94, 0.15);
+}
+
+/* ─── Shared Utility: Brand Gradient Background ─── */
+.bg-brand-gradient {
+  background: var(--brand-gradient);
+}
+
+.text-brand-gradient {
+  color: hsl(var(--primary));
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+@media (forced-colors: active) {
+  .text-brand-gradient {
+    background: none;
+    background-clip: border-box;
+    -webkit-background-clip: border-box;
+    -webkit-text-fill-color: currentColor;
+  }
+}
+
+.shadow-brand {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03), 0 12px 40px var(--brand-shadow);
+}
