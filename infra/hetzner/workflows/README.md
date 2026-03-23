@@ -75,6 +75,30 @@ The script runs: import → `publish:workflow` → restart n8n → verify all wo
 
 **Note**: `n8n update:workflow` is deprecated in n8n 2.11+. Use `n8n publish:workflow --id=<id>` instead.
 
+### Inactive workflows (Infra Health Check: “14/16 active”)
+
+The **Infra Health Check** workflow compares n8n’s REST API `active` flag on every workflow. If any workflow is inactive, it posts to `#alerts` with the names.
+
+**Common reasons**
+
+- Someone toggled a workflow off in the n8n UI while debugging (credentials, Slack duplicates, cost).
+- **Agent Thread Handler** is high-impact: if misconfigured it can spam threads or hit OpenAI repeatedly, so it is sometimes left off until credentials are verified.
+- **CPA Tax Review** is on-demand (POST webhook); it may be disabled when not in use.
+- After `import:workflow`, duplicate workflow rows can appear; older copies may stay inactive while the new copy is active.
+
+**Re-enable (API — from a machine with vault / env)**
+
+```bash
+export N8N_HOST="https://n8n.paperworklabs.com"
+export N8N_API_KEY="..."   # same key used by Studio / n8n Settings → API
+chmod +x scripts/n8n-activate-workflows.sh
+./scripts/n8n-activate-workflows.sh "Agent Thread Handler" "CPA Tax Review"
+```
+
+Or run a full deploy (activates everything the CLI can publish): `./scripts/deploy-n8n-workflows.sh`.
+
+If a **webhook** workflow still fails after API activate, open it in the n8n editor, **Save**, and toggle **Active** once so webhooks register (known n8n quirk in some versions).
+
 ## Daily Briefing Troubleshooting
 
 If the 7am PT daily briefing did not post to #daily-briefing:

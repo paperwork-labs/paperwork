@@ -27,7 +27,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <ThemeProvider
         attribute="class"
         defaultTheme="dark"
-        enableSystem
+        enableSystem={false}
+        forcedTheme="dark"
         disableTransitionOnChange
       >
         <Suspense fallback={null}>
