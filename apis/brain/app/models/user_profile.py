@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, Integer, Text, func
+from sqlalchemy import DateTime, Float, Integer, Text, func, text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -18,10 +18,10 @@ class UserProfile(Base):
     domains: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
     gmail_accounts: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
     active_hours: Mapped[dict | None] = mapped_column(JSONB)
-    communication_prefs: Mapped[dict] = mapped_column(JSONB, server_default="{}")
-    personality_snapshot: Mapped[dict] = mapped_column(JSONB, server_default="{}")
-    interaction_count: Mapped[int] = mapped_column(Integer, server_default="0")
+    communication_prefs: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+    personality_snapshot: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+    interaction_count: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     avg_quality_score: Mapped[float | None] = mapped_column(Float)
     last_active_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, server_default="{}")
+    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, server_default=text("'{}'::jsonb"))

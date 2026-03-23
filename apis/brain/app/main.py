@@ -42,9 +42,11 @@ def _run_migrations() -> None:
         if result.returncode == 0:
             logger.info("Alembic migrations applied successfully")
         else:
-            logger.warning("Alembic migration failed: %s", result.stderr[:500])
+            logger.error("Alembic migration failed (exit code %s): %s", result.returncode, result.stderr[:500])
+            raise RuntimeError(f"Alembic migration failed with exit code {result.returncode}")
     except Exception:
-        logger.warning("Could not run Alembic migrations", exc_info=True)
+        logger.error("Could not run Alembic migrations", exc_info=True)
+        raise
 
 
 @asynccontextmanager
@@ -80,7 +82,7 @@ if settings.FRONTEND_URL.startswith("https://"):
         allowed_origins.append(f"{parsed.scheme}://{host[4:]}")
     else:
         allowed_origins.append(f"{parsed.scheme}://www.{host}")
-if settings.FRONTEND_URL != "http://localhost:3000":
+if settings.DEBUG and settings.FRONTEND_URL != "http://localhost:3000":
     allowed_origins.append("http://localhost:3000")
 
 app.add_middleware(CorrelationIdMiddleware)

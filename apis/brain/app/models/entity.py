@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, Integer, Text, func
+from sqlalchemy import DateTime, Float, Integer, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -21,12 +21,12 @@ class Entity(Base):
     canonical_name: Mapped[str | None] = mapped_column(Text)
     # embedding stored as pgvector VECTOR(1536)
     summary: Mapped[str | None] = mapped_column(Text)
-    confidence: Mapped[float] = mapped_column(Float, server_default="0.5")
+    confidence: Mapped[float] = mapped_column(Float, server_default=text("0.5"))
     first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    mention_count: Mapped[int] = mapped_column(Integer, server_default="1")
-    status: Mapped[str] = mapped_column(Text, server_default="active")
-    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, server_default="{}")
+    mention_count: Mapped[int] = mapped_column(Integer, server_default=text("1"))
+    status: Mapped[str] = mapped_column(Text, server_default=text("'active'"))
+    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, server_default=text("'{}'::jsonb"))
 
 
 class EntityEdge(Base):
@@ -39,7 +39,7 @@ class EntityEdge(Base):
     source_entity_id: Mapped[int] = mapped_column(Integer, nullable=False)
     target_entity_id: Mapped[int] = mapped_column(Integer, nullable=False)
     relation_type: Mapped[str] = mapped_column(Text, nullable=False)
-    weight: Mapped[float] = mapped_column(Float, server_default="1.0")
+    weight: Mapped[float] = mapped_column(Float, server_default=text("1.0"))
     evidence_episode_id: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, server_default="{}")
+    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, server_default=text("'{}'::jsonb"))
