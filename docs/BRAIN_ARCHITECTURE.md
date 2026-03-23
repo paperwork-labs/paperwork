@@ -59,7 +59,7 @@ SSN, EIN, CC, phone, bank routing numbers scrubbed before storage via regex. Ext
 
 ### D12. Full multi-tenant backend
 
-`organization_id` on ALL tables (F1: includes entities, edges, summaries). Every query org-scoped. Dual auth: internal secret → `paperwork-labs`, external API key → lookup org. Per-org rate limiting and storage quotas (F10).
+`organization_id TEXT NOT NULL` on all persisted multi-tenant tables (F1: includes entities, edges, summaries; P9 circle tables below) with **no default** — app layer MUST set explicitly on every insert. Internal dogfood instance uses `'paperwork-labs'`; consumer B2C users get auto-generated org IDs; B2B API callers provide their own. This prevents accidental cross-tenant data leaks. Every query org-scoped. Dual auth: internal secret → `paperwork-labs`, external API key → lookup org. Per-org rate limiting and storage quotas (F10).
 
 ### D13. Persona .mdc caching with versioning
 
@@ -679,7 +679,7 @@ CREATE TABLE agent_team_members (
 -- Episodes (core memory)
 CREATE TABLE agent_episodes (
     id BIGSERIAL PRIMARY KEY,
-    organization_id TEXT NOT NULL DEFAULT 'paperwork-labs',  -- NOT NULL enforced; default is internal instance only, B2C/B2B callers MUST set explicitly
+    organization_id TEXT NOT NULL,  -- no default: app layer MUST set explicitly (internal='paperwork-labs', consumer=user org ID)
     team_id INT REFERENCES agent_teams(id),
     circle_id INT,  -- D53/D55: nullable, set for shared circle episodes
     user_id TEXT,
@@ -712,7 +712,7 @@ CREATE TABLE agent_episodes (
 -- Entities (knowledge graph nodes)
 CREATE TABLE agent_entities (
     id BIGSERIAL PRIMARY KEY,
-    organization_id TEXT DEFAULT 'paperwork-labs',
+    organization_id TEXT NOT NULL,
     team_id INT REFERENCES agent_teams(id),
     circle_id INT,  -- D53/D55: nullable, set for shared circle entities
     name TEXT NOT NULL,
@@ -735,7 +735,7 @@ CREATE TABLE agent_entities (
 -- Entity edges (knowledge graph relationships)
 CREATE TABLE agent_entity_edges (
     id BIGSERIAL PRIMARY KEY,
-    organization_id TEXT DEFAULT 'paperwork-labs',
+    organization_id TEXT NOT NULL,
     circle_id INT,  -- D53/D55: nullable, set for shared circle edges
     source_entity_id BIGINT REFERENCES agent_entities(id) ON DELETE CASCADE,
     target_entity_id BIGINT REFERENCES agent_entities(id) ON DELETE CASCADE,
@@ -751,7 +751,7 @@ CREATE TABLE agent_entity_edges (
 -- User profiles
 CREATE TABLE agent_user_profiles (
     id SERIAL PRIMARY KEY,
-    organization_id TEXT DEFAULT 'paperwork-labs',
+    organization_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
     slack_user_id TEXT,
     display_name TEXT,
@@ -774,7 +774,7 @@ CREATE TABLE agent_user_profiles (
 -- Summaries (periodic consolidation)
 CREATE TABLE agent_summaries (
     id BIGSERIAL PRIMARY KEY,
-    organization_id TEXT DEFAULT 'paperwork-labs',
+    organization_id TEXT NOT NULL,
     team_id INT REFERENCES agent_teams(id),
     period TEXT NOT NULL,
     period_start DATE NOT NULL,
@@ -794,7 +794,7 @@ CREATE TABLE agent_summaries (
 -- Costs
 CREATE TABLE agent_costs (
     id BIGSERIAL PRIMARY KEY,
-    organization_id TEXT DEFAULT 'paperwork-labs',
+    organization_id TEXT NOT NULL,
     date DATE NOT NULL,
     provider TEXT NOT NULL,
     model TEXT,
@@ -811,7 +811,7 @@ CREATE TABLE agent_costs (
 -- Audit log (brain requests)
 CREATE TABLE agent_audit_log (
     id BIGSERIAL PRIMARY KEY,
-    organization_id TEXT NOT NULL DEFAULT 'paperwork-labs',
+    organization_id TEXT NOT NULL,  -- no default: app layer MUST set explicitly
     created_at TIMESTAMPTZ DEFAULT NOW(),
     request_id UUID DEFAULT gen_random_uuid(),
     n8n_execution_id TEXT,
@@ -928,6 +928,7 @@ CREATE TABLE agent_connections (
 -- P9 addition: circles for couples/family/partner sharing (D53)
 -- CREATE TABLE agent_circles (
 --     id SERIAL PRIMARY KEY,
+--     organization_id TEXT NOT NULL,
 --     name TEXT NOT NULL,
 --     circle_type TEXT DEFAULT 'household',  -- household, family, roommates, business
 --     created_by TEXT NOT NULL,
@@ -937,6 +938,7 @@ CREATE TABLE agent_connections (
 --
 -- CREATE TABLE agent_circle_members (
 --     id SERIAL PRIMARY KEY,
+--     organization_id TEXT NOT NULL,
 --     circle_id INT REFERENCES agent_circles(id) ON DELETE CASCADE,
 --     user_id TEXT NOT NULL,
 --     role TEXT DEFAULT 'member',  -- owner, member
