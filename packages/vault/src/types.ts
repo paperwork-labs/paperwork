@@ -22,7 +22,7 @@ export interface SecretWithValue extends SecretMetadata {
 
 export interface VaultResponse<T> {
   success: boolean;
-  data: T;
+  data?: T;
   error?: string;
 }
 

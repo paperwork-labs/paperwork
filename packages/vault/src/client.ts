@@ -1,3 +1,5 @@
+import { Buffer } from "node:buffer";
+
 import type {
   VaultConfig,
   VaultResponse,
@@ -6,6 +8,10 @@ import type {
   UpsertSecretParams,
 } from "./types";
 
+/**
+ * Shared client for the Studio secrets vault API.
+ * Server-side only — requires Node.js (uses Buffer, process.env).
+ */
 export class VaultClient {
   private baseUrl: string;
   private headers: Record<string, string>;
@@ -21,6 +27,10 @@ export class VaultClient {
    * ADMIN_EMAILS, ADMIN_ACCESS_PASSWORD.
    */
   static fromEnv(): VaultClient {
+    if (typeof process === "undefined" || !process.env) {
+      throw new VaultError("VaultClient.fromEnv() requires a Node.js environment", 0);
+    }
+
     const baseUrl = process.env.STUDIO_URL ?? "https://paperworklabs.com";
     const apiKey = process.env.SECRETS_API_KEY?.trim();
     const adminEmail = process.env.ADMIN_EMAILS?.split(",")[0]?.trim();
@@ -38,12 +48,12 @@ export class VaultClient {
 
   async list(): Promise<SecretMetadata[]> {
     const res = await this.fetch<SecretMetadata[]>("/api/secrets");
-    return res.data;
+    return res.data!;
   }
 
   async get(id: string): Promise<SecretWithValue> {
     const res = await this.fetch<SecretWithValue>(`/api/secrets/${id}`);
-    return res.data;
+    return res.data!;
   }
 
   /**
@@ -63,7 +73,7 @@ export class VaultClient {
       method: "POST",
       body: JSON.stringify(params),
     });
-    return res.data;
+    return res.data!;
   }
 
   async delete(id: string): Promise<void> {
@@ -72,9 +82,17 @@ export class VaultClient {
 
   async export(): Promise<string> {
     const url = `${this.baseUrl}/api/secrets/export`;
+    // Node fetch has no caching; Next.js callers should wrap with { next: { revalidate: 0 } }
     const res = await fetch(url, { headers: this.headers });
     if (!res.ok) {
-      throw new VaultError(`Export failed: HTTP ${res.status}`, res.status);
+      let message = `Export failed: HTTP ${res.status}`;
+      try {
+        const body = (await res.json()) as { error?: string };
+        if (body?.error) message = body.error;
+      } catch {
+        // non-JSON response, use default message
+      }
+      throw new VaultError(message, res.status);
     }
     return res.text();
   }
@@ -84,16 +102,31 @@ export class VaultClient {
     init?: RequestInit,
   ): Promise<VaultResponse<T>> {
     const url = `${this.baseUrl}${path}`;
-    const res = await fetch(url, {
-      ...init,
-      headers: {
-        ...this.headers,
-        "Content-Type": "application/json",
-        ...(init?.headers as Record<string, string>),
-      },
-    });
+    const headers: Record<string, string> = {
+      ...this.headers,
+      ...(init?.headers as Record<string, string>),
+    };
+    if (init?.body) {
+      headers["Content-Type"] = "application/json";
+    }
 
-    const json = (await res.json()) as VaultResponse<T>;
+    let res: Response;
+    try {
+      res = await fetch(url, { ...init, headers });
+    } catch (err) {
+      throw new VaultError(
+        `Vault request failed: ${err instanceof Error ? err.message : "network error"}`,
+        0,
+      );
+    }
+
+    let json: VaultResponse<T>;
+    try {
+      json = (await res.json()) as VaultResponse<T>;
+    } catch {
+      throw new VaultError(`Vault returned non-JSON response: HTTP ${res.status}`, res.status);
+    }
+
     if (!res.ok || !json.success) {
       throw new VaultError(
         json.error ?? `Vault request failed: HTTP ${res.status}`,
