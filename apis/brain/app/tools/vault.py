@@ -10,8 +10,6 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-STUDIO_URL = "https://paperworklabs.com"
-
 
 @dataclass
 class VaultResult:
@@ -25,10 +23,12 @@ async def vault_list() -> VaultResult:
     """List all secret names (no values). Safe to show in LLM context."""
     try:
         async with _client() as client:
-            res = await client.get(f"{STUDIO_URL}/api/secrets")
+            res = await client.get(f"{settings.STUDIO_URL}/api/secrets")
             res.raise_for_status()
-            data = res.json()
-            names = [s["name"] for s in data.get("data", [])]
+            body = res.json()
+            if not body.get("success"):
+                return VaultResult(success=False, error=body.get("error", "Unknown error"))
+            names = [s["name"] for s in body.get("data", [])]
             return VaultResult(success=True, value=", ".join(names))
     except Exception as e:
         return VaultResult(success=False, error=str(e))
@@ -39,17 +39,23 @@ async def vault_get(name: str) -> VaultResult:
     The agent loop must NOT inject this into the LLM prompt."""
     try:
         async with _client() as client:
-            list_res = await client.get(f"{STUDIO_URL}/api/secrets")
+            list_res = await client.get(f"{settings.STUDIO_URL}/api/secrets")
             list_res.raise_for_status()
-            secrets = list_res.json().get("data", [])
+            list_body = list_res.json()
+            if not list_body.get("success"):
+                return VaultResult(success=False, error=list_body.get("error", "Failed to list secrets"))
+            secrets = list_body.get("data", [])
 
             match = next((s for s in secrets if s["name"] == name), None)
             if not match:
                 return VaultResult(success=False, error=f"Secret '{name}' not found")
 
-            get_res = await client.get(f"{STUDIO_URL}/api/secrets/{match['id']}")
+            get_res = await client.get(f"{settings.STUDIO_URL}/api/secrets/{match['id']}")
             get_res.raise_for_status()
-            secret_data = get_res.json().get("data", {})
+            get_body = get_res.json()
+            if not get_body.get("success"):
+                return VaultResult(success=False, error=get_body.get("error", "Failed to get secret"))
+            secret_data = get_body.get("data", {})
             return VaultResult(
                 success=True,
                 value=secret_data.get("value"),
@@ -64,10 +70,13 @@ async def vault_set(name: str, value: str, service: str) -> VaultResult:
     try:
         async with _client() as client:
             res = await client.post(
-                f"{STUDIO_URL}/api/secrets",
+                f"{settings.STUDIO_URL}/api/secrets",
                 json={"name": name, "value": value, "service": service},
             )
             res.raise_for_status()
+            body = res.json()
+            if not body.get("success"):
+                return VaultResult(success=False, error=body.get("error", "Failed to save secret"))
             return VaultResult(success=True, value=f"Secret '{name}' saved")
     except Exception as e:
         return VaultResult(success=False, error=str(e))

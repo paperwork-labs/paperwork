@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     VAULT_API_KEY: str = ""
     BRAIN_API_SECRET: str = ""
+    STUDIO_URL: str = "https://paperworklabs.com"
 
     FRONTEND_URL: str = "http://localhost:3000"
     ENVIRONMENT: str = "development"

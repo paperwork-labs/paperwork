@@ -1,12 +1,12 @@
 """P11.3: Memory system — store and retrieve episodes with hybrid search.
 
-Retrieval uses Reciprocal Rank Fusion (RRF) combining:
-- Vector similarity (weight 0.4) via pgvector
-- Full-text search (weight 0.35) via tsvector
-- Recency bias (weight 0.25)
+Phase 1 implementation:
+- Full-text search (Postgres tsvector) for relevance
+- Recency bias via timestamp-based ordering
+- D15: Memory fatigue — recently-recalled episodes penalized 0.5x via Redis (24h TTL)
+- D11: PII scrubbing on all stored text
 
-D15: Memory fatigue — recently-recalled episodes penalized 0.5x via Redis (24h TTL).
-D11: PII scrubbing on all stored text.
+Vector similarity (pgvector) and full RRF-based ranking will be added in Phase 2.
 """
 
 import logging
@@ -77,7 +77,6 @@ async def search_episodes(
     """Hybrid search: full-text + recency, ranked by RRF.
     Vector search requires embeddings (Phase 2). For P1, FTS + recency."""
 
-    scrubbed_query = scrub_pii(query)
     fatigue_ids = fatigue_ids or set()
 
     fts_query = text("""
@@ -93,7 +92,7 @@ async def search_episodes(
 
     result = await db.execute(
         fts_query,
-        {"query": scrubbed_query, "org_id": organization_id, "limit_val": limit * 3},
+        {"query": query, "org_id": organization_id, "limit_val": limit * 3},
     )
     rows = result.fetchall()
 
@@ -119,7 +118,10 @@ async def search_episodes(
         return []
 
     episodes = await db.execute(
-        select(Episode).where(Episode.id.in_(top_ids))
+        select(Episode).where(
+            Episode.id.in_(top_ids),
+            Episode.organization_id == organization_id,
+        )
     )
     episode_map = {e.id: e for e in episodes.scalars().all()}
     return [episode_map[eid] for eid in top_ids if eid in episode_map]

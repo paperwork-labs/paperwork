@@ -23,7 +23,9 @@ ORG_NAME_CACHE: dict[str, str] = {
 def _verify_api_secret(x_brain_secret: str | None = Header(None, alias="X-Brain-Secret")) -> None:
     expected = settings.BRAIN_API_SECRET
     if not expected:
-        return
+        if settings.ENVIRONMENT == "development":
+            return
+        raise HTTPException(status_code=503, detail="Brain API secret not configured")
     if not x_brain_secret or x_brain_secret != expected:
         raise HTTPException(status_code=401, detail="Invalid or missing X-Brain-Secret")
 

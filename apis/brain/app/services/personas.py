@@ -3,20 +3,29 @@ channel, content keywords, and explicit mentions."""
 
 import re
 
-PERSONA_KEYWORDS: dict[str, list[str]] = {
+SINGLE_WORD_KEYWORDS: dict[str, list[str]] = {
     "engineering": ["code", "deploy", "api", "bug", "pr", "merge", "build", "test", "lint", "infra", "render", "vercel"],
     "strategy": ["strategy", "roadmap", "planning", "decision", "priority", "phase"],
-    "legal": ["legal", "compliance", "efin", "privacy", "disclaimer", "circular 230", "upl"],
+    "legal": ["legal", "compliance", "efin", "privacy", "disclaimer", "upl"],
     "cfo": ["cost", "spend", "spent", "burn", "budget", "pricing", "revenue", "expense", "subscription"],
-    "qa": ["test", "security", "audit", "vulnerability", "pii", "leak"],
-    "tax-domain": ["tax", "irs", "w-2", "1040", "mef", "filing", "refund", "deduction", "bracket"],
-    "cpa": ["advisory", "tax plan", "client guidance", "cpa"],
-    "growth": ["marketing", "seo", "content", "landing page", "viral", "referral", "conversion"],
-    "social": ["tiktok", "instagram", "twitter", "post", "reel", "creator", "social media"],
-    "partnerships": ["partner", "outreach", "deal", "pipeline", "co-founder"],
-    "ux": ["design", "ui", "ux", "mobile", "accessibility", "animation", "component"],
+    "qa": ["security", "audit", "vulnerability", "pii", "leak"],
+    "tax-domain": ["tax", "irs", "1040", "mef", "refund", "deduction", "bracket"],
+    "cpa": ["advisory", "cpa"],
+    "growth": ["marketing", "seo", "viral", "referral", "conversion"],
+    "social": ["tiktok", "instagram", "twitter", "reel", "creator"],
+    "partnerships": ["partner", "outreach", "deal", "pipeline"],
+    "ux": ["design", "ui", "ux", "accessibility", "animation", "component"],
     "agent-ops": ["model", "routing", "persona", "agent", "workflow", "n8n"],
-    "ea": ["briefing", "task", "schedule", "weekly", "daily", "what should i"],
+    "ea": ["briefing", "schedule", "weekly", "daily"],
+}
+
+PHRASE_KEYWORDS: dict[str, list[str]] = {
+    "legal": ["circular 230"],
+    "tax-domain": ["w-2", "filing status"],
+    "cpa": ["tax plan", "client guidance"],
+    "growth": ["landing page", "content marketing"],
+    "social": ["social media"],
+    "ea": ["what should i", "work on"],
 }
 
 CHANNEL_PERSONA_MAP: dict[str, str] = {
@@ -42,12 +51,18 @@ def route_persona(
 
     lower = message.lower()
     scores: dict[str, int] = {}
-    for persona, keywords in PERSONA_KEYWORDS.items():
-        score = sum(1 for kw in keywords if re.search(rf"\b{re.escape(kw)}\b", lower))
-        if score > 0:
-            scores[persona] = score
+
+    for persona, phrases in PHRASE_KEYWORDS.items():
+        for phrase in phrases:
+            if phrase in lower:
+                scores[persona] = scores.get(persona, 0) + 2
+
+    for persona, keywords in SINGLE_WORD_KEYWORDS.items():
+        for kw in keywords:
+            if re.search(rf"\b{re.escape(kw)}\b", lower):
+                scores[persona] = scores.get(persona, 0) + 1
 
     if scores:
-        return max(scores, key=scores.get)  # type: ignore[arg-type]
+        return max(scores, key=lambda p: scores[p])
 
     return "ea"

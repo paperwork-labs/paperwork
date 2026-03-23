@@ -1,20 +1,20 @@
 """P11.2: Agent loop — the core intelligence pipeline.
 
-D2: Max 5 iterations per request.
-D4: Query reformulation before memory search.
+Phase 1 (single-pass): receives a message, retrieves memory, calls LLM, stores episode.
+Phase 2 will add D2 iterative tool dispatch (max 5 iterations).
+
 D10: Request idempotency via Redis.
-D14: Model fallback chains.
+D14: Model fallback chains (Anthropic -> OpenAI -> mock).
 D15: Memory fatigue on recalled episodes.
 
 Pipeline per request:
 1. Check idempotency (D10)
 2. Route persona
-3. Reformulate query for memory search (D4)
-4. Retrieve relevant episodes (hybrid search)
-5. Assemble system prompt + context
-6. LLM call
-7. Store interaction as episode
-8. Return response
+3. Retrieve relevant episodes (hybrid FTS + recency search)
+4. Assemble system prompt + context
+5. LLM call
+6. Store interaction as episode
+7. Return response
 """
 
 import logging
@@ -26,8 +26,6 @@ from app.services.personas import route_persona
 from app.services.pii import scrub_pii
 
 logger = logging.getLogger(__name__)
-
-MAX_ITERATIONS = 5
 
 SYSTEM_PROMPT_TEMPLATE = """You are the Brain for {org_name} — an intelligent assistant with memory.
 You are operating as the {persona} persona.
