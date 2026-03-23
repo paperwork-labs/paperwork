@@ -15,6 +15,20 @@
 
 set -euo pipefail
 
+# Load env files if n8n vars are not already set (Studio often has N8N_* from `vercel env pull`).
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source_env_file() {
+  [[ -f "$1" ]] || return 0
+  set -a
+  # shellcheck disable=SC1091
+  source "$1"
+  set +a
+}
+source_env_file "${REPO_ROOT}/.env.local"
+if [[ -z "${N8N_API_KEY:-}" || -z "${N8N_API_URL:-}${N8N_HOST:-}" ]]; then
+  source_env_file "${REPO_ROOT}/apps/studio/.env.local"
+fi
+
 RAW_BASE="${N8N_API_URL:-${N8N_HOST:-}}"
 if [[ -z "$RAW_BASE" ]]; then
   echo "Error: set N8N_HOST or N8N_API_URL" >&2

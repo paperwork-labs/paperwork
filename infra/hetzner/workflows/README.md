@@ -88,12 +88,22 @@ The **Infra Health Check** workflow compares n8n’s REST API `active` flag on e
 
 **Re-enable (API — from a machine with vault / env)**
 
+The script auto-loads `N8N_HOST` or `N8N_API_URL` + `N8N_API_KEY` from repo-root `.env.local`, then `apps/studio/.env.local` if still missing (e.g. after `make env-pull` / Vercel sync).
+
+```bash
+make n8n-activate-inactive
+```
+
+Or manually:
+
 ```bash
 export N8N_HOST="https://n8n.paperworklabs.com"
 export N8N_API_KEY="..."   # same key used by Studio / n8n Settings → API
 chmod +x scripts/n8n-activate-workflows.sh
 ./scripts/n8n-activate-workflows.sh "Agent Thread Handler" "CPA Tax Review"
 ```
+
+If the API returns **401**, regenerate the key in n8n **Settings → API** and update `apps/studio/.env.local` (or root `.env.local`).
 
 Or run a full deploy (activates everything the CLI can publish): `./scripts/deploy-n8n-workflows.sh`.
 

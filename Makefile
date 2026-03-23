@@ -1,7 +1,8 @@
 .PHONY: dev dev-d dev-all dev-filefree dev-launchfree dev-studio dev-trinkets dev-distill \
 	dev-local-filefree dev-local-launchfree dev-local-studio dev-local-trinkets dev-local-distill \
 	stop test test-local lint lint-local format format-local migrate migrate-local migration seed clean \
-	setup setup-hooks help logs logs-api logs-web shell-api shell-web db env-pull env-check
+	setup setup-hooks help logs logs-api logs-web shell-api shell-web db env-pull env-check \
+	n8n-activate-inactive
 
 COMPOSE_PROJECT ?= paperwork
 COMPOSE = docker compose -p $(COMPOSE_PROJECT) -f infra/compose.dev.yaml
@@ -136,3 +137,7 @@ env-pull: ## Pull Vercel production env vars to Studio .env.local
 
 env-check: ## Validate env vars across all environments (Vercel, local, Hetzner)
 	@bash scripts/env-check.sh
+
+n8n-activate-inactive: ## Activate Agent Thread Handler + CPA Tax Review (needs N8N_HOST + N8N_API_KEY in .env.local)
+	@chmod +x scripts/n8n-activate-workflows.sh
+	@./scripts/n8n-activate-workflows.sh "Agent Thread Handler" "CPA Tax Review"
