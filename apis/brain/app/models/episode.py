@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, Integer, SmallInteger, Text, func, text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Boolean, Computed, DateTime, Float, Integer, SmallInteger, Text, func, text
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -42,3 +42,8 @@ class Episode(Base):
     confidence: Mapped[float | None] = mapped_column(Float)
     visual_context_url: Mapped[str | None] = mapped_column(Text)
     metadata_: Mapped[dict] = mapped_column("metadata", JSONB, server_default=text("'{}'::jsonb"))
+    search_vector = mapped_column(
+        TSVECTOR,
+        Computed("to_tsvector('english', coalesce(summary, '') || ' ' || coalesce(full_context, ''))", persisted=True),
+        nullable=True,
+    )
