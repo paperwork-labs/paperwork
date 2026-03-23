@@ -1,0 +1,19 @@
+{
+  "name": "@paperwork-labs/vault",
+  "version": "0.0.1",
+  "private": true,
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.37",
+    "typescript": "^5.9.3"
+  }
+}
