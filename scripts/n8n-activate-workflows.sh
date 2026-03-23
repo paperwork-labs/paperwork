@@ -24,7 +24,9 @@ source_env_file() {
   source "$1"
   set +a
 }
-source_env_file "${REPO_ROOT}/.env.local"
+if [[ -z "${N8N_API_KEY:-}" || -z "${N8N_API_URL:-}${N8N_HOST:-}" ]]; then
+  source_env_file "${REPO_ROOT}/.env.local"
+fi
 if [[ -z "${N8N_API_KEY:-}" || -z "${N8N_API_URL:-}${N8N_HOST:-}" ]]; then
   source_env_file "${REPO_ROOT}/apps/studio/.env.local"
 fi
