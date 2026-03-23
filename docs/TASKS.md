@@ -1069,7 +1069,7 @@ Add the consumer data ingestion layer. One Google OAuth = three signal sources. 
 - **Task ID**: P11.7
 - **Owner**: Founder 1
 - **Branch**: `feat/brain-google-oauth`
-- **Files/Specs**: One OAuth flow grants access to Gmail metadata (`https://www.googleapis.com/auth/gmail.metadata`), Google Calendar (`https://www.googleapis.com/auth/calendar.readonly`), and Google Maps Location History (via Google Takeout or Timeline API). D39 Tier 1. Store OAuth tokens encrypted. Refresh token rotation.
+- **Files/Specs**: One OAuth flow grants access to Gmail metadata (`https://www.googleapis.com/auth/gmail.metadata`), Google Calendar (`https://www.googleapis.com/auth/calendar.readonly`), and Google Maps Timeline / Location History (`https://www.googleapis.com/auth/maps.timeline.readonly`, plus Takeout where API access is insufficient). D39 Tier 1. Store OAuth tokens encrypted. Refresh token rotation.
 - **Acceptance Criteria**: Single Google sign-in grants all 3 scopes. Tokens stored securely. Refresh works. Revocation cleans up all data.
 - **Depends On**: P11.1
 - **Status**: NOT STARTED
@@ -1108,7 +1108,7 @@ Add the consumer data ingestion layer. One Google OAuth = three signal sources. 
 - **Task ID**: P11.10
 - **Owner**: Founder 1
 - **Branch**: `feat/brain-email-metadata`
-- **Files/Specs**: Gmail metadata processing per D52. Sender-domain classification (500+ known domains), subject-line regex (amounts, order numbers), frequency analysis (subscriptions), timestamp analysis (behaviors), thread analysis (social graph). 600-800 items in 30 seconds, zero LLM. `gmail.metadata` scope only — never reads email bodies in free tier.
+- **Files/Specs**: Gmail metadata processing per D52. Sender-domain classification (500+ known domains), subject-line regex (amounts, order numbers), frequency analysis (subscriptions), timestamp analysis (behaviors), thread analysis (social graph). 600-800 items in 30 seconds, zero LLM. `https://www.googleapis.com/auth/gmail.metadata` scope only — never reads email bodies in free tier.
 - **Acceptance Criteria**: Metadata pipeline produces 600+ items from a typical Gmail account. Subscriptions detected. Vendors classified. Purchase patterns identified. Zero LLM calls.
 - **Depends On**: P11.7, P11.3
 - **Status**: NOT STARTED
