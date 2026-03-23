@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { JsonLd } from "@/components/json-ld";
+
 export const metadata: Metadata = {
   title: "Pricing",
   description:
@@ -94,10 +96,7 @@ export default function PricingPage() {
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      <JsonLd data={jsonLd} />
 
       <div className="mx-auto max-w-3xl px-4 py-16">
         <Link

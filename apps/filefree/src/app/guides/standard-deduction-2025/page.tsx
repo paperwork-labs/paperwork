@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { JsonLd } from "@/components/json-ld";
+
 export const metadata: Metadata = {
   title: "2025 Standard Deduction Amounts (Tax Year 2025) — FileFree",
   description:
@@ -52,10 +54,7 @@ const jsonLd = {
 export default function StandardDeduction2025Page() {
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      <JsonLd data={jsonLd} />
 
       <article className="mx-auto max-w-3xl px-4 py-16">
         <Link
