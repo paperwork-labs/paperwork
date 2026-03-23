@@ -5,6 +5,7 @@ const nextConfig = {
   output: "standalone",
   transpilePackages: ["@paperwork-labs/ui"],
   async redirects() {
+    // Next.js maps permanent: true to HTTP 308 (and temporary to 307), not 301/302.
     return [
       {
         source: "/:path*",
