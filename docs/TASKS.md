@@ -219,6 +219,7 @@ All 13 tasks done (P1.1–P1.11 including P1.9b, P1.9c). pnpm workspace with 5 a
 **Remaining polish** (non-blocking):
 - [ ] P1.10a: Add `dorny/paths-filter@v3` to CI for path-filtered builds per workspace
 - [ ] P1.10b: Verify Docker Compose dev environment with new monorepo paths
+- [x] P1.10c: Turborepo parallel builds — **DONE** (`turbo.json`, root `package.json` scripts). Optional polish: remote cache / per-app pipeline tuning when scaling CI.
 
 ---
 
@@ -1195,6 +1196,10 @@ These run in parallel with all phases. Some have hard deadlines that block downs
 | MeF certification prep | Founder 1 | Start June 2026 | NOT STARTED | XML generator -> ATS testing (October) -> Comms test (November). |
 | TikTok Spark Ads budget | Founder 1 | At LaunchFree launch | NOT STARTED | $100-300/mo max. Boost proven organic winners only. See Section 5K. |
 | Pre-launch audience building | Founder 1 | Ongoing, start NOW | NOT STARTED | SEO blog posts, Reddit, waitlist growth. See Section 5K. |
+| SSN Vision Fallback Fix (CRITICAL) | Founder 1 | Before first SSN collected | NOT STARTED | GPT-4o vision fallback sends full W-2 image (contains SSN) to OpenAI — violates security rule #1. Options: image redaction via Cloud Vision bounding boxes, region masking, or fallback-to-manual-entry. Security-critical, needs careful tradeoff analysis. |
+| CI Auto-Merge n8n Workflow | Founder 1 | June 2026 | NOT STARTED | Modify agent-thread-handler workflow, design pending-merge storage, create GitHub check_suite webhook workflow so PRs auto-merge after CI passes. |
+| Cost Collector + Studio Agents Dashboard | Founder 1 | June 2026 | NOT STARTED | n8n workflow pulling from OpenAI/Anthropic/Google Usage APIs to Studio Neon DB. Studio dashboard with cost-per-model and cost-per-workflow Recharts charts at `/admin/agents`. |
+| Model Evaluation (GPT-5.4 family and new releases) | Founder 1 | Ongoing | NOT STARTED | Evaluate new model releases against `docs/AI_MODEL_REGISTRY.md`. Run comparison tests, analyze quality/cost tradeoffs, update the registry, swap n8n workflow models where beneficial. |
 
 ---
 
