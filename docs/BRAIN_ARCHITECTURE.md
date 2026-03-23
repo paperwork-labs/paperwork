@@ -59,7 +59,7 @@ SSN, EIN, CC, phone, bank routing numbers scrubbed before storage via regex. Ext
 
 ### D12. Full multi-tenant backend
 
-`organization_id TEXT NOT NULL` on ALL tables (F1: includes entities, edges, summaries) with **no default** — app layer MUST set explicitly on every insert. Internal dogfood instance uses `'paperwork-labs'`; consumer B2C users get auto-generated org IDs; B2B API callers provide their own. This prevents accidental cross-tenant data leaks. Every query org-scoped. Dual auth: internal secret → `paperwork-labs`, external API key → lookup org. Per-org rate limiting and storage quotas (F10).
+`organization_id TEXT NOT NULL` on all persisted multi-tenant tables (F1: includes entities, edges, summaries; P9 circle tables below) with **no default** — app layer MUST set explicitly on every insert. Internal dogfood instance uses `'paperwork-labs'`; consumer B2C users get auto-generated org IDs; B2B API callers provide their own. This prevents accidental cross-tenant data leaks. Every query org-scoped. Dual auth: internal secret → `paperwork-labs`, external API key → lookup org. Per-org rate limiting and storage quotas (F10).
 
 ### D13. Persona .mdc caching with versioning
 
@@ -928,6 +928,7 @@ CREATE TABLE agent_connections (
 -- P9 addition: circles for couples/family/partner sharing (D53)
 -- CREATE TABLE agent_circles (
 --     id SERIAL PRIMARY KEY,
+--     organization_id TEXT NOT NULL,
 --     name TEXT NOT NULL,
 --     circle_type TEXT DEFAULT 'household',  -- household, family, roommates, business
 --     created_by TEXT NOT NULL,
@@ -937,6 +938,7 @@ CREATE TABLE agent_connections (
 --
 -- CREATE TABLE agent_circle_members (
 --     id SERIAL PRIMARY KEY,
+--     organization_id TEXT NOT NULL,
 --     circle_id INT REFERENCES agent_circles(id) ON DELETE CASCADE,
 --     user_id TEXT NOT NULL,
 --     role TEXT DEFAULT 'member',  -- owner, member
