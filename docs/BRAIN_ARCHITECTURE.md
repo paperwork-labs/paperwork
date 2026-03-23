@@ -625,6 +625,100 @@ Five-channel system for the Brain to TELL users things without waiting for them 
 
 Phase: P6 (basic notification architecture), P9 (full 5-channel delivery, Weekly Brain Brief, escalation), P10 (advanced personalization, optimal send time).
 
+### D61. Per-User Encrypted Vault
+
+Separate from memory (D23 RED classification = "never store passwords/keys"). The vault is a secure sidecar for credentials the Brain uses on behalf of the user — API keys, OAuth tokens, service passwords.
+
+Schema: `brain_user_vault` table with AES-256-GCM encryption (same pattern as Studio's `secrets` table). Fields: `user_id`, `organization_id`, `name`, `encrypted_value`, `iv`, `auth_tag`, `service`, `description`, `expires_at`, `last_rotated_at`, `created_at`.
+
+The Brain knows you HAVE a key (stored as a GREEN episode: "User has OpenAI API key"). The actual key lives in vault, never enters LLM context. Brain accesses vault via tool: `vault_get(name)` — Tier 0 auto tool. Value returned to tool execution layer only, never injected into prompt. Vault access requires user auth (not just Brain API secret). Biometric gate in mobile app (Phase 11-full). Vault items are structurally blocked from Circle sharing (D53) and Delegated Access (D57) — even if an owner tries to grant it.
+
+Phase: P1 (schema), P2 (Brain tool integration), P9 (mobile biometric gate).
+
+### D62. Platform Brain and Skill Registry
+
+The "Super Brain" / "Brain of all Brains" implemented as a reserved organization, not a separate service. The existing D12 multi-tenant architecture supports a three-level platform hierarchy with zero additional infrastructure:
+
+```
+organization_id = 'platform'              — Platform Brain (root)
+  ├── Skill registry (brain_skills table)
+  ├── Cross-user learned templates (D52 amortization)
+  ├── World knowledge (aggregated, anonymized)
+  └── Platform procedures (D40)
+
+organization_id = 'paperwork-labs'        — Org Brain (venture ops)
+  ├── Venture decisions, tasks, architecture
+  ├── Layer 1 skills (tax-filing, llc-formation, compliance)
+  └── Team/individual brains for co-founders
+
+organization_id = 'user-{uuid}'           — Personal Brains
+  ├── Inherited skills from platform (gated by plan tier)
+  ├── Personal connections (Gmail, Plaid, Chrome extension)
+  └── Circle memberships (D53)
+```
+
+Schema addition to `agent_organizations`: `parent_organization_id TEXT` (nullable). NULL for `'platform'` (root), `'platform'` for all org and personal brains. Establishes parentage without a separate service.
+
+Skill registry: `brain_skills` table with `skill_id`, `name`, `description`, `category`, `tier` (free/personal/team/enterprise), `connector_id` (nullable, links to D26 connector), `tools` JSONB, `knowledge_domains` JSONB, `requires_connection` boolean, `owner_organization_id` (default `'platform'`), `status`.
+
+Skill enablement: `brain_user_skills` table. Users "install" a skill by creating a row. The `tier` column on `brain_skills` is the single gate — when a free user tries to enable a `personal`-tier skill, the system returns "upgrade to unlock." One column, not separate tables or separate brains per tier. The platform brain determines availability via one query:
+
+```sql
+SELECT s.* FROM brain_skills s
+JOIN brain_user_skills us ON us.skill_id = s.skill_id
+  AND us.user_id = :user_id AND us.organization_id = :org_id
+WHERE s.tier <= :user_plan AND s.status = 'active';
+```
+
+Initial skill registry:
+
+| skill_id | name | tier | category | connector_id |
+|---|---|---|---|---|
+| tax-filing | Tax Filing | free | financial | null (built-in) |
+| llc-formation | LLC Formation | free | financial | null (built-in) |
+| financial-calculators | Financial Calculators | free | financial | null (built-in) |
+| email-metadata | Email Intelligence | free | financial | google-workspace |
+| calendar-insights | Calendar Insights | free | lifestyle | google-workspace |
+| email-full | Deep Email Analysis | personal | financial | google-workspace |
+| location-history | Location Intelligence | personal | lifestyle | google-maps |
+| bank-transactions | Bank Transactions | personal | financial | plaid |
+| browser-context | Shopping and Browsing | personal | shopping | chrome-extension |
+| couple-brain | Shared Circle | personal | lifestyle | null (built-in) |
+
+How skills grow over time: (1) Paperwork Labs builds Layer 1 skills as products ship. (2) Connections-as-skills via D26/D39 — each OAuth toggle is a new skill. (3) Procedural memory (D40) learns procedures for existing skills. (4) Nightly self-improvement (D35) optimizes quality. (5) Future: Zapier/Make integration at 100K+ users opens 5,000+ connections. Third-party Connector SDK only if developer ecosystem justifies it.
+
+Phase: P1 (schema + platform org seed), P2 (skill enablement logic), P9 (consumer skill marketplace UI).
+
+### D63. Browser Context Connector
+
+Added to D39 Connection Roadmap as Tier 2.5 (P10, paid tier only). A Chrome Extension (Manifest V3) that captures browsing context for real-time intent signals — the difference between knowing what happened last week (email metadata) and knowing what is happening right now.
+
+**Captures:**
+- Page visits (URL + title + timestamp, NOT page content)
+- User-triggered screenshots (hotkey, NOT auto-capture). Visual context processed via GPT-4o vision / Gemini Pro Vision.
+- Shopping signals (product pages via schema.org/Product detection, price tracking)
+- Search queries (opt-in subcategory, off by default)
+
+**Connector:** `BrowserConnector` following D26 protocol (authorize, sync, health_check, revoke).
+
+**Privacy design (the line between wow and creepy):**
+1. Paid tier only — user pays Paperwork Labs, not the other way around
+2. Granular opt-in — "Enable shopping assistant" / "Enable travel assistant" as separate toggles, not blanket access
+3. Personal-scope only — browser data NEVER enters org or circle raw data. Insights derived from browsing can be shared ("she's been looking at these shoes") but raw history cannot.
+4. Full transparency — user can view everything captured and delete any item
+5. "Brain noticed" framing — "I noticed you've been looking at flights" not "I tracked your browsing"
+
+**Killer use cases (cross-referencing browser context with existing memory):**
+- Flight shopping + Maps history: "Flights to Portland are $89 cheaper on Southwest. Last time you were there, you loved that ramen place on Burnside."
+- Partner birthday + Circle calendar: "Olga's birthday is in 12 days. She's been looking at [product]. It's $40 off at [store]."
+- Repeated product views: "Those Nikes you looked at 3 times this week are 30% off."
+
+**Schema addition:** Optional `visual_context_url TEXT` on `agent_episodes` for screenshot references.
+
+**Trinket Factory candidate:** The Chrome extension can start life as a Trinket (Phase 1.5 candidate) — a standalone "deal finder" browser extension at `tools.filefree.ai`. Standalone value (finds deals), feeds the Brain when connected. Users install it for deals; it becomes a Brain data source.
+
+Phase: Trinket v1 (Phase 1.5 candidate), Brain connector (P10, paid tier only).
+
 ---
 
 ## 2. Memory Schema
@@ -639,6 +733,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE TABLE agent_organizations (
     id SERIAL PRIMARY KEY,
     organization_id TEXT NOT NULL UNIQUE,
+    parent_organization_id TEXT, -- D62: NULL for 'platform' (root), 'platform' for all others
     name TEXT NOT NULL,
     industry TEXT,
     size_band TEXT,
@@ -706,6 +801,7 @@ CREATE TABLE agent_episodes (
     tokens_in INT,
     tokens_out INT,
     confidence FLOAT,
+    visual_context_url TEXT, -- D63: optional screenshot/image reference for browser context episodes
     metadata JSONB DEFAULT '{}'
 );
 
@@ -981,7 +1077,54 @@ CREATE TABLE agent_connections (
 --     created_at TIMESTAMPTZ DEFAULT NOW()
 -- );
 
+-- Per-User Encrypted Vault (D61) — secrets/API keys, NOT memory
+CREATE TABLE brain_user_vault (
+    id BIGSERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    organization_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    encrypted_value TEXT NOT NULL,
+    iv TEXT NOT NULL,
+    auth_tag TEXT NOT NULL,
+    service TEXT,
+    description TEXT,
+    expires_at TIMESTAMPTZ,
+    last_rotated_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (user_id, organization_id, name)
+);
+
+-- Skill Registry (D62) — skills the platform offers
+CREATE TABLE brain_skills (
+    id SERIAL PRIMARY KEY,
+    skill_id TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    description TEXT,
+    category TEXT,
+    tier TEXT DEFAULT 'free',          -- free, personal, team, enterprise
+    connector_id TEXT,                 -- links to D26 connector (nullable for built-in skills)
+    tools JSONB DEFAULT '[]',          -- tool IDs this skill grants
+    knowledge_domains JSONB DEFAULT '[]',
+    requires_connection BOOLEAN DEFAULT false,
+    owner_organization_id TEXT DEFAULT 'platform',
+    status TEXT DEFAULT 'active',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Skill Enablement (D62) — which skills a user has "installed"
+CREATE TABLE brain_user_skills (
+    user_id TEXT NOT NULL,
+    organization_id TEXT NOT NULL,
+    skill_id TEXT NOT NULL REFERENCES brain_skills(skill_id),
+    enabled_at TIMESTAMPTZ DEFAULT NOW(),
+    config JSONB DEFAULT '{}',
+    PRIMARY KEY (user_id, organization_id, skill_id)
+);
+
 -- Indexes
+CREATE INDEX ON brain_user_vault (user_id, organization_id);
+CREATE INDEX ON brain_skills (tier, status);
+CREATE INDEX ON brain_user_skills (organization_id);
 CREATE INDEX ON agent_episodes USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX ON agent_entities USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX ON agent_summaries USING hnsw (embedding vector_cosine_ops);
@@ -1008,8 +1151,9 @@ CREATE INDEX ON agent_entities (circle_id) WHERE circle_id IS NOT NULL;
 -- CREATE INDEX ON agent_delegated_access (owner_user_id, expires_at);
 
 -- Seed
-INSERT INTO agent_organizations (organization_id, name, industry, plan) VALUES
-  ('paperwork-labs', 'Paperwork Labs', 'technology', 'enterprise');
+INSERT INTO agent_organizations (organization_id, parent_organization_id, name, industry, plan) VALUES
+  ('platform', NULL, 'Platform Brain', 'platform', 'enterprise'),       -- D62: root of hierarchy
+  ('paperwork-labs', 'platform', 'Paperwork Labs', 'technology', 'enterprise');
 INSERT INTO agent_user_profiles (organization_id, user_id, display_name, role, domains, gmail_accounts) VALUES
   ('paperwork-labs', 'sankalp', 'Sankalp', 'founder_product_eng',
    ARRAY['engineering','product','infrastructure','tax','design'],
@@ -1017,6 +1161,19 @@ INSERT INTO agent_user_profiles (organization_id, user_id, display_name, role, d
   ('paperwork-labs', 'olga', 'Olga', 'founder_partnerships_revenue',
    ARRAY['partnerships','revenue','operations','legal'],
    ARRAY['olga@paperworklabs.com']);
+
+-- D62: Initial skill registry
+INSERT INTO brain_skills (skill_id, name, category, tier, requires_connection) VALUES
+  ('tax-filing',             'Tax Filing',              'financial',  'free',     false),
+  ('llc-formation',          'LLC Formation',           'financial',  'free',     false),
+  ('financial-calculators',  'Financial Calculators',   'financial',  'free',     false),
+  ('email-metadata',         'Email Intelligence',      'financial',  'free',     true),
+  ('calendar-insights',      'Calendar Insights',       'lifestyle',  'free',     true),
+  ('email-full',             'Deep Email Analysis',     'financial',  'personal', true),
+  ('location-history',       'Location Intelligence',   'lifestyle',  'personal', true),
+  ('bank-transactions',      'Bank Transactions',       'financial',  'personal', true),
+  ('browser-context',        'Shopping and Browsing',   'shopping',   'personal', true),
+  ('couple-brain',           'Shared Circle',           'lifestyle',  'personal', false);
 ```
 
 ---
