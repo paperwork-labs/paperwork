@@ -1,8 +1,8 @@
 # Paperwork Labs — Venture Build Tasks
 
-**Version**: 10.0 | **Updated**: 2026-03-18
+**Version**: 11.0 | **Updated**: 2026-03-22
 
-Work through these in phase order. Each task is scoped for one PR. Reference [PRD.md](PRD.md) for business context, [PRODUCT_SPEC.md](PRODUCT_SPEC.md) for FileFree UX specs, [VENTURE_MASTER_PLAN.md](VENTURE_MASTER_PLAN.md) for deep strategy, [PARTNERSHIPS.md](PARTNERSHIPS.md) for partner playbook, [.cursorrules](../.cursorrules) for coding conventions.
+Work through these in phase order. Each task is scoped for one PR. Reference [PRD.md](PRD.md) for business context, [BRAIN_ARCHITECTURE.md](BRAIN_ARCHITECTURE.md) for Brain technical spec, [PRODUCT_SPEC.md](PRODUCT_SPEC.md) for FileFree UX specs, [VENTURE_MASTER_PLAN.md](VENTURE_MASTER_PLAN.md) for deep strategy, [PARTNERSHIPS.md](PARTNERSHIPS.md) for partner playbook, [.cursorrules](../.cursorrules) for coding conventions.
 
 **Historical MVP tasks**: Sprint 0-6 detailed specs archived in [TASKS-ARCHIVE.md](TASKS-ARCHIVE.md). All completed work (Tasks 0.1-2.7, B.1-B.11, I.1) preserved there for reference.
 
@@ -969,6 +969,212 @@ See [VENTURE_MASTER_PLAN.md](VENTURE_MASTER_PLAN.md) Section 1C (Distill APIs) a
 
 ---
 
+## Phase 11: Brain — AI Life Intelligence (Parallel Track)
+
+The Brain is the meta-product of Paperwork Labs. Internal-first strategy: Brain serves as Paperwork Labs copilot before becoming a consumer product. Proactive-primary interaction model: Brain TELLS you things, chat is secondary.
+
+See [BRAIN_ARCHITECTURE.md](BRAIN_ARCHITECTURE.md) for the definitive technical spec (60 design decisions, 228 findings, 11 review rounds). Does NOT block Phases 3-10. Runs parallel. Start when there's a gap in the critical path.
+
+### Phase 11-alpha: Internal Brain (~4 weeks)
+
+Brain as the operating system for building Paperwork Labs. Dogfood path per BRAIN_ARCHITECTURE.md D54.
+
+<details>
+<summary>P11.1 Brain API scaffold</summary>
+
+- **Task ID**: P11.1
+- **Owner**: Founder 1
+- **Branch**: `feat/brain-api-scaffold`
+- **Files/Specs**: `apis/brain/` (greenfield FastAPI). Render Standard ($25/mo per D1/F59). Domain: `brain.paperworklabs.com`. Database: same Neon instance, `agent_*` tables. Health endpoint, BRAIN_API_SECRET auth (D9).
+- **Acceptance Criteria**: Brain API running on Render. Health check passing. Internal auth via shared secret. CORS restricted to n8n and Studio origins.
+- **Depends On**: None (can start immediately)
+- **Status**: NOT STARTED
+
+</details>
+
+<details>
+<summary>P11.2 Agent loop with persona routing</summary>
+
+- **Task ID**: P11.2
+- **Owner**: Founder 1
+- **Branch**: `feat/brain-agent-loop`
+- **Files/Specs**: Input normalization, persona selection from `.cursor/rules/*.mdc`, LLM call (Opus primary, Sonnet fallback per D14), tool dispatch, max 5 iterations (D2). Query reformulation before memory search (D4). Request idempotency via Redis (D10).
+- **Acceptance Criteria**: POST `/brain/process` accepts message + context, routes to correct persona, returns LLM response. Fallback chain works when primary model is unavailable. Idempotency prevents duplicate processing.
+- **Depends On**: P11.1
+- **Status**: NOT STARTED
+
+</details>
+
+<details>
+<summary>P11.3 Memory system</summary>
+
+- **Task ID**: P11.3
+- **Owner**: Founder 1
+- **Branch**: `feat/brain-memory`
+- **Files/Specs**: Episodes table with pgvector embeddings. Hybrid retrieval: vector (0.4) + FTS (0.35) + entity (0.15) + graph (0.10) with RRF fusion (D5). Memory classification framework: GREEN/YELLOW/RED (D23). PII scrubbing on all stored text (D11). Memory fatigue: recently-recalled episodes penalized (D15).
+- **Acceptance Criteria**: Episodes stored with embeddings. Hybrid retrieval returns relevant memories. PII patterns scrubbed before storage. Memory fatigue prevents repetitive recall.
+- **Depends On**: P11.1
+- **Status**: NOT STARTED
+
+</details>
+
+<details>
+<summary>P11.4 Knowledge seed ingestion</summary>
+
+- **Task ID**: P11.4
+- **Owner**: Founder 1
+- **Branch**: `feat/brain-knowledge-seed`
+- **Files/Specs**: Ingest `docs/KNOWLEDGE.md`, `docs/TASKS.md`, `docs/BRAIN_ARCHITECTURE.md`, `docs/PRD.md`, `docs/VENTURE_MASTER_PLAN.md` as seed episodes. Brain knows all venture decisions (D## entries), task status, architecture, and strategy from day 1.
+- **Acceptance Criteria**: All 5 docs ingested as episodes. Brain can answer "what decisions have we made?" and "what's the status of Phase 3?" accurately. Seed episodes refresh on doc changes.
+- **Depends On**: P11.3
+- **Status**: NOT STARTED
+
+</details>
+
+<details>
+<summary>P11.5 Slack channel adapter</summary>
+
+- **Task ID**: P11.5
+- **Owner**: Founder 1
+- **Branch**: `feat/brain-slack-adapter`
+- **Files/Specs**: n8n thin adapter per D2. n8n receives Slack events, forwards to Brain API `/brain/process`, posts response back to thread. Brain API does ALL intelligence (persona routing, memory, tools). n8n is a channel adapter only. Smart persona routing by channel context (per ea.mdc routing rules).
+- **Acceptance Criteria**: Brain responds in Slack threads with venture context. Knows decisions, tasks, architecture. Persona routing works (engineering questions → engineering persona, strategy → strategy persona). Thread history maintained.
+- **Depends On**: P11.2, P11.4
+- **Status**: NOT STARTED
+
+</details>
+
+<details>
+<summary>P11.6 Trinket copilot validation</summary>
+
+- **Task ID**: P11.6
+- **Owner**: Founder 1
+- **Branch**: N/A (validation checkpoint, not code)
+- **Files/Specs**: Use Brain to help build first trinket (P1.5). Validate that the internal Brain meaningfully accelerates product building. Track: time saved, quality of suggestions, retrieval accuracy.
+- **Acceptance Criteria**: Brain used daily for 2+ weeks. Qualitative assessment: "Did the Brain help build things faster?" Decision gate: proceed to 11-beta (Y) or iterate on retrieval/memory (N).
+- **Depends On**: P11.5, P1.5
+- **Status**: NOT STARTED
+
+</details>
+
+### Phase 11-beta: Consumer Foundation (~4 weeks)
+
+Add the consumer data ingestion layer. One Google OAuth = three signal sources. Proactive-primary interaction model.
+
+**Decision gate**: Only start after P11.6 validates the internal Brain.
+
+<details>
+<summary>P11.7 Google OAuth connector</summary>
+
+- **Task ID**: P11.7
+- **Owner**: Founder 1
+- **Branch**: `feat/brain-google-oauth`
+- **Files/Specs**: One OAuth flow grants access to Gmail metadata (`gmail.metadata` scope), Google Calendar, and Google Maps Location History (D39 Tier 1). Store OAuth tokens encrypted. Refresh token rotation.
+- **Acceptance Criteria**: Single Google sign-in grants all 3 scopes. Tokens stored securely. Refresh works. Revocation cleans up all data.
+- **Depends On**: P11.1
+- **Status**: NOT STARTED
+
+</details>
+
+<details>
+<summary>P11.8 Calendar ingestion pipeline</summary>
+
+- **Task ID**: P11.8
+- **Owner**: Founder 1
+- **Branch**: `feat/brain-calendar-ingest`
+- **Files/Specs**: Ingest Google Calendar events. Detect: routines (recurring events), travel (multi-day events with location), social patterns (event density), work patterns (meeting count). Zero LLM cost — all regex/pattern matching.
+- **Acceptance Criteria**: Calendar events ingested as episodes. Routine detection works ("gym Tuesday/Thursday"). Travel detection works ("trip to Atlanta, 4 days"). Pattern insights generated without LLM.
+- **Depends On**: P11.7, P11.3
+- **Status**: NOT STARTED
+
+</details>
+
+<details>
+<summary>P11.9 Google Maps Location History</summary>
+
+- **Task ID**: P11.9
+- **Owner**: Founder 1
+- **Branch**: `feat/brain-maps-ingest`
+- **Files/Specs**: Ingest Google Maps Location History via Takeout or Timeline API. Detect: restaurant visits (cuisine, frequency, neighborhood), gym visits, commute pattern, store visits, travel destinations. Zero LLM cost.
+- **Acceptance Criteria**: Location history ingested. Restaurant visits detected with venue classification. Visit frequency computed. Cross-reference with calendar events ("trip to Portland" + restaurants visited there).
+- **Depends On**: P11.7, P11.3
+- **Status**: NOT STARTED
+
+</details>
+
+<details>
+<summary>P11.10 Email metadata pipeline</summary>
+
+- **Task ID**: P11.10
+- **Owner**: Founder 1
+- **Branch**: `feat/brain-email-metadata`
+- **Files/Specs**: Gmail metadata processing per D52. Sender-domain classification (500+ known domains), subject-line regex (amounts, order numbers), frequency analysis (subscriptions), timestamp analysis (behaviors), thread analysis (social graph). 600-800 items in 30 seconds, zero LLM. `gmail.metadata` scope only — never reads email bodies in free tier.
+- **Acceptance Criteria**: Metadata pipeline produces 600+ items from a typical Gmail account. Subscriptions detected. Vendors classified. Purchase patterns identified. Zero LLM calls.
+- **Depends On**: P11.7, P11.3
+- **Status**: NOT STARTED
+
+</details>
+
+<details>
+<summary>P11.11 Proactive insight engine</summary>
+
+- **Task ID**: P11.11
+- **Owner**: Founder 1
+- **Branch**: `feat/brain-proactive-insights`
+- **Files/Specs**: Brain surfaces insights unprompted per D60. Cross-references calendar + maps + email metadata. Weekly Brain Brief email digest (Monday). Push notification for high-impact insights only. In-app proactive cards. Batch-processed, amortized LLM cost (~$0.001/insight).
+- **Acceptance Criteria**: Brain generates 3-5 proactive insights per week from ingested data. Weekly Brain Brief email renders correctly. Insights cross-reference multiple data sources ("your trip to Atlanta: 4 days, 6 restaurants").
+- **Depends On**: P11.8, P11.9, P11.10
+- **Status**: NOT STARTED
+
+</details>
+
+<details>
+<summary>P11.12 Brain Fill Meter v1</summary>
+
+- **Task ID**: P11.12
+- **Owner**: Founder 1
+- **Branch**: `feat/brain-fill-meter`
+- **Files/Specs**: Animated counter showing items learned per D51. 8 psychological effects (Endowed Progress, IKEA Effect, Loss Aversion, Variable Reward, Zeigarnik Effect, Social Proof, Commitment Escalation, Peak-End Rule). 6 gamification levels: Awakening -> Curious -> Connected -> Aware -> Deep -> Omniscience.
+- **Acceptance Criteria**: Fill meter animates during onboarding (real-time counter). Level progression works. "847 things learned" display is compelling. Upgrade prompt at level gate.
+- **Depends On**: P11.10
+- **Status**: NOT STARTED
+
+</details>
+
+<details>
+<summary>P11.13 Consumer dogfood</summary>
+
+- **Task ID**: P11.13
+- **Owner**: Founder 1
+- **Branch**: N/A (validation checkpoint)
+- **Files/Specs**: Both founders connect personal Google accounts. 2 weeks of daily use. Validate: (1) Are the wow moments real? (2) Does proactive delivery work? (3) Is the Brain Fill Meter engaging? (4) Would you show this to friends?
+- **Acceptance Criteria**: Decision gate: "Is the wow real?" Y = proceed to 11-full. N = evaluate fallback hooks: calendar-first (skip email), tax doc scan (existing OCR), Plaid bank connection, conversational Q&A onboarding.
+- **Depends On**: P11.11, P11.12
+- **Status**: NOT STARTED
+
+</details>
+
+### Phase 11-full: Brain Product (DEFERRED)
+
+Everything below is DEFERRED until Phase 11-beta decision gate (P11.13) validates consumer value. Task IDs reserved for future scoping.
+
+| Task | Details | BRAIN_ARCHITECTURE.md Reference | Status |
+| --- | --- | --- | --- |
+| P11.14 Mobile app (Expo) | React Native via Expo. Chat-first single page. | D48 | DEFERRED |
+| P11.15 Circle sharing | Couples/family/partners. Auto-detection from metadata. | D53 | DEFERRED |
+| P11.16 Plaid integration | Bank accounts, credit cards, investments. | D39 Tier 1 | DEFERRED |
+| P11.17 Full email processing | Paid tier: email body analysis via Gemini Flash + GPT-4o-mini. | D50, D52 | DEFERRED |
+| P11.18 Generative UI components | RestaurantCard, TripCard, RoutineCard, LifestyleInsightCard. | D45, F223 | DEFERRED |
+| P11.19 Trust Escalation Ladder | Progressive trust-building through product features. | D46 | DEFERRED |
+| P11.20 Tax Season Wrapped | Annual summary of tax insights + life highlights. | D47 | DEFERRED |
+| P11.21 Referral engine | Double-sided referral with functional motivation. | D32 | DEFERRED |
+| P11.22 Community (Discord) | Community growth flywheel. | D48 | DEFERRED |
+| P11.23 Microsoft 365 connector | Graph API for Outlook + calendar. | D39 Tier 2, D50 | DEFERRED |
+| P11.24 IMAP fallback | Yahoo, iCloud, ~5% of users. | D50 | DEFERRED |
+| P11.25 Correction system | Correction boosting, cross-user conflict detection. | D16 | DEFERRED |
+
+---
+
 ## Background Tasks (Continuous -- with Hard Deadlines)
 
 These run in parallel with all phases. Some have hard deadlines that block downstream phases.
@@ -994,19 +1200,23 @@ These run in parallel with all phases. Some have hard deadlines that block downs
 
 ## Phase Timeline Summary
 
-**Only two hard deadlines**: IRS MeF ATS testing (October 2026) and tax season start (January 2027). Everything else ships as fast as agents can build it. Phase 9 (Distill) runs parallel with Phases 5-6, not sequentially.
+**Only two hard deadlines**: IRS MeF ATS testing (October 2026) and tax season start (January 2027). Everything else ships as fast as agents can build it. Phase 9 (Distill) runs parallel with Phases 5-6, not sequentially. Phase 11 (Brain) runs parallel with everything — no blockers.
 
 | Phase | Target | Status |
 | --- | --- | --- |
 | Phase 0 (Infrastructure) | March 2026 | PARTIAL (LLC/EFIN pending) |
 | Phase 1 (Monorepo) | April 2026 | **COMPLETE** |
+| Phase 2 (50-State Data) | May 2026 | **COMPLETE** |
 | Phase 4 Tier 1 (Command Center) | March 2026 | **COMPLETE** |
 | Phase 6 Partial (Agent Restructure) | March 2026 | **PARTIAL** (workflows done, personas pending) |
+| Phase 11-alpha (Internal Brain) | April 2026 | NOT STARTED |
 | Phase 1.5 (First Trinket) | April 2026 | NOT STARTED |
-| Phase 2 (50-State Data) | May 2026 | NOT STARTED |
 | Phase 3 (LaunchFree MVP) | June-July 2026 | NOT STARTED |
 | Phase 5 (User Intelligence) | July 2026 | NOT STARTED |
 | Phase 9 (Distill Platform) | July-August 2026 | NOT STARTED |
+| Phase 11-beta (Consumer Brain) | After 11-alpha validation | NOT STARTED |
 | Phase 7 (FileFree Prep) | **October 2026 (HARD)** | NOT STARTED |
 | Phase 8 (FileFree Launch) | **January 2027 (HARD)** | NOT STARTED |
+| Phase 9.5 (Distill APIs) | Summer 2026 | NOT STARTED |
 | Phase 10 (Business Filing) | 2027-2028 | NOT STARTED |
+| Phase 11-full (Brain Product) | After 11-beta validation | DEFERRED |

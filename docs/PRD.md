@@ -1,14 +1,15 @@
 # Paperwork Labs — Product Requirements Document
 
-**Version**: 7.1 | **Last Updated**: 2026-03-18
+**Version**: 8.0 | **Last Updated**: 2026-03-22
 **Status**: Venture-Level PRD
 
-**Entity**: Paperwork Labs LLC (California). Products: FileFree, LaunchFree, Distill, Trinkets.
+**Entity**: Paperwork Labs LLC (California). Products: FileFree, LaunchFree, Distill, Trinkets, Brain.
 **Monthly burn**: ~$278/mo (see FINANCIALS.md for breakdown).
 **Team**: Founder 1 (Product/Engineering), Founder 2 (Partnerships/Revenue), 44 AI agent personas.
 
 For full venture strategy, valuation, marketplace evolution, and agent architecture, see VENTURE_MASTER_PLAN.md.
 For AI model routing, see AI_MODEL_REGISTRY.md.
+For Brain technical architecture (60 design decisions, 228 findings), see [BRAIN_ARCHITECTURE.md](BRAIN_ARCHITECTURE.md).
 
 | Product | Domain | Description | Launch | Status |
 |---|---|---|---|---|
@@ -16,6 +17,7 @@ For AI model routing, see AI_MODEL_REGISTRY.md.
 | LaunchFree | launchfree.ai | Free LLC formation | Summer 2026 | In development |
 | Distill | distill.tax | B2B compliance APIs + CPA SaaS | Summer 2026 | Planned |
 | Trinkets | tools.filefree.ai | Utility tools (calculators) | Phase 1.5 | Planned |
+| Brain | brain.paperworklabs.com | AI life intelligence system | Phase 11 | Architecture complete |
 | Studio | paperworklabs.com | Command center + portfolio | Phase 4 | Tier 1 complete |
 
 ---
@@ -575,6 +577,44 @@ The command center is the control plane for the entire venture. It is what makes
 - No GitHub account needed to read
 - Cached with React Query (staleTime: 5 min)
 - Table of contents sidebar generated from markdown headings
+
+---
+
+## 6b. Product 6: Brain (brain.paperworklabs.com) -- AI Life Intelligence
+
+**Definitive technical spec**: [BRAIN_ARCHITECTURE.md](BRAIN_ARCHITECTURE.md) (2485 lines, 60 design decisions, 228 findings, 11 review rounds, A+ across 6/7 dimensions).
+
+### What It Is
+
+The Brain is the meta-product of Paperwork Labs. FileFree, LaunchFree, Distill are "skills" within it. It's a channel-agnostic AI life intelligence that knows your finances, routines, relationships, preferences, and experiences -- and gets smarter every day. Not a chatbot. Not a financial advisor. A partner with memory.
+
+### Strategic Anchors
+
+- **Memory Moat** (D49): Accumulated life context IS the switching cost. Day 90: knows lifestyle archetype without user declaring it. Day 365: irreplaceable.
+- **Brain Fill Meter** (D51): Gamified knowledge counter (8 psychological effects) makes the moat visible and viral.
+- **Tiered Email Processing** (D52): Metadata-only free tier at $0.03/user onboarding. "We never read your emails."
+- **Life Intelligence** (D58): Equally strong across all life domains (finance, travel, food, fitness, hobbies, couples). User's data determines richness.
+- **Proactive-Primary** (D60): Brain TELLS you things via 5 channels. Chat is secondary (100 msg/mo free).
+- **Credit Karma Playbook** (D59): Three-layer revenue (subscription 25%, financial referrals 50%, lifestyle 25% at scale).
+
+### Phased Launch
+
+- **Phase 11-alpha (Internal)**: Brain as Paperwork Labs copilot. Serves 2 co-founders via Slack. Knows venture decisions, tasks, architecture. Helps build other products.
+- **Phase 11-beta (Consumer Foundation)**: Google OAuth onboarding (one tap = Gmail metadata + Calendar + Maps). Proactive insight delivery. Brain Fill Meter v1. Founder consumer dogfood.
+- **Phase 11-full (Product)**: Mobile app (Expo), circle sharing (couples/family), Plaid integration, full email processing, generative UI, referral engine, community.
+
+### Pricing
+
+| Tier | Price Y1 | Price Y2+ | Limits | Memory |
+|------|---------|----------|--------|--------|
+| Free | $0 | $0 | 100 msg/mo, 2 connections | 1 year |
+| Personal | $29/yr | $49/yr | Unlimited msg, 10 connections | 5 years |
+| Together | $49/yr | $79/yr | Couples + Circle | Lifetime |
+| Family | $79/yr | $129/yr | Up to 5 + kid profiles | Lifetime |
+
+### Competitive Position
+
+Origin ($15/mo) does finance only. Brain does finance + lifestyle + email + calendar + location + couples. Origin has 2 of 7 capabilities. Brain has all 7, starting at $0. brain.ai ($51.5M raised) went horizontal with no moat; we go vertical-first with genuine switching cost.
 
 ---
 

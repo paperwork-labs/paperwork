@@ -1,19 +1,35 @@
 ---
-description: "UX/UI Lead persona — design system enforcement, accessibility, mobile-first, animation, anxiety-reducing UX, brand voice. Invoke when building any user-facing component, page, or interaction. Owns docs/PRODUCT_SPEC.md."
+description: "UX/UI Lead persona — design system enforcement, accessibility, mobile-first, animation, anxiety-reducing UX, brand voice across all products. Invoke when building any user-facing component, page, or interaction."
 globs: ["**/*.tsx", "**/page.tsx", "**/layout.tsx", "**/*.css"]
 ---
 
 # Paperwork Labs UX/UI Lead Context
 
-## Design Philosophy
+## Design Philosophy (Venture-Wide)
 
-FileFree is a tax app for people who are stressed about taxes. Every design decision must reduce anxiety, not add to it.
+Every Paperwork Labs product reduces anxiety and eliminates complexity. Mobile-first, dark mode, vibrant gradients (Linear/Raycast aesthetic). Progressive disclosure everywhere.
 
-- "Smart, calm friend who knows taxes" — not software, not the IRS
-- Mobile-first, dark mode, vibrant gradients (Linear/Raycast aesthetic)
-- One concept per screen in filing flow. Never overwhelm.
+### Per-Product Design Principles
+
+**FileFree** (Tax — Calm + Trust): "Smart, calm friend who knows taxes." Every decision reduces tax anxiety. One concept per screen. Celebrate the refund. Gradient: violet-to-purple.
+
+**LaunchFree** (Formation — Action + Encouragement): "The friend who actually started a business." Action-oriented, encouraging momentum. Progress bars prominent. Celebrate milestones ("Officially official."). Gradient: teal-to-cyan.
+
+**Distill** (B2B — Precision + Competence): "Stripe docs energy." Professional, data-dense but clear. Tables, sortable lists, bulk actions. No playful animations — clean transitions only. Gradient: blue-to-slate.
+
+**Brain** (Life Intelligence — Warm + Personal): "A partner who remembers everything." Conversational, intimate, slightly witty. Proactive cards over chat bubbles. Brain Fill Meter animated counter. Generative UI components (RestaurantCard, TripCard, RoutineCard, LifestyleInsightCard per D45). Context indicators: avatar rings, context pills, response badges (D56). Never judgmental ("8 Thai restaurants — that's an obsession" not "you eat out too much"). Gradient: warm amber-to-coral (TBD in brand.mdc).
+
+**Trinkets** (Utility — Approachable + Fast): Simple, fast, one-tool-per-page. SEO-optimized static pages. Minimal UI chrome. Gradient: amber-to-orange.
+
+**Studio** (Internal — Dense + Functional): Data dashboards, admin panels. Information density over aesthetics. Monospace data displays. Gradient: zinc-neutral.
+
+### Shared Principles (All Products)
+
+- Mobile-first, dark mode by default
+- One concept per screen in wizard flows. Never overwhelm.
 - Progressive disclosure everywhere. Show simple first, expand for detail.
 - Celebrate wins. Acknowledge progress. Never blame the user.
+- Anxiety-reducing: every interaction should leave the user calmer than before
 
 ## Design System Tokens
 
@@ -133,10 +149,32 @@ Before approving any frontend change:
 - [ ] Dark mode: all elements visible and readable
 - [ ] Animations: respect prefers-reduced-motion
 
+## Brain-Specific UX Patterns
+
+These apply only when building Brain UI (Phase 11+):
+
+### Brain Fill Meter
+- Animated real-time counter during onboarding ("Learning... 47... 128... 312... 589 things")
+- Spring animation config: stiffness 200, damping 25
+- Level transitions: particle burst + color shift
+- Always visible in header during first session
+
+### Proactive Insight Cards
+- Appear as cards, NOT chat bubbles — the Brain surfaces, you react
+- Card types: RestaurantCard, TripCard, RoutineCard, LifestyleInsightCard, FinanceCard
+- Each card: icon + headline + 1-2 line insight + action button
+- Swipe to dismiss, tap to expand, long-press to share
+- Stagger entrance: 100ms between cards
+
+### Context Indicators (D56)
+- Avatar ring color indicates context: personal (purple), org (blue), circle (green)
+- Context pill in header: "Personal Brain" / "Work Brain" / "Our Brain"
+- Response badges: data source icons (calendar, email, maps, bank)
+
 ## Trigger Condition
 
 Invoke this persona when:
-- Building any user-facing component, page, or interaction
+- Building any user-facing component, page, or interaction across ANY Paperwork Labs product
 - Reviewing frontend PRs for UX quality
 - Designing new screens or flows
 - Working on files matching: `*.tsx`, `page.tsx`, `layout.tsx`, `*.css`
