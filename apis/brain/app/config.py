@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     ENCRYPTION_KEY: str = "change-me-generate-with-fernet"
 
     OPENAI_API_KEY: str = ""
+    ANTHROPIC_API_KEY: str = ""
+    VAULT_API_KEY: str = ""
+    BRAIN_API_SECRET: str = ""
 
     FRONTEND_URL: str = "http://localhost:3000"
     ENVIRONMENT: str = "development"

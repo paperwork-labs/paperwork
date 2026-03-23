@@ -14,7 +14,7 @@ from app.config import settings
 from app.database import engine
 from app.rate_limit import limiter
 from app.redis import close_redis, init_redis
-from app.routers import health
+from app.routers import brain, health
 from app.utils.correlation import CorrelationIdMiddleware
 from app.utils.exceptions import AppException, app_exception_handler
 from app.utils.pii_scrubber import setup_pii_scrubbing
@@ -110,3 +110,4 @@ async def unhandled_exception_handler(_request: Request, exc: Exception) -> JSON
 
 
 app.include_router(health.router)
+app.include_router(brain.router, prefix="/api/v1")
