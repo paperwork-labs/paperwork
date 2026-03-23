@@ -71,6 +71,15 @@ app = FastAPI(
 )
 
 allowed_origins = [settings.FRONTEND_URL]
+if settings.FRONTEND_URL.startswith("https://"):
+    from urllib.parse import urlparse
+
+    parsed = urlparse(settings.FRONTEND_URL)
+    host = parsed.hostname or ""
+    if host.startswith("www."):
+        allowed_origins.append(f"{parsed.scheme}://{host[4:]}")
+    else:
+        allowed_origins.append(f"{parsed.scheme}://www.{host}")
 if settings.FRONTEND_URL != "http://localhost:3000":
     allowed_origins.append("http://localhost:3000")
 
