@@ -17,7 +17,7 @@ Every Paperwork Labs product reduces anxiety and eliminates complexity. Mobile-f
 
 **Distill** (B2B — Precision + Competence): "Stripe docs energy." Professional, data-dense but clear. Tables, sortable lists, bulk actions. No playful animations — clean transitions only. Gradient: blue-to-slate.
 
-**Brain** (Life Intelligence — Warm + Personal): "A partner who remembers everything." Conversational, intimate, slightly witty. Proactive cards over chat bubbles. Brain Fill Meter animated counter. Generative UI components (RestaurantCard, TripCard, RoutineCard, LifestyleInsightCard per D45). Context indicators: avatar rings, context pills, response badges (D56). Never judgmental ("8 Thai restaurants — that's an obsession" not "you eat out too much"). Gradient: warm amber-to-coral (TBD in brand.mdc).
+**Brain** (Life Intelligence — Warm + Personal): "A partner who remembers everything." Conversational, intimate, slightly witty. Proactive cards over chat bubbles. Brain Fill Meter animated counter. Generative UI components (RestaurantCard, TripCard, RoutineCard, LifestyleInsightCard per D45). Context indicators: avatar rings, context pills, response badges (D56). Never judgmental ("8 Thai restaurants — that's an obsession" not "you eat out too much"). Gradient: `from-rose-500 to-orange-500` (warm, personal, distinct from all other products).
 
 **Trinkets** (Utility — Approachable + Fast): Simple, fast, one-tool-per-page. SEO-optimized static pages. Minimal UI chrome. Gradient: amber-to-orange.
 

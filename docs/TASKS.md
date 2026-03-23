@@ -1050,9 +1050,9 @@ Brain as the operating system for building Paperwork Labs. Dogfood path per BRAI
 - **Task ID**: P11.6
 - **Owner**: Founder 1
 - **Branch**: N/A (validation checkpoint, not code)
-- **Files/Specs**: Use Brain to help build first trinket (P1.5). Validate that the internal Brain meaningfully accelerates product building. Track: time saved, quality of suggestions, retrieval accuracy.
+- **Files/Specs**: Use Brain to help build first trinket (Phase 1.5). Validate that the internal Brain meaningfully accelerates product building. Track: time saved, quality of suggestions, retrieval accuracy.
 - **Acceptance Criteria**: Brain used daily for 2+ weeks. Qualitative assessment: "Did the Brain help build things faster?" Decision gate: proceed to 11-beta (Y) or iterate on retrieval/memory (N).
-- **Depends On**: P11.5, P1.5
+- **Depends On**: P11.5, Phase 1.5 (any trinket task)
 - **Status**: NOT STARTED
 
 </details>
@@ -1069,7 +1069,7 @@ Add the consumer data ingestion layer. One Google OAuth = three signal sources. 
 - **Task ID**: P11.7
 - **Owner**: Founder 1
 - **Branch**: `feat/brain-google-oauth`
-- **Files/Specs**: One OAuth flow grants access to Gmail metadata (`gmail.metadata` scope), Google Calendar, and Google Maps Location History (D39 Tier 1). Store OAuth tokens encrypted. Refresh token rotation.
+- **Files/Specs**: One OAuth flow grants access to Gmail metadata (`https://www.googleapis.com/auth/gmail.metadata`), Google Calendar (`https://www.googleapis.com/auth/calendar.readonly`), and Google Maps Location History (via Google Takeout or Timeline API). D39 Tier 1. Store OAuth tokens encrypted. Refresh token rotation.
 - **Acceptance Criteria**: Single Google sign-in grants all 3 scopes. Tokens stored securely. Refresh works. Revocation cleans up all data.
 - **Depends On**: P11.1
 - **Status**: NOT STARTED

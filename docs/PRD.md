@@ -3,7 +3,7 @@
 **Version**: 8.0 | **Last Updated**: 2026-03-22
 **Status**: Venture-Level PRD
 
-**Entity**: Paperwork Labs LLC (California). Products: FileFree, LaunchFree, Distill, Trinkets, Brain.
+**Entity**: Paperwork Labs LLC (California). Products: FileFree, LaunchFree, Distill, Trinkets, Brain, Studio.
 **Monthly burn**: ~$278/mo (see FINANCIALS.md for breakdown).
 **Team**: Founder 1 (Product/Engineering), Founder 2 (Partnerships/Revenue), 44 AI agent personas.
 
