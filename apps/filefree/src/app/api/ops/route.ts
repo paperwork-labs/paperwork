@@ -38,15 +38,15 @@ const PRODUCTION_SERVICES: {
   },
   {
     name: "n8n (Agents)",
-    url: "https://n8n.filefree.ai/healthz",
-    dashboardUrl: "https://n8n.filefree.ai",
+    url: "https://n8n.paperworklabs.com/healthz",
+    dashboardUrl: "https://n8n.paperworklabs.com",
     accessHint: "Login with N8N_USER / N8N_PASSWORD from Hetzner env. Manage AI agent workflows.",
     category: "ops",
   },
   {
     name: "Postiz (Social)",
-    url: "https://social.filefree.ai",
-    dashboardUrl: "https://social.filefree.ai",
+    url: "https://social.paperworklabs.com",
+    dashboardUrl: "https://social.paperworklabs.com",
     accessHint: "Login, then connect TikTok / IG / X / YouTube accounts to start posting.",
     category: "ops",
   },
@@ -187,7 +187,7 @@ async function fetchGitHubCI(): Promise<CIRun[]> {
 
   try {
     const res = await fetch(
-      "https://api.github.com/repos/sankalp404/fileFree/actions/runs?per_page=5&branch=main",
+      "https://api.github.com/repos/paperwork-labs/paperwork/actions/runs?per_page=5&branch=main",
       {
         headers: {
           Authorization: `Bearer ${ghToken}`,

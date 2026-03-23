@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const serverSchema = z.object({
   N8N_API_KEY: z.string().default(""),
-  N8N_HOST: z.string().default("https://n8n.filefree.ai"),
+  N8N_HOST: z.string().default("https://n8n.paperworklabs.com"),
   GITHUB_TOKEN: z.string().default(""),
 });
 
