@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, Text, func
+from sqlalchemy import DateTime, Integer, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -21,8 +21,8 @@ class Summary(Base):
     period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     summary: Mapped[str] = mapped_column(Text, nullable=False)
     # embedding stored as pgvector VECTOR(1536)
-    key_decisions: Mapped[dict] = mapped_column(JSONB, server_default="[]")
-    key_entities: Mapped[dict] = mapped_column(JSONB, server_default="[]")
-    episode_count: Mapped[int] = mapped_column(Integer, server_default="0")
+    key_decisions: Mapped[list] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
+    key_entities: Mapped[list] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
+    episode_count: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     model_used: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

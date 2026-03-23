@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, Text, func
+from sqlalchemy import Boolean, DateTime, Integer, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -18,13 +18,13 @@ class Skill(Base):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     category: Mapped[str | None] = mapped_column(Text)
-    tier: Mapped[str] = mapped_column(Text, server_default="free")
+    tier: Mapped[str] = mapped_column(Text, server_default=text("'free'"))
     connector_id: Mapped[str | None] = mapped_column(Text)
-    tools: Mapped[dict] = mapped_column(JSONB, server_default="[]")
-    knowledge_domains: Mapped[dict] = mapped_column(JSONB, server_default="[]")
-    requires_connection: Mapped[bool] = mapped_column(Boolean, server_default="false")
-    owner_organization_id: Mapped[str] = mapped_column(Text, server_default="platform")
-    status: Mapped[str] = mapped_column(Text, server_default="active")
+    tools: Mapped[list] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
+    knowledge_domains: Mapped[list] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
+    requires_connection: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    owner_organization_id: Mapped[str] = mapped_column(Text, server_default=text("'platform'"))
+    status: Mapped[str] = mapped_column(Text, server_default=text("'active'"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -37,4 +37,4 @@ class UserSkill(Base):
     organization_id: Mapped[str] = mapped_column(Text, primary_key=True)
     skill_id: Mapped[str] = mapped_column(Text, primary_key=True)
     enabled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    config: Mapped[dict] = mapped_column(JSONB, server_default="{}")
+    config: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))

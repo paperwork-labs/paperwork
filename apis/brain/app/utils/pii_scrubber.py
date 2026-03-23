@@ -16,13 +16,15 @@ class PIIScrubFilter(logging.Filter):
         if isinstance(record.msg, str):
             record.msg = _scrub(record.msg)
         if record.args:
-            new_args = []
-            for arg in record.args if isinstance(record.args, tuple) else (record.args,):
-                if isinstance(arg, str):
-                    new_args.append(_scrub(arg))
-                else:
-                    new_args.append(arg)
-            record.args = tuple(new_args)
+            if isinstance(record.args, dict):
+                record.args = {
+                    k: _scrub(v) if isinstance(v, str) else v
+                    for k, v in record.args.items()
+                }
+            elif isinstance(record.args, tuple):
+                record.args = tuple(
+                    _scrub(arg) if isinstance(arg, str) else arg for arg in record.args
+                )
         return True
 
 
