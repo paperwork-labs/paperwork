@@ -4,64 +4,71 @@ import type { ServiceCheck, N8nWorkflow, CIRun, OpsData } from "@/types/ops";
 
 const TIMEOUT_MS = 8000;
 
-const PRODUCTION_SERVICES: {
+function getProductionServices(): {
   name: string;
   url: string;
   dashboardUrl: string;
   accessHint: string;
   category: ServiceCheck["category"];
   parseDetails?: (data: unknown) => Record<string, unknown>;
-}[] = [
-  {
-    name: "Render API",
-    url: "https://api.filefree.ai/health",
-    dashboardUrl: "https://dashboard.render.com",
-    accessHint: "Render dashboard > filefree-api service. Manage deploys, env vars, logs.",
-    category: "core",
-    parseDetails: (data) => {
-      const d = data as Record<string, unknown>;
-      const inner = d?.data as Record<string, unknown> | undefined;
-      return {
-        dbConnected: inner?.db_connected,
-        redisConnected: inner?.redis_connected,
-        version: inner?.version,
-        status: inner?.status,
-      };
+}[] {
+  const n8nHost = serverConfig.N8N_HOST;
+  const postizHost = serverConfig.POSTIZ_HOST;
+
+  return [
+    {
+      name: "Render API",
+      url: "https://api.filefree.ai/health",
+      dashboardUrl: "https://dashboard.render.com",
+      accessHint: "Render dashboard > filefree-api service. Manage deploys, env vars, logs.",
+      category: "core",
+      parseDetails: (data) => {
+        const d = data as Record<string, unknown>;
+        const inner = d?.data as Record<string, unknown> | undefined;
+        return {
+          dbConnected: inner?.db_connected,
+          redisConnected: inner?.redis_connected,
+          version: inner?.version,
+          status: inner?.status,
+        };
+      },
     },
-  },
-  {
-    name: "Vercel Frontend",
-    url: "https://filefree.ai",
-    dashboardUrl: "https://vercel.com/dashboard",
-    accessHint: "Vercel dashboard > filefree project. Auto-deploys from main.",
-    category: "core",
-  },
-  {
-    name: "n8n (Agents)",
-    url: "https://n8n.filefree.ai/healthz",
-    dashboardUrl: "https://n8n.filefree.ai",
-    accessHint: "Login with N8N_USER / N8N_PASSWORD from Hetzner env. Manage AI agent workflows.",
-    category: "ops",
-  },
-  {
-    name: "Postiz (Social)",
-    url: "https://social.filefree.ai",
-    dashboardUrl: "https://social.filefree.ai",
-    accessHint: "Login, then connect TikTok / IG / X / YouTube accounts to start posting.",
-    category: "ops",
-  },
-  {
-    name: "PostHog (Analytics)",
-    url: "https://us.i.posthog.com/decide?v=3",
-    dashboardUrl: "https://us.posthog.com",
-    accessHint: "Login to view funnels, events, and dashboards. API key in Vercel dashboard (prod) or .env.local (dev).",
-    category: "analytics",
-    parseDetails: () => ({ raw: "reachable" }),
-  },
-];
+    {
+      name: "Vercel Frontend",
+      url: "https://filefree.ai",
+      dashboardUrl: "https://vercel.com/dashboard",
+      accessHint: "Vercel dashboard > filefree project. Auto-deploys from main.",
+      category: "core",
+    },
+    {
+      name: "n8n (Agents)",
+      url: `${n8nHost}/healthz`,
+      dashboardUrl: n8nHost,
+      accessHint: "Login with N8N_USER / N8N_PASSWORD from Hetzner env. Manage AI agent workflows.",
+      category: "ops",
+    },
+    {
+      name: "Postiz (Social)",
+      url: postizHost,
+      dashboardUrl: postizHost,
+      accessHint: "Login, then connect TikTok / IG / X / YouTube accounts to start posting.",
+      category: "ops",
+    },
+    {
+      name: "PostHog (Analytics)",
+      url: "https://us.i.posthog.com/decide?v=3",
+      dashboardUrl: "https://us.posthog.com",
+      accessHint: "Login to view funnels, events, and dashboards. API key in Vercel dashboard (prod) or .env.local (dev).",
+      category: "analytics",
+      parseDetails: () => ({ raw: "reachable" }),
+    },
+  ];
+}
+
+type ProductionService = ReturnType<typeof getProductionServices>[number];
 
 async function checkService(
-  service: (typeof PRODUCTION_SERVICES)[number],
+  service: ProductionService,
 ): Promise<ServiceCheck> {
   const start = Date.now();
   const controller = new AbortController();
@@ -187,7 +194,7 @@ async function fetchGitHubCI(): Promise<CIRun[]> {
 
   try {
     const res = await fetch(
-      "https://api.github.com/repos/sankalp404/fileFree/actions/runs?per_page=5&branch=main",
+      "https://api.github.com/repos/paperwork-labs/paperwork/actions/runs?per_page=5&branch=main",
       {
         headers: {
           Authorization: `Bearer ${ghToken}`,
@@ -238,7 +245,7 @@ export async function GET(req: Request) {
   }
 
   const [services, workflows, ciRuns] = await Promise.all([
-    Promise.all(PRODUCTION_SERVICES.map(checkService)),
+    Promise.all(getProductionServices().map(checkService)),
     fetchN8nWorkflows(),
     fetchGitHubCI(),
   ]);
