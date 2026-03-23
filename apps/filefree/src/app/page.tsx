@@ -2,8 +2,10 @@ import { Hero } from "@/components/landing/hero";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { TrustBadges } from "@/components/landing/trust-badges";
 import { Comparison } from "@/components/landing/comparison";
-import { FAQ, faqJsonLd } from "@/components/landing/faq";
+import { FAQ } from "@/components/landing/faq";
+import { faqJsonLd } from "@/components/landing/faq-data";
 import { Footer } from "@/components/landing/footer";
+import { JsonLd } from "@/components/json-ld";
 
 const appJsonLd = {
   "@context": "https://schema.org",
@@ -24,14 +26,8 @@ const appJsonLd = {
 export default function Home() {
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(appJsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
-      />
+      <JsonLd data={appJsonLd} />
+      <JsonLd data={faqJsonLd} />
       <Hero />
       <HowItWorks />
       <TrustBadges />

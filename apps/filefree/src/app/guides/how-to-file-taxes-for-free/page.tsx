@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { JsonLd } from "@/components/json-ld";
+
 export const metadata: Metadata = {
   title: "How to File Your Taxes for Free in 2026 — FileFree",
   description:
@@ -53,10 +55,7 @@ const jsonLd = {
 export default function HowToFileTaxesForFreePage() {
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      <JsonLd data={jsonLd} />
 
       <article className="mx-auto max-w-3xl px-4 py-16">
         <Link
