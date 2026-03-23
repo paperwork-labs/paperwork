@@ -1,13 +1,13 @@
-# The Brain: Definitive Architecture v9
+# The Brain: Definitive Architecture v10
 
-The brain of Paperwork Labs — and eventually, everyone. A channel-agnostic AI operating intelligence that serves two co-founders today and scales to millions of users as the meta-product of the entire venture. Not a chatbot. A wise partner that remembers everything, connects dots, acts on your behalf, and gets smarter from corrections.
+The brain of Paperwork Labs — and eventually, everyone. A channel-agnostic AI life intelligence that serves two co-founders today and scales to millions of users as the meta-product of the entire venture. Not a chatbot. Not a financial advisor. A wise partner that knows your entire life — finances, routines, relationships, preferences, experiences — remembers everything, connects dots, acts on your behalf, and gets smarter from corrections.
 
 **Internal**: Serves Paperwork Labs (Sankalp + Olga) from Phase 1.
 **Product**: B2C personal brain, B2B team brain, Enterprise hierarchical brain with knowledge lifecycle — same backend, different org configs and UI layers.
-**Meta-product** (F90): Brain IS the long-term platform. FileFree ("file your taxes"), LaunchFree ("form your LLC"), axiomfolio ("manage your portfolio") are skills/capabilities within it. The AI financial advisor that FileFree was always meant to become IS the Brain. Products are the hands, Brain is the mind.
-**Strategic anchors** (v9): Memory Moat (D49) — accumulated context IS the product. Brain Fill Meter (D51) — psychology makes the moat visible and viral. Tiered Email Processing (D52) — metadata-only free tier at $0.03/mo makes the economics work at any scale.
+**Meta-product** (F90): Brain IS the long-term platform. FileFree ("file your taxes"), LaunchFree ("form your LLC"), axiomfolio ("manage your portfolio") are skills/capabilities within it. The AI life intelligence that FileFree was always meant to become IS the Brain. Financial services are the trust-building entry point. The product is a partner that knows your entire life — finances, routines, relationships, preferences, experiences — and gets smarter every day. Products are the hands, Brain is the mind.
+**Strategic anchors** (v10): Memory Moat (D49) — accumulated life context IS the product. Brain Fill Meter (D51) — psychology makes the moat visible and viral. Tiered Email Processing (D52) — metadata-only free tier at $0.03/mo makes the economics work at any scale. Life Intelligence System (D58) — the Brain is equally strong across all life domains, weighted by the user's own data. Contextual Intelligence Monetization (D59) — Credit Karma playbook with 5-10x the signal. Proactive Insight Delivery (D60) — five-channel system so the Brain TELLS you things.
 
-Stress-tested from 9 review lenses: Anthropic safety (Amodei), OpenAI scaling (Altman), Perplexity retrieval (Srinivas), DeepMind intelligence (Hassabis), CTO production review, Top 5 AI Leads (Karpathy/Fan/Chase/Weng/Askell), Jony Ive/Steve Jobs B2C UX, Andrew Chen Growth/Social, brain.ai competitive analysis. 10 rounds, 210 findings, all integrated. 57 design decisions. 14 hierarchical personas in 4 tiers. 7-agent automated content engine for psychology-driven GTM. No supplemental docs. This is the single source of truth.
+Stress-tested from 10 review lenses: Anthropic safety (Amodei), OpenAI scaling (Altman), Perplexity retrieval (Srinivas), DeepMind intelligence (Hassabis), CTO production review, Top 5 AI Leads (Karpathy/Fan/Chase/Weng/Askell), Jony Ive/Steve Jobs B2C UX, Andrew Chen Growth/Social, brain.ai competitive analysis, McKinsey strategic architecture review. 11 rounds, 228 findings, all integrated. 60 design decisions. 14 hierarchical personas in 4 tiers. 7-agent automated content engine for psychology-driven GTM. No supplemental docs. This is the single source of truth.
 
 ---
 
@@ -131,6 +131,20 @@ Architecture: `ChainStrategy` protocol. ClassifyAndRoute default from P3.
 4. **Brain Training Interview** (3 min, optional): Conversational Q&A to seed profile
 5. **Progressive Intelligence** (immediate → 24hr): Brain useful in 5 min, fully intelligent in 24 hr. Brain communicates its knowledge state (F40).
 
+**B2C "First 5 Minutes" Experience (F223):** The first 5 minutes must produce a LIFE wow, not just a financial summary:
+
+| Time | Event | What User Sees |
+|------|-------|---------------|
+| 0:00 | Landing | "Your Brain wakes up in 60 seconds" |
+| 0:30 | Google OAuth (one tap) | Gmail + Calendar + Maps start flowing |
+| 1:00 | Real-time counter animates | "Learning... 47... 128... 312... 589 things" |
+| 2:00 | Brain Fill Meter hits 65% | First insight: "14 subscriptions, $287/mo" |
+| 3:00 | Lifestyle insight | "You eat out 3x/week. Top spot: [restaurant], 6 visits" |
+| 4:00 | Relationship insight | "Date night is usually Fridays" |
+| 5:00 | The hook | "I learned 847 things in 5 minutes. Want to ask me anything?" |
+
+The wow is "Brain knows my LIFE and I didn't tell it anything." Not "Brain knows my subscriptions."
+
 ### D23. Memory Classification Framework
 
 **GREEN (store freely)**: Decisions, project status, process docs, architecture decisions, entity relationships.
@@ -140,6 +154,16 @@ Architecture: `ChainStrategy` protocol. ClassifyAndRoute default from P3.
 ### D24. Brain Persona System
 
 Per-org customizable personality injected as cached prefix. Identity, voice (tone, formality, brevity, humor, emoji), values with behaviors, communication rules, forbidden zones, knowledge priorities. Customized during onboarding. Per-user adaptation within org personality. Voice selection for TTS (D29).
+
+**Consumer Brain Personality (F225):** `personality_mode: consumer` variant — warm but not sycophantic, slightly witty, celebrates without judging, remembers like a best friend, gets noticeably better over time:
+
+| Trait | Example | Anti-Pattern |
+|-------|---------|-------------|
+| Slightly witty | "8 Thai restaurants this month — I think we can call it an obsession." | "You frequently dine at Thai restaurants." |
+| Celebrates | "3 trips in Q1 — someone's got wanderlust." | "You traveled 3 times." |
+| Remembers like a friend | "Last time in Portland you loved that ramen place." | "Your Portland trip included dining at [restaurant]." |
+| Gets better over time | Generic early (Day 1), personal by Day 30, eerily accurate by Day 90 | Same tone forever |
+| Never judges | "Your food budget is up — you've been exploring!" | "Your food spending is excessive." |
 
 ### D25. Explicit Memory Tools
 
@@ -151,15 +175,23 @@ OAuth framework with `Connector` protocol (authorize, sync, health_check, revoke
 
 ### D27. Pricing Architecture
 
-| Tier | Target | Price | Brain structure | Limits |
-|------|--------|-------|-----------------|--------|
-| **Free** | Individuals | $0 | Single brain | 100 msg/mo (F70), 2 connections, 1K episodes |
-| **Pro** | Power users | $29/user/mo | Single brain | Unlimited msg, 10 connections, 50K episodes |
-| **Team** | Small teams (3+) | $19/user/mo | Shared team + individual | Everything in Pro + team knowledge sharing |
-| **Business** | Mid-market (10+) | $15/user/mo | Org + teams + individual | Multiple teams, SSO, 1M episodes |
-| **Enterprise** | Large orgs | Custom | Full hierarchy + lifecycle | Unlimited, SOC 2, data residency, SLA |
+Introductory staircase model: $29 Year 1, $49 Year 2+. The moat deepens with time — by Year 2, the Brain knows 2,000+ things and switching cost is prohibitive. The $20 increase ($1.67/mo) is invisible against what you'd lose.
 
-Pricing in outcomes, not technical units (F84): Free = "Remembers your recent work." Pro = "Remembers everything, forever." Team = "Your team's shared brain."
+| Tier | Target | Year 1 Price | Year 2+ Price | Memory Retention | Brain structure | Limits |
+|------|--------|-------------|---------------|------------------|-----------------|--------|
+| **Free** | Individuals | $0 | $0 | 1 year | Single brain | 100 msg/mo (F70), 2 connections, 1K episodes |
+| **Personal** | Power users | $29/yr | $49/yr | 5 years | Single brain | Unlimited msg, 10 connections, 50K episodes |
+| **Together** | Couples | $49/yr | $79/yr | Lifetime | Personal x2 + Circle | Everything in Personal + shared calendar + joint meter + "Our Year in Review" |
+| **Family** | Households | $79/yr | $129/yr | Lifetime | Together + up to 5 | Everything in Together + kid profiles + family calendar |
+| **Team** | Small teams (3+) | $19/user/mo | $19/user/mo | 5 years (configurable) | Shared team + individual | Everything in Personal + team knowledge sharing |
+| **Business** | Mid-market (10+) | $15/user/mo | $15/user/mo | Configurable | Org + teams + individual | Multiple teams, SSO, 1M episodes |
+| **Enterprise** | Large orgs | Custom | Custom | Configurable | Full hierarchy + lifecycle | Unlimited, SOC 2, data residency, SLA |
+
+Memory retention as conversion lever: Free = 1 year (`data_retention_days: 365`), Personal = 5 years (`1825`), Together/Family = lifetime (`unlimited`), Team = 5 years configurable. "Your Brain remembers 1 year of your life. Upgrade to remember everything, forever." Text memories are tiny (~10MB/user/year). 10 years of life = ~100MB. Nightly consolidation compresses old episodes into summaries, so raw old data sits on cold storage while summaries stay hot.
+
+Pricing in outcomes, not technical units (F84): Free = "Your Brain wakes up." Personal = "Your Brain remembers everything, forever." Together = "Your shared Brain." Family = "Your family Brain." Team = "Your team's shared brain."
+
+Revenue model: subscriptions are the engagement wrapper (~25% of revenue). The real revenue is contextual intelligence monetization — Credit Karma playbook with 5-10x the signal (D59, ~50% of revenue). Lifestyle intelligence at scale (~25% at 500K+ users). See D59 for full model.
 
 ### D28. Enterprise Compliance
 
@@ -273,9 +305,17 @@ Five channels: (1) Reddit organic — 90/10 rule, founder accounts, 3-5 answers/
 
 iOS + Android via Expo in pnpm monorepo. 60-75% code sharing with Next.js via Solito + NativeWind. NOT PWA (iOS camera bugs), NOT native Swift/Kotlin (2x maintenance), NOT Flutter (Dart, no code sharing). The Brain IS the app — one chat, all products. Structure: `apps/brain-mobile/` with Expo Router. Native-only: expo-camera, expo-notifications, expo-local-authentication (biometrics), expo-haptics, Reanimated. Costs: $99/yr Apple + $25 Google + 15% IAP commission. 6-8 week MVP. Phase: P9 parallel track.
 
-### D49. The Memory Moat: Brain as Universal Vault
+### D49. The Memory Moat: Brain as Universal Life Vault
 
-**The single most important design decision.** Intelligence is commodity. Accumulated personal context is irreplaceable. The Brain's memory IS the user's vault — financial identity, documents, credentials (encrypted vault column, biometric-gated), financial accounts, business data, personal context, professional contacts. The moat equation: `Switching cost = Σ(accumulated memories × time × trust)`. Day 0: connect Gmail. Day 30: knows subscriptions, contacts, finances. Day 365: irreplaceable. **The couple moat is 2x** (D53): Day 30 — Brain detects shared Amazon account with partner. Day 90 — "Our Brain" knows shared subscriptions, joint spending, shared calendar. Day 180 — shared financial + life context deeply entangled, BOTH people need to switch. Two people locked in, not one. Social pressure to stay is stronger in couples. Email-first onboarding inverts the model: passive ingestion → user amazed → wants more. One Google OAuth = years of life data. Brain Fill Meter shows accumulation. Free tier: unlimited ingestion + 10 queries/month. Pro: unlimited queries + full vault. Revenue: paying to TALK TO your own accumulated context. Phase: core concept P1, vault encryption P2, email ingestion P7, fill meter P9.
+**The single most important design decision.** Intelligence is commodity. Accumulated personal life context is irreplaceable. The Brain's memory IS the user's vault — life context across every domain: financial identity (income, spending, tax situation, accounts), lifestyle patterns (dining preferences, travel history, fitness routines, entertainment habits), relationships and social graph (partner, family, friends, colleagues), experiences and milestones (trips, date nights, achievements, life events), routines and preferences (favorite spots, weekly patterns, seasonal habits), documents, credentials (encrypted vault column, biometric-gated), business data, professional contacts.
+
+The moat equation: `Switching cost = Σ(accumulated memories × time × trust)`. The moat deepens across ALL life domains — not just finances.
+
+**Individual moat timeline**: Day 0: connect Google (Gmail + Calendar + Maps). Day 7: knows subscriptions, top restaurants, commute pattern. Day 30: knows spending habits, dining preferences, fitness routine, social circle, weekly patterns. Day 90: knows lifestyle archetype (foodie? adventurer? homebody? fitness person?) without the user ever declaring it. Day 365: irreplaceable — not just your accountant, your memory. Years of accumulated life context in ~10MB/year, trivially cheap to store forever.
+
+**The couple moat is 2x** (D53): Day 30 — shared Netflix, same restaurants, overlapping subscriptions detected. Day 90 — "Our Brain" knows shared restaurants, trips, date nights, joint spending, shared calendar. Day 180 — shared life context deeply entangled: "You two always go Italian on Fridays, tried 12 Thai places, visited Portland and Austin, work out Saturdays." BOTH people need to switch. Two people locked in, not one. Social pressure to stay is stronger in couples.
+
+Email-first onboarding inverts the model: passive ingestion → user amazed → wants more. One Google OAuth = years of life data. Brain Fill Meter shows accumulation. Free tier: unlimited ingestion + 10 queries/month. Personal: unlimited queries + full vault. Revenue: paying to TALK TO your own accumulated life context. Phase: core concept P1, vault encryption P2, email ingestion P7, fill meter P9.
 
 ### D50. Email Ingestion Pipeline
 
@@ -306,7 +346,7 @@ A "Circle" is a lightweight sharing group between 2+ users — couples, roommate
 
 **The Brain detects, the owner decides.** No data moves between scopes without explicit human action. The Brain SUGGESTS: "I noticed you both get emails from State Farm. Want to share this?" The owner must tap to confirm. No background auto-tagging, no "smart defaults," no bulk-approve.
 
-**Conversational interface:** "Share my Amazon spending with Olga" → owner explicitly tags connection as shared. "How much did we spend on food?" → queries circle scope. "What are we doing Saturday?" → shared calendar. In circle context, the Brain speaks as "we/us/our" — not "you." This isn't cosmetic; it validates the partnership.
+**Conversational interface — life, not just finances:** "Share my Amazon spending with Olga" → owner explicitly tags connection as shared. "How much did we spend on food?" → queries circle scope. "What are we doing Saturday?" → shared calendar. "Where should we go for dinner?" → uses location history + cuisine preferences from both members. "Plan our anniversary" → trip history + restaurant favorites + calendar availability. "What movies are out?" → Fandango/AMC history + preference matching. "Remember that Portland ramen place?" → instant recall from shared trip memory. In circle context, the Brain speaks as "we/us/our" — not "you." This isn't cosmetic; it validates the partnership.
 
 **Overlap detection from email metadata:** When two Circle members both receive emails from Netflix, Amazon, State Farm, their landlord — the Brain detects the overlap and SUGGESTS sharing. Owner must approve each one individually. Detection itself is opt-in during circle setup — owner can disable it entirely. The metadata pipeline (D52) makes detection free.
 
@@ -328,18 +368,30 @@ A "Circle" is a lightweight sharing group between 2+ users — couples, roommate
 6. **Asymmetric contribution** — the "organizer" partner's work benefits both. The "disorganized" partner gets organized without effort. Both are satisfied.
 7. **Overlap detection is the "wow"** — overlapping services detected from metadata, surfaced as suggestions. Owner approves each one. Zero setup required.
 8. **The "we" pronoun IS the product** — "Our Brain says we spent $1,200 on food" is shared discovery. "Your Brain says you spent too much" is judgment.
-9. **"Our Year in Review"** — couple Wrapped variant. "Together you spent $47K. Visited 4 cities. Cooked more in Q4." Couples love sharing their life together. Extremely viral.
+9. **"Our Year in Review"** — couple Wrapped variant that covers your entire shared life, not just finances:
+```
+OUR YEAR TOGETHER — 2026
+Trips: Portland, Austin, Napa, surprise Joshua Tree weekend
+Restaurants: 47 date nights. Top cuisines: Thai (11x), Italian (8x), Japanese (7x)
+Movies: 23 together. You both loved Dune 3.
+Routines: Farmers market 38 Saturdays. Gym together 12x.
+Financial: Saved $4,200 vs last year. Biggest win: switching insurance.
+Together: 14 months. Brain fill: 2,847 things about your life together.
+```
+Couples love sharing their life together. Extremely viral.
 10. **Circle > Household** — co-founders, freelancer + bookkeeper, roommates, parent + adult child managing elder care. `circle_type` determines sharing suggestion defaults.
 11. **The Third Brain** — each person has a personal Brain. The Circle creates a third entity. It knows things neither individual knows alone.
 12. **2x the moat** — two people locked in, not one. Social pressure to stay ("we have 2 years of shared history") is stronger in couples than individuals.
+13. **Lifestyle is daily engagement, daily moat** — financial queries are seasonal (tax time, bill surprises). Lifestyle queries are daily ("Where should we eat?", "What are we doing Saturday?", "Remember that place in Austin?"). Daily engagement = daily moat deepening.
+14. **Brain is the couple's shared memory** — "Remember that Portland ramen place?" is not a query to a database. It's a conversation with a partner who was on the trip. The Brain becomes the couple's collective memory — the thing that remembers what both of you forget.
 
-**Pricing:** Free tier: personal brain only. Pro ($29/yr): personal + 1 circle. Family ($39/yr for 2): personal + household circle + shared calendar. Team ($19/user): org brain. Natural couple upsell: "Your Brain detected you and @olga share 3 accounts. Upgrade to see shared insights."
+**Pricing:** Free tier: personal brain only. Personal ($29 Y1 / $49 Y2+): personal + 1 circle. Together ($49 Y1 / $79 Y2+): personal x2 + household circle + shared calendar + joint meter + "Our Year in Review." Family ($79 Y1 / $129 Y2+): Together + up to 5 + kid profiles. Team ($19/user): org brain. Natural couple upsell: "Your Brain detected you and @olga share 3 accounts. Upgrade to see shared insights."
 
 Phase: P9 (schema + owner-approved sharing + calendar + safety protocol), P10 (overlap detection suggestions, joint meter, "Our Year in Review").
 
 ### D54. Dual-Context Architecture (Founder Dogfood)
 
-Same person, multiple brain contexts. Sankalp has: (1) personal Brain (B2C app) for personal finances, (2) Paperwork Labs org Brain (B2B Slack) for company ops, (3) household Circle (shared with Olga) for joint life. Same backend, different org/circle scopes per request.
+Same person, multiple brain contexts. Sankalp has: (1) personal Brain (B2C app) for personal life — finances, lifestyle, routines, preferences, (2) Paperwork Labs org Brain (B2B Slack) for company ops, (3) household Circle (shared with Olga) for joint life — trips, restaurants, shared finances, routines, date nights. Same backend, different org/circle scopes per request.
 
 **Channel determines context:** Slack `#engineering` → `organization_id: 'paperwork-labs'`. App chat (default) → `organization_id: 'sankalp-personal'` (auto-created). Shared finances query → includes `circle_id` scope.
 
@@ -446,6 +498,133 @@ One-directional, purpose-scoped, time-limited, fully audited sharing. You share 
 
 Phase: P9 (basic delegated access + audit trail), P10 (progressive disclosure, suspicious pattern detection, delegate dashboard).
 
+### D58. Life Intelligence System
+
+**The Brain is NOT a financial advisor with memory. It is a life intelligence system that happens to monetize exceptionally well through financial products.** Financial services are the trust-building entry point. The product is a partner that knows your entire life.
+
+**Signal sources for lifestyle intelligence:**
+
+| Source | What It Reveals | Integration |
+|--------|----------------|-------------|
+| Email metadata (D52) | Subscriptions, purchases, services, travel bookings, restaurant reservations, event tickets, fitness memberships | P7 (existing pipeline) |
+| Google Calendar | Date night frequency, gym schedule, travel dates, social density, routines, recurring commitments | P9 (existing connector) |
+| Google Maps Location History | Restaurant visits (cuisine, frequency, neighborhood), gym visits, store visits, commute, travel destinations | P9 (D39 Tier 1 addition) |
+| Plaid transactions | Spending categories confirm email/location signals, dining spend, travel spend, subscription costs | P9 (existing connector) |
+
+**Lifestyle archetype inference:** The Brain infers identity archetypes — "foodie," "movie lover," "adventure couple," "fitness person," "homebody," "traveler," "night owl" — from behavioral signals without the user ever self-declaring. A person does not need to tell the Brain they like food — the Brain knows from 47 restaurant visits on Google Maps, 11 OpenTable confirmation emails, and $2,400/mo dining spend on Plaid.
+
+The Brain never labels users to their face ("You're a foodie"). It simply acts on the pattern: "You've been to 4 Italian restaurants this month. There's a new one opening near your Thursday date night spot — reservations open tomorrow."
+
+**All life domains are equal.** The Brain surfaces across finance, travel, food, fitness, hobbies, and couples with no domain hardcoded as primary. The user's data determines which domains are richest. Each domain follows the same pattern: ingest signals → infer preferences → remember across time → surface contextual insights.
+
+| Domain | Example Insight | Signal Sources |
+|--------|----------------|----------------|
+| Finance | "Your subscriptions are up 20% this quarter." | Plaid + email |
+| Travel | "Last time in Portland you loved that ramen place on Burnside." | Maps + email + calendar |
+| Food | "You've tried 8 new restaurants this month — new record." | Maps + Plaid + email |
+| Fitness | "You run more on weeks you sleep 7+ hours." | Strava/Health + calendar |
+| Hobbies | "You've read 3 sci-fi books this quarter — here's what's new." | Email + purchases |
+| Couples | "Last anniversary was Napa — want something different this year?" | Calendar + Maps + email (both members) |
+
+No vertical app has cross-domain memory. Mint knows money. TripAdvisor knows places. Strava knows workouts. Yelp knows restaurants. The Brain knows YOU — across all of them, over years.
+
+**For couples (D53), this is transformative.** The Circle Brain knows: trips together (flight/hotel confirmation emails from both members), restaurants and date nights (shared calendar + location visits + booking confirmations), movies (Fandango emails + AMC visits), shared hobbies (both get ClassPass emails = fitness couple), routines ("You two go to the farmers market every Saturday morning").
+
+**Memory retention is trivially cheap:** Text memories are ~10MB/user/year. 10 years of someone's entire life = ~100MB (the size of 20 iPhone photos). Nightly consolidation compresses old episodes into monthly/quarterly summaries — raw data sits on cold storage, summaries stay hot. At 100K users with 5 years each: ~5TB on Neon (~$3,750/mo). At 10K users: ~300GB (~$200/mo). Memory is not a cost problem.
+
+**Retention arc** (lifecycle engagement by domain):
+- **Week 1**: Lifestyle hooks dominate — restaurants, routines, subscriptions. Daily engagement.
+- **Month 1**: Financial value lands — "Your insurance went up 18%." First high-impact moment.
+- **Month 3**: Circle suggestion — "You and [partner] share 4 subscriptions." Retention multiplier.
+- **Year 1**: Brain Wrapped — "23 trips, 47 date nights, 156 restaurants, $4,200 saved." Irreplaceable.
+
+Pattern: lifestyle hooks early (daily engagement from day 1), financial value mid-term (high-impact but less frequent), couple expansion in the middle (retention multiplier). This avoids the "seasonal tool" trap — the Brain stays relevant year-round because life doesn't stop after tax season.
+
+Phase: P9 (email metadata lifestyle signals, Google Maps connector, archetype inference), P10 (Spotify/Strava/Health connectors, advanced archetype modeling).
+
+### D59. Contextual Intelligence Monetization
+
+Revenue model inspired by Credit Karma ($2.3B FY2025, 140M members, ~$16/member/year, $0 subscription, acquired by Intuit for $8.1B) but with 5-10x the signal per user and a conversational delivery channel.
+
+**Three revenue layers coexist:**
+
+**Layer 1 — Subscription (~25% of revenue):** The engagement wrapper. Keeps users active so the referral engine has signal. Introductory staircase: Free → Personal $29 Y1 → $49 Y2 → Together $49 Y1 → $79 Y2 → Family $79 Y1 → $129 Y2 → Team $19/user/mo.
+
+**Layer 2 — Financial product referrals (~50% of revenue):** Credit Karma playbook. Brain notices something about your financial life and mentions it in conversation — like a smart friend, not an ad. Insurance comparison (CPA $50-100), banking/savings referral (CPA $100-200), credit card referral (CPA $100-300), tax filing (FileFree, $30-50/return), LLC formation (LaunchFree, $20-100).
+
+| What Brain Notices | What It Says | Tone | Revenue |
+|-------------------|-------------|------|---------|
+| Insurance renewal up 15% | "Your car insurance renewed at $180, up 15%. Want to check if you could pay less?" | Concerned friend | $50-100 CPA |
+| $15/mo checking, $0 interest | "Your Chase checking charges $15/mo. Fee-free accounts earn 4% APY." | Financial advisor | $100-200 CPA |
+| 1% cashback, heavy dining | "A dining card could earn $960/yr instead of $240." | Smart friend who did the math | $100-300 CPA |
+| Freelance income, no LLC | "$85K freelancing. An LLC could save $3-5K in self-employment tax." | Business advisor | $20-100 |
+| W-2 arrived, hasn't filed | "Your W-2 arrived last week. 5 minutes to file?" | Personal assistant | $30-50 |
+| Unused subscriptions | "3 subscriptions unused in 60+ days, $87/mo." | Frugal friend | $0 (trust builder) |
+
+**Layer 3 — Lifestyle intelligence (~25% at scale):** Activates at 500K+ users when signal density justifies partner integrations. Subscription optimization ("3 streaming services overlap — here's a bundle"), dining deals (OpenTable/Resy partnerships), travel deals (contextual, not generic), experience recommendations.
+
+**7 "not recommendy" design principles:**
+
+1. **Earn before you recommend** — Brain demonstrates value 5+ times before any monetized recommendation. First 2 weeks = pure helpful insights.
+2. **Insight-first, product-second** — "Your insurance went up 15%" (the insight) before "want to compare?" (the action). Never lead with the product.
+3. **User controls the volume** — settings toggle: Financial suggestions On / Occasional / Off. Default: Occasional.
+4. **Math shown** — every recommendation shows the calculation. "You'd save $720/yr" with the work visible.
+5. **Celebrate the save, not the switch** — "You saved $60/mo!" not "Congrats on signing up for [Partner]!"
+6. **Some insights are free** — subscription audit, spending trends, deadline reminders generate zero revenue. They build trust. Trust converts to revenue downstream.
+7. **Transparency badge** — "Brain Suggestion" label on any recommendation that generates a referral. Honest about the business model.
+
+**Targeted acquisition strategy (not spray-and-pray):** Focus on 10K high-intent users, not 100K random:
+
+| Cohort | Entry Point | Why They Convert | Target |
+|--------|------------|-----------------|--------|
+| Tax season filers (Jan-Apr) | "File your taxes free" (FileFree) | Already trusting with W-2 + SSN. Brain is the upsell. | 3,000 |
+| New LLC formers | "Form your LLC free" (LaunchFree) | Need compliance reminders, tax planning. Brain = business OS. | 2,000 |
+| Freelancers/self-employed | TikTok/Reddit deduction content | Pain is constant (quarterly taxes). Brain solves it permanently. | 2,500 |
+| Couples moving in together | "Manage your shared life" (Together) | Immediate need: who pays what? Shared subscriptions? | 1,500 |
+| New grads with first W-2 | "File your first return free" | Lifetime customer at 22. Brain grows with their life. | 1,000 |
+
+Expected 15-25% conversion (not 2.5%) because they have active need when they arrive. At 20% conversion on 10K: ~2,000 paid users Year 1 — comparable to 2,500 from 100K random, with 10x fewer free users to support. Cost savings: $112K/yr.
+
+Phase: P9 (referral partnerships, recommendation engine, "Brain Suggestion" UI), P10 (lifestyle partnerships, advanced CPA optimization).
+
+### D60. Proactive Insight Delivery
+
+Five-channel system for the Brain to TELL users things without waiting for them to ask. The Brain is not a search bar — it's a partner that notices things and brings them up.
+
+**Insight pipeline:** Nightly consolidation (2am PT) analyzes new emails, spending changes, upcoming deadlines, insurance renewals, subscription changes, lifestyle patterns, anomalies. Generates ranked "Insight Queue" per user (impact × urgency). Channels deliver based on impact + urgency + user preferences.
+
+**Five delivery channels:**
+
+1. **In-app proactive message** (default: ON) — When user opens app, Brain has a message waiting: "Hey, I found 3 things while you were away." Notification dot on Brain icon. First message = highest-impact insight.
+
+2. **Push notification** (default: ON for high-impact) — Threshold: insights worth >$50/yr savings or deadlines <7 days. Max 1 push/day. "Your quarterly taxes are due in 5 days. Want me to estimate?" NEVER push product recommendations — push is for YOUR data, not partner products.
+
+3. **Weekly Brain Brief** (email digest, default: ON) — Every Monday: "Your Brain Brief — 3 things from this week." Top 3 insights, brain fill progress, one recommendation. Clean, mobile-optimized React Email template. This is the HABIT LOOP (D51): Cue = Monday email, Action = check insights, Reward = peace of mind or surprising save.
+
+4. **Real-time alerts** (rare, high-urgency only) — Triggered immediately, not nightly: "Your LLC annual report is due TODAY." "Your bank flagged unusual activity" (Plaid webhook). Push + in-app + email simultaneously.
+
+5. **Circle notifications** (Together/Family tiers) — "Your shared Brain detected a new subscription: Disney+ $13.99." Sent to both circle members simultaneously. "Together you spent $1,200 more than last month. Want a breakdown?"
+
+**Notification escalation** (connects D51 psychology to delivery channels):
+
+| Day Since Last Open | Channel | Message Type | Psychology |
+|--------------------|---------|-------------|-----------|
+| 0 (same day) | In-app only | Proactive insight waiting | Curiosity |
+| 1 (23.5 hours) | Push | "Your Brain found something interesting" | FOMO |
+| 3 | Push + email | "Your Brain learned 12 things while you were away" | Loss aversion |
+| 5 | Push + email | "Your Brain is 67% full. Slowing down without you." | Sunk cost |
+| 7+ | Email only | Friend reactivation nudge | Social pressure |
+| 14+ | Stop notifications | Respect the user's choice | Integrity |
+
+**What the Brain NEVER does:**
+- Never wakes you up for non-urgent insights (respects `active_hours` from user profile)
+- Never sends more than 1 push/day
+- Never recommends a financial product via push (recommendations only in-app or email)
+- Never shares circle insights without both members' consent
+- Never sends notifications about things the user explicitly dismissed
+
+Phase: P6 (basic notification architecture), P9 (full 5-channel delivery, Weekly Brain Brief, escalation), P10 (advanced personalization, optimal send time).
+
 ---
 
 ## 2. Memory Schema
@@ -464,7 +643,7 @@ CREATE TABLE agent_organizations (
     size_band TEXT,
     brain_name TEXT DEFAULT 'Brain',
     persona_config JSONB DEFAULT '{}',
-    data_retention_days INT DEFAULT 730,
+    data_retention_days INT DEFAULT 365, -- Free=365, Personal=1825, Together/Family=NULL (unlimited), Team=1825
     pii_policy JSONB DEFAULT '{}',
     ingestion_policy JSONB DEFAULT '{}',
     onboarding_status TEXT DEFAULT 'setup',
@@ -985,13 +1164,13 @@ Pages under `/admin/brain`: Overview (health, stats, recent), Conversations (thr
 
 **Design philosophy (F79-F85)**: Chat-first. One input box. Everything else discovered through conversation. Mobile-first (375px primary). Dark mode default.
 
-**First message (F80)**: "Hey! I'm [brain_name]. I get smarter the more we talk. Want to tell me about what you're working on, or should we connect your Google account first?"
+**First message (F80)**: "Hey! I'm [brain_name]. I learn your finances, your routines, your favorite spots — everything that makes your life yours. Want to connect your Google account so I can start learning?"
 
 **Surfaces**: Chat (primary, always visible), Progressive sidebar (after 3+ conversations), Connections (in-chat first, dedicated page for power users), Settings (conversational first, dedicated for admin).
 
-**Brain Moments (D32)**: Shareable insight cards when Brain provides surprising value. Dark background, product-gradient, JetBrains Mono for dollar amounts. Aspect ratios: 9:16 (TikTok/Stories), 1:1 (X/feed), 4:5 (Instagram). One-tap share. Exclusively celebratory — never judgmental.
+**Brain Moments (D32)**: Shareable insight cards when Brain provides surprising value. Covers all life domains — financial ("saved $847 on insurance"), lifestyle ("12 new restaurants this month — new record"), travel ("3 trips in Q1"), couple ("47 date nights this year"). Dark background, product-gradient, JetBrains Mono for dollar amounts. Aspect ratios: 9:16 (TikTok/Stories), 1:1 (X/feed), 4:5 (Instagram). One-tap share. Exclusively celebratory — never judgmental.
 
-**Meta-product (F90)**: Brain surfaces products as capabilities: "Your taxes are due — want me to file with FileFree?" / "Your LLC annual report is due — LaunchFree can handle it."
+**Meta-product (F90)**: Brain surfaces products as capabilities: "Your taxes are due — want me to file with FileFree?" / "Your LLC annual report is due — LaunchFree can handle it." / "Your anniversary is next week — want me to find something special?"
 
 ---
 
@@ -999,17 +1178,23 @@ Pages under `/admin/brain`: Overview (health, stats, recent), Conversations (thr
 
 ### Phase 1 — Launch (PLG + Automated Social)
 
-**Target**: Solopreneurs, freelancers, creators, side hustlers (40M+ self-employed Americans). NOT "everyone." A specific persona who needs tax filing + LLC formation + business expenses + personal finance in one place.
+**Target**: Solopreneurs, freelancers, creators, side hustlers, couples managing shared lives (40M+ self-employed Americans, 2M+ couples moving in together annually). NOT "everyone." Specific personas who need personal life organization + tax filing + LLC formation + business expenses in one place.
 
-**Entry point**: Free tax filing via FileFree. One Google OAuth = emails, calendar, Drive, orders. Brain is useful in 5 minutes.
+**Entry point**: Free tax filing via FileFree. One Google OAuth = emails, calendar, Maps, orders. Brain learns 847 things about your life in 5 minutes — finances, routines, restaurants, subscriptions, travel patterns.
 
-**GTM channel**: Automated social content at scale (D33). 7-agent content pipeline running on n8n + Postiz. Psychology-driven content aligned with financial lifecycle events. See Section 13 for full specification.
+**GTM channel**: Automated social content at scale (D33). 7-agent content pipeline running on n8n + Postiz. Psychology-driven content aligned with life events — tax season, moving in together, starting a business, New Year financial planning, summer travel. See Section 13 for full specification.
 
-**Viral mechanic**: Brain Moments (D32). Shareable insight cards. Spotify Wrapped model — continuous, not annual. Monthly Brain Report with shareable stats.
+**Viral mechanic**: Brain Moments (D32). Shareable insight cards across all life domains. Spotify Wrapped model — continuous, not annual. Monthly Brain Report with shareable lifestyle + financial stats.
+
+**Targeted 10K strategy** (not spray-and-pray 100K): Focus on high-intent cohorts — tax season filers (3K), new LLC formers (2K), freelancers (2.5K), couples moving in together (1.5K), new grads (1K). Expected 15-25% conversion vs 2.5% from random users. Same revenue, 10x fewer free users to support (D59).
+
+### Phase 1.5 — Lifestyle Expansion (Post Tax Season)
+
+Pivot from seasonal tax content to year-round lifestyle engagement. Brain shifts from "file your taxes" to "know your life." Travel content for summer. Restaurant/dining content for date nights. Fitness content for New Year. The Brain stays relevant year-round because life doesn't stop after April 15.
 
 ### Phase 2 — Growth
 
-Referral: invite teammate, both get 1 month free. Content marketing compounding (Reddit posts rank in AI search). Google Workspace Marketplace for B2C reach. Slack App Directory for B2B.
+Referral: invite partner to Circle, both get 1 month free Together tier. Content marketing compounding (Reddit posts rank in AI search). Google Workspace Marketplace for B2C reach. Slack App Directory for B2B. Together tier drives organic growth — the Circle invitation IS the acquisition mechanic.
 
 ### Phase 3 — Enterprise
 
@@ -1017,7 +1202,7 @@ Inbound from PLG usage. Case studies. SOC 2. Knowledge lifecycle as killer featu
 
 ### Phase 4 — Meta-product (F90)
 
-Brain surfaces Paperwork Labs products as capabilities. Revenue compounds: brain subscription + product-specific revenue.
+Brain surfaces Paperwork Labs products as capabilities. Revenue compounds: brain subscription + product-specific revenue + contextual intelligence monetization (D59).
 
 ---
 
@@ -1033,23 +1218,25 @@ Brain surfaces Paperwork Labs products as capabilities. Revenue compounds: brain
 | Email/calendar | No | No | No | No | Per-user | Search | **Google** |
 | Persistent memory | No | No | No | No | Per-user | Search | **Hierarchical** |
 | Learns from corrections | No | No | No | No | No | No | **Yes** |
+| **Lifestyle intelligence** | No | No | No | No | No | No | **Dining, travel, fitness, routines, hobbies** |
+| **Couple/household** | No | Basic shared | No | No | No | No | **Circle: auto-detect, shared memory, joint meter, "Our Year"** |
 | Social/viral | None | None | None | No | No | No | **Brain Moments** |
 | Solopreneur lifecycle | Finance only | Finance only | Finance only | No | No | No | **Full stack** |
-| Price | ~$15/mo | $15/mo | $13/mo | $20/mo | $29/user | Enterprise | **Free + $29 Pro** |
+| Price | ~$15/mo | $15/mo | $13/mo | $20/mo | $29/user | Enterprise | **Free + $29/yr Personal** |
 
-**Positioning**: "Origin is a financial advisor. Brain is your second brain that happens to be brilliant at finances — and taxes, and your business, and everything else in your life."
+**Positioning**: "Origin does finance. Yelp does restaurants. TripAdvisor does travel. Strava does workouts. Brain knows your finances, your restaurants, your trips, your routines — all of it, in one conversation, connected, with memory that spans years."
 
-**The solopreneur wedge**: Nobody serves the self-employed persona holistically. Origin does personal finance. LegalZoom does LLCs. TurboTax does taxes. Brain does all of it in one conversation.
+**The solopreneur wedge**: Nobody serves the self-employed persona holistically. Origin does personal finance. LegalZoom does LLCs. TurboTax does taxes. Brain does all of it in one conversation — PLUS it knows your lifestyle, your routines, your preferences. It's not a financial tool that bolted on lifestyle. It's a life intelligence system where financial services happen to be the highest-value domain.
 
 **The trust gradient**: W-2 + SSN for free tax filing = deeper trust exchange than connecting a bank account. From there, each product "skill" deepens the relationship.
 
-**Cross-product data moat (F125)**: FileFree (tax data) + LaunchFree (entity data) + Plaid (banking data) + Distill (compliance data) = a dataset no single competitor assembles. Origin has banking but not tax. Monarch has banking but not entities. LegalZoom has entities but not finances. We have all four, connected in one knowledge graph.
+**Cross-product + lifestyle data moat (F125)**: FileFree (tax data) + LaunchFree (entity data) + Plaid (banking data) + Distill (compliance data) + lifestyle data (email + calendar + location) = a dataset no single competitor assembles. Origin has banking but not tax. Monarch has banking but not entities. LegalZoom has entities but not finances. Yelp has restaurants but not spending. TripAdvisor has travel but not your budget. We have all of it, connected in one knowledge graph.
 
 **brain.ai cautionary tale (F164)**: brain.ai raised $51.5M (Emerson Collective, Scott Cook) to build a horizontal "generative interface." Result: no vertical depth, no data moat. Deutsche Telekom partnership replaced by ElevenLabs in 2026. App Store rating: 4.7 → 2.4. Lesson: vision without vertical depth fails even with $50M. The Brain avoids every mistake: vertical wedge (taxes), genuine switching cost (email + financial data + accumulated memory), own distribution (consumer-direct), infrastructure IS the product.
 
 **The "See vs. Understand" moat (D52)**: Free tier uses metadata-only email processing — 847 things learned without reading a single email. No competitor offers this. The privacy claim ("We never read your emails") is both technically true and competitively unique.
 
-**Couples/household moat (D53)**: No AI financial advisor handles couples natively. Origin: no couples. Monarch: basic shared accounts (manual). Peas/Smoov/Opto: manual splitting, no memory, no tax, no email. Brain: auto-detects shared accounts from email metadata, conversational sharing, joint Brain Meter, shared calendar, plus tax + LLC. The Circle creates a "Third Brain" that knows things neither individual Brain knows alone. The invitation ("Join my Circle") is a built-in viral mechanic with functional motivation.
+**Couples/household moat (D53)**: No AI life intelligence handles couples natively. Origin: no couples. Monarch: basic shared accounts (manual). Peas/Smoov/Opto: manual splitting, no memory, no tax, no email. Brain: auto-detects shared accounts from email metadata, conversational sharing, joint Brain Meter, shared calendar, shared trip memory, shared dining preferences, plus tax + LLC. The Circle creates a "Third Brain" that knows things neither individual Brain knows alone — trips together, date night patterns, shared routines, combined finances. The invitation ("Join my Circle") is a built-in viral mechanic with functional motivation.
 
 ---
 
@@ -1116,7 +1303,7 @@ Runs on n8n (Hetzner) + Postiz (32+ platforms). Orchestrated by CRO persona.
 6. **Visual Designer** (template system) — Brain Moments cards, thumbnails, infographics.
 7. **Publisher** (n8n → Postiz API) — schedules, tracks, feeds analytics back to Trend Scout.
 
-### 5 Psychological Triggers
+### 6 Psychological Triggers
 
 **1. Loss Aversion** (losses feel 2.5x worse than gains): "You're LOSING $X" > "You could save $X." Content: "The $800 California franchise tax nobody warns new LLC owners about." Share driver: digital altruism.
 
@@ -1127,6 +1314,8 @@ Runs on n8n (Hetzner) + Postiz (32+ platforms). Orchestrated by CRO persona.
 **4. Urgency/Scarcity** (deadline anxiety, 240% more shares): "Quarterly taxes due in 3 days." Aligned with tax calendar: Jan 15, Apr 15, Jun 15, Sep 15, plus state LLC annual report dates.
 
 **5. Achievement/Celebration** (Spotify Wrapped effect): "Brain saved me $4,870 this year." Brain Moments share cards. CRITICAL: exclusively celebratory. Never judgmental. "You saved $X" never "You spent $X."
+
+**6. Lifestyle Discovery** (curiosity + self-knowledge): "My Brain says I'm a foodie — 47 restaurants this year." / "3 trips in Q1 — someone's got wanderlust." / "You run more on weeks you sleep 7+ hours." Share driver: self-discovery is inherently shareable, identity-affirming. This trigger keeps engagement year-round (not just tax season). Content: "Things my Brain knows about me that I didn't realize."
 
 ### Platform Playbooks
 
@@ -1144,18 +1333,18 @@ Runs on n8n (Hetzner) + Postiz (32+ platforms). Orchestrated by CRO persona.
 
 | Month | Event | Theme | Primary Trigger |
 |-------|-------|-------|-----------------|
-| Jan | Q4 estimated taxes due, tax season begins | Tax season prep | Urgency + Loss Aversion |
-| Feb | 1099 forms arrive | "Found money" — deductions people miss | Social Currency |
+| Jan | Q4 estimated taxes due, tax season begins, New Year goals | Tax season prep + "Your Brain's 2025 Life Report" | Urgency + Achievement |
+| Feb | 1099 forms arrive, Valentine's Day | "Found money" + couples Brain content | Social Currency + Lifestyle Discovery |
 | Mar | Filing peak, LLC annual reports | LLC compliance alerts | Urgency + Identity |
-| Apr | Tax deadline (Apr 15) | "It's not too late" | Urgency (peak) |
-| May | Post-tax, LLC formation season | "Start your business" | Achievement + Identity |
-| Jun | Q2 estimated taxes | Quarterly tax tutorials | Urgency + Loss Aversion |
-| Jul | Mid-year check-in | Brain Moments H1 report | Achievement |
-| Aug | LLC formation spike | State-by-state guides | Identity |
-| Sep | Q3 estimated taxes | Year-end planning | Urgency |
-| Oct | Open enrollment, tax planning | ACA + optimization | Loss Aversion |
-| Nov | Black Friday | Subscription tracking | Loss Aversion |
-| Dec | Year-end planning | Brain Wrapped annual report | Achievement (peak) |
+| Apr | Tax deadline (Apr 15) | "It's not too late" + Brain Wrapped | Urgency (peak) + Achievement |
+| May | Post-tax, LLC formation season | "Start your business" + summer travel planning | Achievement + Identity |
+| Jun | Q2 estimated taxes, summer trips | Quarterly tax + "Brain knows your travel style" | Urgency + Lifestyle Discovery |
+| Jul | Mid-year check-in, peak travel | Brain Moments H1 lifestyle report — trips, restaurants, fitness | Achievement + Lifestyle Discovery |
+| Aug | LLC formation spike, back-to-school | State-by-state guides + Family Brain content | Identity + Lifestyle Discovery |
+| Sep | Q3 estimated taxes, fall routines | Year-end planning + "Your Brain knows your routine" | Urgency + Lifestyle Discovery |
+| Oct | Open enrollment, tax planning | ACA + optimization + "Brain saves you on insurance" | Loss Aversion |
+| Nov | Black Friday, holiday planning | Subscription tracking + gift/travel Brain insights | Loss Aversion + Lifestyle Discovery |
+| Dec | Year-end planning, holiday season | Brain Wrapped annual life report (not just financial) | Achievement (peak) + Lifestyle Discovery |
 
 ### Habit Loop Design
 
@@ -1171,6 +1360,7 @@ Four-tier integration strategy. Schema supports all from P1 (D26 Connections Arc
 
 - **Plaid Link**: Bank accounts, credit cards, investments. Single integration = 12,000+ institutions.
 - **Google Workspace**: Gmail (metadata free, body paid — D52), Calendar, Drive, Contacts.
+- **Google Maps Location History**: Restaurant visits (cuisine type, frequency, neighborhood), gym visits, store visits, commute patterns, travel destinations. Location + email + calendar = lifestyle fingerprint. This is the single most powerful lifestyle signal source — user doesn't need to tell Brain they're a foodie, Brain knows from 47 restaurant visits (D58).
 - **Tax Documents**: W-2, 1099 via existing OCR pipeline (Cloud Vision + GPT).
 - **Slack**: Team communication (existing adapter).
 - **Manual Entry**: Assets/liabilities not in aggregators.
@@ -1179,8 +1369,11 @@ Four-tier integration strategy. Schema supports all from P1 (D26 Connections Arc
 
 - **Plaid Financial Insights**: Enriched transaction categorization.
 - **Plaid Investments**: Holdings, cost basis, gains/losses.
+- **Google Maps Saved Places**: Favorites, want-to-go lists, labeled locations.
 - **Apple**: Calendar, Contacts, Reminders (CalDAV/CardDAV).
 - **Microsoft 365**: Outlook, Calendar, OneDrive (Graph API). Email (D50 pipeline).
+- **Spotify / Apple Music** (P10): Listening history, playlists, genres — entertainment archetype.
+- **Strava / Apple Health** (P10): Workout history, fitness patterns, sleep data.
 - **Notion**: Knowledge base sync.
 - **Linear**: Project management.
 - **GitHub**: Repo activity, issues (expand existing).
@@ -1206,7 +1399,7 @@ Four-tier integration strategy. Schema supports all from P1 (D26 Connections Arc
 
 **Meta-aggregator**: Quiltt wraps Plaid + MX + Finicity in a single API. Evaluate at P9 for best per-institution coverage.
 
-**Cross-product knowledge graph moat (F125)**: Tax data (FileFree) + banking data (Plaid) + business entity data (LaunchFree) + compliance data (Distill) = unique dataset no competitor assembles. Origin has banking but not tax. Monarch has banking but not entities. We have all four.
+**Cross-product + lifestyle knowledge graph moat (F125)**: Tax data (FileFree) + banking data (Plaid) + business entity data (LaunchFree) + compliance data (Distill) + lifestyle data (email metadata + calendar + Google Maps location history) = unique dataset no competitor assembles. Origin has banking but not tax. Monarch has banking but not entities. Yelp has restaurants but not your spending. TripAdvisor has travel but not your budget. We have all of it — financial + lifestyle — connected in one knowledge graph.
 
 ---
 
@@ -1228,6 +1421,10 @@ LLM outputs structured JSON blocks alongside text. Frontend maps block types to 
 | ActionChips | After any response | Suggested next actions as tappable pills |
 | ProcessStepper | Background task | "Scanning → Extracting → Calculating" + checkmarks |
 | PaymentPlanCard | Payment due | Interactive monthly amount calculator |
+| RestaurantCard | Dining recommendation/history | Cuisine tag, distance, visit count badge, "Book" action chip, map pin |
+| TripCard | Travel memory/planning | Destination, dates, weather widget, Circle shared indicator, photo prompt |
+| RoutineCard | Detected pattern | "You [do X] every [day/time]" with edit/confirm actions, streak counter |
+| LifestyleInsightCard | Archetype/pattern insight | Archetype badge (foodie/traveler/etc), evidence list, share button |
 
 Implementation: Vercel AI SDK `useChat` with function calling. LLM returns `{ type: "refund_card", data: { amount: 2100 } }`. Frontend `ComponentRouter` maps type → React component. All share Zustand state layer.
 
@@ -1358,12 +1555,14 @@ All cards: 1080x1920 for Stories, product gradient, JetBrains Mono for numbers, 
 ### TikTok Content Formats
 
 1. **"Watch My Brain Fill Up"** — satisfying progress bar animation as it scans emails (ASMR-adjacent)
-2. **"Things My Brain Knows About Me"** — creator reads insights, reacts
+2. **"Things My Brain Knows About Me"** — creator reads insights, reacts (finance + lifestyle mix)
 3. **"Brain vs. Brain"** — couples/friends compare meters (drives duets/stitches)
 4. **"My Brain Predicted My Refund"** — prediction vs actual IRS refund (proof of value)
 5. **"POV: Day 1 vs Day 30"** — time-lapse of Brain growing (transformation content)
 6. **"The Brain Character"** — Duolingo-style mascot energy, slightly unhinged personality
 7. **Demographic hooks** — "POV: you're a freelancer and your Brain finds $4K in deductions"
+8. **"My Brain Knows My Taste"** — Brain reveals lifestyle archetypes: "Apparently I'm a foodie. 47 restaurants this year." / "My Brain says I go to Thai restaurants more than my apartment." Self-discovery content, extremely shareable.
+9. **"Date Night by Brain"** — couples ask Brain where to go for dinner, plan anniversary, recall trips. Reaction content. "Our Brain remembers our first restaurant better than we do."
 
 ### Joint Circle Meter (D53)
 
@@ -1385,15 +1584,28 @@ When two users share a Circle, the fill meter becomes three bars:
 YOUR BRAIN — MARCH 2026
 Facts learned this month: 89
 Brain fill: 73% → 81%
-Biggest insight: $847/mo in subscriptions
+
+FINANCES
+Biggest insight: $847/mo in subscriptions (3 unused)
 Tax impact: HSA could save you $1,200
+
+LIFESTYLE
+Dining: 12 restaurants this month. Top cuisine: Thai (4x). New favorite: Siam Garden.
+Travel: Portland trip (Mar 8-11). Average trip spend: $1,847.
+Fitness: Gym 14x this month. You run more on weeks you sleep 7+ hours.
+Entertainment: 3 movies, 2 concerts. You're in a documentary phase.
+Routines: Farmers market 4 Saturdays straight. Coffee at Blue Bottle every Monday.
+
 Top 22% of Brain users in California
 
 OUR BRAIN — MARCH 2026 (Household)
 Shared facts this month: 34
 Household fill: 61% → 68%
+Date nights: 5 this month. Favorite: that new Italian place on 3rd.
 Shared subscriptions: $287/mo across 12 services
-Biggest joint insight: You both overpay for car insurance
+Trips planned: Austin in April (flights booked, no hotel yet)
+Routines: Farmers market together 4/4 Saturdays
+Biggest joint insight: You both overpay for car insurance ($720/yr savings available)
 ```
 
 Rolling cadence, not annual. Spotify Wrapped got 500M shares in 24 hours (2025). Rolling captures demand year-round.
@@ -1967,11 +2179,18 @@ Branch: `feat/brain-phase-2-memory`
 - Circle offboarding: unilateral leave, immediate access revocation (F205)
 - Joint Circle Meter: three-bar visualization (F208)
 - Context-mode persona adaptation: pronoun and tone switching (F209)
-- Brain Moments infrastructure (D32): insight detection, card generation, share UI
+- Brain Moments infrastructure (D32): insight detection, card generation, share UI (all life domains)
 - 7-agent content pipeline on n8n (D33): Trend Scout, Writer, Compliance, Visual, Publisher
 - Postiz integration for multi-platform publishing
 - Landing page, Product Hunt prep
 - Cross-product tool definitions (F90)
+- **Life Intelligence System** (D58/F211-F213): Google Maps Location History connector (Tier 1), lifestyle archetype inference from email + Maps + Plaid + calendar, retention arc (lifestyle early → finance mid → couples late)
+- **Contextual Intelligence Monetization** (D59/F215-F220): referral partnership integrations (insurance, banking, credit cards), recommendation engine, "Brain Suggestion" UI with transparency badge, 7 design principles
+- **Proactive Insight Delivery** (D60/F221-F222): nightly insight queue, 5-channel delivery (in-app, push, weekly Brain Brief via React Email, real-time alerts, circle notifications), notification escalation
+- **Consumer Brain Personality** (D24/F225): warm, slightly witty consumer persona mode
+- **Lifestyle Generative UI** (D42/F223): RestaurantCard, TripCard, RoutineCard, LifestyleInsightCard
+- **First 5 Minutes Lifestyle Wow** (D22/F223): Google OAuth → real-time counter → lifestyle insight at 3:00
+- **Staircase pricing** (D27/F218-F219): $29 Y1 → $49 Y2 Personal, Together/Family tiers, memory retention per tier
 
 ### P9-3mo: Programmatic SEO
 
@@ -2024,6 +2243,27 @@ At conservative, Team tier ($19/user) margin = 21%. Still viable but validate ag
 | Break-even conversion | — | ~1.5% |
 
 Cross-user template amortization: cost per paid user decreases with scale (10 users: $0.45, 1K users: $0.20, 10K users: $0.15). See Section 18 for full model.
+
+### Referral Revenue Model (D59 — Contextual Intelligence Monetization)
+
+Subscriptions are the engagement wrapper (~25% of revenue). The real business is the Credit Karma playbook: know enough about someone's life to make contextual, high-value recommendations.
+
+**Credit Karma proof point**: $2.3B revenue FY2025. 140M members. ~$16/member/year. $0 subscription. 100% from financial product referrals. Acquired by Intuit for $8.1B.
+
+**Brain's advantage**: Credit Karma knows your credit score. The Brain knows your income, spending, tax situation, business structure, banking relationships, insurance, life events, dining habits, travel patterns, fitness routines, and lifestyle preferences. 5-10x the signal = better recommendations = higher conversion = higher CPA.
+
+| Revenue Stream | Users Who See It | Conversion | Avg CPA | Notes |
+|---------------|------------------|------------|---------|-------|
+| Insurance comparison | 30% of paid users | 8% | $75 | "Your insurance went up 15%" |
+| Banking/savings referral | 25% of paid users | 5% | $150 | "Fee-free accounts earn 4% APY" |
+| Credit card referral | 20% of paid users | 4% | $150 | "A dining card could earn $960/yr" |
+| Tax filing (FileFree) | 60% of all users | 40% | $35 | "W-2 arrived — 5 minutes to file" |
+| LLC formation (LaunchFree) | 10% of paid users | 15% | $60 | "$85K freelancing → LLC saves $3-5K" |
+| Compliance-as-a-Service | LLC formers | 30% | $74 | Annual report reminders → upsell |
+
+**Year 1 (10K users, 2K paid)**: Subscriptions ~$70K + tax filing referrals ~$210K + financial product referrals ~$10K = **~$294K total**. Subscriptions are 24%. Referrals are 76%.
+
+**Year 2 (50K users, 8K paid at Y2 pricing)**: ~$1.54M. **Year 3 (200K users, 25K paid)**: ~$6.8M. At scale, subscription revenue is gravy — the referral engine is the business.
 
 ---
 
@@ -2117,6 +2357,13 @@ Cross-user template amortization: cost per paid user decreases with scale (10 us
 | **Delegated access + anti-misuse** | **COMPLETE (D57, F199-F203 — three-layer anti-misuse, category scoping, audit trail)** |
 | No-auto-share enforcement | COMPLETE (F204 — owner approves every share, detection opt-in) |
 | Access audit trail | COMPLETE (F210 — full audit log for circle + delegate access) |
+| **Life Intelligence System** | **COMPLETE (D58, F211-F213, F226-F227 — all domains equal, archetype inference, Google Maps Tier 1, memory trivially cheap)** |
+| **Contextual Intelligence Monetization** | **COMPLETE (D59, F215-F220 — three-layer revenue, Credit Karma playbook, targeted 10K, staircase pricing)** |
+| **Proactive Insight Delivery** | **COMPLETE (D60, F221-F222 — five channels, weekly Brain Brief, notification escalation)** |
+| Lifestyle Generative UI | COMPLETE (F223 — RestaurantCard, TripCard, RoutineCard, LifestyleInsightCard) |
+| Consumer Brain personality | COMPLETE (D24/F225 — warm, witty, celebrates, remembers like a friend) |
+| First 5 minutes lifestyle wow | COMPLETE (D22/F223 — Google OAuth → 847 things → restaurant insight at 3:00) |
+| Memory retention pricing lever | COMPLETE (D27/F228 — Free 1yr, Personal 5yr, Together/Family lifetime) |
 
 ---
 
@@ -2124,11 +2371,19 @@ Cross-user template amortization: cost per paid user decreases with scale (10 us
 
 ### Market Position
 
-Brain occupies whitespace between horizontal AI assistants (ChatGPT, Claude) and vertical finance tools (Origin, Monarch). It is an opinionated, learning AI operating partner — not a search bar, not a budgeting app. Differentiated by: the solopreneur lifecycle (tax + LLC + compliance + finance), the trust gradient (free tax filing as entry), hierarchical memory that learns from corrections, and social/viral mechanics that no competitor has.
+Brain is an AI life intelligence system — not a search bar, not a budgeting app, not a financial advisor. It occupies a new category: a partner that knows your entire life (finances, routines, restaurants, trips, fitness, relationships) and gets smarter every day. No competitor combines persistent hierarchical memory + free tax filing + free LLC formation + email knowledge extraction + lifestyle intelligence + couples/household sharing. The closest is Origin ($156/yr) with 2 of 7. Brain offers all 7, starting at $0.
 
-### Financial Viability
+### Financial Viability — Three-Layer Revenue Model
 
-At Team tier ($19/user/mo) with 1000 orgs (avg 10 users): COGS ~$5-8/org/mo, revenue ~$190/org/mo, gross margin ~94-97%. Break-even: ~8-10 paying users covers internal infra ($58/mo). Path to $1M ARR: ~3,000 Pro users or ~5,000 Team users.
+Revenue is NOT just subscriptions. Three layers coexist (D59):
+
+**Layer 1 — Subscriptions (~25% of revenue)**: Personal $29 Y1 → $49 Y2 / Together $49 Y1 → $79 Y2 / Family $79 Y1 → $129 Y2 / Team $19/user/mo. The engagement wrapper that keeps users active so the referral engine has signal.
+
+**Layer 2 — Financial product referrals (~50% of revenue)**: Credit Karma playbook. Insurance comparison (CPA $50-100), banking referral (CPA $100-200), credit card referral (CPA $100-300), tax filing (FileFree, $30-50/return), LLC formation (LaunchFree). Brain has 5-10x the signal Credit Karma has.
+
+**Layer 3 — Lifestyle intelligence (~25% at scale)**: Subscription optimization, dining deals, travel deals, experience recommendations. Activates at 500K+ users.
+
+At Team tier ($19/user/mo) with 1000 orgs (avg 10 users): COGS ~$5-8/org/mo, revenue ~$190/org/mo, gross margin ~94-97%. Break-even: ~8-10 paying users covers internal infra ($58/mo). Path to $1M ARR: ~3,000 Personal users OR ~5,000 Team users OR (more likely) ~2,000 paid users + referral revenue from all active users.
 
 ### Operational Risks
 
@@ -2138,9 +2393,11 @@ Support burden (mitigated by Brain Knowledge State communication, F40). Model co
 
 1. Internal dogfood (P1-P8)
 2. Go/No-Go gate (F71, end of P8)
-3. Closed beta — 5-10 hand-picked startups (early P9)
-4. Product Hunt launch (late P9)
-5. Enterprise sales (P10)
+3. Closed beta — 10-20 hand-picked users from target cohorts: freelancers, couples (early P9)
+4. Tax Season 2027 launch with introductory pricing ($29 Personal Y1, $49 Together Y1) — target 3,000 tax filers via TikTok + Reddit
+5. Post-tax-season lifestyle expansion — Brain stays relevant year-round
+6. Year 2 renewal at full pricing — Brain Fill Meter shows 1,500+ things learned, switching cost is prohibitive
+7. Enterprise sales (P10)
 
 ---
 
@@ -2158,27 +2415,52 @@ Support burden (mitigated by Brain Knowledge State communication, F40). Model co
 
 **Round 8**: Memory Moat + Email Ingestion + Brain Fill Meter deep dive. 39 findings (F149-F187). D48-D52: mobile app strategy (Expo), Memory Moat as strategic anchor, email ingestion pipeline (3 providers), Brain Fill Meter psychology engine (8 named effects), tiered email processing "See vs Understand" (cost breakthrough: free tier $0.05 onboard via metadata-only). brain.ai competitive analysis. Cross-user template amortization. Privacy-as-marketing angle.
 
-### v9 Grades (7 Dimensions)
+### v10 Grades (7 Dimensions)
 
-| Dimension | Reviewer | v7 | v8 | v9 | Key Lever |
-|-----------|----------|----|----|-----|-----------|
-| Intelligence | Hassabis | B | A- | **A+** | Three-layer eval + self-improvement loop + procedural memory |
-| Retrieval | Srinivas | A- | A | **A+** | 4-path hybrid + graph traversal + procedural + cross-product graph |
-| Design/UX | Ive | — | B+ | **A** | Generative UI + trust ladder + anxiety-reducing + 60s value |
-| Growth/Social | Chen | — | B | **A** | Brain Fill Meter (8 psych) + Wrapped + referral + SEO + TikTok |
-| Safety | Amodei | B+ | A- | **A** | 4-layer guardrails + versioned constitution + hybrid PII |
-| Scaling | Altman | B+ | A- | **A** | Circuit breaker + Langfuse + gateway + Protocol abstractions |
-| Product/GTM | Composite | — | A- | **A** | 40+ connections + "See vs Understand" + cross-product moat |
+| Dimension | Reviewer | v7 | v8 | v9 | v10 | Key Lever |
+|-----------|----------|----|----|-----|-----|-----------|
+| Intelligence | Hassabis | B | A- | A+ | **A+** | Three-layer eval + self-improvement + procedural memory + lifestyle archetype inference |
+| Retrieval | Srinivas | A- | A | A+ | **A+** | 4-path hybrid + graph traversal + procedural + cross-product + lifestyle graph |
+| Design/UX | Ive | — | B+ | A | **A+** | Brain Identity System + lifestyle Generative UI + first 5 min wow + consumer personality |
+| Growth/Social | Chen | — | B | A | **A+** | Life intelligence reframe + Credit Karma revenue + targeted acquisition + proactive delivery |
+| Safety | Amodei | B+ | A- | A | **A+** | Three-layer anti-misuse + P006/P007 + delegated access + "not recommendy" principles |
+| Scaling | Altman | B+ | A- | A | **A+** | Circuit breaker + Langfuse + gateway + memory retention at scale (10yr = 100MB) |
+| Product/GTM | Composite | — | A- | A | **A** | 40+ connections + "See vs Understand" + lifestyle moat (assumptions untested) |
 
-**Overall: A+ (5x A+, 2x A, zero below A).** Up from A (2x A+, 5x A) after Round 10. Design/UX A→A+ (Brain Identity System), Growth A→A+ (joint meter, circle viral), Safety A→A+ (three-layer anti-misuse, P006/P007, delegated access).
+**Overall: A+ (6x A+, 1x A, zero below A).** Up from 5x A+, 2x A after Round 10. Design/UX A→A+ (lifestyle UI + consumer personality + first 5 min). Growth A→A+ (life intelligence positioning + Credit Karma revenue + targeted acquisition). Safety A→A+ (7 "not recommendy" principles). Scaling A→A+ (memory retention trivially cheap at scale). Product/GTM held at A — life intelligence thesis and referral revenue model are compelling but unvalidated.
 
-**Strategic throughline (D49 + D51 + D52)**: Memory Moat (accumulated context is the switching cost) + Brain Fill Meter (psychology makes the moat visible and viral) + Tiered Processing (metadata-only free tier makes economics work at any scale). D52 is the unlock: $0.03/mo per free user, 100K free users for $3K/month, break-even at 1.5% conversion, "we never read your emails" as competitive weapon.
+**Strategic throughline (D49 + D51 + D52 + D58 + D59 + D60)**: Memory Moat (accumulated life context is the switching cost) + Brain Fill Meter (psychology makes the moat visible and viral) + Tiered Processing (metadata-only free tier makes economics work at any scale) + Life Intelligence System (all domains equal, data-determined) + Contextual Intelligence Monetization (Credit Karma playbook, subscriptions are the engagement wrapper) + Proactive Insight Delivery (Brain TELLS you things, five channels). D52 is the cost unlock. D58 is the product unlock. D59 is the revenue unlock.
 
 **Round 9**: Circle Sharing + Dual-Context. 8 findings (F188-F195). D53 Circle sharing: lightweight B2C sharing primitive for couples/family/partners with auto-detection from email metadata, calendar auto-sharing, "we/us/our" pronoun design, family plan pricing, "Our Year in Review" couple Wrapped. D54 Dual-Context: same person in personal Brain + org Brain + household Circle. The couple moat is 2x the individual moat.
 
 **Round 10**: Brain Interaction Model + Delegated Access. 15 findings (F196-F210). D55 Cross-context query composition: scope classifier in ClassifyAndRoute, parallel retrieval, scope-aware RRF weights. D56 Brain Identity System: visual context indicators (avatar rings, context pill, response badges). D57 Delegated Access: three-layer anti-misuse architecture (anti-leak, anti-over-access, anti-linger), category-scoped, time-limited, fully audited. No auto-sharing — Brain detects, owner decides. P006 + P007 constitutional principles. Joint Circle Meter. Context-mode persona adaptation.
 
-All 210 findings integrated. No finding dismissed.
+**Round 11**: McKinsey Strategic Architecture Review + Life Intelligence. 18 findings (F211-F228). D58 Life Intelligence System: Brain reframed from financial advisor to life intelligence — all domains (finance, travel, food, fitness, hobbies, couples) equal, weighted by user data. Google Maps Tier 1. Lifestyle archetype inference. Memory ~10MB/user/year. Retention arc: lifestyle early, finance mid, couples late. D59 Contextual Intelligence Monetization: three-layer revenue (subscription 25%, Credit Karma 50%, lifestyle 25%). 7 "not recommendy" principles. Targeted 10K acquisition. Staircase pricing. Together/Family tiers with lifetime memory. D60 Proactive Insight Delivery: five-channel system. Consumer personality. First 5 min lifestyle wow. 4 lifestyle Generative UI components.
+
+### Round 11: McKinsey Strategic Architecture Review + Life Intelligence (F211-F228)
+
+| # | Finding | Sev | Phase |
+|---|---------|-----|-------|
+| F211 | Life intelligence reframe: Brain is not a financial advisor with memory — it's a life intelligence system. Financial services are the trust-building entry point (D58) | Strategic | ALL |
+| F212 | Lifestyle archetype inference from behavioral signals (email + Maps + Plaid + calendar) without user self-declaration. "Foodie," "traveler," "fitness person" detected from data (D58) | High | P9 |
+| F213 | Google Maps Location History added to Tier 1 connections — restaurant visits, gym, commute, travel. The single most powerful lifestyle signal source (D39/D58) | High | P9 |
+| F214 | Couple life beyond bills: trips, restaurants, date nights, movies, routines, shared hobbies. Circle conversational examples expanded beyond financial (D53) | High | P9 |
+| F215 | Contextual Intelligence Monetization: three-layer revenue model (subscription 25%, financial referrals 50%, lifestyle 25% at scale). Credit Karma playbook with 5-10x the signal (D59) | Crit | P9 |
+| F216 | Three revenue layers coexist: subscriptions are the engagement wrapper, referral is the business, lifestyle is the scale play. At 100K users, referral rev is 4.8x subscription rev (D59) | Crit | P9 |
+| F217 | 7 "not recommendy" design principles: earn before recommend, insight-first, user controls volume, math shown, celebrate save, some insights free, transparency badge (D59) | High | P9 |
+| F218 | Staircase pricing: $29 Y1 → $49 Y2 for Personal. $49 → $79 Together. $79 → $129 Family. Year 1 prices get 67% more users, Year 2 moat justifies full price (D27) | High | P9 |
+| F219 | Together ($49 Y1) and Family ($79 Y1) tiers added with lifetime memory retention. Memory retention as conversion lever (D27) | High | P9 |
+| F220 | Targeted 10K acquisition strategy: 5 high-intent cohorts (tax filers 3K, LLC formers 2K, freelancers 2.5K, couples 1.5K, new grads 1K). 15-25% conversion vs 2.5% from random. Same revenue, 10x less free user cost (D59) | Crit | Pre-launch |
+| F221 | Proactive insight delivery: five-channel system (in-app, push, weekly Brain Brief, real-time alerts, circle notifications). Brain TELLS you things. (D60) | High | P9 |
+| F222 | Weekly Brain Brief: Monday email digest with top 3 insights, brain fill progress, one recommendation. React Email. This is the habit loop cue (D60/D51) | High | P9 |
+| F223 | First 5 minutes lifestyle wow: Google OAuth → real-time counter → 847 things → first restaurant insight at 3:00 → "I learned your life in 5 minutes" (D22/D58) | Crit | P9 |
+| F224 | Retention arc: lifestyle hooks early (daily engagement), financial value mid-term (high-impact), couple expansion mid-funnel (retention multiplier). Avoids seasonal tool trap (D58) | High | P9 |
+| F225 | Consumer Brain personality: warm, slightly witty ("8 Thai restaurants — that's an obsession"), celebrates without judging, remembers like a friend, gets better over time (D24) | Med | P4/P9 |
+| F226 | Life Companion Domains: Brain is equally strong across finance, travel, food, fitness, hobbies, couples. No domain is weighted — user's data determines richness. Same pattern per domain: ingest → infer → remember → surface (D58) | Strategic | ALL |
+| F227 | Memory retention is trivially cheap: ~10MB/user/year. 10 years = 100MB = 20 photos. Consolidation compresses old episodes. Storage is not a constraint for years of memory (D58) | Med | ALL |
+| F228 | Memory retention as pricing lever: Free = 1 year, Personal = 5 years, Together/Family = lifetime. "Upgrade to remember everything, forever." Time-depth is a conversion driver (D27/D58) | High | P9 |
+
+All 228 findings integrated. No finding dismissed.
 
 ---
 
@@ -2199,3 +2481,4 @@ This v9 document is the single source of truth. Delete all prior versions:
 - `.cursor/plans/consolidate_brain_architecture_69aca229.plan.md` (v9 consolidation plan)
 - `.cursor/plans/shared_brain_+_naming_2f4ffd4c.plan.md` (v9 circle sharing plan)
 - `.cursor/plans/brain_interaction_+_final_review_28401130.plan.md` (v9 interaction model + final review plan)
+- `.cursor/plans/mckinsey_brain_review_ed4c3d1a.plan.md` (v10 McKinsey review + life intelligence reframe)
