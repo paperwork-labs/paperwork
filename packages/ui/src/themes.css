@@ -163,10 +163,20 @@
 }
 
 .text-brand-gradient {
+  color: hsl(var(--primary));
   background: var(--brand-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+@media (forced-colors: active) {
+  .text-brand-gradient {
+    background: none;
+    background-clip: border-box;
+    -webkit-background-clip: border-box;
+    -webkit-text-fill-color: currentColor;
+  }
 }
 
 .shadow-brand {
