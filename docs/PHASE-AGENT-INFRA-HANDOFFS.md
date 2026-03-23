@@ -4,7 +4,7 @@ Self-contained prompts for Cursor Composer. Each session creates a feature branc
 
 **Pre-requisite**: Complete Phase A (manual setup) before running any Composer sessions.
 
-**Quality routing**: Sessions 1-4 are Composer (mechanical, well-scoped). Sessions 5-7 are Opus (architecture, security, complex reasoning). Do NOT run Sessions 5-7 in Composer.
+**Quality routing**: Sessions 1-4 are Composer (mechanical, well-scoped). Sessions 5-8 are Opus (architecture, security, complex reasoning). Do NOT run Sessions 5-8 in Composer.
 
 ---
 
@@ -46,8 +46,8 @@ For **filefree.tax** (keep as redirect):
 
 For **paperworklabs.com**:
 - `paperworklabs.com` → CNAME `cname.vercel-dns.com` (Studio)
-- `n8n.paperworklabs.com` → A record `204.168.147.100` (Hetzner)
-- `social.paperworklabs.com` → A record `204.168.147.100` (Hetzner)
+- `n8n.paperworklabs.com` → A record `204.168.147.100` (Hetzner, current as of March 2026 — verify in Hetzner console if server rebuilt)
+- `social.paperworklabs.com` → A record `204.168.147.100` (Hetzner, same server)
 
 For **launchfree.ai**:
 - `launchfree.ai` → CNAME `cname.vercel-dns.com`

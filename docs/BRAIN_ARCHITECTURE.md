@@ -7,11 +7,11 @@ The brain of Paperwork Labs — and eventually, everyone. A channel-agnostic AI 
 **Meta-product** (F90): Brain IS the long-term platform. FileFree ("file your taxes"), LaunchFree ("form your LLC"), axiomfolio ("manage your portfolio") are skills/capabilities within it. The AI life intelligence that FileFree was always meant to become IS the Brain. Financial services are the trust-building entry point. The product is a partner that knows your entire life — finances, routines, relationships, preferences, experiences — and gets smarter every day. Products are the hands, Brain is the mind.
 **Strategic anchors** (v10): Memory Moat (D49) — accumulated life context IS the product. Brain Fill Meter (D51) — psychology makes the moat visible and viral. Tiered Email Processing (D52) — metadata-only free tier at $0.03/mo makes the economics work at any scale. Life Intelligence System (D58) — the Brain is equally strong across all life domains, weighted by the user's own data. Contextual Intelligence Monetization (D59) — Credit Karma playbook with 5-10x the signal. Proactive Insight Delivery (D60) — five-channel system so the Brain TELLS you things.
 
-Stress-tested from 10 review lenses: Anthropic safety (Amodei), OpenAI scaling (Altman), Perplexity retrieval (Srinivas), DeepMind intelligence (Hassabis), CTO production review, Top 5 AI Leads (Karpathy/Fan/Chase/Weng/Askell), Jony Ive/Steve Jobs B2C UX, Andrew Chen Growth/Social, brain.ai competitive analysis, McKinsey strategic architecture review. 11 rounds, 228 findings, all integrated. 60 design decisions. 14 hierarchical personas in 4 tiers. 7-agent automated content engine for psychology-driven GTM. No supplemental docs. This is the single source of truth.
+Stress-tested from 10 review lenses: Anthropic safety (Amodei), OpenAI scaling (Altman), Perplexity retrieval (Srinivas), DeepMind intelligence (Hassabis), CTO production review, Top 5 AI Leads (Karpathy/Fan/Chase/Weng/Askell), Jony Ive/Steve Jobs B2C UX, Andrew Chen Growth/Social, brain.ai competitive analysis, McKinsey strategic architecture review. 11 rounds, 228 findings, all integrated. 60 design decisions. 14 hierarchical personas in 4 tiers. 7-agent automated content engine for psychology-driven GTM. No supplemental docs needed for Brain architecture. This is the single source of truth for Brain design.
 
 ---
 
-## 1. Design Decisions (D1-D57)
+## 1. Design Decisions (D1-D60)
 
 ### D1. Brain API is its own Render service
 
@@ -633,6 +633,7 @@ All fixes applied. Full schema created in P1 Alembic migration (CTO-1). `agent_c
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- Organization
 CREATE TABLE agent_organizations (
@@ -678,7 +679,7 @@ CREATE TABLE agent_team_members (
 -- Episodes (core memory)
 CREATE TABLE agent_episodes (
     id BIGSERIAL PRIMARY KEY,
-    organization_id TEXT DEFAULT 'paperwork-labs',
+    organization_id TEXT NOT NULL DEFAULT 'paperwork-labs',  -- NOT NULL enforced; default is internal instance only, B2C/B2B callers MUST set explicitly
     team_id INT REFERENCES agent_teams(id),
     circle_id INT,  -- D53/D55: nullable, set for shared circle episodes
     user_id TEXT,
@@ -810,7 +811,7 @@ CREATE TABLE agent_costs (
 -- Audit log (brain requests)
 CREATE TABLE agent_audit_log (
     id BIGSERIAL PRIMARY KEY,
-    organization_id TEXT DEFAULT 'paperwork-labs',
+    organization_id TEXT NOT NULL DEFAULT 'paperwork-labs',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     request_id UUID DEFAULT gen_random_uuid(),
     n8n_execution_id TEXT,
@@ -2466,7 +2467,7 @@ All 228 findings integrated. No finding dismissed.
 
 ## 26. Superseded Documents
 
-This v9 document is the single source of truth. Delete all prior versions:
+This v10 document is the single source of truth for Brain architecture. Delete all prior versions:
 
 - `.cursor/plans/agent_brain_architecture_0740e1b6.plan.md` (v3)
 - `.cursor/plans/brain_architecture_v4_19324450.plan.md` (v4)
