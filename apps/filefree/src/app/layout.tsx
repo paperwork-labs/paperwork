@@ -80,9 +80,8 @@ export default function RootLayout({
       >
         <Providers>
           <Nav />
-          <main className="pt-14">
-            {children}
-          </main>
+          {/* Pages provide their own <main>; wrapper is a div to avoid nested mains. */}
+          <div className="pt-14">{children}</div>
         </Providers>
         <Analytics />
       </body>
