@@ -77,6 +77,48 @@ Social (drafts) → Legal (reviews if tax claims) → Founder (records video + a
 
 **Quality gate:** No tax claims without Legal review. No ad spend without 24hr organic performance data.
 
+## 3c. UX Review Gate (Frontend Changes)
+
+```
+Any .tsx/.css change → UX checklist (auto-invoke) → Engineering fixes findings → merge
+```
+
+Weighted checklist — P1-P2 are merge blockers, P3-P6 are advisory.
+
+**P1 BLOCKER — Accessibility:**
+- [ ] Color contrast: 4.5:1 for normal text, 3:1 for large text
+- [ ] Keyboard navigation: all interactive elements reachable via Tab
+- [ ] ARIA labels on non-obvious elements (icon buttons, status indicators)
+- [ ] Focus rings visible (2px ring, ring-ring color)
+
+**P2 BLOCKER — Touch & Interaction:**
+- [ ] Touch targets: minimum 44x44px, 8px spacing between targets
+- [ ] Loading feedback: skeleton screens for >200ms, optimistic updates for user actions
+- [ ] No reliance on hover-only interactions (mobile has no hover)
+
+**P3 HIGH — Brand & Product Consistency:**
+- [ ] Correct `data-theme` attribute for the product (filefree/launchfree/distill/brain/trinkets/studio)
+- [ ] Gradient matches product palette (see brand.mdc)
+- [ ] Typography: Inter for UI, JetBrains Mono for data/currency
+
+**P4 HIGH — Mobile-First:**
+- [ ] Tested at 375px (iPhone SE) — no horizontal scroll
+- [ ] Modals become bottom sheets below lg breakpoint (vaul)
+- [ ] Sticky bottom bars for primary CTAs in wizard flows
+
+**P5 MEDIUM — Animation:**
+- [ ] Respects `prefers-reduced-motion` (opacity-only fallback)
+- [ ] Durations: 150-300ms for transitions, springs for number animations
+- [ ] Motion conveys meaning (entrance, exit, state change) — no decorative-only animation
+
+**P6 MEDIUM — Anxiety-Reducing UX:**
+- [ ] Progressive disclosure: simple first, expand for detail
+- [ ] Celebration of progress (not just completion)
+- [ ] Error messages are friendly and actionable, never blame the user
+- [ ] Empty states designed (icon + title + description + CTA)
+
+**Quality gate:** P1 and P2 items block merge. P3-P6 items are flagged but don't block.
+
 ## 4. Handle a Production Issue
 
 ```
