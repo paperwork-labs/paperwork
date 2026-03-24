@@ -1,7 +1,7 @@
 .PHONY: dev dev-d dev-all dev-filefree dev-launchfree dev-studio dev-trinkets dev-distill \
 	dev-local-filefree dev-local-launchfree dev-local-studio dev-local-trinkets dev-local-distill \
 	stop test test-local lint lint-local format format-local migrate migrate-local migration seed clean \
-	setup setup-hooks help logs logs-api logs-web shell-api shell-web db env-pull env-check \
+	setup setup-hooks bootstrap help logs logs-api logs-web shell-api shell-web db env-pull env-check \
 	n8n-activate-inactive
 
 COMPOSE_PROJECT ?= paperwork
@@ -21,6 +21,10 @@ setup-hooks: ## Install git hooks (blocks direct pushes to main)
 	@ln -sf ../../infra/git-hooks/pre-push .git/hooks/pre-push
 	@chmod +x infra/git-hooks/pre-push
 	@echo "✓ Git hooks installed. Direct pushes to main are now blocked."
+
+bootstrap: ## Bootstrap dev machine: SECRETS_API_KEY → .env.local, vault → .env.secrets (interactive or set env)
+	@chmod +x scripts/bootstrap-dev.sh
+	@./scripts/bootstrap-dev.sh
 
 dev: dev-all ## Alias for full local stack
 
