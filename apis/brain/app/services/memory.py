@@ -98,12 +98,13 @@ async def search_episodes(
     scored: list[tuple[int, float]] = []
     for rank, row in enumerate(rows):
         episode_id = row[0]
-        fts_score = row[1] or 0.0
-        age_days = row[2] or 0.0
+        fts_score = float(row[1] or 0.0)
+        age_days = float(row[2] or 0.0)
 
-        fts_rrf = 0.35 * (1.0 / (RRF_K + rank + 1))
-        recency_rrf = 0.25 * (1.0 / (1.0 + age_days * 0.1))
-        combined = fts_rrf + recency_rrf
+        fts_component = 0.35 * fts_score
+        position_component = 0.15 * (1.0 / (RRF_K + rank + 1))
+        recency_component = 0.25 * (1.0 / (1.0 + age_days * 0.1))
+        combined = fts_component + position_component + recency_component
 
         if episode_id in fatigue_ids:
             combined *= 0.5

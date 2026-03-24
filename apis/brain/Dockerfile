@@ -6,10 +6,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY apis/brain/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY apis/brain/ .
+COPY docs/ /docs/
 
 # Render sets PORT; default 8000 for local docker run
 EXPOSE 8000

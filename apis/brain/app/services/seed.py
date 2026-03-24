@@ -62,7 +62,7 @@ async def ingest_docs(db: AsyncSession, repo_root: str, organization_id: str = "
             logger.warning("Skipping %s (not found)", doc_path)
             continue
 
-        with open(full_path) as f:
+        with open(full_path, encoding="utf-8") as f:
             content = f.read()
 
         filename = os.path.basename(doc_path)

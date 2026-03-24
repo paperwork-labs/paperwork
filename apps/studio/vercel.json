@@ -1,4 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "cd ../.. && corepack enable && corepack prepare pnpm@10.32.1 --activate && NODE_OPTIONS=--max-old-space-size=8192 pnpm install --frozen-lockfile --filter=@paperwork-labs/studio..."
+  "installCommand": "cd ../.. && corepack enable && corepack prepare pnpm@10.32.1 --activate && NODE_OPTIONS=--max-old-space-size=8192 pnpm install --frozen-lockfile --filter=@paperwork-labs/studio...",
+  "ignoreCommand": "npx turbo-ignore"
 }

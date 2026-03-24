@@ -4,7 +4,7 @@
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "brain-slack-{{ $env.BRAIN_WEBHOOK_SECRET }}",
+        "path": "brain-slack",
         "responseMode": "responseNode",
         "options": {}
       },
@@ -16,7 +16,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const body = $input.first().json.body;\n\nif (body.type === 'url_verification') {\n  return [{ json: { _isChallenge: true, challenge: body.challenge } }];\n}\n\nconst event = body.event || {};\nconst isThread = !!event.thread_ts;\nconst isMention = (event.text || '').includes('<@');\nconst isBot = !!event.bot_id || event.subtype === 'bot_message';\n\nif (!isThread && !isMention) return [];\nif (isBot) return [];\n\nreturn [{\n  json: {\n    _isChallenge: false,\n    channel: event.channel,\n    user: event.user,\n    text: event.text || '',\n    thread_ts: event.thread_ts || event.ts,\n    ts: event.ts,\n    channel_type: event.channel_type\n  }\n}];"
+        "jsCode": "const body = $input.first().json.body || {};\nconst headers = $input.first().json.headers || {};\n\nconst secret = $env.BRAIN_WEBHOOK_SECRET || '';\nif (secret && headers['x-brain-webhook-secret'] !== secret) {\n  return [];\n}\n\nif (body.type === 'url_verification') {\n  return [{ json: { _isChallenge: true, challenge: body.challenge } }];\n}\n\nconst event = body.event || {};\nconst isThread = !!event.thread_ts;\nconst isMention = (event.text || '').includes('<@');\nconst isBot = !!event.bot_id || event.subtype === 'bot_message';\n\nif (!isThread && !isMention) return [];\nif (isBot) return [];\n\nreturn [{\n  json: {\n    _isChallenge: false,\n    channel: event.channel,\n    user: event.user,\n    text: event.text || '',\n    thread_ts: event.thread_ts || event.ts,\n    ts: event.ts,\n    channel_type: event.channel_type\n  }\n}];"
       },
       "id": "filter",
       "name": "Filter Events",
@@ -48,7 +48,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ challenge: $json.challenge }) }}"
+        "responseBody": "={{ { challenge: $json.challenge } }}"
       },
       "id": "respond_challenge",
       "name": "Respond Challenge",
@@ -75,7 +75,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "=Bearer {{ $env.SLACK_BOT_TOKEN }}"
+              "value": "={{ 'Bearer ' + $env.SLACK_BOT_TOKEN }}"
             }
           ]
         },
@@ -144,7 +144,7 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.SLACK_BOT_TOKEN }}" },
+            { "name": "Authorization", "value": "={{ 'Bearer ' + $env.SLACK_BOT_TOKEN }}" },
             { "name": "Content-Type", "value": "application/json" }
           ]
         },

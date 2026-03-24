@@ -63,8 +63,8 @@ services:
     region: oregon
     plan: starter
     dockerfilePath: ./apis/brain/Dockerfile
-    dockerContext: ./apis/brain
-    preDeployCommand: alembic upgrade head
+    dockerContext: ./
+    preDeployCommand: cd apis/brain && alembic upgrade head
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
@@ -93,3 +93,5 @@ services:
         value: "false"
       - key: MAX_ITERATIONS
         sync: false
+      - key: REPO_ROOT
+        value: /

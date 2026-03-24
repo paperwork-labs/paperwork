@@ -23,7 +23,7 @@ async def vault_list() -> VaultResult:
     """List all secret names (no values). Safe to show in LLM context."""
     try:
         async with _client() as client:
-            res = await client.get(f"{settings.STUDIO_URL}/api/secrets")
+            res = await client.get("/api/secrets")
             res.raise_for_status()
             body = res.json()
             if not body.get("success"):
@@ -40,7 +40,7 @@ async def vault_get(name: str) -> VaultResult:
     The agent loop must NOT inject this into the LLM prompt."""
     try:
         async with _client() as client:
-            list_res = await client.get(f"{settings.STUDIO_URL}/api/secrets")
+            list_res = await client.get("/api/secrets")
             list_res.raise_for_status()
             list_body = list_res.json()
             if not list_body.get("success"):
@@ -51,7 +51,7 @@ async def vault_get(name: str) -> VaultResult:
             if not match:
                 return VaultResult(success=False, error=f"Secret '{name}' not found")
 
-            get_res = await client.get(f"{settings.STUDIO_URL}/api/secrets/{match['id']}")
+            get_res = await client.get(f"/api/secrets/{match['id']}")
             get_res.raise_for_status()
             get_body = get_res.json()
             if not get_body.get("success"):
@@ -72,7 +72,7 @@ async def vault_set(name: str, value: str, service: str) -> VaultResult:
     try:
         async with _client() as client:
             res = await client.post(
-                f"{settings.STUDIO_URL}/api/secrets",
+                "/api/secrets",
                 json={"name": name, "value": value, "service": service},
             )
             res.raise_for_status()
@@ -90,6 +90,7 @@ def _client() -> httpx.AsyncClient:
     if not api_key:
         raise RuntimeError("SECRETS_API_KEY not configured")
     return httpx.AsyncClient(
+        base_url=settings.STUDIO_URL.rstrip("/"),
         headers={"Authorization": f"Bearer {api_key}"},
         timeout=10.0,
     )
