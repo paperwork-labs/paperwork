@@ -55,3 +55,43 @@ services:
         value: "false"
       - key: PYTHON_VERSION
         value: "3.11.0"
+
+  # Brain API — Paperwork Labs meta-product (consumer name TBD). Deploy in separate Render workspace if desired.
+  - type: web
+    name: brain-api
+    runtime: docker
+    region: oregon
+    plan: starter
+    dockerfilePath: ./apis/brain/Dockerfile
+    dockerContext: ./
+    preDeployCommand: cd apis/brain && alembic upgrade head
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: BRAIN_API_SECRET
+        sync: false
+      - key: SECRETS_API_KEY
+        sync: false
+      - key: STUDIO_URL
+        value: https://paperworklabs.com
+      - key: FRONTEND_URL
+        value: https://paperworklabs.com
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: MAX_ITERATIONS
+        sync: false
+      - key: REPO_ROOT
+        value: /

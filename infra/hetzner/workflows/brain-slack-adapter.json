@@ -1,0 +1,234 @@
+{
+  "name": "Brain Slack Adapter",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "brain-slack",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || {};\nconst headers = $input.first().json.headers || {};\n\nconst secret = $env.BRAIN_WEBHOOK_SECRET || '';\nif (secret && headers['x-brain-webhook-secret'] !== secret) {\n  return [];\n}\n\nif (body.type === 'url_verification') {\n  return [{ json: { _isChallenge: true, challenge: body.challenge } }];\n}\n\nconst event = body.event || {};\nconst isThread = !!event.thread_ts;\nconst isMention = (event.text || '').includes('<@');\nconst isBot = !!event.bot_id || event.subtype === 'bot_message';\n\nif (!isThread && !isMention) return [];\nif (isBot) return [];\n\nreturn [{\n  json: {\n    _isChallenge: false,\n    channel: event.channel,\n    user: event.user,\n    text: event.text || '',\n    thread_ts: event.thread_ts || event.ts,\n    ts: event.ts,\n    channel_type: event.channel_type\n  }\n}];"
+      },
+      "id": "filter",
+      "name": "Filter Events",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "challenge_check",
+              "leftValue": "={{ $json._isChallenge }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "challenge_switch",
+      "name": "Is Challenge?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { challenge: $json.challenge } }}"
+      },
+      "id": "respond_challenge",
+      "name": "Respond Challenge",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [860, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{}}"
+      },
+      "id": "respond",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [860, 500]
+    },
+    {
+      "parameters": {
+        "url": "=https://slack.com/api/conversations.replies",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.SLACK_BOT_TOKEN }}"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "channel", "value": "={{ $json.channel }}" },
+            { "name": "ts", "value": "={{ $json.thread_ts }}" },
+            { "name": "limit", "value": "20" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch_thread",
+      "name": "Fetch Thread History",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1060, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "const messages = $input.first().json.messages || [];\nconst currentTs = $('Filter Events').first().json.ts;\nconst botUserId = $env.SLACK_BOT_USER_ID || '';\n\nconst thread_context = messages\n  .filter(m => m.ts !== currentTs)\n  .slice(-10)\n  .map(m => ({\n    role: m.bot_id || m.user === botUserId ? 'assistant' : 'user',\n    content: m.text || ''\n  }));\n\nconst filterData = $('Filter Events').first().json;\n\nreturn [{\n  json: {\n    organization_id: 'paperwork-labs',\n    message: filterData.text.replace(/<@[A-Z0-9]+>/g, '').trim(),\n    user_id: filterData.user,\n    channel: 'slack',\n    channel_id: filterData.channel,\n    request_id: filterData.ts,\n    thread_context: thread_context\n  }\n}];"
+      },
+      "id": "build_request",
+      "name": "Build Brain Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1280, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BRAIN_API_URL }}/api/v1/brain/process",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Brain-Secret", "value": "={{ $env.BRAIN_API_SECRET }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": { "timeout": 60000 }
+      },
+      "id": "call_brain",
+      "name": "Call Brain API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1500, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "const brainResponse = $input.first().json;\nconst data = brainResponse.data || brainResponse;\nconst response = data.response || 'Brain returned no response.';\nconst persona = data.persona || 'brain';\n\nconst text = response.length > 3900\n  ? response.substring(0, 3900) + '\\n\\n_(truncated)_'\n  : response;\n\nreturn [{\n  json: {\n    channel: $('Filter Events').first().json.channel,\n    thread_ts: $('Filter Events').first().json.thread_ts,\n    text: text,\n    username: persona.charAt(0).toUpperCase() + persona.slice(1),\n    icon_emoji: ':brain:'\n  }\n}];"
+      },
+      "id": "format_reply",
+      "name": "Format Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1720, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "={{ 'Bearer ' + $env.SLACK_BOT_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ channel: $json.channel, thread_ts: $json.thread_ts, text: $json.text, username: $json.username, icon_emoji: $json.icon_emoji }) }}",
+        "options": {}
+      },
+      "id": "post_reply",
+      "name": "Post Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1940, 500]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          { "node": "Filter Events", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Filter Events": {
+      "main": [
+        [
+          { "node": "Is Challenge?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Is Challenge?": {
+      "main": [
+        [
+          { "node": "Respond Challenge", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Respond OK", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Respond OK": {
+      "main": [
+        [
+          { "node": "Fetch Thread History", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Fetch Thread History": {
+      "main": [
+        [
+          { "node": "Build Brain Request", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Build Brain Request": {
+      "main": [
+        [
+          { "node": "Call Brain API", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Call Brain API": {
+      "main": [
+        [
+          { "node": "Format Reply", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Format Reply": {
+      "main": [
+        [
+          { "node": "Post Reply", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    { "name": "brain" },
+    { "name": "slack" }
+  ]
+}
