@@ -1,7 +1,7 @@
 """P11.2: Agent loop — the core intelligence pipeline.
 
 Phase 1 (single-pass): receives a message, retrieves memory, calls LLM, stores episode.
-Phase 2 will add D2 iterative tool dispatch (max 5 iterations).
+Phase 2 will add D2 iterative tool dispatch (configurable max, default 5, ceiling 10).
 
 D10: Request idempotency via Redis.
 D14: Model fallback chains (Anthropic -> OpenAI -> mock).
@@ -57,7 +57,7 @@ async def process(
 ) -> dict:
     """Main agent loop entry point. Returns {response, persona, model, tokens_in, tokens_out}."""
 
-    is_duplicate = await idempotency.check_and_set(redis_client, request_id)
+    is_duplicate = await idempotency.check_and_set(redis_client, request_id, organization_id)
     if is_duplicate:
         logger.info("Duplicate request %s, skipping", request_id)
         return {"response": "[Duplicate request — already processed]", "persona": "system", "model": "none", "tokens_in": 0, "tokens_out": 0}

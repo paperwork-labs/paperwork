@@ -1,4 +1,4 @@
-"""P11.4: Knowledge seed ingestion — reads docs/ files and stores them as episodes.
+"""Knowledge seed ingestion — reads docs/ files and stores them as episodes.
 Splits large documents into chunks so the Brain can retrieve relevant sections."""
 
 import logging

@@ -33,9 +33,10 @@ class Settings(BaseSettings):
 
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
-    VAULT_API_KEY: str = ""
+    SECRETS_API_KEY: str = ""
     BRAIN_API_SECRET: str = ""
     STUDIO_URL: str = "https://paperworklabs.com"
+    MAX_ITERATIONS: int = 5
 
     FRONTEND_URL: str = "http://localhost:3000"
     ENVIRONMENT: str = "development"

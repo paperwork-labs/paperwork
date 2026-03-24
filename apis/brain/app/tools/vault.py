@@ -31,6 +31,7 @@ async def vault_list() -> VaultResult:
             names = [s["name"] for s in body.get("data", [])]
             return VaultResult(success=True, value=", ".join(names))
     except Exception as e:
+        logger.warning("vault_list failed: %s", e)
         return VaultResult(success=False, error=str(e))
 
 
@@ -62,6 +63,7 @@ async def vault_get(name: str) -> VaultResult:
                 metadata={"service": secret_data.get("service"), "name": name},
             )
     except Exception as e:
+        logger.warning("vault_get(%s) failed: %s", name, e)
         return VaultResult(success=False, error=str(e))
 
 
@@ -79,13 +81,14 @@ async def vault_set(name: str, value: str, service: str) -> VaultResult:
                 return VaultResult(success=False, error=body.get("error", "Failed to save secret"))
             return VaultResult(success=True, value=f"Secret '{name}' saved")
     except Exception as e:
+        logger.warning("vault_set(%s) failed: %s", name, e)
         return VaultResult(success=False, error=str(e))
 
 
 def _client() -> httpx.AsyncClient:
-    api_key = settings.VAULT_API_KEY
+    api_key = settings.SECRETS_API_KEY
     if not api_key:
-        raise RuntimeError("VAULT_API_KEY not configured")
+        raise RuntimeError("SECRETS_API_KEY not configured")
     return httpx.AsyncClient(
         headers={"Authorization": f"Bearer {api_key}"},
         timeout=10.0,

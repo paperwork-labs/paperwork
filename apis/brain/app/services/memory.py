@@ -10,7 +10,6 @@ Vector similarity (pgvector) and full RRF-based ranking will be added in Phase 2
 """
 
 import logging
-from datetime import datetime
 
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
