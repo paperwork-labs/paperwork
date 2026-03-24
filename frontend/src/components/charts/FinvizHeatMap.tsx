@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Box, Text, HStack, VStack } from '@chakra-ui/react';
-import { ResponsiveContainer, Treemap, Cell, Tooltip as RechartsTooltip } from 'recharts';
-import { HEAT_MAP_COLORS } from '../../constants/chart';
+import { ResponsiveContainer, Treemap, Tooltip as RechartsTooltip } from 'recharts';
+import { heatMapColor, HEAT_MAP_LEGEND } from '../../constants/chart';
 
 export interface FinvizData {
   name: string;
@@ -18,80 +18,123 @@ interface FinvizHeatMapProps {
   title?: string;
 }
 
-const getHeatMapColor = (changePercent: number): string => {
-  if (changePercent > 3) return HEAT_MAP_COLORS.strong_positive;
-  if (changePercent > 1) return HEAT_MAP_COLORS.positive;
-  if (changePercent > -1) return HEAT_MAP_COLORS.neutral;
-  if (changePercent > -3) return HEAT_MAP_COLORS.negative;
-  return HEAT_MAP_COLORS.strong_negative;
-};
+/** Recharts Treemap expects index signature on data nodes. */
+interface TreeNode extends Record<string, unknown> {
+  name: string;
+  color?: string;
+  change?: number;
+  value?: number;
+  sector?: string;
+  size?: number;
+  children?: TreeNode[];
+}
+
+function buildSectorTree(data: FinvizData[]): TreeNode[] {
+  const sectors = new Map<string, TreeNode[]>();
+  for (const d of data) {
+    const key = d.sector || 'Other';
+    if (!sectors.has(key)) sectors.set(key, []);
+    sectors.get(key)!.push({
+      name: d.name,
+      size: d.size,
+      color: heatMapColor(d.change),
+      change: d.change,
+      value: d.value,
+      sector: d.sector,
+    });
+  }
+  return Array.from(sectors.entries())
+    .map(([name, children]) => ({ name, children }))
+    .sort((a, b) => {
+      const sumA = a.children.reduce((s, c) => s + (c.size ?? 0), 0);
+      const sumB = b.children.reduce((s, c) => s + (c.size ?? 0), 0);
+      return sumB - sumA;
+    });
+}
 
 const CustomTooltip = ({ active, payload }: any) => {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload;
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  if (!d || d.change == null) return null;
+  return (
+    <Box bg="bg.panel" p={3} borderWidth="1px" borderColor="border.subtle" borderRadius="md" boxShadow="lg" fontSize="sm">
+      <Text fontWeight="bold" color="fg.default">{d.name}</Text>
+      {d.value != null && <Text color="fg.muted">Value: ${d.value.toLocaleString()}</Text>}
+      <Text color={d.change >= 0 ? 'status.success' : 'status.danger'}>
+        {d.change >= 0 ? '+' : ''}{d.change.toFixed(2)}%
+      </Text>
+      {d.sector && <Text fontSize="xs" color="fg.subtle">{d.sector}</Text>}
+    </Box>
+  );
+};
+
+const CellContent: React.FC<any> = (props) => {
+  const { x, y, width, height, depth, name, color, change } = props;
+
+  if (width <= 0 || height <= 0) return null;
+
+  // depth 1 = sector group, depth 2 = individual ticker
+  if (depth === 1) {
+    const showLabel = width > 50 && height > 14;
     return (
-      <Box
-        bg="bg.panel"
-        p={3}
-        borderWidth="1px"
-        borderColor="border.subtle"
-        borderRadius="md"
-        boxShadow="lg"
-        fontSize="sm"
-      >
-        <Text fontWeight="bold" color="fg.default">
-          {data.name}
-        </Text>
-        <Text color="fg.muted">Value: ${data.value.toLocaleString()}</Text>
-        <Text color={data.change >= 0 ? 'status.success' : 'status.danger'}>
-          Change: {data.change >= 0 ? '+' : ''}
-          {data.change.toFixed(2)}%
-        </Text>
-        <Text fontSize="xs" color="fg.subtle">
-          {data.sector}
-        </Text>
-      </Box>
+      <g>
+        <rect x={x} y={y} width={width} height={height} fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth={2} />
+        {showLabel && (
+          <text
+            x={x + 4}
+            y={y + 12}
+            fill="rgba(255,255,255,0.6)"
+            fontSize={10}
+            fontWeight="600"
+          >
+            {name}
+          </text>
+        )}
+      </g>
     );
   }
-  return null;
-};
 
-const renderCustomizedLabel = (entry: any) => {
-  if (entry.depth === 1) {
-    const fontSize = Math.max(8, Math.min(16, entry.width / 8));
-    const textColor = '#000';
+  if (depth === 2) {
+    const fill = color || '#475569';
+    const area = width * height;
+    const fontSize = Math.max(8, Math.min(14, Math.sqrt(area) / 5));
+    const showTicker = width > 32 && height > 18;
+    const showPct = width > 32 && height > 32;
 
-    if (entry.width > 40 && entry.height > 25) {
-      return (
-        <g>
+    return (
+      <g>
+        <rect x={x} y={y} width={width} height={height} fill={fill} stroke="rgba(0,0,0,0.15)" strokeWidth={1} />
+        {showTicker && (
           <text
-            x={entry.x + entry.width / 2}
-            y={entry.y + entry.height / 2 - 5}
+            x={x + width / 2}
+            y={y + height / 2 + (showPct ? -fontSize * 0.35 : fontSize * 0.35)}
             textAnchor="middle"
-            fill={textColor}
+            fill="#fff"
             fontSize={fontSize}
             fontWeight="bold"
+            style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
           >
-            {entry.name}
+            {name}
           </text>
+        )}
+        {showPct && change != null && (
           <text
-            x={entry.x + entry.width / 2}
-            y={entry.y + entry.height / 2 + fontSize - 2}
+            x={x + width / 2}
+            y={y + height / 2 + fontSize * 0.85}
             textAnchor="middle"
-            fill={textColor}
-            fontSize={Math.max(6, fontSize - 2)}
+            fill="rgba(255,255,255,0.85)"
+            fontSize={Math.max(7, fontSize - 1.5)}
+            style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
           >
-            {entry.change > 0 ? '+' : ''}
-            {entry.change.toFixed(1)}%
+            {change > 0 ? '+' : ''}{change.toFixed(1)}%
           </text>
-        </g>
-      );
-    }
+        )}
+      </g>
+    );
   }
+
   return null;
 };
-
-const CustomContent: React.FC<any> = (props) => renderCustomizedLabel(props) as any;
 
 const FinvizHeatMap: React.FC<FinvizHeatMapProps> = ({
   data,
@@ -99,51 +142,40 @@ const FinvizHeatMap: React.FC<FinvizHeatMapProps> = ({
   showLegend = true,
   title = 'Portfolio Heat Map',
 }) => {
-  const heatMapData = data.map((item) => ({ ...item, color: getHeatMapColor(item.change) }));
+  const treeData = useMemo(() => buildSectorTree(data), [data]);
+
+  if (!data.length) return null;
 
   return (
     <VStack gap={3} align="stretch">
-      {title ? <Text fontSize="md" fontWeight="semibold">{title}</Text> : null}
+      {title && <Text fontSize="md" fontWeight="semibold">{title}</Text>}
 
       <Box borderWidth="1px" borderColor="border.subtle" borderRadius="md" overflow="hidden" bg="bg.card">
         <ResponsiveContainer width="100%" height={height}>
-          <Treemap data={heatMapData} dataKey="size" stroke="#fff" content={<CustomContent />}>
-            {heatMapData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
-            ))}
+          <Treemap
+            data={treeData}
+            dataKey="size"
+            stroke="none"
+            content={<CellContent />}
+            isAnimationActive={false}
+          >
             <RechartsTooltip content={<CustomTooltip />} />
           </Treemap>
         </ResponsiveContainer>
       </Box>
 
-      {showLegend ? (
-        <HStack gap={4} justify="center" fontSize="xs" flexWrap="wrap">
-          <HStack gap={2}>
-            <Box w={3} h={3} bg={HEAT_MAP_COLORS.strong_positive} />
-            <Text>&gt;3%</Text>
-          </HStack>
-          <HStack gap={2}>
-            <Box w={3} h={3} bg={HEAT_MAP_COLORS.positive} />
-            <Text>1–3%</Text>
-          </HStack>
-          <HStack gap={2}>
-            <Box w={3} h={3} bg={HEAT_MAP_COLORS.neutral} />
-            <Text>-1% to 1%</Text>
-          </HStack>
-          <HStack gap={2}>
-            <Box w={3} h={3} bg={HEAT_MAP_COLORS.negative} />
-            <Text>-1% to -3%</Text>
-          </HStack>
-          <HStack gap={2}>
-            <Box w={3} h={3} bg={HEAT_MAP_COLORS.strong_negative} />
-            <Text>&lt;-3%</Text>
-          </HStack>
+      {showLegend && (
+        <HStack gap={1} justify="center" fontSize="xs">
+          {HEAT_MAP_LEGEND.map((stop) => (
+            <HStack key={stop.label} gap={1}>
+              <Box w={3} h={3} borderRadius="sm" bg={stop.hex} />
+              <Text color="fg.muted">{stop.label}</Text>
+            </HStack>
+          ))}
         </HStack>
-      ) : null}
+      )}
     </VStack>
   );
 };
 
 export default FinvizHeatMap;
-
-

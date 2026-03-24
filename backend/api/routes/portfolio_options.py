@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Optional
 import logging
 
 from backend.database import get_db
-from backend.api.dependencies import get_admin_user
+from backend.api.dependencies import get_admin_user, get_portfolio_user
 from backend.models import BrokerAccount, Option
 from backend.models.broker_account import BrokerType
 from backend.models.user import User
@@ -292,6 +292,83 @@ async def get_option_chain(
         raise
     except Exception as e:
         logger.error("Option chain error for %s: %s", symbol, e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/history", response_model=Dict[str, Any])
+async def get_options_history(
+    account_id: Optional[str] = Query(None, description="Filter by account number"),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_portfolio_user),
+) -> Dict[str, Any]:
+    """Return exercised/assigned/expired options history for the authenticated user."""
+    try:
+        from sqlalchemy import or_
+
+        query = db.query(Option).filter(Option.user_id == user.id)
+        if account_id:
+            acct = (
+                db.query(BrokerAccount)
+                .filter(
+                    BrokerAccount.account_number == account_id,
+                    BrokerAccount.user_id == user.id,
+                )
+                .first()
+            )
+            if not acct:
+                return {
+                    "status": "success",
+                    "data": {"history": [], "total": 0},
+                }
+            query = query.filter(Option.account_id == acct.id)
+
+        query = query.filter(
+            or_(
+                Option.open_quantity == 0,
+                Option.open_quantity.is_(None),
+            )
+        )
+
+        options = query.order_by(Option.expiry_date.desc()).all()
+
+        history_items = []
+        for opt in options:
+            exercised = getattr(opt, "exercised_quantity", 0) or 0
+            assigned = getattr(opt, "assigned_quantity", 0) or 0
+            event_type = (
+                "exercised" if exercised > 0
+                else "assigned" if assigned > 0
+                else "expired"
+            )
+            closed_qty = int(exercised + assigned)
+            history_items.append({
+                "id": opt.id,
+                "symbol": opt.symbol,
+                "underlying_symbol": opt.underlying_symbol,
+                "option_type": opt.option_type,
+                "strike_price": float(opt.strike_price) if opt.strike_price else None,
+                "expiry_date": opt.expiry_date.isoformat() if opt.expiry_date else None,
+                "event_type": event_type,
+                "exercised_quantity": exercised,
+                "assigned_quantity": assigned,
+                "original_quantity": float(closed_qty) if closed_qty > 0 else None,
+                "cost_basis": float(opt.total_cost or 0),
+                "realized_pnl": float(opt.realized_pnl or 0),
+                "commission": float(opt.commission or 0),
+                "data_source": opt.data_source,
+            })
+
+        return {
+            "status": "success",
+            "data": {
+                "history": history_items,
+                "total": len(history_items),
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Options history error: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
 
 

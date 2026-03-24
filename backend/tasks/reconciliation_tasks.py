@@ -6,7 +6,7 @@ from backend.tasks.celery_app import celery_app
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task(bind=True, name="backend.tasks.reconciliation_tasks.reconcile_orders")
+@celery_app.task(bind=True, name="backend.tasks.reconciliation_tasks.reconcile_orders", soft_time_limit=300, time_limit=360)
 def reconcile_orders(self, lookback_hours: int = 24):
     """Match filled Orders to Trades. Runs after broker sync."""
     from backend.database import SessionLocal

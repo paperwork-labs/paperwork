@@ -19,6 +19,41 @@ from backend.services.clients.ibkr_flexquery_client import IBKRFlexQueryClient
 from .helpers import coerce_date, logger, safe_float, DEFAULT_CURRENCY, DEFAULT_ASSET_CATEGORY
 
 import json
+import re
+
+_OCC_RE = re.compile(
+    r"^(?P<underlying>[A-Z]{1,6})\s*"
+    r"(?P<year>\d{2})(?P<month>\d{2})(?P<day>\d{2})"
+    r"(?P<cp>[CP])"
+    r"(?P<strike>\d{8})$"
+)
+
+
+def _parse_occ_symbol(symbol: str) -> dict | None:
+    """Parse OCC-format option symbol (e.g. 'AAPL  260320C00150000').
+
+    Returns dict with underlying, expiry (date), option_type, strike, or None.
+    """
+    cleaned = symbol.strip().replace(" ", "")
+    m = _OCC_RE.match(cleaned)
+    if not m:
+        return None
+    from datetime import date
+    try:
+        expiry = date(
+            2000 + int(m.group("year")),
+            int(m.group("month")),
+            int(m.group("day")),
+        )
+    except ValueError:
+        return None
+    return {
+        "underlying": m.group("underlying"),
+        "expiry": expiry,
+        "option_type": "CALL" if m.group("cp") == "C" else "PUT",
+        "strike": int(m.group("strike")) / 1000,
+    }
+
 
 _INSTRUMENT_TYPE_MAP = {
     "STK": InstrumentType.STOCK,
@@ -485,12 +520,19 @@ async def sync_option_positions(
                     qty = safe_float(p.get("position"))
                     if qty == 0:
                         continue
+                    parsed = _parse_occ_symbol(p.get("symbol", ""))
+                    if not parsed:
+                        logger.warning(
+                            "Skipping live option position with unparseable symbol: %s",
+                            p.get("symbol", ""),
+                        )
+                        continue
                     option_positions_data.append({
                         "symbol": p.get("symbol", ""),
-                        "underlying_symbol": p.get("symbol", "").split(" ")[0] if " " in p.get("symbol", "") else "",
-                        "strike_price": None,
-                        "expiry_date": None,
-                        "option_type": None,
+                        "underlying_symbol": parsed["underlying"],
+                        "strike_price": parsed["strike"],
+                        "expiry_date": parsed["expiry"],
+                        "option_type": parsed["option_type"],
                         "multiplier": 100,
                         "open_quantity": qty,
                         "current_price": 0.0,
@@ -670,6 +712,15 @@ async def create_portfolio_snapshot(db: Session, broker_account: BrokerAccount) 
         positions = db.query(Position).filter(Position.account_id == broker_account.id).all()
         total_value = sum(h.market_value for h in positions)
         unrealized_pnl = sum(h.unrealized_pnl for h in positions)
+
+        options = db.query(Option).filter(
+            Option.account_id == broker_account.id,
+            Option.open_quantity != 0,
+        ).all()
+        for opt in options:
+            mv = float(opt.current_price or 0) * abs(opt.open_quantity or 0) * (opt.multiplier or 100)
+            total_value += mv
+            unrealized_pnl += float(opt.unrealized_pnl or 0)
 
         def _to_float(value):
             if isinstance(value, Decimal):

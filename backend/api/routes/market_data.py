@@ -28,7 +28,7 @@ from backend.services.market.constants import (
     SNAPSHOTS_PREFERRED_COLUMNS,
     SNAPSHOT_HISTORY_PREFERRED_COLUMNS,
 )
-from backend.models.market_data import MarketSnapshot, MarketSnapshotHistory
+from backend.models.market_data import MarketSnapshot, MarketSnapshotHistory, MarketRegime
 from backend.tasks.market_data_tasks import (
     record_daily_history,
     update_tracked_symbol_cache,
@@ -1392,6 +1392,16 @@ async def admin_recover_stale_jobs(
     return recover_stale_job_runs_impl(stale_minutes=stale_minutes)
 
 
+@router.post("/admin/regime/compute")
+async def admin_compute_regime(
+    admin_user: User = Depends(get_admin_user),
+) -> Dict[str, Any]:
+    """Manually trigger daily regime computation."""
+    from backend.tasks.market_data_tasks import compute_daily_regime
+    result = compute_daily_regime.delay()
+    return {"task_id": result.id, "message": "Regime computation queued"}
+
+
 @router.get("/admin/tasks")
 async def admin_list_tasks(
     admin_user: User = Depends(get_admin_user),
@@ -1429,4 +1439,173 @@ async def admin_run_task(
     if task_name == "admin_backfill_5m":
         return _enqueue_task(backfill_5m_last_n_days, n_days=n_days or 5)
     raise HTTPException(status_code=400, detail="unsupported task or not exposed here")
+
+
+# ── Regime Engine endpoints ──
+
+
+@router.get("/regime/current")
+async def get_current_regime(
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Get the most recent market regime state."""
+    from backend.services.market.regime_engine import get_current_regime as _get_regime
+
+    regime = _get_regime(db)
+    if regime is None:
+        return {"regime": None, "message": "No regime data computed yet"}
+    return {
+        "regime": {
+            "as_of_date": regime.as_of_date.isoformat() if regime.as_of_date else None,
+            "regime_state": regime.regime_state,
+            "composite_score": regime.composite_score,
+            "vix_spot": regime.vix_spot,
+            "vix3m_vix_ratio": regime.vix3m_vix_ratio,
+            "vvix_vix_ratio": regime.vvix_vix_ratio,
+            "nh_nl": regime.nh_nl,
+            "pct_above_200d": regime.pct_above_200d,
+            "pct_above_50d": regime.pct_above_50d,
+            "score_vix": regime.score_vix,
+            "score_vix3m_vix": regime.score_vix3m_vix,
+            "score_vvix_vix": regime.score_vvix_vix,
+            "score_nh_nl": regime.score_nh_nl,
+            "score_above_200d": regime.score_above_200d,
+            "score_above_50d": regime.score_above_50d,
+            "cash_floor_pct": regime.cash_floor_pct,
+            "max_equity_exposure_pct": regime.max_equity_exposure_pct,
+            "regime_multiplier": regime.regime_multiplier,
+        }
+    }
+
+
+@router.get("/regime/history")
+async def get_regime_history(
+    days: int = Query(90, ge=1, le=365),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Get regime history for the last N days."""
+    from sqlalchemy import select
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    stmt = (
+        select(MarketRegime)
+        .where(MarketRegime.as_of_date >= cutoff)
+        .order_by(MarketRegime.as_of_date.asc())
+    )
+    rows = db.execute(stmt).scalars().all()
+    return {
+        "history": [
+            {
+                "as_of_date": r.as_of_date.isoformat() if r.as_of_date else None,
+                "regime_state": r.regime_state,
+                "composite_score": r.composite_score,
+            }
+            for r in rows
+        ]
+    }
+
+
+# ===================== Intelligence Briefs =====================
+
+
+@router.get("/intelligence/briefs")
+def list_intelligence_briefs(
+    brief_type: Optional[str] = Query(None, description="daily, weekly, or monthly"),
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """List stored intelligence briefs."""
+    from backend.models.market_data import JobRun
+
+    q = db.query(JobRun).filter(JobRun.task_name.like("intelligence_%_brief"))
+    if brief_type:
+        q = q.filter(JobRun.task_name == f"intelligence_{brief_type}_brief")
+    rows = q.order_by(JobRun.finished_at.desc().nullslast()).limit(limit).all()
+    return {
+        "briefs": [
+            {
+                "id": r.id,
+                "type": r.task_name.replace("intelligence_", "").replace("_brief", ""),
+                "status": r.status,
+                "generated_at": r.finished_at.isoformat() if r.finished_at else None,
+                "summary": _brief_summary(r.result_meta) if r.result_meta else None,
+            }
+            for r in rows
+        ]
+    }
+
+
+@router.get("/intelligence/briefs/{brief_id}")
+def get_intelligence_brief(
+    brief_id: int,
+    db: Session = Depends(get_db),
+):
+    """Get a specific intelligence brief by ID."""
+    from backend.models.market_data import JobRun
+
+    row = (
+        db.query(JobRun)
+        .filter(JobRun.id == brief_id, JobRun.task_name.like("intelligence_%_brief"))
+        .first()
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Brief not found")
+    return {
+        "brief": row.result_meta,
+        "id": row.id,
+        "type": row.task_name.replace("intelligence_", "").replace("_brief", ""),
+        "generated_at": row.finished_at.isoformat() if row.finished_at else None,
+    }
+
+
+@router.get("/intelligence/latest")
+def get_latest_brief(
+    brief_type: str = Query("daily", description="daily, weekly, or monthly"),
+    db: Session = Depends(get_db),
+):
+    """Get the most recent brief of a given type."""
+    from backend.models.market_data import JobRun
+
+    row = (
+        db.query(JobRun)
+        .filter(JobRun.task_name == f"intelligence_{brief_type}_brief", JobRun.status == "ok")
+        .order_by(JobRun.finished_at.desc().nullslast())
+        .first()
+    )
+    if not row or not row.result_meta:
+        return {"brief": None, "message": f"No {brief_type} brief available"}
+    return {
+        "brief": row.result_meta,
+        "id": row.id,
+        "generated_at": row.finished_at.isoformat() if row.finished_at else None,
+    }
+
+
+@router.post("/admin/intelligence/generate")
+def trigger_brief_generation(
+    brief_type: str = Query("daily", description="daily, weekly, or monthly"),
+    _admin: User = Depends(get_admin_user),
+):
+    """Manually trigger intelligence brief generation (admin only)."""
+    task_map = {
+        "daily": "backend.tasks.intelligence_tasks.generate_daily_digest",
+        "weekly": "backend.tasks.intelligence_tasks.generate_weekly_brief",
+        "monthly": "backend.tasks.intelligence_tasks.generate_monthly_review",
+    }
+    task_name = task_map.get(brief_type)
+    if not task_name:
+        raise HTTPException(status_code=400, detail=f"Invalid brief type: {brief_type}")
+
+    from backend.tasks.celery_app import celery_app
+    celery_app.send_task(task_name)
+    return {"status": "queued", "type": brief_type}
+
+
+def _brief_summary(meta: dict) -> dict:
+    """Extract a compact summary from brief metadata."""
+    return {
+        "regime_state": meta.get("regime", {}).get("state"),
+        "snapshot_count": meta.get("snapshot_count"),
+        "as_of": meta.get("as_of"),
+        "transitions": len(meta.get("stage_transitions", [])),
+    }
 

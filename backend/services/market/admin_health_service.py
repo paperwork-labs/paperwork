@@ -45,6 +45,7 @@ _TASK_STATUS_KEYS: List[str] = sorted({
     "market_indices_constituents_refresh",
     "market_universe_tracked_refresh",
     "admin_backfill_since_date",
+    "compute_daily_regime",
 })
 
 
@@ -68,6 +69,7 @@ class AdminHealthService:
         stage = self._build_stage_dimension(db)
         jobs = self._build_jobs_dimension(db)
         audit = self._build_audit_dimension()
+        regime = self._build_regime_dimension(db)
         task_runs = self._build_task_runs()
 
         dims = {
@@ -75,6 +77,7 @@ class AdminHealthService:
             "stage_quality": stage,
             "jobs": jobs,
             "audit": audit,
+            "regime": regime,
         }
 
         failures = [name for name, dim in dims.items() if dim.get("status") != "green"]
@@ -203,6 +206,37 @@ class AdminHealthService:
             }
         except Exception as exc:
             logger.exception("jobs dimension failed: %s", exc)
+            return {"status": "red", "error": str(exc)}
+
+    def _build_regime_dimension(self, db: Session) -> Dict[str, Any]:
+        try:
+            from backend.models.market_data import MarketRegime
+
+            latest = (
+                db.query(MarketRegime)
+                .order_by(MarketRegime.as_of_date.desc())
+                .first()
+            )
+            if latest is None:
+                return {"status": "red", "error": "no regime data computed"}
+
+            age_hours = 0.0
+            if latest.as_of_date:
+                age_hours = (datetime.utcnow() - latest.as_of_date).total_seconds() / 3600
+
+            ok = age_hours < 48
+            return {
+                "status": _dim_status(ok),
+                "regime_state": latest.regime_state,
+                "composite_score": latest.composite_score,
+                "as_of_date": latest.as_of_date.isoformat() if latest.as_of_date else None,
+                "age_hours": round(age_hours, 1),
+                "multiplier": latest.regime_multiplier,
+                "max_equity_pct": latest.max_equity_exposure_pct,
+                "cash_floor_pct": latest.cash_floor_pct,
+            }
+        except Exception as exc:
+            logger.exception("regime dimension failed: %s", exc)
             return {"status": "red", "error": str(exc)}
 
     def _build_audit_dimension(self) -> Dict[str, Any]:

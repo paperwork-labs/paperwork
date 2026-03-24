@@ -52,6 +52,18 @@ export interface AuditDimension {
   error?: string;
 }
 
+export interface RegimeDimension {
+  status: 'green' | 'red';
+  regime_state: string | null;
+  composite_score: number | null;
+  as_of_date: string | null;
+  age_hours: number;
+  multiplier: number | null;
+  max_equity_pct: number | null;
+  cash_floor_pct: number | null;
+  error?: string;
+}
+
 export interface TaskRunEntry {
   ts: string | null;
   [key: string]: unknown;
@@ -65,6 +77,7 @@ export interface AdminHealthResponse {
     stage_quality: StageQualityDimension;
     jobs: JobsDimension;
     audit: AuditDimension;
+    regime: RegimeDimension;
   };
   task_runs: Record<string, TaskRunEntry | null>;
   thresholds: Record<string, number>;

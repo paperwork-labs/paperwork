@@ -153,6 +153,15 @@ CATALOG: List[JobTemplate] = [
         default_cron="30 1 * * *",
         default_tz="UTC",
     ),
+    JobTemplate(
+        id="compute_daily_regime",
+        display_name="Daily Regime Computation",
+        group="market_data",
+        task="backend.tasks.market_data_tasks.compute_daily_regime",
+        description="Compute market regime state (R1-R5) from VIX, breadth, and advance/decline data",
+        default_cron="30 1 * * *",
+        default_tz="UTC",
+    ),
     # ── Orders ─────────────────────────────────────────────────────
     JobTemplate(
         id="monitor-open-orders",
@@ -161,6 +170,26 @@ CATALOG: List[JobTemplate] = [
         task="backend.tasks.order_tasks.monitor_open_orders_task",
         description="Poll broker for status updates on submitted/partially-filled orders and flag stale entries",
         default_cron="* * * * *",
+        default_tz="UTC",
+        queue="orders",
+    ),
+    JobTemplate(
+        id="ibkr-gateway-watchdog",
+        display_name="IBKR Gateway Watchdog",
+        group="portfolio",
+        task="backend.tasks.ibkr_watchdog.ping_ibkr_connection",
+        description="Health-check IB Gateway connection; reconnect and alert on repeated failure",
+        default_cron="*/5 * * * *",
+        default_tz="UTC",
+        queue="orders",
+    ),
+    JobTemplate(
+        id="reconcile-order-fills",
+        display_name="Reconcile Order Fills",
+        group="portfolio",
+        task="backend.tasks.reconciliation_tasks.reconcile_orders",
+        description="Match filled orders to trades and update position/P&L attribution",
+        default_cron="*/10 * * * *",
         default_tz="UTC",
         queue="orders",
     ),
@@ -184,5 +213,47 @@ CATALOG: List[JobTemplate] = [
         default_cron="0 */6 * * *",
         default_tz="UTC",
         kwargs={"stale_minutes": 120},
+    ),
+
+    # ── Intelligence Briefs ──
+
+    JobTemplate(
+        id="generate_daily_digest",
+        display_name="Daily Intelligence Digest",
+        group="intelligence",
+        task="backend.tasks.intelligence_tasks.generate_daily_digest",
+        description="Generate daily intelligence brief after nightly pipeline — regime, transitions, breadth, exit alerts",
+        default_cron="30 1 * * 1-5",
+        default_tz="America/New_York",
+    ),
+    JobTemplate(
+        id="generate_weekly_brief",
+        display_name="Weekly Strategy Brief",
+        group="intelligence",
+        task="backend.tasks.intelligence_tasks.generate_weekly_brief",
+        description="Generate weekly strategy brief — regime trend, top picks, sector rotation, portfolio review",
+        default_cron="0 7 * * 1",
+        default_tz="America/New_York",
+    ),
+    JobTemplate(
+        id="generate_monthly_review",
+        display_name="Monthly Review",
+        group="intelligence",
+        task="backend.tasks.intelligence_tasks.generate_monthly_review",
+        description="Generate monthly performance review — regime transitions, performance attribution",
+        default_cron="0 8 1 * *",
+        default_tz="America/New_York",
+    ),
+
+    # ── Auto-Ops ────────────────────────────────────────────────────
+    JobTemplate(
+        id="auto_ops_health_check",
+        display_name="Auto-Ops Health Remediation",
+        group="maintenance",
+        task="backend.tasks.auto_ops_tasks.auto_remediate_health",
+        description="Check admin health dimensions every 15 min and dispatch remediation tasks for any that are red/yellow",
+        default_cron="*/15 * * * *",
+        default_tz="UTC",
+        timeout_s=90,
     ),
 ]

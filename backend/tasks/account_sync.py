@@ -25,7 +25,7 @@ def _extract_count(result: dict, key: str) -> int | None:
     return None
 
 
-@shared_task(name="backend.tasks.account_sync.sync_account_task")
+@shared_task(name="backend.tasks.account_sync.sync_account_task", soft_time_limit=900, time_limit=960)
 def sync_account_task(account_id: int, sync_type: str = "comprehensive") -> dict:
     """Run broker account sync in a Celery worker (separate process)."""
     session = SessionLocal()
@@ -201,7 +201,7 @@ def sync_all_schwab_accounts() -> dict:
         session.close()
 
 
-@shared_task(name="backend.tasks.account_sync.recover_stale_syncs")
+@shared_task(name="backend.tasks.account_sync.recover_stale_syncs", soft_time_limit=60, time_limit=120)
 def recover_stale_syncs() -> dict:
     """Periodic task to reset accounts stuck in RUNNING state.
 

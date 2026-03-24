@@ -8,6 +8,9 @@ This folder contains onboarding, architecture, domain pillars (connections, port
 
 | Doc | Purpose | Read when |
 |-----|---------|-----------|
+| [KNOWLEDGE.md](KNOWLEDGE.md) | Decision log with rationale (D1–D20+) | Before making architectural changes |
+| [TASKS.md](TASKS.md) | Sprint plan with acceptance criteria | Before starting work |
+| [PRD.md](PRD.md) | Product requirements, vision, three pillars | Understanding the "why" |
 | [ONBOARDING.md](ONBOARDING.md) | Quick start, golden rules, Docker-first | New to repo |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System overview, pillars, modules, pipelines | Understanding the system |
 | [CONNECTIONS.md](CONNECTIONS.md) | Settings → Connections (brokers, IB Gateway, TV, vault) | Integrating brokers/OAuth/credentials |

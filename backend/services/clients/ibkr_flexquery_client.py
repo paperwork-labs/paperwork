@@ -1266,12 +1266,17 @@ class IBKRFlexQueryClient:
         """Get setup instructions for FlexQuery configuration."""
         return {
             "step_1": "Go to IBKR Client Portal > Reports > Flex Queries",
-            "step_2": "Create new Activity Flex Query with these sections: Open Positions, Account Information",
-            "step_3": "Set Format=XML, Period=Today, Include all fields",
+            "step_2": (
+                "Create new Activity Flex Query with these sections: "
+                "Open Positions (Summary + Lot), Trades (with Closed Lots and Wash Sales), "
+                "Cash Transactions, Account Information, Interest Accruals, "
+                "Transfers, Option Exercises/Assignments"
+            ),
+            "step_3": "Set Format=XML, Period=Last 365 Calendar Days, Include all fields",
             "step_4": "Go to Flex Web Service Configuration and enable it",
             "step_5": "Generate token (valid 6hrs-1year) and note Query ID",
             "step_6": "Set env vars IBKR_FLEX_TOKEN and IBKR_FLEX_QUERY_ID (or provide per-user via UI)",
-            "note": "FlexQuery provides OFFICIAL IBKR tax lot data used in Tax Optimizer",
+            "note": "FlexQuery provides OFFICIAL IBKR tax lot data, dividends, trade history, and transfers",
         }
 
     def _parse_trades_from_xml(

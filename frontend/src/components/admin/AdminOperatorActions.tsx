@@ -165,6 +165,10 @@ const AdminOperatorActions: React.FC<Props> = ({
           method: 'POST',
           endpoint: '/market-data/admin/jobs/recover-stale',
         },
+        compute_daily_regime: {
+          method: 'POST',
+          endpoint: '/market-data/admin/regime/compute',
+        },
       };
       const task = taskEndpoints[taskName];
       if (!task) throw new Error(`Unsupported task: ${taskName}`);
@@ -304,6 +308,9 @@ const AdminOperatorActions: React.FC<Props> = ({
         </Button>
         <Button size="sm" variant="outline" loading={state.sendingDiscord} onClick={() => void sendSnapshotDigestToDiscord()}>
           Send Snapshot Digest to Discord
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => void runNamedTask('compute_daily_regime', 'Compute regime')}>
+          Compute Market Regime
         </Button>
       </Box>
 

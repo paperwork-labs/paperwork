@@ -13,6 +13,8 @@ celery_app = Celery(
         "backend.tasks.strategy_tasks",
         "backend.tasks.ibkr_watchdog",
         "backend.tasks.reconciliation_tasks",
+        "backend.tasks.intelligence_tasks",
+        "backend.tasks.auto_ops_tasks",
     ],
 )
 
@@ -42,5 +44,10 @@ celery_app.conf.update(
     result_expires=3600,
     timezone="UTC",
     enable_utc=True,
-    beat_schedule={},
+    beat_schedule={
+        "auto-ops-health-check": {
+            "task": "backend.tasks.auto_ops_tasks.auto_remediate_health",
+            "schedule": 900.0,
+        },
+    },
 )

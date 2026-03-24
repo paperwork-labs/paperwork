@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Badge, HStack, Text } from '@chakra-ui/react';
 import type { AdminHealthResponse } from '../../types/adminHealth';
+import { REGIME_HEX } from '../../constants/chart';
 
 interface Props {
   health: AdminHealthResponse | null;
@@ -20,7 +21,7 @@ const DimBadge: React.FC<{ status: string }> = ({ status }) => (
 
 const AdminDomainCards: React.FC<Props> = ({ health }) => {
   if (!health) return null;
-  const { coverage, stage_quality, jobs, audit } = health.dimensions;
+  const { coverage, stage_quality, jobs, audit, regime } = health.dimensions;
 
   return (
     <Box
@@ -29,6 +30,42 @@ const AdminDomainCards: React.FC<Props> = ({ health }) => {
       gridTemplateColumns={{ base: '1fr', lg: 'repeat(2, minmax(0, 1fr))' }}
       gap={3}
     >
+      {/* Regime */}
+      {regime && (
+      <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
+        <HStack justify="space-between" align="center" mb={1}>
+          <Text fontSize="sm" fontWeight="semibold">Market Regime</Text>
+          <DimBadge status={regime.status} />
+        </HStack>
+        {regime.regime_state ? (
+          <>
+            <HStack gap={2} mb={1}>
+              <Badge
+                variant="solid"
+                style={{
+                  backgroundColor: (regime.regime_state && REGIME_HEX[regime.regime_state]) || '#718096',
+                  color: '#fff',
+                }}
+              >
+                {regime.regime_state}
+              </Badge>
+              <Text fontSize="xs" color="fg.muted">
+                Score: {regime.composite_score ?? '—'}
+              </Text>
+            </HStack>
+            <Text fontSize="xs" color="fg.muted">
+              Sizing multiplier: {regime.multiplier ?? '—'}x · Max equity: {regime.max_equity_pct ?? '—'}%
+            </Text>
+            <Text fontSize="xs" color="fg.muted">
+              Age: {regime.age_hours != null ? `${regime.age_hours}h` : '—'} · As of: {regime.as_of_date ?? '—'}
+            </Text>
+          </>
+        ) : (
+          <Text fontSize="xs" color="fg.muted">{regime.error || 'No regime data'}</Text>
+        )}
+      </Box>
+      )}
+
       {/* Coverage */}
       <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
         <HStack justify="space-between" align="center" mb={1}>

@@ -41,8 +41,10 @@ export default defineConfig({
   },
   // @ts-expect-error - Vitest extends Vite config at runtime.
   test: {
-    environment: 'happy-dom',
-    setupFiles: ['./src/test/setup.ts'],
+    // jsdom provides spec-compliant localStorage; happy-dom + Vitest 4 + some Node versions
+    // left localStorage.getItem as non-function (breaks ColorModeProvider and most tests).
+    environment: 'jsdom',
+    setupFiles: ['./src/test/localStorage-polyfill.ts', './src/test/setup.ts'],
     clearMocks: true,
   },
 })

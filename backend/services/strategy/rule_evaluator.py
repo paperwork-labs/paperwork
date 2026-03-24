@@ -18,6 +18,10 @@ class ConditionOperator(str, Enum):
     BETWEEN = "between"
     CROSSES_ABOVE = "crosses_above"
     CROSSES_BELOW = "crosses_below"
+    IN = "in"
+    NOT_IN = "not_in"
+    STARTS_WITH = "starts_with"
+    CONTAINS = "contains"
 
 
 class LogicalOperator(str, Enum):
@@ -88,6 +92,16 @@ class RuleEvaluator:
             matched = str(actual).lower() == str(cond.value).lower()
         elif op == ConditionOperator.NEQ:
             matched = str(actual).lower() != str(cond.value).lower()
+        elif op == ConditionOperator.IN:
+            allowed = cond.value if isinstance(cond.value, list) else [cond.value]
+            matched = str(actual).upper() in {str(v).upper() for v in allowed}
+        elif op == ConditionOperator.NOT_IN:
+            blocked = cond.value if isinstance(cond.value, list) else [cond.value]
+            matched = str(actual).upper() not in {str(v).upper() for v in blocked}
+        elif op == ConditionOperator.STARTS_WITH:
+            matched = str(actual).upper().startswith(str(cond.value).upper())
+        elif op == ConditionOperator.CONTAINS:
+            matched = str(cond.value).upper() in str(actual).upper()
         elif actual_f is not None and target_f is not None:
             if op == ConditionOperator.GT:
                 matched = actual_f > target_f

@@ -27,7 +27,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 try:
     from backend.models import Base, User, BrokerAccount, Instrument  # Fixed imports
     from sqlalchemy import inspect
-    from sqlalchemy.exc import ProgrammingError
     from sqlalchemy.engine import Engine
     MODELS_AVAILABLE = True
 except ImportError as e:
@@ -86,10 +85,9 @@ def test_db(request):
     cfg.set_main_option("sqlalchemy.url", TEST_DATABASE_URL)
     alembic_command.upgrade(cfg, "heads")
 
-    # Extra safety for test schema completeness:
-    # Some models may exist ahead of Alembic coverage. In tests we prefer a usable schema
-    # (isolated DB) over failing with missing tables during collection.
-    Base.metadata.create_all(bind=test_engine)
+    # Schema comes from Alembic only. `Base.metadata.create_all` duplicates tables
+    # already created by migrations (e.g. market_regime) and fails on PostgreSQL.
+    # If a model lacks a migration, add one rather than create_all here.
 
     # Canary/sentinel: prove we're on a dedicated test database (and keep it that way).
     sentinel_marker = os.getenv("TEST_DB_SENTINEL_MARKER", "axiomfolio_pytest_sentinel_v1")

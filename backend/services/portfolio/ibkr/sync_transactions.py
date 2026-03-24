@@ -2,7 +2,7 @@
 
 import logging
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from statistics import median
 from typing import Dict
@@ -164,8 +164,17 @@ async def sync_cash_transactions(
                         .first()
                     )
                     if not existing_dividend:
-                        ex_date = tx_data.get("transaction_date") or tx_data.get("settlement_date")
-                        pay_date = tx_data.get("settlement_date") or tx_data.get("transaction_date")
+                        ex_date = (
+                            tx_data.get("transaction_date")
+                            or tx_data.get("settlement_date")
+                            or tx_data.get("report_date")
+                            or datetime.now(timezone.utc).date()
+                        )
+                        pay_date = (
+                            tx_data.get("settlement_date")
+                            or tx_data.get("transaction_date")
+                            or tx_data.get("report_date")
+                        )
                         db.add(Dividend(
                             account_id=broker_account.id,
                             external_id=tx_data.get("external_id", ""),

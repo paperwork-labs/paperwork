@@ -40,6 +40,7 @@ const MarketDashboard = React.lazy(() => import('./pages/MarketDashboard'));
 const MarketCoverage = React.lazy(() => import('./pages/MarketCoverage'));
 const MarketTracked = React.lazy(() => import('./pages/MarketTracked'));
 const MarketEducation = React.lazy(() => import('./pages/MarketEducation'));
+const MarketIntelligence = React.lazy(() => import('./pages/MarketIntelligence'));
 const Invite = React.lazy(() => import('./pages/Invite'));
 const SettingsUsers = React.lazy(() => import('./pages/SettingsUsers'));
 
@@ -76,6 +77,7 @@ function App() {
                         <Route path="market/tracked" element={<MarketTracked />} />
                         <Route path="market/coverage" element={<MarketCoverage />} />
                         <Route path="market/education" element={<MarketEducation />} />
+                        <Route path="market/intelligence" element={<MarketIntelligence />} />
 
                         {/* Portfolio section (all under /portfolio/*) */}
                         <Route element={<RequireNonMarketAccess section="portfolio" />}>

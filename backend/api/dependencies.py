@@ -3,7 +3,7 @@ AxiomFolio V1 - API Dependencies
 Common dependencies for API endpoints.
 """
 
-from fastapi import Depends, HTTPException, status, Security, Request, Query
+from fastapi import Depends, HTTPException, status, Security, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 import logging
@@ -61,23 +61,15 @@ async def get_current_user(
         )
 
 
-def get_portfolio_user(
-    user_id: Optional[int] = Query(None, description="User ID (optional)"),
-    db: Session = Depends(get_db),
+async def get_portfolio_user(
+    current_user: User = Depends(get_current_user),
 ) -> User:
-    """Resolve a user for portfolio endpoints.
+    """Resolve the authenticated user for portfolio endpoints.
 
-    Accepts an optional ``user_id`` query parameter.  When omitted, falls back
-    to the first user in the database (dev convenience).  This will be replaced
-    by ``get_current_user`` once all portfolio routes require auth tokens.
+    Previously fell back to db.query(User).first() when no auth was provided.
+    Now requires proper JWT authentication on all portfolio routes.
     """
-    if user_id is None:
-        user = db.query(User).first()
-    else:
-        user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
+    return current_user
 
 
 async def get_admin_user(current_user: User = Depends(get_current_user)) -> User:

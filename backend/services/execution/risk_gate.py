@@ -1,20 +1,117 @@
-"""Pre-trade risk gate -- validates orders before they reach any broker."""
+"""Pre-trade risk gate — validates orders before they reach any broker.
+
+Includes v4 position sizing (ATR-based with Regime Multiplier x Stage Cap).
+See Stage_Analysis_v4.docx Section 9.
+"""
 
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import List, Optional
 
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.models.market_data import MarketSnapshot
 from backend.services.execution.broker_base import OrderRequest
+from backend.services.market.regime_engine import (
+    REGIME_R1,
+    REGIME_R2,
+    REGIME_R3,
+    REGIME_R4,
+    REGIME_R5,
+    REGIME_RULES,
+)
 
 logger = logging.getLogger(__name__)
 
 MAX_ORDER_VALUE = 100_000
 MAX_SINGLE_POSITION_PCT = 0.25
+
+# v4 Stage Caps: maximum % of full position allowed per stage per regime
+# Format: stage_label → {regime → cap_fraction}
+STAGE_CAPS = {
+    "1A": {REGIME_R1: 0.0, REGIME_R2: 0.0, REGIME_R3: 0.0, REGIME_R4: 0.0, REGIME_R5: 0.0},
+    "1B": {REGIME_R1: 0.0, REGIME_R2: 0.0, REGIME_R3: 0.0, REGIME_R4: 0.0, REGIME_R5: 0.0},
+    "2A": {REGIME_R1: 0.75, REGIME_R2: 0.50, REGIME_R3: 0.50, REGIME_R4: 0.33, REGIME_R5: 0.0},
+    "2B": {REGIME_R1: 1.0, REGIME_R2: 1.0, REGIME_R3: 0.75, REGIME_R4: 0.0, REGIME_R5: 0.0},
+    "2C": {REGIME_R1: 1.0, REGIME_R2: 0.75, REGIME_R3: 0.50, REGIME_R4: 0.0, REGIME_R5: 0.0},
+    "3A": {REGIME_R1: 0.50, REGIME_R2: 0.25, REGIME_R3: 0.0, REGIME_R4: 0.0, REGIME_R5: 0.0},
+    "3B": {REGIME_R1: 0.0, REGIME_R2: 0.0, REGIME_R3: 0.0, REGIME_R4: 0.0, REGIME_R5: 0.0},
+    "4A": {REGIME_R1: 0.0, REGIME_R2: 0.0, REGIME_R3: 0.0, REGIME_R4: 0.0, REGIME_R5: 0.0},
+    "4B": {REGIME_R1: 0.0, REGIME_R2: 0.0, REGIME_R3: 0.0, REGIME_R4: 0.0, REGIME_R5: 0.0},
+    "4C": {REGIME_R1: 0.0, REGIME_R2: 0.0, REGIME_R3: 0.0, REGIME_R4: 0.0, REGIME_R5: 0.0},
+}
+
+DEFAULT_STOP_MULTIPLIER = 2.0
+
+
+@dataclass
+class PositionSizeResult:
+    """v4 position sizing output."""
+    full_position_dollars: float
+    stage_cap: float  # 0.0–1.0 fraction
+    capped_position_dollars: float
+    shares: int
+    risk_budget: float
+    atrp_14: float
+    stop_multiplier: float
+    regime_multiplier: float
+    regime_state: str
+    stage_label: str
+
+
+def compute_position_size(
+    risk_budget: float,
+    atrp_14: float,
+    stop_multiplier: float,
+    regime_state: str,
+    stage_label: str,
+    current_price: float,
+) -> PositionSizeResult:
+    """v4 Position Sizing Formula (Section 9):
+
+    Full Position ($) = [Risk Budget / (ATR%14 × Stop Multiplier)] × Regime Multiplier
+    Then apply Stage Cap.
+    """
+    regime_rules = REGIME_RULES.get(regime_state, REGIME_RULES[REGIME_R3])
+    regime_mult = regime_rules["multiplier"]
+
+    if atrp_14 <= 0 or stop_multiplier <= 0 or current_price <= 0:
+        return PositionSizeResult(
+            full_position_dollars=0,
+            stage_cap=0,
+            capped_position_dollars=0,
+            shares=0,
+            risk_budget=risk_budget,
+            atrp_14=atrp_14,
+            stop_multiplier=stop_multiplier,
+            regime_multiplier=regime_mult,
+            regime_state=regime_state,
+            stage_label=stage_label,
+        )
+
+    full_position = (risk_budget / (atrp_14 / 100 * stop_multiplier)) * regime_mult
+
+    clean_stage = stage_label.replace("(RS-)", "")
+    caps = STAGE_CAPS.get(clean_stage, {})
+    stage_cap = caps.get(regime_state, 0.0)
+
+    capped = full_position * stage_cap
+    shares = int(capped / current_price) if current_price > 0 else 0
+
+    return PositionSizeResult(
+        full_position_dollars=round(full_position, 2),
+        stage_cap=stage_cap,
+        capped_position_dollars=round(capped, 2),
+        shares=shares,
+        risk_budget=risk_budget,
+        atrp_14=atrp_14,
+        stop_multiplier=stop_multiplier,
+        regime_multiplier=regime_mult,
+        regime_state=regime_state,
+        stage_label=stage_label,
+    )
 
 
 class RiskViolation(Exception):
@@ -41,6 +138,8 @@ class RiskGate:
         req: OrderRequest,
         price_estimate: float,
         db: Optional[Session] = None,
+        portfolio_equity: Optional[float] = None,
+        risk_budget: Optional[float] = None,
     ) -> List[str]:
         """Run all risk checks. Raises on hard block, returns soft warnings."""
         warnings: List[str] = []
@@ -52,21 +151,78 @@ class RiskGate:
                 f"${self.max_order_value:,.0f} maximum"
             )
 
-        if db and price_estimate > 0:
-            total_equity = (
-                db.query(func.sum(MarketSnapshot.current_price))
-                .filter(MarketSnapshot.current_price.isnot(None))
-                .scalar()
+        if portfolio_equity and portfolio_equity > 0:
+            pct = est_value / portfolio_equity
+            if pct > self.max_position_pct:
+                raise RiskViolation(
+                    f"Position would be {pct:.1%} of equity, "
+                    f"exceeds {self.max_position_pct:.0%} maximum"
+                )
+
+        if db and price_estimate > 0 and risk_budget and risk_budget > 0:
+            v4_warning = self._check_v4_sizing(
+                db, req, price_estimate, risk_budget
             )
-            if total_equity and total_equity > 0:
-                pct = est_value / float(total_equity)
-                if pct > self.max_position_pct:
-                    raise RiskViolation(
-                        f"Order would be {pct:.0%} of portfolio, "
-                        f"exceeding {self.max_position_pct:.0%} limit"
-                    )
+            if v4_warning:
+                warnings.append(v4_warning)
 
         return warnings
+
+    def _check_v4_sizing(
+        self,
+        db: Session,
+        req: OrderRequest,
+        price_estimate: float,
+        risk_budget: float,
+    ) -> Optional[str]:
+        """Enforce v4 position sizing as a soft cap. Returns warning or None."""
+        from backend.services.market.regime_engine import get_current_regime
+
+        snap = (
+            db.query(MarketSnapshot)
+            .filter(
+                MarketSnapshot.symbol == req.symbol.upper(),
+                MarketSnapshot.analysis_type == "technical_snapshot",
+            )
+            .order_by(MarketSnapshot.analysis_timestamp.desc())
+            .first()
+        )
+        if not snap or not snap.stage_label or not snap.atrp_14:
+            return None
+
+        regime = get_current_regime(db)
+        regime_state = regime.regime_state if regime else "R3"
+
+        result = compute_position_size(
+            risk_budget=risk_budget,
+            atrp_14=float(snap.atrp_14),
+            stop_multiplier=DEFAULT_STOP_MULTIPLIER,
+            regime_state=regime_state,
+            stage_label=snap.stage_label,
+            current_price=price_estimate,
+        )
+
+        if result.shares <= 0:
+            raise RiskViolation(
+                f"v4 sizing: {snap.stage_label} in {regime_state} has 0% stage cap "
+                f"— no new longs allowed"
+            )
+
+        if req.quantity > result.shares:
+            logger.warning(
+                "v4 sizing cap: %s requested %d shares, v4 max is %d "
+                "(stage=%s, regime=%s, cap=%.0f%%)",
+                req.symbol, req.quantity, result.shares,
+                snap.stage_label, regime_state, result.stage_cap * 100,
+            )
+            return (
+                f"v4 sizing: requested {req.quantity} shares exceeds "
+                f"v4 max of {result.shares} "
+                f"(stage {snap.stage_label}, regime {regime_state}, "
+                f"cap {result.stage_cap:.0%})"
+            )
+
+        return None
 
     def estimate_price(
         self,

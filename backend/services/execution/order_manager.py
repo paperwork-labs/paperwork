@@ -176,9 +176,13 @@ class OrderManager:
             "Inactive": OrderStatus.REJECTED.value,
         }
         new_status = status_map.get(result.status, order.status)
+        filled = result.filled_quantity or 0
+        remaining = result.raw.get("remaining", 0) if result.raw else 0
+        if filled > 0 and remaining > 0:
+            new_status = OrderStatus.PARTIALLY_FILLED.value
         order.status = new_status
-        if result.filled_quantity:
-            order.filled_quantity = result.filled_quantity
+        if filled:
+            order.filled_quantity = filled
         if result.avg_fill_price is not None:
             order.filled_avg_price = result.avg_fill_price
         if new_status == OrderStatus.FILLED.value and not order.filled_at:

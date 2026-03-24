@@ -1,0 +1,40 @@
+---
+description: Git workflow conventions — branch naming, PR standards, commit messages. Always active.
+alwaysApply: true
+---
+
+# Git Workflow
+
+## Branch Naming
+
+- `feat/` — New features (e.g., `feat/regime-engine`)
+- `fix/` — Bug fixes (e.g., `fix/celery-time-limits`)
+- `chore/` — Maintenance, deps, infra (e.g., `chore/upgrade-react-query`)
+- `docs/` — Documentation only (e.g., `docs/knowledge-md`)
+- `refactor/` — Code restructuring without behavior change
+
+## Commit Messages
+
+Use conventional commits for changelog generation:
+
+```
+feat: add Market Regime Engine with 6-input scoring
+fix: enforce Celery time_limit on all tasks
+chore: upgrade react-query to @tanstack/react-query v5
+docs: add KNOWLEDGE.md decision log
+refactor: consolidate OrderService into OrderManager
+```
+
+## PR Rules
+
+- **Never push to main** directly
+- Every PR must have: summary (what + why), test plan, files changed list
+- Run `make test` and `make frontend-check` before opening
+- Squash merge preferred for clean history
+
+## What NOT to Commit
+
+- `.env`, `env.dev`, credentials, tokens
+- `node_modules/`, `__pycache__/`, `.pyc` files
+- Large binary files, database dumps
+- IDE-specific files (except `.cursor/rules/` and `.cursor/skills/`)

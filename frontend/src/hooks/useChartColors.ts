@@ -11,6 +11,8 @@ const CHART_FALLBACKS: Record<string, [string, string]> = {
   'chart.axis': ['rgba(15,23,42,0.4)', 'rgba(255,255,255,0.45)'],
   'chart.refLine': ['rgba(15,23,42,0.2)', 'rgba(255,255,255,0.2)'],
   'chart.warning': ['#D97706', '#FBBF24'],
+  'chart.tooltip.bg': ['white', '#1E293B'],
+  'chart.tooltip.border': ['rgba(15,23,42,0.12)', 'rgba(255,255,255,0.12)'],
   'fg.muted': ['#64748B', '#94A3B8'],
   'fg.subtle': ['#94A3B8', '#64748B'],
   'border.subtle': ['#E2E8F0', '#334155'],
@@ -35,6 +37,8 @@ export interface ChartColors {
   brand400: string;
   brand700: string;
   warning: string;
+  tooltipBg: string;
+  tooltipBorder: string;
 }
 
 /** Resolves chart semantic tokens for Recharts/D3 (theme-aware). */
@@ -68,6 +72,8 @@ export function useChartColors(): ChartColors {
       brand400: get('brand.400'),
       brand700: get('brand.700'),
       warning: get('chart.warning'),
+      tooltipBg: get('chart.tooltip.bg'),
+      tooltipBorder: get('chart.tooltip.border'),
     };
   }, [isDark]);
 }

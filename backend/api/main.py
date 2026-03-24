@@ -134,6 +134,53 @@ async def request_id_middleware(request: Request, call_next):
         reset_request_id(token)
 
 
+def _auto_warm_if_stale():
+    """Check if market data is stale and queue the nightly pipeline.
+
+    Runs on startup when AUTO_WARM_ON_STARTUP=true. Checks the freshest
+    MarketSnapshot timestamp — if older than AUTO_WARM_STALE_MINUTES, fires
+    the full nightly pipeline via Celery (non-blocking).
+    """
+    from backend.models.market_data import MarketSnapshot
+    from sqlalchemy import func as sqlfunc, select
+
+    db = SessionLocal()
+    try:
+        latest_ts = db.execute(
+            select(sqlfunc.max(MarketSnapshot.analysis_timestamp))
+        ).scalar()
+
+        stale_threshold = settings.AUTO_WARM_STALE_MINUTES
+        needs_warm = True
+
+        if latest_ts:
+            from datetime import timedelta
+            age_minutes = (datetime.utcnow() - latest_ts).total_seconds() / 60
+            if age_minutes < stale_threshold:
+                logger.info(
+                    "Auto-warm: data is fresh (%.0f min old, threshold=%d min). Skipping.",
+                    age_minutes, stale_threshold,
+                )
+                needs_warm = False
+            else:
+                logger.info(
+                    "Auto-warm: data is stale (%.0f min old, threshold=%d min). Queuing pipeline.",
+                    age_minutes, stale_threshold,
+                )
+        else:
+            logger.info("Auto-warm: no snapshot data found. Queuing pipeline.")
+
+        if needs_warm:
+            from backend.tasks.celery_app import celery_app
+            result = celery_app.send_task(
+                "backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked",
+                kwargs={"history_days": 5, "history_batch_size": 25},
+            )
+            logger.info("Auto-warm: nightly pipeline queued (task_id=%s)", result.id)
+    finally:
+        db.close()
+
+
 # Create database tables
 @app.on_event("startup")
 async def startup_event():
@@ -244,6 +291,15 @@ async def startup_event():
             logger.info(f"🧹 Instrument normalization: {norm}")
         except Exception as ne:
             logger.warning(f"Instrument normalization skipped: {ne}")
+
+        # Auto-warm: queue nightly pipeline if market data is stale
+        if settings.AUTO_WARM_ON_STARTUP:
+            try:
+                _auto_warm_if_stale()
+            except Exception as warm_e:
+                logger.warning(f"Auto-warm skipped/failed: {warm_e}")
+        else:
+            logger.info("Auto-warm disabled (AUTO_WARM_ON_STARTUP=false)")
 
     except Exception as e:
         logger.error(f"❌ Startup error: {e}")

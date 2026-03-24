@@ -19,7 +19,7 @@ from .broker_account import BrokerAccount, BrokerType, AccountType, AccountStatu
 
 # Instruments & Market Data
 from .instrument import Instrument, InstrumentType
-from .market_data import PriceData, MarketSnapshot, MarketSnapshotHistory, JobRun
+from .market_data import PriceData, MarketSnapshot, MarketSnapshotHistory, MarketRegime, JobRun
 from .market_tracked_plan import MarketTrackedPlan
 from .index_constituent import IndexConstituent
 
@@ -72,6 +72,7 @@ __all__ = [
     "PriceData",
     "MarketSnapshot",
     "MarketSnapshotHistory",
+    "MarketRegime",
     "JobRun",
     "MarketTrackedPlan",
     "IndexConstituent",

@@ -188,14 +188,25 @@ class MarketSnapshot(Base):
     trend_up_count = Column(Integer)
     trend_down_count = Column(Integer)
 
-    # Stage analysis (Weinstein)
-    stage_label = Column(String(10))  # e.g., '1', '2A', '2B', '2C', '3', '4'
+    # Stage analysis (v4 — Oliver Kell / Weinstein refined, SMA150 anchor)
+    stage_label = Column(String(10))  # 1A, 1B, 2A, 2B, 2C, 3A, 3B, 4A, 4B, 4C
     stage_label_5d_ago = Column(String(10))
     current_stage_days = Column(Integer)
     previous_stage_label = Column(String(10))
     previous_stage_days = Column(Integer)
     stage_slope_pct = Column(Float)
     stage_dist_pct = Column(Float)
+
+    # v4 Stage Analysis fields
+    ext_pct = Column(Float)  # (Close - SMA150) / SMA150 * 100
+    sma150_slope = Column(Float)  # (SMA150_today - SMA150_20d_ago) / SMA150_20d_ago * 100
+    sma50_slope = Column(Float)  # (SMA50_today - SMA50_10d_ago) / SMA50_10d_ago * 100
+    ema10_dist_pct = Column(Float)  # (Close - EMA10) / EMA10 * 100
+    ema10_dist_n = Column(Float)  # ema10_dist_pct / atrp_14 (ATR-normalized)
+    vol_ratio = Column(Float)  # volume / volume_avg_20d
+    scan_tier = Column(String(20))  # Set 1-4, Short Set 1-3
+    action_label = Column(String(10))  # BUY, HOLD, WATCH, REDUCE, SHORT, AVOID
+    regime_state = Column(String(10))  # R1, R2, R3, R4, R5 (denormalized from MarketRegime)
 
     # Corporate events
     next_earnings = Column(DateTime)
@@ -305,11 +316,23 @@ class MarketSnapshotHistory(Base):
     atrx_sma_150 = Column(Float)
 
     rs_mansfield_pct = Column(Float)
-    stage_label = Column(String(10))
+    stage_label = Column(String(10))  # 1A, 1B, 2A, 2B, 2C, 3A, 3B, 4A, 4B, 4C
     stage_label_5d_ago = Column(String(10))
     current_stage_days = Column(Integer)
     previous_stage_label = Column(String(10))
     previous_stage_days = Column(Integer)
+
+    # v4 Stage Analysis fields
+    ext_pct = Column(Float)
+    sma150_slope = Column(Float)
+    sma50_slope = Column(Float)
+    ema10_dist_pct = Column(Float)
+    ema10_dist_n = Column(Float)
+    vol_ratio = Column(Float)
+    scan_tier = Column(String(20))
+    action_label = Column(String(10))
+    regime_state = Column(String(10))
+
     last_earnings = Column(DateTime)
     next_earnings = Column(DateTime)
     pe_ttm = Column(Float)
@@ -367,6 +390,53 @@ class MarketSnapshotHistory(Base):
     )
 
 
+class MarketRegime(Base):
+    """Daily market regime state computed from 6 macro inputs.
+
+    The Regime Engine is the outermost gate — all downstream modules
+    (stage classification, scan overlay, position sizing, exit cascade)
+    inherit the current Regime state. See Stage_Analysis_v4.docx Section 10.
+
+    Table name: market_regime
+    """
+
+    __tablename__ = "market_regime"
+
+    id = Column(Integer, primary_key=True, index=True)
+    as_of_date = Column(DateTime, nullable=False, unique=True, index=True)
+
+    # 6 daily inputs
+    vix_spot = Column(Float)
+    vix3m_vix_ratio = Column(Float)  # VIX3M / VIX
+    vvix_vix_ratio = Column(Float)  # VVIX / VIX
+    nh_nl = Column(Integer)  # New 52w highs minus new 52w lows (S&P 500)
+    pct_above_200d = Column(Float)  # % of S&P 500 above 200D MA
+    pct_above_50d = Column(Float)  # % of S&P 500 above 50D MA
+
+    # Individual scores (1–5 each)
+    score_vix = Column(Float)
+    score_vix3m_vix = Column(Float)
+    score_vvix_vix = Column(Float)
+    score_nh_nl = Column(Float)
+    score_above_200d = Column(Float)
+    score_above_50d = Column(Float)
+
+    # Composite and regime
+    composite_score = Column(Float)  # Average of 6 scores, rounded to 0.5
+    regime_state = Column(String(10), nullable=False)  # R1, R2, R3, R4, R5
+
+    # Portfolio rules derived from regime
+    cash_floor_pct = Column(Float)  # Minimum cash %
+    max_equity_exposure_pct = Column(Float)  # Maximum equity %
+    regime_multiplier = Column(Float)  # Position sizing multiplier
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_regime_date", "as_of_date"),
+    )
+
+
 class JobRun(Base):
     """Persistent job run registry for task observability and auditing.
 
@@ -380,6 +450,7 @@ class JobRun(Base):
     params = Column(JSON)  # parameters provided to the task
     status = Column(String(20), nullable=False, index=True)  # running|ok|error|cancelled
     counters = Column(JSON)  # arbitrary counters (e.g., processed, errors)
+    result_meta = Column(JSON)  # structured result payload (e.g., intelligence briefs)
     error = Column(Text)  # error message/traceback if any
     started_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     finished_at = Column(DateTime(timezone=True))

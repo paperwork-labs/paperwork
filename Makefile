@@ -1,4 +1,4 @@
-.PHONY: up up-all down down-reset ps logs build health-check ladle-up ladle-down ladle-logs ladle-build \
+.PHONY: up up-all down down-reset ps logs build health-check warm ladle-up ladle-down ladle-logs ladle-build \
 	test-up test test-frontend test-all test-down \
 	backend-shell frontend-shell task-run \
 	migrate-create migrate-up migrate-down migrate-stamp-head \
@@ -131,6 +131,10 @@ TASK_KWARGS ?= {}
 task-run:
 	@if [ -z "$(TASK)" ]; then echo "Usage: make task-run TASK=module.task"; exit 2; fi
 	$(COMPOSE_DEV) exec backend python -m backend.scripts.run_task "$(TASK)" --args '$(TASK_ARGS)' --kwargs '$(TASK_KWARGS)'
+
+warm:
+	@echo "Queuing nightly pipeline (backfill + indicators + regime + scan)..."
+	$(COMPOSE_DEV) exec backend python -m backend.scripts.run_task "backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked" --kwargs '{"history_days":5,"history_batch_size":25}'
 
 # IB Gateway (requires IBKR_USERNAME and IBKR_PASSWORD in env.dev)
 ib-up:

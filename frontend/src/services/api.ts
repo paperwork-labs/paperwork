@@ -436,8 +436,8 @@ export const optionsApi = {
   // Batch options data
   getBatchOptionsData: async () => {
     return portfolioApi.getBatchData([
-      '/options/unified/portfolio',
-      '/options/unified/summary'
+      '/portfolio/options/unified/portfolio',
+      '/portfolio/options/unified/summary'
     ]);
   }
 };
@@ -455,6 +455,32 @@ export const marketDataApi = {
   },
   getVolatilityDashboard: async () => {
     return makeOptimizedRequest(() => api.get('/market-data/volatility-dashboard'));
+  },
+  getCurrentRegime: async () => {
+    return makeOptimizedRequest(() => api.get('/market-data/regime/current'));
+  },
+  getRegimeHistory: async (days: number = 90) => {
+    return makeOptimizedRequest(() => api.get(`/market-data/regime/history?days=${days}`));
+  },
+  getSnapshots: async (limit: number = 5000) => {
+    return makeOptimizedRequest(() => api.get(`/market-data/snapshots?limit=${limit}`));
+  },
+  getSnapshotHistory: async (symbol: string, days: number = 200) => {
+    return makeOptimizedRequest(() => api.get(`/market-data/snapshots/${encodeURIComponent(symbol)}/history?days=${days}`));
+  },
+  getLatestBrief: async (type: string = 'daily') => {
+    return makeOptimizedRequest(() => api.get(`/market-data/intelligence/latest?brief_type=${type}`));
+  },
+  listBriefs: async (type?: string, limit: number = 20) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (type) params.set('brief_type', type);
+    return makeOptimizedRequest(() => api.get(`/market-data/intelligence/briefs?${params}`));
+  },
+  getBrief: async (id: number) => {
+    return makeOptimizedRequest(() => api.get(`/market-data/intelligence/briefs/${id}`));
+  },
+  triggerBrief: async (type: string = 'daily') => {
+    return api.post(`/market-data/admin/intelligence/generate?brief_type=${type}`);
   },
 };
 

@@ -14,6 +14,30 @@ from backend.services.clients.ibkr_flexquery_client import IBKRFlexQueryClient
 
 from .helpers import logger
 
+_IBKR_TRANSFER_TYPE_MAP = {
+    "ACATS": "POSITION",
+    "DEP": "CASH",
+    "WDA": "CASH",
+    "Wire": "CASH",
+    "Journal": "POSITION",
+    "Internal": "POSITION",
+    "DTC": "POSITION",
+    "FOP": "POSITION",
+    "Dividend": "DIVIDEND",
+    "Interest": "INTEREST",
+    "Fee": "FEE",
+    "Exercise": "OPTION_EXERCISE",
+    "Assignment": "OPTION_ASSIGNMENT",
+    "Split": "SPLIT",
+    "Merger": "MERGER",
+    "Spinoff": "SPINOFF",
+}
+
+
+def _map_ibkr_transfer_type(raw_type: str) -> str:
+    """Map raw IBKR transfer type to TransferType enum value."""
+    return _IBKR_TRANSFER_TYPE_MAP.get(raw_type, "OTHER")
+
 
 async def sync_account_balances(
     db: Session,
@@ -214,11 +238,7 @@ async def sync_transfers(
                         client_reference=transfer_data.get("client_reference", ""),
                         transfer_date=transfer_data.get("transfer_date"),
                         settle_date=transfer_data.get("settle_date"),
-                        transfer_type=(
-                            "POSITION"
-                            if transfer_data.get("transfer_type") == "ACATS"
-                            else transfer_data.get("transfer_type", "OTHER")
-                        ),
+                        transfer_type=_map_ibkr_transfer_type(transfer_data.get("transfer_type", "")),
                         direction=transfer_data.get("direction", "IN"),
                         symbol=transfer_data.get("symbol", ""),
                         description=transfer_data.get("description", ""),

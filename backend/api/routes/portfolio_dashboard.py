@@ -16,6 +16,7 @@ from backend.models.portfolio import PortfolioSnapshot
 from backend.models.broker_account import BrokerAccount
 from backend.models.account_balance import AccountBalance
 from backend.models.margin_interest import MarginInterest
+from backend.models.options import Option
 from backend.api.dependencies import get_portfolio_user
 from backend.services.portfolio.portfolio_analytics_service import portfolio_analytics_service
 
@@ -54,6 +55,16 @@ async def get_dashboard(
         ]
         total_value = sum(p["market_value"] for p in positions)
         total_cost = sum(float(p.total_cost_basis or 0) for p in pos_models)
+
+        option_models = db.query(Option).filter(
+            Option.user_id == user.id, Option.open_quantity != 0
+        ).all()
+        options_value = sum(
+            float(o.current_price or 0) * abs(o.open_quantity or 0) * (o.multiplier or 100)
+            for o in option_models
+        )
+        options_unrealized = sum(float(o.unrealized_pnl or 0) for o in option_models)
+        total_value += options_value
 
         # dividends last X days
         cutoff = datetime.utcnow() - timedelta(days=days)
@@ -414,7 +425,12 @@ async def get_pnl_summary(
             .filter(Position.user_id == user.id)
             .scalar()
         )
-        unrealized_pnl = float(unrealized_row or 0)
+        options_unrealized_row = (
+            db.query(func.coalesce(func.sum(Option.unrealized_pnl), 0))
+            .filter(Option.user_id == user.id, Option.open_quantity != 0)
+            .scalar()
+        )
+        unrealized_pnl = float(unrealized_row or 0) + float(options_unrealized_row or 0)
 
         realized_row = (
             db.query(func.coalesce(func.sum(Trade.realized_pnl), 0))

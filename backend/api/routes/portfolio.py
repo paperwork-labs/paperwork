@@ -20,7 +20,7 @@ from backend.models.user import User
 from backend.models import BrokerAccount
 
 # Auth dependency (to be implemented)
-from backend.api.dependencies import get_current_user
+from backend.api.dependencies import get_current_user, get_portfolio_user
 
 logger = logging.getLogger(__name__)
 
@@ -624,7 +624,7 @@ async def get_performance_metrics(
 
 @router.get("/insights")
 async def get_portfolio_insights(
-    user_id: int | None = Query(None, description="User ID (optional)"),
+    user: User = Depends(get_portfolio_user),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Lightweight portfolio insights from local DB data.
@@ -632,12 +632,10 @@ async def get_portfolio_insights(
     Returns tax-loss harvesting candidates, positions approaching long-term
     status, and concentration risk warnings.  No live broker connection needed.
     """
-    from backend.api.dependencies import get_portfolio_user
     from backend.models.position import Position
     from backend.models.tax_lot import TaxLot
 
     try:
-        user = get_portfolio_user(user_id, db)
 
         account_ids = [
             a.id

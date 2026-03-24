@@ -763,12 +763,31 @@ class IBKRClient:
                     status = trade.orderStatus.status if trade.orderStatus else "Unknown"
                     filled = getattr(trade.orderStatus, "filled", 0) or 0
                     remaining = getattr(trade.orderStatus, "remaining", 0) or 0
+                    avg_price = getattr(trade.orderStatus, "avgFillPrice", 0) or 0
                     return {
                         "broker_order_id": order_id,
                         "status": status,
                         "filled": float(filled),
                         "remaining": float(remaining),
+                        "avg_fill_price": float(avg_price) if avg_price else None,
                     }
+            try:
+                await self.ib.reqOpenOrdersAsync()
+                for trade in self.ib.trades():
+                    if trade.order.orderId == order_id:
+                        status = trade.orderStatus.status if trade.orderStatus else "Unknown"
+                        filled = getattr(trade.orderStatus, "filled", 0) or 0
+                        remaining = getattr(trade.orderStatus, "remaining", 0) or 0
+                        avg_price = getattr(trade.orderStatus, "avgFillPrice", 0) or 0
+                        return {
+                            "broker_order_id": order_id,
+                            "status": status,
+                            "filled": float(filled),
+                            "remaining": float(remaining),
+                            "avg_fill_price": float(avg_price) if avg_price else None,
+                        }
+            except Exception as e:
+                logger.warning("reqOpenOrders fallback failed for %s: %s", order_id, e)
             return {
                 "broker_order_id": order_id,
                 "status": "unknown",

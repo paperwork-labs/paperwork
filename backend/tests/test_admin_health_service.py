@@ -49,6 +49,7 @@ def test_all_green():
     svc._build_stage_dimension = MagicMock(return_value={"status": "green"})
     svc._build_jobs_dimension = MagicMock(return_value={"status": "green"})
     svc._build_audit_dimension = MagicMock(return_value={"status": "green"})
+    svc._build_regime_dimension = MagicMock(return_value={"status": "green"})
     svc._build_task_runs = MagicMock(return_value={})
 
     result = svc.get_composite_health(MagicMock())
@@ -64,6 +65,7 @@ def test_single_failure_is_yellow():
     svc._build_stage_dimension = MagicMock(return_value={"status": "green"})
     svc._build_jobs_dimension = MagicMock(return_value={"status": "red"})
     svc._build_audit_dimension = MagicMock(return_value={"status": "green"})
+    svc._build_regime_dimension = MagicMock(return_value={"status": "green"})
     svc._build_task_runs = MagicMock(return_value={})
 
     result = svc.get_composite_health(MagicMock())
@@ -77,6 +79,7 @@ def test_multiple_failures_is_red():
     svc._build_stage_dimension = MagicMock(return_value={"status": "green"})
     svc._build_jobs_dimension = MagicMock(return_value={"status": "red"})
     svc._build_audit_dimension = MagicMock(return_value={"status": "green"})
+    svc._build_regime_dimension = MagicMock(return_value={"status": "green"})
     svc._build_task_runs = MagicMock(return_value={})
 
     result = svc.get_composite_health(MagicMock())
@@ -92,6 +95,7 @@ def test_response_includes_task_runs_and_thresholds():
     svc._build_stage_dimension = MagicMock(return_value={"status": "green"})
     svc._build_jobs_dimension = MagicMock(return_value={"status": "green"})
     svc._build_audit_dimension = MagicMock(return_value={"status": "green"})
+    svc._build_regime_dimension = MagicMock(return_value={"status": "green"})
     svc._build_task_runs = MagicMock(return_value=task_data)
 
     result = svc.get_composite_health(MagicMock())

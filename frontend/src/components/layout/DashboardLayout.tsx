@@ -64,6 +64,7 @@ function displayName(user: { full_name?: string | null; username?: string } | nu
 const marketItems = [
   { label: 'Dashboard', icon: FiHome, path: '/' },
   { label: 'Tracked', icon: FiList, path: '/market/tracked' },
+  { label: 'Intelligence', icon: FiFileText, path: '/market/intelligence' },
   { label: 'Coverage', icon: FiActivity, path: '/market/coverage' },
   { label: 'Education', icon: FiBook, path: '/market/education' },
 ];

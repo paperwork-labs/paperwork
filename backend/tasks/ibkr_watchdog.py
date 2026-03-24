@@ -7,7 +7,7 @@ from backend.tasks.celery_app import celery_app
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task(bind=True, name="backend.tasks.ibkr_watchdog.ping_ibkr_connection")
+@celery_app.task(bind=True, name="backend.tasks.ibkr_watchdog.ping_ibkr_connection", soft_time_limit=30, time_limit=60)
 def ping_ibkr_connection(self):
     """Ping IB Gateway every 60s, auto-reconnect on failure, Discord alert on persistent failure."""
     from backend.services.clients.ibkr_client import ibkr_client
@@ -37,8 +37,8 @@ def ping_ibkr_connection(self):
                     {"symbol": "SYSTEM", "side": "N/A", "quantity": 0},
                 )
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to send IB Gateway disconnect alert: %s", e)
         return {"status": "disconnected"}
     except Exception as e:
         logger.error("IB Gateway watchdog error: %s", e)

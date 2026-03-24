@@ -167,6 +167,8 @@ const FALLBACK_COLORS: ChartColors = {
   muted: '#94A3B8', subtle: '#64748B', border: '#334155',
   brand500: '#818CF8', brand400: '#A5B4FC', brand700: '#4F46E5',
   warning: '#FBBF24',
+  tooltipBg: '#1E293B',
+  tooltipBorder: 'rgba(255,255,255,0.12)',
 };
 
 const SymbolChartWithMarkers: React.FC<Props> = ({

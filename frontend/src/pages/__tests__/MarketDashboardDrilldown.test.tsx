@@ -16,6 +16,14 @@ vi.mock('../../services/api', () => {
   return {
     default: { get: vi.fn().mockResolvedValue({ data: {} }) },
     marketDataApi: {
+      getCurrentRegime: vi.fn().mockResolvedValue({
+        regime_state: 'R2',
+        composite_score: 2.2,
+        as_of_date: '2026-01-08',
+        regime_multiplier: 0.75,
+        max_equity_exposure_pct: 90,
+        cash_floor_pct: 10,
+      }),
       getSnapshot: vi.fn().mockResolvedValue({ data: { stage_label: '2A' } }),
       getVolatilityDashboard: vi.fn().mockResolvedValue({}),
       getDashboard: vi.fn().mockResolvedValue({

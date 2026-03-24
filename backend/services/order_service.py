@@ -1,4 +1,9 @@
-"""Order execution service with enforced risk guardrails."""
+"""Order execution service with enforced risk guardrails.
+
+Delegates risk checking to the canonical RiskGate in
+backend.services.execution.risk_gate.  The RiskViolation exception
+is re-exported from there so callers only need one import.
+"""
 
 from __future__ import annotations
 import logging
@@ -10,20 +15,18 @@ from sqlalchemy.orm import Session
 
 from backend.models.order import Order, OrderStatus
 from backend.models.market_data import MarketSnapshot
+from backend.services.execution.broker_base import OrderRequest
+from backend.services.execution.risk_gate import RiskGate, RiskViolation
 
 logger = logging.getLogger(__name__)
 
-MAX_ORDER_VALUE = 100_000
-MAX_SINGLE_POSITION_PCT = 0.25
-
-
-class RiskViolation(Exception):
-    """Raised when a risk guardrail blocks an order."""
+_risk_gate = RiskGate()
 
 
 class OrderService:
     def __init__(self):
         self._ibkr_client = None
+        self._broker_router = None
 
     @property
     def ibkr(self):
@@ -31,6 +34,16 @@ class OrderService:
             from backend.services.clients.ibkr_client import ibkr_client
             self._ibkr_client = ibkr_client
         return self._ibkr_client
+
+    @property
+    def router(self):
+        if self._broker_router is None:
+            from backend.services.execution.broker_router import broker_router
+            self._broker_router = broker_router
+        return self._broker_router
+
+    def _get_executor(self, broker_type: str = "ibkr"):
+        return self.router.get(broker_type)
 
     def _estimate_price(
         self,
@@ -58,26 +71,24 @@ class OrderService:
         self,
         db: Session,
         symbol: str,
+        side: str,
+        order_type: str,
         quantity: float,
         price_estimate: float,
     ) -> List[str]:
-        """Run risk checks. Raises RiskViolation if a hard limit is breached.
-        Returns a list of soft warnings for advisory-only concerns."""
-        warnings: List[str] = []
-        est_value = quantity * price_estimate
+        """Run risk checks via the canonical RiskGate.
 
-        if est_value > MAX_ORDER_VALUE:
-            raise RiskViolation(
-                f"Order value ${est_value:,.0f} exceeds "
-                f"${MAX_ORDER_VALUE:,.0f} maximum"
-            )
-
-        # TODO: MAX_SINGLE_POSITION_PCT check requires per-user portfolio equity.
-        # The previous implementation incorrectly used sum(MarketSnapshot.current_price)
-        # across the entire universe. Will be implemented when user equity is available
-        # from the positions/holdings table.
-
-        return warnings
+        Raises RiskViolation if a hard limit is breached.
+        Returns a list of soft warnings for advisory-only concerns.
+        """
+        req = OrderRequest.from_user_input(
+            symbol=symbol,
+            side=side,
+            order_type=order_type,
+            quantity=quantity,
+        )
+        _risk_gate.check(req, price_estimate)
+        return []
 
     async def preview_order(
         self,
@@ -105,7 +116,9 @@ class OrderService:
         )
 
         price_estimate = self._estimate_price(db, symbol, limit_price, stop_price)
-        warnings = self._check_risk_gates(db, symbol, quantity, price_estimate)
+        warnings = self._check_risk_gates(
+            db, symbol, side, order_type, quantity, price_estimate
+        )
 
         order = Order(
             symbol=symbol.upper(),
@@ -135,7 +148,7 @@ class OrderService:
     async def submit_order(
         self, db: Session, order_id: int, created_by: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Submit a previewed order for execution."""
+        """Submit a previewed order for execution via broker router."""
         order = db.query(Order).filter(Order.id == order_id).first()
         if not order:
             return {"error": "Order not found"}
@@ -144,25 +157,25 @@ class OrderService:
         if order.status != OrderStatus.PREVIEW.value:
             return {"error": f"Order is in '{order.status}' state, cannot submit"}
 
-        ib_order_type_map = {"market": "MKT", "limit": "LMT", "stop": "STP", "stop_limit": "STP_LMT"}
-        ib_action = "BUY" if order.side == "buy" else "SELL"
-        ib_otype = ib_order_type_map.get(order.order_type, "MKT")
-
-        result = await self.ibkr.place_order(
+        req = OrderRequest.from_user_input(
             symbol=order.symbol,
-            action=ib_action,
+            side=order.side,
+            order_type=order.order_type,
             quantity=order.quantity,
-            order_type=ib_otype,
             limit_price=order.limit_price,
             stop_price=order.stop_price,
         )
 
-        if result.get("error"):
+        broker = order.broker_type or "ibkr"
+        executor = self._get_executor(broker)
+        result = await executor.place_order(req)
+
+        if not result.ok:
             order.status = OrderStatus.ERROR.value
-            order.error_message = result["error"]
+            order.error_message = result.error
         else:
             order.status = OrderStatus.SUBMITTED.value
-            order.broker_order_id = str(result.get("broker_order_id", ""))
+            order.broker_order_id = str(result.broker_order_id or "")
             order.submitted_at = datetime.now(timezone.utc)
 
         db.commit()
@@ -177,7 +190,7 @@ class OrderService:
     async def cancel_order(
         self, db: Session, order_id: int, created_by: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Cancel a submitted order."""
+        """Cancel a submitted order via broker router."""
         order = db.query(Order).filter(Order.id == order_id).first()
         if not order:
             return {"error": "Order not found"}
@@ -187,9 +200,11 @@ class OrderService:
             return {"error": f"Cannot cancel order in '{order.status}' state"}
 
         if order.broker_order_id:
-            result = await self.ibkr.cancel_order(order.broker_order_id)
-            if result.get("error"):
-                return {"error": result["error"]}
+            broker = order.broker_type or "ibkr"
+            executor = self._get_executor(broker)
+            result = await executor.cancel_order(order.broker_order_id)
+            if not result.ok:
+                return {"error": result.error}
 
         order.status = OrderStatus.CANCELLED.value
         order.cancelled_at = datetime.now(timezone.utc)
@@ -213,25 +228,31 @@ class OrderService:
         ):
             return self._order_to_dict(order)
 
-        broker_status = await self.ibkr.get_order_status(order.broker_order_id)
-        if broker_status.get("status"):
-            status_map = {
-                "Submitted": OrderStatus.SUBMITTED.value,
-                "PreSubmitted": OrderStatus.PENDING_SUBMIT.value,
-                "Filled": OrderStatus.FILLED.value,
-                "Cancelled": OrderStatus.CANCELLED.value,
-                "Inactive": OrderStatus.REJECTED.value,
-            }
-            new_status = status_map.get(broker_status["status"], order.status)
-            order.status = new_status
-            if broker_status.get("filled") is not None:
-                order.filled_quantity = broker_status["filled"]
-            if broker_status.get("avg_fill_price") is not None:
-                order.filled_avg_price = broker_status["avg_fill_price"]
-            if new_status == OrderStatus.FILLED.value and not order.filled_at:
-                order.filled_at = datetime.now(timezone.utc)
-            db.commit()
-            db.refresh(order)
+        broker = order.broker_type or "ibkr"
+        executor = self._get_executor(broker)
+        result = await executor.get_order_status(order.broker_order_id)
+
+        status_map = {
+            "Submitted": OrderStatus.SUBMITTED.value,
+            "PreSubmitted": OrderStatus.PENDING_SUBMIT.value,
+            "Filled": OrderStatus.FILLED.value,
+            "Cancelled": OrderStatus.CANCELLED.value,
+            "Inactive": OrderStatus.REJECTED.value,
+        }
+        new_status = status_map.get(result.status, order.status)
+        filled = result.filled_quantity or 0
+        remaining = result.raw.get("remaining", 0) if result.raw else 0
+        if filled > 0 and remaining > 0:
+            new_status = OrderStatus.PARTIALLY_FILLED.value
+        order.status = new_status
+        if filled:
+            order.filled_quantity = filled
+        if result.avg_fill_price is not None:
+            order.filled_avg_price = result.avg_fill_price
+        if new_status == OrderStatus.FILLED.value and not order.filled_at:
+            order.filled_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(order)
         return self._order_to_dict(order)
 
     def list_orders(

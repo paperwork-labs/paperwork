@@ -329,6 +329,22 @@ async def _tt_connect_job(job_id: str, client_id: str, client_secret: str, refre
                 )
                 db.add(cred)
         db.commit()
+
+        synced_account_ids = [
+            ba.id for ba in db.query(BrokerAccount).filter(
+                BrokerAccount.user_id == user_id,
+                BrokerAccount.broker == BrokerType.TASTYTRADE,
+                BrokerAccount.is_enabled == True,
+            ).all()
+        ]
+        for acc_id in synced_account_ids:
+            try:
+                from backend.tasks.account_sync import sync_account_task
+                sync_account_task.delay(acc_id, "comprehensive")
+                logger.info("Queued post-connect sync for TastyTrade account %s", acc_id)
+            except Exception as sync_exc:
+                logger.warning("Failed to queue TastyTrade sync for %s: %s", acc_id, sync_exc)
+
         connect_job_store.set(job_id, {
             "state": "success",
             "finished_at": time.time(),

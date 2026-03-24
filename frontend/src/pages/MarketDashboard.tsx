@@ -19,13 +19,14 @@ import {
   TableScrollArea,
 } from '@chakra-ui/react';
 import { Link as RouterLink } from 'react-router-dom';
-import { FiChevronDown, FiChevronRight, FiRefreshCw } from 'react-icons/fi';
+import { FiChevronDown, FiChevronRight, FiRefreshCw, FiTrendingUp, FiBarChart2, FiGrid, FiLayers } from 'react-icons/fi';
 import { marketDataApi } from '../services/api';
 import { ChartContext, SymbolLink, ChartSlidePanel, PortfolioSymbolsContext } from '../components/market/SymbolChartUI';
 import StatCard from '../components/shared/StatCard';
 import { usePortfolioSymbols } from '../hooks/usePortfolioSymbols';
 import StageBar from '../components/shared/StageBar';
 import StageBadge from '../components/shared/StageBadge';
+import RegimeBanner from '../components/market/RegimeBanner';
 import { useChartColors } from '../hooks/useChartColors';
 import { SECTOR_PALETTE, heatColor } from '../constants/chart';
 import { ETF_SYMBOL_SET } from '../constants/etf';
@@ -38,6 +39,23 @@ import BubbleChart from '../components/charts/BubbleChart';
 import api from '../services/api';
 import { formatDate } from '../utils/format';
 import { useUserPreferences } from '../hooks/useUserPreferences';
+
+const TopDownView = React.lazy(() => import('../components/market/TopDownView'));
+const BottomUpView = React.lazy(() => import('../components/market/BottomUpView'));
+const SectorView = React.lazy(() => import('../components/market/SectorView'));
+const HeatmapView = React.lazy(() => import('../components/market/HeatmapView'));
+
+type DashboardView = 'overview' | 'top-down' | 'bottom-up' | 'sectors' | 'heatmap';
+
+const VIEW_TABS: { key: DashboardView; label: string; icon: React.ElementType }[] = [
+  { key: 'overview', label: 'Overview', icon: FiBarChart2 },
+  { key: 'top-down', label: 'Top-Down', icon: FiTrendingUp },
+  { key: 'bottom-up', label: 'Bottom-Up', icon: FiGrid },
+  { key: 'sectors', label: 'Sectors', icon: FiLayers },
+  { key: 'heatmap', label: 'Heatmap', icon: FiGrid },
+];
+
+const VIEW_KEY = 'axiomfolio:dashboard:view';
 
 type SetupItem = {
   symbol: string;
@@ -725,6 +743,18 @@ const MarketDashboard: React.FC = () => {
   const portfolioSymbols = portfolioQuery.data ?? {};
   const { collapsed, toggle } = useSectionCollapse();
 
+  const [activeView, setActiveView] = React.useState<DashboardView>(() => {
+    try {
+      const stored = localStorage.getItem(VIEW_KEY) as DashboardView;
+      if (stored && VIEW_TABS.some(t => t.key === stored)) return stored;
+    } catch {}
+    return 'overview';
+  });
+  const handleViewChange = React.useCallback((view: DashboardView) => {
+    setActiveView(view);
+    try { localStorage.setItem(VIEW_KEY, view); } catch {}
+  }, []);
+
   const [universeFilter, setUniverseFilter] = React.useState<UniverseFilter>(() => {
     try {
       const stored = localStorage.getItem(UNIVERSE_FILTER_KEY);
@@ -912,20 +942,38 @@ const MarketDashboard: React.FC = () => {
             <HStack gap={3} align="baseline">
               <Heading size="md">Market Dashboard</Heading>
               <HStack gap={1}>
-                {(['all', 'etf', 'holdings'] as UniverseFilter[]).map((f) => (
-                  <Button
-                    key={f}
-                    size="xs"
-                    variant={universeFilter === f ? 'solid' : 'outline'}
-                    colorPalette={universeFilter === f ? (f === 'holdings' ? 'blue' : 'gray') : 'gray'}
-                    onClick={() => handleFilterChange(f)}
-                  >
-                    {filterLabels[f]}
-                  </Button>
-                ))}
+                {VIEW_TABS.map((tab) => {
+                  const Icon = tab.icon;
+                  return (
+                    <Button
+                      key={tab.key}
+                      size="xs"
+                      variant={activeView === tab.key ? 'solid' : 'ghost'}
+                      onClick={() => handleViewChange(tab.key)}
+                    >
+                      <Icon size={12} />
+                      <Text ml={1}>{tab.label}</Text>
+                    </Button>
+                  );
+                })}
               </HStack>
             </HStack>
             <HStack gap={2}>
+              {activeView === 'overview' && (
+                <HStack gap={1}>
+                  {(['all', 'etf', 'holdings'] as UniverseFilter[]).map((f) => (
+                    <Button
+                      key={f}
+                      size="xs"
+                      variant={universeFilter === f ? 'solid' : 'outline'}
+                      colorPalette={universeFilter === f ? (f === 'holdings' ? 'blue' : 'gray') : 'gray'}
+                      onClick={() => handleFilterChange(f)}
+                    >
+                      {filterLabels[f]}
+                    </Button>
+                  ))}
+                </HStack>
+              )}
               <HStack gap={1}>
                 <Text fontSize="xs" color={snapshotAge != null && snapshotAge > 30 ? 'status.warning' : 'fg.muted'}>
                   {snapshotAge != null ? `${snapshotAge}m ago` : ''}
@@ -936,8 +984,26 @@ const MarketDashboard: React.FC = () => {
               </HStack>
             </HStack>
           </HStack>
-          <Text fontSize="xs" color="fg.muted">{MODE_DESCRIPTIONS[universeFilter]}</Text>
+          {activeView === 'overview' && (
+            <Text fontSize="xs" color="fg.muted">{MODE_DESCRIPTIONS[universeFilter]}</Text>
+          )}
         </Box>
+
+        {/* Non-overview views */}
+        {activeView !== 'overview' && (
+          <React.Suspense fallback={<HStack p={4}><Spinner size="sm" /><Text fontSize="sm">Loading view...</Text></HStack>}>
+            {activeView === 'top-down' && <TopDownView snapshots={trackedRows} dashboardPayload={payload} />}
+            {activeView === 'bottom-up' && <BottomUpView snapshots={filteredTrackedRows} />}
+            {activeView === 'sectors' && <SectorView snapshots={trackedRows} dashboardPayload={payload} />}
+            {activeView === 'heatmap' && <HeatmapView snapshots={trackedRows} />}
+          </React.Suspense>
+        )}
+
+        {/* Overview mode — existing content */}
+        {activeView === 'overview' && (
+        <>
+        {/* Regime Banner — always visible in overview */}
+        <RegimeBanner />
 
         {/* Section 1: Market Pulse */}
         {vis.pulse && (
@@ -1459,6 +1525,9 @@ const MarketDashboard: React.FC = () => {
             </Collapsible.Content>
           </Collapsible.Root>
         </Box>
+        )}
+
+        </>
         )}
 
       </Stack>

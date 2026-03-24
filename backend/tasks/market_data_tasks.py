@@ -103,9 +103,8 @@ def _resolve_history_days(requested_days: int | None) -> int:
                 0, (datetime.utcnow().date() - last_ts.date()).days
             )
             return max(minimum_days, delta_days)
-    except Exception:
-        # If history lookup fails, fall back to default window.
-        pass
+    except Exception as e:
+        logger.warning("History days lookup failed, using default: %s", e)
     finally:
         session.close()
     return max(minimum_days, 20)
@@ -205,8 +204,8 @@ def enrich_index_fundamentals(indices: List[str] | None = None, limit_per_run: i
                             if prov.get(k) is not None:
                                 snap = snap or {}
                                 snap[k] = prov.get(k)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning("Provider fundamentals fetch failed for %s: %s", sym, e)
             if not snap:
                 continue
             changed = False
@@ -219,8 +218,8 @@ def enrich_index_fundamentals(indices: List[str] | None = None, limit_per_run: i
             if r.market_cap is None and snap.get("market_cap") is not None:
                 try:
                     r.market_cap = int(snap.get("market_cap"))
-                except Exception:
-                    pass
+                except (TypeError, ValueError) as e:
+                    logger.warning("market_cap conversion failed for %s: %s", sym, e)
                 else:
                     changed = True
             if changed:
@@ -1056,6 +1055,152 @@ def backfill_since_date(
     return rollup
 
 
+# ============================= V4 Pipeline Helpers =============================
+
+def _run_scan_overlay() -> dict:
+    """Run scan overlay engine: assign scan_tier + action_label to all snapshots."""
+    session = SessionLocal()
+    try:
+        from backend.services.market.scan_engine import (
+            classify_scan_tier,
+            derive_action_label,
+            ScanInput,
+        )
+        from backend.services.market.regime_engine import get_current_regime
+
+        regime = get_current_regime(session)
+        regime_state = regime.regime_state if regime else "R3"
+
+        snapshots = session.query(MarketSnapshot).filter(
+            MarketSnapshot.analysis_type == "technical_snapshot",
+            MarketSnapshot.is_valid.is_(True),
+        ).all()
+
+        atrx_vals = sorted(
+            [float(s.atrx_sma_150) for s in snapshots if s.atrx_sma_150 is not None]
+        )
+        atrx_count = len(atrx_vals)
+
+        def _atrx_percentile(val: float) -> float:
+            if atrx_count == 0 or val is None:
+                return 0.0
+            import bisect
+            rank = bisect.bisect_left(atrx_vals, val)
+            return (rank / atrx_count) * 100
+
+        updated = 0
+        for snap in snapshots:
+            try:
+                atrx_raw = float(snap.atrx_sma_150) if snap.atrx_sma_150 is not None else None
+                scan_input = ScanInput(
+                    symbol=snap.symbol,
+                    stage_label=snap.stage_label or "UNKNOWN",
+                    rs_mansfield=snap.rs_mansfield_pct,
+                    ema10_dist_n=snap.ema10_dist_n,
+                    atre_150_pctile=_atrx_percentile(atrx_raw) if atrx_raw is not None else None,
+                    range_pos_52w=snap.range_pos_52w,
+                    ext_pct=snap.ext_pct,
+                    atrp_14=snap.atrp_14,
+                )
+                tier = classify_scan_tier(scan_input, regime_state)
+                label = derive_action_label(
+                    stage_label=scan_input.stage_label,
+                    scan_tier=tier,
+                    regime=regime_state,
+                )
+                snap.scan_tier = tier
+                snap.action_label = label
+                updated += 1
+            except Exception as e:
+                logger.warning("Scan overlay failed for %s: %s", getattr(snap, "symbol", "?"), e)
+                continue
+
+        session.commit()
+        return {"status": "ok", "updated": updated, "total": len(snapshots)}
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
+def _evaluate_exit_cascade_all() -> dict:
+    """Evaluate exit cascade for all open positions. Logs warnings, does not auto-sell."""
+    session = SessionLocal()
+    try:
+        from backend.services.execution.exit_cascade import evaluate_exit_cascade, PositionContext, ExitAction
+        from backend.services.market.regime_engine import get_current_regime
+
+        regime = get_current_regime(session)
+        regime_state = regime.regime_state if regime else "R3"
+
+        positions = session.query(Position).filter(
+            Position.status == "open",
+            Position.quantity > 0,
+        ).all()
+
+        signals_generated = 0
+        for pos in positions:
+            try:
+                snap = (
+                    session.query(MarketSnapshot)
+                    .filter(
+                        MarketSnapshot.symbol == pos.symbol,
+                        MarketSnapshot.analysis_type == "technical_snapshot",
+                    )
+                    .order_by(MarketSnapshot.id.desc())
+                    .first()
+                )
+                if not snap:
+                    continue
+
+                entry_price = float(pos.average_cost or 0)
+                current_price = float(snap.current_price or 0)
+                pnl_pct = ((current_price - entry_price) / entry_price * 100) if entry_price else 0
+                is_short = (
+                    getattr(pos, "position_type", None) is not None
+                    and str(getattr(pos, "position_type", "")).lower().startswith("short")
+                )
+
+                ctx = PositionContext(
+                    symbol=pos.symbol,
+                    side="SHORT" if is_short else "LONG",
+                    entry_price=entry_price,
+                    current_price=current_price,
+                    atr_14=float(getattr(snap, "atr_14", 0) or 0),
+                    atrp_14=float(snap.atrp_14 or 2.0),
+                    stage_label=snap.stage_label or "UNKNOWN",
+                    previous_stage_label=snap.previous_stage_label,
+                    current_stage_days=int(getattr(snap, "current_stage_days", 0) or 0),
+                    ext_pct=float(getattr(snap, "ext_pct", 0) or 0),
+                    sma150_slope=float(getattr(snap, "sma150_slope", 0) or 0),
+                    ema10_dist_n=float(getattr(snap, "ema10_dist_n", 0) or 0),
+                    rs_mansfield=float(snap.rs_mansfield_pct or 0),
+                    regime_state=regime_state,
+                    previous_regime_state=None,
+                    days_held=0,
+                    pnl_pct=pnl_pct,
+                )
+
+                result = evaluate_exit_cascade(ctx)
+                if result.final_action != ExitAction.HOLD:
+                    signals_generated += 1
+                    logger.info(
+                        "Exit cascade signal for %s: %s (tier=%s, reason=%s)",
+                        pos.symbol,
+                        result.final_action.value,
+                        result.final_tier,
+                        result.final_reason,
+                    )
+            except Exception:
+                logger.warning("Exit cascade failed for position %s", pos.symbol, exc_info=True)
+                continue
+
+        return {"status": "ok", "positions_checked": len(positions), "signals": signals_generated}
+    finally:
+        session.close()
+
+
 # ============================= Coverage Backfill (Daily, Tracked Universe) =============================
 @shared_task(name="backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked")
 @task_run("admin_coverage_backfill", lock_key=lambda: "admin_coverage_backfill")
@@ -1093,6 +1238,16 @@ def bootstrap_daily_coverage_tracked(history_days: int | None = None, history_ba
             )
         if step == "admin_coverage_refresh":
             return f"Coverage: {data.get('daily_pct', 0)}% daily; stale={data.get('stale_daily', 0)}"
+        if step == "compute_daily_regime":
+            return f"Regime: {data.get('regime_state', '?')} (score={data.get('composite_score', '?')})"
+        if step == "scan_overlay":
+            return f"Scan: {data.get('updated', 0)}/{data.get('total', 0)} snapshots classified"
+        if step == "exit_cascade_evaluation":
+            return f"Exits: {data.get('signals', 0)} signals from {data.get('positions_checked', 0)} positions"
+        if step == "strategy_evaluation":
+            return f"Strategies: {data.get('evaluated', 0)} evaluated, {data.get('total_signals', 0)} signals"
+        if step == "intelligence_digest":
+            return f"Brief: {data.get('type', '?')} as_of={data.get('as_of', '?')}"
         return data.get("status", "ok")
 
     rollup: dict = {"steps": []}
@@ -1106,31 +1261,77 @@ def bootstrap_daily_coverage_tracked(history_days: int | None = None, history_ba
             }
         )
 
+    # Step 1: Refresh index constituents
     res1 = refresh_index_constituents()
     _append("market_indices_constituents_refresh", res1)
 
+    # Step 2: Update tracked universe
     res2 = update_tracked_symbol_cache()
     _append("market_universe_tracked_refresh", res2)
 
+    # Step 3: Backfill daily bars
     res3 = backfill_last_bars(days=200)
     _append("admin_backfill_daily", res3)
 
+    # Step 4: Recompute indicators (v4 classifier, slopes, ext_pct, etc.)
     res4 = recompute_indicators_universe(batch_size=50)
     _append("admin_indicators_recompute_universe", res4)
 
-    # Historical ledger: last N trading days into MarketSnapshotHistory.
-    # This is best-effort: if it fails, still refresh coverage so the operator sees the latest state.
+    # Step 5: Compute market regime (R1-R5)
+    try:
+        res5 = compute_daily_regime()
+    except Exception as exc:
+        logger.warning("Regime computation failed (non-fatal): %s", exc)
+        res5 = {"status": "error", "error": str(exc)}
+    _append("compute_daily_regime", res5)
+
+    # Step 6: Run scan overlay (assign scan_tier + action_label to each snapshot)
+    try:
+        res6 = _run_scan_overlay()
+    except Exception as exc:
+        logger.warning("Scan overlay failed (non-fatal): %s", exc)
+        res6 = {"status": "error", "error": str(exc)}
+    _append("scan_overlay", res6)
+
+    # Step 7: Snapshot history archive
     try:
         resolved_days = _resolve_history_days(history_days)
-        res5 = backfill_snapshot_history_last_n_days(
+        res7 = backfill_snapshot_history_last_n_days(
             days=int(resolved_days), batch_size=int(history_batch_size)
         )
     except Exception as exc:
-        res5 = {"status": "error", "error": str(exc)}
-    _append("admin_snapshots_history_backfill", res5)
+        res7 = {"status": "error", "error": str(exc)}
+    _append("admin_snapshots_history_backfill", res7)
 
-    res6 = monitor_coverage_health()
-    _append("admin_coverage_refresh", res6)
+    # Step 8: Evaluate exit cascade for open positions (best-effort)
+    try:
+        res8 = _evaluate_exit_cascade_all()
+    except Exception as exc:
+        logger.warning("Exit cascade evaluation failed (non-fatal): %s", exc)
+        res8 = {"status": "error", "error": str(exc)}
+    _append("exit_cascade_evaluation", res8)
+
+    # Step 9: Evaluate active strategies (best-effort)
+    try:
+        from backend.tasks.strategy_tasks import evaluate_strategies_task
+        res9 = evaluate_strategies_task()
+    except Exception as exc:
+        logger.warning("Strategy evaluation failed (non-fatal): %s", exc)
+        res9 = {"status": "error", "error": str(exc)}
+    _append("strategy_evaluation", res9)
+
+    # Step 10: Coverage health refresh
+    res10 = monitor_coverage_health()
+    _append("admin_coverage_refresh", res10)
+
+    # Step 11: Generate daily intelligence digest (best-effort)
+    try:
+        from backend.tasks.intelligence_tasks import generate_daily_digest_task
+        res11 = generate_daily_digest_task(deliver_discord=True)
+    except Exception as exc:
+        logger.warning("Daily digest generation failed (non-fatal): %s", exc)
+        res11 = {"status": "error", "error": str(exc)}
+    _append("intelligence_digest", res11)
 
     rollup["status"] = "ok"
     rollup["overall_summary"] = "; ".join(
@@ -2708,6 +2909,109 @@ def monitor_coverage_health() -> dict:
             "tracked_count": snapshot.get("tracked_count", 0),
             "symbols": snapshot.get("symbols", 0),
         }
+    finally:
+        session.close()
+
+
+@shared_task(
+    name="backend.tasks.market_data_tasks.compute_daily_regime",
+    soft_time_limit=120,
+    time_limit=180,
+)
+@task_run("compute_daily_regime")
+def compute_daily_regime() -> dict:
+    """Compute and persist the daily market regime state (R1-R5).
+
+    Fetches VIX, breadth, and advance/decline inputs, then runs the
+    regime engine to produce a composite score and state. Safe to run
+    repeatedly -- uses upsert semantics on as_of_date.
+    """
+    session = SessionLocal()
+    try:
+        from backend.services.market.regime_engine import (
+            compute_regime,
+            persist_regime,
+            RegimeInputs,
+        )
+        from datetime import date as date_type
+
+        vix_spot = 20.0
+        vix3m_vix_ratio = 1.0
+        vvix_vix_ratio = 1.0
+        pct_above_200 = 50.0
+        pct_above_50 = 50.0
+        nh_nl = 0
+
+        try:
+            import yfinance as yf
+
+            vix_df = yf.download("^VIX", period="5d", progress=False)
+            if vix_df is not None and len(vix_df) > 0:
+                vix_spot = float(vix_df["Close"].iloc[-1])
+
+            vix3m_df = yf.download("^VIX3M", period="5d", progress=False)
+            if vix3m_df is not None and len(vix3m_df) > 0 and vix_spot > 0:
+                vix3m_vix_ratio = float(vix3m_df["Close"].iloc[-1]) / vix_spot
+
+            vvix_df = yf.download("^VVIX", period="5d", progress=False)
+            if vvix_df is not None and len(vvix_df) > 0 and vix_spot > 0:
+                vvix_vix_ratio = float(vvix_df["Close"].iloc[-1]) / vix_spot
+        except Exception as exc:
+            logger.warning("Failed to fetch VIX data for regime: %s", exc)
+
+        from sqlalchemy import func as sqlfunc
+
+        total = session.query(sqlfunc.count(MarketSnapshot.id)).filter(
+            MarketSnapshot.analysis_type == "technical_snapshot",
+            MarketSnapshot.is_valid.is_(True),
+        ).scalar() or 0
+
+        if total > 0:
+            above_200 = (
+                session.query(sqlfunc.count(MarketSnapshot.id))
+                .filter(
+                    MarketSnapshot.analysis_type == "technical_snapshot",
+                    MarketSnapshot.is_valid.is_(True),
+                    MarketSnapshot.sma_200.isnot(None),
+                    MarketSnapshot.current_price > MarketSnapshot.sma_200,
+                )
+                .scalar() or 0
+            )
+            above_50 = (
+                session.query(sqlfunc.count(MarketSnapshot.id))
+                .filter(
+                    MarketSnapshot.analysis_type == "technical_snapshot",
+                    MarketSnapshot.is_valid.is_(True),
+                    MarketSnapshot.sma_50.isnot(None),
+                    MarketSnapshot.current_price > MarketSnapshot.sma_50,
+                )
+                .scalar() or 0
+            )
+            pct_above_200 = (above_200 / total) * 100
+            pct_above_50 = (above_50 / total) * 100
+
+        inputs = RegimeInputs(
+            vix_spot=vix_spot,
+            vix3m_vix_ratio=vix3m_vix_ratio,
+            vvix_vix_ratio=vvix_vix_ratio,
+            nh_nl=nh_nl,
+            pct_above_200d=pct_above_200,
+            pct_above_50d=pct_above_50,
+        )
+
+        today = date_type.today()
+        result = compute_regime(inputs, as_of=today)
+        row = persist_regime(session, result)
+        session.commit()
+
+        return {
+            "regime_state": result.regime_state,
+            "composite_score": result.composite_score,
+            "as_of_date": row.as_of_date.isoformat() if row and row.as_of_date else None,
+        }
+    except Exception:
+        logger.exception("compute_daily_regime failed")
+        raise
     finally:
         session.close()
 

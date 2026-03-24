@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 STALE_SUBMITTED_THRESHOLD = timedelta(hours=1)
 
 
-@celery_app.task(bind=True, max_retries=3)
+@celery_app.task(bind=True, max_retries=3, soft_time_limit=120, time_limit=180)
 def execute_order_task(self, order_id: int) -> dict:
     """Submit a previewed order via the OrderManager."""
     db = SessionLocal()
@@ -39,7 +39,7 @@ def execute_order_task(self, order_id: int) -> dict:
         db.close()
 
 
-@celery_app.task(bind=True, max_retries=3)
+@celery_app.task(bind=True, max_retries=3, soft_time_limit=120, time_limit=180)
 def monitor_open_orders_task(self) -> dict:
     """Poll all SUBMITTED / PARTIALLY_FILLED orders and detect stale ones."""
     db = SessionLocal()

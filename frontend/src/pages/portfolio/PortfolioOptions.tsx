@@ -35,7 +35,7 @@ import api from '../../services/api';
 
 const EXPIRING_SOON_DAYS = 7;
 
-type TabId = 'positions' | 'chain' | 'pnl' | 'analytics';
+type TabId = 'positions' | 'chain' | 'pnl' | 'analytics' | 'history';
 type PosView = 'card' | 'table';
 
 /* ------------------------------------------------------------------ */
@@ -208,7 +208,7 @@ const PortfolioOptions: React.FC = () => {
           {/* Tabs */}
           <HStack gap={1} borderBottomWidth="1px" borderColor="border.subtle" pb={0} justifyContent="space-between">
             <HStack gap={1}>
-              {(['positions', 'chain', 'pnl', 'analytics'] as TabId[]).map(tab => (
+              {(['positions', 'chain', 'pnl', 'analytics', 'history'] as TabId[]).map(tab => (
                 <Button
                   key={tab}
                   size="sm"
@@ -217,7 +217,7 @@ const PortfolioOptions: React.FC = () => {
                   borderBottomRadius={0}
                   textTransform="capitalize"
                 >
-                  {tab === 'pnl' ? 'P&L' : tab === 'chain' ? 'Option Chain' : tab === 'analytics' ? 'Analytics' : 'Positions'}
+                  {tab === 'pnl' ? 'P&L' : tab === 'chain' ? 'Option Chain' : tab === 'analytics' ? 'Analytics' : tab === 'history' ? 'History' : 'Positions'}
                 </Button>
               ))}
             </HStack>
@@ -394,6 +394,10 @@ const PortfolioOptions: React.FC = () => {
 
           {activeTab === 'analytics' && (
             <OptionsAnalyticsTab positions={positions} currency={currency} />
+          )}
+
+          {activeTab === 'history' && (
+            <OptionsHistoryTab accountId={selected === 'all' ? undefined : selected} />
           )}
         </Stack>
       </Box>
@@ -1494,6 +1498,167 @@ const OptionsAnalyticsTab: React.FC<{ positions: OptionPos[]; currency: string }
         </Box>
       </HStack>
       <PayoffDiagram positions={positions} currency={currency} />
+    </VStack>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* History Tab                                                         */
+/* ------------------------------------------------------------------ */
+type HistoryItem = {
+  id: number;
+  symbol: string;
+  underlying_symbol: string;
+  option_type: string;
+  strike_price: number | null;
+  expiry_date: string | null;
+  event_type: string;
+  exercised_quantity: number;
+  assigned_quantity: number;
+  original_quantity: number;
+  cost_basis: number;
+  realized_pnl: number;
+  commission: number;
+};
+
+const historyColumns: Column<HistoryItem>[] = [
+  {
+    key: 'underlying_symbol',
+    header: 'Underlying',
+    accessor: (r) => r.underlying_symbol,
+    sortable: true,
+    sortType: 'string',
+    filterable: true,
+    filterType: 'text',
+    render: (_v, r) => <SymbolLink symbol={r.underlying_symbol} />,
+  },
+  {
+    key: 'option_type',
+    header: 'Type',
+    accessor: (r) => (r.option_type || '').toUpperCase(),
+    sortable: true,
+    sortType: 'string',
+    render: (v) => <Badge size="sm" colorPalette={v === 'CALL' ? 'green' : 'red'} variant="subtle">{v}</Badge>,
+    width: '70px',
+  },
+  {
+    key: 'strike',
+    header: 'Strike',
+    accessor: (r) => r.strike_price ?? 0,
+    sortable: true,
+    sortType: 'number',
+    isNumeric: true,
+    render: (v) => <Text fontFamily="mono">{Number(v) ? Number(v).toFixed(2) : '—'}</Text>,
+    width: '80px',
+  },
+  {
+    key: 'expiry',
+    header: 'Expiry',
+    accessor: (r) => r.expiry_date ?? '',
+    sortable: true,
+    sortType: 'date',
+    render: (v) => <Text fontSize="xs">{v || '—'}</Text>,
+    width: '95px',
+  },
+  {
+    key: 'event',
+    header: 'Event',
+    accessor: (r) => r.event_type,
+    sortable: true,
+    sortType: 'string',
+    filterable: true,
+    filterType: 'select',
+    filterOptions: [
+      { label: 'Exercised', value: 'exercised' },
+      { label: 'Assigned', value: 'assigned' },
+      { label: 'Expired', value: 'expired' },
+    ],
+    render: (v) => {
+      const color = v === 'exercised' ? 'blue' : v === 'assigned' ? 'orange' : 'gray';
+      return <Badge size="sm" colorPalette={color} variant="subtle" textTransform="capitalize">{v}</Badge>;
+    },
+    width: '90px',
+  },
+  {
+    key: 'qty',
+    header: 'Qty',
+    accessor: (r) => r.original_quantity,
+    sortable: true,
+    sortType: 'number',
+    isNumeric: true,
+    width: '55px',
+  },
+  {
+    key: 'costBasis',
+    header: 'Cost Basis',
+    accessor: (r) => r.cost_basis,
+    sortable: true,
+    sortType: 'number',
+    isNumeric: true,
+    width: '90px',
+  },
+  {
+    key: 'realizedPnl',
+    header: 'Realized P&L',
+    accessor: (r) => r.realized_pnl,
+    sortable: true,
+    sortType: 'number',
+    isNumeric: true,
+    render: (v) => <PnlText value={Number(v)} format="currency" fontSize="xs" />,
+    width: '100px',
+  },
+  {
+    key: 'commission',
+    header: 'Commission',
+    accessor: (r) => r.commission,
+    sortable: true,
+    sortType: 'number',
+    isNumeric: true,
+    render: (v) => {
+      const val = Number(v);
+      if (!val) return <Text fontSize="xs" color="fg.muted">—</Text>;
+      return <Text fontSize="xs" color="fg.error">{Math.abs(val).toFixed(2)}</Text>;
+    },
+    width: '85px',
+  },
+];
+
+const OptionsHistoryTab: React.FC<{ accountId?: string }> = ({ accountId }) => {
+  const historyQuery = useQuery(
+    ['optionsHistory', accountId],
+    async () => {
+      const params = accountId ? `?account_id=${accountId}` : '';
+      const res = await api.get(`/portfolio/options/history${params}`);
+      return res.data?.data ?? { history: [], total: 0 };
+    },
+    { staleTime: 60000 },
+  );
+
+  const items: HistoryItem[] = historyQuery.data?.history ?? [];
+
+  if (historyQuery.isLoading) {
+    return <TableSkeleton rows={5} cols={4} />;
+  }
+
+  if (historyQuery.error) {
+    return <Text color="status.danger">Failed to load options history.</Text>;
+  }
+
+  return (
+    <VStack align="stretch" gap={3}>
+      <Text fontSize="sm" color="fg.muted">
+        Exercised, assigned, and expired options from your account history.
+      </Text>
+      <SortableTable
+        data={items}
+        columns={historyColumns}
+        defaultSortBy="expiry"
+        defaultSortOrder="desc"
+        size="sm"
+        maxHeight="70vh"
+        filtersEnabled
+        emptyMessage="No historical options events found."
+      />
     </VStack>
   );
 };

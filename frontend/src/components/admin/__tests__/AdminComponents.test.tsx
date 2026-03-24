@@ -63,6 +63,16 @@ const MOCK_HEALTH: AdminHealthResponse = {
       snapshot_fill_pct: 95.0,
       missing_sample: ['AAPL', 'MSFT'],
     },
+    regime: {
+      status: 'green',
+      regime_state: 'R2',
+      composite_score: 2.2,
+      as_of_date: '2026-01-08',
+      age_hours: 4,
+      multiplier: 0.75,
+      max_equity_pct: 90,
+      cash_floor_pct: 10,
+    },
   },
   task_runs: {},
   thresholds: {
@@ -98,12 +108,14 @@ describe('AdminHealthBanner', () => {
     expect(screen.getByText('stage quality')).toBeTruthy();
     expect(screen.getByText('jobs')).toBeTruthy();
     expect(screen.getByText('audit')).toBeTruthy();
+    expect(screen.getByText('regime')).toBeTruthy();
   });
 });
 
 describe('AdminDomainCards', () => {
-  it('renders all four domain cards', () => {
+  it('renders all domain cards including Market Regime', () => {
     renderWithProviders(<AdminDomainCards health={MOCK_HEALTH} />);
+    expect(screen.getByText('Market Regime')).toBeTruthy();
     expect(screen.getByText('Coverage')).toBeTruthy();
     expect(screen.getByText('Stage Quality')).toBeTruthy();
     expect(screen.getAllByText(/Jobs/).length).toBeGreaterThanOrEqual(1);

@@ -17,6 +17,7 @@ from backend.database import get_db
 from backend.models.user import User, UserRole
 from backend.models.user_invite import UserInvite
 from backend.api.dependencies import get_admin_user
+from backend.models.market_data import MarketRegime, MarketSnapshot, JobRun
 
 logger = logging.getLogger(__name__)
 
@@ -214,5 +215,81 @@ async def update_user(
         "username": user.username,
         "role": _role_value(user.role),
         "is_active": user.is_active,
+    }
+
+
+@router.get("/system-health")
+async def system_health_summary(
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(get_admin_user),
+) -> Dict[str, Any]:
+    """Aggregated system health: regime, coverage freshness, pipeline status, recent errors."""
+    from sqlalchemy import select, func as sqlfunc
+
+    # Regime
+    regime_row = db.execute(
+        select(MarketRegime).order_by(MarketRegime.as_of_date.desc()).limit(1)
+    ).scalar_one_or_none()
+    regime = {
+        "state": regime_row.regime_state if regime_row else None,
+        "composite": regime_row.composite_score if regime_row else None,
+        "as_of": regime_row.as_of_date.isoformat() if regime_row and regime_row.as_of_date else None,
+    }
+
+    # Coverage freshness
+    latest_snap = db.execute(
+        select(sqlfunc.max(MarketSnapshot.analysis_timestamp))
+    ).scalar()
+    snap_count = db.execute(
+        select(sqlfunc.count(MarketSnapshot.id))
+    ).scalar() or 0
+    coverage_age_min = None
+    if latest_snap:
+        coverage_age_min = int((datetime.utcnow() - latest_snap).total_seconds() / 60)
+
+    # Pipeline — recent job runs
+    cutoff = datetime.utcnow() - timedelta(hours=24)
+    recent_jobs = db.execute(
+        select(JobRun)
+        .where(JobRun.started_at >= cutoff)
+        .order_by(JobRun.started_at.desc())
+        .limit(20)
+    ).scalars().all()
+
+    ok_count = sum(1 for j in recent_jobs if j.status == "ok")
+    error_count = sum(1 for j in recent_jobs if j.status == "error")
+    running_count = sum(1 for j in recent_jobs if j.status == "running")
+
+    errors = [
+        {
+            "task": j.task_name,
+            "error": (j.error or "")[:200],
+            "at": j.started_at.isoformat() if j.started_at else None,
+        }
+        for j in recent_jobs
+        if j.status == "error"
+    ][:5]
+
+    overall = "healthy"
+    if error_count > 2 or (coverage_age_min and coverage_age_min > 60):
+        overall = "degraded"
+    if error_count > 5 or (coverage_age_min and coverage_age_min > 240):
+        overall = "critical"
+
+    return {
+        "overall": overall,
+        "regime": regime,
+        "coverage": {
+            "snapshot_count": snap_count,
+            "latest_timestamp": latest_snap.isoformat() if latest_snap else None,
+            "age_minutes": coverage_age_min,
+        },
+        "pipeline_24h": {
+            "total_jobs": len(recent_jobs),
+            "ok": ok_count,
+            "errors": error_count,
+            "running": running_count,
+            "recent_errors": errors,
+        },
     }
 

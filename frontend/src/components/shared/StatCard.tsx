@@ -64,11 +64,13 @@ const StatCard: React.FC<StatCardProps> = ({
       bg="bg.card"
       flex="1"
       minW="120px"
+      transition="box-shadow 200ms ease, transform 200ms ease"
+      _hover={{ boxShadow: "0 4px 6px rgba(0,0,0,0.1)", transform: "translateY(-1px)" }}
     >
       <Text fontSize="xs" color="fg.muted">
         {label}
       </Text>
-      <Text fontSize="lg" fontWeight="bold" color={color} aria-label={`${label}: ${value}`}>
+      <Text fontSize="lg" fontWeight="bold" fontFamily="mono" letterSpacing="-0.02em" color={color} aria-label={`${label}: ${value}`}>
         {value}
       </Text>
       {sub != null && sub !== '' && (

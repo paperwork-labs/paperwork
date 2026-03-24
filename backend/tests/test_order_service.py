@@ -8,11 +8,8 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
 
-from backend.services.order_service import (
-    OrderService,
-    RiskViolation,
-    MAX_ORDER_VALUE,
-)
+from backend.services.order_service import OrderService, RiskViolation
+from backend.services.execution.risk_gate import MAX_ORDER_VALUE
 from backend.models.order import OrderStatus
 
 
@@ -44,20 +41,20 @@ class TestRiskGates:
         db = _make_mock_db()
         with pytest.raises(RiskViolation, match="exceeds"):
             self.svc._check_risk_gates(
-                db, "AAPL", quantity=1000, price_estimate=200.0
+                db, "AAPL", "buy", "market", quantity=1000, price_estimate=200.0
             )
 
     def test_under_max_order_value_passes(self):
         db = _make_mock_db()
         warnings = self.svc._check_risk_gates(
-            db, "AAPL", quantity=10, price_estimate=150.0
+            db, "AAPL", "buy", "market", quantity=10, price_estimate=150.0
         )
         assert isinstance(warnings, list)
 
     def test_below_max_order_value_returns_warnings_list(self):
         db = _make_mock_db()
         warnings = self.svc._check_risk_gates(
-            db, "AAPL", quantity=1, price_estimate=0
+            db, "AAPL", "buy", "market", quantity=1, price_estimate=0
         )
         assert isinstance(warnings, list)
 

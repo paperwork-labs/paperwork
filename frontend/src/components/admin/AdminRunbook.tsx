@@ -73,6 +73,21 @@ const RUNBOOK: Record<string, RunbookEntry> = {
     threshold: (t) =>
       `Error count <= ${t.jobs_error_max ?? 0} in the last ${t.jobs_lookback_hours ?? 24}h`,
   },
+  regime: {
+    what: 'Market regime data is missing or stale (>48h since last computation).',
+    steps: [
+      'Check Admin > Jobs for failed "compute_daily_regime" tasks.',
+      'Verify VIX/breadth data feeds are accessible (yfinance for ^VIX, ^VIX3M).',
+      'The regime computation runs nightly at 01:30 UTC. Trigger manually from Admin > Schedules if needed.',
+      'If breadth data (% >200D, % >50D) is off, ensure the nightly indicator pipeline ran successfully first.',
+    ],
+    threshold: () => 'Regime data must be less than 48 hours old',
+    metricSummary: (dim) => [
+      { label: 'State', value: String(dim.regime_state ?? '—'), ok: !!dim.regime_state },
+      { label: 'Score', value: String(dim.composite_score ?? '—'), ok: !!dim.composite_score },
+      { label: 'Age', value: `${Number(dim.age_hours ?? 0).toFixed(1)}h`, ok: Number(dim.age_hours ?? 0) < 48 },
+    ],
+  },
   audit: {
     what: 'Market audit detected that daily or snapshot fill percentages are below acceptable thresholds for the tracked universe.',
     steps: [

@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import logging
 from typing import Dict, Any, Optional, List
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 
 from backend.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def compute_core_indicators(data_oldest_first: pd.DataFrame) -> Dict[str, Any]:
@@ -67,9 +71,9 @@ def compute_core_indicators(data_oldest_first: pd.DataFrame) -> Dict[str, Any]:
         if not hist.empty and not pd.isna(hist.iloc[-1]):
             out["macd_histogram"] = float(hist.iloc[-1])
 
-    # DI/ADX (approx)
-    try:
-        if set(["High", "Low", "Close"]).issubset(data_oldest_first.columns):
+    # DI/ADX (14-period)
+    if set(["High", "Low", "Close"]).issubset(data_oldest_first.columns):
+        try:
             period = 14
             up_move = data_oldest_first["High"].diff()
             down_move = -data_oldest_first["Low"].diff()
@@ -92,8 +96,8 @@ def compute_core_indicators(data_oldest_first: pd.DataFrame) -> Dict[str, Any]:
                 out["minus_di"] = float(minus_di.iloc[-1])
             if not adx.empty and not pd.isna(adx.iloc[-1]):
                 out["adx"] = float(adx.iloc[-1])
-    except Exception:
-        pass
+        except Exception as e:
+            logger.warning("ADX computation failed: %s", e)
 
     return out
 
@@ -361,13 +365,40 @@ def compute_full_indicator_series(
     out["td_buy_complete"] = td_buy_c
     out["td_sell_complete"] = td_sell_c
 
-    # ── 8. Stage / RS (only if spy_df provided) ──
+    # ── 8. v4 derived fields ──
+
+    out["ext_pct"] = ((close - out["sma_150"]) / out["sma_150"] * 100).replace(
+        [np.inf, -np.inf], np.nan
+    )
+    out["sma150_slope"] = (
+        (out["sma_150"] - out["sma_150"].shift(20)) / out["sma_150"].shift(20) * 100
+    ).replace([np.inf, -np.inf], np.nan)
+    out["sma50_slope"] = (
+        (out["sma_50"] - out["sma_50"].shift(10)) / out["sma_50"].shift(10) * 100
+    ).replace([np.inf, -np.inf], np.nan)
+    out["ema10_dist_pct"] = ((close - out["ema_10"]) / out["ema_10"] * 100).replace(
+        [np.inf, -np.inf], np.nan
+    )
+    out["ema10_dist_n"] = (out["ema10_dist_pct"] / out["atrp_14"]).replace(
+        [np.inf, -np.inf], np.nan
+    )
+    out["vol_ratio"] = (volume / out["volume_avg_20d"]).replace(
+        [np.inf, -np.inf], np.nan
+    )
+
+    # ── 9. Stage / RS (v4 — SMA150 anchor, 10 sub-stages) ──
 
     if spy_df is not None and not spy_df.empty:
         ohlcv_newest = ohlcv.iloc[::-1]
         spy_newest = spy_df.iloc[::-1]
         stage_df = compute_weinstein_stage_series_from_daily(ohlcv_newest, spy_newest)
-        for col in ["stage_label", "stage_slope_pct", "stage_dist_pct", "rs_mansfield_pct"]:
+        v4_cols = [
+            "stage_label", "stage_slope_pct", "stage_dist_pct",
+            "ext_pct", "sma150_slope", "sma50_slope",
+            "ema10_dist_pct", "ema10_dist_n", "vol_ratio",
+            "rs_mansfield_pct",
+        ]
+        for col in v4_cols:
             if col in stage_df.columns:
                 out[col] = stage_df[col]
 
@@ -405,7 +436,8 @@ def calculate_performance_windows(
         if len(close) > n and close.iloc[0] and close.iloc[n]:
             try:
                 return float((close.iloc[0] / close.iloc[n] - 1.0) * 100.0)
-            except Exception:
+            except Exception as e:
+                logger.warning("Performance window %dd calculation failed: %s", n, e)
                 return None
         return None
 
@@ -442,21 +474,46 @@ def calculate_performance_windows(
             ref = nearest_close_on_or_after(dt)
             if ref and close.iloc[0]:
                 out[key] = float((close.iloc[0] / ref - 1.0) * 100.0)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Calendar performance window calculation failed: %s", e)
 
     return out
 
 
 def calculate_rsi_series(closes: pd.Series, period: int = 14) -> Optional[pd.Series]:
+    """RSI using Wilder's exponential smoothing (industry standard, matches Bloomberg).
+
+    First `period` bars use SMA to seed, then exponential smoothing:
+        avg_gain[i] = (avg_gain[i-1] * (period-1) + gain[i]) / period
+    """
     try:
         delta = closes.diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-        rs = gain / loss
+        gain = delta.where(delta > 0, 0.0)
+        loss = (-delta).where(delta < 0, 0.0)
+
+        avg_gain = pd.Series(np.nan, index=closes.index, dtype="float64")
+        avg_loss = pd.Series(np.nan, index=closes.index, dtype="float64")
+
+        first_valid = gain.first_valid_index()
+        if first_valid is None:
+            return None
+        start = closes.index.get_loc(first_valid)
+        seed_end = start + period
+        if seed_end > len(closes):
+            return None
+
+        avg_gain.iloc[seed_end - 1] = gain.iloc[start:seed_end].mean()
+        avg_loss.iloc[seed_end - 1] = loss.iloc[start:seed_end].mean()
+
+        for i in range(seed_end, len(closes)):
+            avg_gain.iloc[i] = (avg_gain.iloc[i - 1] * (period - 1) + gain.iloc[i]) / period
+            avg_loss.iloc[i] = (avg_loss.iloc[i - 1] * (period - 1) + loss.iloc[i]) / period
+
+        rs = avg_gain / avg_loss
         rsi = 100 - (100 / (1 + rs))
-        return rsi
-    except Exception:
+        return rsi.replace([np.inf, -np.inf], np.nan)
+    except Exception as e:
+        logger.warning("RSI(%d) calculation failed: %s", period, e)
         return None
 
 
@@ -468,7 +525,8 @@ def calculate_atr_series(df: pd.DataFrame, period: int = 14) -> Optional[pd.Seri
         tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
         atr = tr.rolling(window=period).mean()
         return atr
-    except Exception:
+    except Exception as e:
+        logger.warning("ATR(%d) calculation failed: %s", period, e)
         return None
 
 
@@ -514,8 +572,8 @@ def compute_atr_matrix_metrics(
                 metrics["price_position_20d"] = float(
                     (current_price - lo) / (hi - lo) * 100
                 )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Derived metrics calculation failed: %s", e)
     return metrics
 
 
@@ -534,16 +592,157 @@ def weekly_from_daily(df_daily_newest_first: pd.DataFrame) -> pd.DataFrame:
     return weekly
 
 
+def classify_stage_v4_scalar(
+    close: float,
+    sma150: float,
+    sma50: float,
+    sma21: float,
+    ema10: float,
+    sma150_slope: float,
+    sma50_slope: float,
+    ext_pct: float,
+    atre_150: float,
+    vol_ratio: float,
+) -> str:
+    """Classify a single bar into one of 10 v4 sub-stages.
+
+    Priority order (first match wins): 4C→4B→4A→1A→1B→2A→2B→2C→3A→3B
+    See Stage_Analysis_v4.docx Section 4 for full rules.
+    """
+    SLOPE_T = 0.35  # ±0.35% slope threshold
+    above = close > sma150
+    below = not above
+
+    slope_strongly_down = sma150_slope < -SLOPE_T
+    slope_down_or_flat = sma150_slope <= 0
+    slope_flat = abs(sma150_slope) <= SLOPE_T
+    slope_up = sma150_slope > SLOPE_T
+    slope_positive = sma150_slope > 0
+
+    # 4C: Deep decline — far below SMA150, slope strongly negative
+    if below and slope_strongly_down and ext_pct < -15:
+        return "4C"
+    # 4B: Active decline — below SMA150, slope strongly negative
+    if below and slope_strongly_down:
+        return "4B"
+    # 4A: Early decline — below SMA150, slope non-positive, SMA50 declining
+    if below and slope_down_or_flat and sma50_slope < 0:
+        return "4A"
+    # 1A: Early base — near SMA150, slope flat/stabilizing, still non-positive
+    if abs(ext_pct) < 5 and slope_flat and sma150_slope <= 0:
+        return "1A"
+    # 1B: Late base / breakout watch — near SMA150, slope flat or gently positive
+    if abs(ext_pct) < 5 and (slope_flat or (slope_positive and not slope_up)):
+        # Breakout override: 1B→2A when volume confirms and MAs are stacked
+        if above and vol_ratio > 1.5 and ema10 > sma21 > sma50:
+            return "2A"
+        return "1B"
+    # 2A: Early advance — above SMA150, slope positive, low extension
+    if above and slope_positive and ext_pct <= 5:
+        return "2A"
+    # 2B: Confirmed advance — above SMA150, slope strongly up, moderate extension
+    if above and slope_up and ext_pct <= 15:
+        return "2B"
+    # 2C: Extended advance — above SMA150, slope strongly up, high extension
+    if above and slope_up and ext_pct > 15:
+        return "2C"
+    # 3A: Early distribution — above SMA150 but slope weakening
+    if above and not slope_up:
+        return "3A"
+    # 3B: Late distribution — everything else
+    return "3B"
+
+
+def classify_stage_v4_series(
+    close: pd.Series,
+    sma150: pd.Series,
+    sma50: pd.Series,
+    sma21: pd.Series,
+    ema10: pd.Series,
+    sma150_slope: pd.Series,
+    sma50_slope: pd.Series,
+    ext_pct: pd.Series,
+    atre_150: pd.Series,
+    vol_ratio: pd.Series,
+    rs_mansfield: pd.Series,
+) -> pd.Series:
+    """Vectorized v4 stage classification for full time series.
+
+    Priority order (first match wins): 4C→4B→4A→1A→1B→2A→2B→2C→3A→3B.
+    Post-classification: ATRE override (2A/2B + ATRE_150 > 6 → 2C),
+    RS modifier (2B + RS < 0 → "2B(RS-)").
+    """
+    SLOPE_T = 0.35
+    stage = pd.Series("UNKNOWN", index=close.index, dtype="object")
+
+    above = close > sma150
+    below = ~above
+    has_data = sma150.notna() & sma150_slope.notna() & ext_pct.notna()
+
+    slope_strongly_down = sma150_slope < -SLOPE_T
+    slope_flat = sma150_slope.abs() <= SLOPE_T
+    slope_up = sma150_slope > SLOPE_T
+    slope_positive = sma150_slope > 0
+    slope_down_or_flat = sma150_slope <= 0
+
+    assigned = pd.Series(False, index=close.index)
+
+    def assign(mask: pd.Series, label: str) -> None:
+        nonlocal assigned
+        hit = has_data & mask & ~assigned
+        stage[hit] = label
+        assigned = assigned | hit
+
+    # Priority order: 4C→4B→4A→1A→1B→2A→2B→2C→3A→3B
+    assign(below & slope_strongly_down & (ext_pct < -15), "4C")
+    assign(below & slope_strongly_down, "4B")
+    assign(below & slope_down_or_flat & (sma50_slope < 0), "4A")
+    assign((ext_pct.abs() < 5) & slope_flat & (sma150_slope <= 0), "1A")
+    assign((ext_pct.abs() < 5) & (slope_flat | (slope_positive & ~slope_up)), "1B")
+    assign(above & slope_positive & (ext_pct <= 5), "2A")
+    assign(above & slope_up & (ext_pct <= 15), "2B")
+    assign(above & slope_up & (ext_pct > 15), "2C")
+    assign(above & ~slope_up, "3A")
+    assign(has_data, "3B")
+
+    # Post-classification: Breakout override — 1B with volume + stacked MAs → promote to 2A
+    breakout = (
+        (stage == "1B") & above
+        & (vol_ratio > 1.5) & (ema10 > sma21) & (sma21 > sma50)
+    )
+    stage[breakout] = "2A"
+
+    # Post-classification: ATRE override — 2A/2B with ATRE_150 > 6 → promote to 2C
+    atre_override = (stage.isin(["2A", "2B"])) & (atre_150 > 6.0)
+    stage[atre_override] = "2C"
+
+    # Post-classification: RS modifier — 2B with RS < 0 → flag
+    rs_flag = (stage == "2B") & (rs_mansfield < 0)
+    stage[rs_flag] = "2B(RS-)"
+
+    return stage
+
+
 def compute_weinstein_stage_from_daily(
     daily_sym_newest_first: pd.DataFrame,
     daily_bm_newest_first: pd.DataFrame,
 ) -> Dict[str, Any]:
-    """Compute Weinstein stage from daily OHLCV of symbol and benchmark (both newest->first)."""
-    unknown = {
+    """Compute Stage Analysis v4 from daily OHLCV (both newest->first).
+
+    Uses SMA150 as primary anchor per Stage_Analysis_v4.docx.
+    Returns latest bar's stage + supporting metrics.
+    """
+    unknown: Dict[str, Any] = {
         "stage": "UNKNOWN",
         "stage_label": "UNKNOWN",
         "stage_slope_pct": None,
         "stage_dist_pct": None,
+        "ext_pct": None,
+        "sma150_slope": None,
+        "sma50_slope": None,
+        "ema10_dist_pct": None,
+        "ema10_dist_n": None,
+        "vol_ratio": None,
         "rs_mansfield_pct": None,
     }
     if (
@@ -554,111 +753,84 @@ def compute_weinstein_stage_from_daily(
     ):
         return dict(unknown)
 
-    w_sym = weekly_from_daily(daily_sym_newest_first)
-    w_bm = weekly_from_daily(daily_bm_newest_first)
-    if w_sym.empty or w_bm.empty:
+    sym = daily_sym_newest_first.iloc[::-1]  # oldest→newest
+    bm = daily_bm_newest_first.iloc[::-1]
+
+    if len(sym) < 155:
         return dict(unknown)
 
-    # Align indexes
-    idx = w_sym.index.intersection(w_bm.index)
-    w_sym = w_sym.loc[idx]
-    w_bm = w_bm.loc[idx]
-    # Need enough weekly bars for 30W SMA + stable slope. Mansfield RS needs 52W; stage can still compute without it.
-    if len(w_sym) < 35:
+    close = sym["Close"]
+    volume = sym["Volume"] if "Volume" in sym.columns else pd.Series(np.nan, index=sym.index)
+    sma150 = close.rolling(150).mean()
+    sma50 = close.rolling(50).mean()
+    sma21 = close.rolling(21).mean()
+    ema10 = close.ewm(span=10, adjust=False).mean()
+    vol_avg = volume.rolling(20).mean()
+
+    # v4 metrics
+    ext_pct = ((close - sma150) / sma150 * 100).replace([np.inf, -np.inf], np.nan)
+    sma150_slope_s = ((sma150 - sma150.shift(20)) / sma150.shift(20) * 100).replace([np.inf, -np.inf], np.nan)
+    sma50_slope_s = ((sma50 - sma50.shift(10)) / sma50.shift(10) * 100).replace([np.inf, -np.inf], np.nan)
+    vol_ratio_s = (volume / vol_avg).replace([np.inf, -np.inf], np.nan)
+
+    atr14 = calculate_atr_series(sym, 14) if {"High", "Low", "Close"}.issubset(sym.columns) else pd.Series(np.nan, index=sym.index)
+    atre_150 = ((close - sma150) / atr14).replace([np.inf, -np.inf], np.nan) if atr14 is not None else pd.Series(np.nan, index=sym.index)
+    ema10_dist_pct_s = ((close - ema10) / ema10 * 100).replace([np.inf, -np.inf], np.nan)
+    atrp14 = (atr14 / close * 100).replace([np.inf, -np.inf], np.nan) if atr14 is not None else pd.Series(np.nan, index=sym.index)
+    ema10_dist_n_s = (ema10_dist_pct_s / atrp14).replace([np.inf, -np.inf], np.nan)
+
+    # RS Mansfield (daily RS vs 252-day SMA of RS)
+    bm_close = bm["Close"].reindex(sym.index, method="ffill")
+    rs = (close / bm_close.replace(0, np.nan)).astype("float64")
+    rs_ma = rs.rolling(252).mean()
+    rs_mansfield = ((rs / rs_ma - 1.0) * 100.0).replace([np.inf, -np.inf], np.nan)
+
+    # Get latest valid values
+    def last_val(s: pd.Series) -> Optional[float]:
+        v = s.iloc[-1] if not s.empty else None
+        return float(v) if v is not None and not pd.isna(v) else None
+
+    c = last_val(close)
+    s150 = last_val(sma150)
+    s50 = last_val(sma50)
+    s21 = last_val(sma21)
+    e10 = last_val(ema10)
+    sl150 = last_val(sma150_slope_s)
+    sl50 = last_val(sma50_slope_s)
+    ep = last_val(ext_pct)
+    at150 = last_val(atre_150)
+    vr = last_val(vol_ratio_s)
+    rm = last_val(rs_mansfield)
+
+    if c is None or s150 is None or sl150 is None or ep is None:
         return dict(unknown)
 
-    close = w_sym["Close"]
-    sma30 = close.rolling(30).mean()
-    vol50 = w_sym["Volume"].rolling(50).mean()
+    stage_label = classify_stage_v4_scalar(
+        c, s150, s50 or 0, s21 or 0, e10 or 0,
+        sl150, sl50 or 0, ep, at150 or 0, vr or 0,
+    )
 
-    # Relative strength vs benchmark (weekly)
-    rs = (close / w_bm["Close"].replace(0, pd.NA)).dropna()
-
-    def slope(series: pd.Series, window: int = 10) -> float:
-        last = series.tail(window)
-        if len(last) < 2:
-            return 0.0
-        return float(last.iloc[-1] - last.iloc[0]) / max(1.0, len(last) - 1)
-
-    price = float(close.iloc[-1])
-    sma30_now = float(sma30.iloc[-1]) if not pd.isna(sma30.iloc[-1]) else None
-    sma30_slope = slope(sma30)
-    rs_slope = slope(rs)
-    vol_ratio = None
-    if not pd.isna(vol50.iloc[-1]) and vol50.iloc[-1] > 0:
-        vol_ratio = float(w_sym["Volume"].iloc[-1] / vol50.iloc[-1])
-
-    stage = "UNKNOWN"
-    stage_label = "UNKNOWN"
-    stage_dist_pct = None
-    stage_slope_pct = None
-    if sma30_now:
-        try:
-            stage_dist_pct = float((price / sma30_now - 1.0) * 100.0) if sma30_now else None
-        except Exception:
-            stage_dist_pct = None
-        try:
-            prev = sma30.iloc[-6] if len(sma30) >= 6 and not pd.isna(sma30.iloc[-6]) else None
-            stage_slope_pct = float((sma30_now / prev - 1.0) * 100.0) if (prev and sma30_now) else None
-        except Exception:
-            stage_slope_pct = None
-
-        slope_up = float(getattr(settings, "STAGE_SLOPE_PCT_UP", 0.05))
-        slope_down = float(getattr(settings, "STAGE_SLOPE_PCT_DOWN", -0.05))
-        slope_flat = float(getattr(settings, "STAGE_SLOPE_PCT_FLAT", 0.05))
-        dist_flat = float(getattr(settings, "STAGE_DIST_PCT_FLAT", 5.0))
-        dist_2a = float(getattr(settings, "STAGE_DIST_PCT_STAGE2_A", 5.0))
-        dist_2b = float(getattr(settings, "STAGE_DIST_PCT_STAGE2_B", 15.0))
-
-        slope_ok = stage_slope_pct is not None
-        dist_ok = stage_dist_pct is not None
-        if slope_ok and dist_ok:
-            if stage_slope_pct > slope_up and stage_dist_pct > 0:
-                stage = "STAGE_2_UPTREND"
-                stage_label = "2"
-            elif stage_slope_pct < slope_down and stage_dist_pct < 0:
-                stage = "STAGE_4_DOWNTREND"
-                stage_label = "4"
-            elif abs(stage_slope_pct) <= slope_flat and abs(stage_dist_pct) <= dist_flat:
-                stage = "STAGE_1_BASE"
-                stage_label = "1"
-            else:
-                stage = "STAGE_3_DISTRIBUTION"
-                stage_label = "3"
-
-            # Stage 2 refinement (2A/2B/2C) based on distance from 30W SMA.
-            if stage_label == "2":
-                if stage_dist_pct <= dist_2a:
-                    stage_label = "2A"
-                elif stage_dist_pct <= dist_2b:
-                    stage_label = "2B"
-                else:
-                    stage_label = "2C"
-
-    # Mansfield Relative Strength (weekly RS vs 52-week SMA of RS), expressed as %
-    rs_mansfield_pct = None
-    try:
-        if len(rs) >= 52:
-            rs_ma = rs.rolling(52).mean()
-            rs_now = rs.iloc[-1]
-            rs_ma_now = rs_ma.iloc[-1]
-            if rs_ma_now and not pd.isna(rs_ma_now):
-                rs_mansfield_pct = float((rs_now / rs_ma_now - 1.0) * 100.0)
-    except Exception:
-        rs_mansfield_pct = None
+    # ATRE override
+    if stage_label in ("2A", "2B") and at150 is not None and at150 > 6.0:
+        stage_label = "2C"
+    # RS modifier
+    if stage_label == "2B" and rm is not None and rm < 0:
+        stage_label = "2B(RS-)"
 
     return {
-        "stage": stage,
+        "stage": f"STAGE_{stage_label}",
         "stage_label": stage_label,
-        "price": price,
-        "sma30w": sma30_now,
-        "sma30w_slope": sma30_slope,
-        "stage_slope_pct": stage_slope_pct,
-        "stage_dist_pct": stage_dist_pct,
-        "rs_slope": rs_slope,
-        "rs_mansfield_pct": rs_mansfield_pct,
-        "vol_ratio_50w": vol_ratio,
-        "as_of": idx[-1].isoformat() if len(idx) else None,
+        "price": c,
+        "sma150": s150,
+        "stage_slope_pct": sl150,
+        "stage_dist_pct": ep,
+        "ext_pct": ep,
+        "sma150_slope": sl150,
+        "sma50_slope": sl50,
+        "ema10_dist_pct": last_val(ema10_dist_pct_s),
+        "ema10_dist_n": last_val(ema10_dist_n_s),
+        "vol_ratio": vr,
+        "rs_mansfield_pct": rm,
     }
 
 
@@ -666,11 +838,12 @@ def compute_weinstein_stage_series_from_daily(
     daily_sym_newest_first: pd.DataFrame,
     daily_bm_newest_first: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Compute a *daily* stage/RS series (approx) by computing weekly stage and forward-filling to days.
+    """Compute daily v4 stage/RS series using SMA150 as primary anchor.
 
-    Output columns:
-    - stage_label: "1"|"2"|"3"|"4"|"UNKNOWN"
-    - stage_slope_pct, stage_dist_pct, rs_mansfield_pct
+    Output columns (daily resolution — no weekly forward-fill):
+    - stage_label: 1A|1B|2A|2B|2B(RS-)|2C|3A|3B|4A|4B|4C|UNKNOWN
+    - ext_pct, sma150_slope, sma50_slope, ema10_dist_pct, ema10_dist_n
+    - vol_ratio, rs_mansfield_pct, stage_slope_pct, stage_dist_pct
     """
     if (
         daily_sym_newest_first is None
@@ -680,82 +853,59 @@ def compute_weinstein_stage_series_from_daily(
     ):
         return pd.DataFrame(index=pd.Index([]))
 
-    # Weekly bars (oldest->newest)
-    w_sym = weekly_from_daily(daily_sym_newest_first)
-    w_bm = weekly_from_daily(daily_bm_newest_first)
-    if w_sym.empty or w_bm.empty:
-        return pd.DataFrame(index=daily_sym_newest_first.iloc[::-1].index)
+    sym = daily_sym_newest_first.iloc[::-1]  # oldest→newest
+    bm = daily_bm_newest_first.iloc[::-1]
 
-    idx = w_sym.index.intersection(w_bm.index)
-    w_sym = w_sym.loc[idx]
-    w_bm = w_bm.loc[idx]
-    if w_sym.empty:
-        return pd.DataFrame(index=daily_sym_newest_first.iloc[::-1].index)
+    close = sym["Close"]
+    volume = sym["Volume"] if "Volume" in sym.columns else pd.Series(np.nan, index=sym.index)
 
-    close = w_sym["Close"]
-    sma30 = close.rolling(30).mean()
+    sma150 = close.rolling(150).mean()
+    sma50 = close.rolling(50).mean()
+    sma21 = close.rolling(21).mean()
+    ema10 = close.ewm(span=10, adjust=False).mean()
+    vol_avg = volume.rolling(20).mean()
 
-    def slope_series(series: pd.Series, window: int = 10) -> pd.Series:
-        # Similar to (last-first)/(n-1) over a trailing window.
-        return (series - series.shift(window - 1)) / max(1.0, window - 1)
+    ext_pct = ((close - sma150) / sma150 * 100).replace([np.inf, -np.inf], np.nan)
+    sma150_slope = ((sma150 - sma150.shift(20)) / sma150.shift(20) * 100).replace([np.inf, -np.inf], np.nan)
+    sma50_slope = ((sma50 - sma50.shift(10)) / sma50.shift(10) * 100).replace([np.inf, -np.inf], np.nan)
+    vol_ratio = (volume / vol_avg).replace([np.inf, -np.inf], np.nan)
 
-    sma30_slope = slope_series(sma30, window=10)
+    atr14 = calculate_atr_series(sym, 14) if {"High", "Low", "Close"}.issubset(sym.columns) else pd.Series(np.nan, index=sym.index)
+    if atr14 is None:
+        atr14 = pd.Series(np.nan, index=sym.index)
+    atre_150 = ((close - sma150) / atr14).replace([np.inf, -np.inf], np.nan)
+    ema10_dist_pct = ((close - ema10) / ema10 * 100).replace([np.inf, -np.inf], np.nan)
+    atrp14 = (atr14 / close * 100).replace([np.inf, -np.inf], np.nan)
+    ema10_dist_n = (ema10_dist_pct / atrp14).replace([np.inf, -np.inf], np.nan)
 
-    rs = (close / w_bm["Close"].replace(0, pd.NA)).astype("float64")
-    rs_slope = slope_series(rs, window=10)
+    # RS Mansfield (daily)
+    bm_close = bm["Close"].reindex(sym.index, method="ffill")
+    rs = (close / bm_close.replace(0, np.nan)).astype("float64")
+    rs_ma = rs.rolling(252).mean()
+    rs_mansfield = ((rs / rs_ma - 1.0) * 100.0).replace([np.inf, -np.inf], np.nan)
 
-    # Stage slope/dist metrics
-    stage_dist_pct = (close / sma30 - 1.0) * 100.0
-    stage_slope_pct = (sma30 / sma30.shift(5) - 1.0) * 100.0
-
-    # Mansfield RS % (weekly RS vs 52-week SMA of RS)
-    rs_mansfield_pct = (rs / rs.rolling(52).mean() - 1.0) * 100.0
-
-    # Stage label classification
-    stage_label = pd.Series(index=idx, dtype="object")
-    stage_label[:] = "UNKNOWN"
-    has_sma = ~sma30.isna()
-
-    slope_up = float(getattr(settings, "STAGE_SLOPE_PCT_UP", 0.05))
-    slope_down = float(getattr(settings, "STAGE_SLOPE_PCT_DOWN", -0.05))
-    slope_flat = float(getattr(settings, "STAGE_SLOPE_PCT_FLAT", 0.05))
-    dist_flat = float(getattr(settings, "STAGE_DIST_PCT_FLAT", 5.0))
-    dist_2a = float(getattr(settings, "STAGE_DIST_PCT_STAGE2_A", 5.0))
-    dist_2b = float(getattr(settings, "STAGE_DIST_PCT_STAGE2_B", 15.0))
-
-    up = has_sma & (stage_slope_pct > slope_up) & (stage_dist_pct > 0)
-    down = has_sma & (stage_slope_pct < slope_down) & (stage_dist_pct < 0)
-    stage_label[up] = "2"
-    stage_label[down] = "4"
-
-    # Remaining: base/distribution
-    remaining = has_sma & ~(up | down)
-    flat = remaining & (stage_slope_pct.abs() <= slope_flat)
-    near = remaining & (stage_dist_pct.abs() <= dist_flat)
-    base = flat & near
-    stage_label[base] = "1"
-    stage_label[remaining & ~base] = "3"
-
-    # Stage 2 refinement (2A/2B/2C) based on distance from 30W SMA.
-    is_stage2 = stage_label == "2"
-    dist = stage_dist_pct.reindex(idx)
-    stage_label[is_stage2 & (dist <= dist_2a)] = "2A"
-    stage_label[is_stage2 & (dist > dist_2a) & (dist <= dist_2b)] = "2B"
-    stage_label[is_stage2 & (dist > dist_2b)] = "2C"
-
-    weekly_out = pd.DataFrame(
-        {
-            "stage_label": stage_label,
-            "stage_slope_pct": stage_slope_pct,
-            "stage_dist_pct": stage_dist_pct,
-            "rs_mansfield_pct": rs_mansfield_pct,
-        },
-        index=idx,
+    # Vectorized stage classification
+    stage_label = classify_stage_v4_series(
+        close, sma150, sma50, sma21, ema10,
+        sma150_slope, sma50_slope, ext_pct, atre_150,
+        vol_ratio, rs_mansfield,
     )
 
-    # Expand weekly -> daily (oldest->newest daily index)
-    daily_idx = daily_sym_newest_first.iloc[::-1].index
-    daily_out = weekly_out.reindex(daily_idx, method="ffill")
+    daily_out = pd.DataFrame(
+        {
+            "stage_label": stage_label,
+            "stage_slope_pct": sma150_slope,
+            "stage_dist_pct": ext_pct,
+            "ext_pct": ext_pct,
+            "sma150_slope": sma150_slope,
+            "sma50_slope": sma50_slope,
+            "ema10_dist_pct": ema10_dist_pct,
+            "ema10_dist_n": ema10_dist_n,
+            "vol_ratio": vol_ratio,
+            "rs_mansfield_pct": rs_mansfield,
+        },
+        index=sym.index,
+    )
     return daily_out
 
 

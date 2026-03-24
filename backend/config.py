@@ -17,8 +17,8 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://:redispassword@redis:6379/0"
     CELERY_BROKER_URL: str = "redis://:redispassword@redis:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://:redispassword@redis:6379/0"
-    CELERY_TASK_SOFT_TIME_LIMIT: int = 300
-    CELERY_TASK_TIME_LIMIT: int = 360
+    CELERY_TASK_SOFT_TIME_LIMIT: int = 3500
+    CELERY_TASK_TIME_LIMIT: int = 3600
 
     # API Keys
     ALPHA_VANTAGE_API_KEY: Optional[str] = None
@@ -79,8 +79,11 @@ class Settings(BaseSettings):
     ENCRYPTION_KEY: Optional[str] = None
     ENABLE_TRADING: bool = False
     ALLOW_LIVE_ORDERS: bool = False
+    ENABLE_AUTO_TRADING: bool = False
     SEED_ACCOUNTS_ON_STARTUP: bool = False
     AUTO_MIGRATE_ON_STARTUP: bool = False
+    AUTO_WARM_ON_STARTUP: bool = False
+    AUTO_WARM_STALE_MINUTES: int = 120
 
     # Frontend origin for OAuth redirects (falls back to first CORS_ORIGINS entry)
     FRONTEND_ORIGIN: Optional[str] = None
