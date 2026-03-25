@@ -6,12 +6,13 @@ import {
   Button,
   Badge,
 } from '@chakra-ui/react';
-import { useQuery, useQueryClient } from 'react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChartContext, ChartSlidePanel } from '../../components/market/SymbolChartUI';
 import SortableTable, { type Column } from '../../components/SortableTable';
 import PageHeader from '../../components/ui/PageHeader';
-import { formatMoney } from '../../utils/format';
+import { formatMoney, formatDateTimeFriendly } from '../../utils/format';
 import api from '../../services/api';
+import { useUserPreferences } from '../../hooks/useUserPreferences';
 
 import type { Order } from '../../types/orders';
 
@@ -29,33 +30,26 @@ function statusColor(s: string): string {
   return 'gray';
 }
 
-function fmtDate(iso: string | null | undefined): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return String(iso).slice(0, 16);
-  return d.toLocaleString('en-US', { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' });
-}
-
 const PortfolioOrders: React.FC = () => {
   const queryClient = useQueryClient();
+  const { timezone } = useUserPreferences();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [chartSymbol, setChartSymbol] = useState<string | null>(null);
   const openChart = useCallback((sym: string) => setChartSymbol(sym), []);
 
-  const ordersQuery = useQuery<OrderRow[]>(
-    ['allOrders'],
-    async () => {
+  const ordersQuery = useQuery<OrderRow[]>({
+    queryKey: ['allOrders'],
+    queryFn: async () => {
       const res = await api.get('/portfolio/orders', { params: { limit: 200 } });
       return res.data?.data ?? res.data ?? [];
     },
-    {
-      staleTime: 10000,
-      refetchInterval: (data: any) => {
-        const active = (data ?? []).some((o: OrderRow) => ACTIVE_STATUSES.has(o.status));
-        return active ? 5000 : false;
-      },
-    }
-  );
+    staleTime: 10000,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      const active = (data ?? []).some((o: OrderRow) => ACTIVE_STATUSES.has(o.status));
+      return active ? 5000 : false;
+    },
+  });
   const allOrders = ordersQuery.data ?? [];
 
   const filtered = useMemo(() => {
@@ -195,7 +189,7 @@ const PortfolioOrders: React.FC = () => {
       accessor: (o) => o.created_at ?? '',
       sortable: true,
       sortType: 'date',
-      render: (v) => <Text fontSize="xs" color="fg.muted">{fmtDate(v)}</Text>,
+      render: (v) => <Text fontSize="xs" color="fg.muted">{formatDateTimeFriendly(v, timezone)}</Text>,
       width: '130px',
     },
     {
@@ -218,7 +212,7 @@ const PortfolioOrders: React.FC = () => {
       },
       width: '80px',
     },
-  ], [openChart]);
+  ], [openChart, timezone]);
 
   const activeCount = allOrders.filter(o => ACTIVE_STATUSES.has(o.status)).length;
 

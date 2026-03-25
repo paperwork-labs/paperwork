@@ -107,6 +107,7 @@ class MarketDataService:
             "SP500": {"fmp": "sp500_constituent", "finnhub": "^GSPC"},
             "NASDAQ100": {"fmp": "nasdaq_constituent", "finnhub": "^NDX"},
             "DOW30": {"fmp": "dowjones_constituent", "finnhub": "^DJI"},
+            "RUSSELL2000": {"fmp": "russell2000_constituent", "finnhub": "^RUT"},
         }
 
     @property
@@ -310,8 +311,8 @@ class MarketDataService:
                 snapshot.update(td)
                 snapshot.update(compute_gap_counts(chart_df))
                 snapshot.update(compute_trendline_counts(ensure_oldest_first(chart_df)))
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("chart_metrics_computation failed: %s", e)
         for key in ("stage_label", "stage_slope_pct", "stage_dist_pct"):
             snapshot.setdefault(key, None)
 
@@ -457,8 +458,8 @@ class MarketDataService:
                 age = datetime.utcnow() - ts.replace(tzinfo=None)
                 if age > timedelta(days=7):
                     return True
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("timestamp_age_check failed: %s", e)
         return False
 
 
@@ -519,8 +520,8 @@ class MarketDataService:
                 code = getattr(resp, "status_code", None)
                 if isinstance(code, int):
                     return code
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("http_status_extraction failed: %s", e)
         for attr in ("status_code", "status"):
             try:
                 code = getattr(exc, attr, None)
@@ -534,8 +535,8 @@ class MarketDataService:
             for needle in ("429", "500", "502", "503", "504"):
                 if needle in msg:
                     return int(needle)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("status_code_parse failed: %s", e)
         return None
 
     async def _call_blocking_with_retries(
@@ -619,8 +620,8 @@ class MarketDataService:
         if cached:
             try:
                 return float(cached)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("cached_price_parse failed for %s: %s", symbol, e)
         for provider in self._provider_priority("real_time_quote"):
             if not self._is_provider_available(provider):
                 continue
@@ -953,8 +954,8 @@ class MarketDataService:
                 if return_provider:
                     return df_cached, None
                 return df_cached
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("cached_dataframe_parse failed for %s: %s", symbol, e)
 
         # --- L2: PriceData DB lookup ---
         if db is not None:
@@ -1066,8 +1067,8 @@ class MarketDataService:
                 days = int(period[:-1])
                 cutoff = pd.Timestamp.utcnow() - pd.Timedelta(days=days)
                 df = df[df.index >= cutoff]
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("period_filter failed for %s: %s", symbol, e)
         return df.sort_index(ascending=False)
 
     def _get_historical_twelve_data_sync(
@@ -1148,8 +1149,8 @@ class MarketDataService:
                 obj = json.loads(cached)
                 if isinstance(obj, dict) and obj.get("symbols"):
                     return list(obj.get("symbols"))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("cached_constituents_parse failed for %s: %s", index_name, e)
         idx = index_name.upper()
         ep = self.index_endpoints.get(idx, {}).get("fmp")
         symbols: List[str] = []
@@ -1208,6 +1209,11 @@ class MarketDataService:
                         if "Symbol" in t.columns and len(t) <= 40:
                             symbols = [str(s).upper().replace('.', '-') for s in t["Symbol"].dropna().tolist()]
                             break
+                elif idx == "RUSSELL2000":
+                    # Russell 2000 is too large for Wikipedia table. If FMP/Finnhub fail,
+                    # we can try the iShares IWM ETF holdings page or skip.
+                    # For now, log warning - primary source should be FMP.
+                    logger.warning("Index RUSSELL2000: No Wikipedia fallback available - use FMP API")
             except Exception as exc:
                 logger.warning("Index %s: Wikipedia fallback failed: %s", idx, exc)
                 symbols = []
@@ -1228,12 +1234,13 @@ class MarketDataService:
                 24 * 3600,
                 json.dumps({"provider_used": provider_used, "fallback_used": bool(fallback_used), "count": len(out)}),
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("redis_constituents_cache failed for %s: %s", idx, e)
         return out
 
     async def get_all_tradeable_symbols(self, indices: Optional[List[str]] = None) -> Dict[str, List[str]]:
-        idxs = ["SP500", "NASDAQ100", "DOW30"] if not indices else [i.upper() for i in indices]
+        # Default to major indices. Include RUSSELL2000 for comprehensive US equity coverage.
+        idxs = ["SP500", "NASDAQ100", "DOW30", "RUSSELL2000"] if not indices else [i.upper() for i in indices]
         result: Dict[str, List[str]] = {}
         for idx in idxs:
             try:
@@ -1289,15 +1296,15 @@ class MarketDataService:
         try:
             if exp is not None and getattr(exp, 'tzinfo', None) is not None:
                 exp = exp.replace(tzinfo=None)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("expiry_tz_strip failed for %s: %s", symbol, e)
         if exp and exp < now:
             return {}
         try:
             if isinstance(row.raw_analysis, dict) and row.raw_analysis:
                 return dict(row.raw_analysis)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("raw_analysis_parse failed for %s: %s", symbol, e)
         # Fallback: minimal reconstruction from mapped columns
         out: Dict[str, Any] = {
             "current_price": getattr(row, "current_price", None),
@@ -1422,8 +1429,8 @@ class MarketDataService:
                 snapshot["as_of_timestamp"] = (
                     as_of_ts.isoformat() if hasattr(as_of_ts, "isoformat") else str(as_of_ts)
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("as_of_timestamp_extract failed for %s: %s", symbol, e)
 
         # Level 3/4: Relative strength vs SPY + Weinstein stage (DB-only if benchmark available).
         try:
@@ -1468,8 +1475,8 @@ class MarketDataService:
                         )
                         if isinstance(stage_prev, dict) and stage_prev.get("stage_label") is not None:
                             snapshot["stage_label_5d_ago"] = stage_prev.get("stage_label")
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning("stage_label_5d_ago failed for %s: %s", symbol, e)
                 # Stage duration fields (prefer latest history row if available)
                 try:
                     from backend.models.market_data import MarketSnapshotHistory
@@ -1519,10 +1526,10 @@ class MarketDataService:
                             latest_history_row=latest_hist,
                         )
                     )
-                except Exception:
-                    pass
-        except Exception:
-            pass
+                except Exception as e:
+                    logger.warning("stage_duration_compute failed for %s: %s", symbol, e)
+        except Exception as e:
+            logger.warning("stage_rs_computation failed for %s: %s", symbol, e)
         # Fundamentals enrichment (reuse from latest snapshot if present; otherwise fetch once)
         # Prefer fundamentals from the latest stored snapshot, but skip if stale (>7 days)
         try:
@@ -1542,15 +1549,15 @@ class MarketDataService:
                     try:
                         age = datetime.utcnow() - prev_ts.replace(tzinfo=None)
                         prev_stale = age > timedelta(days=7)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning("prev_timestamp_age_check failed for %s: %s", symbol, e)
                 if not prev_stale:
                     for key in FUNDAMENTAL_FIELDS:
                         val = getattr(prev_row, key, None)
                         if val is not None and snapshot.get(key) is None:
                             snapshot[key] = val
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("prev_fundamentals_reuse failed for %s: %s", symbol, e)
 
         if not skip_fundamentals and self._needs_fundamentals(snapshot):
             try:
@@ -1558,8 +1565,8 @@ class MarketDataService:
                 for k in FUNDAMENTAL_FIELDS:
                     if info.get(k) is not None:
                         snapshot[k] = info.get(k)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("fundamentals_fetch failed for %s: %s", symbol, e)
         return snapshot
 
     async def compute_snapshot_from_providers(self, symbol: str) -> Dict[str, Any]:
@@ -1599,10 +1606,10 @@ class MarketDataService:
                         )
                         if isinstance(stage_prev, dict) and stage_prev.get("stage_label") is not None:
                             snapshot["stage_label_5d_ago"] = stage_prev.get("stage_label")
-                    except Exception:
-                        pass
-        except Exception:
-            pass
+                    except Exception as e:
+                        logger.warning("stage_label_5d_ago failed for %s: %s", symbol, e)
+        except Exception as e:
+            logger.warning("stage_rs_computation failed for %s: %s", symbol, e)
 
         try:
             funda = self.get_fundamentals_info(symbol)
@@ -1610,8 +1617,8 @@ class MarketDataService:
                 for k in FUNDAMENTAL_FIELDS:
                     if funda.get(k) is not None:
                         snapshot[k] = funda.get(k)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("fundamentals_enrichment failed for %s: %s", symbol, e)
         return snapshot
 
 

@@ -23,7 +23,7 @@ import {
 } from '@chakra-ui/react';
 import { FiRefreshCw, FiSearch, FiMinusCircle, FiLock, FiUnlock, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-import { useQuery, useQueryClient } from 'react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '../components/ui/PageHeader';
 import SymbolChartWithMarkers, { getStoredIndicators, storeIndicators } from '../components/charts/SymbolChartWithMarkers';
 import type { IndicatorToggles, ChartEvent, ChartEventType } from '../components/charts/SymbolChartWithMarkers';
@@ -33,7 +33,7 @@ import { usePositions, useActivity, useClosedPositions } from '../hooks/usePortf
 import { useAccountContext } from '../context/AccountContext';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { useChartColors } from '../hooks/useChartColors';
-import { formatMoney } from '../utils/format';
+import { formatMoney, formatDateFriendly } from '../utils/format';
 import { TableSkeleton } from '../components/shared/Skeleton';
 import { useColorMode } from '../theme/colorMode';
 import type { EnrichedPosition, ActivityRow, LotRow } from '../types/portfolio';
@@ -47,12 +47,6 @@ interface LotTotals {
   value: number;
 }
 
-const fmtDate = (iso: string | undefined | null) => {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return String(iso).slice(0, 10);
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' });
-};
 
 function classifyActivity(r: ActivityRow): ChartEventType {
   const cat = (r.category || '').toUpperCase();
@@ -102,7 +96,7 @@ const EVENT_TOGGLE_CONFIG: { type: ChartEventType; label: string; colorPalette: 
 
 const PortfolioWorkspace: React.FC = () => {
   const { selected } = useAccountContext();
-  const { currency } = useUserPreferences();
+  const { currency, timezone } = useUserPreferences();
   const queryClient = useQueryClient();
   const chartColors = useChartColors();
   const { colorMode } = useColorMode();
@@ -166,58 +160,60 @@ const PortfolioWorkspace: React.FC = () => {
     return (raw?.data?.activity ?? raw?.activity ?? []) as ActivityRow[];
   }, [activityQuery.data]);
 
-  const barsQuery = useQuery(
-    ['workspaceBars', selectedSymbol, period],
-    async () => {
+  const barsQuery = useQuery({
+    queryKey: ['workspaceBars', selectedSymbol, period],
+    queryFn: async () => {
       if (!selectedSymbol) return [];
       const res = await marketDataApi.getHistory(selectedSymbol, period, '1d');
       return unwrapResponse<{ time: string; open: number; high: number; low: number; close: number; volume?: number }>(res, 'bars');
     },
-    { enabled: !!selectedSymbol, staleTime: 300000 }
-  );
+    enabled: !!selectedSymbol,
+    staleTime: 300000,
+  });
   const bars = barsQuery.data ?? [];
   const barsError = barsQuery.isError || (barsQuery.isSuccess && bars.length === 0);
 
-  const snapshotQuery = useQuery(
-    ['workspaceSnapshot', selectedSymbol],
-    async () => {
+  const snapshotQuery = useQuery({
+    queryKey: ['workspaceSnapshot', selectedSymbol],
+    queryFn: async () => {
       if (!selectedSymbol) return null;
       const res = await marketDataApi.getSnapshot(selectedSymbol);
       const d = (res as any)?.data;
       return d?.data?.snapshot ?? d?.snapshot ?? d ?? null;
     },
-    { enabled: !!selectedSymbol, staleTime: 600000 }
-  );
+    enabled: !!selectedSymbol,
+    staleTime: 600000,
+  });
   const snapshot = snapshotQuery.data as Record<string, any> | null;
 
   const selectedHolding = holdings.find(h => h.symbol === selectedSymbol);
-  const lotsQuery = useQuery(
-    ['workspaceTaxLots', selectedHolding?.id],
-    async () => {
+  const lotsQuery = useQuery({
+    queryKey: ['workspaceTaxLots', selectedHolding?.id],
+    queryFn: async () => {
       if (!selectedHolding?.id) return [];
       const res = await portfolioApi.getHoldingTaxLots(selectedHolding.id);
       return unwrapResponse<LotRow>(res, 'tax_lots');
     },
-    { enabled: !!selectedHolding?.id, staleTime: 60000 }
-  );
+    enabled: !!selectedHolding?.id,
+    staleTime: 60000,
+  });
   const lots = lotsQuery.data ?? [];
 
-  const ordersQuery = useQuery(
-    ['workspaceOrders', selectedSymbol],
-    async () => {
+  const ordersQuery = useQuery({
+    queryKey: ['workspaceOrders', selectedSymbol],
+    queryFn: async () => {
       if (!selectedSymbol) return [];
       const res = await api.get('/portfolio/orders', { params: { symbol: selectedSymbol, limit: 50 } });
       return res.data?.data ?? res.data ?? [];
     },
-    {
-      enabled: !!selectedSymbol,
-      staleTime: 15000,
-      refetchInterval: (data: any) => {
-        const active = (data ?? []).some((o: any) => ['submitted', 'pending_submit', 'partially_filled'].includes(o.status));
-        return active ? 5000 : false;
-      },
-    }
-  );
+    enabled: !!selectedSymbol,
+    staleTime: 15000,
+    refetchInterval: (query) => {
+      const data = query.state.data as any[] | undefined;
+      const active = (data ?? []).some((o: any) => ['submitted', 'pending_submit', 'partially_filled'].includes(o.status));
+      return active ? 5000 : false;
+    },
+  });
   const orders: any[] = ordersQuery.data ?? [];
 
   const filteredHoldings = useMemo(() => {
@@ -404,7 +400,7 @@ const PortfolioWorkspace: React.FC = () => {
     }
   }, [invalidateLotQueries]);
 
-  const isLoading = positionsQuery.isLoading;
+  const isLoading = positionsQuery.isPending;
 
   if (isLoading) {
     return (
@@ -713,7 +709,7 @@ const PortfolioWorkspace: React.FC = () => {
                     showHeader={false}
                     theme="dark"
                   />
-                ) : barsError && !barsQuery.isLoading ? (
+                ) : barsError && !barsQuery.isPending ? (
                   <Box h={`${chartHeight}px`} display="flex" flexDirection="column" alignItems="center" justifyContent="center" gap={3}>
                     <Text color="fg.muted">No price data available for {selectedSymbol}</Text>
                     <Button size="sm" colorPalette="brand" variant="outline" onClick={() => setShowAdvanced(true)}>
@@ -782,7 +778,7 @@ const PortfolioWorkspace: React.FC = () => {
                         <TableRow>
                           <TableCell colSpan={8}>
                             <Text fontSize="xs" color="fg.muted" textAlign="center" py={4}>
-                              {lotsQuery.isLoading ? 'Loading tax lots…' : `No tax lots synced for ${selectedSymbol ?? 'this symbol'}. Sync your brokerage to populate.`}
+                              {lotsQuery.isPending ? 'Loading tax lots…' : `No tax lots synced for ${selectedSymbol ?? 'this symbol'}. Sync your brokerage to populate.`}
                             </Text>
                           </TableCell>
                         </TableRow>
@@ -810,7 +806,7 @@ const PortfolioWorkspace: React.FC = () => {
                               bg={focused ? 'bg.muted' : approachingLT ? (isDark ? 'yellow.950' : 'yellow.50') : undefined}
                               css={{ '& .sell-icon': { opacity: 0, transition: 'opacity 0.15s' }, '&:hover .sell-icon': { opacity: 1 } }}
                             >
-                              <TableCell>{fmtDate(l.purchase_date)}</TableCell>
+                              <TableCell>{formatDateFriendly(l.purchase_date, timezone)}</TableCell>
                               <TableCell>
                                 <Box display="flex" gap={1}>
                                   <Badge size="sm" colorPalette={isLT ? 'green' : approachingLT ? 'yellow' : 'gray'}>
@@ -1034,7 +1030,7 @@ const PortfolioWorkspace: React.FC = () => {
                         const perShare = qty > 0 ? amt / qty : null;
                         return (
                           <TableRow id={`div-${day}-${idx}`} key={`div-${r.external_id || idx}`} bg={focused ? 'bg.muted' : undefined}>
-                            <TableCell>{fmtDate(r.ts)}</TableCell>
+                            <TableCell>{formatDateFriendly(r.ts, timezone)}</TableCell>
                             <TableCell textAlign="end">{amt ? formatMoney(amt, currency) : '-'}</TableCell>
                             <TableCell textAlign="end" color="fg.muted">{perShare != null ? formatMoney(perShare, currency, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '-'}</TableCell>
                           </TableRow>

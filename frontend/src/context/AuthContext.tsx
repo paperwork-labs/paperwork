@@ -29,7 +29,12 @@ export type AuthContextValue = {
   appSettings: AppSettings | null;
   appSettingsReady: boolean;
   login: (username: string, password: string) => Promise<void>;
-  register: (username: string, email: string, password: string, full_name?: string) => Promise<void>;
+  register: (
+    username: string,
+    email: string,
+    password: string,
+    full_name?: string,
+  ) => Promise<{ pendingApproval: boolean }>;
   logout: () => void;
   refreshMe: () => Promise<void>;
   refreshAppSettings: () => Promise<void>;
@@ -107,8 +112,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const register = async (username: string, email: string, password: string, full_name?: string) => {
-    await authApi.register({ username, email, password, full_name });
+    const data: any = await authApi.register({ username, email, password, full_name });
+    if (data?.is_approved === false) {
+      return { pendingApproval: true };
+    }
     await login(username, password);
+    return { pendingApproval: false };
   };
 
   const logout = React.useCallback(() => {
@@ -125,6 +134,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.addEventListener('auth:logout', handler);
     return () => window.removeEventListener('auth:logout', handler);
   }, [logout]);
+
+  // OAuth callback (and similar) writes qm_token then dispatches auth:login — re-hydrate React state
+  useEffect(() => {
+    const handleAuthLogin = () => {
+      let t: string | null = null;
+      try {
+        t = localStorage.getItem('qm_token');
+      } catch {
+        return;
+      }
+      if (!t) return;
+      setToken(t);
+      void (async () => {
+        try {
+          const me: any = await authApi.me();
+          setUser(me);
+          const pref = me?.ui_preferences?.color_mode_preference;
+          if (pref === 'system' || pref === 'light' || pref === 'dark') {
+            setColorModePreference(pref);
+          }
+          try {
+            const app = await appSettingsApi.get();
+            setAppSettings(app as AppSettings);
+          } catch {
+            setAppSettings(null);
+          } finally {
+            setAppSettingsReady(true);
+          }
+        } catch {
+          try {
+            localStorage.removeItem('qm_token');
+          } catch {
+            /* ignore */
+          }
+          setToken(null);
+          setUser(null);
+          setAppSettings(null);
+          setAppSettingsReady(true);
+        }
+      })();
+    };
+    window.addEventListener('auth:login', handleAuthLogin);
+    return () => window.removeEventListener('auth:login', handleAuthLogin);
+  }, [setColorModePreference]);
 
   const refreshMe = async () => {
     const me: any = await authApi.me();

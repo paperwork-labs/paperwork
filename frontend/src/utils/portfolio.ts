@@ -5,6 +5,7 @@
 
 import type { AccountData } from '../types/portfolio';
 import type { EnrichedPosition } from '../types/portfolio';
+import { formatRelativeTime } from './format';
 
 export interface BrokerAccountLike {
   id: number;
@@ -149,14 +150,8 @@ export function toStartEnd(range: string): { start?: string; end?: string } {
   }
 }
 
-/** Human-readable time ago from ISO string. */
+/** Human-readable time ago from ISO string. Delegates to formatRelativeTime. */
 export function timeAgo(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  const s = (Date.now() - d.getTime()) / 1000;
-  if (s < 60) return 'just now';
-  if (s < 3600) return `${Math.round(s / 60)}m ago`;
-  if (s < 86400) return `${Math.round(s / 3600)}h ago`;
-  return `${Math.round(s / 86400)}d ago`;
+  const result = formatRelativeTime(iso);
+  return result || '—';
 }

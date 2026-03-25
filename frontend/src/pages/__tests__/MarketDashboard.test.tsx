@@ -1,7 +1,8 @@
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
-import { screen, fireEvent, waitFor } from '@/test/testing-library';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
+import { screen, fireEvent, waitFor, cleanup } from '@/test/testing-library';
 import { renderWithProviders } from '../../test/render';
+import { marketDataApi } from '../../services/api';
 import MarketDashboard from '../MarketDashboard';
 
 vi.mock('../../components/charts/TradingViewChart', () => ({
@@ -16,13 +17,24 @@ vi.mock('../../services/api', () => {
   return {
     default: { get: vi.fn().mockResolvedValue({ data: {} }) },
     marketDataApi: {
+      // RegimeBanner: getCurrentRegime() returns axios body; queryFn reads resp.data.regime
       getCurrentRegime: vi.fn().mockResolvedValue({
-        regime_state: 'R2',
-        composite_score: 2.2,
-        as_of_date: '2026-01-08',
-        regime_multiplier: 0.75,
-        max_equity_exposure_pct: 90,
-        cash_floor_pct: 10,
+        data: {
+          regime: {
+            regime_state: 'R2',
+            composite_score: 2.2,
+            as_of_date: '2026-01-08',
+            regime_multiplier: 0.75,
+            max_equity_exposure_pct: 90,
+            cash_floor_pct: 10,
+            vix_spot: null,
+            vix3m_vix_ratio: null,
+            vvix_vix_ratio: null,
+            nh_nl: null,
+            pct_above_200d: null,
+            pct_above_50d: null,
+          },
+        },
       }),
       getHistory: vi.fn().mockResolvedValue({
         bars: [
@@ -87,9 +99,39 @@ vi.mock('../../services/api', () => {
 });
 
 describe('MarketDashboard', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  beforeEach(() => {
+    // Avoid flakes: ETF/holdings filter or collapsed "ranked" hides matrices; persisted view breaks overview.
+    localStorage.removeItem('axiomfolio:dashboard:collapsed');
+    localStorage.removeItem('axiomfolio:dashboard:view');
+    localStorage.removeItem('axiomfolio:market-dashboard:universe-filter');
+  });
+
   it('renders loading state before data is shown', () => {
     renderWithProviders(<MarketDashboard />, { route: '/' });
     expect(screen.getByText(/Loading market dashboard/i)).toBeInTheDocument();
+  });
+
+  it('shows default market state with empty data', async () => {
+    vi.mocked(marketDataApi.getDashboard).mockImplementationOnce(async () => ({
+      tracked_count: 0,
+      snapshot_count: 0,
+      regime: { stage_counts_normalized: {} },
+    }));
+    renderWithProviders(<MarketDashboard />, { route: '/' });
+    await waitFor(
+      () => {
+        expect(screen.queryByText(/Loading market dashboard/i)).not.toBeInTheDocument();
+      },
+      { timeout: 10000 },
+    );
+    const titles = await screen.findAllByText('Market Dashboard');
+    expect(titles.length).toBeGreaterThanOrEqual(1);
+    // Overview uses API snapshot_count when universe has no constituent list (empty dashboard).
+    expect(screen.getAllByText('0 / 0').length).toBeGreaterThanOrEqual(2);
   });
 
   it('marks repeated symbols across matrix columns', async () => {

@@ -15,82 +15,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class TestATREngineService:
-    """Test ATR Engine service functionality."""
-
-    @pytest.mark.asyncio
-    async def test_atr_engine_import(self):
-        """Test ATR engine can be imported and initialized."""
-        try:
-            from backend.services.analysis.atr_engine import atr_engine
-
-            # Basic smoke test
-            assert atr_engine is not None
-            assert hasattr(atr_engine, "calculate_enhanced_atr")
-            assert hasattr(atr_engine, "get_portfolio_atr")
-            assert hasattr(atr_engine, "process_major_indices")
-
-            logger.info("✅ ATR Engine import test passed")
-
-        except Exception as e:
-            pytest.fail(f"ATR Engine import failed: {e}")
-
-    @pytest.mark.asyncio
-    async def test_atr_calculation_basic(self):
-        """Test basic ATR calculation."""
-        try:
-            from backend.services.analysis.atr_engine import atr_engine
-
-            # Test with a known symbol
-            result = await atr_engine.calculate_enhanced_atr("AAPL")
-
-            # Basic validation
-            assert hasattr(result, "atr_value")
-            assert hasattr(result, "volatility_level")
-            assert hasattr(result, "confidence")
-
-            if result.atr_value > 0:
-                assert result.atr_value > 0, "ATR value should be positive"
-                assert result.volatility_level in ["LOW", "MEDIUM", "HIGH", "EXTREME"]
-                assert 0 <= result.confidence <= 1, "Confidence should be 0-1"
-                logger.info(
-                    f"✅ ATR calculation test passed: ATR={result.atr_value:.2f}"
-                )
-            else:
-                logger.warning("⚠️ ATR calculation returned zero (data unavailable)")
-
-        except Exception as e:
-            logger.warning(f"⚠️ ATR calculation test failed: {e}")
-
-    @pytest.mark.asyncio
-    async def test_portfolio_atr_calculation(self):
-        """Test portfolio ATR calculation."""
-        try:
-            from backend.services.analysis.atr_engine import atr_engine
-
-            test_symbols = ["AAPL", "MSFT"]
-            portfolio_atr = await atr_engine.get_portfolio_atr(test_symbols)
-
-            if portfolio_atr:
-                assert isinstance(portfolio_atr, dict)
-
-                for symbol in test_symbols:
-                    if symbol in portfolio_atr:
-                        atr_result = portfolio_atr[symbol]
-                        assert hasattr(atr_result, "atr_value")
-                        if atr_result.atr_value > 0:
-                            assert atr_result.atr_value > 0
-
-                logger.info(
-                    f"✅ Portfolio ATR test passed: {len(portfolio_atr)} results"
-                )
-            else:
-                logger.warning("⚠️ Portfolio ATR returned no results")
-
-        except Exception as e:
-            logger.warning(f"⚠️ Portfolio ATR test failed: {e}")
-
-
 class TestMarketDataService:
     """Test Market Data service functionality."""
 
@@ -300,66 +224,21 @@ class TestServiceIntegration:
     """Test integration between services."""
 
     @pytest.mark.asyncio
-    async def test_atr_to_discord_integration(self):
-        """Test ATR engine to Discord integration."""
-        try:
-            from backend.services.analysis.atr_engine import atr_engine
-            from backend.services.notifications.discord_service import discord_notifier
-
-            if not discord_notifier.is_configured():
-                pytest.skip("Discord not configured")
-
-            # Calculate ATR for test symbol
-            atr_result = await atr_engine.calculate_enhanced_atr("AAPL")
-
-            if atr_result.atr_value > 0:
-                # Send test signal to Discord
-                await discord_notifier.send_entry_signal(
-                    symbol="AAPL",
-                    price=195.50,
-                    atr_distance=2.5,
-                    confidence=0.75,
-                    reasons=["Integration test signal"],
-                    targets=[200.0, 205.0],
-                    stop_loss=190.0,
-                    risk_reward=2.0,
-                    atr_value=atr_result.atr_value,
-                    company_synopsis="Integration test",
-                )
-
-                logger.info("✅ ATR to Discord integration test passed")
-            else:
-                logger.warning("⚠️ ATR calculation failed for integration test")
-
-        except Exception as e:
-            logger.warning(f"⚠️ ATR to Discord integration test failed: {e}")
-
-    @pytest.mark.asyncio
-    async def test_market_data_to_atr_integration(self):
-        """Test market data to ATR integration."""
+    async def test_market_data_to_indicator_integration(self):
+        """Test market data to indicator engine integration."""
         try:
             from backend.services.market.market_data_service import market_data_service
-            from backend.services.analysis.atr_engine import atr_engine
 
-            # Get market data
             test_symbol = "AAPL"
             price = await market_data_service.get_current_price(test_symbol)
 
             if price and price > 0:
-                # Calculate ATR using market data
-                atr_result = await atr_engine.calculate_enhanced_atr(test_symbol)
-
-                if atr_result.atr_value > 0:
-                    logger.info(
-                        f"✅ Market data to ATR integration: Price=${price:.2f}, ATR=${atr_result.atr_value:.2f}"
-                    )
-                else:
-                    logger.warning("⚠️ ATR calculation failed with market data")
+                logger.info(f"✅ Market data integration: {test_symbol}=${price:.2f}")
             else:
                 logger.warning("⚠️ Market data not available for integration test")
 
         except Exception as e:
-            logger.warning(f"⚠️ Market data to ATR integration test failed: {e}")
+            logger.warning(f"⚠️ Market data integration test failed: {e}")
 
 
 # Test runners
@@ -368,12 +247,6 @@ async def run_service_tests():
     print("🧪 Running Service Tests...")
 
     try:
-        # Test ATR Engine
-        atr_test = TestATREngineService()
-        await atr_test.test_atr_engine_import()
-        await atr_test.test_atr_calculation_basic()
-        await atr_test.test_portfolio_atr_calculation()
-
         # Test Market Data Service
         market_test = TestMarketDataService()
         await market_test.test_market_data_service_import()
@@ -392,19 +265,9 @@ async def run_service_tests():
         discord_test.test_discord_configuration()
         await discord_test.test_discord_webhook_connectivity()
 
-        # Test Signal Generation Service
-        signal_test = TestSignalGenerationService()
-        await signal_test.test_signal_generator_import()
-        await signal_test.test_portfolio_signal_generation()
-
-        # Test Database Services
-        db_test = TestDatabaseServices()
-        db_test.test_database_connection()
-
         # Test Service Integration
         integration_test = TestServiceIntegration()
-        await integration_test.test_atr_to_discord_integration()
-        await integration_test.test_market_data_to_atr_integration()
+        await integration_test.test_market_data_to_indicator_integration()
 
         print("✅ Service tests completed!")
         return True

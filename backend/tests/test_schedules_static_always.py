@@ -96,9 +96,9 @@ def test_cron_schedule_model_crud(db_session):
 
 
 def test_render_sync_disabled_when_no_api_key():
-    from backend.services.render_sync_service import RenderCronSyncService
+    from backend.services.core.render_sync_service import RenderCronSyncService
 
-    with patch("backend.services.render_sync_service.settings") as mock_settings:
+    with patch("backend.services.core.render_sync_service.settings") as mock_settings:
         mock_settings.RENDER_API_KEY = None
         mock_settings.RENDER_OWNER_ID = None
         svc = RenderCronSyncService()
@@ -106,9 +106,9 @@ def test_render_sync_disabled_when_no_api_key():
 
 
 def test_render_sync_enabled_when_configured():
-    from backend.services.render_sync_service import RenderCronSyncService
+    from backend.services.core.render_sync_service import RenderCronSyncService
 
-    with patch("backend.services.render_sync_service.settings") as mock_settings:
+    with patch("backend.services.core.render_sync_service.settings") as mock_settings:
         mock_settings.RENDER_API_KEY = "rnd_test_key"
         mock_settings.RENDER_OWNER_ID = "usr-test"
         svc = RenderCronSyncService()
@@ -118,9 +118,9 @@ def test_render_sync_enabled_when_configured():
 def test_render_sync_all_skipped_without_key(db_session):
     if db_session is None:
         pytest.skip("No test DB")
-    from backend.services.render_sync_service import RenderCronSyncService
+    from backend.services.core.render_sync_service import RenderCronSyncService
 
-    with patch("backend.services.render_sync_service.settings") as mock_settings:
+    with patch("backend.services.core.render_sync_service.settings") as mock_settings:
         mock_settings.RENDER_API_KEY = None
         mock_settings.RENDER_OWNER_ID = None
         svc = RenderCronSyncService()
@@ -131,7 +131,7 @@ def test_render_sync_all_skipped_without_key(db_session):
 def test_render_sync_creates_new_cron(db_session):
     if db_session is None:
         pytest.skip("No test DB")
-    from backend.services.render_sync_service import RenderCronSyncService
+    from backend.services.core.render_sync_service import RenderCronSyncService
 
     schedule = CronSchedule(
         id="sync_test",
@@ -144,7 +144,7 @@ def test_render_sync_creates_new_cron(db_session):
     db_session.add(schedule)
     db_session.commit()
 
-    with patch("backend.services.render_sync_service.settings") as mock_settings:
+    with patch("backend.services.core.render_sync_service.settings") as mock_settings:
         mock_settings.RENDER_API_KEY = "rnd_key"
         mock_settings.RENDER_OWNER_ID = "usr-123"
         svc = RenderCronSyncService()
@@ -229,7 +229,7 @@ def test_create_and_delete_schedule(db_session):
     app.dependency_overrides[get_admin_user] = lambda: MagicMock()
     app.dependency_overrides[get_db] = override_db
     try:
-        with patch("backend.api.routes.admin_scheduler.render_sync_service") as mock_sync:
+        with patch("backend.api.routes.admin.scheduler.render_sync_service") as mock_sync:
             mock_sync.enabled = False
             mock_sync.sync_one.return_value = {"status": "skipped"}
 
@@ -273,7 +273,7 @@ def test_pause_and_resume_schedule(db_session):
     app.dependency_overrides[get_admin_user] = lambda: MagicMock()
     app.dependency_overrides[get_db] = override_db
     try:
-        with patch("backend.api.routes.admin_scheduler.render_sync_service") as mock_sync:
+        with patch("backend.api.routes.admin.scheduler.render_sync_service") as mock_sync:
             mock_sync.enabled = False
             mock_sync.sync_one.return_value = {"status": "skipped"}
 
@@ -303,7 +303,7 @@ def test_sync_endpoint(db_session):
     app.dependency_overrides[get_admin_user] = lambda: MagicMock()
     app.dependency_overrides[get_db] = override_db
     try:
-        with patch("backend.api.routes.admin_scheduler.render_sync_service") as mock_sync:
+        with patch("backend.api.routes.admin.scheduler.render_sync_service") as mock_sync:
             mock_sync.sync_all.return_value = {"created": 0, "updated": 0, "deleted": 0, "errors": 0}
 
             resp = client.post("/api/v1/admin/schedules/sync")
@@ -323,9 +323,11 @@ def test_catalog_endpoint():
         assert "catalog" in data
         groups = data["catalog"]
         assert "market_data" in groups
-        assert len(groups["market_data"]) >= 5
+        assert len(groups["market_data"]) >= 1
         assert "portfolio" in groups
         assert len(groups["portfolio"]) >= 1
+        assert "maintenance" in groups
+        assert len(groups["maintenance"]) >= 1
     finally:
         app.dependency_overrides.pop(get_admin_user, None)
 
@@ -343,7 +345,7 @@ def test_audit_trail_on_create_and_delete(db_session):
     app.dependency_overrides[get_admin_user] = lambda: MagicMock(email="audit@test.local", username="audit")
     app.dependency_overrides[get_db] = override_db
     try:
-        with patch("backend.api.routes.admin_scheduler.render_sync_service") as mock_sync:
+        with patch("backend.api.routes.admin.scheduler.render_sync_service") as mock_sync:
             mock_sync.enabled = False
             mock_sync.sync_one.return_value = {"status": "skipped"}
 
@@ -411,7 +413,7 @@ def test_auto_seed_on_empty_table(db_session):
         pytest.skip("No test DB")
 
     from backend.database import get_db
-    import backend.api.routes.admin_scheduler as mod
+    import backend.api.routes.admin.scheduler as mod
 
     mod._seeded = False
 

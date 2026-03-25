@@ -8,7 +8,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
 
-from backend.services.order_service import OrderService, RiskViolation
+from backend.services.execution.order_service import OrderService, RiskViolation
 from backend.services.execution.risk_gate import MAX_ORDER_VALUE
 from backend.models.order import OrderStatus
 
@@ -98,7 +98,7 @@ class TestPreviewOrder:
         with pytest.raises(RiskViolation):
             await svc.preview_order(
                 db, symbol="AAPL", side="buy", order_type="market",
-                quantity=1000, created_by="test@test.com",
+                quantity=1000, user_id=1,
             )
 
     @pytest.mark.asyncio
@@ -111,7 +111,7 @@ class TestPreviewOrder:
         db.commit = MagicMock()
         db.refresh = MagicMock(side_effect=lambda o: setattr(o, 'id', 1))
 
-        with patch("backend.services.order_service.Order") as MockOrder:
+        with patch("backend.services.execution.order_service.Order") as MockOrder:
             mock_instance = MagicMock()
             mock_instance.id = 1
             mock_instance.status = OrderStatus.PREVIEW.value
@@ -119,7 +119,7 @@ class TestPreviewOrder:
 
             result = await svc.preview_order(
                 db, symbol="AAPL", side="buy", order_type="limit",
-                quantity=5, limit_price=150.0, created_by="test@test.com",
+                quantity=5, limit_price=150.0, user_id=1,
             )
             assert result["order_id"] == 1
             assert result["status"] == OrderStatus.PREVIEW.value
@@ -141,27 +141,23 @@ class TestSubmitOrder:
         db = MagicMock()
         mock_order = MagicMock()
         mock_order.status = OrderStatus.SUBMITTED.value
-        mock_order.created_by = "test@test.com"
         db.query.return_value.filter.return_value.first.return_value = mock_order
 
-        result = await svc.submit_order(db, order_id=1, created_by="test@test.com")
+        result = await svc.submit_order(db, order_id=1, user_id=1)
         assert "error" in result
 
     @pytest.mark.asyncio
     async def test_submit_rejects_wrong_user(self, svc):
         db = MagicMock()
-        mock_order = MagicMock()
-        mock_order.status = OrderStatus.PREVIEW.value
-        mock_order.created_by = "alice@test.com"
-        db.query.return_value.filter.return_value.first.return_value = mock_order
+        db.query.return_value.filter.return_value.first.return_value = None
 
-        result = await svc.submit_order(db, order_id=1, created_by="bob@test.com")
-        assert result["error"] == "Forbidden"
+        result = await svc.submit_order(db, order_id=1, user_id=999)
+        assert result["error"] == "Order not found"
 
     @pytest.mark.asyncio
     async def test_submit_not_found(self, svc):
         db = MagicMock()
         db.query.return_value.filter.return_value.first.return_value = None
 
-        result = await svc.submit_order(db, order_id=999)
+        result = await svc.submit_order(db, order_id=999, user_id=1)
         assert result["error"] == "Order not found"

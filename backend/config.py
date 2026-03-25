@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     FINNHUB_API_KEY: Optional[str] = None
     TWELVE_DATA_API_KEY: Optional[str] = None
     FMP_API_KEY: Optional[str] = None
+    
+    # LLM / Agent API Keys
+    OPENAI_API_KEY: Optional[str] = None
+    # Agent autonomy level: "full" (auto-execute all), "safe" (auto-execute safe only), "ask" (always ask)
+    AGENT_AUTONOMY_LEVEL: str = "safe"
 
     # TastyTrade Configuration (OAuth — v12+ SDK)
     # Dev fallback only; production credentials stored per-user in account_credentials table
@@ -47,6 +52,10 @@ class Settings(BaseSettings):
     IBKR_FLEX_LOOKBACK_YEARS: int = (
         10  # Intended history window; configure FlexQuery accordingly
     )
+    # IBKR Gateway TOTP (for automated 2FA login via IBC)
+    IBKR_TOTP_SECRET: Optional[str] = None  # Base32 TOTP secret from IBKR Authenticator setup
+    IBKR_USERNAME: Optional[str] = None  # Gateway login username
+    IBKR_PASSWORD: Optional[str] = None  # Gateway login password (use secrets manager in prod)
 
     # Alpaca Configuration
     ALPACA_API_KEY: Optional[str] = None
@@ -75,7 +84,8 @@ class Settings(BaseSettings):
     # Security Configuration
     SECRET_KEY: str = "your-secret-key-here-change-in-production"
     OAUTH_STATE_SECRET: Optional[str] = None
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     ENCRYPTION_KEY: Optional[str] = None
     ENABLE_TRADING: bool = False
     ALLOW_LIVE_ORDERS: bool = False
@@ -84,6 +94,24 @@ class Settings(BaseSettings):
     AUTO_MIGRATE_ON_STARTUP: bool = False
     AUTO_WARM_ON_STARTUP: bool = False
     AUTO_WARM_STALE_MINUTES: int = 120
+
+    # Risk management
+    MAX_SINGLE_POSITION_PCT: float = 0.15
+
+    # Google OAuth
+    GOOGLE_CLIENT_ID: Optional[str] = None
+    GOOGLE_CLIENT_SECRET: Optional[str] = None
+    GOOGLE_REDIRECT_URI: Optional[str] = None
+
+    # Apple Sign-In
+    APPLE_CLIENT_ID: Optional[str] = None
+    APPLE_TEAM_ID: Optional[str] = None
+    APPLE_KEY_ID: Optional[str] = None
+    APPLE_PRIVATE_KEY: Optional[str] = None
+    APPLE_REDIRECT_URI: Optional[str] = None
+
+    # Email verification (Resend)
+    RESEND_API_KEY: Optional[str] = None
 
     # Frontend origin for OAuth redirects (falls back to first CORS_ORIGINS entry)
     FRONTEND_ORIGIN: Optional[str] = None

@@ -20,7 +20,8 @@ import {
 } from '@chakra-ui/react';
 import { FiChevronDown, FiChevronRight } from 'react-icons/fi';
 import api, { portfolioApi } from '../../services/api';
-import { formatMoney } from '../../utils/format';
+import { formatMoney, formatDateFriendly } from '../../utils/format';
+import { useUserPreferences } from '../../hooks/useUserPreferences';
 import type { OrderSide, OrderStatus } from '../../types/orders';
 
 const ORDER_TYPES = ['market', 'limit', 'stop', 'stop_limit'] as const;
@@ -86,6 +87,7 @@ export default function OrderModal({
   positionId,
   onOrderPlaced,
 }: OrderModalProps) {
+  const { timezone } = useUserPreferences();
   const [step, setStep] = useState(1);
   const [side, setSide] = useState<OrderSide>(initialSide);
   const [orderType, setOrderType] = useState<OrderTypeOption>('market');
@@ -368,7 +370,7 @@ export default function OrderModal({
                                       <input type="checkbox" checked={checked} readOnly style={{ cursor: 'pointer' }} />
                                     </Box>
                                     <Box as="td" py="2px">
-                                      {lot.purchase_date ? new Date(lot.purchase_date).toLocaleDateString() : '—'}
+                                      {formatDateFriendly(lot.purchase_date, timezone)}
                                     </Box>
                                     <Box as="td" py="2px" textAlign="end">{lot.shares}</Box>
                                     <Box as="td" py="2px" textAlign="end">{formatMoney(lot.cost_per_share, CURRENCY)}</Box>

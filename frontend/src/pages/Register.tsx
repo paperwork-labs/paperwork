@@ -22,7 +22,11 @@ const Register: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await register(username, email, password, fullName);
+      const { pendingApproval } = await register(username, email, password, fullName);
+      if (pendingApproval) {
+        navigate('/login', { replace: true, state: { registeredPendingApproval: true } });
+        return;
+      }
       navigate('/');
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || err?.message || 'Registration failed');
@@ -40,7 +44,8 @@ const Register: React.FC = () => {
               Create account
             </Text>
             <Text mt={1} fontSize="sm" color="fg.muted">
-              One minute setup. You can connect brokerages after.
+              One minute setup. You can connect brokerages after. New accounts may need administrator approval before
+              you can sign in.
             </Text>
           </Box>
           <FormField label="Username" required>

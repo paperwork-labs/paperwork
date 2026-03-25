@@ -11,6 +11,8 @@ import { Page, PageHeader } from '../components/ui/Page';
 import EmptyState from '../components/ui/EmptyState';
 import StrategyTemplateCard from '../components/strategy/StrategyTemplateCard';
 import api from '../services/api';
+import { formatDateFriendly } from '../utils/format';
+import { useUserPreferences } from '../hooks/useUserPreferences';
 import type { Strategy, StrategyStatus, StrategyTemplate } from '../types/strategy';
 
 function extractData<T>(resp: { data?: { data?: T } }): T {
@@ -28,9 +30,11 @@ const STATUS_CONFIG: Record<StrategyStatus, { color: string; icon: typeof FiPlay
 function StrategyCard({
   strategy,
   onClick,
+  timezone,
 }: {
   strategy: Strategy;
   onClick: () => void;
+  timezone?: string;
 }) {
   const cfg = STATUS_CONFIG[strategy.status] ?? STATUS_CONFIG.draft;
 
@@ -63,7 +67,7 @@ function StrategyCard({
           )}
           <HStack gap={3} fontSize="xs" color="fg.muted">
             <Text>Type: {strategy.strategy_type}</Text>
-            <Text>Created: {new Date(strategy.created_at).toLocaleDateString()}</Text>
+            <Text>Created: {formatDateFriendly(strategy.created_at, timezone)}</Text>
           </HStack>
         </VStack>
       </CardBody>
@@ -73,6 +77,7 @@ function StrategyCard({
 
 const Strategies: React.FC = () => {
   const navigate = useNavigate();
+  const { timezone } = useUserPreferences();
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [templates, setTemplates] = useState<StrategyTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -222,6 +227,7 @@ const Strategies: React.FC = () => {
                 key={s.id}
                 strategy={s}
                 onClick={() => navigate(`/strategies/${s.id}`)}
+                timezone={timezone}
               />
             ))}
           </SimpleGrid>

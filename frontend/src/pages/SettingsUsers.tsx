@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Button,
@@ -14,13 +14,23 @@ import {
   TableColumnHeader,
   TableCell,
   TableScrollArea,
-  CardRoot,
-  CardBody,
+  DialogRoot,
+  DialogBackdrop,
+  DialogPositioner,
+  DialogContent,
+  DialogTitle,
+  DialogBody,
+  DialogFooter,
+  IconButton,
 } from '@chakra-ui/react';
+import { FiTrash2 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-import { adminUsersApi } from '../services/api';
+import { adminUsersApi, approveUser, deleteUser } from '../services/api';
 import { formatDate } from '../utils/format';
 import { useUserPreferences } from '../hooks/useUserPreferences';
+import { useAuth } from '../context/AuthContext';
+import { PageHeader } from '../components/ui/Page';
+import AppCard from '../components/ui/AppCard';
 
 type UserRow = {
   id: number;
@@ -28,6 +38,7 @@ type UserRow = {
   email: string;
   role: string;
   is_active: boolean;
+  is_approved?: boolean;
   is_verified?: boolean;
   created_at?: string;
   last_login?: string | null;
@@ -50,14 +61,28 @@ const ROLE_OPTIONS = [
   { label: 'Admin', value: 'admin' },
 ];
 
+const SELECT_STYLE: React.CSSProperties = {
+  width: 160,
+  fontSize: 12,
+  padding: '6px 10px',
+  borderRadius: 10,
+  border: '1px solid var(--chakra-colors-border-subtle)',
+  background: 'var(--chakra-colors-bg-input)',
+  color: 'var(--chakra-colors-fg-default)',
+};
+
 const SettingsUsers: React.FC = () => {
   const { timezone } = useUserPreferences();
-  const [users, setUsers] = React.useState<UserRow[]>([]);
-  const [invites, setInvites] = React.useState<InviteRow[]>([]);
-  const [loading, setLoading] = React.useState(false);
-  const [inviteEmail, setInviteEmail] = React.useState('');
-  const [inviteRole, setInviteRole] = React.useState('readonly');
-  const [inviteUrl, setInviteUrl] = React.useState<string | null>(null);
+  const { user: currentUser } = useAuth();
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [invites, setInvites] = useState<InviteRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('readonly');
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [approvingUserId, setApprovingUserId] = useState<number | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -108,6 +133,34 @@ const SettingsUsers: React.FC = () => {
     }
   };
 
+  const approvePendingUser = async (userId: number) => {
+    setApprovingUserId(userId);
+    try {
+      await approveUser(userId);
+      await load();
+      toast.success('User approved');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || e?.message || 'Failed to approve user');
+    } finally {
+      setApprovingUserId(null);
+    }
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await deleteUser(deleteTarget.id);
+      toast.success(`User ${deleteTarget.username} deleted`);
+      setDeleteTarget(null);
+      await load();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || e?.message || 'Failed to delete user');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const copyInvite = async () => {
     if (!inviteUrl) return;
     try {
@@ -119,35 +172,28 @@ const SettingsUsers: React.FC = () => {
   };
 
   return (
-    <Box>
-      <Text fontSize="lg" fontWeight="semibold" mb={2}>
-        Users
-      </Text>
-      <Text fontSize="sm" color="fg.muted" mb={4}>
-        Invite users via email and manage roles.
-      </Text>
+    <Box w="full" maxW="960px" mx="auto">
+      <PageHeader
+        title="Users"
+        subtitle="Invite users via email and manage roles."
+      />
 
-      <CardRoot mb={4}>
-        <CardBody>
+      <VStack align="stretch" gap={6} mt={6}>
+        <AppCard>
+          <Text fontSize="sm" fontWeight="semibold" mb={3}>Invite New User</Text>
           <HStack gap={3} flexWrap="wrap">
             <Input
               placeholder="email@example.com"
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
               maxW="280px"
+              size="sm"
             />
             <select
               value={inviteRole}
               onChange={(e) => setInviteRole(e.target.value)}
-              style={{
-                width: 180,
-                fontSize: 12,
-                padding: '8px 10px',
-                borderRadius: 10,
-                border: '1px solid var(--chakra-colors-border-subtle)',
-                background: 'var(--chakra-colors-bg-input)',
-                color: 'var(--chakra-colors-fg-default)',
-              }}
+              style={SELECT_STYLE}
+              aria-label="Role"
             >
               {ROLE_OPTIONS.map((r) => (
                 <option key={r.value} value={r.value}>
@@ -169,98 +215,159 @@ const SettingsUsers: React.FC = () => {
               {inviteUrl}
             </Text>
           ) : null}
-        </CardBody>
-      </CardRoot>
+        </AppCard>
 
-      <TableScrollArea borderWidth="1px" borderColor="border.subtle" borderRadius="lg">
-        <TableRoot size="sm">
-          <TableHeader>
-            <TableRow>
-              <TableColumnHeader>User</TableColumnHeader>
-              <TableColumnHeader>Email</TableColumnHeader>
-              <TableColumnHeader>Role</TableColumnHeader>
-              <TableColumnHeader>Status</TableColumnHeader>
-              <TableColumnHeader>Actions</TableColumnHeader>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {users.map((u) => (
-              <TableRow key={u.id}>
-                <TableCell>
-                  <VStack align="start" gap={0}>
-                    <Text fontSize="sm" fontWeight="medium">{u.full_name || u.username}</Text>
-                    <Text fontSize="xs" color="fg.muted">@{u.username}</Text>
-                  </VStack>
-                </TableCell>
-                <TableCell>{u.email}</TableCell>
-                <TableCell>
-                  <select
-                    value={u.role}
-                    onChange={(e) => updateUser(u.id, { role: e.target.value })}
-                    style={{
-                      width: 160,
-                      fontSize: 12,
-                      padding: '6px 8px',
-                      borderRadius: 8,
-                      border: '1px solid var(--chakra-colors-border-subtle)',
-                      background: 'var(--chakra-colors-bg-input)',
-                      color: 'var(--chakra-colors-fg-default)',
-                    }}
-                  >
-                    {ROLE_OPTIONS.map((r) => (
-                      <option key={r.value} value={r.value}>
-                        {r.label}
-                      </option>
-                    ))}
-                  </select>
-                </TableCell>
-                <TableCell>
-                  {u.is_active ? <Badge colorScheme="green">Active</Badge> : <Badge colorScheme="red">Disabled</Badge>}
-                </TableCell>
-                <TableCell>
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    onClick={() => updateUser(u.id, { is_active: !u.is_active })}
-                  >
-                    {u.is_active ? 'Deactivate' : 'Activate'}
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </TableRoot>
-      </TableScrollArea>
-
-      {invites.length ? (
-        <Box mt={6}>
-          <Text fontSize="sm" fontWeight="semibold" mb={2}>
-            Pending Invites
-          </Text>
+        <Box>
+          <Text fontSize="sm" fontWeight="semibold" mb={2}>All Users</Text>
           <TableScrollArea borderWidth="1px" borderColor="border.subtle" borderRadius="lg">
             <TableRoot size="sm">
               <TableHeader>
                 <TableRow>
+                  <TableColumnHeader>User</TableColumnHeader>
                   <TableColumnHeader>Email</TableColumnHeader>
                   <TableColumnHeader>Role</TableColumnHeader>
-                  <TableColumnHeader>Expires</TableColumnHeader>
+                  <TableColumnHeader>Approval</TableColumnHeader>
+                  <TableColumnHeader>Status</TableColumnHeader>
+                  <TableColumnHeader>Actions</TableColumnHeader>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {invites
-                  .filter((i) => !i.accepted_at)
-                  .map((i) => (
-                    <TableRow key={i.id}>
-                      <TableCell>{i.email}</TableCell>
-                      <TableCell>{i.role}</TableCell>
-                      <TableCell>{formatDate(i.expires_at, timezone)}</TableCell>
-                    </TableRow>
-                  ))}
+                {users.map((u) => {
+                  const isPendingApproval = u.is_approved === false;
+                  return (
+                  <TableRow
+                    key={u.id}
+                    borderLeftWidth={isPendingApproval ? '3px' : undefined}
+                    borderLeftColor={isPendingApproval ? 'chart.warning' : undefined}
+                    bg={isPendingApproval ? { _light: 'amber.50', _dark: 'whiteAlpha.50' } : undefined}
+                  >
+                    <TableCell>
+                      <VStack align="start" gap={0}>
+                        <Text fontSize="sm" fontWeight="medium">{u.full_name || u.username}</Text>
+                        <Text fontSize="xs" color="fg.muted">@{u.username}</Text>
+                      </VStack>
+                    </TableCell>
+                    <TableCell>{u.email}</TableCell>
+                    <TableCell>
+                      <select
+                        value={u.role}
+                        onChange={(e) => updateUser(u.id, { role: e.target.value })}
+                        style={SELECT_STYLE}
+                        aria-label="Role"
+                      >
+                        {ROLE_OPTIONS.map((r) => (
+                          <option key={r.value} value={r.value}>
+                            {r.label}
+                          </option>
+                        ))}
+                      </select>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        colorPalette={isPendingApproval ? 'yellow' : 'green'}
+                        variant="subtle"
+                      >
+                        {isPendingApproval ? 'Pending' : 'Approved'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge colorPalette={u.is_active ? 'green' : 'red'} variant="subtle">
+                        {u.is_active ? 'Active' : 'Disabled'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <HStack gap={2} flexWrap="wrap">
+                        {isPendingApproval ? (
+                          <Button
+                            size="xs"
+                            colorPalette="green"
+                            loading={approvingUserId === u.id}
+                            onClick={() => void approvePendingUser(u.id)}
+                          >
+                            Approve
+                          </Button>
+                        ) : null}
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          onClick={() => updateUser(u.id, { is_active: !u.is_active })}
+                        >
+                          {u.is_active ? 'Deactivate' : 'Activate'}
+                        </Button>
+                        <IconButton
+                          size="xs"
+                          variant="ghost"
+                          colorPalette="red"
+                          aria-label={`Delete ${u.username}`}
+                          title={currentUser?.id === u.id ? 'You cannot delete your own account' : undefined}
+                          disabled={currentUser?.id === u.id}
+                          onClick={() => setDeleteTarget(u)}
+                        >
+                          <FiTrash2 size={14} />
+                        </IconButton>
+                      </HStack>
+                    </TableCell>
+                  </TableRow>
+                  );
+                })}
               </TableBody>
             </TableRoot>
           </TableScrollArea>
         </Box>
-      ) : null}
+
+        {invites.filter((i) => !i.accepted_at).length > 0 && (
+          <Box>
+            <Text fontSize="sm" fontWeight="semibold" mb={2}>Pending Invites</Text>
+            <TableScrollArea borderWidth="1px" borderColor="border.subtle" borderRadius="lg">
+              <TableRoot size="sm">
+                <TableHeader>
+                  <TableRow>
+                    <TableColumnHeader>Email</TableColumnHeader>
+                    <TableColumnHeader>Role</TableColumnHeader>
+                    <TableColumnHeader>Expires</TableColumnHeader>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {invites
+                    .filter((i) => !i.accepted_at)
+                    .map((i) => (
+                      <TableRow key={i.id}>
+                        <TableCell>{i.email}</TableCell>
+                        <TableCell>{i.role}</TableCell>
+                        <TableCell>{formatDate(i.expires_at, timezone)}</TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </TableRoot>
+            </TableScrollArea>
+          </Box>
+        )}
+      </VStack>
+
+      {/* Delete User Confirmation Dialog */}
+      <DialogRoot open={Boolean(deleteTarget)} onOpenChange={(d) => { if (!d.open) setDeleteTarget(null); }}>
+        <DialogBackdrop />
+        <DialogPositioner>
+          <DialogContent maxW="400px">
+            <DialogTitle>Delete User</DialogTitle>
+            <DialogBody>
+              <Text fontSize="sm">
+                Are you sure you want to delete <strong>{deleteTarget?.username}</strong>? This action cannot be undone.
+              </Text>
+            </DialogBody>
+            <DialogFooter>
+              <HStack gap={2}>
+                <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
+                  Cancel
+                </Button>
+                <Button colorPalette="red" loading={deleting} onClick={confirmDeleteUser}>
+                  Delete
+                </Button>
+              </HStack>
+            </DialogFooter>
+          </DialogContent>
+        </DialogPositioner>
+      </DialogRoot>
     </Box>
   );
 };

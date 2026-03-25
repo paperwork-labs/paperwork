@@ -9,9 +9,10 @@ import CoverageHealthStrip from '../../coverage/CoverageHealthStrip';
 import type { AdminHealthResponse } from '../../../types/adminHealth';
 import { renderWithProviders } from '../../../test/render';
 
-vi.mock('../../../utils/format', () => ({
-  formatDateTime: (v: string | undefined) => v || '—',
-}));
+vi.mock('../../../utils/format', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../utils/format')>();
+  return { ...actual };
+});
 
 afterEach(() => cleanup());
 
@@ -219,7 +220,7 @@ describe('AdminRunbook', () => {
     expect(header).toBeTruthy();
     await user.click(header);
     expect(screen.getByText(/One or more background jobs have failed/)).toBeTruthy();
-    expect(screen.getByText(/Admin > Jobs/)).toBeTruthy();
+    expect(screen.getByText(/System Status/)).toBeTruthy();
   });
 
   it('renders nothing when health is null', () => {

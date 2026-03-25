@@ -16,10 +16,10 @@ def test_admin_stage_repair_requires_admin():
 
 
 def test_admin_stage_repair_payload(db_session):
-    from backend.api.routes import market_data as routes
+    from backend.database import get_db
 
     app.dependency_overrides[get_admin_user] = object
-    app.dependency_overrides[routes.get_db] = lambda: db_session
+    app.dependency_overrides[get_db] = lambda: db_session
     try:
         now = datetime.now(timezone.utc)
         db_session.add(
@@ -134,4 +134,4 @@ def test_admin_stage_repair_payload(db_session):
         assert ccc.previous_stage_days is None
     finally:
         app.dependency_overrides.pop(get_admin_user, None)
-        app.dependency_overrides.pop(routes.get_db, None)
+        app.dependency_overrides.pop(get_db, None)

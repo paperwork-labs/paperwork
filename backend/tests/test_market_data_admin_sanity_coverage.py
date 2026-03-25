@@ -22,10 +22,11 @@ def allow_admin_user():
 
 
 def test_admin_sanity_coverage_payload(db_session, monkeypatch):
-    from backend.api.routes import market_data as routes
+    from backend.api.routes.market import admin as routes
+    from backend.database import get_db
 
     # Force route codepaths to use pytest DB session.
-    app.dependency_overrides[routes.get_db] = lambda: db_session
+    app.dependency_overrides[get_db] = lambda: db_session
     try:
         monkeypatch.setattr(routes, "tracked_symbols", lambda _db, redis_client=None: ["AAA", "BBB"])
 
@@ -69,6 +70,6 @@ def test_admin_sanity_coverage_payload(db_session, monkeypatch):
         assert data["benchmark"]["symbol"] == "SPY"
         assert data["benchmark"]["ok"] is False
     finally:
-        app.dependency_overrides.pop(routes.get_db, None)
+        app.dependency_overrides.pop(get_db, None)
 
 

@@ -3,6 +3,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.api.main import app
+from backend.tests.auth_test_utils import approve_user_for_login_tests
 
 
 @pytest.fixture(scope="module")
@@ -16,6 +17,7 @@ def client():
 def _register_and_login(client, username: str, password: str, email: str):
     r = client.post("/api/v1/auth/register", json={"username": username, "email": email, "password": password})
     assert r.status_code == 200
+    approve_user_for_login_tests(username)
     r2 = client.post("/api/v1/auth/login", json={"username": username, "password": password})
     assert r2.status_code == 200
     token = r2.json()["access_token"]

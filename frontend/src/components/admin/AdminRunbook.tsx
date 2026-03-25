@@ -18,10 +18,10 @@ const RUNBOOK: Record<string, RunbookEntry> = {
   coverage: {
     what: 'Daily price coverage has dropped below the required fill percentage or has stale trading dates.',
     steps: [
-      'Click "Refresh Coverage" in Safe Actions.',
-      'If stale, try "Backfill Daily Coverage (Tracked)" or "Backfill Daily (Stale Only)" from Backfill Actions.',
-      'Check Admin > Jobs for failed coverage tasks.',
-      'Check Admin > Schedules to verify the hourly coverage monitor is active.',
+      'Auto-ops checks health every 15 minutes and triggers backfills automatically.',
+      'Click "Refresh Coverage" in Safe Actions to see current state.',
+      'If still stale, try "Backfill Daily Coverage (Tracked)" or "Backfill Daily (Stale Only)" from Backfill Actions.',
+      'Check System Status for failed nightly pipeline or backfill tasks.',
     ],
     threshold: (t) =>
       `Daily fill >= ${t.coverage_daily_pct_min ?? 95}%, stale daily rows <= ${t.coverage_stale_daily_max ?? 0}`,
@@ -30,9 +30,9 @@ const RUNBOOK: Record<string, RunbookEntry> = {
     what: 'Stage analysis has too many unknowns, invalid rows, or monotonicity violations in stage duration counters.',
     steps: [
       'Ensure daily bars are backfilled — stages cannot compute without OHLCV data. Run "Backfill Daily Coverage (Tracked)" from Backfill Actions.',
-      'Run "Recompute Indicators (Market Snapshot)" under Show Advanced > Maintenance to recalculate stage labels.',
-      'Run "Repair Stage History" under Show Advanced > Maintenance to fix stage duration counters (current_stage_days) across history.',
-      'Check Admin > Jobs for failed compute or backfill tasks.',
+      'Run "Recompute Indicators (Market Snapshot)" under Operator Actions > Advanced Controls > Maintenance to recalculate stage labels.',
+      'Run "Repair Stage History" under Operator Actions > Advanced Controls > Maintenance to fix stage duration counters (current_stage_days) across history.',
+      'Check System Status for failed compute or backfill tasks.',
     ],
     contextualSteps: (dim) => {
       const steps: string[] = [];
@@ -41,16 +41,16 @@ const RUNBOOK: Record<string, RunbookEntry> = {
       const invalidCount = Number(dim.invalid_count ?? 0);
 
       if (unknownRate > 0.35) {
-        steps.push('Too many UNKNOWN stages — daily bars are likely missing. Run "Backfill Daily Coverage (Tracked)" first, then "Recompute Indicators (Market Snapshot)" under Show Advanced > Maintenance.');
+        steps.push('Too many UNKNOWN stages — daily bars are likely missing. Run "Backfill Daily Coverage (Tracked)" first, then "Recompute Indicators (Market Snapshot)" under Operator Actions > Advanced Controls > Maintenance.');
       }
       if (monotonicity > 0) {
-        steps.push('Stage day-counter gaps detected — run "Repair Stage History" under Show Advanced > Maintenance. This recomputes current_stage_days and previous_stage fields across the last 120 days of history.');
+        steps.push('Stage day-counter gaps detected — run "Repair Stage History" under Operator Actions > Advanced Controls > Maintenance. This recomputes current_stage_days and previous_stage fields across the last 120 days of history.');
       }
       if (invalidCount > 0) {
-        steps.push('Invalid stage rows found — check Admin > Jobs for failed indicator compute tasks, then re-run "Recompute Indicators".');
+        steps.push('Invalid stage rows found — check System Status for failed indicator compute tasks, then re-run "Recompute Indicators (Market Snapshot)".');
       }
       if (unknownRate <= 0.35 && monotonicity === 0 && invalidCount === 0) {
-        steps.push('All stage sub-checks are passing. If this dimension is still red, check Admin > Jobs for any ongoing issues.');
+        steps.push('All stage sub-checks are passing. If this dimension is still red, check System Status for any ongoing issues.');
       }
       return steps;
     },
@@ -66,7 +66,7 @@ const RUNBOOK: Record<string, RunbookEntry> = {
   jobs: {
     what: 'One or more background jobs have failed in the lookback window.',
     steps: [
-      'Go to Admin > Jobs to inspect the failed task and error message.',
+      'Go to System Status to inspect the failed task and error message.',
       'Re-trigger the task from Operator Actions (Safe or Backfill sections).',
       'If the error is environmental (API key, network), fix the root cause. The schedule auto-retries on the next cron tick.',
     ],
@@ -76,9 +76,9 @@ const RUNBOOK: Record<string, RunbookEntry> = {
   regime: {
     what: 'Market regime data is missing or stale (>48h since last computation).',
     steps: [
-      'Check Admin > Jobs for failed "compute_daily_regime" tasks.',
+      'Check System Status for failed nightly pipeline or regime tasks.',
       'Verify VIX/breadth data feeds are accessible (yfinance for ^VIX, ^VIX3M).',
-      'The regime computation runs nightly at 01:30 UTC. Trigger manually from Admin > Schedules if needed.',
+      'Regime computation runs as part of the nightly pipeline. Click "Compute Market Regime" in Safe Actions to trigger manually.',
       'If breadth data (% >200D, % >50D) is off, ensure the nightly indicator pipeline ran successfully first.',
     ],
     threshold: () => 'Regime data must be less than 48 hours old',
@@ -91,9 +91,9 @@ const RUNBOOK: Record<string, RunbookEntry> = {
   audit: {
     what: 'Market audit detected that daily or snapshot fill percentages are below acceptable thresholds for the tracked universe.',
     steps: [
-      'If audit shows "no data": the nightly audit cron has not run yet. It runs automatically at 02:45 UTC daily. You can trigger it manually from Admin > Schedules by clicking the play button next to "admin_market_data_audit".',
+      'Auto-ops checks health every 15 minutes and triggers remediation automatically.',
       'For low daily fill: run "Backfill Daily Coverage (Tracked)" from Backfill Actions.',
-      'For low snapshot fill: open Show Advanced and run "Backfill Snapshot History (period)".',
+      'For low snapshot fill: open Operator Actions > Advanced Controls and run "Backfill Snapshot History (period)".',
       'If specific symbols are listed as missing, verify they are still tracked in Market > Tracked.',
     ],
     threshold: (t) =>

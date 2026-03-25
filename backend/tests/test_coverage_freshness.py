@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 import pytest
 
 from backend.api.main import app
-from backend.api.routes.market_data import get_market_data_viewer
+from backend.api.dependencies import get_market_data_viewer
 from backend.database import get_db
 from backend.models.market_data import PriceData
 from backend.models.market_data import MarketSnapshot

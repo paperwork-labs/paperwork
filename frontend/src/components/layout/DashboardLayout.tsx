@@ -19,6 +19,10 @@ import {
   Button,
   Portal,
   useMediaQuery,
+  TooltipRoot,
+  TooltipTrigger,
+  TooltipPositioner,
+  TooltipContent,
 } from '@chakra-ui/react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -46,6 +50,7 @@ import { useAccountContext } from '../../context/AccountContext';
 import { useAuth } from '../../context/AuthContext';
 import AppDivider from '../ui/AppDivider';
 import AppLogo from '../ui/AppLogo';
+import useAdminHealth from '../../hooks/useAdminHealth';
 
 const SIDEBAR_OPEN_STORAGE_KEY = 'qm.ui.sidebar_open';
 const LAST_ROUTE_STORAGE_KEY = 'qm.ui.last_route';
@@ -65,7 +70,6 @@ const marketItems = [
   { label: 'Dashboard', icon: FiHome, path: '/' },
   { label: 'Tracked', icon: FiList, path: '/market/tracked' },
   { label: 'Intelligence', icon: FiFileText, path: '/market/intelligence' },
-  { label: 'Coverage', icon: FiActivity, path: '/market/coverage' },
   { label: 'Education', icon: FiBook, path: '/market/education' },
 ];
 
@@ -99,64 +103,58 @@ interface NavItemProps {
   showLabel?: boolean;
 }
 
-const NavItem: React.FC<NavItemProps> = ({ icon: Icon, label, path, isActive, onClick, badge, showLabel = true }) => {
-  const hoverBg = 'bg.muted';
-  const activeBg = 'bg.subtle';
-  const activeColor = 'fg.default';
-  const color = 'fg.muted';
-  const hoverColor = 'fg.default';
-
-  return (
-    <Button
-      variant="ghost"
-      alignItems="center"
-      px={4}
-      py={3}
-      cursor="pointer"
-      fontWeight="semibold"
-      transition="all 0.2s"
-      borderRadius="lg"
-      justifyContent={showLabel ? 'flex-start' : 'center'}
-      w="full"
-      textAlign="left"
-      bg={isActive ? activeBg : 'transparent'}
-      color={isActive ? activeColor : color}
-      aria-current={isActive ? 'page' : undefined}
-      _hover={{
-        bg: isActive ? activeBg : hoverBg,
-        color: isActive ? activeColor : hoverColor,
-      }}
-      onClick={onClick}
-      position="relative"
-      data-nav-path={path}
-      data-active={isActive ? 'true' : 'false'}
-    >
-      <Icon size={18} />
-      {showLabel && (
-        <Text ml={3} fontSize="sm">
-          {label}
-        </Text>
-      )}
-      {badge && badge > 0 && (
-        <Badge
-          ml="auto"
-          size="sm"
-          colorScheme="red"
-          variant="solid"
-          borderRadius="full"
-          minW={5}
-          h={5}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          fontSize="xs"
-        >
-          {badge > 99 ? '99+' : badge}
-        </Badge>
-      )}
-    </Button>
-  );
-};
+const NavItem: React.FC<NavItemProps> = ({ icon: Icon, label, path, isActive, onClick, badge, showLabel = true }) => (
+  <Button
+    variant="ghost"
+    alignItems="center"
+    px={4}
+    py={2.5}
+    cursor="pointer"
+    fontWeight={isActive ? 'semibold' : 'medium'}
+    transition="all 200ms ease"
+    borderRadius="lg"
+    justifyContent={showLabel ? 'flex-start' : 'center'}
+    w="full"
+    textAlign="left"
+    bg={isActive ? 'bg.subtle' : 'transparent'}
+    color={isActive ? 'fg.default' : 'fg.muted'}
+    borderLeft={isActive && showLabel ? '2px solid' : '2px solid transparent'}
+    borderLeftColor={isActive && showLabel ? 'amber.500' : 'transparent'}
+    aria-current={isActive ? 'page' : undefined}
+    _hover={{
+      bg: isActive ? 'bg.subtle' : 'bg.muted',
+      color: 'fg.default',
+    }}
+    onClick={onClick}
+    position="relative"
+    data-nav-path={path}
+    data-active={isActive ? 'true' : 'false'}
+  >
+    <Icon size={17} />
+    {showLabel && (
+      <Text ml={3} fontSize="sm">
+        {label}
+      </Text>
+    )}
+    {badge && badge > 0 && (
+      <Badge
+        ml="auto"
+        size="sm"
+        colorScheme="red"
+        variant="solid"
+        borderRadius="full"
+        minW={5}
+        h={5}
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+        fontSize="xs"
+      >
+        {badge > 99 ? '99+' : badge}
+      </Badge>
+    )}
+  </Button>
+);
 
 import { CompactAccountSelector as AccountSelector } from '../shared/CompactAccountSelector';
 
@@ -190,6 +188,11 @@ const DashboardLayout: React.FC = () => {
   const isAdmin = user?.role === 'admin';
   const portfolioEnabled = isAdmin || (!marketOnly && Boolean(appSettings?.portfolio_enabled));
   const strategyEnabled = isAdmin || (!marketOnly && Boolean(appSettings?.strategy_enabled));
+
+  const { health: adminHealth, loading: healthLoading } = useAdminHealth();
+  const healthStatus = adminHealth?.composite_status ?? 'red';
+  const healthReason = adminHealth?.composite_reason ?? 'Checking system health...';
+  const healthDotColor = healthStatus === 'green' ? 'status.success' : healthStatus === 'yellow' ? 'status.warning' : 'status.danger';
 
   useEffect(() => {
     try {
@@ -263,7 +266,7 @@ const DashboardLayout: React.FC = () => {
   const renderSection = (title: string, items: typeof marketItems, showLabel: boolean) => (
     <Box>
       {showLabel ? (
-        <Text fontSize="xs" color="fg.muted" px={3} mb={1} mt={3}>
+        <Text fontSize="2xs" color="fg.subtle" px={4} mb={1.5} mt={4} fontWeight="semibold" letterSpacing="0.08em" textTransform="uppercase">
           {title}
         </Text>
       ) : null}
@@ -433,6 +436,40 @@ const DashboardLayout: React.FC = () => {
           </HStack>
 
           <HStack gap={4}>
+            {/* Health indicator (admin-only) */}
+            {isAdmin && !healthLoading && adminHealth ? (
+              <TooltipRoot>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    size="md"
+                    variant="ghost"
+                    aria-label="System Health"
+                    position="relative"
+                    color="fg.default"
+                    onClick={() => navigate('/settings/admin/system')}
+                  >
+                    <FiActivity />
+                    <Box
+                      position="absolute"
+                      top="6px"
+                      right="6px"
+                      borderRadius="full"
+                      bg={healthDotColor}
+                      w={2.5}
+                      h={2.5}
+                      border="2px solid"
+                      borderColor="bg.header"
+                    />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipPositioner>
+                  <TooltipContent fontSize="xs" maxW="240px">
+                    {healthReason}
+                  </TooltipContent>
+                </TooltipPositioner>
+              </TooltipRoot>
+            ) : null}
+
             <MenuRoot positioning={{ placement: 'bottom-end', strategy: 'fixed', gutter: 8 }}>
               <MenuTrigger asChild>
                 <IconButton size="md" variant="ghost" aria-label="Notifications" position="relative" color="fg.default">
@@ -502,7 +539,7 @@ const DashboardLayout: React.FC = () => {
               <MenuTrigger asChild>
                 <Button size="sm" variant="ghost">
                   <HStack gap={2}>
-                    <Box w={8} h={8} borderRadius="full" bg="brand.500" display="flex" alignItems="center" justifyContent="center">
+                    <Box w={8} h={8} borderRadius="full" bg="amber.500" display="flex" alignItems="center" justifyContent="center">
                       <Text fontSize="xs" fontWeight="bold" color="white">
                         {displayName(user).slice(0, 1).toUpperCase()}
                       </Text>
@@ -528,8 +565,8 @@ const DashboardLayout: React.FC = () => {
                       <MenuItem value="preferences" onClick={() => navigate('/settings/preferences')}>Preferences</MenuItem>
                       <MenuItem value="connections" onClick={() => navigate('/settings/connections')}>Connections</MenuItem>
                       {isAdmin ? (
-                        <MenuItem value="admin-dashboard" onClick={() => navigate('/settings/admin/dashboard')}>
-                          Admin Dashboard
+                        <MenuItem value="system-status" onClick={() => navigate('/settings/admin/system')}>
+                          System Status
                         </MenuItem>
                       ) : null}
                       <AppDivider />

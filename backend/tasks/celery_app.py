@@ -7,14 +7,23 @@ celery_app = Celery(
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
     include=[
-        "backend.tasks.account_sync",
+        # Market data (legacy monolith + new modular)
         "backend.tasks.market_data_tasks",
-        "backend.tasks.order_tasks",
-        "backend.tasks.strategy_tasks",
-        "backend.tasks.ibkr_watchdog",
-        "backend.tasks.reconciliation_tasks",
-        "backend.tasks.intelligence_tasks",
-        "backend.tasks.auto_ops_tasks",
+        "backend.tasks.market.backfill",
+        "backend.tasks.market.history",
+        "backend.tasks.market.regime",
+        "backend.tasks.market.coverage",
+        # Portfolio
+        "backend.tasks.portfolio.sync",
+        "backend.tasks.portfolio.reconciliation",
+        "backend.tasks.portfolio.orders",
+        # Strategy
+        "backend.tasks.strategy.tasks",
+        # Intelligence
+        "backend.tasks.intelligence.tasks",
+        # Operations
+        "backend.tasks.ops.auto_ops",
+        "backend.tasks.ops.ibkr_watchdog",
     ],
 )
 
@@ -28,8 +37,8 @@ celery_app.conf.task_queues = (
 )
 
 celery_app.conf.task_routes = {
-    "backend.tasks.account_sync.*": {"queue": "account_sync"},
-    "backend.tasks.order_tasks.*": {"queue": "orders"},
+    "backend.tasks.portfolio.sync.*": {"queue": "account_sync"},
+    "backend.tasks.portfolio.orders.*": {"queue": "orders"},
 }
 
 celery_app.conf.update(

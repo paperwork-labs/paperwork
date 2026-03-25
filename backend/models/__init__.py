@@ -22,6 +22,8 @@ from .instrument import Instrument, InstrumentType
 from .market_data import PriceData, MarketSnapshot, MarketSnapshotHistory, MarketRegime, JobRun
 from .market_tracked_plan import MarketTrackedPlan
 from .index_constituent import IndexConstituent
+from .historical_iv import HistoricalIV
+from .institutional_holding import InstitutionalHolding
 
 # Trading & Positions
 from .position import Position, PositionType, PositionStatus
@@ -55,6 +57,9 @@ from .strategy import Strategy, StrategyExecution
 # Watchlist
 from .watchlist import Watchlist
 
+# Agent / Auto-Ops
+from .agent_action import AgentAction
+
 # Essential models list
 __all__ = [
     "Base",
@@ -76,6 +81,8 @@ __all__ = [
     "JobRun",
     "MarketTrackedPlan",
     "IndexConstituent",
+    "HistoricalIV",
+    "InstitutionalHolding",
     "Position",
     "PositionType",
     "PositionStatus",
@@ -102,4 +109,5 @@ __all__ = [
     "OrderType",
     "OrderStatus",
     "Watchlist",
+    "AgentAction",
 ]

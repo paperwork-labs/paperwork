@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   portfolioApi,
   tasksApi,
@@ -13,67 +13,51 @@ import {
 import type { EnrichedPosition } from '../types/portfolio';
 import toast from 'react-hot-toast';
 
-// Main hook for live portfolio data (used by most components). Backward compat: thin wrapper.
 export const usePortfolio = () => {
-  return useQuery(
-    'livePortfolio',
-    async () => {
+  return useQuery({
+    queryKey: ['livePortfolio'],
+    queryFn: async () => {
       const result = await portfolioApi.getLive();
       return result.data;
     },
-    {
-      refetchInterval: 30000,
-      staleTime: 20000,
-      onError: (error) => {
-        console.error('Portfolio data fetch failed:', error);
-        toast.error('Failed to load portfolio data');
-      },
-    }
-  );
+    refetchInterval: 30000,
+    staleTime: 20000,
+  });
 };
 
-// Enriched stock positions with market data (stage, RS, etc.). For Holdings page.
 export const usePositions = (accountId?: string) => {
-  return useQuery<EnrichedPosition[]>(
-    ['portfolioStocks', accountId],
-    async () => {
+  return useQuery<EnrichedPosition[]>({
+    queryKey: ['portfolioStocks', accountId],
+    queryFn: async () => {
       const r = await portfolioApi.getStocks(accountId);
       return unwrapResponse<EnrichedPosition>(r, 'stocks');
     },
-    {
-      staleTime: 60000,
-      onError: (error) => {
-        const message = handleApiError(error);
-        toast.error(`Holdings: ${message}`);
-      },
-    }
-  );
+    staleTime: 60000,
+  });
 };
 
-// Options positions and summary. For Options page.
 export const useOptions = (accountId?: string) => {
-  const portfolio = useQuery(
-    ['portfolioOptions', accountId],
-    () => optionsApi.getPortfolio(accountId),
-    { staleTime: 60000 }
-  );
-  const summary = useQuery(
-    ['portfolioOptionsSummary', accountId],
-    () => optionsApi.getSummary(accountId),
-    { staleTime: 60000 }
-  );
+  const portfolio = useQuery({
+    queryKey: ['portfolioOptions', accountId],
+    queryFn: () => optionsApi.getPortfolio(accountId),
+    staleTime: 60000,
+  });
+  const summary = useQuery({
+    queryKey: ['portfolioOptionsSummary', accountId],
+    queryFn: () => optionsApi.getSummary(accountId),
+    staleTime: 60000,
+  });
   return {
     portfolio,
     summary,
-    data: portfolio.data?.data,
+    data: (portfolio.data as any)?.data,
     summaryData: summary.data,
-    isLoading: portfolio.isLoading || summary.isLoading,
+    isPending: portfolio.isPending || summary.isPending,
     isError: portfolio.isError || summary.isError,
     error: portfolio.error || summary.error,
   };
 };
 
-// Unified activity feed. For Transactions page.
 export interface UseActivityParams {
   accountId?: string;
   start?: string;
@@ -86,54 +70,39 @@ export interface UseActivityParams {
 }
 
 export const useActivity = (params: UseActivityParams = {}) => {
-  return useQuery(
-    ['portfolioActivity', params],
-    () => activityApi.getActivity(params),
-    {
-      staleTime: 30000,
-      onError: (error) => {
-        const message = handleApiError(error);
-        toast.error(`Activity: ${message}`);
-      },
-    }
-  );
+  return useQuery({
+    queryKey: ['portfolioActivity', params],
+    queryFn: () => activityApi.getActivity(params),
+    staleTime: 30000,
+  });
 };
 
-// Dividend history. For Transactions or dedicated view.
 export const useDividends = (accountId?: string, days: number = 365) => {
-  return useQuery(
-    ['portfolioDividends', accountId, days],
-    async () => {
+  return useQuery({
+    queryKey: ['portfolioDividends', accountId, days],
+    queryFn: async () => {
       const r = await portfolioApi.getDividends(accountId, days);
       return unwrapResponse(r, 'dividends');
     },
-    {
-      staleTime: 60000,
-      onError: (error) => {
-        const message = handleApiError(error);
-        toast.error(`Dividends: ${message}`);
-      },
-    }
-  );
+    staleTime: 60000,
+  });
 };
 
-// Available category view types (Personalized, By Sector, etc.)
 export const useCategoryViews = () => {
-  return useQuery(
-    'portfolioCategoryViews',
-    async () => {
+  return useQuery({
+    queryKey: ['portfolioCategoryViews'],
+    queryFn: async () => {
       const r = await portfolioApi.getCategoryViews();
       return unwrapResponse(r, 'views') as { key: string; label: string }[];
     },
-    { staleTime: 120000 }
-  );
+    staleTime: 120000,
+  });
 };
 
-// Categories with allocation data + uncategorized summary. For Categories page.
 export const useCategories = (categoryType?: string) => {
-  return useQuery(
-    ['portfolioCategories', categoryType ?? 'all'],
-    async () => {
+  return useQuery({
+    queryKey: ['portfolioCategories', categoryType ?? 'all'],
+    queryFn: async () => {
       const r = await portfolioApi.getCategories(categoryType);
       const raw = r as Record<string, any> | undefined;
       const nested = raw?.data?.data ?? raw?.data ?? raw;
@@ -147,26 +116,19 @@ export const useCategories = (categoryType?: string) => {
         },
       };
     },
-    {
-      staleTime: 60000,
-      onError: (error) => {
-        const message = handleApiError(error);
-        toast.error(`Categories: ${message}`);
-      },
-    }
-  );
+    staleTime: 60000,
+  });
 };
 
-// Positions for category assignment (no enrichment needed).
 export const useCategoryPositions = () => {
-  return useQuery(
-    'portfolioStocksForCategories',
-    async () => {
+  return useQuery({
+    queryKey: ['portfolioStocksForCategories'],
+    queryFn: async () => {
       const r = await portfolioApi.getStocks(undefined, false);
       return unwrapResponse<{ id: number; symbol: string; market_value?: number }>(r, 'stocks');
     },
-    { staleTime: 60000 }
-  );
+    staleTime: 60000,
+  });
 };
 
 export interface PortfolioInsightsData {
@@ -178,9 +140,9 @@ export interface PortfolioInsightsData {
 }
 
 export const usePortfolioInsights = () => {
-  return useQuery(
-    'portfolioInsights',
-    async () => {
+  return useQuery({
+    queryKey: ['portfolioInsights'],
+    queryFn: async () => {
       try {
         const r = await portfolioApi.getInsights();
         const raw = r as Record<string, any> | undefined;
@@ -190,11 +152,10 @@ export const usePortfolioInsights = () => {
         return null;
       }
     },
-    { staleTime: 300000 }
-  );
+    staleTime: 300000,
+  });
 };
 
-// Overview page: dashboard summary + accounts. Performance/analytics added when APIs exist.
 export const usePortfolioOverview = (accountId?: string) => {
   const summary = usePortfolioSummary(accountId);
   const accounts = usePortfolioAccounts();
@@ -203,195 +164,154 @@ export const usePortfolioOverview = (accountId?: string) => {
     accounts,
     data: summary.data,
     accountsData: accounts.data,
-    isLoading: summary.isLoading || accounts.isLoading,
+    isPending: summary.isPending || accounts.isPending,
     isError: summary.isError || accounts.isError,
     error: summary.error || accounts.error,
   };
 };
 
-// Portfolio value over time for performance chart.
 export const usePortfolioPerformanceHistory = (params: { accountId?: string; period?: string } = {}) => {
-  return useQuery<Array<{ date: string; total_value: number }>>(
-    ['portfolioPerformanceHistory', params.accountId, params.period],
-    async () => {
+  return useQuery<Array<{ date: string; total_value: number }>>({
+    queryKey: ['portfolioPerformanceHistory', params.accountId, params.period],
+    queryFn: async () => {
       const r = await portfolioApi.getPerformanceHistory(params);
       return unwrapResponse<{ date: string; total_value: number }>(r, 'series');
     },
-    { staleTime: 60000 }
-  );
+    staleTime: 60000,
+  });
 };
 
-// Hook for portfolio summary data
 export const usePortfolioSummary = (accountId?: string) => {
-  return useQuery(
-    ['portfolioSummary', accountId],
-    () => portfolioApi.getDashboard(accountId),
-    {
-      refetchInterval: 30000, // Refetch every 30 seconds
-      staleTime: 20000, // Consider data stale after 20 seconds
-      onError: (error) => {
-        const message = handleApiError(error);
-        toast.error(`Portfolio Error: ${message}`);
-      },
-    }
-  );
+  return useQuery({
+    queryKey: ['portfolioSummary', accountId],
+    queryFn: () => portfolioApi.getDashboard(accountId),
+    refetchInterval: 30000,
+    staleTime: 20000,
+  });
 };
 
-// Hook for portfolio health check
 export const usePortfolioHealth = () => {
-  return useQuery(
-    'portfolioHealth',
-    () => portfolioApi.getDashboard(),
-    {
-      refetchInterval: 60000, // Check every minute
-      staleTime: 30000,
-      onError: (error) => {
-        const message = handleApiError(error);
-        console.error('Portfolio health check failed:', message);
-      },
-    }
-  );
+  return useQuery({
+    queryKey: ['portfolioHealth'],
+    queryFn: () => portfolioApi.getDashboard(),
+    refetchInterval: 60000,
+    staleTime: 30000,
+  });
 };
 
-// Hook for portfolio accounts
 export const usePortfolioAccounts = () => {
-  return useQuery(
-    'portfolioAccounts',
-    accountsApi.list,
-    {
-      staleTime: 300000, // 5 minutes
-      onError: (error) => {
-        const message = handleApiError(error);
-        toast.error(`Accounts Error: ${message}`);
-      },
-    }
-  );
+  return useQuery({
+    queryKey: ['portfolioAccounts'],
+    queryFn: accountsApi.list,
+    staleTime: 300000,
+  });
 };
 
-// Hook for syncing portfolio data
 export const usePortfolioSync = () => {
   const queryClient = useQueryClient();
 
-  return useMutation(
-    portfolioApi.sync,
-    {
-      onMutate: () => {
-        toast.loading('Syncing portfolio data...', { id: 'portfolio-sync' });
-      },
-      onSuccess: () => {
-        queryClient.invalidateQueries('portfolioSummary');
-        queryClient.invalidateQueries('portfolioHealth');
-        queryClient.invalidateQueries('portfolioStocks');
-        queryClient.invalidateQueries('portfolioOptions');
-        queryClient.invalidateQueries('portfolioOptionsSummary');
-        queryClient.invalidateQueries('portfolioActivity');
-        queryClient.invalidateQueries('livePortfolio');
-        toast.success('Portfolio data synced successfully', { id: 'portfolio-sync' });
-      },
-      onError: (error) => {
-        const message = handleApiError(error);
-        toast.error(`Sync failed: ${message}`, { id: 'portfolio-sync' });
-      },
-    }
-  );
+  return useMutation({
+    mutationFn: portfolioApi.sync,
+    onMutate: () => {
+      toast.loading('Syncing portfolio data...', { id: 'portfolio-sync' });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portfolioSummary'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolioHealth'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolioStocks'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolioOptions'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolioOptionsSummary'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolioActivity'] });
+      queryClient.invalidateQueries({ queryKey: ['livePortfolio'] });
+      toast.success('Portfolio data synced successfully', { id: 'portfolio-sync' });
+    },
+    onError: (error: any) => {
+      const message = handleApiError(error);
+      toast.error(`Sync failed: ${message}`, { id: 'portfolio-sync' });
+    },
+  });
 };
 
-// Hook for sending portfolio digest
 export const usePortfolioDigest = () => {
-  return useMutation(
-    tasksApi.sendPortfolioDigest,
-    {
-      onMutate: () => {
-        toast.loading('Sending portfolio digest...', { id: 'portfolio-digest' });
-      },
-      onSuccess: (data) => {
-        toast.success('Portfolio digest sent to Discord', { id: 'portfolio-digest' });
-      },
-      onError: (error) => {
-        const message = handleApiError(error);
-        toast.error(`Failed to send digest: ${message}`, { id: 'portfolio-digest' });
-      },
-    }
-  );
+  return useMutation({
+    mutationFn: tasksApi.sendPortfolioDigest,
+    onMutate: () => {
+      toast.loading('Sending portfolio digest...', { id: 'portfolio-digest' });
+    },
+    onSuccess: () => {
+      toast.success('Portfolio digest sent to Discord', { id: 'portfolio-digest' });
+    },
+    onError: (error: any) => {
+      const message = handleApiError(error);
+      toast.error(`Failed to send digest: ${message}`, { id: 'portfolio-digest' });
+    },
+  });
 };
 
-// Hook for forcing portfolio alerts
 export const usePortfolioAlerts = () => {
-  return useMutation(
-    tasksApi.forcePortfolioAlerts,
-    {
-      onMutate: () => {
-        toast.loading('Generating portfolio alerts...', { id: 'portfolio-alerts' });
-      },
-      onSuccess: (data) => {
-        toast.success(`Generated ${data.alerts_generated || 0} portfolio alerts`, { id: 'portfolio-alerts' });
-      },
-      onError: (error) => {
-        const message = handleApiError(error);
-        toast.error(`Failed to generate alerts: ${message}`, { id: 'portfolio-alerts' });
-      },
-    }
-  );
+  return useMutation({
+    mutationFn: tasksApi.forcePortfolioAlerts,
+    onMutate: () => {
+      toast.loading('Generating portfolio alerts...', { id: 'portfolio-alerts' });
+    },
+    onSuccess: (data: any) => {
+      toast.success(`Generated ${data.alerts_generated || 0} portfolio alerts`, { id: 'portfolio-alerts' });
+    },
+    onError: (error: any) => {
+      const message = handleApiError(error);
+      toast.error(`Failed to generate alerts: ${message}`, { id: 'portfolio-alerts' });
+    },
+  });
 };
 
-// Hook for sending signals
 export const useSignals = () => {
-  return useMutation(
-    tasksApi.sendSignals,
-    {
-      onMutate: () => {
-        toast.loading('Generating trading signals...', { id: 'signals' });
-      },
-      onSuccess: (data) => {
-        toast.success('Trading signals sent to Discord', { id: 'signals' });
-      },
-      onError: (error) => {
-        const message = handleApiError(error);
-        toast.error(`Failed to send signals: ${message}`, { id: 'signals' });
-      },
-    }
-  );
+  return useMutation({
+    mutationFn: tasksApi.sendSignals,
+    onMutate: () => {
+      toast.loading('Generating trading signals...', { id: 'signals' });
+    },
+    onSuccess: () => {
+      toast.success('Trading signals sent to Discord', { id: 'signals' });
+    },
+    onError: (error: any) => {
+      const message = handleApiError(error);
+      toast.error(`Failed to send signals: ${message}`, { id: 'signals' });
+    },
+  });
 };
 
-// Hook for sending morning brew
 export const useMorningBrew = () => {
-  return useMutation(
-    tasksApi.sendMorningBrew,
-    {
-      onMutate: () => {
-        toast.loading('Preparing morning brew...', { id: 'morning-brew' });
-      },
-      onSuccess: (data) => {
-        toast.success('Morning brew sent to Discord', { id: 'morning-brew' });
-      },
-      onError: (error) => {
-        const message = handleApiError(error);
-        toast.error(`Failed to send morning brew: ${message}`, { id: 'morning-brew' });
-      },
-    }
-  );
+  return useMutation({
+    mutationFn: tasksApi.sendMorningBrew,
+    onMutate: () => {
+      toast.loading('Preparing morning brew...', { id: 'morning-brew' });
+    },
+    onSuccess: () => {
+      toast.success('Morning brew sent to Discord', { id: 'morning-brew' });
+    },
+    onError: (error: any) => {
+      const message = handleApiError(error);
+      toast.error(`Failed to send morning brew: ${message}`, { id: 'morning-brew' });
+    },
+  });
 };
 
-// Hook for system status
 export const useSystemStatus = () => {
-  return useMutation(
-    tasksApi.sendSystemStatus,
-    {
-      onMutate: () => {
-        toast.loading('Checking system status...', { id: 'system-status' });
-      },
-      onSuccess: (data) => {
-        toast.success('System status sent to Discord', { id: 'system-status' });
-      },
-      onError: (error) => {
-        const message = handleApiError(error);
-        toast.error(`System status check failed: ${message}`, { id: 'system-status' });
-      },
-    }
-  );
+  return useMutation({
+    mutationFn: tasksApi.sendSystemStatus,
+    onMutate: () => {
+      toast.loading('Checking system status...', { id: 'system-status' });
+    },
+    onSuccess: () => {
+      toast.success('System status sent to Discord', { id: 'system-status' });
+    },
+    onError: (error: any) => {
+      const message = handleApiError(error);
+      toast.error(`System status check failed: ${message}`, { id: 'system-status' });
+    },
+  });
 };
 
-// Combined hook for dashboard data
 export const useDashboardData = () => {
   const portfolioSummary = usePortfolioSummary();
   const portfolioHealth = usePortfolioHealth();
@@ -401,73 +321,71 @@ export const useDashboardData = () => {
     portfolio: portfolioSummary,
     health: portfolioHealth,
     accounts: portfolioAccounts,
-    isLoading: portfolioSummary.isLoading || portfolioHealth.isLoading,
+    isPending: portfolioSummary.isPending || portfolioHealth.isPending,
     isError: portfolioSummary.isError || portfolioHealth.isError,
     error: portfolioSummary.error || portfolioHealth.error,
   };
 };
 
-// Account balances (cash, margin, buying power, etc.)
 export const useAccountBalances = (accountId?: number) => {
-  return useQuery(
-    ['portfolio-balances', accountId],
-    async () => {
+  return useQuery({
+    queryKey: ['portfolio-balances', accountId],
+    queryFn: async () => {
       const r = await portfolioApi.getBalances(accountId);
       return (r as any)?.data?.data?.balances ?? (r as any)?.data?.balances ?? [];
     },
-    { staleTime: 60_000 }
-  );
+    staleTime: 60_000,
+  });
 };
 
-// Margin interest accruals
 export const useMarginInterest = (accountId?: number, period?: string) => {
-  return useQuery(
-    ['portfolio-margin-interest', accountId, period],
-    async () => {
+  return useQuery({
+    queryKey: ['portfolio-margin-interest', accountId, period],
+    queryFn: async () => {
       const r = await portfolioApi.getMarginInterest(accountId, period);
       return (r as any)?.data?.data?.margin_interest ?? (r as any)?.data?.margin_interest ?? [];
     },
-    { staleTime: 120_000 }
-  );
+    staleTime: 120_000,
+  });
 };
 
 export const useRealizedGains = (year?: number, accountId?: string) => {
-  return useQuery(
-    ['portfolio-realized-gains', year, accountId],
-    async () => {
+  return useQuery({
+    queryKey: ['portfolio-realized-gains', year, accountId],
+    queryFn: async () => {
       const r = await portfolioApi.getRealizedGains(year, accountId);
       return (r as any)?.data?.data ?? (r as any)?.data ?? {};
     },
-    { staleTime: 300_000 }
-  );
+    staleTime: 300_000,
+  });
 };
 
 export const useClosedPositions = (accountId?: string) => {
-  return useQuery(
-    ['portfolio-closed-positions', accountId],
-    async () => {
+  return useQuery({
+    queryKey: ['portfolio-closed-positions', accountId],
+    queryFn: async () => {
       const r = await portfolioApi.getClosedPositions(accountId);
       return (r as any)?.data?.data?.closed_positions ?? (r as any)?.data?.closed_positions ?? [];
     },
-    { staleTime: 300_000 }
-  );
+    staleTime: 300_000,
+  });
 };
 
 export const useDividendSummary = (accountId?: string) => {
-  return useQuery(
-    ['portfolio-dividend-summary', accountId],
-    async () => {
+  return useQuery({
+    queryKey: ['portfolio-dividend-summary', accountId],
+    queryFn: async () => {
       const r = await portfolioApi.getDividendSummary(accountId);
       return (r as any)?.data?.data ?? (r as any)?.data ?? {};
     },
-    { staleTime: 300_000 }
-  );
+    staleTime: 300_000,
+  });
 };
 
 export const useLiveSummary = (accountId?: string) => {
-  return useQuery(
-    ['portfolio-live-summary', accountId],
-    async () => {
+  return useQuery({
+    queryKey: ['portfolio-live-summary', accountId],
+    queryFn: async () => {
       try {
         const r = await portfolioApi.getLiveSummary(accountId);
         return (r as any)?.data?.data ?? (r as any)?.data ?? {};
@@ -475,33 +393,33 @@ export const useLiveSummary = (accountId?: string) => {
         return { is_live: false };
       }
     },
-    { staleTime: 60_000, retry: 1 }
-  );
+    staleTime: 60_000,
+    retry: 1,
+  });
 };
 
 export const useRiskMetrics = () => {
-  return useQuery(
-    ['portfolio-risk-metrics'],
-    async () => {
+  return useQuery({
+    queryKey: ['portfolio-risk-metrics'],
+    queryFn: async () => {
       const r = await portfolioApi.getRiskMetrics();
       return (r as any) ?? {};
     },
-    { staleTime: 300_000 }
-  );
+    staleTime: 300_000,
+  });
 };
 
 export const useRebalanceSuggestions = () => {
-  return useQuery(
-    ['portfolio-rebalance-suggestions'],
-    async () => {
+  return useQuery({
+    queryKey: ['portfolio-rebalance-suggestions'],
+    queryFn: async () => {
       const r = await portfolioApi.getRebalanceSuggestions();
       return (r as any)?.data?.data ?? (r as any)?.data ?? {};
     },
-    { staleTime: 300_000 }
-  );
+    staleTime: 300_000,
+  });
 };
 
-// Helper function to transform API data for charts
 type SummaryWithPositions = PortfolioSummary & { all_positions?: unknown[]; positions?: unknown[] };
 interface ChartPosition {
   symbol: string;
@@ -524,4 +442,4 @@ export const transformPortfolioDataForCharts = (data: PortfolioSummary) => {
       account: p.account,
     };
   });
-}; 
+};

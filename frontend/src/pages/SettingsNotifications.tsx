@@ -7,9 +7,9 @@ import AppCard from '../components/ui/AppCard';
 const SettingsNotifications: React.FC = () => {
   const navigate = useNavigate();
   return (
-    <Box>
+    <Box w="full" maxW="960px" mx="auto">
       <PageHeader title="Notifications" subtitle="Notification preferences and delivery channels." />
-      <AppCard>
+      <AppCard mt={6}>
         <Text color="fg.muted" fontSize="sm" mb={3}>
           Notification configuration is being migrated to Chakra v3. The current notifications center still lives outside Settings.
         </Text>

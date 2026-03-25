@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, HStack, Text, Badge, VStack } from '@chakra-ui/react';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { marketDataApi } from '../../services/api';
 import { REGIME_HEX } from '../../constants/chart';
 
@@ -28,16 +28,17 @@ const REGIME_LABELS: Record<string, string> = {
 };
 
 const RegimeBanner: React.FC = () => {
-  const { data, isLoading } = useQuery(
-    'regime-current',
-    async () => {
+  const { data, isPending } = useQuery({
+    queryKey: ['regime-current'],
+    queryFn: async () => {
       const resp = await marketDataApi.getCurrentRegime();
       return resp?.data?.regime as RegimeData | null;
     },
-    { refetchInterval: 5 * 60 * 1000, staleTime: 2 * 60 * 1000 },
-  );
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 2 * 60 * 1000,
+  });
 
-  if (isLoading || !data) {
+  if (isPending || !data) {
     return (
       <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card" mb={3}>
         <Text fontSize="xs" color="fg.muted">Loading regime data...</Text>

@@ -7,6 +7,7 @@ from backend.api.main import app
 from backend.api.dependencies import get_db
 from backend.config import settings
 from backend.models.broker_account import BrokerAccount, BrokerType, AccountType
+from backend.tests.auth_test_utils import approve_user_for_login_tests
 
 
 try:
@@ -28,7 +29,9 @@ def client():
 
 
 def _login_token(client) -> str:
-    # Create a user and login (unique username)
+    # Create a user and login (unique username). Uses default app get_db (SessionLocal);
+    # approval must commit so login sees it. Do not pass db_session here when login
+    # runs before get_db override (uncommitted approval would be invisible to login).
     username = f"agg_{uuid.uuid4().hex[:8]}"
     email = f"{username}@example.com"
     password = "Passw0rd!"
@@ -36,6 +39,7 @@ def _login_token(client) -> str:
         "/api/v1/auth/register",
         json={"username": username, "email": email, "password": password},
     )
+    approve_user_for_login_tests(username)
     r_login = client.post(
         "/api/v1/auth/login", json={"username": username, "password": password}
     )
@@ -76,11 +80,13 @@ def test_link_and_callback_flow(client, monkeypatch, db_session):
     monkeypatch.setattr(settings, "SCHWAB_CLIENT_SECRET", "csecret")
     monkeypatch.setattr(settings, "SCHWAB_REDIRECT_URI", "http://localhost/cb")
 
-    def _override_db():
-        yield db_session
-    app.dependency_overrides[get_db] = _override_db
     _login_tuple = _login_token(client)
     token, username = _login_tuple
+
+    def _override_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = _override_db
     account_id = _create_schwab_account_for_user(username, db_session)
 
     # Stub httpx.AsyncClient for /schwab/link (probe GET)

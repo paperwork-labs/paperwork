@@ -2,34 +2,31 @@ import React from 'react';
 import { Box, Flex, VStack, Button, Text, IconButton, TooltipRoot, TooltipTrigger, TooltipPositioner, TooltipContent, useMediaQuery } from '@chakra-ui/react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FiBell, FiGrid, FiSliders, FiUser, FiShield, FiActivity } from 'react-icons/fi';
+import { FiBell, FiSliders, FiUser, FiShield, FiActivity, FiCpu } from 'react-icons/fi';
 
-const MenuLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, children }) => {
-  const activeBg = 'bg.muted';
-  const hoverBg = 'bg.subtle';
-  const activeColor = 'fg.default';
-  const textColor = 'fg.muted';
-  return (
-    <NavLink to={to} style={({ isActive }) => ({ textDecoration: 'none' })}>
-      {({ isActive }) => (
-        <Button
-          variant="ghost"
-          justifyContent="flex-start"
-          width="100%"
-          bg={isActive ? activeBg : 'transparent'}
-          color={isActive ? activeColor : textColor}
-          _hover={{ bg: hoverBg, color: 'fg.default' }}
-        >
-          {children}
-        </Button>
-      )}
-    </NavLink>
-  );
-};
+const MenuLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, children }) => (
+  <NavLink to={to} style={() => ({ textDecoration: 'none' })}>
+    {({ isActive }) => (
+      <Button
+        variant="ghost"
+        justifyContent="flex-start"
+        width="100%"
+        bg={isActive ? 'bg.subtle' : 'transparent'}
+        color={isActive ? 'fg.default' : 'fg.muted'}
+        fontWeight={isActive ? 'semibold' : 'medium'}
+        borderLeft={isActive ? '2px solid' : '2px solid transparent'}
+        borderLeftColor={isActive ? 'amber.500' : 'transparent'}
+        _hover={{ bg: 'bg.muted', color: 'fg.default' }}
+        transition="all 200ms ease"
+      >
+        {children}
+      </Button>
+    )}
+  </NavLink>
+);
 
 const SettingsShell: React.FC = () => {
   const { user } = useAuth();
-  const sectionColor = 'fg.muted';
   const [isDesktop] = useMediaQuery(['(min-width: 48em)']);
 
   const iconNav = (to: string, label: string, icon: React.ReactNode) => (
@@ -40,7 +37,9 @@ const SettingsShell: React.FC = () => {
             <IconButton
               aria-label={label}
               variant={isActive ? 'solid' : 'ghost'}
-              colorScheme={isActive ? 'brand' : undefined}
+              bg={isActive ? 'amber.500' : undefined}
+              color={isActive ? 'white' : undefined}
+              _hover={isActive ? { bg: 'amber.400' } : undefined}
               size="md"
             >
               {icon}
@@ -59,18 +58,17 @@ const SettingsShell: React.FC = () => {
       {isDesktop ? (
         <Box w="160px" flexShrink={0}>
           <VStack align="stretch" gap={1}>
-            <Text fontSize="sm" color={sectionColor} px={2}>ACCOUNT</Text>
+            <Text fontSize="2xs" color="fg.subtle" px={2} fontWeight="semibold" letterSpacing="0.08em" textTransform="uppercase">Account</Text>
             <MenuLink to="/settings/profile">Profile</MenuLink>
             <MenuLink to="/settings/preferences">Preferences</MenuLink>
             <MenuLink to="/settings/connections">Connections</MenuLink>
             <MenuLink to="/settings/notifications">Notifications</MenuLink>
             {user?.role === 'admin' && (
               <>
-                <Text fontSize="sm" color={sectionColor} px={2} mt={4}>ADMIN</Text>
-                <MenuLink to="/settings/admin/dashboard">Dashboard</MenuLink>
+                <Text fontSize="2xs" color="fg.subtle" px={2} mt={4} fontWeight="semibold" letterSpacing="0.08em" textTransform="uppercase">Admin</Text>
+                <MenuLink to="/settings/admin/system">System Status</MenuLink>
                 <MenuLink to="/settings/admin/users">Users</MenuLink>
-                <MenuLink to="/settings/admin/jobs">Jobs</MenuLink>
-                <MenuLink to="/settings/admin/schedules">Schedules</MenuLink>
+                <MenuLink to="/settings/admin/agent">Agent</MenuLink>
               </>
             )}
           </VStack>
@@ -84,10 +82,9 @@ const SettingsShell: React.FC = () => {
             {iconNav('/settings/notifications', 'Notifications', <FiBell />)}
             {user?.role === 'admin' ? (
               <>
-                {iconNav('/settings/admin/dashboard', 'Admin Dashboard', <FiGrid />)}
-                {iconNav('/settings/admin/users', 'Admin Users', <FiUser />)}
-                {iconNav('/settings/admin/jobs', 'Admin Jobs', <FiActivity />)}
-                {iconNav('/settings/admin/schedules', 'Admin Schedules', <FiGrid />)}
+                {iconNav('/settings/admin/system', 'System Status', <FiActivity />)}
+                {iconNav('/settings/admin/users', 'Users', <FiUser />)}
+                {iconNav('/settings/admin/agent', 'Agent', <FiCpu />)}
               </>
             ) : null}
           </VStack>

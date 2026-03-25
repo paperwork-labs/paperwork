@@ -20,7 +20,7 @@ def allow_admin_user():
 
 
 def test_admin_refresh_coverage_enqueues_task(monkeypatch):
-    from backend.api.routes import market_data as routes
+    from backend.api.routes.market import admin as routes
 
     class _StubTask:
         @staticmethod
@@ -37,7 +37,7 @@ def test_admin_refresh_coverage_enqueues_task(monkeypatch):
 
 
 def test_admin_restore_daily_tracked_enqueues_task(monkeypatch):
-    from backend.api.routes import market_data as routes
+    from backend.api.routes.market import admin as routes
 
     class _StubTask:
         @staticmethod

@@ -416,6 +416,8 @@ class IBKRClient:
                             "last_price": getattr(ticker, "last", None),
                             "bid": getattr(ticker, "bid", None),
                             "ask": getattr(ticker, "ask", None),
+                            "volume": getattr(ticker, "volume", None),
+                            "open_interest": getattr(ticker, "openInterest", None),
                             **greeks,
                         }
                     )
@@ -475,6 +477,8 @@ class IBKRClient:
                             "last": gd.get("last_price"),
                             "bid": gd.get("bid"),
                             "ask": gd.get("ask"),
+                            "volume": gd.get("volume"),
+                            "open_interest": gd.get("open_interest"),
                             "iv": gd.get("implied_volatility"),
                             "delta": gd.get("delta"),
                             "gamma": gd.get("gamma"),

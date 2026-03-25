@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Box, HStack, Text, Stack, SimpleGrid, Badge, Skeleton,
 } from '@chakra-ui/react';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { marketDataApi } from '../../services/api';
 import { STAGE_HEX } from '../../constants/chart';
 import { useColorMode } from '../../theme/colorMode';
@@ -53,9 +53,9 @@ const HeatmapView: React.FC<HeatmapViewProps> = ({ snapshots }) => {
     return SECTOR_ETFS.filter(s => available.has(s));
   }, [snapshots]);
 
-  const queries = useQuery(
-    ['heatmap-history', etfSymbols.join(','), timeRange],
-    async () => {
+  const queries = useQuery({
+    queryKey: ['heatmap-history', etfSymbols.join(','), timeRange],
+    queryFn: async () => {
       const results: Record<string, any[]> = {};
       await Promise.all(
         etfSymbols.map(async (sym) => {
@@ -70,8 +70,9 @@ const HeatmapView: React.FC<HeatmapViewProps> = ({ snapshots }) => {
       );
       return results;
     },
-    { staleTime: 10 * 60_000, enabled: etfSymbols.length > 0 },
-  );
+    staleTime: 10 * 60_000,
+    enabled: etfSymbols.length > 0,
+  });
 
   const historyData = queries.data || {};
 
@@ -133,7 +134,7 @@ const HeatmapView: React.FC<HeatmapViewProps> = ({ snapshots }) => {
           </HStack>
         </HStack>
 
-        {queries.isLoading ? (
+        {queries.isPending ? (
           <Stack gap={2} py={4}>
             {Array.from({ length: 8 }).map((_, i) => (
               <Skeleton key={i} height="18px" borderRadius="sm" />

@@ -16,6 +16,7 @@ from backend.services.strategy.rule_evaluator import (
     RuleEvaluator,
     RuleEvalResult,
 )
+from backend.services.strategy.context_builder import history_to_context, add_prev_fields, FIELD_ALIASES
 
 logger = logging.getLogger(__name__)
 
@@ -188,24 +189,35 @@ class BacktestEngine:
                 MarketSnapshotHistory.symbol.in_([s.upper() for s in symbols]),
                 MarketSnapshotHistory.as_of_date >= start,
                 MarketSnapshotHistory.as_of_date <= end,
+                MarketSnapshotHistory.analysis_type == "technical_snapshot",
             )
             .order_by(MarketSnapshotHistory.as_of_date)
             .all()
         )
-        skip = {"id", "raw_analysis", "created_at", "updated_at", "metadata"}
+        # First pass: group rows by symbol to track previous day's data
+        by_symbol: Dict[str, List[MarketSnapshotHistory]] = {}
+        for r in rows:
+            if r.symbol not in by_symbol:
+                by_symbol[r.symbol] = []
+            by_symbol[r.symbol].append(r)
+
+        # Second pass: build context with _prev fields for crossover detection
         by_date: Dict[str, List[Dict[str, Any]]] = {}
+        symbol_prev: Dict[str, Optional[MarketSnapshotHistory]] = {}
+
         for r in rows:
             d = str(r.as_of_date)
             if d not in by_date:
                 by_date[d] = []
-            ctx: Dict[str, Any] = {"symbol": r.symbol}
-            for col in r.__table__.columns:
-                if col.name in skip:
-                    continue
-                val = getattr(r, col.name, None)
-                if val is not None:
-                    ctx[col.name] = val
+            # Use context builder with aliases; regime_state comes from history row
+            ctx = history_to_context(r, include_regime=False, db=None)
+            # Add _prev fields for crossover detection
+            prev_row = symbol_prev.get(r.symbol)
+            ctx = add_prev_fields(ctx, prev_row)
             by_date[d].append(ctx)
+            # Track this row as previous for next iteration
+            symbol_prev[r.symbol] = r
+
         return by_date
 
     def _compute_metrics(

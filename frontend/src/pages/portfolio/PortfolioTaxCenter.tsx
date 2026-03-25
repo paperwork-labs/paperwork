@@ -22,12 +22,12 @@ import {
   Collapsible,
 } from '@chakra-ui/react';
 import { FiSearch, FiDownload, FiChevronDown, FiChevronRight } from 'react-icons/fi';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import PageHeader from '../../components/ui/PageHeader';
 import { portfolioApi, unwrapResponseSingle } from '../../services/api';
 import { usePortfolioInsights, useRealizedGains } from '../../hooks/usePortfolio';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
-import { formatMoney } from '../../utils/format';
+import { formatMoney, formatDateFriendly } from '../../utils/format';
 import { TableSkeleton } from '../../components/shared/Skeleton';
 import StatCard from '../../components/shared/StatCard';
 import TradeModal from '../../components/orders/TradeModal';
@@ -95,7 +95,7 @@ interface YearSummary {
 }
 
 const PortfolioTaxCenter: React.FC = () => {
-  const { currency } = useUserPreferences();
+  const { currency, timezone } = useUserPreferences();
   const { colorMode } = useColorMode();
   const isDark = colorMode === 'dark';
   const [activeTab, setActiveTab] = useState<TabId>('unrealized');
@@ -133,12 +133,16 @@ const PortfolioTaxCenter: React.FC = () => {
     window.open(url, '_blank');
   };
 
-  const taxQuery = useQuery('taxSummary', async () => {
-    const r = await portfolioApi.getTaxSummary();
-    const raw = r as Record<string, any> | undefined;
-    const data = raw?.data?.data ?? raw?.data ?? raw;
-    return data as { tax_lots: TaxLotRow[]; summary: TaxSummary } | null;
-  }, { staleTime: 60000 });
+  const taxQuery = useQuery({
+    queryKey: ['taxSummary'],
+    queryFn: async () => {
+      const r = await portfolioApi.getTaxSummary();
+      const raw = r as Record<string, any> | undefined;
+      const data = raw?.data?.data ?? raw?.data ?? raw;
+      return data as { tax_lots: TaxLotRow[]; summary: TaxSummary } | null;
+    },
+    staleTime: 60000,
+  });
 
   const insightsQuery = usePortfolioInsights();
   const insights = insightsQuery.data;
@@ -173,13 +177,7 @@ const PortfolioTaxCenter: React.FC = () => {
     else { setSortBy(field); setSortDesc(true); }
   };
 
-  const fmtDate = (iso: string | null) => {
-    if (!iso) return '-';
-    const d = new Date(iso);
-    return Number.isNaN(d.getTime()) ? '-' : d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' });
-  };
-
-  if (taxQuery.isLoading) {
+  if (taxQuery.isPending) {
     return (
       <VStack p={6} gap={6} align="stretch">
         <PageHeader title="Tax Center" subtitle="Tax lot analysis, harvesting candidates, and estimated tax impact" />
@@ -193,10 +191,24 @@ const PortfolioTaxCenter: React.FC = () => {
       <PageHeader title="Tax Center" subtitle="Tax lot analysis, harvesting candidates, and estimated tax impact" />
 
       <HStack gap={2}>
-        <Button size="sm" variant={activeTab === 'unrealized' ? 'solid' : 'outline'} onClick={() => setActiveTab('unrealized')}>
+        <Button
+          size="sm"
+          variant={activeTab === 'unrealized' ? 'solid' : 'outline'}
+          bg={activeTab === 'unrealized' ? 'amber.500' : undefined}
+          color={activeTab === 'unrealized' ? 'white' : undefined}
+          _hover={activeTab === 'unrealized' ? { bg: 'amber.400' } : undefined}
+          onClick={() => setActiveTab('unrealized')}
+        >
           Unrealized
         </Button>
-        <Button size="sm" variant={activeTab === 'realized' ? 'solid' : 'outline'} colorPalette={activeTab === 'realized' ? 'brand' : undefined} onClick={() => setActiveTab('realized')}>
+        <Button
+          size="sm"
+          variant={activeTab === 'realized' ? 'solid' : 'outline'}
+          bg={activeTab === 'realized' ? 'amber.500' : undefined}
+          color={activeTab === 'realized' ? 'white' : undefined}
+          _hover={activeTab === 'realized' ? { bg: 'amber.400' } : undefined}
+          onClick={() => setActiveTab('realized')}
+        >
           Realized Gains
         </Button>
       </HStack>
@@ -285,7 +297,7 @@ const PortfolioTaxCenter: React.FC = () => {
             );
           })}
 
-          {realizedGains.length === 0 && !realizedQuery.isLoading && (
+          {realizedGains.length === 0 && !realizedQuery.isPending && (
             <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
               <CardBody><Text color="fg.muted" textAlign="center">No realized gains data. Sell trades from IBKR FlexQuery will appear here after sync.</Text></CardBody>
             </CardRoot>
@@ -322,7 +334,7 @@ const PortfolioTaxCenter: React.FC = () => {
         </SimpleGrid>
       )}
 
-      {activeTab === 'unrealized' && insightsQuery.isLoading && (
+      {activeTab === 'unrealized' && insightsQuery.isPending && (
         <SimpleGrid columns={{ base: 1, lg: 2 }} gap={4}>
           <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
             <CardBody><Text fontSize="sm" color="fg.muted">Loading tax insights…</Text></CardBody>
@@ -466,7 +478,7 @@ const PortfolioTaxCenter: React.FC = () => {
                           {l.approaching_lt && <Text as="span" fontSize="xs" color={isDark ? 'yellow.400' : 'yellow.700'}> ({daysToLT}d to LT)</Text>}
                         </Text>
                       </TableCell>
-                      <TableCell>{fmtDate(l.purchase_date)}</TableCell>
+                      <TableCell>{formatDateFriendly(l.purchase_date, timezone)}</TableCell>
                       <TableCell textAlign="end">{l.shares.toLocaleString()}</TableCell>
                       <TableCell textAlign="end">{formatMoney(l.cost_per_share, currency)}</TableCell>
                       <TableCell textAlign="end">{l.cost_basis != null ? formatMoney(l.cost_basis, currency, { maximumFractionDigits: 0 }) : '—'}</TableCell>

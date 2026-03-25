@@ -3,10 +3,12 @@ import {
   Box, HStack, Text, Badge, Stack, Heading, SimpleGrid, Button,
   Skeleton,
 } from '@chakra-ui/react';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FiRefreshCw, FiFileText, FiTrendingUp, FiCalendar } from 'react-icons/fi';
 import { marketDataApi } from '../services/api';
 import { REGIME_HEX, heatColor } from '../constants/chart';
+import { formatDateTimeFriendly, formatDateFriendly } from '../utils/format';
+import { useUserPreferences } from '../hooks/useUserPreferences';
 import StatCard from '../components/shared/StatCard';
 import StageBadge from '../components/shared/StageBadge';
 
@@ -30,6 +32,7 @@ const fmtPct = (v: unknown): string => {
 };
 
 const MarketIntelligence: React.FC = () => {
+  const { timezone } = useUserPreferences();
   const [activeType, setActiveType] = React.useState<BriefType>('daily');
   const [isPolling, setIsPolling] = React.useState(false);
   const queryClient = useQueryClient();
@@ -40,48 +43,42 @@ const MarketIntelligence: React.FC = () => {
     return () => clearTimeout(timer);
   }, [isPolling]);
 
-  const { data: briefData, isLoading, isError, error } = useQuery(
-    ['intelligence-brief', activeType],
-    async () => {
+  const { data: briefData, isPending, isError, error } = useQuery({
+    queryKey: ['intelligence-brief', activeType],
+    queryFn: async () => {
       const resp = await marketDataApi.getLatestBrief(activeType);
       return resp?.data ?? resp ?? null;
     },
-    {
-      staleTime: 2 * 60_000,
-      refetchInterval: isPolling ? 3_000 : false,
-    },
-  );
+    staleTime: 2 * 60_000,
+    refetchInterval: isPolling ? 3_000 : false,
+  });
 
-  const { data: briefList } = useQuery(
-    ['intelligence-list', activeType],
-    async () => {
+  const { data: briefList } = useQuery({
+    queryKey: ['intelligence-list', activeType],
+    queryFn: async () => {
       const resp = await marketDataApi.listBriefs(activeType, 10);
       return resp?.data?.briefs ?? resp?.briefs ?? [];
     },
-    {
-      staleTime: 5 * 60_000,
-      refetchInterval: isPolling ? 5_000 : false,
-    },
-  );
+    staleTime: 5 * 60_000,
+    refetchInterval: isPolling ? 5_000 : false,
+  });
 
-  const generateMutation = useMutation(
-    () => marketDataApi.triggerBrief(activeType),
-    {
-      onSuccess: () => {
-        setIsPolling(true);
-        queryClient.invalidateQueries(['intelligence-brief', activeType]);
-        queryClient.invalidateQueries(['intelligence-list', activeType]);
-      },
-      onError: (err: any) => {
-        const status = err?.response?.status;
-        if (status === 403) {
-          setGenerateError('Admin access required to generate briefs.');
-        } else {
-          setGenerateError(err?.message || 'Failed to trigger brief generation.');
-        }
-      },
+  const generateMutation = useMutation({
+    mutationFn: () => marketDataApi.triggerBrief(activeType),
+    onSuccess: () => {
+      setIsPolling(true);
+      queryClient.invalidateQueries({ queryKey: ['intelligence-brief', activeType] });
+      queryClient.invalidateQueries({ queryKey: ['intelligence-list', activeType] });
     },
-  );
+    onError: (err: any) => {
+      const status = err?.response?.status;
+      if (status === 403) {
+        setGenerateError('Admin access required to generate briefs.');
+      } else {
+        setGenerateError(err?.message || 'Failed to trigger brief generation.');
+      }
+    },
+  });
 
   const [generateError, setGenerateError] = React.useState<string | null>(null);
 
@@ -105,11 +102,15 @@ const MarketIntelligence: React.FC = () => {
           <HStack gap={2}>
             {BRIEF_TABS.map(tab => {
               const Icon = tab.icon;
+              const isActive = activeType === tab.key;
               return (
                 <Button
                   key={tab.key}
                   size="xs"
-                  variant={activeType === tab.key ? 'solid' : 'ghost'}
+                  variant={isActive ? 'solid' : 'ghost'}
+                  bg={isActive ? 'amber.500' : undefined}
+                  color={isActive ? 'white' : undefined}
+                  _hover={isActive ? { bg: 'amber.400' } : undefined}
                   onClick={() => setActiveType(tab.key)}
                   transition="all 200ms ease"
                 >
@@ -122,7 +123,7 @@ const MarketIntelligence: React.FC = () => {
               size="xs"
               variant="outline"
               onClick={() => { setGenerateError(null); generateMutation.mutate(); }}
-              disabled={generateMutation.isLoading || isPolling}
+              disabled={generateMutation.isPending || isPolling}
             >
               <FiRefreshCw size={12} />
               <Text ml={1}>{isPolling ? 'Generating...' : 'Generate'}</Text>
@@ -141,7 +142,7 @@ const MarketIntelligence: React.FC = () => {
             <Text fontSize="sm" color="red.500" mb={2}>Failed to load brief.</Text>
             <Text fontSize="xs" color="fg.muted">{(error as any)?.message || 'An unexpected error occurred.'}</Text>
           </Box>
-        ) : isLoading ? (
+        ) : isPending ? (
           <Stack gap={4} py={4}>
             <Skeleton height="80px" borderRadius="xl" />
             <SimpleGrid columns={{ base: 2, md: 4 }} gap={3}>
@@ -157,7 +158,7 @@ const MarketIntelligence: React.FC = () => {
             <Button
               size="sm"
               onClick={() => generateMutation.mutate()}
-              disabled={generateMutation.isLoading}
+              disabled={generateMutation.isPending}
             >
               Generate {activeType} brief
             </Button>
@@ -167,7 +168,7 @@ const MarketIntelligence: React.FC = () => {
             {/* Brief header */}
             <HStack justify="space-between" flexWrap="wrap">
               <Text fontSize="xs" color="fg.muted">
-                Generated: {briefData?.generated_at ? new Date(briefData.generated_at).toLocaleString() : 'Unknown'}
+                Generated: {formatDateTimeFriendly(briefData?.generated_at, timezone)}
                 {' | '}{brief.snapshot_count ?? 0} symbols analyzed
               </Text>
             </HStack>
@@ -197,7 +198,7 @@ const MarketIntelligence: React.FC = () => {
                         b.summary.regime_state === 'R5' ? 'red' : 'yellow'
                       }>{b.summary.regime_state}</Badge>
                     )}
-                    <Text color="fg.muted">{b.generated_at ? new Date(b.generated_at).toLocaleDateString() : ''}</Text>
+                    <Text color="fg.muted">{formatDateFriendly(b.generated_at, timezone)}</Text>
                   </HStack>
                 </HStack>
               ))}

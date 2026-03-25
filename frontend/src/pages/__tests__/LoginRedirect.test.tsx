@@ -48,7 +48,7 @@ describe('Login redirect', () => {
 
     await user.type(screen.getByPlaceholderText('yourname'), 'demo');
     await user.type(screen.getByPlaceholderText('••••••••'), 'pw');
-    await user.click(screen.getByRole('button', { name: /login/i }));
+    await user.click(screen.getByRole('button', { name: /^log in$/i }));
 
     await waitFor(() => expect(login).toHaveBeenCalled());
     expect(navigate).toHaveBeenCalledWith('/market/coverage', { replace: true });
@@ -63,7 +63,7 @@ describe('Login redirect', () => {
 
     await user.type(screen.getByPlaceholderText('yourname'), 'demo');
     await user.type(screen.getByPlaceholderText('••••••••'), 'pw');
-    await user.click(screen.getByRole('button', { name: /login/i }));
+    await user.click(screen.getByRole('button', { name: /^log in$/i }));
 
     await waitFor(() => expect(login).toHaveBeenCalled());
     expect(navigate).toHaveBeenCalledWith('/market/tracked', { replace: true });

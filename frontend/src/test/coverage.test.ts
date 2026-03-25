@@ -58,7 +58,7 @@ describe('coverage helpers', () => {
     ]);
     expect(actions.find((a) => a.task_name === 'custom_task')).toBeTruthy();
     expect(actions.filter((a) => a.task_name === 'admin_coverage_backfill')).toHaveLength(1);
-    expect(actions.some((a) => a.task_name === 'admin_snapshots_history_record')).toBe(true);
+    expect(actions.some((a) => a.task_name === 'admin_indicators_recompute_universe')).toBe(true);
   });
 
   it('getCoverageStatusColor maps known statuses', () => {

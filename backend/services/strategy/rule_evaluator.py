@@ -113,6 +113,26 @@ class RuleEvaluator:
                 matched = actual_f <= target_f
             elif op == ConditionOperator.BETWEEN and cond.value_high is not None:
                 matched = target_f <= actual_f <= float(cond.value_high)
+            elif op == ConditionOperator.CROSSES_ABOVE:
+                # Crossover detection: prior bar < threshold AND current bar >= threshold
+                prev_key = f"{cond.field}_prev"
+                prev_val = ctx.get(prev_key)
+                if prev_val is not None:
+                    try:
+                        prev_f = float(prev_val)
+                        matched = prev_f < target_f and actual_f >= target_f
+                    except (TypeError, ValueError):
+                        matched = False
+            elif op == ConditionOperator.CROSSES_BELOW:
+                # Crossunder detection: prior bar > threshold AND current bar <= threshold
+                prev_key = f"{cond.field}_prev"
+                prev_val = ctx.get(prev_key)
+                if prev_val is not None:
+                    try:
+                        prev_f = float(prev_val)
+                        matched = prev_f > target_f and actual_f <= target_f
+                    except (TypeError, ValueError):
+                        matched = False
 
         return RuleEvalResult(
             matched=matched,

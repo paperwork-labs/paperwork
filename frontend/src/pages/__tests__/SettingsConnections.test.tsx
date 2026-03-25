@@ -1,6 +1,8 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@/test/testing-library';
+import { screen } from '@/test/testing-library';
+import userEvent from '@testing-library/user-event';
+import { within } from '@testing-library/react';
 import SettingsConnections from '../../pages/SettingsConnections';
 import { renderWithProviders } from '../../test/render';
 
@@ -14,10 +16,13 @@ vi.mock('../../services/api', () => {
     },
     accountsApi: {
       list: vi.fn().mockResolvedValue([]),
+      syncHistory: vi.fn().mockResolvedValue([]),
       add: vi.fn().mockResolvedValue({ id: 1 }),
       sync: vi.fn().mockResolvedValue({ status: 'queued', task_id: 't1' }),
       syncStatus: vi.fn().mockResolvedValue({ sync_status: 'completed' }),
       remove: vi.fn().mockResolvedValue({ message: 'ok' }),
+      updateAccount: vi.fn().mockResolvedValue({}),
+      updateCredentials: vi.fn().mockResolvedValue({}),
     },
     aggregatorApi: {
       config: vi.fn().mockResolvedValue({ schwab: { configured: true, redirect_uri: 'https://example.com/cb' } }),
@@ -62,15 +67,24 @@ vi.mock('../../context/AccountContext', () => ({
 }));
 
 describe('Brokerages wizard', () => {
-  it('opens modal and shows broker logos', async () => {
-    renderWithProviders(<SettingsConnections />);
-    const btn = screen.getByRole('button', { name: /\+ New connection/i });
-    fireEvent.click(btn);
-    expect(await screen.findByText(/Choose a broker to connect/i)).toBeInTheDocument();
-    // Logos are images, ensure they're present
-    const imgs = await screen.findAllByRole('img');
-    expect(imgs.length).toBeGreaterThan(0);
-  });
+  it(
+    'opens modal and shows broker logos',
+    async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsConnections />);
+      const btn = screen.getByRole('button', { name: /\+ New connection/i });
+      await user.click(btn);
+      const dialog = await screen.findByRole('dialog', {}, { timeout: 10_000 });
+      expect(
+        await within(dialog).findByText(/Choose a broker to connect/i, {}, { timeout: 10_000 }),
+      ).toBeInTheDocument();
+      // Wizard step 1: three broker tiles (Chakra Image → native img + alt)
+      expect(within(dialog).getByRole('img', { name: 'Charles Schwab' })).toBeInTheDocument();
+      expect(within(dialog).getByRole('img', { name: 'Tastytrade' })).toBeInTheDocument();
+      expect(within(dialog).getByRole('img', { name: 'Interactive Brokers' })).toBeInTheDocument();
+    },
+    15_000,
+  );
 });
 
 

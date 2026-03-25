@@ -289,3 +289,13 @@ Numbered decisions with date, rationale, alternatives considered, and reversibil
 **Alternatives**: Switch to `autodiscover_tasks()` — viable but would require restructuring task imports.
 
 **Reversible**: Yes.
+
+### D28 — 2026-03-24 — Greenfield DB Rebuild
+
+**Decision**: Delete all 33 Alembic migrations and create a single `0001_baseline.py` that uses `Base.metadata.create_all()`. Reset production Postgres and redeploy. Bundled with: Google OAuth, email verification, refresh token flow, BrokerAdapter ABC, multi-tenant user_id enforcement, TanStack Query v5 migration, admin reimagine (SystemStatus), silent exception cleanup, MAX_SINGLE_POSITION_PCT enforcement, agent cold-start deep backfill.
+
+**Rationale**: Production was broken (500 errors) due to a blocked Alembic migration chain — migration `0b618cd073a8` referenced `strategies` table that didn't exist in prod. 33 migrations with multiple FK ordering issues made patching impractical. Rebuilding from scratch on a fresh DB was the cleanest path, and the downtime window was acceptable for a pre-launch platform with a single user.
+
+**Alternatives**: (1) Patch individual migrations — rejected, too fragile with 33-deep chain. (2) Data-aware migration with pg_dump + transform — rejected, no critical user data at risk.
+
+**Reversible**: No — old migration history is deleted. Schema is identical to what ORM models define.

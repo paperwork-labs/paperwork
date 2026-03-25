@@ -1,4 +1,4 @@
-from backend.services.alerts import AlertService
+from backend.services.notifications.alerts import AlertService
 from backend.config import settings
 
 

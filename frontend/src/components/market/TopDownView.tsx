@@ -4,7 +4,7 @@ import {
   TableRoot, TableHeader, TableRow, TableColumnHeader,
   TableBody, TableCell, TableScrollArea,
 } from '@chakra-ui/react';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { marketDataApi } from '../../services/api';
 import { REGIME_HEX, heatColor, STAGE_HEX, SECTOR_PALETTE } from '../../constants/chart';
 import { useChartColors } from '../../hooks/useChartColors';
@@ -40,32 +40,33 @@ interface TopDownViewProps {
 const TopDownView: React.FC<TopDownViewProps> = ({ snapshots, dashboardPayload }) => {
   const cc = useChartColors();
 
-  const { data: regimeData } = useQuery(
-    'regime-current',
-    async () => {
+  const { data: regimeData } = useQuery({
+    queryKey: ['regime-current'],
+    queryFn: async () => {
       const resp = await marketDataApi.getCurrentRegime();
       return resp?.data?.regime ?? resp?.regime ?? null;
     },
-    { staleTime: 2 * 60_000, refetchInterval: 5 * 60_000 },
-  );
+    staleTime: 2 * 60_000,
+    refetchInterval: 5 * 60_000,
+  });
 
-  const { data: regimeHistory } = useQuery(
-    'regime-history-90',
-    async () => {
+  const { data: regimeHistory } = useQuery({
+    queryKey: ['regime-history-90'],
+    queryFn: async () => {
       const resp = await marketDataApi.getRegimeHistory(90);
       return resp?.data?.history ?? resp?.history ?? [];
     },
-    { staleTime: 5 * 60_000 },
-  );
+    staleTime: 5 * 60_000,
+  });
 
-  const { data: volData } = useQuery(
-    'vol-dashboard',
-    async () => {
+  const { data: volData } = useQuery({
+    queryKey: ['vol-dashboard'],
+    queryFn: async () => {
       const resp = await marketDataApi.getVolatilityDashboard();
       return resp?.data ?? resp ?? null;
     },
-    { staleTime: 2 * 60_000 },
-  );
+    staleTime: 2 * 60_000,
+  });
 
   const snapshotMap = React.useMemo(() => {
     const m = new Map<string, any>();

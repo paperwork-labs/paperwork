@@ -17,7 +17,7 @@ export default function AuthLayout({ children, ...props }: Props) {
       justifyContent="center"
       px={{ base: 4, md: 8 }}
       py={{ base: 10, md: 14 }}
-      bg="radial-gradient(1200px 600px at 20% 10%, rgba(29,78,216,0.22), transparent 55%), radial-gradient(900px 500px at 90% 20%, rgba(34,197,94,0.16), transparent 55%), #0F172A"
+      bg="radial-gradient(1200px 600px at 20% 10%, rgba(29,78,216,0.18), transparent 55%), radial-gradient(900px 500px at 85% 25%, rgba(245,158,11,0.10), transparent 55%), #0F172A"
       color="white"
       {...props}
     >

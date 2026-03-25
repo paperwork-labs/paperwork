@@ -90,6 +90,14 @@ class Order(Base):
     estimated_equity_with_loan = Column(Float, nullable=True)
     preview_data = Column(JSON, nullable=True)
 
+    # Execution quality analytics
+    decision_price = Column(Float, nullable=True)  # Price when order was created/signaled
+    slippage_pct = Column(Float, nullable=True)  # (fill_price - decision_price) / decision_price * 100
+    slippage_dollars = Column(Float, nullable=True)  # Total slippage in dollars
+    fill_latency_ms = Column(Integer, nullable=True)  # Time from submit to fill in milliseconds
+    vwap_at_fill = Column(Float, nullable=True)  # VWAP at fill time for comparison
+    spread_at_order = Column(Float, nullable=True)  # Bid-ask spread when order placed
+
     error_message = Column(String(500), nullable=True)
     submitted_at = Column(DateTime(timezone=True), nullable=True)
     filled_at = Column(DateTime(timezone=True), nullable=True)

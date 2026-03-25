@@ -43,24 +43,64 @@ Current execution plan organized by phase. One task per PR where possible.
 | 2.5 | Build Exit Cascade Engine | DONE | 9 long tiers (5 base + 4 regime) + 4 short exits, independently firing |
 | 2.6 | ATR-based position sizing | DONE | ATR-based formula with Regime Multiplier × Stage Cap, wired into RiskGate.check |
 
-## Phase 3: Frontend [IN PROGRESS]
+## Phase 3: Frontend [DONE]
 
 | ID | Task | Status | Acceptance Criteria |
 |----|------|--------|---------------------|
 | 3.1 | Bloomberg-style Market Dashboard | DONE | 5 views: Overview, Top-Down, Bottom-Up, Sector, Heatmap |
 | 3.2 | Education page rewrite | PLANNED | Stage Analysis content: 10 sub-stages, regime engine, scan overlay, exit cascade |
 | 3.3 | Intelligence Brief system | DONE | Daily/weekly/monthly briefs, Celery tasks, in-app viewing with polling + error handling |
-| 3.4 | Admin simplification | PLANNED | Auto-monitoring via Celery, System Health summary |
+| 3.4 | Admin reimagine (SystemStatus) | DONE | Single SystemStatus page replaces Dashboard/Jobs/Schedules/Coverage. Composite health, dimension cards, auto-ops activity, collapsible Advanced with OperatorActions |
+| 3.5 | TanStack Query v5 migration | DONE | Migrated from react-query v3 to @tanstack/react-query v5. isLoading→isPending, import renames |
+| 3.6 | Console cleanup | DONE | All console.log/error/warn removed from committed frontend code (dev-gated logging allowed) |
 
-## Phase 4: Strategy Alignment [PLANNED]
-
-| ID | Task | Status | Acceptance Criteria |
-|----|------|--------|---------------------|
-| 4.1 | Update strategy templates | PLANNED | Regime-aware entries, short templates, new extended stage fields in rule evaluator |
-
-## Phase 5: Pipeline [PLANNED]
+## Phase 3.5: Greenfield DB Rebuild [DONE]
 
 | ID | Task | Status | Acceptance Criteria |
 |----|------|--------|---------------------|
-| 5.1 | Nightly pipeline (full sequence) | PLANNED | 10-step sequence per spec Section 14.1 |
-| 5.2 | New data feeds | PLANNED | VIX/VIX3M/VVIX, NH-NL, breadth (%above200D, %above50D) |
+| 3.5.1 | Clean Alembic baseline | DONE | 33 migrations deleted, single 0001_baseline.py using Base.metadata.create_all() |
+| 3.5.2 | Google OAuth + email verification | DONE | /auth/google/login + callback, find-or-create user, verification email via Resend |
+| 3.5.3 | Refresh token flow | DONE | 15-min access JWT + 7-day httpOnly refresh cookie + /auth/refresh + token family rotation |
+| 3.5.4 | Frontend auth updates | DONE | Google button on Login, AuthCallback page, 401 refresh interceptor in api.ts |
+| 3.5.5 | BrokerAdapter interface | DONE | ABC in broker_adapter.py, AlpacaAdapter stub |
+| 3.5.6 | Multi-tenant enforcement | DONE | user_id scoping on OrderManager, portfolio, dashboard, options routes. IDOR fixes |
+| 3.5.7 | Silent exception cleanup | DONE | 34 except-pass blocks replaced with logger.warning in market_data_service + tasks |
+| 3.5.8 | MAX_SINGLE_POSITION_PCT | DONE | Wired from settings (default 15%) into RiskGate |
+| 3.5.9 | Agent cold-start | DONE | Empty DB triggers 5-year backfill_since_date; migration logging with exc_info=True |
+
+## Phase 4: Deploy Greenfield + Stabilize [IN PROGRESS]
+
+| ID | Task | Status | Acceptance Criteria |
+|----|------|--------|---------------------|
+| 4.1 | Merge PR #225 (greenfield rebuild) | NEXT | PR reviewed, CI green, squash-merged to main |
+| 4.2 | Reset Render Postgres + deploy | NEXT | Delete Render DB, redeploy backend, verify `alembic upgrade head` creates all tables via 0001_baseline |
+| 4.3 | Add prod env vars for new features | NEXT | Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `RESEND_API_KEY` in Render |
+| 4.4 | Verify prod cold-start backfill | NEXT | After deploy, agent auto-warm triggers 5-year `backfill_since_date("2021-01-01")`, data populates |
+| 4.5 | Verify Google OAuth end-to-end | NEXT | Login via Google button works on prod, user created with `oauth_provider='google'` |
+| 4.6 | Education page rewrite | PLANNED | Stage Analysis content: 10 sub-stages, regime engine, scan overlay, exit cascade |
+
+## Phase 5: Strategy Alignment [PLANNED]
+
+| ID | Task | Status | Acceptance Criteria |
+|----|------|--------|---------------------|
+| 5.1 | Update strategy templates | PLANNED | Regime-aware entries, short templates, new extended stage fields in rule evaluator |
+
+## Phase 6: Pipeline [PLANNED]
+
+| ID | Task | Status | Acceptance Criteria |
+|----|------|--------|---------------------|
+| 6.1 | Nightly pipeline (full sequence) | PLANNED | 10-step sequence per spec Section 14.1 |
+| 6.2 | New data feeds | PLANNED | VIX/VIX3M/VVIX, NH-NL, breadth (%above200D, %above50D) |
+
+---
+
+## Next Sprint Backlog
+
+These items are explicitly deferred from the rebuild. The schema is forward-compatible.
+
+| ID | Task | Status | Notes |
+|----|------|--------|-------|
+| N.1 | Alpaca broker adapter | PLANNED | Full auto-trading via alpaca-py SDK, implement all BrokerAdapter methods |
+| N.2 | Apple Sign-In | DONE | /auth/apple/login + callback, ES256 client secret, JWKS id_token verify, Login.tsx button |
+| N.3 | Paper trading mode | PLANNED | Virtual broker adapter simulating fills against real data |
+| N.4 | User onboarding flow | PLANNED | Guided signup → verify email → connect broker → first sync → dashboard |

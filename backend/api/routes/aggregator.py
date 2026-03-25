@@ -339,7 +339,7 @@ async def _tt_connect_job(job_id: str, client_id: str, client_secret: str, refre
         ]
         for acc_id in synced_account_ids:
             try:
-                from backend.tasks.account_sync import sync_account_task
+                from backend.tasks.portfolio.sync import sync_account_task
                 sync_account_task.delay(acc_id, "comprehensive")
                 logger.info("Queued post-connect sync for TastyTrade account %s", acc_id)
             except Exception as sync_exc:
@@ -806,7 +806,7 @@ async def schwab_callback(
 
     # Trigger sync for all discovered accounts
     try:
-        from backend.tasks.account_sync import sync_account_task
+        from backend.tasks.portfolio.sync import sync_account_task
         for acct_id in discovered_ids:
             sync_account_task.delay(acct_id, "comprehensive")
         logger.info("Schwab: queued sync for %d accounts", len(discovered_ids))

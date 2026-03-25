@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ChakraProvider } from '@chakra-ui/react';
-import { QueryClient, QueryClientProvider } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { AccountProvider } from './context/AccountContext';
 import { AuthProvider } from './context/AuthContext';
@@ -13,7 +13,6 @@ import RequireAuth from './components/auth/RequireAuth';
 import RequireNonMarketAccess from './components/auth/RequireNonMarketAccess';
 import RequireAdmin from './components/auth/RequireAdmin';
 
-// Lazy-load routes so Chakra v3 migration can happen page-by-page
 const DashboardLayout = React.lazy(() => import('./components/layout/DashboardLayout'));
 const PortfolioOverview = React.lazy(() => import('./pages/portfolio/PortfolioOverview'));
 const PortfolioHoldings = React.lazy(() => import('./pages/portfolio/PortfolioHoldings'));
@@ -24,7 +23,6 @@ const PortfolioTaxCenter = React.lazy(() => import('./pages/portfolio/PortfolioT
 const PortfolioOrders = React.lazy(() => import('./pages/portfolio/PortfolioOrders'));
 const Strategies = React.lazy(() => import('./pages/Strategies'));
 const StrategyDetail = React.lazy(() => import('./pages/StrategyDetail'));
-const StrategiesManager = React.lazy(() => import('./pages/StrategiesManager'));
 const SettingsShell = React.lazy(() => import('./pages/SettingsShell'));
 const SettingsConnections = React.lazy(() => import('./pages/SettingsConnections'));
 const SettingsProfile = React.lazy(() => import('./pages/SettingsProfile'));
@@ -33,24 +31,22 @@ const SettingsNotifications = React.lazy(() => import('./pages/SettingsNotificat
 const PortfolioWorkspace = React.lazy(() => import('./pages/PortfolioWorkspace'));
 const Login = React.lazy(() => import('./pages/Login'));
 const Register = React.lazy(() => import('./pages/Register'));
-const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
-const AdminJobs = React.lazy(() => import('./pages/AdminJobs'));
-const AdminSchedules = React.lazy(() => import('./pages/AdminSchedules'));
+const AuthCallback = React.lazy(() => import('./pages/AuthCallback'));
+const SystemStatus = React.lazy(() => import('./pages/SystemStatus'));
 const MarketDashboard = React.lazy(() => import('./pages/MarketDashboard'));
-const MarketCoverage = React.lazy(() => import('./pages/MarketCoverage'));
 const MarketTracked = React.lazy(() => import('./pages/MarketTracked'));
 const MarketEducation = React.lazy(() => import('./pages/MarketEducation'));
 const MarketIntelligence = React.lazy(() => import('./pages/MarketIntelligence'));
 const Invite = React.lazy(() => import('./pages/Invite'));
 const SettingsUsers = React.lazy(() => import('./pages/SettingsUsers'));
+const AdminAgent = React.lazy(() => import('./pages/AdminAgent'));
 
-// Create a client for React Query
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
       retry: 1,
-      staleTime: 1000 * 60 * 5, // 5 minutes
+      staleTime: 1000 * 60 * 5,
     },
   },
 });
@@ -75,11 +71,10 @@ function App() {
                         <Route index element={<MarketDashboard />} />
                         <Route path="market/dashboard" element={<MarketDashboard />} />
                         <Route path="market/tracked" element={<MarketTracked />} />
-                        <Route path="market/coverage" element={<MarketCoverage />} />
                         <Route path="market/education" element={<MarketEducation />} />
                         <Route path="market/intelligence" element={<MarketIntelligence />} />
 
-                        {/* Portfolio section (all under /portfolio/*) */}
+                        {/* Portfolio section */}
                         <Route element={<RequireNonMarketAccess section="portfolio" />}>
                           <Route path="portfolio" element={<PortfolioOverview />} />
                           <Route path="portfolio/holdings" element={<PortfolioHoldings />} />
@@ -98,24 +93,23 @@ function App() {
                           <Route path="strategies-manager" element={<Navigate to="/strategies" replace />} />
                         </Route>
 
-                        {/* Settings (open to all authenticated users) */}
+                        {/* Settings */}
                         <Route path="settings" element={<SettingsShell />}>
                           <Route index element={<Navigate to="profile" replace />} />
                           <Route path="profile" element={<SettingsProfile />} />
                           <Route path="preferences" element={<SettingsPreferences />} />
                           <Route path="notifications" element={<SettingsNotifications />} />
                           <Route path="connections" element={<SettingsConnections />} />
-                          {/* Admin-only routes under Settings */}
                           <Route element={<RequireAdmin />}>
-                            <Route path="admin/dashboard" element={<AdminDashboard />} />
-                            <Route path="admin/jobs" element={<AdminJobs />} />
-                            <Route path="admin/schedules" element={<AdminSchedules />} />
+                            <Route path="admin/system" element={<SystemStatus />} />
                             <Route path="admin/users" element={<SettingsUsers />} />
+                            <Route path="admin/agent" element={<AdminAgent />} />
                           </Route>
                         </Route>
                       </Route>
                       <Route path="/login" element={<Login />} />
                       <Route path="/register" element={<Register />} />
+                      <Route path="/auth/callback" element={<AuthCallback />} />
                       <Route path="/invite/:token" element={<Invite />} />
                     </Routes>
                   </Suspense>
@@ -139,4 +133,4 @@ function App() {
   );
 }
 
-export default App; 
+export default App;

@@ -5,7 +5,8 @@ from backend.api.dependencies import get_optional_user
 
 
 def test_technical_snapshots_endpoint_returns_rows(monkeypatch):
-    from backend.api.routes import market_data as routes
+    from backend.api.routes.market import snapshots as routes
+    from backend.database import get_db
     from backend.models.market_data import MarketSnapshot
 
     # Avoid auth requirements
@@ -37,7 +38,7 @@ def test_technical_snapshots_endpoint_returns_rows(monkeypatch):
 
     monkeypatch.setattr(routes, "tracked_symbols", lambda _db, redis_client=None: ["AAA"])
 
-    app.dependency_overrides[routes.get_db] = lambda: _FakeDB()
+    app.dependency_overrides[get_db] = lambda: _FakeDB()
     try:
         client = TestClient(app, raise_server_exceptions=False)
         resp = client.get("/api/v1/market-data/snapshots?limit=10")
@@ -46,14 +47,15 @@ def test_technical_snapshots_endpoint_returns_rows(monkeypatch):
         assert data["count"] == 1
         assert data["rows"][0]["symbol"] == "AAA"
     finally:
-        app.dependency_overrides.pop(routes.get_db, None)
+        app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_optional_user, None)
 
 
 def test_technical_snapshots_endpoint_picks_latest_row_per_symbol(monkeypatch):
     from datetime import datetime, timedelta
 
-    from backend.api.routes import market_data as routes
+    from backend.api.routes.market import snapshots as routes
+    from backend.database import get_db
     from backend.models.market_data import MarketSnapshot
 
     app.dependency_overrides[get_optional_user] = lambda: None
@@ -94,7 +96,7 @@ def test_technical_snapshots_endpoint_picks_latest_row_per_symbol(monkeypatch):
             return _FakeQuery()
 
     monkeypatch.setattr(routes, "tracked_symbols", lambda _db, redis_client=None: ["AAA", "BBB"])
-    app.dependency_overrides[routes.get_db] = lambda: _FakeDB()
+    app.dependency_overrides[get_db] = lambda: _FakeDB()
     try:
         client = TestClient(app, raise_server_exceptions=False)
         resp = client.get("/api/v1/market-data/snapshots?limit=10")
@@ -105,7 +107,7 @@ def test_technical_snapshots_endpoint_picks_latest_row_per_symbol(monkeypatch):
         assert row_by_symbol["AAA"]["current_price"] == 20.0
         assert row_by_symbol["BBB"]["current_price"] == 30.0
     finally:
-        app.dependency_overrides.pop(routes.get_db, None)
+        app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_optional_user, None)
 
 

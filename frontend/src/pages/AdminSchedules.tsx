@@ -38,7 +38,7 @@ import {
 } from 'react-icons/fi';
 import SortableTable, { type Column } from '../components/SortableTable';
 import { useUserPreferences } from '../hooks/useUserPreferences';
-import { formatDateTime } from '../utils/format';
+import { formatDateTime, formatRelativeTime } from '../utils/format';
 
 interface Schedule {
   id: string;
@@ -70,19 +70,6 @@ interface AuditEntry {
   changes: Record<string, any> | null;
   timestamp: string;
 }
-
-const timeAgo = (iso: string | null | undefined): string => {
-  if (!iso) return '—';
-  const diff = Date.now() - new Date(iso).getTime();
-  if (diff < 0) return 'just now';
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
-};
 
 const shortTask = (task: string): string => {
   if (!task) return '—';
@@ -125,7 +112,7 @@ const SyncDot: React.FC<{ s: Schedule }> = ({ s }) => {
   const label = s.render_sync_error
     ? `Sync error: ${s.render_sync_error}`
     : s.render_synced_at
-      ? `Synced ${timeAgo(s.render_synced_at)}`
+      ? `Synced ${formatRelativeTime(s.render_synced_at)}`
       : 'Not yet synced to Render';
   return (
     <TooltipRoot>
@@ -487,7 +474,7 @@ const AdminSchedules: React.FC = () => {
           <Box>
             <TooltipRoot>
               <TooltipTrigger asChild>
-                <Text fontSize="12px" color="fg.default">{timeAgo(ts)}</Text>
+                <Text fontSize="12px" color="fg.default">{formatRelativeTime(ts)}</Text>
               </TooltipTrigger>
               {ts && (
                 <TooltipPositioner>
@@ -579,7 +566,7 @@ const AdminSchedules: React.FC = () => {
       render: (_v, e) => (
         <TooltipRoot>
           <TooltipTrigger asChild>
-            <Text fontSize="12px">{timeAgo(e.timestamp)}</Text>
+            <Text fontSize="12px">{formatRelativeTime(e.timestamp)}</Text>
           </TooltipTrigger>
           <TooltipPositioner>
             <TooltipContent>{formatDateTime(e.timestamp, timezone)}</TooltipContent>

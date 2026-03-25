@@ -206,11 +206,16 @@ services:
       IBC_TradingMode: ${IBKR_TRADING_MODE:-paper}
       IBC_ReadOnlyApi: "${IBC_READONLY_API:-yes}"
       IBC_ExistingSessionDetectedAction: primary
+      # TOTP for automated 2FA login (set IBKR_TOTP_SECRET in env.dev)
+      TWOFA_TIMEOUT_ACTION: restart
+      JAVA_TOTP_SECRET: ${IBKR_TOTP_SECRET:-}
     ulimits:
       nofile: 10000
     ports:
-      - "6080:6080"
-      - "8888:8888"
+      - "6080:6080"    # VNC web interface
+      - "8888:8888"    # IB Gateway API (redirect to 4001/4002)
+      - "4001:4001"    # Live trading
+      - "4002:4002"    # Paper trading
     networks:
       - axiomfolio_network
     restart: unless-stopped

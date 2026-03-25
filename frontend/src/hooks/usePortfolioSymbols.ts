@@ -1,4 +1,4 @@
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 
 export interface PortfolioSymbolData {
@@ -10,12 +10,13 @@ export interface PortfolioSymbolData {
 }
 
 export function usePortfolioSymbols() {
-  return useQuery<Record<string, PortfolioSymbolData>>(
-    'portfolioSymbols',
-    async () => {
+  return useQuery<Record<string, PortfolioSymbolData>>({
+    queryKey: ['portfolioSymbols'],
+    queryFn: async () => {
       const res = await api.get('/portfolio/symbols');
       return res.data?.data ?? {};
     },
-    { staleTime: 120_000, enabled: true },
-  );
+    staleTime: 120_000,
+    enabled: true,
+  });
 }

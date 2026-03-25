@@ -75,7 +75,7 @@ def test_backfill_stale_daily_returns_full_stale_candidates(monkeypatch, db_sess
         db_session.commit()
 
         # Stub celery delay so we don't run a worker in unit tests.
-        from backend.api.routes import market_data as routes
+        from backend.api.routes.market import admin as routes
 
         class _StubTask:
             @staticmethod

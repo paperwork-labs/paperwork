@@ -8,11 +8,13 @@ const buttonRecipe = defineRecipe({
     cursor: "pointer",
     transition: "all 200ms ease",
     _focusVisible: {
-      boxShadow: "0 0 0 4px var(--chakra-colors-focusRing)",
+      boxShadow: "0 0 0 3px var(--chakra-colors-focusRing)",
+      outline: "none",
     },
     _disabled: {
-      opacity: 0.6,
+      opacity: 0.5,
       cursor: "not-allowed",
+      transform: "none",
     },
     _hover: {
       transform: "translateY(-1px)",
@@ -31,8 +33,9 @@ const inputRecipe = defineRecipe({
     transition: "border-color 200ms ease, box-shadow 200ms ease",
     _placeholder: { color: "fg.subtle" },
     _focusVisible: {
-      borderColor: "brand.500",
-      boxShadow: "0 0 0 4px var(--chakra-colors-focusRing)",
+      borderColor: "amber.500",
+      boxShadow: "0 0 0 3px var(--chakra-colors-focusRing)",
+      outline: "none",
     },
   },
 });
@@ -47,7 +50,6 @@ export const system = createSystem(
         color: "fg.default",
       },
       "@media (prefers-reduced-motion: reduce)": {
-        // Chakra SystemStyleObject typings omit universal selectors; this is valid global CSS
         // @ts-expect-error — selector string not in SystemStyleObject index
         "*, *::before, *::after": {
           animationDuration: "0.01ms !important",
@@ -84,12 +86,24 @@ export const system = createSystem(
             800: { value: "#166534" },
             900: { value: "#14532D" },
           },
-          focusRing: { value: "rgba(29,78,216,0.22)" },
+          amber: {
+            50: { value: "#FFFBEB" },
+            100: { value: "#FEF3C7" },
+            200: { value: "#FDE68A" },
+            300: { value: "#FCD34D" },
+            400: { value: "#FBBF24" },
+            500: { value: "#F59E0B" },
+            600: { value: "#D97706" },
+            700: { value: "#B45309" },
+            800: { value: "#92400E" },
+            900: { value: "#78350F" },
+          },
+          focusRing: { value: "rgba(245,158,11,0.25)" },
         },
         fonts: {
           heading: {
             value:
-              "'Space Grotesk', 'Inter', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
+              "'IBM Plex Sans', 'Inter', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
           },
           body: {
             value: "'Inter', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
@@ -100,8 +114,8 @@ export const system = createSystem(
           },
         },
         radii: {
-          lg: { value: "12px" },
-          xl: { value: "16px" },
+          lg: { value: "10px" },
+          xl: { value: "14px" },
         },
       },
       semanticTokens: {
@@ -113,19 +127,22 @@ export const system = createSystem(
             value: { _light: "white", _dark: "#0F172A" },
           },
           "bg.card": {
-            value: { _light: "white", _dark: "#1E293B" },
+            value: { _light: "white", _dark: "#111827" },
           },
           "bg.muted": {
             value: {
-              _light: "rgba(15, 23, 42, 0.05)",
-              _dark: "rgba(255, 255, 255, 0.06)",
+              _light: "rgba(15, 23, 42, 0.04)",
+              _dark: "rgba(255, 255, 255, 0.05)",
             },
           },
           "bg.subtle": {
             value: {
-              _light: "rgba(15, 23, 42, 0.08)",
-              _dark: "rgba(255, 255, 255, 0.10)",
+              _light: "rgba(15, 23, 42, 0.06)",
+              _dark: "rgba(255, 255, 255, 0.08)",
             },
+          },
+          "bg.elevated": {
+            value: { _light: "white", _dark: "#1E293B" },
           },
           "bg.header": {
             value: { _light: "white", _dark: "#0F172A" },
@@ -146,33 +163,42 @@ export const system = createSystem(
             },
           },
           "fg.default": {
-            value: { _light: "#111827", _dark: "#F8FAFC" },
+            value: { _light: "#0F172A", _dark: "#F8FAFC" },
           },
           "fg.muted": {
             value: {
-              _light: "rgba(11,18,32,0.68)",
-              _dark: "rgba(248,250,252,0.70)",
+              _light: "rgba(15,23,42,0.65)",
+              _dark: "rgba(248,250,252,0.68)",
             },
           },
           "fg.subtle": {
             value: {
-              _light: "rgba(11,18,32,0.46)",
-              _dark: "rgba(248,250,252,0.55)",
+              _light: "rgba(15,23,42,0.42)",
+              _dark: "rgba(248,250,252,0.50)",
             },
           },
           "fg.accent": {
             value: { _light: "#16A34A", _dark: "#22C55E" },
           },
+          "fg.amber": {
+            value: { _light: "#D97706", _dark: "#F59E0B" },
+          },
           "border.subtle": {
             value: {
-              _light: "rgba(15,23,42,0.10)",
-              _dark: "rgba(255,255,255,0.10)",
+              _light: "rgba(15,23,42,0.08)",
+              _dark: "rgba(255,255,255,0.08)",
             },
           },
           "border.strong": {
             value: {
-              _light: "rgba(15,23,42,0.18)",
-              _dark: "rgba(255,255,255,0.16)",
+              _light: "rgba(15,23,42,0.16)",
+              _dark: "rgba(255,255,255,0.14)",
+            },
+          },
+          "border.hover": {
+            value: {
+              _light: "rgba(15,23,42,0.20)",
+              _dark: "rgba(255,255,255,0.18)",
             },
           },
           "status.success": {
@@ -203,13 +229,13 @@ export const system = createSystem(
             value: { _light: "#2563EB", _dark: "#60A5FA" },
           },
           "chart.grid": {
-            value: { _light: "rgba(15,23,42,0.08)", _dark: "rgba(255,255,255,0.06)" },
+            value: { _light: "rgba(15,23,42,0.06)", _dark: "rgba(255,255,255,0.05)" },
           },
           "chart.axis": {
-            value: { _light: "rgba(15,23,42,0.4)", _dark: "rgba(255,255,255,0.45)" },
+            value: { _light: "rgba(15,23,42,0.35)", _dark: "rgba(255,255,255,0.40)" },
           },
           "chart.refLine": {
-            value: { _light: "rgba(15,23,42,0.2)", _dark: "rgba(255,255,255,0.2)" },
+            value: { _light: "rgba(15,23,42,0.15)", _dark: "rgba(255,255,255,0.15)" },
           },
           "chart.warning": {
             value: { _light: "#D97706", _dark: "#FBBF24" },
@@ -219,14 +245,26 @@ export const system = createSystem(
           },
           "chart.tooltip.border": {
             value: {
-              _light: "rgba(15,23,42,0.12)",
-              _dark: "rgba(255,255,255,0.12)",
+              _light: "rgba(15,23,42,0.10)",
+              _dark: "rgba(255,255,255,0.10)",
             },
           },
           "glow.accent": {
             value: {
               _light: "rgba(34,197,94,0)",
-              _dark: "rgba(34,197,94,0.15)",
+              _dark: "rgba(34,197,94,0.12)",
+            },
+          },
+          "glow.amber": {
+            value: {
+              _light: "rgba(245,158,11,0)",
+              _dark: "rgba(245,158,11,0.10)",
+            },
+          },
+          "glow.brand": {
+            value: {
+              _light: "rgba(59,130,246,0)",
+              _dark: "rgba(59,130,246,0.10)",
             },
           },
         },
@@ -238,5 +276,3 @@ export const system = createSystem(
     },
   })
 );
-
-

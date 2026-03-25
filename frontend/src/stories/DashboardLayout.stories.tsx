@@ -87,7 +87,7 @@ const MockedProviders: React.FC<{ children: React.ReactNode }> = ({ children }) 
       },
       appSettingsReady: true,
       login: async () => {},
-      register: async () => {},
+      register: async () => ({ pendingApproval: false }),
       logout: () => {},
       refreshMe: async () => {},
       refreshAppSettings: async () => {},
@@ -119,7 +119,7 @@ const MockedProviders: React.FC<{ children: React.ReactNode }> = ({ children }) 
 };
 
 const MockedStoryShell: React.FC<{ initialPath?: string; collapsed?: boolean }> = ({
-  initialPath = "/settings/admin/dashboard",
+  initialPath = "/settings/admin/system",
   collapsed = false,
 }) => {
   React.useEffect(() => {
@@ -169,10 +169,10 @@ const MockedStoryShell: React.FC<{ initialPath?: string; collapsed?: boolean }> 
 };
 
 export const Admin_PortfolioEnabled_Expanded = () => (
-  <MockedStoryShell initialPath="/settings/admin/dashboard" collapsed={false} />
+  <MockedStoryShell initialPath="/settings/admin/system" collapsed={false} />
 );
 
 export const Admin_PortfolioEnabled_Collapsed = () => (
-  <MockedStoryShell initialPath="/settings/admin/dashboard" collapsed={true} />
+  <MockedStoryShell initialPath="/settings/admin/system" collapsed={true} />
 );
 

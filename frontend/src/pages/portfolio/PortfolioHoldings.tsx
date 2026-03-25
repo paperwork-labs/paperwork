@@ -10,6 +10,7 @@ import {
 } from '@chakra-ui/react';
 import { FiRefreshCw } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { ChartContext, SymbolLink, ChartSlidePanel } from '../../components/market/SymbolChartUI';
 import SortableTable, { type Column, type FilterGroup } from '../../components/SortableTable';
 import FinvizHeatMap, { type FinvizData } from '../../components/charts/FinvizHeatMap';
@@ -20,7 +21,7 @@ import StageBadge from '../../components/shared/StageBadge';
 import PnlText from '../../components/shared/PnlText';
 import { usePositions, usePortfolioSync, usePortfolioAccounts } from '../../hooks/usePortfolio';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
-import { formatMoney } from '../../utils/format';
+import { formatMoney, formatDateShort } from '../../utils/format';
 import { buildAccountsFromPositions } from '../../utils/portfolio';
 import type { AccountData } from '../../hooks/useAccountFilter';
 import type { EnrichedPosition } from '../../types/portfolio';
@@ -82,7 +83,7 @@ const PortfolioHoldings: React.FC = () => {
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [tradeTarget, setTradeTarget] = useState<TradeTarget>(null);
   const navigate = useNavigate();
-  const { currency } = useUserPreferences();
+  const { currency, timezone } = useUserPreferences();
   const positionsQuery = usePositions();
   const accountsQuery = usePortfolioAccounts();
   const syncMutation = usePortfolioSync();
@@ -113,7 +114,7 @@ const PortfolioHoldings: React.FC = () => {
 
   const priceRefreshTriggered = useRef(false);
   useEffect(() => {
-    if (priceRefreshTriggered.current || positions.length === 0 || positionsQuery.isLoading) return;
+    if (priceRefreshTriggered.current || positions.length === 0 || positionsQuery.isPending) return;
     const missingPrice = positions.some(p => Number(p.current_price ?? 0) === 0 && Number(p.shares ?? (p as { quantity?: number }).quantity ?? 0) !== 0);
     if (missingPrice) {
       priceRefreshTriggered.current = true;
@@ -122,12 +123,12 @@ const PortfolioHoldings: React.FC = () => {
           if (!response.ok) throw new Error(`Price refresh failed: ${response.status}`);
           setTimeout(() => positionsQuery.refetch(), 3000);
         })
-        .catch((error) => {
-          console.error('Failed to refresh prices', error);
+        .catch((err) => {
           priceRefreshTriggered.current = false;
+          toast.error(err?.message || 'Failed to refresh prices');
         });
     }
-  }, [positions, positionsQuery.isLoading]);
+  }, [positions, positionsQuery.isPending]);
 
   const heatmap = useMemo((): FinvizData[] => {
     return filtered
@@ -358,7 +359,7 @@ const PortfolioHoldings: React.FC = () => {
           if (isNaN(d.getTime())) return <Text fontSize="xs" color="fg.muted">—</Text>;
           const daysOut = Math.ceil((d.getTime() - Date.now()) / (1000 * 86400));
           const color = daysOut <= 7 ? 'yellow.400' : 'fg.muted';
-          return <Text fontSize="xs" color={color}>{d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</Text>;
+          return <Text fontSize="xs" color={color}>{formatDateShort(v, timezone)}</Text>;
         },
         width: '80px',
       },
@@ -478,7 +479,7 @@ const PortfolioHoldings: React.FC = () => {
         width: '60px',
       },
     ],
-    [currency, totalValue]
+    [currency, totalValue, timezone]
   );
 
   const openChart = (symbol: string) => setChartSymbol(symbol);
@@ -507,7 +508,7 @@ const PortfolioHoldings: React.FC = () => {
                 size="sm"
                 variant="outline"
                 onClick={() => syncMutation.mutate()}
-                loading={syncMutation.isLoading}
+                loading={syncMutation.isPending}
               >
                 <HStack gap={2}><FiRefreshCw /> Sync</HStack>
               </Button>
@@ -515,7 +516,7 @@ const PortfolioHoldings: React.FC = () => {
           }
         />
 
-        {(positionsQuery.isLoading || accountsQuery.isLoading) ? (
+        {(positionsQuery.isPending || accountsQuery.isPending) ? (
           <TableSkeleton rows={8} cols={6} />
         ) : (positionsQuery.error || accountsQuery.error) ? (
           <Text color="status.danger">Failed to load holdings</Text>

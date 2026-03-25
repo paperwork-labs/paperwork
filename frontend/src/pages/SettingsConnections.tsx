@@ -46,7 +46,7 @@ import api from '../services/api';
 import { useConnectJobPoll } from '../hooks/useConnectJobPoll';
 import { useAuth } from '../context/AuthContext';
 import { useAccountContext } from '../context/AccountContext';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FiArrowLeft, FiEdit2, FiEdit3, FiExternalLink, FiTrash2, FiActivity, FiBarChart2, FiDatabase, FiLink } from 'react-icons/fi';
 import SchwabLogo from '../assets/logos/schwab.svg';
 import TastytradeLogo from '../assets/logos/tastytrade.svg';
@@ -408,32 +408,31 @@ const SettingsConnections: React.FC = () => {
   };
 
   /* ---------- IB Gateway ---------- */
-  const gatewayQuery = useQuery(
-    ['ibGatewayStatus'],
-    async () => {
+  const gatewayQuery = useQuery({
+    queryKey: ['ibGatewayStatus'],
+    queryFn: async () => {
       const res = await api.get('/portfolio/options/gateway-status');
       return res.data?.data ?? { connected: false, available: false };
     },
-    { staleTime: 30000, refetchInterval: 60000 },
-  );
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
   const gwData = gatewayQuery.data as { connected?: boolean; available?: boolean; host?: string; port?: number; client_id?: number; trading_mode?: string; last_connected?: string; error?: string; vnc_url?: string } | undefined;
 
-  const gatewayConnectMutation = useMutation(
-    () => api.post('/portfolio/options/gateway-connect'),
-    {
-      onSuccess: () => {
+  const gatewayConnectMutation = useMutation({
+    mutationFn: () => api.post('/portfolio/options/gateway-connect'),
+    onSuccess: () => {
+      gatewayQuery.refetch();
+      hotToast.success('Gateway reconnection triggered — auto-checking status...');
+      let polls = 0;
+      const timer = setInterval(() => {
+        polls++;
         gatewayQuery.refetch();
-        hotToast.success('Gateway reconnection triggered — auto-checking status...');
-        let polls = 0;
-        const timer = setInterval(() => {
-          polls++;
-          gatewayQuery.refetch();
-          if (polls >= 10) clearInterval(timer);
-        }, 3000);
-      },
-      onError: (err: unknown) => { hotToast.error(`Gateway connect failed: ${handleApiError(err)}`); },
+        if (polls >= 10) clearInterval(timer);
+      }, 3000);
     },
-  );
+    onError: (err: unknown) => { hotToast.error(`Gateway connect failed: ${handleApiError(err)}`); },
+  });
 
   /* ---------- IB Gateway settings ---------- */
   const [gwEditOpen, setGwEditOpen] = useState(false);
@@ -459,8 +458,8 @@ const SettingsConnections: React.FC = () => {
     }
   };
 
-  const saveGwSettings = useMutation(
-    async () => {
+  const saveGwSettings = useMutation({
+    mutationFn: async () => {
       if (!ibkrAccount) throw new Error('No IBKR account found');
       const payload: Record<string, any> = {};
       if (gwForm.host.trim()) payload.gateway_host = gwForm.host.trim();
@@ -468,14 +467,12 @@ const SettingsConnections: React.FC = () => {
       if (gwForm.client_id.trim()) payload.gateway_client_id = parseInt(gwForm.client_id, 10);
       await api.patch(`/accounts/${ibkrAccount.id}/gateway-settings`, payload);
     },
-    {
-      onSuccess: () => {
-        hotToast.success('Gateway settings saved');
-        setGwEditOpen(false);
-      },
-      onError: (err: unknown) => { hotToast.error(`Save failed: ${handleApiError(err)}`); },
+    onSuccess: () => {
+      hotToast.success('Gateway settings saved');
+      setGwEditOpen(false);
     },
-  );
+    onError: (err: unknown) => { hotToast.error(`Save failed: ${handleApiError(err)}`); },
+  });
 
   /* ---------- TradingView preferences ---------- */
   const queryClient = useQueryClient();
@@ -483,16 +480,14 @@ const SettingsConnections: React.FC = () => {
   const [tvInterval, setTvInterval] = useState(tvPrefs.tv_default_interval || 'D');
   const [tvStudies, setTvStudies] = useState<string>(tvPrefs.tv_default_studies || 'EMA,RSI,MACD,Volume');
 
-  const tvPrefsMutation = useMutation(
-    (prefs: Record<string, string>) => api.patch('/users/preferences', { ui_preferences: prefs }),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('authUser');
-        hotToast.success('TradingView preferences saved');
-      },
-      onError: (err: unknown) => { hotToast.error(`Save failed: ${handleApiError(err)}`); },
+  const tvPrefsMutation = useMutation({
+    mutationFn: (prefs: Record<string, string>) => api.patch('/users/preferences', { ui_preferences: prefs }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['authUser'] });
+      hotToast.success('TradingView preferences saved');
     },
-  );
+    onError: (err: unknown) => { hotToast.error(`Save failed: ${handleApiError(err)}`); },
+  });
 
   return (
     <Box w="full">
@@ -801,7 +796,7 @@ const SettingsConnections: React.FC = () => {
                 variant="subtle"
                 fontSize="xs"
               >
-                {gatewayQuery.isLoading ? 'Checking...' : gwData?.connected ? 'Connected' : 'Offline'}
+                {gatewayQuery.isPending ? 'Checking...' : gwData?.connected ? 'Connected' : 'Offline'}
               </Badge>
             </HStack>
             <Text fontSize="sm" color="fg.muted" mb={3} pl="42px">
@@ -849,7 +844,7 @@ const SettingsConnections: React.FC = () => {
                   size="sm"
                   colorPalette={gwData?.connected ? 'gray' : 'brand'}
                   onClick={() => gatewayConnectMutation.mutate()}
-                  loading={gatewayConnectMutation.isLoading}
+                  loading={gatewayConnectMutation.isPending}
                 >
                   {gwData?.connected ? 'Reconnect' : 'Connect'}
                 </Button>
@@ -892,7 +887,7 @@ const SettingsConnections: React.FC = () => {
                     </Box>
                   </SimpleGrid>
                   <HStack mt={3} gap={2}>
-                    <Button size="sm" colorPalette="brand" onClick={() => saveGwSettings.mutate()} loading={saveGwSettings.isLoading}>
+                    <Button size="sm" colorPalette="brand" onClick={() => saveGwSettings.mutate()} loading={saveGwSettings.isPending}>
                       Save Settings
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => setGwEditOpen(false)}>Cancel</Button>
@@ -969,7 +964,7 @@ const SettingsConnections: React.FC = () => {
                 colorPalette="brand"
                 alignSelf="flex-start"
                 onClick={() => tvPrefsMutation.mutate({ tv_default_interval: tvInterval, tv_default_studies: tvStudies })}
-                loading={tvPrefsMutation.isLoading}
+                loading={tvPrefsMutation.isPending}
               >
                 Save Preferences
               </Button>

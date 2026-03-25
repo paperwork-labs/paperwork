@@ -79,7 +79,6 @@ describe('DashboardLayout sidebar persistence', () => {
     renderWithProviders(<DashboardLayout />);
     expect(screen.getAllByText('MARKET').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Tracked').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Coverage').length).toBeGreaterThan(0);
     expect(screen.queryByText('PORTFOLIO')).toBeNull();
     expect(screen.queryByText('STRATEGY')).toBeNull();
     expect(screen.queryByText('Overview')).toBeNull();

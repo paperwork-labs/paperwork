@@ -83,3 +83,32 @@ export interface AdminHealthResponse {
   thresholds: Record<string, number>;
   checked_at: string;
 }
+
+/** Auto-fix API types */
+export interface AutoFixTask {
+  task_name: string;
+  label: string;
+  reason: string;
+  priority: number;
+  task_id?: string;
+  status?: 'pending' | 'running' | 'completed' | 'failed';
+  started_at?: string | null;
+  finished_at?: string | null;
+  error?: string | null;
+}
+
+export interface AutoFixResponse {
+  job_id: string;
+  status: string;
+  message: string;
+  plan: AutoFixTask[];
+}
+
+export interface AutoFixStatusResponse {
+  job_id: string;
+  overall_status: 'pending' | 'running' | 'completed' | 'failed';
+  completed_count: number;
+  total_count: number;
+  current_task: string | null;
+  plan: AutoFixTask[];
+}

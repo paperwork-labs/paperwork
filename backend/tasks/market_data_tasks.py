@@ -1,6 +1,15 @@
 from __future__ import annotations
 
-"""Market data task suite
+"""Market data task suite (LEGACY - migrating to backend/tasks/market/)
+
+This monolithic file is being incrementally migrated to:
+- backend/tasks/market/backfill.py
+- backend/tasks/market/history.py
+- backend/tasks/market/regime.py
+- backend/tasks/market/coverage.py
+
+Task names (e.g., backend.tasks.market_data_tasks.xxx) remain unchanged
+for Celery routing and schedule compatibility.
 
 Sections:
 - Backfill: populate `price_data` with recent daily OHLCV (delta-only)
@@ -444,8 +453,8 @@ def _set_task_status(task_name: str, status: str, payload: dict | None = None) -
                 }
             ),
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("task_status_set failed for %s: %s", task_name, e)
 
 
 # ============================= Tracked Universe Cache =============================
@@ -485,8 +494,9 @@ def update_tracked_symbol_cache() -> dict:
                     "SP500": set(),
                     "NASDAQ100": set(),
                     "DOW30": set(),
+                    "RUSSELL2000": set(),
                 }
-                for idx in ["SP500", "NASDAQ100", "DOW30"]:
+                for idx in ["SP500", "NASDAQ100", "DOW30", "RUSSELL2000"]:
                     try:
                         cons = loop.run_until_complete(
                             market_data_service.get_index_constituents(idx)
@@ -505,8 +515,8 @@ def update_tracked_symbol_cache() -> dict:
                             )
                     session.commit()
                     current = sorted(seed_syms)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("index_seed_from_providers failed: %s", e)
             finally:
                 if loop:
                     loop.close()
@@ -692,6 +702,8 @@ def _persist_daily_fetch_results(
 def backfill_last_bars(days: int = 200) -> dict:
     """Delta backfill last N *trading days* (approx) of daily bars for the tracked universe.
 
+    Delegates to backfill_symbols() with the tracked universe.
+
     Returns detailed counters:
     - tracked_total, updated_total, up_to_date_total, skipped_empty, bars_inserted_total, errors, error_samples
     """
@@ -700,72 +712,17 @@ def backfill_last_bars(days: int = 200) -> dict:
     try:
         # Use durable tracked universe (index_constituents ∪ portfolio)
         symbols = _get_tracked_universe_from_db(session)
-        loop = _setup_event_loop()
-        try:
-            tracked_total = len(symbols)
-            concurrency = _daily_backfill_concurrency()
-            params = daily_backfill_params(days=days)
-            fetched = loop.run_until_complete(
-                _fetch_daily_for_symbols(
-                    symbols=list(symbols),
-                    period=params.period,
-                    max_bars=params.max_bars,
-                    concurrency=concurrency,
-                )
-            )
-            # Second pass: retry empties with lower concurrency to reduce transient provider flakiness.
-            empties = sorted(
-                {
-                    str(i.get("symbol", "")).upper()
-                    for i in fetched
-                    if i.get("symbol")
-                    and i.get("symbol") != "?"
-                    and (i.get("df") is None or getattr(i.get("df"), "empty", True))
-                }
-            )
-            if empties:
-                retry_conc = max(1, min(10, max(1, concurrency // 5)))
-                retried = loop.run_until_complete(
-                    _fetch_daily_for_symbols(
-                        symbols=empties,
-                        period=params.period,
-                        max_bars=params.max_bars,
-                        concurrency=retry_conc,
-                    )
-                )
-                retry_map = {r.get("symbol"): r for r in retried if r.get("symbol")}
-                for i, item in enumerate(fetched):
-                    sym = item.get("symbol")
-                    if sym in retry_map and (item.get("df") is None or getattr(item.get("df"), "empty", True)):
-                        fetched[i] = retry_map[sym]
-
-            # Persist (delta insert after last_date)
-            persist = _persist_daily_fetch_results(
-                session=session,
-                fetched=fetched,
-                since_dt=None,
-                use_delta_after=True,
-            )
-        finally:
-            loop.close()
-        res = {
-            "status": "ok",
-            "days": int(days),
-            "period": params.period,
-            "max_bars": params.max_bars,
-            "tracked_total": tracked_total,
-            "updated_total": persist["updated_total"],
-            "up_to_date_total": persist["up_to_date_total"],
-            "skipped_empty": persist["skipped_empty"],
-            "bars_inserted_total": persist["bars_inserted_total"],
-            "errors": persist["errors"],
-            "error_samples": persist["error_samples"],
-            "provider_usage": persist["provider_usage"],
-        }
-        _set_task_status("admin_backfill_daily", "ok", res)
-        return res
+        tracked_total = len(symbols)
     finally:
         session.close()
+
+    # Delegate to backfill_symbols (which has retry logic built in)
+    result = backfill_symbols(list(symbols), days=days)
+
+    # Add tracked_total to result
+    result["tracked_total"] = tracked_total
+    _set_task_status("admin_backfill_daily", "ok", result)
+    return result
 
 
 
@@ -805,6 +762,9 @@ def backfill_symbols(symbols: List[str], days: int = 200) -> dict:
             "max_bars": params.max_bars,
             "symbols": len(symbols or []),
             "processed": persist["processed_ok"],
+            "updated_total": persist["updated_total"],
+            "up_to_date_total": persist["up_to_date_total"],
+            "skipped_empty": persist["skipped_empty"],
             "rows_attempted": persist["bars_inserted_total"],
             "errors": persist["errors"],
             "error_samples": persist["error_samples"],
@@ -820,7 +780,7 @@ def backfill_symbols(symbols: List[str], days: int = 200) -> dict:
 @shared_task(name="backend.tasks.market_data_tasks.refresh_index_constituents")
 @task_run("market_indices_constituents_refresh")
 def refresh_index_constituents() -> dict:
-    """Refresh index constituents table for SP500, NASDAQ100, DOW30 (and keep inactive).
+    """Refresh index constituents table for SP500, NASDAQ100, DOW30, RUSSELL2000 (and keep inactive).
 
     - Inserts new symbols and marks them active
     - If a symbol disappears from a list, we mark it inactive and set became_inactive_at
@@ -838,7 +798,7 @@ def refresh_index_constituents() -> dict:
         preflight = {
             "has_fmp_key": bool(getattr(_settings, "FMP_API_KEY", "")),
         }
-        for idx in ["SP500", "NASDAQ100", "DOW30"]:
+        for idx in ["SP500", "NASDAQ100", "DOW30", "RUSSELL2000"]:
             try:
                 symbols = set(loop.run_until_complete(market_data_service.get_index_constituents(idx)))
             except Exception as e:
@@ -853,8 +813,8 @@ def refresh_index_constituents() -> dict:
                     meta = json.loads(meta_raw)
                     provider_used = meta.get("provider_used", provider_used)
                     fallback_used = meta.get("fallback_used", False)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("redis_meta_read failed for %s: %s", idx, e)
             # existing rows
             existing_rows = (
                 session.query(IndexConstituent)
@@ -896,7 +856,7 @@ def refresh_index_constituents() -> dict:
                 "fallback_used": fallback_used,
             }
         # Health check: alert if any index returned 0 constituents or all used fallbacks
-        min_expected = {"SP500": 400, "NASDAQ100": 90, "DOW30": 25}
+        min_expected = {"SP500": 400, "NASDAQ100": 90, "DOW30": 25, "RUSSELL2000": 1500}
         warnings = []
         for idx_name, expected in min_expected.items():
             idx_result = results.get(idx_name, {})
@@ -908,7 +868,7 @@ def refresh_index_constituents() -> dict:
 
         if warnings:
             try:
-                from backend.services.alerts import alert_service
+                from backend.services.notifications.alerts import alert_service
                 alert_service.send_discord(
                     "system_status",
                     title="Index Constituents Health Check Warning",
@@ -916,8 +876,8 @@ def refresh_index_constituents() -> dict:
                     fields={w.split(":")[0]: w for w in warnings},
                     severity="warning",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("discord_health_check_alert failed: %s", e)
             logger.warning("Index constituents health check: %s", "; ".join(warnings))
 
         res = {"status": "ok", "preflight": preflight, "indices": results, "health_warnings": warnings}
@@ -1313,7 +1273,7 @@ def bootstrap_daily_coverage_tracked(history_days: int | None = None, history_ba
 
     # Step 9: Evaluate active strategies (best-effort)
     try:
-        from backend.tasks.strategy_tasks import evaluate_strategies_task
+        from backend.tasks.strategy.tasks import evaluate_strategies_task
         res9 = evaluate_strategies_task()
     except Exception as exc:
         logger.warning("Strategy evaluation failed (non-fatal): %s", exc)
@@ -1326,7 +1286,7 @@ def bootstrap_daily_coverage_tracked(history_days: int | None = None, history_ba
 
     # Step 11: Generate daily intelligence digest (best-effort)
     try:
-        from backend.tasks.intelligence_tasks import generate_daily_digest_task
+        from backend.tasks.intelligence.tasks import generate_daily_digest_task
         res11 = generate_daily_digest_task(deliver_discord=True)
     except Exception as exc:
         logger.warning("Daily digest generation failed (non-fatal): %s", exc)
@@ -1517,8 +1477,8 @@ def recompute_indicators_universe(batch_size: int = 50) -> dict:
             )
             if spy_rows:
                 spy_df = price_data_rows_to_dataframe(spy_rows, ascending=False)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("spy_benchmark_fetch failed for %s: %s", benchmark_symbol, e)
 
         # Skip symbols that already have a fresh snapshot (makes re-runs fast).
         fresh_cutoff = datetime.utcnow() - timedelta(hours=4)
@@ -1531,8 +1491,8 @@ def recompute_indicators_universe(batch_size: int = 50) -> dict:
                     MarketSnapshot.analysis_timestamp >= fresh_cutoff,
                 )
             }
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("fresh_snapshot_query failed: %s", e)
         skipped_fresh = 0
 
         # Chunking by batch_size
@@ -2011,8 +1971,8 @@ def backfill_snapshot_history_last_n_days(
                                     if "rs_mansfield_pct" in stage_daily.columns and not pd.isna(stage_daily.loc[d, "rs_mansfield_pct"])
                                     else None
                                 )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.warning("stage_indicator_extract failed for %s on %s: %s", sym, d, e)
 
                         run_info = stage_run_by_date.get(d) if stage_run_by_date else None
                         payload = {
@@ -2079,8 +2039,8 @@ def backfill_snapshot_history_last_n_days(
                                     lbl = stage_5d.loc[d]
                                     if isinstance(lbl, str):
                                         r["stage_label_5d_ago"] = lbl
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning("stage_label_5d_ago failed for %s: %s", sym, e)
 
                     # Update latest snapshot stage duration fields from history backfill.
                     # Only write if the latest backfill row has a recognized (non-UNKNOWN)
@@ -2254,8 +2214,8 @@ def backfill_snapshot_history_for_symbol(
             if spy_rows:
                 spy_df = price_data_rows_to_dataframe(spy_rows, ascending=True)
                 spy_df.index = pd.to_datetime(spy_df.index, utc=True, errors="coerce").tz_convert(None).normalize()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("spy_benchmark_fetch failed for %s: %s", symbol, e)
 
         indicators_df = compute_full_indicator_series(df, spy_df=spy_df if not spy_df.empty else None)
 
@@ -2618,7 +2578,7 @@ def enforce_price_data_retention(max_days_5m: int = 90) -> dict:
     try:
         from backend.models import PriceData
         from datetime import datetime, timedelta
-        from backend.services.alerts import alert_service
+        from backend.services.notifications.alerts import alert_service
 
         effective_days = int(max_days_5m or settings.RETENTION_MAX_DAYS_5M)
         cutoff = datetime.utcnow() - timedelta(days=effective_days)
@@ -2766,8 +2726,8 @@ def audit_market_data_quality(sample_limit: int = 25) -> dict:
             market_data_service.redis_client.set(
                 "market_audit:last", json.dumps(payload), ex=86400
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("redis_audit_cache failed: %s", e)
         return payload
     finally:
         session.close()
@@ -2834,7 +2794,7 @@ def check_stage_changes() -> dict:
 
         if changes:
             try:
-                from backend.services.alerts import alert_service
+                from backend.services.notifications.alerts import alert_service
 
                 fields = {
                     c["symbol"]: f'{c["from_stage"]} → {c["to_stage"]}'
@@ -2847,8 +2807,8 @@ def check_stage_changes() -> dict:
                     fields=fields,
                     severity="warning",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("discord_stage_change_alert failed: %s", e)
 
         return {
             "status": "ok",
@@ -2872,8 +2832,8 @@ def monitor_coverage_health() -> dict:
         # Ensure status logic respects the 5m toggle (ignore-5m behavior).
         try:
             snapshot.setdefault("meta", {})["backfill_5m_enabled"] = market_data_service.coverage.is_backfill_5m_enabled()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("backfill_5m_toggle_read failed: %s", e)
         from backend.services.market.coverage_utils import compute_coverage_status
         status_info = compute_coverage_status(snapshot)
         snapshot["status"] = status_info
@@ -2898,8 +2858,8 @@ def monitor_coverage_health() -> dict:
             pipe.lpush("coverage:health:history", json.dumps(history_entry))
             pipe.ltrim("coverage:health:history", 0, 47)
             pipe.execute()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("redis_coverage_health_cache failed: %s", e)
         return {
             "status": status_info.get("label"),
             "daily_pct": status_info.get("daily_pct"),
@@ -2928,76 +2888,12 @@ def compute_daily_regime() -> dict:
     """
     session = SessionLocal()
     try:
-        from backend.services.market.regime_engine import (
-            compute_regime,
-            persist_regime,
-            RegimeInputs,
-        )
+        from backend.services.market.regime_engine import compute_regime, persist_regime
+        from backend.services.market.regime_inputs import gather_regime_inputs
         from datetime import date as date_type
 
-        vix_spot = 20.0
-        vix3m_vix_ratio = 1.0
-        vvix_vix_ratio = 1.0
-        pct_above_200 = 50.0
-        pct_above_50 = 50.0
-        nh_nl = 0
-
-        try:
-            import yfinance as yf
-
-            vix_df = yf.download("^VIX", period="5d", progress=False)
-            if vix_df is not None and len(vix_df) > 0:
-                vix_spot = float(vix_df["Close"].iloc[-1])
-
-            vix3m_df = yf.download("^VIX3M", period="5d", progress=False)
-            if vix3m_df is not None and len(vix3m_df) > 0 and vix_spot > 0:
-                vix3m_vix_ratio = float(vix3m_df["Close"].iloc[-1]) / vix_spot
-
-            vvix_df = yf.download("^VVIX", period="5d", progress=False)
-            if vvix_df is not None and len(vvix_df) > 0 and vix_spot > 0:
-                vvix_vix_ratio = float(vvix_df["Close"].iloc[-1]) / vix_spot
-        except Exception as exc:
-            logger.warning("Failed to fetch VIX data for regime: %s", exc)
-
-        from sqlalchemy import func as sqlfunc
-
-        total = session.query(sqlfunc.count(MarketSnapshot.id)).filter(
-            MarketSnapshot.analysis_type == "technical_snapshot",
-            MarketSnapshot.is_valid.is_(True),
-        ).scalar() or 0
-
-        if total > 0:
-            above_200 = (
-                session.query(sqlfunc.count(MarketSnapshot.id))
-                .filter(
-                    MarketSnapshot.analysis_type == "technical_snapshot",
-                    MarketSnapshot.is_valid.is_(True),
-                    MarketSnapshot.sma_200.isnot(None),
-                    MarketSnapshot.current_price > MarketSnapshot.sma_200,
-                )
-                .scalar() or 0
-            )
-            above_50 = (
-                session.query(sqlfunc.count(MarketSnapshot.id))
-                .filter(
-                    MarketSnapshot.analysis_type == "technical_snapshot",
-                    MarketSnapshot.is_valid.is_(True),
-                    MarketSnapshot.sma_50.isnot(None),
-                    MarketSnapshot.current_price > MarketSnapshot.sma_50,
-                )
-                .scalar() or 0
-            )
-            pct_above_200 = (above_200 / total) * 100
-            pct_above_50 = (above_50 / total) * 100
-
-        inputs = RegimeInputs(
-            vix_spot=vix_spot,
-            vix3m_vix_ratio=vix3m_vix_ratio,
-            vvix_vix_ratio=vvix_vix_ratio,
-            nh_nl=nh_nl,
-            pct_above_200d=pct_above_200,
-            pct_above_50d=pct_above_50,
-        )
+        # Use centralized regime input gathering (fetches VIX, NH-NL, breadth)
+        inputs = gather_regime_inputs(session)
 
         today = date_type.today()
         result = compute_regime(inputs, as_of=today)
@@ -3008,9 +2904,386 @@ def compute_daily_regime() -> dict:
             "regime_state": result.regime_state,
             "composite_score": result.composite_score,
             "as_of_date": row.as_of_date.isoformat() if row and row.as_of_date else None,
+            "inputs": {
+                "vix_spot": inputs.vix_spot,
+                "nh_nl": inputs.nh_nl,
+                "pct_above_200d": inputs.pct_above_200d,
+                "pct_above_50d": inputs.pct_above_50d,
+            },
         }
     except Exception:
         logger.exception("compute_daily_regime failed")
+        raise
+    finally:
+        session.close()
+
+
+# ============================= IV Snapshot Tasks =============================
+
+
+@shared_task(
+    name="backend.tasks.market_data_tasks.snapshot_iv_from_gateway",
+    soft_time_limit=300,
+    time_limit=360,
+)
+@task_run("snapshot_iv_from_gateway")
+def snapshot_iv_from_gateway() -> dict:
+    """Snapshot implied volatility for tracked positions from IB Gateway.
+
+    Requires IB Gateway connection. Fetches ATM IV for positions and stores
+    in HistoricalIV table for IV rank calculation.
+    """
+    session = SessionLocal()
+    try:
+        from datetime import date as date_type
+        from backend.models.historical_iv import HistoricalIV
+        from backend.models.position import Position
+
+        today = date_type.today()
+        processed = 0
+        errors = 0
+
+        # Get open positions with options
+        positions = (
+            session.query(Position)
+            .filter(Position.status == "open")
+            .all()
+        )
+
+        symbols = list({p.symbol for p in positions if p.symbol})
+        if not symbols:
+            return {"status": "no_positions", "processed": 0}
+
+        # Try to get IBKR client
+        try:
+            from backend.services.clients.ibkr_client import ibkr_client
+            if not ibkr_client.is_connected():
+                return {"status": "gateway_not_connected", "processed": 0}
+        except Exception as e:
+            logger.warning("IBKR client not available: %s", e)
+            return {"status": "gateway_unavailable", "error": str(e)}
+
+        # Fetch IV for each symbol
+        for symbol in symbols:
+            try:
+                # Get ATM IV from IB Gateway (this would call the actual Gateway API)
+                # For now, placeholder - actual implementation would use ibkr_client
+                iv_data = {
+                    "iv_30d": None,  # Would come from Gateway
+                    "hv_20d": None,
+                }
+
+                # Only insert if we have actual IV data
+                if iv_data.get("iv_30d") is not None:
+                    existing = session.query(HistoricalIV).filter(
+                        HistoricalIV.symbol == symbol,
+                        HistoricalIV.date == today,
+                    ).first()
+
+                    if existing:
+                        existing.iv_30d = iv_data["iv_30d"]
+                        existing.hv_20d = iv_data.get("hv_20d")
+                    else:
+                        session.add(HistoricalIV(
+                            symbol=symbol,
+                            date=today,
+                            iv_30d=iv_data["iv_30d"],
+                            hv_20d=iv_data.get("hv_20d"),
+                        ))
+                    processed += 1
+            except Exception as e:
+                logger.warning("Failed to snapshot IV for %s: %s", symbol, e)
+                errors += 1
+
+        session.commit()
+        return {
+            "status": "ok",
+            "symbols_checked": len(symbols),
+            "processed": processed,
+            "errors": errors,
+        }
+    except Exception:
+        logger.exception("snapshot_iv_from_gateway failed")
+        raise
+    finally:
+        session.close()
+
+
+@shared_task(
+    name="backend.tasks.market_data_tasks.compute_iv_rank",
+    soft_time_limit=120,
+    time_limit=180,
+)
+@task_run("compute_iv_rank")
+def compute_iv_rank(lookback_days: int = 252) -> dict:
+    """Compute IV Rank/Percentile for symbols with historical IV data.
+
+    IV Rank = (Current IV - 52w Low) / (52w High - 52w Low) * 100
+    """
+    session = SessionLocal()
+    try:
+        from datetime import date as date_type, timedelta as td
+        from backend.models.historical_iv import HistoricalIV
+        from sqlalchemy import func as sqlfunc
+
+        today = date_type.today()
+        cutoff = today - td(days=lookback_days)
+        updated = 0
+
+        # Get symbols with IV data
+        symbols = (
+            session.query(HistoricalIV.symbol)
+            .filter(HistoricalIV.date >= cutoff)
+            .distinct()
+            .all()
+        )
+
+        for (symbol,) in symbols:
+            # Get IV history for this symbol
+            iv_rows = (
+                session.query(HistoricalIV.iv_30d)
+                .filter(
+                    HistoricalIV.symbol == symbol,
+                    HistoricalIV.date >= cutoff,
+                    HistoricalIV.iv_30d.isnot(None),
+                )
+                .all()
+            )
+
+            if len(iv_rows) < 20:  # Need minimum history
+                continue
+
+            ivs = [r.iv_30d for r in iv_rows if r.iv_30d is not None]
+            if not ivs:
+                continue
+
+            iv_high = max(ivs)
+            iv_low = min(ivs)
+            current_iv = ivs[-1]  # Most recent
+
+            # Update the latest row with IV rank
+            if iv_high > iv_low:
+                iv_rank = ((current_iv - iv_low) / (iv_high - iv_low)) * 100
+            else:
+                iv_rank = 50.0  # Neutral if no range
+
+            latest = (
+                session.query(HistoricalIV)
+                .filter(HistoricalIV.symbol == symbol)
+                .order_by(HistoricalIV.date.desc())
+                .first()
+            )
+
+            if latest:
+                latest.iv_rank_252 = round(iv_rank, 2)
+                latest.iv_high_252 = iv_high
+                latest.iv_low_252 = iv_low
+                if len(ivs) >= 2:
+                    latest.iv_hv_spread = current_iv - (latest.hv_20d or 0)
+                updated += 1
+
+        session.commit()
+        return {
+            "status": "ok",
+            "symbols_processed": len(symbols),
+            "updated": updated,
+        }
+    except Exception:
+        logger.exception("compute_iv_rank failed")
+        raise
+    finally:
+        session.close()
+
+
+# ============================= 13F Institutional Holdings Tasks =============================
+
+
+@shared_task(
+    name="backend.tasks.market_data_tasks.fetch_13f_filings",
+    soft_time_limit=600,
+    time_limit=720,
+)
+@task_run("fetch_13f_filings")
+def fetch_13f_filings(days_back: int = 90, max_filings: int = 50) -> dict:
+    """Fetch and parse recent SEC 13F filings for institutional holdings.
+
+    Runs monthly to check for new 13F filings. Filings are quarterly with
+    45-day delay, so monthly runs catch new filings efficiently.
+    """
+    session = SessionLocal()
+    try:
+        from backend.services.market.sec_edgar import (
+            fetch_recent_13f_filings,
+            fetch_and_parse_13f,
+            persist_13f_holdings,
+        )
+        from datetime import date as date_type
+
+        # Fetch recent 13F filing metadata
+        filings = fetch_recent_13f_filings(
+            days_back=days_back,
+            max_filings=max_filings,
+        )
+
+        if not filings:
+            return {"status": "no_filings_found", "processed": 0}
+
+        processed = 0
+        total_holdings = 0
+
+        for filing in filings:
+            url = filing.get("url")
+            if not url:
+                continue
+
+            try:
+                # Fetch and parse the filing
+                result = fetch_and_parse_13f(url)
+                holdings = result.get("holdings", [])
+
+                if holdings:
+                    # Extract metadata (would come from parsing primary document)
+                    cik = result.get("institution_cik") or "UNKNOWN"
+                    name = result.get("institution_name") or filing.get("title", "Unknown")
+                    filing_date = date_type.today()  # Would parse from filing
+                    period_date = filing_date  # Would parse from filing
+
+                    inserted = persist_13f_holdings(
+                        db=session,
+                        institution_cik=cik,
+                        institution_name=name,
+                        filing_date=filing_date,
+                        period_date=period_date,
+                        holdings=holdings,
+                    )
+                    total_holdings += inserted
+                    processed += 1
+
+            except Exception as e:
+                logger.warning("Failed to process 13F filing %s: %s", url, e)
+
+        session.commit()
+        return {
+            "status": "ok",
+            "filings_found": len(filings),
+            "filings_processed": processed,
+            "holdings_inserted": total_holdings,
+        }
+    except Exception:
+        logger.exception("fetch_13f_filings failed")
+        raise
+    finally:
+        session.close()
+
+
+# ============================= Intraday Regime Monitor =============================
+
+
+@shared_task(
+    name="backend.tasks.market_data_tasks.monitor_vix_spike",
+    soft_time_limit=60,
+    time_limit=120,
+)
+@task_run("monitor_vix_spike")
+def monitor_vix_spike(
+    spike_threshold_pct: float = 15.0,
+    absolute_threshold: float = 25.0,
+) -> dict:
+    """Monitor VIX for intraday spikes that warrant regime recalculation.
+
+    Runs frequently during market hours (e.g., every 15 minutes).
+    Triggers regime recomputation if VIX spikes significantly.
+
+    Args:
+        spike_threshold_pct: Percent change from prior close to trigger alert
+        absolute_threshold: Absolute VIX level that always triggers recalc
+
+    Returns:
+        Dict with spike detection results and any actions taken
+    """
+    session = SessionLocal()
+    try:
+        import yfinance as yf
+        from datetime import date as date_type
+
+        # Fetch current VIX
+        vix_df = yf.download("^VIX", period="5d", progress=False)
+        if vix_df is None or vix_df.empty:
+            return {"status": "no_data", "vix_current": None}
+
+        vix_current = float(vix_df["Close"].iloc[-1])
+
+        # Get prior close
+        if len(vix_df) >= 2:
+            vix_prior = float(vix_df["Close"].iloc[-2])
+        else:
+            vix_prior = vix_current
+
+        # Calculate change
+        vix_change_pct = ((vix_current - vix_prior) / vix_prior * 100) if vix_prior > 0 else 0
+
+        # Check for spike
+        spike_detected = (
+            vix_change_pct >= spike_threshold_pct or
+            vix_current >= absolute_threshold
+        )
+
+        result = {
+            "status": "ok",
+            "vix_current": round(vix_current, 2),
+            "vix_prior": round(vix_prior, 2),
+            "vix_change_pct": round(vix_change_pct, 2),
+            "spike_detected": spike_detected,
+            "regime_recalculated": False,
+        }
+
+        if spike_detected:
+            logger.warning(
+                "VIX spike detected: %.1f (%.1f%% change from %.1f)",
+                vix_current, vix_change_pct, vix_prior
+            )
+
+            # Trigger regime recalculation
+            try:
+                from backend.services.market.regime_engine import compute_regime, persist_regime
+                from backend.services.market.regime_inputs import gather_regime_inputs
+
+                inputs = gather_regime_inputs(session)
+                today = date_type.today()
+                regime_result = compute_regime(inputs, as_of=today)
+                persist_regime(session, regime_result)
+                session.commit()
+
+                result["regime_recalculated"] = True
+                result["new_regime_state"] = regime_result.regime_state
+                result["new_composite_score"] = regime_result.composite_score
+
+                logger.info(
+                    "Regime recalculated due to VIX spike: %s (score: %.1f)",
+                    regime_result.regime_state, regime_result.composite_score
+                )
+
+                # Send alert via Discord
+                try:
+                    from backend.services.notifications.discord_service import discord_notifier
+                    if discord_notifier.is_configured():
+                        discord_notifier.send_message(
+                            f"⚠️ **VIX Spike Alert**\n\n"
+                            f"VIX: **{vix_current:.1f}** ({vix_change_pct:+.1f}% from {vix_prior:.1f})\n"
+                            f"Regime: **{regime_result.regime_state}** (score: {regime_result.composite_score:.1f})\n"
+                            f"Multiplier: {regime_result.regime_multiplier:.2f}x"
+                        )
+                except Exception as e:
+                    logger.debug("Discord notification failed: %s", e)
+
+            except Exception as e:
+                logger.warning("Regime recalculation after VIX spike failed: %s", e)
+                result["regime_error"] = str(e)
+
+        return result
+
+    except Exception:
+        logger.exception("monitor_vix_spike failed")
         raise
     finally:
         session.close()

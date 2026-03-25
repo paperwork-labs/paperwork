@@ -2,14 +2,14 @@ import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@/test/testing-library';
 import { ChakraProvider } from '@chakra-ui/react';
-import { QueryClient, QueryClientProvider } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 
 import { system } from '../../theme/system';
 import MarketDashboard from '../MarketDashboard';
 
 vi.mock('../../hooks/usePortfolioSymbols', () => ({
-  usePortfolioSymbols: () => ({ data: {}, isLoading: false }),
+  usePortfolioSymbols: () => ({ data: {}, isPending: false }),
 }));
 
 vi.mock('../../services/api', () => {

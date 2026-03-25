@@ -31,7 +31,6 @@ const AdminOperatorActions: React.FC<Props> = ({
     sanityLoading: false,
     sendingDiscord: false,
   });
-  const [advancedOpen, setAdvancedOpen] = React.useState(false);
   const [snapshotHistoryPeriod, setSnapshotHistoryPeriod] = React.useState<
     '6mo' | '1y' | '2y' | '5y' | 'max'
   >('1y');
@@ -137,21 +136,9 @@ const AdminOperatorActions: React.FC<Props> = ({
   const runNamedTask = async (taskName: string, label: string): Promise<boolean> => {
     try {
       const taskEndpoints: Record<string, { method: 'GET' | 'POST'; endpoint: string }> = {
-        market_indices_constituents_refresh: {
-          method: 'POST',
-          endpoint: '/market-data/indices/constituents/refresh',
-        },
-        market_universe_tracked_refresh: {
-          method: 'POST',
-          endpoint: '/market-data/universe/tracked/refresh',
-        },
         admin_indicators_recompute_universe: {
           method: 'POST',
           endpoint: '/market-data/admin/indicators/recompute-universe',
-        },
-        admin_snapshots_history_record: {
-          method: 'POST',
-          endpoint: '/market-data/admin/snapshots/history/record',
         },
         admin_fundamentals_fill_missing: {
           method: 'POST',
@@ -300,12 +287,6 @@ const AdminOperatorActions: React.FC<Props> = ({
         <Button size="sm" variant="outline" loading={state.sanityLoading} onClick={() => void runSanityCheck()}>
           Sanity Check (DB)
         </Button>
-        <Button size="sm" variant="outline" onClick={() => void runNamedTask('market_indices_constituents_refresh', 'Refresh constituents')}>
-          Refresh Constituents
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => void runNamedTask('market_universe_tracked_refresh', 'Update tracked')}>
-          Update Tracked
-        </Button>
         <Button size="sm" variant="outline" loading={state.sendingDiscord} onClick={() => void sendSnapshotDigestToDiscord()}>
           Send Snapshot Digest to Discord
         </Button>
@@ -331,17 +312,12 @@ const AdminOperatorActions: React.FC<Props> = ({
         </Button>
       </Box>
 
-      {/* Advanced / Destructive */}
-      <Box mt={2}>
-        <Button variant="ghost" size="sm" onClick={() => setAdvancedOpen(!advancedOpen)}>
-          {advancedOpen ? 'Hide Advanced' : 'Show Advanced'}
-        </Button>
-      </Box>
-      {advancedOpen ? (
-        <Box mt={2} borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.muted">
-          <Text fontSize="xs" color="fg.muted" mb={2}>
-            Advanced controls (use when debugging). These are more granular and may be slower/noisier.
-          </Text>
+      {/* Advanced Controls */}
+      <Text fontSize="sm" fontWeight="semibold" mt={2}>Advanced Controls</Text>
+      <Box mt={2} borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.muted">
+        <Text fontSize="xs" color="fg.muted" mb={2}>
+          Granular controls for debugging and maintenance. These are typically handled by automated agents.
+        </Text>
           <Box mt={3} display="grid" gridTemplateColumns={{ base: '1fr', lg: '1.1fr 0.9fr' }} gap={3}>
             <Box borderWidth="1px" borderColor="border.subtle" borderRadius="md" bg="bg.card" px={3} py={2}>
               <Text fontSize="xs" fontWeight="semibold" color="fg.default" mb={2}>Backfill</Text>
@@ -433,16 +409,13 @@ const AdminOperatorActions: React.FC<Props> = ({
                   <Button size="xs" variant="outline" onClick={() => void runNamedTask('admin_indicators_recompute_universe', 'Recompute indicators')}>
                     Recompute Indicators (Market Snapshot)
                   </Button>
-                  <Button size="xs" variant="outline" onClick={() => void runNamedTask('admin_snapshots_history_record', 'Record history')}>
-                    Record History
-                  </Button>
                 </Box>
                 <Text mt={2} fontSize="xs" color="fg.muted">Maintenance</Text>
                 <Box display="flex" gap={2} flexWrap="wrap">
                   <Button size="xs" variant="outline" onClick={() => void runNamedTask('admin_fundamentals_fill_missing', 'Fill missing fundamentals queued')}>
                     Fill Missing Fundamentals
                   </Button>
-                  <Button size="xs" variant="outline" onClick={() => void runNamedTask('admin_stage_repair', 'Repair stage history queued')}>
+                  <Button size="xs" variant="outline" onClick={() => void runNamedTask('admin_stage_repair', 'Repair stage history completed')}>
                     Repair Stage History
                   </Button>
                   <Button size="xs" variant="outline" onClick={() => void runNamedTask('admin_recover_stale_job_runs', 'Stale jobs recovered')}>
@@ -456,7 +429,6 @@ const AdminOperatorActions: React.FC<Props> = ({
             </Box>
           </Box>
         </Box>
-      ) : null}
     </Box>
   );
 };

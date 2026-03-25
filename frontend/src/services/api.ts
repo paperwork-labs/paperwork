@@ -72,12 +72,8 @@ const api = axios.create({
   maxRedirects: 3,
 });
 
-// Enhanced request interceptor with queue and retry logic
 api.interceptors.request.use(
   (config) => {
-    console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
-
-    // Attach JWT if available
     try {
       const token = localStorage.getItem('qm_token');
       if (token) {
@@ -86,7 +82,6 @@ api.interceptors.request.use(
       }
     } catch { }
 
-    // Add cache headers for GET requests
     if (config.method === 'get') {
       config.headers['Cache-Control'] = 'max-age=30';
     }
@@ -94,48 +89,95 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error('❌ Request Error:', error);
     return Promise.reject(error);
   }
 );
 
-// Enhanced response interceptor with better error handling
+let isRefreshing = false;
+let refreshSubscribers: Array<{ resolve: (token: string) => void; reject: (err: Error) => void }> = [];
+
+function onRefreshed(token: string) {
+  refreshSubscribers.forEach(sub => sub.resolve(token));
+  refreshSubscribers = [];
+}
+
+function onRefreshFailed(err: Error) {
+  refreshSubscribers.forEach(sub => sub.reject(err));
+  refreshSubscribers = [];
+}
+
+/** Reject queued waiters, clear refresh state, then logout. Always call this (or onRefreshed + isRefreshing=false) before clearing the session. */
+function finalizeAuthRefreshFailure(err: Error): Promise<never> {
+  onRefreshFailed(err);
+  isRefreshing = false;
+  try {
+    localStorage.removeItem('qm_token');
+  } catch {
+    /* ignore */
+  }
+  window.dispatchEvent(new Event('auth:logout'));
+  return Promise.reject(new Error('Session expired'));
+}
+
 api.interceptors.response.use(
-  (response) => {
-    console.log(`✅ API Response: ${response.config.url} - ${response.status} (${response.headers['x-response-time'] || 'unknown'}ms)`);
-    return response;
-  },
+  (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config;
 
-    // Enhanced error logging
-    console.error('❌ Response Error:', {
-      url: error.config?.url,
-      status: error.response?.status,
-      message: error.message,
-      data: error.response?.data
-    });
-
-    // 401 Unauthorized — token expired or invalid.
-    // Clear the stored token and notify AuthContext so the app redirects to /login.
-    // Skip for login/register endpoints (those return 401 for bad credentials, not expired tokens).
     if (
       error.response?.status === 401 &&
       originalRequest?.url &&
       !originalRequest.url.includes('/auth/login') &&
-      !originalRequest.url.includes('/auth/register')
+      !originalRequest.url.includes('/auth/register') &&
+      !originalRequest.url.includes('/auth/refresh')
     ) {
-      try { localStorage.removeItem('qm_token'); } catch { /* ignore */ }
-      window.dispatchEvent(new Event('auth:logout'));
+      const orig = originalRequest as typeof originalRequest & { _noRetry?: boolean; _retry?: boolean };
+      if (!orig._retry) {
+        if (isRefreshing) {
+          // Same as the leader: one refresh attempt per request; replay must not re-enter this block or we loop on repeated 401.
+          orig._retry = true;
+          return new Promise((resolve, reject) => {
+            refreshSubscribers.push({
+              resolve: (token: string) => {
+                if (originalRequest.headers) {
+                  (originalRequest.headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+                }
+                resolve(api(originalRequest));
+              },
+              reject,
+            });
+          });
+        }
+
+        orig._retry = true;
+        isRefreshing = true;
+        try {
+          const resp = await api.post('/auth/refresh', null, { withCredentials: true, _noRetry: true } as Record<string, unknown>);
+          const newToken = resp.data?.access_token;
+          if (newToken) {
+            localStorage.setItem('qm_token', newToken);
+            if (originalRequest.headers) {
+              (originalRequest.headers as Record<string, string>)['Authorization'] = `Bearer ${newToken}`;
+            }
+            onRefreshed(newToken);
+            isRefreshing = false;
+            return api(originalRequest);
+          }
+          const noTokenErr = new Error('Refresh succeeded but no access_token returned');
+          return finalizeAuthRefreshFailure(noTokenErr);
+        } catch (refreshErr) {
+          return finalizeAuthRefreshFailure(
+            refreshErr instanceof Error ? refreshErr : new Error('Refresh failed')
+          );
+        }
+      }
     }
 
-    // Retry logic for network errors (skip when _noRetry is set)
     const orig = originalRequest as typeof originalRequest & { _noRetry?: boolean; _retry?: boolean };
     if ((error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK') && originalRequest && !orig._noRetry) {
       if (!orig._retry) {
         orig._retry = true;
-        console.log('🔄 Retrying request:', originalRequest.url);
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+        await new Promise(resolve => setTimeout(resolve, 1000));
         return api(originalRequest);
       }
     }
@@ -317,7 +359,7 @@ export const portfolioApi = {
     try {
       return await makeOptimizedRequest<StatementsResponse>(() => api.get(url));
     } catch (error) {
-      console.warn('Statements API fallback to sample data');
+      // statements unavailable, return empty
       return {
         data: {
           transactions: [],
@@ -332,7 +374,7 @@ export const portfolioApi = {
     try {
       return await makeOptimizedRequest(() => api.get(url));
     } catch (error) {
-      console.warn('Dividends API fallback');
+      // dividends unavailable, return empty
       return {
         status: 'success',
         data: {
@@ -406,7 +448,6 @@ export const portfolioApi = {
         error: response.status === 'rejected' ? response.reason : null
       }));
     } catch (error) {
-      console.error('Batch API call failed:', error);
       throw error;
     }
   }
@@ -482,6 +523,14 @@ export const marketDataApi = {
   triggerBrief: async (type: string = 'daily') => {
     return api.post(`/market-data/admin/intelligence/generate?brief_type=${type}`);
   },
+
+  // Auto-fix endpoints for agent-powered remediation
+  startAutoFix: async () => {
+    return api.post('/market-data/admin/auto-fix');
+  },
+  getAutoFixStatus: async (jobId: string) => {
+    return makeOptimizedRequest(() => api.get(`/market-data/admin/auto-fix/${jobId}/status`));
+  },
 };
 
 // Unified Activity endpoints
@@ -531,7 +580,7 @@ export const tastytradeApi = {
       // Align to unified accounts list
       return await makeOptimizedRequest(() => api.get('/accounts'));
     } catch (error) {
-      console.warn('TastyTrade API not available');
+      // TastyTrade API unavailable
       return { status: 'error', message: 'TastyTrade API unavailable' };
     }
   },
@@ -620,7 +669,7 @@ export const checkBackendHealth = async (): Promise<boolean> => {
     await api.get('/health', { timeout: 5000 });
     return true;
   } catch (error) {
-    console.warn('Backend health check failed:', error);
+    // health check failed
     return false;
   }
 };
@@ -678,7 +727,19 @@ export const adminUsersApi = {
     makeOptimizedRequest(() => api.post('/admin/users/invite', payload)),
   update: async (userId: number, payload: { role?: string; is_active?: boolean }) =>
     makeOptimizedRequest(() => api.patch(`/admin/users/${userId}`, payload)),
+  remove: async (userId: number) =>
+    makeOptimizedRequest(() => api.delete(`/admin/users/${userId}`)),
 };
+
+/** POST /api/v1/admin/users/{userId}/approve (base URL is configured on the axios instance). */
+export async function approveUser(userId: number) {
+  return makeOptimizedRequest(() => api.post(`/admin/users/${userId}/approve`));
+}
+
+/** DELETE /api/v1/admin/users/{userId} */
+export async function deleteUser(userId: number) {
+  return makeOptimizedRequest(() => api.delete(`/admin/users/${userId}`));
+}
 
 // Accounts API
 export const accountsApi = {

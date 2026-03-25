@@ -8,6 +8,7 @@ from starlette.requests import Request
 from backend.api.dependencies import evaluate_release_access, require_non_market_access
 from backend.api.main import app
 from backend.models.user import UserRole
+from backend.tests.auth_test_utils import approve_user_for_login_tests
 
 
 @pytest.fixture(scope="module")
@@ -24,6 +25,7 @@ def _register_and_login(client: TestClient, username: str, password: str, email:
         json={"username": username, "email": email, "password": password},
     )
     assert reg.status_code == 200
+    approve_user_for_login_tests(username)
     login = client.post(
         "/api/v1/auth/login",
         json={"username": username, "password": password},

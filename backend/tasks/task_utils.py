@@ -12,7 +12,7 @@ from backend.config import settings
 from backend.database import SessionLocal
 from backend.models import JobRun
 from backend.services.market.market_data_service import market_data_service
-from backend.services.alerts import alert_service
+from backend.services.notifications.alerts import alert_service
 from backend.tasks.schedule_metadata import HookConfig, ScheduleMetadata
 
 

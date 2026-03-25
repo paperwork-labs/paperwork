@@ -244,14 +244,14 @@ const PortfolioTransactions: React.FC = () => {
               size="sm"
               variant="outline"
               onClick={() => syncMutation.mutate()}
-              loading={syncMutation.isLoading}
+              loading={syncMutation.isPending}
             >
               <HStack gap={2}><FiRefreshCw /> Sync</HStack>
             </Button>
           }
         />
 
-        {accountsQuery.isLoading ? (
+        {accountsQuery.isPending ? (
           <TableSkeleton rows={10} cols={7} />
         ) : (activityQuery.error || accountsQuery.error) ? (
           <Text color="status.danger">Failed to load activity</Text>
@@ -298,7 +298,7 @@ const PortfolioTransactions: React.FC = () => {
 
               <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
                 <CardBody>
-                  {activityQuery.isLoading ? (
+                  {activityQuery.isPending ? (
                     <TableSkeleton rows={10} cols={7} />
                   ) : (
                     <>

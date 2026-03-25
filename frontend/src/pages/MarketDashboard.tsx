@@ -717,7 +717,7 @@ const SectionHeading: React.FC<{
     userSelect="none"
   >
     {isCollapsed ? <FiChevronRight size={14} /> : <FiChevronDown size={14} />}
-    <Text fontSize="sm" fontWeight="semibold">{title}</Text>
+    <Text fontSize="sm" fontWeight="semibold" letterSpacing="-0.01em">{title}</Text>
     {count != null && count > 0 && <Badge variant="subtle" size="sm">{count}</Badge>}
   </HStack>
 );
@@ -944,11 +944,15 @@ const MarketDashboard: React.FC = () => {
               <HStack gap={1}>
                 {VIEW_TABS.map((tab) => {
                   const Icon = tab.icon;
+                  const isActive = activeView === tab.key;
                   return (
                     <Button
                       key={tab.key}
                       size="xs"
-                      variant={activeView === tab.key ? 'solid' : 'ghost'}
+                      variant={isActive ? 'solid' : 'ghost'}
+                      bg={isActive ? 'amber.500' : undefined}
+                      color={isActive ? 'white' : undefined}
+                      _hover={isActive ? { bg: 'amber.400' } : undefined}
                       onClick={() => handleViewChange(tab.key)}
                     >
                       <Icon size={12} />

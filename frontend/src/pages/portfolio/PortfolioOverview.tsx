@@ -138,14 +138,14 @@ const PortfolioOverview: React.FC = () => {
                 size="sm"
                 variant="outline"
                 onClick={() => syncMutation.mutate()}
-                loading={syncMutation.isLoading}
+                loading={syncMutation.isPending}
               >
                 <HStack gap={2}><FiRefreshCw /> Sync</HStack>
               </Button>
             }
           />
 
-          {!liveQuery.isLoading && !liveData.is_live && (
+          {!liveQuery.isPending && !liveData.is_live && (
             <Alert.Root colorPalette="yellow" status="warning" variant="subtle" size="sm">
               <Alert.Indicator />
               <Alert.Content>
@@ -157,16 +157,16 @@ const PortfolioOverview: React.FC = () => {
             </Alert.Root>
           )}
 
-          {(overview.isLoading || positionsQuery.isLoading) && (
+          {(overview.isPending || positionsQuery.isPending) && (
             <SimpleGrid columns={{ base: 2, md: 4 }} gap={4}>
               {[1, 2, 3, 4].map((i) => <StatCardSkeleton key={i} />)}
             </SimpleGrid>
           )}
-          {!(overview.isLoading || positionsQuery.isLoading) && (overview.error || positionsQuery.error) ? (
+          {!(overview.isPending || positionsQuery.isPending) && (overview.error || positionsQuery.error) ? (
             <Text color="status.danger">Failed to load portfolio data</Text>
           ) : null}
           {((): React.ReactNode => {
-            if (overview.isLoading || positionsQuery.isLoading) return null;
+            if (overview.isPending || positionsQuery.isPending) return null;
             if (overview.error || positionsQuery.error) return null;
             const pos = filteredPositions;
             const filteredStage = stageCountsFromPositions(pos);
@@ -305,7 +305,7 @@ const PortfolioOverview: React.FC = () => {
                         size="xs"
                         variant="outline"
                         onClick={() => syncMutation.mutate()}
-                        loading={syncMutation.isLoading}
+                        loading={syncMutation.isPending}
                         ml="auto"
                       >
                         <HStack gap={1}><FiRefreshCw size={10} /> Sync</HStack>
@@ -344,7 +344,7 @@ const PortfolioOverview: React.FC = () => {
                           ))}
                         </HStack>
                       </HStack>
-                      {historyQuery.isLoading ? (
+                      {historyQuery.isPending ? (
                         <Text fontSize="sm" color="fg.muted">Loading…</Text>
                       ) : equityCurveData.length > 0 ? (
                         showBenchmark ? (

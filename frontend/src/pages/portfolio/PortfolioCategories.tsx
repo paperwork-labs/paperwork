@@ -47,7 +47,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import PageHeader from '../../components/ui/PageHeader';
 import { portfolioApi, handleApiError } from '../../services/api';
 import api from '../../services/api';
-import { useMutation, useQuery, useQueryClient } from 'react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCategories, useCategoryViews, useCategoryPositions, useRebalanceSuggestions } from '../../hooks/usePortfolio';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
 import { formatMoney } from '../../utils/format';
@@ -188,31 +188,29 @@ const CategoryCard: React.FC<{
   const actual = Number(cat.actual_allocation_pct ?? 0);
   const diff = actual - target;
 
-  const positionsQuery = useQuery(
-    ['categoryPositions', cat.id],
-    async () => {
+  const positionsQuery = useQuery({
+    queryKey: ['categoryPositions', cat.id],
+    queryFn: async () => {
       const res = await portfolioApi.getCategory(cat.id);
       const r = res as Record<string, any> | undefined;
       return (r?.data?.data?.positions ?? r?.data?.positions ?? r?.positions ?? []) as CatPosition[];
     },
-    { staleTime: 60_000 },
-  );
+    staleTime: 60_000,
+  });
   const catPositions = positionsQuery.data ?? [];
   const PREVIEW_LIMIT = 12;
   const visiblePositions = expanded ? catPositions : catPositions.slice(0, PREVIEW_LIMIT);
   const overflowCount = catPositions.length - PREVIEW_LIMIT;
 
-  const unassignMutation = useMutation(
-    (positionId: number) => portfolioApi.unassignPosition(cat.id, positionId),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('portfolioCategories');
-        queryClient.invalidateQueries(['categoryPositions', cat.id]);
-        toast.success('Position removed');
-      },
-      onError: (err) => { toast.error(`Failed to remove: ${handleApiError(err)}`); },
+  const unassignMutation = useMutation({
+    mutationFn: (positionId: number) => portfolioApi.unassignPosition(cat.id, positionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portfolioCategories'] });
+      queryClient.invalidateQueries({ queryKey: ['categoryPositions', cat.id] });
+      toast.success('Position removed');
     },
-  );
+    onError: (err) => { toast.error(`Failed to remove: ${handleApiError(err)}`); },
+  });
 
   return (
     <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
@@ -292,7 +290,7 @@ const CategoryCard: React.FC<{
         {/* Click-through detail table */}
         {isDetailOpen && (
           <Box mt={3} borderTopWidth="1px" borderColor="border.subtle" pt={2}>
-            {positionsQuery.isLoading ? (
+            {positionsQuery.isPending ? (
               <HStack gap={2} py={2}><Spinner size="xs" /><Text fontSize="xs" color="fg.muted">Loading positions…</Text></HStack>
             ) : catPositions.length === 0 ? (
               <Text fontSize="xs" color="fg.muted">No positions in this category</Text>
@@ -386,16 +384,17 @@ const ManagePositionsDialog: React.FC<{
   pendingAdds, pendingRemoves, onToggleAdd, onToggleRemove,
   search, onSearchChange, onSave, isSaving, changeCount,
 }) => {
-  const catPosQuery = useQuery(
-    ['categoryPositions', categoryId],
-    async () => {
+  const catPosQuery = useQuery({
+    queryKey: ['categoryPositions', categoryId],
+    queryFn: async () => {
       if (!categoryId) return [];
       const res = await portfolioApi.getCategory(categoryId);
       const r = res as Record<string, any> | undefined;
       return (r?.data?.data?.positions ?? r?.data?.positions ?? r?.positions ?? []) as CatPosition[];
     },
-    { staleTime: 60_000, enabled: open && categoryId > 0 },
-  );
+    staleTime: 60_000,
+    enabled: open && categoryId > 0,
+  });
   const currentMembers = catPosQuery.data ?? [];
   const memberIds = new Set(currentMembers.map(p => p.id));
 
@@ -687,7 +686,7 @@ const PortfolioCategories: React.FC = () => {
   const { data: viewsData } = useCategoryViews();
   const availableViews = viewsData ?? [{ key: 'custom', label: 'Personalized' }];
 
-  const { data: categoriesData, isLoading } = useCategories(activeView);
+  const { data: categoriesData, isPending } = useCategories(activeView);
   const categories = (categoriesData?.categories ?? []) as CategoryRow[];
   const uncategorized = categoriesData?.uncategorized ?? { positions_count: 0, total_value: 0, actual_allocation_pct: 0, position_ids: [] };
 
@@ -705,8 +704,8 @@ const PortfolioCategories: React.FC = () => {
 
   /* ---------- mutations ---------- */
 
-  const createMutation = useMutation(
-    () => {
+  const createMutation = useMutation({
+    mutationFn: () => {
       const target = newTargetPct ? parseFloat(newTargetPct) : undefined;
       return portfolioApi.createCategory({
         name: newName.trim(),
@@ -714,38 +713,34 @@ const PortfolioCategories: React.FC = () => {
         category_type: activeView,
       });
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('portfolioCategories');
-        queryClient.invalidateQueries('portfolioCategoryViews');
-        toast.success('Category created');
-        setNewName('');
-        setNewTargetPct('');
-        setCreateOpen(false);
-      },
-      onError: (err) => { toast.error(`Failed to create category: ${handleApiError(err)}`); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portfolioCategories'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolioCategoryViews'] });
+      toast.success('Category created');
+      setNewName('');
+      setNewTargetPct('');
+      setCreateOpen(false);
     },
-  );
+    onError: (err) => { toast.error(`Failed to create category: ${handleApiError(err)}`); },
+  });
 
-  const updateMutation = useMutation(
-    () => {
+  const updateMutation = useMutation({
+    mutationFn: () => {
       if (!selectedCategory) throw new Error('No category selected');
       const target = newTargetPct ? parseFloat(newTargetPct) : undefined;
       return portfolioApi.updateCategory(selectedCategory.id, { name: newName.trim(), target_allocation_pct: target });
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('portfolioCategories');
-        toast.success('Category updated');
-        setEditOpen(false);
-        setSelectedCategory(null);
-      },
-      onError: (err) => { toast.error(`Failed to update category: ${handleApiError(err)}`); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portfolioCategories'] });
+      toast.success('Category updated');
+      setEditOpen(false);
+      setSelectedCategory(null);
     },
-  );
+    onError: (err) => { toast.error(`Failed to update category: ${handleApiError(err)}`); },
+  });
 
-  const assignMutation = useMutation(
-    async () => {
+  const assignMutation = useMutation({
+    mutationFn: async () => {
       if (!selectedCategory) throw new Error('No category selected');
       const catId = selectedCategory.id;
       for (const posId of pendingRemoves) {
@@ -755,37 +750,33 @@ const PortfolioCategories: React.FC = () => {
         await portfolioApi.assignPositions(catId, pendingAdds);
       }
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('portfolioCategories');
-        if (selectedCategory) queryClient.invalidateQueries(['categoryPositions', selectedCategory.id]);
-        const total = pendingAdds.length + pendingRemoves.length;
-        toast.success(`Updated ${total} position(s)`);
-        setAssignOpen(false);
-        setSelectedCategory(null);
-      },
-      onError: (err) => { toast.error(`Failed to update positions: ${handleApiError(err)}`); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portfolioCategories'] });
+      if (selectedCategory) queryClient.invalidateQueries({ queryKey: ['categoryPositions', selectedCategory.id] });
+      const total = pendingAdds.length + pendingRemoves.length;
+      toast.success(`Updated ${total} position(s)`);
+      setAssignOpen(false);
+      setSelectedCategory(null);
     },
-  );
+    onError: (err) => { toast.error(`Failed to update positions: ${handleApiError(err)}`); },
+  });
 
-  const applyPresetMutation = useMutation(
-    (presetId: string) => api.post('/portfolio/categories/apply-preset', { preset: presetId }),
-    {
-      onSuccess: (_data, presetId) => {
-        queryClient.invalidateQueries('portfolioCategories');
-        queryClient.invalidateQueries('portfolioCategoryViews');
-        setActiveView(presetId);
-        toast.success(`Switched to ${VIEW_LABELS[presetId] ?? presetId} view`);
-        setPresetOpen(false);
-      },
-      onError: (err) => { toast.error(`Failed to apply preset: ${handleApiError(err)}`); },
+  const applyPresetMutation = useMutation({
+    mutationFn: (presetId: string) => api.post('/portfolio/categories/apply-preset', { preset: presetId }),
+    onSuccess: (_data, presetId) => {
+      queryClient.invalidateQueries({ queryKey: ['portfolioCategories'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolioCategoryViews'] });
+      setActiveView(presetId);
+      toast.success(`Switched to ${VIEW_LABELS[presetId] ?? presetId} view`);
+      setPresetOpen(false);
     },
-  );
+    onError: (err) => { toast.error(`Failed to apply preset: ${handleApiError(err)}`); },
+  });
 
   // Auto-apply preset when switching to a non-custom tab with no (or empty) categories
   useEffect(() => {
     if (activeView === 'custom') return;
-    if (isLoading) return;
+    if (isPending) return;
     if (appliedPresetsRef.current.has(activeView)) return;
     const cats = (categoriesData?.categories ?? []) as CategoryRow[];
     const totalAssigned = cats.reduce((s, c) => s + (c.positions_count ?? 0), 0);
@@ -793,34 +784,30 @@ const PortfolioCategories: React.FC = () => {
       appliedPresetsRef.current.add(activeView);
       applyPresetMutation.mutate(activeView);
     }
-  }, [activeView, isLoading, categoriesData]);
+  }, [activeView, isPending, categoriesData]);
 
-  const moveMutation = useMutation(
-    async (args: { positionId: number; fromCategoryId: number; toCategoryId: number }) => {
+  const moveMutation = useMutation({
+    mutationFn: async (args: { positionId: number; fromCategoryId: number; toCategoryId: number }) => {
       await api.delete(`/portfolio/categories/${args.fromCategoryId}/positions/${args.positionId}`);
       await api.post(`/portfolio/categories/${args.toCategoryId}/positions`, {
         position_ids: [args.positionId],
       });
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('portfolioCategories');
-        queryClient.invalidateQueries('categoryPositions');
-        toast.success('Position moved');
-      },
-      onError: (err) => { toast.error(`Failed to move: ${handleApiError(err)}`); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portfolioCategories'] });
+      queryClient.invalidateQueries({ queryKey: ['categoryPositions'] });
+      toast.success('Position moved');
     },
-  );
+    onError: (err) => { toast.error(`Failed to move: ${handleApiError(err)}`); },
+  });
 
-  const reorderMutation = useMutation(
-    (orderedIds: number[]) => portfolioApi.reorderCategories(orderedIds),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('portfolioCategories');
-      },
-      onError: (err) => { toast.error(`Failed to reorder: ${handleApiError(err)}`); },
+  const reorderMutation = useMutation({
+    mutationFn: (orderedIds: number[]) => portfolioApi.reorderCategories(orderedIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portfolioCategories'] });
     },
-  );
+    onError: (err) => { toast.error(`Failed to reorder: ${handleApiError(err)}`); },
+  });
 
   const persistOrder = useCallback((newCategories: CategoryRow[]) => {
     reorderMutation.mutate(newCategories.map(c => c.id));
@@ -949,26 +936,31 @@ const PortfolioCategories: React.FC = () => {
           bg="bg.subtle"
           p={1}
         >
-          {FIXED_TABS.map((tab) => (
+          {FIXED_TABS.map((tab) => {
+            const isActive = activeView === tab.key;
+            return (
             <Button
               key={tab.key}
               size="sm"
-              variant={activeView === tab.key ? 'solid' : 'ghost'}
-              colorPalette={activeView === tab.key ? 'brand' : undefined}
+              variant={isActive ? 'solid' : 'ghost'}
+              bg={isActive ? 'amber.500' : undefined}
+              color={isActive ? 'white' : undefined}
+              _hover={isActive ? { bg: 'amber.400' } : undefined}
               onClick={() => { setActiveView(tab.key); setDetailCatId(null); }}
               borderRadius="md"
-              fontWeight={activeView === tab.key ? 'semibold' : 'normal'}
+              fontWeight={isActive ? 'semibold' : 'normal'}
               minW="auto"
               px={4}
             >
               {tab.label}
             </Button>
-          ))}
+            );
+          })}
         </HStack>
 
         {categories.length > 0 && <AllocationChart categories={categories} currency={currency} />}
 
-        {isLoading || (activeView !== 'custom' && applyPresetMutation.isLoading) ? (
+        {isPending || (activeView !== 'custom' && applyPresetMutation.isPending) ? (
           <TableSkeleton rows={5} cols={4} />
         ) : categories.length === 0 ? (
           <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
@@ -1209,7 +1201,7 @@ const PortfolioCategories: React.FC = () => {
             </DialogBody>
             <DialogFooter>
               <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-              <Button colorPalette="brand" onClick={handleCreate} disabled={!newName.trim() || createMutation.isLoading}>Create</Button>
+              <Button colorPalette="brand" onClick={handleCreate} disabled={!newName.trim() || createMutation.isPending}>Create</Button>
             </DialogFooter>
             <DialogCloseTrigger />
           </DialogContent>
@@ -1236,7 +1228,7 @@ const PortfolioCategories: React.FC = () => {
             </DialogBody>
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
-              <Button colorPalette="brand" onClick={handleUpdate} disabled={!newName.trim() || updateMutation.isLoading}>Save</Button>
+              <Button colorPalette="brand" onClick={handleUpdate} disabled={!newName.trim() || updateMutation.isPending}>Save</Button>
             </DialogFooter>
             <DialogCloseTrigger />
           </DialogContent>
@@ -1259,7 +1251,7 @@ const PortfolioCategories: React.FC = () => {
         search={assignSearch}
         onSearchChange={setAssignSearch}
         onSave={handleSaveAssignments}
-        isSaving={assignMutation.isLoading}
+        isSaving={assignMutation.isPending}
         changeCount={pendingAdds.length + pendingRemoves.length}
       />
 
@@ -1285,8 +1277,8 @@ const PortfolioCategories: React.FC = () => {
                     cursor="pointer"
                     _hover={{ borderColor: 'brand.500', bg: 'bg.subtle' }}
                     onClick={() => applyPresetMutation.mutate(preset.id)}
-                    opacity={applyPresetMutation.isLoading ? 0.5 : 1}
-                    pointerEvents={applyPresetMutation.isLoading ? 'none' : 'auto'}
+                    opacity={applyPresetMutation.isPending ? 0.5 : 1}
+                    pointerEvents={applyPresetMutation.isPending ? 'none' : 'auto'}
                   >
                     <Text fontWeight="semibold" mb={1}>{preset.label}</Text>
                     <Text fontSize="xs" color="fg.muted">{preset.description}</Text>

@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.api.main import app
+from backend.tests.auth_test_utils import approve_user_for_login_tests
 from backend.config import settings
 from backend.models.market_data import MarketSnapshot
 from backend.models.index_constituent import IndexConstituent
@@ -18,6 +19,7 @@ def _register_and_login_admin(client: TestClient, db_session) -> str:
         json={"username": u, "password": pw, "email": email},
     )
     assert r.status_code in (200, 201)
+    approve_user_for_login_tests(u, db=db_session)
     r2 = client.post("/api/v1/auth/login", json={"username": u, "password": pw})
     assert r2.status_code == 200
     token = r2.json()["access_token"]

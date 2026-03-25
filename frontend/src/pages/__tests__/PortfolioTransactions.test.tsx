@@ -10,12 +10,12 @@ vi.mock('../../context/AccountContext', () => ({
 
 const mockUseActivity = vi.fn(() => ({
   data: { activity: [], total: 75 },
-  isLoading: false,
+  isPending: false,
 }));
 
 vi.mock('../../hooks/usePortfolio', () => ({
   useActivity: () => mockUseActivity(),
-  usePortfolioAccounts: () => ({ data: [], isLoading: false }),
+  usePortfolioAccounts: () => ({ data: [], isPending: false }),
   usePortfolioSync: () => ({ mutate: () => {} }),
 }));
 
@@ -34,7 +34,7 @@ describe('PortfolioTransactions', () => {
   it('shows table skeleton when activity is loading', async () => {
     mockUseActivity.mockReturnValueOnce({
       data: { activity: [], total: 0 },
-      isLoading: true,
+      isPending: true,
     });
     renderWithProviders(<PortfolioTransactions />, { route: '/portfolio/transactions' });
     await waitFor(() => {

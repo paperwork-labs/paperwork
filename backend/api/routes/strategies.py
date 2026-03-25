@@ -28,6 +28,7 @@ from backend.services.strategy.templates import (
     list_templates as _list_templates,
     STRATEGY_TEMPLATES,
 )
+from backend.services.strategy.context_builder import snapshot_to_context
 
 router = APIRouter()
 
@@ -145,17 +146,6 @@ def _parse_condition_group(schema: ConditionGroupSchema) -> ConditionGroup:
     )
 
 
-def _snapshot_to_context(snap: MarketSnapshot) -> Dict[str, Any]:
-    """Flatten a MarketSnapshot row into a flat dict for the rule evaluator."""
-    ctx: Dict[str, Any] = {"symbol": snap.symbol}
-    skip = {"id", "raw_analysis", "created_at", "updated_at", "metadata"}
-    for col in snap.__table__.columns:
-        if col.name in skip:
-            continue
-        val = getattr(snap, col.name, None)
-        if val is not None:
-            ctx[col.name] = val
-    return ctx
 
 
 # ---------------------------------------------------------------------------
@@ -416,7 +406,8 @@ def evaluate_strategy(
     snapshots = query.all()
     matches: List[Dict[str, Any]] = []
     for snap in snapshots:
-        ctx = _snapshot_to_context(snap)
+        # Use context builder with regime context for consistent evaluation
+        ctx = snapshot_to_context(snap, include_regime=True, db=db)
         result = _evaluator.evaluate(group, ctx)
         if result.matched:
             matches.append({
@@ -424,6 +415,8 @@ def evaluate_strategy(
                 "action": "buy",
                 "strength": 1.0,
                 "context": result.details,
+                "regime_state": ctx.get("regime_state"),
+                "regime_multiplier": ctx.get("regime_multiplier"),
             })
 
     signals = _signal_gen.generate_signals(db, strategy, matches)

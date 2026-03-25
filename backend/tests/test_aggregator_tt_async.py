@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.api.main import app
-import backend.api.routes.aggregator as agg
+from backend.tests.auth_test_utils import approve_user_for_login_tests
 
 
 @pytest.fixture(scope="module")
@@ -22,6 +22,7 @@ def _login(client):
     r = client.post("/api/v1/auth/register", json={"username": username, "email": email, "password": password})
     if r.status_code != 200:
         pytest.skip("auth endpoint not available in test env")
+    approve_user_for_login_tests(username)
     r2 = client.post("/api/v1/auth/login", json={"username": username, "password": password})
     assert r2.status_code == 200
     return r.json().get("id"), r2.json()["access_token"]
@@ -42,12 +43,16 @@ def test_tastytrade_connect_async_success(client, monkeypatch):
             return [{"account_number": "TT123", "nickname": "Primary"}]
         async def disconnect(self):
             pass
-    monkeypatch.setattr(agg, "TastyTradeClient", lambda: DummyTT())
+
+    # Import the actual module to patch (not the re-exported router)
+    import importlib
+    agg_module = importlib.import_module("backend.api.routes.aggregator")
+    monkeypatch.setattr(agg_module, "TastyTradeClient", lambda: DummyTT())
 
     def _create_task(coro):
         loop = asyncio.get_event_loop()
         return loop.create_task(coro) if loop.is_running() else asyncio.run(coro)
-    monkeypatch.setattr(agg.asyncio, "create_task", _create_task)
+    monkeypatch.setattr(agg_module.asyncio, "create_task", _create_task)
 
     r = client.post(
         "/api/v1/aggregator/tastytrade/connect",

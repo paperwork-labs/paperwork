@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 import pytest
 
 from backend.api.main import app
-from backend.api.routes.market_data import get_market_data_viewer
+from backend.api.dependencies import get_market_data_viewer
 from backend.models.user import UserRole
 from backend.config import settings
 

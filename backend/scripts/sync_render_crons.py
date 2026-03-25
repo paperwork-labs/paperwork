@@ -20,7 +20,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from backend.database import SessionLocal
-from backend.services.render_sync_service import render_sync_service
+from backend.services.core.render_sync_service import render_sync_service
 
 logger = logging.getLogger("sync_render_crons")
 

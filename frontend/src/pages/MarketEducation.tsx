@@ -473,11 +473,23 @@ const MarketEducation: React.FC = () => {
       </Box>
 
       <HStack gap={1} borderBottomWidth="1px" borderColor="border.subtle" pb={0} mb={4}>
-        {(['deep-dives', 'glossary'] as TabId[]).map((tab) => (
-          <Button key={tab} size="sm" variant={activeTab === tab ? 'solid' : 'ghost'} onClick={() => setActiveTab(tab)} borderBottomRadius={0}>
-            {tab === 'glossary' ? 'Glossary' : 'System Deep-Dives'}
-          </Button>
-        ))}
+        {(['deep-dives', 'glossary'] as TabId[]).map((tab) => {
+          const isActive = activeTab === tab;
+          return (
+            <Button
+              key={tab}
+              size="sm"
+              variant={isActive ? 'solid' : 'ghost'}
+              bg={isActive ? 'amber.500' : undefined}
+              color={isActive ? 'white' : undefined}
+              _hover={isActive ? { bg: 'amber.400' } : undefined}
+              onClick={() => setActiveTab(tab)}
+              borderBottomRadius={0}
+            >
+              {tab === 'glossary' ? 'Glossary' : 'System Deep-Dives'}
+            </Button>
+          );
+        })}
       </HStack>
 
       {activeTab === 'glossary' && (
@@ -508,7 +520,7 @@ const MarketEducation: React.FC = () => {
 
       <Box mt={8} pt={4} borderTopWidth="1px" borderColor="border.subtle">
         <Text fontSize="xs" color="fg.subtle" fontStyle="italic">
-          Reflects the same calculations as the backend. Source: Stage_Analysis_v4.docx. Updated 2026-03-24.
+          Reflects the same calculations as the backend. Source: backend/services/market/indicator_engine.py
         </Text>
       </Box>
     </Box>

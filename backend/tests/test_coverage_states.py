@@ -4,7 +4,7 @@ import json
 import pytest
 from sqlalchemy.exc import OperationalError
 from backend.api.main import app
-from backend.api.routes.market_data import get_market_data_viewer
+from backend.api.dependencies import get_market_data_viewer
 from backend.database import get_db
 from backend.models.market_data import PriceData
 from backend.models.user import UserRole
@@ -75,7 +75,7 @@ def test_coverage_endpoint_buckets(monkeypatch, db_session):
 
 
 def test_coverage_prefers_cached_snapshot(monkeypatch):
-    from backend.api.routes import market_data as routes
+    from backend.api.routes.market import coverage as routes
 
     monkeypatch.setattr(settings, "MARKET_DATA_SECTION_PUBLIC", True)
     cached_snapshot = {
@@ -153,7 +153,7 @@ def test_coverage_prefers_cached_snapshot(monkeypatch):
 
 
 def test_coverage_meta_exposes_kpis_and_sparkline(monkeypatch):
-    from backend.api.routes import market_data as routes
+    from backend.api.routes.market import coverage as routes
 
     monkeypatch.setattr(settings, "MARKET_DATA_SECTION_PUBLIC", True)
 
@@ -222,7 +222,7 @@ def test_coverage_meta_exposes_kpis_and_sparkline(monkeypatch):
 
 
 def test_coverage_cache_schema_mismatch_falls_back(monkeypatch):
-    from backend.api.routes import market_data as routes
+    from backend.api.routes.market import coverage as routes
 
     monkeypatch.setattr(settings, "MARKET_DATA_SECTION_PUBLIC", True)
 

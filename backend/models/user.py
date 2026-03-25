@@ -14,6 +14,8 @@ from sqlalchemy import (
     TIMESTAMP,
     Enum as SQLEnum,
     JSON,
+    Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -52,8 +54,12 @@ class User(Base):
     last_name = Column(String(100))
     phone = Column(String(20))
 
+    # OAuth
+    oauth_provider = Column(String(20), nullable=True)   # 'google', 'apple', None for password
+    oauth_id = Column(String(255), nullable=True)        # provider's unique user ID
+    avatar_url = Column(Text, nullable=True)
+
     # Authentication & Access
-    # Add a DB-level default so raw SQL inserts (and migrations/bulk loads) are safe.
     role = Column(
         SQLEnum(UserRole),
         default=UserRole.USER,
@@ -64,9 +70,12 @@ class User(Base):
     # Add DB-level defaults so raw SQL inserts and bulk loads are safe.
     is_active = Column(Boolean, default=True, server_default=sa.text("true"), nullable=False)
     is_verified = Column(Boolean, default=False, server_default=sa.text("false"), nullable=False)
+    # Admin approval required for new registrations (existing users default to approved)
+    is_approved = Column(Boolean, default=False, server_default=sa.text("false"), nullable=False)
     last_login = Column(TIMESTAMP(timezone=True))
     failed_login_attempts = Column(Integer, default=0)
     locked_until = Column(TIMESTAMP(timezone=True))
+    refresh_token_family = Column(String(36), nullable=True)
 
     # Preferences
     timezone = Column(String(50), default="UTC")
@@ -118,6 +127,7 @@ class User(Base):
     __table_args__ = (
         Index("idx_users_email_active", "email", "is_active"),
         Index("idx_users_last_login", "last_login"),
+        UniqueConstraint("oauth_provider", "oauth_id", name="uq_user_oauth"),
     )
 
     @property

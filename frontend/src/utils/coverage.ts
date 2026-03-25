@@ -83,34 +83,22 @@ const STATUS_COLOR_MAP: Record<string, string> = {
 
 const DEFAULT_COVERAGE_ACTIONS: CoverageAction[] = [
   {
-    label: 'Backfill Daily Coverage (Tracked)',
+    label: 'Run Nightly Pipeline',
     task_name: 'admin_coverage_backfill',
     description:
-      'Guided operator flow: refresh → tracked → daily backfill → recompute → history → refresh coverage (no 5m). Endpoint: POST /api/v1/market-data/admin/backfill/coverage',
+      'Full pipeline: constituents → tracked → daily bars → indicators → history → regime → coverage. Auto-ops handles most remediation automatically.',
   },
   {
-    label: 'Backfill Daily (Stale Only)',
+    label: 'Backfill Stale Only',
     task_name: 'admin_coverage_backfill_stale',
     description:
-      'Backfills daily bars only for symbols currently stale in coverage snapshot. Endpoint: POST /api/v1/market-data/admin/backfill/coverage/stale',
-  },
-  {
-    label: 'Refresh Coverage Cache',
-    task_name: 'admin_coverage_refresh',
-    description:
-      'Recomputes and caches the coverage snapshot. Endpoint: POST /api/v1/market-data/admin/backfill/coverage/refresh',
+      'Backfills daily bars only for symbols currently stale in coverage snapshot.',
   },
   {
     label: 'Recompute Indicators',
     task_name: 'admin_indicators_recompute_universe',
     description:
-      'Builds DB snapshots for the tracked universe. Endpoint: POST /api/v1/market-data/admin/indicators/recompute-universe',
-  },
-  {
-    label: 'Record History',
-    task_name: 'admin_snapshots_history_record',
-    description:
-      'Writes immutable MarketSnapshotHistory rows. Endpoint: POST /api/v1/market-data/admin/snapshots/history/record',
+      'Recompute indicators for all tracked symbols. Use when indicator logic changes.',
   },
 ];
 

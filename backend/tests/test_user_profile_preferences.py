@@ -2,6 +2,8 @@ import uuid
 
 import pytest
 
+from backend.tests.auth_test_utils import approve_user_for_login_tests
+
 try:
     from fastapi.testclient import TestClient
     from backend.api.main import app
@@ -27,6 +29,7 @@ def _register_and_login(client: "TestClient", username: str, password: str, emai
         json={"username": username, "email": email, "password": password, "full_name": "Test User"},
     )
     assert r.status_code == 200
+    approve_user_for_login_tests(username)
     r2 = client.post("/api/v1/auth/login", json={"username": username, "password": password})
     assert r2.status_code == 200
     return r2.json()["access_token"]

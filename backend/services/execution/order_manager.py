@@ -32,8 +32,8 @@ class OrderManager:
         self,
         db: Session,
         req: OrderRequest,
+        user_id: int,
         broker_type: str = "ibkr",
-        created_by: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Preview order: risk check → whatIfOrder → persist."""
         price = self.risk_gate.estimate_price(
@@ -61,7 +61,7 @@ class OrderManager:
             estimated_margin_impact=preview.estimated_margin_impact,
             estimated_equity_with_loan=preview.estimated_equity_with_loan,
             preview_data=preview.raw,
-            created_by=created_by,
+            user_id=user_id,
         )
         db.add(order)
         db.commit()
@@ -78,14 +78,16 @@ class OrderManager:
         self,
         db: Session,
         order_id: int,
-        created_by: Optional[str] = None,
+        user_id: int,
     ) -> Dict[str, Any]:
         """Submit a previewed order for execution."""
-        order = db.query(Order).filter(Order.id == order_id).first()
+        order = (
+            db.query(Order)
+            .filter(Order.id == order_id, Order.user_id == user_id)
+            .first()
+        )
         if not order:
             return {"error": "Order not found"}
-        if created_by is not None and order.created_by != created_by:
-            return {"error": "Forbidden"}
         if order.status != OrderStatus.PREVIEW.value:
             return {"error": f"Order is in '{order.status}' state, cannot submit"}
 
@@ -117,14 +119,16 @@ class OrderManager:
         self,
         db: Session,
         order_id: int,
-        created_by: Optional[str] = None,
+        user_id: int,
     ) -> Dict[str, Any]:
         """Cancel a submitted order."""
-        order = db.query(Order).filter(Order.id == order_id).first()
+        order = (
+            db.query(Order)
+            .filter(Order.id == order_id, Order.user_id == user_id)
+            .first()
+        )
         if not order:
             return {"error": "Order not found"}
-        if created_by is not None and order.created_by != created_by:
-            return {"error": "Forbidden"}
         if order.status not in (
             OrderStatus.SUBMITTED.value,
             OrderStatus.PARTIALLY_FILLED.value,
@@ -147,14 +151,16 @@ class OrderManager:
         self,
         db: Session,
         order_id: int,
-        created_by: Optional[str] = None,
+        user_id: int,
     ) -> Dict[str, Any]:
         """Poll broker for latest order status."""
-        order = db.query(Order).filter(Order.id == order_id).first()
+        order = (
+            db.query(Order)
+            .filter(Order.id == order_id, Order.user_id == user_id)
+            .first()
+        )
         if not order:
             return {"error": "Order not found"}
-        if created_by is not None and order.created_by != created_by:
-            return {"error": "Forbidden"}
         if (
             not order.broker_order_id
             or order.status in (
@@ -195,14 +201,12 @@ class OrderManager:
     def list_orders(
         self,
         db: Session,
+        user_id: int,
         status: Optional[str] = None,
         symbol: Optional[str] = None,
         limit: int = 50,
-        created_by: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        q = db.query(Order).order_by(Order.created_at.desc())
-        if created_by is not None:
-            q = q.filter(Order.created_by == created_by)
+        q = db.query(Order).filter(Order.user_id == user_id).order_by(Order.created_at.desc())
         if status:
             q = q.filter(Order.status == status)
         if symbol:
@@ -213,11 +217,9 @@ class OrderManager:
         self,
         db: Session,
         order_id: int,
-        created_by: Optional[str] = None,
+        user_id: int,
     ) -> Optional[Dict[str, Any]]:
-        q = db.query(Order).filter(Order.id == order_id)
-        if created_by is not None:
-            q = q.filter(Order.created_by == created_by)
+        q = db.query(Order).filter(Order.id == order_id, Order.user_id == user_id)
         order = q.first()
         return _order_to_dict(order) if order else None
 

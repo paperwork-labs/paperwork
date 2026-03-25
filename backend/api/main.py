@@ -16,9 +16,11 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 
-# Route imports - TEMPORARY: Only core routes for FlexQuery sync stabilization
+# Route imports - organized by domain
 from backend.api.routes import (
+    # Auth
     auth,
+    # Portfolio (from portfolio/ folder)
     portfolio,
     portfolio_live,
     portfolio_dashboard,
@@ -28,19 +30,22 @@ from backend.api.routes import (
     portfolio_categories,
     portfolio_dividends,
     portfolio_orders,
-    atr,
+    # Strategy
     strategies,
-    market_data,
-    # notifications,   # DISABLED: Non-essential for FlexQuery sync
-    # admin           # DISABLED: Non-essential for FlexQuery sync
+    # Admin (from admin/ folder)
+    admin,
+    admin_scheduler,
+    admin_agent,
+    # Settings (from settings/ folder)
+    account_management,
+    app_settings,
+    # Root-level
+    activity,
+    aggregator,
+    watchlist,
 )
-from backend.api.routes import activity as activity_routes
-from backend.api.routes import aggregator as aggregator_routes
-from backend.api.routes import watchlist as watchlist_routes
-
-# Import new account management routes
-from backend.api.routes import account_management
-from backend.api.routes import app_settings
+# Market data (from market/ package)
+from backend.api.routes.market import router as market_router
 from backend.api.dependencies import require_non_market_access
 
 # Model imports
@@ -168,15 +173,24 @@ def _auto_warm_if_stale():
                     age_minutes, stale_threshold,
                 )
         else:
-            logger.info("Auto-warm: no snapshot data found. Queuing pipeline.")
+            logger.info("Auto-warm: empty DB (cold start). Queuing 5-year deep backfill.")
 
         if needs_warm:
             from backend.tasks.celery_app import celery_app
-            result = celery_app.send_task(
-                "backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked",
-                kwargs={"history_days": 5, "history_batch_size": 25},
-            )
-            logger.info("Auto-warm: nightly pipeline queued (task_id=%s)", result.id)
+            if latest_ts is None:
+                from datetime import date, timedelta
+                five_years_ago = (date.today() - timedelta(days=5*365)).isoformat()
+                result = celery_app.send_task(
+                    "backend.tasks.market_data_tasks.backfill_since_date",
+                    kwargs={"since_date": five_years_ago},
+                )
+                logger.info("Auto-warm: deep backfill queued (since=%s, task_id=%s)", five_years_ago, result.id)
+            else:
+                result = celery_app.send_task(
+                    "backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked",
+                    kwargs={"history_days": 5, "history_batch_size": 25},
+                )
+                logger.info("Auto-warm: nightly pipeline queued (task_id=%s)", result.id)
     finally:
         db.close()
 
@@ -204,7 +218,7 @@ async def startup_event():
             else:
                 logger.info("Alembic migrations skipped (AUTO_MIGRATE_ON_STARTUP=false)")
         except Exception as mig_e:
-            logger.warning(f"Alembic migration skipped/failed: {mig_e}")
+            logger.warning("Alembic migration failed: %s", mig_e, exc_info=True)
 
         # Seed schedules from catalog and sync to Render (runs on every startup)
         try:
@@ -220,7 +234,7 @@ async def startup_event():
             logger.warning("Schedule seed skipped/failed: %s", seed_e)
         if settings.RENDER_SYNC_ON_STARTUP:
             try:
-                from backend.services.render_sync_service import render_sync_service
+                from backend.services.core.render_sync_service import render_sync_service
                 from backend.database import SessionLocal
                 _db = SessionLocal()
                 try:
@@ -331,98 +345,100 @@ async def root():
 
 
 # Include route modules - TEMPORARY: Only core routes for FlexQuery sync stabilization
-app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
+app.include_router(auth, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(
-    portfolio.router,
+    portfolio,
     prefix="/api/v1/portfolio",
     tags=["Portfolio"],
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(
-    portfolio_live.router,
+    portfolio_live,
     prefix="/api/v1/portfolio",
     tags=["Portfolio"],
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(
-    portfolio_dividends.router,
+    portfolio_dividends,
     prefix="/api/v1/portfolio",
     tags=["Portfolio"],
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(
-    portfolio_dashboard.router,
+    portfolio_dashboard,
     prefix="/api/v1/portfolio",
     tags=["Portfolio"],
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(
-    portfolio_stocks.router,
+    portfolio_stocks,
     prefix="/api/v1/portfolio",
     tags=["Portfolio"],
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(
-    portfolio_statements.router,
+    portfolio_statements,
     prefix="/api/v1/portfolio",
     tags=["Portfolio"],
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(
-    portfolio_options.router,
+    portfolio_options,
     prefix="/api/v1/portfolio/options",
     tags=["Portfolio"],
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(
-    portfolio_categories.router,
+    portfolio_categories,
     prefix="/api/v1/portfolio",
     tags=["Portfolio"],
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(
-    portfolio_orders.router,
+    portfolio_orders,
     prefix="/api/v1",
     tags=["Portfolio"],
     dependencies=[Depends(require_non_market_access)],
 )
-app.include_router(strategies.router, prefix="/api/v1/strategies", tags=["Strategies"])
-# ATR endpoints remain disabled
-# app.include_router(notifications.router, prefix="/api/v1/notifications", tags=["Notifications"])  # DISABLED: Non-essential
-from backend.api.routes import admin
-from backend.api.routes import admin_scheduler
+app.include_router(strategies, prefix="/api/v1/strategies", tags=["Strategies"])
 app.include_router(
-    account_management.router, dependencies=[Depends(require_non_market_access)]
+    account_management, dependencies=[Depends(require_non_market_access)]
 )
-app.include_router(app_settings.router, prefix="/api/v1", tags=["App Settings"])
-app.include_router(market_data.router, prefix="/api/v1/market-data", tags=["Market Data & Technicals"])
+app.include_router(app_settings, prefix="/api/v1", tags=["App Settings"])
+app.include_router(market_router, prefix="/api/v1/market-data", tags=["Market Data & Technicals"])
 app.include_router(
-    activity_routes.router,
+    activity,
     prefix="/api/v1/portfolio",
     tags=["Activity"],
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(
-    aggregator_routes.router,
+    aggregator,
     prefix="/api/v1/aggregator",
     tags=["Aggregator"],
 )
 app.include_router(
-    watchlist_routes.router,
+    watchlist,
     prefix="/api/v1",
     tags=["Watchlist"],
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(
-    admin.router,
+    admin,
     prefix="/api/v1/admin",
     tags=["Admin"],
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(
-    admin_scheduler.router,
+    admin_scheduler,
     prefix="/api/v1/admin",
     tags=["Admin"],
+    dependencies=[Depends(require_non_market_access)],
+)
+app.include_router(
+    admin_agent,
+    prefix="/api/v1/admin",
+    tags=["Agent"],
     dependencies=[Depends(require_non_market_access)],
 )
 

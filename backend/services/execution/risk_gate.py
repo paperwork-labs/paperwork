@@ -12,6 +12,7 @@ from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
+from backend.config import settings as app_settings
 from backend.models.market_data import MarketSnapshot
 from backend.services.execution.broker_base import OrderRequest
 from backend.services.market.regime_engine import (
@@ -26,7 +27,7 @@ from backend.services.market.regime_engine import (
 logger = logging.getLogger(__name__)
 
 MAX_ORDER_VALUE = 100_000
-MAX_SINGLE_POSITION_PCT = 0.25
+MAX_SINGLE_POSITION_PCT = app_settings.MAX_SINGLE_POSITION_PCT
 
 # v4 Stage Caps: maximum % of full position allowed per stage per regime
 # Format: stage_label → {regime → cap_fraction}

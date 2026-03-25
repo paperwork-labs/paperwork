@@ -35,7 +35,6 @@ def _recent_monday(min_days_ago: int = 7) -> date:
 
 def test_monotonicity_skips_weekend_gaps(db_session):
     """Friday→Monday gap should NOT count as a monotonicity violation."""
-    from backend.api.routes import market_data as routes
     from backend.services.market.market_data_service import MarketDataService
 
     now = datetime.now(timezone.utc)

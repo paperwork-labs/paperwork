@@ -11,8 +11,40 @@ from backend.config import settings
 logger = logging.getLogger(__name__)
 
 
+def extract_latest_values(indicator_df: pd.DataFrame) -> Dict[str, Any]:
+    """Extract latest (most recent) values from indicator series DataFrame.
+
+    Use with compute_full_indicator_series() when you need scalar values
+    for the most recent bar.
+
+    Args:
+        indicator_df: DataFrame from compute_full_indicator_series()
+
+    Returns:
+        Dict[str, float] with column names as keys and latest non-NaN values
+    """
+    if indicator_df is None or indicator_df.empty:
+        return {}
+
+    out: Dict[str, Any] = {}
+    for col in indicator_df.columns:
+        series = indicator_df[col]
+        if series.empty:
+            continue
+        # Get last non-NaN value
+        last_valid_idx = series.last_valid_index()
+        if last_valid_idx is not None:
+            val = series.loc[last_valid_idx]
+            if pd.notna(val):
+                out[col] = float(val) if isinstance(val, (int, float, np.number)) else val
+    return out
+
+
 def compute_core_indicators(data_oldest_first: pd.DataFrame) -> Dict[str, Any]:
     """Compute core technical indicators using pandas/numpy only.
+
+    DEPRECATED: Use compute_full_indicator_series() + extract_latest_values() instead.
+    This function duplicates ADX computation and is being phased out.
 
     Input must be oldest->newest DataFrame with columns: Close (required), High/Low (optional for ATR/ADX).
     """
@@ -104,6 +136,10 @@ def compute_core_indicators(data_oldest_first: pd.DataFrame) -> Dict[str, Any]:
 
 def compute_core_indicators_series(data_oldest_first: pd.DataFrame) -> pd.DataFrame:
     """Compute core indicator *series* (vectorized) over the full time index.
+
+    DEPRECATED: Use compute_full_indicator_series() instead.
+    This function is superseded by compute_full_indicator_series() which includes
+    all indicators (ADX, Bollinger, StochRSI, 52w H/L, stage analysis, etc.)
 
     Returns a DataFrame indexed like `data_oldest_first` with columns aligned to our snapshot schema:
     - SMA: sma_5/8/14/21/50/100/150/200

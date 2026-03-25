@@ -13,7 +13,7 @@ from backend.database import get_db
 from backend.models.user import User
 from backend.models.user import UserRole
 from backend.api.security import decode_token
-from backend.services.app_settings_service import get_or_create_app_settings
+from backend.services.core.app_settings_service import get_or_create_app_settings
 
 logger = logging.getLogger(__name__)
 
@@ -48,12 +48,18 @@ async def get_current_user(
                 detail="User account is disabled",
             )
 
+        if not user.is_approved:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account pending admin approval",
+            )
+
         return user
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ Authentication error: {e}")
+        logger.error("Authentication error: %s", e)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
@@ -123,7 +129,7 @@ async def get_optional_user(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ Optional auth error: {e}")
+        logger.error("Optional auth error: %s", e)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
@@ -246,7 +252,7 @@ async def require_non_market_access(
         try:
             app_settings = get_or_create_app_settings(db)
         except Exception as e:
-            logger.error(f"❌ App settings unavailable for section policy: {e}")
+            logger.error("App settings unavailable for section policy: %s", e)
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="App settings are unavailable; retry shortly",

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import type { AdminHealthResponse } from '../types/adminHealth';
 
@@ -9,26 +9,22 @@ interface UseAdminHealthResult {
 }
 
 const useAdminHealth = (): UseAdminHealthResult => {
-  const [health, setHealth] = useState<AdminHealthResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const fetchHealth = useCallback(async () => {
-    setLoading(true);
-    try {
+  const queryClient = useQueryClient();
+  const { data, isPending } = useQuery<AdminHealthResponse>({
+    queryKey: ['admin-health'],
+    queryFn: async () => {
       const res = await api.get('/market-data/admin/health');
-      setHealth(res?.data ?? null);
-    } catch {
-      setHealth(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      return res?.data ?? null;
+    },
+    staleTime: 1000 * 60 * 2,
+    refetchInterval: 1000 * 60 * 5,
+  });
 
-  useEffect(() => {
-    fetchHealth();
-  }, [fetchHealth]);
+  const refresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['admin-health'] });
+  };
 
-  return { health, loading, refresh: fetchHealth };
+  return { health: data ?? null, loading: isPending, refresh };
 };
 
 export default useAdminHealth;

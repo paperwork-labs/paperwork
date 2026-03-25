@@ -10,8 +10,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
-from backend.api.routes.portfolio_orders import router
-from backend.services.order_service import RiskViolation
+from backend.api.routes.portfolio.orders import router
+from backend.services.execution.order_service import RiskViolation
+
+ORDER_SVC_PATH = "backend.api.routes.portfolio.orders.order_service"
 
 
 @pytest.fixture
@@ -43,7 +45,7 @@ def client(app):
 
 
 class TestPreviewRoute:
-    @patch("backend.api.routes.portfolio_orders.order_service")
+    @patch(ORDER_SVC_PATH)
     def test_preview_returns_422_on_risk_violation(self, mock_svc, client):
         mock_svc.preview_order = AsyncMock(
             side_effect=RiskViolation("Order value $200,000 exceeds $100,000 maximum")
@@ -57,7 +59,7 @@ class TestPreviewRoute:
         assert resp.status_code == 422
         assert "exceeds" in resp.json()["detail"]
 
-    @patch("backend.api.routes.portfolio_orders.order_service")
+    @patch(ORDER_SVC_PATH)
     def test_preview_returns_200_on_success(self, mock_svc, client):
         mock_svc.preview_order = AsyncMock(return_value={
             "order_id": 1,
@@ -77,7 +79,7 @@ class TestPreviewRoute:
 
 
 class TestSubmitRoute:
-    @patch("backend.api.routes.portfolio_orders.order_service")
+    @patch(ORDER_SVC_PATH)
     def test_submit_returns_200(self, mock_svc, client):
         mock_svc.submit_order = AsyncMock(return_value={
             "order_id": 1,
@@ -88,7 +90,7 @@ class TestSubmitRoute:
         resp = client.post("/portfolio/orders/submit", json={"order_id": 1})
         assert resp.status_code == 200
 
-    @patch("backend.api.routes.portfolio_orders.order_service")
+    @patch(ORDER_SVC_PATH)
     def test_submit_returns_403_on_forbidden(self, mock_svc, client):
         mock_svc.submit_order = AsyncMock(return_value={"error": "Forbidden"})
         resp = client.post("/portfolio/orders/submit", json={"order_id": 1})
@@ -96,7 +98,7 @@ class TestSubmitRoute:
 
 
 class TestListRoute:
-    @patch("backend.api.routes.portfolio_orders.order_service")
+    @patch(ORDER_SVC_PATH)
     def test_list_returns_orders(self, mock_svc, client):
         mock_svc.list_orders.return_value = [
             {"id": 1, "symbol": "AAPL", "status": "preview"},
@@ -107,7 +109,7 @@ class TestListRoute:
 
 
 class TestGetRoute:
-    @patch("backend.api.routes.portfolio_orders.order_service")
+    @patch(ORDER_SVC_PATH)
     def test_get_returns_404_when_missing(self, mock_svc, client):
         mock_svc.get_order.return_value = None
         resp = client.get("/portfolio/orders/999")
@@ -115,7 +117,7 @@ class TestGetRoute:
 
 
 class TestCancelRoute:
-    @patch("backend.api.routes.portfolio_orders.order_service")
+    @patch(ORDER_SVC_PATH)
     def test_cancel_returns_200(self, mock_svc, client):
         mock_svc.cancel_order = AsyncMock(return_value={
             "order_id": 1,
@@ -124,7 +126,7 @@ class TestCancelRoute:
         resp = client.delete("/portfolio/orders/1")
         assert resp.status_code == 200
 
-    @patch("backend.api.routes.portfolio_orders.order_service")
+    @patch(ORDER_SVC_PATH)
     def test_cancel_returns_400_on_invalid_state(self, mock_svc, client):
         mock_svc.cancel_order = AsyncMock(return_value={
             "error": "Cannot cancel order in 'preview' state"

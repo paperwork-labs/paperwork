@@ -7,8 +7,8 @@
 ---
 
 **Project:** AxiomFolio
-**Generated:** 2026-03-24 01:20:54
-**Category:** Consulting Firm
+**Generated:** 2026-03-24 17:07:39
+**Category:** Fintech/Crypto
 
 ---
 
@@ -18,24 +18,24 @@
 
 | Role | Hex | CSS Variable |
 |------|-----|--------------|
-| Primary | `#18181B` | `--color-primary` |
-| Secondary | `#3F3F46` | `--color-secondary` |
-| CTA/Accent | `#EC4899` | `--color-cta` |
-| Background | `#FAFAFA` | `--color-background` |
-| Text | `#09090B` | `--color-text` |
+| Primary | `#F59E0B` | `--color-primary` |
+| Secondary | `#FBBF24` | `--color-secondary` |
+| CTA/Accent | `#8B5CF6` | `--color-cta` |
+| Background | `#0F172A` | `--color-background` |
+| Text | `#F8FAFC` | `--color-text` |
 
-**Color Notes:** Editorial black + accent pink
+**Color Notes:** Gold trust + purple tech
 
 ### Typography
 
-- **Heading Font:** Crimson Pro
-- **Body Font:** Atkinson Hyperlegible
-- **Mood:** academic, research, scholarly, accessible, readable, educational
-- **Google Fonts:** [Crimson Pro + Atkinson Hyperlegible](https://fonts.google.com/share?selection.family=Atkinson+Hyperlegible:wght@400;700|Crimson+Pro:wght@400;500;600;700)
+- **Heading Font:** IBM Plex Sans
+- **Body Font:** IBM Plex Sans
+- **Mood:** financial, trustworthy, professional, corporate, banking, serious
+- **Google Fonts:** [IBM Plex Sans + IBM Plex Sans](https://fonts.google.com/share?selection.family=IBM+Plex+Sans:wght@300;400;500;600;700)
 
 **CSS Import:**
 ```css
-@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Crimson+Pro:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
 ```
 
 ### Spacing Variables
@@ -68,7 +68,7 @@
 ```css
 /* Primary Button */
 .btn-primary {
-  background: #EC4899;
+  background: #8B5CF6;
   color: white;
   padding: 12px 24px;
   border-radius: 8px;
@@ -85,8 +85,8 @@
 /* Secondary Button */
 .btn-secondary {
   background: transparent;
-  color: #18181B;
-  border: 2px solid #18181B;
+  color: #F59E0B;
+  border: 2px solid #F59E0B;
   padding: 12px 24px;
   border-radius: 8px;
   font-weight: 600;
@@ -99,7 +99,7 @@
 
 ```css
 .card {
-  background: #FAFAFA;
+  background: #0F172A;
   border-radius: 12px;
   padding: 24px;
   box-shadow: var(--shadow-md);
@@ -125,9 +125,9 @@
 }
 
 .input:focus {
-  border-color: #18181B;
+  border-color: #F59E0B;
   outline: none;
-  box-shadow: 0 0 0 3px #18181B20;
+  box-shadow: 0 0 0 3px #F59E0B20;
 }
 ```
 
@@ -153,13 +153,13 @@
 
 ## Style Guidelines
 
-**Style:** Trust & Authority
+**Style:** Dark Mode (OLED)
 
-**Keywords:** Certificates/badges displayed, expert credentials, case studies with metrics, before/after comparisons, industry recognition, security badges
+**Keywords:** Dark theme, low light, high contrast, deep black, midnight blue, eye-friendly, OLED, night mode, power efficient
 
-**Best For:** Healthcare/medical landing pages, financial services, enterprise software, premium/luxury products, legal services
+**Best For:** Night-mode apps, coding platforms, entertainment, eye-strain prevention, OLED devices, low-light
 
-**Key Effects:** Badge hover effects, metric pulse animations, certificate carousel, smooth stat reveal
+**Key Effects:** Minimal glow (text-shadow: 0 0 10px), dark-to-light transitions, low white emission, high readability, visible focus
 
 ### Page Pattern
 
@@ -176,9 +176,8 @@
 
 ## Anti-Patterns (Do NOT Use)
 
-- ❌ Generic content
-- ❌ No credentials
-- ❌ AI purple/pink gradients
+- ❌ Light backgrounds
+- ❌ No security indicators
 
 ### Additional Forbidden Patterns
 

@@ -19,7 +19,8 @@ import { Page, PageHeader } from '../components/ui/Page';
 import { EntryExitRules } from '../components/strategy/RuleDisplay';
 import BacktestResults from '../components/strategy/BacktestResults';
 import api from '../services/api';
-import { formatMoney } from '../utils/format';
+import { formatMoney, formatDateFriendly } from '../utils/format';
+import { useUserPreferences } from '../hooks/useUserPreferences';
 import type {
   Strategy,
   StrategyStatus,
@@ -42,6 +43,7 @@ const STATUS_COLORS: Record<StrategyStatus, string> = {
 export default function StrategyDetail() {
   const { strategyId } = useParams<{ strategyId: string }>();
   const navigate = useNavigate();
+  const { timezone } = useUserPreferences();
   const [strategy, setStrategy] = useState<Strategy | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
@@ -252,8 +254,8 @@ export default function StrategyDetail() {
                 <InfoCard label="Stop Loss" value={strategy.stop_loss_pct ? `${strategy.stop_loss_pct}%` : '—'} />
                 <InfoCard label="Take Profit" value={strategy.take_profit_pct ? `${strategy.take_profit_pct}%` : '—'} />
                 <InfoCard label="Run Frequency" value={strategy.run_frequency ?? 'on_demand'} />
-                <InfoCard label="Created" value={new Date(strategy.created_at).toLocaleDateString()} />
-                <InfoCard label="Updated" value={new Date(strategy.updated_at).toLocaleDateString()} />
+                <InfoCard label="Created" value={formatDateFriendly(strategy.created_at, timezone)} />
+                <InfoCard label="Updated" value={formatDateFriendly(strategy.updated_at, timezone)} />
               </SimpleGrid>
             </VStack>
           )}

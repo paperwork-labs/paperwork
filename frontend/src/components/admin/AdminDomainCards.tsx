@@ -2,6 +2,8 @@ import React from 'react';
 import { Box, Badge, HStack, Text } from '@chakra-ui/react';
 import type { AdminHealthResponse } from '../../types/adminHealth';
 import { REGIME_HEX } from '../../constants/chart';
+import { formatDate } from '../../utils/format';
+import { useUserPreferences } from '../../hooks/useUserPreferences';
 
 interface Props {
   health: AdminHealthResponse | null;
@@ -20,6 +22,7 @@ const DimBadge: React.FC<{ status: string }> = ({ status }) => (
 );
 
 const AdminDomainCards: React.FC<Props> = ({ health }) => {
+  const { timezone } = useUserPreferences();
   if (!health) return null;
   const { coverage, stage_quality, jobs, audit, regime } = health.dimensions;
 
@@ -57,7 +60,7 @@ const AdminDomainCards: React.FC<Props> = ({ health }) => {
               Sizing multiplier: {regime.multiplier ?? '—'}x · Max equity: {regime.max_equity_pct ?? '—'}%
             </Text>
             <Text fontSize="xs" color="fg.muted">
-              Age: {regime.age_hours != null ? `${regime.age_hours}h` : '—'} · As of: {regime.as_of_date ?? '—'}
+              Age: {regime.age_hours != null ? `${regime.age_hours}h` : '—'} · As of: {formatDate(regime.as_of_date, timezone)}
             </Text>
           </>
         ) : (

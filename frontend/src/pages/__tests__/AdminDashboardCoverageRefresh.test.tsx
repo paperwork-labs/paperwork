@@ -1,6 +1,6 @@
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen } from '@/test/testing-library';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { cleanup, screen } from '@/test/testing-library';
 import userEvent from '@testing-library/user-event';
 
 import AdminDashboard from '../../pages/AdminDashboard';
@@ -113,6 +113,10 @@ describe('AdminDashboard coverage refresh', () => {
     apiGet.mockClear();
   });
 
+  afterEach(() => {
+    cleanup();
+  });
+
   it('auto-triggers coverage refresh when snapshot is stale/missing cache', async () => {
     renderWithProviders(<AdminDashboard />, { route: '/settings/admin/dashboard' });
     // Auto-refresh effect should queue a refresh
@@ -122,7 +126,8 @@ describe('AdminDashboard coverage refresh', () => {
   it('allows manual refresh via button', async () => {
     const user = userEvent.setup();
     renderWithProviders(<AdminDashboard />, { route: '/settings/admin/dashboard' });
-    const btn = (await screen.findAllByRole('button', { name: /refresh coverage/i }))[0];
+    // Dashboard meta row uses sentence case; Safe Actions uses title case — target the dashboard control only.
+    const btn = await screen.findByRole('button', { name: 'Refresh coverage' });
     await user.click(btn);
     expect(apiPost).toHaveBeenCalledWith('/market-data/admin/backfill/coverage/refresh');
     expect(
@@ -141,8 +146,7 @@ describe('AdminDashboard coverage refresh', () => {
   it('exposes period backfill controls in Advanced', async () => {
     const user = userEvent.setup();
     renderWithProviders(<AdminDashboard />, { route: '/settings/admin/dashboard' });
-    const toggles = await screen.findAllByRole('button', { name: /show advanced/i });
-    await user.click(toggles[0]);
+    // Advanced Controls are always expanded (no "Show advanced" toggle).
     const btn = await screen.findByRole('button', { name: /Backfill Daily Bars \(period\)/i });
     await user.click(btn);
     expect(apiPost).toHaveBeenCalledWith('/market-data/admin/backfill/daily?days=252');

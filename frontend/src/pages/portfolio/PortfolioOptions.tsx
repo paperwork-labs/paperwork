@@ -13,7 +13,7 @@ import {
   Input,
 } from '@chakra-ui/react';
 import { FiRefreshCw, FiChevronDown, FiChevronRight, FiWifi, FiWifiOff, FiGrid, FiList } from 'react-icons/fi';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { ChartContext, SymbolLink, ChartSlidePanel } from '../../components/market/SymbolChartUI';
 import StatCard from '../../components/shared/StatCard';
 import { StatCardSkeleton, TableSkeleton } from '../../components/shared/Skeleton';
@@ -26,7 +26,7 @@ import { useOptions, usePortfolioSync, usePortfolioAccounts } from '../../hooks/
 import { useUserPreferences } from '../../hooks/useUserPreferences';
 import { useAccountContext } from '../../context/AccountContext';
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { formatMoney } from '../../utils/format';
+import { formatMoney, formatDateShort } from '../../utils/format';
 import { buildAccountsFromBroker } from '../../utils/portfolio';
 import { detectStrategies } from '../../utils/optionStrategies';
 import type { OptionPos, StrategyGroup } from '../../utils/optionStrategies';
@@ -75,30 +75,31 @@ const PortfolioOptions: React.FC = () => {
   const [posView, setPosView] = useState<PosView>('card');
   const [chainSymbol, setChainSymbol] = useState('');
   const { selected } = useAccountContext();
-  const { currency } = useUserPreferences();
+  const { currency, timezone } = useUserPreferences();
   const optionsQuery = useOptions(selected === 'all' ? undefined : selected);
   const accountsQuery = usePortfolioAccounts();
   const syncMutation = usePortfolioSync();
 
-  const gatewayQuery = useQuery(
-    ['ibGatewayStatus'],
-    async () => {
+  const gatewayQuery = useQuery({
+    queryKey: ['ibGatewayStatus'],
+    queryFn: async () => {
       const res = await api.get('/portfolio/options/gateway-status');
       return res.data?.data ?? { connected: false, available: false };
     },
-    { staleTime: 30000, refetchInterval: 60000 },
-  );
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
   const gwConnected = gatewayQuery.data?.connected ?? false;
 
-  const stocksQuery = useQuery(
-    ['portfolioStocks', selected],
-    async () => {
+  const stocksQuery = useQuery({
+    queryKey: ['portfolioStocks', selected],
+    queryFn: async () => {
       const params = selected !== 'all' ? `?account_id=${selected}` : '';
       const res = await api.get(`/portfolio/stocks${params}`);
       return res.data?.data?.positions ?? [];
     },
-    { staleTime: 60000 },
-  );
+    staleTime: 60000,
+  });
   const stockPositions = useMemo(
     () =>
       (stocksQuery.data ?? []).map((s: any) => ({
@@ -151,12 +152,12 @@ const PortfolioOptions: React.FC = () => {
             subtitle="Positions, chains, and P&L analysis"
             rightContent={
               <HStack gap={3}>
-                <GatewayStatusBadge connected={gwConnected} loading={gatewayQuery.isLoading} />
+                <GatewayStatusBadge connected={gwConnected} loading={gatewayQuery.isPending} />
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => syncMutation.mutate()}
-                  loading={syncMutation.isLoading}
+                  loading={syncMutation.isPending}
                 >
                   <HStack gap={2}><FiRefreshCw /> Sync</HStack>
                 </Button>
@@ -208,18 +209,24 @@ const PortfolioOptions: React.FC = () => {
           {/* Tabs */}
           <HStack gap={1} borderBottomWidth="1px" borderColor="border.subtle" pb={0} justifyContent="space-between">
             <HStack gap={1}>
-              {(['positions', 'chain', 'pnl', 'analytics', 'history'] as TabId[]).map(tab => (
+              {(['positions', 'chain', 'pnl', 'analytics', 'history'] as TabId[]).map(tab => {
+                const isActive = activeTab === tab;
+                return (
                 <Button
                   key={tab}
                   size="sm"
-                  variant={activeTab === tab ? 'solid' : 'ghost'}
+                  variant={isActive ? 'solid' : 'ghost'}
+                  bg={isActive ? 'amber.500' : undefined}
+                  color={isActive ? 'white' : undefined}
+                  _hover={isActive ? { bg: 'amber.400' } : undefined}
                   onClick={() => setActiveTab(tab)}
                   borderBottomRadius={0}
                   textTransform="capitalize"
                 >
                   {tab === 'pnl' ? 'P&L' : tab === 'chain' ? 'Option Chain' : tab === 'analytics' ? 'Analytics' : tab === 'history' ? 'History' : 'Positions'}
                 </Button>
-              ))}
+                );
+              })}
             </HStack>
             {activeTab === 'positions' && (
               <HStack gap={1}>
@@ -244,7 +251,7 @@ const PortfolioOptions: React.FC = () => {
           </HStack>
 
           {/* Tab content */}
-          {activeTab === 'positions' && (optionsQuery.isLoading || accountsQuery.isLoading ? (
+          {activeTab === 'positions' && (optionsQuery.isPending || accountsQuery.isPending ? (
             <TableSkeleton rows={5} cols={4} />
           ) : (optionsQuery.error || accountsQuery.error) ? (
             <Text color="status.danger">Failed to load options</Text>
@@ -355,7 +362,7 @@ const PortfolioOptions: React.FC = () => {
                       <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
                         <CardBody>
                           <Text color="fg.muted">
-                            {optionsQuery.isLoading ? 'Loading...' : 'No options positions.'}
+                            {optionsQuery.isPending ? 'Loading...' : 'No options positions.'}
                           </Text>
                         </CardBody>
                       </CardRoot>
@@ -393,7 +400,7 @@ const PortfolioOptions: React.FC = () => {
           )}
 
           {activeTab === 'analytics' && (
-            <OptionsAnalyticsTab positions={positions} currency={currency} />
+            <OptionsAnalyticsTab positions={positions} currency={currency} timezone={timezone} />
           )}
 
           {activeTab === 'history' && (
@@ -837,14 +844,15 @@ const OptionChainTab: React.FC<{
 }> = ({ gwConnected, chainSymbol, setChainSymbol, underlyingOptions, positions }) => {
   const [selectedExp, setSelectedExp] = useState<string | null>(null);
 
-  const chainQuery = useQuery(
-    ['optionChain', chainSymbol],
-    async () => {
+  const chainQuery = useQuery({
+    queryKey: ['optionChain', chainSymbol],
+    queryFn: async () => {
       const res = await api.get(`/portfolio/options/chain/${encodeURIComponent(chainSymbol)}`);
       return res.data?.data ?? { expirations: [], chains: {} };
     },
-    { enabled: !!chainSymbol && gwConnected, staleTime: 30000 },
-  );
+    enabled: !!chainSymbol && gwConnected,
+    staleTime: 30000,
+  });
 
   const chainData = chainQuery.data as { expirations: string[]; chains: Record<string, { calls: ChainEntry[]; puts: ChainEntry[] }> } | undefined;
 
@@ -921,7 +929,7 @@ const OptionChainTab: React.FC<{
         ))}
       </HStack>
 
-      {chainQuery.isLoading && <Text color="fg.muted">Loading chain...</Text>}
+      {chainQuery.isPending && <Text color="fg.muted">Loading chain...</Text>}
 
       {activeChain && (
         <>
@@ -1039,7 +1047,7 @@ const OptionChainTab: React.FC<{
         </>
       )}
 
-      {!chainQuery.isLoading && !activeChain && chainSymbol && (
+      {!chainQuery.isPending && !activeChain && chainSymbol && (
         <Text color="fg.muted">No chain data available for {chainSymbol}.</Text>
       )}
     </VStack>
@@ -1330,7 +1338,7 @@ const GreeksDashboard: React.FC<{ positions: OptionPos[]; currency: string }> = 
   );
 };
 
-const ThetaCalendar: React.FC<{ positions: OptionPos[]; currency: string }> = ({ positions, currency }) => {
+const ThetaCalendar: React.FC<{ positions: OptionPos[]; currency: string; timezone?: string }> = ({ positions, currency, timezone }) => {
   const projections = useMemo(() => {
     const days: Array<{ day: number; label: string; dailyTheta: number; cumTheta: number }> = [];
     const dailyTheta = positions.reduce((s, p) => s + Number(p.theta ?? 0) * p.quantity, 0);
@@ -1343,13 +1351,13 @@ const ThetaCalendar: React.FC<{ positions: OptionPos[]; currency: string }> = ({
       cumulative += dailyTheta;
       days.push({
         day: i,
-        label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        label: formatDateShort(date, timezone),
         dailyTheta,
         cumTheta: cumulative,
       });
     }
     return days;
-  }, [positions]);
+  }, [positions, timezone]);
 
   return (
     <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
@@ -1485,13 +1493,13 @@ const PayoffDiagram: React.FC<{ positions: OptionPos[]; currency: string }> = ({
   );
 };
 
-const OptionsAnalyticsTab: React.FC<{ positions: OptionPos[]; currency: string }> = ({ positions, currency }) => {
+const OptionsAnalyticsTab: React.FC<{ positions: OptionPos[]; currency: string; timezone?: string }> = ({ positions, currency, timezone }) => {
   return (
     <VStack align="stretch" gap={4}>
       <GreeksDashboard positions={positions} currency={currency} />
       <HStack gap={4} align="start" flexWrap="wrap">
         <Box flex={1} minW="300px">
-          <ThetaCalendar positions={positions} currency={currency} />
+          <ThetaCalendar positions={positions} currency={currency} timezone={timezone} />
         </Box>
         <Box flex={1} minW="300px">
           <IVSkewChart positions={positions} />
@@ -1624,19 +1632,19 @@ const historyColumns: Column<HistoryItem>[] = [
 ];
 
 const OptionsHistoryTab: React.FC<{ accountId?: string }> = ({ accountId }) => {
-  const historyQuery = useQuery(
-    ['optionsHistory', accountId],
-    async () => {
+  const historyQuery = useQuery({
+    queryKey: ['optionsHistory', accountId],
+    queryFn: async () => {
       const params = accountId ? `?account_id=${accountId}` : '';
       const res = await api.get(`/portfolio/options/history${params}`);
       return res.data?.data ?? { history: [], total: 0 };
     },
-    { staleTime: 60000 },
-  );
+    staleTime: 60000,
+  });
 
   const items: HistoryItem[] = historyQuery.data?.history ?? [];
 
-  if (historyQuery.isLoading) {
+  if (historyQuery.isPending) {
     return <TableSkeleton rows={5} cols={4} />;
   }
 

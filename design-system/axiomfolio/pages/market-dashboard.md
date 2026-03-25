@@ -1,7 +1,7 @@
 # Market Dashboard Page Overrides
 
 > **PROJECT:** AxiomFolio
-> **Generated:** 2026-03-24 01:20:49
+> **Generated:** 2026-03-24 17:07:38
 > **Page Type:** Dashboard / Data View
 
 > ⚠️ **IMPORTANT:** Rules in this file **override** the Master file (`design-system/MASTER.md`).
@@ -15,7 +15,7 @@
 
 - **Max Width:** 1400px or full-width
 - **Grid:** 12-column grid for data flexibility
-- **Sections:** 1. Intro (Vertical), 2. The Journey (Horizontal Track), 3. Detail Reveal, 4. Vertical Footer
+- **Sections:** 1. Hero with device mockup, 2. Screenshots carousel, 3. Features with icons, 4. Reviews/ratings, 5. Download CTAs
 
 ### Spacing Overrides
 
@@ -27,7 +27,7 @@
 
 ### Color Overrides
 
-- **Strategy:** Continuous palette transition. Chapter colors. Progress bar #000000.
+- **Strategy:** Dark/light matching app store feel. Star ratings in gold. Screenshots with device frames.
 
 ### Component Overrides
 
@@ -44,7 +44,7 @@
 
 ## Recommendations
 
-- Effects: Real-time chart animations, alert pulse/glow, status indicator blink animation, smooth data stream updates, loading effect
+- Effects: Hover tooltips, chart zoom on click, row highlighting on hover, smooth filter animations, data loading spinners
 - Data Entry: Allow multi-select and bulk edit
 - Sustainability: Click-to-play or pause when off-screen
-- CTA Placement: Floating Sticky CTA or End of Horizontal Track
+- CTA Placement: Download buttons prominent (App Store + Play Store) throughout

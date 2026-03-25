@@ -27,15 +27,7 @@ import {
 import type { BacktestResult, BacktestMetrics, BacktestTrade } from '../../types/strategy';
 import { useChartColors } from '../../hooks/useChartColors';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
-import { formatMoney } from '../../utils/format';
-
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-}
+import { formatMoney, formatDate } from '../../utils/format';
 
 function colorForValue(value: number, isPercent = false): string {
   if (isPercent || Math.abs(value) < 1e-9) {
@@ -87,7 +79,7 @@ function MetricCard({ label, value, formatter, colorKey = 'neutral' }: MetricCar
 export default function BacktestResults({ result }: { result: BacktestResult }) {
   const { metrics, equity_curve, trades } = result;
   const colors = useChartColors();
-  const { currency } = useUserPreferences();
+  const { currency, timezone } = useUserPreferences();
 
   const formatCurrency = (amount: number) =>
     formatMoney(amount, currency, { maximumFractionDigits: 2, minimumFractionDigits: 2 });
@@ -168,7 +160,7 @@ export default function BacktestResults({ result }: { result: BacktestResult }) 
                 <XAxis
                   dataKey="date"
                   tick={{ fontSize: 10 }}
-                  tickFormatter={(d) => formatDate(d)}
+                  tickFormatter={(d) => formatDate(d, timezone)}
                 />
                 <YAxis
                   tick={{ fontSize: 10 }}
@@ -176,7 +168,7 @@ export default function BacktestResults({ result }: { result: BacktestResult }) 
                 />
                 <Tooltip
                   formatter={(v: number | undefined) => formatCurrency(Number(v ?? 0)) as React.ReactNode}
-                  labelFormatter={(d) => formatDate(d)}
+                  labelFormatter={(d) => formatDate(d, timezone)}
                 />
                 <Area
                   type="monotone"
@@ -219,7 +211,7 @@ export default function BacktestResults({ result }: { result: BacktestResult }) 
                 <TableBody>
                   {trades.map((trade, idx) => (
                     <TableRow key={`${trade.symbol}-${trade.date}-${idx}`}>
-                      <TableCell>{formatDate(trade.date)}</TableCell>
+                      <TableCell>{formatDate(trade.date, timezone)}</TableCell>
                       <TableCell>
                         <Text fontFamily="mono" fontWeight="semibold">
                           {trade.symbol}
