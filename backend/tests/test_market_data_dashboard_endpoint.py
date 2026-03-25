@@ -24,16 +24,16 @@ def _register_and_login(client: TestClient, username: str, password: str, email:
     approve_user_for_login_tests(username)
     login = client.post(
         "/api/v1/auth/login",
-        json={"username": username, "password": password},
+        json={"email": email, "password": password},
     )
     assert login.status_code == 200
     return login.json()["access_token"]
 
 
-def _login(client: TestClient, username: str, password: str) -> str:
+def _login(client: TestClient, email: str, password: str) -> str:
     login = client.post(
         "/api/v1/auth/login",
-        json={"username": username, "password": password},
+        json={"email": email, "password": password},
     )
     assert login.status_code == 200
     return login.json()["access_token"]
@@ -58,7 +58,7 @@ def test_market_dashboard_endpoint_returns_summary_shape(client: TestClient):
     password = "AdminPassw0rd!"
     _register_and_login(client, username, password, f"{username}@example.com")
     _elevate_user_to_admin(username)
-    token = _login(client, username, password)
+    token = _login(client, f"{username}@example.com", password)
 
     res = client.get(
         "/api/v1/market-data/dashboard",

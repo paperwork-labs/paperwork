@@ -1,0 +1,32 @@
+---
+description: When to delegate work to fast/cheap subagents
+alwaysApply: true
+---
+
+# Smart Delegation
+
+Delegate to `Task` with `model: "fast"` and appropriate `subagent_type` for:
+
+## Shell Subagent (`subagent_type: "shell"`)
+- API calls (curl, gh, render CLI)
+- Running tests (`make test`, `npm test`)
+- Git operations (status, log, diff)
+- Environment checks and verification
+- Any command that just needs output parsing
+
+## Explore Subagent (`subagent_type: "explore"`)
+- Finding files by pattern across 5+ directories
+- Searching for symbols/patterns in unfamiliar code
+- Answering "where is X?" questions
+- Initial codebase exploration
+
+## Keep in Opus (don't delegate)
+- Financial calculations and indicator logic
+- Security-sensitive code (auth, credentials, encryption)
+- Architecture decisions and trade-offs
+- Risk gate and trading logic
+- Code review of subagent output for correctness
+- Complex multi-step reasoning
+
+## Quality Gate
+Never delegate to save tokens if it compromises correctness. Fast models make mistakes on nuanced logic. When in doubt, do it yourself.

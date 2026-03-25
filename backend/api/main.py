@@ -273,6 +273,7 @@ async def startup_event():
                             role=UserRole.ADMIN,
                             is_active=True,
                             is_verified=True,
+                            is_approved=True,
                         )
                         db.add(u)
                         db.commit()

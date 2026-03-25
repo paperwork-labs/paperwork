@@ -20,7 +20,7 @@ def _register_and_login_admin(client: TestClient, db_session) -> str:
     )
     assert r.status_code in (200, 201)
     approve_user_for_login_tests(u, db=db_session)
-    r2 = client.post("/api/v1/auth/login", json={"username": u, "password": pw})
+    r2 = client.post("/api/v1/auth/login", json={"email": email, "password": pw})
     assert r2.status_code == 200
     token = r2.json()["access_token"]
 

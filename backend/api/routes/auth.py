@@ -52,7 +52,7 @@ class UserCreate(BaseModel):
 
 
 class UserLogin(BaseModel):
-    username: str
+    email: EmailStr
     password: str
 
 
@@ -146,10 +146,11 @@ def _find_active_invite_for_email(db: Session, email: str) -> Optional[UserInvit
     )
 
 
-def authenticate_user(db: Session, username: str, password: str) -> Optional[User]:
-    user = db.query(User).filter(User.username == username).first()
+def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
+    normalized_email = email.strip().lower()
+    user = db.query(User).filter(User.email == normalized_email).first()
     if not user:
-        logger.warning("Login failed: user not found for %s", username)
+        logger.warning("Login failed: user not found (email redacted)")
         return None
     if not user.password_hash:
         logger.warning("Login failed: user %s has no password set", user.id)
@@ -326,9 +327,10 @@ async def google_callback(
         info = userinfo_resp.json()
 
     google_sub = info.get("sub")
-    email = info.get("email", "")
-    if not google_sub or not email:
+    raw_email = info.get("email", "")
+    if not google_sub or not raw_email:
         raise HTTPException(status_code=400, detail="Google did not return required user info (sub/email)")
+    email = raw_email.strip().lower()
     given_name = info.get("given_name", "")
     family_name = info.get("family_name", "")
     picture = info.get("picture")
@@ -643,9 +645,10 @@ async def schwab_callback(code: str):
 async def register_user(
     user_data: UserCreate, response: Response, db: Session = Depends(get_db)
 ) -> RegisterUserResponse:
+    normalized_email = user_data.email.strip().lower()
     existing_user = (
         db.query(User)
-        .filter((User.username == user_data.username) | (User.email == user_data.email))
+        .filter((User.username == user_data.username) | (User.email == normalized_email))
         .first()
     )
     if existing_user:
@@ -657,7 +660,7 @@ async def register_user(
     hashed_password = get_password_hash(user_data.password)
     db_user = User(
         username=user_data.username,
-        email=user_data.email,
+        email=normalized_email,
         password_hash=hashed_password,
         full_name=user_data.full_name,
         is_active=True,
@@ -748,9 +751,10 @@ async def accept_invite(
     if invite.expires_at < datetime.utcnow():
         raise HTTPException(status_code=410, detail="Invite expired")
 
+    normalized_invite_email = invite.email.strip().lower()
     existing_user = (
         db.query(User)
-        .filter((User.username == payload.username) | (User.email == invite.email))
+        .filter((User.username == payload.username) | (User.email == normalized_invite_email))
         .first()
     )
     if existing_user:
@@ -767,7 +771,7 @@ async def accept_invite(
 
     db_user = User(
         username=payload.username,
-        email=invite.email,
+        email=normalized_invite_email,
         password_hash=get_password_hash(payload.password),
         full_name=payload.full_name,
         role=invite.role if isinstance(invite.role, UserRole) else UserRole.READONLY,
@@ -790,11 +794,11 @@ async def accept_invite(
 async def login_user(
     user_data: UserLogin, response: Response, db: Session = Depends(get_db)
 ) -> Token:
-    user = authenticate_user(db, user_data.username, user_data.password)
+    user = authenticate_user(db, user_data.email, user_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

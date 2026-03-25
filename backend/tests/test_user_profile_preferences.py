@@ -30,7 +30,7 @@ def _register_and_login(client: "TestClient", username: str, password: str, emai
     )
     assert r.status_code == 200
     approve_user_for_login_tests(username)
-    r2 = client.post("/api/v1/auth/login", json={"username": username, "password": password})
+    r2 = client.post("/api/v1/auth/login", json={"email": email, "password": password})
     assert r2.status_code == 200
     return r2.json()["access_token"]
 
@@ -120,11 +120,11 @@ def test_change_password_allows_login_with_new_password(client):
     assert r.status_code == 200
 
     # Old password should fail
-    bad = client.post("/api/v1/auth/login", json={"username": u, "password": old_pw})
+    bad = client.post("/api/v1/auth/login", json={"email": email, "password": old_pw})
     assert bad.status_code == 401
 
     # New password should work
-    good = client.post("/api/v1/auth/login", json={"username": u, "password": new_pw})
+    good = client.post("/api/v1/auth/login", json={"email": email, "password": new_pw})
     assert good.status_code == 200
 
 

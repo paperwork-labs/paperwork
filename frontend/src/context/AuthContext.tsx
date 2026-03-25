@@ -28,7 +28,7 @@ export type AuthContextValue = {
   ready: boolean;
   appSettings: AppSettings | null;
   appSettingsReady: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   register: (
     username: string,
     email: string,
@@ -88,8 +88,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sync();
   }, []);
 
-  const login = async (username: string, password: string) => {
-    const res: any = await authApi.login({ username, password });
+  const login = async (email: string, password: string) => {
+    const res: any = await authApi.login({ email, password });
     const t = res?.access_token;
     if (t) {
       localStorage.setItem('qm_token', t);
@@ -116,7 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (data?.is_approved === false) {
       return { pendingApproval: true };
     }
-    await login(username, password);
+    await login(email, password);
     return { pendingApproval: false };
   };
 

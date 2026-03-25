@@ -25,7 +25,7 @@ def _login(client):
     if r.status_code != 200:
         pytest.skip("auth endpoint not available in test env")
     approve_user_for_login_tests(username)
-    r2 = client.post("/api/v1/auth/login", json={"username": username, "password": password})
+    r2 = client.post("/api/v1/auth/login", json={"email": email, "password": password})
     assert r2.status_code == 200
     return r.json().get("id"), r2.json()["access_token"]
 

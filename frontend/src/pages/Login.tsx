@@ -29,7 +29,7 @@ const Login: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -70,7 +70,7 @@ const Login: React.FC = () => {
     setPendingApprovalBanner(false);
     setUnverifiedEmailBanner(false);
     try {
-      await login(username, password);
+      await login(email, password);
       navigate(redirectTo, { replace: true });
     } catch (err: unknown) {
       if (isPendingApprovalLoginError(err)) {
@@ -155,8 +155,8 @@ const Login: React.FC = () => {
           </Button>
           <Separator />
           <VStack as="form" gap={4} align="stretch" onSubmit={handleSubmit}>
-          <FormField label="Username" required>
-            <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="yourname" />
+          <FormField label="Email" required>
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
           </FormField>
           <FormField label="Password" required>
             <InputGroup

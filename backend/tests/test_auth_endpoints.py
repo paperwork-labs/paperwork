@@ -59,7 +59,7 @@ def test_register_and_login(client):
     # Login
     r_login = client.post(
         "/api/v1/auth/login",
-        json={"username": username, "password": password},
+        json={"email": email, "password": password},
     )
     assert r_login.status_code == 200
     data = r_login.json()
@@ -94,7 +94,7 @@ def test_login_rejects_unverified_password_user(client):
 
     r_login = client.post(
         "/api/v1/auth/login",
-        json={"username": username, "password": password},
+        json={"email": email, "password": password},
     )
     assert r_login.status_code == 403
     assert r_login.json().get("detail") == "Please verify your email before signing in"

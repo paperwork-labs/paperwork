@@ -692,7 +692,7 @@ export const authApi = {
   register: async (payload: { username: string; email: string; password: string; full_name?: string }) => {
     return makeOptimizedRequest(() => api.post('/auth/register', payload));
   },
-  login: async (payload: { username: string; password: string }) => {
+  login: async (payload: { email: string; password: string }) => {
     return makeOptimizedRequest(() => api.post('/auth/login', payload));
   },
   me: async () => {

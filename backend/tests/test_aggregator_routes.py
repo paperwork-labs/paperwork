@@ -41,7 +41,7 @@ def _login_token(client) -> str:
     )
     approve_user_for_login_tests(username)
     r_login = client.post(
-        "/api/v1/auth/login", json={"username": username, "password": password}
+        "/api/v1/auth/login", json={"email": email, "password": password}
     )
     assert r_login.status_code == 200
     return r_login.json()["access_token"], username

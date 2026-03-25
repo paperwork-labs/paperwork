@@ -46,7 +46,7 @@ describe('Login redirect', () => {
 
     renderWithProviders(<Login />);
 
-    await user.type(screen.getByPlaceholderText('yourname'), 'demo');
+    await user.type(screen.getByPlaceholderText('you@example.com'), 'demo@example.com');
     await user.type(screen.getByPlaceholderText('••••••••'), 'pw');
     await user.click(screen.getByRole('button', { name: /^log in$/i }));
 
@@ -61,7 +61,7 @@ describe('Login redirect', () => {
 
     renderWithProviders(<Login />);
 
-    await user.type(screen.getByPlaceholderText('yourname'), 'demo');
+    await user.type(screen.getByPlaceholderText('you@example.com'), 'demo@example.com');
     await user.type(screen.getByPlaceholderText('••••••••'), 'pw');
     await user.click(screen.getByRole('button', { name: /^log in$/i }));
 

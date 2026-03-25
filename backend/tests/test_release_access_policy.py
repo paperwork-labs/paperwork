@@ -28,16 +28,16 @@ def _register_and_login(client: TestClient, username: str, password: str, email:
     approve_user_for_login_tests(username)
     login = client.post(
         "/api/v1/auth/login",
-        json={"username": username, "password": password},
+        json={"email": email, "password": password},
     )
     assert login.status_code == 200
     return login.json()["access_token"]
 
 
-def _login(client: TestClient, username: str, password: str) -> str:
+def _login(client: TestClient, email: str, password: str) -> str:
     login = client.post(
         "/api/v1/auth/login",
-        json={"username": username, "password": password},
+        json={"email": email, "password": password},
     )
     assert login.status_code == 200
     return login.json()["access_token"]
@@ -121,7 +121,7 @@ def test_authenticated_non_admin_market_allowed_and_portfolio_locked_by_default(
     admin_password = "AdminPassw0rd!"
     _register_and_login(client, admin_username, admin_password, f"{admin_username}@example.com")
     _elevate_user_to_admin(admin_username)
-    admin_token = _login(client, admin_username, admin_password)
+    admin_token = _login(client, f"{admin_username}@example.com", admin_password)
 
     user_username = f"user_{uuid.uuid4().hex[:8]}"
     user_token = _register_and_login(client, user_username, "Passw0rd!", f"{user_username}@example.com")
