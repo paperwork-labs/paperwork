@@ -393,7 +393,7 @@ const AdminAgent: React.FC = () => {
         </aside>
 
         <section
-          className="flex min-h-[28rem] min-w-0 flex-1 flex-col"
+          className="flex h-[32rem] max-h-[calc(100vh-20rem)] min-w-0 flex-1 flex-col overflow-hidden"
           aria-labelledby="agent-chat-heading"
         >
           <div className="mb-2 flex items-center justify-between">
@@ -420,7 +420,7 @@ const AdminAgent: React.FC = () => {
             )}
           </div>
           <AgentChatPanel
-            className="min-h-[24rem] flex-1"
+            className="min-h-0 flex-1"
             messages={messages}
             onSendMessage={(msg) => {
               void handleSendMessage(msg)

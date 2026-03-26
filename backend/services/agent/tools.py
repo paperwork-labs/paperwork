@@ -388,6 +388,84 @@ AGENT_TOOLS: List[Dict[str, Any]] = [
             },
         },
     },
+    # ==================== MARKET INSIGHT TOOLS ====================
+    {
+        "type": "function",
+        "function": {
+            "name": "get_stage_distribution",
+            "description": "Get distribution of stocks by stage (1A-4C) across the tracked universe. Shows market breadth and % bullish/bearish.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_sector_strength",
+            "description": "Rank sectors by % of stocks in constructive stages (2A/2B/2C). Shows sector rotation leaders and laggards.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_top_scans",
+            "description": "Get top stocks passing scan overlay filters. Returns actionable trade ideas ranked by relative strength.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "scan_tier": {
+                        "type": "string",
+                        "description": "Scan tier to filter by (e.g., 'Set 1', 'Set 2', 'Short Set 1')",
+                        "default": "Set 1",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum stocks to return",
+                        "default": 10,
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_exit_alerts",
+            "description": "Get positions that may need attention based on stage deterioration (3A/3B/4A/4B/4C stages).",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_regime_history",
+            "description": "Get regime changes over specified period. Shows current regime, transitions, and volatility assessment.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "days": {
+                        "type": "integer",
+                        "description": "Number of days of history to retrieve",
+                        "default": 30,
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
     # ==================== CODEBASE EXPLORATION TOOLS ====================
     {
         "type": "function",
@@ -436,7 +514,15 @@ AGENT_TOOLS: List[Dict[str, Any]] = [
 
 
 # Implemented in AgentBrain._execute_safe_tool — never dispatched to Celery.
-INLINE_ONLY_AGENT_TOOLS: FrozenSet[str] = frozenset({"read_file", "list_files"})
+INLINE_ONLY_AGENT_TOOLS: FrozenSet[str] = frozenset({
+    "read_file",
+    "list_files",
+    "get_stage_distribution",
+    "get_sector_strength",
+    "get_top_scans",
+    "get_exit_alerts",
+    "get_regime_history",
+})
 
 TOOL_TO_CELERY_TASK: Dict[str, str] = {
     "backfill_stale_daily": "backend.tasks.market.backfill.stale_daily",

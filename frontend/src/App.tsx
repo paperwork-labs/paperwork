@@ -38,6 +38,7 @@ const MarketIntelligence = React.lazy(() => import('./pages/MarketIntelligence')
 const Invite = React.lazy(() => import('./pages/Invite'));
 const SettingsUsers = React.lazy(() => import('./pages/SettingsUsers'));
 const AdminAgent = React.lazy(() => import('./pages/AdminAgent'));
+const AdminAgentCapabilities = React.lazy(() => import('./pages/AdminAgentCapabilities'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -101,6 +102,10 @@ function App() {
                             <Route path="admin/system" element={<SystemStatus />} />
                             <Route path="admin/users" element={<SettingsUsers />} />
                             <Route path="admin/agent" element={<AdminAgent />} />
+                            <Route
+                              path="admin/agent/capabilities"
+                              element={<AdminAgentCapabilities />}
+                            />
                           </Route>
                         </Route>
                       </Route>

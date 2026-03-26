@@ -47,9 +47,26 @@ export function AgentActionCard({
   onApprove,
   isApproving,
 }: AgentActionCardProps) {
+  if (action.status === "completed") {
+    return (
+      <div
+        className="flex items-center gap-2 rounded-md border border-border/50 bg-muted/30 px-3 py-1.5 text-sm"
+        data-action-id={action.id}
+      >
+        <Check
+          className="size-3.5 shrink-0 text-emerald-500"
+          aria-hidden
+        />
+        <span className="min-w-0 font-medium">{action.action_name}</span>
+        <Badge variant="outline" className="ml-auto shrink-0 text-xs capitalize">
+          {action.risk_level}
+        </Badge>
+      </div>
+    )
+  }
+
   const isPendingApproval = action.status === "pending_approval"
   const isExecuting = action.status === "executing"
-  const isCompleted = action.status === "completed"
   const riskExtra = riskBadgeClass(action.risk_level)
   const riskIsCritical = action.risk_level === "critical"
 
@@ -78,20 +95,12 @@ export function AgentActionCard({
             aria-hidden
           />
         )}
-        {isCompleted && (
-          <Check
-            className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400"
-            aria-label="Completed"
-          />
-        )}
       </CardHeader>
-      <CardContent className="py-3">
-        {action.reasoning ? (
+      {action.reasoning ? (
+        <CardContent className="py-3">
           <p className="text-sm text-muted-foreground">{action.reasoning}</p>
-        ) : (
-          <p className="text-sm italic text-muted-foreground">No reasoning recorded.</p>
-        )}
-      </CardContent>
+        </CardContent>
+      ) : null}
       {isPendingApproval && onApprove && (
         <CardFooter className="flex flex-wrap gap-2 border-t border-border py-3">
           <Button

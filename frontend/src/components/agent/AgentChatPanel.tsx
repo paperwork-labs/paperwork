@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Loader2, SendHorizontal } from "lucide-react"
+import { Loader2, SendHorizontal, Zap } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -8,6 +8,19 @@ import { cn } from "@/lib/utils"
 
 import { AgentMessage } from "./AgentMessage"
 import type { ChatMessage } from "./types"
+
+interface QuickAction {
+  label: string
+  prompt: string
+}
+
+const QUICK_ACTIONS: QuickAction[] = [
+  { label: "Market Breadth", prompt: "What's the stage distribution across the market?" },
+  { label: "Sector Leaders", prompt: "Which sectors are strongest right now?" },
+  { label: "Trade Ideas", prompt: "Show me the top Set 1 scan picks" },
+  { label: "Exit Review", prompt: "Any positions I should review for exits?" },
+  { label: "Regime Status", prompt: "What's the current regime and recent history?" },
+]
 
 export interface AgentChatPanelProps {
   messages: ChatMessage[]
@@ -72,6 +85,22 @@ export function AgentChatPanel({
             approvingActionId={approvingActionId}
           />
         ))}
+        {!isLoading && messages.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 border-t border-dashed border-border/50 pt-3 mt-2">
+            <Zap className="size-3.5 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground mr-1">Quick:</span>
+            {QUICK_ACTIONS.map((action) => (
+              <button
+                key={action.label}
+                type="button"
+                onClick={() => onSendMessage(action.prompt)}
+                className="rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted hover:border-primary/50"
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        )}
         {isLoading && (
           <div
             className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"

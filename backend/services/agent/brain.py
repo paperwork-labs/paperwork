@@ -503,7 +503,26 @@ class AgentBrain:
         
         if tool_name == "list_files":
             return await self._tool_list_files(args.get("path", ""))
-        
+
+        # Market insight tools
+        if tool_name == "get_stage_distribution":
+            return await self._tool_get_stage_distribution()
+
+        if tool_name == "get_sector_strength":
+            return await self._tool_get_sector_strength()
+
+        if tool_name == "get_top_scans":
+            return await self._tool_get_top_scans(
+                args.get("scan_tier", "Set 1"),
+                args.get("limit", 10),
+            )
+
+        if tool_name == "get_exit_alerts":
+            return await self._tool_get_exit_alerts()
+
+        if tool_name == "get_regime_history":
+            return await self._tool_get_regime_history(args.get("days", 30))
+
         return {"error": f"Unknown safe tool: {tool_name}"}
     
     async def _dispatch_celery_task(
@@ -1148,7 +1167,235 @@ class AgentBrain:
             }
         except Exception as e:
             return {"error": f"Failed to list files: {e}"}
-    
+
+    # ==================== MARKET INSIGHT TOOLS ====================
+
+    async def _tool_get_stage_distribution(self) -> Dict[str, Any]:
+        """Get distribution of stocks by stage across tracked universe."""
+        try:
+            from sqlalchemy import func
+            from backend.models.market_data import MarketSnapshot
+
+            results = (
+                self.db.query(MarketSnapshot.stage_label, func.count(MarketSnapshot.id))
+                .filter(MarketSnapshot.stage_label.isnot(None))
+                .group_by(MarketSnapshot.stage_label)
+                .all()
+            )
+
+            distribution = {r[0]: r[1] for r in results if r[0]}
+            total = sum(distribution.values())
+
+            bullish_stages = ["2A", "2B", "2C"]
+            bearish_stages = ["4A", "4B", "4C"]
+            bullish_count = sum(distribution.get(s, 0) for s in bullish_stages)
+            bearish_count = sum(distribution.get(s, 0) for s in bearish_stages)
+
+            return {
+                "distribution": distribution,
+                "total": total,
+                "bullish_count": bullish_count,
+                "bullish_pct": round(bullish_count / total * 100, 1) if total else 0,
+                "bearish_count": bearish_count,
+                "bearish_pct": round(bearish_count / total * 100, 1) if total else 0,
+                "interpretation": (
+                    "Bullish breadth" if bullish_count > bearish_count * 1.5
+                    else "Bearish breadth" if bearish_count > bullish_count * 1.5
+                    else "Mixed breadth"
+                ),
+            }
+        except Exception as e:
+            logger.error("Failed to get stage distribution: %s", e)
+            return {"error": str(e)}
+
+    async def _tool_get_sector_strength(self) -> Dict[str, Any]:
+        """Rank sectors by % of stocks in constructive stages (2A/2B/2C)."""
+        try:
+            from sqlalchemy import func, case
+            from backend.models.market_data import MarketSnapshot
+
+            bullish_stages = ["2A", "2B", "2C"]
+
+            results = (
+                self.db.query(
+                    MarketSnapshot.sector,
+                    func.count(MarketSnapshot.id).label("total"),
+                    func.sum(
+                        case((MarketSnapshot.stage_label.in_(bullish_stages), 1), else_=0)
+                    ).label("bullish"),
+                )
+                .filter(MarketSnapshot.sector.isnot(None))
+                .filter(MarketSnapshot.sector != "")
+                .group_by(MarketSnapshot.sector)
+                .having(func.count(MarketSnapshot.id) >= 5)
+                .all()
+            )
+
+            sectors = []
+            for r in results:
+                bullish_pct = round(r.bullish / r.total * 100, 1) if r.total else 0
+                sectors.append({
+                    "sector": r.sector,
+                    "total": r.total,
+                    "bullish": r.bullish,
+                    "bullish_pct": bullish_pct,
+                })
+
+            sectors.sort(key=lambda x: x["bullish_pct"], reverse=True)
+
+            return {
+                "sectors": sectors[:15],
+                "leaders": [s["sector"] for s in sectors[:3]],
+                "laggards": [s["sector"] for s in sectors[-3:]],
+            }
+        except Exception as e:
+            logger.error("Failed to get sector strength: %s", e)
+            return {"error": str(e)}
+
+    async def _tool_get_top_scans(
+        self, scan_tier: str = "Set 1", limit: int = 10
+    ) -> Dict[str, Any]:
+        """Get top stocks passing scan overlay filters."""
+        try:
+            from backend.models.market_data import MarketSnapshot
+
+            query = self.db.query(MarketSnapshot).filter(
+                MarketSnapshot.scan_tier.isnot(None)
+            )
+
+            if scan_tier:
+                query = query.filter(MarketSnapshot.scan_tier == scan_tier)
+
+            results = (
+                query.order_by(MarketSnapshot.rs_mansfield_pct.desc().nullslast())
+                .limit(limit)
+                .all()
+            )
+
+            stocks = []
+            for r in results:
+                stocks.append({
+                    "symbol": r.symbol,
+                    "name": r.name,
+                    "stage": r.stage_label,
+                    "scan_tier": r.scan_tier,
+                    "action": r.action_label,
+                    "rs_rank": round(r.rs_mansfield_pct, 1) if r.rs_mansfield_pct else None,
+                    "sector": r.sector,
+                })
+
+            return {
+                "tier": scan_tier,
+                "count": len(stocks),
+                "stocks": stocks,
+            }
+        except Exception as e:
+            logger.error("Failed to get top scans: %s", e)
+            return {"error": str(e)}
+
+    async def _tool_get_exit_alerts(self) -> Dict[str, Any]:
+        """Get positions that may need attention based on stage deterioration."""
+        try:
+            from backend.models import Position
+            from backend.models.market_data import MarketSnapshot
+
+            warning_stages = ["3A", "3B", "4A", "4B", "4C"]
+
+            positions = (
+                self.db.query(Position)
+                .filter(Position.quantity > 0)
+                .all()
+            )
+
+            alerts = []
+            for pos in positions:
+                snapshot = (
+                    self.db.query(MarketSnapshot)
+                    .filter(MarketSnapshot.symbol == pos.symbol)
+                    .first()
+                )
+
+                if snapshot and snapshot.stage_label in warning_stages:
+                    alerts.append({
+                        "symbol": pos.symbol,
+                        "quantity": pos.quantity,
+                        "stage": snapshot.stage_label,
+                        "action": snapshot.action_label,
+                        "recommendation": (
+                            "Consider reducing" if snapshot.stage_label in ["3A", "3B"]
+                            else "Exit recommended" if snapshot.stage_label in ["4A", "4B", "4C"]
+                            else "Monitor"
+                        ),
+                    })
+
+            return {
+                "alerts": alerts,
+                "count": len(alerts),
+                "has_critical": any(a["stage"] in ["4A", "4B", "4C"] for a in alerts),
+            }
+        except Exception as e:
+            logger.error("Failed to get exit alerts: %s", e)
+            return {"error": str(e)}
+
+    async def _tool_get_regime_history(self, days: int = 30) -> Dict[str, Any]:
+        """Get regime changes over specified period."""
+        try:
+            from datetime import date, timedelta
+            from backend.models.market_data import MarketRegime
+
+            cutoff = date.today() - timedelta(days=days)
+            results = (
+                self.db.query(MarketRegime)
+                .filter(MarketRegime.as_of_date >= cutoff)
+                .order_by(MarketRegime.as_of_date.desc())
+                .all()
+            )
+
+            if not results:
+                return {"error": "No regime data available"}
+
+            history = []
+            transitions = 0
+            prev_regime = None
+
+            for r in reversed(results):
+                regime = r.regime_state
+                if prev_regime and regime != prev_regime:
+                    transitions += 1
+                prev_regime = regime
+                history.append({
+                    "date": r.as_of_date.strftime("%Y-%m-%d") if r.as_of_date else None,
+                    "regime": regime,
+                    "score": float(r.composite_score) if r.composite_score else None,
+                })
+
+            history.reverse()
+
+            return {
+                "current": results[0].regime_state,
+                "current_score": float(results[0].composite_score) if results[0].composite_score else None,
+                "days_in_current": self._count_consecutive_regime(results),
+                "history": history[:10],
+                "transitions": transitions,
+                "volatility": "High" if transitions > 3 else "Moderate" if transitions > 1 else "Stable",
+            }
+        except Exception as e:
+            logger.error("Failed to get regime history: %s", e)
+            return {"error": str(e)}
+
+    def _count_consecutive_regime(self, results: list) -> int:
+        """Count days the current regime has been active."""
+        if not results:
+            return 0
+        current = results[0].regime_state
+        count = 0
+        for r in results:
+            if r.regime_state == current:
+                count += 1
+            else:
+                break
+        return count
+
     # ==================== CONVERSATION PERSISTENCE ====================
     
     def _get_redis(self):
