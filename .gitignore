@@ -198,3 +198,4 @@ cache/
 
 # Git backup
 .git_backup/ 
+*.pdf
