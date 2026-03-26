@@ -982,7 +982,7 @@ const MarketDashboard: React.FC = () => {
                       variant={isActive ? 'default' : 'ghost'}
                       className={cn(
                         'gap-1',
-                        isActive && 'bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-500 dark:hover:bg-amber-400',
+                        isActive && 'bg-primary text-primary-foreground hover:bg-primary/90',
                       )}
                       onClick={() => handleViewChange(tab.key)}
                     >

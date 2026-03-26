@@ -1,5 +1,7 @@
 # Market Tasks
 
+> **Canonical reference** for all `backend.tasks.market` tasks—schedules, dependencies, runbooks, and troubleshooting live here.
+
 Celery tasks under `backend.tasks.market` drive the **Intelligence** pillar: daily and intraday price ingestion, index universes, indicator recomputation, `MarketSnapshot` / `MarketSnapshotHistory`, coverage health in Redis, regime (R1–R5), fundamentals enrichment, retention, and related maintenance.
 
 Tasks are registered as `backend.tasks.market.<module>.<function>`. Most use the `@task_run` decorator for `JobRun` tracking, Redis status keys, single-flight locks, and failure alerts.

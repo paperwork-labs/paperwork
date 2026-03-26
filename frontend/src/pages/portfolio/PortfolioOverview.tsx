@@ -5,7 +5,7 @@ import { ChartContext, ChartSlidePanel } from '../../components/market/SymbolCha
 import StatCard from '../../components/shared/StatCard';
 import StageBar from '../../components/shared/StageBar';
 import PnlText from '../../components/shared/PnlText';
-import PageHeader from '../../components/ui/PageHeader';
+import { Page, PageHeader } from '../../components/ui/Page';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -155,7 +155,7 @@ const PortfolioOverview: React.FC = () => {
 
   return (
     <ChartContext.Provider value={openChart}>
-      <div className="p-4">
+      <Page>
         <div className="flex flex-col gap-4">
           <PageHeader
             title="Portfolio Overview"
@@ -863,7 +863,7 @@ const PortfolioOverview: React.FC = () => {
             );
           })()}
         </div>
-      </div>
+      </Page>
       <ChartSlidePanel symbol={chartSymbol} onClose={() => setChartSymbol(null)} />
     </ChartContext.Provider>
   );

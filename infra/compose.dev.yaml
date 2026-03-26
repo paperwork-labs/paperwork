@@ -1,7 +1,9 @@
+name: AxiomFolio
+
 services:
   postgres:
     image: postgres:18-alpine
-    container_name: axiomfolio-postgres
+    container_name: postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -23,7 +25,7 @@ services:
 
   redis:
     image: redis:7.4-alpine
-    container_name: axiomfolio-redis
+    container_name: redis
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
     volumes:
       - redis_data:/data
@@ -41,7 +43,7 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile.backend
-    container_name: axiomfolio-backend
+    container_name: backend
     env_file:
       - ./env.dev
     ports:
@@ -74,7 +76,7 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile.backend
-    container_name: axiomfolio-celery-worker
+    container_name: celery-worker
     env_file:
       - ./env.dev
     environment:
@@ -108,7 +110,7 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile.backend
-    container_name: axiomfolio-celery-beat
+    container_name: celery-beat
     env_file:
       - ./env.dev
     environment:
@@ -136,7 +138,7 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile.backend
-    container_name: axiomfolio-flower
+    container_name: flower
     env_file:
       - ./env.dev
     environment:
@@ -156,7 +158,7 @@ services:
       context: ..
       dockerfile: Dockerfile.frontend
       target: dev
-    container_name: axiomfolio-frontend
+    container_name: frontend
     environment:
       - VITE_API_BASE_URL=/api/v1
       - CHOKIDAR_USEPOLLING=true
@@ -176,7 +178,7 @@ services:
       context: ..
       dockerfile: Dockerfile.frontend
       target: dev
-    container_name: axiomfolio-ladle
+    container_name: ladle
     environment:
       - VITE_API_BASE_URL=/api/v1
       - CHOKIDAR_USEPOLLING=true
@@ -196,7 +198,7 @@ services:
   ib-gateway:
     image: ghcr.io/extrange/ibkr:stable
     platform: linux/amd64
-    container_name: axiomfolio-ib-gateway
+    container_name: ib-gateway
     env_file:
       - ./env.dev
     environment:
@@ -224,7 +226,7 @@ services:
 
   cloudflared:
     image: cloudflare/cloudflared:latest
-    container_name: axiomfolio-cloudflared
+    container_name: cloudflared
     env_file:
       - ./env.dev
     environment:

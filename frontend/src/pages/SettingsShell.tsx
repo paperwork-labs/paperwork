@@ -15,7 +15,7 @@ const MenuLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, chi
         className={cn(
           'h-9 w-full justify-start rounded-md border-l-2 border-transparent px-3 font-medium transition-colors',
           isActive
-            ? 'border-amber-500 bg-muted text-foreground'
+            ? 'border-primary bg-muted text-foreground'
             : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground',
         )}
       >
@@ -47,7 +47,7 @@ const SettingsShell: React.FC = () => {
               type="button"
               size="icon"
               variant={isActive ? 'default' : 'ghost'}
-              className={cn(isActive && 'bg-amber-500 text-white hover:bg-amber-500/90 hover:text-white')}
+              className={cn(isActive && 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground')}
               aria-label={label}
             >
               {icon}

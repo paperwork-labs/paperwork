@@ -260,6 +260,134 @@ AGENT_TOOLS: List[Dict[str, Any]] = [
             },
         },
     },
+    # ==================== HOLISTIC CHAT TOOLS ====================
+    {
+        "type": "function",
+        "function": {
+            "name": "get_portfolio_summary",
+            "description": "Get portfolio summary including risk metrics, sector allocation, P&L, and account balances for the admin user.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_position_details",
+            "description": "Get detailed information about a specific position including current price, P&L, and market snapshot (stage, indicators).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "symbol": {
+                        "type": "string",
+                        "description": "The stock symbol (e.g., AAPL, NVDA)",
+                    },
+                },
+                "required": ["symbol"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_activity",
+            "description": "Get recent portfolio activity including trades, optionally filtered by symbol.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of activities to return",
+                        "default": 20,
+                    },
+                    "symbol": {
+                        "type": "string",
+                        "description": "Filter by symbol (optional)",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_market_snapshot",
+            "description": "Get the current market snapshot for a symbol including stage, indicators (RSI, MACD, MAs), RS rank, and sector.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "symbol": {
+                        "type": "string",
+                        "description": "The stock symbol (e.g., AAPL, NVDA, SPY)",
+                    },
+                },
+                "required": ["symbol"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_tracked_universe",
+            "description": "Get the tracked universe of symbols showing total count, breakdown by source (index membership, holdings), and a sample.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_constituents",
+            "description": "Get the list of symbols in a specific index (S&P 500, NASDAQ-100, or Russell 2000).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "index": {
+                        "type": "string",
+                        "enum": ["SP500", "NASDAQ100", "RUSSELL2000"],
+                        "description": "Which index to get constituents for",
+                    },
+                },
+                "required": ["index"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_regime",
+            "description": "Get the current market regime (R1-R5) with all inputs (VIX, breadth, sectors) and portfolio rules.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "describe_tables",
+            "description": "List database tables or describe columns for a specific table. Use this before query_database to understand the schema.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "table_name": {
+                        "type": "string",
+                        "description": "Table name to describe (optional - omit to list all tables)",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
 ]
 
 

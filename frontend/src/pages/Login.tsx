@@ -194,13 +194,13 @@ const Login: React.FC = () => {
             <Button
               type="submit"
               disabled={loading}
-              className="h-11 rounded-lg bg-amber-500 font-semibold text-white hover:bg-amber-400 focus-visible:ring-amber-500/40"
+              className="h-11 rounded-lg font-semibold"
             >
               {loading ? 'Signing in…' : 'Log in'}
             </Button>
             <p className="text-sm text-muted-foreground">
               No account?{' '}
-              <Link to="/register" className="font-medium text-amber-600 underline-offset-4 hover:underline">
+              <Link to="/register" className="font-medium text-primary underline-offset-4 hover:underline">
                 Register
               </Link>
             </p>

@@ -103,19 +103,27 @@ export const BOLLINGER_HEX: [string, string] = ['#4F46E580', '#818CF880'];
 
 /* ─── Heat scale (momentum, RS, performance %) ─── */
 
-export const HEAT_SCALE: { min: number; chakra: string }[] = [
-  { min:  3,         chakra: 'green.600' },
-  { min:  1,         chakra: 'green.500' },
-  { min:  0,         chakra: 'green.400' },
-  { min: -1,         chakra: 'red.400' },
-  { min: -3,         chakra: 'red.500' },
-  { min: -Infinity,  chakra: 'red.600' },
+export const HEAT_SCALE: { min: number; class: string; hex: string }[] = [
+  { min:  3,         class: 'text-green-600', hex: '#16A34A' },
+  { min:  1,         class: 'text-green-500', hex: '#22C55E' },
+  { min:  0,         class: 'text-green-400', hex: '#4ADE80' },
+  { min: -1,         class: 'text-red-400',   hex: '#F87171' },
+  { min: -3,         class: 'text-red-500',   hex: '#EF4444' },
+  { min: -Infinity,  class: 'text-red-600',   hex: '#DC2626' },
 ];
 
 export function heatColor(v: unknown): string | undefined {
   if (typeof v !== 'number' || !Number.isFinite(v)) return undefined;
   for (const tier of HEAT_SCALE) {
-    if (v >= tier.min) return tier.chakra;
+    if (v >= tier.min) return tier.class;
+  }
+  return undefined;
+}
+
+export function heatColorHex(v: unknown): string | undefined {
+  if (typeof v !== 'number' || !Number.isFinite(v)) return undefined;
+  for (const tier of HEAT_SCALE) {
+    if (v >= tier.min) return tier.hex;
   }
   return undefined;
 }
@@ -168,20 +176,20 @@ export const HEAT_MAP_LEGEND = [
 /* ─── Sector / allocation palette ─── */
 
 const SECTOR_PALETTE = [
-  'var(--chakra-colors-brand-600)',
-  'var(--chakra-colors-red-500)',
-  'var(--chakra-colors-green-500)',
-  'var(--chakra-colors-orange-500)',
-  'var(--chakra-colors-purple-500)',
-  'var(--chakra-colors-teal-500)',
-  'var(--chakra-colors-pink-500)',
-  'var(--chakra-colors-cyan-600)',
-  'var(--chakra-colors-yellow-600)',
-  'var(--chakra-colors-brand-400)',
-  'var(--chakra-colors-red-400)',
-  'var(--chakra-colors-green-600)',
-  'var(--chakra-colors-orange-600)',
-  'var(--chakra-colors-purple-400)',
+  '#2563EB', // blue-600 (primary/brand)
+  '#EF4444', // red-500
+  '#22C55E', // green-500
+  '#F97316', // orange-500
+  '#A855F7', // purple-500
+  '#14B8A6', // teal-500
+  '#EC4899', // pink-500
+  '#0891B2', // cyan-600
+  '#CA8A04', // yellow-600
+  '#60A5FA', // blue-400
+  '#F87171', // red-400
+  '#16A34A', // green-600
+  '#EA580C', // orange-600
+  '#C084FC', // purple-400
 ] as const;
 
 export { SECTOR_PALETTE };

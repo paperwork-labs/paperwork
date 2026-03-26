@@ -120,7 +120,7 @@ const NavItem: React.FC<NavItemProps> = ({
     className={cn(
       'relative h-auto w-full rounded-lg py-2.5 font-medium transition-colors',
       showLabel ? 'justify-start px-4 text-left' : 'justify-center px-2',
-      showLabel && isActive && 'border-l-2 border-amber-500 bg-muted text-foreground',
+      showLabel && isActive && 'border-l-2 border-primary bg-muted text-foreground',
       showLabel && !isActive && 'border-l-2 border-transparent text-muted-foreground hover:bg-muted/80 hover:text-foreground',
       !showLabel && isActive && 'bg-muted text-foreground',
       !showLabel && !isActive && 'text-muted-foreground hover:bg-muted/80 hover:text-foreground'
@@ -514,7 +514,7 @@ const DashboardLayout: React.FC = () => {
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger asChild>
                   <Button type="button" variant="ghost" size="sm" className="gap-2 px-2 font-normal">
-                    <span className="flex size-8 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-white">
+                    <span className="flex size-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
                       {displayName(user).slice(0, 1).toUpperCase()}
                     </span>
                     <span className="text-sm">{displayName(user)}</span>

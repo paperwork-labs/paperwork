@@ -27,27 +27,52 @@ logger = logging.getLogger(__name__)
 OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
 MODEL = "gpt-4o-mini"
 
-SYSTEM_PROMPT = """You are an intelligent operations agent for AxiomFolio, a quantitative portfolio intelligence platform.
+SYSTEM_PROMPT = """You are AxiomFolio's AI assistant for the admin user. You help with portfolio analysis, market research, and system operations.
 
-Your role is to:
-1. Monitor system health across dimensions: coverage (market data freshness), stage_quality (indicator computation), jobs (task execution), audit (history recording), regime (market regime tracking)
-2. Diagnose issues by analyzing health data, querying the database, and researching errors
-3. Take appropriate remediation actions to fix problems
-4. Escalate critical issues that require human intervention
+## Your Capabilities
 
-Available information:
-- Coverage: Tracks daily OHLCV data freshness for ~3500 symbols (S&P 500, NASDAQ-100, Russell 2000)
-- Stage Quality: Validates that indicators (stage, RS, TD Sequential) are computed correctly
-- Jobs: Monitors Celery task execution for stuck or failed jobs
-- Audit: Ensures daily snapshot history is recorded
-- Regime: Tracks market regime (R1-R5 based on VIX, breadth, sectors)
+1. **Portfolio Questions** — positions, P&L, risk metrics, recent activity
+2. **Market Questions** — stages, indicators, regime, tracked universe, constituents
+3. **System Health** — coverage, jobs, data freshness monitoring
+4. **Remediation** — backfill data, recompute indicators, recover stuck jobs
 
-Guidelines:
-- Always check health status first before taking remediation actions
-- Use database queries to investigate root causes before acting
-- Prefer targeted fixes over broad recomputes
-- Send alerts for issues you cannot fix automatically
-- Be concise in your reasoning
+## Tool Usage Guidelines
+
+**For portfolio questions:**
+- `get_portfolio_summary` — risk metrics, sector allocation, P&L overview
+- `get_position_details` — detailed info on specific symbols including stage/indicators
+- `get_activity` — recent trades, dividends, transfers
+
+**For market questions:**
+- `get_market_snapshot` — current stage, indicators, and signals for a symbol
+- `get_tracked_universe` — what symbols we track and why (index membership, holdings)
+- `get_constituents` — list symbols in an index (SP500, NASDAQ100, RUSSELL2000)
+- `get_regime` — current market regime (R1-R5) with inputs
+
+**For schema/data discovery:**
+- `describe_tables` — list available tables and columns (use before query_database)
+- `query_database` — custom SQL for advanced queries (SELECT/WITH only)
+
+**For system health:**
+- `check_health` — composite health status across all dimensions
+- `list_jobs` — recent task executions and their status
+
+## Remediation Playbook (when issues detected)
+
+| Dimension | Yellow/Red Status | Tool to Use |
+|-----------|-------------------|-------------|
+| coverage | Stale/missing price data | `backfill_stale_daily` or `bootstrap_coverage` |
+| stage_quality | Indicators not computed | `recompute_indicators` |
+| jobs | Stuck/stale tasks | `recover_stale_jobs` |
+| regime | Missing regime data | `compute_regime` |
+| audit | Missing history | `record_daily` |
+
+## Guidelines
+
+- ALWAYS use a tool to gather data before answering — do not guess
+- For health issues, investigate with `check_health` first, then remediate
+- Be concise and actionable in responses
+- If you cannot answer, say so clearly
 
 Current time: {current_time}
 Autonomy level: {autonomy_level}
@@ -97,8 +122,10 @@ class AgentBrain:
         actions_pending = []
         max_iterations = 10
         
-        for _ in range(max_iterations):
-            response = await self._call_llm()
+        for iteration in range(max_iterations):
+            # Force at least one tool call on first iteration
+            tool_choice = "required" if iteration == 0 else "auto"
+            response = await self._call_llm(tool_choice=tool_choice)
             
             if not response:
                 break
@@ -174,7 +201,7 @@ class AgentBrain:
         
         return "\n".join(parts)
     
-    async def _call_llm(self) -> Optional[Dict[str, Any]]:
+    async def _call_llm(self, tool_choice: str = "auto") -> Optional[Dict[str, Any]]:
         """Call the OpenAI API."""
         headers = {
             "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
@@ -185,7 +212,7 @@ class AgentBrain:
             "model": MODEL,
             "messages": self._conversation,
             "tools": get_tools_for_openai(),
-            "tool_choice": "auto",
+            "tool_choice": tool_choice,
             "temperature": 0.1,
             "max_tokens": 2000,
         }
@@ -293,6 +320,31 @@ class AgentBrain:
         if tool_name == "check_broker_connection":
             return await self._tool_check_broker(args.get("broker", "all"))
         
+        # New holistic chat tools
+        if tool_name == "get_portfolio_summary":
+            return await self._tool_get_portfolio_summary()
+        
+        if tool_name == "get_position_details":
+            return await self._tool_get_position_details(args.get("symbol", ""))
+        
+        if tool_name == "get_activity":
+            return await self._tool_get_activity(args.get("limit", 20), args.get("symbol"))
+        
+        if tool_name == "get_market_snapshot":
+            return await self._tool_get_market_snapshot(args.get("symbol", ""))
+        
+        if tool_name == "get_tracked_universe":
+            return await self._tool_get_tracked_universe()
+        
+        if tool_name == "get_constituents":
+            return await self._tool_get_constituents(args.get("index", "SP500"))
+        
+        if tool_name == "get_regime":
+            return await self._tool_get_regime()
+        
+        if tool_name == "describe_tables":
+            return await self._tool_describe_tables(args.get("table_name"))
+        
         return {"error": f"Unknown safe tool: {tool_name}"}
     
     async def _dispatch_celery_task(
@@ -328,22 +380,32 @@ class AgentBrain:
     
     async def _tool_query_database(self, query: str, limit: int) -> Dict[str, Any]:
         """Run a read-only database query."""
-        query_upper = query.strip().upper()
-        if not query_upper.startswith("SELECT"):
-            return {"error": "Only SELECT queries are allowed"}
+        import re
         
+        query_clean = query.strip()
+        query_upper = query_clean.upper()
+        
+        # Allow SELECT and WITH (CTEs)
+        if not (query_upper.startswith("SELECT") or query_upper.startswith("WITH")):
+            return {"error": "Only SELECT/WITH queries allowed. Use describe_tables to see available tables."}
+        
+        # Check forbidden keywords using word boundaries (not substrings)
         forbidden = ["INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "TRUNCATE", "CREATE"]
         for word in forbidden:
-            if word in query_upper:
+            if re.search(rf'\b{word}\b', query_upper):
                 return {"error": f"Query contains forbidden keyword: {word}"}
+        
+        # Only add LIMIT if not already present
+        if "LIMIT" not in query_upper:
+            query_clean = f"{query_clean} LIMIT {limit}"
         
         try:
             from sqlalchemy import text
-            result = self.db.execute(text(f"{query} LIMIT {limit}"))
+            result = self.db.execute(text(query_clean))
             rows = [dict(row._mapping) for row in result]
             return {"rows": rows, "count": len(rows)}
         except Exception as e:
-            return {"error": str(e)}
+            return {"error": str(e), "hint": "Use describe_tables to see available tables and columns."}
     
     async def _tool_web_search(self, query: str) -> Dict[str, Any]:
         """Search the web using DuckDuckGo."""
@@ -446,6 +508,338 @@ class AgentBrain:
                 results["ibkr"] = {"error": str(e)}
         
         return results
+    
+    # ==================== NEW HOLISTIC CHAT TOOLS ====================
+    
+    async def _tool_get_portfolio_summary(self) -> Dict[str, Any]:
+        """Get portfolio risk metrics, sector allocation, and P&L summary."""
+        try:
+            from backend.services.portfolio.portfolio_analytics_service import PortfolioAnalyticsService
+            from backend.models import Position, BrokerAccount
+            
+            svc = PortfolioAnalyticsService()
+            
+            # Get admin user (user_id=1)
+            user_id = 1
+            
+            # Get risk metrics
+            risk_metrics = svc.compute_risk_metrics(self.db, user_id)
+            
+            # Get sector attribution
+            sector_data = svc.compute_sector_attribution(self.db, user_id)
+            
+            # Get account summary
+            accounts = self.db.query(BrokerAccount).filter(
+                BrokerAccount.user_id == user_id
+            ).all()
+            
+            account_summary = []
+            for acc in accounts:
+                account_summary.append({
+                    "broker": acc.broker,
+                    "account_number": acc.account_number[-4:] if acc.account_number else "****",
+                    "total_value": float(acc.total_value) if acc.total_value else 0,
+                    "day_pnl": float(acc.day_pnl) if acc.day_pnl else 0,
+                    "total_pnl": float(acc.total_pnl) if acc.total_pnl else 0,
+                })
+            
+            # Get position count
+            position_count = self.db.query(Position).filter(
+                Position.user_id == user_id,
+                Position.quantity != 0
+            ).count()
+            
+            return {
+                "user_id": user_id,
+                "position_count": position_count,
+                "accounts": account_summary,
+                "risk_metrics": risk_metrics,
+                "sector_allocation": sector_data,
+            }
+        except Exception as e:
+            logger.error("Failed to get portfolio summary: %s", e)
+            return {"error": str(e)}
+    
+    async def _tool_get_position_details(self, symbol: str) -> Dict[str, Any]:
+        """Get detailed position info including market snapshot."""
+        if not symbol:
+            return {"error": "Symbol is required"}
+        
+        try:
+            from backend.models import Position, MarketSnapshot
+            
+            symbol_upper = symbol.upper()
+            user_id = 1
+            
+            # Get position
+            position = self.db.query(Position).filter(
+                Position.user_id == user_id,
+                Position.symbol == symbol_upper,
+            ).first()
+            
+            position_data = None
+            if position:
+                position_data = {
+                    "symbol": position.symbol,
+                    "quantity": float(position.quantity) if position.quantity else 0,
+                    "average_cost": float(position.average_cost) if position.average_cost else 0,
+                    "current_price": float(position.current_price) if position.current_price else 0,
+                    "market_value": float(position.market_value) if position.market_value else 0,
+                    "unrealized_pnl": float(position.unrealized_pnl) if position.unrealized_pnl else 0,
+                    "unrealized_pnl_pct": float(position.unrealized_pnl_pct) if position.unrealized_pnl_pct else 0,
+                    "day_pnl": float(position.day_pnl) if position.day_pnl else 0,
+                }
+            
+            # Get market snapshot
+            snapshot = self.db.query(MarketSnapshot).filter(
+                MarketSnapshot.symbol == symbol_upper,
+                MarketSnapshot.analysis_type == "full",
+            ).first()
+            
+            snapshot_data = None
+            if snapshot:
+                snapshot_data = {
+                    "symbol": snapshot.symbol,
+                    "stage_label": snapshot.stage_label,
+                    "action_label": snapshot.action_label,
+                    "scan_tier": snapshot.scan_tier,
+                    "rs_rank": snapshot.rs_rank,
+                    "rs_rating": snapshot.rs_rating,
+                    "close": float(snapshot.close) if snapshot.close else None,
+                    "sma_50": float(snapshot.sma_50) if snapshot.sma_50 else None,
+                    "sma_150": float(snapshot.sma_150) if snapshot.sma_150 else None,
+                    "sma_200": float(snapshot.sma_200) if snapshot.sma_200 else None,
+                    "atr_14": float(snapshot.atr_14) if snapshot.atr_14 else None,
+                    "rsi_14": float(snapshot.rsi_14) if snapshot.rsi_14 else None,
+                    "td_buy_setup": snapshot.td_buy_setup,
+                    "td_sell_setup": snapshot.td_sell_setup,
+                    "regime_state": snapshot.regime_state,
+                    "as_of_timestamp": snapshot.as_of_timestamp.isoformat() if snapshot.as_of_timestamp else None,
+                }
+            
+            return {
+                "symbol": symbol_upper,
+                "position": position_data,
+                "market_snapshot": snapshot_data,
+                "has_position": position_data is not None,
+                "has_snapshot": snapshot_data is not None,
+            }
+        except Exception as e:
+            logger.error("Failed to get position details for %s: %s", symbol, e)
+            return {"error": str(e)}
+    
+    async def _tool_get_activity(self, limit: int, symbol: Optional[str] = None) -> Dict[str, Any]:
+        """Get recent portfolio activity (trades, dividends, etc.)."""
+        try:
+            from backend.models import Trade
+            from sqlalchemy import desc
+            
+            user_id = 1
+            
+            query = self.db.query(Trade).filter(
+                Trade.user_id == user_id
+            ).order_by(desc(Trade.executed_at))
+            
+            if symbol:
+                query = query.filter(Trade.symbol == symbol.upper())
+            
+            trades = query.limit(limit).all()
+            
+            activity = []
+            for t in trades:
+                activity.append({
+                    "symbol": t.symbol,
+                    "side": t.side,
+                    "quantity": float(t.quantity) if t.quantity else 0,
+                    "price": float(t.price) if t.price else 0,
+                    "realized_pnl": float(t.realized_pnl) if t.realized_pnl else 0,
+                    "executed_at": t.executed_at.isoformat() if t.executed_at else None,
+                })
+            
+            return {"trades": activity, "count": len(activity)}
+        except Exception as e:
+            logger.error("Failed to get activity: %s", e)
+            return {"error": str(e)}
+    
+    async def _tool_get_market_snapshot(self, symbol: str) -> Dict[str, Any]:
+        """Get current market snapshot for a symbol."""
+        if not symbol:
+            return {"error": "Symbol is required"}
+        
+        try:
+            from backend.services.market.market_data_service import MarketDataService
+            
+            svc = MarketDataService()
+            snapshot = svc.get_snapshot_from_store(self.db, symbol.upper())
+            
+            if not snapshot:
+                return {"error": f"No snapshot found for {symbol.upper()}"}
+            
+            return {
+                "symbol": snapshot.symbol,
+                "close": float(snapshot.close) if snapshot.close else None,
+                "change_pct": float(snapshot.change_pct) if snapshot.change_pct else None,
+                "stage_label": snapshot.stage_label,
+                "action_label": snapshot.action_label,
+                "scan_tier": snapshot.scan_tier,
+                "rs_rank": snapshot.rs_rank,
+                "rs_rating": snapshot.rs_rating,
+                "sma_50": float(snapshot.sma_50) if snapshot.sma_50 else None,
+                "sma_150": float(snapshot.sma_150) if snapshot.sma_150 else None,
+                "sma_200": float(snapshot.sma_200) if snapshot.sma_200 else None,
+                "atr_14": float(snapshot.atr_14) if snapshot.atr_14 else None,
+                "rsi_14": float(snapshot.rsi_14) if snapshot.rsi_14 else None,
+                "td_buy_setup": snapshot.td_buy_setup,
+                "td_sell_setup": snapshot.td_sell_setup,
+                "macd": float(snapshot.macd) if snapshot.macd else None,
+                "macd_signal": float(snapshot.macd_signal) if snapshot.macd_signal else None,
+                "regime_state": snapshot.regime_state,
+                "sector": snapshot.sector,
+                "industry": snapshot.industry,
+                "as_of_timestamp": snapshot.as_of_timestamp.isoformat() if snapshot.as_of_timestamp else None,
+            }
+        except Exception as e:
+            logger.error("Failed to get market snapshot for %s: %s", symbol, e)
+            return {"error": str(e)}
+    
+    async def _tool_get_tracked_universe(self) -> Dict[str, Any]:
+        """Get the tracked universe of symbols with their sources."""
+        try:
+            from backend.services.market.universe import tracked_symbols_with_source
+            
+            result = tracked_symbols_with_source(self.db)
+            
+            # Summarize by source
+            by_source: Dict[str, int] = {}
+            for sym_data in result:
+                source = sym_data.get("source", "unknown")
+                by_source[source] = by_source.get(source, 0) + 1
+            
+            return {
+                "total_symbols": len(result),
+                "by_source": by_source,
+                "sample": result[:20],  # First 20 as sample
+            }
+        except Exception as e:
+            logger.error("Failed to get tracked universe: %s", e)
+            return {"error": str(e)}
+    
+    async def _tool_get_constituents(self, index: str) -> Dict[str, Any]:
+        """Get constituents of a specific index."""
+        try:
+            from backend.models import IndexConstituent
+            
+            valid_indexes = ["SP500", "NASDAQ100", "RUSSELL2000"]
+            index_upper = index.upper()
+            
+            if index_upper not in valid_indexes:
+                return {"error": f"Invalid index. Choose from: {', '.join(valid_indexes)}"}
+            
+            constituents = self.db.query(IndexConstituent).filter(
+                IndexConstituent.index_name == index_upper,
+                IndexConstituent.is_active == True,
+            ).order_by(IndexConstituent.symbol).all()
+            
+            symbols = [c.symbol for c in constituents]
+            
+            return {
+                "index": index_upper,
+                "count": len(symbols),
+                "symbols": symbols,
+            }
+        except Exception as e:
+            logger.error("Failed to get constituents for %s: %s", index, e)
+            return {"error": str(e)}
+    
+    async def _tool_get_regime(self) -> Dict[str, Any]:
+        """Get current market regime."""
+        try:
+            from backend.services.market.regime_engine import get_current_regime
+            
+            regime = get_current_regime(self.db)
+            
+            if not regime:
+                return {"error": "No regime data available"}
+            
+            return {
+                "regime_state": regime.regime_state,
+                "composite_score": float(regime.composite_score) if regime.composite_score else None,
+                "as_of_date": regime.as_of_date.isoformat() if regime.as_of_date else None,
+                "inputs": {
+                    "vix_current": float(regime.vix_current) if regime.vix_current else None,
+                    "vix_sma_20": float(regime.vix_sma_20) if regime.vix_sma_20 else None,
+                    "breadth_above_200ma": float(regime.breadth_above_200ma) if regime.breadth_above_200ma else None,
+                    "breadth_above_50ma": float(regime.breadth_above_50ma) if regime.breadth_above_50ma else None,
+                    "new_highs_lows_ratio": float(regime.new_highs_lows_ratio) if regime.new_highs_lows_ratio else None,
+                    "sector_rs_dispersion": float(regime.sector_rs_dispersion) if regime.sector_rs_dispersion else None,
+                },
+                "scores": {
+                    "vix_score": regime.vix_score,
+                    "vix_trend_score": regime.vix_trend_score,
+                    "breadth_score": regime.breadth_score,
+                    "momentum_score": regime.momentum_score,
+                    "new_highs_lows_score": regime.new_highs_lows_score,
+                    "sector_score": regime.sector_score,
+                },
+                "portfolio_rules": {
+                    "cash_floor_pct": float(regime.cash_floor_pct) if regime.cash_floor_pct else None,
+                    "max_equity_exposure_pct": float(regime.max_equity_exposure_pct) if regime.max_equity_exposure_pct else None,
+                    "regime_multiplier": float(regime.regime_multiplier) if regime.regime_multiplier else None,
+                },
+            }
+        except Exception as e:
+            logger.error("Failed to get regime: %s", e)
+            return {"error": str(e)}
+    
+    async def _tool_describe_tables(self, table_name: Optional[str] = None) -> Dict[str, Any]:
+        """Describe database tables and columns for query building."""
+        try:
+            from sqlalchemy import text
+            
+            if table_name:
+                # Get columns for specific table
+                result = self.db.execute(text("""
+                    SELECT column_name, data_type, is_nullable
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public' AND table_name = :table_name
+                    ORDER BY ordinal_position
+                """), {"table_name": table_name})
+                
+                columns = [
+                    {"name": row.column_name, "type": row.data_type, "nullable": row.is_nullable}
+                    for row in result
+                ]
+                
+                if not columns:
+                    return {"error": f"Table '{table_name}' not found"}
+                
+                return {"table": table_name, "columns": columns}
+            else:
+                # List all tables
+                result = self.db.execute(text("""
+                    SELECT table_name
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+                    ORDER BY table_name
+                """))
+                
+                tables = [row.table_name for row in result]
+                
+                # Highlight key tables
+                key_tables = [
+                    "positions", "broker_accounts", "trades", "tax_lots",
+                    "market_snapshot", "market_snapshot_history", "market_regime",
+                    "index_constituents", "price_data", "instruments"
+                ]
+                
+                return {
+                    "tables": tables,
+                    "key_tables": [t for t in key_tables if t in tables],
+                    "hint": "Use describe_tables with table_name parameter to see columns",
+                }
+        except Exception as e:
+            logger.error("Failed to describe tables: %s", e)
+            return {"error": str(e)}
     
     def _get_action_display_name(self, tool_name: str) -> str:
         """Get a human-readable name for an action."""

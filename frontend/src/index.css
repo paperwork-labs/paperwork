@@ -55,8 +55,8 @@
     --card-foreground: oklch(0.141 0.005 285.823);
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.141 0.005 285.823);
-    --primary: oklch(0.21 0.006 285.885);
-    --primary-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.769 0.171 70.08);
+    --primary-foreground: oklch(0.13 0.028 261.69);
     --secondary: oklch(0.967 0.001 286.375);
     --secondary-foreground: oklch(0.21 0.006 285.885);
     --muted: oklch(0.967 0.001 286.375);
@@ -123,6 +123,12 @@
     --glow-amber: 245 158 11 / 0;
     --glow-brand: 59 130 246 / 0;
 
+    /* Auth layout gradients */
+    --auth-gradient-blue: 29 78 216;
+    --auth-gradient-amber: 245 158 11;
+    --auth-gradient-bg: 15 23 42;
+    --auth-gradient-glow: 255 255 255;
+
     /* Stage palettes (StageBadge / StageBar) — RGB triples for rgb(var(--x) / a); aligned with STAGE_HEX light */
     --palette-stage-gray: 160 174 192;
     --palette-stage-green: 56 161 105;
@@ -138,8 +144,8 @@
     --card-foreground: oklch(0.985 0 0);
     --popover: oklch(0.21 0.006 285.885);
     --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.92 0.004 286.32);
-    --primary-foreground: oklch(0.21 0.006 285.885);
+    --primary: oklch(0.828 0.164 84.43);
+    --primary-foreground: oklch(0.13 0.028 261.69);
     --secondary: oklch(0.274 0.006 286.033);
     --secondary-foreground: oklch(0.985 0 0);
     --muted: oklch(0.274 0.006 286.033);
@@ -204,6 +210,12 @@
     --glow-accent: 34 197 94 / 0.12;
     --glow-amber: 245 158 11 / 0.1;
     --glow-brand: 59 130 246 / 0.1;
+
+    /* Auth layout gradients (same in dark mode) */
+    --auth-gradient-blue: 29 78 216;
+    --auth-gradient-amber: 245 158 11;
+    --auth-gradient-bg: 15 23 42;
+    --auth-gradient-glow: 255 255 255;
 
     --palette-stage-gray: 203 213 224;
     --palette-stage-green: 72 187 120;

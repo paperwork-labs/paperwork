@@ -90,7 +90,7 @@ Naming
 
 Task Flow (Celery)
 ------------------
-- See `backend/tasks/README.md` for full task descriptions and schedules.
+- See `backend/tasks/market/README.md` for market task details; `backend/tasks/README.md` for package layout.
 - Daily pipeline (high level):
   - Portfolio backfill (delta-only, ~270 bars) → `price_data`
   - Indicator refresh (portfolio + indices) → `market_analysis_cache`

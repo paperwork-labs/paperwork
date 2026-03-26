@@ -27,6 +27,15 @@ ACTION_RISK_MAP: Dict[str, RiskLevel] = {
     "send_alert": RiskLevel.SAFE,
     "list_jobs": RiskLevel.SAFE,
     "check_broker_connection": RiskLevel.SAFE,
+    # SAFE: Holistic chat tools (read-only)
+    "get_portfolio_summary": RiskLevel.SAFE,
+    "get_position_details": RiskLevel.SAFE,
+    "get_activity": RiskLevel.SAFE,
+    "get_market_snapshot": RiskLevel.SAFE,
+    "get_tracked_universe": RiskLevel.SAFE,
+    "get_constituents": RiskLevel.SAFE,
+    "get_regime": RiskLevel.SAFE,
+    "describe_tables": RiskLevel.SAFE,
     
     # MODERATE: Standard remediation tasks
     "backfill_stale_daily": RiskLevel.MODERATE,

@@ -62,10 +62,11 @@ const StatCard: React.FC<StatCardProps> = ({
 
   return (
     <Card
-      size="sm"
+      variant="flat"
+      size="none"
       className={cn(
-        "min-w-[120px] flex-1 gap-0 rounded-lg border border-border py-0 shadow-none ring-0 transition-[box-shadow,transform] duration-200",
-        "hover:-translate-y-px hover:shadow-md"
+        "min-w-[120px] flex-1 rounded-lg transition-transform duration-200",
+        "hover:-translate-y-px"
       )}
     >
       <CardContent className="flex flex-col gap-1 px-3 py-3">
