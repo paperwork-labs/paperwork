@@ -56,6 +56,47 @@ def _full_path_within_backend(base: str, relative: str) -> Tuple[bool, str]:
     return True, full_path
 
 
+CODEBASE_ALLOWED_PREFIXES = ("services/", "api/", "tasks/", "models/", "utils/", "tests/")
+CODEBASE_DENIED_PATTERNS = (".env", ".pem", ".key", "secret", "credential", "password", "__pycache__")
+
+
+def _assert_codebase_path_allowed(rel_path: str) -> Optional[str]:
+    """
+    Check if a relative path is allowed for codebase exploration.
+    Returns an error string if denied, None if allowed.
+    """
+    if not rel_path:
+        return None
+    rel_lower = rel_path.lower()
+    for pattern in CODEBASE_DENIED_PATTERNS:
+        if pattern in rel_lower:
+            return f"Access denied: path contains sensitive pattern '{pattern}'"
+    for prefix in CODEBASE_ALLOWED_PREFIXES:
+        if rel_path.startswith(prefix):
+            return None
+    return f"Access denied: path must start with one of {CODEBASE_ALLOWED_PREFIXES}"
+
+
+def _sanitize_tool_calls(raw_calls: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Filter out malformed tool_calls from OpenAI response.
+    Returns only valid calls with non-empty id and function.name.
+    """
+    valid = []
+    for i, tc in enumerate(raw_calls or []):
+        fn = tc.get("function") or {}
+        call_id = tc.get("id")
+        call_name = fn.get("name")
+        if not call_id or not call_name:
+            logger.warning(
+                "Dropping malformed tool_call[%d]: missing id=%s or name=%s",
+                i, call_id, call_name
+            )
+            continue
+        valid.append(tc)
+    return valid
+
+
 SYSTEM_PROMPT = """You are AxiomFolio's AI assistant. You help the admin with questions about their portfolio, market data, the codebase, and system operations.
 
 ## What You Can Do
@@ -166,10 +207,17 @@ class AgentBrain:
             
             message = response.get("choices", [{}])[0].get("message", {})
             
-            if message.get("tool_calls"):
-                self._conversation.append(message)
+            raw_tool_calls = message.get("tool_calls")
+            if raw_tool_calls:
+                valid_tool_calls = _sanitize_tool_calls(raw_tool_calls)
+                if not valid_tool_calls:
+                    logger.warning("All tool_calls were invalid in analyze_and_act, breaking loop")
+                    break
+                message_to_store = dict(message)
+                message_to_store["tool_calls"] = valid_tool_calls
+                self._conversation.append(message_to_store)
                 
-                for tool_call in message["tool_calls"]:
+                for tool_call in valid_tool_calls:
                     func = tool_call.get("function", {})
                     tool_name = func.get("name")
                     try:
@@ -368,7 +416,7 @@ class AgentBrain:
         if risk == RiskLevel.SAFE:
             return await _run_inline_safe_tool()
 
-        if tool_name in INLINE_ONLY_AGENT_TOOLS and auto_exec:
+        if tool_name in INLINE_ONLY_AGENT_TOOLS:
             return await _run_inline_safe_tool()
 
         if auto_exec:
@@ -974,6 +1022,10 @@ class AgentBrain:
         if not ok:
             return {"error": "Path traversal not allowed"}
 
+        access_error = _assert_codebase_path_allowed(path)
+        if access_error:
+            return {"error": access_error}
+
         if not os.path.exists(full_path):
             return {"error": f"File not found: {path}"}
 
@@ -1062,6 +1114,11 @@ class AgentBrain:
         ok, full_path = _full_path_within_backend(base, path)
         if not ok:
             return {"error": "Path traversal not allowed"}
+
+        if path:
+            access_error = _assert_codebase_path_allowed(path)
+            if access_error:
+                return {"error": access_error}
 
         if not os.path.exists(full_path):
             return {"error": f"Path not found: {path}"}
@@ -1232,10 +1289,17 @@ class AgentBrain:
                 choice0.get("finish_reason"),
             )
             
-            if message.get("tool_calls"):
-                self._conversation.append(message)
+            raw_tool_calls = message.get("tool_calls")
+            if raw_tool_calls:
+                valid_tool_calls = _sanitize_tool_calls(raw_tool_calls)
+                if not valid_tool_calls:
+                    logger.warning("All tool_calls were invalid in chat, breaking loop")
+                    break
+                message_to_store = dict(message)
+                message_to_store["tool_calls"] = valid_tool_calls
+                self._conversation.append(message_to_store)
                 
-                for tool_call in message["tool_calls"]:
+                for tool_call in valid_tool_calls:
                     func = tool_call.get("function", {})
                     tool_name = func.get("name")
                     logger.info("Executing tool: %s", tool_name)

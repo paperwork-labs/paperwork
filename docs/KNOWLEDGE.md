@@ -11,7 +11,7 @@ Numbered decisions with date, rationale, alternatives considered, and reversibil
 
 ## Should Track
 
-- **D12**: React Query v3 is legacy. Plan migration to @tanstack/react-query v5.
+- ~~**D12**: React Query v3 is legacy. Plan migration to @tanstack/react-query v5.~~ **RESOLVED** — Migrated in Phase 3.5 (see TASKS 3.5).
 - **D14**: Schwab `TRADE → BUY` transaction mapping loses sell-side distinction.
 - **D15**: TastyTrade tax lots are synthetic (CALCULATED) — not suitable for tax reporting.
 - ~~**D19**: MarketDashboard.tsx is 1400+ lines — needs decomposition.~~ **RESOLVED** — Decomposed into 5-tab container (Overview, Top-Down, Bottom-Up, Sectors, Heatmap) with lazy-loaded views.
@@ -19,6 +19,22 @@ Numbered decisions with date, rationale, alternatives considered, and reversibil
 ---
 
 ## Decisions
+
+### D31 — 2026-03-26 — Agent codebase access policy
+
+**Decision**: Agent `read_file` and `list_files` tools have explicit allowlist/denylist:
+- **Allowed prefixes**: `services/`, `api/`, `tasks/`, `models/`, `utils/`, `tests/`
+- **Denied patterns**: `.env`, `.pem`, `.key`, `secret`, `credential`, `password`, `__pycache__`
+
+Additionally, INLINE_ONLY_AGENT_TOOLS (`read_file`, `list_files`) always execute inline regardless of `AGENT_AUTONOMY_LEVEL` — admin is already authenticated, and these read-only tools need synchronous response for the LLM conversation loop.
+
+**Rationale**: Copilot code review flagged that `read_file` could exfiltrate secrets. Path traversal was already blocked (`realpath` + `commonpath`), but no filter prevented reading config modules or committed credentials. The allowlist ensures only code-explanation paths are accessible; the denylist catches sensitive filenames that might exist in allowed directories.
+
+**Alternatives**: 
+- Regex-based filename filtering only (rejected — allowlist is cleaner and explicit)
+- No filtering, trust admin (rejected — defense in depth)
+
+**Reversible**: Yes — adjust `CODEBASE_ALLOWED_PREFIXES` and `CODEBASE_DENIED_PATTERNS` in `brain.py`.
 
 ### D30 — 2026-03-25 — Dependency freshness policy
 

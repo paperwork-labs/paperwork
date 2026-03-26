@@ -48,7 +48,7 @@ Current execution plan organized by phase. One task per PR where possible.
 | ID | Task | Status | Acceptance Criteria |
 |----|------|--------|---------------------|
 | 3.1 | Bloomberg-style Market Dashboard | DONE | 5 views: Overview, Top-Down, Bottom-Up, Sector, Heatmap |
-| 3.2 | Education page rewrite | PLANNED | Stage Analysis content: 10 sub-stages, regime engine, scan overlay, exit cascade |
+| 3.2 | Education page rewrite | MOVED | Moved to Phase 7.1 |
 | 3.3 | Intelligence Brief system | DONE | Daily/weekly/monthly briefs, Celery tasks, in-app viewing with polling + error handling |
 | 3.4 | Admin reimagine (SystemStatus) | DONE | Single SystemStatus page replaces Dashboard/Jobs/Schedules/Coverage. Composite health, dimension cards, auto-ops activity, collapsible Advanced with OperatorActions |
 | 3.5 | TanStack Query v5 migration | DONE | Migrated from react-query v3 to @tanstack/react-query v5. isLoading→isPending, import renames |
@@ -77,9 +77,9 @@ Current execution plan organized by phase. One task per PR where possible.
 | 4.3 | Add prod env vars for new features | DONE | Google OAuth, Resend, OpenAI keys configured in Render |
 | 4.4 | Verify prod cold-start backfill | DONE | Data populated via nightly pipeline |
 | 4.5 | Verify Google OAuth end-to-end | DONE | Login via Google works on prod |
-| 4.6 | Education page rewrite | PLANNED | Stage Analysis content: 10 sub-stages, regime engine, scan overlay, exit cascade |
+| 4.6 | Education page rewrite | MOVED | Moved to Phase 7.1 |
 
-## Phase 4.5: PR #225 Follow-up [IN PROGRESS]
+## Phase 4.5: PR #225 Follow-up [DONE]
 
 | ID | Task | Status | Acceptance Criteria |
 |----|------|--------|---------------------|
@@ -90,13 +90,29 @@ Current execution plan organized by phase. One task per PR where possible.
 | 4.5.5 | Add dep-freshness cursor rule | DONE | `.cursor/rules/dep-freshness.mdc` with quarterly audit checklist |
 | 4.5.6 | Document D29+D30 in KNOWLEDGE.md | DONE | Naming convention and dependency freshness decisions logged |
 | 4.5.7 | Retire market_data_tasks.py | DONE | Market tasks live in `backend/tasks/market/`; Celery paths are `backend.tasks.market.<module>.<function>` (see `job_catalog.py`) |
-| 4.5.8 | AdminAgent redesign | PLANNED | Conversational UI with inline analysis, action queue, session history |
+| 4.5.8 | Agent inline tools + hardening | DONE | INLINE_ONLY_AGENT_TOOLS for read_file/list_files, path traversal protection, RegimeBanner fix |
 
-## Phase 5: Strategy Alignment [PLANNED]
+## Phase 5: Quant Platform Core [PLANNED]
 
 | ID | Task | Status | Acceptance Criteria |
 |----|------|--------|---------------------|
-| 5.1 | Update strategy templates | PLANNED | Regime-aware entries, short templates, new extended stage fields in rule evaluator |
+| 5.1 | Strategy templates update | PLANNED | Regime-aware entries, short templates, extended stage fields in rule_evaluator.py |
+| 5.2 | TTM Squeeze indicator | PLANNED | Bollinger + Keltner squeeze detection in indicator_engine.py |
+| 5.3 | Multi-timeframe confirmation | PLANNED | Add 4H + Daily timeframe support to stage classification |
+| 5.4 | Trailing stop optimization | PLANNED | Adaptive trailing stop logic in exit_cascade, ATR-based with regime adjustment |
+| 5.5 | Position reconciliation service | PLANNED | Broker position vs internal state reconciliation with discrepancy alerts |
+| 5.6 | Drawdown alerts + PortfolioHistory | PLANNED | Track daily portfolio equity, alert on drawdown thresholds |
+| 5.7 | Execution analytics | PLANNED | Fill quality, slippage tracking, broker comparison metrics |
+| 5.8 | Real-time regime monitoring | PLANNED | Intraday VIX spike detection, regime shift alerts |
+
+## Phase 5.5: AdminAgent Redesign [PLANNED]
+
+| ID | Task | Status | Acceptance Criteria |
+|----|------|--------|---------------------|
+| 5.5.1 | Conversational UI | PLANNED | Chat-style interface with message history, typing indicators |
+| 5.5.2 | Inline analysis cards | PLANNED | Rich cards for portfolio, regime, positions embedded in chat |
+| 5.5.3 | Action queue panel | PLANNED | Pending/completed actions sidebar with approve/reject |
+| 5.5.4 | Session history | PLANNED | List past sessions, resume or review old conversations |
 
 ## Phase 6: Pipeline [PLANNED]
 
@@ -104,6 +120,13 @@ Current execution plan organized by phase. One task per PR where possible.
 |----|------|--------|---------------------|
 | 6.1 | Nightly pipeline (full sequence) | PLANNED | 10-step sequence per spec Section 14.1 |
 | 6.2 | New data feeds | PLANNED | VIX/VIX3M/VVIX, NH-NL, breadth (%above200D, %above50D) |
+
+## Phase 7: Education & Content [PLANNED]
+
+| ID | Task | Status | Acceptance Criteria |
+|----|------|--------|---------------------|
+| 7.1 | Education page rewrite | PLANNED | Stage Analysis content: 10 sub-stages, regime engine, scan overlay, exit cascade |
+| 7.2 | Interactive stage examples | PLANNED | Live chart examples for each stage with annotations |
 
 ---
 

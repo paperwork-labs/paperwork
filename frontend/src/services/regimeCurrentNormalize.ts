@@ -26,7 +26,7 @@ export function normalizeRegimeCurrentBody(raw: unknown): Record<string, unknown
   if (candidate === undefined || candidate === null) {
     return null;
   }
-  if (typeof candidate !== 'object') {
+  if (Array.isArray(candidate) || typeof candidate !== 'object') {
     return null;
   }
   return candidate as Record<string, unknown>;
