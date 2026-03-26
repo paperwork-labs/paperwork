@@ -6,7 +6,7 @@ Defines available tools/actions for the auto-ops agent.
 Each tool maps to a Celery task or service method.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, FrozenSet, List, Optional
 
 AGENT_TOOLS: List[Dict[str, Any]] = [
     {
@@ -388,8 +388,55 @@ AGENT_TOOLS: List[Dict[str, Any]] = [
             },
         },
     },
+    # ==================== CODEBASE EXPLORATION TOOLS ====================
+    {
+        "type": "function",
+        "function": {
+            "name": "read_file",
+            "description": "Read a file from the backend codebase to understand implementation details. Use this to answer questions about how things work.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "File path relative to backend/ (e.g., 'services/market/indicator_engine.py')",
+                    },
+                    "start_line": {
+                        "type": "integer",
+                        "description": "Start line number (1-indexed, optional)",
+                    },
+                    "end_line": {
+                        "type": "integer",
+                        "description": "End line number (optional)",
+                    },
+                },
+                "required": ["path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_files",
+            "description": "List files and directories in a path of the backend codebase. Use this to explore the code structure.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Directory path relative to backend/ (e.g., 'services/market/')",
+                        "default": "",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
 ]
 
+
+# Implemented in AgentBrain._execute_safe_tool — never dispatched to Celery.
+INLINE_ONLY_AGENT_TOOLS: FrozenSet[str] = frozenset({"read_file", "list_files"})
 
 TOOL_TO_CELERY_TASK: Dict[str, str] = {
     "backfill_stale_daily": "backend.tasks.market.backfill.stale_daily",

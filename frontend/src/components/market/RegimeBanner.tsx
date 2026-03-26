@@ -4,7 +4,7 @@ import { marketDataApi } from '../../services/api';
 import { REGIME_HEX } from '../../constants/chart';
 import { cn } from '@/lib/utils';
 
-interface RegimeData {
+export interface RegimeData {
   regime_state: string;
   composite_score: number;
   as_of_date: string;
@@ -28,20 +28,49 @@ const REGIME_LABELS: Record<string, string> = {
 };
 
 const RegimeBanner: React.FC = () => {
-  const { data, isPending } = useQuery({
+  const { data, isPending, isError, error } = useQuery<RegimeData | null>({
     queryKey: ['regime-current'],
-    queryFn: async () => {
-      const resp = await marketDataApi.getCurrentRegime();
-      return resp?.data?.regime as RegimeData | null;
+    queryFn: async (): Promise<RegimeData | null> => {
+      const row = await marketDataApi.getCurrentRegime();
+      return (row as RegimeData | null) ?? null;
     },
     refetchInterval: 5 * 60 * 1000,
     staleTime: 2 * 60 * 1000,
   });
 
-  if (isPending || !data) {
+  if (isPending) {
     return (
       <div className="mb-3 rounded-lg border border-border bg-card p-3">
         <p className="text-xs text-muted-foreground">Loading regime data...</p>
+      </div>
+    );
+  }
+
+  if (isError) {
+    const detail =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'object' &&
+            error !== null &&
+            'message' in error &&
+            typeof (error as { message: unknown }).message === 'string'
+          ? (error as { message: string }).message
+          : 'Request failed.';
+    return (
+      <div className="mb-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+        <p className="text-xs text-destructive">Failed to load regime data.</p>
+        <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+      </div>
+    );
+  }
+
+  if (data == null) {
+    return (
+      <div className="mb-3 rounded-lg border border-border bg-card p-3">
+        <p className="text-xs text-muted-foreground">
+          No regime data yet. Open System Status, expand Operator Actions, and run &quot;Compute
+          Market Regime&quot; when the pipeline is ready.
+        </p>
       </div>
     );
   }

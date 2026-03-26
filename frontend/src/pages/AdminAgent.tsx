@@ -19,7 +19,7 @@ import StatCard from "@/components/admin/StatCard"
 import {
   autonomyApiToLabel,
   autonomyLabelToApi,
-  useAgentRun,
+  useAgentChat,
   useAgentSessions,
   useAgentSettings,
   useAgentStats,
@@ -103,11 +103,12 @@ const AdminAgent: React.FC = () => {
   const settingsQuery = useAgentSettings()
   const sessionsQuery = useAgentSessions()
   const statsQuery = useAgentStats()
-  const runMutation = useAgentRun()
+  const chatMutation = useAgentChat()
   const approveMutation = useApproveAgentAction()
   const patchSettings = usePatchAgentSettings()
 
   const [messages, setMessages] = React.useState<ChatMessage[]>([])
+  const [currentSessionId, setCurrentSessionId] = React.useState<string | null>(null)
   const [selectedSessionId, setSelectedSessionId] = React.useState<
     string | undefined
   >()
@@ -167,41 +168,51 @@ const AdminAgent: React.FC = () => {
       setMessages((prev) => [...prev, userMsg])
 
       try {
-        const data = await runMutation.mutateAsync(message)
-        const taken = (data.actions_taken ?? []).map((a) =>
+        const data = await chatMutation.mutateAsync({
+          message,
+          session_id: currentSessionId,
+        })
+        
+        // Track session for conversation continuity
+        if (data.session_id) {
+          setCurrentSessionId(data.session_id)
+        }
+        
+        const actions = (data.actions ?? []).map((a) =>
           normalizeRunAction(a as Record<string, unknown>)
         )
-        const pending = (data.actions_pending ?? []).map((a) =>
-          normalizeRunAction(a as Record<string, unknown>)
-        )
-        const combined = [...taken, ...pending]
-        const analysisText =
-          (data.analysis && data.analysis.trim()) || "No analysis provided."
-        const sessionNote =
-          data.session_id != null
-            ? `\n\n*Session: ${data.session_id}*`
-            : ""
+        
+        const responseText =
+          (data.response && data.response.trim()) || "No response."
 
         const agentMsg: ChatMessage = {
           id: newMessageId(),
           role: "agent",
-          content: analysisText + sessionNote,
-          actions: combined.length > 0 ? combined : undefined,
+          content: responseText,
+          actions: actions.length > 0 ? actions : undefined,
           timestamp: new Date(),
         }
         setMessages((prev) => [...prev, agentMsg])
       } catch (err) {
+        if (axios.isAxiosError(err) && err.response?.status === 404) {
+          setCurrentSessionId(null)
+        }
         const agentErr: ChatMessage = {
           id: newMessageId(),
           role: "agent",
-          content: `Run failed.\n\n${getAxiosErrorMessage(err)}`,
+          content: `Chat failed.\n\n${getAxiosErrorMessage(err)}`,
           timestamp: new Date(),
         }
         setMessages((prev) => [...prev, agentErr])
       }
     },
-    [runMutation]
+    [chatMutation, currentSessionId]
   )
+  
+  const handleNewChat = React.useCallback(() => {
+    setMessages([])
+    setCurrentSessionId(null)
+  }, [])
 
   const handleApproveAction = React.useCallback(
     async (actionId: number, approved: boolean) => {
@@ -385,19 +396,36 @@ const AdminAgent: React.FC = () => {
           className="flex min-h-[28rem] min-w-0 flex-1 flex-col"
           aria-labelledby="agent-chat-heading"
         >
-          <h2
-            id="agent-chat-heading"
-            className="mb-2 text-lg font-semibold text-foreground"
-          >
-            Conversation
-          </h2>
+          <div className="mb-2 flex items-center justify-between">
+            <h2
+              id="agent-chat-heading"
+              className="text-lg font-semibold text-foreground"
+            >
+              Conversation
+              {currentSessionId && (
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  (Session: {currentSessionId})
+                </span>
+              )}
+            </h2>
+            {messages.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNewChat}
+                disabled={chatMutation.isPending}
+              >
+                New Chat
+              </Button>
+            )}
+          </div>
           <AgentChatPanel
             className="min-h-[24rem] flex-1"
             messages={messages}
             onSendMessage={(msg) => {
               void handleSendMessage(msg)
             }}
-            isLoading={runMutation.isPending}
+            isLoading={chatMutation.isPending}
             onApproveAction={(id, approved) => {
               void handleApproveAction(id, approved)
             }}

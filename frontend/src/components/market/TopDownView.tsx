@@ -9,6 +9,7 @@ import {
   ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 import { cn } from '@/lib/utils';
+import type { RegimeData } from './RegimeBanner';
 import { heatTextClass, semanticTextColorClass } from '@/lib/semantic-text-color';
 import { Badge } from '@/components/ui/badge';
 
@@ -47,11 +48,11 @@ function stageEtfBadgeClass(stage: string | undefined | null): string {
 const TopDownView: React.FC<TopDownViewProps> = ({ snapshots, dashboardPayload }) => {
   const cc = useChartColors();
 
-  const { data: regimeData } = useQuery({
+  const { data: regimeData } = useQuery<RegimeData | null>({
     queryKey: ['regime-current'],
-    queryFn: async () => {
-      const resp = await marketDataApi.getCurrentRegime();
-      return resp?.data?.regime ?? resp?.regime ?? null;
+    queryFn: async (): Promise<RegimeData | null> => {
+      const row = await marketDataApi.getCurrentRegime();
+      return (row as RegimeData | null) ?? null;
     },
     staleTime: 2 * 60_000,
     refetchInterval: 5 * 60_000,

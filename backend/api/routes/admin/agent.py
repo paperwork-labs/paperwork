@@ -19,11 +19,11 @@ from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy import desc, distinct, func
 from sqlalchemy.orm import Session
 
-from backend.api.dependencies import get_db, get_current_user
+from backend.api.dependencies import get_db, get_admin_user
 from backend.models import User
 from backend.models.agent_action import AgentAction
 
@@ -119,7 +119,7 @@ def _set_autonomy_level(level: str) -> None:
 
 @router.get("/settings", response_model=AgentSettingsResponse)
 def get_agent_settings(
-    current_user: User = Depends(get_current_user),
+    _admin: User = Depends(get_admin_user),
 ):
     """Get current agent settings (reads from Redis for cross-worker consistency)."""
     return AgentSettingsResponse(
@@ -131,7 +131,7 @@ def get_agent_settings(
 @router.patch("/settings", response_model=AgentSettingsResponse)
 def update_agent_settings(
     update: AgentSettingsUpdate,
-    current_user: User = Depends(get_current_user),
+    _admin: User = Depends(get_admin_user),
 ):
     """Update agent settings (persists to Redis for cross-worker consistency)."""
     if update.autonomy_level is not None:
@@ -155,7 +155,7 @@ def list_agent_actions(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    _admin: User = Depends(get_admin_user),
 ):
     """List agent actions with optional filters."""
     query = db.query(AgentAction).order_by(desc(AgentAction.created_at))
@@ -174,7 +174,7 @@ def list_agent_actions(
 @router.get("/actions/pending", response_model=List[AgentActionResponse])
 def list_pending_approvals(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    _admin: User = Depends(get_admin_user),
 ):
     """List actions pending human approval."""
     actions = (
@@ -190,7 +190,7 @@ def list_pending_approvals(
 def list_agent_sessions(
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    _admin: User = Depends(get_admin_user),
 ):
     """List distinct agent sessions with summary."""
     rows = (
@@ -223,7 +223,7 @@ def list_agent_sessions(
 def get_agent_action(
     action_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    _admin: User = Depends(get_admin_user),
 ):
     """Get details of a specific agent action."""
     action = db.query(AgentAction).filter(AgentAction.id == action_id).first()
@@ -233,11 +233,11 @@ def get_agent_action(
 
 
 @router.post("/actions/{action_id}/approve", response_model=AgentActionResponse)
-def approve_action(
+async def approve_action(
     action_id: int,
     request: ApprovalRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_admin_user),
 ):
     """Approve or reject a pending action."""
     action = db.query(AgentAction).filter(AgentAction.id == action_id).first()
@@ -255,24 +255,36 @@ def approve_action(
     
     if request.approved:
         action.status = "approved"
-        from backend.services.agent.tools import TOOL_TO_CELERY_TASK
+        from backend.services.agent.brain import AgentBrain
+        from backend.services.agent.tools import INLINE_ONLY_AGENT_TOOLS, TOOL_TO_CELERY_TASK
         from backend.tasks.celery_app import celery_app
-        
-        task_path = TOOL_TO_CELERY_TASK.get(action.action_type)
-        if task_path:
-            try:
-                result = celery_app.send_task(task_path, kwargs=action.payload or {})
-                action.task_id = result.id
-                action.status = "executing"
-                action.executed_at = datetime.utcnow()
-            except Exception as e:
-                action.error = str(e)
+
+        if action.action_type in INLINE_ONLY_AGENT_TOOLS:
+            brain = AgentBrain(db=db)
+            payload = action.payload if isinstance(action.payload, dict) else {}
+            result = await brain._execute_safe_tool(action.action_type, payload)
+            action.status = "completed"
+            action.result = result
+            action.executed_at = datetime.utcnow()
+            action.completed_at = datetime.utcnow()
+        else:
+            task_path = TOOL_TO_CELERY_TASK.get(action.action_type)
+            if task_path:
+                try:
+                    celery_result = celery_app.send_task(
+                        task_path, kwargs=action.payload or {}
+                    )
+                    action.task_id = celery_result.id
+                    action.status = "executing"
+                    action.executed_at = datetime.utcnow()
+                except Exception as e:
+                    action.error = str(e)
+                    action.status = "failed"
+                    action.completed_at = datetime.utcnow()
+            else:
+                action.error = f"No Celery task mapped for action type: {action.action_type}"
                 action.status = "failed"
                 action.completed_at = datetime.utcnow()
-        else:
-            action.error = f"No Celery task mapped for action type: {action.action_type}"
-            action.status = "failed"
-            action.completed_at = datetime.utcnow()
     else:
         action.status = "rejected"
         if request.reason:
@@ -287,7 +299,7 @@ def approve_action(
 async def trigger_agent_run(
     context: Optional[str] = Query(None, description="Additional context for the agent"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    _admin: User = Depends(get_admin_user),
 ):
     """Manually trigger an agent analysis and remediation run."""
     from backend.services.market.admin_health_service import AdminHealthService
@@ -316,10 +328,84 @@ async def trigger_agent_run(
     )
 
 
+class ChatRequest(BaseModel):
+    """Request body for agent chat."""
+
+    message: str
+    session_id: Optional[str] = None
+
+    @field_validator("message")
+    @classmethod
+    def message_non_empty_stripped(cls, v: str) -> str:
+        if not isinstance(v, str):
+            raise ValueError("message must be a string")
+        s = v.strip()
+        if not s:
+            raise ValueError("message must not be empty")
+        return s
+
+
+class ChatResponse(BaseModel):
+    """Response from agent chat."""
+    session_id: str
+    response: str
+    tool_calls: List[dict]
+    actions: List[dict]
+
+
+@router.post("/chat", response_model=ChatResponse)
+async def agent_chat(
+    request: ChatRequest,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(get_admin_user),
+):
+    """
+    Send a message to the agent and get a response.
+    
+    This endpoint supports multi-turn conversations. Pass the session_id
+    from a previous response to continue the conversation.
+    """
+    from backend.services.agent.brain import AgentBrain
+    from backend.config import settings
+    
+    if not settings.OPENAI_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="LLM agent not configured (OPENAI_API_KEY missing)"
+        )
+    
+    brain = AgentBrain(db=db)
+
+    if request.session_id:
+        load_outcome = brain._load_conversation(request.session_id)
+        if load_outcome == "unavailable":
+            raise HTTPException(
+                status_code=503,
+                detail="Conversation store unavailable; try again later",
+            )
+        if load_outcome == "missing":
+            raise HTTPException(
+                status_code=404,
+                detail="Conversation session not found or has expired",
+            )
+
+    result = await brain.chat(request.message)
+    
+    if "error" in result:
+        raise HTTPException(status_code=500, detail=result["error"])
+    
+    return ChatResponse(
+        session_id=result["session_id"],
+        response=result.get("response", ""),
+        tool_calls=result.get("tool_calls", []),
+        actions=result.get("actions", []),
+    )
+
+
 @router.get("/stats")
 def get_agent_stats(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    _admin: User = Depends(get_admin_user),
 ):
     """Get agent statistics."""
     total = db.query(func.count(AgentAction.id)).scalar()

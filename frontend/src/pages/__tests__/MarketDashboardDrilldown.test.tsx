@@ -10,18 +10,14 @@ vi.mock('../../hooks/usePortfolioSymbols', () => ({
   usePortfolioSymbols: () => ({ data: {}, isPending: false }),
 }));
 
-vi.mock('../../services/api', () => {
+vi.mock('../../services/api', async () => {
+  const { REGIME_CURRENT_RAW_AXIOS_SHAPED } = await import('@/test/fixtures/regimeCurrentRaw');
+  const { normalizeRegimeCurrentBody } = await import('../../services/regimeCurrentNormalize');
+  const regimeRow = normalizeRegimeCurrentBody(REGIME_CURRENT_RAW_AXIOS_SHAPED);
   return {
     default: { get: vi.fn().mockResolvedValue({ data: {} }) },
     marketDataApi: {
-      getCurrentRegime: vi.fn().mockResolvedValue({
-        regime_state: 'R2',
-        composite_score: 2.2,
-        as_of_date: '2026-01-08',
-        regime_multiplier: 0.75,
-        max_equity_exposure_pct: 90,
-        cash_floor_pct: 10,
-      }),
+      getCurrentRegime: vi.fn().mockResolvedValue(regimeRow),
       getSnapshot: vi.fn().mockResolvedValue({ data: { stage_label: '2A' } }),
       getVolatilityDashboard: vi.fn().mockResolvedValue({}),
       getDashboard: vi.fn().mockResolvedValue({

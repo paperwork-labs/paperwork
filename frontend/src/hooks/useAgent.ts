@@ -148,6 +148,38 @@ export function useAgentRun() {
   })
 }
 
+export interface AgentChatRequest {
+  message: string
+  session_id?: string | null
+}
+
+export interface AgentChatResult {
+  session_id: string
+  response: string
+  tool_calls: Array<{
+    name: string
+    args: Record<string, unknown>
+    result_preview?: string
+  }>
+  actions: Array<Record<string, unknown>>
+}
+
+export function useAgentChat() {
+  const queryClient = useQueryClient()
+  return useMutation<AgentChatResult, unknown, AgentChatRequest>({
+    mutationFn: async (request: AgentChatRequest) => {
+      const res: AxiosResponse<AgentChatResult> = await api.post(
+        "/admin/agent/chat",
+        request
+      )
+      return res.data
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["agent"] })
+    },
+  })
+}
+
 export function useApproveAgentAction() {
   const queryClient = useQueryClient()
   return useMutation({

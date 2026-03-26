@@ -20,59 +20,92 @@ from sqlalchemy.orm import Session
 from backend.config import settings
 from backend.models.agent_action import AgentAction
 from .taxonomy import RiskLevel, classify_action_risk, can_auto_execute
-from .tools import get_tools_for_openai, TOOL_TO_CELERY_TASK
+from .tools import get_tools_for_openai, INLINE_ONLY_AGENT_TOOLS, TOOL_TO_CELERY_TASK
 
 logger = logging.getLogger(__name__)
+
+# Bound Redis payload / memory for persisted chat (tool outputs can be large).
+AGENT_CONVERSATION_MAX_MESSAGES = 120
+AGENT_CONVERSATION_MAX_JSON_BYTES = 400_000
 
 OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
 MODEL = "gpt-4o-mini"
 
-SYSTEM_PROMPT = """You are AxiomFolio's AI assistant for the admin user. You help with portfolio analysis, market research, and system operations.
 
-## Your Capabilities
+def _resolve_backend_codebase_dir() -> Optional[str]:
+    import os
 
-1. **Portfolio Questions** — positions, P&L, risk metrics, recent activity
-2. **Market Questions** — stages, indicators, regime, tracked universe, constituents
-3. **System Health** — coverage, jobs, data freshness monitoring
-4. **Remediation** — backfill data, recompute indicators, recover stuck jobs
+    for candidate in ("/app/backend", "backend"):
+        if os.path.isdir(candidate):
+            return os.path.realpath(os.path.abspath(candidate))
+    return None
 
-## Tool Usage Guidelines
 
-**For portfolio questions:**
-- `get_portfolio_summary` — risk metrics, sector allocation, P&L overview
-- `get_position_details` — detailed info on specific symbols including stage/indicators
-- `get_activity` — recent trades, dividends, transfers
+def _full_path_within_backend(base: str, relative: str) -> Tuple[bool, str]:
+    """Resolve ``relative`` under ``base`` and ensure it stays inside ``base`` (prefix-safe)."""
+    import os
 
-**For market questions:**
-- `get_market_snapshot` — current stage, indicators, and signals for a symbol
-- `get_tracked_universe` — what symbols we track and why (index membership, holdings)
-- `get_constituents` — list symbols in an index (SP500, NASDAQ100, RUSSELL2000)
-- `get_regime` — current market regime (R1-R5) with inputs
+    if not relative:
+        return True, base
+    full_path = os.path.realpath(os.path.normpath(os.path.join(base, relative)))
+    try:
+        if os.path.commonpath([base, full_path]) != base:
+            return False, full_path
+    except ValueError:
+        return False, full_path
+    return True, full_path
 
-**For schema/data discovery:**
-- `describe_tables` — list available tables and columns (use before query_database)
-- `query_database` — custom SQL for advanced queries (SELECT/WITH only)
 
-**For system health:**
-- `check_health` — composite health status across all dimensions
-- `list_jobs` — recent task executions and their status
+SYSTEM_PROMPT = """You are AxiomFolio's AI assistant. You help the admin with questions about their portfolio, market data, the codebase, and system operations.
 
-## Remediation Playbook (when issues detected)
+## What You Can Do
 
-| Dimension | Yellow/Red Status | Tool to Use |
-|-----------|-------------------|-------------|
-| coverage | Stale/missing price data | `backfill_stale_daily` or `bootstrap_coverage` |
-| stage_quality | Indicators not computed | `recompute_indicators` |
-| jobs | Stuck/stale tasks | `recover_stale_jobs` |
-| regime | Missing regime data | `compute_regime` |
-| audit | Missing history | `record_daily` |
+1. **Portfolio** — positions, P&L, risk metrics, activity, account balances
+2. **Market Data** — stages, indicators, regime, tracked universe, index constituents
+3. **Codebase** — read files, explain how things work, find where code lives
+4. **Database** — explore schema, run queries to investigate data
+5. **Operations** — monitor health, backfill data, recompute indicators
+
+## Tool Selection Guide
+
+| Question Type | Tools |
+|---------------|-------|
+| "What positions do I have?" | `get_portfolio_summary` |
+| "How is NVDA doing?" | `get_position_details` or `get_market_snapshot` |
+| "What's in the S&P 500?" | `get_constituents` |
+| "What's the market regime?" | `get_regime` |
+| "How does stage calculation work?" | `read_file` (services/market/indicator_engine.py) |
+| "What files are in services/?" | `list_files` |
+| "What tables exist?" | `describe_tables` |
+| "Custom data query" | `query_database` (after describe_tables) |
+| "Is the system healthy?" | `check_health` |
+
+## Key Codebase Files
+
+- **Stage/Indicators**: services/market/indicator_engine.py
+- **Market Data**: services/market/market_data_service.py
+- **Portfolio Sync**: services/portfolio/ibkr_sync_service.py
+- **Risk Metrics**: services/portfolio/portfolio_analytics_service.py
+- **Models**: models/ directory
+- **API Routes**: api/routes/ directory
+- **Celery Tasks**: tasks/ directory
+
+## Remediation (when check_health shows issues)
+
+| Issue | Tool |
+|-------|------|
+| coverage red | `backfill_stale_daily` or `bootstrap_coverage` |
+| stage_quality red | `recompute_indicators` |
+| jobs stale | `recover_stale_jobs` |
+| regime missing | `compute_regime` |
+| audit gaps | `record_daily` |
 
 ## Guidelines
 
-- ALWAYS use a tool to gather data before answering — do not guess
-- For health issues, investigate with `check_health` first, then remediate
-- Be concise and actionable in responses
-- If you cannot answer, say so clearly
+- ALWAYS use tools to get data — never guess or make up information
+- For codebase questions, use `list_files` then `read_file` to find and read relevant code
+- For database questions, use `describe_tables` before `query_database`
+- Be concise and helpful
 
 Current time: {current_time}
 Autonomy level: {autonomy_level}
@@ -86,6 +119,7 @@ class AgentBrain:
         self.db = db
         self.session_id = str(uuid.uuid4())[:8]
         self._conversation: List[Dict[str, Any]] = []
+        self._last_openai_error: Optional[str] = None
     
     async def analyze_and_act(
         self,
@@ -201,16 +235,74 @@ class AgentBrain:
         
         return "\n".join(parts)
     
+    def _messages_for_openai_request(self) -> List[Dict[str, Any]]:
+        """
+        Build messages safe for OpenAI Chat Completions input.
+        Strips response-only fields that cause 400s when replayed (e.g. from Redis).
+        """
+        out: List[Dict[str, Any]] = []
+        for m in self._conversation:
+            role = m.get("role")
+            if role == "system":
+                out.append({"role": "system", "content": m.get("content") or ""})
+            elif role == "user":
+                out.append({"role": "user", "content": m.get("content") or ""})
+            elif role == "assistant":
+                item: Dict[str, Any] = {"role": "assistant"}
+                content = m.get("content")
+                if content:
+                    item["content"] = content
+                raw_calls = m.get("tool_calls")
+                if raw_calls:
+                    cleaned = []
+                    for tc in raw_calls:
+                        fn = tc.get("function") or {}
+                        cleaned.append(
+                            {
+                                "id": tc.get("id", ""),
+                                "type": tc.get("type", "function"),
+                                "function": {
+                                    "name": fn.get("name", ""),
+                                    "arguments": fn.get("arguments") or "{}",
+                                },
+                            }
+                        )
+                    item["tool_calls"] = cleaned
+                if "content" not in item and "tool_calls" not in item:
+                    item["content"] = ""
+                out.append(item)
+            elif role == "tool":
+                tid = m.get("tool_call_id")
+                if not tid:
+                    continue
+                body = m.get("content") or ""
+                max_tool_chars = 120_000
+                if len(body) > max_tool_chars:
+                    body = (
+                        body[:max_tool_chars]
+                        + "\n\n[truncated for API size limit; ask a narrower question]"
+                    )
+                out.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tid,
+                        "content": body,
+                    }
+                )
+        return out
+    
     async def _call_llm(self, tool_choice: str = "auto") -> Optional[Dict[str, Any]]:
         """Call the OpenAI API."""
+        self._last_openai_error = None
         headers = {
             "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
             "Content-Type": "application/json",
         }
         
+        messages = self._messages_for_openai_request()
         payload = {
             "model": MODEL,
-            "messages": self._conversation,
+            "messages": messages,
             "tools": get_tools_for_openai(),
             "tool_choice": tool_choice,
             "temperature": 0.1,
@@ -223,14 +315,16 @@ class AgentBrain:
                     OPENAI_API_URL,
                     headers=headers,
                     json=payload,
-                    timeout=aiohttp.ClientTimeout(total=60),
+                    timeout=aiohttp.ClientTimeout(total=120),
                 ) as resp:
                     if resp.status != 200:
                         error = await resp.text()
-                        logger.error("OpenAI API error: %s - %s", resp.status, error)
+                        self._last_openai_error = f"HTTP {resp.status}: {error[:800]}"
+                        logger.error("OpenAI API error: %s", self._last_openai_error)
                         return None
                     return await resp.json()
         except Exception as e:
+            self._last_openai_error = str(e)
             logger.error("Failed to call OpenAI API: %s", e)
             return None
     
@@ -260,8 +354,8 @@ class AgentBrain:
         )
         self.db.add(action)
         self.db.flush()
-        
-        if risk == RiskLevel.SAFE:
+
+        async def _run_inline_safe_tool() -> Tuple[Dict[str, Any], AgentAction]:
             result = await self._execute_safe_tool(tool_name, tool_args)
             action.status = "completed"
             action.result = result
@@ -270,7 +364,13 @@ class AgentBrain:
             action.auto_approved = True
             self.db.commit()
             return result, action
-        
+
+        if risk == RiskLevel.SAFE:
+            return await _run_inline_safe_tool()
+
+        if tool_name in INLINE_ONLY_AGENT_TOOLS and auto_exec:
+            return await _run_inline_safe_tool()
+
         if auto_exec:
             result = await self._dispatch_celery_task(tool_name, tool_args)
             action.status = "executing" if result.get("task_id") else "failed"
@@ -344,6 +444,17 @@ class AgentBrain:
         
         if tool_name == "describe_tables":
             return await self._tool_describe_tables(args.get("table_name"))
+        
+        # Codebase exploration tools
+        if tool_name == "read_file":
+            return await self._tool_read_file(
+                args.get("path", ""),
+                args.get("start_line"),
+                args.get("end_line"),
+            )
+        
+        if tool_name == "list_files":
+            return await self._tool_list_files(args.get("path", ""))
         
         return {"error": f"Unknown safe tool: {tool_name}"}
     
@@ -840,6 +951,348 @@ class AgentBrain:
         except Exception as e:
             logger.error("Failed to describe tables: %s", e)
             return {"error": str(e)}
+    
+    # ==================== CODEBASE EXPLORATION TOOLS ====================
+    
+    async def _tool_read_file(
+        self,
+        path: str,
+        start_line: Optional[int] = None,
+        end_line: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Read a file from the backend codebase."""
+        import os
+
+        if not path:
+            return {"error": "Path is required"}
+
+        base = _resolve_backend_codebase_dir()
+        if not base:
+            return {"error": "Backend directory not found"}
+
+        ok, full_path = _full_path_within_backend(base, path)
+        if not ok:
+            return {"error": "Path traversal not allowed"}
+
+        if not os.path.exists(full_path):
+            return {"error": f"File not found: {path}"}
+
+        if not os.path.isfile(full_path):
+            return {"error": f"Not a file: {path}. Use list_files for directories."}
+
+        if start_line is not None and start_line < 1:
+            return {"error": "start_line must be >= 1"}
+        if end_line is not None and end_line < 1:
+            return {"error": "end_line must be >= 1"}
+        if start_line is not None and end_line is not None and end_line < start_line:
+            return {"error": "end_line must be >= start_line"}
+
+        if end_line is not None and start_line is None:
+            first_line = 1
+            last_cap: Optional[int] = end_line
+        elif start_line is not None and end_line is None:
+            first_line = start_line
+            last_cap = None
+        elif start_line is not None and end_line is not None:
+            first_line = start_line
+            last_cap = end_line
+        else:
+            first_line = 1
+            last_cap = None
+
+        max_lines = 300
+        out_chunks: List[str] = []
+        total_lines = 0
+        truncated = False
+
+        try:
+            with open(full_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    total_lines += 1
+                    if total_lines < first_line:
+                        continue
+                    if last_cap is not None and total_lines > last_cap:
+                        for _ in f:
+                            total_lines += 1
+                        break
+                    out_chunks.append(line)
+                    if len(out_chunks) >= max_lines:
+                        truncated = True
+                        for _ in f:
+                            total_lines += 1
+                        break
+
+            if total_lines > 0 and first_line > total_lines:
+                return {
+                    "error": (
+                        f"start_line ({first_line}) exceeds file length ({total_lines})"
+                    ),
+                }
+
+            if out_chunks:
+                shown_start = first_line
+                shown_end = first_line + len(out_chunks) - 1
+            else:
+                shown_start, shown_end = None, None
+
+            showing_lines = (
+                f"{shown_start}-{shown_end}"
+                if shown_start is not None and shown_end is not None
+                else "none"
+            )
+
+            return {
+                "path": path,
+                "content": "".join(out_chunks),
+                "total_lines": total_lines,
+                "showing_lines": showing_lines,
+                "truncated": truncated,
+            }
+        except Exception as e:
+            return {"error": f"Failed to read file: {e}"}
+
+    async def _tool_list_files(self, path: str = "") -> Dict[str, Any]:
+        """List files and directories in the backend codebase."""
+        import os
+
+        base = _resolve_backend_codebase_dir()
+        if not base:
+            return {"error": "Backend directory not found"}
+
+        ok, full_path = _full_path_within_backend(base, path)
+        if not ok:
+            return {"error": "Path traversal not allowed"}
+
+        if not os.path.exists(full_path):
+            return {"error": f"Path not found: {path}"}
+        
+        if not os.path.isdir(full_path):
+            return {"error": f"Not a directory: {path}. Use read_file for files."}
+        
+        try:
+            entries = []
+            for entry in sorted(os.listdir(full_path)):
+                # Skip hidden files and __pycache__
+                if entry.startswith(".") or entry == "__pycache__":
+                    continue
+                
+                entry_path = os.path.join(full_path, entry)
+                entry_type = "dir" if os.path.isdir(entry_path) else "file"
+                entries.append({"name": entry, "type": entry_type})
+                
+                # Cap at 100 entries
+                if len(entries) >= 100:
+                    break
+            
+            return {
+                "path": path or "(root)",
+                "entries": entries,
+                "count": len(entries),
+            }
+        except Exception as e:
+            return {"error": f"Failed to list files: {e}"}
+    
+    # ==================== CONVERSATION PERSISTENCE ====================
+    
+    def _get_redis(self):
+        """Get Redis client from market data service."""
+        try:
+            from backend.services.market.market_data_service import market_data_service
+            return market_data_service.redis_client
+        except Exception:
+            return None
+    
+    def _trim_conversation_for_persistence(self) -> None:
+        """Drop oldest messages after the system prompt so Redis payloads stay bounded."""
+        conv = self._conversation
+        if len(conv) <= 1:
+            return
+
+        def pop_oldest_turn() -> bool:
+            if not conv:
+                return False
+            if conv[0].get("role") == "system":
+                if len(conv) <= 1:
+                    return False
+                conv.pop(1)
+                return True
+            conv.pop(0)
+            return True
+
+        while len(conv) > AGENT_CONVERSATION_MAX_MESSAGES:
+            if not pop_oldest_turn():
+                break
+
+        while (
+            len(json.dumps(conv).encode("utf-8")) > AGENT_CONVERSATION_MAX_JSON_BYTES
+            and len(conv) > 1
+        ):
+            if conv[0].get("role") == "system" and len(conv) == 1:
+                break
+            if not pop_oldest_turn():
+                break
+
+    def _save_conversation(self) -> bool:
+        """Save conversation to Redis."""
+        self._trim_conversation_for_persistence()
+        redis = self._get_redis()
+        if not redis:
+            return False
+        try:
+            key = f"agent:conversation:{self.session_id}"
+            redis.setex(key, 7200, json.dumps(self._conversation))  # 2hr TTL
+            return True
+        except Exception as e:
+            logger.warning("Failed to save conversation: %s", e)
+            return False
+
+    def _load_conversation(self, session_id: str) -> str:
+        """Load conversation from Redis.
+
+        Returns:
+            ``loaded``, ``missing``, or ``unavailable``.
+        """
+        redis = self._get_redis()
+        if not redis:
+            return "unavailable"
+        try:
+            key = f"agent:conversation:{session_id}"
+            data = redis.get(key)
+            if not data:
+                return "missing"
+            self._conversation = json.loads(
+                data.decode("utf-8") if isinstance(data, bytes) else data
+            )
+            self.session_id = session_id
+            return "loaded"
+        except Exception as e:
+            logger.warning("Failed to load conversation: %s", e)
+            return "unavailable"
+    
+    async def chat(self, user_message: str) -> Dict[str, Any]:
+        """
+        Process a user message in a multi-turn conversation.
+        
+        This is the main entry point for the chat endpoint.
+        """
+        if not settings.OPENAI_API_KEY:
+            return {"error": "LLM not configured (OPENAI_API_KEY missing)"}
+        
+        # Initialize system prompt if this is a new conversation
+        if not self._conversation:
+            system_msg = SYSTEM_PROMPT.format(
+                current_time=datetime.now(timezone.utc).isoformat(),
+                autonomy_level=settings.AGENT_AUTONOMY_LEVEL,
+            )
+            self._conversation = [{"role": "system", "content": system_msg}]
+        
+        # Add user message
+        self._conversation.append({"role": "user", "content": user_message})
+        
+        tool_calls_made = []
+        actions_taken = []
+        max_iterations = 12
+        assistant_response = None  # Track the actual assistant response
+        
+        for iteration in range(max_iterations):
+            last_msg = self._conversation[-1] if self._conversation else {}
+            last_role = last_msg.get("role")
+            # Match analyze_and_act: force a tool on first LLM call of this turn.
+            if iteration == 0:
+                tool_choice = "required"
+            elif iteration == max_iterations - 1 and last_role == "tool":
+                # Avoid exhausting the loop with endless tool calls without a summary.
+                tool_choice = "none"
+            else:
+                tool_choice = "auto"
+            
+            logger.info(
+                "Chat iteration %d, tool_choice=%s last_role=%s",
+                iteration,
+                tool_choice,
+                last_role,
+            )
+            response = await self._call_llm(tool_choice=tool_choice)
+            
+            if not response:
+                err = getattr(self, "_last_openai_error", None) or "Unknown error"
+                logger.warning("LLM returned no response on iteration %d: %s", iteration, err)
+                assistant_response = (
+                    f"I could not reach the language model ({err}). "
+                    "Check OPENAI_API_KEY, network, and logs."
+                )
+                break
+            
+            choice0 = (response.get("choices") or [{}])[0]
+            message = choice0.get("message") or {}
+            logger.info(
+                "LLM response has_tool_calls=%s content_len=%s finish=%s",
+                bool(message.get("tool_calls")),
+                len(message.get("content") or ""),
+                choice0.get("finish_reason"),
+            )
+            
+            if message.get("tool_calls"):
+                self._conversation.append(message)
+                
+                for tool_call in message["tool_calls"]:
+                    func = tool_call.get("function", {})
+                    tool_name = func.get("name")
+                    logger.info("Executing tool: %s", tool_name)
+                    try:
+                        tool_args = json.loads(func.get("arguments", "{}"))
+                    except json.JSONDecodeError:
+                        tool_args = {}
+                    
+                    # Execute tool
+                    result, action = await self._execute_tool(
+                        tool_name, tool_args, message.get("content") or ""
+                    )
+                    
+                    # Add tool result to conversation
+                    self._conversation.append({
+                        "role": "tool",
+                        "tool_call_id": tool_call["id"],
+                        "content": json.dumps(result),
+                    })
+                    
+                    tool_calls_made.append({
+                        "name": tool_name,
+                        "args": tool_args,
+                        "result_preview": str(result)[:200] + "..." if len(str(result)) > 200 else str(result),
+                    })
+                    
+                    if action:
+                        actions_taken.append(self._action_to_dict(action))
+            else:
+                # No tool calls - this is the final text response
+                assistant_response = message.get("content") or ""
+                self._conversation.append(message)
+                logger.info("Got final assistant response, length=%d", len(assistant_response))
+                break
+        
+        # Save conversation for continuity
+        self._save_conversation()
+        
+        # Use tracked assistant response, or provide error message
+        final_response = assistant_response
+        if final_response is None:
+            logger.error(
+                "No assistant response after %d iterations (tools=%s)",
+                max_iterations,
+                len(tool_calls_made),
+            )
+            final_response = (
+                "I ran tools but did not get a final answer from the model. "
+                "Try **New Chat** or a shorter question. If this persists, check backend logs."
+            )
+        
+        return {
+            "session_id": self.session_id,
+            "response": final_response,
+            "tool_calls": tool_calls_made,
+            "actions": actions_taken,
+        }
     
     def _get_action_display_name(self, tool_name: str) -> str:
         """Get a human-readable name for an action."""

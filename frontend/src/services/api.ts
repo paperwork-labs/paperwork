@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 import axios, { AxiosResponse, AxiosError } from 'axios';
 
+import { normalizeRegimeCurrentBody } from './regimeCurrentNormalize';
+
 declare module 'axios' {
   interface AxiosRequestConfig<D = any> {
     _noRetry?: boolean;
@@ -497,8 +499,9 @@ export const marketDataApi = {
   getVolatilityDashboard: async () => {
     return makeOptimizedRequest(() => api.get('/market-data/volatility-dashboard'));
   },
-  getCurrentRegime: async () => {
-    return makeOptimizedRequest(() => api.get('/market-data/regime/current'));
+  getCurrentRegime: async (): Promise<Record<string, unknown> | null> => {
+    const raw = await makeOptimizedRequest(() => api.get('/market-data/regime/current'));
+    return normalizeRegimeCurrentBody(raw);
   },
   getRegimeHistory: async (days: number = 90) => {
     return makeOptimizedRequest(() => api.get(`/market-data/regime/history?days=${days}`));
