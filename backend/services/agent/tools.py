@@ -271,7 +271,7 @@ TOOL_TO_CELERY_TASK: Dict[str, str] = {
     "monitor_coverage": "backend.tasks.market_data_tasks.monitor_coverage_health",
     "recover_stale_jobs": "backend.tasks.market_data_tasks.recover_stale_job_runs",
     "bootstrap_coverage": "backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked",
-    "refresh_index_constituents": "backend.tasks.market_data_tasks.refresh_index_constituents_task",
+    "refresh_index_constituents": "backend.tasks.market_data_tasks.refresh_index_constituents",
 }
 
 

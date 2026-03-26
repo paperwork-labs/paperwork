@@ -557,9 +557,9 @@ def trigger_brief_generation(
 ):
     """Manually trigger intelligence brief generation."""
     task_map = {
-        "daily": "backend.tasks.intelligence.tasks.generate_daily_digest",
-        "weekly": "backend.tasks.intelligence.tasks.generate_weekly_brief",
-        "monthly": "backend.tasks.intelligence.tasks.generate_monthly_review",
+        "daily": "backend.tasks.intelligence_tasks.generate_daily_digest",
+        "weekly": "backend.tasks.intelligence_tasks.generate_weekly_brief",
+        "monthly": "backend.tasks.intelligence_tasks.generate_monthly_review",
     }
     task_name = task_map.get(brief_type)
     if not task_name:
@@ -666,7 +666,7 @@ def _execute_autofix_plan(job_id: str, plan: List[AutoFixPlanItem], r) -> None:
         "recompute_indicators": "backend.tasks.market_data_tasks.recompute_indicators_universe",
         "record_snapshot_history": "backend.tasks.market_data_tasks.record_daily_history",
         "compute_regime": "backend.tasks.market_data_tasks.compute_daily_regime",
-        "recover_stale_jobs": "backend.tasks.market_data_tasks.recover_stale_job_runs_impl",
+        "recover_stale_jobs": "backend.tasks.market_data_tasks.recover_stale_job_runs",
     }
 
     for item in plan:

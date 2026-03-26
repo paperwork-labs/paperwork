@@ -1323,9 +1323,9 @@ const GreeksDashboard: React.FC<{ positions: OptionPos[]; currency: string }> = 
                 <XAxis type="number" tick={{ fontSize: 10 }} />
                 <YAxis type="category" dataKey="symbol" tick={{ fontSize: 11, fontFamily: 'mono' }} width={50} />
                 <RechartsTooltip
-                  formatter={(value: number | undefined, name: string | undefined) => [
-                    name === 'theta' ? formatMoney(value, currency) : (value ?? 0).toFixed(3),
-                    (name ?? '').charAt(0).toUpperCase() + (name ?? '').slice(1),
+                  formatter={(value: any, name: any) => [
+                    name === 'theta' ? formatMoney(Number(value), currency) : (Number(value) ?? 0).toFixed(3),
+                    String(name ?? '').charAt(0).toUpperCase() + String(name ?? '').slice(1),
                   ] as React.ReactNode}
                 />
                 <Bar dataKey="delta" fill={GREEKS_COLORS.delta} barSize={8} radius={[0, 4, 4, 0]} />
@@ -1369,7 +1369,7 @@ const ThetaCalendar: React.FC<{ positions: OptionPos[]; currency: string; timezo
               <XAxis dataKey="label" tick={{ fontSize: 9 }} interval={4} />
               <YAxis tick={{ fontSize: 10 }} />
               <RechartsTooltip
-                formatter={(value: number | undefined, _name?: string) => [formatMoney(value, currency), 'Cumulative Theta'] as React.ReactNode}
+                formatter={(value: any) => [formatMoney(Number(value), currency), 'Cumulative Theta'] as React.ReactNode}
               />
               <Line type="monotone" dataKey="cumTheta" stroke="#EF4444" strokeWidth={2} dot={false} />
             </LineChart>
@@ -1417,7 +1417,7 @@ const IVSkewChart: React.FC<{ positions: OptionPos[] }> = ({ positions }) => {
               <XAxis dataKey="strike" tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 10 }} unit="%" />
               <RechartsTooltip
-                formatter={(value: number | undefined, _name?: string) => [`${(value ?? 0).toFixed(1)}%`, 'IV'] as React.ReactNode}
+                formatter={(value: any) => [`${(Number(value) ?? 0).toFixed(1)}%`, 'IV'] as React.ReactNode}
                 labelFormatter={(label) => `Strike: ${label}`}
               />
               <Line type="monotone" dataKey="iv" stroke="#8B5CF6" strokeWidth={2} dot={{ r: 3 }} />
@@ -1475,7 +1475,7 @@ const PayoffDiagram: React.FC<{ positions: OptionPos[]; currency: string }> = ({
               <XAxis dataKey="price" tick={{ fontSize: 10 }} label={{ value: 'Underlying Price', position: 'bottom', fontSize: 11 }} />
               <YAxis tick={{ fontSize: 10 }} label={{ value: 'P/L ($)', angle: -90, position: 'insideLeft', fontSize: 11 }} />
               <RechartsTooltip
-                formatter={(value: number | undefined, _name?: string) => [formatMoney(value, currency), 'P/L at Expiration'] as React.ReactNode}
+                formatter={(value: any) => [formatMoney(Number(value), currency), 'P/L at Expiration'] as React.ReactNode}
                 labelFormatter={(label) => `Price: $${label}`}
               />
               <Line

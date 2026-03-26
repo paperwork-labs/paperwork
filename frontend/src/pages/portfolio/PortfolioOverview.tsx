@@ -359,7 +359,7 @@ const PortfolioOverview: React.FC = () => {
                               <XAxis dataKey="date" tick={{ fontSize: 10 }} />
                               <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v.toFixed(0)}%`} />
                               <Tooltip
-                                formatter={(v: number | undefined, name?: string) => [`${Number(v ?? 0).toFixed(2)}%`, name === 'portfolio_pct' ? 'Portfolio' : 'SPY'] as [React.ReactNode, string]}
+                                formatter={(v: any, name: any) => [`${Number(v ?? 0).toFixed(2)}%`, name === 'portfolio_pct' ? 'Portfolio' : 'SPY'] as [React.ReactNode, string]}
                                 labelFormatter={(d) => String(d)}
                               />
                               <Area type="monotone" dataKey="portfolio_pct" stroke={colors.area1} fill="url(#portfolioPctGradient)" strokeWidth={2} name="portfolio_pct" />
@@ -377,7 +377,7 @@ const PortfolioOverview: React.FC = () => {
                               </defs>
                               <XAxis dataKey="date" tick={{ fontSize: 10 }} />
                               <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatMoney(v, currency, { maximumFractionDigits: 0 })} />
-                              <Tooltip formatter={(v: number | undefined, _name?: string) => formatMoney(Number(v ?? 0), currency) as React.ReactNode} labelFormatter={(d) => String(d)} />
+                              <Tooltip formatter={(v: any) => formatMoney(Number(v ?? 0), currency) as React.ReactNode} labelFormatter={(d) => String(d)} />
                               <Area type="monotone" dataKey="total_value" stroke={colors.area1} fill="url(#portfolioValueGradient)" strokeWidth={1.5} />
                             </AreaChart>
                           </ResponsiveContainer>
@@ -412,7 +412,7 @@ const PortfolioOverview: React.FC = () => {
                                   <Cell key={i} fill={SECTOR_PALETTE[i % SECTOR_PALETTE.length]} />
                                 ))}
                               </Pie>
-                              <Tooltip formatter={(v: number | undefined, _name?: string) => formatMoney(Number(v ?? 0), currency) as React.ReactNode} />
+                              <Tooltip formatter={(v: any) => formatMoney(Number(v ?? 0), currency) as React.ReactNode} />
                               <Legend
                                 layout="vertical"
                                 align="right"

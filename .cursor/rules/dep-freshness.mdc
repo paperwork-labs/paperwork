@@ -1,0 +1,55 @@
+# Dependency Freshness
+
+Keep dependencies current to avoid security vulnerabilities and access new features.
+
+## Version Policy
+
+- **Python**: Target latest stable (3.13+). Update Docker and Render configs together.
+- **PostgreSQL**: Target latest stable (18+). Major upgrades require new data volume.
+- **Node.js/Vite**: Target latest stable. Vite major upgrades may require plugin updates.
+- **React/Chakra**: Stay on current major, apply minors promptly.
+
+## Dependabot
+
+Dependabot is configured for minor/patch updates. When Dependabot PRs appear:
+1. Review the changelog for breaking changes
+2. Merge promptly if CI passes (don't let them pile up)
+3. For major version bumps not covered by Dependabot, upgrade manually
+
+## Quarterly Audit Checklist
+
+Every quarter, check for major version availability:
+
+```bash
+# Python - check current vs latest
+python --version
+
+# Postgres - check Docker Hub for latest -alpine tag
+# https://hub.docker.com/_/postgres
+
+# Node packages - check for major updates
+cd frontend && npm outdated
+
+# Python packages - check for major updates
+pip list --outdated
+```
+
+## Upgrade Procedure
+
+### PostgreSQL Major Upgrade
+1. Update `compose.dev.yaml` image tag
+2. Create new data volume (e.g., `postgres_data_v18`)
+3. Run `docker compose down && docker compose up -d`
+4. Data starts fresh in dev; prod uses Render's managed upgrade
+
+### Python Major Upgrade
+1. Update `Dockerfile.backend` FROM line
+2. Run `docker compose build --no-cache backend celery_worker celery_beat`
+3. Test all tasks and API endpoints
+4. Update `render.yaml` runtime version if applicable
+
+### Vite/React Major Upgrade
+1. Update versions in `package.json`
+2. Review breaking changes in release notes
+3. Update `@vitejs/plugin-react` to matching major
+4. Run `npm install && npm run build && npm run test`

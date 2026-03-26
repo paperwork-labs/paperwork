@@ -167,7 +167,7 @@ export default function BacktestResults({ result }: { result: BacktestResult }) 
                   tickFormatter={(v) => formatCurrency(Number(v))}
                 />
                 <Tooltip
-                  formatter={(v: number | undefined) => formatCurrency(Number(v ?? 0)) as React.ReactNode}
+                  formatter={(v: any) => formatCurrency(Number(v ?? 0)) as React.ReactNode}
                   labelFormatter={(d) => formatDate(d, timezone)}
                 />
                 <Area

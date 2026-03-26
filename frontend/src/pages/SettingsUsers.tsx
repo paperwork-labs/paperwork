@@ -151,7 +151,7 @@ const SettingsUsers: React.FC = () => {
     setDeleting(true);
     try {
       await deleteUser(deleteTarget.id);
-      toast.success(`User ${deleteTarget.username} deleted`);
+      toast.success(`User ${deleteTarget.full_name || deleteTarget.email} deleted`);
       setDeleteTarget(null);
       await load();
     } catch (e: any) {
@@ -223,7 +223,7 @@ const SettingsUsers: React.FC = () => {
             <TableRoot size="sm">
               <TableHeader>
                 <TableRow>
-                  <TableColumnHeader>User</TableColumnHeader>
+                  <TableColumnHeader>Name</TableColumnHeader>
                   <TableColumnHeader>Email</TableColumnHeader>
                   <TableColumnHeader>Role</TableColumnHeader>
                   <TableColumnHeader>Approval</TableColumnHeader>
@@ -242,10 +242,7 @@ const SettingsUsers: React.FC = () => {
                     bg={isPendingApproval ? { _light: 'amber.50', _dark: 'whiteAlpha.50' } : undefined}
                   >
                     <TableCell>
-                      <VStack align="start" gap={0}>
-                        <Text fontSize="sm" fontWeight="medium">{u.full_name || u.username}</Text>
-                        <Text fontSize="xs" color="fg.muted">@{u.username}</Text>
-                      </VStack>
+                      <Text fontSize="sm" fontWeight="medium">{u.full_name || u.email}</Text>
                     </TableCell>
                     <TableCell>{u.email}</TableCell>
                     <TableCell>
@@ -298,7 +295,7 @@ const SettingsUsers: React.FC = () => {
                           size="xs"
                           variant="ghost"
                           colorPalette="red"
-                          aria-label={`Delete ${u.username}`}
+                          aria-label={`Delete ${u.full_name || u.email}`}
                           title={currentUser?.id === u.id ? 'You cannot delete your own account' : undefined}
                           disabled={currentUser?.id === u.id}
                           onClick={() => setDeleteTarget(u)}
@@ -352,7 +349,7 @@ const SettingsUsers: React.FC = () => {
             <DialogTitle>Delete User</DialogTitle>
             <DialogBody>
               <Text fontSize="sm">
-                Are you sure you want to delete <strong>{deleteTarget?.username}</strong>? This action cannot be undone.
+                Are you sure you want to delete <strong>{deleteTarget?.full_name || deleteTarget?.email}</strong>? This action cannot be undone.
               </Text>
             </DialogBody>
             <DialogFooter>

@@ -97,7 +97,7 @@ const SectorView: React.FC<SectorViewProps> = ({ snapshots, dashboardPayload }) 
               <ReferenceLine y={0} stroke={cc.refLine} strokeWidth={1.5} />
               <RTooltip
                 contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${cc.tooltipBorder}`, background: cc.tooltipBg, fontFamily: 'JetBrains Mono, monospace' }}
-                formatter={(v: any, name: string | undefined) => [Number(v).toFixed(2), name ?? '']}
+                formatter={(v: any, name: any) => [Number(v).toFixed(2), String(name ?? '')]}
               />
               <Scatter data={rrgData}>
                 {rrgData.map((_: any, i: number) => (

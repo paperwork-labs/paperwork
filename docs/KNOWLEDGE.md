@@ -20,6 +20,38 @@ Numbered decisions with date, rationale, alternatives considered, and reversibil
 
 ## Decisions
 
+### D30 — 2026-03-25 — Dependency freshness policy
+
+**Decision**: Establish quarterly dependency audit process with specific upgrade procedures for Postgres, Python, and Vite major versions. Created `.cursor/rules/dep-freshness.mdc` with checklist.
+
+**Rationale**: Dependencies drift quickly; security vulnerabilities accumulate. Postgres 16→18, Python 3.11→3.13, and Vite 5→6 were all available but not applied. Dependabot handles minor/patch but not major versions.
+
+**Alternatives**: Ad-hoc upgrades when breakages occur — rejected (reactive not proactive).
+
+**Reversible**: Yes — the rule is guidance, not enforcement.
+
+### D29 — 2026-03-25 — Celery task routing must match registered name= exactly
+
+**Decision**: All task references (job_catalog.py, TOOL_TO_CELERY_TASK, auto_ops REMEDIATION_MAP, beat_schedule, send_task() calls) must match the `name=` parameter from `@shared_task(name="...")` exactly. There is no automatic derivation from Python module paths.
+
+**Current naming patterns** (legacy, not a convention to follow for new tasks):
+- `backend.tasks.market_data_tasks.*` — monolith tasks
+- `backend.tasks.intelligence_tasks.*` — intelligence briefs
+- `backend.tasks.auto_ops_tasks.*` — auto-ops
+- `backend.tasks.account_sync.*` — portfolio sync
+- `backend.tasks.portfolio.orders.*` — order execution (new modular style)
+- `backend.tasks.market.{module}.*` — new modular market tasks
+
+**Rationale**: Audit found 4 critical routing mismatches where `send_task()` dispatched to non-existent or wrong task names:
+1. `backend.tasks.order_tasks.*` (wrong) vs `backend.tasks.portfolio.orders.*` (real)
+2. `refresh_index_constituents_task` (trailing `_task`) vs `refresh_index_constituents`
+3. `backend.tasks.intelligence.tasks.*` vs `backend.tasks.intelligence_tasks.*`
+4. `recover_stale_job_runs_impl` (helper function) vs `recover_stale_job_runs` (actual task)
+
+**Alternatives**: Enforce a strict naming convention — rejected (too disruptive for existing tasks).
+
+**Reversible**: Yes, with coordinated multi-file update.
+
 ### D24 — 2026-03-24 — Scan overlay field-name bugs found and fixed
 
 **Decision**: Fixed 3 wrong field names in `market_data_tasks.py` scan overlay wiring (`atre_pctile` → cross-sectional percentile of `atrx_sma_150`, `range_position_52w` → `range_pos_52w`, `atr_pct_14` → `atrp_14`), plus 2 in exit cascade wiring (`atr_pct_14` → `atrp_14`, `prior_stage` → `previous_stage_label`). Also replaced silent `except Exception: continue` with logged warnings.

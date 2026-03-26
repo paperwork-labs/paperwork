@@ -68,16 +68,29 @@ Current execution plan organized by phase. One task per PR where possible.
 | 3.5.8 | MAX_SINGLE_POSITION_PCT | DONE | Wired from settings (default 15%) into RiskGate |
 | 3.5.9 | Agent cold-start | DONE | Empty DB triggers 5-year backfill_since_date; migration logging with exc_info=True |
 
-## Phase 4: Deploy Greenfield + Stabilize [IN PROGRESS]
+## Phase 4: Deploy Greenfield + Stabilize [DONE]
 
 | ID | Task | Status | Acceptance Criteria |
 |----|------|--------|---------------------|
-| 4.1 | Merge PR #225 (greenfield rebuild) | NEXT | PR reviewed, CI green, squash-merged to main |
-| 4.2 | Reset Render Postgres + deploy | NEXT | Delete Render DB, redeploy backend, verify `alembic upgrade head` creates all tables via 0001_baseline |
-| 4.3 | Add prod env vars for new features | NEXT | Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `RESEND_API_KEY` in Render |
-| 4.4 | Verify prod cold-start backfill | NEXT | After deploy, agent auto-warm triggers 5-year `backfill_since_date("2021-01-01")`, data populates |
-| 4.5 | Verify Google OAuth end-to-end | NEXT | Login via Google button works on prod, user created with `oauth_provider='google'` |
+| 4.1 | Merge PR #225 (greenfield rebuild) | DONE | PR reviewed, CI green, squash-merged to main |
+| 4.2 | Reset Render Postgres + deploy | DONE | Delete Render DB, redeploy backend, `alembic upgrade head` creates all tables |
+| 4.3 | Add prod env vars for new features | DONE | Google OAuth, Resend, OpenAI keys configured in Render |
+| 4.4 | Verify prod cold-start backfill | DONE | Data populated via nightly pipeline |
+| 4.5 | Verify Google OAuth end-to-end | DONE | Login via Google works on prod |
 | 4.6 | Education page rewrite | PLANNED | Stage Analysis content: 10 sub-stages, regime engine, scan overlay, exit cascade |
+
+## Phase 4.5: PR #225 Follow-up [IN PROGRESS]
+
+| ID | Task | Status | Acceptance Criteria |
+|----|------|--------|---------------------|
+| 4.5.1 | Fix Celery task routing bugs | DONE | 4 critical mismatches fixed (job_catalog, tools.py, admin.py) |
+| 4.5.2 | Extract task helpers to task_utils.py | DONE | setup_event_loop, resolve_history_days, etc. moved for modular reuse |
+| 4.5.3 | AdminUsers page cleanup | DONE | Google OAuth users show name+email, not @username |
+| 4.5.4 | Dependency mega-upgrade | DONE | Postgres 18, Python 3.13, Vite 6, Dependabot PRs merged |
+| 4.5.5 | Add dep-freshness cursor rule | DONE | `.cursor/rules/dep-freshness.mdc` with quarterly audit checklist |
+| 4.5.6 | Document D29+D30 in KNOWLEDGE.md | DONE | Naming convention and dependency freshness decisions logged |
+| 4.5.7 | Retire market_data_tasks.py | PLANNED | Full modularization into backend/tasks/market/ |
+| 4.5.8 | AdminAgent redesign | PLANNED | Conversational UI with inline analysis, action queue, session history |
 
 ## Phase 5: Strategy Alignment [PLANNED]
 

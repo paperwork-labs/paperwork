@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import functools
+import logging
 import traceback
 from datetime import datetime, timedelta
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Dict, Optional
 
 from celery import current_task
 
@@ -14,6 +16,8 @@ from backend.models import JobRun
 from backend.services.market.market_data_service import market_data_service
 from backend.services.notifications.alerts import alert_service
 from backend.tasks.schedule_metadata import HookConfig, ScheduleMetadata
+
+logger = logging.getLogger(__name__)
 
 
 def task_run(task_name: str, *, lock_key: Optional[Callable[..., Optional[str]]] = None, lock_ttl_seconds: int = 1800):
@@ -277,4 +281,124 @@ def _emit_alerts(
     )
 
 
+# ---------------------------------------------------------------------------
+# Shared helpers (extracted from market_data_tasks.py)
+# ---------------------------------------------------------------------------
+
+
+def setup_event_loop() -> asyncio.AbstractEventLoop:
+    """Create a fresh event loop for sync task wrappers (caller must close).
+
+    IMPORTANT: Do not set this loop as the global default via asyncio.set_event_loop().
+    These tasks run loop.run_until_complete(...) explicitly, and setting a closed loop as
+    the process-global default can break unrelated code/tests that use asyncio.
+    """
+    return asyncio.new_event_loop()
+
+
+def increment_provider_usage(usage: Dict[str, int], result: dict | None) -> None:
+    """Track provider usage statistics from a fetch result."""
+    provider = (result or {}).get("provider") or "unknown"
+    usage[provider] = usage.get(provider, 0) + 1
+
+
+def classify_provider_error(error: object) -> str:
+    """Categorize provider errors for metrics and retry logic."""
+    msg = str(error or "").lower()
+    if "429" in msg or "too many" in msg or "rate limit" in msg:
+        return "rate_limit"
+    if "timeout" in msg or "timed out" in msg:
+        return "timeout"
+    if "connection" in msg or "connect" in msg:
+        return "connection"
+    if "invalid json" in msg or "json" in msg:
+        return "bad_response"
+    return "provider_error"
+
+
+def resolve_history_days(requested_days: int | None) -> int:
+    """Resolve snapshot history window using last successful run (min 5 days).
+    
+    If requested_days is provided, uses that (clamped to minimum of 5).
+    Otherwise looks up last successful admin_coverage_backfill run and computes
+    the number of days since then, defaulting to 20 if no prior run found.
+    """
+    minimum_days = 5
+    if requested_days is not None:
+        try:
+            return max(minimum_days, int(requested_days))
+        except (TypeError, ValueError):
+            pass
+    session = SessionLocal()
+    try:
+        last_run = (
+            session.query(JobRun)
+            .filter(
+                JobRun.task_name == "admin_coverage_backfill",
+                JobRun.status == "ok",
+            )
+            .order_by(
+                JobRun.finished_at.desc().nullslast(),
+                JobRun.started_at.desc(),
+            )
+            .first()
+        )
+        last_ts = None
+        if last_run:
+            last_ts = last_run.finished_at or last_run.started_at
+        if last_ts:
+            delta_days = max(0, (datetime.utcnow().date() - last_ts.date()).days)
+            return max(minimum_days, delta_days)
+    except Exception as e:
+        logger.warning("History days lookup failed, using default: %s", e)
+    finally:
+        session.close()
+    return max(minimum_days, 20)
+
+
+def get_tracked_symbols_safe(session) -> list[str]:
+    """Get tracked symbols with fallback to DB if Redis cache is empty.
+    
+    Args:
+        session: SQLAlchemy session
+        
+    Returns:
+        Sorted list of uppercase symbol strings
+    """
+    from backend.services.market.universe import tracked_symbols, tracked_symbols_from_db
+    
+    symbols = tracked_symbols(session, redis_client=market_data_service.redis_client)
+    symbols = sorted({str(s).upper() for s in (symbols or []) if s})
+    if not symbols:
+        symbols = sorted({s.upper() for s in tracked_symbols_from_db(session)})
+    return symbols
+
+
+def get_tracked_universe_from_db(session) -> set[str]:
+    """Get union of active index constituents and portfolio symbols from DB.
+    
+    IMPORTANT:
+    - We intentionally exclude inactive index constituents, otherwise the tracked universe
+      accumulates delisted/removed tickers and coverage will look degraded forever.
+      
+    Args:
+        session: SQLAlchemy session
+        
+    Returns:
+        Set of uppercase symbol strings
+    """
+    from backend.services.market.universe import tracked_symbols_from_db
+    return set(tracked_symbols_from_db(session))
+
+
+def set_task_status(task_name: str, status: str, payload: dict | None = None) -> None:
+    """Publish task status to Redis for monitoring.
+    
+    Note: This is an alias for _publish_status with error handling.
+    The task_run decorator handles this automatically for decorated tasks.
+    """
+    try:
+        _publish_status(task_name, status, payload)
+    except Exception as e:
+        logger.warning("task_status_set failed for %s: %s", task_name, e)
 
