@@ -82,7 +82,7 @@ def test_backfill_stale_daily_returns_full_stale_candidates(monkeypatch, db_sess
             def delay(*_args, **_kwargs):
                 return SimpleNamespace(id="task-stale-123")
 
-        monkeypatch.setattr(routes, "backfill_stale_daily_tracked", _StubTask)
+        monkeypatch.setattr(routes, "stale_daily", _StubTask)
 
         client = TestClient(app, raise_server_exceptions=False)
         resp = client.post("/api/v1/market-data/admin/backfill/coverage/stale")

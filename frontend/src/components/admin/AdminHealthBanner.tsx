@@ -1,5 +1,7 @@
 import React from 'react';
-import { Box, Badge, HStack, Text } from '@chakra-ui/react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import type { AdminHealthResponse } from '../../types/adminHealth';
 import { formatDateTime } from '../../utils/format';
 
@@ -8,71 +10,83 @@ interface Props {
   timezone?: string;
 }
 
-const STATUS_PALETTE: Record<string, string> = {
-  green: 'green',
-  yellow: 'orange',
-  red: 'red',
-};
+function compositeBannerClass(status: string): string {
+  switch (status) {
+    case 'green':
+      return 'border-[rgb(var(--status-success)/0.35)] bg-[rgb(var(--status-success)/0.08)]';
+    case 'yellow':
+      return 'border-[rgb(var(--status-warning)/0.4)] bg-[rgb(var(--status-warning)/0.1)]';
+    case 'red':
+      return 'border-destructive/40 bg-destructive/5';
+    default:
+      return 'border-border bg-muted/50';
+  }
+}
 
-const STATUS_TEXT_COLOR: Record<string, string> = {
-  green: 'status.success',
-  yellow: 'status.warning',
-  red: 'status.danger',
-};
+function dimBadgeClass(status: string): string {
+  switch (status) {
+    case 'green':
+      return 'border-transparent bg-[rgb(var(--status-success)/0.12)] text-[rgb(var(--status-success)/1)]';
+    case 'yellow':
+      return 'border-transparent bg-[rgb(var(--status-warning)/0.12)] text-[rgb(var(--status-warning)/1)]';
+    case 'red':
+      return 'border-transparent bg-destructive/10 text-destructive';
+    default:
+      return 'border-transparent bg-muted text-muted-foreground';
+  }
+}
+
+function dimDotClass(status: string): string {
+  switch (status) {
+    case 'green':
+      return 'bg-[rgb(var(--status-success)/1)]';
+    case 'yellow':
+      return 'bg-[rgb(var(--status-warning)/1)]';
+    case 'red':
+      return 'bg-[rgb(var(--status-danger)/1)]';
+    default:
+      return 'bg-muted-foreground';
+  }
+}
 
 const AdminHealthBanner: React.FC<Props> = ({ health, timezone }) => {
   if (!health) return null;
 
-  const palette = STATUS_PALETTE[health.composite_status] ?? 'gray';
+  const paletteKey = health.composite_status;
   const dims = health.dimensions;
 
   return (
-    <Box
-      mb={4}
-      borderWidth="1px"
-      borderColor="border.subtle"
-      borderRadius="lg"
-      p={3}
-      bg="bg.muted"
-    >
-      <HStack justify="space-between" align="center" flexWrap="wrap" gap={2} mb={2}>
-        <HStack gap={2} align="center">
-          <Text fontSize="sm" fontWeight="semibold">System Health</Text>
-          <Badge variant="subtle" colorPalette={palette}>
-            {health.composite_status.toUpperCase()}
-          </Badge>
-        </HStack>
-        <Text fontSize="xs" color="fg.muted">
-          Checked: {formatDateTime(health.checked_at, timezone)}
-        </Text>
-      </HStack>
-      <Text fontSize="xs" color="fg.muted" mb={2}>
-        {health.composite_reason}
-      </Text>
-      <HStack gap={2} flexWrap="wrap">
-        {Object.entries(dims).map(([key, dim]) => {
-          const dimPalette = STATUS_PALETTE[dim.status] ?? 'gray';
-          return (
+    <Alert className={cn('mb-4', compositeBannerClass(paletteKey))}>
+      <div className="flex w-full flex-col gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <AlertTitle className="text-sm font-semibold">System Health</AlertTitle>
+            <Badge variant="outline" className={cn('font-medium uppercase', dimBadgeClass(paletteKey))}>
+              {health.composite_status.toUpperCase()}
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Checked: {formatDateTime(health.checked_at, timezone)}
+          </p>
+        </div>
+        <AlertDescription className="mb-0 text-xs text-muted-foreground">{health.composite_reason}</AlertDescription>
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(dims).map(([key, dim]) => (
             <Badge
               key={key}
-              variant="subtle"
-              colorPalette={dimPalette}
+              variant="outline"
+              className={cn('inline-flex items-center gap-1 font-normal capitalize', dimBadgeClass(dim.status))}
             >
-              <Box
-                as="span"
-                display="inline-block"
-                w="6px"
-                h="6px"
-                borderRadius="full"
-                bg={STATUS_TEXT_COLOR[dim.status] ?? 'fg.muted'}
-                mr={1}
+              <span
+                className={cn('inline-block size-1.5 shrink-0 rounded-full', dimDotClass(dim.status))}
+                aria-hidden
               />
               {key.replace('_', ' ')}
             </Badge>
-          );
-        })}
-      </HStack>
-    </Box>
+          ))}
+        </div>
+      </div>
+    </Alert>
   );
 };
 

@@ -29,7 +29,7 @@ describe('StageBar', () => {
     const { container } = renderWithProviders(
       <StageBar counts={{ '1A': 1, '2A': 2, '2B': 0, '2C': 0, '3A': 0, '4A': 0 }} total={3} />
     );
-    const bar = container.querySelector('[role="img"][aria-label*="Stage distribution"]');
+    const bar = container.querySelector('[role="group"][aria-label*="Stage distribution"]');
     expect(bar).toBeInTheDocument();
     expect(bar).toHaveAttribute('aria-label');
     const label = bar?.getAttribute('aria-label') ?? '';

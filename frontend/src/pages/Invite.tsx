@@ -1,8 +1,12 @@
 import React from 'react';
-import { Box, Button, CardRoot, CardBody, Heading, Input, Text, VStack } from '@chakra-ui/react';
 import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+
 import { authApi } from '../services/api';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const Invite: React.FC = () => {
   const { token } = useParams();
@@ -18,11 +22,12 @@ const Invite: React.FC = () => {
     const load = async () => {
       if (!token) return;
       try {
-        const res: any = await authApi.inviteInfo(token);
-        setEmail(res?.email || null);
-        setRole(res?.role || null);
-      } catch (e: any) {
-        toast.error(e?.response?.data?.detail || e?.message || 'Invalid invite');
+        const res: Record<string, unknown> = (await authApi.inviteInfo(token)) as Record<string, unknown>;
+        setEmail(typeof res?.email === 'string' ? res.email : null);
+        setRole(typeof res?.role === 'string' ? res.role : null);
+      } catch (e: unknown) {
+        const ax = e as { response?: { data?: { detail?: string } }; message?: string };
+        toast.error(ax?.response?.data?.detail || ax?.message || 'Invalid invite');
       }
     };
     void load();
@@ -50,40 +55,72 @@ const Invite: React.FC = () => {
       });
       toast.success('Invite accepted. You can now log in.');
       navigate('/login');
-    } catch (e: any) {
-      toast.error(e?.response?.data?.detail || e?.message || 'Failed to accept invite');
+    } catch (e: unknown) {
+      const ax = e as { response?: { data?: { detail?: string } }; message?: string };
+      toast.error(ax?.response?.data?.detail || ax?.message || 'Failed to accept invite');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Box p={6} display="flex" justifyContent="center">
-      <CardRoot maxW="420px" w="full">
-        <CardBody>
-          <VStack align="stretch" gap={3}>
-            <Heading size="md">Accept Invite</Heading>
-            <Text fontSize="sm" color="fg.muted">
-              {email ? `Invite for ${email} (${role || 'user'})` : 'Loading invite...'}
-            </Text>
-            <Input placeholder="Full name (optional)" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-            <Input placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
-            <Input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-            <Text fontSize="xs" color={passwordTooShort ? 'status.danger' : 'fg.muted'}>
-              Password must be at least 8 characters.
-            </Text>
-            <Button
-              onClick={accept}
-              loading={loading}
-              colorScheme="brand"
-              disabled={loading || !username.trim() || password.length < 8}
-            >
-              Create account
-            </Button>
-          </VStack>
-        </CardBody>
-      </CardRoot>
-    </Box>
+    <div className="flex min-h-screen justify-center bg-background p-6">
+      <Card className="w-full max-w-[420px] gap-0 py-0">
+        <CardHeader className="px-6 pt-6">
+          <CardTitle>Accept Invite</CardTitle>
+          <CardDescription>
+            {email ? `Invite for ${email} (${role || 'user'})` : 'Loading invite...'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 px-6 pb-6">
+          <div className="grid gap-2">
+            <Label htmlFor="invite-full-name">Full name (optional)</Label>
+            <Input
+              id="invite-full-name"
+              placeholder="Full name (optional)"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              autoComplete="name"
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="invite-username">Username</Label>
+            <Input
+              id="invite-username"
+              placeholder="Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoComplete="username"
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="invite-password">Password</Label>
+            <Input
+              id="invite-password"
+              placeholder="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+            />
+          </div>
+          <p
+            className={passwordTooShort ? 'text-xs text-destructive' : 'text-xs text-muted-foreground'}
+            id="invite-password-hint"
+          >
+            Password must be at least 8 characters.
+          </p>
+          <Button
+            type="button"
+            onClick={accept}
+            disabled={loading || !username.trim() || password.length < 8}
+            aria-describedby="invite-password-hint"
+          >
+            {loading ? 'Creating account…' : 'Create account'}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

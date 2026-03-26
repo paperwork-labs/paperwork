@@ -1,34 +1,44 @@
 def test_bootstrap_daily_coverage_tracked_defaults_to_rolling_20_day_history(db_session, monkeypatch):
     """Backfill Daily Coverage (Tracked) should backfill a short rolling snapshot-history window by default."""
-    from backend.tasks import market_data_tasks
-
-    # Force tasks to use pytest DB + avoid Redis side effects.
-    monkeypatch.setattr(market_data_tasks, "SessionLocal", lambda: db_session)
-    monkeypatch.setattr(market_data_tasks, "_set_task_status", lambda *args, **kwargs: None)
-
-    # Stub all sub-steps; we only care about history window wiring.
-    monkeypatch.setattr(market_data_tasks, "refresh_index_constituents", lambda: {"status": "ok"})
-    monkeypatch.setattr(market_data_tasks, "update_tracked_symbol_cache", lambda: {"status": "ok"})
-    monkeypatch.setattr(market_data_tasks, "backfill_last_bars", lambda days=200: {"status": "ok", "days": days})
-    monkeypatch.setattr(market_data_tasks, "recompute_indicators_universe", lambda batch_size=50: {"status": "ok"})
+    # daily_bootstrap imports subtasks from backend.tasks.market.* — patch those modules.
+    monkeypatch.setattr("backend.tasks.market.backfill.constituents", lambda: {"status": "ok"})
+    monkeypatch.setattr("backend.tasks.market.backfill.tracked_cache", lambda: {"status": "ok"})
     monkeypatch.setattr(
-        market_data_tasks,
-        "monitor_coverage_health",
+        "backend.tasks.market.backfill.daily_bars",
+        lambda days=200: {"status": "ok", "days": days},
+    )
+    monkeypatch.setattr(
+        "backend.tasks.market.indicators.recompute_universe",
+        lambda batch_size=50: {"status": "ok"},
+    )
+    monkeypatch.setattr("backend.tasks.market.regime.compute_daily", lambda: {"status": "ok"})
+    monkeypatch.setattr("backend.tasks.market.coverage._run_scan_overlay", lambda: {"status": "ok"})
+    monkeypatch.setattr("backend.tasks.market.coverage._evaluate_exit_cascade_all", lambda: {"status": "ok"})
+    monkeypatch.setattr("backend.tasks.strategy.tasks.evaluate_strategies_task", lambda: {"status": "ok"})
+    monkeypatch.setattr(
+        "backend.tasks.market.coverage.health_check",
         lambda: {"status": "ok", "daily_pct": 100, "stale_daily": 0},
+    )
+    monkeypatch.setattr(
+        "backend.tasks.intelligence.tasks.generate_daily_digest_task",
+        lambda deliver_discord=True: {"status": "ok"},
     )
 
     called = {}
 
-    def fake_backfill_snapshot_history_last_n_days(days: int, batch_size: int = 25, since_date=None):
+    def fake_snapshot_last_n_days(days: int, batch_size: int = 25, since_date=None):
         called["days"] = days
         called["batch_size"] = batch_size
         return {"status": "ok", "days": days, "processed_symbols": 0, "written_rows": 0}
 
-    monkeypatch.setattr(market_data_tasks, "backfill_snapshot_history_last_n_days", fake_backfill_snapshot_history_last_n_days)
-    monkeypatch.setattr(market_data_tasks, "_resolve_history_days", lambda _: 20)
+    monkeypatch.setattr(
+        "backend.tasks.market.history.snapshot_last_n_days",
+        fake_snapshot_last_n_days,
+    )
+    monkeypatch.setattr("backend.tasks.market.coverage._resolve_history_days", lambda _: 20)
 
-    res = market_data_tasks.bootstrap_daily_coverage_tracked()
+    from backend.tasks.market.coverage import daily_bootstrap
+
+    res = daily_bootstrap()
     assert res["status"] == "ok"
     assert called["days"] == 20
-
-

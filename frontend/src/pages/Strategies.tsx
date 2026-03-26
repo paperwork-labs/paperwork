@@ -1,11 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import {
-  Box, Text, SimpleGrid, CardRoot, CardBody, Badge, HStack, VStack,
-  Button, Icon, Input, DialogRoot, DialogBackdrop, DialogPositioner,
-  DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter,
-  DialogCloseTrigger,
-} from '@chakra-ui/react';
-import { FiPlus, FiPlay, FiPause, FiClock } from 'react-icons/fi';
+import { Clock, Loader2, Pause, Play, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Page, PageHeader } from '../components/ui/Page';
 import EmptyState from '../components/ui/EmptyState';
@@ -14,17 +8,47 @@ import api from '../services/api';
 import { formatDateFriendly } from '../utils/format';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import type { Strategy, StrategyStatus, StrategyTemplate } from '../types/strategy';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
 function extractData<T>(resp: { data?: { data?: T } }): T {
-  return (resp?.data as { data?: T })?.data ?? resp?.data as T;
+  return (resp?.data as { data?: T })?.data ?? (resp?.data as T);
 }
 
-const STATUS_CONFIG: Record<StrategyStatus, { color: string; icon: typeof FiPlay }> = {
-  active: { color: 'green', icon: FiPlay },
-  paused: { color: 'yellow', icon: FiPause },
-  draft: { color: 'gray', icon: FiClock },
-  stopped: { color: 'red', icon: FiClock },
-  archived: { color: 'red', icon: FiClock },
+const STATUS_CONFIG: Record<
+  StrategyStatus,
+  { className: string; Icon: typeof Play }
+> = {
+  active: {
+    className: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200',
+    Icon: Play,
+  },
+  paused: {
+    className: 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-100',
+    Icon: Pause,
+  },
+  draft: {
+    className: 'border-border bg-muted/60 text-muted-foreground',
+    Icon: Clock,
+  },
+  stopped: {
+    className: 'border-destructive/40 bg-destructive/10 text-destructive',
+    Icon: Clock,
+  },
+  archived: {
+    className: 'border-destructive/40 bg-destructive/10 text-destructive',
+    Icon: Clock,
+  },
 };
 
 function StrategyCard({
@@ -37,41 +61,38 @@ function StrategyCard({
   timezone?: string;
 }) {
   const cfg = STATUS_CONFIG[strategy.status] ?? STATUS_CONFIG.draft;
+  const Icon = cfg.Icon;
 
   return (
-    <CardRoot
-      bg="bg.card"
-      borderWidth="1px"
-      borderColor="border.subtle"
-      borderRadius="xl"
-      cursor="pointer"
-      transition="border-color 0.2s"
-      _hover={{ borderColor: 'border.emphasized' }}
+    <Card
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      className="cursor-pointer gap-0 border border-border py-4 shadow-none ring-0 transition-colors hover:border-primary/40"
     >
-      <CardBody>
-        <VStack align="stretch" gap={3}>
-          <HStack justify="space-between">
-            <Text fontWeight="semibold" fontSize="md" color="fg.default">
-              {strategy.name}
-            </Text>
-            <Badge colorPalette={cfg.color} variant="subtle" size="sm">
-              <Icon as={cfg.icon} mr={1} />
-              {strategy.status}
-            </Badge>
-          </HStack>
-          {strategy.description && (
-            <Text fontSize="sm" color="fg.muted" lineClamp={2}>
-              {strategy.description}
-            </Text>
-          )}
-          <HStack gap={3} fontSize="xs" color="fg.muted">
-            <Text>Type: {strategy.strategy_type}</Text>
-            <Text>Created: {formatDateFriendly(strategy.created_at, timezone)}</Text>
-          </HStack>
-        </VStack>
-      </CardBody>
-    </CardRoot>
+      <CardContent className="flex flex-col gap-3 px-5 py-0">
+        <div className="flex items-start justify-between gap-2">
+          <p className="font-medium text-foreground">{strategy.name}</p>
+          <Badge variant="outline" className={cn('h-5 gap-1 text-[10px] font-medium', cfg.className)}>
+            <Icon className="size-3" aria-hidden />
+            {strategy.status}
+          </Badge>
+        </div>
+        {strategy.description ? (
+          <p className="line-clamp-2 text-sm text-muted-foreground">{strategy.description}</p>
+        ) : null}
+        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+          <span>Type: {strategy.strategy_type}</span>
+          <span>Created: {formatDateFriendly(strategy.created_at, timezone)}</span>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -203,25 +224,24 @@ const Strategies: React.FC = () => {
         title="Strategies"
         subtitle="Quantitative strategy engine — define rules, backtest, and deploy"
         actions={
-          <Button size="sm" colorPalette="blue" onClick={openCustomDialog}>
-            <Icon as={FiPlus} mr={1} /> New Strategy
+          <Button size="sm" onClick={openCustomDialog} className="gap-1">
+            <Plus className="size-4" aria-hidden />
+            New Strategy
           </Button>
         }
       />
 
       {loading ? (
-        <Text color="fg.muted">Loading strategies...</Text>
+        <p className="text-sm text-muted-foreground">Loading strategies...</p>
       ) : strategies.length === 0 ? (
         <EmptyState
           title="No strategies yet"
           description="Create your first strategy to automate trading decisions based on market indicators and rules."
         />
       ) : (
-        <Box mb={10}>
-          <Text fontWeight="semibold" color="fg.default" mb={4}>
-            My Strategies
-          </Text>
-          <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={4}>
+        <div className="mb-10">
+          <p className="mb-4 font-semibold text-foreground">My Strategies</p>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {strategies.map((s) => (
               <StrategyCard
                 key={s.id}
@@ -230,84 +250,58 @@ const Strategies: React.FC = () => {
                 timezone={timezone}
               />
             ))}
-          </SimpleGrid>
-        </Box>
+          </div>
+        </div>
       )}
 
-      <Box>
-        <Text fontWeight="semibold" color="fg.default" mb={4}>
-          Strategy Templates
-        </Text>
+      <div>
+        <p className="mb-4 font-semibold text-foreground">Strategy Templates</p>
         {templatesLoading ? (
-          <Text color="fg.muted">Loading templates...</Text>
+          <p className="text-sm text-muted-foreground">Loading templates...</p>
         ) : (
-          <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={4}>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {templates.map((tpl) => (
-              <StrategyTemplateCard
-                key={tpl.id}
-                template={tpl}
-                onUseTemplate={handleUseTemplate}
-              />
+              <StrategyTemplateCard key={tpl.id} template={tpl} onUseTemplate={handleUseTemplate} />
             ))}
-          </SimpleGrid>
+          </div>
         )}
-      </Box>
+      </div>
 
-      <DialogRoot open={dialogOpen} onOpenChange={(d) => { if (!d.open) closeDialog(); }}>
-        <DialogBackdrop />
-        <DialogPositioner>
-          <DialogContent maxW="md">
-            <DialogHeader>
-              <DialogTitle>
-                {dialogMode === 'template' ? 'Create from Template' : 'New Strategy'}
-              </DialogTitle>
-            </DialogHeader>
-            <DialogBody>
-              <VStack align="stretch" gap={4}>
-                <Box>
-                  <Text fontSize="sm" fontWeight="medium" color="fg.default" mb={2}>
-                    Name
-                  </Text>
-                  <Input
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                    placeholder="Strategy name"
-                  />
-                </Box>
-                <Box>
-                  <Text fontSize="sm" fontWeight="medium" color="fg.default" mb={2}>
-                    Description (optional)
-                  </Text>
-                  <Input
-                    value={formDescription}
-                    onChange={(e) => setFormDescription(e.target.value)}
-                    placeholder="Brief description"
-                  />
-                </Box>
-                {submitError && (
-                  <Text fontSize="sm" color="red.500">
-                    {submitError}
-                  </Text>
-                )}
-              </VStack>
-            </DialogBody>
-            <DialogFooter>
-              <Button variant="outline" onClick={closeDialog}>
-                Cancel
-              </Button>
-              <Button
-                colorPalette="blue"
-                onClick={handleSubmit}
-                loading={submitLoading}
-                disabled={submitLoading}
-              >
-                Create
-              </Button>
-            </DialogFooter>
-            <DialogCloseTrigger />
-          </DialogContent>
-        </DialogPositioner>
-      </DialogRoot>
+      <Dialog open={dialogOpen} onOpenChange={(open) => !open && closeDialog()}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{dialogMode === 'template' ? 'Create from Template' : 'New Strategy'}</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <div>
+              <p className="mb-2 text-sm font-medium text-foreground">Name</p>
+              <Input
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                placeholder="Strategy name"
+              />
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-medium text-foreground">Description (optional)</p>
+              <Input
+                value={formDescription}
+                onChange={(e) => setFormDescription(e.target.value)}
+                placeholder="Brief description"
+              />
+            </div>
+            {submitError ? <p className="text-sm text-destructive">{submitError}</p> : null}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeDialog}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={submitLoading} className="gap-2">
+              {submitLoading ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Page>
   );
 };

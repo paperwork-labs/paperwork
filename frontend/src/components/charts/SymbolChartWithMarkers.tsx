@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useMemo } from 'react';
-import { Box, Badge } from '@chakra-ui/react';
+
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { STAGE_SUBTLE_BADGE } from '@/lib/stageTailwind';
 import {
   createChart,
   createSeriesMarkers,
@@ -704,31 +707,44 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
     showRSI, rsiData, showMACD, macdData, showBollinger, bollingerData, priceLinesExtra,
   ]);
 
+  const stagePalette = STAGE_COLORS[stageInfo?.stage ?? ''] ?? 'gray';
+  const stageBadgeClass = STAGE_SUBTLE_BADGE[stagePalette] ?? STAGE_SUBTLE_BADGE.gray;
+
   return (
-    <Box position="relative">
+    <div className="relative">
       {stageInfo && ind.stage && (
-        <Box position="absolute" top={2} left={2} zIndex={10} display="flex" gap={2}>
-          <Badge
-            colorPalette={STAGE_COLORS[stageInfo.stage] ?? 'gray'}
-            variant="subtle"
-            px={2}
-            py={1}
-          >
+        <div className="absolute top-2 left-2 z-10 flex flex-wrap gap-2">
+          <Badge variant="outline" className={cn('px-2 py-1', stageBadgeClass)}>
             Stage {stageInfo.stage}
           </Badge>
-          <Badge variant="outline" px={2} py={1}>
+          <Badge variant="outline" className="px-2 py-1">
             SATA {stageInfo.sataScore}/10
           </Badge>
-        </Box>
+        </div>
       )}
       {ind.emas && (
-        <Box position="absolute" top={2} right={2} zIndex={10} display="flex" gap={1}>
-          <Badge size="sm" colorPalette="yellow" variant="subtle">EMA 8</Badge>
-          <Badge size="sm" colorPalette="blue" variant="subtle">EMA 21</Badge>
-          <Badge size="sm" colorPalette="red" variant="subtle">EMA 200</Badge>
-        </Box>
+        <div className="absolute top-2 right-2 z-10 flex flex-wrap gap-1">
+          <Badge
+            variant="outline"
+            className="h-5 border-transparent bg-[rgb(var(--chart-warning)/0.15)] px-2 py-0.5 text-[10px] text-[rgb(var(--chart-warning))]"
+          >
+            EMA 8
+          </Badge>
+          <Badge
+            variant="outline"
+            className="h-5 border-transparent bg-[rgb(var(--chart-neutral)/0.15)] px-2 py-0.5 text-[10px] text-[rgb(var(--chart-neutral))]"
+          >
+            EMA 21
+          </Badge>
+          <Badge
+            variant="outline"
+            className="h-5 border-transparent bg-[rgb(var(--chart-danger)/0.15)] px-2 py-0.5 text-[10px] text-[rgb(var(--chart-danger))]"
+          >
+            EMA 200
+          </Badge>
+        </div>
       )}
-      <Box ref={ref} w="full" />
+      <div ref={ref} className="w-full" />
       <div
         ref={tooltipRef}
         style={{
@@ -747,7 +763,7 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
           color: isDark ? '#E5E7EB' : '#111827',
         }}
       />
-    </Box>
+    </div>
   );
 };
 

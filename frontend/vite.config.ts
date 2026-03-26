@@ -1,15 +1,16 @@
 /// <reference types="vitest" />
+import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   server: {
     port: 3000,
     host: true,
     headers: {
-      // Avoid stale ESM module caching during fast-moving Chakra v3 migration.
+      // Avoid stale ESM module caching during active UI migrations.
       'Cache-Control': 'no-store',
     },
     proxy: {
@@ -27,7 +28,6 @@ export default defineConfig({
       output: {
         manualChunks: {
           react: ['react', 'react-dom', 'react-router-dom'],
-          chakra: ['@chakra-ui/react', '@emotion/react', '@emotion/styled', 'framer-motion'],
           recharts: ['recharts'],
           vendor: ['axios', 'lodash', 'numeral', 'socket.io-client'],
         },

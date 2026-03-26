@@ -1,20 +1,22 @@
 import React from 'react';
-import { Box, Flex } from '@chakra-ui/react';
+import { cn } from '@/lib/utils';
 
 interface ToolbarProps {
   children: React.ReactNode;
+  className?: string;
 }
 
-const Toolbar: React.FC<ToolbarProps> = ({ children }) => {
+const Toolbar: React.FC<ToolbarProps> = ({ children, className }) => {
   return (
-    <Box border="1px" borderColor="border.subtle" borderRadius="md" p={3} bg="bg.panel">
-      <Flex wrap="wrap" gap={4} align="center">
-        {children}
-      </Flex>
-    </Box>
+    <div
+      className={cn(
+        'rounded-md border border-border bg-muted/40 p-3 shadow-xs dark:bg-muted/20',
+        className
+      )}
+    >
+      <div className="flex flex-wrap items-center gap-4">{children}</div>
+    </div>
   );
 };
 
 export default Toolbar;
-
-

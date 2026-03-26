@@ -8,7 +8,6 @@ Used by the nightly pipeline and auto-remediation tasks.
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
@@ -220,25 +219,24 @@ def build_nightly_pipeline(db_session_factory) -> PipelineRunner:
     Returns:
         Configured PipelineRunner
     """
-    # Import task functions
-    from backend.tasks.market_data_tasks import (
-        refresh_index_constituents,
-        update_tracked_symbol_cache,
-        backfill_daily_coverage_impl,
-        recompute_indicators_universe_impl,
-        record_daily_history_impl,
-        compute_daily_regime_impl,
-        monitor_coverage_health_impl,
+    from backend.tasks.market.backfill import (
+        constituents,
+        daily_bars,
+        tracked_cache,
     )
+    from backend.tasks.market.coverage import health_check
+    from backend.tasks.market.history import record_daily
+    from backend.tasks.market.indicators import recompute_universe
+    from backend.tasks.market.regime import compute_daily
 
     runner = PipelineRunner(name="nightly")
 
-    runner.add_stage("constituents", refresh_index_constituents, timeout=120)
-    runner.add_stage("tracked", update_tracked_symbol_cache, timeout=60)
-    runner.add_stage("daily_bars", backfill_daily_coverage_impl, timeout=600)
-    runner.add_stage("indicators", recompute_indicators_universe_impl, timeout=300)
-    runner.add_stage("history", record_daily_history_impl, timeout=120)
-    runner.add_stage("regime", compute_daily_regime_impl, timeout=60)
-    runner.add_stage("coverage", monitor_coverage_health_impl, timeout=60, continue_on_error=True)
+    runner.add_stage("constituents", constituents, timeout=120)
+    runner.add_stage("tracked", tracked_cache, timeout=60)
+    runner.add_stage("daily_bars", daily_bars, timeout=600)
+    runner.add_stage("indicators", recompute_universe, timeout=300)
+    runner.add_stage("history", record_daily, timeout=120)
+    runner.add_stage("regime", compute_daily, timeout=60)
+    runner.add_stage("coverage", health_check, timeout=60, continue_on_error=True)
 
     return runner

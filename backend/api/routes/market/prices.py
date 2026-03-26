@@ -163,8 +163,11 @@ async def get_indicator_series(
         )
         if bar_count >= expected_rows * 0.7:
             try:
-                from backend.tasks.market_data_tasks import backfill_snapshot_history_for_symbol
-                backfill_snapshot_history_for_symbol.delay(symbol=symbol, start_date=start_date.strftime("%Y-%m-%d"))
+                from backend.tasks.market.history import snapshot_for_symbol
+
+                snapshot_for_symbol.delay(
+                    symbol=symbol, start_date=start_date.strftime("%Y-%m-%d")
+                )
                 backfill_requested = True
             except Exception:
                 pass

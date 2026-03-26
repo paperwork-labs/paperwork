@@ -204,27 +204,27 @@ If you are renaming the database (e.g., `old_db` → `axiomfolio`), migrate data
 5. Point `DATABASE_URL` and related env vars at the new DB and run migrations via CI.
 
 ## Scheduling (cron, no always-on beat)
-Use scheduled jobs to enqueue tasks (task status names shown in parentheses):
+Use scheduled jobs to enqueue tasks (job IDs in parentheses where applicable):
 - `backend.tasks.account_sync.sync_all_ibkr_accounts`
-- `backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked` (`admin_coverage_backfill`, daily backfill chain)
-- `backend.tasks.market_data_tasks.monitor_coverage_health` (`admin_coverage_refresh`)
-- `backend.tasks.market_data_tasks.enforce_price_data_retention` (`admin_retention_enforce`)
+- `backend.tasks.market.coverage.daily_bootstrap` (`admin_coverage_backfill`, nightly coverage pipeline)
+- `backend.tasks.market.coverage.health_check` (`admin_coverage_refresh`)
+- `backend.tasks.market.maintenance.prune_old_bars` (`admin_retention_enforce`)
 
-Render cron defaults (UTC, from `job_catalog.py`):
+Render cron defaults (UTC, from `job_catalog.py` and DB-seeded schedules):
 - `*/5 * * * *` — stale-sync-recovery (auto-reset stuck syncs)
-- `0 1 * * *` — admin_coverage_backfill (nightly pipeline: bars, indicators, snapshots)
-- `20 1 * * *` — admin_snapshots_history_record (daily snapshot archive)
-- `30 1 * * *` — backfill_position_metadata (enrich positions from snapshots)
-- `0 2 * * *` — index constituents refresh (S&P 500, NASDAQ-100, Dow 30)
+- `0 1 * * *` — `admin_coverage_backfill` → `backend.tasks.market.coverage.daily_bootstrap` (bars, indicators, snapshots)
+- `20 1 * * *` — `admin_snapshots_history_record` → `backend.tasks.market.history.record_daily` (daily snapshot archive)
+- `30 1 * * *` — `backfill_position_metadata` → `backend.tasks.market.indicators.position_metadata` (enrich positions from snapshots)
+- `0 2 * * *` — index constituents refresh → `backend.tasks.market.backfill.constituents` (S&P 500, NASDAQ-100, Dow 30)
 - `15 2 * * *` — IBKR daily FlexQuery sync
-- `30 2 * * *` — Schwab daily sync + tracked symbols refresh
-- `45 2 * * *` — data quality audit
-- `0 * * * *` — admin_coverage_refresh (hourly health check)
-- `10 4 * * *` — intraday 5m bar backfill (D-1)
-- `30 4 * * *` — admin_retention_enforce (purge old 5m bars)
-- `45 4 * * *` — fill missing snapshot fundamentals
-- `0 4 * * 0` — refresh stale fundamentals (weekly, Sunday)
-- `0 */6 * * *` — recover stale job runs
+- `30 2 * * *` — Schwab daily sync + tracked symbols refresh → `backend.tasks.market.backfill.tracked_cache`
+- `45 2 * * *` — data quality audit → `backend.tasks.market.maintenance.audit_quality`
+- `0 * * * *` — `admin_coverage_refresh` → `backend.tasks.market.coverage.health_check` (hourly health check)
+- `10 4 * * *` — intraday 5m bar backfill (D-1) → `backend.tasks.market.intraday.bars_5m_last_n_days` (`admin_backfill_5m`)
+- `30 4 * * *` — `admin_retention_enforce` → `backend.tasks.market.maintenance.prune_old_bars` (purge old 5m bars)
+- `45 4 * * *` — fill missing snapshot fundamentals → `backend.tasks.market.fundamentals.fill_missing`
+- `0 4 * * 0` — refresh stale fundamentals (weekly, Sunday) → `backend.tasks.market.fundamentals.refresh_stale`
+- `0 */6 * * *` — recover stale job runs → `backend.tasks.market.maintenance.recover_jobs` (`admin_recover_stale_job_runs`)
 
 ### Execution flow (production)
 ![Production execution flow](assets/production_execution_flow.png)

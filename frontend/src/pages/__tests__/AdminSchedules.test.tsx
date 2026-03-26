@@ -12,7 +12,7 @@ const MOCK_SCHEDULES = {
       id: 'admin_coverage_refresh',
       display_name: 'Coverage Health Check',
       group: 'market_data',
-      task: 'backend.tasks.market_data_tasks.monitor_coverage_health',
+      task: 'backend.tasks.market.coverage.health_check',
       description: 'Measure data freshness and flag stale symbols',
       cron: '0 * * * *',
       timezone: 'UTC',
@@ -26,7 +26,7 @@ const MOCK_SCHEDULES = {
       id: 'admin_coverage_backfill',
       display_name: 'Nightly Coverage Pipeline',
       group: 'market_data',
-      task: 'backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked',
+      task: 'backend.tasks.market.coverage.daily_bootstrap',
       description: 'Full nightly chain: constituents, tracked, daily bars, indicators',
       cron: '0 3 * * *',
       timezone: 'UTC',
@@ -40,7 +40,7 @@ const MOCK_SCHEDULES = {
       id: 'admin_retention_enforce',
       display_name: 'Data Retention Cleanup',
       group: 'maintenance',
-      task: 'backend.tasks.market_data_tasks.enforce_price_data_retention',
+      task: 'backend.tasks.market.maintenance.prune_old_bars',
       description: 'Purge 5-minute bars older than the configured retention window',
       cron: '30 4 * * *',
       timezone: 'UTC',
@@ -70,7 +70,7 @@ const MOCK_HISTORY = {
       schedule_id: 'admin_coverage_refresh',
       action: 'created',
       actor: 'admin@test.local',
-      changes: { id: 'admin_coverage_refresh', task: 'monitor_coverage_health', cron: '0 * * * *' },
+      changes: { id: 'admin_coverage_refresh', task: 'health_check', cron: '0 * * * *' },
       timestamp: '2026-02-17T08:00:00Z',
     },
     {
@@ -111,7 +111,7 @@ vi.mock('../../services/api', () => ({
           id: 'admin_coverage_refresh',
           display_name: 'Coverage Health Check',
           group: 'market_data',
-          task: 'backend.tasks.market_data_tasks.monitor_coverage_health',
+          task: 'backend.tasks.market.coverage.health_check',
           cron: '0 * * * *',
           timezone: 'UTC',
           enabled: true,
@@ -153,7 +153,7 @@ describe('AdminSchedules', () => {
   it('shows short task name from dotted path', async () => {
     renderWithProviders(<AdminSchedules />);
 
-    expect(await screen.findByText(/monitor_coverage_health/)).toBeInTheDocument();
+    expect(await screen.findByText(/health_check/)).toBeInTheDocument();
   });
 
   it('shows description text under job name', async () => {

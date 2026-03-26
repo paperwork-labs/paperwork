@@ -1,576 +1,412 @@
-import React from 'react';
+import * as React from "react"
+import axios from "axios"
+import { useQueryClient } from "@tanstack/react-query"
+import { RefreshCw } from "lucide-react"
+
 import {
-  Box,
-  Button,
-  Heading,
-  HStack,
-  Text,
-  Badge,
-  DialogRoot,
-  DialogBackdrop,
-  DialogPositioner,
-  DialogContent,
-  DialogHeader,
-  DialogBody,
-  DialogFooter,
-  DialogTitle,
-  IconButton,
-  Tabs,
-  Textarea,
-} from '@chakra-ui/react';
-import toast from 'react-hot-toast';
-import api from '../services/api';
-import { FiCheck, FiX, FiPlay, FiEye } from 'react-icons/fi';
-import SortableTable, { type Column } from '../components/SortableTable';
-import StatCard from '@/components/admin/StatCard';
-import { useUserPreferences } from '../hooks/useUserPreferences';
-import { formatDateTime } from '../utils/format';
+  AgentChatPanel,
+  AgentHealthPanel,
+  AgentSessionList,
+  type AgentAction,
+  type ChatMessage,
+  type HealthData,
+  type HealthSignal,
+} from "@/components/agent"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
+import StatCard from "@/components/admin/StatCard"
+import {
+  autonomyApiToLabel,
+  autonomyLabelToApi,
+  useAgentRun,
+  useAgentSessions,
+  useAgentSettings,
+  useAgentStats,
+  useApproveAgentAction,
+  usePatchAgentSettings,
+} from "@/hooks/useAgent"
+import useAdminHealth from "@/hooks/useAdminHealth"
+import type { AdminHealthResponse } from "@/types/adminHealth"
 
-interface AgentAction {
-  id: number;
-  action_type: string;
-  action_name: string;
-  payload: Record<string, unknown> | null;
-  risk_level: string;
-  status: string;
-  reasoning: string | null;
-  context_summary: string | null;
-  task_id: string | null;
-  result: Record<string, unknown> | null;
-  error: string | null;
-  created_at: string;
-  approved_at: string | null;
-  executed_at: string | null;
-  completed_at: string | null;
-  auto_approved: boolean;
-  session_id: string | null;
+function newMessageId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 }
 
-interface AgentStats {
-  total_actions: number;
-  pending_approval: number;
-  completed: number;
-  failed: number;
-  auto_approved_rate: number;
-  by_risk_level: Record<string, number>;
-  top_actions: Record<string, number>;
+function getAxiosErrorMessage(err: unknown): string {
+  if (axios.isAxiosError(err)) {
+    const data = err.response?.data as { detail?: unknown } | undefined
+    if (data?.detail != null) {
+      const d = data.detail
+      return typeof d === "string" ? d : JSON.stringify(d)
+    }
+    return err.message
+  }
+  if (err instanceof Error) return err.message
+  return "Something went wrong."
 }
 
-const riskPalette = (risk: string) => {
-  switch (risk) {
-    case 'safe':
-      return 'green';
-    case 'moderate':
-      return 'blue';
-    case 'risky':
-      return 'yellow';
-    case 'critical':
-      return 'red';
-    default:
-      return 'gray';
-  }
-};
+function dimensionToSignal(status: "green" | "red"): HealthSignal {
+  return status === "green" ? "ok" : "error"
+}
 
-const statusPalette = (status: string) => {
-  switch (status) {
-    case 'completed':
-      return 'green';
-    case 'executing':
-      return 'blue';
-    case 'pending_approval':
-      return 'yellow';
-    case 'approved':
-      return 'teal';
-    case 'rejected':
-    case 'failed':
-      return 'red';
-    default:
-      return 'gray';
+function adminHealthToAgentHealth(
+  health: AdminHealthResponse | null
+): HealthData | undefined {
+  if (!health?.dimensions) return undefined
+  const d = health.dimensions
+  return {
+    coverage: dimensionToSignal(d.coverage.status),
+    stage: dimensionToSignal(d.stage_quality.status),
+    jobs: dimensionToSignal(d.jobs.status),
+    audit: dimensionToSignal(d.audit.status),
+    regime: dimensionToSignal(d.regime.status),
   }
-};
+}
+
+/** Run response action payloads are a subset of persisted AgentAction rows. */
+function normalizeRunAction(raw: Record<string, unknown>): AgentAction {
+  const id = Number(raw.id)
+  const created =
+    typeof raw.created_at === "string" && raw.created_at
+      ? raw.created_at
+      : new Date().toISOString()
+  return {
+    id: Number.isFinite(id) ? id : 0,
+    action_type: String(raw.action_type ?? ""),
+    action_name: String(raw.action_name ?? raw.action_type ?? "Action"),
+    payload: null,
+    risk_level: String(raw.risk_level ?? "moderate"),
+    status: String(raw.status ?? "pending_approval"),
+    reasoning: typeof raw.reasoning === "string" ? raw.reasoning : null,
+    context_summary: null,
+    task_id: typeof raw.task_id === "string" ? raw.task_id : null,
+    result: null,
+    error: null,
+    created_at: created,
+    approved_at: null,
+    executed_at: null,
+    completed_at: null,
+    auto_approved: Boolean(raw.auto_approved),
+    session_id: typeof raw.session_id === "string" ? raw.session_id : null,
+    confidence_score:
+      typeof raw.confidence_score === "number" ? raw.confidence_score : null,
+  }
+}
 
 const AdminAgent: React.FC = () => {
-  const { timezone } = useUserPreferences();
-  const [loading, setLoading] = React.useState(false);
-  const [pendingActions, setPendingActions] = React.useState<AgentAction[]>([]);
-  const [allActions, setAllActions] = React.useState<AgentAction[]>([]);
-  const [stats, setStats] = React.useState<AgentStats | null>(null);
-  const [selectedAction, setSelectedAction] = React.useState<AgentAction | null>(null);
-  const [detailsOpen, setDetailsOpen] = React.useState(false);
-  const [runContext, setRunContext] = React.useState('');
-  const [running, setRunning] = React.useState(false);
-  const [approving, setApproving] = React.useState<number | null>(null);
+  const queryClient = useQueryClient()
+  const { health } = useAdminHealth()
+  const settingsQuery = useAgentSettings()
+  const sessionsQuery = useAgentSessions()
+  const statsQuery = useAgentStats()
+  const runMutation = useAgentRun()
+  const approveMutation = useApproveAgentAction()
+  const patchSettings = usePatchAgentSettings()
 
-  const loadPending = async () => {
-    try {
-      const r = await api.get('/admin/agent/actions/pending');
-      setPendingActions(r.data || []);
-    } catch (err: unknown) {
-      const axiosErr = err as { message?: string };
-      toast.error(axiosErr?.message || 'Failed to load pending actions');
-    }
-  };
+  const [messages, setMessages] = React.useState<ChatMessage[]>([])
+  const [selectedSessionId, setSelectedSessionId] = React.useState<
+    string | undefined
+  >()
+  const [approvingActionId, setApprovingActionId] = React.useState<
+    number | null
+  >(null)
+  const [settingsError, setSettingsError] = React.useState<string | null>(null)
+  const [approveError, setApproveError] = React.useState<string | null>(null)
 
-  const loadAll = async () => {
-    try {
-      const r = await api.get('/admin/agent/actions', { params: { limit: 100 } });
-      setAllActions(r.data || []);
-    } catch (err: unknown) {
-      const axiosErr = err as { message?: string };
-      toast.error(axiosErr?.message || 'Failed to load actions');
-    }
-  };
+  const healthData = React.useMemo(
+    () => adminHealthToAgentHealth(health),
+    [health]
+  )
 
-  const loadStats = async () => {
-    try {
-      const r = await api.get('/admin/agent/stats');
-      setStats(r.data || null);
-    } catch (err: unknown) {
-      const axiosErr = err as { message?: string };
-      toast.error(axiosErr?.message || 'Failed to load stats');
-    }
-  };
+  const autonomyLabel = autonomyApiToLabel(
+    settingsQuery.data?.autonomy_level ?? "safe"
+  )
 
-  const loadAll3 = async () => {
-    setLoading(true);
+  const showSidebarSkeleton =
+    (settingsQuery.isPending && !settingsQuery.data) ||
+    (sessionsQuery.isPending && !sessionsQuery.data)
+
+  const [refreshing, setRefreshing] = React.useState(false)
+
+  const handleRefresh = React.useCallback(async () => {
+    setRefreshing(true)
     try {
-      await Promise.all([loadPending(), loadAll(), loadStats()]);
+      await queryClient.refetchQueries({ queryKey: ["agent"] })
+      await queryClient.refetchQueries({ queryKey: ["admin-health"] })
     } finally {
-      setLoading(false);
+      setRefreshing(false)
     }
-  };
+  }, [queryClient])
 
-  React.useEffect(() => {
-    loadAll3();
-  }, []);
+  const handleAutonomyChange = React.useCallback(
+    (label: string) => {
+      const apiLevel = autonomyLabelToApi(label)
+      if (settingsQuery.data?.autonomy_level === apiLevel) return
+      setSettingsError(null)
+      patchSettings.mutate(apiLevel, {
+        onError: (err) => {
+          setSettingsError(getAxiosErrorMessage(err))
+        },
+      })
+    },
+    [patchSettings, settingsQuery.data?.autonomy_level]
+  )
 
-  const handleApprove = async (action: AgentAction, approved: boolean) => {
-    setApproving(action.id);
-    try {
-      await api.post(`/admin/agent/actions/${action.id}/approve`, { approved });
-      toast.success(approved ? 'Action approved and dispatched' : 'Action rejected');
-      await loadAll3();
-    } catch (err: unknown) {
-      const axiosErr = err as { message?: string };
-      toast.error(axiosErr?.message || 'Failed to process approval');
-    } finally {
-      setApproving(null);
-    }
-  };
+  const handleSendMessage = React.useCallback(
+    async (message: string) => {
+      const userMsg: ChatMessage = {
+        id: newMessageId(),
+        role: "user",
+        content: message,
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, userMsg])
 
-  const handleRunAgent = async () => {
-    setRunning(true);
-    try {
-      const r = await api.post('/admin/agent/run', null, {
-        params: runContext ? { context: runContext } : {},
-      });
-      toast.success(`Agent run completed (session: ${r.data?.session_id || 'unknown'})`);
-      setRunContext('');
-      await loadAll3();
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { detail?: string } }; message?: string };
-      toast.error(axiosErr?.response?.data?.detail || axiosErr?.message || 'Agent run failed');
-    } finally {
-      setRunning(false);
-    }
-  };
+      try {
+        const data = await runMutation.mutateAsync(message)
+        const taken = (data.actions_taken ?? []).map((a) =>
+          normalizeRunAction(a as Record<string, unknown>)
+        )
+        const pending = (data.actions_pending ?? []).map((a) =>
+          normalizeRunAction(a as Record<string, unknown>)
+        )
+        const combined = [...taken, ...pending]
+        const analysisText =
+          (data.analysis && data.analysis.trim()) || "No analysis provided."
+        const sessionNote =
+          data.session_id != null
+            ? `\n\n*Session: ${data.session_id}*`
+            : ""
 
-  const actionColumns: Column<AgentAction>[] = [
-    {
-      key: 'status',
-      header: 'Status',
-      accessor: (a) => a.status,
-      sortable: true,
-      sortType: 'string',
-      render: (v) => <Badge colorPalette={statusPalette(v as string)}>{String(v)}</Badge>,
-      width: '130px',
+        const agentMsg: ChatMessage = {
+          id: newMessageId(),
+          role: "agent",
+          content: analysisText + sessionNote,
+          actions: combined.length > 0 ? combined : undefined,
+          timestamp: new Date(),
+        }
+        setMessages((prev) => [...prev, agentMsg])
+      } catch (err) {
+        const agentErr: ChatMessage = {
+          id: newMessageId(),
+          role: "agent",
+          content: `Run failed.\n\n${getAxiosErrorMessage(err)}`,
+          timestamp: new Date(),
+        }
+        setMessages((prev) => [...prev, agentErr])
+      }
     },
-    {
-      key: 'risk_level',
-      header: 'Risk',
-      accessor: (a) => a.risk_level,
-      sortable: true,
-      sortType: 'string',
-      render: (v) => <Badge colorPalette={riskPalette(v as string)}>{String(v)}</Badge>,
-      width: '100px',
+    [runMutation]
+  )
+
+  const handleApproveAction = React.useCallback(
+    async (actionId: number, approved: boolean) => {
+      setApproveError(null)
+      setApprovingActionId(actionId)
+      try {
+        const res = await approveMutation.mutateAsync({
+          id: actionId,
+          approved,
+        })
+        const updated = res.data
+        setMessages((prev) =>
+          prev.map((m) => {
+            if (!m.actions?.some((a) => a.id === actionId)) return m
+            return {
+              ...m,
+              actions: m.actions.map((a) =>
+                a.id === actionId ? { ...a, ...updated } : a
+              ),
+            }
+          })
+        )
+      } catch (err) {
+        setApproveError(getAxiosErrorMessage(err))
+      } finally {
+        setApprovingActionId(null)
+      }
     },
-    {
-      key: 'action_name',
-      header: 'Action',
-      accessor: (a) => a.action_name,
-      sortable: true,
-      sortType: 'string',
-      render: (v) => <Text fontSize="13px">{String(v)}</Text>,
-    },
-    {
-      key: 'reasoning',
-      header: 'Reasoning',
-      accessor: (a) => a.reasoning || '',
-      sortable: false,
-      render: (v) => (
-        <Text fontSize="12px" color="fg.muted" lineClamp={2}>
-          {String(v) || '—'}
-        </Text>
-      ),
-    },
-    {
-      key: 'created_at',
-      header: 'Created',
-      accessor: (a) => a.created_at,
-      sortable: true,
-      sortType: 'date',
-      render: (v) => (
-        <Text fontSize="12px" color="fg.muted">
-          {formatDateTime(v as string, timezone)}
-        </Text>
-      ),
-      width: '180px',
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
-      accessor: () => null,
-      sortable: false,
-      isNumeric: true,
-      width: '150px',
-      render: (_v, a) => (
-        <HStack gap={1} justify="flex-end">
-          {a.status === 'pending_approval' && (
-            <>
-              <IconButton
-                aria-label="Approve"
-                size="xs"
-                colorPalette="green"
-                variant="ghost"
-                loading={approving === a.id}
-                onClick={() => handleApprove(a, true)}
-              >
-                <FiCheck />
-              </IconButton>
-              <IconButton
-                aria-label="Reject"
-                size="xs"
-                colorPalette="red"
-                variant="ghost"
-                loading={approving === a.id}
-                onClick={() => handleApprove(a, false)}
-              >
-                <FiX />
-              </IconButton>
-            </>
-          )}
-          <IconButton
-            aria-label="View Details"
-            size="xs"
-            variant="ghost"
-            onClick={() => {
-              setSelectedAction(a);
-              setDetailsOpen(true);
-            }}
-          >
-            <FiEye />
-          </IconButton>
-        </HStack>
-      ),
-    },
-  ];
+    [approveMutation]
+  )
+
+  const stats = statsQuery.data
+  const statsError =
+    statsQuery.isError && getAxiosErrorMessage(statsQuery.error)
 
   return (
-    <Box p={0}>
-      <HStack justify="space-between" mb={4}>
-        <Box>
-          <Heading size="md">Agent Dashboard</Heading>
-          <Text fontSize="sm" color="fg.muted">
-            LLM-powered auto-ops agent for intelligent system monitoring and remediation.
-          </Text>
-        </Box>
-        <HStack gap={2}>
-          <Button size="sm" onClick={loadAll3} loading={loading}>
-            Reload
-          </Button>
-        </HStack>
-      </HStack>
-
-      <HStack gap={4} mb={6} wrap="wrap">
-        <StatCard
-          label="Pending Approval"
-          value={stats?.pending_approval ?? '—'}
-          helpText="Actions requiring review"
-          color={stats?.pending_approval ? 'yellow.500' : undefined}
-          variant="full"
-        />
-        <StatCard
-          label="Total Actions"
-          value={stats?.total_actions ?? '—'}
-          helpText="All time"
-          variant="full"
-        />
-        <StatCard
-          label="Auto-Approved Rate"
-          value={`${stats?.auto_approved_rate?.toFixed(1) ?? '—'}%`}
-          helpText="Safe/moderate actions"
-          variant="full"
-        />
-        <StatCard
-          label="Failed Actions"
-          value={stats?.failed ?? '—'}
-          helpText="Execution errors"
-          color={stats?.failed ? 'red.500' : undefined}
-          variant="full"
-        />
-      </HStack>
-
-      <Box
-        borderWidth="1px"
-        borderColor="border.subtle"
-        borderRadius="lg"
-        p={4}
-        bg="bg.card"
-        mb={6}
-      >
-        <Text fontWeight="semibold" mb={2}>
-          Manual Agent Run
-        </Text>
-        <Text fontSize="sm" color="fg.muted" mb={3}>
-          Trigger the LLM agent to analyze system health and propose/execute remediation actions.
-        </Text>
-        <HStack gap={3}>
-          <Textarea
-            placeholder="Optional context for the agent (e.g., 'Focus on coverage issues')"
-            size="sm"
-            value={runContext}
-            onChange={(e) => setRunContext(e.target.value)}
-            rows={2}
-            flex={1}
+    <div className="flex flex-col gap-6 p-0">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">
+            Agent Dashboard
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            LLM-powered auto-ops agent for intelligent system monitoring and
+            remediation.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="shrink-0"
+          onClick={() => {
+            void handleRefresh()
+          }}
+          disabled={refreshing}
+          aria-busy={refreshing}
+          aria-label="Reload agent data and health"
+        >
+          <RefreshCw
+            className={`mr-2 size-4 ${refreshing ? "animate-spin" : ""}`}
+            aria-hidden
           />
-          <Button
-            colorPalette="blue"
-            onClick={handleRunAgent}
-            loading={running}
-            disabled={running}
-          >
-            <FiPlay />
-            Run Agent
-          </Button>
-        </HStack>
-      </Box>
+          Reload
+        </Button>
+      </header>
 
-      <Tabs.Root defaultValue="pending" variant="line">
-        <Tabs.List mb={3}>
-          <Tabs.Trigger value="pending">
-            Pending Approval
-            {pendingActions.length > 0 && (
-              <Badge ml={2} colorPalette="yellow">
-                {pendingActions.length}
-              </Badge>
-            )}
-          </Tabs.Trigger>
-          <Tabs.Trigger value="all">All Actions</Tabs.Trigger>
-        </Tabs.List>
+      {(settingsQuery.isError ||
+        sessionsQuery.isError ||
+        statsQuery.isError) && (
+        <Alert variant="destructive" role="alert">
+          <AlertTitle>Could not load agent data</AlertTitle>
+          <AlertDescription className="space-y-1">
+            {settingsQuery.isError ? (
+              <p>Settings: {getAxiosErrorMessage(settingsQuery.error)}</p>
+            ) : null}
+            {sessionsQuery.isError ? (
+              <p>Sessions: {getAxiosErrorMessage(sessionsQuery.error)}</p>
+            ) : null}
+            {statsQuery.isError ? (
+              <p>Stats: {getAxiosErrorMessage(statsQuery.error)}</p>
+            ) : null}
+          </AlertDescription>
+        </Alert>
+      )}
 
-        <Tabs.Content value="pending">
-          <Box
-            borderWidth="1px"
-            borderColor="border.subtle"
-            borderRadius="lg"
-            bg="bg.card"
-            overflow="hidden"
-          >
-            <SortableTable
-              data={pendingActions}
-              columns={actionColumns}
-              defaultSortBy="created_at"
-              defaultSortOrder="desc"
-              size="sm"
-              maxHeight="50vh"
-              emptyMessage={loading ? 'Loading…' : 'No actions pending approval.'}
+      {settingsError ? (
+        <Alert variant="destructive" role="alert">
+          <AlertTitle>Could not update autonomy</AlertTitle>
+          <AlertDescription>{settingsError}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {approveError ? (
+        <Alert variant="destructive" role="alert">
+          <AlertTitle>Could not update action</AlertTitle>
+          <AlertDescription>{approveError}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      <section
+        aria-label="Agent statistics"
+        className="flex flex-wrap gap-4"
+      >
+        {statsQuery.isPending && !statsQuery.data ? (
+          <>
+            <Skeleton className="h-[5.5rem] min-w-[140px] flex-1 rounded-lg" />
+            <Skeleton className="h-[5.5rem] min-w-[140px] flex-1 rounded-lg" />
+            <Skeleton className="h-[5.5rem] min-w-[140px] flex-1 rounded-lg" />
+            <Skeleton className="h-[5.5rem] min-w-[140px] flex-1 rounded-lg" />
+          </>
+        ) : (
+          <>
+            <StatCard
+              label="Pending Approval"
+              value={stats?.pending_approval ?? "—"}
+              helpText="Actions requiring review"
+              color={stats?.pending_approval ? "status.warning" : undefined}
+              variant="full"
             />
-          </Box>
-        </Tabs.Content>
-
-        <Tabs.Content value="all">
-          <Box
-            borderWidth="1px"
-            borderColor="border.subtle"
-            borderRadius="lg"
-            bg="bg.card"
-            overflow="hidden"
-          >
-            <SortableTable
-              data={allActions}
-              columns={actionColumns}
-              defaultSortBy="created_at"
-              defaultSortOrder="desc"
-              size="sm"
-              maxHeight="60vh"
-              emptyMessage={loading ? 'Loading…' : 'No agent actions recorded yet.'}
+            <StatCard
+              label="Total Actions"
+              value={stats?.total_actions ?? "—"}
+              helpText="All time"
+              variant="full"
             />
-          </Box>
-        </Tabs.Content>
-      </Tabs.Root>
+            <StatCard
+              label="Auto-Approved Rate"
+              value={
+                stats?.auto_approved_rate != null
+                  ? `${stats.auto_approved_rate.toFixed(1)}%`
+                  : "—"
+              }
+              helpText="Safe/moderate actions"
+              variant="full"
+            />
+            <StatCard
+              label="Failed Actions"
+              value={stats?.failed ?? "—"}
+              helpText="Execution errors"
+              color={stats?.failed ? "status.danger" : undefined}
+              variant="full"
+            />
+          </>
+        )}
+      </section>
 
-      <DialogRoot open={detailsOpen} onOpenChange={(d) => setDetailsOpen(Boolean(d.open))}>
-        <DialogBackdrop />
-        <DialogPositioner>
-          <DialogContent maxW="min(760px, calc(100vw - 32px))" w="full">
-            <DialogHeader>
-              <DialogTitle>Action Details</DialogTitle>
-            </DialogHeader>
-            <DialogBody>
-              {selectedAction && (
-                <Box display="flex" flexDirection="column" gap={3}>
-                  <HStack gap={3} flexWrap="wrap">
-                    <Badge colorPalette={statusPalette(selectedAction.status)}>
-                      {selectedAction.status}
-                    </Badge>
-                    <Badge colorPalette={riskPalette(selectedAction.risk_level)}>
-                      {selectedAction.risk_level}
-                    </Badge>
-                    {selectedAction.auto_approved && (
-                      <Badge colorPalette="teal">Auto-approved</Badge>
-                    )}
-                    <Text fontSize="xs" color="fg.muted">
-                      Session: {selectedAction.session_id || '—'}
-                    </Text>
-                  </HStack>
+      {statsError && statsQuery.data ? (
+        <p className="text-sm text-destructive" role="status">
+          Stats refresh failed: {statsError}
+        </p>
+      ) : null}
 
-                  <Box>
-                    <Text fontSize="xs" color="fg.muted">
-                      Action
-                    </Text>
-                    <Text fontWeight="semibold">{selectedAction.action_name}</Text>
-                    <Text fontFamily="mono" fontSize="12px" color="fg.muted">
-                      {selectedAction.action_type}
-                    </Text>
-                  </Box>
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch">
+        <aside
+          className="flex w-full shrink-0 flex-col gap-4 lg:max-w-sm"
+          aria-label="Agent health and sessions"
+        >
+          {showSidebarSkeleton ? (
+            <div className="flex flex-col gap-4">
+              <Skeleton className="h-72 w-full rounded-xl" />
+              <Skeleton className="h-56 w-full rounded-xl" />
+            </div>
+          ) : (
+            <>
+              <AgentHealthPanel
+                health={healthData}
+                autonomyLevel={autonomyLabel}
+                onAutonomyChange={handleAutonomyChange}
+              />
+              <AgentSessionList
+                sessions={sessionsQuery.data ?? []}
+                selectedSessionId={selectedSessionId}
+                onSelectSession={setSelectedSessionId}
+              />
+            </>
+          )}
+        </aside>
 
-                  {selectedAction.reasoning && (
-                    <Box>
-                      <Text fontSize="xs" color="fg.muted" mb={1}>
-                        Reasoning
-                      </Text>
-                      <Text fontSize="sm">{selectedAction.reasoning}</Text>
-                    </Box>
-                  )}
+        <section
+          className="flex min-h-[28rem] min-w-0 flex-1 flex-col"
+          aria-labelledby="agent-chat-heading"
+        >
+          <h2
+            id="agent-chat-heading"
+            className="mb-2 text-lg font-semibold text-foreground"
+          >
+            Conversation
+          </h2>
+          <AgentChatPanel
+            className="min-h-[24rem] flex-1"
+            messages={messages}
+            onSendMessage={(msg) => {
+              void handleSendMessage(msg)
+            }}
+            isLoading={runMutation.isPending}
+            onApproveAction={(id, approved) => {
+              void handleApproveAction(id, approved)
+            }}
+            approvingActionId={approvingActionId}
+          />
+        </section>
+      </div>
+    </div>
+  )
+}
 
-                  <Box>
-                    <Text fontSize="xs" color="fg.muted" mb={1}>
-                      Payload
-                    </Text>
-                    <Box
-                      as="pre"
-                      p={3}
-                      borderWidth="1px"
-                      borderColor="border.subtle"
-                      borderRadius="lg"
-                      bg="bg.muted"
-                      overflow="auto"
-                      fontSize="12px"
-                      lineHeight="1.45"
-                      maxH="150px"
-                    >
-                      {JSON.stringify(selectedAction.payload ?? {}, null, 2)}
-                    </Box>
-                  </Box>
-
-                  {selectedAction.result && (
-                    <Box>
-                      <Text fontSize="xs" color="fg.muted" mb={1}>
-                        Result
-                      </Text>
-                      <Box
-                        as="pre"
-                        p={3}
-                        borderWidth="1px"
-                        borderColor="border.subtle"
-                        borderRadius="lg"
-                        bg="bg.muted"
-                        overflow="auto"
-                        fontSize="12px"
-                        lineHeight="1.45"
-                        maxH="150px"
-                      >
-                        {JSON.stringify(selectedAction.result, null, 2)}
-                      </Box>
-                    </Box>
-                  )}
-
-                  {selectedAction.error && (
-                    <Box>
-                      <Text fontSize="xs" color="fg.muted" mb={1}>
-                        Error
-                      </Text>
-                      <Box
-                        as="pre"
-                        p={3}
-                        borderWidth="1px"
-                        borderColor="red.subtle"
-                        borderRadius="lg"
-                        bg="red.subtle"
-                        overflow="auto"
-                        fontSize="12px"
-                        lineHeight="1.45"
-                        maxH="150px"
-                        color="red.fg"
-                      >
-                        {selectedAction.error}
-                      </Box>
-                    </Box>
-                  )}
-
-                  <HStack gap={4} flexWrap="wrap" fontSize="xs" color="fg.muted">
-                    <Text>Created: {formatDateTime(selectedAction.created_at, timezone)}</Text>
-                    {selectedAction.approved_at && (
-                      <Text>Approved: {formatDateTime(selectedAction.approved_at, timezone)}</Text>
-                    )}
-                    {selectedAction.executed_at && (
-                      <Text>Executed: {formatDateTime(selectedAction.executed_at, timezone)}</Text>
-                    )}
-                    {selectedAction.completed_at && (
-                      <Text>Completed: {formatDateTime(selectedAction.completed_at, timezone)}</Text>
-                    )}
-                    {selectedAction.task_id && (
-                      <Text>Task ID: {selectedAction.task_id}</Text>
-                    )}
-                  </HStack>
-                </Box>
-              )}
-            </DialogBody>
-            <DialogFooter>
-              {selectedAction?.status === 'pending_approval' && (
-                <HStack gap={2}>
-                  <Button
-                    colorPalette="red"
-                    variant="ghost"
-                    onClick={() => {
-                      handleApprove(selectedAction, false);
-                      setDetailsOpen(false);
-                    }}
-                    loading={approving === selectedAction.id}
-                  >
-                    Reject
-                  </Button>
-                  <Button
-                    colorPalette="green"
-                    onClick={() => {
-                      handleApprove(selectedAction, true);
-                      setDetailsOpen(false);
-                    }}
-                    loading={approving === selectedAction.id}
-                  >
-                    Approve
-                  </Button>
-                </HStack>
-              )}
-              <Button variant="ghost" onClick={() => setDetailsOpen(false)}>
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </DialogPositioner>
-      </DialogRoot>
-    </Box>
-  );
-};
-
-export default AdminAgent;
+export default AdminAgent

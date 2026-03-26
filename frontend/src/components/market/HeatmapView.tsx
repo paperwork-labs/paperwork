@@ -1,11 +1,10 @@
 import React from 'react';
-import {
-  Box, HStack, Text, Stack, SimpleGrid, Badge, Skeleton,
-} from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import { marketDataApi } from '../../services/api';
 import { STAGE_HEX } from '../../constants/chart';
 import { useColorMode } from '../../theme/colorMode';
+import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const SECTOR_ETFS = [
   'XLK', 'XLF', 'XLV', 'XLY', 'XLI', 'XLE', 'XLU', 'XLP',
@@ -108,107 +107,111 @@ const HeatmapView: React.FC<HeatmapViewProps> = ({ snapshots }) => {
   const legendStages = ['1A', '1B', '2A', '2B', '2C', '3A', '3B', '4A', '4B', '4C'];
 
   return (
-    <Stack gap={4}>
-      <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={4} bg="bg.card">
-        <HStack justify="space-between" mb={4}>
-          <Box>
-            <Text fontSize="sm" fontWeight="semibold">Stage Heatmap — Sector ETFs Over Time</Text>
-            <Text fontSize="xs" color="fg.muted">
+    <div className="flex flex-col gap-4">
+      <div className="rounded-lg border border-border bg-card p-4">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold">Stage Heatmap — Sector ETFs Over Time</p>
+            <p className="text-xs text-muted-foreground">
               Each cell shows the Weinstein stage for that ETF on that date. Green = advancing, Red = declining.
-            </Text>
-          </Box>
-          <HStack gap={1}>
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-1">
             {TIME_RANGES.map(tr => (
-              <Badge
+              <button
                 key={tr.days}
-                variant={timeRange === tr.days ? 'solid' : 'subtle'}
-                cursor="pointer"
+                type="button"
+                className={cn(
+                  'inline-flex h-5 items-center rounded-full border px-2 text-xs font-medium transition-opacity hover:opacity-85',
+                  timeRange === tr.days
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-transparent bg-muted/80 text-muted-foreground'
+                )}
                 onClick={() => setTimeRange(tr.days)}
-                size="sm"
-                transition="all 200ms ease"
-                _hover={{ opacity: 0.85 }}
               >
                 {tr.label}
-              </Badge>
+              </button>
             ))}
-          </HStack>
-        </HStack>
+          </div>
+        </div>
 
         {queries.isPending ? (
-          <Stack gap={2} py={4}>
+          <div className="flex flex-col gap-2 py-4">
             {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} height="18px" borderRadius="sm" />
+              <Skeleton key={i} className="h-[18px] rounded-sm" />
             ))}
-          </Stack>
+          </div>
         ) : displayDates.length === 0 ? (
-          <Text fontSize="sm" color="fg.muted" textAlign="center" py={8}>No historical data available</Text>
+          <p className="py-8 text-center text-sm text-muted-foreground">No historical data available</p>
         ) : (
-          <Box overflowX="auto">
-            <Box display="inline-block" minW="100%">
-              {/* Header Row */}
-              <HStack gap={0} mb={1}>
-                <Box w="60px" flexShrink={0} />
-                {displayDates.map(date => (
-                  <Box
+          <div className="overflow-x-auto">
+            <div className="inline-block min-w-full">
+              <div className="mb-1 flex gap-0">
+                <div className="w-[60px] shrink-0" />
+                {displayDates.map((date, dateIdx) => (
+                  <div
                     key={date}
-                    w="14px"
-                    flexShrink={0}
-                    textAlign="center"
+                    className="w-[14px] shrink-0 text-center"
                     title={date}
                   >
-                    {displayDates.indexOf(date) % 10 === 0 && (
-                      <Text fontSize="8px" color="fg.muted" transform="rotate(-45deg)" transformOrigin="left" whiteSpace="nowrap">
+                    {dateIdx % 10 === 0 && (
+                      <span
+                        className="inline-block origin-left whitespace-nowrap text-[8px] text-muted-foreground"
+                        style={{ transform: 'rotate(-45deg)' }}
+                      >
                         {date.slice(5)}
-                      </Text>
+                      </span>
                     )}
-                  </Box>
+                  </div>
                 ))}
-              </HStack>
+              </div>
 
-              {/* Data Rows */}
               {etfSymbols.map(sym => (
-                <HStack key={sym} gap={0} mb="1px">
-                  <Box w="60px" flexShrink={0}>
-                    <Text fontSize="xs" fontWeight="semibold" truncate>{sym}</Text>
-                  </Box>
+                <div key={sym} className="mb-px flex gap-0">
+                  <div className="w-[60px] shrink-0">
+                    <p className="truncate text-xs font-semibold">{sym}</p>
+                  </div>
                   {displayDates.map(date => {
                     const stage = gridData[sym]?.[date];
+                    const tip = `${sym} ${date}: ${stageTooltip(stage)}`;
                     return (
-                      <Box
+                      <div
                         key={`${sym}-${date}`}
-                        w="14px"
-                        h="18px"
-                        flexShrink={0}
-                        bg={stageColor(stage, isDark)}
-                        borderRadius="1px"
-                        title={`${sym} ${date}: ${stageTooltip(stage)}`}
-                        aria-label={`${sym} ${date}: ${stageTooltip(stage)}`}
-                        transition="opacity 150ms ease, outline 150ms ease"
-                        _hover={{ opacity: 0.8, outline: '1px solid white' }}
+                        className="h-[18px] w-[14px] shrink-0 rounded-[1px] transition-[opacity,outline] outline-offset-0 hover:opacity-80 hover:outline hover:outline-1 hover:outline-white"
+                        style={{ backgroundColor: stageColor(stage, isDark) }}
+                        title={tip}
+                        aria-label={tip}
                       />
                     );
                   })}
-                </HStack>
+                </div>
               ))}
-            </Box>
-          </Box>
+            </div>
+          </div>
         )}
 
-        {/* Legend */}
-        <HStack gap={2} mt={4} flexWrap="wrap" justify="center">
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
           {legendStages.map(stage => (
-            <HStack key={stage} gap={1}>
-              <Box w="12px" h="12px" borderRadius="sm" bg={stageColor(stage, isDark)} />
-              <Text fontSize="10px" color="fg.muted">{stage}</Text>
-            </HStack>
+            <div key={stage} className="flex items-center gap-1">
+              <div
+                className="size-3 rounded-sm"
+                style={{ backgroundColor: stageColor(stage, isDark) }}
+                aria-hidden
+              />
+              <span className="text-[10px] text-muted-foreground">{stage}</span>
+            </div>
           ))}
-          <HStack gap={1}>
-            <Box w="12px" h="12px" borderRadius="sm" bg={isDark ? EMPTY_STAGE_COLOR_DARK : EMPTY_STAGE_COLOR_LIGHT} />
-            <Text fontSize="10px" color="fg.muted">No data</Text>
-          </HStack>
-        </HStack>
-      </Box>
-    </Stack>
+          <div className="flex items-center gap-1">
+            <div
+              className="size-3 rounded-sm"
+              style={{ backgroundColor: isDark ? EMPTY_STAGE_COLOR_DARK : EMPTY_STAGE_COLOR_LIGHT }}
+              aria-hidden
+            />
+            <span className="text-[10px] text-muted-foreground">No data</span>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

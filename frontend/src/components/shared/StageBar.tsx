@@ -1,5 +1,8 @@
 import React from 'react';
-import { Box, HStack, Text, Badge } from '@chakra-ui/react';
+
+import { Badge } from '@/components/ui/badge';
+import { STAGE_BAR_FILL, STAGE_SOLID_BADGE, STAGE_SUBTLE_BADGE } from '@/lib/stageTailwind';
+import { cn } from '@/lib/utils';
 import { STAGE_COLORS } from '../../constants/chart';
 
 /** Display order: 10 sub-stages, then legacy rollup labels (1–4) for older snapshot data. */
@@ -18,22 +21,15 @@ export interface StageBarProps {
 const StageBar: React.FC<StageBarProps> = ({ counts, total: totalProp, onClick, activeStage }) => {
   const total = totalProp ?? Object.values(counts).reduce((a, b) => a + b, 0);
   if (total === 0) {
-    return (
-      <Text fontSize="xs" color="fg.muted">
-        No data
-      </Text>
-    );
+    return <p className="text-xs text-muted-foreground">No data</p>;
   }
   const isInteractive = !!onClick;
   const distributionLabel = `Stage distribution: ${STAGES.map((s) => `${s}: ${counts[s] ?? 0}`).join(', ')}`;
   return (
-    <Box>
-      <Box
-        display="flex"
-        h="24px"
-        borderRadius="md"
-        overflow="hidden"
-        role="img"
+    <div>
+      <div
+        className="flex h-6 overflow-hidden rounded-md"
+        role="group"
         aria-label={distributionLabel}
       >
         {STAGES.map((s) => {
@@ -41,50 +37,64 @@ const StageBar: React.FC<StageBarProps> = ({ counts, total: totalProp, onClick, 
           const pct = (count / total) * 100;
           if (pct === 0) return null;
           const palette = STAGE_COLORS[s] ?? 'gray';
+          const fillClass = STAGE_BAR_FILL[palette] ?? STAGE_BAR_FILL.gray;
           const isActive = activeStage === s;
           return (
-            <Box
+            <div
               key={s}
-              w={`${pct}%`}
-              bg={`${palette}.400`}
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
+              className={cn(
+                'flex items-center justify-center',
+                fillClass,
+                isInteractive && 'cursor-pointer transition-opacity duration-200 hover:opacity-[0.85]',
+                activeStage && !isActive && 'opacity-45'
+              )}
+              style={{ width: `${pct}%` }}
               aria-label={`Stage ${s}: ${count} positions, ${pct.toFixed(0)}%`}
-              cursor={isInteractive ? 'pointer' : undefined}
               onClick={isInteractive ? () => onClick(s) : undefined}
-              opacity={activeStage && !isActive ? 0.45 : 1}
-              transition="opacity 200ms ease"
-              _hover={isInteractive ? { opacity: 0.85 } : undefined}
+              onKeyDown={
+                isInteractive
+                  ? (e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onClick(s);
+                      }
+                    }
+                  : undefined
+              }
+              role={isInteractive ? 'button' : undefined}
+              tabIndex={isInteractive ? 0 : undefined}
             >
               {pct > 4 && (
-                <Text fontSize="10px" fontWeight="bold" color="white">
-                  {s}
-                </Text>
+                <span className="text-[10px] font-bold text-white">{s}</span>
               )}
-            </Box>
+            </div>
           );
         })}
-      </Box>
-      <HStack gap={2} mt={1} flexWrap="wrap">
+      </div>
+      <div className="mt-1 flex flex-wrap gap-2">
         {STAGES.map((s) => {
           const count = counts[s] ?? 0;
+          const palette = STAGE_COLORS[s] ?? 'gray';
+          const subtle = STAGE_SUBTLE_BADGE[palette] ?? STAGE_SUBTLE_BADGE.gray;
+          const solid = STAGE_SOLID_BADGE[palette] ?? STAGE_SOLID_BADGE.gray;
+          const isActive = activeStage === s;
           return (
             <Badge
               key={s}
-              size="sm"
-              variant={activeStage === s ? 'solid' : 'subtle'}
-              colorPalette={STAGE_COLORS[s] ?? 'gray'}
-              cursor={isInteractive ? 'pointer' : undefined}
+              variant="outline"
+              className={cn(
+                'h-5 cursor-default px-2 py-0.5 text-[10px] transition-all duration-200',
+                isActive ? solid : subtle,
+                isInteractive && 'cursor-pointer'
+              )}
               onClick={isInteractive ? () => onClick(s) : undefined}
-              transition="all 200ms ease"
             >
               {s}: {count} ({total > 0 ? ((count / total) * 100).toFixed(0) : 0}%)
             </Badge>
           );
         })}
-      </HStack>
-    </Box>
+      </div>
+    </div>
   );
 };
 

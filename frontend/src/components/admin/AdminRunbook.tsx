@@ -1,5 +1,8 @@
 import React from 'react';
-import { Box, Text, HStack, Badge } from '@chakra-ui/react';
+import * as Collapsible from "@radix-ui/react-collapsible";
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import type { AdminHealthResponse } from '../../types/adminHealth';
 
 interface Props {
@@ -41,13 +44,19 @@ const RUNBOOK: Record<string, RunbookEntry> = {
       const invalidCount = Number(dim.invalid_count ?? 0);
 
       if (unknownRate > 0.35) {
-        steps.push('Too many UNKNOWN stages — daily bars are likely missing. Run "Backfill Daily Coverage (Tracked)" first, then "Recompute Indicators (Market Snapshot)" under Operator Actions > Advanced Controls > Maintenance.');
+        steps.push(
+          'Too many UNKNOWN stages — daily bars are likely missing. Run "Backfill Daily Coverage (Tracked)" first, then "Recompute Indicators (Market Snapshot)" under Operator Actions > Advanced Controls > Maintenance.',
+        );
       }
       if (monotonicity > 0) {
-        steps.push('Stage day-counter gaps detected — run "Repair Stage History" under Operator Actions > Advanced Controls > Maintenance. This recomputes current_stage_days and previous_stage fields across the last 120 days of history.');
+        steps.push(
+          'Stage day-counter gaps detected — run "Repair Stage History" under Operator Actions > Advanced Controls > Maintenance. This recomputes current_stage_days and previous_stage fields across the last 120 days of history.',
+        );
       }
       if (invalidCount > 0) {
-        steps.push('Invalid stage rows found — check System Status for failed indicator compute tasks, then re-run "Recompute Indicators (Market Snapshot)".');
+        steps.push(
+          'Invalid stage rows found — check System Status for failed indicator compute tasks, then re-run "Recompute Indicators (Market Snapshot)".',
+        );
       }
       if (unknownRate <= 0.35 && monotonicity === 0 && invalidCount === 0) {
         steps.push('All stage sub-checks are passing. If this dimension is still red, check System Status for any ongoing issues.');
@@ -106,6 +115,12 @@ const RUNBOOK: Record<string, RunbookEntry> = {
   },
 };
 
+function metricBadgeClass(ok: boolean): string {
+  return ok
+    ? 'border-transparent bg-[rgb(var(--status-success)/0.12)] text-[rgb(var(--status-success)/1)]'
+    : 'border-transparent bg-destructive/10 text-destructive';
+}
+
 const AdminRunbook: React.FC<Props> = ({ health }) => {
   const [expanded, setExpanded] = React.useState(false);
 
@@ -115,98 +130,96 @@ const AdminRunbook: React.FC<Props> = ({ health }) => {
   const redDims = Object.entries(dims).filter(([, dim]) => dim.status === 'red');
 
   return (
-    <Box
-      mb={4}
-      borderWidth="1px"
-      borderColor="border.subtle"
-      borderRadius="lg"
-      p={3}
-      bg="bg.muted"
-    >
-      <HStack
-        justify="space-between"
-        align="center"
-        cursor="pointer"
-        onClick={() => setExpanded((v) => !v)}
-        userSelect="none"
-      >
-        <Text fontSize="sm" fontWeight="semibold">
-          Runbook / On-Call Guide {redDims.length > 0 ? `(${redDims.length} issue${redDims.length > 1 ? 's' : ''})` : ''}
-        </Text>
-        <Text fontSize="xs" color="fg.muted">{expanded ? '▲ collapse' : '▼ expand'}</Text>
-      </HStack>
+    <Collapsible.Root open={expanded} onOpenChange={setExpanded}>
+      <div className="mb-4 rounded-lg border border-border bg-muted/50 p-3">
+        <Collapsible.Trigger
+          type="button"
+          className="flex w-full cursor-pointer select-none items-center justify-between gap-2 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          aria-expanded={expanded}
+        >
+          <span className="text-sm font-semibold">
+            Runbook / On-Call Guide{' '}
+            {redDims.length > 0 ? `(${redDims.length} issue${redDims.length > 1 ? 's' : ''})` : ''}
+          </span>
+          <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+            {expanded ? (
+              <>
+                <ChevronUp className="size-3.5" aria-hidden />
+                collapse
+              </>
+            ) : (
+              <>
+                <ChevronDown className="size-3.5" aria-hidden />
+                expand
+              </>
+            )}
+          </span>
+        </Collapsible.Trigger>
 
-      {expanded && (
-        <Box mt={2}>
-          {redDims.length === 0 ? (
-            <Text fontSize="xs" color="status.success">
-              All systems healthy — no action needed.
-            </Text>
-          ) : (
-            redDims.map(([key, dimData]) => {
-              const entry = RUNBOOK[key];
-              if (!entry) return null;
+        <Collapsible.Content>
+          <div className="mt-2">
+            {redDims.length === 0 ? (
+              <p className="text-xs text-[rgb(var(--status-success)/1)]">All systems healthy — no action needed.</p>
+            ) : (
+              redDims.map(([key, dimData]) => {
+                const entry = RUNBOOK[key];
+                if (!entry) return null;
 
-              const dim = dimData as unknown as Record<string, unknown>;
-              let steps: string[];
-              try {
-                steps = entry.contextualSteps ? entry.contextualSteps(dim) : entry.steps;
-              } catch {
-                steps = entry.steps;
-              }
+                const dim = dimData as unknown as Record<string, unknown>;
+                let steps: string[];
+                try {
+                  steps = entry.contextualSteps ? entry.contextualSteps(dim) : entry.steps;
+                } catch {
+                  steps = entry.steps;
+                }
 
-              const metrics = entry.metricSummary ? entry.metricSummary(dim) : null;
+                const metrics = entry.metricSummary ? entry.metricSummary(dim) : null;
 
-              return (
-                <Box
-                  key={key}
-                  mt={2}
-                  p={2}
-                  borderWidth="1px"
-                  borderColor="border.subtle"
-                  borderRadius="md"
-                  bg="bg.card"
-                >
-                  <Text fontSize="sm" fontWeight="semibold" color="status.danger" mb={1}>
-                    {key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-                  </Text>
-                  <Text fontSize="xs" color="fg.default" mb={1}>
-                    <strong>What:</strong> {entry.what}
-                  </Text>
-                  <Text fontSize="xs" color="fg.default" mb={1}>
-                    <strong>Fix:</strong>
-                  </Text>
-                  <Box as="ol" pl={4} mb={1}>
-                    {steps.map((step, idx) => (
-                      <Box as="li" key={idx} fontSize="xs" color="fg.default" mb="2px">
-                        {step}
-                      </Box>
-                    ))}
-                  </Box>
-                  {metrics && (
-                    <HStack gap={3} flexWrap="wrap" mt={1} mb={1}>
-                      {metrics.map((m) => (
-                        <Badge
-                          key={m.label}
-                          size="sm"
-                          variant="subtle"
-                          colorPalette={m.ok ? 'green' : 'red'}
-                        >
-                          {m.label}: {m.value}
-                        </Badge>
+                return (
+                  <div
+                    key={key}
+                    className="mt-2 rounded-md border border-border bg-card p-2"
+                  >
+                    <p className="mb-1 text-sm font-semibold text-[rgb(var(--status-danger)/1)]">
+                      {key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                    </p>
+                    <p className="mb-1 text-xs text-foreground">
+                      <strong>What:</strong> {entry.what}
+                    </p>
+                    <p className="mb-1 text-xs text-foreground">
+                      <strong>Fix:</strong>
+                    </p>
+                    <ol className="mb-1 list-decimal pl-4 text-xs text-foreground">
+                      {steps.map((step, idx) => (
+                        <li key={idx} className="mb-0.5">
+                          {step}
+                        </li>
                       ))}
-                    </HStack>
-                  )}
-                  <Text fontSize="xs" color="fg.muted">
-                    <strong>Threshold:</strong> {entry.threshold(health.thresholds)}
-                  </Text>
-                </Box>
-              );
-            })
-          )}
-        </Box>
-      )}
-    </Box>
+                    </ol>
+                    {metrics && (
+                      <div className="mb-1 mt-1 flex flex-wrap gap-3">
+                        {metrics.map((m) => (
+                          <Badge
+                            key={m.label}
+                            variant="outline"
+                            className={cn('text-xs font-medium', metricBadgeClass(m.ok))}
+                          >
+                            {m.label}: {m.value}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      <strong>Threshold:</strong> {entry.threshold(health.thresholds)}
+                    </p>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </Collapsible.Content>
+      </div>
+    </Collapsible.Root>
   );
 };
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Heading, Badge, Button, HStack, Text, Tooltip } from '@chakra-ui/react';
+import { Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import useCoverageSnapshot from '../hooks/useCoverageSnapshot';
@@ -22,6 +22,13 @@ import {
   AdminRunbook,
 } from '../components/admin';
 import CoverageHealthStrip from '../components/coverage/CoverageHealthStrip';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+const selectClass =
+  'h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30';
 
 const AdminDashboard: React.FC = () => {
   const auth = useAuthOptional();
@@ -31,10 +38,8 @@ const AdminDashboard: React.FC = () => {
   const refreshAppSettings = auth?.refreshAppSettings;
   const { timezone, coverageHistogramWindowDays } = useUserPreferences();
 
-  // Composite health (single API call replaces 4 old load functions)
-  const { health, loading: healthLoading, refresh: refreshHealth } = useAdminHealth();
+  const { health, refresh: refreshHealth } = useAdminHealth();
 
-  // Coverage snapshot (kept -- powers the coverage summary card / histogram / KPIs)
   const [histWindowDays, setHistWindowDays] = React.useState<number>(
     coverageHistogramWindowDays || 50,
   );
@@ -42,24 +47,18 @@ const AdminDashboard: React.FC = () => {
   const { snapshot: coverage, refresh: refreshCoverage, sparkline, kpis, hero } =
     useCoverageSnapshot({ fillTradingDaysWindow: histWindowDays, fillLookbackDays });
 
-  // Release controls
   const [marketOnlyMode, setMarketOnlyMode] = React.useState(true);
   const [portfolioEnabled, setPortfolioEnabled] = React.useState(false);
   const [strategyEnabled, setStrategyEnabled] = React.useState(false);
   const [togglingMarketOnly, setTogglingMarketOnly] = React.useState(false);
 
-  // 5m toggle
   const [backfill5mEnabled, setBackfill5mEnabled] = React.useState(true);
   const [toggling5m, setToggling5m] = React.useState(false);
 
-  // Sanity data (passed to operator actions)
   const [sanityData, setSanityData] = React.useState<Record<string, unknown> | null>(null);
 
-  // Auto-refresh state
   const autoRefreshAttemptedRef = React.useRef(false);
   const [refreshingCoverage, setRefreshingCoverage] = React.useState(false);
-
-  // ---------- Sync state from backend ----------
 
   React.useEffect(() => {
     if (coverageHistogramWindowDays && coverageHistogramWindowDays !== histWindowDays) {
@@ -86,7 +85,6 @@ const AdminDashboard: React.FC = () => {
     if (appSettings?.strategy_enabled !== undefined) setStrategyEnabled(Boolean(appSettings.strategy_enabled));
   }, [appSettings?.market_only_mode, appSettings?.portfolio_enabled, appSettings?.strategy_enabled]);
 
-  // Auto-trigger coverage monitor when cache is stale
   React.useEffect(() => {
     if (!coverage || autoRefreshAttemptedRef.current) return;
     const age = Number((coverage as Record<string, Record<string, unknown>>)?.meta?.snapshot_age_seconds ?? NaN);
@@ -98,12 +96,9 @@ const AdminDashboard: React.FC = () => {
     }
   }, [coverage]);
 
-  // Load sanity on mount
   React.useEffect(() => {
     void loadSanity();
   }, []);
-
-  // ---------- Handlers ----------
 
   const saveHistogramWindowPref = async (next: number) => {
     try {
@@ -177,8 +172,6 @@ const AdminDashboard: React.FC = () => {
     } catch { /* swallow */ }
   };
 
-  // ---------- Derived data ----------
-
   const heroEffective = React.useMemo(() => {
     if (!hero) return hero;
     if (!backfill5mEnabled && hero?.staleCounts?.daily === 0 && hero?.staleCounts?.m5 > 0) {
@@ -210,16 +203,20 @@ const AdminDashboard: React.FC = () => {
     return formatDateTime(ts as string | undefined, timezone);
   };
 
-  // ---------- Render ----------
+  const fmtLastRunFirst = (keys: string[]) => {
+    for (const key of keys) {
+      const ts = health?.task_runs?.[key]?.ts as string | undefined;
+      if (ts) return formatDateTime(ts, timezone);
+    }
+    return '—';
+  };
 
   return (
-    <Box p={4}>
-      <Heading size="md" mb={4}>Admin Dashboard</Heading>
+    <div className="p-4">
+      <h1 className="mb-4 font-heading text-lg font-semibold text-foreground">Admin Dashboard</h1>
 
-      {/* Composite Health Banner */}
       <AdminHealthBanner health={health} timezone={timezone} />
 
-      {/* Runbook / On-Call Guide (shows remediation for RED dimensions) */}
       <AdminRunbook health={health} />
 
       {coverage && (
@@ -237,47 +234,38 @@ const AdminDashboard: React.FC = () => {
           <CoverageTrendGrid sparkline={sparkline} />
           <CoverageBucketsGrid groups={hero?.buckets || []} />
 
-          {/* Domain cards from composite health */}
           <AdminDomainCards health={health} />
 
-          {/* Coverage health strip */}
           {dailyFillDist.total > 0 ? (
-            <Box mt={3} borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.muted">
-              <HStack justify="space-between" align="start" flexWrap="wrap" gap={3}>
-                <Box>
-                  <Text fontSize="sm" fontWeight="semibold" color="fg.default">
+            <div className="mt-3 rounded-xl border border-border bg-muted/40 p-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
                     Daily fill by date (1d OHLCV)
-                  </Text>
-                  <Text fontSize="xs" color="fg.muted">
+                  </p>
+                  <p className="text-xs text-muted-foreground">
                     {dailyFillDist.newestDate
                       ? `Newest date: ${dailyFillDist.newestDate} • ${dailyFillDist.newestCount}/${dailyFillDist.total} symbols`
                       : 'No daily bars found'}
-                  </Text>
-                </Box>
-                <HStack gap={2} align="center">
-                  <Text fontSize="xs" color="fg.muted">Window</Text>
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Window</span>
                   <select
+                    className={selectClass}
                     value={histWindowDays}
                     onChange={(e) => {
                       const next = Number(e.target.value);
                       setHistWindowDays(next);
                       void saveHistogramWindowPref(next);
                     }}
-                    style={{
-                      fontSize: 12,
-                      padding: '6px 8px',
-                      borderRadius: 10,
-                      border: '1px solid var(--chakra-colors-border-subtle)',
-                      background: 'var(--chakra-colors-bg-input)',
-                      color: 'var(--chakra-colors-fg-default)',
-                    }}
                   >
                     <option value={50}>50d</option>
                     <option value={100}>100d</option>
                     <option value={200}>200d</option>
                   </select>
-                </HStack>
-              </HStack>
+                </div>
+              </div>
 
               <CoverageHealthStrip
                 dailyFillSeries={dailyFillSeries}
@@ -285,63 +273,72 @@ const AdminDashboard: React.FC = () => {
                 windowDays={histWindowDays}
                 totalSymbols={totalSymbols}
               />
-            </Box>
+            </div>
           ) : null}
 
-          {/* Meta badges + refresh */}
-          <Box mt={3} display="flex" alignItems="center" justifyContent="space-between" gap={3} flexWrap="wrap">
-            <HStack gap={2} flexWrap="wrap">
-              <Badge variant="subtle">Source: {String((coverage as Record<string, Record<string, unknown>>)?.meta?.source || '—')}</Badge>
-              <Badge variant="subtle">Refreshed: {formatDateTime((coverage as Record<string, Record<string, unknown>>)?.meta?.updated_at as string | undefined, timezone)}</Badge>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="secondary">
+                Source: {String((coverage as Record<string, Record<string, unknown>>)?.meta?.source || '—')}
+              </Badge>
+              <Badge variant="secondary">
+                Refreshed: {formatDateTime((coverage as Record<string, Record<string, unknown>>)?.meta?.updated_at as string | undefined, timezone)}
+              </Badge>
               {benchmarkStale ? (
-                <Badge variant="subtle" colorScheme="red">
+                <Badge variant="destructive">
                   SPY stale {benchmarkLatest ? `(${String(benchmarkLatest)})` : ''}
                 </Badge>
               ) : null}
-              <Tooltip.Root openDelay={200} positioning={{ placement: 'top' }}>
-                <Tooltip.Trigger asChild>
-                  <Badge variant="subtle" cursor="help">
-                    Runs: monitor/backfill
-                  </Badge>
-                </Tooltip.Trigger>
-                <Tooltip.Positioner>
-                  <Tooltip.Content>
-                    <Box>
-                      <Text fontSize="xs" color="fg.muted">
-                        Monitor: {fmtLastRun('admin_coverage_refresh')}
-                      </Text>
-                      <Text fontSize="xs" color="fg.muted">
-                        Backfill: {fmtLastRun('admin_coverage_backfill')}
-                      </Text>
-                    </Box>
-                  </Tooltip.Content>
-                </Tooltip.Positioner>
-              </Tooltip.Root>
-            </HStack>
-            <Button size="sm" variant="outline" loading={refreshingCoverage} onClick={() => void refreshCoverageNow('manual')}>
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="secondary" className="cursor-help">
+                      Runs: coverage / pipeline
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="text-xs text-background">
+                      <p className="text-background/90">
+                        Monitor: {fmtLastRunFirst(['health_check', 'admin_coverage_refresh'])}
+                      </p>
+                      <p className="text-background/90">
+                        Pipeline: {fmtLastRunFirst(['daily_bootstrap', 'admin_coverage_backfill'])}
+                      </p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={refreshingCoverage}
+              onClick={() => void refreshCoverageNow('manual')}
+            >
+              {refreshingCoverage ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : null}
               Refresh coverage
             </Button>
-          </Box>
+          </div>
 
-          {/* 5m toggle */}
-          <Box mt={3} display="flex" alignItems="center" gap={3}>
-            <input
-              type="checkbox"
+          <div className="mt-3 flex items-start gap-3">
+            <Checkbox
+              id="admin-5m-backfill"
               checked={backfill5mEnabled}
-              onChange={() => void toggleBackfill5m()}
               disabled={toggling5m}
+              onCheckedChange={() => void toggleBackfill5m()}
+              className="mt-0.5"
             />
-            <Box>
-              <Text fontSize="sm" fontWeight="medium">
+            <div className="min-w-0">
+              <label htmlFor="admin-5m-backfill" className="text-sm font-medium text-foreground">
                 5m Backfill {backfill5mEnabled ? 'Enabled' : 'Disabled'}
-              </Text>
-              <Text fontSize="xs" color="fg.subtle">
+              </label>
+              <p className="text-xs text-muted-foreground">
                 Daily coverage is the primary SLA. When disabled, 5m is informational-only (ignored for status).
-              </Text>
-            </Box>
-          </Box>
+              </p>
+            </div>
+          </div>
 
-          {/* Operator actions with safe/destructive grouping */}
           <AdminOperatorActions
             refreshCoverage={refreshCoverage}
             refreshHealth={refreshHealth}
@@ -350,7 +347,7 @@ const AdminDashboard: React.FC = () => {
           />
         </CoverageSummaryCard>
       )}
-    </Box>
+    </div>
   );
 };
 

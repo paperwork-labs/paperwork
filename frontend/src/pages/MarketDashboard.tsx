@@ -1,25 +1,23 @@
 import React from 'react';
-import {
-  Badge,
-  Box,
-  Button,
-  Collapsible,
-  Heading,
-  HStack,
-  IconButton,
-  Spinner,
-  Stack,
-  Text,
-  TableRoot,
-  TableHeader,
-  TableRow,
-  TableColumnHeader,
-  TableBody,
-  TableCell,
-  TableScrollArea,
-} from '@chakra-ui/react';
+import * as Collapsible from "@radix-ui/react-collapsible";
 import { Link as RouterLink } from 'react-router-dom';
-import { FiChevronDown, FiChevronRight, FiRefreshCw, FiTrendingUp, FiBarChart2, FiGrid, FiLayers } from 'react-icons/fi';
+import {
+  BarChart2,
+  ChevronDown,
+  ChevronRight,
+  Grid3X3,
+  Layers,
+  Loader2,
+  RefreshCw,
+  TrendingUp,
+} from 'lucide-react';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Page } from '@/components/ui/Page';
+import { cn } from '@/lib/utils';
+import { heatTextClass, semanticTextColorClass } from '@/lib/semantic-text-color';
 import { marketDataApi } from '../services/api';
 import { ChartContext, SymbolLink, ChartSlidePanel, PortfolioSymbolsContext } from '../components/market/SymbolChartUI';
 import StatCard from '../components/shared/StatCard';
@@ -28,7 +26,7 @@ import StageBar from '../components/shared/StageBar';
 import StageBadge from '../components/shared/StageBadge';
 import RegimeBanner from '../components/market/RegimeBanner';
 import { useChartColors } from '../hooks/useChartColors';
-import { SECTOR_PALETTE, heatColor } from '../constants/chart';
+import { SECTOR_PALETTE } from '../constants/chart';
 import { ETF_SYMBOL_SET } from '../constants/etf';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, Cell,
@@ -48,12 +46,20 @@ const HeatmapView = React.lazy(() => import('../components/market/HeatmapView'))
 type DashboardView = 'overview' | 'top-down' | 'bottom-up' | 'sectors' | 'heatmap';
 
 const VIEW_TABS: { key: DashboardView; label: string; icon: React.ElementType }[] = [
-  { key: 'overview', label: 'Overview', icon: FiBarChart2 },
-  { key: 'top-down', label: 'Top-Down', icon: FiTrendingUp },
-  { key: 'bottom-up', label: 'Bottom-Up', icon: FiGrid },
-  { key: 'sectors', label: 'Sectors', icon: FiLayers },
-  { key: 'heatmap', label: 'Heatmap', icon: FiGrid },
+  { key: 'overview', label: 'Overview', icon: BarChart2 },
+  { key: 'top-down', label: 'Top-Down', icon: TrendingUp },
+  { key: 'bottom-up', label: 'Bottom-Up', icon: Grid3X3 },
+  { key: 'sectors', label: 'Sectors', icon: Layers },
+  { key: 'heatmap', label: 'Heatmap', icon: Grid3X3 },
 ];
+
+function TableShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="max-h-[min(60vh,520px)] max-w-full overflow-auto rounded-md border border-border">
+      <table className="w-full min-w-[560px] border-collapse text-left text-sm">{children}</table>
+    </div>
+  );
+}
 
 const VIEW_KEY = 'axiomfolio:dashboard:view';
 
@@ -183,76 +189,91 @@ const repeatSymbolColor = (symbol: string): string => {
 /* ===== Sub-components (StatCard, StageBar from shared) ===== */
 
 const SetupCard: React.FC<{ title: string; items: SetupItem[]; showScore?: boolean; linkPreset?: string; showHeldBadge?: boolean }> = ({ title, items, showScore, linkPreset, showHeldBadge = true }) => (
-  <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card" flex="1" minW="220px">
-    <HStack justify="space-between" align="center" mb={2}>
-      {linkPreset ? (
-        <RouterLink to={`/market/tracked?preset=${linkPreset}`} style={{ textDecoration: 'none' }}>
-          <Text fontSize="sm" fontWeight="semibold" _hover={{ textDecoration: 'underline' }} cursor="pointer">{title}</Text>
-        </RouterLink>
+  <Card className="min-w-[220px] flex-1 gap-0 py-3 shadow-xs ring-1 ring-foreground/10">
+    <CardContent className="flex flex-col gap-2 px-3">
+      <div className="mb-1 flex items-center justify-between">
+        {linkPreset ? (
+          <RouterLink to={`/market/tracked?preset=${linkPreset}`} className="text-sm font-semibold underline-offset-2 hover:underline">
+            {title}
+          </RouterLink>
+        ) : (
+          <span className="text-sm font-semibold">{title}</span>
+        )}
+        {items.length > 0 ? (
+          <Badge variant="secondary" className="h-5 font-normal">
+            {items.length}
+          </Badge>
+        ) : null}
+      </div>
+      {items.length === 0 ? (
+        <p className="text-xs text-muted-foreground">None found</p>
       ) : (
-        <Text fontSize="sm" fontWeight="semibold">{title}</Text>
+        <div className="max-h-[260px] overflow-y-auto pr-1">
+          <div className="flex flex-col gap-1">
+            {items.map((item, i) => (
+              <div key={`setup-${item.symbol}-${i}`} className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-1">
+                  <SymbolLink symbol={item.symbol} showHeldBadge={showHeldBadge} />
+                  <StageBadge stage={item.stage_label || '?'} />
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  {showScore && item.momentum_score != null && (
+                    <span className={heatTextClass(item.momentum_score)}>{item.momentum_score.toFixed(1)}</span>
+                  )}
+                  <span className={heatTextClass(item.perf_20d)}>{fmtPct(item.perf_20d)}</span>
+                  <span className={heatTextClass(item.rs_mansfield_pct)}>RS {fmtPct(item.rs_mansfield_pct)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
-      {items.length > 0 && <Badge variant="subtle" size="sm">{items.length}</Badge>}
-    </HStack>
-    {items.length === 0 ? (
-      <Text fontSize="xs" color="fg.muted">None found</Text>
-    ) : (
-      <Box maxH="260px" overflowY="auto" pr={1}>
-        <Box display="flex" flexDirection="column" gap={1}>
-          {items.map((item, i) => (
-            <HStack key={`setup-${item.symbol}-${i}`} justify="space-between" fontSize="xs">
-              <HStack gap={1}>
-                <SymbolLink symbol={item.symbol} showHeldBadge={showHeldBadge} />
-                <StageBadge stage={item.stage_label || '?'} />
-              </HStack>
-              <HStack gap={2} flexShrink={0}>
-                {showScore && item.momentum_score != null && (
-                  <Text color={heatColor(item.momentum_score)}>{item.momentum_score.toFixed(1)}</Text>
-                )}
-                <Text color={heatColor(item.perf_20d)}>{fmtPct(item.perf_20d)}</Text>
-                <Text color={heatColor(item.rs_mansfield_pct)}>RS {fmtPct(item.rs_mansfield_pct)}</Text>
-              </HStack>
-            </HStack>
-          ))}
-        </Box>
-      </Box>
-    )}
-  </Box>
+    </CardContent>
+  </Card>
 );
+
+const transitionBadgeClass = (palette: string) =>
+  palette === 'green'
+    ? 'border-transparent bg-[rgb(var(--status-success)/0.12)] text-[rgb(var(--status-success)/1)]'
+    : 'border-transparent bg-destructive/10 text-destructive';
 
 const TransitionList: React.FC<{ title: string; items: StageTransitionItem[]; colorPalette: string; showHeldBadge?: boolean }> = ({ title, items, colorPalette, showHeldBadge = true }) => {
   const symbolsParam = items.map((r) => r.symbol).join(',');
   const titleLink = symbolsParam ? `/market/tracked?symbols=${encodeURIComponent(symbolsParam)}` : undefined;
   return (
-    <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card" flex="1" minW="220px">
-      <HStack justify="space-between" align="center" mb={2}>
-        {titleLink ? (
-          <RouterLink to={titleLink} style={{ textDecoration: 'none' }}>
-            <Text fontSize="sm" fontWeight="semibold" _hover={{ textDecoration: 'underline' }} cursor="pointer">{title}</Text>
-          </RouterLink>
-        ) : (
-          <Text fontSize="sm" fontWeight="semibold">{title}</Text>
-        )}
-        <Badge variant="subtle" colorPalette={colorPalette}>{items.length}</Badge>
-      </HStack>
-      <Box maxH="280px" overflowY="auto" pr={1}>
-        <Stack gap={1}>
-          {items.length ? items.map((r, i) => (
-            <HStack key={`trans-${r.symbol}-${i}`} justify="space-between" fontSize="xs">
-              <SymbolLink symbol={r.symbol} showHeldBadge={showHeldBadge} />
-              <HStack gap={1}>
-                <Badge variant="subtle" size="sm">
-                  {r.previous_stage_label || '—'} → {r.stage_label || '?'}
-                </Badge>
-                {r.current_stage_days != null && (
-                  <Text color="fg.muted">{r.current_stage_days}d</Text>
-                )}
-              </HStack>
-            </HStack>
-          )) : <Text fontSize="xs" color="fg.muted">No recent entries.</Text>}
-        </Stack>
-      </Box>
-    </Box>
+    <Card className="min-w-[220px] flex-1 gap-0 py-3 shadow-xs ring-1 ring-foreground/10">
+      <CardContent className="flex flex-col gap-2 px-3">
+        <div className="mb-1 flex items-center justify-between">
+          {titleLink ? (
+            <RouterLink to={titleLink} className="text-sm font-semibold underline-offset-2 hover:underline">
+              {title}
+            </RouterLink>
+          ) : (
+            <span className="text-sm font-semibold">{title}</span>
+          )}
+          <Badge variant="secondary" className={cn('font-normal', transitionBadgeClass(colorPalette))}>
+            {items.length}
+          </Badge>
+        </div>
+        <div className="max-h-[280px] overflow-y-auto pr-1">
+          <div className="flex flex-col gap-1">
+            {items.length ? items.map((r, i) => (
+              <div key={`trans-${r.symbol}-${i}`} className="flex items-center justify-between text-xs">
+                <SymbolLink symbol={r.symbol} showHeldBadge={showHeldBadge} />
+                <div className="flex items-center gap-1">
+                  <Badge variant="outline" className="h-5 px-1.5 font-normal">
+                    {r.previous_stage_label || '—'} → {r.stage_label || '?'}
+                  </Badge>
+                  {r.current_stage_days != null && (
+                    <span className="text-muted-foreground">{r.current_stage_days}d</span>
+                  )}
+                </div>
+              </div>
+            )) : <p className="text-xs text-muted-foreground">No recent entries.</p>}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -282,50 +303,52 @@ const RankMatrix: React.FC<{ title: string; data?: Record<string, Array<{ symbol
   }, [data]);
 
   return (
-    <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
-      <Text fontSize="sm" fontWeight="semibold" mb={2}>{title}</Text>
-      <TableScrollArea borderWidth="1px" borderColor="border.subtle" borderRadius="md">
-        <TableRoot size="sm">
-          <TableHeader>
-            <TableRow>
+    <Card className="gap-0 py-3 shadow-xs ring-1 ring-foreground/10">
+      <CardContent className="flex flex-col gap-2 px-3">
+        <p className="text-sm font-semibold">{title}</p>
+        <TableShell>
+          <thead className="sticky top-0 z-[1] border-b border-border bg-muted/80">
+            <tr>
               {METRIC_ORDER.map((m) => (
-                <TableColumnHeader key={m.key}>{m.label}</TableColumnHeader>
+                <th key={m.key} className="whitespace-nowrap px-2 py-2 font-medium">
+                  {m.label}
+                </th>
               ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+            </tr>
+          </thead>
+          <tbody>
             {matrixRows.map((idx) => (
-              <TableRow key={idx}>
+              <tr key={idx} className="border-b border-border/60 last:border-0">
                 {METRIC_ORDER.map((m) => {
                   const item = (data?.[m.key] || [])[idx];
                   const symbol = normalizeSymbol(item?.symbol);
                   const hasRepeat = !!symbol && repeatedSymbols.has(symbol);
                   if (!item) {
-                    return <TableCell key={`${m.key}-${idx}`}>—</TableCell>;
+                    return <td key={`${m.key}-${idx}`} className="px-2 py-1.5">—</td>;
                   }
                   return (
-                    <TableCell key={`${m.key}-${idx}`}>
-                      <Text
-                        as="span"
-                        fontWeight={hasRepeat ? 'bold' : undefined}
-                        color={hasRepeat ? repeatSymbolColor(symbol) : undefined}
+                    <td key={`${m.key}-${idx}`} className="px-2 py-1.5">
+                      <span
+                        className={cn(hasRepeat && 'font-bold')}
+                        style={hasRepeat ? { color: repeatSymbolColor(symbol) } : undefined}
                         data-testid={
                           hasRepeat
                             ? `repeat-text-${title.replace(/\s+/g, '-').toLowerCase()}`
                             : undefined
                         }
                       >
-                        <SymbolLink symbol={item.symbol} /> <Text as="span" fontSize="xs" color="fg.muted">({fmtValue(item.value, m.key)})</Text>
-                      </Text>
-                    </TableCell>
+                        <SymbolLink symbol={item.symbol} />{' '}
+                        <span className="text-xs text-muted-foreground">({fmtValue(item.value, m.key)})</span>
+                      </span>
+                    </td>
                   );
                 })}
-              </TableRow>
+              </tr>
             ))}
-          </TableBody>
-        </TableRoot>
-      </TableScrollArea>
-    </Box>
+          </tbody>
+        </TableShell>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -341,8 +364,9 @@ const RangeHistogram: React.FC<{ bins: RangeHistogramBin[] }> = ({ bins }) => {
     };
   });
   return (
-    <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={4} bg="bg.card">
-      <Text fontSize="sm" fontWeight="semibold" mb={2}>52-Week Range Distribution</Text>
+    <Card className="gap-0 py-4 shadow-xs ring-1 ring-foreground/10">
+      <CardContent className="flex flex-col gap-2 px-4">
+      <p className="text-sm font-semibold">52-Week Range Distribution</p>
       <ResponsiveContainer width="100%" height={200}>
         <BarChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
           <XAxis
@@ -364,8 +388,9 @@ const RangeHistogram: React.FC<{ bins: RangeHistogramBin[] }> = ({ bins }) => {
           </Bar>
         </BarChart>
       </ResponsiveContainer>
-      <Text fontSize="xs" color="fg.muted" textAlign="center" mt={1}>Left-skew = capitulation · Right-skew = euphoria</Text>
-    </Box>
+      <p className="mt-1 text-center text-xs text-muted-foreground">Left-skew = capitulation · Right-skew = euphoria</p>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -387,24 +412,29 @@ const BreadthChart: React.FC<{ series: BreadthPoint[] }> = ({ series }) => {
   const latest200 = data.length ? data[data.length - 1].sma200 : null;
 
   return (
-    <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={4} bg="bg.card">
-      <HStack justify="space-between" align="baseline" mb={2}>
-        <Text fontSize="sm" fontWeight="semibold">Breadth Over Time</Text>
-        <HStack gap={3}>
+    <Card className="gap-0 py-4 shadow-xs ring-1 ring-foreground/10">
+      <CardContent className="flex flex-col gap-2 px-4">
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-sm font-semibold">Breadth Over Time</p>
+        <div className="flex flex-wrap gap-3">
           {latest50 != null && (
-            <HStack gap={1}>
-              <Box w="8px" h="3px" borderRadius="full" bg={cc.area1} />
-              <Text fontSize="10px" color="fg.muted">&gt;50DMA <Text as="span" fontWeight="semibold" color="fg.default">{latest50.toFixed(0)}%</Text></Text>
-            </HStack>
+            <div className="flex items-center gap-1">
+              <div className="h-0.5 w-2 rounded-full" style={{ backgroundColor: cc.area1 }} />
+              <span className="text-[10px] text-muted-foreground">
+                &gt;50DMA <span className="font-semibold text-foreground">{latest50.toFixed(0)}%</span>
+              </span>
+            </div>
           )}
           {latest200 != null && (
-            <HStack gap={1}>
-              <Box w="8px" h="3px" borderRadius="full" bg={cc.area2} />
-              <Text fontSize="10px" color="fg.muted">&gt;200DMA <Text as="span" fontWeight="semibold" color="fg.default">{latest200.toFixed(0)}%</Text></Text>
-            </HStack>
+            <div className="flex items-center gap-1">
+              <div className="h-0.5 w-2 rounded-full" style={{ backgroundColor: cc.area2 }} />
+              <span className="text-[10px] text-muted-foreground">
+                &gt;200DMA <span className="font-semibold text-foreground">{latest200.toFixed(0)}%</span>
+              </span>
+            </div>
           )}
-        </HStack>
-      </HStack>
+        </div>
+      </div>
       <ResponsiveContainer width="100%" height={200}>
         <ComposedChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
           <defs>
@@ -434,7 +464,8 @@ const BreadthChart: React.FC<{ series: BreadthPoint[] }> = ({ series }) => {
           <Area type="monotone" dataKey="sma50" fill="url(#grad50)" stroke={cc.area1} strokeWidth={2} />
         </ComposedChart>
       </ResponsiveContainer>
-    </Box>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -445,27 +476,27 @@ const RRGCustomTooltip: React.FC<any> = ({ active, payload }) => {
     ? d.rs_momentum >= 0 ? 'Leading' : 'Weakening'
     : d.rs_momentum >= 0 ? 'Improving' : 'Lagging';
   return (
-    <Box bg="bg.panel" borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} shadow="md" minW="160px">
-      <HStack gap={2} mb={1}>
-        <Box w="10px" h="10px" borderRadius="full" bg={SECTOR_PALETTE[d._idx % SECTOR_PALETTE.length]} />
-        <Text fontSize="sm" fontWeight="bold">{d.name}</Text>
-      </HStack>
-      <Text fontSize="xs" color="fg.muted">{d.symbol}</Text>
-      <Box mt={2} display="flex" flexDirection="column" gap={1}>
-        <HStack justify="space-between" fontSize="xs">
-          <Text color="fg.muted">RS-Ratio</Text>
-          <Text fontWeight="medium">{d.rs_ratio.toFixed(2)}</Text>
-        </HStack>
-        <HStack justify="space-between" fontSize="xs">
-          <Text color="fg.muted">RS-Momentum</Text>
-          <Text fontWeight="medium">{d.rs_momentum.toFixed(2)}</Text>
-        </HStack>
-        <HStack justify="space-between" fontSize="xs">
-          <Text color="fg.muted">Quadrant</Text>
-          <Text fontWeight="medium">{quad}</Text>
-        </HStack>
-      </Box>
-    </Box>
+    <div className="min-w-[160px] rounded-lg border border-border bg-popover p-3 shadow-md">
+      <div className="mb-1 flex items-center gap-2">
+        <div className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: SECTOR_PALETTE[d._idx % SECTOR_PALETTE.length] }} />
+        <span className="text-sm font-bold">{d.name}</span>
+      </div>
+      <p className="text-xs text-muted-foreground">{d.symbol}</p>
+      <div className="mt-2 flex flex-col gap-1">
+        <div className="flex justify-between text-xs">
+          <span className="text-muted-foreground">RS-Ratio</span>
+          <span className="font-medium">{d.rs_ratio.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between text-xs">
+          <span className="text-muted-foreground">RS-Momentum</span>
+          <span className="font-medium">{d.rs_momentum.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between text-xs">
+          <span className="text-muted-foreground">Quadrant</span>
+          <span className="font-medium">{quad}</span>
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -486,10 +517,11 @@ const RRGChart: React.FC<{ sectors: RRGSector[] }> = ({ sectors }) => {
   const pad = Math.ceil(maxAbs * 1.15) || 5;
 
   return (
-    <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={4} bg="bg.card" h="100%" display="flex" flexDirection="column" minH="520px">
-      <Text fontSize="sm" fontWeight="semibold" mb={1}>Relative Rotation Graph (Sectors)</Text>
-      <Text fontSize="xs" color="fg.muted" mb={2}>Hover each dot to see sector details</Text>
-      <Box flex={1} minH="380px" w="100%">
+    <Card className="flex h-full min-h-[520px] flex-col gap-0 py-4 shadow-xs ring-1 ring-foreground/10">
+      <CardContent className="flex flex-1 flex-col gap-2 px-4">
+      <p className="text-sm font-semibold">Relative Rotation Graph (Sectors)</p>
+      <p className="text-xs text-muted-foreground">Hover each dot to see sector details</p>
+      <div className="min-h-[380px] w-full flex-1">
         <ResponsiveContainer width="100%" height={400}>
           <ScatterChart>
           <CartesianGrid strokeDasharray="3 3" stroke={cc.grid} />
@@ -522,16 +554,17 @@ const RRGChart: React.FC<{ sectors: RRGSector[] }> = ({ sectors }) => {
           </Scatter>
           </ScatterChart>
         </ResponsiveContainer>
-      </Box>
-      <Box display="grid" gridTemplateColumns="repeat(auto-fill, minmax(130px, 1fr))" gap="3px" mt={2} px={1} flexShrink={0}>
+      </div>
+      <div className="mt-2 grid shrink-0 grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-0.5 px-1">
         {data.map((s, i) => (
-          <HStack key={`rrg-${s.symbol}-${i}`} gap={1}>
-            <Box w="8px" h="8px" borderRadius="full" flexShrink={0} bg={SECTOR_PALETTE[i % SECTOR_PALETTE.length]} />
-            <Text fontSize="10px" truncate color="fg.muted">{s.name}</Text>
-          </HStack>
+          <div key={`rrg-${s.symbol}-${i}`} className="flex min-w-0 items-center gap-1">
+            <div className="size-2 shrink-0 rounded-full" style={{ backgroundColor: SECTOR_PALETTE[i % SECTOR_PALETTE.length] }} />
+            <span className="truncate text-[10px] text-muted-foreground">{s.name}</span>
+          </div>
         ))}
-      </Box>
-    </Box>
+      </div>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -547,12 +580,12 @@ type VolData = {
   signal: string;
 };
 
-const REGIME_COLORS: Record<string, { palette: string; label: string }> = {
-  calm:     { palette: 'green',  label: 'Calm' },
-  elevated: { palette: 'yellow', label: 'Elevated' },
-  fear:     { palette: 'orange', label: 'Fear' },
-  extreme:  { palette: 'red',    label: 'Extreme' },
-  unknown:  { palette: 'gray',   label: 'Unknown' },
+const REGIME_COLORS: Record<string, { className: string; label: string }> = {
+  calm:     { className: 'border-transparent bg-[rgb(var(--status-success)/0.12)] text-[rgb(var(--status-success)/1)]', label: 'Calm' },
+  elevated: { className: 'border-transparent bg-amber-500/15 text-amber-800 dark:text-amber-200', label: 'Elevated' },
+  fear:     { className: 'border-transparent bg-orange-500/15 text-orange-800 dark:text-orange-200', label: 'Fear' },
+  extreme:  { className: 'border-transparent bg-destructive/10 text-destructive', label: 'Extreme' },
+  unknown:  { className: 'bg-secondary text-secondary-foreground', label: 'Unknown' },
 };
 
 const GaugeBar: React.FC<{
@@ -566,46 +599,36 @@ const GaugeBar: React.FC<{
   const pct = value != null ? Math.max(0, Math.min(100, ((value - min) / range) * 100)) : null;
 
   return (
-    <Box>
-      <HStack justify="space-between" mb="2px">
-        <Text fontSize="xs" fontWeight="medium">{label}</Text>
-        <Text fontSize="xs" color="fg.muted">{value != null ? value.toFixed(2) : '—'}</Text>
-      </HStack>
-      <Box position="relative" h="14px" borderRadius="md" overflow="hidden" display="flex">
+    <div>
+      <div className="mb-px flex justify-between">
+        <span className="text-xs font-medium">{label}</span>
+        <span className="text-xs text-muted-foreground">{value != null ? value.toFixed(2) : '—'}</span>
+      </div>
+      <div className="relative flex h-3.5 overflow-hidden rounded-md">
         {zones.map((zone, i) => {
           const start = i === 0 ? min : zones[i - 1].end;
           const width = ((zone.end - start) / range) * 100;
           return (
-            <Box
+            <div
               key={i}
-              h="100%"
-              w={`${width}%`}
-              bg={zone.color}
-              opacity={0.25}
-              position="relative"
+              className="relative h-full opacity-25"
+              style={{ width: `${width}%`, backgroundColor: zone.color }}
             />
           );
         })}
         {pct != null && (
-          <Box
-            position="absolute"
-            left={`${pct}%`}
-            top="0"
-            bottom="0"
-            w="3px"
-            bg="fg"
-            borderRadius="sm"
-            transform="translateX(-50%)"
-            zIndex={1}
+          <div
+            className="absolute top-0 bottom-0 z-[1] w-0.5 rounded-sm bg-foreground"
+            style={{ left: `${pct}%`, transform: 'translateX(-50%)' }}
           />
         )}
-      </Box>
-      <HStack justify="space-between" mt="1px">
+      </div>
+      <div className="mt-px flex justify-between">
         {zones.map((zone, i) => (
-          <Text key={i} fontSize="9px" color="fg.subtle">{zone.label}</Text>
+          <span key={i} className="text-[9px] text-muted-foreground">{zone.label}</span>
         ))}
-      </HStack>
-    </Box>
+      </div>
+    </div>
   );
 };
 
@@ -614,15 +637,16 @@ const VolatilityRegime: React.FC<{ data: VolData | null }> = ({ data }) => {
   const rc = REGIME_COLORS[data.regime] || REGIME_COLORS.unknown;
 
   return (
-    <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" bg="bg.card" p={3}>
-      <HStack justify="space-between" mb={2}>
-        <Text fontSize="sm" fontWeight="semibold">Volatility Regime</Text>
-        <HStack gap={2}>
-          {data.vix != null && <Text fontSize="xs" color="fg.muted">VIX {data.vix.toFixed(1)}</Text>}
-          <Badge variant="subtle" colorPalette={rc.palette} size="sm">{rc.label}</Badge>
-        </HStack>
-      </HStack>
-      <Stack gap={2}>
+    <Card className="gap-0 py-3 shadow-xs ring-1 ring-foreground/10">
+      <CardContent className="flex flex-col gap-2 px-3">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-sm font-semibold">Volatility Regime</span>
+        <div className="flex items-center gap-2">
+          {data.vix != null && <span className="text-xs text-muted-foreground">VIX {data.vix.toFixed(1)}</span>}
+          <Badge variant="secondary" className={cn('h-5 font-normal', rc.className)}>{rc.label}</Badge>
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
         <GaugeBar
           label="Term Structure (VIX3M / VIX)"
           value={data.term_structure_ratio}
@@ -645,11 +669,12 @@ const VolatilityRegime: React.FC<{ data: VolData | null }> = ({ data }) => {
             { end: 8.0, color: 'red',    label: 'Sell Protection' },
           ]}
         />
-      </Stack>
-      {data.signal && (
-        <Text fontSize="xs" color="fg.muted" mt={2} fontStyle="italic">{data.signal}</Text>
-      )}
-    </Box>
+      </div>
+      {data.signal ? (
+        <p className="mt-2 text-xs text-muted-foreground italic">{data.signal}</p>
+      ) : null}
+      </CardContent>
+    </Card>
   );
 };
 
@@ -698,34 +723,35 @@ const SectionHeading: React.FC<{
   onToggle: () => void;
   count?: number;
 }> = ({ title, sectionKey, isCollapsed, onToggle, count }) => (
-  <HStack
-    cursor="pointer"
-    onClick={onToggle}
+  <div
+    role="button"
     tabIndex={0}
+    className={cn(
+      'flex cursor-pointer select-none items-center gap-2 hover:opacity-80 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+      !isCollapsed && 'mb-2',
+    )}
+    onClick={onToggle}
     onKeyDown={(e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         onToggle();
       }
     }}
-    gap={2}
-    mb={isCollapsed ? 0 : 2}
-    role="button"
     aria-expanded={!isCollapsed}
     aria-controls={`section-${sectionKey}`}
-    _hover={{ opacity: 0.8 }}
-    userSelect="none"
   >
-    {isCollapsed ? <FiChevronRight size={14} /> : <FiChevronDown size={14} />}
-    <Text fontSize="sm" fontWeight="semibold" letterSpacing="-0.01em">{title}</Text>
-    {count != null && count > 0 && <Badge variant="subtle" size="sm">{count}</Badge>}
-  </HStack>
+    {isCollapsed ? <ChevronRight className="size-3.5 shrink-0" aria-hidden /> : <ChevronDown className="size-3.5 shrink-0" aria-hidden />}
+    <span className="text-sm font-semibold tracking-tight">{title}</span>
+    {count != null && count > 0 ? (
+      <Badge variant="secondary" className="h-5 font-normal">{count}</Badge>
+    ) : null}
+  </div>
 );
 
 const EmptyState: React.FC<{ mode: UniverseFilter; noun?: string }> = ({ mode, noun = 'items' }) => (
-  <Text fontSize="sm" color="fg.muted" py={4} textAlign="center">
+  <p className="py-4 text-center text-sm text-muted-foreground">
     No {noun} for {MODE_DESCRIPTIONS[mode].toLowerCase()}
-  </Text>
+  </p>
 );
 
 /* ===== Main Component ===== */
@@ -883,18 +909,21 @@ const MarketDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <Box p={4}>
-        <HStack><Spinner size="sm" /><Text>Loading market dashboard…</Text></HStack>
-      </Box>
+      <Page>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" aria-hidden />
+          Loading market dashboard…
+        </div>
+      </Page>
     );
   }
 
   if (error) {
     return (
-      <Box p={4}>
-        <Heading size="md" mb={2}>Market Dashboard</Heading>
-        <Text color="status.danger">{error}</Text>
-      </Box>
+      <Page>
+        <h1 className="mb-2 font-heading text-2xl font-semibold tracking-tight">Market Dashboard</h1>
+        <p className="text-sm text-destructive">{error}</p>
+      </Page>
     );
   }
 
@@ -935,67 +964,91 @@ const MarketDashboard: React.FC = () => {
   return (
     <PortfolioSymbolsContext.Provider value={portfolioSymbols}>
     <ChartContext.Provider value={openChart}>
-    <Box p={4}>
-      <Stack gap={4}>
-        <Box>
-          <HStack justify="space-between" align="end" flexWrap="wrap" mb={1}>
-            <HStack gap={3} align="baseline">
-              <Heading size="md">Market Dashboard</Heading>
-              <HStack gap={1}>
+    <Page>
+      <div className="flex flex-col gap-4">
+        <div>
+          <div className="mb-1 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:gap-3">
+              <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground md:text-3xl">Market Dashboard</h1>
+              <div className="flex flex-wrap gap-1">
                 {VIEW_TABS.map((tab) => {
                   const Icon = tab.icon;
                   const isActive = activeView === tab.key;
                   return (
                     <Button
                       key={tab.key}
+                      type="button"
                       size="xs"
-                      variant={isActive ? 'solid' : 'ghost'}
-                      bg={isActive ? 'amber.500' : undefined}
-                      color={isActive ? 'white' : undefined}
-                      _hover={isActive ? { bg: 'amber.400' } : undefined}
+                      variant={isActive ? 'default' : 'ghost'}
+                      className={cn(
+                        'gap-1',
+                        isActive && 'bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-500 dark:hover:bg-amber-400',
+                      )}
                       onClick={() => handleViewChange(tab.key)}
                     >
-                      <Icon size={12} />
-                      <Text ml={1}>{tab.label}</Text>
+                      <Icon className="size-3" aria-hidden />
+                      {tab.label}
                     </Button>
                   );
                 })}
-              </HStack>
-            </HStack>
-            <HStack gap={2}>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
               {activeView === 'overview' && (
-                <HStack gap={1}>
+                <div className="flex flex-wrap gap-1">
                   {(['all', 'etf', 'holdings'] as UniverseFilter[]).map((f) => (
                     <Button
                       key={f}
+                      type="button"
                       size="xs"
-                      variant={universeFilter === f ? 'solid' : 'outline'}
-                      colorPalette={universeFilter === f ? (f === 'holdings' ? 'blue' : 'gray') : 'gray'}
+                      variant={universeFilter === f ? 'default' : 'outline'}
+                      className={cn(
+                        universeFilter === f && f !== 'holdings' && 'bg-secondary',
+                        universeFilter === f && f === 'holdings' && 'bg-primary text-primary-foreground',
+                      )}
                       onClick={() => handleFilterChange(f)}
                     >
                       {filterLabels[f]}
                     </Button>
                   ))}
-                </HStack>
+                </div>
               )}
-              <HStack gap={1}>
-                <Text fontSize="xs" color={snapshotAge != null && snapshotAge > 30 ? 'status.warning' : 'fg.muted'}>
+              <div className="flex items-center gap-1">
+                <span
+                  className={cn(
+                    'text-xs',
+                    snapshotAge != null && snapshotAge > 30
+                      ? 'text-[rgb(var(--status-warning)/1)]'
+                      : 'text-muted-foreground',
+                  )}
+                >
                   {snapshotAge != null ? `${snapshotAge}m ago` : ''}
-                </Text>
-                <IconButton size="xs" variant="ghost" onClick={() => { void fetchDashboard(); }} aria-label="Refresh dashboard">
-                  <FiRefreshCw />
-                </IconButton>
-              </HStack>
-            </HStack>
-          </HStack>
+                </span>
+                <Button
+                  type="button"
+                  size="icon-xs"
+                  variant="ghost"
+                  aria-label="Refresh dashboard"
+                  onClick={() => { void fetchDashboard(); }}
+                >
+                  <RefreshCw className="size-3.5" />
+                </Button>
+              </div>
+            </div>
+          </div>
           {activeView === 'overview' && (
-            <Text fontSize="xs" color="fg.muted">{MODE_DESCRIPTIONS[universeFilter]}</Text>
+            <p className="text-xs text-muted-foreground">{MODE_DESCRIPTIONS[universeFilter]}</p>
           )}
-        </Box>
+        </div>
 
         {/* Non-overview views */}
         {activeView !== 'overview' && (
-          <React.Suspense fallback={<HStack p={4}><Spinner size="sm" /><Text fontSize="sm">Loading view...</Text></HStack>}>
+          <React.Suspense fallback={(
+            <div className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+              Loading view...
+            </div>
+          )}>
             {activeView === 'top-down' && <TopDownView snapshots={trackedRows} dashboardPayload={payload} />}
             {activeView === 'bottom-up' && <BottomUpView snapshots={filteredTrackedRows} />}
             {activeView === 'sectors' && <SectorView snapshots={trackedRows} dashboardPayload={payload} />}
@@ -1011,29 +1064,31 @@ const MarketDashboard: React.FC = () => {
 
         {/* Section 1: Market Pulse */}
         {vis.pulse && (
-        <Box>
+        <div>
           <SectionHeading title="Market Pulse" sectionKey="pulse" isCollapsed={collapsed.has('pulse')} onToggle={() => toggle('pulse')} />
           <Collapsible.Root open={!collapsed.has('pulse')}>
             <Collapsible.Content>
-              <Box display="flex" gap={2} flexWrap="wrap" mb={3}>
+              <div className="mb-3 flex flex-wrap gap-2">
                 <StatCard label="% Above 50DMA" value={`${pctAbove50}%`} sub={`${above50} / ${snapshotCount}`} />
                 <StatCard label="% Above 200DMA" value={`${pctAbove200}%`} sub={`${above200} / ${snapshotCount}`} />
                 <StatCard label="Advance / Decline" value={advDecRatio} sub={`${upCount} up · ${downCount} down`} color={advDecColor} />
-              </Box>
+              </div>
               <StageBar counts={stageCounts} total={snapshotCount} />
-              <VolatilityRegime data={volData} />
+              <div className="mt-3">
+                <VolatilityRegime data={volData} />
+              </div>
             </Collapsible.Content>
           </Collapsible.Root>
-        </Box>
+        </div>
         )}
 
         {/* Action Queue — organized by Weinstein Stage */}
         {vis.actionQueue && (() => {
           if (actionQueue.length === 0) return (
-            <Box>
+            <div>
               <SectionHeading title="Action Queue" sectionKey="actionQueue" isCollapsed={collapsed.has('actionQueue')} onToggle={() => toggle('actionQueue')} count={0} />
               <Collapsible.Root open={!collapsed.has('actionQueue')}><Collapsible.Content><EmptyState mode={universeFilter} noun="action items" /></Collapsible.Content></Collapsible.Root>
-            </Box>
+            </div>
           );
           const stageGroups: Record<string, typeof actionQueue> = { '1': [], '2': [], '3': [], '4': [] };
           for (const item of actionQueue) {
@@ -1042,28 +1097,46 @@ const MarketDashboard: React.FC = () => {
             else stageGroups['1'].push(item);
           }
           const stageConfig = [
-            { key: '1', label: 'Stage 1 — Base', palette: 'gray' },
-            { key: '2', label: 'Stage 2 — Uptrend', palette: 'green' },
-            { key: '3', label: 'Stage 3 — Distribution', palette: 'yellow' },
-            { key: '4', label: 'Stage 4 — Downtrend', palette: 'red' },
+            { key: '1', label: 'Stage 1 — Base', palette: 'gray' as const },
+            { key: '2', label: 'Stage 2 — Uptrend', palette: 'green' as const },
+            { key: '3', label: 'Stage 3 — Distribution', palette: 'yellow' as const },
+            { key: '4', label: 'Stage 4 — Downtrend', palette: 'red' as const },
           ];
+          const stageTitleClass = (p: typeof stageConfig[number]['palette']) =>
+            p === 'gray'
+              ? 'text-muted-foreground'
+              : p === 'green'
+                ? 'text-[rgb(var(--status-success)/1)]'
+                : p === 'yellow'
+                  ? 'text-amber-600 dark:text-amber-400'
+                  : 'text-destructive';
+          const stageBadgeClass = (p: typeof stageConfig[number]['palette']) =>
+            p === 'gray'
+              ? 'bg-secondary text-secondary-foreground'
+              : p === 'green'
+                ? 'border-transparent bg-[rgb(var(--status-success)/0.12)] text-[rgb(var(--status-success)/1)]'
+                : p === 'yellow'
+                  ? 'border-transparent bg-amber-500/15 text-amber-800 dark:text-amber-200'
+                  : 'border-transparent bg-destructive/10 text-destructive';
           return (
-            <Box>
+            <div>
               <SectionHeading title="Action Queue" sectionKey="actionQueue" isCollapsed={collapsed.has('actionQueue')} onToggle={() => toggle('actionQueue')} count={actionQueue.length} />
               <Collapsible.Root open={!collapsed.has('actionQueue')}>
                 <Collapsible.Content>
-              <Box display="grid" gridTemplateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', xl: 'repeat(4, 1fr)' }} gap={3}>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                 {stageConfig.map(({ key, label, palette }) => (
-                  <Box key={key} borderWidth="1px" borderColor="border.subtle" borderRadius="lg" bg="bg.card" overflow="hidden">
-                    <Box px={3} py={1.5} borderBottomWidth="1px" borderColor="border.subtle">
-                      <HStack justify="space-between">
-                        <Text fontSize="xs" fontWeight="semibold" color={`${palette}.fg`}>{label}</Text>
-                        <Badge size="xs" variant="subtle" colorPalette={palette}>{stageGroups[key].length}</Badge>
-                      </HStack>
-                    </Box>
-                    <Box px={3} py={2} maxH="260px" overflowY="auto">
+                  <Card key={key} className="gap-0 overflow-hidden py-0 shadow-xs ring-1 ring-foreground/10">
+                    <div className="border-b border-border px-3 py-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className={cn('text-xs font-semibold', stageTitleClass(palette))}>{label}</span>
+                        <Badge variant="secondary" className={cn('h-5 px-1.5 text-[10px] font-normal', stageBadgeClass(palette))}>
+                          {stageGroups[key].length}
+                        </Badge>
+                      </div>
+                    </div>
+                    <CardContent className="max-h-[260px] overflow-y-auto px-3 py-2">
                       {stageGroups[key].length === 0 ? (
-                        <Text fontSize="xs" color="fg.subtle">No signals</Text>
+                        <p className="text-xs text-muted-foreground">No signals</p>
                       ) : (
                         stageGroups[key].map((item, idx) => {
                           const reasons: string[] = [];
@@ -1077,101 +1150,101 @@ const MarketDashboard: React.FC = () => {
                             reasons.push(`RS ${item.rs_mansfield_pct > 0 ? '+' : ''}${item.rs_mansfield_pct.toFixed(1)}`);
                           }
                           return (
-                            <HStack key={`aq-${item.symbol}-${idx}`} justify="space-between" fontSize="xs" py="2px" borderBottomWidth="1px" borderColor="border.subtle">
+                            <div key={`aq-${item.symbol}-${idx}`} className="flex items-center justify-between border-b border-border py-0.5 text-xs last:border-0">
                               <SymbolLink symbol={item.symbol} showHeldBadge={showHeld} />
-                              <HStack gap={1} flexShrink={0}>
+                              <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
                                 {reasons.map((r, i) => (
-                                  <Text key={i} fontSize="xs" color="fg.muted">{r}</Text>
+                                  <span key={i} className="text-muted-foreground">{r}</span>
                                 ))}
-                              </HStack>
-                            </HStack>
+                              </div>
+                            </div>
                           );
                         })
                       )}
-                    </Box>
-                  </Box>
+                    </CardContent>
+                  </Card>
                 ))}
-              </Box>
+              </div>
                 </Collapsible.Content>
               </Collapsible.Root>
-            </Box>
+            </div>
           );
         })()}
 
         {/* Section 2: Sector Rotation */}
         {vis.sectorRotation && (
-        <Box>
+        <div>
           <SectionHeading title="Sector Rotation" sectionKey="sectorRotation" isCollapsed={collapsed.has('sectorRotation')} onToggle={() => toggle('sectorRotation')} />
           <Collapsible.Root open={!collapsed.has('sectorRotation')}>
             <Collapsible.Content>
-          <Box display="grid" gridTemplateColumns={{ base: '1fr', xl: '1.6fr 0.4fr' }} gap={3}>
-            <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
-              <TableScrollArea borderWidth="1px" borderColor="border.subtle" borderRadius="md">
-                <TableRoot size="sm">
-                  <TableHeader>
-                    <TableRow>
-                      <TableColumnHeader>Sector</TableColumnHeader>
-                      <TableColumnHeader>Stage</TableColumnHeader>
-                      <TableColumnHeader>Days</TableColumnHeader>
-                      <TableColumnHeader>1D%</TableColumnHeader>
-                      <TableColumnHeader>5D%</TableColumnHeader>
-                      <TableColumnHeader>20D%</TableColumnHeader>
-                      <TableColumnHeader>RS</TableColumnHeader>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+          <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1.6fr_0.4fr]">
+            <Card className="gap-0 py-3 shadow-xs ring-1 ring-foreground/10">
+              <CardContent className="px-3">
+                <TableShell>
+                  <thead className="border-b border-border bg-muted/50">
+                    <tr>
+                      <th className="px-2 py-2 font-medium">Sector</th>
+                      <th className="px-2 py-2 font-medium">Stage</th>
+                      <th className="px-2 py-2 font-medium">Days</th>
+                      <th className="px-2 py-2 font-medium">1D%</th>
+                      <th className="px-2 py-2 font-medium">5D%</th>
+                      <th className="px-2 py-2 font-medium">20D%</th>
+                      <th className="px-2 py-2 font-medium">RS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                     {sectorRows.map((r, i) => (
-                      <TableRow key={`sector-${r.symbol}-${i}`}>
-                        <TableCell>{r.sector_name || r.symbol}</TableCell>
-                        <TableCell>
-                          {r.stage_label ? (
-                            <StageBadge stage={r.stage_label} />
-                          ) : '—'}
-                        </TableCell>
-                        <TableCell>{r.days_in_stage ?? '—'}</TableCell>
-                        <TableCell><Text color={heatColor(r.change_1d)}>{fmtPct(r.change_1d)}</Text></TableCell>
-                        <TableCell><Text color={heatColor(r.change_5d)}>{fmtPct(r.change_5d)}</Text></TableCell>
-                        <TableCell><Text color={heatColor(r.change_20d)}>{fmtPct(r.change_20d)}</Text></TableCell>
-                        <TableCell><Text color={heatColor(r.rs_mansfield_pct)}>{fmtPct(r.rs_mansfield_pct)}</Text></TableCell>
-                      </TableRow>
+                      <tr key={`sector-${r.symbol}-${i}`} className="border-b border-border/60">
+                        <td className="px-2 py-1.5">{r.sector_name || r.symbol}</td>
+                        <td className="px-2 py-1.5">
+                          {r.stage_label ? <StageBadge stage={r.stage_label} /> : '—'}
+                        </td>
+                        <td className="px-2 py-1.5">{r.days_in_stage ?? '—'}</td>
+                        <td className={cn('px-2 py-1.5', heatTextClass(r.change_1d))}>{fmtPct(r.change_1d)}</td>
+                        <td className={cn('px-2 py-1.5', heatTextClass(r.change_5d))}>{fmtPct(r.change_5d)}</td>
+                        <td className={cn('px-2 py-1.5', heatTextClass(r.change_20d))}>{fmtPct(r.change_20d)}</td>
+                        <td className={cn('px-2 py-1.5', heatTextClass(r.rs_mansfield_pct))}>{fmtPct(r.rs_mansfield_pct)}</td>
+                      </tr>
                     ))}
-                  </TableBody>
-                </TableRoot>
-              </TableScrollArea>
-            </Box>
+                  </tbody>
+                </TableShell>
+              </CardContent>
+            </Card>
 
-            <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
-              <Text fontSize="xs" fontWeight="semibold" mb={2}>Sector Momentum (by GICS)</Text>
+            <Card className="gap-0 py-3 shadow-xs ring-1 ring-foreground/10">
+              <CardContent className="px-3">
+              <p className="mb-2 text-xs font-semibold">Sector Momentum (by GICS)</p>
               {sectorMomentum.length === 0 ? (
-                <Text fontSize="xs" color="fg.muted">No data</Text>
+                <p className="text-xs text-muted-foreground">No data</p>
               ) : (
-                <Box display="flex" flexDirection="column" gap={1}>
+                <div className="flex flex-col gap-1">
                   {sectorMomentum.slice(0, 10).map((sm, i) => (
-                    <HStack key={`sector-mom-${sm.sector}-${i}`} justify="space-between" fontSize="xs">
-                      <Text truncate maxW="140px">{sm.sector}</Text>
-                      <HStack gap={2}>
-                        <Text color={heatColor(sm.avg_perf_20d)}>{fmtPct(sm.avg_perf_20d)}</Text>
-                        <Text color="fg.muted">({sm.count})</Text>
-                      </HStack>
-                    </HStack>
+                    <div key={`sector-mom-${sm.sector}-${i}`} className="flex items-center justify-between text-xs">
+                      <span className="max-w-[140px] truncate">{sm.sector}</span>
+                      <div className="flex items-center gap-2">
+                        <span className={heatTextClass(sm.avg_perf_20d)}>{fmtPct(sm.avg_perf_20d)}</span>
+                        <span className="text-muted-foreground">({sm.count})</span>
+                      </div>
+                    </div>
                   ))}
-                </Box>
+                </div>
               )}
-            </Box>
-          </Box>
+              </CardContent>
+            </Card>
+          </div>
             </Collapsible.Content>
           </Collapsible.Root>
-        </Box>
+        </div>
         )}
 
         {/* Scatter/Bubble Chart */}
         {vis.scatter && filteredTrackedRows.length > 0 && (
-          <Box>
+          <div>
             <SectionHeading title="Universe Scatter" sectionKey="scatter" isCollapsed={collapsed.has('scatter')} onToggle={() => toggle('scatter')} count={filteredTrackedRows.length} />
             <Collapsible.Root open={!collapsed.has('scatter')}>
-              {/* @ts-expect-error unmountOnExit is supported at runtime but not typed */}
-              <Collapsible.Content unmountOnExit>
-            <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={4} bg="bg.card">
+              <Collapsible.Content>
+            <Card className="gap-0 py-4 shadow-xs ring-1 ring-foreground/10">
+              <CardContent className="px-4">
               <BubbleChart
                 data={filteredTrackedRows}
                 defaultX="perf_1d"
@@ -1180,363 +1253,390 @@ const MarketDashboard: React.FC = () => {
                 defaultSize="market_cap"
                 onSymbolClick={openChart}
               />
-            </Box>
+              </CardContent>
+            </Card>
               </Collapsible.Content>
             </Collapsible.Root>
-          </Box>
+          </div>
         )}
 
         {/* Section 3: Trading Setups */}
         {vis.setups && (
-        <Box>
+        <div>
           <SectionHeading title="Trading Setups" sectionKey="setups" isCollapsed={collapsed.has('setups')} onToggle={() => toggle('setups')} count={breakoutCandidates.length + pullbackCandidates.length + rsLeaders.length + leaders.length} />
           <Collapsible.Root open={!collapsed.has('setups')}>
             <Collapsible.Content>
               {(breakoutCandidates.length + pullbackCandidates.length + rsLeaders.length + leaders.length) === 0 ? (
                 <EmptyState mode={universeFilter} noun="trading setups" />
               ) : (
-                <Box display="grid" gridTemplateColumns={{ base: '1fr', md: '1fr 1fr', xl: '1fr 1fr 1fr 1fr' }} gap={3}>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                   <SetupCard title="Breakout Candidates" items={breakoutCandidates} linkPreset="breakout" showHeldBadge={showHeld} />
                   <SetupCard title="Pullback Buys" items={pullbackCandidates} linkPreset="pullback" showHeldBadge={showHeld} />
                   <SetupCard title="RS Leaders" items={rsLeaders} linkPreset="rs_leaders" showHeldBadge={showHeld} />
                   <SetupCard title="Momentum Leaders" items={leaders} showScore linkPreset="momentum" showHeldBadge={showHeld} />
-                </Box>
+                </div>
               )}
             </Collapsible.Content>
           </Collapsible.Root>
-        </Box>
+        </div>
         )}
 
         {/* Section 4: Stage Transitions */}
         {vis.transitions && (
-        <Box>
+        <div>
           <SectionHeading title="Stage Transitions" sectionKey="transitions" isCollapsed={collapsed.has('transitions')} onToggle={() => toggle('transitions')} count={enteringStage2a.length + entering34.length} />
           <Collapsible.Root open={!collapsed.has('transitions')}>
             <Collapsible.Content>
               {(enteringStage2a.length + entering34.length) === 0 ? (
                 <EmptyState mode={universeFilter} noun="stage transitions" />
               ) : (
-                <Box display="grid" gridTemplateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={3}>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <TransitionList title="Entering Stage 2A (Bullish)" items={enteringStage2a} colorPalette="green" showHeldBadge={showHeld} />
                   <TransitionList title="Entering Stage 3/4 (Warning)" items={entering34} colorPalette="red" showHeldBadge={showHeld} />
-                </Box>
+                </div>
               )}
             </Collapsible.Content>
           </Collapsible.Root>
-        </Box>
+        </div>
         )}
 
         {/* Section 5: Ranked Metrics */}
         {vis.ranked && (
-        <Box>
+        <div>
           <SectionHeading title="Top / Bottom 10 Matrix" sectionKey="ranked" isCollapsed={collapsed.has('ranked')} onToggle={() => toggle('ranked')} />
           <Collapsible.Root open={!collapsed.has('ranked')}>
             <Collapsible.Content>
-              <Stack gap={3}>
+              <div className="flex flex-col gap-3">
                 <RankMatrix title="Top 10 Matrix" data={top10Matrix} />
                 <RankMatrix title="Bottom 10 Matrix" data={bottom10Matrix} />
-              </Stack>
+              </div>
             </Collapsible.Content>
           </Collapsible.Root>
-        </Box>
+        </div>
         )}
 
         {/* Section 6: Entry/Exit Proximity */}
         {vis.proximity && (
-        <Box>
+        <div>
           <SectionHeading title="Entry / Exit Proximity" sectionKey="proximity" isCollapsed={collapsed.has('proximity')} onToggle={() => toggle('proximity')} />
           <Collapsible.Root open={!collapsed.has('proximity')}>
             <Collapsible.Content>
-          <Box display="grid" gridTemplateColumns={{ base: '1fr', xl: '1fr 1fr' }} gap={3}>
-            <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
-              <Text fontSize="xs" fontWeight="semibold" mb={2}>Top 10 Closest to Entry</Text>
-              <TableScrollArea borderWidth="1px" borderColor="border.subtle" borderRadius="md">
-                <TableRoot size="sm">
-                  <TableHeader>
-                    <TableRow>
-                      <TableColumnHeader>Symbol</TableColumnHeader>
-                      <TableColumnHeader>Stage</TableColumnHeader>
-                      <TableColumnHeader>Entry</TableColumnHeader>
-                      <TableColumnHeader>Dist %</TableColumnHeader>
-                      <TableColumnHeader>Dist ATR</TableColumnHeader>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {entryRows.slice(0, 10).length ? (
-                      entryRows.slice(0, 10).map((r: any, i: number) => {
-                        const distColor = typeof r.distance_pct === 'number' && Math.abs(r.distance_pct) <= 3 ? 'green.400' : undefined;
-                        return (
-                        <TableRow key={`entry-${r.symbol}-${i}`}>
-                          <TableCell><SymbolLink symbol={r.symbol} showHeldBadge={showHeld} /></TableCell>
-                          <TableCell>
-                            <StageBadge stage={r.stage_label || '?'} />
-                          </TableCell>
-                          <TableCell>{typeof r.entry_price === 'number' ? r.entry_price.toFixed(2) : '—'}</TableCell>
-                          <TableCell><Text color={distColor}>{typeof r.distance_pct === 'number' ? `${r.distance_pct.toFixed(2)}%` : '—'}</Text></TableCell>
-                          <TableCell>{typeof r.distance_atr === 'number' ? `${r.distance_atr.toFixed(2)}x` : '—'}</TableCell>
-                        </TableRow>
-                        );
-                      })
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={5}>
-                          <Text fontSize="xs" color="fg.muted">
-                            No entry prices set yet. Set Entry prices in Market Tracked.
-                          </Text>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </TableRoot>
-              </TableScrollArea>
-            </Box>
+          <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+            <Card className="gap-0 py-3 shadow-xs ring-1 ring-foreground/10">
+              <CardContent className="px-3">
+              <p className="mb-2 text-xs font-semibold">Top 10 Closest to Entry</p>
+              <TableShell>
+                <thead className="border-b border-border bg-muted/50">
+                  <tr>
+                    <th className="px-2 py-2 font-medium">Symbol</th>
+                    <th className="px-2 py-2 font-medium">Stage</th>
+                    <th className="px-2 py-2 font-medium">Entry</th>
+                    <th className="px-2 py-2 font-medium">Dist %</th>
+                    <th className="px-2 py-2 font-medium">Dist ATR</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entryRows.slice(0, 10).length ? (
+                    entryRows.slice(0, 10).map((r: any, i: number) => {
+                      const distClass =
+                        typeof r.distance_pct === 'number' && Math.abs(r.distance_pct) <= 3
+                          ? semanticTextColorClass('green.400')
+                          : undefined;
+                      return (
+                        <tr key={`entry-${r.symbol}-${i}`} className="border-b border-border/60">
+                          <td className="px-2 py-1.5"><SymbolLink symbol={r.symbol} showHeldBadge={showHeld} /></td>
+                          <td className="px-2 py-1.5"><StageBadge stage={r.stage_label || '?'} /></td>
+                          <td className="px-2 py-1.5">{typeof r.entry_price === 'number' ? r.entry_price.toFixed(2) : '—'}</td>
+                          <td className={cn('px-2 py-1.5', distClass)}>
+                            {typeof r.distance_pct === 'number' ? `${r.distance_pct.toFixed(2)}%` : '—'}
+                          </td>
+                          <td className="px-2 py-1.5">{typeof r.distance_atr === 'number' ? `${r.distance_atr.toFixed(2)}x` : '—'}</td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="px-2 py-2 text-xs text-muted-foreground">
+                        No entry prices set yet. Set Entry prices in Market Tracked.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </TableShell>
+              </CardContent>
+            </Card>
 
-            <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
-              <Text fontSize="xs" fontWeight="semibold" mb={2}>Top 10 Closest to Exit</Text>
-              <TableScrollArea borderWidth="1px" borderColor="border.subtle" borderRadius="md">
-                <TableRoot size="sm">
-                  <TableHeader>
-                    <TableRow>
-                      <TableColumnHeader>Symbol</TableColumnHeader>
-                      <TableColumnHeader>Stage</TableColumnHeader>
-                      <TableColumnHeader>Exit</TableColumnHeader>
-                      <TableColumnHeader>Dist %</TableColumnHeader>
-                      <TableColumnHeader>Dist ATR</TableColumnHeader>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {exitRows.slice(0, 10).length ? (
-                      exitRows.slice(0, 10).map((r: any, i: number) => {
-                        const distColor = typeof r.distance_pct === 'number' && Math.abs(r.distance_pct) <= 3 ? 'red.400' : undefined;
-                        return (
-                        <TableRow key={`exit-${r.symbol}-${i}`}>
-                          <TableCell><SymbolLink symbol={r.symbol} showHeldBadge={showHeld} /></TableCell>
-                          <TableCell>
-                            <StageBadge stage={r.stage_label || '?'} />
-                          </TableCell>
-                          <TableCell>{typeof r.exit_price === 'number' ? r.exit_price.toFixed(2) : '—'}</TableCell>
-                          <TableCell><Text color={distColor}>{typeof r.distance_pct === 'number' ? `${r.distance_pct.toFixed(2)}%` : '—'}</Text></TableCell>
-                          <TableCell>{typeof r.distance_atr === 'number' ? `${r.distance_atr.toFixed(2)}x` : '—'}</TableCell>
-                        </TableRow>
-                        );
-                      })
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={5}>
-                          <Text fontSize="xs" color="fg.muted">
-                            No exit prices set yet. Set Exit prices in Market Tracked.
-                          </Text>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </TableRoot>
-              </TableScrollArea>
-            </Box>
-          </Box>
+            <Card className="gap-0 py-3 shadow-xs ring-1 ring-foreground/10">
+              <CardContent className="px-3">
+              <p className="mb-2 text-xs font-semibold">Top 10 Closest to Exit</p>
+              <TableShell>
+                <thead className="border-b border-border bg-muted/50">
+                  <tr>
+                    <th className="px-2 py-2 font-medium">Symbol</th>
+                    <th className="px-2 py-2 font-medium">Stage</th>
+                    <th className="px-2 py-2 font-medium">Exit</th>
+                    <th className="px-2 py-2 font-medium">Dist %</th>
+                    <th className="px-2 py-2 font-medium">Dist ATR</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {exitRows.slice(0, 10).length ? (
+                    exitRows.slice(0, 10).map((r: any, i: number) => {
+                      const distClass =
+                        typeof r.distance_pct === 'number' && Math.abs(r.distance_pct) <= 3
+                          ? semanticTextColorClass('red.400')
+                          : undefined;
+                      return (
+                        <tr key={`exit-${r.symbol}-${i}`} className="border-b border-border/60">
+                          <td className="px-2 py-1.5"><SymbolLink symbol={r.symbol} showHeldBadge={showHeld} /></td>
+                          <td className="px-2 py-1.5"><StageBadge stage={r.stage_label || '?'} /></td>
+                          <td className="px-2 py-1.5">{typeof r.exit_price === 'number' ? r.exit_price.toFixed(2) : '—'}</td>
+                          <td className={cn('px-2 py-1.5', distClass)}>
+                            {typeof r.distance_pct === 'number' ? `${r.distance_pct.toFixed(2)}%` : '—'}
+                          </td>
+                          <td className="px-2 py-1.5">{typeof r.distance_atr === 'number' ? `${r.distance_atr.toFixed(2)}x` : '—'}</td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="px-2 py-2 text-xs text-muted-foreground">
+                        No exit prices set yet. Set Exit prices in Market Tracked.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </TableShell>
+              </CardContent>
+            </Card>
+          </div>
             </Collapsible.Content>
           </Collapsible.Root>
-        </Box>
+        </div>
         )}
 
         {/* Market Insights */}
         {vis.insights && (
-        <Box>
+        <div>
           <SectionHeading title="Market Insights" sectionKey="insights" isCollapsed={collapsed.has('insights')} onToggle={() => toggle('insights')} />
           <Collapsible.Root open={!collapsed.has('insights')}>
-            {/* @ts-expect-error unmountOnExit is supported at runtime but not typed */}
-            <Collapsible.Content unmountOnExit>
-          <Box display="grid" gridTemplateColumns={{ base: '1fr', lg: '1fr 1fr' }} gap={3}>
-            <Box display="flex" flexDirection="column" gap={3}>
+            <Collapsible.Content>
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <div className="flex flex-col gap-3">
               {(payload?.range_histogram || []).length > 0 && (
                 <RangeHistogram bins={payload!.range_histogram!} />
               )}
               {(payload?.breadth_series || []).length > 0 && (
                 <BreadthChart series={payload!.breadth_series!} />
               )}
-            </Box>
-            {rrgSectors.length > 0 && (
-              <RRGChart sectors={rrgSectors} />
-            )}
-          </Box>
+            </div>
+            {rrgSectors.length > 0 ? <RRGChart sectors={rrgSectors} /> : null}
+          </div>
             </Collapsible.Content>
           </Collapsible.Root>
-        </Box>
+        </div>
         )}
 
         {/* Signals & Divergences */}
         {vis.signals && (
-        <Box>
+        <div>
           <SectionHeading title="Signals & Divergences" sectionKey="signals" isCollapsed={collapsed.has('signals')} onToggle={() => toggle('signals')} count={rsiBearish.length + rsiBullish.length + tdSignals.length + gapLeaders.length} />
           <Collapsible.Root open={!collapsed.has('signals')}>
             <Collapsible.Content>
-          <Box display="grid" gridTemplateColumns={{ base: '1fr', lg: '1fr 1fr 1fr' }} gap={3}>
-            <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
-              <Text fontSize="xs" fontWeight="semibold" mb={2}>Divergence Watch</Text>
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+            <Card className="gap-0 py-3 shadow-xs ring-1 ring-foreground/10">
+              <CardContent className="px-3">
+              <p className="mb-2 text-xs font-semibold">Divergence Watch</p>
               {(rsiBearish.length + rsiBullish.length) === 0 ? (
-                <Text fontSize="xs" color="fg.muted">No divergences detected</Text>
+                <p className="text-xs text-muted-foreground">No divergences detected</p>
               ) : (
-                <Box maxH="300px" overflowY="auto" pr={1}>
-                  <Box display="flex" flexDirection="column" gap={2}>
+                <div className="max-h-[300px] overflow-y-auto pr-1">
+                  <div className="flex flex-col gap-2">
                     {rsiBearish.length > 0 && (
-                      <Box>
-                        <Badge size="sm" variant="subtle" colorPalette="red" mb={1}>Bearish ({rsiBearish.length})</Badge>
+                      <div>
+                        <Badge variant="destructive" className="mb-1 h-5 border-transparent bg-destructive/10 font-normal">
+                          Bearish ({rsiBearish.length})
+                        </Badge>
                         {rsiBearish.map((d, i) => (
-                          <HStack key={`div-b-${d.symbol}-${i}`} justify="space-between" fontSize="xs" py="1px">
+                          <div key={`div-b-${d.symbol}-${i}`} className="flex items-center justify-between py-px text-xs">
                             <SymbolLink symbol={d.symbol} />
-                            <HStack gap={2}>
-                              <Text color="green.400">+{d.perf_20d}%</Text>
-                              <Text color="red.400">RSI {d.rsi}</Text>
-                            </HStack>
-                          </HStack>
+                            <div className="flex items-center gap-2">
+                              <span className={semanticTextColorClass('green.400')}>+{d.perf_20d}%</span>
+                              <span className={semanticTextColorClass('red.400')}>RSI {d.rsi}</span>
+                            </div>
+                          </div>
                         ))}
-                      </Box>
+                      </div>
                     )}
                     {rsiBullish.length > 0 && (
-                      <Box>
-                        <Badge size="sm" variant="subtle" colorPalette="green" mb={1}>Bullish ({rsiBullish.length})</Badge>
+                      <div>
+                        <Badge variant="secondary" className="mb-1 h-5 border-transparent bg-[rgb(var(--status-success)/0.12)] font-normal text-[rgb(var(--status-success)/1)]">
+                          Bullish ({rsiBullish.length})
+                        </Badge>
                         {rsiBullish.map((d, i) => (
-                          <HStack key={`div-l-${d.symbol}-${i}`} justify="space-between" fontSize="xs" py="1px">
+                          <div key={`div-l-${d.symbol}-${i}`} className="flex items-center justify-between py-px text-xs">
                             <SymbolLink symbol={d.symbol} />
-                            <HStack gap={2}>
-                              <Text color="red.400">{d.perf_20d}%</Text>
-                              <Text color="green.400">RSI {d.rsi}</Text>
-                            </HStack>
-                          </HStack>
+                            <div className="flex items-center gap-2">
+                              <span className={semanticTextColorClass('red.400')}>{d.perf_20d}%</span>
+                              <span className={semanticTextColorClass('green.400')}>RSI {d.rsi}</span>
+                            </div>
+                          </div>
                         ))}
-                      </Box>
+                      </div>
                     )}
-                  </Box>
-                </Box>
+                  </div>
+                </div>
               )}
-            </Box>
+              </CardContent>
+            </Card>
 
-            <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
-              <HStack justify="space-between" mb={1}>
-                <Text fontSize="xs" fontWeight="semibold">TD Sequential Signals</Text>
-                {tdSignals.length > 0 && <Badge variant="subtle" size="sm">{tdSignals.length}</Badge>}
-              </HStack>
-              <Text fontSize="xs" color="fg.muted" mb={2}>Setup 9 = potential reversal. Countdown 13 = exhaustion confirmed.</Text>
+            <Card className="gap-0 py-3 shadow-xs ring-1 ring-foreground/10">
+              <CardContent className="px-3">
+              <div className="mb-1 flex items-center justify-between">
+                <p className="text-xs font-semibold">TD Sequential Signals</p>
+                {tdSignals.length > 0 ? (
+                  <Badge variant="secondary" className="h-5 font-normal">{tdSignals.length}</Badge>
+                ) : null}
+              </div>
+              <p className="mb-2 text-xs text-muted-foreground">Setup 9 = potential reversal. Countdown 13 = exhaustion confirmed.</p>
               {tdSignals.length === 0 ? (
-                <Text fontSize="xs" color="fg.muted">No active signals</Text>
+                <p className="text-xs text-muted-foreground">No active signals</p>
               ) : (
-                <Box maxH="300px" overflowY="auto">
-                  <Box display="grid" gridTemplateColumns={{ base: '1fr', xl: '1fr 1fr' }} gap={1} columnGap={3}>
+                <div className="max-h-[300px] overflow-y-auto">
+                  <div className="grid grid-cols-1 gap-1 xl:grid-cols-2 xl:gap-x-3">
                     {tdSignals.map((s, i) => (
-                      <HStack key={`td-${s.symbol}-${i}`} justify="space-between" fontSize="xs" py="1px" borderBottomWidth="1px" borderColor="border.subtle">
-                        <HStack gap={1}>
+                      <div key={`td-${s.symbol}-${i}`} className="flex items-center justify-between border-b border-border py-px text-xs">
+                        <div className="flex items-center gap-1">
                           <SymbolLink symbol={s.symbol} />
                           <StageBadge stage={s.stage_label || '?'} />
-                        </HStack>
-                        <HStack gap={1} flexShrink={0}>
-                          {s.signals.map((sig, i) => (
-                            <Badge key={i} size="sm" variant="outline" colorPalette={sig.includes('Buy') ? 'green' : 'red'}>{sig}</Badge>
+                        </div>
+                        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+                          {s.signals.map((sig, j) => (
+                            <Badge
+                              key={j}
+                              variant="outline"
+                              className={cn(
+                                'h-5 px-1.5 font-normal',
+                                sig.includes('Buy')
+                                  ? 'border-[rgb(var(--status-success)/0.35)] text-[rgb(var(--status-success)/1)]'
+                                  : 'border-destructive/35 text-destructive',
+                              )}
+                            >
+                              {sig}
+                            </Badge>
                           ))}
-                        </HStack>
-                      </HStack>
+                        </div>
+                      </div>
                     ))}
-                  </Box>
-                </Box>
+                  </div>
+                </div>
               )}
-            </Box>
+              </CardContent>
+            </Card>
 
-            <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
-              <HStack justify="space-between" mb={2}>
-                <Text fontSize="xs" fontWeight="semibold">Open Gaps</Text>
-                {gapLeaders.length > 0 && <Badge variant="subtle" size="sm">{gapLeaders.length}</Badge>}
-              </HStack>
-              <Text fontSize="xs" color="fg.muted" mb={2}>Symbols with unfilled price gaps (potential support/resistance).</Text>
+            <Card className="gap-0 py-3 shadow-xs ring-1 ring-foreground/10">
+              <CardContent className="px-3">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-xs font-semibold">Open Gaps</p>
+                {gapLeaders.length > 0 ? <Badge variant="secondary" className="h-5 font-normal">{gapLeaders.length}</Badge> : null}
+              </div>
+              <p className="mb-2 text-xs text-muted-foreground">Symbols with unfilled price gaps (potential support/resistance).</p>
               {gapLeaders.length === 0 ? (
-                <Text fontSize="xs" color="fg.subtle">No unfilled gaps detected. Gap data populates after indicator computation runs.</Text>
+                <p className="text-xs text-muted-foreground">No unfilled gaps detected. Gap data populates after indicator computation runs.</p>
               ) : (
-                <Box maxH="300px" overflowY="auto">
-                  <Box display="flex" flexDirection="column" gap={1}>
+                <div className="max-h-[300px] overflow-y-auto">
+                  <div className="flex flex-col gap-1">
                     {gapLeaders.map((g, i) => (
-                      <HStack key={`gap-${g.symbol}-${i}`} justify="space-between" fontSize="xs" py="1px" borderBottomWidth="1px" borderColor="border.subtle">
-                        <HStack gap={1}>
+                      <div key={`gap-${g.symbol}-${i}`} className="flex items-center justify-between border-b border-border py-px text-xs">
+                        <div className="flex items-center gap-1">
                           <SymbolLink symbol={g.symbol} />
                           <StageBadge stage={g.stage_label || '?'} />
-                        </HStack>
-                        <HStack gap={2} flexShrink={0}>
-                          <Text color="green.400">{g.gaps_up}↑</Text>
-                          <Text color="red.400">{g.gaps_down}↓</Text>
-                        </HStack>
-                      </HStack>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <span className={semanticTextColorClass('green.400')}>{g.gaps_up}↑</span>
+                          <span className={semanticTextColorClass('red.400')}>{g.gaps_down}↓</span>
+                        </div>
+                      </div>
                     ))}
-                  </Box>
-                </Box>
+                  </div>
+                </div>
               )}
-            </Box>
-          </Box>
+              </CardContent>
+            </Card>
+          </div>
             </Collapsible.Content>
           </Collapsible.Root>
-        </Box>
+        </div>
         )}
 
         {/* Earnings & Fundamentals */}
         {vis.earnings && (
-        <Box>
+        <div>
           <SectionHeading title="Earnings & Fundamentals" sectionKey="earnings" isCollapsed={collapsed.has('earnings')} onToggle={() => toggle('earnings')} count={upcomingEarnings.length + fundamentalLeaders.length} />
           <Collapsible.Root open={!collapsed.has('earnings')}>
             <Collapsible.Content>
-          <Box display="grid" gridTemplateColumns={{ base: '1fr', lg: '1fr 1fr' }} gap={3}>
-            <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
-              <Text fontSize="xs" fontWeight="semibold" mb={2}>Upcoming Earnings (7d)</Text>
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <Card className="gap-0 py-3 shadow-xs ring-1 ring-foreground/10">
+              <CardContent className="px-3">
+              <p className="mb-2 text-xs font-semibold">Upcoming Earnings (7d)</p>
               {upcomingEarnings.length === 0 ? (
-                <Text fontSize="xs" color="fg.muted">No upcoming earnings</Text>
+                <p className="text-xs text-muted-foreground">No upcoming earnings</p>
               ) : (
-                <Box maxH="260px" overflowY="auto" pr={1}>
-                  <Box display="flex" flexDirection="column" gap={1}>
+                <div className="max-h-[260px] overflow-y-auto pr-1">
+                  <div className="flex flex-col gap-1">
                     {upcomingEarnings.map((e, i) => (
-                      <HStack key={`earn-${e.symbol}-${i}`} justify="space-between" fontSize="xs">
-                        <HStack gap={1}>
+                      <div key={`earn-${e.symbol}-${i}`} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1">
                           <SymbolLink symbol={e.symbol} />
                           <StageBadge stage={e.stage_label || '?'} />
-                        </HStack>
-                        <Text color="fg.muted">{formatDate(e.next_earnings, timezone)}</Text>
-                      </HStack>
+                        </div>
+                        <span className="text-muted-foreground">{formatDate(e.next_earnings, timezone)}</span>
+                      </div>
                     ))}
-                  </Box>
-                </Box>
+                  </div>
+                </div>
               )}
-            </Box>
+              </CardContent>
+            </Card>
 
-            <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
-              <Text fontSize="xs" fontWeight="semibold" mb={2}>Fundamental Leaders</Text>
+            <Card className="gap-0 py-3 shadow-xs ring-1 ring-foreground/10">
+              <CardContent className="px-3">
+              <p className="mb-2 text-xs font-semibold">Fundamental Leaders</p>
               {fundamentalLeaders.length === 0 ? (
-                <Text fontSize="xs" color="fg.muted">Insufficient data</Text>
+                <p className="text-xs text-muted-foreground">Insufficient data</p>
               ) : (
-                <Box maxH="260px" overflowY="auto" pr={1}>
-                  <Box display="flex" flexDirection="column" gap={1}>
+                <div className="max-h-[260px] overflow-y-auto pr-1">
+                  <div className="flex flex-col gap-1">
                     {fundamentalLeaders.map((f, i) => (
-                      <HStack key={`fund-${f.symbol}-${i}`} justify="space-between" fontSize="xs">
-                        <HStack gap={1}>
+                      <div key={`fund-${f.symbol}-${i}`} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1">
                           <SymbolLink symbol={f.symbol} />
                           <StageBadge stage={f.stage_label || '?'} />
-                        </HStack>
-                        <HStack gap={2} flexShrink={0}>
-                          <Text>EPS {f.eps_growth_yoy > 0 ? '+' : ''}{f.eps_growth_yoy}%</Text>
-                          <Text color={heatColor(f.rs_mansfield_pct)}>RS {fmtPct(f.rs_mansfield_pct)}</Text>
-                          {f.pe_ttm != null && <Text color="fg.muted">PE {f.pe_ttm}</Text>}
-                        </HStack>
-                      </HStack>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <span>EPS {f.eps_growth_yoy > 0 ? '+' : ''}{f.eps_growth_yoy}%</span>
+                          <span className={heatTextClass(f.rs_mansfield_pct)}>RS {fmtPct(f.rs_mansfield_pct)}</span>
+                          {f.pe_ttm != null ? <span className="text-muted-foreground">PE {f.pe_ttm}</span> : null}
+                        </div>
+                      </div>
                     ))}
-                  </Box>
-                </Box>
+                  </div>
+                </div>
               )}
-            </Box>
-          </Box>
+              </CardContent>
+            </Card>
+          </div>
             </Collapsible.Content>
           </Collapsible.Root>
-        </Box>
+        </div>
         )}
 
         </>
         )}
 
-      </Stack>
+      </div>
       <ChartSlidePanel symbol={chartSymbol} onClose={() => setChartSymbol(null)} />
-    </Box>
+    </Page>
     </ChartContext.Provider>
     </PortfolioSymbolsContext.Provider>
   );

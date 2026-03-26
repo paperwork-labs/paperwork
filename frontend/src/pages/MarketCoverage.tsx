@@ -1,14 +1,17 @@
 import React from 'react';
-import { Badge, Box, HStack, Heading, Stack, Text } from '@chakra-ui/react';
-import useCoverageSnapshot from '../hooks/useCoverageSnapshot';
+
+import CoverageHealthStrip from '../components/coverage/CoverageHealthStrip';
 import {
   CoverageBucketsGrid,
   CoverageKpiGrid,
   CoverageSummaryCard,
   CoverageTrendGrid,
 } from '../components/coverage/CoverageSummaryCard';
-import CoverageHealthStrip from '../components/coverage/CoverageHealthStrip';
+import useCoverageSnapshot from '../hooks/useCoverageSnapshot';
 import { useUserPreferences } from '../hooks/useUserPreferences';
+import { Badge } from '@/components/ui/badge';
+import { Page } from '@/components/ui/Page';
+import { cn } from '@/lib/utils';
 
 /**
  * Market Data Coverage page (read-only).
@@ -41,14 +44,16 @@ const MarketCoverage: React.FC = () => {
   }, [dailyFillSeries, totalSymbols]);
 
   return (
-    <Box p={4}>
-      <Stack gap={6}>
-        <Stack gap={2}>
-          <Heading size="md">Market Coverage</Heading>
-          <Text color="fg.muted">
+    <Page>
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-2">
+          <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+            Market Coverage
+          </h1>
+          <p className="text-sm text-muted-foreground">
             How well the tracked universe is filled with daily OHLCV bars and technical snapshots. Green means all symbols have recent data.
-          </Text>
-        </Stack>
+          </p>
+        </div>
 
         {coverage && (
           <CoverageSummaryCard hero={hero} status={coverage.status}>
@@ -56,42 +61,50 @@ const MarketCoverage: React.FC = () => {
             <CoverageTrendGrid sparkline={sparkline} />
             <CoverageBucketsGrid groups={hero?.buckets || []} />
             {dailyFillDist.total > 0 ? (
-              <Box mt={3} borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.muted">
-                <HStack justify="space-between" align="start" flexWrap="wrap" gap={3}>
-                  <Box>
-                    <Text fontSize="sm" fontWeight="semibold" color="fg.default">
+              <div
+                className={cn(
+                  'mt-3 rounded-lg border border-border bg-muted/40 p-3',
+                )}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
                       Daily fill by date (1d OHLCV)
-                    </Text>
-                    <Text fontSize="xs" color="fg.muted">
+                    </p>
+                    <p className="text-xs text-muted-foreground">
                       {dailyFillDist.newestDate
                         ? `Newest date: ${dailyFillDist.newestDate} • ${dailyFillDist.newestCount}/${dailyFillDist.total} symbols`
                         : 'No daily bars found'}
-                    </Text>
-                  </Box>
-                  <HStack gap={2} flexWrap="wrap">
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
                     {benchmarkStale ? (
-                      <Badge variant="subtle" colorScheme="red">
+                      <Badge
+                        variant="destructive"
+                        className="border-transparent bg-destructive/15 font-normal"
+                      >
                         SPY stale {benchmarkLatest ? `(${String(benchmarkLatest)})` : ''}
                       </Badge>
                     ) : null}
-                  </HStack>
-                </HStack>
+                  </div>
+                </div>
                 <CoverageHealthStrip
                   dailyFillSeries={dailyFillSeries}
                   snapshotFillSeries={snapshotFillSeries}
                   windowDays={windowDays}
                   totalSymbols={totalSymbols}
                 />
-              </Box>
+              </div>
             ) : null}
           </CoverageSummaryCard>
         )}
 
-        {!coverage && !loading && <Text color="fg.muted">No coverage yet.</Text>}
-      </Stack>
-    </Box>
+        {!coverage && !loading ? (
+          <p className="text-sm text-muted-foreground">No coverage yet.</p>
+        ) : null}
+      </div>
+    </Page>
   );
 };
 
 export default MarketCoverage;
-

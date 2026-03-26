@@ -1,5 +1,8 @@
 import React from 'react';
-import { Box, Badge, Button, HStack, Text } from '@chakra-ui/react';
+import { Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface Props {
   marketOnlyMode: boolean;
@@ -9,6 +12,12 @@ interface Props {
   onToggleMarketOnly: () => void;
   onTogglePortfolio: () => void;
   onToggleStrategy: () => void;
+}
+
+function onBadgeClass(on: boolean): string {
+  return on
+    ? 'border-transparent bg-[rgb(var(--status-success)/0.12)] text-[rgb(var(--status-success)/1)]'
+    : 'border-transparent bg-muted text-muted-foreground';
 }
 
 const AdminReleaseControls: React.FC<Props> = ({
@@ -21,47 +30,66 @@ const AdminReleaseControls: React.FC<Props> = ({
   onToggleStrategy,
 }) => {
   return (
-    <Box mb={3} borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.muted">
-      <Text fontSize="sm" fontWeight="semibold" color="fg.default" mb={1}>
-        Release Controls
-      </Text>
-      <Text fontSize="xs" color="fg.muted" mb={3}>
+    <div className="mb-3 rounded-lg border border-border bg-muted/50 p-3">
+      <p className="mb-1 text-sm font-semibold text-foreground">Release Controls</p>
+      <p className="mb-3 text-xs text-muted-foreground">
         Keep market-only enabled while building. Disable market-only and enable sections when ready.
-      </Text>
-      <HStack justify="space-between" align="center" flexWrap="wrap" gap={3} mb={2}>
-        <Text fontSize="sm">Market-only mode</Text>
-        <HStack gap={2}>
-          <Badge colorScheme={marketOnlyMode ? 'green' : 'gray'} variant="subtle">
+      </p>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm">Market-only mode</p>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className={cn('font-medium', onBadgeClass(marketOnlyMode))}>
             {marketOnlyMode ? 'ON' : 'OFF'}
           </Badge>
-          <Button size="xs" variant="outline" loading={toggling} onClick={onToggleMarketOnly}>
+          <Button
+            size="xs"
+            variant="outline"
+            disabled={toggling}
+            onClick={onToggleMarketOnly}
+            className="inline-flex gap-1.5"
+          >
+            {toggling ? <Loader2 className="size-3 shrink-0 animate-spin" aria-hidden /> : null}
             {marketOnlyMode ? 'Disable' : 'Enable'}
           </Button>
-        </HStack>
-      </HStack>
-      <HStack justify="space-between" align="center" flexWrap="wrap" gap={3} mb={2}>
-        <Text fontSize="sm">Portfolio section</Text>
-        <HStack gap={2}>
-          <Badge colorScheme={portfolioEnabled ? 'green' : 'gray'} variant="subtle">
+        </div>
+      </div>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm">Portfolio section</p>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className={cn('font-medium', onBadgeClass(portfolioEnabled))}>
             {portfolioEnabled ? 'ENABLED' : 'DISABLED'}
           </Badge>
-          <Button size="xs" variant="outline" loading={toggling} onClick={onTogglePortfolio}>
+          <Button
+            size="xs"
+            variant="outline"
+            disabled={toggling}
+            onClick={onTogglePortfolio}
+            className="inline-flex gap-1.5"
+          >
+            {toggling ? <Loader2 className="size-3 shrink-0 animate-spin" aria-hidden /> : null}
             {portfolioEnabled ? 'Disable' : 'Enable'}
           </Button>
-        </HStack>
-      </HStack>
-      <HStack justify="space-between" align="center" flexWrap="wrap" gap={3}>
-        <Text fontSize="sm">Strategy section</Text>
-        <HStack gap={2}>
-          <Badge colorScheme={strategyEnabled ? 'green' : 'gray'} variant="subtle">
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm">Strategy section</p>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className={cn('font-medium', onBadgeClass(strategyEnabled))}>
             {strategyEnabled ? 'ENABLED' : 'DISABLED'}
           </Badge>
-          <Button size="xs" variant="outline" loading={toggling} onClick={onToggleStrategy}>
+          <Button
+            size="xs"
+            variant="outline"
+            disabled={toggling}
+            onClick={onToggleStrategy}
+            className="inline-flex gap-1.5"
+          >
+            {toggling ? <Loader2 className="size-3 shrink-0 animate-spin" aria-hidden /> : null}
             {strategyEnabled ? 'Disable' : 'Enable'}
           </Button>
-        </HStack>
-      </HStack>
-    </Box>
+        </div>
+      </div>
+    </div>
   );
 };
 

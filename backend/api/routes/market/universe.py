@@ -17,13 +17,10 @@ from backend.database import get_db
 from backend.models.user import User
 from backend.models.index_constituent import IndexConstituent
 from backend.models.market_tracked_plan import MarketTrackedPlan
-from backend.services.market.market_data_service import MarketDataService, market_data_service
+from backend.services.market.market_data_service import market_data_service
 from backend.api.dependencies import get_market_data_viewer, get_admin_user
-from backend.tasks.market_data_tasks import (
-    refresh_index_constituents,
-    update_tracked_symbol_cache,
-    refresh_single_symbol,
-)
+from backend.tasks.market.backfill import constituents, tracked_cache
+from backend.tasks.market import backfill as market_backfill_tasks
 from ._shared import enqueue_task, visibility_scope, tracked_education, tracked_actions
 
 logger = logging.getLogger(__name__)
@@ -56,7 +53,7 @@ async def get_index_constituents(
 async def post_refresh_constituents(
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
-    return enqueue_task(refresh_index_constituents)
+    return enqueue_task(constituents)
 
 
 @router.get("/universe/tracked")
@@ -94,7 +91,7 @@ async def get_tracked(
 async def post_update_tracked(
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
-    return enqueue_task(update_tracked_symbol_cache)
+    return enqueue_task(tracked_cache)
 
 
 @router.patch("/tracked-plan/{symbol}")
@@ -133,4 +130,4 @@ async def post_refresh_symbol(
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
     """Delta backfill and recompute indicators for a single symbol."""
-    return enqueue_task(refresh_single_symbol, symbol.upper())
+    return enqueue_task(market_backfill_tasks.symbol, symbol.upper())

@@ -1,43 +1,29 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import {
-  TableScrollArea,
-  TableRoot,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableColumnHeader,
-  TableCell,
-  Box,
-  Icon,
-  HStack,
-  Text,
-  Button,
-  NativeSelectRoot,
-  NativeSelectField,
-  NativeSelectIndicator,
-  Input,
-} from '@chakra-ui/react';
-import { FiChevronUp, FiChevronDown, FiMinus, FiPlus, FiX } from 'react-icons/fi';
+import { ChevronDown, ChevronUp, Minus, Plus, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import EmptyState from './ui/EmptyState';
 import { useDebounce } from '../hooks/useDebounce';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 
 const DEBOUNCE_MS = 300;
 
+const selectClass =
+  'h-8 max-w-full rounded-md border border-input bg-background px-2 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 dark:bg-input/30';
+
 function DebouncedFilterInput({
   value,
   onChange,
   type = 'text',
   placeholder,
-  size,
-  w,
+  className,
 }: {
   value: string;
   onChange: (value: string) => void;
   type?: 'text' | 'number' | 'date';
   placeholder?: string;
-  size?: 'sm' | 'md' | 'lg';
-  w?: string;
+  className?: string;
 }) {
   const [localValue, setLocalValue] = useState(value ?? '');
   const debounced = useDebounce(localValue, DEBOUNCE_MS);
@@ -58,8 +44,7 @@ function DebouncedFilterInput({
 
   return (
     <Input
-      size={size}
-      w={w}
+      className={cn('h-8', className)}
       type={type}
       value={localValue}
       onChange={(e) => setLocalValue(e.target.value)}
@@ -110,11 +95,8 @@ export interface Column<T = any> {
   filterType?: FilterType;
   filterOptions?: Array<{ label: string; value: string }>;
   filterable?: boolean;
-  /** When true the column is available for sorting/filtering but hidden from the table by default. */
   hidden?: boolean;
-  /** When true the column is hidden on viewports below `md` breakpoint. */
   hiddenOnMobile?: boolean;
-  /** Optional compact renderer for mobile card-style rows. */
   mobileRender?: (value: any, item: T) => React.ReactNode;
 }
 
@@ -133,7 +115,6 @@ interface SortableTableProps<T = any> {
   initialFilters?: FilterGroup;
   initialFiltersOpen?: boolean;
   collapseAfterPresetLabels?: string[];
-  /** Optional row click handler; receives the row data. */
   onRowClick?: (row: T) => void;
 }
 
@@ -178,11 +159,8 @@ function SortableTable<T = any>({
     [columns, isMobile],
   );
 
-  const borderColor = 'border.subtle';
-  const hoverBg = 'bg.panel';
-
   const handleSort = (columnKey: string) => {
-    const column = columns.find(col => col.key === columnKey);
+    const column = columns.find((col) => col.key === columnKey);
     if (!column?.sortable) return;
 
     if (sortBy === columnKey) {
@@ -194,20 +172,19 @@ function SortableTable<T = any>({
   };
 
   const getSortIcon = (columnKey: string) => {
-    const column = columns.find(col => col.key === columnKey);
-    if (!column?.sortable) return <Icon as={FiMinus} color="transparent" />;
+    const column = columns.find((col) => col.key === columnKey);
+    if (!column?.sortable) return <Minus className="size-3.5 text-transparent" aria-hidden />;
 
     if (sortBy !== columnKey) {
-      return <Icon as={FiMinus} color="fg.subtle" />;
+      return <Minus className="size-3.5 text-muted-foreground" aria-hidden />;
     }
 
-    return sortOrder === 'asc'
-      ? <Icon as={FiChevronUp} color="brand.500" />
-      : <Icon as={FiChevronDown} color="brand.500" />;
+    return sortOrder === 'asc' ? (
+      <ChevronUp className="size-3.5 text-primary" aria-hidden />
+    ) : (
+      <ChevronDown className="size-3.5 text-primary" aria-hidden />
+    );
   };
-
-  // Chakra v3 table variants differ from v2. Normalize our legacy variants.
-  const tableVariant: 'line' | 'outline' | undefined = variant === 'unstyled' ? undefined : 'line';
 
   const filterableColumns = useMemo(
     () => columns.filter((col) => col.filterable !== false),
@@ -316,9 +293,9 @@ function SortableTable<T = any>({
     setFilters((prev) => ({ ...prev, rules: [] }));
   };
 
-  const normalizeDateKey = (value: any): string | null => {
+  const normalizeDateKey = (value: unknown): string | null => {
     if (!value) return null;
-    const d = new Date(value);
+    const d = new Date(value as string | number | Date);
     if (Number.isNaN(d.getTime())) return null;
     return d.toISOString().slice(0, 10);
   };
@@ -473,14 +450,13 @@ function SortableTable<T = any>({
   const sortedData = useMemo(() => {
     if (!sortBy || !filteredData.length) return filteredData;
 
-    const column = columns.find(col => col.key === sortBy);
+    const column = columns.find((col) => col.key === sortBy);
     if (!column) return filteredData;
 
     return [...filteredData].sort((a, b) => {
       const aValue = column.accessor(a);
       const bValue = column.accessor(b);
 
-      // Handle null/undefined values
       if (aValue == null && bValue == null) return 0;
       if (aValue == null) return 1;
       if (bValue == null) return -1;
@@ -492,7 +468,7 @@ function SortableTable<T = any>({
           comparison = Number(aValue) - Number(bValue);
           break;
         case 'date':
-          comparison = new Date(aValue).getTime() - new Date(bValue).getTime();
+          comparison = new Date(aValue as string | number | Date).getTime() - new Date(bValue as string | number | Date).getTime();
           break;
         case 'string':
         default:
@@ -504,63 +480,64 @@ function SortableTable<T = any>({
     });
   }, [filteredData, sortBy, sortOrder, columns]);
 
+  const cellPad =
+    size === 'sm' ? 'px-2 py-1.5 text-xs' : size === 'lg' ? 'px-4 py-3 text-base' : 'px-3 py-2 text-sm';
+
   if (!data.length) {
     return <EmptyState title={emptyMessage} />;
   }
 
+  const tableBorder = variant !== 'unstyled';
+
   return (
-    <Box w="full">
+    <div className="w-full">
       {filtersEnabled && (
-        <Box px={3} py={2} borderBottomWidth="1px" borderColor={borderColor} data-testid="table-filters">
-          <HStack justify="space-between" flexWrap="wrap" gap={2}>
-            <HStack gap={2} flexWrap="wrap">
-              <Text fontSize="xs" color="fg.muted">Filters</Text>
-              <Button size="xs" variant="ghost" onClick={() => setFiltersOpen((v) => !v)}>
-                <HStack gap={1}>
-                  <Text>{filtersOpen ? 'Hide' : 'Show'}</Text>
-                </HStack>
+        <div className="border-b border-border px-3 py-2" data-testid="table-filters">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">Filters</span>
+              <Button type="button" size="xs" variant="ghost" onClick={() => setFiltersOpen((v) => !v)}>
+                {filtersOpen ? 'Hide' : 'Show'}
               </Button>
               {filters.rules.length > 0 && (
-                <Button size="xs" variant="ghost" onClick={clearFilters}>
+                <Button type="button" size="xs" variant="ghost" onClick={clearFilters}>
                   Clear
                 </Button>
               )}
-            </HStack>
-            <Text fontSize="xs" color="fg.muted">
+            </div>
+            <span className="text-xs text-muted-foreground">
               {sortedData.length} of {data.length}
-            </Text>
-          </HStack>
+            </span>
+          </div>
 
           {!filtersOpen && filterSummary && (
-            <Text mt={1} fontSize="xs" color="fg.muted">
-              Active: {filterSummary}
-            </Text>
+            <p className="mt-1 text-xs text-muted-foreground">Active: {filterSummary}</p>
           )}
 
           {filtersOpen && (
-            <Box mt={2}>
-              <HStack gap={2} flexWrap="wrap">
-                <NativeSelectRoot size="sm" w="auto">
-                  <NativeSelectField
-                    value={filters.conjunction}
-                    onChange={(e) => setFilters((prev) => ({ ...prev, conjunction: e.target.value as 'AND' | 'OR' }))}
-                  >
-                    <option value="AND">Match all</option>
-                    <option value="OR">Match any</option>
-                  </NativeSelectField>
-                  <NativeSelectIndicator />
-                </NativeSelectRoot>
-                <Button size="xs" variant="outline" onClick={addFilterRule}>
-                  <HStack gap={1}>
-                    <Icon as={FiPlus} />
-                    <Text>Add filter</Text>
-                  </HStack>
+            <div className="mt-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  className={selectClass}
+                  value={filters.conjunction}
+                  onChange={(e) =>
+                    setFilters((prev) => ({ ...prev, conjunction: e.target.value as 'AND' | 'OR' }))
+                  }
+                  aria-label="Filter conjunction"
+                >
+                  <option value="AND">Match all</option>
+                  <option value="OR">Match any</option>
+                </select>
+                <Button type="button" size="xs" variant="outline" onClick={addFilterRule}>
+                  <Plus className="size-3.5" aria-hidden />
+                  Add filter
                 </Button>
                 {filterPresets.length > 0 && (
-                  <HStack gap={1} flexWrap="wrap">
+                  <div className="flex flex-wrap gap-1">
                     {filterPresets.map((preset) => (
                       <Button
                         key={preset.label}
+                        type="button"
                         size="xs"
                         variant="ghost"
                         onClick={() => {
@@ -571,12 +548,12 @@ function SortableTable<T = any>({
                         {preset.label}
                       </Button>
                     ))}
-                  </HStack>
+                  </div>
                 )}
-              </HStack>
+              </div>
 
               {filters.rules.length > 0 && (
-                <Box mt={2} display="flex" flexDirection="column" gap={2}>
+                <div className="mt-2 flex flex-col gap-2">
                   {filters.rules.map((rule) => {
                     const meta = columnMeta.get(rule.columnKey);
                     const type = meta?.type || 'text';
@@ -584,105 +561,99 @@ function SortableTable<T = any>({
                     const options = filterOptionsByKey.get(rule.columnKey) || [];
                     const compareCols = comparableColumns(type, rule.columnKey);
                     return (
-                      <HStack key={rule.id} gap={2} flexWrap="wrap">
-                        <NativeSelectRoot size="sm" w="auto">
-                          <NativeSelectField
-                            value={rule.columnKey}
-                            onChange={(e) => {
-                              const nextKey = e.target.value;
-                              const nextMeta = columnMeta.get(nextKey);
-                              const nextOps = operatorOptions(nextMeta?.type || 'text');
+                      <div key={rule.id} className="flex flex-wrap items-center gap-2">
+                        <select
+                          className={selectClass}
+                          value={rule.columnKey}
+                          onChange={(e) => {
+                            const nextKey = e.target.value;
+                            const nextMeta = columnMeta.get(nextKey);
+                            const nextOps = operatorOptions(nextMeta?.type || 'text');
+                            updateRule(rule.id, {
+                              columnKey: nextKey,
+                              operator: nextOps[0]?.value || 'contains',
+                              valueSource: 'literal',
+                              valueColumnKey: undefined,
+                              value: '',
+                              valueTo: '',
+                            });
+                          }}
+                          aria-label="Filter column"
+                        >
+                          {filterableColumns.map((col) => (
+                            <option key={col.key} value={col.key}>
+                              {col.header}
+                            </option>
+                          ))}
+                        </select>
+
+                        <select
+                          className={selectClass}
+                          value={rule.operator}
+                          onChange={(e) => updateRule(rule.id, { operator: e.target.value as FilterOperator })}
+                          aria-label="Filter operator"
+                        >
+                          {ops.map((op) => (
+                            <option key={op.value} value={op.value}>
+                              {op.label}
+                            </option>
+                          ))}
+                        </select>
+
+                        {compareCols.length > 0 && (
+                          <select
+                            className={selectClass}
+                            value={rule.valueSource || 'literal'}
+                            onChange={(e) =>
                               updateRule(rule.id, {
-                                columnKey: nextKey,
-                                operator: nextOps[0]?.value || 'contains',
-                                valueSource: 'literal',
-                                valueColumnKey: undefined,
+                                valueSource: e.target.value as 'literal' | 'column',
                                 value: '',
                                 valueTo: '',
-                              });
-                            }}
+                                valueColumnKey: undefined,
+                              })
+                            }
+                            aria-label="Value source"
                           >
-                            {filterableColumns.map((col) => (
+                            <option value="literal">Value</option>
+                            <option value="column">Column</option>
+                          </select>
+                        )}
+
+                        {rule.valueSource === 'column' ? (
+                          <select
+                            className={selectClass}
+                            value={rule.valueColumnKey || ''}
+                            onChange={(e) => updateRule(rule.id, { valueColumnKey: e.target.value })}
+                            aria-label="Compare column"
+                          >
+                            <option value="">Select column…</option>
+                            {compareCols.map((col) => (
                               <option key={col.key} value={col.key}>
                                 {col.header}
                               </option>
                             ))}
-                          </NativeSelectField>
-                          <NativeSelectIndicator />
-                        </NativeSelectRoot>
-
-                        <NativeSelectRoot size="sm" w="auto">
-                          <NativeSelectField
-                            value={rule.operator}
-                            onChange={(e) => updateRule(rule.id, { operator: e.target.value as FilterOperator })}
+                          </select>
+                        ) : type === 'select' ? (
+                          <select
+                            className={selectClass}
+                            value={rule.value || ''}
+                            onChange={(e) => updateRule(rule.id, { value: e.target.value })}
+                            aria-label="Filter value"
                           >
-                            {ops.map((op) => (
-                              <option key={op.value} value={op.value}>
-                                {op.label}
+                            <option value="">Select…</option>
+                            {options.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
                               </option>
                             ))}
-                          </NativeSelectField>
-                          <NativeSelectIndicator />
-                        </NativeSelectRoot>
-
-                        {compareCols.length > 0 && (
-                          <NativeSelectRoot size="sm" w="auto">
-                            <NativeSelectField
-                              value={rule.valueSource || 'literal'}
-                              onChange={(e) =>
-                                updateRule(rule.id, {
-                                  valueSource: e.target.value as 'literal' | 'column',
-                                  value: '',
-                                  valueTo: '',
-                                  valueColumnKey: undefined,
-                                })
-                              }
-                            >
-                              <option value="literal">Value</option>
-                              <option value="column">Column</option>
-                            </NativeSelectField>
-                            <NativeSelectIndicator />
-                          </NativeSelectRoot>
-                        )}
-
-                        {rule.valueSource === 'column' ? (
-                          <NativeSelectRoot size="sm" w="auto">
-                            <NativeSelectField
-                              value={rule.valueColumnKey || ''}
-                              onChange={(e) => updateRule(rule.id, { valueColumnKey: e.target.value })}
-                            >
-                              <option value="">Select column…</option>
-                              {compareCols.map((col) => (
-                                <option key={col.key} value={col.key}>
-                                  {col.header}
-                                </option>
-                              ))}
-                            </NativeSelectField>
-                            <NativeSelectIndicator />
-                          </NativeSelectRoot>
-                        ) : type === 'select' ? (
-                          <NativeSelectRoot size="sm" w="auto">
-                            <NativeSelectField
-                              value={rule.value || ''}
-                              onChange={(e) => updateRule(rule.id, { value: e.target.value })}
-                            >
-                              <option value="">Select…</option>
-                              {options.map((opt) => (
-                                <option key={opt.value} value={opt.value}>
-                                  {opt.label}
-                                </option>
-                              ))}
-                            </NativeSelectField>
-                            <NativeSelectIndicator />
-                          </NativeSelectRoot>
+                          </select>
                         ) : (
                           <DebouncedFilterInput
                             value={rule.value || ''}
                             onChange={(v) => updateRule(rule.id, { value: v })}
                             type={type === 'number' ? 'number' : type === 'date' ? 'date' : 'text'}
                             placeholder="Value"
-                            size="sm"
-                            w="120px"
+                            className="w-[120px]"
                           />
                         )}
 
@@ -692,103 +663,129 @@ function SortableTable<T = any>({
                             onChange={(v) => updateRule(rule.id, { valueTo: v })}
                             type={type === 'number' ? 'number' : type === 'date' ? 'date' : 'text'}
                             placeholder="And"
-                            size="sm"
-                            w="120px"
+                            className="w-[120px]"
                           />
                         )}
 
-                        <Button size="xs" variant="ghost" onClick={() => removeRule(rule.id)}>
-                          <Icon as={FiX} />
+                        <Button
+                          type="button"
+                          size="icon-xs"
+                          variant="ghost"
+                          aria-label="Remove filter"
+                          onClick={() => removeRule(rule.id)}
+                        >
+                          <X className="size-3.5" />
                         </Button>
-                      </HStack>
+                      </div>
                     );
                   })}
-                </Box>
+                </div>
               )}
-            </Box>
+            </div>
           )}
-        </Box>
+        </div>
       )}
 
       {sortedData.length === 0 ? (
         <EmptyState title="No results match filters" />
       ) : (
-        <Box overflowX="auto" w="full">
-        <TableScrollArea
-          w="full"
-          maxHeight={maxHeight}
-          overflowY={maxHeight ? 'auto' : 'visible'}
-          overflowX="auto"
-        >
-          <TableRoot w="full" variant={tableVariant} size={size}>
-            {showHeader && (
-              <TableHeader>
-                <TableRow>
-                  {visibleColumns.map((column) => (
-                    <TableColumnHeader
-                      key={column.key}
-                      onClick={() => column.sortable && handleSort(column.key)}
-                      cursor={column.sortable ? 'pointer' : 'default'}
-                      _hover={column.sortable ? { bg: hoverBg } : undefined}
-                      userSelect="none"
-                      textAlign={column.isNumeric ? 'end' : 'start'}
-                      width={column.width}
-                      borderColor={borderColor}
-                      aria-sort={column.sortable ? (sortBy === column.key ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none') : undefined}
-                    >
-                      <HStack gap={2} justify={column.isNumeric ? 'flex-end' : 'flex-start'}>
-                        <Text>{column.header}</Text>
-                        {column.sortable && getSortIcon(column.key)}
-                      </HStack>
-                    </TableColumnHeader>
-                  ))}
-                </TableRow>
-              </TableHeader>
-            )}
-            <TableBody>
-              {sortedData.map((item, index) => (
-                <TableRow
-                  key={index}
-                  _hover={{ bg: hoverBg }}
-                  cursor={onRowClick ? 'pointer' : undefined}
-                  onClick={onRowClick ? () => onRowClick(item) : undefined}
-                  aria-label={onRowClick ? 'View details' : undefined}
-                  tabIndex={onRowClick ? 0 : undefined}
-                  minH="44px"
-                  onKeyDown={
-                    onRowClick
-                      ? (e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            onRowClick(item);
-                          }
-                        }
-                      : undefined
-                  }
-                >
-                  {visibleColumns.map((column) => {
-                    const value = column.accessor(item);
-                    const renderedValue = column.render ? column.render(value, item) : value;
-
-                    return (
-                      <TableCell
+        <div className="w-full overflow-x-auto">
+          <div
+            className={cn(maxHeight && 'overflow-y-auto')}
+            style={maxHeight ? { maxHeight } : undefined}
+          >
+            <table
+              data-testid="table-root"
+              data-size={size}
+              className={cn(
+                'w-full caption-bottom border-collapse',
+                tableBorder && 'border-b border-border',
+              )}
+            >
+              {showHeader && (
+                <thead className={cn('sticky top-0 z-10 bg-card', tableBorder && 'border-b border-border')}>
+                  <tr>
+                    {visibleColumns.map((column) => (
+                      <th
                         key={column.key}
-                        textAlign={column.isNumeric ? 'end' : 'start'}
-                        borderColor={borderColor}
+                        scope="col"
+                        className={cn(
+                          cellPad,
+                          'font-medium text-muted-foreground',
+                          column.sortable && 'cursor-pointer select-none hover:bg-muted/60',
+                          column.isNumeric ? 'text-end' : 'text-start',
+                        )}
+                        style={column.width ? { width: column.width } : undefined}
+                        onClick={() => column.sortable && handleSort(column.key)}
+                        aria-sort={
+                          column.sortable
+                            ? sortBy === column.key
+                              ? sortOrder === 'asc'
+                                ? 'ascending'
+                                : 'descending'
+                              : 'none'
+                            : undefined
+                        }
                       >
-                        {renderedValue}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ))}
-            </TableBody>
-          </TableRoot>
-        </TableScrollArea>
-        </Box>
+                        <div
+                          className={cn(
+                            'inline-flex items-center gap-2',
+                            column.isNumeric ? 'justify-end' : 'justify-start',
+                          )}
+                        >
+                          <span>{column.header}</span>
+                          {column.sortable && getSortIcon(column.key)}
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+              )}
+              <tbody>
+                {sortedData.map((item, index) => (
+                  <tr
+                    key={index}
+                    className={cn(
+                      'min-h-[44px] border-b border-border/80 transition-colors last:border-0',
+                      variant === 'striped' && index % 2 === 1 && 'bg-muted/40',
+                      onRowClick && 'cursor-pointer hover:bg-muted/50',
+                    )}
+                    onClick={onRowClick ? () => onRowClick(item) : undefined}
+                    aria-label={onRowClick ? 'View details' : undefined}
+                    tabIndex={onRowClick ? 0 : undefined}
+                    onKeyDown={
+                      onRowClick
+                        ? (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              onRowClick(item);
+                            }
+                          }
+                        : undefined
+                    }
+                  >
+                    {visibleColumns.map((column) => {
+                      const value = column.accessor(item);
+                      const renderedValue = column.render ? column.render(value, item) : value;
+
+                      return (
+                        <td
+                          key={column.key}
+                          className={cn(cellPad, column.isNumeric ? 'text-end' : 'text-start')}
+                        >
+                          {renderedValue as React.ReactNode}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
-    </Box>
+    </div>
   );
 }
 
-export default SortableTable; 
+export default SortableTable;

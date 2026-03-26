@@ -1,19 +1,25 @@
 import React from 'react';
-import {
-  Box, HStack, Text, Badge, Stack, SimpleGrid,
-  TableRoot, TableHeader, TableRow, TableColumnHeader,
-  TableBody, TableCell, TableScrollArea,
-} from '@chakra-ui/react';
 import StageBadge from '../shared/StageBadge';
 import { SymbolLink } from './SymbolChartUI';
-import { heatColor, SECTOR_PALETTE } from '../../constants/chart';
+import { heatTextClass, semanticTextColorClass } from '@/lib/semantic-text-color';
 import { useChartColors } from '../../hooks/useChartColors';
 import {
   ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip as RTooltip,
   ResponsiveContainer, ReferenceLine, ReferenceArea, Cell, CartesianGrid,
 } from 'recharts';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
-const DATA_CELL = { fontFamily: 'mono', fontSize: 'xs', letterSpacing: '-0.02em' } as const;
+const DATA_CELL = 'font-mono text-xs tracking-tight';
+
+/** Distinct fills for RRG scatter — theme chart tokens (SVG-safe). */
+const SECTOR_SCATTER_FILLS = [
+  'var(--chart-1)',
+  'var(--chart-2)',
+  'var(--chart-3)',
+  'var(--chart-4)',
+  'var(--chart-5)',
+] as const;
 
 const fmtPct = (v: unknown): string => {
   if (typeof v !== 'number' || !Number.isFinite(v)) return '—';
@@ -23,6 +29,20 @@ const fmtPct = (v: unknown): string => {
 interface SectorViewProps {
   snapshots: any[];
   dashboardPayload: any;
+}
+
+function sectorFill(i: number): string {
+  return SECTOR_SCATTER_FILLS[i % SECTOR_SCATTER_FILLS.length];
+}
+
+function healthBadgeClass(health: string): string {
+  if (health === 'bullish') {
+    return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300';
+  }
+  if (health === 'bearish') {
+    return 'border-red-500/40 bg-red-500/10 text-red-800 dark:text-red-300';
+  }
+  return 'border-border bg-muted text-muted-foreground';
 }
 
 const SectorView: React.FC<SectorViewProps> = ({ snapshots, dashboardPayload }) => {
@@ -78,11 +98,10 @@ const SectorView: React.FC<SectorViewProps> = ({ snapshots, dashboardPayload }) 
   const pad = Math.ceil(maxAbs * 1.15) || 5;
 
   return (
-    <Stack gap={5}>
-      {/* RRG Chart */}
+    <div className="flex flex-col gap-5">
       {rrgData.length > 0 && (
-        <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={4} bg="bg.card">
-          <Text fontSize="sm" fontWeight="semibold" mb={2}>Relative Rotation Graph</Text>
+        <div className="rounded-lg border border-border bg-card p-4">
+          <p className="mb-2 text-sm font-semibold">Relative Rotation Graph</p>
           <ResponsiveContainer width="100%" height={380}>
             <ScatterChart>
               <CartesianGrid strokeDasharray="3 3" stroke={cc.grid} />
@@ -101,108 +120,119 @@ const SectorView: React.FC<SectorViewProps> = ({ snapshots, dashboardPayload }) 
               />
               <Scatter data={rrgData}>
                 {rrgData.map((_: any, i: number) => (
-                  <Cell key={i} fill={SECTOR_PALETTE[i % SECTOR_PALETTE.length]} stroke="white" strokeWidth={1.5} />
+                  <Cell key={i} fill={sectorFill(i)} stroke="#ffffff" strokeWidth={1.5} />
                 ))}
               </Scatter>
             </ScatterChart>
           </ResponsiveContainer>
-          <Box display="grid" gridTemplateColumns="repeat(auto-fill, minmax(130px, 1fr))" gap="3px" mt={2}>
+          <div className="mt-2 grid gap-px" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))' }}>
             {rrgData.map((s: any, i: number) => (
-              <HStack key={s.symbol} gap={1}>
-                <Box w="8px" h="8px" borderRadius="full" flexShrink={0} bg={SECTOR_PALETTE[i % SECTOR_PALETTE.length]} />
-                <Text fontSize="10px" truncate color="fg.muted">{s.name}</Text>
-              </HStack>
+              <div key={s.symbol} className="flex items-center gap-1">
+                <div
+                  className="size-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: sectorFill(i) }}
+                  aria-hidden
+                />
+                <span className="truncate text-[10px] text-muted-foreground">{s.name}</span>
+              </div>
             ))}
-          </Box>
-        </Box>
+          </div>
+        </div>
       )}
 
-      {/* Sector Summary Table */}
-      <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={4} bg="bg.card">
-        <Text fontSize="sm" fontWeight="semibold" mb={3}>Sector Health Matrix</Text>
-        <TableScrollArea borderWidth="1px" borderColor="border.subtle" borderRadius="md">
-          <TableRoot size="sm">
-            <TableHeader>
-              <TableRow>
-                <TableColumnHeader>Sector</TableColumnHeader>
-                <TableColumnHeader textAlign="right">Count</TableColumnHeader>
-                <TableColumnHeader textAlign="right">Avg 1D</TableColumnHeader>
-                <TableColumnHeader textAlign="right">Avg 20D</TableColumnHeader>
-                <TableColumnHeader textAlign="right">Avg RS</TableColumnHeader>
-                <TableColumnHeader textAlign="right">Stage 2 %</TableColumnHeader>
-                <TableColumnHeader textAlign="right">Stage 4 %</TableColumnHeader>
-                <TableColumnHeader>Health</TableColumnHeader>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+      <div className="rounded-lg border border-border bg-card p-4">
+        <p className="mb-3 text-sm font-semibold">Sector Health Matrix</p>
+        <div className="overflow-x-auto rounded-md border border-border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="px-2 py-2 text-left font-medium">Sector</th>
+                <th className="px-2 py-2 text-right font-medium">Count</th>
+                <th className="px-2 py-2 text-right font-medium">Avg 1D</th>
+                <th className="px-2 py-2 text-right font-medium">Avg 20D</th>
+                <th className="px-2 py-2 text-right font-medium">Avg RS</th>
+                <th className="px-2 py-2 text-right font-medium">Stage 2 %</th>
+                <th className="px-2 py-2 text-right font-medium">Stage 4 %</th>
+                <th className="px-2 py-2 text-left font-medium">Health</th>
+              </tr>
+            </thead>
+            <tbody>
               {sectorSummaries.map(row => (
-                <TableRow
+                <tr
                   key={row.sector}
-                  cursor="pointer"
+                  className={cn(
+                    'cursor-pointer border-b border-border/80 transition-colors last:border-0 hover:bg-[rgb(var(--bg-hover))]',
+                    selectedSector === row.sector && 'bg-muted/60'
+                  )}
                   onClick={() => setSelectedSector(prev => prev === row.sector ? null : row.sector)}
-                  bg={selectedSector === row.sector ? 'bg.subtle' : undefined}
-                  _hover={{ bg: 'bg.hover' }}
-                  transition="background 150ms ease"
                 >
-                  <TableCell fontWeight="semibold" fontSize="xs">{row.sector}</TableCell>
-                  <TableCell textAlign="right" {...DATA_CELL}>{row.count}</TableCell>
-                  <TableCell textAlign="right" {...DATA_CELL} color={heatColor(row.avgPerf1d)}>{fmtPct(row.avgPerf1d)}</TableCell>
-                  <TableCell textAlign="right" {...DATA_CELL} color={heatColor(row.avgPerf20d)}>{fmtPct(row.avgPerf20d)}</TableCell>
-                  <TableCell textAlign="right" {...DATA_CELL} color={heatColor(row.avgRS)}>{fmtPct(row.avgRS)}</TableCell>
-                  <TableCell textAlign="right" {...DATA_CELL} color="green.500">{row.stage2pct.toFixed(0)}%</TableCell>
-                  <TableCell textAlign="right" {...DATA_CELL} color="red.500">{row.stage4pct.toFixed(0)}%</TableCell>
-                  <TableCell>
-                    <Badge variant="subtle" size="sm" colorPalette={
-                      row.health === 'bullish' ? 'green' : row.health === 'bearish' ? 'red' : 'gray'
-                    }>{row.health}</Badge>
-                  </TableCell>
-                </TableRow>
+                  <td className="px-2 py-2 text-xs font-semibold">{row.sector}</td>
+                  <td className={cn('px-2 py-2 text-right', DATA_CELL)}>{row.count}</td>
+                  <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(row.avgPerf1d))}>{fmtPct(row.avgPerf1d)}</td>
+                  <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(row.avgPerf20d))}>{fmtPct(row.avgPerf20d)}</td>
+                  <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(row.avgRS))}>{fmtPct(row.avgRS)}</td>
+                  <td className={cn('px-2 py-2 text-right', DATA_CELL, semanticTextColorClass('green.500'))}>{row.stage2pct.toFixed(0)}%</td>
+                  <td className={cn('px-2 py-2 text-right', DATA_CELL, semanticTextColorClass('red.500'))}>{row.stage4pct.toFixed(0)}%</td>
+                  <td className="px-2 py-2">
+                    <Badge variant="outline" className={cn('font-normal', healthBadgeClass(row.health))}>
+                      {row.health}
+                    </Badge>
+                  </td>
+                </tr>
               ))}
-            </TableBody>
-          </TableRoot>
-        </TableScrollArea>
-      </Box>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-      {/* Selected Sector Drill-Down */}
       {selectedSector && selectedStocks.length > 0 && (
-        <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={4} bg="bg.card">
-          <HStack justify="space-between" mb={3}>
-            <Text fontSize="sm" fontWeight="semibold">{selectedSector} — {selectedStocks.length} stocks</Text>
-            <Badge variant="outline" cursor="pointer" onClick={() => setSelectedSector(null)} size="sm">Close</Badge>
-          </HStack>
-          <TableScrollArea borderWidth="1px" borderColor="border.subtle" borderRadius="md" maxH="400px">
-            <TableRoot size="sm">
-              <TableHeader position="sticky" top={0} bg="bg.card" zIndex={1}>
-                <TableRow>
-                  <TableColumnHeader>Ticker</TableColumnHeader>
-                  <TableColumnHeader textAlign="right">Price</TableColumnHeader>
-                  <TableColumnHeader>Stage</TableColumnHeader>
-                  <TableColumnHeader textAlign="right">1D</TableColumnHeader>
-                  <TableColumnHeader textAlign="right">20D</TableColumnHeader>
-                  <TableColumnHeader textAlign="right">RS</TableColumnHeader>
-                  <TableColumnHeader textAlign="right">Ext150%</TableColumnHeader>
-                  <TableColumnHeader textAlign="right">ATR%</TableColumnHeader>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+        <div className="rounded-lg border border-border bg-card p-4">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <p className="text-sm font-semibold">{selectedSector} — {selectedStocks.length} stocks</p>
+            <Badge
+              variant="outline"
+              className="cursor-pointer font-normal"
+              onClick={() => setSelectedSector(null)}
+            >
+              Close
+            </Badge>
+          </div>
+          <div className="max-h-[400px] overflow-auto rounded-md border border-border">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 z-[1] border-b border-border bg-card">
+                <tr>
+                  <th className="px-2 py-2 text-left font-medium">Ticker</th>
+                  <th className="px-2 py-2 text-right font-medium">Price</th>
+                  <th className="px-2 py-2 text-left font-medium">Stage</th>
+                  <th className="px-2 py-2 text-right font-medium">1D</th>
+                  <th className="px-2 py-2 text-right font-medium">20D</th>
+                  <th className="px-2 py-2 text-right font-medium">RS</th>
+                  <th className="px-2 py-2 text-right font-medium">Ext150%</th>
+                  <th className="px-2 py-2 text-right font-medium">ATR%</th>
+                </tr>
+              </thead>
+              <tbody>
                 {selectedStocks.map((s: any) => (
-                  <TableRow key={s.symbol} transition="background 150ms ease" _hover={{ bg: 'bg.hover' }}>
-                    <TableCell><SymbolLink symbol={s.symbol} /></TableCell>
-                    <TableCell textAlign="right" {...DATA_CELL}>{s.current_price?.toFixed(2) ?? '—'}</TableCell>
-                    <TableCell><StageBadge stage={s.stage_label || '—'} /></TableCell>
-                    <TableCell textAlign="right" {...DATA_CELL} color={heatColor(s.perf_1d)}>{fmtPct(s.perf_1d)}</TableCell>
-                    <TableCell textAlign="right" {...DATA_CELL} color={heatColor(s.perf_20d)}>{fmtPct(s.perf_20d)}</TableCell>
-                    <TableCell textAlign="right" {...DATA_CELL} color={heatColor(s.rs_mansfield_pct)}>{fmtPct(s.rs_mansfield_pct)}</TableCell>
-                    <TableCell textAlign="right" {...DATA_CELL} color={heatColor(s.ext_pct)}>{fmtPct(s.ext_pct)}</TableCell>
-                    <TableCell textAlign="right" {...DATA_CELL}>{s.atrp_14?.toFixed(1) ?? '—'}%</TableCell>
-                  </TableRow>
+                  <tr
+                    key={s.symbol}
+                    className="border-b border-border/80 transition-colors last:border-0 hover:bg-[rgb(var(--bg-hover))]"
+                  >
+                    <td className="px-2 py-2"><SymbolLink symbol={s.symbol} /></td>
+                    <td className={cn('px-2 py-2 text-right', DATA_CELL)}>{s.current_price?.toFixed(2) ?? '—'}</td>
+                    <td className="px-2 py-2"><StageBadge stage={s.stage_label || '—'} /></td>
+                    <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(s.perf_1d))}>{fmtPct(s.perf_1d)}</td>
+                    <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(s.perf_20d))}>{fmtPct(s.perf_20d)}</td>
+                    <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(s.rs_mansfield_pct))}>{fmtPct(s.rs_mansfield_pct)}</td>
+                    <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(s.ext_pct))}>{fmtPct(s.ext_pct)}</td>
+                    <td className={cn('px-2 py-2 text-right', DATA_CELL)}>{s.atrp_14?.toFixed(1) ?? '—'}%</td>
+                  </tr>
                 ))}
-              </TableBody>
-            </TableRoot>
-          </TableScrollArea>
-        </Box>
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
-    </Stack>
+    </div>
   );
 };
 

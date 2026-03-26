@@ -1,20 +1,17 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { X } from 'lucide-react';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
-  Box,
-  Button,
-  CardBody,
-  CardHeader,
-  CardRoot,
-  Text,
-  HStack,
-  Badge,
-  IconButton,
-  TooltipRoot,
-  TooltipTrigger,
-  TooltipPositioner,
+  Tooltip,
   TooltipContent,
-} from '@chakra-ui/react';
-import { FiX } from 'react-icons/fi';
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
+
 import { useColorMode } from '../../theme/colorMode';
 
 interface TradingViewChartProps {
@@ -79,7 +76,6 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
   const chartRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { colorMode } = useColorMode();
-  const themeRef = useRef(theme ?? (colorMode === 'dark' ? 'dark' : 'light'));
 
   const [activeStudies, setActiveStudies] = useState<string[]>(getStoredStudies);
   const [interval, setInterval] = useState(intervalProp ?? getStoredInterval());
@@ -103,7 +99,6 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
     container.innerHTML = '';
 
     const effectiveTheme = theme ?? (colorMode === 'dark' ? 'dark' : 'light');
-    themeRef.current = effectiveTheme;
     const toolbarBg = effectiveTheme === 'dark'
       ? getCssColor('bg.panel', '#1E293B')
       : getCssColor('bg.canvas', '#F8FAFC');
@@ -158,68 +153,71 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
   }, [symbol, height, showHeader, interval, theme, style, hideSymbolSearch, autosize, colorMode, activeStudies]);
 
   return (
-    <CardRoot
-      bg="bg.card"
-      borderColor="border.subtle"
-      borderWidth="1px"
+    <Card
       ref={containerRef}
-      h={`${height}px`}
-      position="relative"
-      overflow="hidden"
-      shadow="lg"
+      style={{ height: `${height}px` }}
+      className={cn(
+        'relative gap-0 overflow-hidden py-0 shadow-lg ring-1 ring-border',
+        'flex flex-col'
+      )}
     >
       {showHeader ? (
-        <CardHeader py={3} px={4} borderBottomWidth="1px" borderColor="border.subtle">
-          <HStack justify="space-between" align="center" flexWrap="wrap" gap={2}>
-            <HStack gap={3}>
-              <Text fontWeight="bold" fontSize="lg">
-                {symbol}
-              </Text>
-              <Badge colorPalette="blue" variant="subtle">
+        <CardHeader className="shrink-0 space-y-0 border-b border-border px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="text-lg font-bold">{symbol}</div>
+              <Badge variant="secondary" className="font-medium">
                 Live Chart
               </Badge>
-            </HStack>
+            </div>
 
-            <HStack gap={2} flexWrap="wrap">
+            <div className="flex flex-wrap items-center gap-2">
               {Object.entries(AVAILABLE_STUDIES).map(([id, label]) => (
                 <Button
                   key={id}
                   size="xs"
-                  variant={activeStudies.includes(id) ? 'solid' : 'outline'}
+                  variant={activeStudies.includes(id) ? 'default' : 'outline'}
                   onClick={() => toggleStudy(id)}
                 >
                   {label}
                 </Button>
               ))}
-            </HStack>
+            </div>
 
             {showControls ? (
-              <HStack gap={2}>
+              <div className="flex items-center gap-2">
                 {onClose ? (
-                  <TooltipRoot>
-                    <TooltipTrigger asChild>
-                      <IconButton aria-label="Close chart" size="sm" variant="ghost" onClick={onClose}>
-                        <FiX />
-                      </IconButton>
-                    </TooltipTrigger>
-                    <TooltipPositioner>
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label="Close chart"
+                          onClick={onClose}
+                        >
+                          <X className="size-4" />
+                        </Button>
+                      </TooltipTrigger>
                       <TooltipContent>Close chart</TooltipContent>
-                    </TooltipPositioner>
-                  </TooltipRoot>
+                    </Tooltip>
+                  </TooltipProvider>
                 ) : null}
-              </HStack>
+              </div>
             ) : null}
-          </HStack>
+          </div>
         </CardHeader>
       ) : null}
 
-      <CardBody p={0} h="full">
-        <Box ref={chartRef} h="full" w="full" bg="bg.canvas" />
-      </CardBody>
-    </CardRoot>
+      <CardContent className="flex min-h-0 flex-1 flex-col p-0">
+        <div
+          ref={chartRef}
+          className="h-full min-h-0 w-full bg-[rgb(var(--bg-canvas))]"
+        />
+      </CardContent>
+    </Card>
   );
 };
 
 export default TradingViewChart;
-
-

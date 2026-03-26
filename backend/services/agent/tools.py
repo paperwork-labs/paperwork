@@ -155,7 +155,7 @@ AGENT_TOOLS: List[Dict[str, Any]] = [
     {
         "type": "function",
         "function": {
-            "name": "record_daily_history",
+            "name": "record_daily",
             "description": "Record today's market snapshot history for all symbols.",
             "parameters": {
                 "type": "object",
@@ -264,14 +264,14 @@ AGENT_TOOLS: List[Dict[str, Any]] = [
 
 
 TOOL_TO_CELERY_TASK: Dict[str, str] = {
-    "backfill_stale_daily": "backend.tasks.market_data_tasks.backfill_stale_daily_tracked",
-    "recompute_indicators": "backend.tasks.market_data_tasks.recompute_indicators_universe",
-    "record_daily_history": "backend.tasks.market_data_tasks.record_daily_history",
-    "compute_regime": "backend.tasks.market_data_tasks.compute_daily_regime",
-    "monitor_coverage": "backend.tasks.market_data_tasks.monitor_coverage_health",
-    "recover_stale_jobs": "backend.tasks.market_data_tasks.recover_stale_job_runs",
-    "bootstrap_coverage": "backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked",
-    "refresh_index_constituents": "backend.tasks.market_data_tasks.refresh_index_constituents",
+    "backfill_stale_daily": "backend.tasks.market.backfill.stale_daily",
+    "recompute_indicators": "backend.tasks.market.indicators.recompute_universe",
+    "record_daily": "backend.tasks.market.history.record_daily",
+    "compute_regime": "backend.tasks.market.regime.compute_daily",
+    "monitor_coverage": "backend.tasks.market.coverage.health_check",
+    "recover_stale_jobs": "backend.tasks.market.maintenance.recover_jobs",
+    "bootstrap_coverage": "backend.tasks.market.coverage.daily_bootstrap",
+    "refresh_index_constituents": "backend.tasks.market.backfill.constituents",
 }
 
 

@@ -1,5 +1,7 @@
 import React from 'react';
-import { Box, Badge, HStack, Text } from '@chakra-ui/react';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import type { AdminHealthResponse } from '../../types/adminHealth';
 import { REGIME_HEX } from '../../constants/chart';
 import { formatDate } from '../../utils/format';
@@ -9,14 +11,21 @@ interface Props {
   health: AdminHealthResponse | null;
 }
 
-const DIM_PALETTE: Record<string, string> = {
-  green: 'green',
-  yellow: 'orange',
-  red: 'red',
-};
+function dimBadgeClass(status: string): string {
+  switch (status) {
+    case 'green':
+      return 'border-transparent bg-[rgb(var(--status-success)/0.12)] text-[rgb(var(--status-success)/1)]';
+    case 'yellow':
+      return 'border-transparent bg-[rgb(var(--status-warning)/0.12)] text-[rgb(var(--status-warning)/1)]';
+    case 'red':
+      return 'border-transparent bg-destructive/10 text-destructive';
+    default:
+      return 'border-transparent bg-muted text-muted-foreground';
+  }
+}
 
 const DimBadge: React.FC<{ status: string }> = ({ status }) => (
-  <Badge variant="subtle" colorPalette={DIM_PALETTE[status] ?? 'gray'}>
+  <Badge variant="outline" className={cn('font-medium uppercase', dimBadgeClass(status))}>
     {status.toUpperCase()}
   </Badge>
 );
@@ -27,138 +36,125 @@ const AdminDomainCards: React.FC<Props> = ({ health }) => {
   const { coverage, stage_quality, jobs, audit, regime } = health.dimensions;
 
   return (
-    <Box
-      mt={3}
-      display="grid"
-      gridTemplateColumns={{ base: '1fr', lg: 'repeat(2, minmax(0, 1fr))' }}
-      gap={3}
-    >
-      {/* Regime */}
+    <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
       {regime && (
-      <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
-        <HStack justify="space-between" align="center" mb={1}>
-          <Text fontSize="sm" fontWeight="semibold">Market Regime</Text>
-          <DimBadge status={regime.status} />
-        </HStack>
-        {regime.regime_state ? (
-          <>
-            <HStack gap={2} mb={1}>
-              <Badge
-                variant="solid"
-                style={{
-                  backgroundColor: (regime.regime_state && REGIME_HEX[regime.regime_state]) || '#718096',
-                  color: '#fff',
-                }}
-              >
-                {regime.regime_state}
-              </Badge>
-              <Text fontSize="xs" color="fg.muted">
-                Score: {regime.composite_score ?? '—'}
-              </Text>
-            </HStack>
-            <Text fontSize="xs" color="fg.muted">
-              Sizing multiplier: {regime.multiplier ?? '—'}x · Max equity: {regime.max_equity_pct ?? '—'}%
-            </Text>
-            <Text fontSize="xs" color="fg.muted">
-              Age: {regime.age_hours != null ? `${regime.age_hours}h` : '—'} · As of: {formatDate(regime.as_of_date, timezone)}
-            </Text>
-          </>
-        ) : (
-          <Text fontSize="xs" color="fg.muted">{regime.error || 'No regime data'}</Text>
-        )}
-      </Box>
+        <Card className="gap-0 py-0 shadow-xs ring-1 ring-border">
+          <div className="flex flex-col gap-1 p-3">
+            <div className="mb-1 flex items-center justify-between">
+              <span className="text-sm font-semibold">Market Regime</span>
+              <DimBadge status={regime.status} />
+            </div>
+            {regime.regime_state ? (
+              <>
+                <div className="mb-1 flex flex-wrap items-center gap-2">
+                  <Badge
+                    className="border-0 font-medium text-white"
+                    style={{
+                      backgroundColor: (regime.regime_state && REGIME_HEX[regime.regime_state]) || '#718096',
+                    }}
+                  >
+                    {regime.regime_state}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    Score: {regime.composite_score ?? '—'}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Sizing multiplier: {regime.multiplier ?? '—'}x · Max equity: {regime.max_equity_pct ?? '—'}%
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Age: {regime.age_hours != null ? `${regime.age_hours}h` : '—'} · As of:{' '}
+                  {formatDate(regime.as_of_date, timezone)}
+                </p>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">{regime.error || 'No regime data'}</p>
+            )}
+          </div>
+        </Card>
       )}
 
-      {/* Coverage */}
-      <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
-        <HStack justify="space-between" align="center" mb={1}>
-          <Text fontSize="sm" fontWeight="semibold">Coverage</Text>
-          <DimBadge status={coverage.status} />
-        </HStack>
-        <Text fontSize="xs" color="fg.muted">
-          Daily: {typeof coverage.daily_pct === 'number' ? `${coverage.daily_pct.toFixed(1)}%` : '—'}
-        </Text>
-        <Text fontSize="xs" color="fg.muted">
-          Stale daily: {coverage.stale_daily ?? 0}
-        </Text>
-        <Text fontSize="xs" color="fg.muted">
-          Tracked: {coverage.tracked_count ?? 0}
-        </Text>
-        {coverage.expected_date && (
-          <Text fontSize="xs" color="fg.muted">Latest date: {coverage.expected_date}</Text>
-        )}
-      </Box>
+      <Card className="gap-0 py-0 shadow-xs ring-1 ring-border">
+        <div className="flex flex-col gap-1 p-3">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-sm font-semibold">Coverage</span>
+            <DimBadge status={coverage.status} />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Daily: {typeof coverage.daily_pct === 'number' ? `${coverage.daily_pct.toFixed(1)}%` : '—'}
+          </p>
+          <p className="text-xs text-muted-foreground">Stale daily: {coverage.stale_daily ?? 0}</p>
+          <p className="text-xs text-muted-foreground">Tracked: {coverage.tracked_count ?? 0}</p>
+          {coverage.expected_date && (
+            <p className="text-xs text-muted-foreground">Latest date: {coverage.expected_date}</p>
+          )}
+        </div>
+      </Card>
 
-      {/* Stage Quality */}
-      <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
-        <HStack justify="space-between" align="center" mb={1}>
-          <Text fontSize="sm" fontWeight="semibold">Stage Quality</Text>
-          <DimBadge status={stage_quality.status} />
-        </HStack>
-        <Text fontSize="xs" color="fg.muted">
-          Unknown rate: {typeof stage_quality.unknown_rate === 'number'
-            ? `${(stage_quality.unknown_rate * 100).toFixed(1)}%`
-            : '—'}
-        </Text>
-        <Text fontSize="xs" color="fg.muted">
-          Invalid rows: {stage_quality.invalid_count ?? 0}
-        </Text>
-        <Text fontSize="xs" color="fg.muted">
-          Monotonicity issues: {stage_quality.monotonicity_issues ?? 0}
-        </Text>
-        <Text fontSize="xs" color="fg.muted">
-          Stale stage rows: {stage_quality.stale_stage_count ?? 0}
-        </Text>
-      </Box>
+      <Card className="gap-0 py-0 shadow-xs ring-1 ring-border">
+        <div className="flex flex-col gap-1 p-3">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-sm font-semibold">Stage Quality</span>
+            <DimBadge status={stage_quality.status} />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Unknown rate:{' '}
+            {typeof stage_quality.unknown_rate === 'number'
+              ? `${(stage_quality.unknown_rate * 100).toFixed(1)}%`
+              : '—'}
+          </p>
+          <p className="text-xs text-muted-foreground">Invalid rows: {stage_quality.invalid_count ?? 0}</p>
+          <p className="text-xs text-muted-foreground">
+            Monotonicity issues: {stage_quality.monotonicity_issues ?? 0}
+          </p>
+          <p className="text-xs text-muted-foreground">Stale stage rows: {stage_quality.stale_stage_count ?? 0}</p>
+        </div>
+      </Card>
 
-      {/* Jobs Health */}
-      <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
-        <HStack justify="space-between" align="center" mb={1}>
-          <Text fontSize="sm" fontWeight="semibold">Jobs ({jobs.window_hours ?? 24}h)</Text>
-          <DimBadge status={jobs.status} />
-        </HStack>
-        <Text fontSize="xs" color="fg.muted">
-          Success rate: {typeof jobs.success_rate === 'number'
-            ? `${(jobs.success_rate * 100).toFixed(1)}%`
-            : '—'}
-        </Text>
-        <Text fontSize="xs" color="fg.muted">
-          Failed: {jobs.error_count ?? 0} / Completed: {jobs.completed_count ?? 0}
-        </Text>
-        <Text fontSize="xs" color="fg.muted">
-          Running: {jobs.running_count ?? 0}
-        </Text>
-        <Text fontSize="xs" color="fg.muted" lineClamp={1}>
-          Latest failure: {jobs.latest_failed?.task_name || '—'}
-        </Text>
-      </Box>
+      <Card className="gap-0 py-0 shadow-xs ring-1 ring-border">
+        <div className="flex flex-col gap-1 p-3">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-sm font-semibold">Jobs ({jobs.window_hours ?? 24}h)</span>
+            <DimBadge status={jobs.status} />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Success rate:{' '}
+            {typeof jobs.success_rate === 'number' ? `${(jobs.success_rate * 100).toFixed(1)}%` : '—'}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Failed: {jobs.error_count ?? 0} / Completed: {jobs.completed_count ?? 0}
+          </p>
+          <p className="text-xs text-muted-foreground">Running: {jobs.running_count ?? 0}</p>
+          <p className="line-clamp-1 text-xs text-muted-foreground">
+            Latest failure: {jobs.latest_failed?.task_name || '—'}
+          </p>
+        </div>
+      </Card>
 
-      {/* Market Audit */}
-      <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card">
-        <HStack justify="space-between" align="center" mb={1}>
-          <Text fontSize="sm" fontWeight="semibold">Market Audit</Text>
-          <DimBadge status={audit.status} />
-        </HStack>
-        <Text fontSize="xs" color="fg.muted">
-          Tracked total: {audit.tracked_total ?? '—'}
-        </Text>
-        <Text fontSize="xs" color="fg.muted">
-          Daily fill: {typeof audit.daily_fill_pct === 'number'
-            ? `${audit.daily_fill_pct.toFixed(1)}%`
-            : '—'}
-        </Text>
-        <Text fontSize="xs" color="fg.muted">
-          Snapshot fill: {typeof audit.snapshot_fill_pct === 'number'
-            ? `${audit.snapshot_fill_pct.toFixed(1)}%`
-            : '—'}
-        </Text>
-        <Text fontSize="xs" color="fg.muted" lineClamp={1}>
-          Missing: {Array.isArray(audit.missing_sample)
-            ? (audit.missing_sample.slice(0, 3).join(', ') || '—')
-            : '—'}
-        </Text>
-      </Box>
-    </Box>
+      <Card className="gap-0 py-0 shadow-xs ring-1 ring-border">
+        <div className="flex flex-col gap-1 p-3">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-sm font-semibold">Market Audit</span>
+            <DimBadge status={audit.status} />
+          </div>
+          <p className="text-xs text-muted-foreground">Tracked total: {audit.tracked_total ?? '—'}</p>
+          <p className="text-xs text-muted-foreground">
+            Daily fill:{' '}
+            {typeof audit.daily_fill_pct === 'number' ? `${audit.daily_fill_pct.toFixed(1)}%` : '—'}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Snapshot fill:{' '}
+            {typeof audit.snapshot_fill_pct === 'number' ? `${audit.snapshot_fill_pct.toFixed(1)}%` : '—'}
+          </p>
+          <p className="line-clamp-1 text-xs text-muted-foreground">
+            Missing:{' '}
+            {Array.isArray(audit.missing_sample)
+              ? audit.missing_sample.slice(0, 3).join(', ') || '—'
+              : '—'}
+          </p>
+        </div>
+      </Card>
+    </div>
   );
 };
 

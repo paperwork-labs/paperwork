@@ -1,20 +1,18 @@
 import React from 'react';
-import {
-  Box, HStack, Text, Badge, Stack, Heading, SimpleGrid, Skeleton,
-  TableRoot, TableHeader, TableRow, TableColumnHeader,
-  TableBody, TableCell, TableScrollArea,
-} from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import { marketDataApi } from '../../services/api';
-import { REGIME_HEX, heatColor, STAGE_HEX, SECTOR_PALETTE } from '../../constants/chart';
+import { REGIME_HEX } from '../../constants/chart';
 import { useChartColors } from '../../hooks/useChartColors';
 import StatCard from '../shared/StatCard';
 import {
   ComposedChart, Area, XAxis, YAxis, Tooltip as RTooltip,
-  ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell,
+  ResponsiveContainer, ReferenceLine,
 } from 'recharts';
+import { cn } from '@/lib/utils';
+import { heatTextClass, semanticTextColorClass } from '@/lib/semantic-text-color';
+import { Badge } from '@/components/ui/badge';
 
-const DATA_CELL = { fontFamily: 'mono', fontSize: 'xs', letterSpacing: '-0.02em' } as const;
+const DATA_CELL = 'font-mono text-xs tracking-tight';
 
 const REGIME_LABELS: Record<string, string> = {
   R1: 'Bull', R2: 'Bull Extended', R3: 'Chop', R4: 'Bear Rally', R5: 'Bear',
@@ -26,15 +24,24 @@ const fmtPct = (v: unknown): string => {
 };
 
 const INDEX_SYMBOLS = ['SPY', 'RSP', 'MDY', 'DIA', 'IWM', 'QQQ'];
-const THEMATIC_GROUPS: Record<string, string[]> = {
-  'ATOMS': ['XLE', 'XLB', 'GDX', 'URA', 'COPX'],
-  'BITS': ['XLK', 'SMH', 'ARKK', 'BOTZ', 'HACK'],
-  'Debasement': ['GLD', 'SLV', 'BTC-USD', 'TIP'],
-};
 
 interface TopDownViewProps {
   snapshots: any[];
   dashboardPayload: any;
+}
+
+function stageEtfBadgeClass(stage: string | undefined | null): string {
+  if (!stage) return '';
+  if (stage.startsWith('2')) {
+    return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300';
+  }
+  if (stage.startsWith('4')) {
+    return 'border-red-500/40 bg-red-500/10 text-red-800 dark:text-red-300';
+  }
+  if (stage.startsWith('3')) {
+    return 'border-orange-500/40 bg-orange-500/10 text-orange-800 dark:text-orange-300';
+  }
+  return 'border-border bg-muted text-muted-foreground';
 }
 
 const TopDownView: React.FC<TopDownViewProps> = ({ snapshots, dashboardPayload }) => {
@@ -116,60 +123,64 @@ const TopDownView: React.FC<TopDownViewProps> = ({ snapshots, dashboardPayload }
       state: r.regime_state,
     })), [regimeHistory]);
 
+  const termRatio = volData?.term_structure_ratio ?? 1;
+  const termHintClass = cn(
+    termRatio < 1
+      ? semanticTextColorClass('red.500')
+      : termRatio > 1.15
+        ? semanticTextColorClass('orange.500')
+        : semanticTextColorClass('green.500')
+  );
+  const volOfVol = volData?.vol_of_vol_ratio ?? 5;
+  const volOfVolHintClass = cn(
+    volOfVol < 3.5
+      ? semanticTextColorClass('green.500')
+      : volOfVol > 6
+        ? semanticTextColorClass('red.500')
+        : 'text-muted-foreground'
+  );
+
   return (
-    <Stack gap={5}>
-      {/* Regime Banner */}
+    <div className="flex flex-col gap-5">
       {regimeData && (
-        <Box
-          borderWidth="2px"
-          borderColor={regimeColor}
-          borderRadius="xl"
-          p={4}
-          bg="bg.card"
-          position="relative"
-          overflow="hidden"
+        <div
+          className="relative overflow-hidden rounded-xl border-2 bg-card p-4"
+          style={{ borderColor: regimeColor }}
         >
-          <Box
-            position="absolute"
-            top={0} left={0} right={0} bottom={0}
-            bg={regimeColor}
-            opacity={0.06}
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{ backgroundColor: regimeColor, opacity: 0.06 }}
+            aria-hidden
           />
-          <HStack justify="space-between" flexWrap="wrap" gap={3} position="relative">
-            <HStack gap={3}>
-              <Box
-                bg={regimeColor}
-                color="white"
-                px={3} py={1}
-                borderRadius="md"
-                fontWeight="bold"
-                fontSize="lg"
+          <div className="relative flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <div
+                className="rounded-md px-3 py-1 text-lg font-bold text-white"
+                style={{ backgroundColor: regimeColor }}
               >
                 {regimeData.regime_state}
-              </Box>
-              <Box>
-                <Text fontWeight="semibold" fontSize="md">
+              </div>
+              <div>
+                <p className="text-base font-semibold">
                   {REGIME_LABELS[regimeData.regime_state] || regimeData.regime_state}
-                </Text>
-                <Text fontSize="xs" color="fg.muted">
+                </p>
+                <p className="text-xs text-muted-foreground">
                   Composite: {regimeData.composite_score?.toFixed(2)} | As of {regimeData.as_of_date}
-                </Text>
-              </Box>
-            </HStack>
-            <HStack gap={4} flexWrap="wrap">
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-4">
               <StatCard label="Sizing Mult" value={`${regimeData.regime_multiplier?.toFixed(2)}x`} />
               <StatCard label="Max Equity" value={`${regimeData.max_equity_exposure_pct}%`} />
               <StatCard label="Cash Floor" value={`${regimeData.cash_floor_pct}%`} />
-            </HStack>
-          </HStack>
-        </Box>
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* Top Row: Regime Trend + Volatility */}
-      <SimpleGrid columns={{ base: 1, lg: 2 }} gap={4}>
-        {/* Regime History Chart */}
-        <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={4} bg="bg.card">
-          <Text fontSize="sm" fontWeight="semibold" mb={3}>Regime Composite (90d)</Text>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="rounded-lg border border-border bg-card p-4">
+          <p className="mb-3 text-sm font-semibold">Regime Composite (90d)</p>
           {regimeChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={180}>
               <ComposedChart data={regimeChartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
@@ -191,142 +202,138 @@ const TopDownView: React.FC<TopDownViewProps> = ({ snapshots, dashboardPayload }
               </ComposedChart>
             </ResponsiveContainer>
           ) : (
-            <Text fontSize="xs" color="fg.muted" textAlign="center" py={8}>No regime history available</Text>
+            <p className="py-8 text-center text-xs text-muted-foreground">No regime history available</p>
           )}
-        </Box>
+        </div>
 
-        {/* Volatility Panel */}
-        <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={4} bg="bg.card">
-          <Text fontSize="sm" fontWeight="semibold" mb={3}>Volatility</Text>
-          <SimpleGrid columns={3} gap={3}>
-            <Box textAlign="center">
-              <Text fontSize="2xl" fontWeight="bold" fontFamily="mono" letterSpacing="-0.02em">{volData?.vix?.toFixed(1) ?? '—'}</Text>
-              <Text fontSize="xs" color="fg.muted">VIX</Text>
-            </Box>
-            <Box textAlign="center">
-              <Text fontSize="2xl" fontWeight="bold" fontFamily="mono" letterSpacing="-0.02em">{volData?.vix3m?.toFixed(1) ?? '—'}</Text>
-              <Text fontSize="xs" color="fg.muted">VIX3M</Text>
-            </Box>
-            <Box textAlign="center">
-              <Text fontSize="2xl" fontWeight="bold" fontFamily="mono" letterSpacing="-0.02em">{volData?.vvix?.toFixed(1) ?? '—'}</Text>
-              <Text fontSize="xs" color="fg.muted">VVIX</Text>
-            </Box>
-          </SimpleGrid>
-          <SimpleGrid columns={2} gap={3} mt={3}>
-            <Box p={2} borderRadius="md" bg="bg.subtle" textAlign="center" transition="background 200ms ease">
-              <Text fontSize="sm" fontWeight="semibold" fontFamily="mono">
+        <div className="rounded-lg border border-border bg-card p-4">
+          <p className="mb-3 text-sm font-semibold">Volatility</p>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="text-center">
+              <p className="font-mono text-2xl font-bold tracking-tight">{volData?.vix?.toFixed(1) ?? '—'}</p>
+              <p className="text-xs text-muted-foreground">VIX</p>
+            </div>
+            <div className="text-center">
+              <p className="font-mono text-2xl font-bold tracking-tight">{volData?.vix3m?.toFixed(1) ?? '—'}</p>
+              <p className="text-xs text-muted-foreground">VIX3M</p>
+            </div>
+            <div className="text-center">
+              <p className="font-mono text-2xl font-bold tracking-tight">{volData?.vvix?.toFixed(1) ?? '—'}</p>
+              <p className="text-xs text-muted-foreground">VVIX</p>
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="rounded-md bg-muted/60 p-2 text-center transition-colors">
+              <p className="font-mono text-sm font-semibold">
                 {volData?.term_structure_ratio?.toFixed(3) ?? '—'}
-              </Text>
-              <Text fontSize="xs" color="fg.muted">VIX3M/VIX</Text>
-              <Text fontSize="10px" color={
-                (volData?.term_structure_ratio ?? 1) < 1 ? 'red.500' :
-                (volData?.term_structure_ratio ?? 1) > 1.15 ? 'orange.500' : 'green.500'
-              }>
-                {(volData?.term_structure_ratio ?? 1) < 1 ? 'Backwardation' :
-                 (volData?.term_structure_ratio ?? 1) > 1.15 ? 'Mkt Overbought' : 'Normal Contango'}
-              </Text>
-            </Box>
-            <Box p={2} borderRadius="md" bg="bg.subtle" textAlign="center" transition="background 200ms ease">
-              <Text fontSize="sm" fontWeight="semibold" fontFamily="mono">
+              </p>
+              <p className="text-xs text-muted-foreground">VIX3M/VIX</p>
+              <p className={cn('text-[10px]', termHintClass)}>
+                {termRatio < 1 ? 'Backwardation' :
+                  termRatio > 1.15 ? 'Mkt Overbought' : 'Normal Contango'}
+              </p>
+            </div>
+            <div className="rounded-md bg-muted/60 p-2 text-center transition-colors">
+              <p className="font-mono text-sm font-semibold">
                 {volData?.vol_of_vol_ratio?.toFixed(2) ?? '—'}
-              </Text>
-              <Text fontSize="xs" color="fg.muted">VVIX/VIX</Text>
-              <Text fontSize="10px" color={
-                (volData?.vol_of_vol_ratio ?? 5) < 3.5 ? 'green.500' :
-                (volData?.vol_of_vol_ratio ?? 5) > 6 ? 'red.500' : 'fg.muted'
-              }>
-                {(volData?.vol_of_vol_ratio ?? 5) < 3.5 ? 'Buy Protection' :
-                 (volData?.vol_of_vol_ratio ?? 5) > 6 ? 'Sell Protection' : 'Neutral'}
-              </Text>
-            </Box>
-          </SimpleGrid>
-        </Box>
-      </SimpleGrid>
+              </p>
+              <p className="text-xs text-muted-foreground">VVIX/VIX</p>
+              <p className={cn('text-[10px]', volOfVolHintClass)}>
+                {volOfVol < 3.5 ? 'Buy Protection' :
+                  volOfVol > 6 ? 'Sell Protection' : 'Neutral'}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-      {/* Breadth Stats */}
-      <SimpleGrid columns={{ base: 2, md: 4 }} gap={3}>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard label="% Above 50 DMA" value={total > 0 ? `${((breadthAbove50 / total) * 100).toFixed(0)}%` : '—'} />
         <StatCard label="% Above 200 DMA" value={total > 0 ? `${((breadthAbove200 / total) * 100).toFixed(0)}%` : '—'} />
         <StatCard label="Advancing" value={String(dashboardPayload?.regime?.up_1d_count ?? '—')} />
         <StatCard label="Declining" value={String(dashboardPayload?.regime?.down_1d_count ?? '—')} />
-      </SimpleGrid>
+      </div>
 
-      {/* Index Performance Grid */}
-      <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={4} bg="bg.card">
-        <Text fontSize="sm" fontWeight="semibold" mb={3}>Index Performance</Text>
-        <TableScrollArea borderWidth="1px" borderColor="border.subtle" borderRadius="md">
-          <TableRoot size="sm">
-            <TableHeader>
-              <TableRow>
-                <TableColumnHeader>Index</TableColumnHeader>
-                <TableColumnHeader textAlign="right">Price</TableColumnHeader>
-                <TableColumnHeader textAlign="right">1D</TableColumnHeader>
-                <TableColumnHeader textAlign="right">5D</TableColumnHeader>
-                <TableColumnHeader textAlign="right">MTD</TableColumnHeader>
-                <TableColumnHeader textAlign="right">YTD</TableColumnHeader>
-                <TableColumnHeader textAlign="right">RSI</TableColumnHeader>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+      <div className="rounded-lg border border-border bg-card p-4">
+        <p className="mb-3 text-sm font-semibold">Index Performance</p>
+        <div className="overflow-x-auto rounded-md border border-border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="px-2 py-2 text-left font-medium">Index</th>
+                <th className="px-2 py-2 text-right font-medium">Price</th>
+                <th className="px-2 py-2 text-right font-medium">1D</th>
+                <th className="px-2 py-2 text-right font-medium">5D</th>
+                <th className="px-2 py-2 text-right font-medium">MTD</th>
+                <th className="px-2 py-2 text-right font-medium">YTD</th>
+                <th className="px-2 py-2 text-right font-medium">RSI</th>
+              </tr>
+            </thead>
+            <tbody>
               {indexRows.map(row => (
-                <TableRow key={row.symbol} transition="background 150ms ease" _hover={{ bg: 'bg.hover' }}>
-                  <TableCell fontWeight="semibold">{row.symbol}</TableCell>
-                  <TableCell textAlign="right" {...DATA_CELL}>{row.price?.toFixed(2) ?? '—'}</TableCell>
-                  <TableCell textAlign="right" {...DATA_CELL} color={heatColor(row.perf_1d)}>{fmtPct(row.perf_1d)}</TableCell>
-                  <TableCell textAlign="right" {...DATA_CELL} color={heatColor(row.perf_5d)}>{fmtPct(row.perf_5d)}</TableCell>
-                  <TableCell textAlign="right" {...DATA_CELL} color={heatColor(row.perf_20d)}>{fmtPct(row.perf_20d)}</TableCell>
-                  <TableCell textAlign="right" {...DATA_CELL} color={heatColor(row.perf_252d)}>{fmtPct(row.perf_252d)}</TableCell>
-                  <TableCell textAlign="right" {...DATA_CELL} color={
-                    (row.rsi ?? 50) > 70 ? 'red.500' : (row.rsi ?? 50) < 30 ? 'green.500' : undefined
-                  }>{row.rsi?.toFixed(0) ?? '—'}</TableCell>
-                </TableRow>
+                <tr
+                  key={row.symbol}
+                  className="border-b border-border/80 transition-colors last:border-0 hover:bg-[rgb(var(--bg-hover))]"
+                >
+                  <td className="px-2 py-2 font-semibold">{row.symbol}</td>
+                  <td className={cn('px-2 py-2 text-right', DATA_CELL)}>{row.price?.toFixed(2) ?? '—'}</td>
+                  <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(row.perf_1d))}>{fmtPct(row.perf_1d)}</td>
+                  <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(row.perf_5d))}>{fmtPct(row.perf_5d)}</td>
+                  <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(row.perf_20d))}>{fmtPct(row.perf_20d)}</td>
+                  <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(row.perf_252d))}>{fmtPct(row.perf_252d)}</td>
+                  <td className={cn(
+                    'px-2 py-2 text-right',
+                    DATA_CELL,
+                    (row.rsi ?? 50) > 70 ? semanticTextColorClass('red.500') : (row.rsi ?? 50) < 30 ? semanticTextColorClass('green.500') : undefined
+                  )}>{row.rsi?.toFixed(0) ?? '—'}</td>
+                </tr>
               ))}
-            </TableBody>
-          </TableRoot>
-        </TableScrollArea>
-      </Box>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-      {/* Sector Rotation Table */}
       {sectorRows.length > 0 && (
-        <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={4} bg="bg.card">
-          <Text fontSize="sm" fontWeight="semibold" mb={3}>Sector ETFs</Text>
-          <TableScrollArea borderWidth="1px" borderColor="border.subtle" borderRadius="md">
-            <TableRoot size="sm">
-              <TableHeader>
-                <TableRow>
-                  <TableColumnHeader>ETF</TableColumnHeader>
-                  <TableColumnHeader>Sector</TableColumnHeader>
-                  <TableColumnHeader textAlign="right">1D</TableColumnHeader>
-                  <TableColumnHeader textAlign="right">5D</TableColumnHeader>
-                  <TableColumnHeader textAlign="right">20D</TableColumnHeader>
-                  <TableColumnHeader textAlign="right">RS</TableColumnHeader>
-                  <TableColumnHeader>Stage</TableColumnHeader>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+        <div className="rounded-lg border border-border bg-card p-4">
+          <p className="mb-3 text-sm font-semibold">Sector ETFs</p>
+          <div className="overflow-x-auto rounded-md border border-border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="px-2 py-2 text-left font-medium">ETF</th>
+                  <th className="px-2 py-2 text-left font-medium">Sector</th>
+                  <th className="px-2 py-2 text-right font-medium">1D</th>
+                  <th className="px-2 py-2 text-right font-medium">5D</th>
+                  <th className="px-2 py-2 text-right font-medium">20D</th>
+                  <th className="px-2 py-2 text-right font-medium">RS</th>
+                  <th className="px-2 py-2 text-left font-medium">Stage</th>
+                </tr>
+              </thead>
+              <tbody>
                 {sectorRows.map((row: any) => (
-                  <TableRow key={row.symbol} transition="background 150ms ease" _hover={{ bg: 'bg.hover' }}>
-                    <TableCell fontWeight="semibold">{row.symbol}</TableCell>
-                    <TableCell fontSize="xs" color="fg.muted">{row.name || '—'}</TableCell>
-                    <TableCell textAlign="right" {...DATA_CELL} color={heatColor(row.change_1d)}>{fmtPct(row.change_1d)}</TableCell>
-                    <TableCell textAlign="right" {...DATA_CELL} color={heatColor(row.change_5d)}>{fmtPct(row.change_5d)}</TableCell>
-                    <TableCell textAlign="right" {...DATA_CELL} color={heatColor(row.change_20d)}>{fmtPct(row.change_20d)}</TableCell>
-                    <TableCell textAlign="right" {...DATA_CELL} color={heatColor(row.rs)}>{fmtPct(row.rs)}</TableCell>
-                    <TableCell>
-                      <Badge variant="subtle" size="sm" colorPalette={
-                        row.stage?.startsWith('2') ? 'green' :
-                        row.stage?.startsWith('4') ? 'red' :
-                        row.stage?.startsWith('3') ? 'orange' : 'gray'
-                      }>{row.stage || '—'}</Badge>
-                    </TableCell>
-                  </TableRow>
+                  <tr
+                    key={row.symbol}
+                    className="border-b border-border/80 transition-colors last:border-0 hover:bg-[rgb(var(--bg-hover))]"
+                  >
+                    <td className="px-2 py-2 font-semibold">{row.symbol}</td>
+                    <td className="px-2 py-2 text-xs text-muted-foreground">{row.name || '—'}</td>
+                    <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(row.change_1d))}>{fmtPct(row.change_1d)}</td>
+                    <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(row.change_5d))}>{fmtPct(row.change_5d)}</td>
+                    <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(row.change_20d))}>{fmtPct(row.change_20d)}</td>
+                    <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(row.rs))}>{fmtPct(row.rs)}</td>
+                    <td className="px-2 py-2">
+                      <Badge variant="outline" className={cn('font-normal', stageEtfBadgeClass(row.stage))}>
+                        {row.stage || '—'}
+                      </Badge>
+                    </td>
+                  </tr>
                 ))}
-              </TableBody>
-            </TableRoot>
-          </TableScrollArea>
-        </Box>
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
-    </Stack>
+    </div>
   );
 };
 

@@ -1,19 +1,19 @@
 import React from "react";
-import { Box, SimpleGrid, Text, Code, HStack } from "@chakra-ui/react";
 import { useColorMode } from "../theme/colorMode";
+import { swatchBackgroundCss } from "./tokenSwatchCss";
 
 export default {
   title: "DesignSystem/Tokens",
 };
 
 const Swatch = ({ name, value }: { name: string; value: string }) => (
-  <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" overflow="hidden" bg="bg.panel">
-    <Box h="44px" bg={value} />
-    <Box p={3}>
-      <Text fontSize="sm" color="fg.default">{name}</Text>
-      <Code fontSize="xs">{value}</Code>
-    </Box>
-  </Box>
+  <div className="overflow-hidden rounded-lg border border-border bg-card">
+    <div className="h-11" style={{ background: swatchBackgroundCss(value) }} />
+    <div className="p-3">
+      <div className="text-sm text-foreground">{name}</div>
+      <code className="text-xs text-muted-foreground">{value}</code>
+    </div>
+  </div>
 );
 
 export const SemanticTokens = () => {
@@ -35,31 +35,27 @@ export const SemanticTokens = () => {
   ] as const;
 
   return (
-    <Box p={6}>
-      <HStack justify="space-between" mb={5}>
-        <Box>
-          <Text fontSize="lg" fontWeight="semibold" color="fg.default">Semantic tokens</Text>
-          <Text fontSize="sm" color="fg.muted">Mode: {colorMode}</Text>
-        </Box>
-        <Box
-          as="button"
+    <div className="p-6">
+      <div className="mb-5 flex flex-row items-center justify-between">
+        <div>
+          <div className="text-lg font-semibold text-foreground">Semantic tokens</div>
+          <div className="text-sm text-muted-foreground">Mode: {colorMode}</div>
+        </div>
+        <button
+          type="button"
           onClick={toggleColorMode}
-          style={{
-            padding: "8px 12px",
-            borderRadius: 10,
-            border: "1px solid rgba(255,255,255,0.12)",
-          }}
+          className="rounded-[10px] border border-border px-3 py-2 text-sm"
         >
           Toggle mode
-        </Box>
-      </HStack>
+        </button>
+      </div>
 
-      <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} gap={4}>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
         {tokens.map(([name, value]) => (
           <Swatch key={name} name={name} value={value} />
         ))}
-      </SimpleGrid>
-    </Box>
+      </div>
+    </div>
   );
 };
 
@@ -80,30 +76,26 @@ export const AxiomFolioPalette = () => {
   ] as const;
 
   return (
-    <Box p={6}>
-      <HStack justify="space-between" mb={5}>
-        <Box>
-          <Text fontSize="lg" fontWeight="semibold" color="fg.default">AxiomFolio palette</Text>
-          <Text fontSize="sm" color="fg.muted">Mode: {colorMode}</Text>
-        </Box>
-        <Box
-          as="button"
+    <div className="p-6">
+      <div className="mb-5 flex flex-row items-center justify-between">
+        <div>
+          <div className="text-lg font-semibold text-foreground">AxiomFolio palette</div>
+          <div className="text-sm text-muted-foreground">Mode: {colorMode}</div>
+        </div>
+        <button
+          type="button"
           onClick={toggleColorMode}
-          style={{
-            padding: "8px 12px",
-            borderRadius: 10,
-            border: "1px solid rgba(255,255,255,0.12)",
-          }}
+          className="rounded-[10px] border border-border px-3 py-2 text-sm"
         >
           Toggle mode
-        </Box>
-      </HStack>
+        </button>
+      </div>
 
-      <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} gap={4}>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
         {brandTokens.map(([name, value]) => (
           <Swatch key={name} name={name} value={value} />
         ))}
-      </SimpleGrid>
-    </Box>
+      </div>
+    </div>
   );
 };

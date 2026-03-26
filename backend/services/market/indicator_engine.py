@@ -222,7 +222,7 @@ def compute_full_indicator_series(
 
     Replaces the scattered compute paths (compute_core_indicators,
     compute_core_indicators_series, inline derived calcs in
-    _snapshot_from_dataframe and backfill_snapshot_history_last_n_days).
+    _snapshot_from_dataframe and snapshot_last_n_days).
 
     Parameters
     ----------

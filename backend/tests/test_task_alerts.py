@@ -1,5 +1,5 @@
-from backend.tasks.task_utils import _emit_alerts, _is_slow_run
-from backend.tasks.schedule_metadata import HookConfig, ScheduleMetadata, SafetyConfig
+from backend.tasks.utils.task_utils import _emit_alerts, _is_slow_run
+from backend.tasks.utils.schedule_metadata import HookConfig, ScheduleMetadata, SafetyConfig
 from backend.services.notifications.alerts import alert_service
 
 

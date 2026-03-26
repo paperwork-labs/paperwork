@@ -4,28 +4,15 @@
  * Optimized: memoized components, stable callbacks, lazy-loaded chart.
  */
 import React, { useCallback, useMemo, memo, useState } from 'react';
-import {
-  Badge,
-  Box,
-  Button,
-  HStack,
-  Spinner,
-  Text,
-  DialogRoot,
-  DialogBackdrop,
-  DialogPositioner,
-  DialogContent,
-  DialogBody,
-  IconButton,
-  PopoverRoot,
-  PopoverTrigger,
-  PopoverPositioner,
-  PopoverContent,
-  PopoverBody,
-} from '@chakra-ui/react';
-import { FiX } from 'react-icons/fi';
+import * as Dialog from "@radix-ui/react-dialog";
+import * as Popover from "@radix-ui/react-popover";
+import { Loader2, X } from 'lucide-react';
 import { marketDataApi } from '../../services/api';
 import TradeModal from '../orders/TradeModal';
+import { cn } from '@/lib/utils';
+import { semanticTextColorClass } from '@/lib/semantic-text-color';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 export const PortfolioSymbolsContext = React.createContext<Record<string, any> | null>(null);
 
@@ -84,7 +71,12 @@ const SparklinePopoverContentInner: React.FC<{ symbol: string }> = ({ symbol }) 
   const last = values?.length ? values[values.length - 1] : null;
   const prev = values && values.length > 1 ? values[values.length - 2] : null;
   const change = last != null && prev != null && prev !== 0 ? ((last - prev) / prev) * 100 : null;
-  const lineColor = change != null ? (change >= 0 ? '#16A34A' : '#DC2626') : '#6366F1';
+  const lineColor =
+    change != null
+      ? change >= 0
+        ? 'rgb(var(--status-success) / 1)'
+        : 'rgb(var(--status-danger) / 1)'
+      : 'rgb(var(--chart-neutral) / 1)';
   const pts = values?.slice(-20) || [];
 
   const pathD = useMemo(() => {
@@ -102,33 +94,38 @@ const SparklinePopoverContentInner: React.FC<{ symbol: string }> = ({ symbol }) 
   }, [pts]);
 
   return (
-    <Box p={2} minW="160px">
-      <HStack justify="space-between" mb="2px">
-        <Text fontSize="xs" fontWeight="semibold">{symbol}</Text>
+    <div className="min-w-[160px] p-2">
+      <div className="mb-px flex items-center justify-between">
+        <span className="text-xs font-semibold">{symbol}</span>
         {last != null && change != null && (
-          <Text fontSize="10px" fontWeight="medium" color={change >= 0 ? 'green.500' : 'red.500'}>
+          <span
+            className={cn(
+              'text-[10px] font-medium',
+              change >= 0 ? semanticTextColorClass('green.500') : semanticTextColorClass('red.500')
+            )}
+          >
             {change >= 0 ? '+' : ''}{change.toFixed(1)}%
-          </Text>
+          </span>
         )}
-      </HStack>
+      </div>
       {loading ? (
-        <HStack gap={1}>
-          <Spinner size="xs" />
-          <Text fontSize="xs" color="fg.muted">Loading...</Text>
-        </HStack>
+        <div className="flex items-center gap-1">
+          <Loader2 className="size-3.5 animate-spin text-muted-foreground" aria-hidden />
+          <span className="text-xs text-muted-foreground">Loading...</span>
+        </div>
       ) : pts.length >= 2 ? (
         <>
-          <svg width={SVG_W} height={SVG_H} style={{ display: 'block' }}>
+          <svg width={SVG_W} height={SVG_H} className="block">
             <path d={pathD} fill="none" stroke={lineColor} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           {last != null && (
-            <Text fontSize="10px" color="fg.muted" mt="2px">${last.toFixed(2)}</Text>
+            <span className="mt-px text-[10px] text-muted-foreground">${last.toFixed(2)}</span>
           )}
         </>
       ) : (
-        <Text fontSize="xs" color="fg.muted">No data available</Text>
+        <span className="text-xs text-muted-foreground">No data available</span>
       )}
-    </Box>
+    </div>
   );
 };
 
@@ -174,41 +171,39 @@ const SymbolLinkInner: React.FC<{ symbol: string; children?: React.ReactNode; sh
   }, [openAndClose]);
 
   return (
-    <PopoverRoot open={hovered} positioning={{ placement: 'top' }} lazyMount unmountOnExit>
-      <PopoverTrigger asChild>
-        <Text
-          as="span"
+    <Popover.Root open={hovered} onOpenChange={setHovered} modal={false}>
+      <Popover.Trigger asChild>
+        <span
           role="button"
           tabIndex={0}
-          fontWeight="medium"
-          cursor="pointer"
-          _hover={{ textDecoration: 'underline', color: 'brand.500' }}
+          className="cursor-pointer font-medium hover:text-primary hover:underline"
           onMouseEnter={onEnter}
           onMouseLeave={onLeave}
           onClick={handleClick}
           onKeyDown={handleKeyDown}
         >
           {children ?? symbol}
-          {isHeld && <Badge size="xs" colorPalette="blue" variant="subtle" ml={1}>Held</Badge>}
-        </Text>
-      </PopoverTrigger>
-      <PopoverPositioner>
-        <PopoverContent
-          borderRadius="lg"
-          shadow="lg"
-          borderWidth="1px"
-          borderColor="border.subtle"
-          bg="bg.panel"
-          w="auto"
+          {isHeld && (
+            <Badge variant="secondary" className="ml-1 h-4 px-1 py-0 text-[10px] font-normal">
+              Held
+            </Badge>
+          )}
+        </span>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          side="top"
+          align="center"
+          sideOffset={6}
+          className="z-50 w-auto rounded-lg border border-border bg-popover text-popover-foreground shadow-lg outline-none"
+          onOpenAutoFocus={(e) => e.preventDefault()}
           onMouseEnter={keepOpen}
           onMouseLeave={onLeave}
         >
-          <PopoverBody p={0}>
-            <SparklinePopoverContent symbol={symbol} />
-          </PopoverBody>
-        </PopoverContent>
-      </PopoverPositioner>
-    </PopoverRoot>
+          <SparklinePopoverContent symbol={symbol} />
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   );
 };
 
@@ -249,14 +244,16 @@ const SnapshotContextStrip: React.FC<{ symbol: string }> = memo(({ symbol }) => 
 
   if (!items.length) return null;
   return (
-    <HStack gap={3} px={4} py={2} bg="bg.subtle" borderBottomWidth="1px" borderColor="border.subtle" flexWrap="wrap">
+    <div className="flex flex-wrap gap-3 border-b border-border bg-muted/50 px-4 py-2">
       {items.map((item, i) => (
-        <HStack key={i} gap={1}>
-          <Text fontSize="xs" color="fg.muted">{item.label}</Text>
-          <Text fontSize="xs" fontWeight="semibold" color={item.color || 'fg.default'}>{item.value}</Text>
-        </HStack>
+        <div key={i} className="flex items-center gap-1">
+          <span className="text-xs text-muted-foreground">{item.label}</span>
+          <span className={cn('text-xs font-semibold text-foreground', semanticTextColorClass(item.color))}>
+            {item.value}
+          </span>
+        </div>
       ))}
-    </HStack>
+    </div>
   );
 });
 
@@ -272,73 +269,61 @@ const ChartSlidePanelInner: React.FC<{ symbol: string | null; onClose: () => voi
   const averageCost = posData && posData.quantity > 0 ? posData.cost_basis / posData.quantity : undefined;
 
   return (
-    <DialogRoot open={!!symbol} onOpenChange={(d) => { if (!d.open) onClose(); }}>
-      <DialogBackdrop bg="blackAlpha.400" />
-      <DialogPositioner
-        position="fixed"
-        top="0"
-        right="0"
-        bottom="0"
-        display="flex"
-        justifyContent="flex-end"
-        alignItems="stretch"
-        p={0}
-        m={0}
-      >
-        <DialogContent
-          position="relative"
-          w={{ base: '95vw', lg: '60vw' }}
-          maxW="1100px"
-          h="100vh"
-          borderRadius={0}
-          borderLeft="1px"
-          borderColor="border.subtle"
-          bg="bg.panel"
-          m={0}
-          p={0}
-          overflow="hidden"
-        >
-          <HStack
-            justify="space-between"
-            align="center"
-            px={4}
-            py={2}
-            borderBottomWidth="1px"
-            borderColor="border.subtle"
-          >
-            <HStack gap={2}>
-              <Text fontWeight="semibold" fontSize="sm">{symbol}</Text>
-              {isHeld && <Badge size="sm" colorPalette="blue" variant="subtle">Held</Badge>}
-              <Button
-                size="xs"
-                variant="outline"
-                colorPalette="blue"
-                onClick={() => setTradeOpen(true)}
-              >
-                Trade
-              </Button>
-            </HStack>
-            <IconButton aria-label="Close chart" size="sm" variant="ghost" onClick={onClose}>
-              <FiX />
-            </IconButton>
-          </HStack>
-          {symbol && <SnapshotContextStrip symbol={symbol} />}
-          <DialogBody p={0} flex="1" overflow="hidden">
-            {symbol && (
-              <React.Suspense fallback={<HStack p={4}><Spinner size="sm" /> <Text fontSize="sm">Loading chart…</Text></HStack>}>
-                <TradingViewChartLazy
-                  symbol={symbol}
-                  onClose={onClose}
-                  height={chartHeight}
-                  showHeader={false}
-                  showControls={false}
-                  autosize
-                />
-              </React.Suspense>
+    <>
+      <Dialog.Root open={!!symbol} onOpenChange={(open) => { if (!open) onClose(); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
+          <Dialog.Content
+            className={cn(
+              'fixed top-0 right-0 z-50 flex h-[100dvh] flex-col border-l border-border bg-card p-0 shadow-xl outline-none',
+              'w-[95vw] max-w-[1100px] lg:w-[60vw]',
+              'data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:animate-in data-[state=open]:slide-in-from-right duration-200'
             )}
-          </DialogBody>
-        </DialogContent>
-      </DialogPositioner>
+            onOpenAutoFocus={(e) => e.preventDefault()}
+            aria-describedby={undefined}
+          >
+            <Dialog.Title className="sr-only">
+              {symbol ? `Chart ${symbol}` : 'Chart'}
+            </Dialog.Title>
+            <div className="flex items-center justify-between border-b border-border px-4 py-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold">{symbol}</span>
+                {isHeld && (
+                  <Badge variant="secondary" className="text-xs font-normal">Held</Badge>
+                )}
+                <Button size="xs" variant="outline" onClick={() => setTradeOpen(true)}>
+                  Trade
+                </Button>
+              </div>
+              <Button type="button" size="icon-sm" variant="ghost" aria-label="Close chart" onClick={onClose}>
+                <X className="size-4" />
+              </Button>
+            </div>
+            {symbol && <SnapshotContextStrip symbol={symbol} />}
+            <div className="min-h-0 flex-1 overflow-hidden p-0">
+              {symbol && (
+                <React.Suspense
+                  fallback={(
+                    <div className="flex items-center gap-2 p-4">
+                      <Loader2 className="size-4 animate-spin text-muted-foreground" aria-hidden />
+                      <span className="text-sm text-muted-foreground">Loading chart…</span>
+                    </div>
+                  )}
+                >
+                  <TradingViewChartLazy
+                    symbol={symbol}
+                    onClose={onClose}
+                    height={chartHeight}
+                    showHeader={false}
+                    showControls={false}
+                    autosize
+                  />
+                </React.Suspense>
+              )}
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
 
       {tradeOpen && symbol && (
         <TradeModal
@@ -350,7 +335,7 @@ const ChartSlidePanelInner: React.FC<{ symbol: string | null; onClose: () => voi
           onClose={() => setTradeOpen(false)}
         />
       )}
-    </DialogRoot>
+    </>
   );
 };
 

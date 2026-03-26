@@ -1,0 +1,129 @@
+import * as React from "react"
+import { Loader2, SendHorizontal } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/utils"
+
+import { AgentMessage } from "./AgentMessage"
+import type { ChatMessage } from "./types"
+
+export interface AgentChatPanelProps {
+  messages: ChatMessage[]
+  onSendMessage: (message: string) => void
+  isLoading?: boolean
+  onApproveAction?: (actionId: number, approved: boolean) => void
+  approvingActionId?: number | null
+  className?: string
+}
+
+export function AgentChatPanel({
+  messages,
+  onSendMessage,
+  isLoading = false,
+  onApproveAction,
+  approvingActionId,
+  className,
+}: AgentChatPanelProps) {
+  const [draft, setDraft] = React.useState("")
+  const endRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
+  }, [messages, isLoading])
+
+  const trySend = React.useCallback(() => {
+    const text = draft.trim()
+    if (!text || isLoading) return
+    onSendMessage(text)
+    setDraft("")
+  }, [draft, isLoading, onSendMessage])
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    trySend()
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex min-h-[20rem] flex-1 flex-col rounded-xl border border-border bg-background",
+        className
+      )}
+    >
+      <div
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions"
+        aria-label="Agent conversation"
+        className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4"
+      >
+        {messages.length === 0 && !isLoading && (
+          <p className="text-center text-sm text-muted-foreground">
+            No messages yet. Send a prompt to start.
+          </p>
+        )}
+        {messages.map((m) => (
+          <AgentMessage
+            key={m.id}
+            message={m}
+            onApproveAction={onApproveAction}
+            approvingActionId={approvingActionId}
+          />
+        ))}
+        {isLoading && (
+          <div
+            className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
+            aria-busy="true"
+            aria-label="Agent is thinking"
+          >
+            <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+            <div className="flex flex-1 flex-col gap-2">
+              <span>Agent is thinking…</span>
+              <Skeleton className="h-3 max-w-xs w-[75%]" />
+              <Skeleton className="h-3 w-1/2 max-w-[12rem]" />
+            </div>
+          </div>
+        )}
+        <div ref={endRef} aria-hidden />
+      </div>
+      <form
+        onSubmit={handleSubmit}
+        className="sticky bottom-0 z-10 border-t border-border bg-background/95 p-3 backdrop-blur supports-backdrop-filter:bg-background/80"
+      >
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          <Textarea
+            id="agent-chat-input"
+            name="message"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Message the agent…"
+            rows={2}
+            disabled={isLoading}
+            aria-label="Message to agent"
+            className="min-h-[4.5rem] resize-y sm:min-h-[2.75rem]"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault()
+                trySend()
+              }
+            }}
+          />
+          <Button
+            type="submit"
+            disabled={isLoading || !draft.trim()}
+            className="shrink-0 sm:w-auto"
+            aria-label="Send message"
+          >
+            <SendHorizontal className="size-4 sm:mr-1" aria-hidden />
+            <span className="hidden sm:inline">Send</span>
+          </Button>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Press Enter to send, Shift+Enter for a new line.
+        </p>
+      </form>
+    </div>
+  )
+}

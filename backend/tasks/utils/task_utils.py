@@ -6,16 +6,17 @@ import functools
 import logging
 import traceback
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional, Set
 
 from celery import current_task
+from sqlalchemy.orm import Session
 
 from backend.config import settings
 from backend.database import SessionLocal
-from backend.models import JobRun
+from backend.models import JobRun, PriceData
 from backend.services.market.market_data_service import market_data_service
 from backend.services.notifications.alerts import alert_service
-from backend.tasks.schedule_metadata import HookConfig, ScheduleMetadata
+from backend.tasks.utils.schedule_metadata import HookConfig, ScheduleMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -282,7 +283,7 @@ def _emit_alerts(
 
 
 # ---------------------------------------------------------------------------
-# Shared helpers (extracted from market_data_tasks.py)
+# Shared helpers for market tasks
 # ---------------------------------------------------------------------------
 
 
@@ -296,7 +297,7 @@ def setup_event_loop() -> asyncio.AbstractEventLoop:
     return asyncio.new_event_loop()
 
 
-def increment_provider_usage(usage: Dict[str, int], result: dict | None) -> None:
+def increment_provider_usage(usage: Dict[str, int], result: Optional[Dict[str, Any]]) -> None:
     """Track provider usage statistics from a fetch result."""
     provider = (result or {}).get("provider") or "unknown"
     usage[provider] = usage.get(provider, 0) + 1
@@ -316,7 +317,7 @@ def classify_provider_error(error: object) -> str:
     return "provider_error"
 
 
-def resolve_history_days(requested_days: int | None) -> int:
+def resolve_history_days(requested_days: Optional[int]) -> int:
     """Resolve snapshot history window using last successful run (min 5 days).
     
     If requested_days is provided, uses that (clamped to minimum of 5).
@@ -356,7 +357,7 @@ def resolve_history_days(requested_days: int | None) -> int:
     return max(minimum_days, 20)
 
 
-def get_tracked_symbols_safe(session) -> list[str]:
+def get_tracked_symbols_safe(session: Session) -> List[str]:
     """Get tracked symbols with fallback to DB if Redis cache is empty.
     
     Args:
@@ -374,7 +375,7 @@ def get_tracked_symbols_safe(session) -> list[str]:
     return symbols
 
 
-def get_tracked_universe_from_db(session) -> set[str]:
+def get_tracked_universe_from_db(session: Session) -> Set[str]:
     """Get union of active index constituents and portfolio symbols from DB.
     
     IMPORTANT:
@@ -391,14 +392,231 @@ def get_tracked_universe_from_db(session) -> set[str]:
     return set(tracked_symbols_from_db(session))
 
 
-def set_task_status(task_name: str, status: str, payload: dict | None = None) -> None:
+def set_task_status(
+    task_name: str, status: str, payload: Optional[Dict[str, Any]] = None
+) -> None:
     """Publish task status to Redis for monitoring.
-    
-    Note: This is an alias for _publish_status with error handling.
-    The task_run decorator handles this automatically for decorated tasks.
+
+    Wraps :func:`_publish_status` with error handling so tasks do not fail on Redis issues.
+    The ``task_run`` decorator publishes status automatically for decorated tasks.
     """
     try:
         _publish_status(task_name, status, payload)
     except Exception as e:
         logger.warning("task_status_set failed for %s: %s", task_name, e)
+
+
+def _setup_event_loop() -> asyncio.AbstractEventLoop:
+    """Underscore alias for :func:`setup_event_loop`."""
+    return setup_event_loop()
+
+
+def _increment_provider_usage(
+    usage: Dict[str, int], result: Optional[Dict[str, Any]]
+) -> None:
+    """Underscore alias for :func:`increment_provider_usage`."""
+    increment_provider_usage(usage, result)
+
+
+def _classify_provider_error(error: object) -> str:
+    """Underscore alias for :func:`classify_provider_error`."""
+    return classify_provider_error(error)
+
+
+def _resolve_history_days(requested_days: Optional[int]) -> int:
+    """Underscore alias for :func:`resolve_history_days`."""
+    return resolve_history_days(requested_days)
+
+
+def _get_tracked_symbols_safe(session: Session) -> List[str]:
+    """Underscore alias for :func:`get_tracked_symbols_safe`."""
+    return get_tracked_symbols_safe(session)
+
+
+def _set_task_status(
+    task_name: str, status: str, payload: Optional[Dict[str, Any]] = None
+) -> None:
+    """Underscore alias for :func:`set_task_status`."""
+    set_task_status(task_name, status, payload)
+
+
+def _get_tracked_universe_from_db(session: Session) -> Set[str]:
+    """Underscore alias for :func:`get_tracked_universe_from_db`."""
+    return get_tracked_universe_from_db(session)
+
+
+def _daily_backfill_concurrency() -> int:
+    """Effective daily backfill concurrency from settings and provider policy (paid vs free)."""
+    policy = str(getattr(settings, "MARKET_PROVIDER_POLICY", "paid")).lower()
+    paid = policy == "paid"
+    max_conc = int(getattr(settings, "MARKET_BACKFILL_CONCURRENCY_MAX", 100))
+    conc_default = int(
+        getattr(
+            settings,
+            "MARKET_BACKFILL_CONCURRENCY_PAID" if paid else "MARKET_BACKFILL_CONCURRENCY_FREE",
+            25 if paid else 5,
+        )
+    )
+    return max(1, min(max_conc, conc_default))
+
+
+def _persist_daily_fetch_results(
+    *,
+    session: Session,
+    fetched: List[dict],
+    since_dt: Optional[Any],
+    use_delta_after: bool,
+    error_samples_limit: int = 25,
+) -> Dict[str, Any]:
+    """Persist provider daily OHLCV fetch results into ``price_data`` via ``persist_price_bars``.
+
+    Aggregates counters (updated vs up-to-date, bars inserted, errors) and optional error samples
+    for task result payloads. Rolls back the session per-symbol on persist failure.
+    """
+    import pandas as pd
+
+    updated_total = 0
+    up_to_date_total = 0
+    bars_inserted_total = 0
+    bars_attempted_total = 0
+    processed_ok = 0
+    skipped_empty = 0
+    errors = 0
+    error_samples: List[dict] = []
+    provider_usage: Dict[str, int] = {}
+
+    for item in fetched or []:
+        sym = item.get("symbol")
+        if not sym or sym == "?":
+            errors += 1
+            continue
+        df = item.get("df")
+        provider = item.get("provider")
+
+        if df is None or getattr(df, "empty", True):
+            skipped_empty += 1
+            errors += 1
+            if len(error_samples) < error_samples_limit:
+                error_samples.append(
+                    {
+                        "symbol": sym,
+                        "provider": provider or "unknown",
+                        "error": "empty_response",
+                        "error_type": "empty_response",
+                    }
+                )
+            _increment_provider_usage(provider_usage, {"provider": provider})
+            continue
+
+        try:
+            df2 = df
+            if since_dt is not None:
+                df2 = df.copy()
+                df2.index = pd.to_datetime(df2.index, utc=True, errors="coerce").tz_convert(
+                    None
+                )
+                df2 = df2[df2.index >= since_dt]
+                if df2 is None or df2.empty:
+                    processed_ok += 1
+                    _increment_provider_usage(provider_usage, {"provider": provider})
+                    continue
+
+            bars_attempted_total += int(len(df2))
+            last_date = None
+            if use_delta_after:
+                last_date = (
+                    session.query(PriceData.date)
+                    .filter(PriceData.symbol == sym, PriceData.interval == "1d")
+                    .order_by(PriceData.date.desc())
+                    .limit(1)
+                    .scalar()
+                )
+
+            inserted = market_data_service.persist_price_bars(
+                session,
+                sym,
+                df2,
+                interval="1d",
+                data_source=provider or "unknown",
+                is_adjusted=True,
+                delta_after=last_date if use_delta_after else None,
+            )
+            _increment_provider_usage(provider_usage, {"provider": provider})
+            processed_ok += 1
+            if inserted and int(inserted) > 0:
+                updated_total += 1
+                bars_inserted_total += int(inserted)
+            else:
+                up_to_date_total += 1
+        except Exception as exc:
+            errors += 1
+            session.rollback()
+            if len(error_samples) < error_samples_limit:
+                error_samples.append(
+                    {
+                        "symbol": sym,
+                        "provider": provider or "unknown",
+                        "error": str(exc),
+                        "error_type": _classify_provider_error(exc),
+                    }
+                )
+
+    return {
+        "updated_total": updated_total,
+        "up_to_date_total": up_to_date_total,
+        "bars_inserted_total": bars_inserted_total,
+        "bars_attempted_total": bars_attempted_total,
+        "processed_ok": processed_ok,
+        "skipped_empty": skipped_empty,
+        "errors": errors,
+        "error_samples": error_samples,
+        "provider_usage": provider_usage,
+    }
+
+
+async def fetch_daily_for_symbols(
+    *,
+    symbols: List[str],
+    period: str,
+    max_bars: Optional[int],
+    concurrency: int,
+) -> List[dict]:
+    """Concurrent provider fetch of daily OHLCV for many symbols (used by backfill tasks)."""
+    sem = asyncio.Semaphore(max(1, int(concurrency)))
+    out: List[dict] = []
+
+    async def _one(sym: str) -> dict:
+        async with sem:
+            df, provider = await market_data_service.providers.get_historical_data(
+                symbol=sym.upper(),
+                period=period,
+                interval="1d",
+                max_bars=max_bars,
+                return_provider=True,
+            )
+            return {"symbol": sym.upper(), "df": df, "provider": provider}
+
+    tasks_coro = [_one(s) for s in sorted({str(s).upper() for s in (symbols or []) if s})]
+    for coro in asyncio.as_completed(tasks_coro):
+        try:
+            out.append(await coro)
+        except Exception as e:
+            out.append({"symbol": "?", "df": None, "provider": None, "error": str(e)})
+    return out
+
+
+async def _fetch_daily_for_symbols(
+    *,
+    symbols: List[str],
+    period: str,
+    max_bars: Optional[int],
+    concurrency: int,
+) -> List[dict]:
+    """Underscore alias for :func:`fetch_daily_for_symbols`."""
+    return await fetch_daily_for_symbols(
+        symbols=symbols,
+        period=period,
+        max_bars=max_bars,
+        concurrency=concurrency,
+    )
 

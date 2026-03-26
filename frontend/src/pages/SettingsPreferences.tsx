@@ -1,21 +1,17 @@
 import React from 'react';
-import { Box, HStack, VStack, Text, Input, Badge } from '@chakra-ui/react';
 import { PageHeader } from '../components/ui/Page';
-import AppCard from '../components/ui/AppCard';
 import hotToast from 'react-hot-toast';
 import { authApi, handleApiError } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useColorMode } from '../theme/colorMode';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
-const SELECT_STYLE: React.CSSProperties = {
-  width: 280,
-  fontSize: 12,
-  padding: '8px 10px',
-  borderRadius: 10,
-  border: '1px solid var(--chakra-colors-border-subtle)',
-  background: 'var(--chakra-colors-bg-input)',
-  color: 'var(--chakra-colors-fg-default)',
-};
+const selectClass =
+  'h-9 w-full max-w-[280px] rounded-md border border-input bg-background px-2.5 text-xs text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30';
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -49,7 +45,6 @@ const SettingsPreferences: React.FC = () => {
     return ['UTC', 'America/New_York', 'America/Chicago', 'America/Los_Angeles', 'Europe/London'];
   }, []);
 
-  // Sync local state from user on mount / external updates
   React.useEffect(() => {
     const pref = user?.ui_preferences?.color_mode_preference;
     if (pref === 'system' || pref === 'light' || pref === 'dark') {
@@ -100,7 +95,7 @@ const SettingsPreferences: React.FC = () => {
 
   const handleThemeChange = (next: 'system' | 'light' | 'dark') => {
     setThemePref(next);
-    setColorModePreference(next); // Apply theme immediately for instant feedback
+    setColorModePreference(next);
     void persist({ ui_preferences: { color_mode_preference: next, table_density: tableDensity } });
   };
 
@@ -125,84 +120,105 @@ const SettingsPreferences: React.FC = () => {
     }
   };
 
-  const statusBadge = saveStatus === 'saving'
-    ? <Badge colorPalette="blue" variant="subtle" size="sm">Saving…</Badge>
-    : saveStatus === 'saved'
-      ? <Badge colorPalette="green" variant="subtle" size="sm">Saved</Badge>
-      : saveStatus === 'error'
-        ? <Badge colorPalette="red" variant="subtle" size="sm">Error</Badge>
-        : null;
+  const statusBadge =
+    saveStatus === 'saving' ? (
+      <Badge variant="secondary" className="shrink-0 font-normal">
+        Saving…
+      </Badge>
+    ) : saveStatus === 'saved' ? (
+      <Badge variant="outline" className="shrink-0 border-emerald-500/40 bg-emerald-500/10 font-normal text-emerald-800 dark:text-emerald-200">
+        Saved
+      </Badge>
+    ) : saveStatus === 'error' ? (
+      <Badge variant="destructive" className="shrink-0 font-normal">
+        Error
+      </Badge>
+    ) : null;
 
   return (
-    <Box w="full">
-      <Box w="full" maxW="960px" mx="auto">
-        <HStack justify="space-between" align="center" mb={0}>
+    <div className="w-full">
+      <div className="mx-auto w-full max-w-[960px]">
+        <div className="mb-0 flex items-center justify-between gap-3">
           <PageHeader title="Preferences" subtitle="Changes are saved automatically." />
-          {statusBadge && <Box flexShrink={0}>{statusBadge}</Box>}
-        </HStack>
-        <VStack align="stretch" gap={4}>
-          <AppCard>
-            <VStack align="stretch" gap={4}>
-              <Text fontWeight="semibold">Appearance</Text>
-              <Box>
-                <Text fontSize="sm" color="fg.muted" mb={2}>Theme</Text>
+          {statusBadge}
+        </div>
+        <div className="mt-4 flex flex-col gap-4">
+          <Card>
+            <CardContent className="space-y-4 pt-6">
+              <h2 className="font-heading font-semibold text-foreground">Appearance</h2>
+              <div>
+                <Label htmlFor="pref-theme" className="mb-2 block text-muted-foreground">
+                  Theme
+                </Label>
                 <select
+                  id="pref-theme"
+                  className={selectClass}
                   value={themePref}
                   onChange={(e) => handleThemeChange(e.target.value as 'system' | 'light' | 'dark')}
-                  style={SELECT_STYLE}
                 >
                   <option value="system">Use system preference</option>
                   <option value="light">Light</option>
                   <option value="dark">Dark</option>
                 </select>
-              </Box>
-
-              <Box>
-                <Text fontSize="sm" color="fg.muted" mb={2}>Table density</Text>
+              </div>
+              <div>
+                <Label htmlFor="pref-density" className="mb-2 block text-muted-foreground">
+                  Table density
+                </Label>
                 <select
+                  id="pref-density"
+                  className={selectClass}
                   value={tableDensity}
                   onChange={(e) => handleDensityChange(e.target.value as 'comfortable' | 'compact')}
-                  style={SELECT_STYLE}
                 >
                   <option value="comfortable">Comfortable</option>
                   <option value="compact">Compact</option>
                 </select>
-              </Box>
-            </VStack>
-          </AppCard>
+              </div>
+            </CardContent>
+          </Card>
 
-          <AppCard>
-            <VStack align="stretch" gap={4}>
-              <Text fontWeight="semibold">Locale</Text>
-              <HStack gap={4} align="start" flexWrap="wrap">
-                <Box flex="1" minW={{ base: "100%", md: "320px" }}>
-                  <Text fontSize="sm" color="fg.muted" mb={1}>Timezone</Text>
+          <Card>
+            <CardContent className="space-y-4 pt-6">
+              <h2 className="font-heading font-semibold text-foreground">Locale</h2>
+              <div className="flex flex-wrap gap-4">
+                <div className="min-w-0 flex-1 basis-full md:min-w-[320px]">
+                  <Label htmlFor="pref-tz" className="mb-1.5 block text-muted-foreground">
+                    Timezone
+                  </Label>
                   <select
+                    id="pref-tz"
+                    className={cn(selectClass, 'max-w-none md:max-w-full')}
                     value={timezone}
                     onChange={(e) => handleTimezoneChange(e.target.value)}
-                    style={SELECT_STYLE}
                   >
                     {timezones.map((tz) => (
-                      <option key={tz} value={tz}>{tz}</option>
+                      <option key={tz} value={tz}>
+                        {tz}
+                      </option>
                     ))}
                   </select>
-                </Box>
-                <Box minW={{ base: "100%", md: "200px" }}>
-                  <Text fontSize="sm" color="fg.muted" mb={1}>Currency</Text>
+                </div>
+                <div className="min-w-0 basis-full md:max-w-[200px]">
+                  <Label htmlFor="pref-currency" className="mb-1.5 block text-muted-foreground">
+                    Currency
+                  </Label>
                   <Input
+                    id="pref-currency"
                     value={currency}
                     onChange={(e) => handleCurrencyChange(e.target.value)}
                     placeholder="USD"
                     maxLength={3}
+                    className="max-w-[200px]"
                   />
-                  <Text fontSize="xs" color="fg.muted" mt={1}>3-letter code (e.g. USD, EUR, GBP)</Text>
-                </Box>
-              </HStack>
-            </VStack>
-          </AppCard>
-        </VStack>
-      </Box>
-    </Box>
+                  <p className="mt-1 text-xs text-muted-foreground">3-letter code (e.g. USD, EUR, GBP)</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
   );
 };
 

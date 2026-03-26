@@ -31,7 +31,7 @@ ACTION_RISK_MAP: Dict[str, RiskLevel] = {
     # MODERATE: Standard remediation tasks
     "backfill_stale_daily": RiskLevel.MODERATE,
     "recompute_indicators": RiskLevel.MODERATE,
-    "record_daily_history": RiskLevel.MODERATE,
+    "record_daily": RiskLevel.MODERATE,
     "compute_regime": RiskLevel.MODERATE,
     "monitor_coverage": RiskLevel.MODERATE,
     "recover_stale_jobs": RiskLevel.MODERATE,

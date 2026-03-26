@@ -1,22 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import {
-  Box,
-  Text,
-  Stack,
-  HStack,
-  Button,
-  CardRoot,
-  CardBody,
-  Input,
-  NativeSelectRoot,
-  NativeSelectField,
-  NativeSelectIndicator,
-  Badge,
-} from '@chakra-ui/react';
-import { FiRefreshCw } from 'react-icons/fi';
+import { Loader2, RefreshCw } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
 import { TableSkeleton } from '../../components/shared/Skeleton';
-// AccountFilterWrapper removed -- uses global header selector now
 import Pagination from '../../components/ui/Pagination';
 import SortableTable, { type Column } from '../../components/SortableTable';
 import { useActivity, usePortfolioSync, usePortfolioAccounts } from '../../hooks/usePortfolio';
@@ -24,9 +9,14 @@ import { useUserPreferences } from '../../hooks/useUserPreferences';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useAccountContext } from '../../context/AccountContext';
 import { formatMoney } from '../../utils/format';
-import { toStartEnd, buildAccountsFromBroker } from '../../utils/portfolio';
-import type { AccountData } from '../../hooks/useAccountFilter';
+import { toStartEnd } from '../../utils/portfolio';
 import type { ActivityRow } from '../../types/portfolio';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import { semanticTextColorClass } from '@/lib/semantic-text-color';
 
 const DATE_RANGES = [
   { key: '7d', label: '7d' },
@@ -68,13 +58,12 @@ const PortfolioTransactions: React.FC = () => {
   const { currency } = useUserPreferences();
   const accountsQuery = usePortfolioAccounts();
   const rawAccounts = accountsQuery.data ?? [];
-  const accounts = useMemo(() => buildAccountsFromBroker(rawAccounts as import('../../utils/portfolio').BrokerAccountLike[]), [rawAccounts]);
 
   const { start, end } = useMemo(() => toStartEnd(dateRange), [dateRange]);
   const accountIdForApi = useMemo(() => {
     if (selected === 'all') return undefined;
     const acc = (rawAccounts as { id?: number; account_number?: string }[]).find(
-      (a) => (a.account_number ?? String(a.id)) === selected
+      (a) => (a.account_number ?? String(a.id)) === selected,
     );
     return acc?.id as number | undefined;
   }, [selected, rawAccounts]);
@@ -90,7 +79,7 @@ const PortfolioTransactions: React.FC = () => {
       limit: pageSize,
       offset: (page - 1) * pageSize,
     }),
-    [accountIdForApi, start, end, debouncedSymbol, category, side, page, pageSize]
+    [accountIdForApi, start, end, debouncedSymbol, category, side, page, pageSize],
   );
 
   useEffect(() => {
@@ -143,7 +132,11 @@ const PortfolioTransactions: React.FC = () => {
         accessor: (r) => r.ts,
         sortable: true,
         sortType: 'string',
-        render: (v) => <Text fontSize="sm">{typeof v === 'string' ? v.slice(0, 16).replace('T', ' ') : '—'}</Text>,
+        render: (v) => (
+          <span className="text-sm">
+            {typeof v === 'string' ? v.slice(0, 16).replace('T', ' ') : '—'}
+          </span>
+        ),
         width: '130px',
       },
       {
@@ -152,7 +145,9 @@ const PortfolioTransactions: React.FC = () => {
         accessor: (r) => r.account_id ?? 0,
         sortable: true,
         sortType: 'number',
-        render: (v) => <Text fontSize="xs" color="fg.muted">{accountLookup[Number(v)] ?? '—'}</Text>,
+        render: (v) => (
+          <span className="text-xs text-muted-foreground">{accountLookup[Number(v)] ?? '—'}</span>
+        ),
         width: '90px',
       },
       {
@@ -161,7 +156,7 @@ const PortfolioTransactions: React.FC = () => {
         accessor: (r) => r.symbol ?? '—',
         sortable: true,
         sortType: 'string',
-        render: (v) => <Text fontFamily="mono" fontSize="sm">{String(v ?? '—')}</Text>,
+        render: (v) => <span className="font-mono text-sm">{String(v ?? '—')}</span>,
         width: '90px',
       },
       {
@@ -171,8 +166,18 @@ const PortfolioTransactions: React.FC = () => {
         sortable: true,
         sortType: 'string',
         render: (v) => {
-          const pal = v === 'DIVIDEND' ? 'green' : v === 'TRADE' ? 'blue' : 'gray';
-          return <Badge size="sm" colorPalette={pal}>{String(v ?? '—')}</Badge>;
+          const cat = String(v ?? '—');
+          const variantClass =
+            cat === 'DIVIDEND'
+              ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200'
+              : cat === 'TRADE'
+                ? 'border-primary/40 bg-primary/10'
+                : 'border-border bg-muted/50';
+          return (
+            <Badge variant="outline" className={cn('h-5 text-[10px] font-medium', variantClass)}>
+              {cat}
+            </Badge>
+          );
         },
         width: '100px',
       },
@@ -182,7 +187,7 @@ const PortfolioTransactions: React.FC = () => {
         accessor: (r) => r.side ?? '—',
         sortable: true,
         sortType: 'string',
-        render: (v) => <Text fontSize="sm" color="fg.muted">{String(v ?? '—')}</Text>,
+        render: (v) => <span className="text-sm text-muted-foreground">{String(v ?? '—')}</span>,
         width: '70px',
       },
       {
@@ -192,7 +197,7 @@ const PortfolioTransactions: React.FC = () => {
         sortable: true,
         sortType: 'number',
         isNumeric: true,
-        render: (v) => <Text fontSize="sm">{v != null ? Number(v) : '—'}</Text>,
+        render: (v) => <span className="text-sm">{v != null ? Number(v) : '—'}</span>,
         width: '80px',
       },
       {
@@ -202,7 +207,11 @@ const PortfolioTransactions: React.FC = () => {
         sortable: true,
         sortType: 'number',
         isNumeric: true,
-        render: (v) => <Text fontSize="sm" color="fg.muted">{v != null ? formatMoney(Number(v), currency) : '—'}</Text>,
+        render: (v) => (
+          <span className="text-sm text-muted-foreground">
+            {v != null ? formatMoney(Number(v), currency) : '—'}
+          </span>
+        ),
         width: '90px',
       },
       {
@@ -213,9 +222,14 @@ const PortfolioTransactions: React.FC = () => {
         sortType: 'number',
         isNumeric: true,
         render: (v) => (
-          <Text fontSize="sm" color={Number(v ?? 0) >= 0 ? 'status.success' : 'status.danger'}>
+          <span
+            className={cn(
+              'text-sm',
+              semanticTextColorClass(Number(v ?? 0) >= 0 ? 'status.success' : 'status.danger'),
+            )}
+          >
             {v != null ? formatMoney(Number(v), currency) : '—'}
-          </Text>
+          </span>
         ),
         width: '110px',
       },
@@ -226,16 +240,20 @@ const PortfolioTransactions: React.FC = () => {
         sortable: true,
         sortType: 'number',
         isNumeric: true,
-        render: (v) => <Text fontSize="sm" color="fg.muted">{v != null && Number(v) !== 0 ? formatMoney(Number(v), currency) : '—'}</Text>,
+        render: (v) => (
+          <span className="text-sm text-muted-foreground">
+            {v != null && Number(v) !== 0 ? formatMoney(Number(v), currency) : '—'}
+          </span>
+        ),
         width: '100px',
       },
     ],
-    [currency, accountLookup]
+    [currency, accountLookup],
   );
 
   return (
-    <Box p={4}>
-      <Stack gap={4}>
+    <div className="p-4">
+      <div className="flex flex-col gap-4">
         <PageHeader
           title="Transactions"
           subtitle="Unified activity feed (trades, dividends, fees)"
@@ -243,125 +261,142 @@ const PortfolioTransactions: React.FC = () => {
             <Button
               size="sm"
               variant="outline"
+              className="gap-2"
               onClick={() => syncMutation.mutate()}
-              loading={syncMutation.isPending}
+              disabled={syncMutation.isPending}
             >
-              <HStack gap={2}><FiRefreshCw /> Sync</HStack>
+              {syncMutation.isPending ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+              ) : (
+                <RefreshCw className="size-4" aria-hidden />
+              )}
+              Sync
             </Button>
           }
         />
 
         {accountsQuery.isPending ? (
           <TableSkeleton rows={10} cols={7} />
-        ) : (activityQuery.error || accountsQuery.error) ? (
-          <Text color="status.danger">Failed to load activity</Text>
+        ) : activityQuery.error || accountsQuery.error ? (
+          <p className={cn('text-sm', semanticTextColorClass('status.danger'))}>Failed to load activity</p>
         ) : (
           <>
-            <HStack gap={3} flexWrap="wrap">
-                {DATE_RANGES.map((r) => (
-                  <Button
-                    key={r.key}
-                    size="xs"
-                    variant={dateRange === r.key ? 'solid' : 'outline'}
-                    colorPalette="brand"
-                    onClick={() => setDateRange(r.key)}
-                  >
-                    {r.label}
-                  </Button>
+            <div className="flex flex-wrap items-center gap-3">
+              {DATE_RANGES.map((r) => (
+                <Button
+                  key={r.key}
+                  size="xs"
+                  variant={dateRange === r.key ? 'default' : 'outline'}
+                  onClick={() => setDateRange(r.key)}
+                >
+                  {r.label}
+                </Button>
+              ))}
+              <select
+                className="h-8 rounded-md border border-input bg-background px-2 text-xs shadow-xs md:text-sm"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                aria-label="Filter by type"
+              >
+                <option value="">All types</option>
+                {CATEGORIES.filter(Boolean).map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
                 ))}
-                <NativeSelectRoot size="sm" w="auto">
-                  <NativeSelectField value={category} onChange={(e) => setCategory(e.target.value)}>
-                    <option value="">All types</option>
-                    {CATEGORIES.filter(Boolean).map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </NativeSelectField>
-                  <NativeSelectIndicator />
-                </NativeSelectRoot>
-                <NativeSelectRoot size="sm" w="auto">
-                  <NativeSelectField value={side} onChange={(e) => setSide(e.target.value)}>
-                    <option value="">All sides</option>
-                    {SIDES.filter(Boolean).map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </NativeSelectField>
-                  <NativeSelectIndicator />
-                </NativeSelectRoot>
-                <Input
-                  size="sm"
-                  placeholder="Symbol"
-                  w="100px"
-                  value={symbolSearch}
-                  onChange={(e) => setSymbolSearch(e.target.value)}
-                />
-              </HStack>
+              </select>
+              <select
+                className="h-8 rounded-md border border-input bg-background px-2 text-xs shadow-xs md:text-sm"
+                value={side}
+                onChange={(e) => setSide(e.target.value)}
+                aria-label="Filter by side"
+              >
+                <option value="">All sides</option>
+                {SIDES.filter(Boolean).map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+              <Input
+                className="h-8 w-[100px] text-xs md:text-sm"
+                placeholder="Symbol"
+                value={symbolSearch}
+                onChange={(e) => setSymbolSearch(e.target.value)}
+                aria-label="Filter by symbol"
+              />
+            </div>
 
-              <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-                <CardBody>
-                  {activityQuery.isPending ? (
-                    <TableSkeleton rows={10} cols={7} />
-                  ) : (
-                    <>
-                      <HStack
-                        gap={4}
-                        p={3}
-                        mb={3}
-                        borderRadius="md"
-                        bg="bg.muted"
-                        flexWrap="wrap"
-                        fontSize="sm"
-                      >
-                        <HStack gap={2}>
-                          <Text color="fg.muted">Dividends:</Text>
-                          <Text color={summary.dividends >= 0 ? 'status.success' : 'status.danger'}>
-                            {formatMoney(summary.dividends, currency)}
-                          </Text>
-                        </HStack>
-                        <HStack gap={2}>
-                          <Text color="fg.muted">Fees/Commissions:</Text>
-                          <Text color={summary.feesCommissions <= 0 ? 'status.danger' : 'status.success'}>
-                            {formatMoney(summary.feesCommissions, currency)}
-                          </Text>
-                        </HStack>
-                        <HStack gap={2}>
-                          <Text color="fg.muted">Interest received:</Text>
-                          <Text color={summary.interestReceived >= 0 ? 'status.success' : 'status.danger'}>
-                            {formatMoney(summary.interestReceived, currency)}
-                          </Text>
-                        </HStack>
-                      </HStack>
-                      <HStack justify="space-between" mb={2}>
-                        <Badge colorPalette="gray">
-                          {hasApiTotal ? `${activity.length} of ${total}` : `${activity.length} rows (this page)`}
-                        </Badge>
-                      </HStack>
-                      <SortableTable
-                        data={activity}
-                        columns={columns}
-                        defaultSortBy="ts"
-                        defaultSortOrder="desc"
-                        size="sm"
-                        maxHeight="70vh"
-                        emptyMessage="No activity in this range."
-                      />
-                      <Pagination
-                        page={page}
-                        pageSize={pageSize}
-                        total={total}
-                        onPageChange={setPage}
-                        onPageSizeChange={(ps) => {
-                          setPageSize(ps);
-                          setPage(1);
-                        }}
-                      />
-                    </>
-                  )}
-                </CardBody>
-              </CardRoot>
+            <Card className="gap-0 border border-border shadow-none ring-0">
+              <CardContent className="py-4">
+                {activityQuery.isPending ? (
+                  <TableSkeleton rows={10} cols={7} />
+                ) : (
+                  <>
+                    <div className="mb-3 flex flex-wrap gap-4 rounded-md bg-muted/50 p-3 text-sm">
+                      <div className="flex gap-2">
+                        <span className="text-muted-foreground">Dividends:</span>
+                        <span
+                          className={semanticTextColorClass(
+                            summary.dividends >= 0 ? 'status.success' : 'status.danger',
+                          )}
+                        >
+                          {formatMoney(summary.dividends, currency)}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <span className="text-muted-foreground">Fees/Commissions:</span>
+                        <span
+                          className={semanticTextColorClass(
+                            summary.feesCommissions <= 0 ? 'status.danger' : 'status.success',
+                          )}
+                        >
+                          {formatMoney(summary.feesCommissions, currency)}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <span className="text-muted-foreground">Interest received:</span>
+                        <span
+                          className={semanticTextColorClass(
+                            summary.interestReceived >= 0 ? 'status.success' : 'status.danger',
+                          )}
+                        >
+                          {formatMoney(summary.interestReceived, currency)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mb-2 flex justify-between">
+                      <Badge variant="secondary" className="h-5">
+                        {hasApiTotal ? `${activity.length} of ${total}` : `${activity.length} rows (this page)`}
+                      </Badge>
+                    </div>
+                    <SortableTable
+                      data={activity}
+                      columns={columns}
+                      defaultSortBy="ts"
+                      defaultSortOrder="desc"
+                      size="sm"
+                      maxHeight="70vh"
+                      emptyMessage="No activity in this range."
+                    />
+                    <Pagination
+                      page={page}
+                      pageSize={pageSize}
+                      total={total}
+                      onPageChange={setPage}
+                      onPageSizeChange={(ps) => {
+                        setPageSize(ps);
+                        setPage(1);
+                      }}
+                    />
+                  </>
+                )}
+              </CardContent>
+            </Card>
           </>
         )}
-      </Stack>
-    </Box>
+      </div>
+    </div>
   );
 };
 

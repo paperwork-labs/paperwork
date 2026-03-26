@@ -1,24 +1,24 @@
 import React from "react";
-import { Box, SimpleGrid, Text, HStack, VStack, Code, Image } from "@chakra-ui/react";
 import { useColorMode } from "../theme/colorMode";
 import AppLogo from "../components/ui/AppLogo";
 import lockupLogo from "../assets/logos/axiomfolio-lockup.svg";
 import lockupDarkLogo from "../assets/logos/axiomfolio-lockup-dark.svg";
 import lockupSurfaceLogo from "../assets/logos/axiomfolio-lockup-surface.svg";
 import starIcon from "../assets/logos/axiomfolio-icon-star.svg";
+import { swatchBackgroundCss } from "./tokenSwatchCss";
 
 export default {
   title: "Brand/AxiomFolio",
 };
 
 const Swatch = ({ name, value }: { name: string; value: string }) => (
-  <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" overflow="hidden" bg="bg.panel">
-    <Box h="44px" bg={value} />
-    <Box p={3}>
-      <Text fontSize="sm" color="fg.default">{name}</Text>
-      <Code fontSize="xs">{value}</Code>
-    </Box>
-  </Box>
+  <div className="overflow-hidden rounded-lg border border-border bg-card">
+    <div className="h-11" style={{ background: swatchBackgroundCss(value) }} />
+    <div className="p-3">
+      <div className="text-sm text-foreground">{name}</div>
+      <code className="text-xs text-muted-foreground">{value}</code>
+    </div>
+  </div>
 );
 
 export const Overview = () => {
@@ -34,143 +34,139 @@ export const Overview = () => {
   ] as const;
 
   return (
-    <Box p={6}>
-      <HStack justify="space-between" mb={6}>
-        <Box>
-          <Text fontSize="lg" fontWeight="semibold" color="fg.default">AxiomFolio brand</Text>
-          <Text fontSize="sm" color="fg.muted">Mode: {colorMode}</Text>
-        </Box>
-        <Box
-          as="button"
+    <div className="p-6">
+      <div className="mb-6 flex flex-row items-center justify-between">
+        <div>
+          <div className="text-lg font-semibold text-foreground">AxiomFolio brand</div>
+          <div className="text-sm text-muted-foreground">Mode: {colorMode}</div>
+        </div>
+        <button
+          type="button"
           onClick={toggleColorMode}
-          style={{
-            padding: "8px 12px",
-            borderRadius: 10,
-            border: "1px solid rgba(255,255,255,0.12)",
-          }}
+          className="rounded-[10px] border border-border px-3 py-2 text-sm"
         >
           Toggle mode
-        </Box>
-      </HStack>
+        </button>
+      </div>
 
-      <VStack align="stretch" gap={8}>
+      <div className="flex flex-col gap-8 items-stretch">
         {/* --- Brand mark (the logo) --- */}
-        <Box>
-          <Text fontSize="sm" fontWeight="semibold" color="fg.subtle" textTransform="uppercase" mb={3}>
+        <div>
+          <div className="mb-3 text-sm font-semibold uppercase text-muted-foreground">
             Brand mark (the logo)
-          </Text>
-          <Text fontSize="xs" color="fg.muted" mb={4}>
+          </div>
+          <p className="mb-4 text-xs text-muted-foreground">
             The four-point star IS the logo. It renders via {"<AppLogo />"} and uses fixed colors that work on both light and dark backgrounds (no theme switching).
-          </Text>
-          <HStack gap={6} align="end">
-            <VStack gap={1}>
+          </p>
+          <div className="flex flex-row flex-wrap items-end gap-6">
+            <div className="flex flex-col gap-1 items-center">
               <AppLogo size={64} />
-              <Text fontSize="xs" color="fg.subtle">64px</Text>
-            </VStack>
-            <VStack gap={1}>
+              <span className="text-xs text-muted-foreground">64px</span>
+            </div>
+            <div className="flex flex-col gap-1 items-center">
               <AppLogo size={48} />
-              <Text fontSize="xs" color="fg.subtle">48px</Text>
-            </VStack>
-            <VStack gap={1}>
+              <span className="text-xs text-muted-foreground">48px</span>
+            </div>
+            <div className="flex flex-col gap-1 items-center">
               <AppLogo size={36} />
-              <Text fontSize="xs" color="fg.subtle">36px</Text>
-            </VStack>
-            <VStack gap={1}>
+              <span className="text-xs text-muted-foreground">36px</span>
+            </div>
+            <div className="flex flex-col gap-1 items-center">
               <AppLogo size={24} />
-              <Text fontSize="xs" color="fg.subtle">24px</Text>
-            </VStack>
-          </HStack>
-        </Box>
+              <span className="text-xs text-muted-foreground">24px</span>
+            </div>
+          </div>
+        </div>
 
         {/* --- Product name alongside mark --- */}
-        <Box>
-          <Text fontSize="sm" fontWeight="semibold" color="fg.subtle" textTransform="uppercase" mb={3}>
+        <div>
+          <div className="mb-3 text-sm font-semibold uppercase text-muted-foreground">
             Mark + product name (usage examples)
-          </Text>
-          <Text fontSize="xs" color="fg.muted" mb={4}>
-            "AxiomFolio" is the product name — not part of the logo. Render it as separate text alongside the mark.
-          </Text>
-          <VStack align="start" gap={4}>
-            <HStack gap="14px" align="center">
+          </div>
+          <p className="mb-4 text-xs text-muted-foreground">
+            &quot;AxiomFolio&quot; is the product name — not part of the logo. Render it as separate text alongside the mark.
+          </p>
+          <div className="flex flex-col gap-4 items-start">
+            <div className="flex flex-row items-center gap-[14px]">
               <AppLogo size={52} />
-              <Text fontSize="md" fontWeight="semibold" color="fg.default" letterSpacing="-0.01em">AxiomFolio</Text>
-            </HStack>
-            <HStack gap="10px" align="center">
+              <span className="text-base font-semibold tracking-tight text-foreground">AxiomFolio</span>
+            </div>
+            <div className="flex flex-row items-center gap-2.5">
               <AppLogo size={36} />
-              <Text fontSize="sm" fontWeight="semibold" color="fg.default" letterSpacing="-0.01em">AxiomFolio</Text>
-            </HStack>
-          </VStack>
-        </Box>
+              <span className="text-sm font-semibold tracking-tight text-foreground">AxiomFolio</span>
+            </div>
+          </div>
+        </div>
 
         {/* --- Static SVG assets --- */}
-        <Box>
-          <Text fontSize="sm" fontWeight="semibold" color="fg.subtle" textTransform="uppercase" mb={3}>
+        <div>
+          <div className="mb-3 text-sm font-semibold uppercase text-muted-foreground">
             Static SVG assets
-          </Text>
-          <Text fontSize="xs" color="fg.muted" mb={4}>
-            For external use (docs, marketing, social). The lockups bake in the product name for contexts where the React component isn't available.
-          </Text>
-          <VStack align="stretch" gap={4}>
-            <HStack gap={4} align="start">
-              <Box p={4} borderRadius="lg" borderWidth="1px" borderColor="border.subtle" bg="white" display="inline-block">
-                <Image src={lockupLogo} alt="Lockup (light)" height="48px" />
-              </Box>
-              <Box p={4} borderRadius="lg" bg="#0F172A" display="inline-block">
-                <Image src={lockupDarkLogo} alt="Lockup (dark)" height="48px" />
-              </Box>
-            </HStack>
-            <Box p={4} borderRadius="lg" bg="#0F172A" display="inline-block">
-              <Image src={lockupSurfaceLogo} alt="Lockup on surface chip" height="56px" />
-            </Box>
-            <HStack gap={4}>
-              <Box p={3} borderRadius="lg" borderWidth="1px" borderColor="border.subtle" bg="white" display="inline-block">
-                <Image src={starIcon} alt="Star mark (light)" boxSize="48px" />
-              </Box>
-              <Box p={3} borderRadius="lg" bg="#0F172A" display="inline-block">
-                <Image src={starIcon} alt="Star mark (dark)" boxSize="48px" />
-              </Box>
-            </HStack>
-          </VStack>
-        </Box>
+          </div>
+          <p className="mb-4 text-xs text-muted-foreground">
+            For external use (docs, marketing, social). The lockups bake in the product name for contexts where the React component isn&apos;t available.
+          </p>
+          <div className="flex flex-col gap-4 items-stretch">
+            <div className="flex flex-row flex-wrap gap-4 items-start">
+              <div className="inline-block rounded-lg border border-border bg-background p-4">
+                <img src={lockupLogo} alt="Lockup (light)" className="h-12 w-auto" />
+              </div>
+              <div className="inline-block rounded-lg bg-[#0F172A] p-4">
+                <img src={lockupDarkLogo} alt="Lockup (dark)" className="h-12 w-auto" />
+              </div>
+            </div>
+            <div className="inline-block rounded-lg bg-[#0F172A] p-4">
+              <img src={lockupSurfaceLogo} alt="Lockup on surface chip" className="h-14 w-auto" />
+            </div>
+            <div className="flex flex-row gap-4">
+              <div className="inline-block rounded-lg border border-border bg-background p-3">
+                <img src={starIcon} alt="Star mark (light)" className="size-12" />
+              </div>
+              <div className="inline-block rounded-lg bg-[#0F172A] p-3">
+                <img src={starIcon} alt="Star mark (dark)" className="size-12" />
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* --- Palette --- */}
-        <Box>
-          <Text fontSize="sm" fontWeight="semibold" color="fg.subtle" textTransform="uppercase" mb={3}>
+        <div>
+          <div className="mb-3 text-sm font-semibold uppercase text-muted-foreground">
             Brand palette
-          </Text>
-          <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} gap={4}>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
             {brandTokens.map(([name, value]) => (
               <Swatch key={name} name={name} value={value} />
             ))}
-          </SimpleGrid>
-        </Box>
+          </div>
+        </div>
 
-        <Box>
-          <Text fontSize="sm" fontWeight="semibold" color="fg.subtle" textTransform="uppercase" mb={3}>
+        <div>
+          <div className="mb-3 text-sm font-semibold uppercase text-muted-foreground">
             Status colors
-          </Text>
-          <SimpleGrid columns={{ base: 1, sm: 2, md: 4 }} gap={4}>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
             <Swatch name="status.success" value="status.success" />
             <Swatch name="status.warning" value="status.warning" />
             <Swatch name="status.danger" value="status.danger" />
             <Swatch name="status.info" value="status.info" />
-          </SimpleGrid>
-        </Box>
+          </div>
+        </div>
 
-        <Box>
-          <Text fontSize="sm" fontWeight="semibold" color="fg.subtle" textTransform="uppercase" mb={3}>
+        <div>
+          <div className="mb-3 text-sm font-semibold uppercase text-muted-foreground">
             Typography
-          </Text>
-          <VStack align="stretch" gap={2}>
-            <Text fontSize="2xl" fontWeight="semibold" fontFamily="heading" color="fg.default">
+          </div>
+          <div className="flex flex-col gap-2 items-stretch">
+            <div className="text-2xl font-semibold text-foreground">
               AxiomFolio: Clarity for modern portfolios
-            </Text>
-            <Text fontSize="md" fontFamily="body" color="fg.muted">
-              Product UI uses the shared Chakra v3 system for consistency, scale, and accessibility.
-            </Text>
-          </VStack>
-        </Box>
-      </VStack>
-    </Box>
+            </div>
+            <div className="text-base text-muted-foreground">
+              Product UI uses Tailwind CSS v4 and shadcn-style primitives for consistency, scale, and accessibility.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };

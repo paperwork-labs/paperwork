@@ -11,11 +11,8 @@ Domain-driven task organization:
 
 Core files at root level:
 - celery_app.py     : Celery application configuration
-- task_utils.py     : Shared task utilities
 - job_catalog.py    : Scheduled job definitions
-- schedule_helpers.py
-- schedule_metadata.py
-- market_data_tasks.py : Legacy market data tasks (being migrated to market/)
+- utils/            : Shared task utilities (task_utils, schedule_helpers, schedule_metadata)
 """
 
 # Re-export commonly used tasks for backwards compatibility

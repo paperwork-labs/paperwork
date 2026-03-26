@@ -9,7 +9,7 @@ Supports approval workflow for risky actions.
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, JSON, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, JSON, Boolean, Float
 from sqlalchemy.orm import relationship
 
 from . import Base
@@ -37,6 +37,7 @@ class AgentAction(Base):
     # LLM reasoning
     reasoning = Column(Text, nullable=True)
     context_summary = Column(Text, nullable=True)
+    confidence_score = Column(Float, nullable=True)  # LLM's self-assessed confidence (0.0-1.0)
     
     # Execution details
     task_id = Column(String(100), nullable=True)  # Celery task ID if dispatched

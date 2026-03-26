@@ -1,24 +1,17 @@
-import React from 'react';
-import {
-  Box,
-  Text,
-  HStack,
-  Icon,
-  StatRoot,
-  StatLabel,
-  StatValueText,
-  StatHelpText,
-  StatUpIndicator,
-  StatDownIndicator,
-} from '@chakra-ui/react';
+import React from "react";
+import { TrendingDown, TrendingUp } from "lucide-react";
+
+import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { semanticTextColorClass } from "@/lib/semantic-text-color";
 
 export interface StatCardProps {
   label: string;
   value: string | number;
   sub?: string;
-  /** Compact = border box (dashboard style); full = Chakra StatRoot (KPI style) */
-  variant?: 'compact' | 'full';
-  trend?: 'up' | 'down';
+  /** Compact = border box (dashboard style); full = KPI style without Chakra Stat primitives */
+  variant?: "compact" | "full";
+  trend?: "up" | "down";
   color?: string;
   helpText?: string;
   icon?: React.ElementType;
@@ -28,57 +21,69 @@ const StatCard: React.FC<StatCardProps> = ({
   label,
   value,
   sub,
-  variant = 'compact',
+  variant = "compact",
   trend,
   color,
   helpText,
-  icon,
+  icon: Icon,
 }) => {
-  if (variant === 'full') {
+  const valueColorClass = cn(semanticTextColorClass(color));
+
+  if (variant === "full") {
     return (
-      <StatRoot>
-        <StatLabel>
-          <HStack gap={1}>
-            {icon && <Icon as={icon} />}
-            <Text>{label}</Text>
-          </HStack>
-        </StatLabel>
-        <StatValueText color={color} aria-label={`${label}: ${value}`}>{value}</StatValueText>
+      <div className="min-w-[140px] flex-1">
+        <div className="mb-1 flex items-center gap-1">
+          {Icon ? <Icon className="size-4 text-muted-foreground" aria-hidden /> : null}
+          <span className="text-sm text-muted-foreground">{label}</span>
+        </div>
+        <p
+          className={cn(
+            "font-mono text-2xl leading-tight font-semibold tracking-tight text-foreground",
+            valueColorClass
+          )}
+          aria-label={`${label}: ${value}`}
+        >
+          {value}
+        </p>
         {(helpText !== undefined || sub) && (
-          <StatHelpText>
-            {trend === 'up' && <StatUpIndicator />}
-            {trend === 'down' && <StatDownIndicator />}
-            {helpText ?? sub}
-          </StatHelpText>
+          <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+            {trend === "up" ? (
+              <TrendingUp className="size-3.5 text-[rgb(var(--status-success)/1)]" aria-hidden />
+            ) : null}
+            {trend === "down" ? (
+              <TrendingDown className="size-3.5 text-[rgb(var(--status-danger)/1)]" aria-hidden />
+            ) : null}
+            <span>{helpText ?? sub}</span>
+          </div>
         )}
-      </StatRoot>
+      </div>
     );
   }
 
   return (
-    <Box
-      borderWidth="1px"
-      borderColor="border.subtle"
-      borderRadius="lg"
-      p={3}
-      bg="bg.card"
-      flex="1"
-      minW="120px"
-      transition="box-shadow 200ms ease, transform 200ms ease"
-      _hover={{ boxShadow: "0 4px 6px rgba(0,0,0,0.1)", transform: "translateY(-1px)" }}
-    >
-      <Text fontSize="xs" color="fg.muted">
-        {label}
-      </Text>
-      <Text fontSize="lg" fontWeight="bold" fontFamily="mono" letterSpacing="-0.02em" color={color} aria-label={`${label}: ${value}`}>
-        {value}
-      </Text>
-      {sub != null && sub !== '' && (
-        <Text fontSize="xs" color="fg.muted">
-          {sub}
-        </Text>
+    <Card
+      size="sm"
+      className={cn(
+        "min-w-[120px] flex-1 gap-0 rounded-lg border border-border py-0 shadow-none ring-0 transition-[box-shadow,transform] duration-200",
+        "hover:-translate-y-px hover:shadow-md"
       )}
-    </Box>
+    >
+      <CardContent className="flex flex-col gap-1 px-3 py-3">
+        <span className="text-xs text-muted-foreground">{label}</span>
+        <span
+          className={cn(
+            "font-mono text-lg leading-tight font-bold tracking-tight text-foreground",
+            valueColorClass
+          )}
+          aria-label={`${label}: ${value}`}
+        >
+          {value}
+        </span>
+        {sub != null && sub !== "" ? (
+          <span className="text-xs text-muted-foreground">{sub}</span>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 };
 

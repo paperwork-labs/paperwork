@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
-import { Box, Text, HStack, VStack } from '@chakra-ui/react';
 import { ResponsiveContainer, Treemap, Tooltip as RechartsTooltip } from 'recharts';
+
+import { cn } from '@/lib/utils';
+
 import { heatMapColor, HEAT_MAP_LEGEND } from '../../constants/chart';
 
 export interface FinvizData {
@@ -57,14 +59,24 @@ const CustomTooltip = ({ active, payload }: any) => {
   const d = payload[0].payload;
   if (!d || d.change == null) return null;
   return (
-    <Box bg="bg.panel" p={3} borderWidth="1px" borderColor="border.subtle" borderRadius="md" boxShadow="lg" fontSize="sm">
-      <Text fontWeight="bold" color="fg.default">{d.name}</Text>
-      {d.value != null && <Text color="fg.muted">Value: ${d.value.toLocaleString()}</Text>}
-      <Text color={d.change >= 0 ? 'status.success' : 'status.danger'}>
+    <div
+      className={cn(
+        'rounded-md border border-border bg-popover p-3 text-sm text-popover-foreground shadow-lg'
+      )}
+    >
+      <div className="font-bold text-foreground">{d.name}</div>
+      {d.value != null && (
+        <div className="text-muted-foreground">Value: ${d.value.toLocaleString()}</div>
+      )}
+      <div
+        className={cn(
+          d.change >= 0 ? 'text-[rgb(var(--status-success))]' : 'text-[rgb(var(--status-danger))]'
+        )}
+      >
         {d.change >= 0 ? '+' : ''}{d.change.toFixed(2)}%
-      </Text>
-      {d.sector && <Text fontSize="xs" color="fg.subtle">{d.sector}</Text>}
-    </Box>
+      </div>
+      {d.sector && <div className="text-xs text-muted-foreground">{d.sector}</div>}
+    </div>
   );
 };
 
@@ -147,10 +159,10 @@ const FinvizHeatMap: React.FC<FinvizHeatMapProps> = ({
   if (!data.length) return null;
 
   return (
-    <VStack gap={3} align="stretch">
-      {title && <Text fontSize="md" fontWeight="semibold">{title}</Text>}
+    <div className="flex flex-col items-stretch gap-3">
+      {title ? <h3 className="text-base font-semibold text-foreground">{title}</h3> : null}
 
-      <Box borderWidth="1px" borderColor="border.subtle" borderRadius="md" overflow="hidden" bg="bg.card">
+      <div className="overflow-hidden rounded-md border border-border bg-card">
         <ResponsiveContainer width="100%" height={height}>
           <Treemap
             data={treeData}
@@ -162,19 +174,19 @@ const FinvizHeatMap: React.FC<FinvizHeatMapProps> = ({
             <RechartsTooltip content={<CustomTooltip />} />
           </Treemap>
         </ResponsiveContainer>
-      </Box>
+      </div>
 
       {showLegend && (
-        <HStack gap={1} justify="center" fontSize="xs">
+        <div className="flex flex-wrap justify-center gap-1 text-xs">
           {HEAT_MAP_LEGEND.map((stop) => (
-            <HStack key={stop.label} gap={1}>
-              <Box w={3} h={3} borderRadius="sm" bg={stop.hex} />
-              <Text color="fg.muted">{stop.label}</Text>
-            </HStack>
+            <div key={stop.label} className="flex items-center gap-1">
+              <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: stop.hex }} />
+              <span className="text-muted-foreground">{stop.label}</span>
+            </div>
           ))}
-        </HStack>
+        </div>
       )}
-    </VStack>
+    </div>
   );
 };
 

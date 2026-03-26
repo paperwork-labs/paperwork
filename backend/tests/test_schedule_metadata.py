@@ -1,4 +1,4 @@
-from backend.tasks.schedule_metadata import (
+from backend.tasks.utils.schedule_metadata import (
     HookConfig,
     ScheduleMetadata,
     ScheduleMetadataPatch,

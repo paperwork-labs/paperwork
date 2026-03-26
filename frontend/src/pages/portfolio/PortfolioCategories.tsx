@@ -1,34 +1,17 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
-  Box,
-  Text,
-  Stack,
-  HStack,
-  Button,
-  CardRoot,
-  CardHeader,
-  CardBody,
-  VStack,
-  SimpleGrid,
-  Table,
-  DialogRoot,
-  DialogBackdrop,
-  DialogPositioner,
-  DialogContent,
-  DialogHeader,
-  DialogBody,
-  DialogFooter,
-  DialogCloseTrigger,
-  Input,
-  Field,
-  Progress,
-  Badge,
-  Icon,
-  Spinner,
-  Collapsible,
-} from '@chakra-ui/react';
-import { FiGrid, FiList, FiZap, FiSearch, FiPlus, FiCheck, FiChevronUp, FiChevronDown, FiChevronRight } from 'react-icons/fi';
-import { RiDraggable } from 'react-icons/ri';
+  Check,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  GripVertical,
+  LayoutGrid,
+  List,
+  Loader2,
+  Plus,
+  Search,
+  Zap,
+} from 'lucide-react';
 import {
   DndContext,
   DragOverlay,
@@ -44,6 +27,22 @@ import {
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import FormField from '@/components/ui/FormField';
+import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
+import { cn } from '@/lib/utils';
 import PageHeader from '../../components/ui/PageHeader';
 import { portfolioApi, handleApiError } from '../../services/api';
 import api from '../../services/api';
@@ -80,15 +79,15 @@ const DroppableCategory: React.FC<{ categoryId: number; children: React.ReactNod
     data: { categoryId },
   });
   return (
-    <Box
+    <div
       ref={setNodeRef}
-      borderWidth="2px"
-      borderColor={isOver ? 'brand.500' : 'transparent'}
-      borderRadius="xl"
-      transition="border-color 0.2s"
+      className={cn(
+        'rounded-xl border-2 transition-[border-color] duration-200',
+        isOver ? 'border-primary' : 'border-transparent',
+      )}
     >
       {children}
-    </Box>
+    </div>
   );
 };
 
@@ -98,17 +97,14 @@ const DraggableTicker: React.FC<{ positionId: number; symbol: string; categoryId
     data: { positionId, symbol, categoryId },
   });
   return (
-    <Box
+    <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      opacity={isDragging ? 0.4 : 1}
-      cursor="grab"
-      _active={{ cursor: 'grabbing' }}
-      display="inline-flex"
+      className={cn('inline-flex cursor-grab active:cursor-grabbing', isDragging && 'opacity-40')}
     >
       {children}
-    </Box>
+    </div>
   );
 };
 
@@ -124,11 +120,11 @@ const AllocationChart: React.FC<{ categories: CategoryRow[]; currency: string }>
   if (data.length === 0) return null;
 
   return (
-    <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-      <CardBody>
-        <Text fontWeight="bold" mb={3}>Allocation Overview</Text>
-        <HStack gap={6} align="center" flexWrap="wrap">
-          <Box w="200px" h="200px">
+    <Card className="gap-0 py-0">
+      <CardContent className="pt-6">
+        <p className="mb-3 font-medium text-foreground">Allocation Overview</p>
+        <div className="flex flex-wrap items-center gap-6">
+          <div className="h-[200px] w-[200px] shrink-0">
             <ResponsiveContainer>
               <PieChart>
                 <Pie data={data} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={2}>
@@ -141,28 +137,37 @@ const AllocationChart: React.FC<{ categories: CategoryRow[]; currency: string }>
                 />
               </PieChart>
             </ResponsiveContainer>
-          </Box>
-          <VStack align="stretch" gap={1} flex={1}>
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
             {data.map((d, i) => (
-              <HStack key={d.name} justify="space-between" fontSize="sm">
-                <HStack gap={2}>
-                  <Box w="10px" h="10px" borderRadius="full" bg={COLORS[i % COLORS.length]} flexShrink={0} />
-                  <Text>{d.name}</Text>
-                </HStack>
-                <HStack gap={3}>
-                  <Text fontFamily="mono" color="fg.muted">{d.actual.toFixed(1)}%</Text>
-                  {d.target > 0 && (
-                    <Text fontFamily="mono" color={Math.abs(d.actual - d.target) > 5 ? 'fg.error' : 'fg.muted'} fontSize="xs">
+              <div key={d.name} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="size-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: COLORS[i % COLORS.length] }}
+                    aria-hidden
+                  />
+                  <span>{d.name}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-muted-foreground">{d.actual.toFixed(1)}%</span>
+                  {d.target > 0 ? (
+                    <span
+                      className={cn(
+                        'font-mono text-xs',
+                        Math.abs(d.actual - d.target) > 5 ? 'text-[rgb(var(--status-danger)/1)]' : 'text-muted-foreground',
+                      )}
+                    >
                       target {d.target}%
-                    </Text>
-                  )}
-                </HStack>
-              </HStack>
+                    </span>
+                  ) : null}
+                </div>
+              </div>
             ))}
-          </VStack>
-        </HStack>
-      </CardBody>
-    </CardRoot>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -213,98 +218,178 @@ const CategoryCard: React.FC<{
   });
 
   return (
-    <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-      <CardBody>
-        <HStack justify="space-between" align="center" mb={2}>
-          <HStack gap={1}>
-            <VStack gap={0}>
-              <Box
-                as="button"
-                p={0}
-                lineHeight={1}
-                fontSize="xs"
-                color={isFirst ? 'fg.subtle' : 'fg.muted'}
-                cursor={isFirst ? 'default' : 'pointer'}
-                _hover={isFirst ? {} : { color: 'fg.default' }}
+    <Card className="gap-0 py-0">
+      <CardContent className="pt-6">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1">
+            <div className="flex flex-col gap-0">
+              <button
+                type="button"
+                className={cn(
+                  'p-0 leading-none text-muted-foreground',
+                  isFirst ? 'cursor-default opacity-50' : 'cursor-pointer hover:text-foreground',
+                )}
                 onClick={isFirst ? undefined : onMoveUp}
                 aria-label="Move up"
+                disabled={isFirst}
               >
-                <FiChevronUp size={14} />
-              </Box>
-              <Box
-                as="button"
-                p={0}
-                lineHeight={1}
-                fontSize="xs"
-                color={isLast ? 'fg.subtle' : 'fg.muted'}
-                cursor={isLast ? 'default' : 'pointer'}
-                _hover={isLast ? {} : { color: 'fg.default' }}
+                <ChevronUp className="size-3.5" aria-hidden />
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  'p-0 leading-none text-muted-foreground',
+                  isLast ? 'cursor-default opacity-50' : 'cursor-pointer hover:text-foreground',
+                )}
                 onClick={isLast ? undefined : onMoveDown}
                 aria-label="Move down"
+                disabled={isLast}
               >
-                <FiChevronDown size={14} />
-              </Box>
-            </VStack>
-            <Box
-              cursor="pointer"
+                <ChevronDown className="size-3.5" aria-hidden />
+              </button>
+            </div>
+            <button
+              type="button"
+              className="flex cursor-pointer items-center gap-1 text-left"
               onClick={onToggleDetail}
-              display="flex"
-              alignItems="center"
-              gap={1}
+              aria-expanded={Boolean(isDetailOpen)}
             >
-              <Box
-                transform={isDetailOpen ? 'rotate(90deg)' : undefined}
-                transition="transform 0.15s"
-                color="fg.muted"
-              >
-                <FiChevronRight size={14} />
-              </Box>
-              <Text fontWeight="semibold">{cat.name}</Text>
-            </Box>
-          </HStack>
-          {Math.abs(diff) > 5 && (
-            <Badge colorPalette={diff > 0 ? 'red' : 'orange'} size="sm">
-              Drift {diff > 0 ? '+' : ''}{diff.toFixed(1)}%
+              <ChevronRight
+                className={cn('size-3.5 shrink-0 text-muted-foreground transition-transform', isDetailOpen && 'rotate-90')}
+                aria-hidden
+              />
+              <span className="font-semibold text-foreground">{cat.name}</span>
+            </button>
+          </div>
+          {Math.abs(diff) > 5 ? (
+            <Badge
+              variant="secondary"
+              className={cn(diff > 0 ? 'bg-destructive/15 text-destructive' : 'bg-amber-500/15 text-amber-700 dark:text-amber-400')}
+            >
+              Drift {diff > 0 ? '+' : ''}
+              {diff.toFixed(1)}%
             </Badge>
-          )}
-        </HStack>
-        <Text fontSize="sm" color="fg.muted">
+          ) : null}
+        </div>
+        <p className="text-sm text-muted-foreground">
           Target: {target}% · Actual: {actual.toFixed(1)}% · {cat.positions_count ?? 0} positions
-        </Text>
-        <Progress.Root value={actual} max={100} size="sm" mt={2} borderRadius="md">
-          <Progress.Track>
-            <Progress.Range bg="brand.500" />
-          </Progress.Track>
-        </Progress.Root>
-        {diff !== 0 && (
-          <Text fontSize="xs" color={diff < 0 ? 'status.warning' : 'status.danger'} mt={1}>
-            {diff > 0 ? '+' : ''}{diff.toFixed(1)}% {diff < 0 ? 'underweight' : 'overweight'}
-          </Text>
-        )}
-        {cat.total_value != null && (
-          <Text fontSize="xs" color="fg.muted" mt={1}>
+        </p>
+        <Progress value={actual} max={100} className="mt-2 h-2" />
+        {diff !== 0 ? (
+          <p
+            className={cn(
+              'mt-1 text-xs',
+              diff < 0 ? 'text-[rgb(var(--status-warning)/1)]' : 'text-[rgb(var(--status-danger)/1)]',
+            )}
+          >
+            {diff > 0 ? '+' : ''}
+            {diff.toFixed(1)}% {diff < 0 ? 'underweight' : 'overweight'}
+          </p>
+        ) : null}
+        {cat.total_value != null ? (
+          <p className="mt-1 text-xs text-muted-foreground">
             {formatMoney(cat.total_value, currency, { maximumFractionDigits: 0 })}
-          </Text>
-        )}
+          </p>
+        ) : null}
 
-        {/* Click-through detail table */}
-        {isDetailOpen && (
-          <Box mt={3} borderTopWidth="1px" borderColor="border.subtle" pt={2}>
+        {isDetailOpen ? (
+          <div className="mt-3 border-t border-border pt-2">
             {positionsQuery.isPending ? (
-              <HStack gap={2} py={2}><Spinner size="xs" /><Text fontSize="xs" color="fg.muted">Loading positions…</Text></HStack>
+              <div className="flex items-center gap-2 py-2">
+                <Loader2 className="size-4 animate-spin text-muted-foreground" aria-hidden />
+                <span className="text-xs text-muted-foreground">Loading positions…</span>
+              </div>
             ) : catPositions.length === 0 ? (
-              <Text fontSize="xs" color="fg.muted">No positions in this category</Text>
+              <p className="text-xs text-muted-foreground">No positions in this category</p>
             ) : (
               <SortableTable<CatPosition>
                 data={catPositions}
                 columns={[
-                  { key: 'symbol', header: 'Symbol', accessor: (p) => p.symbol, sortable: true, sortType: 'string', render: (v) => <Text fontFamily="mono" fontSize="xs">{v}</Text> },
-                  { key: 'shares', header: 'Shares', accessor: (p) => p.shares ?? 0, sortable: true, sortType: 'number', isNumeric: true, render: (v) => <Text fontSize="xs">{v != null ? Number(v).toFixed(2) : '—'}</Text> },
-                  { key: 'market_value', header: 'Value', accessor: (p) => p.market_value ?? 0, sortable: true, sortType: 'number', isNumeric: true, render: (_, p) => <Text fontSize="xs">{formatMoney(p.market_value ?? 0, currency, { maximumFractionDigits: 0 })}</Text> },
-                  { key: 'unrealized_pnl', header: 'P&L', accessor: (p) => p.unrealized_pnl ?? 0, sortable: true, sortType: 'number', isNumeric: true, render: (_, p) => <Text fontSize="xs" color={(p.unrealized_pnl ?? 0) >= 0 ? 'fg.success' : 'fg.error'}>{formatMoney(p.unrealized_pnl ?? 0, currency, { maximumFractionDigits: 0 })}</Text> },
-                  { key: 'unrealized_pnl_pct', header: 'P&L %', accessor: (p) => p.unrealized_pnl_pct ?? 0, sortable: true, sortType: 'number', isNumeric: true, render: (_, p) => <Text fontSize="xs" color={(p.unrealized_pnl_pct ?? 0) >= 0 ? 'fg.success' : 'fg.error'}>{(p.unrealized_pnl_pct ?? 0).toFixed(1)}%</Text> },
-                  { key: 'weight_pct', header: 'Weight', accessor: (p) => p.weight_pct ?? 0, sortable: true, sortType: 'number', isNumeric: true, render: (v) => <Text fontSize="xs">{v != null ? `${Number(v).toFixed(1)}%` : '—'}</Text> },
-                  { key: 'stage_label', header: 'Stage', accessor: (p) => p.stage_label ?? '', sortable: true, sortType: 'string', render: (v) => <Badge size="sm" variant="subtle">{v || '—'}</Badge> },
+                  {
+                    key: 'symbol',
+                    header: 'Symbol',
+                    accessor: (p) => p.symbol,
+                    sortable: true,
+                    sortType: 'string',
+                    render: (v) => <span className="font-mono text-xs">{v}</span>,
+                  },
+                  {
+                    key: 'shares',
+                    header: 'Shares',
+                    accessor: (p) => p.shares ?? 0,
+                    sortable: true,
+                    sortType: 'number',
+                    isNumeric: true,
+                    render: (v) => <span className="text-xs">{v != null ? Number(v).toFixed(2) : '—'}</span>,
+                  },
+                  {
+                    key: 'market_value',
+                    header: 'Value',
+                    accessor: (p) => p.market_value ?? 0,
+                    sortable: true,
+                    sortType: 'number',
+                    isNumeric: true,
+                    render: (_, p) => (
+                      <span className="text-xs">{formatMoney(p.market_value ?? 0, currency, { maximumFractionDigits: 0 })}</span>
+                    ),
+                  },
+                  {
+                    key: 'unrealized_pnl',
+                    header: 'P&L',
+                    accessor: (p) => p.unrealized_pnl ?? 0,
+                    sortable: true,
+                    sortType: 'number',
+                    isNumeric: true,
+                    render: (_, p) => (
+                      <span
+                        className={cn(
+                          'text-xs',
+                          (p.unrealized_pnl ?? 0) >= 0 ? 'text-[rgb(var(--status-success)/1)]' : 'text-[rgb(var(--status-danger)/1)]',
+                        )}
+                      >
+                        {formatMoney(p.unrealized_pnl ?? 0, currency, { maximumFractionDigits: 0 })}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: 'unrealized_pnl_pct',
+                    header: 'P&L %',
+                    accessor: (p) => p.unrealized_pnl_pct ?? 0,
+                    sortable: true,
+                    sortType: 'number',
+                    isNumeric: true,
+                    render: (_, p) => (
+                      <span
+                        className={cn(
+                          'text-xs',
+                          (p.unrealized_pnl_pct ?? 0) >= 0 ? 'text-[rgb(var(--status-success)/1)]' : 'text-[rgb(var(--status-danger)/1)]',
+                        )}
+                      >
+                        {(p.unrealized_pnl_pct ?? 0).toFixed(1)}%
+                      </span>
+                    ),
+                  },
+                  {
+                    key: 'weight_pct',
+                    header: 'Weight',
+                    accessor: (p) => p.weight_pct ?? 0,
+                    sortable: true,
+                    sortType: 'number',
+                    isNumeric: true,
+                    render: (v) => <span className="text-xs">{v != null ? `${Number(v).toFixed(1)}%` : '—'}</span>,
+                  },
+                  {
+                    key: 'stage_label',
+                    header: 'Stage',
+                    accessor: (p) => p.stage_label ?? '',
+                    sortable: true,
+                    sortType: 'string',
+                    render: (v) => (
+                      <Badge variant="secondary" className="font-normal">
+                        {v || '—'}
+                      </Badge>
+                    ),
+                  },
                 ] satisfies Column<CatPosition>[]}
                 defaultSortBy="market_value"
                 defaultSortOrder="desc"
@@ -312,49 +397,62 @@ const CategoryCard: React.FC<{
                 emptyMessage="No positions in this category"
               />
             )}
-          </Box>
-        )}
+          </div>
+        ) : null}
 
-        {!isDetailOpen && catPositions.length > 0 && (
-          <HStack mt={2} gap={1} flexWrap="wrap">
+        {!isDetailOpen && catPositions.length > 0 ? (
+          <div className="mt-2 flex flex-wrap gap-1">
             {visiblePositions.map((p) => (
               <DraggableTicker key={p.id} positionId={p.id} symbol={p.symbol} categoryId={cat.id}>
                 <Badge
-                  size="sm"
                   variant="outline"
-                  colorPalette="gray"
-                  fontFamily="mono"
-                  cursor="pointer"
+                  className="cursor-pointer font-mono hover:border-destructive hover:text-destructive"
                   title={`Click to remove ${p.symbol} · Drag to move`}
                   onClick={() => unassignMutation.mutate(p.id)}
-                  _hover={{ colorPalette: 'red', borderColor: 'red.400' }}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      unassignMutation.mutate(p.id);
+                    }
+                  }}
                 >
                   {p.symbol} ×
                 </Badge>
               </DraggableTicker>
             ))}
-            {overflowCount > 0 && (
+            {overflowCount > 0 ? (
               <Badge
-                size="sm"
-                variant="subtle"
-                colorPalette="brand"
-                cursor="pointer"
-                _hover={{ bg: 'brand.100', _dark: { bg: 'brand.900' } }}
+                variant="secondary"
+                className="cursor-pointer hover:bg-muted"
                 onClick={() => setExpanded(!expanded)}
                 title={expanded ? 'Show fewer' : `Show all ${catPositions.length} tickers`}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setExpanded(!expanded);
+                  }
+                }}
               >
                 {expanded ? 'Show less' : `+${overflowCount} more`}
               </Badge>
-            )}
-          </HStack>
-        )}
+            ) : null}
+          </div>
+        ) : null}
 
-        <HStack mt={3} gap={2}>
-          <Button size="xs" variant="outline" onClick={() => onEdit(cat)}>Edit</Button>
-          <Button size="xs" variant="outline" onClick={() => onAssign(cat)}>Manage Positions</Button>
-        </HStack>
-      </CardBody>
-    </CardRoot>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button size="xs" variant="outline" onClick={() => onEdit(cat)}>
+            Edit
+          </Button>
+          <Button size="xs" variant="outline" onClick={() => onAssign(cat)}>
+            Manage Positions
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -415,162 +513,133 @@ const ManagePositionsDialog: React.FC<{
     : available;
 
   return (
-    <DialogRoot open={open} onOpenChange={(e) => { if (!e.open) onClose(); }}>
-      <DialogBackdrop />
-      <DialogPositioner>
-        <DialogContent maxW="lg">
-          <DialogHeader>
-            <VStack align="stretch" gap={1}>
-              <Text fontSize="lg" fontWeight="bold">Manage Positions · {categoryName}</Text>
-              <Text fontSize="sm" color="fg.muted">
-                {effectiveMembers.length + newlyAdded.length} position{effectiveMembers.length + newlyAdded.length !== 1 ? 's' : ''} in category
-              </Text>
-            </VStack>
-          </DialogHeader>
-          <DialogBody>
-            <VStack align="stretch" gap={4}>
-              {/* Current members */}
-              <Box>
-                <HStack mb={2} gap={2}>
-                  <FiCheck color="var(--chakra-colors-green-500)" />
-                  <Text fontSize="sm" fontWeight="semibold">In this category</Text>
-                </HStack>
-                {effectiveMembers.length === 0 && newlyAdded.length === 0 ? (
-                  <Text fontSize="sm" color="fg.muted" pl={6}>No positions assigned yet</Text>
-                ) : (
-                  <HStack gap={1} flexWrap="wrap" pl={6}>
-                    {effectiveMembers.map(p => (
-                      <Badge
-                        key={p.id}
-                        size="sm"
-                        variant="solid"
-                        colorPalette="green"
-                        fontFamily="mono"
-                        cursor="pointer"
-                        title={`Remove ${p.symbol} from category`}
-                        onClick={() => onToggleRemove(p.id)}
-                        _hover={{ opacity: 0.7 }}
-                      >
-                        {p.symbol}
-                        {p.market_value != null && (
-                          <Text as="span" ml={1} fontWeight="normal" opacity={0.8}>
-                            {formatMoney(p.market_value, currency, { maximumFractionDigits: 0, notation: 'compact' })}
-                          </Text>
-                        )}
-                        {' '}×
-                      </Badge>
-                    ))}
-                    {newlyAdded.map(p => (
-                      <Badge
-                        key={p.id}
-                        size="sm"
-                        variant="outline"
-                        colorPalette="green"
-                        fontFamily="mono"
-                        cursor="pointer"
-                        borderStyle="dashed"
-                        title={`Undo adding ${p.symbol}`}
-                        onClick={() => onToggleAdd(p.id)}
-                        _hover={{ opacity: 0.7 }}
-                      >
-                        + {p.symbol} ×
-                      </Badge>
-                    ))}
-                  </HStack>
-                )}
-                {pendingRemoves.length > 0 && (
-                  <HStack gap={1} flexWrap="wrap" pl={6} mt={2}>
-                    <Text fontSize="xs" color="fg.error">Removing:</Text>
-                    {pendingRemoves.map(id => {
-                      const p = currentMembers.find(m => m.id === id);
-                      return p ? (
-                        <Badge
-                          key={id}
-                          size="sm"
-                          variant="outline"
-                          colorPalette="red"
-                          fontFamily="mono"
-                          cursor="pointer"
-                          textDecoration="line-through"
-                          onClick={() => onToggleRemove(id)}
-                          title={`Undo remove ${p.symbol}`}
-                        >
-                          {p.symbol}
-                        </Badge>
-                      ) : null;
-                    })}
-                  </HStack>
-                )}
-              </Box>
+    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
+      <DialogContent className="max-w-lg gap-4 sm:max-w-lg" showCloseButton>
+        <DialogHeader>
+          <DialogTitle>Manage Positions · {categoryName}</DialogTitle>
+          <DialogDescription>
+            {effectiveMembers.length + newlyAdded.length} position
+            {effectiveMembers.length + newlyAdded.length !== 1 ? 's' : ''} in category
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex max-h-[min(70vh,520px)] flex-col gap-4 overflow-y-auto pr-1">
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <Check className="size-4 text-[rgb(var(--status-success)/1)]" aria-hidden />
+              <span className="text-sm font-semibold">In this category</span>
+            </div>
+            {effectiveMembers.length === 0 && newlyAdded.length === 0 ? (
+              <p className="pl-6 text-sm text-muted-foreground">No positions assigned yet</p>
+            ) : (
+              <div className="flex flex-wrap gap-1 pl-6">
+                {effectiveMembers.map((p) => (
+                  <Badge
+                    key={p.id}
+                    variant="default"
+                    className="cursor-pointer bg-[rgb(var(--status-success)/1)] font-mono text-primary-foreground hover:opacity-90"
+                    title={`Remove ${p.symbol} from category`}
+                    onClick={() => onToggleRemove(p.id)}
+                  >
+                    {p.symbol}
+                    {p.market_value != null ? (
+                      <span className="ml-1 font-normal opacity-80">
+                        {formatMoney(p.market_value, currency, { maximumFractionDigits: 0, notation: 'compact' })}
+                      </span>
+                    ) : null}{' '}
+                    ×
+                  </Badge>
+                ))}
+                {newlyAdded.map((p) => (
+                  <Badge
+                    key={p.id}
+                    variant="outline"
+                    className="cursor-pointer border-dashed border-[rgb(var(--status-success)/1)] font-mono text-[rgb(var(--status-success)/1)] hover:opacity-90"
+                    title={`Undo adding ${p.symbol}`}
+                    onClick={() => onToggleAdd(p.id)}
+                  >
+                    + {p.symbol} ×
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {pendingRemoves.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-1 pl-6">
+                <span className="text-xs text-[rgb(var(--status-danger)/1)]">Removing:</span>
+                {pendingRemoves.map((id) => {
+                  const p = currentMembers.find((m) => m.id === id);
+                  return p ? (
+                    <Badge
+                      key={id}
+                      variant="outline"
+                      className="cursor-pointer font-mono line-through decoration-[rgb(var(--status-danger)/1)]"
+                      onClick={() => onToggleRemove(id)}
+                      title={`Undo remove ${p.symbol}`}
+                    >
+                      {p.symbol}
+                    </Badge>
+                  ) : null;
+                })}
+              </div>
+            ) : null}
+          </div>
 
-              {/* Divider */}
-              <Box borderTopWidth="1px" borderColor="border.subtle" />
+          <div className="border-t border-border" role="separator" />
 
-              {/* Available positions to add */}
-              <Box>
-                <HStack mb={2} gap={2}>
-                  <FiPlus color="var(--chakra-colors-blue-500)" />
-                  <Text fontSize="sm" fontWeight="semibold">Add positions</Text>
-                </HStack>
-                <Box position="relative" mb={2} pl={6}>
-                  <Box position="absolute" left={6} top="50%" transform="translateY(-50%)" color="fg.muted" pointerEvents="none" zIndex={1}>
-                    <FiSearch size={14} />
-                  </Box>
-                  <Input
-                    size="sm"
-                    pl={8}
-                    placeholder="Search by ticker..."
-                    value={search}
-                    onChange={(e) => onSearchChange(e.target.value)}
-                  />
-                </Box>
-                <Box maxH="200px" overflowY="auto" pl={6}>
-                  {filteredAvailable.length === 0 ? (
-                    <Text fontSize="sm" color="fg.muted">
-                      {search ? 'No matching positions' : 'All positions are assigned to this category'}
-                    </Text>
-                  ) : (
-                    <HStack gap={1} flexWrap="wrap">
-                      {filteredAvailable.map(p => (
-                        <Badge
-                          key={p.id}
-                          size="sm"
-                          variant="outline"
-                          colorPalette="gray"
-                          fontFamily="mono"
-                          cursor="pointer"
-                          title={`Add ${p.symbol} to ${categoryName}`}
-                          onClick={() => onToggleAdd(p.id)}
-                          _hover={{ colorPalette: 'brand', borderColor: 'brand.400' }}
-                        >
-                          + {p.symbol}
-                          {p.market_value != null && (
-                            <Text as="span" ml={1} fontWeight="normal" opacity={0.7}>
-                              {formatMoney(p.market_value, currency, { maximumFractionDigits: 0, notation: 'compact' })}
-                            </Text>
-                          )}
-                        </Badge>
-                      ))}
-                    </HStack>
-                  )}
-                </Box>
-              </Box>
-            </VStack>
-          </DialogBody>
-          <DialogFooter>
-            <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button
-              colorPalette="brand"
-              onClick={onSave}
-              disabled={changeCount === 0 || isSaving}
-            >
-              {isSaving ? 'Saving...' : changeCount === 0 ? 'No changes' : `Save ${changeCount} change${changeCount !== 1 ? 's' : ''}`}
-            </Button>
-          </DialogFooter>
-          <DialogCloseTrigger />
-        </DialogContent>
-      </DialogPositioner>
-    </DialogRoot>
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <Plus className="size-4 text-primary" aria-hidden />
+              <span className="text-sm font-semibold">Add positions</span>
+            </div>
+            <div className="relative mb-2 pl-6">
+              <Search
+                className="pointer-events-none absolute top-1/2 left-9 z-[1] size-3.5 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <Input
+                className="h-8 pl-8 text-sm"
+                placeholder="Search by ticker..."
+                value={search}
+                onChange={(e) => onSearchChange(e.target.value)}
+              />
+            </div>
+            <div className="max-h-[200px] overflow-y-auto pl-6">
+              {filteredAvailable.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {search ? 'No matching positions' : 'All positions are assigned to this category'}
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-1">
+                  {filteredAvailable.map((p) => (
+                    <Badge
+                      key={p.id}
+                      variant="outline"
+                      className="cursor-pointer font-mono hover:border-primary hover:text-primary"
+                      title={`Add ${p.symbol} to ${categoryName}`}
+                      onClick={() => onToggleAdd(p.id)}
+                    >
+                      + {p.symbol}
+                      {p.market_value != null ? (
+                        <span className="ml-1 font-normal opacity-70">
+                          {formatMoney(p.market_value, currency, { maximumFractionDigits: 0, notation: 'compact' })}
+                        </span>
+                      ) : null}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={onSave} disabled={changeCount === 0 || isSaving}>
+            {isSaving ? 'Saving...' : changeCount === 0 ? 'No changes' : `Save ${changeCount} change${changeCount !== 1 ? 's' : ''}`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
@@ -591,45 +660,49 @@ const SortableTableRow: React.FC<{
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    background: isDragging ? 'var(--chakra-colors-bg-subtle)' : undefined,
   };
   const target = Number(cat.target_allocation_pct ?? 0);
   const actual = Number(cat.actual_allocation_pct ?? 0);
   const drift = actual - target;
 
   return (
-    <Table.Row ref={setNodeRef} style={style}>
-      <Table.Cell width="40px" px={2}>
-        <Box
+    <tr ref={setNodeRef} style={style} className={cn('border-b border-border', isDragging && 'bg-muted')}>
+      <td className="w-10 px-2 align-middle">
+        <div
           {...attributes}
           {...listeners}
-          cursor="grab"
-          _active={{ cursor: 'grabbing' }}
-          color="fg.muted"
-          _hover={{ color: 'fg.default' }}
-          display="flex"
-          alignItems="center"
+          className="flex cursor-grab items-center text-muted-foreground active:cursor-grabbing hover:text-foreground"
         >
-          <RiDraggable size={18} />
-        </Box>
-      </Table.Cell>
-      <Table.Cell><Text fontWeight="semibold">{cat.name}</Text></Table.Cell>
-      <Table.Cell textAlign="right">{target}%</Table.Cell>
-      <Table.Cell textAlign="right">{actual.toFixed(1)}%</Table.Cell>
-      <Table.Cell textAlign="right">
-        <Text color={Math.abs(drift) > 5 ? 'status.danger' : drift !== 0 ? 'status.warning' : 'fg.muted'}>
-          {drift > 0 ? '+' : ''}{drift.toFixed(1)}%
-        </Text>
-      </Table.Cell>
-      <Table.Cell textAlign="right">{cat.positions_count ?? 0}</Table.Cell>
-      <Table.Cell textAlign="right">{formatMoney(cat.total_value ?? 0, currency, { maximumFractionDigits: 0 })}</Table.Cell>
-      <Table.Cell>
-        <HStack gap={1}>
-          <Button size="xs" variant="outline" onClick={() => onEdit(cat)}>Edit</Button>
-          <Button size="xs" variant="outline" onClick={() => onAssign(cat)}>Assign</Button>
-        </HStack>
-      </Table.Cell>
-    </Table.Row>
+          <GripVertical className="size-[18px]" aria-hidden />
+        </div>
+      </td>
+      <td className="px-3 py-2 align-middle font-semibold">{cat.name}</td>
+      <td className="px-3 py-2 text-right align-middle tabular-nums">{target}%</td>
+      <td className="px-3 py-2 text-right align-middle tabular-nums">{actual.toFixed(1)}%</td>
+      <td
+        className={cn(
+          'px-3 py-2 text-right align-middle tabular-nums',
+          Math.abs(drift) > 5 ? 'text-[rgb(var(--status-danger)/1)]' : drift !== 0 ? 'text-[rgb(var(--status-warning)/1)]' : 'text-muted-foreground',
+        )}
+      >
+        {drift > 0 ? '+' : ''}
+        {drift.toFixed(1)}%
+      </td>
+      <td className="px-3 py-2 text-right align-middle tabular-nums">{cat.positions_count ?? 0}</td>
+      <td className="px-3 py-2 text-right align-middle tabular-nums">
+        {formatMoney(cat.total_value ?? 0, currency, { maximumFractionDigits: 0 })}
+      </td>
+      <td className="px-3 py-2 align-middle">
+        <div className="flex flex-wrap gap-1">
+          <Button size="xs" variant="outline" onClick={() => onEdit(cat)}>
+            Edit
+          </Button>
+          <Button size="xs" variant="outline" onClick={() => onAssign(cat)}>
+            Assign
+          </Button>
+        </div>
+      </td>
+    </tr>
   );
 };
 
@@ -683,8 +756,7 @@ const PortfolioCategories: React.FC = () => {
 
   const appliedPresetsRef = useRef(new Set<string>());
 
-  const { data: viewsData } = useCategoryViews();
-  const availableViews = viewsData ?? [{ key: 'custom', label: 'Personalized' }];
+  useCategoryViews();
 
   const { data: categoriesData, isPending } = useCategories(activeView);
   const categories = (categoriesData?.categories ?? []) as CategoryRow[];
@@ -888,131 +960,129 @@ const PortfolioCategories: React.FC = () => {
   /* ---------- render ---------- */
 
   return (
-    <Box p={4}>
-      <Stack gap={4}>
+    <div className="p-4">
+      <div className="flex flex-col gap-4">
         <PageHeader
           title="Categories"
           subtitle="Target allocations and position assignment"
           rightContent={
-            <HStack gap={2}>
+            <div className="flex flex-wrap items-center gap-2">
               <Button size="sm" variant="outline" onClick={() => setPresetOpen(true)}>
-                <Icon mr={1}><FiZap /></Icon> Auto-Categorize
+                <Zap className="size-4" aria-hidden />
+                Auto-Categorize
               </Button>
 
-              <HStack gap={1}>
+              <div className="flex gap-1">
                 <Button
                   size="xs"
-                  variant={view === 'card' ? 'solid' : 'ghost'}
+                  variant={view === 'card' ? 'default' : 'ghost'}
                   onClick={() => setView('card')}
                   aria-label="Card view"
+                  aria-pressed={view === 'card'}
                 >
-                  <FiGrid />
+                  <LayoutGrid className="size-4" />
                 </Button>
                 <Button
                   size="xs"
-                  variant={view === 'table' ? 'solid' : 'ghost'}
+                  variant={view === 'table' ? 'default' : 'ghost'}
                   onClick={() => setView('table')}
                   aria-label="Table view"
+                  aria-pressed={view === 'table'}
                 >
-                  <FiList />
+                  <List className="size-4" />
                 </Button>
-              </HStack>
+              </div>
 
-              <Button colorPalette="brand" onClick={() => { setNewName(''); setNewTargetPct(''); setCreateOpen(true); }}>
+              <Button
+                onClick={() => {
+                  setNewName('');
+                  setNewTargetPct('');
+                  setCreateOpen(true);
+                }}
+              >
                 + New Category
               </Button>
-            </HStack>
+            </div>
           }
         />
 
-        {/* Fixed category tabs */}
-        <HStack
-          gap={0}
-          borderWidth="1px"
-          borderColor="border.subtle"
-          borderRadius="lg"
-          overflow="hidden"
-          flexWrap="wrap"
-          bg="bg.subtle"
-          p={1}
-        >
+        <div className="flex flex-wrap gap-0 rounded-lg border border-border bg-muted/40 p-1">
           {FIXED_TABS.map((tab) => {
             const isActive = activeView === tab.key;
             return (
-            <Button
-              key={tab.key}
-              size="sm"
-              variant={isActive ? 'solid' : 'ghost'}
-              bg={isActive ? 'amber.500' : undefined}
-              color={isActive ? 'white' : undefined}
-              _hover={isActive ? { bg: 'amber.400' } : undefined}
-              onClick={() => { setActiveView(tab.key); setDetailCatId(null); }}
-              borderRadius="md"
-              fontWeight={isActive ? 'semibold' : 'normal'}
-              minW="auto"
-              px={4}
-            >
-              {tab.label}
-            </Button>
+              <Button
+                key={tab.key}
+                size="sm"
+                variant={isActive ? 'default' : 'ghost'}
+                className={cn(
+                  'min-w-0 rounded-md px-4',
+                  isActive && 'bg-amber-500 font-semibold text-white hover:bg-amber-400',
+                )}
+                onClick={() => {
+                  setActiveView(tab.key);
+                  setDetailCatId(null);
+                }}
+              >
+                {tab.label}
+              </Button>
             );
           })}
-        </HStack>
+        </div>
 
-        {categories.length > 0 && <AllocationChart categories={categories} currency={currency} />}
+        {categories.length > 0 ? <AllocationChart categories={categories} currency={currency} /> : null}
 
         {isPending || (activeView !== 'custom' && applyPresetMutation.isPending) ? (
           <TableSkeleton rows={5} cols={4} />
         ) : categories.length === 0 ? (
-          <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-            <CardBody>
-              <VStack gap={2} py={4}>
-                <Text color="fg.muted">
+          <Card className="gap-0 py-0">
+            <CardContent className="py-8">
+              <div className="flex flex-col gap-2">
+                <p className="text-muted-foreground">
                   {activeView === 'custom'
                     ? 'No categories yet. Create one to group positions and track target allocation.'
                     : `No categories in this view. Use Auto-Categorize to create "${VIEW_LABELS[activeView] ?? activeView}" categories.`}
-                </Text>
-                {activeView !== 'custom' && (
+                </p>
+                {activeView !== 'custom' ? (
                   <Button size="sm" variant="outline" onClick={() => applyPresetMutation.mutate(activeView)}>
-                    <Icon mr={1}><FiZap /></Icon> Auto-Categorize
+                    <Zap className="size-4" aria-hidden />
+                    Auto-Categorize
                   </Button>
-                )}
-              </VStack>
-            </CardBody>
-          </CardRoot>
+                ) : null}
+              </div>
+            </CardContent>
+          </Card>
         ) : view === 'table' ? (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleTableDragEnd}
-          >
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleTableDragEnd}>
             <SortableContext items={tableSortableIds} strategy={verticalListSortingStrategy}>
-              <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl" overflow="hidden">
-                <Table.Root size="sm">
-                  <Table.Header>
-                    <Table.Row>
-                      <Table.ColumnHeader width="40px" px={2} />
-                      <Table.ColumnHeader>Category</Table.ColumnHeader>
-                      <Table.ColumnHeader textAlign="right">Target %</Table.ColumnHeader>
-                      <Table.ColumnHeader textAlign="right">Actual %</Table.ColumnHeader>
-                      <Table.ColumnHeader textAlign="right">Drift</Table.ColumnHeader>
-                      <Table.ColumnHeader textAlign="right">Positions</Table.ColumnHeader>
-                      <Table.ColumnHeader textAlign="right">Value</Table.ColumnHeader>
-                      <Table.ColumnHeader />
-                    </Table.Row>
-                  </Table.Header>
-                  <Table.Body>
-                    {categories.map((cat) => (
-                      <SortableTableRow
-                        key={cat.id}
-                        cat={cat}
-                        currency={currency}
-                        onEdit={openEdit}
-                        onAssign={openAssign}
-                      />
-                    ))}
-                  </Table.Body>
-                </Table.Root>
-              </CardRoot>
+              <Card className="gap-0 overflow-hidden py-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/40">
+                        <th className="h-10 w-10 px-2 text-left font-medium" />
+                        <th className="px-3 py-2 text-left font-medium">Category</th>
+                        <th className="px-3 py-2 text-right font-medium">Target %</th>
+                        <th className="px-3 py-2 text-right font-medium">Actual %</th>
+                        <th className="px-3 py-2 text-right font-medium">Drift</th>
+                        <th className="px-3 py-2 text-right font-medium">Positions</th>
+                        <th className="px-3 py-2 text-right font-medium">Value</th>
+                        <th className="px-3 py-2 text-left font-medium" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {categories.map((cat) => (
+                        <SortableTableRow
+                          key={cat.id}
+                          cat={cat}
+                          currency={currency}
+                          onEdit={openEdit}
+                          onAssign={openAssign}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
             </SortableContext>
           </DndContext>
         ) : (
@@ -1022,7 +1092,7 @@ const PortfolioCategories: React.FC = () => {
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >
-            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={4}>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {categories.map((cat, idx) => (
                 <DroppableCategory key={cat.id} categoryId={cat.id}>
                   <CategoryCard
@@ -1035,14 +1105,14 @@ const PortfolioCategories: React.FC = () => {
                     isFirst={idx === 0}
                     isLast={idx === categories.length - 1}
                     isDetailOpen={detailCatId === cat.id}
-                    onToggleDetail={() => setDetailCatId(prev => prev === cat.id ? null : cat.id)}
+                    onToggleDetail={() => setDetailCatId((prev) => (prev === cat.id ? null : cat.id))}
                   />
                 </DroppableCategory>
               ))}
-            </SimpleGrid>
+            </div>
             <DragOverlay>
               {activeDrag ? (
-                <Badge size="sm" variant="solid" colorPalette="brand" fontFamily="mono">
+                <Badge variant="default" className="font-mono">
                   {activeDrag.symbol}
                 </Badge>
               ) : null}
@@ -1050,192 +1120,195 @@ const PortfolioCategories: React.FC = () => {
           </DndContext>
         )}
 
-        {/* Uncategorized bucket */}
-        {uncategorized.positions_count > 0 && (
-          <CardRoot
-            bg="bg.card"
-            borderWidth="1px"
-            borderColor="border.subtle"
-            borderRadius="xl"
-            borderStyle="dashed"
-          >
-            <CardBody>
-              <HStack justify="space-between" align="center" mb={2}>
-                <HStack gap={2}>
-                  <Badge colorPalette="gray" variant="subtle" size="sm">Uncategorized</Badge>
-                  <Text fontWeight="semibold" color="fg.muted">
-                    {uncategorized.positions_count} position{uncategorized.positions_count !== 1 ? 's' : ''} not in any {VIEW_LABELS[activeView] ?? activeView} category
-                  </Text>
-                </HStack>
-                <Text fontSize="sm" fontFamily="mono" color="fg.muted">
+        {uncategorized.positions_count > 0 ? (
+          <Card className="gap-0 border-dashed py-0">
+            <CardContent className="pt-6">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <Badge variant="secondary">Uncategorized</Badge>
+                  <span className="font-semibold text-muted-foreground">
+                    {uncategorized.positions_count} position{uncategorized.positions_count !== 1 ? 's' : ''} not in any{' '}
+                    {VIEW_LABELS[activeView] ?? activeView} category
+                  </span>
+                </div>
+                <span className="font-mono text-sm text-muted-foreground">
                   {formatMoney(uncategorized.total_value, currency, { maximumFractionDigits: 0 })}
                   {' · '}
                   {uncategorized.actual_allocation_pct.toFixed(1)}%
-                </Text>
-              </HStack>
-              <HStack gap={1} flexWrap="wrap">
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1">
                 {allPositions
-                  .filter(p => uncategorized.position_ids?.includes(p.id))
+                  .filter((p) => uncategorized.position_ids?.includes(p.id))
                   .slice(0, 20)
-                  .map(p => (
-                    <Badge
-                      key={p.id}
-                      size="sm"
-                      variant="outline"
-                      colorPalette="gray"
-                      fontFamily="mono"
-                    >
+                  .map((p) => (
+                    <Badge key={p.id} variant="outline" className="font-mono">
                       {p.symbol}
                     </Badge>
                   ))}
-                {uncategorized.positions_count > 20 && (
-                  <Badge size="sm" variant="subtle" colorPalette="gray">
-                    +{uncategorized.positions_count - 20} more
-                  </Badge>
-                )}
-              </HStack>
-              <Text fontSize="xs" color="fg.muted" mt={2}>
-                Assign these positions to categories above using "Manage Positions", or drag them in card view.
-              </Text>
-            </CardBody>
-          </CardRoot>
-        )}
+                {uncategorized.positions_count > 20 ? (
+                  <Badge variant="secondary">+{uncategorized.positions_count - 20} more</Badge>
+                ) : null}
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Assign these positions to categories above using &quot;Manage Positions&quot;, or drag them in card view.
+              </p>
+            </CardContent>
+          </Card>
+        ) : null}
 
-        {suggestions.length > 0 && (
-          <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-            <CardHeader pb={2}>
-              <HStack gap={2}>
-                <Text fontWeight="bold">Rebalancing Preview</Text>
-                <Badge colorPalette="orange">{suggestions.length} adjustments</Badge>
-              </HStack>
+        {suggestions.length > 0 ? (
+          <Card className="gap-0 py-0">
+            <CardHeader className="pb-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <CardTitle className="text-base">Rebalancing Preview</CardTitle>
+                <Badge variant="secondary" className="bg-amber-500/15 text-amber-800 dark:text-amber-300">
+                  {suggestions.length} adjustments
+                </Badge>
+              </div>
             </CardHeader>
-            <CardBody pt={2}>
-              <HStack gap={6} align="start" flexWrap="wrap" mb={4}>
-                <VStack align="center" gap={1}>
-                  <Text fontSize="xs" fontWeight="bold" color="fg.muted">CURRENT</Text>
-                  <Box w="120px" h="120px">
+            <CardContent className="pt-2">
+              <div className="mb-4 flex flex-wrap items-start gap-6">
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-xs font-bold text-muted-foreground">CURRENT</span>
+                  <div className="h-[120px] w-[120px]">
                     <ResponsiveContainer>
                       <PieChart>
                         <Pie
-                          data={categories.filter(c => (c.actual_allocation_pct ?? 0) > 0).map(c => ({ name: c.name, value: Number(c.actual_allocation_pct ?? 0) }))}
+                          data={categories
+                            .filter((c) => (c.actual_allocation_pct ?? 0) > 0)
+                            .map((c) => ({ name: c.name, value: Number(c.actual_allocation_pct ?? 0) }))}
                           dataKey="value"
                           innerRadius={30}
                           outerRadius={50}
                           paddingAngle={2}
                         >
-                          {categories.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                          {categories.map((_, i) => (
+                            <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                          ))}
                         </Pie>
                       </PieChart>
                     </ResponsiveContainer>
-                  </Box>
-                </VStack>
-                <VStack align="center" gap={1}>
-                  <Text fontSize="xs" fontWeight="bold" color="fg.muted">TARGET</Text>
-                  <Box w="120px" h="120px">
+                  </div>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-xs font-bold text-muted-foreground">TARGET</span>
+                  <div className="h-[120px] w-[120px]">
                     <ResponsiveContainer>
                       <PieChart>
                         <Pie
-                          data={categories.filter(c => (c.target_allocation_pct ?? 0) > 0).map(c => ({ name: c.name, value: Number(c.target_allocation_pct ?? 0) }))}
+                          data={categories
+                            .filter((c) => (c.target_allocation_pct ?? 0) > 0)
+                            .map((c) => ({ name: c.name, value: Number(c.target_allocation_pct ?? 0) }))}
                           dataKey="value"
                           innerRadius={30}
                           outerRadius={50}
                           paddingAngle={2}
                         >
-                          {categories.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                          {categories.map((_, i) => (
+                            <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                          ))}
                         </Pie>
                       </PieChart>
                     </ResponsiveContainer>
-                  </Box>
-                </VStack>
-              </HStack>
-              <VStack align="stretch" gap={3}>
-                {suggestions.map((s: any, i: number) => (
-                  <Box key={i} p={3} borderWidth="1px" borderColor="border.subtle" borderRadius="lg">
-                    <HStack justify="space-between" mb={1}>
-                      <HStack gap={2}>
-                        <Text fontWeight="semibold">{s.category}</Text>
-                        <Badge colorPalette={s.direction === 'BUY' ? 'green' : 'red'} size="sm">{s.direction}</Badge>
-                      </HStack>
-                      <Text fontSize="sm" fontWeight="bold">{formatMoney(s.amount, currency, { maximumFractionDigits: 0 })}</Text>
-                    </HStack>
-                    <HStack gap={3} fontSize="xs" color="fg.muted">
-                      <Text>Target: {s.target_pct}%</Text>
-                      <Text>Actual: {s.actual_pct}%</Text>
-                      <Text color={Math.abs(s.drift_pct) > 5 ? 'fg.error' : 'fg.muted'}>Drift: {s.drift_pct > 0 ? '+' : ''}{s.drift_pct}%</Text>
-                    </HStack>
-                    {s.positions?.length > 0 && (
-                      <Box mt={2}>
-                        {s.positions.map((p: any, j: number) => (
-                          <HStack key={j} justify="space-between" fontSize="xs" py={0.5}>
-                            <Text fontFamily="mono">{p.symbol}</Text>
-                            <Text>{p.shares > 0 ? `~${p.shares} sh` : ''} · {formatMoney(p.est_value, currency, { maximumFractionDigits: 0 })}</Text>
-                          </HStack>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-col gap-3">
+                {suggestions.map((s: { category: string; direction: string; amount: number; target_pct: number; actual_pct: number; drift_pct: number; positions?: Array<{ symbol: string; shares: number; est_value: number }> }, i: number) => (
+                  <div key={i} className="rounded-lg border border-border p-3">
+                    <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold">{s.category}</span>
+                        <Badge
+                          variant="secondary"
+                          className={
+                            s.direction === 'BUY'
+                              ? 'bg-[rgb(var(--status-success)/0.15)] text-[rgb(var(--status-success)/1)]'
+                              : 'bg-destructive/15 text-destructive'
+                          }
+                        >
+                          {s.direction}
+                        </Badge>
+                      </div>
+                      <span className="text-sm font-bold">{formatMoney(s.amount, currency, { maximumFractionDigits: 0 })}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                      <span>Target: {s.target_pct}%</span>
+                      <span>Actual: {s.actual_pct}%</span>
+                      <span className={Math.abs(s.drift_pct) > 5 ? 'text-[rgb(var(--status-danger)/1)]' : ''}>
+                        Drift: {s.drift_pct > 0 ? '+' : ''}
+                        {s.drift_pct}%
+                      </span>
+                    </div>
+                    {s.positions != null && s.positions.length > 0 ? (
+                      <div className="mt-2">
+                        {s.positions.map((p, j) => (
+                          <div key={j} className="flex justify-between py-0.5 text-xs">
+                            <span className="font-mono">{p.symbol}</span>
+                            <span>
+                              {p.shares > 0 ? `~${p.shares} sh` : ''} · {formatMoney(p.est_value, currency, { maximumFractionDigits: 0 })}
+                            </span>
+                          </div>
                         ))}
-                      </Box>
-                    )}
-                  </Box>
+                      </div>
+                    ) : null}
+                  </div>
                 ))}
-              </VStack>
-            </CardBody>
-          </CardRoot>
-        )}
-      </Stack>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
+      </div>
 
-      {/* Create category dialog */}
-      <DialogRoot open={createOpen} onOpenChange={(e) => setCreateOpen(e.open)}>
-        <DialogBackdrop />
-        <DialogPositioner>
-          <DialogContent>
-            <DialogHeader>New Category</DialogHeader>
-            <DialogBody>
-              <VStack gap={3} align="stretch">
-                <Field.Root>
-                  <Field.Label>Name</Field.Label>
-                  <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Growth" />
-                </Field.Root>
-                <Field.Root>
-                  <Field.Label>Target allocation %</Field.Label>
-                  <Input type="number" value={newTargetPct} onChange={(e) => setNewTargetPct(e.target.value)} placeholder="e.g. 40" />
-                </Field.Root>
-              </VStack>
-            </DialogBody>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-              <Button colorPalette="brand" onClick={handleCreate} disabled={!newName.trim() || createMutation.isPending}>Create</Button>
-            </DialogFooter>
-            <DialogCloseTrigger />
-          </DialogContent>
-        </DialogPositioner>
-      </DialogRoot>
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="gap-4" showCloseButton>
+          <DialogHeader>
+            <DialogTitle>New Category</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <FormField label="Name" required>
+              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Growth" />
+            </FormField>
+            <FormField label="Target allocation %" required={false}>
+              <Input type="number" value={newTargetPct} onChange={(e) => setNewTargetPct(e.target.value)} placeholder="e.g. 40" />
+            </FormField>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleCreate} disabled={!newName.trim() || createMutation.isPending}>
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* Edit category dialog */}
-      <DialogRoot open={editOpen} onOpenChange={(e) => { if (!e.open) setEditOpen(false); }}>
-        <DialogBackdrop />
-        <DialogPositioner>
-          <DialogContent>
-            <DialogHeader>Edit Category</DialogHeader>
-            <DialogBody>
-              <VStack gap={3} align="stretch">
-                <Field.Root>
-                  <Field.Label>Name</Field.Label>
-                  <Input value={newName} onChange={(e) => setNewName(e.target.value)} />
-                </Field.Root>
-                <Field.Root>
-                  <Field.Label>Target allocation %</Field.Label>
-                  <Input type="number" value={newTargetPct} onChange={(e) => setNewTargetPct(e.target.value)} />
-                </Field.Root>
-              </VStack>
-            </DialogBody>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
-              <Button colorPalette="brand" onClick={handleUpdate} disabled={!newName.trim() || updateMutation.isPending}>Save</Button>
-            </DialogFooter>
-            <DialogCloseTrigger />
-          </DialogContent>
-        </DialogPositioner>
-      </DialogRoot>
+      <Dialog open={editOpen} onOpenChange={(o) => !o && setEditOpen(false)}>
+        <DialogContent className="gap-4" showCloseButton>
+          <DialogHeader>
+            <DialogTitle>Edit Category</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <FormField label="Name" required>
+              <Input value={newName} onChange={(e) => setNewName(e.target.value)} />
+            </FormField>
+            <FormField label="Target allocation %" required={false}>
+              <Input type="number" value={newTargetPct} onChange={(e) => setNewTargetPct(e.target.value)} />
+            </FormField>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleUpdate} disabled={!newName.trim() || updateMutation.isPending}>
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* Manage positions dialog -- two-section layout */}
       <ManagePositionsDialog
         open={assignOpen}
         onClose={() => setAssignOpen(false)}
@@ -1246,8 +1319,8 @@ const PortfolioCategories: React.FC = () => {
         currency={currency}
         pendingAdds={pendingAdds}
         pendingRemoves={pendingRemoves}
-        onToggleAdd={(id) => setPendingAdds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
-        onToggleRemove={(id) => setPendingRemoves(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+        onToggleAdd={(id) => setPendingAdds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))}
+        onToggleRemove={(id) => setPendingRemoves((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))}
         search={assignSearch}
         onSearchChange={setAssignSearch}
         onSave={handleSaveAssignments}
@@ -1255,45 +1328,38 @@ const PortfolioCategories: React.FC = () => {
         changeCount={pendingAdds.length + pendingRemoves.length}
       />
 
-      {/* Auto-categorize presets dialog */}
-      <DialogRoot open={presetOpen} onOpenChange={(e) => setPresetOpen(e.open)}>
-        <DialogBackdrop />
-        <DialogPositioner>
-          <DialogContent maxW="lg">
-            <DialogHeader>Auto-Categorize Positions</DialogHeader>
-            <DialogBody>
-              <Text fontSize="sm" color="fg.muted" mb={4}>
-                Choose a preset to automatically create categories and assign positions.
-                Existing categories will not be removed.
-              </Text>
-              <SimpleGrid columns={{ base: 1, md: 2 }} gap={3}>
-                {PRESETS.map((preset) => (
-                  <Box
-                    key={preset.id}
-                    p={4}
-                    borderWidth="1px"
-                    borderColor="border.subtle"
-                    borderRadius="lg"
-                    cursor="pointer"
-                    _hover={{ borderColor: 'brand.500', bg: 'bg.subtle' }}
-                    onClick={() => applyPresetMutation.mutate(preset.id)}
-                    opacity={applyPresetMutation.isPending ? 0.5 : 1}
-                    pointerEvents={applyPresetMutation.isPending ? 'none' : 'auto'}
-                  >
-                    <Text fontWeight="semibold" mb={1}>{preset.label}</Text>
-                    <Text fontSize="xs" color="fg.muted">{preset.description}</Text>
-                  </Box>
-                ))}
-              </SimpleGrid>
-            </DialogBody>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setPresetOpen(false)}>Cancel</Button>
-            </DialogFooter>
-            <DialogCloseTrigger />
-          </DialogContent>
-        </DialogPositioner>
-      </DialogRoot>
-    </Box>
+      <Dialog open={presetOpen} onOpenChange={setPresetOpen}>
+        <DialogContent className="max-w-2xl gap-4" showCloseButton>
+          <DialogHeader>
+            <DialogTitle>Auto-Categorize Positions</DialogTitle>
+            <DialogDescription>
+              Choose a preset to automatically create categories and assign positions. Existing categories will not be removed.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                className={cn(
+                  'rounded-lg border border-border p-4 text-left transition-colors hover:border-primary hover:bg-muted/50',
+                  applyPresetMutation.isPending && 'pointer-events-none opacity-50',
+                )}
+                onClick={() => applyPresetMutation.mutate(preset.id)}
+              >
+                <p className="mb-1 font-semibold">{preset.label}</p>
+                <p className="text-xs text-muted-foreground">{preset.description}</p>
+              </button>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setPresetOpen(false)}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
 

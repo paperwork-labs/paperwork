@@ -6,7 +6,10 @@ from typing import Any, Callable
 
 def _resolve_task(task_path: str) -> Callable[..., Any]:
     if "." not in task_path:
-        raise ValueError("Task path must be a dotted path, e.g. backend.tasks.market_data_tasks.monitor_coverage_health")
+        raise ValueError(
+            "Task path must be a dotted path, e.g. "
+            "backend.tasks.market.coverage.health_check"
+        )
     module_name, attr = task_path.rsplit(".", 1)
     module = importlib.import_module(module_name)
     task = getattr(module, attr, None)

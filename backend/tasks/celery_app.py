@@ -7,12 +7,17 @@ celery_app = Celery(
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
     include=[
-        # Market data (legacy monolith + new modular)
-        "backend.tasks.market_data_tasks",
+        # Market data (Celery names: backend.tasks.market.<module>.<task>)
         "backend.tasks.market.backfill",
-        "backend.tasks.market.history",
-        "backend.tasks.market.regime",
         "backend.tasks.market.coverage",
+        "backend.tasks.market.fundamentals",
+        "backend.tasks.market.history",
+        "backend.tasks.market.indicators",
+        "backend.tasks.market.institutional",
+        "backend.tasks.market.intraday",
+        "backend.tasks.market.iv",
+        "backend.tasks.market.maintenance",
+        "backend.tasks.market.regime",
         # Portfolio
         "backend.tasks.portfolio.sync",
         "backend.tasks.portfolio.reconciliation",

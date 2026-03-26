@@ -7,7 +7,7 @@ from datetime import date, datetime, timezone
 
 from backend.database import SessionLocal
 from backend.tasks.celery_app import celery_app
-from backend.tasks.task_utils import task_run
+from backend.tasks.utils.task_utils import task_run
 
 logger = logging.getLogger(__name__)
 

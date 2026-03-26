@@ -47,7 +47,7 @@ def test_seed_creates_correct_fields(db_session):
     row = db_session.query(CronSchedule).filter(CronSchedule.id == "admin_coverage_backfill").first()
     assert row is not None
     assert row.cron == "0 3 * * *"
-    assert row.task == "backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked"
+    assert row.task == "backend.tasks.market.coverage.daily_bootstrap"
     assert row.group == "market_data"
     assert row.enabled is True
     assert row.created_by == "catalog_seed"

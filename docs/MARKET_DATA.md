@@ -62,7 +62,7 @@ Responsibilities by layer
 -------------------------
 - indicator_engine.py: Pure computations from OHLCV (SMA/EMA/RSI/ATR/MACD/ADX, perf windows, MA bucket, TD/gaps/trendlines, weekly stage helpers).
 - market_data_service.py: Provider access (prices/history/info), Redis caching, DB snapshot assembly from local `price_data`, enrichment (chart metrics + fundamentals), and persistence to `MarketSnapshot`.
-- market_data_tasks.py: Orchestration only. Builds tracked sets, backfills OHLCV, invokes service to build/enrich/persist snapshots, and records daily history.
+- `backend/tasks/market/`: Celery orchestration only. Builds tracked sets, backfills OHLCV, invokes service to build/enrich/persist snapshots, and records daily history (see per-module tasks under `backfill`, `coverage`, `history`, `indicators`, etc.).
 
 ## Architecture diagrams
 
@@ -74,7 +74,7 @@ Responsibilities by layer
 
 ## Dev world (local)
 - Use `make up` (or `./run.sh start`) to start Postgres, Redis, backend, workers, and frontend.
-- Trigger any task manually with `make task-run TASK=backend.tasks.market_data_tasks.<task_name>`.
+- Trigger any task manually with `make task-run TASK=backend.tasks.market.<module>.<function>` (example: `backend.tasks.market.coverage.daily_bootstrap`).
 - Use Admin > Schedules in the UI to create/edit/pause/resume schedules and trigger tasks via "Run Now".
 - Coverage refresh path: run `admin_coverage_refresh`, then check `/api/v1/market-data/coverage`.
 
@@ -151,8 +151,8 @@ Notes on retention
    - Celery Beat triggers:
      - nightly guided daily backfill → `admin_coverage_backfill`
      - hourly coverage cache refresh → `admin_coverage_refresh`
-     - nightly 5m backfill → `admin_backfill_5m`
-     - retention enforcement (5m) → `admin_retention_enforce`
+     - nightly 5m backfill → `backend.tasks.market.intraday.bars_5m_last_n_days` (job id `admin_backfill_5m`)
+     - retention enforcement (5m) → `backend.tasks.market.maintenance.prune_old_bars` (job id `admin_retention_enforce`)
 
 ## Intraday (5m) Backfill and Retention
 - Persist 5m bars for tracked symbols (default lookback: 5–30 days)
@@ -249,7 +249,7 @@ Troubleshooting:
 - **Primary button** (Settings → Admin → Dashboard): **Backfill Daily Coverage (Tracked)**
   - Enqueues: `admin_coverage_backfill`
   - What it does (no 5m): refresh constituents → update tracked → backfill last-200 daily bars (tracked) → recompute indicators → record history → refresh coverage cache.
-  - Snapshot history window: controlled by an explicit `history_days` parameter (current API/cron default is 20 days), so the “days since last successful run” auto behavior in `bootstrap_daily_coverage_tracked` does not apply to this path unless `history_days` is omitted.
+  - Snapshot history window: controlled by an explicit `history_days` parameter (current API/cron default is 20 days), so the “days since last successful run” auto behavior in `backend.tasks.market.coverage.daily_bootstrap` does not apply to this path unless `history_days` is omitted.
 
 ### Fast fix: stale-only backfill
 
@@ -259,7 +259,7 @@ Troubleshooting:
 
 ### Fill Missing Fundamentals
 
-- **Use this when**: Symbols in `market_snapshot` have NULL `name`, `sector`, or `industry`. This typically happens when FMP rate-limits during `recompute_indicators_universe`.
+- **Use this when**: Symbols in `market_snapshot` have NULL `name`, `sector`, or `industry`. This typically happens when FMP rate-limits during `backend.tasks.market.indicators.recompute_universe`.
 - Click **Fill Missing Fundamentals** under Show Advanced > Maintenance.
   - Calls: `POST /api/v1/market-data/admin/fundamentals/fill-missing`
   - Safe to re-run; idempotent. Logs `updated`/`skipped`/`errors` counters to Admin > Jobs.
@@ -278,7 +278,7 @@ Troubleshooting:
 - **All environments**: Schedules are stored in the `cron_schedule` DB table. The Admin > Schedules page provides full CRUD.
 - **Production**: DB rows are synced to Render cron-job services via the Render API. The "Sync to Render" button triggers a manual sync; deploys sync automatically.
 - **Local / Dev**: Render sync is a no-op (no `RENDER_API_KEY`). Use "Run Now" to trigger tasks via Celery.
-- Default schedules (10 jobs including `audit_market_data_quality` at 02:45 UTC) are seeded from `job_catalog.py`.
+- Default schedules (10 jobs including `admin_market_data_audit` → `backend.tasks.market.maintenance.audit_quality` at 02:45 UTC) are seeded from `job_catalog.py`.
 
 ### Advanced: index-only vs tracked-universe
 

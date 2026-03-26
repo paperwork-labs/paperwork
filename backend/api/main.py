@@ -181,13 +181,13 @@ def _auto_warm_if_stale():
                 from datetime import date, timedelta
                 five_years_ago = (date.today() - timedelta(days=5*365)).isoformat()
                 result = celery_app.send_task(
-                    "backend.tasks.market_data_tasks.backfill_since_date",
+                    "backend.tasks.market.backfill.full_historical",
                     kwargs={"since_date": five_years_ago},
                 )
                 logger.info("Auto-warm: deep backfill queued (since=%s, task_id=%s)", five_years_ago, result.id)
             else:
                 result = celery_app.send_task(
-                    "backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked",
+                    "backend.tasks.market.coverage.daily_bootstrap",
                     kwargs={"history_days": 5, "history_batch_size": 25},
                 )
                 logger.info("Auto-warm: nightly pipeline queued (task_id=%s)", result.id)

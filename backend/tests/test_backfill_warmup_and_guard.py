@@ -1,4 +1,4 @@
-"""Tests for backfill improvements in market_data_tasks.py:
+"""Tests for backfill improvements in ``backend.tasks.market.history``:
 
 1. Warmup buffer: PriceData queries use WEINSTEIN_WARMUP_CALENDAR_DAYS
    before the backfill start_dt so Weinstein stages are valid from day 1.
@@ -31,11 +31,11 @@ def test_warmup_constant_is_sane():
 def test_warmup_constant_is_used_in_backfill_task():
     """Verify that the backfill function references the constant rather than
     a hard-coded magic number."""
-    from backend.tasks import market_data_tasks
+    from backend.tasks.market.history import snapshot_last_n_days
 
-    src = inspect.getsource(market_data_tasks.backfill_snapshot_history_last_n_days)
+    src = inspect.getsource(snapshot_last_n_days)
     assert "WEINSTEIN_WARMUP_CALENDAR_DAYS" in src, (
-        "backfill_snapshot_history_last_n_days should reference "
+        "snapshot_last_n_days should reference "
         "WEINSTEIN_WARMUP_CALENDAR_DAYS, not a magic number"
     )
     # Ensure the old magic number is not used as a bare literal
@@ -59,7 +59,7 @@ def test_warmup_date_arithmetic():
 
 
 def _is_known_stage(latest_stage) -> bool:
-    """Replicates the guard logic from market_data_tasks.py."""
+    """Replicates the guard logic from snapshot history backfill."""
     return (
         isinstance(latest_stage, str)
         and bool(latest_stage.strip())
@@ -253,7 +253,7 @@ def test_is_known_stage_classification(stage_label, expected):
 
 def test_unknown_guard_logs_debug_on_skip():
     """When the guard skips a snapshot update, a debug log should be emitted."""
-    with patch("backend.tasks.market_data_tasks.logger") as mock_logger:
+    with patch("backend.tasks.market.history.logger") as mock_logger:
         sym = "TSLA"
         latest_stage = "UNKNOWN"
         latest_info = {"current_stage_days": 10}

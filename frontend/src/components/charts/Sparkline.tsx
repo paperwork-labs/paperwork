@@ -1,5 +1,4 @@
 import React from 'react';
-import { Box, HStack } from '@chakra-ui/react';
 
 type SparklineProps = {
   values?: number[];
@@ -8,29 +7,38 @@ type SparklineProps = {
   height?: number;
 };
 
+/** Resolve Chakra-style tokens (e.g. brand.400) and raw CSS for bar fill. */
+function resolveBarColor(token: string): string {
+  if (token.startsWith('#') || token.startsWith('rgb') || token.startsWith('var(')) {
+    return token;
+  }
+  if (token === 'brand.400' || token === 'brand.500') {
+    return 'var(--primary)';
+  }
+  const dashed = token.replace(/\./g, '-');
+  return `var(--chakra-colors-${dashed}, var(--primary))`;
+}
+
 const Sparkline: React.FC<SparklineProps> = ({ values = [], max, color = 'brand.400', height = 32 }) => {
   if (!values.length) {
-    return <Box fontSize="xs" color="fg.muted">No samples</Box>;
+    return <span className="text-xs text-muted-foreground">No samples</span>;
   }
   const safeMax = typeof max === 'number' ? max : Math.max(...values, 1);
+  const barColor = resolveBarColor(color);
   return (
-    <HStack align="flex-end" gap={0.5} h={`${height}px`}>
+    <div className="flex items-end gap-0.5" style={{ height: `${height}px` }}>
       {values.map((value, idx) => {
         const normalized = safeMax ? Math.max((value / safeMax) * 100, 5) : 0;
         return (
-          <Box
+          <div
             key={`${value}-${idx}`}
-            w="4px"
-            borderRadius="sm"
-            bg={color}
-            minH="3px"
-            height={`${normalized}%`}
+            className="w-1 min-h-[3px] rounded-sm"
+            style={{ height: `${normalized}%`, backgroundColor: barColor }}
           />
         );
       })}
-    </HStack>
+    </div>
   );
 };
 
 export default Sparkline;
-

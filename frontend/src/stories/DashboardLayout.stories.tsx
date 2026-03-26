@@ -1,5 +1,4 @@
 import React from "react";
-import { Box, Text } from "@chakra-ui/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 import DashboardLayout from "../components/layout/DashboardLayout";
@@ -9,6 +8,13 @@ import { AccountProvider, AccountContext, type AccountContextValue } from "../co
 export default {
   title: "App/Layout/DashboardLayout",
 };
+
+const storyPlaceholder = (title: string, subtitle: string) => (
+  <div className="p-4">
+    <div className="text-lg font-semibold">{title}</div>
+    <div className="mt-1 text-sm text-muted-foreground">{subtitle}</div>
+  </div>
+);
 
 const StoryShell: React.FC<{ initialPath?: string; collapsed?: boolean }> = ({
   initialPath = "/",
@@ -32,29 +38,17 @@ const StoryShell: React.FC<{ initialPath?: string; collapsed?: boolean }> = ({
             <Route path="/" element={<DashboardLayout />}>
               <Route
                 index
-                element={
-                  <Box p={4}>
-                    <Text fontSize="lg" fontWeight="semibold">
-                      DashboardLayout Story
-                    </Text>
-                    <Text fontSize="sm" color="fg.muted" mt={1}>
-                      This is a visual shell to validate sidebar/header behavior in Ladle.
-                    </Text>
-                  </Box>
-                }
+                element={storyPlaceholder(
+                  "DashboardLayout Story",
+                  "This is a visual shell to validate sidebar/header behavior in Ladle."
+                )}
               />
               <Route
                 path="*"
-                element={
-                  <Box p={4}>
-                    <Text fontSize="lg" fontWeight="semibold">
-                      DashboardLayout Story Route
-                    </Text>
-                    <Text fontSize="sm" color="fg.muted" mt={1}>
-                      Use sidebar links to verify active state and menu positioning.
-                    </Text>
-                  </Box>
-                }
+                element={storyPlaceholder(
+                  "DashboardLayout Story Route",
+                  "Use sidebar links to verify active state and menu positioning."
+                )}
               />
             </Route>
           </Routes>
@@ -137,29 +131,17 @@ const MockedStoryShell: React.FC<{ initialPath?: string; collapsed?: boolean }> 
           <Route path="/" element={<DashboardLayout />}>
             <Route
               index
-              element={
-                <Box p={4}>
-                  <Text fontSize="lg" fontWeight="semibold">
-                    DashboardLayout Story (Mocked Admin)
-                  </Text>
-                  <Text fontSize="sm" color="fg.muted" mt={1}>
-                    Admin + portfolio-enabled mock state to preview gated footer and admin actions.
-                  </Text>
-                </Box>
-              }
+              element={storyPlaceholder(
+                "DashboardLayout Story (Mocked Admin)",
+                "Admin + portfolio-enabled mock state to preview gated footer and admin actions."
+              )}
             />
             <Route
               path="*"
-              element={
-                <Box p={4}>
-                  <Text fontSize="lg" fontWeight="semibold">
-                    DashboardLayout Story Route
-                  </Text>
-                  <Text fontSize="sm" color="fg.muted" mt={1}>
-                    Use links/menus to validate admin header + sidebar behavior.
-                  </Text>
-                </Box>
-              }
+              element={storyPlaceholder(
+                "DashboardLayout Story Route",
+                "Use links/menus to validate admin header + sidebar behavior."
+              )}
             />
           </Route>
         </Routes>
@@ -175,4 +157,3 @@ export const Admin_PortfolioEnabled_Expanded = () => (
 export const Admin_PortfolioEnabled_Collapsed = () => (
   <MockedStoryShell initialPath="/settings/admin/system" collapsed={true} />
 );
-

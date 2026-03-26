@@ -1,12 +1,14 @@
 import React from 'react';
-import { Box, HStack, VStack, Text, Input, Button, InputGroup, IconButton } from '@chakra-ui/react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { PageHeader } from '../components/ui/Page';
-import AppCard from '../components/ui/AppCard';
-import AppDivider from '../components/ui/AppDivider';
 import hotToast from 'react-hot-toast';
 import { authApi, handleApiError } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { FiEye, FiEyeOff } from 'react-icons/fi';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 const SettingsProfile: React.FC = () => {
   const { user, refreshMe } = useAuth();
@@ -30,7 +32,7 @@ const SettingsProfile: React.FC = () => {
   const saveProfile = async () => {
     try {
       setSavingProfile(true);
-      const payload: any = {};
+      const payload: Record<string, unknown> = {};
       if (fullName !== (user?.full_name || '')) payload.full_name = fullName;
       if (email !== (user?.email || '')) payload.email = email;
       if (payload.email && currentPasswordForEmail) payload.current_password = currentPasswordForEmail;
@@ -75,133 +77,164 @@ const SettingsProfile: React.FC = () => {
     }
   };
 
-  return (
-    <Box w="full">
-      <Box w="full" maxW="960px" mx="auto">
-        <PageHeader title="Profile" subtitle="Update your personal info and security settings." />
-        <VStack align="stretch" gap={4}>
-          <AppCard>
-            <VStack align="stretch" gap={4}>
-              <Text fontWeight="semibold">Account</Text>
-              <HStack gap={4} align="start" flexWrap="wrap">
-                <Box minW={{ base: "100%", md: "280px" }}>
-                  <Text fontSize="sm" color="fg.muted" mb={1}>Username</Text>
-                  <Input value={user?.username || ''} disabled />
-                </Box>
-                <Box flex="1" minW={{ base: "100%", md: "320px" }}>
-                  <Text fontSize="sm" color="fg.muted" mb={1}>Full name</Text>
-                  <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your name" />
-                </Box>
-              </HStack>
+  const fieldWrap = 'min-w-0 flex-1 basis-full md:basis-0';
 
-              <HStack gap={4} align="start" flexWrap="wrap">
-                <Box flex="1" minW={{ base: "100%", md: "320px" }}>
-                  <Text fontSize="sm" color="fg.muted" mb={1}>Email</Text>
-                  <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@domain.com" />
-                </Box>
+  return (
+    <div className="w-full">
+      <div className="mx-auto w-full max-w-[960px]">
+        <PageHeader title="Profile" subtitle="Update your personal info and security settings." />
+        <div className="flex flex-col gap-4">
+          <Card>
+            <CardContent className="space-y-4 pt-6">
+              <h2 className="font-heading font-semibold text-foreground">Account</h2>
+              <div className="flex flex-wrap gap-4">
+                <div className={cn(fieldWrap, 'md:max-w-[280px]')}>
+                  <Label htmlFor="profile-username" className="mb-1.5 block text-muted-foreground">
+                    Username
+                  </Label>
+                  <Input id="profile-username" value={user?.username || ''} disabled />
+                </div>
+                <div className={cn(fieldWrap, 'md:min-w-[280px]')}>
+                  <Label htmlFor="profile-fullname" className="mb-1.5 block text-muted-foreground">
+                    Full name
+                  </Label>
+                  <Input
+                    id="profile-fullname"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Your name"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-4">
+                <div className={cn(fieldWrap, 'md:min-w-[320px]')}>
+                  <Label htmlFor="profile-email" className="mb-1.5 block text-muted-foreground">
+                    Email
+                  </Label>
+                  <Input
+                    id="profile-email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@domain.com"
+                  />
+                </div>
                 {user?.has_password ? (
-                  <Box minW={{ base: "100%", md: "320px" }}>
-                    <Text fontSize="sm" color="fg.muted" mb={1}>Current password (required to change email)</Text>
-                    <InputGroup
-                      endElement={
-                        <IconButton
-                          aria-label={showPw ? 'Hide password' : 'Show password'}
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setShowPw(!showPw)}
-                        >
-                          {showPw ? <FiEyeOff /> : <FiEye />}
-                        </IconButton>
-                      }
-                    >
+                  <div className={cn(fieldWrap, 'md:min-w-[320px]')}>
+                    <Label htmlFor="profile-email-pw" className="mb-1.5 block text-muted-foreground">
+                      Current password (required to change email)
+                    </Label>
+                    <div className="relative">
                       <Input
+                        id="profile-email-pw"
                         aria-label="Current password for email change"
                         type={showPw ? 'text' : 'password'}
                         value={currentPasswordForEmail}
                         onChange={(e) => setCurrentPasswordForEmail(e.target.value)}
                         placeholder="Email change password"
+                        className="pr-10"
                       />
-                    </InputGroup>
-                  </Box>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        className="absolute top-1/2 right-1 -translate-y-1/2"
+                        aria-label={showPw ? 'Hide password' : 'Show password'}
+                        onClick={() => setShowPw(!showPw)}
+                      >
+                        {showPw ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      </Button>
+                    </div>
+                  </div>
                 ) : null}
-              </HStack>
+              </div>
 
-              <HStack justify="flex-end">
-                <Button loading={savingProfile} onClick={saveProfile}>
+              <div className="flex justify-end">
+                <Button type="button" disabled={savingProfile} onClick={() => void saveProfile()}>
+                  {savingProfile ? <Loader2 className="mr-1 size-3.5 animate-spin" aria-hidden /> : null}
                   Save changes
                 </Button>
-              </HStack>
-            </VStack>
-          </AppCard>
+              </div>
+            </CardContent>
+          </Card>
 
-          <AppCard>
-            <VStack align="stretch" gap={4}>
-              <Text fontWeight="semibold">Password</Text>
-              <Text fontSize="sm" color="fg.muted">
+          <Card>
+            <CardContent className="space-y-4 pt-6">
+              <h2 className="font-heading font-semibold text-foreground">Password</h2>
+              <p className="text-sm text-muted-foreground">
                 {user?.has_password
                   ? 'Change your password.'
                   : 'No password is set for this account yet. Set one to enable password-based login.'}
-              </Text>
-              <HStack gap={4} align="start" flexWrap="wrap">
+              </p>
+              <div className="flex flex-wrap gap-4">
                 {user?.has_password ? (
-                  <Box minW={{ base: "100%", md: "320px" }}>
-                    <Text fontSize="sm" color="fg.muted" mb={1}>Current password</Text>
+                  <div className={cn(fieldWrap, 'md:min-w-[320px]')}>
+                    <Label htmlFor="profile-current-pw" className="mb-1.5 block text-muted-foreground">
+                      Current password
+                    </Label>
                     <Input
+                      id="profile-current-pw"
                       aria-label="Current password for password change"
                       type="password"
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
                       placeholder="Current password"
                     />
-                  </Box>
+                  </div>
                 ) : null}
-                <Box minW={{ base: "100%", md: "320px" }}>
-                  <Text fontSize="sm" color="fg.muted" mb={1}>New password</Text>
-                  <InputGroup
-                    endElement={
-                      <IconButton
-                        aria-label={showNewPw ? 'Hide password' : 'Show password'}
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setShowNewPw(!showNewPw)}
-                      >
-                        {showNewPw ? <FiEyeOff /> : <FiEye />}
-                      </IconButton>
-                    }
-                  >
+                <div className={cn(fieldWrap, 'md:min-w-[320px]')}>
+                  <Label htmlFor="profile-new-pw" className="mb-1.5 block text-muted-foreground">
+                    New password
+                  </Label>
+                  <div className="relative">
                     <Input
+                      id="profile-new-pw"
                       type={showNewPw ? 'text' : 'password'}
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="At least 8 characters"
+                      className="pr-10"
                     />
-                  </InputGroup>
-                </Box>
-                <Box minW={{ base: "100%", md: "320px" }}>
-                  <Text fontSize="sm" color="fg.muted" mb={1}>Confirm new password</Text>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      className="absolute top-1/2 right-1 -translate-y-1/2"
+                      aria-label={showNewPw ? 'Hide password' : 'Show password'}
+                      onClick={() => setShowNewPw(!showNewPw)}
+                    >
+                      {showNewPw ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </Button>
+                  </div>
+                </div>
+                <div className={cn(fieldWrap, 'md:min-w-[320px]')}>
+                  <Label htmlFor="profile-confirm-pw" className="mb-1.5 block text-muted-foreground">
+                    Confirm new password
+                  </Label>
                   <Input
+                    id="profile-confirm-pw"
                     type={showNewPw ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Repeat new password"
                   />
-                </Box>
-              </HStack>
+                </div>
+              </div>
 
-              <AppDivider />
-              <HStack justify="flex-end">
-                <Button loading={savingPassword} onClick={savePassword}>
-                  {user?.has_password ? 'Change password' : 'Set password'}
-                </Button>
-              </HStack>
-            </VStack>
-          </AppCard>
-        </VStack>
-      </Box>
-    </Box>
+              <div className="border-t border-border pt-4">
+                <div className="flex justify-end">
+                  <Button type="button" disabled={savingPassword} onClick={() => void savePassword()}>
+                    {savingPassword ? <Loader2 className="mr-1 size-3.5 animate-spin" aria-hidden /> : null}
+                    {user?.has_password ? 'Change password' : 'Set password'}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
   );
 };
 
 export default SettingsProfile;
-
-

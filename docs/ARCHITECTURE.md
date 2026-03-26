@@ -145,14 +145,14 @@ Row counts below are illustrative; run DB queries for current state.
 
 ### Celery Tasks (`backend/tasks/`)
 
-| Task | Schedule | Purpose |
+| Task (Celery path) | Schedule | Purpose |
 |------|----------|---------|
-| `sync_account_task` | Manual/on-add | Sync single broker account |
-| `sync_all_ibkr_accounts` | Planned daily | Sync all IBKR accounts |
-| `recompute_indicators_universe` | 03:35 UTC | Compute indicators for all tracked symbols |
-| `record_daily_history` | Part of coverage pipeline | Persist daily snapshot history |
-| `bootstrap_daily_coverage_tracked` | 01:00 UTC | Full coverage pipeline |
-| `monitor_coverage_health` | Hourly | Coverage health check |
+| `backend.tasks.account_sync.sync_account_task` | Manual/on-add | Sync single broker account |
+| `backend.tasks.account_sync.sync_all_ibkr_accounts` | Planned daily | Sync all IBKR accounts |
+| `backend.tasks.market.indicators.recompute_universe` | 03:35 UTC | Compute indicators for all tracked symbols |
+| `backend.tasks.market.history.record_daily` | Part of coverage pipeline | Persist daily snapshot history |
+| `backend.tasks.market.coverage.daily_bootstrap` | 01:00 UTC | Full coverage pipeline |
+| `backend.tasks.market.coverage.health_check` | Hourly | Coverage health check |
 
 ## Frontend Pages
 

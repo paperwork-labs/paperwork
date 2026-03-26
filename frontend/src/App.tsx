@@ -1,12 +1,10 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ChakraProvider } from '@chakra-ui/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { AccountProvider } from './context/AccountContext';
 import { AuthProvider } from './context/AuthContext';
 import { ColorModeProvider } from './theme/colorMode';
-import { system } from './theme/system';
 import ErrorBoundary from './components/ErrorBoundary';
 
 import RequireAuth from './components/auth/RequireAuth';
@@ -59,13 +57,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ColorModeProvider>
-        <ChakraProvider value={system}>
-          <AuthProvider>
-            <AccountProvider>
-              <ErrorBoundary>
-                <Router>
-                  <Suspense fallback={<RouteFallback />}>
-                    <Routes>
+        <AuthProvider>
+          <AccountProvider>
+            <ErrorBoundary>
+              <Router>
+                <Suspense fallback={<RouteFallback />}>
+                  <Routes>
                       <Route path="/" element={<RequireAuth><DashboardLayout /></RequireAuth>}>
                         {/* Market */}
                         <Route index element={<MarketDashboard />} />
@@ -117,9 +114,9 @@ function App() {
                     position="top-right"
                     toastOptions={{
                       style: {
-                        background: 'var(--chakra-colors-bg-panel)',
-                        color: 'var(--chakra-colors-fg-default)',
-                        border: '1px solid var(--chakra-colors-border-subtle)',
+                        background: 'rgb(var(--bg-panel) / 1)',
+                        color: 'var(--foreground)',
+                        border: '1px solid var(--border)',
                       },
                     }}
                   />
@@ -127,7 +124,6 @@ function App() {
               </ErrorBoundary>
             </AccountProvider>
           </AuthProvider>
-        </ChakraProvider>
       </ColorModeProvider>
     </QueryClientProvider>
   );

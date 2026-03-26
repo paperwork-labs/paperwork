@@ -1,262 +1,213 @@
 import React from 'react';
-import {
-  Box,
-  Skeleton,
-  SkeletonText,
-  SkeletonCircle,
-  VStack,
-  HStack,
-  Spinner,
-  Text,
-  CardRoot,
-  CardBody,
-  Grid,
-  GridItem,
-  Flex,
-  Progress,
-} from '@chakra-ui/react';
+import { Loader2 } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
-// Portfolio summary loading skeleton
 export const PortfolioSummarySkeleton: React.FC = () => {
   return (
-    <Grid templateColumns="repeat(auto-fit, minmax(250px, 1fr))" gap={6}>
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6">
       {[1, 2, 3, 4].map((i) => (
-        <CardRoot key={i} bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-          <CardBody>
-            <VStack align="start" gap={3}>
-              <Skeleton height="20px" width="60%" />
-              <Skeleton height="32px" width="80%" />
-              <HStack>
-                <SkeletonCircle size="4" />
-                <Skeleton height="16px" width="40%" />
-              </HStack>
-            </VStack>
-          </CardBody>
-        </CardRoot>
+        <Card key={i}>
+          <CardContent className="space-y-3 pt-6">
+            <Skeleton className="h-5 w-3/5" />
+            <Skeleton className="h-8 w-4/5" />
+            <div className="flex items-center gap-2">
+              <Skeleton className="size-8 rounded-full" />
+              <Skeleton className="h-4 w-2/5" />
+            </div>
+          </CardContent>
+        </Card>
       ))}
-    </Grid>
+    </div>
   );
 };
 
-// Holdings table loading skeleton
 export const HoldingsTableSkeleton: React.FC<{ rows?: number }> = ({ rows = 10 }) => {
   return (
-    <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-      <CardBody>
-        <VStack gap={4} align="stretch">
-          {/* Header skeleton */}
-          <HStack justify="space-between">
-            <Skeleton height="24px" width="150px" />
-            <Skeleton height="32px" width="200px" />
-          </HStack>
+    <Card>
+      <CardContent className="space-y-4 pt-6">
+        <div className="flex justify-between">
+          <Skeleton className="h-6 w-[150px]" />
+          <Skeleton className="h-8 w-[200px]" />
+        </div>
 
-          {/* Table header */}
-          <HStack gap={4} py={2}>
-            <Skeleton height="16px" width="80px" />
-            <Skeleton height="16px" width="60px" />
-            <Skeleton height="16px" width="80px" />
-            <Skeleton height="16px" width="80px" />
-            <Skeleton height="16px" width="60px" />
-          </HStack>
+        <div className="flex gap-4 py-2">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-4 w-14" />
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-4 w-14" />
+        </div>
 
-          {/* Table rows */}
-          {Array.from({ length: rows }).map((_, i) => (
-            <HStack key={i} gap={4} py={3} borderBottom="1px" borderColor="border.subtle">
-              <SkeletonCircle size="8" />
-              <VStack align="start" flex={1} gap={1}>
-                <Skeleton height="16px" width="60px" />
-                <Skeleton height="12px" width="40px" />
-              </VStack>
-              <Skeleton height="16px" width="60px" />
-              <Skeleton height="16px" width="80px" />
-              <Skeleton height="16px" width="60px" />
-            </HStack>
-          ))}
-        </VStack>
-      </CardBody>
-    </CardRoot>
+        {Array.from({ length: rows }).map((_, i) => (
+          <div key={i} className="flex gap-4 border-b border-border py-3 last:border-0">
+            <Skeleton className="size-8 shrink-0 rounded-full" />
+            <div className="flex flex-1 flex-col gap-1">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-3 w-12" />
+            </div>
+            <Skeleton className="h-4 w-16" />
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 w-16" />
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 };
 
-// Transaction list loading skeleton
 export const TransactionsSkeleton: React.FC<{ rows?: number }> = ({ rows = 15 }) => {
   return (
-    <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-      <CardBody>
-        <VStack gap={3} align="stretch">
-          {/* Filter controls skeleton */}
-          <HStack gap={4} mb={4}>
-            <Skeleton height="32px" width="150px" />
-            <Skeleton height="32px" width="120px" />
-            <Skeleton height="32px" width="100px" />
-          </HStack>
+    <Card>
+      <CardContent className="space-y-3 pt-6">
+        <div className="mb-4 flex gap-4">
+          <Skeleton className="h-8 w-[150px]" />
+          <Skeleton className="h-8 w-[120px]" />
+          <Skeleton className="h-8 w-[100px]" />
+        </div>
 
-          {/* Transaction rows */}
-          {Array.from({ length: rows }).map((_, i) => (
-            <HStack key={i} justify="space-between" p={3} borderRadius="lg" border="1px" borderColor="border.subtle">
-              <HStack gap={3}>
-                <SkeletonCircle size="6" />
-                <VStack align="start" gap={1}>
-                  <Skeleton height="16px" width="80px" />
-                  <Skeleton height="12px" width="120px" />
-                </VStack>
-              </HStack>
-              <VStack align="end" gap={1}>
-                <Skeleton height="16px" width="60px" />
-                <Skeleton height="12px" width="40px" />
-              </VStack>
-            </HStack>
-          ))}
-        </VStack>
-      </CardBody>
-    </CardRoot>
+        {Array.from({ length: rows }).map((_, i) => (
+          <div
+            key={i}
+            className="flex justify-between gap-3 rounded-lg border border-border p-3"
+          >
+            <div className="flex items-center gap-3">
+              <Skeleton className="size-6 rounded-full" />
+              <div className="flex flex-col gap-1">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-3 w-28" />
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-3 w-12" />
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 };
 
-// Options portfolio loading skeleton
 export const OptionsPortfolioSkeleton: React.FC = () => {
   return (
-    <VStack gap={6} align="stretch">
-      {/* Summary cards */}
+    <div className="flex flex-col gap-6">
       <PortfolioSummarySkeleton />
 
-      {/* Options positions */}
-      <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-        <CardBody>
-          <VStack gap={4} align="stretch">
-            <Skeleton height="24px" width="200px" />
+      <Card>
+        <CardContent className="space-y-4 pt-6">
+          <Skeleton className="h-6 w-[200px]" />
 
-            {[1, 2, 3, 4, 5].map((i) => (
-              <Box key={i} p={4} borderRadius="md" borderWidth="1px" borderColor="border.subtle" bg="bg.panel">
-                <HStack justify="space-between" mb={3}>
-                  <VStack align="start" gap={1}>
-                    <Skeleton height="18px" width="100px" />
-                    <Skeleton height="14px" width="150px" />
-                  </VStack>
-                  <VStack align="end" gap={1}>
-                    <Skeleton height="16px" width="80px" />
-                    <Skeleton height="14px" width="60px" />
-                  </VStack>
-                </HStack>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="rounded-md border border-border bg-muted/30 p-4">
+              <div className="mb-3 flex justify-between">
+                <div className="flex flex-col gap-1">
+                  <Skeleton className="h-[18px] w-24" />
+                  <Skeleton className="h-3.5 w-36" />
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-3.5 w-16" />
+                </div>
+              </div>
 
-                <Grid templateColumns="repeat(4, 1fr)" gap={4}>
-                  <Skeleton height="12px" />
-                  <Skeleton height="12px" />
-                  <Skeleton height="12px" />
-                  <Skeleton height="12px" />
-                </Grid>
-              </Box>
-            ))}
-          </VStack>
-        </CardBody>
-      </CardRoot>
-    </VStack>
+              <div className="grid grid-cols-4 gap-4">
+                <Skeleton className="h-3" />
+                <Skeleton className="h-3" />
+                <Skeleton className="h-3" />
+                <Skeleton className="h-3" />
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
-// Tax lots loading skeleton
 export const TaxLotsSkeleton: React.FC = () => {
   return (
-    <VStack gap={6} align="stretch">
-      {/* Summary */}
-      <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-        <CardBody>
-          <HStack justify="space-between">
-            <VStack align="start" gap={2}>
-              <Skeleton height="20px" width="120px" />
-              <Skeleton height="32px" width="100px" />
-            </VStack>
-            <VStack align="end" gap={2}>
-              <Skeleton height="20px" width="140px" />
-              <Skeleton height="32px" width="120px" />
-            </VStack>
-          </HStack>
-        </CardBody>
-      </CardRoot>
+    <div className="flex flex-col gap-6">
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex justify-between">
+            <div className="flex flex-col gap-2">
+              <Skeleton className="h-5 w-28" />
+              <Skeleton className="h-8 w-24" />
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <Skeleton className="h-5 w-36" />
+              <Skeleton className="h-8 w-28" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Tax lots list */}
-      <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-        <CardBody>
-          <VStack gap={4} align="stretch">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Box key={i} p={4} borderRadius="md" borderWidth="1px" borderColor="border.subtle" bg="bg.panel">
-                <HStack justify="space-between" mb={3}>
-                  <HStack gap={3}>
-                    <SkeletonCircle size="10" />
-                    <VStack align="start" gap={1}>
-                      <Skeleton height="18px" width="60px" />
-                      <Skeleton height="14px" width="80px" />
-                    </VStack>
-                  </HStack>
-                  <VStack align="end" gap={1}>
-                    <Skeleton height="16px" width="80px" />
-                    <Skeleton height="14px" width="60px" />
-                  </VStack>
-                </HStack>
+      <Card>
+        <CardContent className="space-y-4 pt-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="rounded-md border border-border bg-muted/30 p-4">
+              <div className="mb-3 flex justify-between">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="size-10 rounded-full" />
+                  <div className="flex flex-col gap-1">
+                    <Skeleton className="h-[18px] w-16" />
+                    <Skeleton className="h-3.5 w-20" />
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-3.5 w-16" />
+                </div>
+              </div>
 
-                <Grid templateColumns="repeat(5, 1fr)" gap={4}>
-                  <VStack gap={1}>
-                    <Skeleton height="12px" width="40px" />
-                    <Skeleton height="16px" width="60px" />
-                  </VStack>
-                  <VStack gap={1}>
-                    <Skeleton height="12px" width="40px" />
-                    <Skeleton height="16px" width="60px" />
-                  </VStack>
-                  <VStack gap={1}>
-                    <Skeleton height="12px" width="40px" />
-                    <Skeleton height="16px" width="60px" />
-                  </VStack>
-                  <VStack gap={1}>
-                    <Skeleton height="12px" width="40px" />
-                    <Skeleton height="16px" width="60px" />
-                  </VStack>
-                  <VStack gap={1}>
-                    <Skeleton height="12px" width="40px" />
-                    <Skeleton height="16px" width="60px" />
-                  </VStack>
-                </Grid>
-              </Box>
-            ))}
-          </VStack>
-        </CardBody>
-      </CardRoot>
-    </VStack>
+              <div className="grid grid-cols-5 gap-4">
+                {[0, 1, 2, 3, 4].map((j) => (
+                  <div key={j} className="flex flex-col gap-1">
+                    <Skeleton className="h-3 w-10" />
+                    <Skeleton className="h-4 w-14" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
-// Loading spinner with message
 export const LoadingSpinner: React.FC<{
   message?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   showProgress?: boolean;
   progress?: number;
 }> = ({ message = 'Loading...', size = 'lg', showProgress = false, progress = 0 }) => {
+  const iconClass = cn(
+    'text-primary',
+    size === 'sm' && 'size-4',
+    size === 'md' && 'size-6',
+    size === 'lg' && 'size-8',
+    size === 'xl' && 'size-10',
+  );
   return (
-    <Flex direction="column" align="center" justify="center" py={12} px={6} minH="200px">
-      <VStack gap={4}>
-        <Spinner size={size} color="brand.500" />
-        <Text fontSize="lg" color="fg.muted" textAlign="center">
-          {message}
-        </Text>
+    <div className="flex min-h-[200px] flex-col items-center justify-center px-6 py-12">
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 className={cn('animate-spin', iconClass)} aria-hidden />
+        <p className="text-center text-lg text-muted-foreground">{message}</p>
         {showProgress && (
-          <Box w="200px">
-            <Progress.Root value={progress} max={100}>
-              <Progress.Track borderRadius="full">
-                <Progress.Range />
-              </Progress.Track>
-            </Progress.Root>
-            <Text fontSize="sm" color="fg.muted" textAlign="center" mt={1}>
-              {progress}%
-            </Text>
-          </Box>
+          <div className="w-[200px]">
+            <Progress value={progress} max={100} />
+            <p className="mt-1 text-center text-sm text-muted-foreground">{progress}%</p>
+          </div>
         )}
-      </VStack>
-    </Flex>
+      </div>
+    </div>
   );
 };
 
-// Full page loading overlay
 export const LoadingOverlay: React.FC<{
   message?: string;
   isVisible: boolean;
@@ -264,28 +215,26 @@ export const LoadingOverlay: React.FC<{
   if (!isVisible) return null;
 
   return (
-    <Box
-      position="fixed"
-      top={0}
-      left={0}
-      right={0}
-      bottom={0}
-      bg="bg.canvas"
-      opacity={0.92}
-      display="flex"
-      alignItems="center"
-      justifyContent="center"
-      zIndex={9999}
-      backdropFilter="blur(2px)"
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/92 backdrop-blur-sm"
+      role="status"
+      aria-live="polite"
     >
       <LoadingSpinner message={message} size="xl" />
-    </Box>
+    </div>
   );
 };
 
-// Mini loading indicator for buttons
 export const MiniSpinner: React.FC<{ size?: 'sm' | 'md' | 'lg' | 'xl' }> = ({ size = 'sm' }) => {
-  return <Spinner size={size} color="currentColor" />;
+  const iconClass =
+    size === 'sm'
+      ? 'size-3.5'
+      : size === 'md'
+        ? 'size-4'
+        : size === 'lg'
+          ? 'size-5'
+          : 'size-6';
+  return <Loader2 className={cn('animate-spin text-current', iconClass)} aria-hidden />;
 };
 
 export default {
@@ -296,5 +245,5 @@ export default {
   TaxLotsSkeleton,
   LoadingSpinner,
   LoadingOverlay,
-  MiniSpinner
-}; 
+  MiniSpinner,
+};

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, HStack, Text } from '@chakra-ui/react';
+import { cn } from '@/lib/utils';
 
 export interface FillRow {
   date: string;
@@ -72,75 +72,59 @@ const CoverageHealthStrip: React.FC<Props> = ({
     .join(' ');
 
   return (
-    <Box mt={2}>
-      <HStack gap={3} align="center">
-        {/* Heatmap strip + snapshot dots */}
-        <Box flex="1" minW="0">
-          <Box
-            borderRadius="md"
-            borderWidth="1px"
-            borderColor="border.subtle"
-            bg="bg.card"
-            px={1}
-            py={1}
-            overflowX="auto"
-            overflowY="hidden"
-          >
-            <HStack align="end" gap="1px" h="22px" w="full">
+    <div className="mt-2">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="overflow-x-auto overflow-y-hidden rounded-md border border-border bg-card px-1 py-1">
+            <div className="flex h-[22px] w-full items-end gap-px">
               {bars.map((r) => {
                 const pct = Number(r.pct_of_universe || 0);
                 const h = Math.max(2, Math.round((pct / 100) * 14));
                 const snapPct = snapshotPctByDate.get(r.date);
                 const snapOk = typeof snapPct === 'number' && snapPct >= 95;
                 const snapNone = typeof snapPct !== 'number';
-                const dotBg = snapNone
-                  ? 'fg.subtle'
+                const dotClass = snapNone
+                  ? 'bg-muted-foreground/60 opacity-50'
                   : snapOk
-                    ? 'status.success'
+                    ? 'bg-emerald-500'
                     : (snapPct || 0) >= 50
-                      ? 'status.warning'
-                      : 'status.danger';
+                      ? 'bg-amber-500'
+                      : 'bg-destructive';
                 return (
-                  <Box
+                  <div
                     key={r.date}
-                    flex="1 0 0"
-                    minW="4px"
-                    display="flex"
-                    flexDirection="column"
-                    alignItems="center"
-                    justifyContent="flex-end"
+                    className="flex min-w-[4px] flex-1 flex-col items-center justify-end"
                     title={`${r.date}: ${r.symbol_count}/${totalSymbols} (${Math.round(pct * 10) / 10}%) | snap: ${snapNone ? '—' : `${Math.round((snapPct || 0) * 10) / 10}%`}`}
                   >
-                    <Box w="full" h={`${h}px`} borderRadius="sm" bg={colorForPct(pct)} />
-                    <Box
-                      mt="1px"
-                      w="4px"
-                      h="4px"
-                      borderRadius="full"
-                      bg={dotBg}
-                      opacity={snapNone ? 0.5 : 1}
-                    />
-                  </Box>
+                    <div className="w-full rounded-sm" style={{ height: `${h}px`, backgroundColor: colorForPct(pct) }} />
+                    <div className={cn('mt-px size-1 rounded-full', dotClass)} />
+                  </div>
                 );
               })}
-            </HStack>
-          </Box>
-        </Box>
+            </div>
+          </div>
+        </div>
 
-        {/* Inline sparkline + latest value */}
-        <HStack gap={2} flexShrink={0} align="center">
-          <svg width={sparkWidth} height={sparkHeight} viewBox={`0 0 ${sparkWidth} ${sparkHeight}`}>
-            <path d={sparkPath} fill="none" stroke="var(--chakra-colors-fg-muted)" strokeWidth="1.2" />
+        <div className="flex shrink-0 items-center gap-2">
+          <svg
+            width={sparkWidth}
+            height={sparkHeight}
+            viewBox={`0 0 ${sparkWidth} ${sparkHeight}`}
+            className="text-muted-foreground"
+            aria-hidden
+          >
+            <path d={sparkPath} fill="none" stroke="currentColor" strokeWidth="1.2" />
           </svg>
-          <Text fontSize="xs" fontWeight="semibold" color="fg.default" whiteSpace="nowrap">
+          <span className="whitespace-nowrap text-xs font-semibold text-foreground">
             {Math.round(latestPct * 10) / 10}%
-          </Text>
-        </HStack>
-      </HStack>
-      <Text mt={1} fontSize="xs" color="fg.muted">
-        Coverage strip (last {windowDays} trading days). Cell color = daily fill %. Dot = snapshot coverage (green {'\u2265'}95%, orange {'\u2265'}50%, red {'<'}50%, gray = none). Hover for detail.
-      </Text>
-    </Box>
+          </span>
+        </div>
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Coverage strip (last {windowDays} trading days). Cell color = daily fill %. Dot = snapshot coverage (green {'\u2265'}
+        95%, orange {'\u2265'}50%, red {'<'}50%, gray = none). Hover for detail.
+      </p>
+    </div>
   );
 };
 

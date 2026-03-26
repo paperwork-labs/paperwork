@@ -36,22 +36,18 @@ from backend.services.notifications.discord_bot import discord_bot_client
 from backend.api.dependencies import get_admin_user
 from backend.api.routes.utils import serialize_job_runs
 from backend.config import settings
-from backend.tasks.market_data_tasks import (
-    record_daily_history,
-    recompute_indicators_universe,
-    backfill_5m_last_n_days,
-    backfill_5m_for_symbols,
-    enforce_price_data_retention,
-    fill_missing_snapshot_fundamentals,
-    bootstrap_daily_coverage_tracked,
-    backfill_stale_daily_tracked,
-    backfill_snapshot_history_last_n_days,
-    backfill_daily_since_date,
-    backfill_last_bars,
-    backfill_since_date,
-    monitor_coverage_health,
-    recover_stale_job_runs_impl,
+from backend.tasks.market.backfill import (
+    daily_bars,
+    daily_since,
+    full_historical,
+    stale_daily,
 )
+from backend.tasks.market.coverage import daily_bootstrap, health_check
+from backend.tasks.market.fundamentals import fill_missing
+from backend.tasks.market.history import record_daily, snapshot_last_n_days
+from backend.tasks.market.indicators import recompute_universe
+from backend.tasks.market.intraday import bars_5m_last_n_days, bars_5m_symbols
+from backend.tasks.market.maintenance import prune_old_bars, recover_jobs_impl
 from ._shared import enqueue_task, TASK_ACTIONS
 
 logger = logging.getLogger(__name__)
@@ -187,7 +183,7 @@ async def admin_backfill_snapshot_history_last_n_days(
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
     """Backfill MarketSnapshotHistory for the last N trading days."""
-    return enqueue_task(backfill_snapshot_history_last_n_days, days, since_date=since_date)
+    return enqueue_task(snapshot_last_n_days, days, since_date=since_date)
 
 
 @router.post("/backfill/daily/since-date")
@@ -197,7 +193,7 @@ async def admin_backfill_daily_since_date(
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
     """Deep daily OHLCV backfill since a given date for the tracked universe."""
-    return enqueue_task(backfill_daily_since_date, since_date, batch_size)
+    return enqueue_task(daily_since, since_date, batch_size)
 
 
 @router.post("/backfill/since-date")
@@ -209,7 +205,7 @@ async def admin_backfill_since_date(
 ) -> Dict[str, Any]:
     """Backfill daily bars + indicators + snapshot history since a given date."""
     return enqueue_task(
-        backfill_since_date,
+        full_historical,
         since_date,
         daily_batch_size=daily_batch_size,
         history_batch_size=history_batch_size,
@@ -222,7 +218,7 @@ async def admin_backfill_daily_last_bars(
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
     """Backfill last N daily bars for the tracked universe."""
-    return enqueue_task(backfill_last_bars, days=days)
+    return enqueue_task(daily_bars, days=days)
 
 
 @router.get("/backfill/5m/toggle")
@@ -269,7 +265,7 @@ async def backfill_stale_daily(
             db, symbols=tracked, interval="1d", now_utc=datetime.utcnow(), return_full_stale=True,
         )
         stale_candidates = len(stale_full or [])
-        enq = enqueue_task(backfill_stale_daily_tracked)
+        enq = enqueue_task(stale_daily)
         return {**enq, "stale_candidates": stale_candidates}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -280,7 +276,7 @@ async def admin_refresh_coverage(
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
     """Trigger the coverage health monitor to refresh Redis cache."""
-    return enqueue_task(monitor_coverage_health)
+    return enqueue_task(health_check)
 
 
 @router.post("/backfill/coverage")
@@ -291,7 +287,7 @@ async def admin_backfill_daily_tracked(
 ) -> Dict[str, Any]:
     """Run the guided daily coverage backfill chain for the tracked universe."""
     return enqueue_task(
-        bootstrap_daily_coverage_tracked,
+        daily_bootstrap,
         history_days=history_days,
         history_batch_size=history_batch_size,
     )
@@ -302,8 +298,9 @@ async def admin_backfill_daily_tracked_preview(
     history_days: int | None = Query(None, ge=1, le=300),
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
-    from backend.tasks import market_data_tasks
-    resolved_days = market_data_tasks._resolve_history_days(history_days)
+    from backend.tasks.utils.task_utils import _resolve_history_days
+
+    resolved_days = _resolve_history_days(history_days)
     end_date = datetime.utcnow().date()
     start_date = end_date - timedelta(days=resolved_days)
     return {
@@ -319,7 +316,7 @@ async def post_backfill_5m(
     batch_size: int = Query(50, ge=10, le=200),
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
-    return enqueue_task(backfill_5m_last_n_days, n_days=n_days, batch_size=batch_size)
+    return enqueue_task(bars_5m_last_n_days, n_days=n_days, batch_size=batch_size)
 
 
 # ── Indicators and snapshots ──
@@ -329,7 +326,7 @@ async def post_recompute_universe(
     batch_size: int = Query(50, ge=10, le=200),
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
-    return enqueue_task(recompute_indicators_universe, batch_size)
+    return enqueue_task(recompute_universe, batch_size)
 
 
 @router.post("/snapshots/history/record")
@@ -338,7 +335,7 @@ async def admin_record_history(
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
     try:
-        res = record_daily_history(symbols)
+        res = record_daily(symbols)
         return res
     except Exception as e:
         logger.error(f"admin record history error: {e}")
@@ -453,7 +450,7 @@ async def post_retention_enforce(
     max_days_5m: int = Query(90, ge=7, le=365),
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
-    return enqueue_task(enforce_price_data_retention, max_days_5m=max_days_5m)
+    return enqueue_task(prune_old_bars, max_days_5m=max_days_5m)
 
 
 @router.post("/stage/repair")
@@ -471,7 +468,7 @@ async def admin_repair_stage_history(
 async def admin_fill_missing_fundamentals(
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
-    return enqueue_task(fill_missing_snapshot_fundamentals)
+    return enqueue_task(fill_missing)
 
 
 # ── Job management ──
@@ -506,7 +503,7 @@ async def admin_recover_stale_jobs(
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
     """Mark job runs stuck in RUNNING as cancelled."""
-    return recover_stale_job_runs_impl(stale_minutes=stale_minutes)
+    return recover_jobs_impl(stale_minutes=stale_minutes)
 
 
 # ── Regime admin ──
@@ -516,8 +513,9 @@ async def admin_compute_regime(
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
     """Manually trigger daily regime computation."""
-    from backend.tasks.market_data_tasks import compute_daily_regime
-    result = compute_daily_regime.delay()
+    from backend.tasks.market.regime import compute_daily
+
+    result = compute_daily.delay()
     return {"task_id": result.id, "message": "Regime computation queued"}
 
 
@@ -542,9 +540,9 @@ async def admin_run_task(
     if task_name == "admin_backfill_5m_symbols":
         if not symbols:
             raise HTTPException(status_code=400, detail="symbols required")
-        return enqueue_task(backfill_5m_for_symbols, [s.upper() for s in symbols if s], n_days=n_days or 5)
+        return enqueue_task(bars_5m_symbols, [s.upper() for s in symbols if s], n_days=n_days or 5)
     if task_name == "admin_backfill_5m":
-        return enqueue_task(backfill_5m_last_n_days, n_days=n_days or 5)
+        return enqueue_task(bars_5m_last_n_days, n_days=n_days or 5)
     raise HTTPException(status_code=400, detail="unsupported task")
 
 
@@ -662,11 +660,11 @@ def _execute_autofix_plan(job_id: str, plan: List[AutoFixPlanItem], r) -> None:
     from backend.tasks.celery_app import celery_app
 
     task_map = {
-        "backfill_stale_daily": "backend.tasks.market_data_tasks.backfill_stale_daily_tracked",
-        "recompute_indicators": "backend.tasks.market_data_tasks.recompute_indicators_universe",
-        "record_snapshot_history": "backend.tasks.market_data_tasks.record_daily_history",
-        "compute_regime": "backend.tasks.market_data_tasks.compute_daily_regime",
-        "recover_stale_jobs": "backend.tasks.market_data_tasks.recover_stale_job_runs",
+        "backfill_stale_daily": "backend.tasks.market.backfill.stale_daily",
+        "recompute_indicators": "backend.tasks.market.indicators.recompute_universe",
+        "record_snapshot_history": "backend.tasks.market.history.record_daily",
+        "compute_regime": "backend.tasks.market.regime.compute_daily",
+        "recover_stale_jobs": "backend.tasks.market.maintenance.recover_jobs",
     }
 
     for item in plan:

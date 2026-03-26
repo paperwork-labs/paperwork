@@ -1,15 +1,8 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import {
-  Box,
-  AlertRoot,
-  AlertIndicator,
-  AlertTitle,
-  AlertDescription,
-  Button,
-  VStack,
-  Text,
-  Code,
-} from '@chakra-ui/react';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface Props {
   children: ReactNode;
@@ -44,13 +37,9 @@ class ErrorBoundary extends Component<Props, State> {
       errorInfo,
     });
 
-    // Call optional error reporting callback
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }
-
-    // Report to error tracking service (e.g., Sentry)
-    // TODO: Add error tracking integration
   }
 
   private handleRetry = () => {
@@ -67,115 +56,81 @@ class ErrorBoundary extends Component<Props, State> {
 
   public render() {
     if (this.state.hasError) {
-      // Custom fallback UI
       if (this.props.fallback) {
         return this.props.fallback;
       }
 
-      // Default error UI
-      return <ErrorFallback
-        error={this.state.error}
-        errorInfo={this.state.errorInfo}
-        onRetry={this.handleRetry}
-        onReload={this.handleReload}
-      />;
+      return (
+        <ErrorFallback error={this.state.error} onRetry={this.handleRetry} onReload={this.handleReload} />
+      );
     }
 
     return this.props.children;
   }
 }
 
-// Error fallback component
 const ErrorFallback: React.FC<{
   error: Error | null;
-  errorInfo: ErrorInfo | null;
   onRetry: () => void;
   onReload: () => void;
-}> = ({ error, errorInfo, onRetry, onReload }) => {
+}> = ({ error, onRetry, onReload }) => {
   const [detailsOpen, setDetailsOpen] = React.useState(false);
-  const bgColor = 'bg.card';
-  const borderColor = 'border.subtle';
 
   return (
-    <Box
-      p={8}
-      maxW="container.md"
-      mx="auto"
-      bg={bgColor}
-      borderRadius="lg"
-      border="1px"
-      borderColor={borderColor}
-      shadow="lg"
-    >
-      <AlertRoot status="error" borderRadius="md" mb={6}>
-        <AlertIndicator />
-        <Box>
+    <Card className="mx-auto my-8 max-w-2xl shadow-lg">
+      <CardContent className="space-y-6 pt-8">
+        <Alert variant="destructive">
+          <AlertCircle className="size-4" aria-hidden />
           <AlertTitle>Something went wrong!</AlertTitle>
           <AlertDescription>
             An unexpected error occurred. Please try refreshing the page or contact support if the problem persists.
           </AlertDescription>
-        </Box>
-      </AlertRoot>
+        </Alert>
 
-      <VStack gap={4} align="stretch">
-        <Box>
-          <Button colorScheme="blue" onClick={onRetry} mr={3}>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" onClick={onRetry}>
             Try Again
           </Button>
-          <Button variant="outline" onClick={onReload}>
+          <Button type="button" variant="outline" onClick={onReload}>
             Reload Page
           </Button>
-        </Box>
+        </div>
 
         {error && (
-          <Box>
-            <Button size="sm" variant="ghost" onClick={() => setDetailsOpen((v) => !v)}>
+          <div>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setDetailsOpen((v) => !v)}>
               {detailsOpen ? 'Hide' : 'Show'} Error Details
             </Button>
 
             {detailsOpen ? (
-              <Box mt={4} p={4} bg="bg.muted" borderRadius="md" borderWidth="1px" borderColor="border.subtle">
-                <Text fontWeight="bold" mb={2}>Error Message:</Text>
-                <Code display="block" p={2} mb={4} whiteSpace="pre-wrap">
+              <div className="mt-4 rounded-md border border-border bg-muted/50 p-4">
+                <p className="mb-2 font-bold">Error Message:</p>
+                <pre className="mb-4 overflow-x-auto whitespace-pre-wrap rounded-md border border-border bg-background p-2 text-xs">
                   {error.message}
-                </Code>
+                </pre>
 
                 {error.stack ? (
                   <>
-                    <Text fontWeight="bold" mb={2}>Stack Trace:</Text>
-                    <Code
-                      display="block"
-                      p={2}
-                      whiteSpace="pre-wrap"
-                      fontSize="xs"
-                      maxH="200px"
-                      overflowY="auto"
-                    >
+                    <p className="mb-2 font-bold">Stack Trace:</p>
+                    <pre className="max-h-[200px] overflow-auto overflow-x-auto whitespace-pre-wrap rounded-md border border-border bg-background p-2 text-xs">
                       {error.stack}
-                    </Code>
+                    </pre>
                   </>
                 ) : null}
-              </Box>
+              </div>
             ) : null}
-          </Box>
+          </div>
         )}
 
-        <Text fontSize="sm" color="fg.muted" textAlign="center">
-          If this error persists, please{' '}
-          <Text as="span" color="blue.500" cursor="pointer" textDecoration="underline">
-            report it to our support team
-          </Text>
-        </Text>
-      </VStack>
-    </Box>
+        <p className="text-center text-sm text-muted-foreground">
+          If this error persists, please report it to our support team.
+        </p>
+      </CardContent>
+    </Card>
   );
 };
 
-// Higher-order component for wrapping components with error boundary
-export const withErrorBoundary = <P extends object>(
-  Component: React.ComponentType<P>,
-  fallback?: ReactNode
-) => {
+export const withErrorBoundary = <P extends object>(Component: React.ComponentType<P>, fallback?: ReactNode) => {
   const WrappedComponent = (props: P) => (
     <ErrorBoundary fallback={fallback}>
       <Component {...props} />
@@ -187,4 +142,4 @@ export const withErrorBoundary = <P extends object>(
   return WrappedComponent;
 };
 
-export default ErrorBoundary; 
+export default ErrorBoundary;

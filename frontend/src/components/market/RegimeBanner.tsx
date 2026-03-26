@@ -1,8 +1,8 @@
 import React from 'react';
-import { Box, HStack, Text, Badge, VStack } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import { marketDataApi } from '../../services/api';
 import { REGIME_HEX } from '../../constants/chart';
+import { cn } from '@/lib/utils';
 
 interface RegimeData {
   regime_state: string;
@@ -40,9 +40,9 @@ const RegimeBanner: React.FC = () => {
 
   if (isPending || !data) {
     return (
-      <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.card" mb={3}>
-        <Text fontSize="xs" color="fg.muted">Loading regime data...</Text>
-      </Box>
+      <div className="mb-3 rounded-lg border border-border bg-card p-3">
+        <p className="text-xs text-muted-foreground">Loading regime data...</p>
+      </div>
     );
   }
 
@@ -50,80 +50,86 @@ const RegimeBanner: React.FC = () => {
   const label = REGIME_LABELS[data.regime_state] || data.regime_state;
 
   return (
-    <Box
-      borderWidth="2px"
-      borderColor={color}
-      borderRadius="lg"
-      p={3}
-      bg="bg.card"
-      mb={3}
+    <div
+      className="mb-3 rounded-lg border-2 bg-card p-3"
+      style={{ borderColor: color }}
     >
-      <HStack justify="space-between" flexWrap="wrap" gap={2}>
-        <HStack gap={3}>
-          <HStack gap={2}>
-            <Box w="14px" h="14px" borderRadius="sm" bg={color} flexShrink={0} />
-            <Text fontSize="md" fontWeight="bold">
-              {data.regime_state}
-            </Text>
-            <Badge
-              variant="subtle"
-              size="sm"
-              style={{ backgroundColor: `${color}22`, color }}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div
+              className="size-3.5 shrink-0 rounded-sm"
+              style={{ backgroundColor: color }}
+              aria-hidden
+            />
+            <span className="text-base font-bold">{data.regime_state}</span>
+            <span
+              className={cn(
+                'inline-flex h-5 shrink-0 items-center rounded-full border px-2 py-0 text-xs font-medium',
+                'border-transparent'
+              )}
+              style={{
+                backgroundColor: `${color}22`,
+                color,
+              }}
             >
               {label}
-            </Badge>
-          </HStack>
-          <Text fontSize="sm" color="fg.muted">
-            Composite: <Text as="span" fontWeight="semibold" color="fg.default">{data.composite_score?.toFixed(1)}</Text>
-          </Text>
-        </HStack>
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Composite:{' '}
+            <span className="font-semibold text-foreground">
+              {data.composite_score?.toFixed(1)}
+            </span>
+          </p>
+        </div>
 
-        <HStack gap={4} flexWrap="wrap">
+        <div className="flex flex-wrap items-center gap-4">
           {data.vix_spot != null && (
-            <VStack gap={0} align="center">
-              <Text fontSize="10px" color="fg.muted">VIX</Text>
-              <Text fontSize="xs" fontWeight="semibold">{data.vix_spot.toFixed(1)}</Text>
-            </VStack>
+            <div className="flex flex-col items-center gap-0">
+              <span className="text-[10px] text-muted-foreground">VIX</span>
+              <span className="text-xs font-semibold">{data.vix_spot.toFixed(1)}</span>
+            </div>
           )}
           {data.vix3m_vix_ratio != null && (
-            <VStack gap={0} align="center">
-              <Text fontSize="10px" color="fg.muted">VIX3M/VIX</Text>
-              <Text fontSize="xs" fontWeight="semibold">{data.vix3m_vix_ratio.toFixed(2)}</Text>
-            </VStack>
+            <div className="flex flex-col items-center gap-0">
+              <span className="text-[10px] text-muted-foreground">VIX3M/VIX</span>
+              <span className="text-xs font-semibold">{data.vix3m_vix_ratio.toFixed(2)}</span>
+            </div>
           )}
           {data.nh_nl != null && (
-            <VStack gap={0} align="center">
-              <Text fontSize="10px" color="fg.muted">NH−NL</Text>
-              <Text fontSize="xs" fontWeight="semibold">{data.nh_nl}</Text>
-            </VStack>
+            <div className="flex flex-col items-center gap-0">
+              <span className="text-[10px] text-muted-foreground">NH−NL</span>
+              <span className="text-xs font-semibold">{data.nh_nl}</span>
+            </div>
           )}
           {data.pct_above_200d != null && (
-            <VStack gap={0} align="center">
-              <Text fontSize="10px" color="fg.muted">&gt;200D</Text>
-              <Text fontSize="xs" fontWeight="semibold">{data.pct_above_200d.toFixed(0)}%</Text>
-            </VStack>
+            <div className="flex flex-col items-center gap-0">
+              <span className="text-[10px] text-muted-foreground">&gt;200D</span>
+              <span className="text-xs font-semibold">{data.pct_above_200d.toFixed(0)}%</span>
+            </div>
           )}
           {data.pct_above_50d != null && (
-            <VStack gap={0} align="center">
-              <Text fontSize="10px" color="fg.muted">&gt;50D</Text>
-              <Text fontSize="xs" fontWeight="semibold">{data.pct_above_50d.toFixed(0)}%</Text>
-            </VStack>
+            <div className="flex flex-col items-center gap-0">
+              <span className="text-[10px] text-muted-foreground">&gt;50D</span>
+              <span className="text-xs font-semibold">{data.pct_above_50d.toFixed(0)}%</span>
+            </div>
           )}
           {data.regime_multiplier != null && (
-            <VStack gap={0} align="center">
-              <Text fontSize="10px" color="fg.muted">Size Mult</Text>
-              <Text fontSize="xs" fontWeight="semibold">{data.regime_multiplier.toFixed(2)}×</Text>
-            </VStack>
+            <div className="flex flex-col items-center gap-0">
+              <span className="text-[10px] text-muted-foreground">Size Mult</span>
+              <span className="text-xs font-semibold">{data.regime_multiplier.toFixed(2)}×</span>
+            </div>
           )}
           {data.max_equity_exposure_pct != null && (
-            <VStack gap={0} align="center">
-              <Text fontSize="10px" color="fg.muted">Max Eq</Text>
-              <Text fontSize="xs" fontWeight="semibold">{data.max_equity_exposure_pct.toFixed(0)}%</Text>
-            </VStack>
+            <div className="flex flex-col items-center gap-0">
+              <span className="text-[10px] text-muted-foreground">Max Eq</span>
+              <span className="text-xs font-semibold">{data.max_equity_exposure_pct.toFixed(0)}%</span>
+            </div>
           )}
-        </HStack>
-      </HStack>
-    </Box>
+        </div>
+      </div>
+    </div>
   );
 };
 

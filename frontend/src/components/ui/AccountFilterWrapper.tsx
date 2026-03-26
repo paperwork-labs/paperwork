@@ -1,14 +1,8 @@
 import React, { type ReactNode } from 'react';
-import {
-  Box,
-  VStack,
-  AlertRoot,
-  AlertIndicator,
-  AlertDescription,
-  Spinner,
-  Text,
-} from '@chakra-ui/react';
+import { Loader2 } from 'lucide-react';
+
 import AccountSelector, { type AccountData } from './AccountSelector';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAccountFilter, type FilterableItem, type AccountFilterConfig } from '../../hooks/useAccountFilter';
 import { useAccountContext } from '../../context/AccountContext';
 
@@ -49,24 +43,23 @@ function AccountFilterWrapper<T extends FilterableItem>({
   if (loading) {
     if (loadingComponent) return <>{loadingComponent}</>;
     return (
-      <VStack gap={4} py={8}>
-        <Spinner size="xl" color="brand.500" />
-        <Text color="fg.muted">Loading account data…</Text>
-      </VStack>
+      <div className="flex flex-col items-center gap-4 py-8">
+        <Loader2 className="size-8 animate-spin text-primary" aria-hidden />
+        <p className="text-sm text-muted-foreground">Loading account data…</p>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <AlertRoot status="error" borderRadius="lg" borderWidth="1px" borderColor="border.subtle" bg="bg.card">
-        <AlertIndicator />
+      <Alert variant="destructive" className="rounded-lg border">
         <AlertDescription>Error loading account data: {error}</AlertDescription>
-      </AlertRoot>
+      </Alert>
     );
   }
 
   return (
-    <VStack gap={6} align="stretch">
+    <div className="flex flex-col gap-6 items-stretch">
       <AccountSelector
         accounts={accounts}
         selectedAccount={filterState.selectedAccount}
@@ -77,11 +70,9 @@ function AccountFilterWrapper<T extends FilterableItem>({
         variant={config.variant}
       />
 
-      <Box>{children(filterState.filteredData as T[], filterState)}</Box>
-    </VStack>
+      <div>{children(filterState.filteredData as T[], filterState)}</div>
+    </div>
   );
 }
 
 export default AccountFilterWrapper;
-
-

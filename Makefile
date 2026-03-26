@@ -123,8 +123,8 @@ frontend-test:
 frontend-check: frontend-install frontend-lint frontend-typecheck frontend-test
 
 # Enqueue a task via Celery (dev). Example:
-# make task-run TASK=backend.tasks.market_data_tasks.monitor_coverage_health
-# make task-run TASK=backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked TASK_KWARGS='{"history_days":5,"history_batch_size":25}'
+# make task-run TASK=backend.tasks.market.coverage.health_check
+# make task-run TASK=backend.tasks.market.coverage.daily_bootstrap TASK_KWARGS='{"history_days":5,"history_batch_size":25}'
 TASK ?=
 TASK_ARGS ?= []
 TASK_KWARGS ?= {}
@@ -134,7 +134,7 @@ task-run:
 
 warm:
 	@echo "Queuing nightly pipeline (backfill + indicators + regime + scan)..."
-	$(COMPOSE_DEV) exec backend python -m backend.scripts.run_task "backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked" --kwargs '{"history_days":5,"history_batch_size":25}'
+	$(COMPOSE_DEV) exec backend python -m backend.scripts.run_task "backend.tasks.market.coverage.daily_bootstrap" --kwargs '{"history_days":5,"history_batch_size":25}'
 
 # IB Gateway (requires IBKR_USERNAME and IBKR_PASSWORD in env.dev)
 ib-up:

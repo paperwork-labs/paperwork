@@ -6,12 +6,13 @@ def test_backfill_last_bars_counts_empty_as_error(db_session, monkeypatch):
     Regression: transient provider failures can return df=None/empty and were previously counted as skipped_empty with errors=0.
     We now count these as errors and surface samples.
     """
-    from backend.tasks import market_data_tasks
-
-    # Force tasks to use the pytest db session (never dev DB).
-    monkeypatch.setattr(market_data_tasks, "SessionLocal", lambda: db_session)
-    monkeypatch.setattr(market_data_tasks, "_set_task_status", lambda *args, **kwargs: None)
-    monkeypatch.setattr(market_data_tasks, "_get_tracked_universe_from_db", lambda _session: ["AAA", "BBB"])
+    # backfill_last_bars lives in backend.tasks.market.backfill (not only the facade).
+    monkeypatch.setattr("backend.tasks.market.backfill.SessionLocal", lambda: db_session)
+    monkeypatch.setattr("backend.tasks.market.backfill._set_task_status", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        "backend.tasks.market.backfill._get_tracked_universe_from_db",
+        lambda _session: {"AAA", "BBB"},
+    )
 
     # Avoid real DB writes for price bars
     from backend.services.market.market_data_service import market_data_service
@@ -37,7 +38,9 @@ def test_backfill_last_bars_counts_empty_as_error(db_session, monkeypatch):
         fake_get_historical_data,
     )
 
-    res = market_data_tasks.backfill_last_bars()
+    from backend.tasks.market.backfill import daily_bars
+
+    res = daily_bars()
     assert res["tracked_total"] == 2
     assert res["updated_total"] == 1
     assert res["skipped_empty"] == 1
@@ -48,12 +51,11 @@ def test_backfill_last_bars_counts_empty_as_error(db_session, monkeypatch):
 def test_record_daily_history_defaults_to_tracked_universe(db_session, monkeypatch):
     from datetime import datetime, timezone
 
-    from backend.tasks import market_data_tasks
     from backend.models.market_data import MarketSnapshot, MarketSnapshotHistory
 
-    monkeypatch.setattr(market_data_tasks, "SessionLocal", lambda: db_session)
-    monkeypatch.setattr(market_data_tasks, "_set_task_status", lambda *args, **kwargs: None)
-    monkeypatch.setattr(market_data_tasks, "_get_tracked_symbols_safe", lambda _session: ["AAA"])
+    monkeypatch.setattr("backend.tasks.market.history.SessionLocal", lambda: db_session)
+    monkeypatch.setattr("backend.tasks.market.history._set_task_status", lambda *args, **kwargs: None)
+    monkeypatch.setattr("backend.tasks.market.history._get_tracked_symbols_safe", lambda _session: ["AAA"])
 
     # Ensure we have a snapshot row for the symbol
     snap = MarketSnapshot(
@@ -67,7 +69,9 @@ def test_record_daily_history_defaults_to_tracked_universe(db_session, monkeypat
     db_session.add(snap)
     db_session.commit()
 
-    res = market_data_tasks.record_daily_history()
+    from backend.tasks.market.history import record_daily
+
+    res = record_daily()
     assert res["symbols"] == 1
     assert res["written"] == 1
 

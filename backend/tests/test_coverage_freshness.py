@@ -7,8 +7,8 @@ from backend.api.dependencies import get_market_data_viewer
 from backend.database import get_db
 from backend.models.market_data import PriceData
 from backend.models.market_data import MarketSnapshot
-from backend.tasks import market_data_tasks
-from backend.tasks.market_data_tasks import monitor_coverage_health
+from backend.tasks.market import coverage as market_coverage_tasks
+from backend.tasks.market.coverage import health_check
 from backend.models.user import UserRole
 
 
@@ -91,13 +91,15 @@ def _seed_prices(db):
 def test_monitor_recomputes_freshness(db_session, monkeypatch):
     if db_session is None:
         pytest.skip("DB session unavailable")
-    monkeypatch.setattr(market_data_tasks, "SessionLocal", lambda: db_session)
+    monkeypatch.setattr(market_coverage_tasks, "SessionLocal", lambda: db_session)
+
     def _override_db():
         yield db_session
+
     app.dependency_overrides[get_db] = _override_db
     _seed_prices(db_session)
     try:
-        res = monitor_coverage_health()
+        res = health_check()
     finally:
         app.dependency_overrides.pop(get_db, None)
     # total = 3; fresh = 2; stale =1
@@ -111,13 +113,15 @@ def test_monitor_recomputes_freshness(db_session, monkeypatch):
 def test_coverage_endpoint_uses_recomputed_freshness(db_session, monkeypatch):
     if db_session is None:
         pytest.skip("DB session unavailable")
-    monkeypatch.setattr(market_data_tasks, "SessionLocal", lambda: db_session)
+    monkeypatch.setattr(market_coverage_tasks, "SessionLocal", lambda: db_session)
+
     def _override_db():
         yield db_session
+
     app.dependency_overrides[get_db] = _override_db
     _seed_prices(db_session)
     try:
-        res = monitor_coverage_health()  # ensures cache is set
+        res = health_check()  # ensures cache is set
         assert res["stale_daily"] == 1
         client = TestClient(app, raise_server_exceptions=False)
         resp = client.get("/api/v1/market-data/coverage")

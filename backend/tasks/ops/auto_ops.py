@@ -26,7 +26,7 @@ from celery import shared_task
 from backend.config import settings
 from backend.database import SessionLocal
 from backend.services.market.market_data_service import market_data_service
-from backend.tasks.task_utils import task_run
+from backend.tasks.utils.task_utils import task_run
 
 logger = logging.getLogger(__name__)
 
@@ -89,21 +89,21 @@ def _is_market_adjacent_hours() -> bool:
 
 REMEDIATION_MAP = {
     "coverage": [
-        ("backend.tasks.market_data_tasks.monitor_coverage_health", {}),
-        ("backend.tasks.market_data_tasks.backfill_stale_daily_tracked", {}),
+        ("backend.tasks.market.coverage.health_check", {}),
+        ("backend.tasks.market.backfill.stale_daily", {}),
     ],
     "stage_quality": [
-        ("backend.tasks.market_data_tasks.recompute_indicators_universe", {"batch_size": 50}),
+        ("backend.tasks.market.indicators.recompute_universe", {"batch_size": 50}),
     ],
     "jobs": [
-        ("backend.tasks.market_data_tasks.recover_stale_job_runs", {"stale_minutes": 120}),
+        ("backend.tasks.market.maintenance.recover_jobs", {"stale_minutes": 120}),
     ],
     "audit": [
-        ("backend.tasks.market_data_tasks.bootstrap_daily_coverage_tracked", {"history_days": 5, "history_batch_size": 25}),
-        ("backend.tasks.market_data_tasks.record_daily_history", {}),
+        ("backend.tasks.market.coverage.daily_bootstrap", {"history_days": 5, "history_batch_size": 25}),
+        ("backend.tasks.market.history.record_daily", {}),
     ],
     "regime": [
-        ("backend.tasks.market_data_tasks.compute_daily_regime", {}),
+        ("backend.tasks.market.regime.compute_daily", {}),
     ],
 }
 

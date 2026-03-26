@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Button, Input, VStack, Text, InputGroup, IconButton, Box } from '@chakra-ui/react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { FiEye, FiEyeOff } from 'react-icons/fi';
+import { Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+import { useAuth } from '../context/AuthContext';
 import AuthLayout from '../components/layout/AuthLayout';
 import AppCard from '../components/ui/AppCard';
 import FormField from '../components/ui/FormField';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 const Register: React.FC = () => {
   const { register } = useAuth();
@@ -28,8 +30,9 @@ const Register: React.FC = () => {
         return;
       }
       navigate('/');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail || err?.message || 'Registration failed');
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { detail?: string } }; message?: string };
+      toast.error(ax?.response?.data?.detail || ax?.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -38,62 +41,65 @@ const Register: React.FC = () => {
   return (
     <AuthLayout>
       <AppCard>
-        <VStack as="form" gap={4} align="stretch" onSubmit={handleSubmit}>
-          <Box>
-            <Text fontSize="xl" fontWeight="semibold" letterSpacing="-0.02em" color="fg.default">
-              Create account
-            </Text>
-            <Text mt={1} fontSize="sm" color="fg.muted">
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight text-card-foreground">Create account</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
               One minute setup. You can connect brokerages after. New accounts may need administrator approval before
               you can sign in.
-            </Text>
-          </Box>
+            </p>
+          </div>
           <FormField label="Username" required>
-            <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="yourname" />
+            <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="yourname" autoComplete="username" />
           </FormField>
           <FormField label="Email" required>
-            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              autoComplete="email"
+            />
           </FormField>
           <FormField label="Full name">
-            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Optional" />
+            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Optional" autoComplete="name" />
           </FormField>
-          <FormField label="Password" required>
-            <InputGroup
-              endElement={
-                <IconButton
-                  aria-label={showPw ? 'Hide password' : 'Show password'}
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setShowPw(!showPw)}
-                  color="fg.muted"
-                >
-                  {showPw ? <FiEyeOff /> : <FiEye />}
-                </IconButton>
-              }
-            >
-              <Input type={showPw ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
-            </InputGroup>
+          <FormField label="Password" required htmlFor="register-password">
+            <div className="relative">
+              <Input
+                id="register-password"
+                type={showPw ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="pr-10"
+                autoComplete="new-password"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="absolute top-1/2 right-1 h-7 w-7 -translate-y-1/2 text-muted-foreground"
+                aria-label={showPw ? 'Hide password' : 'Show password'}
+                onClick={() => setShowPw(!showPw)}
+              >
+                {showPw ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </Button>
+            </div>
           </FormField>
-          <Button
-            type="submit"
-            loading={loading}
-            bg="brand.500"
-            _hover={{ bg: 'brand.400' }}
-            _active={{ bg: 'brand.600' }}
-            borderRadius="lg"
-            h={11}
-          >
-            Register
+          <Button type="submit" disabled={loading} className="h-11 rounded-lg" variant="default">
+            {loading ? 'Creating account…' : 'Register'}
           </Button>
-          <Text fontSize="sm" color="fg.muted">
-            Already have an account? <Link to="/login" style={{ color: 'var(--chakra-colors-brand-700)' }}>Log in</Link>
-          </Text>
-        </VStack>
+          <p className="text-sm text-muted-foreground">
+            Already have an account?{' '}
+            <Link to="/login" className="font-medium text-primary underline-offset-4 hover:underline">
+              Log in
+            </Link>
+          </p>
+        </form>
       </AppCard>
     </AuthLayout>
   );
 };
 
 export default Register;
-
-

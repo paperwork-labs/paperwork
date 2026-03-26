@@ -1,16 +1,15 @@
-def test_backfill_snapshot_history_last_n_days_writes_rows(db_session, monkeypatch):
-    """Smoke test: backfill_snapshot_history_last_n_days writes ledger rows for last N SPY trading days."""
+def test_snapshot_last_n_days_writes_rows(db_session, monkeypatch):
+    """Smoke test: snapshot_last_n_days writes ledger rows for last N SPY trading days."""
     from datetime import datetime
 
-    from backend.tasks import market_data_tasks
+    import backend.tasks.market.history as history_tasks
 
-    # Force tasks to use the pytest db session (never dev DB).
-    monkeypatch.setattr(market_data_tasks, "SessionLocal", lambda: db_session)
-    monkeypatch.setattr(market_data_tasks, "_set_task_status", lambda *args, **kwargs: None)
+    monkeypatch.setattr(history_tasks, "SessionLocal", lambda: db_session)
+    monkeypatch.setattr(history_tasks, "_set_task_status", lambda *args, **kwargs: None)
 
-    # Stable tracked universe
+    # Stable tracked universe (history uses market_data_service from this module)
     monkeypatch.setattr(
-        market_data_tasks.market_data_service.redis_client,
+        history_tasks.market_data_service.redis_client,
         "get",
         lambda key: b'["AAA"]' if key == "tracked:all" else None,
     )
@@ -62,7 +61,9 @@ def test_backfill_snapshot_history_last_n_days_writes_rows(db_session, monkeypat
         )
     db_session.commit()
 
-    res = market_data_tasks.backfill_snapshot_history_last_n_days(days=5, batch_size=10)
+    from backend.tasks.market.history import snapshot_last_n_days
+
+    res = snapshot_last_n_days(days=5, batch_size=10)
     assert res["status"] == "ok"
     assert res["processed_symbols"] == 1
     assert res["written_rows"] >= 5

@@ -1,24 +1,27 @@
 import React from "react";
-import { CardRoot, CardBody, type CardRootProps, type CardBodyProps } from "@chakra-ui/react";
 
-type Props = CardRootProps & {
-  bodyProps?: CardBodyProps;
+import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+
+type Props = Omit<React.ComponentProps<typeof Card>, "children"> & {
+  bodyProps?: React.ComponentProps<typeof CardContent>;
   children: React.ReactNode;
 };
 
-export default function AppCard({ children, bodyProps, ...props }: Props) {
+export default function AppCard({ children, bodyProps, className, ...props }: Props) {
+  const { className: bodyClassName, ...restBody } = bodyProps ?? {};
+
   return (
-    <CardRoot
-      bg="bg.card"
-      borderColor="border.subtle"
-      borderWidth="1px"
-      borderRadius="xl"
-      boxShadow="0 18px 55px rgba(0,0,0,0.22)"
+    <Card
+      className={cn(
+        "gap-0 border border-border py-0 shadow-[0_18px_55px_rgba(0,0,0,0.22)] ring-0",
+        className
+      )}
       {...props}
     >
-      <CardBody {...bodyProps}>{children}</CardBody>
-    </CardRoot>
+      <CardContent className={cn("py-6", bodyClassName)} {...restBody}>
+        {children}
+      </CardContent>
+    </Card>
   );
 }
-
-

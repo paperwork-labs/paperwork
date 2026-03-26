@@ -1,6 +1,10 @@
 import React from 'react';
-import { Box, Badge, Button, HStack, Text } from '@chakra-ui/react';
+import { Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import api from '../../services/api';
 
 interface ActionState {
@@ -17,6 +21,9 @@ interface Props {
   sanityData: Record<string, unknown> | null;
   setSanityData: (d: Record<string, unknown> | null) => void;
 }
+
+const controlClass =
+  'h-8 min-w-0 rounded-md border border-input bg-background px-2 text-xs shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30';
 
 const AdminOperatorActions: React.FC<Props> = ({
   refreshCoverage,
@@ -35,7 +42,7 @@ const AdminOperatorActions: React.FC<Props> = ({
     '6mo' | '1y' | '2y' | '5y' | 'max'
   >('1y');
   const [sinceDate, setSinceDate] = React.useState('2021-01-01');
-  const [sinceDateTouched, setSinceDateTouched] = React.useState(false);
+  const [, setSinceDateTouched] = React.useState(false);
   const [backfillingDailyPeriod, setBackfillingDailyPeriod] = React.useState(false);
   const [backfillingSnapshotHistory, setBackfillingSnapshotHistory] = React.useState(false);
   const [backfillingSinceDate, setBackfillingSinceDate] = React.useState(false);
@@ -136,7 +143,7 @@ const AdminOperatorActions: React.FC<Props> = ({
   const runNamedTask = async (taskName: string, label: string): Promise<boolean> => {
     try {
       const taskEndpoints: Record<string, { method: 'GET' | 'POST'; endpoint: string }> = {
-        admin_indicators_recompute_universe: {
+        recompute_universe: {
           method: 'POST',
           endpoint: '/market-data/admin/indicators/recompute-universe',
         },
@@ -148,11 +155,11 @@ const AdminOperatorActions: React.FC<Props> = ({
           method: 'POST',
           endpoint: '/market-data/admin/stage/repair',
         },
-        admin_recover_stale_job_runs: {
+        recover_jobs: {
           method: 'POST',
           endpoint: '/market-data/admin/jobs/recover-stale',
         },
-        compute_daily_regime: {
+        compute_daily: {
           method: 'POST',
           endpoint: '/market-data/admin/regime/compute',
         },
@@ -224,11 +231,20 @@ const AdminOperatorActions: React.FC<Props> = ({
     setBackfillingPeriodFlow(true);
     try {
       const dailyOk = await backfillDailyBarsPeriod({ silent: true });
-      if (!dailyOk) { toast.error('Failed daily bars for selected period'); return; }
-      const indicatorsOk = await runNamedTask('admin_indicators_recompute_universe', 'Recompute indicators');
-      if (!indicatorsOk) { toast.error('Failed indicator recompute'); return; }
+      if (!dailyOk) {
+        toast.error('Failed daily bars for selected period');
+        return;
+      }
+      const indicatorsOk = await runNamedTask('recompute_universe', 'Recompute indicators');
+      if (!indicatorsOk) {
+        toast.error('Failed indicator recompute');
+        return;
+      }
       const historyOk = await backfillSnapshotHistoryPeriod({ silent: true });
-      if (!historyOk) { toast.error('Failed snapshot history'); return; }
+      if (!historyOk) {
+        toast.error('Failed snapshot history');
+        return;
+      }
       toast.success(`Queued full backfill flow (${snapshotHistoryPeriod})`);
       delayedRefresh();
       void refreshHealth();
@@ -241,7 +257,9 @@ const AdminOperatorActions: React.FC<Props> = ({
 
   const backfillDailySinceDate = async () => {
     try {
-      await api.post(`/market-data/admin/backfill/daily/since-date?since_date=${encodeURIComponent(sinceDate)}&batch_size=25`);
+      await api.post(
+        `/market-data/admin/backfill/daily/since-date?since_date=${encodeURIComponent(sinceDate)}&batch_size=25`,
+      );
       toast.success(`Queued daily backfill since ${sinceDate}`);
       void refreshHealth();
     } catch (err) {
@@ -251,7 +269,9 @@ const AdminOperatorActions: React.FC<Props> = ({
 
   const backfillSnapshotHistorySinceDate = async () => {
     try {
-      await api.post(`/market-data/admin/backfill/snapshots/history?days=3000&since_date=${encodeURIComponent(sinceDate)}`);
+      await api.post(
+        `/market-data/admin/backfill/snapshots/history?days=3000&since_date=${encodeURIComponent(sinceDate)}`,
+      );
       toast.success(`Queued snapshot history backfill since ${sinceDate}`);
       void refreshHealth();
     } catch (err) {
@@ -277,159 +297,236 @@ const AdminOperatorActions: React.FC<Props> = ({
   const benchmarkBad = sanityData?.benchmark && (sanityData.benchmark as Record<string, unknown>)?.ok === false;
 
   return (
-    <Box mt={4} display="flex" flexDirection="column" gap={2}>
-      {/* Safe actions */}
-      <Text fontSize="sm" fontWeight="semibold">Safe Actions</Text>
-      <Box display="flex" gap={2} flexWrap="wrap">
-        <Button size="sm" variant="outline" loading={state.refreshingCoverage} onClick={() => void refreshCoverageNow()}>
+    <div className="mt-4 flex flex-col gap-2">
+      <p className="text-sm font-semibold">Safe Actions</p>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={state.refreshingCoverage}
+          onClick={() => void refreshCoverageNow()}
+          className="inline-flex gap-1.5"
+        >
+          {state.refreshingCoverage ? <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden /> : null}
           Refresh Coverage
         </Button>
-        <Button size="sm" variant="outline" loading={state.sanityLoading} onClick={() => void runSanityCheck()}>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={state.sanityLoading}
+          onClick={() => void runSanityCheck()}
+          className="inline-flex gap-1.5"
+        >
+          {state.sanityLoading ? <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden /> : null}
           Sanity Check (DB)
         </Button>
-        <Button size="sm" variant="outline" loading={state.sendingDiscord} onClick={() => void sendSnapshotDigestToDiscord()}>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={state.sendingDiscord}
+          onClick={() => void sendSnapshotDigestToDiscord()}
+          className="inline-flex gap-1.5"
+        >
+          {state.sendingDiscord ? <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden /> : null}
           Send Snapshot Digest to Discord
         </Button>
-        <Button size="sm" variant="outline" onClick={() => void runNamedTask('compute_daily_regime', 'Compute regime')}>
+        <Button size="sm" variant="outline" onClick={() => void runNamedTask('compute_daily', 'Compute regime')}>
           Compute Market Regime
         </Button>
-      </Box>
+      </div>
 
       {benchmarkBad ? (
-        <Text fontSize="xs" color="status.danger">
+        <p className="text-xs text-[rgb(var(--status-danger)/1)]">
           SPY history is missing. Stage/RS cannot be computed until daily bars are backfilled.
-        </Text>
+        </p>
       ) : null}
 
-      {/* Backfill actions */}
-      <Text fontSize="sm" fontWeight="semibold" mt={2}>Backfill Actions</Text>
-      <Box display="flex" gap={2} flexWrap="wrap">
-        <Button colorScheme="brand" size="sm" loading={state.restoringDaily} onClick={() => void restoreDailyCoverageTracked()}>
+      <p className="mt-2 text-sm font-semibold">Backfill Actions</p>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          disabled={state.restoringDaily}
+          onClick={() => void restoreDailyCoverageTracked()}
+          className="inline-flex gap-1.5"
+        >
+          {state.restoringDaily ? <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden /> : null}
           Backfill Daily Coverage (Tracked)
         </Button>
-        <Button variant="outline" size="sm" loading={state.backfillingStale} onClick={() => void backfillStaleDailyOnly()}>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={state.backfillingStale}
+          onClick={() => void backfillStaleDailyOnly()}
+          className="inline-flex gap-1.5"
+        >
+          {state.backfillingStale ? <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden /> : null}
           Backfill Daily (Stale Only)
         </Button>
-      </Box>
+      </div>
 
-      {/* Advanced Controls */}
-      <Text fontSize="sm" fontWeight="semibold" mt={2}>Advanced Controls</Text>
-      <Box mt={2} borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} bg="bg.muted">
-        <Text fontSize="xs" color="fg.muted" mb={2}>
+      <p className="mt-2 text-sm font-semibold">Advanced Controls</p>
+      <div className="mt-2 rounded-lg border border-border bg-muted/50 p-3">
+        <p className="mb-2 text-xs text-muted-foreground">
           Granular controls for debugging and maintenance. These are typically handled by automated agents.
-        </Text>
-          <Box mt={3} display="grid" gridTemplateColumns={{ base: '1fr', lg: '1.1fr 0.9fr' }} gap={3}>
-            <Box borderWidth="1px" borderColor="border.subtle" borderRadius="md" bg="bg.card" px={3} py={2}>
-              <Text fontSize="xs" fontWeight="semibold" color="fg.default" mb={2}>Backfill</Text>
-              <Text fontSize="xs" color="fg.muted" mb={2}>
-                Use "Backfill Daily Coverage" for missing days. Snapshot History backfills are for analytics/backtesting.
-              </Text>
-              <Box display="flex" flexDirection="column" gap={3}>
-                <Box>
-                  <Text fontSize="xs" color="fg.muted" mb={1}>Since date</Text>
-                  <Box display="flex" gap={2} flexWrap="wrap" alignItems="center">
-                    <input
-                      type="date"
-                      value={sinceDate}
-                      onChange={(e) => { setSinceDateTouched(true); setSinceDate(e.target.value); }}
-                      style={{
-                        fontSize: 12, padding: '6px 8px', borderRadius: 10,
-                        border: '1px solid var(--chakra-colors-border-subtle)',
-                        background: 'var(--chakra-colors-bg-input)',
-                        color: 'var(--chakra-colors-fg-default)',
-                      }}
-                    />
-                    <Button size="xs" variant="outline" onClick={() => void backfillDailySinceDate()}>
-                      Backfill Daily Bars (since)
-                    </Button>
-                    <Button size="xs" variant="outline" onClick={() => void backfillSnapshotHistorySinceDate()}>
-                      Backfill Snapshot History (since)
-                    </Button>
-                  </Box>
-                  <Box mt={2} display="flex" flexDirection="column" gap={1}>
-                    <Box display="flex" gap={2} flexWrap="wrap" alignItems="center">
-                      <Button size="xs" colorScheme="brand" loading={backfillingSinceDate} onClick={() => void backfillSinceDate()}>
-                        Backfill Full Flow (since date)
-                      </Button>
-                    </Box>
-                    <Text fontSize="xs" color="fg.muted">
-                      1. Fetch OHLCV bars from provider → 2. Compute indicator series (SMA, RSI, MACD, Stage, RS...) → 3. Persist to MarketSnapshotHistory (immutable daily ledger)
-                    </Text>
-                  </Box>
-                </Box>
-                <Box>
-                  <Text fontSize="xs" color="fg.muted" mb={1}>Period</Text>
-                  <Box display="flex" gap={2} flexWrap="wrap" alignItems="center">
-                    <select
-                      aria-label="Snapshot history period"
-                      value={snapshotHistoryPeriod}
-                      onChange={(e) => setSnapshotHistoryPeriod(e.target.value as '6mo' | '1y' | '2y' | '5y' | 'max')}
-                      style={{
-                        fontSize: 12, padding: '6px 8px', borderRadius: 10,
-                        border: '1px solid var(--chakra-colors-border-subtle)',
-                        background: 'var(--chakra-colors-bg-input)',
-                        color: 'var(--chakra-colors-fg-default)',
-                      }}
+        </p>
+        <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-md border border-border bg-card px-3 py-2">
+            <p className="mb-2 text-xs font-semibold text-foreground">Backfill</p>
+            <p className="mb-2 text-xs text-muted-foreground">
+              Use &quot;Backfill Daily Coverage&quot; for missing days. Snapshot History backfills are for analytics/backtesting.
+            </p>
+            <div className="flex flex-col gap-3">
+              <div>
+                <p className="mb-1 text-xs text-muted-foreground">Since date</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input
+                    type="date"
+                    value={sinceDate}
+                    onChange={(e) => {
+                      setSinceDateTouched(true);
+                      setSinceDate(e.target.value);
+                    }}
+                    className={cn(controlClass, 'w-auto min-w-[9.5rem]')}
+                  />
+                  <Button size="xs" variant="outline" onClick={() => void backfillDailySinceDate()}>
+                    Backfill Daily Bars (since)
+                  </Button>
+                  <Button size="xs" variant="outline" onClick={() => void backfillSnapshotHistorySinceDate()}>
+                    Backfill Snapshot History (since)
+                  </Button>
+                </div>
+                <div className="mt-2 flex flex-col gap-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      size="xs"
+                      disabled={backfillingSinceDate}
+                      onClick={() => void backfillSinceDate()}
+                      className="inline-flex gap-1.5"
                     >
-                      <option value="6mo">6mo (~126d)</option>
-                      <option value="1y">1y (~252d)</option>
-                      <option value="2y">2y (~504d)</option>
-                      <option value="5y">5y (~1260d)</option>
-                      <option value="max">max (≤3000d)</option>
-                    </select>
-                    <Button size="xs" variant="outline" loading={backfillingDailyPeriod} onClick={() => void backfillDailyBarsPeriod()}>
-                      Backfill Daily Bars (period)
+                      {backfillingSinceDate ? <Loader2 className="size-3 shrink-0 animate-spin" aria-hidden /> : null}
+                      Backfill Full Flow (since date)
                     </Button>
-                    <Button size="xs" variant="outline" loading={backfillingSnapshotHistory} onClick={() => void backfillSnapshotHistoryPeriod()}>
-                      Backfill Snapshot History (period)
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    1. Fetch OHLCV bars from provider → 2. Compute indicator series (SMA, RSI, MACD, Stage, RS...) → 3.
+                    Persist to MarketSnapshotHistory (immutable daily ledger)
+                  </p>
+                </div>
+              </div>
+              <div>
+                <p className="mb-1 text-xs text-muted-foreground">Period</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    aria-label="Snapshot history period"
+                    value={snapshotHistoryPeriod}
+                    onChange={(e) =>
+                      setSnapshotHistoryPeriod(e.target.value as '6mo' | '1y' | '2y' | '5y' | 'max')
+                    }
+                    className={cn(controlClass, 'min-w-[8.5rem]')}
+                  >
+                    <option value="6mo">6mo (~126d)</option>
+                    <option value="1y">1y (~252d)</option>
+                    <option value="2y">2y (~504d)</option>
+                    <option value="5y">5y (~1260d)</option>
+                    <option value="max">max (≤3000d)</option>
+                  </select>
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    disabled={backfillingDailyPeriod}
+                    onClick={() => void backfillDailyBarsPeriod()}
+                    className="inline-flex gap-1.5"
+                  >
+                    {backfillingDailyPeriod ? <Loader2 className="size-3 shrink-0 animate-spin" aria-hidden /> : null}
+                    Backfill Daily Bars (period)
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    disabled={backfillingSnapshotHistory}
+                    onClick={() => void backfillSnapshotHistoryPeriod()}
+                    className="inline-flex gap-1.5"
+                  >
+                    {backfillingSnapshotHistory ? (
+                      <Loader2 className="size-3 shrink-0 animate-spin" aria-hidden />
+                    ) : null}
+                    Backfill Snapshot History (period)
+                  </Button>
+                </div>
+                <div className="mt-2 flex flex-col gap-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      size="xs"
+                      disabled={backfillingPeriodFlow}
+                      onClick={() => void backfillPeriodFlow()}
+                      className="inline-flex gap-1.5"
+                    >
+                      {backfillingPeriodFlow ? <Loader2 className="size-3 shrink-0 animate-spin" aria-hidden /> : null}
+                      Backfill Full Flow (period)
                     </Button>
-                  </Box>
-                  <Box mt={2} display="flex" flexDirection="column" gap={1}>
-                    <Box display="flex" gap={2} flexWrap="wrap" alignItems="center">
-                      <Button size="xs" colorScheme="brand" loading={backfillingPeriodFlow} onClick={() => void backfillPeriodFlow()}>
-                        Backfill Full Flow (period)
-                      </Button>
-                    </Box>
-                    <Text fontSize="xs" color="fg.muted">
-                      1. Fetch OHLCV bars from provider → 2. Compute indicator series (SMA, RSI, MACD, Stage, RS...) → 3. Persist to MarketSnapshotHistory (immutable daily ledger)
-                    </Text>
-                  </Box>
-                </Box>
-              </Box>
-            </Box>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    1. Fetch OHLCV bars from provider → 2. Compute indicator series (SMA, RSI, MACD, Stage, RS...) → 3.
+                    Persist to MarketSnapshotHistory (immutable daily ledger)
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
 
-            <Box borderWidth="1px" borderColor="border.subtle" borderRadius="md" bg="bg.card" px={3} py={2}>
-              <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-                <Text fontSize="xs" fontWeight="semibold" color="fg.default">Maintenance</Text>
-                <Badge size="sm" variant="subtle">ops</Badge>
-              </Box>
-              <Box display="flex" flexDirection="column" gap={2}>
-                <Text fontSize="xs" color="fg.muted">Compute</Text>
-                <Box display="flex" gap={2} flexWrap="wrap">
-                  <Button size="xs" variant="outline" onClick={() => void runNamedTask('admin_indicators_recompute_universe', 'Recompute indicators')}>
-                    Recompute Indicators (Market Snapshot)
-                  </Button>
-                </Box>
-                <Text mt={2} fontSize="xs" color="fg.muted">Maintenance</Text>
-                <Box display="flex" gap={2} flexWrap="wrap">
-                  <Button size="xs" variant="outline" onClick={() => void runNamedTask('admin_fundamentals_fill_missing', 'Fill missing fundamentals queued')}>
-                    Fill Missing Fundamentals
-                  </Button>
-                  <Button size="xs" variant="outline" onClick={() => void runNamedTask('admin_stage_repair', 'Repair stage history completed')}>
-                    Repair Stage History
-                  </Button>
-                  <Button size="xs" variant="outline" onClick={() => void runNamedTask('admin_recover_stale_job_runs', 'Stale jobs recovered')}>
-                    Recover Stale Job Runs
-                  </Button>
-                </Box>
-                <Text mt={2} fontSize="xs" color="fg.muted">
-                  If Stage/RS look empty, run "Recompute Indicators (Market Snapshot)". If jobs list shows many "running", run "Recover Stale Job Runs".
-                </Text>
-              </Box>
-            </Box>
-          </Box>
-        </Box>
-    </Box>
+          <div className="rounded-md border border-border bg-card px-3 py-2">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-xs font-semibold text-foreground">Maintenance</p>
+              <Badge variant="secondary" className="text-xs">
+                ops
+              </Badge>
+            </div>
+            <div className="flex flex-col gap-2">
+              <p className="text-xs text-muted-foreground">Compute</p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="xs"
+                  variant="outline"
+                  onClick={() => void runNamedTask('recompute_universe', 'Recompute indicators')}
+                >
+                  Recompute Indicators (Market Snapshot)
+                </Button>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">Maintenance</p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="xs"
+                  variant="outline"
+                  onClick={() =>
+                    void runNamedTask('admin_fundamentals_fill_missing', 'Fill missing fundamentals queued')
+                  }
+                >
+                  Fill Missing Fundamentals
+                </Button>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  onClick={() => void runNamedTask('admin_stage_repair', 'Repair stage history completed')}
+                >
+                  Repair Stage History
+                </Button>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  onClick={() => void runNamedTask('recover_jobs', 'Stale jobs recovered')}
+                >
+                  Recover Stale Jobs
+                </Button>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                If Stage/RS look empty, run &quot;Recompute Indicators (Market Snapshot)&quot;. If jobs list shows many
+                &quot;running&quot;, run &quot;Recover Stale Jobs&quot;.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

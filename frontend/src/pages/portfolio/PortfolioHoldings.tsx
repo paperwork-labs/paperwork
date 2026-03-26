@@ -1,14 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Box,
-  Text,
-  HStack,
-  Button,
-  CardRoot,
-  CardBody,
-  Badge,
-} from '@chakra-ui/react';
-import { FiRefreshCw } from 'react-icons/fi';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { ChartContext, SymbolLink, ChartSlidePanel } from '../../components/market/SymbolChartUI';
@@ -26,11 +17,26 @@ import { buildAccountsFromPositions } from '../../utils/portfolio';
 import type { AccountData } from '../../hooks/useAccountFilter';
 import type { EnrichedPosition } from '../../types/portfolio';
 import TradeModal from '../../components/orders/TradeModal';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
+import { semanticTextColorClass } from '@/lib/semantic-text-color';
 
-type TradeTarget = { symbol: string; currentPrice: number; sharesHeld: number; averageCost?: number; positionId?: number } | null;
+type TradeTarget = {
+  symbol: string;
+  currentPrice: number;
+  sharesHeld: number;
+  averageCost?: number;
+  positionId?: number;
+} | null;
 
 function isNonOptionPosition(p: EnrichedPosition): boolean {
-  const t = String((p as { instrument_type?: string; asset_class?: string })?.instrument_type ?? (p as { instrument_type?: string; asset_class?: string })?.asset_class ?? '').toLowerCase();
+  const t = String(
+    (p as { instrument_type?: string; asset_class?: string })?.instrument_type ??
+      (p as { instrument_type?: string; asset_class?: string })?.asset_class ??
+      '',
+  ).toLowerCase();
   return !t.includes('option');
 }
 
@@ -48,11 +54,17 @@ const HOLDINGS_FILTER_PRESETS: Array<{ label: string; filters: FilterGroup }> = 
   },
   {
     label: 'Winners',
-    filters: { conjunction: 'AND', rules: [{ id: 'w', columnKey: 'unrealized_pnl', operator: 'gt', valueSource: 'literal', value: '0' }] },
+    filters: {
+      conjunction: 'AND',
+      rules: [{ id: 'w', columnKey: 'unrealized_pnl', operator: 'gt', valueSource: 'literal', value: '0' }],
+    },
   },
   {
     label: 'Losers',
-    filters: { conjunction: 'AND', rules: [{ id: 'l', columnKey: 'unrealized_pnl', operator: 'lt', valueSource: 'literal', value: '0' }] },
+    filters: {
+      conjunction: 'AND',
+      rules: [{ id: 'l', columnKey: 'unrealized_pnl', operator: 'lt', valueSource: 'literal', value: '0' }],
+    },
   },
   {
     label: 'Declining (3+4)',
@@ -66,15 +78,24 @@ const HOLDINGS_FILTER_PRESETS: Array<{ label: string; filters: FilterGroup }> = 
   },
   {
     label: 'High RS (>80)',
-    filters: { conjunction: 'AND', rules: [{ id: 'hrs', columnKey: 'rs_mansfield_pct', operator: 'gt', valueSource: 'literal', value: '80' }] },
+    filters: {
+      conjunction: 'AND',
+      rules: [{ id: 'hrs', columnKey: 'rs_mansfield_pct', operator: 'gt', valueSource: 'literal', value: '80' }],
+    },
   },
   {
     label: 'Oversold (RSI<30)',
-    filters: { conjunction: 'AND', rules: [{ id: 'os', columnKey: 'rsi', operator: 'lt', valueSource: 'literal', value: '30' }] },
+    filters: {
+      conjunction: 'AND',
+      rules: [{ id: 'os', columnKey: 'rsi', operator: 'lt', valueSource: 'literal', value: '30' }],
+    },
   },
   {
     label: 'Concentrated (>10%)',
-    filters: { conjunction: 'AND', rules: [{ id: 'conc', columnKey: 'weight_pct', operator: 'gt', valueSource: 'literal', value: '10' }] },
+    filters: {
+      conjunction: 'AND',
+      rules: [{ id: 'conc', columnKey: 'weight_pct', operator: 'gt', valueSource: 'literal', value: '10' }],
+    },
   },
 ];
 
@@ -97,16 +118,16 @@ const PortfolioHoldings: React.FC = () => {
   const accounts: AccountData[] = useMemo(
     () =>
       buildAccountsFromPositions(
-        rawAccounts.map((a: any) => ({
-          id: a.id,
-          account_number: a.account_number ?? String(a.id),
-          broker: a.broker ?? 'Unknown',
-          account_name: a.account_name,
-          account_type: a.account_type,
+        rawAccounts.map((a: Record<string, unknown>) => ({
+          id: a.id as number | undefined,
+          account_number: (a.account_number as string) ?? String(a.id),
+          broker: (a.broker as string) ?? 'Unknown',
+          account_name: a.account_name as string | undefined,
+          account_type: a.account_type as string | undefined,
         })),
-        positions
+        positions,
       ),
-    [rawAccounts, positions]
+    [rawAccounts, positions],
   );
 
   const filterState = useAccountFilter(positions as import('../../hooks/useAccountFilter').FilterableItem[], accounts);
@@ -115,7 +136,11 @@ const PortfolioHoldings: React.FC = () => {
   const priceRefreshTriggered = useRef(false);
   useEffect(() => {
     if (priceRefreshTriggered.current || positions.length === 0 || positionsQuery.isPending) return;
-    const missingPrice = positions.some(p => Number(p.current_price ?? 0) === 0 && Number(p.shares ?? (p as { quantity?: number }).quantity ?? 0) !== 0);
+    const missingPrice = positions.some(
+      (p) =>
+        Number(p.current_price ?? 0) === 0 &&
+        Number(p.shares ?? (p as { quantity?: number }).quantity ?? 0) !== 0,
+    );
     if (missingPrice) {
       priceRefreshTriggered.current = true;
       fetch('/api/v1/accounts/prices/refresh', { method: 'POST' })
@@ -153,9 +178,7 @@ const PortfolioHoldings: React.FC = () => {
         accessor: (p) => p.symbol,
         sortable: true,
         sortType: 'string',
-        render: (_, row) => (
-          <SymbolLink symbol={row.symbol} />
-        ),
+        render: (_, row) => <SymbolLink symbol={row.symbol} />,
         width: '100px',
       },
       {
@@ -164,7 +187,7 @@ const PortfolioHoldings: React.FC = () => {
         accessor: (p) => `${(p.broker || '').toUpperCase()} ${(p.account_number || '').slice(-4)}`,
         sortable: true,
         sortType: 'string',
-        render: (v) => <Text fontSize="xs" color="fg.muted">{String(v)}</Text>,
+        render: (v) => <span className="text-xs text-muted-foreground">{String(v)}</span>,
         width: '110px',
       },
       {
@@ -179,11 +202,21 @@ const PortfolioHoldings: React.FC = () => {
       {
         key: 'average_cost',
         header: 'Avg Cost',
-        accessor: (p) => p.average_cost != null ? Number(p.average_cost) : null,
+        accessor: (p) => (p.average_cost != null ? Number(p.average_cost) : null),
         sortable: true,
         sortType: 'number',
         isNumeric: true,
-        render: (v) => v == null ? <Text fontSize="sm" color="fg.muted" title="Cost basis unavailable (transferred position)">N/A</Text> : <Text fontSize="sm" color="fg.muted">{formatMoney(Number(v), currency)}</Text>,
+        render: (v) =>
+          v == null ? (
+            <span
+              className="text-sm text-muted-foreground"
+              title="Cost basis unavailable (transferred position)"
+            >
+              N/A
+            </span>
+          ) : (
+            <span className="text-sm text-muted-foreground">{formatMoney(Number(v), currency)}</span>
+          ),
         width: '100px',
       },
       {
@@ -193,7 +226,12 @@ const PortfolioHoldings: React.FC = () => {
         sortable: true,
         sortType: 'number',
         isNumeric: true,
-        render: (v) => Number(v) === 0 ? <Text fontSize="sm" color="fg.subtle">···</Text> : <Text fontSize="sm" color="fg.muted">{formatMoney(Number(v), currency)}</Text>,
+        render: (v) =>
+          Number(v) === 0 ? (
+            <span className={cn('text-sm', semanticTextColorClass('fg.subtle'))}>···</span>
+          ) : (
+            <span className="text-sm text-muted-foreground">{formatMoney(Number(v), currency)}</span>
+          ),
         width: '100px',
       },
       {
@@ -203,7 +241,14 @@ const PortfolioHoldings: React.FC = () => {
         sortable: true,
         sortType: 'number',
         isNumeric: true,
-        render: (v, row) => Number(row.current_price ?? 0) === 0 ? <Text fontSize="sm" color="fg.subtle">···</Text> : <Text fontSize="sm" color="fg.muted">{formatMoney(Number(v), currency, { maximumFractionDigits: 0 })}</Text>,
+        render: (v, row) =>
+          Number(row.current_price ?? 0) === 0 ? (
+            <span className={cn('text-sm', semanticTextColorClass('fg.subtle'))}>···</span>
+          ) : (
+            <span className="text-sm text-muted-foreground">
+              {formatMoney(Number(v), currency, { maximumFractionDigits: 0 })}
+            </span>
+          ),
         width: '110px',
       },
       {
@@ -243,7 +288,7 @@ const PortfolioHoldings: React.FC = () => {
         sortable: true,
         sortType: 'number',
         isNumeric: true,
-        render: (v) => <Text fontSize="sm" color="fg.muted">{Number(v).toFixed(1)}%</Text>,
+        render: (v) => <span className="text-sm text-muted-foreground">{Number(v).toFixed(1)}%</span>,
         width: '90px',
       },
       {
@@ -252,7 +297,12 @@ const PortfolioHoldings: React.FC = () => {
         accessor: (p) => p.stage_label ?? '—',
         sortable: true,
         sortType: 'string',
-        render: (v) => (v && v !== '—' ? <StageBadge stage={String(v)} size="sm" /> : <Text fontSize="xs" color="fg.muted">—</Text>),
+        render: (v) =>
+          v && v !== '—' ? (
+            <StageBadge stage={String(v)} size="sm" />
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          ),
         width: '70px',
       },
       {
@@ -263,22 +313,28 @@ const PortfolioHoldings: React.FC = () => {
         sortType: 'number',
         isNumeric: true,
         render: (v) => (
-          <Text fontSize="sm" color={Number(v) >= 0 ? 'status.success' : 'fg.muted'}>
+          <span
+            className={cn('text-sm', semanticTextColorClass(Number(v) >= 0 ? 'status.success' : 'fg.muted'))}
+          >
             {Number(v).toFixed(1)}%
-          </Text>
+          </span>
         ),
         width: '80px',
       },
       {
         key: 'current_stage_days',
         header: 'Stage Days',
-        accessor: (p) => (p as any).current_stage_days ?? null,
+        accessor: (p) => (p as { current_stage_days?: number }).current_stage_days ?? null,
         sortable: true,
         sortType: 'number',
         isNumeric: true,
         render: (v) => {
           const n = Number(v);
-          return n ? <Text fontSize="sm" color="fg.muted">{n}d</Text> : <Text fontSize="sm" color="fg.muted">—</Text>;
+          return n ? (
+            <span className="text-sm text-muted-foreground">{n}d</span>
+          ) : (
+            <span className="text-sm text-muted-foreground">—</span>
+          );
         },
         width: '80px',
       },
@@ -286,28 +342,46 @@ const PortfolioHoldings: React.FC = () => {
         key: 'td_signal',
         header: 'TD Seq',
         accessor: (p) => {
-          const buy = (p as any).td_buy_setup ?? 0;
-          const sell = (p as any).td_sell_setup ?? 0;
+          const buy = (p as { td_buy_setup?: number }).td_buy_setup ?? 0;
+          const sell = (p as { td_sell_setup?: number }).td_sell_setup ?? 0;
           return buy >= 9 ? buy : sell >= 9 ? -sell : buy > sell ? buy : -sell;
         },
         sortable: true,
         sortType: 'number',
         render: (_, row) => {
-          const r = row as any;
+          const r = row as {
+            td_buy_complete?: boolean;
+            td_buy_setup?: number;
+            td_sell_complete?: boolean;
+            td_sell_setup?: number;
+            td_buy_countdown?: number;
+            td_sell_countdown?: number;
+          };
           const parts: string[] = [];
           if (r.td_buy_complete) parts.push('Buy 9');
-          else if (r.td_buy_setup >= 7) parts.push(`B${r.td_buy_setup}`);
+          else if ((r.td_buy_setup ?? 0) >= 7) parts.push(`B${r.td_buy_setup}`);
           if (r.td_sell_complete) parts.push('Sell 9');
-          else if (r.td_sell_setup >= 7) parts.push(`S${r.td_sell_setup}`);
-          if (r.td_buy_countdown >= 12) parts.push(`BC${r.td_buy_countdown}`);
-          if (r.td_sell_countdown >= 12) parts.push(`SC${r.td_sell_countdown}`);
-          if (!parts.length) return <Text fontSize="xs" color="fg.muted">—</Text>;
+          else if ((r.td_sell_setup ?? 0) >= 7) parts.push(`S${r.td_sell_setup}`);
+          if ((r.td_buy_countdown ?? 0) >= 12) parts.push(`BC${r.td_buy_countdown}`);
+          if ((r.td_sell_countdown ?? 0) >= 12) parts.push(`SC${r.td_sell_countdown}`);
+          if (!parts.length) return <span className="text-xs text-muted-foreground">—</span>;
           return (
-            <HStack gap={0.5}>
+            <div className="flex flex-wrap gap-0.5">
               {parts.map((p, i) => (
-                <Badge key={i} size="sm" variant="outline" colorPalette={p.startsWith('B') ? 'green' : 'red'}>{p}</Badge>
+                <Badge
+                  key={i}
+                  variant="outline"
+                  className={cn(
+                    'h-5 px-1.5 text-[10px]',
+                    p.startsWith('B')
+                      ? 'border-emerald-500/40 text-emerald-700 dark:text-emerald-300'
+                      : 'border-red-500/40 text-red-700 dark:text-red-300',
+                  )}
+                >
+                  {p}
+                </Badge>
               ))}
-            </HStack>
+            </div>
           );
         },
         width: '90px',
@@ -315,19 +389,21 @@ const PortfolioHoldings: React.FC = () => {
       {
         key: 'gaps',
         header: 'Gaps',
-        accessor: (p) => ((p as any).gaps_unfilled_up ?? 0) + ((p as any).gaps_unfilled_down ?? 0),
+        accessor: (p) =>
+          ((p as { gaps_unfilled_up?: number }).gaps_unfilled_up ?? 0) +
+          ((p as { gaps_unfilled_down?: number }).gaps_unfilled_down ?? 0),
         sortable: true,
         sortType: 'number',
         isNumeric: true,
         render: (_, row) => {
-          const up = (row as any).gaps_unfilled_up ?? 0;
-          const dn = (row as any).gaps_unfilled_down ?? 0;
-          if (!up && !dn) return <Text fontSize="xs" color="fg.muted">—</Text>;
+          const up = (row as { gaps_unfilled_up?: number }).gaps_unfilled_up ?? 0;
+          const dn = (row as { gaps_unfilled_down?: number }).gaps_unfilled_down ?? 0;
+          if (!up && !dn) return <span className="text-xs text-muted-foreground">—</span>;
           return (
-            <HStack gap={1}>
-              {up > 0 && <Text fontSize="xs" color="green.400">{up}↑</Text>}
-              {dn > 0 && <Text fontSize="xs" color="red.400">{dn}↓</Text>}
-            </HStack>
+            <div className="flex gap-1">
+              {up > 0 && <span className={cn('text-xs', semanticTextColorClass('green.400'))}>{up}↑</span>}
+              {dn > 0 && <span className={cn('text-xs', semanticTextColorClass('red.400'))}>{dn}↓</span>}
+            </div>
           );
         },
         width: '70px',
@@ -335,31 +411,35 @@ const PortfolioHoldings: React.FC = () => {
       {
         key: 'pe_ttm',
         header: 'P/E',
-        accessor: (p) => (p as any).pe_ttm ?? null,
+        accessor: (p) => (p as { pe_ttm?: number | null }).pe_ttm ?? null,
         sortable: true,
         sortType: 'number',
         isNumeric: true,
         render: (v) => {
-          if (v == null) return <Text fontSize="xs" color="fg.muted">—</Text>;
+          if (v == null) return <span className="text-xs text-muted-foreground">—</span>;
           const n = Number(v);
-          const color = n < 0 ? 'red.400' : n > 50 ? 'yellow.400' : 'fg.muted';
-          return <Text fontSize="xs" color={color}>{n.toFixed(1)}</Text>;
+          const colorKey = n < 0 ? 'red.400' : n > 50 ? 'yellow.400' : 'fg.muted';
+          return <span className={cn('text-xs', semanticTextColorClass(colorKey))}>{n.toFixed(1)}</span>;
         },
         width: '65px',
       },
       {
         key: 'next_earnings',
         header: 'Earnings',
-        accessor: (p) => (p as any).next_earnings ?? null,
+        accessor: (p) => (p as { next_earnings?: string | null }).next_earnings ?? null,
         sortable: true,
         sortType: 'date',
         render: (v) => {
-          if (!v) return <Text fontSize="xs" color="fg.muted">—</Text>;
+          if (!v) return <span className="text-xs text-muted-foreground">—</span>;
           const d = new Date(String(v));
-          if (isNaN(d.getTime())) return <Text fontSize="xs" color="fg.muted">—</Text>;
+          if (isNaN(d.getTime())) return <span className="text-xs text-muted-foreground">—</span>;
           const daysOut = Math.ceil((d.getTime() - Date.now()) / (1000 * 86400));
-          const color = daysOut <= 7 ? 'yellow.400' : 'fg.muted';
-          return <Text fontSize="xs" color={color}>{formatDateShort(v, timezone)}</Text>;
+          const colorKey = daysOut <= 7 ? 'yellow.400' : 'fg.muted';
+          return (
+            <span className={cn('text-xs', semanticTextColorClass(colorKey))}>
+              {formatDateShort(v, timezone)}
+            </span>
+          );
         },
         width: '80px',
       },
@@ -368,19 +448,31 @@ const PortfolioHoldings: React.FC = () => {
         header: 'Cost Basis',
         accessor: (p) => {
           if (p.cost_basis != null) return Number(p.cost_basis);
-          if (p.average_cost != null) return Number(p.average_cost) * Number((p as any).shares ?? 0);
+          if (p.average_cost != null) return Number(p.average_cost) * Number((p as { shares?: number }).shares ?? 0);
           return null;
         },
         sortable: true,
         sortType: 'number',
         isNumeric: true,
-        render: (v) => v == null ? <Text fontSize="sm" color="fg.muted" title="Cost basis unavailable (transferred position)">N/A</Text> : <Text fontSize="sm" color="fg.muted">{formatMoney(Number(v), currency, { maximumFractionDigits: 0 })}</Text>,
+        render: (v) =>
+          v == null ? (
+            <span
+              className="text-sm text-muted-foreground"
+              title="Cost basis unavailable (transferred position)"
+            >
+              N/A
+            </span>
+          ) : (
+            <span className="text-sm text-muted-foreground">
+              {formatMoney(Number(v), currency, { maximumFractionDigits: 0 })}
+            </span>
+          ),
         width: '110px',
       },
       {
         key: 'perf_5d',
         header: '5D %',
-        accessor: (p) => Number((p as any).perf_5d ?? 0),
+        accessor: (p) => Number((p as { perf_5d?: number }).perf_5d ?? 0),
         sortable: true,
         sortType: 'number',
         isNumeric: true,
@@ -391,7 +483,7 @@ const PortfolioHoldings: React.FC = () => {
       {
         key: 'perf_20d',
         header: '20D %',
-        accessor: (p) => Number((p as any).perf_20d ?? 0),
+        accessor: (p) => Number((p as { perf_20d?: number }).perf_20d ?? 0),
         sortable: true,
         sortType: 'number',
         isNumeric: true,
@@ -402,14 +494,18 @@ const PortfolioHoldings: React.FC = () => {
       {
         key: 'rsi',
         header: 'RSI',
-        accessor: (p) => Number((p as any).rsi ?? 0),
+        accessor: (p) => Number((p as { rsi?: number }).rsi ?? 0),
         sortable: true,
         sortType: 'number',
         isNumeric: true,
         render: (v) => {
           const n = Number(v);
-          const color = n > 70 ? 'status.danger' : n < 30 ? 'status.success' : 'fg.muted';
-          return <Text fontSize="sm" color={color}>{n ? n.toFixed(0) : '—'}</Text>;
+          const colorKey = n > 70 ? 'status.danger' : n < 30 ? 'status.success' : 'fg.muted';
+          return (
+            <span className={cn('text-sm', semanticTextColorClass(colorKey))}>
+              {n ? n.toFixed(0) : '—'}
+            </span>
+          );
         },
         width: '65px',
         hidden: true,
@@ -417,11 +513,15 @@ const PortfolioHoldings: React.FC = () => {
       {
         key: 'atr_14',
         header: 'ATR',
-        accessor: (p) => Number((p as any).atr_14 ?? 0),
+        accessor: (p) => Number((p as { atr_14?: number }).atr_14 ?? 0),
         sortable: true,
         sortType: 'number',
         isNumeric: true,
-        render: (v) => <Text fontSize="sm" color="fg.muted">{Number(v) ? Number(v).toFixed(2) : '—'}</Text>,
+        render: (v) => (
+          <span className="text-sm text-muted-foreground">
+            {Number(v) ? Number(v).toFixed(2) : '—'}
+          </span>
+        ),
         width: '75px',
         hidden: true,
       },
@@ -431,25 +531,25 @@ const PortfolioHoldings: React.FC = () => {
         accessor: (p) => (p.sector as string) ?? '—',
         sortable: true,
         sortType: 'string',
-        render: (v) => <Text fontSize="xs" color="fg.muted">{String(v || '—')}</Text>,
+        render: (v) => <span className="text-xs text-muted-foreground">{String(v || '—')}</span>,
         width: '100px',
       },
       {
         key: 'market_cap_label',
         header: 'Market Cap',
-        accessor: (p) => (p as any).market_cap_label ?? '—',
+        accessor: (p) => (p as { market_cap_label?: string }).market_cap_label ?? '—',
         sortable: true,
         sortType: 'string',
-        render: (v) => <Text fontSize="xs" color="fg.muted">{String(v || '—')}</Text>,
+        render: (v) => <span className="text-xs text-muted-foreground">{String(v || '—')}</span>,
         width: '100px',
       },
       {
         key: 'industry',
         header: 'Industry',
-        accessor: (p) => ((p as any).industry as string) ?? '—',
+        accessor: (p) => ((p as { industry?: string }).industry as string) ?? '—',
         sortable: true,
         sortType: 'string',
-        render: (v) => <Text fontSize="xs" color="fg.muted">{String(v || '—')}</Text>,
+        render: (v) => <span className="text-xs text-muted-foreground">{String(v || '—')}</span>,
         width: '120px',
       },
       {
@@ -461,13 +561,13 @@ const PortfolioHoldings: React.FC = () => {
           <Button
             size="xs"
             variant="outline"
-            colorPalette="blue"
+            className="h-7 text-xs"
             onClick={(e) => {
               e.stopPropagation();
               setTradeTarget({
                 symbol: row.symbol,
                 currentPrice: Number(row.current_price ?? 0),
-                sharesHeld: Number((row as any).shares ?? 0),
+                sharesHeld: Number((row as { shares?: number }).shares ?? 0),
                 averageCost: row.average_cost != null ? Number(row.average_cost) : undefined,
                 positionId: row.id,
               });
@@ -479,7 +579,7 @@ const PortfolioHoldings: React.FC = () => {
         width: '60px',
       },
     ],
-    [currency, totalValue, timezone]
+    [currency, totalValue, timezone],
   );
 
   const openChart = (symbol: string) => setChartSymbol(symbol);
@@ -490,16 +590,15 @@ const PortfolioHoldings: React.FC = () => {
 
   return (
     <ChartContext.Provider value={openChart}>
-      <Box p={4}>
+      <div className="p-4">
         <PageHeader
           title="Holdings"
           subtitle="Stocks and ETFs with market data (stage, RS)"
           rightContent={
-            <HStack gap={2}>
+            <div className="flex gap-2">
               <Button
                 size="sm"
-                variant={showHeatmap ? 'solid' : 'outline'}
-                colorPalette="brand"
+                variant={showHeatmap ? 'default' : 'outline'}
                 onClick={() => setShowHeatmap(!showHeatmap)}
               >
                 Heatmap
@@ -507,34 +606,42 @@ const PortfolioHoldings: React.FC = () => {
               <Button
                 size="sm"
                 variant="outline"
+                className="gap-2"
                 onClick={() => syncMutation.mutate()}
-                loading={syncMutation.isPending}
+                disabled={syncMutation.isPending}
               >
-                <HStack gap={2}><FiRefreshCw /> Sync</HStack>
+                {syncMutation.isPending ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                ) : (
+                  <RefreshCw className="size-4" aria-hidden />
+                )}
+                Sync
               </Button>
-            </HStack>
+            </div>
           }
         />
 
-        {(positionsQuery.isPending || accountsQuery.isPending) ? (
+        {positionsQuery.isPending || accountsQuery.isPending ? (
           <TableSkeleton rows={8} cols={6} />
-        ) : (positionsQuery.error || accountsQuery.error) ? (
-          <Text color="status.danger">Failed to load holdings</Text>
+        ) : positionsQuery.error || accountsQuery.error ? (
+          <p className={cn('text-sm', semanticTextColorClass('status.danger'))}>Failed to load holdings</p>
         ) : (
-          <Box display="flex" flexDirection="column" gap={4}>
+          <div className="flex flex-col gap-4">
             {showHeatmap && heatmap.length > 0 && (
-              <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-                <CardBody>
+              <Card className="gap-0 border border-border shadow-none ring-0">
+                <CardContent className="py-4">
                   <FinvizHeatMap data={heatmap} height={320} />
-                </CardBody>
-              </CardRoot>
+                </CardContent>
+              </Card>
             )}
 
-            <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-              <CardBody>
-                <HStack justify="space-between" mb={2}>
-                  <Badge colorPalette="gray">{filtered.length} positions</Badge>
-                </HStack>
+            <Card className="gap-0 border border-border shadow-none ring-0">
+              <CardContent className="py-4">
+                <div className="mb-2 flex justify-between">
+                  <Badge variant="secondary" className="h-5">
+                    {filtered.length} positions
+                  </Badge>
+                </div>
                 <SortableTable
                   data={filtered as EnrichedPosition[]}
                   columns={columns}
@@ -547,11 +654,11 @@ const PortfolioHoldings: React.FC = () => {
                   filterPresets={HOLDINGS_FILTER_PRESETS}
                   onRowClick={handleRowClick}
                 />
-              </CardBody>
-            </CardRoot>
-          </Box>
+              </CardContent>
+            </Card>
+          </div>
         )}
-      </Box>
+      </div>
       <ChartSlidePanel symbol={chartSymbol} onClose={() => setChartSymbol(null)} />
       {tradeTarget && (
         <TradeModal

@@ -9,7 +9,6 @@ from backend.database import get_db
 from backend.models.market_data import PriceData
 from backend.models.user import UserRole
 from backend.config import settings
-from backend.tasks import market_data_tasks
 from backend.services.market.coverage_service import CoverageService
 
 client = TestClient(app, raise_server_exceptions=False)
@@ -33,8 +32,6 @@ def test_coverage_endpoint_buckets(monkeypatch, db_session):
         pytest.skip("DB session unavailable for coverage test")
     monkeypatch.setattr(settings, "MARKET_DATA_SECTION_PUBLIC", True)
     try:
-        # Route monitor_coverage_health to the test session
-        monkeypatch.setattr(market_data_tasks, "SessionLocal", lambda: db_session)
         def _override_db():
             yield db_session
         app.dependency_overrides[get_db] = _override_db

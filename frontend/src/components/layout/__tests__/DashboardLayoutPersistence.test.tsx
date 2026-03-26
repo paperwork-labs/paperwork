@@ -31,14 +31,22 @@ vi.mock('../../../context/AccountContext', () => ({
   useAccountContext: () => mockedAccountContext,
 }));
 
-// Ensure desktop path so sidebar exists.
-vi.mock('@chakra-ui/react', async () => {
-  const actual: any = await vi.importActual('@chakra-ui/react');
-  return {
-    ...actual,
-    useMediaQuery: () => [true],
-  };
-});
+function mockDesktopViewport(): void {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    configurable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+}
 
 // Avoid network calls made on mount.
 vi.mock('../../../services/api', () => {
@@ -51,6 +59,7 @@ vi.mock('../../../services/api', () => {
 
 describe('DashboardLayout sidebar persistence', () => {
   beforeEach(() => {
+    mockDesktopViewport();
     localStorage.removeItem('qm.ui.sidebar_open');
     mockedAuth = {
       user: { username: 'tester', role: 'user' },
@@ -82,7 +91,7 @@ describe('DashboardLayout sidebar persistence', () => {
     expect(screen.queryByText('PORTFOLIO')).toBeNull();
     expect(screen.queryByText('STRATEGY')).toBeNull();
     expect(screen.queryByText('Overview')).toBeNull();
-    expect(screen.queryByRole('combobox')).toBeNull();
+    expect(screen.queryByRole('button', { name: /account filter/i })).toBeNull();
   });
 
   it('shows portfolio and strategy sections when section flags are enabled', () => {
@@ -105,7 +114,7 @@ describe('DashboardLayout sidebar persistence', () => {
     expect(screen.getByText('Workspace')).toBeInTheDocument();
     expect(screen.getByText('Strategies')).toBeInTheDocument();
     expect(screen.getByText('Overview')).toBeInTheDocument();
-    expect(screen.getByRole('combobox')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /account filter/i })).toBeInTheDocument();
   });
 
   it('does not keep portfolio dashboard active on portfolio categories route', () => {

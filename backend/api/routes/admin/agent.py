@@ -7,6 +7,12 @@ API endpoints for the auto-ops agent dashboard:
 - Approve/reject actions
 - View agent action history
 - Trigger manual agent run
+
+Autonomy level (GET/PATCH /settings) is stored in Redis under
+``agent:settings:autonomy_level`` so all API workers share one value.
+Celery workers and other processes that need the live level should read
+that key (UTF-8 string: full | safe | ask) or fall back to
+``settings.AGENT_AUTONOMY_LEVEL`` from env when the key is unset.
 """
 
 from datetime import datetime
@@ -14,7 +20,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import desc
+from sqlalchemy import desc, distinct, func
 from sqlalchemy.orm import Session
 
 from backend.api.dependencies import get_db, get_current_user
@@ -22,6 +28,8 @@ from backend.models import User
 from backend.models.agent_action import AgentAction
 
 router = APIRouter(prefix="/agent", tags=["agent"])
+
+AGENT_AUTONOMY_LEVELS: tuple[str, ...] = ("full", "safe", "ask")
 
 
 class AgentActionResponse(BaseModel):
@@ -58,6 +66,85 @@ class AgentRunResponse(BaseModel):
     actions_taken: List[dict]
     actions_pending: List[dict]
     health_input: Optional[str]
+
+
+class AgentSessionSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    session_id: str
+    started_at: datetime
+    last_action_at: datetime
+    action_count: int
+    statuses: List[str]
+
+
+class AgentSettingsResponse(BaseModel):
+    autonomy_level: str
+    available_levels: List[str]
+
+
+class AgentSettingsUpdate(BaseModel):
+    autonomy_level: Optional[str] = None
+
+
+REDIS_KEY_AUTONOMY_LEVEL = "agent:settings:autonomy_level"
+
+
+def _get_autonomy_level() -> str:
+    """Get autonomy level from Redis, falling back to config default."""
+    from backend.config import settings
+    from backend.services.market.market_data_service import market_data_service
+
+    redis = market_data_service.redis_client
+    if redis:
+        try:
+            raw = redis.get(REDIS_KEY_AUTONOMY_LEVEL)
+            if raw:
+                level = raw.decode("utf-8") if isinstance(raw, bytes) else raw
+                if level in AGENT_AUTONOMY_LEVELS:
+                    return level
+        except Exception:
+            pass
+    return settings.AGENT_AUTONOMY_LEVEL
+
+
+def _set_autonomy_level(level: str) -> None:
+    """Persist autonomy level to Redis for cross-worker consistency."""
+    from backend.services.market.market_data_service import market_data_service
+
+    redis = market_data_service.redis_client
+    if redis:
+        redis.set(REDIS_KEY_AUTONOMY_LEVEL, level)
+
+
+@router.get("/settings", response_model=AgentSettingsResponse)
+def get_agent_settings(
+    current_user: User = Depends(get_current_user),
+):
+    """Get current agent settings (reads from Redis for cross-worker consistency)."""
+    return AgentSettingsResponse(
+        autonomy_level=_get_autonomy_level(),
+        available_levels=list(AGENT_AUTONOMY_LEVELS),
+    )
+
+
+@router.patch("/settings", response_model=AgentSettingsResponse)
+def update_agent_settings(
+    update: AgentSettingsUpdate,
+    current_user: User = Depends(get_current_user),
+):
+    """Update agent settings (persists to Redis for cross-worker consistency)."""
+    if update.autonomy_level is not None:
+        if update.autonomy_level not in AGENT_AUTONOMY_LEVELS:
+            raise HTTPException(
+                status_code=400, detail="Invalid autonomy level"
+            )
+        _set_autonomy_level(update.autonomy_level)
+
+    return AgentSettingsResponse(
+        autonomy_level=_get_autonomy_level(),
+        available_levels=list(AGENT_AUTONOMY_LEVELS),
+    )
 
 
 @router.get("/actions", response_model=List[AgentActionResponse])
@@ -97,6 +184,39 @@ def list_pending_approvals(
         .all()
     )
     return actions
+
+
+@router.get("/sessions", response_model=List[AgentSessionSummary])
+def list_agent_sessions(
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List distinct agent sessions with summary."""
+    rows = (
+        db.query(
+            AgentAction.session_id.label("session_id"),
+            func.min(AgentAction.created_at).label("started_at"),
+            func.max(AgentAction.created_at).label("last_action_at"),
+            func.count(AgentAction.id).label("action_count"),
+            func.array_agg(distinct(AgentAction.status)).label("statuses"),
+        )
+        .filter(AgentAction.session_id.isnot(None))
+        .group_by(AgentAction.session_id)
+        .order_by(desc(func.min(AgentAction.created_at)))
+        .limit(limit)
+        .all()
+    )
+    return [
+        AgentSessionSummary(
+            session_id=row.session_id,
+            started_at=row.started_at,
+            last_action_at=row.last_action_at,
+            action_count=int(row.action_count),
+            statuses=list(row.statuses) if row.statuses is not None else [],
+        )
+        for row in rows
+    ]
 
 
 @router.get("/actions/{action_id}", response_model=AgentActionResponse)
@@ -202,8 +322,6 @@ def get_agent_stats(
     current_user: User = Depends(get_current_user),
 ):
     """Get agent statistics."""
-    from sqlalchemy import func
-    
     total = db.query(func.count(AgentAction.id)).scalar()
     pending = db.query(func.count(AgentAction.id)).filter(
         AgentAction.status == "pending_approval"

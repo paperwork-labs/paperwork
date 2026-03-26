@@ -1,59 +1,63 @@
-import React, { useEffect, useState } from 'react';
-import {
-  Box,
-  Flex,
-  HStack,
-  VStack,
-  IconButton,
-  Text,
-  Badge,
-  DialogRoot,
-  DialogBackdrop,
-  DialogPositioner,
-  DialogContent,
-  MenuRoot,
-  MenuTrigger,
-  MenuPositioner,
-  MenuContent,
-  MenuItem,
-  Button,
-  Portal,
-  useMediaQuery,
-  TooltipRoot,
-  TooltipTrigger,
-  TooltipPositioner,
-  TooltipContent,
-} from '@chakra-ui/react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
-  FiHome,
-  FiActivity,
-  FiList,
-  FiPieChart,
-  FiGrid,
-  FiTag,
-  FiFileText,
-  FiTarget,
-  FiSettings,
-  FiMenu,
-  FiSun,
-  FiMoon,
-  FiBell,
-  FiLayers,
-  FiShield,
-  FiShoppingBag,
-  FiBook,
-} from 'react-icons/fi';
-import { FaBrain } from 'react-icons/fa';
+  Activity,
+  Bell,
+  BookOpen,
+  Brain,
+  FileText,
+  Home,
+  LayoutGrid,
+  List,
+  Menu,
+  PieChart,
+  Settings,
+  Shield,
+  ShoppingBag,
+  Tag,
+  Target,
+  Layers,
+} from 'lucide-react';
+import * as Dialog from "@radix-ui/react-dialog";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+
 import { portfolioApi } from '../../services/api';
 import { useAccountContext } from '../../context/AccountContext';
 import { useAuth } from '../../context/AuthContext';
 import AppDivider from '../ui/AppDivider';
 import AppLogo from '../ui/AppLogo';
 import useAdminHealth from '../../hooks/useAdminHealth';
+import { CompactAccountSelector as AccountSelector } from '../shared/CompactAccountSelector';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog as UiDialog,
+  DialogContent as UiDialogContent,
+  DialogFooter as UiDialogFooter,
+  DialogTitle as UiDialogTitle,
+} from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 const SIDEBAR_OPEN_STORAGE_KEY = 'qm.ui.sidebar_open';
 const LAST_ROUTE_STORAGE_KEY = 'qm.ui.last_route';
+
+const MD_UP = '(min-width: 48em)';
+
+function useMediaQueryMinWidth(query: string): boolean {
+  const [matches, setMatches] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.matchMedia(query).matches;
+  });
+  useEffect(() => {
+    const mql = window.matchMedia(query);
+    const handler = () => setMatches(mql.matches);
+    mql.addEventListener('change', handler);
+    handler();
+    return () => mql.removeEventListener('change', handler);
+  }, [query]);
+  return matches;
+}
 
 function toTitleCase(s: string): string {
   if (!s?.trim()) return s;
@@ -67,34 +71,32 @@ function displayName(user: { full_name?: string | null; username?: string } | nu
 }
 
 const marketItems = [
-  { label: 'Dashboard', icon: FiHome, path: '/' },
-  { label: 'Tracked', icon: FiList, path: '/market/tracked' },
-  { label: 'Intelligence', icon: FiFileText, path: '/market/intelligence' },
-  { label: 'Education', icon: FiBook, path: '/market/education' },
+  { label: 'Dashboard', icon: Home, path: '/' },
+  { label: 'Tracked', icon: List, path: '/market/tracked' },
+  { label: 'Intelligence', icon: FileText, path: '/market/intelligence' },
+  { label: 'Education', icon: BookOpen, path: '/market/education' },
 ];
 
 const portfolioItems = [
-  { label: 'Overview', icon: FiPieChart, path: '/portfolio' },
-  { label: 'Holdings', icon: FiList, path: '/portfolio/holdings' },
-  { label: 'Options', icon: FiLayers, path: '/portfolio/options' },
-  { label: 'Transactions', icon: FiFileText, path: '/portfolio/transactions' },
-  { label: 'Categories', icon: FiTag, path: '/portfolio/categories' },
-  { label: 'Tax Center', icon: FiShield, path: '/portfolio/tax' },
-  { label: 'Orders', icon: FiShoppingBag, path: '/portfolio/orders' },
-  { label: 'Workspace', icon: FiGrid, path: '/portfolio/workspace' },
+  { label: 'Overview', icon: PieChart, path: '/portfolio' },
+  { label: 'Holdings', icon: List, path: '/portfolio/holdings' },
+  { label: 'Options', icon: Layers, path: '/portfolio/options' },
+  { label: 'Transactions', icon: FileText, path: '/portfolio/transactions' },
+  { label: 'Categories', icon: Tag, path: '/portfolio/categories' },
+  { label: 'Tax Center', icon: Shield, path: '/portfolio/tax' },
+  { label: 'Orders', icon: ShoppingBag, path: '/portfolio/orders' },
+  { label: 'Workspace', icon: LayoutGrid, path: '/portfolio/workspace' },
 ];
 
 const strategyItems = [
-  { label: 'Strategy Manager', icon: FaBrain, path: '/strategies-manager' },
-  { label: 'Strategies', icon: FiTarget, path: '/strategies' },
+  { label: 'Strategy Manager', icon: Brain, path: '/strategies-manager' },
+  { label: 'Strategies', icon: Target, path: '/strategies' },
 ];
 
-const settingsItems = [
-  { label: 'Settings', icon: FiSettings, path: '/settings' },
-];
+const settingsItems = [{ label: 'Settings', icon: Settings, path: '/settings' }];
 
 interface NavItemProps {
-  icon: React.ElementType;
+  icon: React.ElementType<{ className?: string; size?: number }>;
   label: string;
   path: string;
   isActive: boolean;
@@ -103,68 +105,47 @@ interface NavItemProps {
   showLabel?: boolean;
 }
 
-const NavItem: React.FC<NavItemProps> = ({ icon: Icon, label, path, isActive, onClick, badge, showLabel = true }) => (
+const NavItem: React.FC<NavItemProps> = ({
+  icon: Icon,
+  label,
+  path,
+  isActive,
+  onClick,
+  badge,
+  showLabel = true,
+}) => (
   <Button
+    type="button"
     variant="ghost"
-    alignItems="center"
-    px={4}
-    py={2.5}
-    cursor="pointer"
-    fontWeight={isActive ? 'semibold' : 'medium'}
-    transition="all 200ms ease"
-    borderRadius="lg"
-    justifyContent={showLabel ? 'flex-start' : 'center'}
-    w="full"
-    textAlign="left"
-    bg={isActive ? 'bg.subtle' : 'transparent'}
-    color={isActive ? 'fg.default' : 'fg.muted'}
-    borderLeft={isActive && showLabel ? '2px solid' : '2px solid transparent'}
-    borderLeftColor={isActive && showLabel ? 'amber.500' : 'transparent'}
+    className={cn(
+      'relative h-auto w-full rounded-lg py-2.5 font-medium transition-colors',
+      showLabel ? 'justify-start px-4 text-left' : 'justify-center px-2',
+      showLabel && isActive && 'border-l-2 border-amber-500 bg-muted text-foreground',
+      showLabel && !isActive && 'border-l-2 border-transparent text-muted-foreground hover:bg-muted/80 hover:text-foreground',
+      !showLabel && isActive && 'bg-muted text-foreground',
+      !showLabel && !isActive && 'text-muted-foreground hover:bg-muted/80 hover:text-foreground'
+    )}
     aria-current={isActive ? 'page' : undefined}
-    _hover={{
-      bg: isActive ? 'bg.subtle' : 'bg.muted',
-      color: 'fg.default',
-    }}
     onClick={onClick}
-    position="relative"
     data-nav-path={path}
     data-active={isActive ? 'true' : 'false'}
   >
-    <Icon size={17} />
-    {showLabel && (
-      <Text ml={3} fontSize="sm">
-        {label}
-      </Text>
-    )}
-    {badge && badge > 0 && (
+    <Icon className="size-[17px] shrink-0" strokeWidth={2} />
+    {showLabel ? <span className="ml-3 text-sm">{label}</span> : null}
+    {badge && badge > 0 ? (
       <Badge
-        ml="auto"
-        size="sm"
-        colorScheme="red"
-        variant="solid"
-        borderRadius="full"
-        minW={5}
-        h={5}
-        display="flex"
-        alignItems="center"
-        justifyContent="center"
-        fontSize="xs"
+        variant="destructive"
+        className="ml-auto min-h-5 min-w-5 shrink-0 rounded-full px-1.5 text-[10px]"
       >
         {badge > 99 ? '99+' : badge}
       </Badge>
-    )}
+    ) : null}
   </Button>
 );
-
-import { CompactAccountSelector as AccountSelector } from '../shared/CompactAccountSelector';
 
 const DashboardLayout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const sidebarBg = 'bg.sidebar';
-  const headerBg = 'bg.header';
-  const borderColor = 'border.subtle';
-  const appBg = 'bg.canvas';
   const { accounts, loading: accountsLoading, selected, setSelected } = useAccountContext();
   const { user, logout, appSettings, appSettingsReady } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
@@ -177,11 +158,23 @@ const DashboardLayout: React.FC = () => {
     }
   });
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const [isDesktop] = useMediaQuery(['(min-width: 48em)']);
-  const [totals, setTotals] = useState<{ value: number; dayPnL: number; positions: number }>({ value: 0, dayPnL: 0, positions: 0 });
-  const [headerStats, setHeaderStats] = useState<{ label: string; sublabel: string }>({ label: 'Combined Portfolio', sublabel: '' });
-  type NotificationItem = { id: string; title: string; summary: string; details: string; createdAt: string };
-  // Placeholder data source until backend notification feed is wired.
+  const isDesktop = useMediaQueryMinWidth(MD_UP);
+  const [, setTotals] = useState<{ value: number; dayPnL: number; positions: number }>({
+    value: 0,
+    dayPnL: 0,
+    positions: 0,
+  });
+  const [, setHeaderStats] = useState<{ label: string; sublabel: string }>({
+    label: 'Combined Portfolio',
+    sublabel: '',
+  });
+  type NotificationItem = {
+    id: string;
+    title: string;
+    summary: string;
+    details: string;
+    createdAt: string;
+  };
   const notifications: NotificationItem[] = [];
   const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
   const marketOnly = appSettingsReady ? Boolean(appSettings?.market_only_mode) : true;
@@ -192,7 +185,12 @@ const DashboardLayout: React.FC = () => {
   const { health: adminHealth, loading: healthLoading } = useAdminHealth();
   const healthStatus = adminHealth?.composite_status ?? 'red';
   const healthReason = adminHealth?.composite_reason ?? 'Checking system health...';
-  const healthDotColor = healthStatus === 'green' ? 'status.success' : healthStatus === 'yellow' ? 'status.warning' : 'status.danger';
+  const healthDotClass =
+    healthStatus === 'green'
+      ? 'bg-[rgb(var(--status-success))]'
+      : healthStatus === 'yellow'
+        ? 'bg-[rgb(var(--status-warning))]'
+        : 'bg-[rgb(var(--status-danger))]';
 
   useEffect(() => {
     try {
@@ -202,7 +200,6 @@ const DashboardLayout: React.FC = () => {
     }
   }, [isSidebarOpen]);
 
-  // Remember last successful route so we can restore after login/session refresh.
   useEffect(() => {
     try {
       const fullPath = `${location.pathname}${location.search || ''}${location.hash || ''}`;
@@ -212,18 +209,23 @@ const DashboardLayout: React.FC = () => {
     }
   }, [location.hash, location.pathname, location.search]);
 
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount || 0);
-  const formatSignedCurrency = (amount: number) => {
-    const f = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Math.abs(amount || 0));
-    return `${(amount || 0) >= 0 ? '+' : '-'}${f}`;
-  };
-
-  const sidebarWidth = isSidebarOpen ? 64 : 16;
+  const sidebarWidthClass = isSidebarOpen ? 'w-64' : 'w-16';
   const defaultTotals = { value: 0, dayPnL: 0, positions: 0 };
   const defaultHeaderStats = { label: 'Combined Portfolio', sublabel: '' };
 
   useEffect(() => {
+    const formatCurrency = (amount: number) =>
+      new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(
+        amount || 0
+      );
+    const formatSignedCurrency = (amount: number) => {
+      const f = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        maximumFractionDigits: 0,
+      }).format(Math.abs(amount || 0));
+      return `${(amount || 0) >= 0 ? '+' : '-'}${f}`;
+    };
     const load = async () => {
       if (!appSettingsReady || !portfolioEnabled) {
         setTotals(defaultTotals);
@@ -233,44 +235,58 @@ const DashboardLayout: React.FC = () => {
       try {
         const res = await portfolioApi.getLive();
         const data = res?.data ?? res;
-        const accounts = Object.values(data?.accounts ?? {}) as Array<{ account_summary?: { net_liquidation?: number; day_change?: number }; all_positions?: unknown[] }>;
-        const value = accounts.reduce((sum, a) => sum + (a.account_summary?.net_liquidation ?? 0), 0);
-        const dayPnL = accounts.reduce((sum, a) => sum + (a.account_summary?.day_change ?? 0), 0);
-        const positions = accounts.reduce((sum, a) => sum + (a.all_positions?.length ?? 0), 0);
+        const accountsLive = Object.values(data?.accounts ?? {}) as Array<{
+          account_summary?: { net_liquidation?: number; day_change?: number };
+          all_positions?: unknown[];
+        }>;
+        const value = accountsLive.reduce((sum, a) => sum + (a.account_summary?.net_liquidation ?? 0), 0);
+        const dayPnL = accountsLive.reduce((sum, a) => sum + (a.account_summary?.day_change ?? 0), 0);
+        const positions = accountsLive.reduce((sum, a) => sum + (a.all_positions?.length ?? 0), 0);
         setTotals({ value, dayPnL, positions });
         setHeaderStats({
           label: 'Combined Portfolio',
           sublabel: `${formatCurrency(value)} • ${formatSignedCurrency(dayPnL)}`,
         });
-      } catch (e) {
-        // Leave safe defaults for unavailable portfolio data.
+      } catch {
         setTotals(defaultTotals);
         setHeaderStats(defaultHeaderStats);
       }
     };
-    load();
+    void load();
   }, [appSettingsReady, portfolioEnabled]);
 
-  const isPathActive = React.useCallback((itemPath: string) => {
-    const currentPath = location.pathname || '/';
-    if (itemPath === '/') {
-      return currentPath === '/' || currentPath === '/market/dashboard';
-    }
-    // Exact match for portfolio index so /portfolio/categories does not highlight Overview
-    if (itemPath === '/portfolio') {
-      return currentPath === '/portfolio';
-    }
-    return currentPath === itemPath || currentPath.startsWith(`${itemPath}/`);
-  }, [location.pathname]);
+  const isPathActive = useCallback(
+    (itemPath: string) => {
+      const currentPath = location.pathname || '/';
+      if (itemPath === '/') {
+        return currentPath === '/' || currentPath === '/market/dashboard';
+      }
+      if (itemPath === '/portfolio') {
+        return currentPath === '/portfolio';
+      }
+      return currentPath === itemPath || currentPath.startsWith(`${itemPath}/`);
+    },
+    [location.pathname]
+  );
 
-  const renderSection = (title: string, items: typeof marketItems, showLabel: boolean) => (
-    <Box>
+  const renderSection = (
+    title: string,
+    items: typeof marketItems,
+    showLabel: boolean,
+    sectionIndex: number
+  ) => (
+    <div>
       {showLabel ? (
-        <Text fontSize="2xs" color="fg.subtle" px={4} mb={1.5} mt={4} fontWeight="semibold" letterSpacing="0.08em" textTransform="uppercase">
+        <p
+          className={cn(
+            'mb-1.5 px-4 text-[10px] font-semibold tracking-[0.08em] text-muted-foreground uppercase',
+            sectionIndex > 0 && 'mt-4'
+          )}
+        >
           {title}
-        </Text>
+        </p>
       ) : null}
-      <VStack gap={1} align="stretch">
+      <div className="flex flex-col gap-1">
         {items.map((item) => {
           const active = isPathActive(item.path);
           return (
@@ -288,344 +304,317 @@ const DashboardLayout: React.FC = () => {
             />
           );
         })}
-      </VStack>
-    </Box>
+      </div>
+    </div>
   );
 
-  const renderNav = (opts: { showLabel: boolean; px: any }) => (
-    <VStack gap={2} px={opts.px} py={4} align="stretch">
-      {renderSection('MARKET', marketItems, opts.showLabel)}
-      {portfolioEnabled ? renderSection('PORTFOLIO', portfolioItems, opts.showLabel) : null}
-      {strategyEnabled ? renderSection('STRATEGY', strategyItems, opts.showLabel) : null}
-      {isAdmin ? renderSection('SETTINGS', settingsItems, opts.showLabel) : null}
-    </VStack>
-  );
+  const renderNav = (opts: { showLabel: boolean; pxClass: string }) => {
+    let idx = 0;
+    const next = () => idx++;
+    return (
+      <div className={cn('flex flex-col gap-2 py-4', opts.pxClass)}>
+        {renderSection('MARKET', marketItems, opts.showLabel, next())}
+        {portfolioEnabled ? renderSection('PORTFOLIO', portfolioItems, opts.showLabel, next()) : null}
+        {strategyEnabled ? renderSection('STRATEGY', strategyItems, opts.showLabel, next()) : null}
+        {isAdmin ? renderSection('SETTINGS', settingsItems, opts.showLabel, next()) : null}
+      </div>
+    );
+  };
 
-  const renderHiddenFooter = () => null;
+  const sidebarShell = (opts: { showLabel: boolean; pxClass: string; showMenuToggle: boolean }) => (
+    <div className="flex h-full min-h-0 flex-col bg-sidebar text-sidebar-foreground">
+      <div
+        className={cn(
+          'flex shrink-0 items-center border-b border-border py-4',
+          opts.showLabel ? 'justify-start px-5' : 'justify-center px-3'
+        )}
+      >
+        {opts.showLabel ? (
+          <div className="flex items-center gap-2.5">
+            <AppLogo size={52} />
+            <span className="text-base font-semibold tracking-tight text-foreground">AxiomFolio</span>
+          </div>
+        ) : null}
+        {opts.showMenuToggle ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Menu"
+            className={cn('shrink-0 text-foreground', opts.showLabel && 'ml-auto')}
+            onClick={() => setIsSidebarOpen((v) => !v)}
+          >
+            <Menu className="size-5" />
+          </Button>
+        ) : null}
+      </div>
+      {opts.showLabel ? <AppDivider /> : null}
+      <div className="min-h-0 flex-1 overflow-y-auto">{renderNav(opts)}</div>
+    </div>
+  );
 
   return (
-    <Flex h="100vh" w="100vw" bg={appBg} overflow="hidden">
-      {/* Desktop rail */}
-      {isDesktop ? (
-        <Box
-          w={sidebarWidth}
-          flexShrink={0}
-          bg={sidebarBg}
-          borderRight="1px"
-          borderColor={borderColor}
-          h="100vh"
-          overflowY="auto"
-          transition="width 0.2s ease"
-        >
-          <VStack gap={0} align="stretch" h="full">
-            {/* Logo/Brand */}
-            <Flex
-              align="center"
-              justifyContent={isSidebarOpen ? 'flex-start' : 'center'}
-              px={isSidebarOpen ? 5 : 3}
-              py={4}
-              borderBottom="1px"
-              borderColor={borderColor}
-            >
-              {isSidebarOpen ? (
-                <HStack gap="10px" align="center">
-                  <AppLogo size={52} />
-                  <Text fontSize="md" fontWeight="semibold" color="fg.default" letterSpacing="-0.01em">AxiomFolio</Text>
-                </HStack>
+    <TooltipProvider delayDuration={200}>
+      <div className="flex h-screen w-screen overflow-hidden bg-background">
+        {isDesktop ? (
+          <aside
+            className={cn(
+              'flex h-screen shrink-0 flex-col overflow-y-auto border-r border-border transition-[width] duration-200 ease-out',
+              sidebarWidthClass
+            )}
+          >
+            {sidebarShell({
+              showLabel: isSidebarOpen,
+              pxClass: isSidebarOpen ? 'px-4' : 'px-2',
+              showMenuToggle: true,
+            })}
+          </aside>
+        ) : null}
+
+        {!isDesktop ? (
+          <Dialog.Root open={isMobileNavOpen} onOpenChange={setIsMobileNavOpen}>
+            <Dialog.Portal>
+              <Dialog.Overlay className="fixed inset-0 z-40 bg-black/40 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
+              <Dialog.Content
+                className="fixed top-0 left-0 z-50 flex h-screen w-[280px] max-w-[80vw] flex-col border-r border-border bg-sidebar p-0 shadow-lg outline-none data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left-2 data-[state=open]:animate-in data-[state=open]:slide-in-from-left-2"
+                onPointerDownOutside={() => setIsMobileNavOpen(false)}
+                onEscapeKeyDown={() => setIsMobileNavOpen(false)}
+              >
+                <Dialog.Title className="sr-only">Main navigation</Dialog.Title>
+                <Dialog.Description className="sr-only">
+                  Application sections and links
+                </Dialog.Description>
+                {sidebarShell({ showLabel: true, pxClass: 'px-4', showMenuToggle: false })}
+              </Dialog.Content>
+            </Dialog.Portal>
+          </Dialog.Root>
+        ) : null}
+
+        <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
+          <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-[rgb(var(--bg-header))] px-6">
+            <div className="flex items-center gap-4">
+              {isDesktop && !isSidebarOpen ? (
+                <div className="flex items-center gap-2.5">
+                  <AppLogo size={36} />
+                  <span className="text-base font-semibold tracking-tight text-foreground">AxiomFolio</span>
+                </div>
               ) : null}
-              <IconButton
-                size="sm"
-                variant="ghost"
-                aria-label="Menu"
-                ml={isSidebarOpen ? 'auto' : 0}
-                color="fg.default"
-                onClick={() => setIsSidebarOpen((v) => !v)}
-              >
-                <FiMenu />
-              </IconButton>
-            </Flex>
+              {!isDesktop ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Menu"
+                  className="relative z-[2] text-foreground"
+                  onClick={() => setIsMobileNavOpen(true)}
+                >
+                  <Menu className="size-5" />
+                </Button>
+              ) : null}
+              {portfolioEnabled && accounts.length > 0 ? (
+                <AccountSelector
+                  value={selected}
+                  onChange={setSelected}
+                  disabled={accountsLoading}
+                  accounts={accounts}
+                  width={isDesktop ? '200px' : '180px'}
+                />
+              ) : null}
+            </div>
 
-            {isSidebarOpen ? <AppDivider /> : null}
-
-            {/* Navigation */}
-            <Box flex={1} overflowY="auto">
-              {renderNav({ showLabel: isSidebarOpen, px: isSidebarOpen ? 4 : 2 })}
-            </Box>
-
-            {isSidebarOpen ? renderHiddenFooter() : null}
-          </VStack>
-        </Box>
-      ) : null}
-
-      {/* Mobile overlay nav */}
-      {!isDesktop ? (
-        <DialogRoot open={isMobileNavOpen} onOpenChange={(d) => setIsMobileNavOpen(Boolean(d.open))}>
-          <DialogBackdrop />
-          <DialogPositioner inset={0} justifyContent="flex-start" alignItems="stretch" p={0} m={0}>
-            <DialogContent
-              position="fixed"
-              top={0}
-              left={0}
-              w="280px"
-              maxW="80vw"
-              h="100vh"
-              borderRadius={0}
-              bg={sidebarBg}
-              borderRight="1px"
-              borderColor={borderColor}
-              m={0}
-            >
-              <VStack gap={0} align="stretch" h="full">
-                <Flex align="center" px={5} py={4} borderBottom="1px" borderColor={borderColor}>
-                  <HStack gap="10px" align="center">
-                    <AppLogo size={52} />
-                    <Text fontSize="md" fontWeight="semibold" color="fg.default" letterSpacing="-0.01em">AxiomFolio</Text>
-                  </HStack>
-                </Flex>
-                <AppDivider />
-                <Box flex={1} overflowY="auto">
-                  {renderNav({ showLabel: true, px: 4 })}
-                </Box>
-              </VStack>
-            </DialogContent>
-          </DialogPositioner>
-        </DialogRoot>
-      ) : null}
-
-      {/* Main Content */}
-      <Box flex={1} minW={0} overflowX="hidden">
-        {/* Header */}
-        <Flex
-          h={16}
-          alignItems="center"
-          justifyContent="space-between"
-          px={6}
-          bg={headerBg}
-          borderBottom="1px"
-          borderColor={borderColor}
-        >
-          <HStack gap={4}>
-            {isDesktop && !isSidebarOpen ? (
-              <HStack gap="10px" align="center">
-                <AppLogo size={36} />
-                <Text fontSize="md" fontWeight="semibold" color="fg.default" letterSpacing="-0.01em">AxiomFolio</Text>
-              </HStack>
-            ) : null}
-            {!isDesktop ? (
-              <IconButton
-                size="md"
-                variant="ghost"
-                aria-label="Menu"
-                position="relative"
-                zIndex={2}
-                color="fg.default"
-                onClick={() => setIsMobileNavOpen(true)}
-              >
-                <FiMenu />
-              </IconButton>
-            ) : null}
-            {portfolioEnabled && accounts.length > 0 ? (
-              <AccountSelector
-                value={selected}
-                onChange={setSelected}
-                disabled={accountsLoading}
-                accounts={accounts}
-                width={isDesktop ? '200px' : '180px'}
-              />
-            ) : null}
-          </HStack>
-
-          <HStack gap={4}>
-            {/* Health indicator (admin-only) */}
-            {isAdmin && !healthLoading && adminHealth ? (
-              <TooltipRoot>
-                <TooltipTrigger asChild>
-                  <IconButton
-                    size="md"
-                    variant="ghost"
-                    aria-label="System Health"
-                    position="relative"
-                    color="fg.default"
-                    onClick={() => navigate('/settings/admin/system')}
-                  >
-                    <FiActivity />
-                    <Box
-                      position="absolute"
-                      top="6px"
-                      right="6px"
-                      borderRadius="full"
-                      bg={healthDotColor}
-                      w={2.5}
-                      h={2.5}
-                      border="2px solid"
-                      borderColor="bg.header"
-                    />
-                  </IconButton>
-                </TooltipTrigger>
-                <TooltipPositioner>
-                  <TooltipContent fontSize="xs" maxW="240px">
+            <div className="flex items-center gap-4">
+              {isAdmin && !healthLoading && adminHealth ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label="System Health"
+                      className="relative text-foreground"
+                      onClick={() => navigate('/settings/admin/system')}
+                    >
+                      <Activity className="size-5" />
+                      <span
+                        className={cn(
+                          'absolute top-1.5 right-1.5 size-2.5 rounded-full border-2 border-[rgb(var(--bg-header))]',
+                          healthDotClass
+                        )}
+                      />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-[240px] text-xs">
                     {healthReason}
                   </TooltipContent>
-                </TooltipPositioner>
-              </TooltipRoot>
-            ) : null}
+                </Tooltip>
+              ) : null}
 
-            <MenuRoot positioning={{ placement: 'bottom-end', strategy: 'fixed', gutter: 8 }}>
-              <MenuTrigger asChild>
-                <IconButton size="md" variant="ghost" aria-label="Notifications" position="relative" color="fg.default">
-                  <FiBell />
-                  {notifications.length > 0 ? (
-                    <Badge
-                      position="absolute"
-                      top="6px"
-                      right="6px"
-                      borderRadius="full"
-                      bg="status.danger"
-                      w={2}
-                      h={2}
-                    />
-                  ) : null}
-                </IconButton>
-              </MenuTrigger>
-              <Portal>
-                <MenuPositioner>
-                  <MenuContent minW={{ base: 'calc(100vw - 32px)', md: '340px' }} p={2}>
-                    <VStack align="stretch" gap={1}>
-                      <HStack justify="space-between" px={2} py={1}>
-                        <Text fontSize="sm" fontWeight="semibold">Notifications</Text>
-                        <Text fontSize="xs" color="fg.muted">{notifications.length}</Text>
-                      </HStack>
-                      <AppDivider />
-                      {notifications.length ? (
-                        notifications.slice(0, 6).map((n) => (
-                          <MenuItem
-                            key={n.id}
-                            value={`notification-${n.id}`}
-                            onClick={() => setSelectedNotification(n)}
-                          >
-                            <VStack align="stretch" gap={0} w="full">
-                              <HStack justify="space-between" w="full">
-                                <Text fontSize="sm" fontWeight="semibold" lineClamp="1">
-                                  {n.title}
-                                </Text>
-                                <Text fontSize="xs" color="fg.muted">
-                                  {n.createdAt}
-                                </Text>
-                              </HStack>
-                              <Text fontSize="xs" color="fg.muted" lineClamp="1">
-                                {n.summary}
-                              </Text>
-                            </VStack>
-                          </MenuItem>
-                        ))
-                      ) : (
-                        <Box px={2} py={3}>
-                          <Text fontSize="sm" color="fg.muted">No notifications yet.</Text>
-                          <Text fontSize="xs" color="fg.subtle" mt={1}>
-                            We will show account/system alerts here as they arrive.
-                          </Text>
-                        </Box>
-                      )}
-                      <AppDivider />
-                      <MenuItem value="notifications-center" onClick={() => navigate('/settings/notifications')}>
-                        Open Notification Center
-                      </MenuItem>
-                    </VStack>
-                  </MenuContent>
-                </MenuPositioner>
-              </Portal>
-            </MenuRoot>
-            <MenuRoot positioning={{ placement: 'bottom-end', strategy: 'fixed', gutter: 8 }}>
-              <MenuTrigger asChild>
-                <Button size="sm" variant="ghost">
-                  <HStack gap={2}>
-                    <Box w={8} h={8} borderRadius="full" bg="amber.500" display="flex" alignItems="center" justifyContent="center">
-                      <Text fontSize="xs" fontWeight="bold" color="white">
-                        {displayName(user).slice(0, 1).toUpperCase()}
-                      </Text>
-                    </Box>
-                    <Text fontSize="sm">{displayName(user)}</Text>
-                  </HStack>
-                </Button>
-              </MenuTrigger>
-              <Portal>
-                <MenuPositioner>
-                  <MenuContent minW="240px" p={2} borderRadius="xl">
-                    <VStack align="stretch" gap={1}>
-                      <Box px={2} py={1}>
-                        <Text fontSize="xs" color="fg.muted" textTransform="uppercase" letterSpacing="wide">
-                          Account
-                        </Text>
-                        <Text fontSize="sm" fontWeight="semibold" mt={1}>
-                          {displayName(user)}
-                        </Text>
-                      </Box>
-                      <AppDivider />
-                      <MenuItem value="profile" onClick={() => navigate('/settings/profile')}>Profile</MenuItem>
-                      <MenuItem value="preferences" onClick={() => navigate('/settings/preferences')}>Preferences</MenuItem>
-                      <MenuItem value="connections" onClick={() => navigate('/settings/connections')}>Connections</MenuItem>
-                      {isAdmin ? (
-                        <MenuItem value="system-status" onClick={() => navigate('/settings/admin/system')}>
-                          System Status
-                        </MenuItem>
-                      ) : null}
-                      <AppDivider />
-                      <MenuItem value="logout" onClick={() => { logout(); navigate('/login'); }}>Logout</MenuItem>
-                    </VStack>
-                  </MenuContent>
-                </MenuPositioner>
-              </Portal>
-            </MenuRoot>
-          </HStack>
-        </Flex>
-
-        {/* Page Content */}
-        <Box p={4} h="calc(100vh - 4rem)" overflowY="auto" overflowX="hidden" minW={0}>
-          <Outlet />
-        </Box>
-      </Box>
-      <DialogRoot
-        open={Boolean(selectedNotification)}
-        onOpenChange={(d) => {
-          if (!d.open) setSelectedNotification(null);
-        }}
-      >
-        <DialogBackdrop />
-        <DialogPositioner>
-          <DialogContent maxW="520px">
-            <Box p={5}>
-              <VStack align="stretch" gap={3}>
-                <Text fontSize="lg" fontWeight="semibold">
-                  {selectedNotification?.title || 'Notification'}
-                </Text>
-                <Text fontSize="sm" color="fg.muted">
-                  {selectedNotification?.summary || ''}
-                </Text>
-                <AppDivider />
-                <Text fontSize="sm">
-                  {selectedNotification?.details || ''}
-                </Text>
-                <HStack justify="flex-end" mt={2}>
-                  <Button variant="ghost" onClick={() => setSelectedNotification(null)}>
-                    Close
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger asChild>
+                  <Button type="button" variant="ghost" size="icon" aria-label="Notifications" className="relative text-foreground">
+                    <Bell className="size-5" />
+                    {notifications.length > 0 ? (
+                      <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-[rgb(var(--status-danger))]" />
+                    ) : null}
                   </Button>
-                  <Button
-                    colorScheme="brand"
-                    onClick={() => {
-                      setSelectedNotification(null);
-                      navigate('/settings/notifications');
-                    }}
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content
+                    align="end"
+                    sideOffset={8}
+                    className={cn(
+                      'z-50 max-h-[min(24rem,70vh)] min-w-[min(calc(100vw-2rem),340px)] overflow-y-auto rounded-md border border-border bg-popover p-2 text-popover-foreground shadow-md',
+                      'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2'
+                    )}
                   >
-                    Open Notification Center
+                    <div className="flex items-center justify-between px-2 py-1">
+                      <span className="text-sm font-semibold">Notifications</span>
+                      <span className="text-xs text-muted-foreground">{notifications.length}</span>
+                    </div>
+                    <AppDivider />
+                    {notifications.length ? (
+                      notifications.slice(0, 6).map((n) => (
+                        <DropdownMenu.Item
+                          key={n.id}
+                          className={cn(
+                            'flex cursor-default flex-col gap-0 rounded-sm px-2 py-2 text-left text-sm outline-none',
+                            'focus:bg-accent focus:text-accent-foreground'
+                          )}
+                          onSelect={() => setSelectedNotification(n)}
+                        >
+                          <div className="flex w-full items-start justify-between gap-2">
+                            <span className="line-clamp-1 font-semibold">{n.title}</span>
+                            <span className="shrink-0 text-xs text-muted-foreground">{n.createdAt}</span>
+                          </div>
+                          <span className="line-clamp-1 text-xs text-muted-foreground">{n.summary}</span>
+                        </DropdownMenu.Item>
+                      ))
+                    ) : (
+                      <div className="px-2 py-3">
+                        <p className="text-sm text-muted-foreground">No notifications yet.</p>
+                        <p className="mt-1 text-xs text-muted-foreground/80">
+                          We will show account/system alerts here as they arrive.
+                        </p>
+                      </div>
+                    )}
+                    <AppDivider />
+                    <DropdownMenu.Item
+                      className={cn(
+                        'cursor-default rounded-sm px-2 py-2 text-sm outline-none',
+                        'focus:bg-accent focus:text-accent-foreground'
+                      )}
+                      onSelect={() => navigate('/settings/notifications')}
+                    >
+                      Open Notification Center
+                    </DropdownMenu.Item>
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
+
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger asChild>
+                  <Button type="button" variant="ghost" size="sm" className="gap-2 px-2 font-normal">
+                    <span className="flex size-8 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-white">
+                      {displayName(user).slice(0, 1).toUpperCase()}
+                    </span>
+                    <span className="text-sm">{displayName(user)}</span>
                   </Button>
-                </HStack>
-              </VStack>
-            </Box>
-          </DialogContent>
-        </DialogPositioner>
-      </DialogRoot>
-    </Flex>
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content
+                    align="end"
+                    sideOffset={8}
+                    className={cn(
+                      'z-50 min-w-[240px] rounded-xl border border-border bg-popover p-2 text-popover-foreground shadow-md',
+                      'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2'
+                    )}
+                  >
+                    <div className="px-2 py-1">
+                      <p className="text-xs tracking-wide text-muted-foreground uppercase">Account</p>
+                      <p className="mt-1 text-sm font-semibold">{displayName(user)}</p>
+                    </div>
+                    <AppDivider />
+                    <DropdownMenu.Item
+                      className="cursor-default rounded-sm px-2 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground"
+                      onSelect={() => navigate('/settings/profile')}
+                    >
+                      Profile
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Item
+                      className="cursor-default rounded-sm px-2 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground"
+                      onSelect={() => navigate('/settings/preferences')}
+                    >
+                      Preferences
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Item
+                      className="cursor-default rounded-sm px-2 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground"
+                      onSelect={() => navigate('/settings/connections')}
+                    >
+                      Connections
+                    </DropdownMenu.Item>
+                    {isAdmin ? (
+                      <DropdownMenu.Item
+                        className="cursor-default rounded-sm px-2 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground"
+                        onSelect={() => navigate('/settings/admin/system')}
+                      >
+                        System Status
+                      </DropdownMenu.Item>
+                    ) : null}
+                    <AppDivider />
+                    <DropdownMenu.Item
+                      className="cursor-default rounded-sm px-2 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground"
+                      onSelect={() => {
+                        logout();
+                        navigate('/login');
+                      }}
+                    >
+                      Logout
+                    </DropdownMenu.Item>
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
+            </div>
+          </header>
+
+          <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4">
+            <Outlet />
+          </main>
+        </div>
+
+        <UiDialog
+          open={Boolean(selectedNotification)}
+          onOpenChange={(open) => {
+            if (!open) setSelectedNotification(null);
+          }}
+        >
+          <UiDialogContent showCloseButton={false} className="max-w-[520px]">
+            <UiDialogTitle className="font-heading text-lg font-semibold">
+              {selectedNotification?.title || 'Notification'}
+            </UiDialogTitle>
+            <div className="flex flex-col gap-3">
+              <p className="text-sm text-muted-foreground">{selectedNotification?.summary || ''}</p>
+              <AppDivider />
+              <p className="text-sm">{selectedNotification?.details || ''}</p>
+            </div>
+            <UiDialogFooter className="mt-4 sm:justify-end">
+              <Button type="button" variant="ghost" onClick={() => setSelectedNotification(null)}>
+                Close
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setSelectedNotification(null);
+                  navigate('/settings/notifications');
+                }}
+              >
+                Open Notification Center
+              </Button>
+            </UiDialogFooter>
+          </UiDialogContent>
+        </UiDialog>
+      </div>
+    </TooltipProvider>
   );
 };
 
-export default DashboardLayout; 
+export default DashboardLayout;

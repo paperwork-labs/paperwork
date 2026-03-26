@@ -1,30 +1,14 @@
 import React from 'react';
-import {
-  Box,
-  HStack,
-  VStack,
-  Text,
-  Badge,
-  StatRoot,
-  StatLabel,
-  StatHelpText,
-  StatValueText,
-  StatUpIndicator,
-  StatDownIndicator,
-  CardRoot,
-  CardBody,
-  PopoverRoot,
-  PopoverTrigger,
-  PopoverContent,
-  PopoverBody,
-  Icon,
-  Flex,
-  SimpleGrid,
-} from '@chakra-ui/react';
-import { FiInfo, FiTrendingUp, FiTrendingDown, FiDollarSign } from 'react-icons/fi';
+import { DollarSign, Info, TrendingDown, TrendingUp } from 'lucide-react';
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+
 import AppDivider from './AppDivider';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
 import { formatMoney } from '../../utils/format';
+import { cn } from '@/lib/utils';
 
 export interface AccountData {
   account_id: string;
@@ -58,15 +42,10 @@ const AccountSelector: React.FC<AccountSelectorProps> = ({
   onAccountChange,
   showAllOption = true,
   showSummary = true,
-  size = 'md',
   variant = 'detailed',
 }) => {
-  const bgColor = 'bg.card';
-  const borderColor = 'border.subtle';
-  const hoverBg = 'bg.panel';
   const { currency } = useUserPreferences();
 
-  // Calculate totals
   const totalValue = accounts.reduce((sum, acc) => sum + acc.total_value, 0);
   const totalPnL = accounts.reduce((sum, acc) => sum + acc.unrealized_pnl, 0);
   const totalPnLPct = totalValue > 0 ? (totalPnL / (totalValue - totalPnL)) * 100 : 0;
@@ -80,9 +59,9 @@ const AccountSelector: React.FC<AccountSelectorProps> = ({
     return `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
   };
 
-  const getChangeColor = (value: number | undefined) => {
-    if (value === undefined || value === null || Number.isNaN(value)) return 'fg.subtle';
-    return value >= 0 ? 'status.success' : 'status.danger';
+  const getChangeClass = (value: number | undefined) => {
+    if (value === undefined || value === null || Number.isNaN(value)) return 'text-muted-foreground';
+    return value >= 0 ? 'text-[rgb(var(--status-success))]' : 'text-[rgb(var(--status-danger))]';
   };
 
   const selectedAccountData = accounts.find((acc) => acc.account_id === selectedAccount);
@@ -93,15 +72,7 @@ const AccountSelector: React.FC<AccountSelectorProps> = ({
         value={selectedAccount}
         onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onAccountChange(e.target.value)}
         disabled={!accounts.length}
-        style={{
-          maxWidth: 250,
-          padding: '8px 10px',
-          borderRadius: 10,
-          border: '1px solid var(--chakra-colors-border-subtle)',
-          background: 'var(--chakra-colors-bg-input)',
-          color: 'var(--chakra-colors-fg-default)',
-          fontSize: 14,
-        }}
+        className="max-w-[250px] rounded-[10px] border border-input bg-background px-2.5 py-2 text-sm text-foreground shadow-xs dark:bg-input/30"
       >
         {showAllOption ? <option value="all">All Accounts ({accounts.length})</option> : null}
         {accounts.map((account) => (
@@ -114,203 +85,192 @@ const AccountSelector: React.FC<AccountSelectorProps> = ({
   }
 
   return (
-    <CardRoot bg={bgColor} borderWidth="1px" borderColor={borderColor} borderRadius="xl">
-      <CardBody>
-        <VStack gap={4} align="stretch">
-          <HStack justify="space-between" align="center">
-            <HStack gap={3}>
-              <Text fontSize="sm" fontWeight="semibold" color="fg.default">
-                Account
-              </Text>
-              <Badge variant="subtle" colorPalette="blue">
-                {accounts.length} linked
-              </Badge>
-            </HStack>
+    <Card className="border-border">
+      <CardContent className="flex flex-col gap-4 pt-6">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-semibold text-foreground">Account</span>
+            <Badge variant="secondary" className="font-medium">
+              {accounts.length} linked
+            </Badge>
+          </div>
 
-            <PopoverRoot>
-              <PopoverTrigger asChild>
-                <HStack
-                  gap={2}
-                  cursor="pointer"
-                  px={3}
-                  py={2}
-                  borderRadius="lg"
-                  borderWidth="1px"
-                  borderColor={borderColor}
-                  _hover={{ bg: hoverBg }}
-                >
-                  <Text fontSize="sm" fontWeight="semibold">
-                    {selectedAccountData?.account_name || 'All Accounts'}
-                  </Text>
-                  <Icon as={FiInfo} color="fg.muted" />
-                </HStack>
-              </PopoverTrigger>
-              <PopoverContent>
-                <PopoverBody>
-                  <VStack gap={2} align="stretch">
-                    {showAllOption ? (
-                      <Box
-                        px={3}
-                        py={2}
-                        borderRadius="lg"
-                        cursor="pointer"
-                        _hover={{ bg: hoverBg }}
-                        onClick={() => onAccountChange('all')}
-                      >
-                        <Text fontSize="sm" fontWeight="semibold">
-                          All Accounts
-                        </Text>
-                        <Text fontSize="xs" color="fg.muted">
-                          Combined portfolio view
-                        </Text>
-                      </Box>
-                    ) : null}
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-auto gap-2 py-2 font-semibold shadow-xs"
+              >
+                <span>{selectedAccountData?.account_name || 'All Accounts'}</span>
+                <Info className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+              </Button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                align="end"
+                sideOffset={4}
+                className={cn(
+                  'z-50 max-h-[min(24rem,70vh)] min-w-[var(--radix-dropdown-menu-trigger-width)] overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md',
+                  'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2'
+                )}
+              >
+                {showAllOption ? (
+                  <DropdownMenu.Item
+                    className={cn(
+                      'flex cursor-default flex-col gap-0 rounded-sm px-3 py-2 text-left text-sm outline-none',
+                      'focus:bg-accent focus:text-accent-foreground'
+                    )}
+                    onSelect={() => onAccountChange('all')}
+                  >
+                    <span className="font-semibold">All Accounts</span>
+                    <span className="text-xs text-muted-foreground">Combined portfolio view</span>
+                  </DropdownMenu.Item>
+                ) : null}
+                {accounts.map((account) => (
+                  <DropdownMenu.Item
+                    key={account.account_id}
+                    className={cn(
+                      'cursor-default rounded-sm px-3 py-2 text-sm outline-none',
+                      'focus:bg-accent focus:text-accent-foreground'
+                    )}
+                    onSelect={() => onAccountChange(account.account_id)}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-semibold">{account.account_name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {account.broker} • {account.account_type}
+                        </div>
+                      </div>
+                      <span className="shrink-0 font-semibold">{formatCurrency(account.total_value)}</span>
+                    </div>
+                  </DropdownMenu.Item>
+                ))}
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+        </div>
 
-                    {accounts.map((account) => (
-                      <Box
-                        key={account.account_id}
-                        px={3}
-                        py={2}
-                        borderRadius="lg"
-                        cursor="pointer"
-                        _hover={{ bg: hoverBg }}
-                        onClick={() => onAccountChange(account.account_id)}
-                      >
-                        <HStack justify="space-between">
-                          <Box>
-                            <Text fontSize="sm" fontWeight="semibold">
-                              {account.account_name}
-                            </Text>
-                            <Text fontSize="xs" color="fg.muted">
-                              {account.broker} • {account.account_type}
-                            </Text>
-                          </Box>
-                          <Text fontSize="sm" fontWeight="semibold">
-                            {formatCurrency(account.total_value)}
-                          </Text>
-                        </HStack>
-                      </Box>
-                    ))}
-                  </VStack>
-                </PopoverBody>
-              </PopoverContent>
-            </PopoverRoot>
-          </HStack>
+        {showSummary ? (
+          <>
+            <AppDivider />
 
-          {showSummary ? (
-            <>
-              <AppDivider />
-
-              <SimpleGrid columns={{ base: 2, md: 4 }} gap={4}>
-                <StatRoot size="sm">
-                  <StatLabel>Total Value</StatLabel>
-                  <StatValueText fontSize="md">{formatCurrency(totalValue)}</StatValueText>
-                </StatRoot>
-                <StatRoot size="sm">
-                  <StatLabel>Total P&L</StatLabel>
-                  <StatValueText fontSize="md" color={getChangeColor(totalPnL)}>
-                    {totalPnL >= 0 ? <StatUpIndicator /> : <StatDownIndicator />}
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              <StatBlock label="Total Value" value={formatCurrency(totalValue)} />
+              <StatBlock
+                label="Total P&L"
+                value={
+                  <span className={cn('inline-flex items-center gap-1', getChangeClass(totalPnL))}>
+                    {totalPnL >= 0 ? (
+                      <TrendingUp className="size-3.5 shrink-0" aria-hidden />
+                    ) : (
+                      <TrendingDown className="size-3.5 shrink-0" aria-hidden />
+                    )}
                     {formatCurrency(totalPnL)}
-                  </StatValueText>
-                  <StatHelpText>{formatPercentage(totalPnLPct)}</StatHelpText>
-                </StatRoot>
-                <StatRoot size="sm">
-                  <StatLabel>Accounts</StatLabel>
-                  <StatValueText fontSize="md">{accounts.length}</StatValueText>
-                </StatRoot>
-                <StatRoot size="sm">
-                  <StatLabel>Total Positions</StatLabel>
-                  <StatValueText fontSize="md">{totalPositions}</StatValueText>
-                </StatRoot>
-              </SimpleGrid>
+                  </span>
+                }
+                help={formatPercentage(totalPnLPct)}
+              />
+              <StatBlock label="Accounts" value={String(accounts.length)} />
+              <StatBlock label="Total Positions" value={String(totalPositions)} />
+            </div>
 
-              {selectedAccountData && selectedAccount !== 'all' ? (
-                <Box>
-                  <Text fontSize="sm" fontWeight="semibold" mb={2}>
-                    Selected account
-                  </Text>
-                  <SimpleGrid columns={{ base: 2, md: 4 }} gap={4}>
-                    <StatRoot size="sm">
-                      <StatLabel>Account Value</StatLabel>
-                      <StatValueText fontSize="md">
-                        {formatCurrency(selectedAccountData?.total_value || 0)}
-                      </StatValueText>
-                    </StatRoot>
-                    <StatRoot size="sm">
-                      <StatLabel>Unrealized P&L</StatLabel>
-                      <StatValueText fontSize="md" color={getChangeColor(selectedAccountData?.unrealized_pnl)}>
-                        {(selectedAccountData?.unrealized_pnl || 0) >= 0 ? <StatUpIndicator /> : <StatDownIndicator />}
+            {selectedAccountData && selectedAccount !== 'all' ? (
+              <div>
+                <p className="mb-2 text-sm font-semibold">Selected account</p>
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                  <StatBlock label="Account Value" value={formatCurrency(selectedAccountData?.total_value || 0)} />
+                  <StatBlock
+                    label="Unrealized P&L"
+                    value={
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1',
+                          getChangeClass(selectedAccountData?.unrealized_pnl)
+                        )}
+                      >
+                        {(selectedAccountData?.unrealized_pnl || 0) >= 0 ? (
+                          <TrendingUp className="size-3.5 shrink-0" aria-hidden />
+                        ) : (
+                          <TrendingDown className="size-3.5 shrink-0" aria-hidden />
+                        )}
                         {formatCurrency(selectedAccountData?.unrealized_pnl || 0)}
-                      </StatValueText>
-                      <StatHelpText>{formatPercentage(selectedAccountData.unrealized_pnl_pct)}</StatHelpText>
-                    </StatRoot>
-                    <StatRoot size="sm">
-                      <StatLabel>Positions</StatLabel>
-                      <StatValueText fontSize="md">{selectedAccountData?.positions_count || 0}</StatValueText>
-                    </StatRoot>
-                    <StatRoot size="sm">
-                      <StatLabel>Allocation</StatLabel>
-                      <StatValueText fontSize="md">
-                        {(selectedAccountData?.allocation_pct ?? 0).toFixed(1)}%
-                      </StatValueText>
-                    </StatRoot>
-                  </SimpleGrid>
+                      </span>
+                    }
+                    help={formatPercentage(selectedAccountData.unrealized_pnl_pct)}
+                  />
+                  <StatBlock label="Positions" value={String(selectedAccountData?.positions_count || 0)} />
+                  <StatBlock
+                    label="Allocation"
+                    value={`${(selectedAccountData?.allocation_pct ?? 0).toFixed(1)}%`}
+                  />
+                </div>
 
-                  {(selectedAccountData?.buying_power !== undefined ||
-                    selectedAccountData?.available_funds !== undefined ||
-                    selectedAccountData?.day_change !== undefined) ? (
-                    <Box mt={4}>
-                      <AppDivider />
-                      <Flex mt={4} gap={4} wrap="wrap">
-                        {selectedAccountData?.buying_power !== undefined ? (
-                          <HStack gap={2}>
-                            <Icon as={FiDollarSign} color="fg.muted" />
-                            <Text fontSize="sm" color="fg.muted">
-                              Buying Power:
-                            </Text>
-                            <Text fontSize="sm" fontWeight="semibold">
-                              {formatCurrency(selectedAccountData.buying_power)}
-                            </Text>
-                          </HStack>
-                        ) : null}
-                        {selectedAccountData?.available_funds !== undefined ? (
-                          <HStack gap={2}>
-                            <Icon as={FiDollarSign} color="fg.muted" />
-                            <Text fontSize="sm" color="fg.muted">
-                              Available:
-                            </Text>
-                            <Text fontSize="sm" fontWeight="semibold">
-                              {formatCurrency(selectedAccountData.available_funds)}
-                            </Text>
-                          </HStack>
-                        ) : null}
-                        {selectedAccountData?.day_change !== undefined ? (
-                          <HStack gap={2}>
-                            <Icon
-                              as={selectedAccountData.day_change >= 0 ? FiTrendingUp : FiTrendingDown}
-                              color={getChangeColor(selectedAccountData.day_change)}
-                            />
-                            <Text fontSize="sm" color="fg.muted">
-                              Day:
-                            </Text>
-                            <Text fontSize="sm" fontWeight="semibold" color={getChangeColor(selectedAccountData.day_change)}>
-                              {formatCurrency(selectedAccountData.day_change)}
-                            </Text>
-                          </HStack>
-                        ) : null}
-                      </Flex>
-                    </Box>
-                  ) : null}
-                </Box>
-              ) : null}
-            </>
-          ) : null}
-        </VStack>
-      </CardBody>
-    </CardRoot>
+                {selectedAccountData?.buying_power !== undefined ||
+                selectedAccountData?.available_funds !== undefined ||
+                selectedAccountData?.day_change !== undefined ? (
+                  <div className="mt-4">
+                    <AppDivider />
+                    <div className="mt-4 flex flex-wrap gap-4">
+                      {selectedAccountData?.buying_power !== undefined ? (
+                        <div className="flex items-center gap-2 text-sm">
+                          <DollarSign className="size-4 text-muted-foreground" aria-hidden />
+                          <span className="text-muted-foreground">Buying Power:</span>
+                          <span className="font-semibold">{formatCurrency(selectedAccountData.buying_power)}</span>
+                        </div>
+                      ) : null}
+                      {selectedAccountData?.available_funds !== undefined ? (
+                        <div className="flex items-center gap-2 text-sm">
+                          <DollarSign className="size-4 text-muted-foreground" aria-hidden />
+                          <span className="text-muted-foreground">Available:</span>
+                          <span className="font-semibold">{formatCurrency(selectedAccountData.available_funds)}</span>
+                        </div>
+                      ) : null}
+                      {selectedAccountData?.day_change !== undefined ? (
+                        <div className="flex items-center gap-2 text-sm">
+                          {selectedAccountData.day_change >= 0 ? (
+                            <TrendingUp className={cn('size-4', getChangeClass(selectedAccountData.day_change))} />
+                          ) : (
+                            <TrendingDown className={cn('size-4', getChangeClass(selectedAccountData.day_change))} />
+                          )}
+                          <span className="text-muted-foreground">Day:</span>
+                          <span
+                            className={cn('font-semibold', getChangeClass(selectedAccountData.day_change))}
+                          >
+                            {formatCurrency(selectedAccountData.day_change)}
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 };
 
+function StatBlock({
+  label,
+  value,
+  help,
+}: {
+  label: string;
+  value: React.ReactNode;
+  help?: string;
+}) {
+  return (
+    <div className="grid gap-1">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <div className="text-base font-medium text-foreground">{value}</div>
+      {help ? <span className="text-xs text-muted-foreground">{help}</span> : null}
+    </div>
+  );
+}
+
 export default AccountSelector;
-
-

@@ -1,16 +1,9 @@
 import React from 'react';
-import {
-  Box,
-  Text,
-  Badge,
-  HStack,
-  VStack,
-  CardRoot,
-  CardBody,
-  Button,
-  Icon,
-} from '@chakra-ui/react';
-import { FiTrendingUp, FiRefreshCw, FiTarget, FiZap } from 'react-icons/fi';
+import { TrendingUp, RefreshCw, Target, Zap, type LucideIcon } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import type { StrategyTemplate } from '../../types/strategy';
 
 interface Props {
@@ -18,11 +11,23 @@ interface Props {
   onUseTemplate: (templateId: string) => void;
 }
 
-const TYPE_CONFIG: Record<string, { colorPalette: 'blue' | 'purple' | 'green' | 'gray'; icon: typeof FiTarget }> = {
-  momentum: { colorPalette: 'blue', icon: FiTrendingUp },
-  mean_reversion: { colorPalette: 'purple', icon: FiRefreshCw },
-  breakout: { colorPalette: 'green', icon: FiZap },
-  custom: { colorPalette: 'gray', icon: FiTarget },
+const TYPE_CONFIG: Record<string, { badgeClass: string; icon: LucideIcon }> = {
+  momentum: {
+    badgeClass: 'border-blue-500/40 bg-blue-500/10 text-blue-900 dark:text-blue-200',
+    icon: TrendingUp,
+  },
+  mean_reversion: {
+    badgeClass: 'border-violet-500/40 bg-violet-500/10 text-violet-900 dark:text-violet-200',
+    icon: RefreshCw,
+  },
+  breakout: {
+    badgeClass: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-900 dark:text-emerald-200',
+    icon: Zap,
+  },
+  custom: {
+    badgeClass: 'bg-secondary text-secondary-foreground',
+    icon: Target,
+  },
 };
 
 function formatStrategyType(type: string): string {
@@ -34,61 +39,52 @@ function formatStrategyType(type: string): string {
 
 export default function StrategyTemplateCard({ template, onUseTemplate }: Props) {
   const config = TYPE_CONFIG[template.strategy_type] ?? {
-    colorPalette: 'gray' as const,
-    icon: FiTarget,
+    badgeClass: 'bg-secondary text-secondary-foreground',
+    icon: Target,
   };
   const TypeIcon = config.icon;
 
   return (
-    <CardRoot
-      bg="bg.card"
-      borderWidth="1px"
-      borderColor="border.subtle"
-      borderRadius="xl"
-      _hover={{ borderColor: 'border.emphasized' }}
-      cursor="pointer"
+    <Card
+      className="cursor-pointer transition-colors hover:ring-foreground/20"
       onClick={() => onUseTemplate(template.id)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onUseTemplate(template.id);
+        }
+      }}
+      role="button"
+      tabIndex={0}
     >
-      <CardBody>
-        <VStack align="stretch" gap={3}>
-          <Badge
-            colorPalette={config.colorPalette}
-            variant="subtle"
-            size="sm"
-            alignSelf="flex-start"
-          >
-            <Icon as={TypeIcon} mr={1} />
-            {formatStrategyType(template.strategy_type)}
-          </Badge>
+      <CardContent className="flex flex-col gap-3 pt-6">
+        <Badge variant="outline" className={cn('w-fit gap-1 pr-2', config.badgeClass)}>
+          <TypeIcon className="size-3" aria-hidden />
+          {formatStrategyType(template.strategy_type)}
+        </Badge>
 
-          <Text fontWeight="semibold" color="fg.default">
-            {template.name}
-          </Text>
+        <p className="font-semibold text-foreground">{template.name}</p>
 
-          <Text fontSize="sm" color="fg.muted" lineClamp={3}>
-            {template.description}
-          </Text>
+        <p className="line-clamp-3 text-sm text-muted-foreground">{template.description}</p>
 
-          <HStack gap={4} fontSize="xs" color="fg.muted" flexWrap="wrap">
-            <Text>{template.position_size_pct}% position</Text>
-            <Text>{template.max_positions} max positions</Text>
-            {template.stop_loss_pct != null && (
-              <Text>{template.stop_loss_pct}% stop loss</Text>
-            )}
-          </HStack>
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <span>{template.position_size_pct}% position</span>
+          <span>{template.max_positions} max positions</span>
+          {template.stop_loss_pct != null && <span>{template.stop_loss_pct}% stop loss</span>}
+        </div>
 
-          <Button
-            size="sm"
-            colorPalette="blue"
-            onClick={(e) => {
-              e.stopPropagation();
-              onUseTemplate(template.id);
-            }}
-          >
-            Use Template
-          </Button>
-        </VStack>
-      </CardBody>
-    </CardRoot>
+        <Button
+          type="button"
+          size="sm"
+          className="w-fit"
+          onClick={(e) => {
+            e.stopPropagation();
+            onUseTemplate(template.id);
+          }}
+        >
+          Use Template
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,11 +1,4 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import {
-  Box,
-  Text,
-  HStack,
-  Button,
-  Badge,
-} from '@chakra-ui/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChartContext, ChartSlidePanel } from '../../components/market/SymbolChartUI';
 import SortableTable, { type Column } from '../../components/SortableTable';
@@ -13,6 +6,10 @@ import PageHeader from '../../components/ui/PageHeader';
 import { formatMoney, formatDateTimeFriendly } from '../../utils/format';
 import api from '../../services/api';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { semanticTextColorClass } from '@/lib/semantic-text-color';
 
 import type { Order } from '../../types/orders';
 
@@ -22,12 +19,14 @@ type StatusFilter = 'all' | 'active' | 'filled' | 'cancelled';
 
 const ACTIVE_STATUSES = new Set(['preview', 'pending_submit', 'submitted', 'partially_filled']);
 
-function statusColor(s: string): string {
+function statusBadgeClass(s: string): string {
   const l = s.toLowerCase();
-  if (l === 'filled') return 'green';
-  if (['submitted', 'pending_submit', 'partially_filled'].includes(l)) return 'yellow';
-  if (['error', 'rejected'].includes(l)) return 'red';
-  return 'gray';
+  if (l === 'filled') return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200';
+  if (['submitted', 'pending_submit', 'partially_filled'].includes(l))
+    return 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-100';
+  if (['error', 'rejected'].includes(l))
+    return 'border-destructive/40 bg-destructive/10 text-destructive';
+  return 'border-border bg-muted/50 text-muted-foreground';
 }
 
 const PortfolioOrders: React.FC = () => {
@@ -54,10 +53,14 @@ const PortfolioOrders: React.FC = () => {
 
   const filtered = useMemo(() => {
     switch (statusFilter) {
-      case 'active': return allOrders.filter(o => ACTIVE_STATUSES.has(o.status));
-      case 'filled': return allOrders.filter(o => o.status === 'filled');
-      case 'cancelled': return allOrders.filter(o => ['cancelled', 'rejected', 'error'].includes(o.status));
-      default: return allOrders;
+      case 'active':
+        return allOrders.filter((o) => ACTIVE_STATUSES.has(o.status));
+      case 'filled':
+        return allOrders.filter((o) => o.status === 'filled');
+      case 'cancelled':
+        return allOrders.filter((o) => ['cancelled', 'rejected', 'error'].includes(o.status));
+      default:
+        return allOrders;
     }
   }, [allOrders, statusFilter]);
 
@@ -70,175 +73,232 @@ const PortfolioOrders: React.FC = () => {
     }
   };
 
-  const columns: Column<OrderRow>[] = useMemo(() => [
-    {
-      key: 'symbol',
-      header: 'Symbol',
-      accessor: (o) => o.symbol,
-      sortable: true,
-      render: (_v, o) => (
-        <Text fontFamily="mono" fontWeight="semibold" cursor="pointer" _hover={{ textDecoration: 'underline', color: 'brand.500' }} onClick={(e) => { e.stopPropagation(); openChart(o.symbol); }}>
-          {o.symbol}
-        </Text>
-      ),
-      width: '90px',
-    },
-    {
-      key: 'side',
-      header: 'Side',
-      accessor: (o) => o.side,
-      sortable: true,
-      render: (v) => (
-        <Badge size="sm" colorPalette={v === 'sell' ? 'red' : 'green'} variant="subtle">
-          {String(v).toUpperCase()}
-        </Badge>
-      ),
-      width: '65px',
-    },
-    {
-      key: 'order_type',
-      header: 'Type',
-      accessor: (o) => o.order_type,
-      sortable: true,
-      render: (v) => <Text fontSize="xs" textTransform="capitalize">{v}</Text>,
-      width: '75px',
-    },
-    {
-      key: 'quantity',
-      header: 'Qty',
-      accessor: (o) => o.quantity,
-      sortable: true,
-      isNumeric: true,
-      render: (v) => <Text fontSize="xs">{Number(v).toLocaleString()}</Text>,
-      width: '70px',
-    },
-    {
-      key: 'price',
-      header: 'Price',
-      accessor: (o) => o.limit_price ?? o.stop_price ?? null,
-      sortable: true,
-      isNumeric: true,
-      render: (_v, o) => {
-        if (o.limit_price) return <Text fontSize="xs">{formatMoney(o.limit_price, 'USD')} <Text as="span" color="fg.muted">lmt</Text></Text>;
-        if (o.stop_price) return <Text fontSize="xs">{formatMoney(o.stop_price, 'USD')} <Text as="span" color="fg.muted">stp</Text></Text>;
-        return <Text fontSize="xs" color="fg.muted">MKT</Text>;
+  const columns: Column<OrderRow>[] = useMemo(
+    () => [
+      {
+        key: 'symbol',
+        header: 'Symbol',
+        accessor: (o) => o.symbol,
+        sortable: true,
+        render: (_v, o) => (
+          <button
+            type="button"
+            className="cursor-pointer font-mono font-semibold text-primary hover:underline"
+            onClick={(e) => {
+              e.stopPropagation();
+              openChart(o.symbol);
+            }}
+          >
+            {o.symbol}
+          </button>
+        ),
+        width: '90px',
       },
-      width: '100px',
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      accessor: (o) => o.status,
-      sortable: true,
-      render: (v) => (
-        <Badge size="sm" colorPalette={statusColor(v)} variant="subtle">
-          {String(v).replace('_', ' ').toUpperCase()}
-        </Badge>
-      ),
-      width: '110px',
-    },
-    {
-      key: 'filled_quantity',
-      header: 'Filled',
-      accessor: (o) => o.filled_quantity,
-      sortable: true,
-      isNumeric: true,
-      render: (v, o) => (
-        <Text fontSize="xs">
-          {Number(v) > 0 ? `${Number(v).toLocaleString()} / ${Number(o.quantity).toLocaleString()}` : '—'}
-        </Text>
-      ),
-      width: '90px',
-    },
-    {
-      key: 'filled_avg_price',
-      header: 'Avg Fill',
-      accessor: (o) => o.filled_avg_price,
-      sortable: true,
-      isNumeric: true,
-      hiddenOnMobile: true,
-      render: (v) => <Text fontSize="xs">{v != null ? formatMoney(Number(v), 'USD') : '—'}</Text>,
-      width: '85px',
-    },
-    {
-      key: 'source',
-      header: 'Source',
-      accessor: (o) => o.source ?? 'manual',
-      sortable: true,
-      hiddenOnMobile: true,
-      render: (v) => (
-        <Badge size="sm" variant="subtle" colorPalette={v === 'strategy' ? 'purple' : v === 'rebalance' ? 'blue' : 'gray'}>
-          {String(v).charAt(0).toUpperCase() + String(v).slice(1)}
-        </Badge>
-      ),
-      width: '90px',
-    },
-    {
-      key: 'estimated_commission',
-      header: 'Comm.',
-      accessor: (o) => o.estimated_commission,
-      sortable: true,
-      isNumeric: true,
-      hiddenOnMobile: true,
-      render: (v) => <Text fontSize="xs">{v != null ? formatMoney(Number(v), 'USD') : '—'}</Text>,
-      width: '75px',
-    },
-    {
-      key: 'created_at',
-      header: 'Created',
-      accessor: (o) => o.created_at ?? '',
-      sortable: true,
-      sortType: 'date',
-      render: (v) => <Text fontSize="xs" color="fg.muted">{formatDateTimeFriendly(v, timezone)}</Text>,
-      width: '130px',
-    },
-    {
-      key: 'actions',
-      header: '',
-      accessor: () => '',
-      sortable: false,
-      render: (_v, o) => {
-        if (ACTIVE_STATUSES.has(o.status) && o.status !== 'preview') {
+      {
+        key: 'side',
+        header: 'Side',
+        accessor: (o) => o.side,
+        sortable: true,
+        render: (v) => (
+          <Badge
+            variant="outline"
+            className={cn(
+              'h-5 text-[10px]',
+              v === 'sell'
+                ? 'border-red-500/40 text-red-700 dark:text-red-300'
+                : 'border-emerald-500/40 text-emerald-700 dark:text-emerald-300',
+            )}
+          >
+            {String(v).toUpperCase()}
+          </Badge>
+        ),
+        width: '65px',
+      },
+      {
+        key: 'order_type',
+        header: 'Type',
+        accessor: (o) => o.order_type,
+        sortable: true,
+        render: (v) => <span className="text-xs capitalize">{v}</span>,
+        width: '75px',
+      },
+      {
+        key: 'quantity',
+        header: 'Qty',
+        accessor: (o) => o.quantity,
+        sortable: true,
+        isNumeric: true,
+        render: (v) => <span className="text-xs">{Number(v).toLocaleString()}</span>,
+        width: '70px',
+      },
+      {
+        key: 'price',
+        header: 'Price',
+        accessor: (o) => o.limit_price ?? o.stop_price ?? null,
+        sortable: true,
+        isNumeric: true,
+        render: (_v, o) => {
+          if (o.limit_price)
+            return (
+              <span className="text-xs">
+                {formatMoney(o.limit_price, 'USD')}{' '}
+                <span className="text-muted-foreground">lmt</span>
+              </span>
+            );
+          if (o.stop_price)
+            return (
+              <span className="text-xs">
+                {formatMoney(o.stop_price, 'USD')}{' '}
+                <span className="text-muted-foreground">stp</span>
+              </span>
+            );
+          return <span className="text-xs text-muted-foreground">MKT</span>;
+        },
+        width: '100px',
+      },
+      {
+        key: 'status',
+        header: 'Status',
+        accessor: (o) => o.status,
+        sortable: true,
+        render: (v) => (
+          <Badge variant="outline" className={cn('h-5 text-[10px] font-medium', statusBadgeClass(String(v)))}>
+            {String(v).replace('_', ' ').toUpperCase()}
+          </Badge>
+        ),
+        width: '110px',
+      },
+      {
+        key: 'filled_quantity',
+        header: 'Filled',
+        accessor: (o) => o.filled_quantity,
+        sortable: true,
+        isNumeric: true,
+        render: (v, o) => (
+          <span className="text-xs">
+            {Number(v) > 0 ? `${Number(v).toLocaleString()} / ${Number(o.quantity).toLocaleString()}` : '—'}
+          </span>
+        ),
+        width: '90px',
+      },
+      {
+        key: 'filled_avg_price',
+        header: 'Avg Fill',
+        accessor: (o) => o.filled_avg_price,
+        sortable: true,
+        isNumeric: true,
+        hiddenOnMobile: true,
+        render: (v) => <span className="text-xs">{v != null ? formatMoney(Number(v), 'USD') : '—'}</span>,
+        width: '85px',
+      },
+      {
+        key: 'source',
+        header: 'Source',
+        accessor: (o) => o.source ?? 'manual',
+        sortable: true,
+        hiddenOnMobile: true,
+        render: (v) => {
+          const src = String(v);
+          const cls =
+            src === 'strategy'
+              ? 'border-violet-500/40 bg-violet-500/10 text-violet-800 dark:text-violet-200'
+              : src === 'rebalance'
+                ? 'border-primary/40 bg-primary/10'
+                : 'border-border bg-muted/50';
           return (
-            <Button size="xs" variant="outline" colorPalette="red" onClick={(e) => { e.stopPropagation(); handleCancel(o.id); }}>
-              Cancel
-            </Button>
+            <Badge variant="outline" className={cn('h-5 text-[10px]', cls)}>
+              {src.charAt(0).toUpperCase() + src.slice(1)}
+            </Badge>
           );
-        }
-        if (o.error_message) {
-          return <Text fontSize="xs" color="fg.error" maxW="120px" truncate>{o.error_message}</Text>;
-        }
-        return null;
+        },
+        width: '90px',
       },
-      width: '80px',
-    },
-  ], [openChart, timezone]);
+      {
+        key: 'estimated_commission',
+        header: 'Comm.',
+        accessor: (o) => o.estimated_commission,
+        sortable: true,
+        isNumeric: true,
+        hiddenOnMobile: true,
+        render: (v) => <span className="text-xs">{v != null ? formatMoney(Number(v), 'USD') : '—'}</span>,
+        width: '75px',
+      },
+      {
+        key: 'created_at',
+        header: 'Created',
+        accessor: (o) => o.created_at ?? '',
+        sortable: true,
+        sortType: 'date',
+        render: (v) => (
+          <span className="text-xs text-muted-foreground">{formatDateTimeFriendly(v, timezone)}</span>
+        ),
+        width: '130px',
+      },
+      {
+        key: 'actions',
+        header: '',
+        accessor: () => '',
+        sortable: false,
+        render: (_v, o) => {
+          if (ACTIVE_STATUSES.has(o.status) && o.status !== 'preview') {
+            return (
+              <Button
+                size="xs"
+                variant="outline"
+                className="h-7 border-destructive/40 text-destructive hover:bg-destructive/10"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCancel(o.id);
+                }}
+              >
+                Cancel
+              </Button>
+            );
+          }
+          if (o.error_message) {
+            return (
+              <span
+                className={cn('max-w-[120px] truncate text-xs', semanticTextColorClass('status.danger'))}
+                title={o.error_message}
+              >
+                {o.error_message}
+              </span>
+            );
+          }
+          return null;
+        },
+        width: '80px',
+      },
+    ],
+    [openChart, timezone],
+  );
 
-  const activeCount = allOrders.filter(o => ACTIVE_STATUSES.has(o.status)).length;
+  const activeCount = allOrders.filter((o) => ACTIVE_STATUSES.has(o.status)).length;
 
   return (
-    <Box p={4}>
-      <PageHeader
-        title="Orders"
-        subtitle="Trade order history and active order management"
-      />
+    <div className="p-4">
+      <PageHeader title="Orders" subtitle="Trade order history and active order management" />
 
-      <HStack gap={2} mt={4} mb={4}>
+      <div className="mb-4 mt-4 flex flex-wrap items-center gap-2">
         {(['all', 'active', 'filled', 'cancelled'] as StatusFilter[]).map((f) => (
           <Button
             key={f}
             size="xs"
-            variant={statusFilter === f ? 'solid' : 'outline'}
+            variant={statusFilter === f ? 'default' : 'outline'}
             onClick={() => setStatusFilter(f)}
           >
-            {f === 'all' ? `All (${allOrders.length})` : f === 'active' ? `Active (${activeCount})` : f.charAt(0).toUpperCase() + f.slice(1)}
+            {f === 'all'
+              ? `All (${allOrders.length})`
+              : f === 'active'
+                ? `Active (${activeCount})`
+                : f.charAt(0).toUpperCase() + f.slice(1)}
           </Button>
         ))}
-        <Box flex="1" />
+        <div className="min-w-2 flex-1" />
         <Button size="xs" variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: ['allOrders'] })}>
           Refresh
         </Button>
-      </HStack>
+      </div>
 
       <ChartContext.Provider value={openChart}>
         <SortableTable
@@ -253,7 +313,7 @@ const PortfolioOrders: React.FC = () => {
       </ChartContext.Provider>
 
       <ChartSlidePanel symbol={chartSymbol} onClose={() => setChartSymbol(null)} />
-    </Box>
+    </div>
   );
 };
 

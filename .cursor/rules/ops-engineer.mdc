@@ -69,11 +69,11 @@ The system includes a self-remediating health agent (`backend/tasks/auto_ops_tas
 
 | Dimension | Pass Criteria | Remediation Task(s) |
 |-----------|--------------|---------------------|
-| coverage | daily_pct >= 95%, stale_daily == 0 | `monitor_coverage_health` + `backfill_stale_daily_tracked` |
-| stage_quality | unknown_rate <= 35%, invalid == 0 | `recompute_indicators_universe` |
-| jobs | error_count == 0 (24h window) | `recover_stale_job_runs` |
-| audit | daily_fill >= 95%, snapshot_fill >= 90% | `bootstrap_daily_coverage_tracked` + `record_daily_history` |
-| regime | latest regime < 48h old | `compute_daily_regime` |
+| coverage | daily_pct >= 95%, stale_daily == 0 | `coverage.health_check` + `backfill.stale_daily` (Celery: `backend.tasks.market.*`) |
+| stage_quality | unknown_rate <= 35%, invalid == 0 | `indicators.recompute_universe` |
+| jobs | error_count == 0 (24h window) | `maintenance.recover_jobs` |
+| audit | daily_fill >= 95%, snapshot_fill >= 90% | `coverage.daily_bootstrap` + `history.record_daily` |
+| regime | latest regime < 48h old | `regime.compute_daily` |
 
 ### Health Endpoint
 

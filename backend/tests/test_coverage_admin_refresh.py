@@ -27,7 +27,7 @@ def test_admin_refresh_coverage_enqueues_task(monkeypatch):
         def delay(*_args, **_kwargs):
             return SimpleNamespace(id="task-123")
 
-    monkeypatch.setattr(routes, "monitor_coverage_health", _StubTask)
+    monkeypatch.setattr(routes, "health_check", _StubTask)
 
     client = TestClient(app, raise_server_exceptions=False)
     resp = client.post("/api/v1/market-data/admin/backfill/coverage/refresh")
@@ -44,7 +44,7 @@ def test_admin_restore_daily_tracked_enqueues_task(monkeypatch):
         def delay(*_args, **_kwargs):
             return SimpleNamespace(id="task-restore-123")
 
-    monkeypatch.setattr(routes, "bootstrap_daily_coverage_tracked", _StubTask)
+    monkeypatch.setattr(routes, "daily_bootstrap", _StubTask)
 
     client = TestClient(app, raise_server_exceptions=False)
     resp = client.post("/api/v1/market-data/admin/backfill/coverage")

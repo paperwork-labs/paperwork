@@ -1,13 +1,6 @@
-import {
-  Box,
-  Text,
-  Badge,
-  HStack,
-  VStack,
-  CardRoot,
-  CardBody,
-  SimpleGrid,
-} from '@chakra-ui/react';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import type { ConditionGroupData, ConditionData } from '../../types/strategy';
 
 const OPERATOR_MAP: Record<string, string> = {
@@ -39,27 +32,15 @@ function ConditionRow({ condition }: { condition: ConditionData }) {
       : formatValue(condition.value);
 
   return (
-    <CardRoot
-      size="sm"
-      bg="bg.card"
-      borderWidth="1px"
-      borderColor="border.subtle"
-      borderRadius="md"
-    >
-      <CardBody py={2} px={3}>
-        <HStack gap={2} flexWrap="wrap" fontSize="sm">
-          <Text as="span" fontWeight="medium" color="fg.default">
-            {condition.field}
-          </Text>
-          <Text as="span" color="fg.muted">
-            {opDisplay}
-          </Text>
-          <Text as="span" color="fg.default">
-            {valueDisplay}
-          </Text>
-        </HStack>
-      </CardBody>
-    </CardRoot>
+    <Card size="sm" className="shadow-none">
+      <CardContent className="py-2">
+        <div className="flex flex-wrap gap-2 text-sm">
+          <span className="font-medium text-foreground">{condition.field}</span>
+          <span className="text-muted-foreground">{opDisplay}</span>
+          <span className="text-foreground">{valueDisplay}</span>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -76,39 +57,37 @@ function RuleDisplayInner({ group, label, depth = 0 }: RuleDisplayProps) {
   if (!hasContent) return null;
 
   return (
-    <Box>
+    <div>
       {label && (
-        <Text fontSize="xs" fontWeight="semibold" color="fg.muted" mb={1} textTransform="uppercase" letterSpacing="wider">
-          {label}
-        </Text>
+        <p className="mb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{label}</p>
       )}
-      <VStack align="stretch" gap={2} pl={depth > 0 ? 4 : 0} borderLeftWidth={depth > 0 ? 2 : 0} borderColor="border.subtle">
-        <Badge
-          size="sm"
-          colorPalette="gray"
-          variant="subtle"
-          alignSelf="flex-start"
-        >
+      <div
+        className={cn(
+          'flex flex-col gap-2',
+          depth > 0 && 'border-l-2 border-border pl-4',
+        )}
+      >
+        <Badge variant="secondary" className="w-fit text-[10px]">
           {logicLabel}
         </Badge>
-        <VStack align="stretch" gap={2} pl={2}>
+        <div className="flex flex-col gap-2 pl-2">
           {group.conditions.map((cond, idx) => (
             <ConditionRow key={idx} condition={cond} />
           ))}
           {group.groups.map((g, idx) => (
             <RuleDisplayInner key={idx} group={g} depth={depth + 1} />
           ))}
-        </VStack>
-      </VStack>
-    </Box>
+        </div>
+      </div>
+    </div>
   );
 }
 
 export default function RuleDisplay({ group, label }: { group: ConditionGroupData; label?: string }) {
   return (
-    <Box>
+    <div>
       <RuleDisplayInner group={group} label={label} />
-    </Box>
+    </div>
   );
 }
 
@@ -123,29 +102,25 @@ export function EntryExitRules({
   const hasExit = exitRules && (exitRules.conditions.length > 0 || exitRules.groups.length > 0);
 
   if (!hasEntry && !hasExit) {
-    return (
-      <Text fontSize="sm" color="fg.muted">
-        No entry or exit rules configured.
-      </Text>
-    );
+    return <p className="text-sm text-muted-foreground">No entry or exit rules configured.</p>;
   }
 
   return (
-    <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       {hasEntry && (
-        <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-          <CardBody>
+        <Card>
+          <CardContent className="pt-6">
             <RuleDisplay group={entryRules!} label="Entry" />
-          </CardBody>
-        </CardRoot>
+          </CardContent>
+        </Card>
       )}
       {hasExit && (
-        <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-          <CardBody>
+        <Card>
+          <CardContent className="pt-6">
             <RuleDisplay group={exitRules!} label="Exit" />
-          </CardBody>
-        </CardRoot>
+          </CardContent>
+        </Card>
       )}
-    </SimpleGrid>
+    </div>
   );
 }

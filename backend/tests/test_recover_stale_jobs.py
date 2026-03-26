@@ -1,4 +1,4 @@
-"""Tests for recover_stale_job_runs_impl: only stale RUNNING jobs are cancelled."""
+"""Tests for recover_jobs_impl: only stale RUNNING jobs are cancelled."""
 
 from datetime import datetime, timedelta
 from unittest.mock import patch
@@ -15,11 +15,11 @@ def test_only_stale_running_jobs_are_cancelled(db_session):
     db_session.add_all([stale, fresh, done])
     db_session.flush()
 
-    from backend.tasks.market_data_tasks import recover_stale_job_runs_impl
+    from backend.tasks.market.maintenance import recover_jobs_impl
 
-    with patch("backend.tasks.market_data_tasks.SessionLocal", return_value=db_session):
+    with patch("backend.tasks.market.maintenance.SessionLocal", return_value=db_session):
         with patch.object(db_session, "close"):
-            result = recover_stale_job_runs_impl(stale_minutes=120)
+            result = recover_jobs_impl(stale_minutes=120)
 
     assert result["cancelled_count"] == 1
 

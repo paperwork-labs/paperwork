@@ -1,5 +1,4 @@
 import React from 'react';
-import { Box, Text } from '@chakra-ui/react';
 import { useColorMode } from '../theme/colorMode';
 import AccountSelector, { type AccountData } from '../components/ui/AccountSelector';
 import AccountFilterWrapper from '../components/ui/AccountFilterWrapper';
@@ -48,47 +47,41 @@ const items: Item[] = [
   { id: '3', symbol: 'NVDA', account_id: 'A2' },
 ];
 
+const pillBtn = 'rounded-[10px] border border-border px-3 py-2 text-sm';
+
 export const AccountSelector_Detailed = () => {
   const { colorMode, toggleColorMode } = useColorMode();
   const [selected, setSelected] = React.useState('all');
 
   return (
-    <Box p={6}>
-      <Text
-        as="button"
-        onClick={toggleColorMode}
-        style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.12)' }}
-      >
+    <div className="p-6">
+      <button type="button" className={pillBtn} onClick={toggleColorMode}>
         Toggle mode ({colorMode})
-      </Text>
-      <Box mt={4}>
+      </button>
+      <div className="mt-4">
         <AccountSelector accounts={accounts} selectedAccount={selected} onAccountChange={setSelected} />
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 };
 
 export const AccountFilterWrapper_Example = () => {
   return (
-    <Box p={6}>
+    <div className="p-6">
       <AccountFilterWrapper
         data={items}
         accounts={accounts}
         config={{ showSummary: true, showAllOption: true, variant: 'detailed' }}
       >
         {(filtered) => (
-          <Box mt={3} borderWidth="1px" borderColor="border.subtle" borderRadius="xl" bg="bg.card" p={4}>
-            <Text fontWeight="semibold" color="fg.default">
-              Filtered symbols
-            </Text>
-            <Text fontSize="sm" color="fg.muted">
+          <div className="mt-3 rounded-xl border border-border bg-card p-4">
+            <div className="font-semibold text-foreground">Filtered symbols</div>
+            <div className="text-sm text-muted-foreground">
               {filtered.map((x) => x.symbol).join(', ') || '—'}
-            </Text>
-          </Box>
+            </div>
+          </div>
         )}
       </AccountFilterWrapper>
-    </Box>
+    </div>
   );
 };
-
-

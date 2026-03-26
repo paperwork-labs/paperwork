@@ -1,28 +1,21 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import {
-  Box,
-  Text,
-  VStack,
-  HStack,
-  Input,
-  Button,
-  Badge,
-  Collapsible,
-  DialogRoot,
-  DialogBackdrop,
-  DialogPositioner,
+  Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogBody,
-  DialogFooter,
-  DialogCloseTrigger,
-} from '@chakra-ui/react';
-import { FiChevronDown, FiChevronRight } from 'react-icons/fi';
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
 import api, { portfolioApi } from '../../services/api';
 import { formatMoney, formatDateFriendly } from '../../utils/format';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
-import type { OrderSide, OrderStatus } from '../../types/orders';
+import type { OrderSide } from '../../types/orders';
 
 const ORDER_TYPES = ['market', 'limit', 'stop', 'stop_limit'] as const;
 type OrderTypeOption = (typeof ORDER_TYPES)[number];
@@ -71,6 +64,19 @@ function getStatusBadgeColor(status: string): 'green' | 'yellow' | 'red' | 'gray
   return 'gray';
 }
 
+function statusBadgeClass(palette: ReturnType<typeof getStatusBadgeColor>): string {
+  switch (palette) {
+    case 'green':
+      return 'border-transparent bg-emerald-600 text-white hover:bg-emerald-600/90';
+    case 'yellow':
+      return 'border-amber-500/40 bg-amber-500/15 text-amber-800 dark:text-amber-200';
+    case 'red':
+      return 'border-transparent bg-destructive text-destructive-foreground';
+    default:
+      return 'bg-secondary text-secondary-foreground';
+  }
+}
+
 function extractError(e: unknown): string {
   const err = e as { response?: { data?: { detail?: string } }; message?: string };
   return err?.response?.data?.detail ?? err?.message ?? 'Order failed';
@@ -114,10 +120,12 @@ export default function OrderModal({
   const [selectedLotIds, setSelectedLotIds] = useState<Set<number>>(new Set());
 
   const isSell = side === 'sell';
-  const maxQuantity = isSell ? sharesHeld : Infinity;
 
   useEffect(() => {
-    if (!isOpen || !positionId || !isSell) { setTaxLots([]); return; }
+    if (!isOpen || !positionId || !isSell) {
+      setTaxLots([]);
+      return;
+    }
     (async () => {
       try {
         const resp = await portfolioApi.getHoldingTaxLots(positionId);
@@ -129,7 +137,9 @@ export default function OrderModal({
           approaching_lt: !(l as unknown as TaxLot).is_long_term && ((l as unknown as TaxLot).days_held ?? 0) >= 300,
         }));
         setTaxLots(lots);
-      } catch { setTaxLots([]); }
+      } catch {
+        setTaxLots([]);
+      }
     })();
   }, [isOpen, positionId, isSell]);
 
@@ -166,17 +176,16 @@ export default function OrderModal({
     setPreviewError(null);
     setPreviewLoading(true);
     try {
-      const { data } = await api.post<{ data: { order_id: number; status: string; preview: Record<string, unknown>; warnings: string[] } }>(
-        '/portfolio/orders/preview',
-        {
-          symbol,
-          side,
-          order_type: orderType,
-          quantity,
-          limit_price: ['limit', 'stop_limit'].includes(orderType) ? limitPrice : undefined,
-          stop_price: ['stop', 'stop_limit'].includes(orderType) ? stopPrice : undefined,
-        },
-      );
+      const { data } = await api.post<{
+        data: { order_id: number; status: string; preview: Record<string, unknown>; warnings: string[] };
+      }>('/portfolio/orders/preview', {
+        symbol,
+        side,
+        order_type: orderType,
+        quantity,
+        limit_price: ['limit', 'stop_limit'].includes(orderType) ? limitPrice : undefined,
+        stop_price: ['stop', 'stop_limit'].includes(orderType) ? stopPrice : undefined,
+      });
       const result = data?.data ?? data;
       setOrderId(result.order_id);
       setPreviewData(result);
@@ -193,12 +202,14 @@ export default function OrderModal({
     setSubmitError(null);
     setSubmitLoading(true);
     try {
-      const { data } = await api.post<{ data: { order_id: number; status: string; broker_order_id?: string; error?: string } }>(
-        '/portfolio/orders/submit',
-        { order_id: orderId },
-      );
+      const { data } = await api.post<{
+        data: { order_id: number; status: string; broker_order_id?: string; error?: string };
+      }>('/portfolio/orders/submit', { order_id: orderId });
       const result = data?.data ?? data;
-      if (result?.error) { setSubmitError(result.error); return; }
+      if (result?.error) {
+        setSubmitError(result.error);
+        return;
+      }
       setOrderStatus({
         id: result.order_id,
         status: result.status,
@@ -223,7 +234,9 @@ export default function OrderModal({
         setOrderStatus(result as OrderStatusResult);
         const s = String(result?.status ?? '').toLowerCase();
         if (['filled', 'cancelled', 'error', 'rejected'].includes(s)) clearInterval(interval);
-      } catch { /* ignore poll errors */ }
+      } catch {
+        /* ignore poll errors */
+      }
     }, 2000);
     return () => clearInterval(interval);
   }, [step, orderId]);
@@ -246,302 +259,381 @@ export default function OrderModal({
     }
   }, [isOpen, sharesHeld, currentPrice, initialSide]);
 
-  const sideColor = isSell ? 'red' : 'green';
   const sideLabel = isSell ? 'Sell' : 'Buy';
 
   return (
-    <DialogRoot open={isOpen} onOpenChange={(d) => { if (!d.open) onClose(); }}>
-      <DialogBackdrop />
-      <DialogPositioner
-        display="flex"
-        alignItems={{ base: 'flex-end', md: 'center' }}
-        justifyContent="center"
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        showCloseButton
+        className="flex max-h-[min(90vh,calc(100vh-2rem))] max-w-[95vw] flex-col gap-0 overflow-hidden p-0 max-md:fixed max-md:bottom-0 max-md:left-1/2 max-md:top-auto max-md:max-h-[90vh] max-md:w-[95vw] max-md:-translate-x-1/2 max-md:translate-y-0 max-md:rounded-b-none max-md:rounded-t-xl sm:max-w-md"
       >
-        <DialogContent
-          maxW={{ base: '95vw', md: 'md' }}
-          borderRadius={{ base: '16px 16px 0 0', md: 'xl' }}
-          maxH={{ base: '90vh', md: 'auto' }}
-          overflowY="auto"
-        >
-          <DialogHeader>
-            <DialogTitle>
-              <HStack gap={2}>
-                <Badge colorPalette={sideColor} variant="solid" size="lg">{sideLabel}</Badge>
-                <Text>{symbol}</Text>
-              </HStack>
-            </DialogTitle>
-          </DialogHeader>
-          <DialogBody>
-            {/* Step 1: Configure */}
-            {step === 1 && (
-              <VStack align="stretch" gap={4}>
-                <Box>
-                  <Text fontSize="sm" fontWeight="semibold" mb={2}>Side</Text>
-                  <HStack gap={1}>
-                    {(['buy', 'sell'] as const).map((s) => (
-                      <Button
-                        key={s}
-                        size="sm"
-                        variant={side === s ? 'solid' : 'outline'}
-                        colorPalette={s === 'buy' ? 'green' : 'red'}
-                        onClick={() => {
-                          setSide(s);
-                          setQuantity(s === 'sell' ? sharesHeld : 1);
-                        }}
-                      >
-                        {s.charAt(0).toUpperCase() + s.slice(1)}
+        <DialogHeader className="shrink-0 border-b border-border px-6 pt-6 pb-4">
+          <DialogTitle className="flex flex-wrap items-center gap-2">
+            <Badge
+              className={cn(
+                'text-xs',
+                isSell
+                  ? 'border-transparent bg-destructive text-destructive-foreground'
+                  : 'border-transparent bg-primary text-primary-foreground'
+              )}
+            >
+              {sideLabel}
+            </Badge>
+            <span>{symbol}</span>
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+          {step === 1 && (
+            <div className="flex flex-col gap-4">
+              <div>
+                <p className="mb-2 text-sm font-semibold">Side</p>
+                <div className="flex flex-wrap gap-1">
+                  {(['buy', 'sell'] as const).map((s) => (
+                    <Button
+                      key={s}
+                      type="button"
+                      size="sm"
+                      variant={side === s ? 'default' : 'outline'}
+                      className={cn(
+                        side === s &&
+                          (s === 'buy'
+                            ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                            : 'border-destructive/50 bg-destructive text-destructive-foreground hover:bg-destructive/90')
+                      )}
+                      onClick={() => {
+                        setSide(s);
+                        setQuantity(s === 'sell' ? sharesHeld : 1);
+                      }}
+                    >
+                      {s.charAt(0).toUpperCase() + s.slice(1)}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="mb-2 text-sm font-semibold">Order type</p>
+                <div className="flex flex-wrap gap-1">
+                  {ORDER_TYPES.map((t) => (
+                    <Button
+                      key={t}
+                      type="button"
+                      size="sm"
+                      variant={orderType === t ? 'default' : 'outline'}
+                      onClick={() => setOrderType(t)}
+                    >
+                      {t === 'stop_limit' ? 'Stop Limit' : t.charAt(0).toUpperCase() + t.slice(1)}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="mb-2 text-sm font-semibold">Quantity</p>
+                <Input
+                  type="number"
+                  min={1}
+                  max={isSell ? sharesHeld : undefined}
+                  value={quantity}
+                  onChange={(e) => {
+                    const val = Number(e.target.value) || 0;
+                    setQuantity(isSell ? Math.min(sharesHeld, Math.max(0, val)) : Math.max(0, val));
+                  }}
+                />
+                {isSell && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {[0.25, 0.5, 0.75, 1].map((p) => (
+                      <Button key={p} type="button" size="xs" variant="outline" onClick={() => setQuantityPct(p)}>
+                        {p >= 1 ? 'All' : `${p * 100}%`}
                       </Button>
                     ))}
-                  </HStack>
-                </Box>
-                <Box>
-                  <Text fontSize="sm" fontWeight="semibold" mb={2}>Order type</Text>
-                  <HStack gap={1} flexWrap="wrap">
-                    {ORDER_TYPES.map((t) => (
-                      <Button
-                        key={t}
-                        size="sm"
-                        variant={orderType === t ? 'solid' : 'outline'}
-                        onClick={() => setOrderType(t)}
-                      >
-                        {t === 'stop_limit' ? 'Stop Limit' : t.charAt(0).toUpperCase() + t.slice(1)}
-                      </Button>
-                    ))}
-                  </HStack>
-                </Box>
-                <Box>
-                  <Text fontSize="sm" fontWeight="semibold" mb={2}>Quantity</Text>
+                  </div>
+                )}
+              </div>
+              {isSell && taxLots.length > 0 && (
+                <div className="rounded-md border border-border p-2">
+                  <button
+                    type="button"
+                    className="flex w-full cursor-pointer items-center gap-1 text-left"
+                    aria-expanded={lotsExpanded}
+                    aria-controls="order-modal-tax-lots"
+                    onClick={() => setLotsExpanded((p) => !p)}
+                  >
+                    {lotsExpanded ? <ChevronDown className="size-3.5 shrink-0" /> : <ChevronRight className="size-3.5 shrink-0" />}
+                    <span className="text-sm font-semibold">Tax Lots ({taxLots.length})</span>
+                    {selectedLotIds.size > 0 && (
+                      <Badge variant="secondary" className="ml-1 text-[10px]">
+                        {selectedLotIds.size} selected
+                      </Badge>
+                    )}
+                  </button>
+                  {lotsExpanded && (
+                    <div id="order-modal-tax-lots" className="mt-2">
+                      <div className="max-h-[200px] overflow-y-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="border-b border-border text-left">
+                              <th className="w-6 pb-1" scope="col" />
+                              <th className="pb-1" scope="col">
+                                Date
+                              </th>
+                              <th className="pb-1 text-right" scope="col">
+                                Shares
+                              </th>
+                              <th className="pb-1 text-right" scope="col">
+                                Cost
+                              </th>
+                              <th className="pb-1 text-right" scope="col">
+                                P/L
+                              </th>
+                              <th className="pb-1 text-center" scope="col">
+                                Type
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {taxLots.map((lot) => {
+                              const checked = selectedLotIds.has(lot.id);
+                              return (
+                                <tr
+                                  key={lot.id}
+                                  className={cn(
+                                    'cursor-pointer border-b border-border/60 last:border-0 hover:bg-muted/60',
+                                    checked && 'bg-muted/40'
+                                  )}
+                                  onClick={() => toggleLot(lot.id)}
+                                >
+                                  <td className="py-0.5 text-center" onClick={(e) => e.stopPropagation()}>
+                                    <Checkbox
+                                      checked={checked}
+                                      onCheckedChange={() => toggleLot(lot.id)}
+                                      aria-label={`Select tax lot ${lot.id}`}
+                                    />
+                                  </td>
+                                  <td className="py-0.5">{formatDateFriendly(lot.purchase_date, timezone)}</td>
+                                  <td className="py-0.5 text-right">{lot.shares}</td>
+                                  <td className="py-0.5 text-right">{formatMoney(lot.cost_per_share, CURRENCY)}</td>
+                                  <td
+                                    className={cn(
+                                      'py-0.5 text-right',
+                                      lot.unrealized_pnl >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'
+                                    )}
+                                  >
+                                    {lot.unrealized_pnl >= 0 ? '+' : ''}
+                                    {formatMoney(lot.unrealized_pnl, CURRENCY, { maximumFractionDigits: 0 })}
+                                  </td>
+                                  <td className="py-0.5 text-center">
+                                    <Badge
+                                      variant="secondary"
+                                      className={cn(
+                                        'text-[10px]',
+                                        lot.is_long_term && 'border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300',
+                                        !lot.is_long_term &&
+                                          lot.approaching_lt &&
+                                          'border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200'
+                                      )}
+                                    >
+                                      {lot.is_long_term ? 'LT' : 'ST'}
+                                    </Badge>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Select lots to auto-fill quantity. IBKR uses its own lot selection (FIFO/tax-optimized).
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+              {['limit', 'stop_limit'].includes(orderType) && (
+                <div>
+                  <p className="mb-2 text-sm font-semibold">Limit price</p>
                   <Input
                     type="number"
-                    min={1}
-                    max={isSell ? sharesHeld : undefined}
-                    value={quantity}
-                    onChange={(e) => {
-                      const val = Number(e.target.value) || 0;
-                      setQuantity(isSell ? Math.min(sharesHeld, Math.max(0, val)) : Math.max(0, val));
-                    }}
+                    step={0.01}
+                    min={0}
+                    value={limitPrice}
+                    onChange={(e) => setLimitPrice(Number(e.target.value) || 0)}
                   />
-                  {isSell && (
-                    <HStack mt={2} gap={1} flexWrap="wrap">
-                      {[0.25, 0.5, 0.75, 1].map((p) => (
-                        <Button key={p} size="xs" variant="outline" onClick={() => setQuantityPct(p)}>
-                          {p >= 1 ? 'All' : `${p * 100}%`}
-                        </Button>
-                      ))}
-                    </HStack>
-                  )}
-                </Box>
-                {isSell && taxLots.length > 0 && (
-                  <Box borderWidth="1px" borderColor="border.subtle" borderRadius="md" p={2}>
-                    <HStack cursor="pointer" onClick={() => setLotsExpanded((p) => !p)} gap={1}>
-                      {lotsExpanded ? <FiChevronDown size={14} /> : <FiChevronRight size={14} />}
-                      <Text fontSize="sm" fontWeight="semibold">Tax Lots ({taxLots.length})</Text>
-                      {selectedLotIds.size > 0 && (
-                        <Badge size="sm" colorPalette="blue">{selectedLotIds.size} selected</Badge>
-                      )}
-                    </HStack>
-                    <Collapsible.Root open={lotsExpanded}>
-                      <Collapsible.Content>
-                        <Box maxH="200px" overflowY="auto" mt={2}>
-                          <Box as="table" w="100%" fontSize="xs">
-                            <Box as="thead">
-                              <Box as="tr">
-                                <Box as="th" w="24px" />
-                                <Box as="th" textAlign="start" pb={1}>Date</Box>
-                                <Box as="th" textAlign="end" pb={1}>Shares</Box>
-                                <Box as="th" textAlign="end" pb={1}>Cost</Box>
-                                <Box as="th" textAlign="end" pb={1}>P/L</Box>
-                                <Box as="th" textAlign="center" pb={1}>Type</Box>
-                              </Box>
-                            </Box>
-                            <Box as="tbody">
-                              {taxLots.map((lot) => {
-                                const checked = selectedLotIds.has(lot.id);
-                                return (
-                                  <Box
-                                    as="tr"
-                                    key={lot.id}
-                                    cursor="pointer"
-                                    bg={checked ? 'bg.muted' : undefined}
-                                    _hover={{ bg: 'bg.subtle' }}
-                                    onClick={() => toggleLot(lot.id)}
-                                  >
-                                    <Box as="td" py="2px" textAlign="center">
-                                      <input type="checkbox" checked={checked} readOnly style={{ cursor: 'pointer' }} />
-                                    </Box>
-                                    <Box as="td" py="2px">
-                                      {formatDateFriendly(lot.purchase_date, timezone)}
-                                    </Box>
-                                    <Box as="td" py="2px" textAlign="end">{lot.shares}</Box>
-                                    <Box as="td" py="2px" textAlign="end">{formatMoney(lot.cost_per_share, CURRENCY)}</Box>
-                                    <Box as="td" py="2px" textAlign="end" color={lot.unrealized_pnl >= 0 ? 'fg.success' : 'fg.error'}>
-                                      {lot.unrealized_pnl >= 0 ? '+' : ''}
-                                      {formatMoney(lot.unrealized_pnl, CURRENCY, { maximumFractionDigits: 0 })}
-                                    </Box>
-                                    <Box as="td" py="2px" textAlign="center">
-                                      <Badge size="sm" colorPalette={lot.is_long_term ? 'green' : lot.approaching_lt ? 'yellow' : 'gray'}>
-                                        {lot.is_long_term ? 'LT' : 'ST'}
-                                      </Badge>
-                                    </Box>
-                                  </Box>
-                                );
-                              })}
-                            </Box>
-                          </Box>
-                        </Box>
-                        <Text fontSize="xs" color="fg.muted" mt={1}>
-                          Select lots to auto-fill quantity. IBKR uses its own lot selection (FIFO/tax-optimized).
-                        </Text>
-                      </Collapsible.Content>
-                    </Collapsible.Root>
-                  </Box>
+                </div>
+              )}
+              {['stop', 'stop_limit'].includes(orderType) && (
+                <div>
+                  <p className="mb-2 text-sm font-semibold">Stop price</p>
+                  <Input
+                    type="number"
+                    step={0.01}
+                    min={0}
+                    value={stopPrice}
+                    onChange={(e) => setStopPrice(Number(e.target.value) || 0)}
+                  />
+                </div>
+              )}
+              <div className="border-t border-border pt-3">
+                <p className="text-sm text-muted-foreground">{isSell ? 'Estimated proceeds' : 'Estimated cost'}</p>
+                <p className="text-lg font-bold">{formatMoney(estimatedValue, CURRENCY, { maximumFractionDigits: 2 })}</p>
+                {pnl != null && (
+                  <p
+                    className={cn(
+                      'mt-1 text-sm',
+                      pnl >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'
+                    )}
+                  >
+                    P&L: {pnl >= 0 ? '+' : ''}
+                    {formatMoney(pnl, CURRENCY, { maximumFractionDigits: 2 })}
+                  </p>
                 )}
-                {['limit', 'stop_limit'].includes(orderType) && (
-                  <Box>
-                    <Text fontSize="sm" fontWeight="semibold" mb={2}>Limit price</Text>
-                    <Input type="number" step={0.01} min={0} value={limitPrice} onChange={(e) => setLimitPrice(Number(e.target.value) || 0)} />
-                  </Box>
-                )}
-                {['stop', 'stop_limit'].includes(orderType) && (
-                  <Box>
-                    <Text fontSize="sm" fontWeight="semibold" mb={2}>Stop price</Text>
-                    <Input type="number" step={0.01} min={0} value={stopPrice} onChange={(e) => setStopPrice(Number(e.target.value) || 0)} />
-                  </Box>
-                )}
-                <Box borderTopWidth="1px" borderColor="border.subtle" pt={3}>
-                  <Text fontSize="sm" color="fg.muted">{isSell ? 'Estimated proceeds' : 'Estimated cost'}</Text>
-                  <Text fontSize="lg" fontWeight="bold">{formatMoney(estimatedValue, CURRENCY, { maximumFractionDigits: 2 })}</Text>
-                  {pnl != null && (
-                    <Text fontSize="sm" color={pnl >= 0 ? 'fg.success' : 'fg.error'} mt={1}>
-                      P&L: {pnl >= 0 ? '+' : ''}{formatMoney(pnl, CURRENCY, { maximumFractionDigits: 2 })}
-                    </Text>
-                  )}
-                </Box>
-                {previewError && <Text fontSize="sm" color="fg.error">{previewError}</Text>}
-              </VStack>
-            )}
+              </div>
+              {previewError && <p className="text-sm text-destructive">{previewError}</p>}
+            </div>
+          )}
 
-            {/* Step 2: Review */}
-            {step === 2 && previewData && (
-              <VStack align="stretch" gap={4}>
-                {([
+          {step === 2 && previewData && (
+            <div className="flex flex-col gap-4">
+              {(
+                [
                   ['Symbol', symbol],
                   ['Side', sideLabel],
                   ['Type', orderType === 'stop_limit' ? 'Stop Limit' : orderType],
                   ['Quantity', `${quantity} shares`],
-                ] as const).map(([label, value]) => (
-                  <HStack key={label} justify="space-between">
-                    <Text fontSize="sm" color="fg.muted">{label}</Text>
-                    <Text fontWeight="semibold">{value}</Text>
-                  </HStack>
-                ))}
-                {['limit', 'stop_limit'].includes(orderType) && (
-                  <HStack justify="space-between">
-                    <Text fontSize="sm" color="fg.muted">Limit price</Text>
-                    <Text>{formatMoney(limitPrice, CURRENCY)}</Text>
-                  </HStack>
-                )}
-                {['stop', 'stop_limit'].includes(orderType) && (
-                  <HStack justify="space-between">
-                    <Text fontSize="sm" color="fg.muted">Stop price</Text>
-                    <Text>{formatMoney(stopPrice, CURRENCY)}</Text>
-                  </HStack>
-                )}
-                {previewData.preview?.estimated_commission != null && (
-                  <HStack justify="space-between">
-                    <Text fontSize="sm" color="fg.muted">Est. commission</Text>
-                    <Text>{formatMoney(Number(previewData.preview.estimated_commission), CURRENCY)}</Text>
-                  </HStack>
-                )}
-                {previewData.preview?.estimated_margin_impact != null && (
-                  <HStack justify="space-between">
-                    <Text fontSize="sm" color="fg.muted">Margin impact</Text>
-                    <Text>{formatMoney(Number(previewData.preview.estimated_margin_impact), CURRENCY)}</Text>
-                  </HStack>
-                )}
-                {pnl != null && (
-                  <HStack justify="space-between">
-                    <Text fontSize="sm" color="fg.muted">Est. P&L</Text>
-                    <Text color={pnl >= 0 ? 'fg.success' : 'fg.error'}>
-                      {pnl >= 0 ? '+' : ''}{formatMoney(pnl, CURRENCY, { maximumFractionDigits: 2 })}
-                    </Text>
-                  </HStack>
-                )}
-                {previewData.warnings?.length > 0 && (
-                  <VStack align="stretch" gap={1}>
-                    {previewData.warnings.map((w, i) => (
-                      <Text key={i} fontSize="sm" color="fg.warning">{w}</Text>
-                    ))}
-                  </VStack>
-                )}
-                {submitError && <Text fontSize="sm" color="fg.error">{submitError}</Text>}
-              </VStack>
-            )}
+                ] as const
+              ).map(([label, value]) => (
+                <div key={label} className="flex justify-between gap-2">
+                  <span className="text-sm text-muted-foreground">{label}</span>
+                  <span className="font-semibold">{value}</span>
+                </div>
+              ))}
+              {['limit', 'stop_limit'].includes(orderType) && (
+                <div className="flex justify-between gap-2">
+                  <span className="text-sm text-muted-foreground">Limit price</span>
+                  <span>{formatMoney(limitPrice, CURRENCY)}</span>
+                </div>
+              )}
+              {['stop', 'stop_limit'].includes(orderType) && (
+                <div className="flex justify-between gap-2">
+                  <span className="text-sm text-muted-foreground">Stop price</span>
+                  <span>{formatMoney(stopPrice, CURRENCY)}</span>
+                </div>
+              )}
+              {previewData.preview?.estimated_commission != null && (
+                <div className="flex justify-between gap-2">
+                  <span className="text-sm text-muted-foreground">Est. commission</span>
+                  <span>{formatMoney(Number(previewData.preview.estimated_commission), CURRENCY)}</span>
+                </div>
+              )}
+              {previewData.preview?.estimated_margin_impact != null && (
+                <div className="flex justify-between gap-2">
+                  <span className="text-sm text-muted-foreground">Margin impact</span>
+                  <span>{formatMoney(Number(previewData.preview.estimated_margin_impact), CURRENCY)}</span>
+                </div>
+              )}
+              {pnl != null && (
+                <div className="flex justify-between gap-2">
+                  <span className="text-sm text-muted-foreground">Est. P&L</span>
+                  <span
+                    className={cn(
+                      pnl >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'
+                    )}
+                  >
+                    {pnl >= 0 ? '+' : ''}
+                    {formatMoney(pnl, CURRENCY, { maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              )}
+              {previewData.warnings?.length > 0 && (
+                <div className="flex flex-col gap-1">
+                  {previewData.warnings.map((w, i) => (
+                    <p key={i} className="text-sm text-amber-700 dark:text-amber-300">
+                      {w}
+                    </p>
+                  ))}
+                </div>
+              )}
+              {submitError && <p className="text-sm text-destructive">{submitError}</p>}
+            </div>
+          )}
 
-            {/* Step 3: Status */}
-            {step === 3 && orderStatus && (
-              <VStack align="stretch" gap={4}>
-                <HStack justify="center">
-                  <Badge size="lg" colorPalette={getStatusBadgeColor(String(orderStatus.status ?? ''))} variant="solid">
-                    {(orderStatus.status as string) ?? 'Unknown'}
-                  </Badge>
-                </HStack>
-                <HStack justify="space-between">
-                  <Text fontSize="sm" color="fg.muted">Order ID</Text>
-                  <Text fontFamily="mono">#{orderStatus.id}</Text>
-                </HStack>
-                {orderStatus.broker_order_id && (
-                  <HStack justify="space-between">
-                    <Text fontSize="sm" color="fg.muted">Broker ID</Text>
-                    <Text fontFamily="mono" fontSize="sm">{String(orderStatus.broker_order_id)}</Text>
-                  </HStack>
-                )}
-                {orderStatus.filled_quantity != null && (
-                  <HStack justify="space-between">
-                    <Text fontSize="sm" color="fg.muted">Filled</Text>
-                    <Text>{orderStatus.filled_quantity} shares</Text>
-                  </HStack>
-                )}
-                {orderStatus.filled_avg_price != null && (
-                  <HStack justify="space-between">
-                    <Text fontSize="sm" color="fg.muted">Avg fill</Text>
-                    <Text>{formatMoney(Number(orderStatus.filled_avg_price), CURRENCY)}</Text>
-                  </HStack>
-                )}
-                {orderStatus.error_message && (
-                  <Text fontSize="sm" color="fg.error">{String(orderStatus.error_message)}</Text>
-                )}
-              </VStack>
-            )}
-          </DialogBody>
-          <DialogFooter flexDirection={{ base: 'column', sm: 'row' }}>
-            {step === 1 && (
-              <>
-                <Button variant="outline" onClick={onClose} w={{ base: 'full', sm: 'auto' }}>Cancel</Button>
-                <Button
-                  colorPalette={sideColor}
-                  loading={previewLoading}
-                  disabled={quantity < 1 || (isSell && quantity > sharesHeld)}
-                  onClick={fetchPreview}
-                  w={{ base: 'full', sm: 'auto' }}
+          {step === 3 && orderStatus && (
+            <div className="flex flex-col gap-4">
+              <div className="flex justify-center">
+                <Badge
+                  className={cn('text-sm', statusBadgeClass(getStatusBadgeColor(String(orderStatus.status ?? ''))))}
                 >
-                  Preview Order
-                </Button>
-              </>
-            )}
-            {step === 2 && (
-              <>
-                <Button variant="outline" onClick={() => setStep(1)} w={{ base: 'full', sm: 'auto' }}>Back</Button>
-                <Button colorPalette={sideColor} loading={submitLoading} onClick={submitOrder} w={{ base: 'full', sm: 'auto' }}>
-                  Confirm & Submit
-                </Button>
-              </>
-            )}
-            {step === 3 && <Button onClick={onClose} w={{ base: 'full', sm: 'auto' }}>Close</Button>}
-          </DialogFooter>
-          <DialogCloseTrigger />
-        </DialogContent>
-      </DialogPositioner>
-    </DialogRoot>
+                  {String(orderStatus.status ?? 'Unknown')}
+                </Badge>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-sm text-muted-foreground">Order ID</span>
+                <span className="font-mono">#{orderStatus.id}</span>
+              </div>
+              {orderStatus.broker_order_id && (
+                <div className="flex justify-between gap-2">
+                  <span className="text-sm text-muted-foreground">Broker ID</span>
+                  <span className="font-mono text-sm">{String(orderStatus.broker_order_id)}</span>
+                </div>
+              )}
+              {orderStatus.filled_quantity != null && (
+                <div className="flex justify-between gap-2">
+                  <span className="text-sm text-muted-foreground">Filled</span>
+                  <span>{orderStatus.filled_quantity} shares</span>
+                </div>
+              )}
+              {orderStatus.filled_avg_price != null && (
+                <div className="flex justify-between gap-2">
+                  <span className="text-sm text-muted-foreground">Avg fill</span>
+                  <span>{formatMoney(Number(orderStatus.filled_avg_price), CURRENCY)}</span>
+                </div>
+              )}
+              {orderStatus.error_message && (
+                <p className="text-sm text-destructive">{String(orderStatus.error_message)}</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="shrink-0 border-t border-border px-6 py-4">
+          {step === 1 && (
+            <>
+              <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                className={cn('w-full sm:w-auto', isSell && 'bg-destructive text-destructive-foreground hover:bg-destructive/90')}
+                disabled={quantity < 1 || (isSell && quantity > sharesHeld) || previewLoading}
+                onClick={() => void fetchPreview()}
+              >
+                {previewLoading ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
+                Preview Order
+              </Button>
+            </>
+          )}
+          {step === 2 && (
+            <>
+              <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setStep(1)}>
+                Back
+              </Button>
+              <Button
+                type="button"
+                className={cn('w-full sm:w-auto', isSell && 'bg-destructive text-destructive-foreground hover:bg-destructive/90')}
+                disabled={submitLoading}
+                onClick={() => void submitOrder()}
+              >
+                {submitLoading ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
+                Confirm & Submit
+              </Button>
+            </>
+          )}
+          {step === 3 && (
+            <Button type="button" className="w-full sm:w-auto" onClick={onClose}>
+              Close
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

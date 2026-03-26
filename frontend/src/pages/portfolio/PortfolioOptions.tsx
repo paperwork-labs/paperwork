@@ -1,18 +1,20 @@
 import React, { useState, useMemo } from 'react';
 import {
-  Box,
-  Text,
-  Stack,
-  HStack,
-  Button,
-  CardRoot,
-  CardBody,
-  VStack,
-  Badge,
-  Collapsible,
-  Input,
-} from '@chakra-ui/react';
-import { FiRefreshCw, FiChevronDown, FiChevronRight, FiWifi, FiWifiOff, FiGrid, FiList } from 'react-icons/fi';
+  ChevronDown,
+  ChevronRight,
+  LayoutGrid,
+  List,
+  Loader2,
+  RefreshCw,
+  Wifi,
+  WifiOff,
+} from 'lucide-react';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { ChartContext, SymbolLink, ChartSlidePanel } from '../../components/market/SymbolChartUI';
 import StatCard from '../../components/shared/StatCard';
@@ -58,11 +60,11 @@ function moneynessPct(pos: OptionPos): number | null {
   return ((u - pos.strike_price) / pos.strike_price) * 100;
 }
 
-const MONEYNESS_COLOR: Record<string, string> = {
-  ITM: 'green',
-  OTM: 'red',
-  ATM: 'yellow',
-};
+function moneynessBadgeClass(m: string): string {
+  if (m === 'ITM') return 'bg-[rgb(var(--status-success)/0.15)] text-[rgb(var(--status-success)/1)] border-transparent';
+  if (m === 'OTM') return 'bg-destructive/10 text-destructive border-transparent';
+  return 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border-transparent';
+}
 
 
 /* ------------------------------------------------------------------ */
@@ -145,28 +147,27 @@ const PortfolioOptions: React.FC = () => {
 
   return (
     <ChartContext.Provider value={openChart}>
-      <Box p={4}>
-        <Stack gap={4}>
+      <div className="p-4">
+        <div className="flex flex-col gap-4">
           <PageHeader
             title="Options"
             subtitle="Positions, chains, and P&L analysis"
             rightContent={
-              <HStack gap={3}>
+              <div className="flex flex-wrap items-center gap-3">
                 <GatewayStatusBadge connected={gwConnected} loading={gatewayQuery.isPending} />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => syncMutation.mutate()}
-                  loading={syncMutation.isPending}
-                >
-                  <HStack gap={2}><FiRefreshCw /> Sync</HStack>
+                <Button size="sm" variant="outline" onClick={() => syncMutation.mutate()} disabled={syncMutation.isPending}>
+                  {syncMutation.isPending ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                  ) : (
+                    <RefreshCw className="size-4" aria-hidden />
+                  )}
+                  Sync
                 </Button>
-              </HStack>
+              </div>
             }
           />
 
-          {/* Summary strip */}
-          <Box display="flex" gap={3} flexWrap="wrap">
+          <div className="flex flex-wrap gap-3">
             <StatCard
               label="Total Value"
               value={formatMoney(totalValue, currency, { maximumFractionDigits: 0 })}
@@ -204,57 +205,65 @@ const PortfolioOptions: React.FC = () => {
             />
             <StatCard label="Net Gamma" value={netGamma.toFixed(3)} />
             <StatCard label="Net Vega" value={netVega.toFixed(2)} />
-          </Box>
+          </div>
 
-          {/* Tabs */}
-          <HStack gap={1} borderBottomWidth="1px" borderColor="border.subtle" pb={0} justifyContent="space-between">
-            <HStack gap={1}>
-              {(['positions', 'chain', 'pnl', 'analytics', 'history'] as TabId[]).map(tab => {
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-0">
+            <div className="flex flex-wrap gap-1">
+              {(['positions', 'chain', 'pnl', 'analytics', 'history'] as TabId[]).map((tab) => {
                 const isActive = activeTab === tab;
                 return (
-                <Button
-                  key={tab}
-                  size="sm"
-                  variant={isActive ? 'solid' : 'ghost'}
-                  bg={isActive ? 'amber.500' : undefined}
-                  color={isActive ? 'white' : undefined}
-                  _hover={isActive ? { bg: 'amber.400' } : undefined}
-                  onClick={() => setActiveTab(tab)}
-                  borderBottomRadius={0}
-                  textTransform="capitalize"
-                >
-                  {tab === 'pnl' ? 'P&L' : tab === 'chain' ? 'Option Chain' : tab === 'analytics' ? 'Analytics' : tab === 'history' ? 'History' : 'Positions'}
-                </Button>
+                  <Button
+                    key={tab}
+                    size="sm"
+                    variant={isActive ? 'default' : 'ghost'}
+                    className={cn(
+                      'rounded-b-none capitalize',
+                      isActive && 'bg-amber-500 font-medium text-white hover:bg-amber-400',
+                    )}
+                    onClick={() => setActiveTab(tab)}
+                  >
+                    {tab === 'pnl'
+                      ? 'P&L'
+                      : tab === 'chain'
+                        ? 'Option Chain'
+                        : tab === 'analytics'
+                          ? 'Analytics'
+                          : tab === 'history'
+                            ? 'History'
+                            : 'Positions'}
+                  </Button>
                 );
               })}
-            </HStack>
-            {activeTab === 'positions' && (
-              <HStack gap={1}>
+            </div>
+            {activeTab === 'positions' ? (
+              <div className="flex gap-1">
                 <Button
                   size="xs"
-                  variant={posView === 'card' ? 'solid' : 'ghost'}
+                  variant={posView === 'card' ? 'default' : 'ghost'}
                   onClick={() => setPosView('card')}
                   aria-label="Card view"
+                  aria-pressed={posView === 'card'}
                 >
-                  <FiGrid />
+                  <LayoutGrid className="size-4" />
                 </Button>
                 <Button
                   size="xs"
-                  variant={posView === 'table' ? 'solid' : 'ghost'}
+                  variant={posView === 'table' ? 'default' : 'ghost'}
                   onClick={() => setPosView('table')}
                   aria-label="Table view"
+                  aria-pressed={posView === 'table'}
                 >
-                  <FiList />
+                  <List className="size-4" />
                 </Button>
-              </HStack>
-            )}
-          </HStack>
+              </div>
+            ) : null}
+          </div>
 
           {/* Tab content */}
           {activeTab === 'positions' && (optionsQuery.isPending || accountsQuery.isPending ? (
             <TableSkeleton rows={5} cols={4} />
           ) : (optionsQuery.error || accountsQuery.error) ? (
-            <Text color="status.danger">Failed to load options</Text>
+            <p className="text-sm text-[rgb(var(--status-danger)/1)]">Failed to load options</p>
           ) : (() => {
                 const typed = optionsFilterState.filteredData as OptionPos[];
                 const filteredSet = new Set(typed.map(p => p.id));
@@ -285,89 +294,99 @@ const PortfolioOptions: React.FC = () => {
                 return (
                   <>
                     {/* Strategy groups */}
-                    {strategies.length > 0 && (
-                      <VStack align="stretch" gap={3} mb={3}>
-                        <Text fontSize="sm" fontWeight="bold" color="fg.muted">Detected Strategies</Text>
+                    {strategies.length > 0 ? (
+                      <div className="mb-3 flex flex-col gap-3">
+                        <p className="text-sm font-bold text-muted-foreground">Detected Strategies</p>
                         {strategies.map((sg, idx) => (
-                          <CardRoot key={idx} bg="bg.card" borderWidth="1px" borderColor="border.emphasis" borderRadius="xl">
-                            <CardBody py={3}>
-                              <HStack justify="space-between" mb={2}>
-                                <HStack gap={2}>
-                                  <Badge colorPalette="purple" variant="subtle">{sg.label}</Badge>
-                                  <Text fontSize="xs" color="fg.muted">
+                          <Card key={idx} className="gap-0 border-primary/30 py-0">
+                            <CardContent className="py-3">
+                              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <Badge variant="secondary" className="bg-violet-500/15 text-violet-700 dark:text-violet-300">
+                                    {sg.label}
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground">
                                     {sg.positions[0]?.underlying_symbol} {sg.positions[0]?.expiration_date?.slice(0, 10)}
-                                  </Text>
-                                  {sg.creditDebit && (
+                                  </span>
+                                  {sg.creditDebit ? (
                                     <Badge
-                                      size="sm"
-                                      colorPalette={sg.creditDebit === 'credit' ? 'green' : sg.creditDebit === 'debit' ? 'red' : 'gray'}
                                       variant="outline"
+                                      className={cn(
+                                        sg.creditDebit === 'credit' && 'border-[rgb(var(--status-success)/1)] text-[rgb(var(--status-success)/1)]',
+                                        sg.creditDebit === 'debit' && 'border-destructive text-destructive',
+                                        sg.creditDebit !== 'credit' &&
+                                          sg.creditDebit !== 'debit' &&
+                                          'text-muted-foreground',
+                                      )}
                                     >
                                       {sg.creditDebit === 'credit' ? 'Credit' : sg.creditDebit === 'debit' ? 'Debit' : 'Even'}
                                       {sg.netPremium ? ` ${formatMoney(Math.abs(sg.netPremium), currency)}` : ''}
                                     </Badge>
-                                  )}
-                                </HStack>
-                                <HStack gap={3}>
-                                  <PnlText value={sg.netPnl} format="currency" fontSize="sm" currency={currency} />
-                                </HStack>
-                              </HStack>
-                              <HStack gap={4} fontSize="xs" color="fg.muted" mb={2} flexWrap="wrap">
-                                <Text>Delta {sg.combinedGreeks.delta.toFixed(2)}</Text>
-                                <Text>Theta {sg.combinedGreeks.theta.toFixed(2)}</Text>
-                                <Text>Gamma {sg.combinedGreeks.gamma.toFixed(3)}</Text>
-                                <Text>Vega {sg.combinedGreeks.vega.toFixed(2)}</Text>
-                                {sg.maxProfit != null && <Text color="fg.success">Max Profit {formatMoney(sg.maxProfit, currency)}</Text>}
-                                {sg.maxLoss != null && <Text color="fg.error">Max Loss {formatMoney(sg.maxLoss, currency)}</Text>}
-                                {sg.breakevens.length > 0 && (
-                                  <Text>
-                                    B/E: {sg.breakevens.map(b => b.toFixed(2)).join(', ')}
+                                  ) : null}
+                                </div>
+                                <PnlText value={sg.netPnl} format="currency" fontSize="sm" currency={currency} />
+                              </div>
+                              <div className="mb-2 flex flex-wrap gap-4 text-xs text-muted-foreground">
+                                <span>Delta {sg.combinedGreeks.delta.toFixed(2)}</span>
+                                <span>Theta {sg.combinedGreeks.theta.toFixed(2)}</span>
+                                <span>Gamma {sg.combinedGreeks.gamma.toFixed(3)}</span>
+                                <span>Vega {sg.combinedGreeks.vega.toFixed(2)}</span>
+                                {sg.maxProfit != null ? (
+                                  <span className="text-[rgb(var(--status-success)/1)]">
+                                    Max Profit {formatMoney(sg.maxProfit, currency)}
+                                  </span>
+                                ) : null}
+                                {sg.maxLoss != null ? (
+                                  <span className="text-[rgb(var(--status-danger)/1)]">
+                                    Max Loss {formatMoney(sg.maxLoss, currency)}
+                                  </span>
+                                ) : null}
+                                {sg.breakevens.length > 0 ? (
+                                  <span>
+                                    B/E: {sg.breakevens.map((b) => b.toFixed(2)).join(', ')}
                                     {sg.positions[0]?.underlying_price
                                       ? ` (${((sg.breakevens[0] / Number(sg.positions[0].underlying_price) - 1) * 100).toFixed(1)}%)`
                                       : ''}
-                                  </Text>
-                                )}
-                              </HStack>
-                              {sg.maxProfit != null && sg.maxProfit > 0 && sg.netPnl !== 0 && (
-                                <Box mb={2}>
-                                  <HStack justify="space-between" fontSize="xs" color="fg.muted" mb={1}>
-                                    <Text>P/L Progress</Text>
-                                    <Text>
+                                  </span>
+                                ) : null}
+                              </div>
+                              {sg.maxProfit != null && sg.maxProfit > 0 && sg.netPnl !== 0 ? (
+                                <div className="mb-2">
+                                  <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+                                    <span>P/L Progress</span>
+                                    <span>
                                       {Math.min(100, Math.max(-100, (sg.netPnl / sg.maxProfit) * 100)).toFixed(0)}% of max profit
-                                    </Text>
-                                  </HStack>
-                                  <Box w="full" h="4px" bg="bg.muted" borderRadius="full" overflow="hidden">
-                                    <Box
-                                      h="full"
-                                      bg={sg.netPnl >= 0 ? 'green.500' : 'red.500'}
-                                      w={`${Math.min(100, Math.abs(sg.netPnl / sg.maxProfit) * 100)}%`}
-                                      borderRadius="full"
-                                      transition="width 0.3s"
+                                    </span>
+                                  </div>
+                                  <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+                                    <div
+                                      className={cn('h-full rounded-full transition-[width] duration-300', sg.netPnl >= 0 ? 'bg-green-600' : 'bg-red-600')}
+                                      style={{ width: `${Math.min(100, Math.abs(sg.netPnl / sg.maxProfit) * 100)}%` }}
                                     />
-                                  </Box>
-                                </Box>
-                              )}
-                              <VStack align="stretch" gap={1}>
-                                {sg.positions.map(pos => (
+                                  </div>
+                                </div>
+                              ) : null}
+                              <div className="flex flex-col gap-1">
+                                {sg.positions.map((pos) => (
                                   <PositionRow key={pos.id} pos={pos} currency={currency} gwConnected={gwConnected} />
                                 ))}
-                              </VStack>
-                            </CardBody>
-                          </CardRoot>
+                              </div>
+                            </CardContent>
+                          </Card>
                         ))}
-                      </VStack>
-                    )}
+                      </div>
+                    ) : null}
 
                     {Object.keys(filteredUnderlyings).length === 0 ? (
-                      <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-                        <CardBody>
-                          <Text color="fg.muted">
+                      <Card className="gap-0 py-0">
+                        <CardContent>
+                          <p className="text-muted-foreground">
                             {optionsQuery.isPending ? 'Loading...' : 'No options positions.'}
-                          </Text>
-                        </CardBody>
-                      </CardRoot>
+                          </p>
+                        </CardContent>
+                      </Card>
                     ) : (
-                      <VStack align="stretch" gap={3}>
+                      <div className="flex flex-col gap-3">
                         {Object.entries(filteredUnderlyings).map(([sym, group]) => (
                           <UnderlyingGroup
                             key={sym}
@@ -378,7 +397,7 @@ const PortfolioOptions: React.FC = () => {
                             gwConnected={gwConnected}
                           />
                         ))}
-                      </VStack>
+                      </div>
                     )}
                   </>
                 );
@@ -406,8 +425,8 @@ const PortfolioOptions: React.FC = () => {
           {activeTab === 'history' && (
             <OptionsHistoryTab accountId={selected === 'all' ? undefined : selected} />
           )}
-        </Stack>
-      </Box>
+        </div>
+      </div>
       <ChartSlidePanel symbol={chartSymbol} onClose={() => setChartSymbol(null)} />
     </ChartContext.Provider>
   );
@@ -418,15 +437,13 @@ const PortfolioOptions: React.FC = () => {
 /* ------------------------------------------------------------------ */
 const GatewayStatusBadge: React.FC<{ connected: boolean; loading: boolean }> = ({ connected, loading }) => (
   <Badge
-    colorPalette={loading ? 'gray' : connected ? 'green' : 'gray'}
-    variant="subtle"
-    display="flex"
-    alignItems="center"
-    gap={1}
-    px={2}
-    py={1}
+    variant="secondary"
+    className={cn(
+      'flex items-center gap-1 px-2 py-1',
+      !loading && connected && 'bg-[rgb(var(--status-success)/0.12)] text-[rgb(var(--status-success)/1)]',
+    )}
   >
-    {connected ? <FiWifi /> : <FiWifiOff />}
+    {connected ? <Wifi className="size-3.5" aria-hidden /> : <WifiOff className="size-3.5" aria-hidden />}
     {loading ? 'Checking...' : connected ? 'Gateway Connected' : 'Gateway Offline'}
   </Badge>
 );
@@ -444,13 +461,17 @@ const positionColumns: Column<OptionPos>[] = [
     filterable: true,
     filterType: 'text',
     render: (_v, p) => (
-      <HStack gap={2}>
+      <div className="flex items-center gap-2">
         <SymbolLink symbol={p.underlying_symbol} />
         {(() => {
           const m = moneyness(p);
-          return m ? <Badge size="sm" colorPalette={MONEYNESS_COLOR[m]} variant="subtle">{m}</Badge> : null;
+          return m ? (
+            <Badge variant="secondary" className={moneynessBadgeClass(m)}>
+              {m}
+            </Badge>
+          ) : null;
         })()}
-      </HStack>
+      </div>
     ),
   },
   {
@@ -462,7 +483,18 @@ const positionColumns: Column<OptionPos>[] = [
     filterable: true,
     filterType: 'select',
     filterOptions: [{ label: 'Call', value: 'CALL' }, { label: 'Put', value: 'PUT' }],
-    render: (v) => <Badge size="sm" colorPalette={v === 'CALL' ? 'green' : 'red'} variant="subtle">{v}</Badge>,
+    render: (v) => (
+      <Badge
+        variant="secondary"
+        className={
+          v === 'CALL'
+            ? 'bg-[rgb(var(--status-success)/0.15)] text-[rgb(var(--status-success)/1)]'
+            : 'bg-destructive/10 text-destructive'
+        }
+      >
+        {v}
+      </Badge>
+    ),
     width: '70px',
   },
   {
@@ -472,7 +504,7 @@ const positionColumns: Column<OptionPos>[] = [
     sortable: true,
     sortType: 'number',
     isNumeric: true,
-    render: (v) => <Text fontFamily="mono">{Number(v).toFixed(2)}</Text>,
+    render: (v) => <span className="font-mono">{Number(v).toFixed(2)}</span>,
     width: '80px',
   },
   {
@@ -481,7 +513,7 @@ const positionColumns: Column<OptionPos>[] = [
     accessor: (p) => p.expiration_date?.slice(0, 10) ?? '',
     sortable: true,
     sortType: 'date',
-    render: (v) => <Text fontSize="xs">{v || '—'}</Text>,
+    render: (v) => <span className="text-xs">{v || '—'}</span>,
     width: '95px',
   },
   {
@@ -493,12 +525,13 @@ const positionColumns: Column<OptionPos>[] = [
     isNumeric: true,
     render: (v) => {
       const dte = Number(v);
-      const color = dte <= 3 ? 'red.400' : dte <= 7 ? 'orange.400' : dte <= 30 ? 'yellow.400' : 'fg.muted';
+      const colorClass =
+        dte <= 3 ? 'text-red-500' : dte <= 7 ? 'text-orange-500' : dte <= 30 ? 'text-amber-500' : 'text-muted-foreground';
       return (
-        <HStack gap={1}>
-          {dte <= 3 && <Box w="6px" h="6px" borderRadius="full" bg="red.500" className="pulse-dot" />}
-          <Text fontFamily="mono" color={color} fontWeight={dte <= 7 ? 'bold' : 'normal'}>{dte}d</Text>
-        </HStack>
+        <div className="flex items-center gap-1">
+          {dte <= 3 ? <span className="size-1.5 animate-pulse rounded-full bg-red-500" aria-hidden /> : null}
+          <span className={cn('font-mono', colorClass, dte <= 7 && 'font-bold')}>{dte}d</span>
+        </div>
       );
     },
     width: '70px',
@@ -512,7 +545,9 @@ const positionColumns: Column<OptionPos>[] = [
     isNumeric: true,
     render: (v) => {
       const q = Number(v);
-      return <Text fontFamily="mono" color={q < 0 ? 'fg.error' : 'fg.default'}>{q}</Text>;
+      return (
+        <span className={cn('font-mono', q < 0 ? 'text-[rgb(var(--status-danger)/1)]' : 'text-foreground')}>{q}</span>
+      );
     },
     width: '55px',
   },
@@ -523,7 +558,7 @@ const positionColumns: Column<OptionPos>[] = [
     sortable: true,
     sortType: 'number',
     isNumeric: true,
-    render: (v) => <Text fontFamily="mono">{Number(v) ? Number(v).toFixed(2) : '—'}</Text>,
+    render: (v) => <span className="font-mono">{Number(v) ? Number(v).toFixed(2) : '—'}</span>,
     width: '80px',
   },
   {
@@ -533,7 +568,7 @@ const positionColumns: Column<OptionPos>[] = [
     sortable: true,
     sortType: 'number',
     isNumeric: true,
-    render: (v) => <Text fontFamily="mono">{Number(v) ? Number(v).toFixed(2) : '—'}</Text>,
+    render: (v) => <span className="font-mono">{Number(v) ? Number(v).toFixed(2) : '—'}</span>,
     width: '75px',
   },
   {
@@ -564,7 +599,12 @@ const positionColumns: Column<OptionPos>[] = [
     isNumeric: true,
     render: (v) => {
       const pct = Number(v);
-      return <Text fontSize="xs" color={pct >= 0 ? 'fg.success' : 'fg.error'}>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</Text>;
+      return (
+        <span className={cn('text-xs', pct >= 0 ? 'text-[rgb(var(--status-success)/1)]' : 'text-[rgb(var(--status-danger)/1)]')}>
+          {pct >= 0 ? '+' : ''}
+          {pct.toFixed(1)}%
+        </span>
+      );
     },
     width: '65px',
   },
@@ -575,7 +615,7 @@ const positionColumns: Column<OptionPos>[] = [
     sortable: true,
     sortType: 'number',
     isNumeric: true,
-    render: (v) => <Text fontFamily="mono" fontSize="xs">{Number(v) ? Number(v).toFixed(2) : '—'}</Text>,
+    render: (v) => <span className="font-mono text-xs">{Number(v) ? Number(v).toFixed(2) : '—'}</span>,
     width: '60px',
   },
   {
@@ -585,7 +625,16 @@ const positionColumns: Column<OptionPos>[] = [
     sortable: true,
     sortType: 'number',
     isNumeric: true,
-    render: (v) => <Text fontFamily="mono" fontSize="xs" color={Number(v) < 0 ? 'fg.error' : 'fg.success'}>{Number(v) ? Number(v).toFixed(2) : '—'}</Text>,
+    render: (v) => (
+      <span
+        className={cn(
+          'font-mono text-xs',
+          Number(v) < 0 ? 'text-[rgb(var(--status-danger)/1)]' : 'text-[rgb(var(--status-success)/1)]',
+        )}
+      >
+        {Number(v) ? Number(v).toFixed(2) : '—'}
+      </span>
+    ),
     width: '60px',
   },
   {
@@ -595,7 +644,9 @@ const positionColumns: Column<OptionPos>[] = [
     sortable: true,
     sortType: 'number',
     isNumeric: true,
-    render: (v) => <Text fontFamily="mono" fontSize="xs">{Number(v) > 0 ? `${(Number(v) * 100).toFixed(0)}%` : '—'}</Text>,
+    render: (v) => (
+      <span className="font-mono text-xs">{Number(v) > 0 ? `${(Number(v) * 100).toFixed(0)}%` : '—'}</span>
+    ),
     width: '50px',
   },
   {
@@ -607,8 +658,13 @@ const positionColumns: Column<OptionPos>[] = [
     isNumeric: true,
     render: (v) => {
       const val = Number(v);
-      if (!val) return <Text fontSize="xs" color="fg.muted">—</Text>;
-      return <Text fontSize="xs" color={val >= 0 ? 'fg.success' : 'fg.error'}>{val >= 0 ? '+' : ''}{val.toFixed(0)}</Text>;
+      if (!val) return <span className="text-xs text-muted-foreground">—</span>;
+      return (
+        <span className={cn('text-xs', val >= 0 ? 'text-[rgb(var(--status-success)/1)]' : 'text-[rgb(var(--status-danger)/1)]')}>
+          {val >= 0 ? '+' : ''}
+          {val.toFixed(0)}
+        </span>
+      );
     },
     width: '70px',
   },
@@ -621,8 +677,8 @@ const positionColumns: Column<OptionPos>[] = [
     isNumeric: true,
     render: (v) => {
       const val = Number(v);
-      if (!val) return <Text fontSize="xs" color="fg.muted">—</Text>;
-      return <Text fontSize="xs" color="fg.error">{Math.abs(val).toFixed(2)}</Text>;
+      if (!val) return <span className="text-xs text-muted-foreground">—</span>;
+      return <span className="text-xs text-[rgb(var(--status-danger)/1)]">{Math.abs(val).toFixed(2)}</span>;
     },
     width: '65px',
   },
@@ -658,7 +714,9 @@ const PositionsTableView: React.FC<{ positions: OptionPos[]; currency: string; g
       if (col.key === 'value' && !col.render) {
         return {
           ...col,
-          render: (v: any) => <Text fontFamily="mono" fontSize="xs">{formatMoney(Number(v), currency, { maximumFractionDigits: 0 })}</Text>,
+          render: (v: any) => (
+            <span className="font-mono text-xs">{formatMoney(Number(v), currency, { maximumFractionDigits: 0 })}</span>
+          ),
         };
       }
       if (col.key === 'pnl' && col.render) {
@@ -704,43 +762,47 @@ const UnderlyingGroup: React.FC<{
   const grpRealizedPnl = allPositions.reduce((s, p) => s + Number(p.realized_pnl ?? 0), 0);
 
   return (
-    <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-      <CardBody>
-        <HStack
-          justify="space-between"
-          cursor="pointer"
-          onClick={() => setOpen(o => !o)}
-          _hover={{ bg: 'bg.subtle' }}
-          p={1}
-          borderRadius="md"
+    <Card className="gap-0 py-0">
+      <CardContent>
+        <button
+          type="button"
+          className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-md p-1 text-left hover:bg-muted/60"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
         >
-          <HStack gap={2}>
-            {open ? <FiChevronDown /> : <FiChevronRight />}
+          <div className="flex flex-wrap items-center gap-2">
+            {open ? <ChevronDown className="size-4 shrink-0" aria-hidden /> : <ChevronRight className="size-4 shrink-0" aria-hidden />}
             <SymbolLink symbol={symbol} />
-            <Badge colorPalette="gray" size="sm">{allPositions.length} pos</Badge>
-            {grpRealizedPnl !== 0 && (
-              <Badge size="sm" colorPalette={grpRealizedPnl >= 0 ? 'green' : 'red'} variant="outline">
-                Realized {grpRealizedPnl >= 0 ? '+' : ''}{grpRealizedPnl.toFixed(0)}
+            <Badge variant="secondary">{allPositions.length} pos</Badge>
+            {grpRealizedPnl !== 0 ? (
+              <Badge
+                variant="outline"
+                className={
+                  grpRealizedPnl >= 0
+                    ? 'border-[rgb(var(--status-success)/1)] text-[rgb(var(--status-success)/1)]'
+                    : 'border-destructive text-destructive'
+                }
+              >
+                Realized {grpRealizedPnl >= 0 ? '+' : ''}
+                {grpRealizedPnl.toFixed(0)}
               </Badge>
-            )}
-          </HStack>
-          <HStack gap={3}>
-            <Text fontSize="xs" color="fg.muted">D {grpDelta.toFixed(2)}</Text>
-            <Text fontSize="sm" color="fg.muted">{formatMoney(group.total_value, currency)}</Text>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-xs text-muted-foreground">D {grpDelta.toFixed(2)}</span>
+            <span className="text-sm text-muted-foreground">{formatMoney(group.total_value, currency)}</span>
             <PnlText value={totalPnl} format="currency" currency={currency} />
-          </HStack>
-        </HStack>
-        <Collapsible.Root open={open}>
-          <Collapsible.Content>
-            <VStack align="stretch" gap={1} mt={3}>
-              {allPositions.map(pos => (
-                <PositionRow key={pos.id} pos={pos} currency={currency} gwConnected={gwConnected} />
-              ))}
-            </VStack>
-          </Collapsible.Content>
-        </Collapsible.Root>
-      </CardBody>
-    </CardRoot>
+          </div>
+        </button>
+        {open ? (
+          <div className="mt-3 flex flex-col gap-1">
+            {allPositions.map((pos) => (
+              <PositionRow key={pos.id} pos={pos} currency={currency} gwConnected={gwConnected} />
+            ))}
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 };
 
@@ -753,82 +815,125 @@ const PositionRow: React.FC<{ pos: OptionPos; currency: string; gwConnected: boo
   const hasGreeks = pos.delta != null || pos.theta != null;
   const dte = pos.days_to_expiration ?? 0;
   const dtePct = Math.min(100, Math.max(0, (dte / 90) * 100));
-  const dteColor = dte <= 3 ? 'red.500' : dte <= 7 ? 'orange.500' : dte > 30 ? 'green.500' : 'yellow.500';
+  const dteBarClass = dte <= 3 ? 'bg-red-600' : dte <= 7 ? 'bg-orange-500' : dte > 30 ? 'bg-green-600' : 'bg-amber-500';
   const m = moneyness(pos);
   const mPct = moneynessPct(pos);
 
   return (
-    <Box py={2} px={2} borderRadius="md" _hover={{ bg: 'bg.subtle' }} borderBottomWidth="1px" borderColor="border.subtle" _last={{ borderBottom: 'none' }}>
-      <HStack justify="space-between" fontSize="sm" gap={3} flexWrap="wrap">
-        <HStack gap={2} flex={1} minW="0">
-          <Badge colorPalette={isShort ? 'red' : 'green'} size="sm" variant="subtle" flexShrink={0}>
+    <div className="border-b border-border px-2 py-2 last:border-b-0 hover:bg-muted/50">
+      <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <Badge
+            variant="secondary"
+            className={cn(
+              'shrink-0',
+              isShort ? 'bg-destructive/10 text-destructive' : 'bg-[rgb(var(--status-success)/0.15)] text-[rgb(var(--status-success)/1)]',
+            )}
+          >
             {isShort ? 'SHORT' : 'LONG'}
           </Badge>
-          {m && (
-            <Badge size="sm" colorPalette={MONEYNESS_COLOR[m]} variant="outline" flexShrink={0}>
+          {m ? (
+            <Badge variant="outline" className={cn('shrink-0', moneynessBadgeClass(m))}>
               {m}
             </Badge>
-          )}
-          <Text fontFamily="mono" fontWeight="medium" truncate>
-            {qty} x {pos.strike_price}{(pos.option_type || '').toUpperCase() === 'CALL' ? 'C' : 'P'} {pos.expiration_date?.slice(0, 10) ?? '—'}
-          </Text>
-          {mPct !== null && (
-            <Text fontSize="xs" color="fg.muted" flexShrink={0}>
-              {mPct >= 0 ? '+' : ''}{mPct.toFixed(1)}%
-            </Text>
-          )}
-        </HStack>
+          ) : null}
+          <span className="truncate font-mono font-medium">
+            {qty} x {pos.strike_price}
+            {(pos.option_type || '').toUpperCase() === 'CALL' ? 'C' : 'P'} {pos.expiration_date?.slice(0, 10) ?? '—'}
+          </span>
+          {mPct !== null ? (
+            <span className="shrink-0 text-xs text-muted-foreground">
+              {mPct >= 0 ? '+' : ''}
+              {mPct.toFixed(1)}%
+            </span>
+          ) : null}
+        </div>
 
-        {/* DTE progress bar */}
-        <HStack gap={2} flexShrink={0}>
-          <Box w="60px" h="6px" bg="bg.muted" borderRadius="full" overflow="hidden">
-            <Box h="full" bg={dteColor} w={`${dtePct}%`} borderRadius="full" transition="width 0.3s" />
-          </Box>
-          <HStack gap={1}>
-            {dte <= 3 && <Box w="6px" h="6px" borderRadius="full" bg="red.500" />}
-            <Text fontSize="xs" color={dte <= 3 ? 'red.400' : dte <= 7 ? 'orange.400' : 'fg.muted'} fontWeight={dte <= 7 ? 'bold' : 'normal'} w="35px" textAlign="right">{dte}d</Text>
-          </HStack>
-        </HStack>
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="h-1.5 w-[60px] overflow-hidden rounded-full bg-muted">
+            <div className={cn('h-full rounded-full transition-[width] duration-300', dteBarClass)} style={{ width: `${dtePct}%` }} />
+          </div>
+          <div className="flex items-center gap-1">
+            {dte <= 3 ? <span className="size-1.5 rounded-full bg-red-500" aria-hidden /> : null}
+            <span
+              className={cn(
+                'w-[35px] text-right text-xs',
+                dte <= 3 ? 'font-bold text-red-500' : dte <= 7 ? 'font-bold text-orange-500' : 'text-muted-foreground',
+              )}
+            >
+              {dte}d
+            </span>
+          </div>
+        </div>
 
-        {/* Greeks inline */}
         {hasGreeks ? (
-          <HStack gap={2} fontSize="xs" color="fg.muted" flexShrink={0}>
-            {pos.delta != null && <Text>D<Text as="span" fontFamily="mono" ml={0.5}>{pos.delta.toFixed(2)}</Text></Text>}
-            {pos.gamma != null && <Text>G<Text as="span" fontFamily="mono" ml={0.5}>{pos.gamma.toFixed(3)}</Text></Text>}
-            {pos.theta != null && <Text>T<Text as="span" fontFamily="mono" ml={0.5} color={pos.theta < 0 ? 'fg.error' : 'fg.success'}>{pos.theta.toFixed(2)}</Text></Text>}
-            {pos.vega != null && <Text>V<Text as="span" fontFamily="mono" ml={0.5}>{pos.vega.toFixed(2)}</Text></Text>}
-          </HStack>
+          <div className="flex shrink-0 flex-wrap gap-2 text-xs text-muted-foreground">
+            {pos.delta != null ? (
+              <span>
+                D<span className="ml-0.5 font-mono">{pos.delta.toFixed(2)}</span>
+              </span>
+            ) : null}
+            {pos.gamma != null ? (
+              <span>
+                G<span className="ml-0.5 font-mono">{pos.gamma.toFixed(3)}</span>
+              </span>
+            ) : null}
+            {pos.theta != null ? (
+              <span>
+                T
+                <span
+                  className={cn(
+                    'ml-0.5 font-mono',
+                    pos.theta < 0 ? 'text-[rgb(var(--status-danger)/1)]' : 'text-[rgb(var(--status-success)/1)]',
+                  )}
+                >
+                  {pos.theta.toFixed(2)}
+                </span>
+              </span>
+            ) : null}
+            {pos.vega != null ? (
+              <span>
+                V<span className="ml-0.5 font-mono">{pos.vega.toFixed(2)}</span>
+              </span>
+            ) : null}
+          </div>
         ) : (
-          <Badge size="sm" variant="outline" colorPalette={gwConnected ? 'yellow' : 'gray'} flexShrink={0}>
+          <Badge variant="outline" className={cn('shrink-0', gwConnected && 'border-amber-500/50 text-amber-700 dark:text-amber-400')}>
             {gwConnected ? 'Syncing...' : 'No Greeks'}
           </Badge>
         )}
 
         <PnlText value={Number(pos.unrealized_pnl ?? 0)} format="currency" fontSize="sm" currency={currency} />
-      </HStack>
+      </div>
 
-      {/* Extra details row */}
-      <HStack gap={4} fontSize="xs" color="fg.muted" mt={1} flexWrap="wrap" pl={1}>
-        <Text>Price {formatMoney(Number(pos.current_price ?? 0), currency)}</Text>
-        {pos.cost_basis != null && Number(pos.cost_basis) !== 0 && (
-          <Text>Cost {formatMoney(Math.abs(Number(pos.cost_basis)), currency)}</Text>
-        )}
-        {pos.realized_pnl != null && Number(pos.realized_pnl) !== 0 && (
-          <Text color={Number(pos.realized_pnl) >= 0 ? 'fg.success' : 'fg.error'}>
-            Realized {Number(pos.realized_pnl) >= 0 ? '+' : ''}{formatMoney(Number(pos.realized_pnl), currency)}
-          </Text>
-        )}
-        {pos.commission != null && Number(pos.commission) !== 0 && (
-          <Text color="fg.error">Comm. {formatMoney(Math.abs(Number(pos.commission)), currency)}</Text>
-        )}
-        {pos.implied_volatility != null && pos.implied_volatility > 0 && (
-          <Text>IV {(pos.implied_volatility * 100).toFixed(1)}%</Text>
-        )}
-        {pos.underlying_price != null && Number(pos.underlying_price) > 0 && (
-          <Text>Underlying {formatMoney(Number(pos.underlying_price), currency)}</Text>
-        )}
-      </HStack>
-    </Box>
+      <div className="mt-1 flex flex-wrap gap-4 pl-1 text-xs text-muted-foreground">
+        <span>Price {formatMoney(Number(pos.current_price ?? 0), currency)}</span>
+        {pos.cost_basis != null && Number(pos.cost_basis) !== 0 ? (
+          <span>Cost {formatMoney(Math.abs(Number(pos.cost_basis)), currency)}</span>
+        ) : null}
+        {pos.realized_pnl != null && Number(pos.realized_pnl) !== 0 ? (
+          <span
+            className={
+              Number(pos.realized_pnl) >= 0 ? 'text-[rgb(var(--status-success)/1)]' : 'text-[rgb(var(--status-danger)/1)]'
+            }
+          >
+            Realized {Number(pos.realized_pnl) >= 0 ? '+' : ''}
+            {formatMoney(Number(pos.realized_pnl), currency)}
+          </span>
+        ) : null}
+        {pos.commission != null && Number(pos.commission) !== 0 ? (
+          <span className="text-[rgb(var(--status-danger)/1)]">
+            Comm. {formatMoney(Math.abs(Number(pos.commission)), currency)}
+          </span>
+        ) : null}
+        {pos.implied_volatility != null && pos.implied_volatility > 0 ? (
+          <span>IV {(pos.implied_volatility * 100).toFixed(1)}%</span>
+        ) : null}
+        {pos.underlying_price != null && Number(pos.underlying_price) > 0 ? (
+          <span>Underlying {formatMoney(Number(pos.underlying_price), currency)}</span>
+        ) : null}
+      </div>
+    </div>
   );
 };
 
@@ -891,89 +996,77 @@ const OptionChainTab: React.FC<{
 
   if (!gwConnected) {
     return (
-      <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-        <CardBody>
-          <VStack gap={3} py={8}>
-            <FiWifiOff size={32} />
-            <Text fontWeight="bold">IB Gateway Required</Text>
-            <Text color="fg.muted" textAlign="center" maxW="md">
-              Option chain data requires a live connection to IB Gateway.
-              Start it with <Text as="span" fontFamily="mono">make ib-up</Text> and
-              configure your IBKR credentials in <Text as="span" fontFamily="mono">infra/env.dev</Text>.
-            </Text>
-          </VStack>
-        </CardBody>
-      </CardRoot>
+      <Card className="gap-0 py-0">
+        <CardContent className="py-8">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <WifiOff className="size-8 text-muted-foreground" aria-hidden />
+            <p className="font-bold text-foreground">IB Gateway Required</p>
+            <p className="max-w-md text-sm text-muted-foreground">
+              Option chain data requires a live connection to IB Gateway. Start it with{' '}
+              <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">make ib-up</code> and configure your IBKR
+              credentials in <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">infra/env.dev</code>.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <VStack align="stretch" gap={3}>
-      <HStack gap={2} flexWrap="wrap">
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap gap-2">
         <Input
           placeholder="Enter symbol..."
           value={chainSymbol}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setChainSymbol(e.target.value.toUpperCase())}
-          maxW="200px"
-          size="sm"
+          className="max-w-[200px] h-8 text-sm"
         />
-        {underlyingOptions.slice(0, 8).map(sym => (
-          <Button
-            key={sym}
-            size="xs"
-            variant={chainSymbol === sym ? 'solid' : 'outline'}
-            onClick={() => setChainSymbol(sym)}
-          >
+        {underlyingOptions.slice(0, 8).map((sym) => (
+          <Button key={sym} size="xs" variant={chainSymbol === sym ? 'default' : 'outline'} onClick={() => setChainSymbol(sym)}>
             {sym}
           </Button>
         ))}
-      </HStack>
+      </div>
 
-      {chainQuery.isPending && <Text color="fg.muted">Loading chain...</Text>}
+      {chainQuery.isPending ? <p className="text-sm text-muted-foreground">Loading chain...</p> : null}
 
-      {activeChain && (
+      {activeChain ? (
         <>
-          <HStack gap={1} flexWrap="wrap">
-            {expirations.map(exp => (
-              <Button
-                key={exp}
-                size="xs"
-                variant={activeExp === exp ? 'solid' : 'outline'}
-                onClick={() => setSelectedExp(exp)}
-              >
+          <div className="flex flex-wrap gap-1">
+            {expirations.map((exp) => (
+              <Button key={exp} size="xs" variant={activeExp === exp ? 'default' : 'outline'} onClick={() => setSelectedExp(exp)}>
                 {exp}
               </Button>
             ))}
-          </HStack>
+          </div>
 
-          <Box overflowX="auto">
-            <Box display="grid" gridTemplateColumns="1fr auto 1fr" gap={0} fontSize="xs">
-              {/* Header */}
-              <HStack bg="bg.subtle" px={2} py={1} justify="space-between">
-                <Text fontWeight="bold">CALLS</Text>
-                <HStack gap={3}>
-                  <Text w="40px" textAlign="right">Vol</Text>
-                  <Text w="40px" textAlign="right">OI</Text>
-                  <Text w="50px" textAlign="right">Bid</Text>
-                  <Text w="50px" textAlign="right">Ask</Text>
-                  <Text w="45px" textAlign="right">Delta</Text>
-                  <Text w="40px" textAlign="right">IV</Text>
-                </HStack>
-              </HStack>
-              <Box bg="bg.emphasis" px={2} py={1} textAlign="center">
-                <Text fontWeight="bold" color="fg.inverted">Strike</Text>
-              </Box>
-              <HStack bg="bg.subtle" px={2} py={1} justify="space-between">
-                <HStack gap={3}>
-                  <Text w="40px">IV</Text>
-                  <Text w="45px">Delta</Text>
-                  <Text w="50px">Bid</Text>
-                  <Text w="50px">Ask</Text>
-                  <Text w="40px">OI</Text>
-                  <Text w="40px">Vol</Text>
-                </HStack>
-                <Text fontWeight="bold">PUTS</Text>
-              </HStack>
+          <div className="overflow-x-auto">
+            <div className="grid grid-cols-[1fr_auto_1fr] gap-0 text-xs">
+              <div className="flex items-center justify-between bg-muted/60 px-2 py-1">
+                <span className="font-bold">CALLS</span>
+                <div className="flex gap-3">
+                  <span className="inline-block w-10 text-right">Vol</span>
+                  <span className="inline-block w-10 text-right">OI</span>
+                  <span className="inline-block w-[50px] text-right">Bid</span>
+                  <span className="inline-block w-[50px] text-right">Ask</span>
+                  <span className="inline-block w-[45px] text-right">Delta</span>
+                  <span className="inline-block w-10 text-right">IV</span>
+                </div>
+              </div>
+              <div className="bg-primary px-2 py-1 text-center">
+                <span className="font-bold text-primary-foreground">Strike</span>
+              </div>
+              <div className="flex items-center justify-between bg-muted/60 px-2 py-1">
+                <div className="flex gap-3">
+                  <span className="inline-block w-10">IV</span>
+                  <span className="inline-block w-[45px]">Delta</span>
+                  <span className="inline-block w-[50px]">Bid</span>
+                  <span className="inline-block w-[50px]">Ask</span>
+                  <span className="inline-block w-10">OI</span>
+                  <span className="inline-block w-10">Vol</span>
+                </div>
+                <span className="font-bold">PUTS</span>
+              </div>
 
               {/* Build merged strike list */}
               {(() => {
@@ -1000,57 +1093,72 @@ const OptionChainTab: React.FC<{
                   const hasCallPos = heldStrikes.has(`${strike}-CALL`);
                   const hasPutPos = heldStrikes.has(`${strike}-PUT`);
 
-                  const rowBg = isAtm ? 'yellow.950' : undefined;
-
                   return (
                     <React.Fragment key={strike}>
-                      <HStack px={2} py={1} borderBottomWidth="1px" borderColor="border.subtle" justify="space-between" bg={rowBg}>
-                        <HStack gap={1}>
-                          {hasCallPos && <Box w="6px" h="6px" borderRadius="full" bg="blue.400" />}
-                          <Text fontFamily="mono">{call?.last?.toFixed(2) ?? '—'}</Text>
-                        </HStack>
-                        <HStack gap={3}>
-                          <Text w="40px" textAlign="right" fontFamily="mono" color="fg.muted">{call?.volume ?? '—'}</Text>
-                          <Text w="40px" textAlign="right" fontFamily="mono" color="fg.muted">{call?.open_interest ?? '—'}</Text>
-                          <Text w="50px" textAlign="right" fontFamily="mono">{call?.bid?.toFixed(2) ?? '—'}</Text>
-                          <Text w="50px" textAlign="right" fontFamily="mono">{call?.ask?.toFixed(2) ?? '—'}</Text>
-                          <Text w="45px" textAlign="right" fontFamily="mono">{call?.delta?.toFixed(2) ?? '—'}</Text>
-                          <Text w="40px" textAlign="right" fontFamily="mono">{call?.iv ? (call.iv * 100).toFixed(0) + '%' : '—'}</Text>
-                        </HStack>
-                      </HStack>
-                      <Box bg={isAtm ? 'yellow.700' : 'bg.emphasis'} px={2} py={1} textAlign="center" borderBottomWidth="1px" borderColor="border.subtle">
-                        <Text fontFamily="mono" fontWeight="bold" color={isAtm ? 'yellow.100' : 'fg.inverted'}>
+                      <div
+                        className={cn(
+                          'flex items-center justify-between border-b border-border px-2 py-1',
+                          isAtm && 'bg-amber-950/30 dark:bg-amber-950/40',
+                        )}
+                      >
+                        <div className="flex items-center gap-1">
+                          {hasCallPos ? <span className="size-1.5 rounded-full bg-blue-500" aria-hidden /> : null}
+                          <span className="font-mono">{call?.last?.toFixed(2) ?? '—'}</span>
+                        </div>
+                        <div className="flex gap-3">
+                          <span className="inline-block w-10 text-right font-mono text-muted-foreground">{call?.volume ?? '—'}</span>
+                          <span className="inline-block w-10 text-right font-mono text-muted-foreground">{call?.open_interest ?? '—'}</span>
+                          <span className="inline-block w-[50px] text-right font-mono">{call?.bid?.toFixed(2) ?? '—'}</span>
+                          <span className="inline-block w-[50px] text-right font-mono">{call?.ask?.toFixed(2) ?? '—'}</span>
+                          <span className="inline-block w-[45px] text-right font-mono">{call?.delta?.toFixed(2) ?? '—'}</span>
+                          <span className="inline-block w-10 text-right font-mono">
+                            {call?.iv ? `${(call.iv * 100).toFixed(0)}%` : '—'}
+                          </span>
+                        </div>
+                      </div>
+                      <div
+                        className={cn(
+                          'border-b border-border px-2 py-1 text-center',
+                          isAtm ? 'bg-amber-600 text-amber-50' : 'bg-primary text-primary-foreground',
+                        )}
+                      >
+                        <span className="font-mono font-bold">
                           {strike}
-                          {isAtm && <Text as="span" fontSize="2xs" ml={1}>ATM</Text>}
-                        </Text>
-                      </Box>
-                      <HStack px={2} py={1} borderBottomWidth="1px" borderColor="border.subtle" justify="space-between" bg={rowBg}>
-                        <HStack gap={3}>
-                          <Text w="40px" fontFamily="mono">{put?.iv ? (put.iv * 100).toFixed(0) + '%' : '—'}</Text>
-                          <Text w="45px" fontFamily="mono">{put?.delta?.toFixed(2) ?? '—'}</Text>
-                          <Text w="50px" fontFamily="mono">{put?.bid?.toFixed(2) ?? '—'}</Text>
-                          <Text w="50px" fontFamily="mono">{put?.ask?.toFixed(2) ?? '—'}</Text>
-                          <Text w="40px" fontFamily="mono" color="fg.muted">{put?.open_interest ?? '—'}</Text>
-                          <Text w="40px" fontFamily="mono" color="fg.muted">{put?.volume ?? '—'}</Text>
-                        </HStack>
-                        <HStack gap={1}>
-                          <Text fontFamily="mono">{put?.last?.toFixed(2) ?? '—'}</Text>
-                          {hasPutPos && <Box w="6px" h="6px" borderRadius="full" bg="blue.400" />}
-                        </HStack>
-                      </HStack>
+                          {isAtm ? <span className="ml-1 text-[0.65rem]">ATM</span> : null}
+                        </span>
+                      </div>
+                      <div
+                        className={cn(
+                          'flex items-center justify-between border-b border-border px-2 py-1',
+                          isAtm && 'bg-amber-950/30 dark:bg-amber-950/40',
+                        )}
+                      >
+                        <div className="flex gap-3">
+                          <span className="inline-block w-10 font-mono">{put?.iv ? `${(put.iv * 100).toFixed(0)}%` : '—'}</span>
+                          <span className="inline-block w-[45px] font-mono">{put?.delta?.toFixed(2) ?? '—'}</span>
+                          <span className="inline-block w-[50px] font-mono">{put?.bid?.toFixed(2) ?? '—'}</span>
+                          <span className="inline-block w-[50px] font-mono">{put?.ask?.toFixed(2) ?? '—'}</span>
+                          <span className="inline-block w-10 font-mono text-muted-foreground">{put?.open_interest ?? '—'}</span>
+                          <span className="inline-block w-10 font-mono text-muted-foreground">{put?.volume ?? '—'}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="font-mono">{put?.last?.toFixed(2) ?? '—'}</span>
+                          {hasPutPos ? <span className="size-1.5 rounded-full bg-blue-500" aria-hidden /> : null}
+                        </div>
+                      </div>
                     </React.Fragment>
                   );
                 });
               })()}
-            </Box>
-          </Box>
+            </div>
+          </div>
         </>
-      )}
+      ) : null}
 
-      {!chainQuery.isPending && !activeChain && chainSymbol && (
-        <Text color="fg.muted">No chain data available for {chainSymbol}.</Text>
-      )}
-    </VStack>
+      {!chainQuery.isPending && !activeChain && chainSymbol ? (
+        <p className="text-sm text-muted-foreground">No chain data available for {chainSymbol}.</p>
+      ) : null}
+    </div>
   );
 };
 
@@ -1138,7 +1246,12 @@ const pnlColumns: Column<PnlRow>[] = [
     isNumeric: true,
     render: (v) => {
       const pct = Number(v);
-      return <Text fontSize="xs" color={pct >= 0 ? 'fg.success' : 'fg.error'}>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</Text>;
+      return (
+        <span className={cn('text-xs', pct >= 0 ? 'text-[rgb(var(--status-success)/1)]' : 'text-[rgb(var(--status-danger)/1)]')}>
+          {pct >= 0 ? '+' : ''}
+          {pct.toFixed(1)}%
+        </span>
+      );
     },
     width: '65px',
   },
@@ -1151,7 +1264,7 @@ const pnlColumns: Column<PnlRow>[] = [
     isNumeric: true,
     render: (v) => {
       const val = Number(v);
-      if (!val) return <Text fontSize="xs" color="fg.muted">—</Text>;
+      if (!val) return <span className="text-xs text-muted-foreground">—</span>;
       return <PnlText value={val} format="currency" fontSize="xs" />;
     },
     width: '80px',
@@ -1163,7 +1276,7 @@ const pnlColumns: Column<PnlRow>[] = [
     sortable: true,
     sortType: 'number',
     isNumeric: true,
-    render: (v) => <Text fontFamily="mono" fontSize="xs">{Number(v).toFixed(2)}</Text>,
+    render: (v) => <span className="font-mono text-xs">{Number(v).toFixed(2)}</span>,
     width: '80px',
   },
 ];
@@ -1226,7 +1339,9 @@ const PnlTab: React.FC<{
       if (col.key === 'totalValue') {
         return {
           ...col,
-          render: (v: any) => <Text fontFamily="mono" fontSize="xs">{formatMoney(Number(v), currency, { maximumFractionDigits: 0 })}</Text>,
+          render: (v: any) => (
+            <span className="font-mono text-xs">{formatMoney(Number(v), currency, { maximumFractionDigits: 0 })}</span>
+          ),
         };
       }
       if (['callsPnl', 'putsPnl', 'totalPnl', 'realizedPnl'].includes(col.key)) {
@@ -1234,7 +1349,7 @@ const PnlTab: React.FC<{
           ...col,
           render: (v: any) => {
             const val = Number(v);
-            if (col.key === 'realizedPnl' && !val) return <Text fontSize="xs" color="fg.muted">—</Text>;
+            if (col.key === 'realizedPnl' && !val) return <span className="text-xs text-muted-foreground">—</span>;
             return <PnlText value={val} format="currency" fontSize="xs" currency={currency} />;
           },
         };
@@ -1245,23 +1360,23 @@ const PnlTab: React.FC<{
 
   if (rows.length === 0) {
     return (
-      <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-        <CardBody>
-          <Text color="fg.muted">No positions to analyze.</Text>
-        </CardBody>
-      </CardRoot>
+      <Card className="gap-0 py-0">
+        <CardContent>
+          <p className="text-muted-foreground">No positions to analyze.</p>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <VStack align="stretch" gap={3}>
-      <HStack gap={3} flexWrap="wrap">
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap gap-3">
         <StatCard label="Calls P&L" value={formatMoney(totals.callsPnl, currency)} color={totals.callsPnl >= 0 ? 'status.success' : 'status.danger'} />
         <StatCard label="Puts P&L" value={formatMoney(totals.putsPnl, currency)} color={totals.putsPnl >= 0 ? 'status.success' : 'status.danger'} />
         <StatCard label="Total P&L" value={formatMoney(totals.totalPnl, currency)} color={totals.totalPnl >= 0 ? 'status.success' : 'status.danger'} />
         <StatCard label="Realized" value={formatMoney(totals.realizedPnl, currency)} color={totals.realizedPnl >= 0 ? 'status.success' : 'status.danger'} />
         <StatCard label="Net Delta" value={totals.deltaExposure.toFixed(2)} />
-      </HStack>
+      </div>
       <SortableTable
         data={rows}
         columns={fmtCols}
@@ -1273,7 +1388,7 @@ const PnlTab: React.FC<{
         filterPresets={pnlFilterPresets}
         emptyMessage="No positions to analyze."
       />
-    </VStack>
+    </div>
   );
 };
 
@@ -1307,17 +1422,17 @@ const GreeksDashboard: React.FC<{ positions: OptionPos[]; currency: string }> = 
   }), [positions]);
 
   return (
-    <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-      <CardBody>
-        <Text fontWeight="bold" mb={3}>Greeks Exposure</Text>
-        <HStack gap={3} mb={4} flexWrap="wrap">
+    <Card className="gap-0 py-0">
+      <CardContent>
+        <p className="mb-3 font-bold text-foreground">Greeks Exposure</p>
+        <div className="mb-4 flex flex-wrap gap-3">
           <StatCard label="Net Delta" value={totals.delta.toFixed(2)} color={totals.delta >= 0 ? 'status.success' : 'status.danger'} />
           <StatCard label="Net Gamma" value={totals.gamma.toFixed(3)} />
           <StatCard label="Daily Theta" value={formatMoney(totals.theta, currency)} color={totals.theta < 0 ? 'status.danger' : 'status.success'} />
           <StatCard label="Net Vega" value={totals.vega.toFixed(2)} />
-        </HStack>
-        {byUnderlying.length > 0 && (
-          <Box h="250px">
+        </div>
+        {byUnderlying.length > 0 ? (
+          <div className="h-[250px]">
             <ResponsiveContainer>
               <BarChart data={byUnderlying} layout="vertical" margin={{ left: 60, right: 20, top: 5, bottom: 5 }}>
                 <XAxis type="number" tick={{ fontSize: 10 }} />
@@ -1331,10 +1446,10 @@ const GreeksDashboard: React.FC<{ positions: OptionPos[]; currency: string }> = 
                 <Bar dataKey="delta" fill={GREEKS_COLORS.delta} barSize={8} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </Box>
-        )}
-      </CardBody>
-    </CardRoot>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 };
 
@@ -1360,10 +1475,10 @@ const ThetaCalendar: React.FC<{ positions: OptionPos[]; currency: string; timezo
   }, [positions, timezone]);
 
   return (
-    <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-      <CardBody>
-        <Text fontWeight="bold" mb={3}>Theta Decay Projection (30 days)</Text>
-        <Box h="200px">
+    <Card className="gap-0 py-0">
+      <CardContent>
+        <p className="mb-3 font-bold text-foreground">Theta Decay Projection (30 days)</p>
+        <div className="h-[200px]">
           <ResponsiveContainer>
             <LineChart data={projections} margin={{ left: 10, right: 10, top: 5, bottom: 5 }}>
               <XAxis dataKey="label" tick={{ fontSize: 9 }} interval={4} />
@@ -1374,9 +1489,9 @@ const ThetaCalendar: React.FC<{ positions: OptionPos[]; currency: string; timezo
               <Line type="monotone" dataKey="cumTheta" stroke="#EF4444" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
-        </Box>
-      </CardBody>
-    </CardRoot>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -1398,20 +1513,20 @@ const IVSkewChart: React.FC<{ positions: OptionPos[] }> = ({ positions }) => {
 
   if (skewData.length < 2) {
     return (
-      <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-        <CardBody>
-          <Text fontWeight="bold" mb={3}>IV Skew</Text>
-          <Text color="fg.muted" fontSize="sm">Need at least 2 positions with IV data to show skew.</Text>
-        </CardBody>
-      </CardRoot>
+      <Card className="gap-0 py-0">
+        <CardContent>
+          <p className="mb-3 font-bold text-foreground">IV Skew</p>
+          <p className="text-sm text-muted-foreground">Need at least 2 positions with IV data to show skew.</p>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-      <CardBody>
-        <Text fontWeight="bold" mb={3}>IV Skew</Text>
-        <Box h="200px">
+    <Card className="gap-0 py-0">
+      <CardContent>
+        <p className="mb-3 font-bold text-foreground">IV Skew</p>
+        <div className="h-[200px]">
           <ResponsiveContainer>
             <LineChart data={skewData} margin={{ left: 10, right: 10, top: 5, bottom: 5 }}>
               <XAxis dataKey="strike" tick={{ fontSize: 10 }} />
@@ -1423,9 +1538,9 @@ const IVSkewChart: React.FC<{ positions: OptionPos[] }> = ({ positions }) => {
               <Line type="monotone" dataKey="iv" stroke="#8B5CF6" strokeWidth={2} dot={{ r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
-        </Box>
-      </CardBody>
-    </CardRoot>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -1466,10 +1581,10 @@ const PayoffDiagram: React.FC<{ positions: OptionPos[]; currency: string }> = ({
   }
 
   return (
-    <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-      <CardBody>
-        <Text fontWeight="bold" mb={3}>Payoff at Expiration</Text>
-        <Box h="250px">
+    <Card className="gap-0 py-0">
+      <CardContent>
+        <p className="mb-3 font-bold text-foreground">Payoff at Expiration</p>
+        <div className="h-[250px]">
           <ResponsiveContainer>
             <LineChart data={payoffData} margin={{ left: 20, right: 20, top: 5, bottom: 5 }}>
               <XAxis dataKey="price" tick={{ fontSize: 10 }} label={{ value: 'Underlying Price', position: 'bottom', fontSize: 11 }} />
@@ -1478,35 +1593,29 @@ const PayoffDiagram: React.FC<{ positions: OptionPos[]; currency: string }> = ({
                 formatter={(value: any) => [formatMoney(Number(value), currency), 'P/L at Expiration'] as React.ReactNode}
                 labelFormatter={(label) => `Price: $${label}`}
               />
-              <Line
-                type="monotone"
-                dataKey="pnl"
-                stroke="#3B82F6"
-                strokeWidth={2}
-                dot={false}
-              />
+              <Line type="monotone" dataKey="pnl" stroke="#3B82F6" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
-        </Box>
-      </CardBody>
-    </CardRoot>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
 const OptionsAnalyticsTab: React.FC<{ positions: OptionPos[]; currency: string; timezone?: string }> = ({ positions, currency, timezone }) => {
   return (
-    <VStack align="stretch" gap={4}>
+    <div className="flex flex-col gap-4">
       <GreeksDashboard positions={positions} currency={currency} />
-      <HStack gap={4} align="start" flexWrap="wrap">
-        <Box flex={1} minW="300px">
+      <div className="flex flex-wrap items-start gap-4">
+        <div className="min-w-[300px] flex-1">
           <ThetaCalendar positions={positions} currency={currency} timezone={timezone} />
-        </Box>
-        <Box flex={1} minW="300px">
+        </div>
+        <div className="min-w-[300px] flex-1">
           <IVSkewChart positions={positions} />
-        </Box>
-      </HStack>
+        </div>
+      </div>
       <PayoffDiagram positions={positions} currency={currency} />
-    </VStack>
+    </div>
   );
 };
 
@@ -1546,7 +1655,18 @@ const historyColumns: Column<HistoryItem>[] = [
     accessor: (r) => (r.option_type || '').toUpperCase(),
     sortable: true,
     sortType: 'string',
-    render: (v) => <Badge size="sm" colorPalette={v === 'CALL' ? 'green' : 'red'} variant="subtle">{v}</Badge>,
+    render: (v) => (
+      <Badge
+        variant="secondary"
+        className={
+          v === 'CALL'
+            ? 'bg-[rgb(var(--status-success)/0.15)] text-[rgb(var(--status-success)/1)]'
+            : 'bg-destructive/10 text-destructive'
+        }
+      >
+        {v}
+      </Badge>
+    ),
     width: '70px',
   },
   {
@@ -1556,7 +1676,7 @@ const historyColumns: Column<HistoryItem>[] = [
     sortable: true,
     sortType: 'number',
     isNumeric: true,
-    render: (v) => <Text fontFamily="mono">{Number(v) ? Number(v).toFixed(2) : '—'}</Text>,
+    render: (v) => <span className="font-mono">{Number(v) ? Number(v).toFixed(2) : '—'}</span>,
     width: '80px',
   },
   {
@@ -1565,7 +1685,7 @@ const historyColumns: Column<HistoryItem>[] = [
     accessor: (r) => r.expiry_date ?? '',
     sortable: true,
     sortType: 'date',
-    render: (v) => <Text fontSize="xs">{v || '—'}</Text>,
+    render: (v) => <span className="text-xs">{v || '—'}</span>,
     width: '95px',
   },
   {
@@ -1581,10 +1701,19 @@ const historyColumns: Column<HistoryItem>[] = [
       { label: 'Assigned', value: 'assigned' },
       { label: 'Expired', value: 'expired' },
     ],
-    render: (v) => {
-      const color = v === 'exercised' ? 'blue' : v === 'assigned' ? 'orange' : 'gray';
-      return <Badge size="sm" colorPalette={color} variant="subtle" textTransform="capitalize">{v}</Badge>;
-    },
+    render: (v) => (
+      <Badge
+        variant="secondary"
+        className={cn(
+          'capitalize',
+          v === 'exercised' && 'bg-blue-500/15 text-blue-700 dark:text-blue-300',
+          v === 'assigned' && 'bg-amber-500/15 text-amber-800 dark:text-amber-300',
+          v !== 'exercised' && v !== 'assigned' && 'text-muted-foreground',
+        )}
+      >
+        {v}
+      </Badge>
+    ),
     width: '90px',
   },
   {
@@ -1624,8 +1753,8 @@ const historyColumns: Column<HistoryItem>[] = [
     isNumeric: true,
     render: (v) => {
       const val = Number(v);
-      if (!val) return <Text fontSize="xs" color="fg.muted">—</Text>;
-      return <Text fontSize="xs" color="fg.error">{Math.abs(val).toFixed(2)}</Text>;
+      if (!val) return <span className="text-xs text-muted-foreground">—</span>;
+      return <span className="text-xs text-[rgb(var(--status-danger)/1)]">{Math.abs(val).toFixed(2)}</span>;
     },
     width: '85px',
   },
@@ -1649,14 +1778,14 @@ const OptionsHistoryTab: React.FC<{ accountId?: string }> = ({ accountId }) => {
   }
 
   if (historyQuery.error) {
-    return <Text color="status.danger">Failed to load options history.</Text>;
+    return <p className="text-sm text-[rgb(var(--status-danger)/1)]">Failed to load options history.</p>;
   }
 
   return (
-    <VStack align="stretch" gap={3}>
-      <Text fontSize="sm" color="fg.muted">
+    <div className="flex flex-col gap-3">
+      <p className="text-sm text-muted-foreground">
         Exercised, assigned, and expired options from your account history.
-      </Text>
+      </p>
       <SortableTable
         data={items}
         columns={historyColumns}
@@ -1667,7 +1796,7 @@ const OptionsHistoryTab: React.FC<{ accountId?: string }> = ({ accountId }) => {
         filtersEnabled
         emptyMessage="No historical options events found."
       />
-    </VStack>
+    </div>
   );
 };
 

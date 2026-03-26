@@ -29,7 +29,7 @@ Current execution plan organized by phase. One task per PR where possible.
 | 1.5.1 | Fix Celery time limits | DONE | Every task has explicit `time_limit`/`soft_time_limit` matching `job_catalog.py` |
 | 1.5.2 | Consolidate order paths | DONE | `OrderService` delegates to `OrderManager`, duplicate `RiskViolation` deleted |
 | 1.5.3 | Remove auth first-user fallback | DONE | `get_portfolio_user` requires JWT, no `User.first()` fallback |
-| 1.5.4 | Silent error audit | DONE | Zero `except Exception: pass` in indicator_engine.py and market_data_tasks.py |
+| 1.5.4 | Silent error audit | DONE | Zero `except Exception: pass` in indicator_engine.py and `backend/tasks/market/` task modules |
 | 1.5.5 | RSI implementation decision | DONE | Wilder smoothing confirmed correct (D8), no change needed |
 
 ## Phase 2: Stage Analysis engine [DONE]
@@ -66,7 +66,7 @@ Current execution plan organized by phase. One task per PR where possible.
 | 3.5.6 | Multi-tenant enforcement | DONE | user_id scoping on OrderManager, portfolio, dashboard, options routes. IDOR fixes |
 | 3.5.7 | Silent exception cleanup | DONE | 34 except-pass blocks replaced with logger.warning in market_data_service + tasks |
 | 3.5.8 | MAX_SINGLE_POSITION_PCT | DONE | Wired from settings (default 15%) into RiskGate |
-| 3.5.9 | Agent cold-start | DONE | Empty DB triggers 5-year backfill_since_date; migration logging with exc_info=True |
+| 3.5.9 | Agent cold-start | DONE | Empty DB triggers 5-year `backend.tasks.market.backfill.full_historical`; migration logging with exc_info=True |
 
 ## Phase 4: Deploy Greenfield + Stabilize [DONE]
 
@@ -89,7 +89,7 @@ Current execution plan organized by phase. One task per PR where possible.
 | 4.5.4 | Dependency mega-upgrade | DONE | Postgres 18, Python 3.13, Vite 6, Dependabot PRs merged |
 | 4.5.5 | Add dep-freshness cursor rule | DONE | `.cursor/rules/dep-freshness.mdc` with quarterly audit checklist |
 | 4.5.6 | Document D29+D30 in KNOWLEDGE.md | DONE | Naming convention and dependency freshness decisions logged |
-| 4.5.7 | Retire market_data_tasks.py | PLANNED | Full modularization into backend/tasks/market/ |
+| 4.5.7 | Retire market_data_tasks.py | DONE | Market tasks live in `backend/tasks/market/`; Celery paths are `backend.tasks.market.<module>.<function>` (see `job_catalog.py`) |
 | 4.5.8 | AdminAgent redesign | PLANNED | Conversational UI with inline analysis, action queue, session history |
 
 ## Phase 5: Strategy Alignment [PLANNED]

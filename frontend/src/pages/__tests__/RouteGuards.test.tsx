@@ -1,9 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup, waitFor } from '@/test/testing-library';
-import { ChakraProvider } from '@chakra-ui/react';
 import { MemoryRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { system } from '../../theme/system';
 
 afterEach(() => cleanup());
 
@@ -38,22 +36,20 @@ const HomePage: React.FC = () => <div>Home Page</div>;
 
 function TestApp({ initialRoute }: { initialRoute: string }) {
   return (
-    <ChakraProvider value={system}>
-      <MemoryRouter initialEntries={[initialRoute]}>
-        <Routes>
-          <Route path="/" element={<RequireAuth><Outlet /></RequireAuth>}>
-            <Route index element={<HomePage />} />
-            <Route path="settings" element={<SettingsShell />}>
-              <Route index element={<Navigate to="profile" replace />} />
-              <Route path="profile" element={<SettingsProfile />} />
-              <Route element={<RequireAdmin />}>
-                <Route path="admin/dashboard" element={<AdminDashboard />} />
-              </Route>
+    <MemoryRouter initialEntries={[initialRoute]}>
+      <Routes>
+        <Route path="/" element={<RequireAuth><Outlet /></RequireAuth>}>
+          <Route index element={<HomePage />} />
+          <Route path="settings" element={<SettingsShell />}>
+            <Route index element={<Navigate to="profile" replace />} />
+            <Route path="profile" element={<SettingsProfile />} />
+            <Route element={<RequireAdmin />}>
+              <Route path="admin/dashboard" element={<AdminDashboard />} />
             </Route>
           </Route>
-        </Routes>
-      </MemoryRouter>
-    </ChakraProvider>
+        </Route>
+      </Routes>
+    </MemoryRouter>
   );
 }
 

@@ -1,27 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Box,
-  Flex,
-  VStack,
-  Input,
-  InputGroup,
-  Text,
-  Badge,
-  CardRoot,
-  CardBody,
-  CardHeader,
-  Button,
-  IconButton,
-  TableScrollArea,
-  TableRoot,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableColumnHeader,
-  TableCell,
-  useMediaQuery,
-} from '@chakra-ui/react';
-import { FiRefreshCw, FiSearch, FiMinusCircle, FiLock, FiUnlock, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { Lock, MinusCircle, Pencil, RefreshCw, Search, Trash2, Unlock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import { semanticTextColorClass } from '@/lib/semantic-text-color';
 import toast from 'react-hot-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '../components/ui/PageHeader';
@@ -47,6 +31,19 @@ interface LotTotals {
   value: number;
 }
 
+function useMediaQueryMin768(): boolean {
+  const [matches, setMatches] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(min-width: 768px)').matches : true,
+  );
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 768px)');
+    const handler = () => setMatches(mql.matches);
+    mql.addEventListener('change', handler);
+    handler();
+    return () => mql.removeEventListener('change', handler);
+  }, []);
+  return matches;
+}
 
 function classifyActivity(r: ActivityRow): ChartEventType {
   const cat = (r.category || '').toUpperCase();
@@ -87,11 +84,11 @@ function shortLabel(r: ActivityRow, evType: ChartEventType, currency: string): s
   }
 }
 
-const EVENT_TOGGLE_CONFIG: { type: ChartEventType; label: string; colorPalette: string }[] = [
-  { type: 'BUY', label: 'Buys', colorPalette: 'green' },
-  { type: 'SELL', label: 'Sells', colorPalette: 'red' },
-  { type: 'DIVIDEND', label: 'Divs', colorPalette: 'teal' },
-  { type: 'ORDER_PENDING', label: 'Orders', colorPalette: 'yellow' },
+const EVENT_TOGGLE_CONFIG: { type: ChartEventType; label: string; activeClass: string }[] = [
+  { type: 'BUY', label: 'Buys', activeClass: 'border-emerald-600/40 bg-emerald-600/15 text-emerald-900 dark:text-emerald-200' },
+  { type: 'SELL', label: 'Sells', activeClass: 'border-red-600/40 bg-red-600/15 text-red-900 dark:text-red-200' },
+  { type: 'DIVIDEND', label: 'Divs', activeClass: 'border-teal-600/40 bg-teal-600/15 text-teal-900 dark:text-teal-200' },
+  { type: 'ORDER_PENDING', label: 'Orders', activeClass: 'border-amber-500/40 bg-amber-500/15 text-amber-950 dark:text-amber-200' },
 ];
 
 const PortfolioWorkspace: React.FC = () => {
@@ -133,7 +130,7 @@ const PortfolioWorkspace: React.FC = () => {
   const handleHoverDay = useCallback((v: number | null) => setHoverDaySec(v), []);
   const handleClickDay = useCallback((t: number | null) => setLockedDaySec((prev: number | null) => (prev === t ? null : t || null)), []);
 
-  const [isMdOrLarger] = useMediaQuery(['(min-width: 768px)']);
+  const isMdOrLarger = useMediaQueryMin768();
   const chartHeight = isMdOrLarger ? 520 : 300;
   const [holdingsTab, setHoldingsTab] = useState<'open' | 'closed'>('open');
   const [lotEditMode, setLotEditMode] = useState(false);
@@ -404,158 +401,179 @@ const PortfolioWorkspace: React.FC = () => {
 
   if (isLoading) {
     return (
-      <VStack p={{ base: 3, md: 6 }} gap={6} align="stretch">
+      <div className="flex flex-col gap-6 p-3 md:p-6">
         <PageHeader title="Workspace" subtitle="Holdings list + Trades and dividends by symbol" />
         <TableSkeleton rows={8} cols={4} />
-      </VStack>
+      </div>
     );
   }
 
   return (
-    <VStack p={{ base: 3, md: 6 }} gap={4} align="stretch">
-      <Flex gap={4} align="stretch" flexDirection={{ base: 'column', lg: 'row' }}>
+    <div className="flex flex-col gap-4 p-3 md:p-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
         {/* Left: holdings list */}
-        <VStack bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl" p={3} gap={3} align="stretch" w={{ base: '100%', lg: '340px' }} h={{ base: '40vh', lg: 'calc(100vh - 2rem)' }}>
-          <Box display="flex" gap={2} alignItems="center">
-            <InputGroup
-              startElement={
-                <Box color="fg.muted" display="flex" alignItems="center">
-                  <FiSearch />
-                </Box>
-              }
-            >
-              <Input placeholder="Search holdings..." value={search} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)} />
-            </InputGroup>
-            <Button size="sm" variant="outline" onClick={handleRefresh}>
-              <FiRefreshCw />
+        <div className="flex h-[40vh] w-full flex-col gap-3 rounded-xl border border-border bg-card p-3 lg:h-[calc(100vh-2rem)] lg:w-[340px]">
+          <div className="flex items-center gap-2">
+            <div className="relative min-w-0 flex-1">
+              <span className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground">
+                <Search className="size-4" aria-hidden />
+              </span>
+              <Input
+                className="h-8 pl-8 text-sm"
+                placeholder="Search holdings..."
+                value={search}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+              />
+            </div>
+            <Button type="button" size="sm" variant="outline" className="shrink-0 gap-1.5" onClick={handleRefresh}>
+              <RefreshCw className="size-3.5" aria-hidden />
               Refresh
             </Button>
-          </Box>
-          <Box display="flex" gap={1}>
-            <Button size="xs" flex={1} variant={holdingsTab === 'open' ? 'solid' : 'outline'} onClick={() => setHoldingsTab('open')}>
+          </div>
+          <div className="flex gap-1">
+            <Button
+              type="button"
+              size="xs"
+              className="flex-1"
+              variant={holdingsTab === 'open' ? 'default' : 'outline'}
+              onClick={() => setHoldingsTab('open')}
+            >
               Open
             </Button>
-            <Button size="xs" flex={1} variant={holdingsTab === 'closed' ? 'solid' : 'outline'} onClick={() => setHoldingsTab('closed')}>
+            <Button
+              type="button"
+              size="xs"
+              className="flex-1"
+              variant={holdingsTab === 'closed' ? 'default' : 'outline'}
+              onClick={() => setHoldingsTab('closed')}
+            >
               Closed
             </Button>
-          </Box>
-          <VStack gap={2} align="stretch" overflowY="auto">
+          </div>
+          <div className="flex min-h-0 flex-col gap-2 overflow-y-auto">
             {holdingsTab === 'open' && filteredHoldings.map((h: EnrichedPosition) => {
               const active = selectedSymbol?.toUpperCase() === h.symbol.toUpperCase();
               const pnl = Number(h.unrealized_pnl ?? 0);
               const pnlPct = Number(h.unrealized_pnl_pct ?? 0);
-              const color = pnl >= 0 ? 'fg.success' : 'fg.error';
               return (
-                <Box
+                <button
+                  type="button"
                   key={h.id}
                   id={`ticker-${h.symbol}`}
                   onClick={() => setSelectedSymbol(h.symbol)}
-                  cursor="pointer"
-                  p={2}
-                  borderRadius="lg"
-                  borderWidth="1px"
-                  borderColor={active ? 'border.emphasis' : 'border.subtle'}
-                  bg={active ? 'bg.muted' : undefined}
-                  _hover={{ bg: 'bg.muted' }}
-                  display="flex"
-                  gap={2}
-                  alignItems="center"
+                  className={cn(
+                    'flex cursor-pointer items-center gap-2 rounded-lg border p-2 text-left transition-colors',
+                    active ? 'border-ring bg-muted' : 'border-border hover:bg-muted/80',
+                  )}
                 >
-                  <Box w="8px" h="8px" borderRadius="full" bg="border.emphasis" />
-                  <VStack gap={0} align="start" flex={1}>
-                    <Box display="flex" justifyContent="space-between" width="full">
-                      <Text fontWeight="bold">{h.symbol}</Text>
-                      <Badge colorPalette={pnl >= 0 ? 'green' : 'red'}>
+                  <span className="size-2 shrink-0 rounded-full bg-ring" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex w-full items-center justify-between gap-2">
+                      <span className="font-bold">{h.symbol}</span>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          'shrink-0 font-normal',
+                          pnl >= 0
+                            ? 'border-emerald-500/40 text-emerald-800 dark:text-emerald-200'
+                            : 'border-destructive/40 text-destructive',
+                        )}
+                      >
                         {pnlPct.toFixed(2)}%
                       </Badge>
-                    </Box>
-                    <Box display="flex" justifyContent="space-between" width="full">
-                      <Text fontSize="xs" color="fg.muted">{(h.shares ?? 0).toLocaleString()} sh</Text>
-                      <Text fontSize="xs" color={color}>{formatMoney(Math.abs(pnl), currency, { maximumFractionDigits: 0 })}</Text>
-                    </Box>
+                    </div>
+                    <div className="flex w-full items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">{(h.shares ?? 0).toLocaleString()} sh</span>
+                      <span className={cn('text-xs', semanticTextColorClass(pnl >= 0 ? 'fg.success' : 'fg.error'))}>
+                        {formatMoney(Math.abs(pnl), currency, { maximumFractionDigits: 0 })}
+                      </span>
+                    </div>
                     {(h.average_cost != null || h.cost_basis != null) && (
-                      <Text fontSize="xs" color="fg.muted" mt={-0.5}>
+                      <p className="-mt-0.5 text-xs text-muted-foreground">
                         Cost {h.cost_basis != null ? formatMoney(Number(h.cost_basis), currency, { maximumFractionDigits: 0 }) : h.average_cost != null ? `${formatMoney(Number(h.average_cost), currency)}/sh` : ''}
-                      </Text>
+                      </p>
                     )}
-                  </VStack>
-                </Box>
+                  </div>
+                </button>
               );
             })}
             {holdingsTab === 'closed' && closedPositions.map((cp) => {
               const active = selectedSymbol?.toUpperCase() === cp.symbol.toUpperCase();
               const pnl = cp.total_realized_pnl ?? 0;
               return (
-                <Box
+                <button
+                  type="button"
                   key={cp.symbol}
                   id={`ticker-${cp.symbol}`}
                   onClick={() => setSelectedSymbol(cp.symbol)}
-                  cursor="pointer"
-                  p={2}
-                  borderRadius="lg"
-                  borderWidth="1px"
-                  borderColor={active ? 'border.emphasis' : 'border.subtle'}
-                  bg={active ? 'bg.muted' : undefined}
-                  _hover={{ bg: 'bg.muted' }}
-                  display="flex"
-                  gap={2}
-                  alignItems="center"
+                  className={cn(
+                    'flex cursor-pointer items-center gap-2 rounded-lg border p-2 text-left transition-colors',
+                    active ? 'border-ring bg-muted' : 'border-border hover:bg-muted/80',
+                  )}
                 >
-                  <Box w="8px" h="8px" borderRadius="full" bg="fg.muted" opacity={0.5} />
-                  <VStack gap={0} align="start" flex={1}>
-                    <Box display="flex" justifyContent="space-between" width="full">
-                      <Text fontWeight="bold">{cp.symbol}</Text>
-                      <Badge colorPalette="gray" variant="outline">Closed</Badge>
-                    </Box>
-                    <Box display="flex" justifyContent="space-between" width="full">
-                      <Text fontSize="xs" color="fg.muted">{cp.trade_count} trades</Text>
-                      <Text fontSize="xs" color={pnl >= 0 ? 'fg.success' : 'fg.error'}>
+                  <span className="size-2 shrink-0 rounded-full bg-muted-foreground/50" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex w-full items-center justify-between gap-2">
+                      <span className="font-bold">{cp.symbol}</span>
+                      <Badge variant="outline" className="shrink-0 font-normal text-muted-foreground">
+                        Closed
+                      </Badge>
+                    </div>
+                    <div className="flex w-full items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">{cp.trade_count} trades</span>
+                      <span className={cn('text-xs', semanticTextColorClass(pnl >= 0 ? 'fg.success' : 'fg.error'))}>
                         {formatMoney(pnl, currency, { maximumFractionDigits: 0 })}
-                      </Text>
-                    </Box>
-                  </VStack>
-                </Box>
+                      </span>
+                    </div>
+                  </div>
+                </button>
               );
             })}
             {holdingsTab === 'closed' && closedPositions.length === 0 && (
-              <Text fontSize="sm" color="fg.muted" textAlign="center" py={4}>No closed positions</Text>
+              <p className="py-4 text-center text-sm text-muted-foreground">No closed positions</p>
             )}
-          </VStack>
-        </VStack>
+          </div>
+        </div>
 
         {/* Right: detail pane */}
-        <VStack flex={1} gap={4} align="stretch">
+        <div className="flex min-w-0 flex-1 flex-col gap-4">
           {/* Symbol summary bar */}
           {selectedHolding && (
-            <Box display="flex" gap={4} flexWrap="wrap" px={1} alignItems="center">
-              <Box>
-                <Text fontSize="xs" color="fg.muted">Value</Text>
-                <Text fontSize="sm" fontWeight="bold">{formatMoney(Number(selectedHolding.market_value ?? 0), currency, { maximumFractionDigits: 0 })}</Text>
-              </Box>
-              <Box>
-                <Text fontSize="xs" color="fg.muted">Cost Basis</Text>
-                <Text fontSize="sm" fontWeight="bold">{formatMoney(Number(selectedHolding.cost_basis ?? (Number(selectedHolding.average_cost ?? 0) * Number(selectedHolding.shares ?? 0))), currency, { maximumFractionDigits: 0 })}</Text>
-              </Box>
-              <Box>
-                <Text fontSize="xs" color="fg.muted">Unrealized P&L</Text>
-                <Text fontSize="sm" fontWeight="bold" color={Number(selectedHolding.unrealized_pnl ?? 0) >= 0 ? 'fg.success' : 'fg.error'}>
+            <div className="flex flex-wrap items-center gap-4 px-1">
+              <div>
+                <p className="text-xs text-muted-foreground">Value</p>
+                <p className="text-sm font-bold">{formatMoney(Number(selectedHolding.market_value ?? 0), currency, { maximumFractionDigits: 0 })}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Cost Basis</p>
+                <p className="text-sm font-bold">{formatMoney(Number(selectedHolding.cost_basis ?? (Number(selectedHolding.average_cost ?? 0) * Number(selectedHolding.shares ?? 0))), currency, { maximumFractionDigits: 0 })}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Unrealized P&L</p>
+                <p
+                  className={cn(
+                    'text-sm font-bold',
+                    semanticTextColorClass(Number(selectedHolding.unrealized_pnl ?? 0) >= 0 ? 'fg.success' : 'fg.error'),
+                  )}
+                >
                   {formatMoney(Number(selectedHolding.unrealized_pnl ?? 0), currency, { maximumFractionDigits: 0 })}
                   {selectedHolding.unrealized_pnl_pct != null && ` (${Number(selectedHolding.unrealized_pnl_pct).toFixed(2)}%)`}
-                </Text>
-              </Box>
-              <Box>
-                <Text fontSize="xs" color="fg.muted">Shares</Text>
-                <Text fontSize="sm" fontWeight="bold">{Number(selectedHolding.shares ?? 0).toLocaleString()}</Text>
-              </Box>
-              <Box>
-                <Text fontSize="xs" color="fg.muted">Avg Cost</Text>
-                <Text fontSize="sm" fontWeight="bold">{selectedHolding.average_cost != null ? formatMoney(Number(selectedHolding.average_cost), currency) : '—'}</Text>
-              </Box>
-              <Box ml="auto">
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Shares</p>
+                <p className="text-sm font-bold">{Number(selectedHolding.shares ?? 0).toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Avg Cost</p>
+                <p className="text-sm font-bold">{selectedHolding.average_cost != null ? formatMoney(Number(selectedHolding.average_cost), currency) : '—'}</p>
+              </div>
+              <div className="ml-auto">
                 <Button
+                  type="button"
                   size="xs"
                   variant="outline"
-                  colorPalette="red"
+                  className="border-destructive/40 text-destructive hover:bg-destructive/10"
                   onClick={() => setTradeTarget({
                     symbol: selectedHolding.symbol,
                     currentPrice: Number(selectedHolding.current_price ?? 0),
@@ -566,43 +584,70 @@ const PortfolioWorkspace: React.FC = () => {
                 >
                   Trade
                 </Button>
-              </Box>
-            </Box>
+              </div>
+            </div>
           )}
 
           {/* Market context from snapshot */}
           {snapshot && selectedSymbol && (
-            <Box display="flex" gap={3} flexWrap="wrap" px={1} py={1} borderRadius="md" bg="bg.subtle">
+            <div className="flex flex-wrap gap-2 rounded-md bg-muted/50 px-1 py-1">
               {snapshot.stage_label && (
                 <Badge
-                  colorPalette={String(snapshot.stage_label).startsWith('2') ? 'green' : snapshot.stage_label === '4' ? 'red' : 'gray'}
-                  variant="subtle" size="sm"
+                  variant="outline"
+                  className={cn(
+                    'h-5 font-normal',
+                    String(snapshot.stage_label).startsWith('2')
+                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-900 dark:text-emerald-200'
+                      : snapshot.stage_label === '4'
+                        ? 'border-destructive/40 bg-destructive/10 text-destructive'
+                        : 'text-muted-foreground',
+                  )}
                 >
                   Stage {snapshot.stage_label}
                 </Badge>
               )}
               {snapshot.current_stage_days != null && (
-                <Badge variant="outline" size="sm">{snapshot.current_stage_days}d in stage</Badge>
+                <Badge variant="outline" className="h-5 font-normal">{snapshot.current_stage_days}d in stage</Badge>
               )}
               {snapshot.rsi != null && (
-                <Badge colorPalette={snapshot.rsi > 70 ? 'red' : snapshot.rsi < 30 ? 'green' : 'gray'} variant="outline" size="sm">
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    'h-5 font-normal',
+                    snapshot.rsi > 70
+                      ? 'border-destructive/40 text-destructive'
+                      : snapshot.rsi < 30
+                        ? 'border-emerald-500/40 text-emerald-800 dark:text-emerald-200'
+                        : 'text-muted-foreground',
+                  )}
+                >
                   RSI {Number(snapshot.rsi).toFixed(0)}
                 </Badge>
               )}
               {snapshot.atrp_14 != null && (
-                <Badge variant="outline" size="sm">ATR {Number(snapshot.atrp_14).toFixed(1)}%</Badge>
+                <Badge variant="outline" className="h-5 font-normal">ATR {Number(snapshot.atrp_14).toFixed(1)}%</Badge>
               )}
               {snapshot.pe_ttm != null && Number(snapshot.pe_ttm) > 0 && (
-                <Badge variant="outline" size="sm">P/E {Number(snapshot.pe_ttm).toFixed(1)}</Badge>
+                <Badge variant="outline" className="h-5 font-normal">P/E {Number(snapshot.pe_ttm).toFixed(1)}</Badge>
               )}
               {snapshot.dividend_yield != null && Number(snapshot.dividend_yield) > 0 && (
-                <Badge colorPalette="blue" variant="outline" size="sm">Yield {Number(snapshot.dividend_yield).toFixed(2)}%</Badge>
+                <Badge variant="outline" className="h-5 border-blue-500/40 font-normal text-blue-800 dark:text-blue-200">
+                  Yield {Number(snapshot.dividend_yield).toFixed(2)}%
+                </Badge>
               )}
               {snapshot.beta != null && (
-                <Badge variant="outline" size="sm">Beta {Number(snapshot.beta).toFixed(2)}</Badge>
+                <Badge variant="outline" className="h-5 font-normal">Beta {Number(snapshot.beta).toFixed(2)}</Badge>
               )}
               {snapshot.rs_mansfield_pct != null && (
-                <Badge colorPalette={Number(snapshot.rs_mansfield_pct) > 0 ? 'green' : 'red'} variant="outline" size="sm">
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    'h-5 font-normal',
+                    Number(snapshot.rs_mansfield_pct) > 0
+                      ? 'border-emerald-500/40 text-emerald-800 dark:text-emerald-200'
+                      : 'border-destructive/40 text-destructive',
+                  )}
+                >
                   RS {Number(snapshot.rs_mansfield_pct) > 0 ? '+' : ''}{Number(snapshot.rs_mansfield_pct).toFixed(1)}%
                 </Badge>
               )}
@@ -615,92 +660,100 @@ const PortfolioWorkspace: React.FC = () => {
                 if (snapshot.td_buy_countdown >= 12) tdParts.push(`BC${snapshot.td_buy_countdown}`);
                 if (snapshot.td_sell_countdown >= 12) tdParts.push(`SC${snapshot.td_sell_countdown}`);
                 return tdParts.length > 0 ? (
-                  <Badge colorPalette={tdParts[0].startsWith('B') ? 'green' : 'red'} variant="outline" size="sm">
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      'h-5 font-normal',
+                      tdParts[0].startsWith('B')
+                        ? 'border-emerald-500/40 text-emerald-800 dark:text-emerald-200'
+                        : 'border-destructive/40 text-destructive',
+                    )}
+                  >
                     TD {tdParts.join(' ')}
                   </Badge>
                 ) : null;
               })()}
               {((snapshot.gaps_unfilled_up ?? 0) > 0 || (snapshot.gaps_unfilled_down ?? 0) > 0) && (
-                <Badge variant="outline" size="sm">
+                <Badge variant="outline" className="h-5 font-normal">
                   Gaps {snapshot.gaps_unfilled_up ?? 0}↑ {snapshot.gaps_unfilled_down ?? 0}↓
                 </Badge>
               )}
               {snapshot.next_earnings && (
-                <Badge colorPalette="purple" variant="outline" size="sm">
+                <Badge variant="outline" className="h-5 border-violet-500/40 font-normal text-violet-800 dark:text-violet-200">
                   Earnings {new Date(snapshot.next_earnings).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </Badge>
               )}
-            </Box>
+            </div>
           )}
 
           {/* Chart */}
-          <CardRoot borderWidth="1px" borderColor="border.subtle" bg="bg.card">
-            <CardHeader pb={2}>
-              <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={3}>
-                <Text fontWeight="bold">{selectedSymbol || '—'}</Text>
-                <Box display="flex" gap={3} alignItems="center" flexWrap="wrap">
-                  <Badge>Live</Badge>
-                  <Box display="flex" gap={2} alignItems="center">
-                    <Text fontSize="xs" color="fg.muted">Advanced</Text>
-                    <Button size="xs" variant={showAdvanced ? 'solid' : 'outline'} onClick={() => setShowAdvanced((v: boolean) => !v)}>
+          <Card className="gap-0 border border-border py-0">
+            <CardHeader className="gap-2 px-4 pb-2">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="font-bold">{selectedSymbol || '—'}</p>
+                <div className="flex flex-wrap items-center gap-2 md:gap-3">
+                  <Badge className="h-5">Live</Badge>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Advanced</span>
+                    <Button type="button" size="xs" variant={showAdvanced ? 'default' : 'outline'} onClick={() => setShowAdvanced((v: boolean) => !v)}>
                       {showAdvanced ? 'On' : 'Off'}
                     </Button>
-                  </Box>
-                  <Box display="flex" gap={2} alignItems="center" opacity={showAdvanced ? 0.4 : 1}>
-                    <Text fontSize="xs" color="fg.muted">Range</Text>
-                    <Button size="xs" disabled={showAdvanced} variant={period === '6mo' ? 'solid' : 'outline'} onClick={() => { setPeriod('6mo'); setZoomYears(0.5); }}>6m</Button>
-                    <Button size="xs" disabled={showAdvanced} variant={period === '1y' ? 'solid' : 'outline'} onClick={() => { setPeriod('1y'); setZoomYears(1); }}>1y</Button>
-                    <Button size="xs" disabled={showAdvanced} variant={period === '3y' ? 'solid' : 'outline'} onClick={() => { setPeriod('3y'); setZoomYears(3); }}>3y</Button>
-                    <Button size="xs" disabled={showAdvanced} variant={period === '5y' ? 'solid' : 'outline'} onClick={() => { setPeriod('5y'); setZoomYears(5); }}>5y</Button>
-                    <Button size="xs" disabled={showAdvanced} variant={period === 'max' ? 'solid' : 'outline'} onClick={() => { setPeriod('max'); setZoomYears('all'); }}>All</Button>
-                  </Box>
-                  <Box display="flex" gap={2} alignItems="center">
-                    <Text fontSize="xs" color="fg.muted">Line</Text>
-                    <Button size="xs" variant={showLine ? 'solid' : 'outline'} onClick={() => setShowLine((v: boolean) => !v)}>
+                  </div>
+                  <div className={cn('flex flex-wrap items-center gap-2', showAdvanced && 'pointer-events-none opacity-40')}>
+                    <span className="text-xs text-muted-foreground">Range</span>
+                    <Button type="button" size="xs" disabled={showAdvanced} variant={period === '6mo' ? 'default' : 'outline'} onClick={() => { setPeriod('6mo'); setZoomYears(0.5); }}>6m</Button>
+                    <Button type="button" size="xs" disabled={showAdvanced} variant={period === '1y' ? 'default' : 'outline'} onClick={() => { setPeriod('1y'); setZoomYears(1); }}>1y</Button>
+                    <Button type="button" size="xs" disabled={showAdvanced} variant={period === '3y' ? 'default' : 'outline'} onClick={() => { setPeriod('3y'); setZoomYears(3); }}>3y</Button>
+                    <Button type="button" size="xs" disabled={showAdvanced} variant={period === '5y' ? 'default' : 'outline'} onClick={() => { setPeriod('5y'); setZoomYears(5); }}>5y</Button>
+                    <Button type="button" size="xs" disabled={showAdvanced} variant={period === 'max' ? 'default' : 'outline'} onClick={() => { setPeriod('max'); setZoomYears('all'); }}>All</Button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Line</span>
+                    <Button type="button" size="xs" variant={showLine ? 'default' : 'outline'} onClick={() => setShowLine((v: boolean) => !v)}>
                       {showLine ? 'On' : 'Off'}
                     </Button>
-                  </Box>
-                </Box>
-              </Box>
-              {/* Event type toggles */}
+                  </div>
+                </div>
+              </div>
               {!showAdvanced && (
-                <Box display="flex" gap={2} alignItems="center" flexWrap="wrap" mt={1}>
-                  <Text fontSize="xs" color="fg.muted">Events</Text>
-                  {EVENT_TOGGLE_CONFIG.map(({ type, label, colorPalette }) => (
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Events</span>
+                  {EVENT_TOGGLE_CONFIG.map(({ type, label, activeClass }) => (
                     <Button
                       key={type}
+                      type="button"
                       size="xs"
-                      colorPalette={enabledEvents.has(type) ? colorPalette : undefined}
-                      variant={enabledEvents.has(type) ? 'solid' : 'outline'}
+                      variant="outline"
+                      className={enabledEvents.has(type) ? activeClass : ''}
                       onClick={() => toggleEventType(type)}
                     >
                       {label}
                     </Button>
                   ))}
-                </Box>
+                </div>
               )}
               {!showAdvanced && (
-                <Box display="flex" gap={2} alignItems="center" flexWrap="wrap" mt={1}>
-                  <Text fontSize="xs" color="fg.muted">Indicators</Text>
-                  <Button size="xs" variant={indicators.trendLines ? 'solid' : 'outline'} onClick={() => toggleIndicator('trendLines')}>Trend Lines</Button>
-                  <Button size="xs" variant={indicators.gaps ? 'solid' : 'outline'} onClick={() => toggleIndicator('gaps')}>Gaps</Button>
-                  <Button size="xs" variant={indicators.tdSequential ? 'solid' : 'outline'} onClick={() => toggleIndicator('tdSequential')}>TD Seq</Button>
-                  <Button size="xs" variant={indicators.emas ? 'solid' : 'outline'} onClick={() => toggleIndicator('emas')}>EMAs</Button>
-                  <Button size="xs" variant={indicators.stage ? 'solid' : 'outline'} onClick={() => toggleIndicator('stage')}>Stage</Button>
-                  <Button size="xs" variant={indicators.supportResistance ? 'solid' : 'outline'} onClick={() => toggleIndicator('supportResistance')}>S/R</Button>
-                </Box>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Indicators</span>
+                  <Button type="button" size="xs" variant={indicators.trendLines ? 'default' : 'outline'} onClick={() => toggleIndicator('trendLines')}>Trend Lines</Button>
+                  <Button type="button" size="xs" variant={indicators.gaps ? 'default' : 'outline'} onClick={() => toggleIndicator('gaps')}>Gaps</Button>
+                  <Button type="button" size="xs" variant={indicators.tdSequential ? 'default' : 'outline'} onClick={() => toggleIndicator('tdSequential')}>TD Seq</Button>
+                  <Button type="button" size="xs" variant={indicators.emas ? 'default' : 'outline'} onClick={() => toggleIndicator('emas')}>EMAs</Button>
+                  <Button type="button" size="xs" variant={indicators.stage ? 'default' : 'outline'} onClick={() => toggleIndicator('stage')}>Stage</Button>
+                  <Button type="button" size="xs" variant={indicators.supportResistance ? 'default' : 'outline'} onClick={() => toggleIndicator('supportResistance')}>S/R</Button>
+                </div>
               )}
-              {lockedDaySec && (
-                <Box mt={2} display="flex" gap={3} alignItems="center" flexWrap="wrap">
-                  <Badge colorPalette="purple">Pinned</Badge>
-                  <Text fontSize="sm">{new Date(lockedDaySec * 1000).toISOString().slice(0, 10)}</Text>
-                  <Button size="xs" variant="outline" onClick={() => setLockedDaySec(null)}>
+              {lockedDaySec ? (
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <Badge variant="outline" className="h-5 border-violet-500/40 text-violet-800 dark:text-violet-200">Pinned</Badge>
+                  <span className="text-sm">{new Date(lockedDaySec * 1000).toISOString().slice(0, 10)}</span>
+                  <Button type="button" size="xs" variant="outline" onClick={() => setLockedDaySec(null)}>
                     Clear
                   </Button>
-                </Box>
-              )}
+                </div>
+              ) : null}
             </CardHeader>
-            <CardBody>
+            <CardContent className="px-0 pb-4">
               {selectedSymbol ? (
                 showAdvanced ? (
                   <TradingViewChart
@@ -710,12 +763,12 @@ const PortfolioWorkspace: React.FC = () => {
                     theme="dark"
                   />
                 ) : barsError && !barsQuery.isPending ? (
-                  <Box h={`${chartHeight}px`} display="flex" flexDirection="column" alignItems="center" justifyContent="center" gap={3}>
-                    <Text color="fg.muted">No price data available for {selectedSymbol}</Text>
-                    <Button size="sm" colorPalette="brand" variant="outline" onClick={() => setShowAdvanced(true)}>
+                  <div className="flex flex-col items-center justify-center gap-3" style={{ height: chartHeight }}>
+                    <p className="text-muted-foreground">No price data available for {selectedSymbol}</p>
+                    <Button type="button" size="sm" variant="outline" onClick={() => setShowAdvanced(true)}>
                       Open TradingView Chart
                     </Button>
-                  </Box>
+                  </div>
                 ) : (
                   <SymbolChartWithMarkers
                     height={chartHeight}
@@ -734,54 +787,56 @@ const PortfolioWorkspace: React.FC = () => {
                     priceLinesExtra={enabledEvents.has('ORDER_PENDING') ? priceLinesExtra : undefined}
                   />
                 )
-              ) : <Box h={`${chartHeight}px`} />}
-            </CardBody>
-          </CardRoot>
+              ) : <div style={{ height: chartHeight }} />}
+            </CardContent>
+          </Card>
 
-          <Box display="grid" gridTemplateColumns={{ base: '1fr', lg: '2fr 1fr' }} gap={4}>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
             {/* Tax Lots panel */}
-            <CardRoot borderWidth="1px" borderColor="border.subtle" maxH={lotEditMode ? { base: '70vh', md: '520px' } : { base: '50vh', md: '400px' }} overflow="hidden" bg="bg.card">
-              <CardHeader pb={2}>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                  <Box display="flex" gap={2} alignItems="center">
-                    <Text fontWeight="bold">Tax Lots</Text>
-                    <Badge variant="outline">{lots.length}</Badge>
-                  </Box>
-                  <IconButton
-                    size="2xs"
-                    variant={lotEditMode ? 'solid' : 'ghost'}
-                    colorPalette={lotEditMode ? 'purple' : 'gray'}
-                    aria-label={lotEditMode ? 'Lock tax lots' : 'Unlock to add/edit lots'}
-                    onClick={() => { setLotEditMode(v => !v); setEditingLotId(null); setLotForm(emptyLotForm); }}
-                  >
-                    {lotEditMode ? <FiUnlock /> : <FiLock />}
-                  </IconButton>
-                </Box>
+            <Card
+              className={cn(
+                'gap-0 overflow-hidden border border-border py-0',
+                lotEditMode ? 'max-h-[70vh] md:max-h-[520px]' : 'max-h-[50vh] md:max-h-[400px]',
+              )}
+            >
+              <CardHeader className="flex-row items-center justify-between gap-2 px-4 pb-2">
+                <div className="flex items-center gap-2">
+                  <p className="font-bold">Tax Lots</p>
+                  <Badge variant="outline" className="font-normal">{lots.length}</Badge>
+                </div>
+                <Button
+                  type="button"
+                  size="icon-xs"
+                  variant={lotEditMode ? 'default' : 'ghost'}
+                  className={lotEditMode ? 'bg-violet-600/15 text-violet-900 hover:bg-violet-600/25 dark:text-violet-200' : ''}
+                  aria-label={lotEditMode ? 'Lock tax lots' : 'Unlock to add/edit lots'}
+                  onClick={() => { setLotEditMode(v => !v); setEditingLotId(null); setLotForm(emptyLotForm); }}
+                >
+                  {lotEditMode ? <Unlock className="size-3.5" /> : <Lock className="size-3.5" />}
+                </Button>
               </CardHeader>
-              <CardBody p={0}>
-                <TableScrollArea maxH={{ base: '250px', md: '340px' }}>
-                  <TableRoot size="sm">
-                    <TableHeader>
-                      <TableRow>
-                        <TableColumnHeader>Date</TableColumnHeader>
-                        <TableColumnHeader>Type</TableColumnHeader>
-                        <TableColumnHeader textAlign="end">Days</TableColumnHeader>
-                        <TableColumnHeader textAlign="end">Shares</TableColumnHeader>
-                        <TableColumnHeader textAlign="end">Cost/Share</TableColumnHeader>
-                        <TableColumnHeader textAlign="end">Value</TableColumnHeader>
-                        <TableColumnHeader textAlign="end">P/L</TableColumnHeader>
-                        <TableColumnHeader w="28px" />
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+              <CardContent className="px-0 pb-0">
+                <div className="max-h-[250px] overflow-auto md:max-h-[340px]">
+                  <table className="w-full min-w-[640px] border-collapse text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/50">
+                        <th className="px-2 py-1.5 font-medium">Date</th>
+                        <th className="px-2 py-1.5 font-medium">Type</th>
+                        <th className="px-2 py-1.5 text-right font-medium">Days</th>
+                        <th className="px-2 py-1.5 text-right font-medium">Shares</th>
+                        <th className="px-2 py-1.5 text-right font-medium">Cost/Share</th>
+                        <th className="px-2 py-1.5 text-right font-medium">Value</th>
+                        <th className="px-2 py-1.5 text-right font-medium">P/L</th>
+                        <th className="w-7 px-0 py-1.5" />
+                      </tr>
+                    </thead>
+                    <tbody>
                       {lots.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={8}>
-                            <Text fontSize="xs" color="fg.muted" textAlign="center" py={4}>
-                              {lotsQuery.isPending ? 'Loading tax lots…' : `No tax lots synced for ${selectedSymbol ?? 'this symbol'}. Sync your brokerage to populate.`}
-                            </Text>
-                          </TableCell>
-                        </TableRow>
+                        <tr>
+                          <td colSpan={8} className="px-2 py-4 text-center text-muted-foreground">
+                            {lotsQuery.isPending ? 'Loading tax lots…' : `No tax lots synced for ${selectedSymbol ?? 'this symbol'}. Sync your brokerage to populate.`}
+                          </td>
+                        </tr>
                       )}
                       {lots
                         .slice()
@@ -799,42 +854,74 @@ const PortfolioWorkspace: React.FC = () => {
                           const daysHeld = l.days_held ?? 0;
                           const isLT = l.is_long_term ?? daysHeld >= 365;
                           const approachingLT = !isLT && daysHeld >= 300;
+                          const srcOfficial = l.source === 'OFFICIAL_STATEMENT' || l.source === 'official_statement';
+                          const srcManual = l.source === 'MANUAL_ENTRY' || l.source === 'manual_entry';
                           return (
-                            <TableRow
+                            <tr
                               id={`lot-${lotDay}-${idx}`}
                               key={`lot-${l.id || idx}`}
-                              bg={focused ? 'bg.muted' : approachingLT ? (isDark ? 'yellow.950' : 'yellow.50') : undefined}
-                              css={{ '& .sell-icon': { opacity: 0, transition: 'opacity 0.15s' }, '&:hover .sell-icon': { opacity: 1 } }}
+                              className={cn(
+                                'group border-b border-border',
+                                focused && 'bg-muted',
+                                approachingLT && (isDark ? 'bg-yellow-950/40' : 'bg-yellow-50'),
+                              )}
                             >
-                              <TableCell>{formatDateFriendly(l.purchase_date, timezone)}</TableCell>
-                              <TableCell>
-                                <Box display="flex" gap={1}>
-                                  <Badge size="sm" colorPalette={isLT ? 'green' : approachingLT ? 'yellow' : 'gray'}>
+                              <td className="px-2 py-1.5">{formatDateFriendly(l.purchase_date, timezone)}</td>
+                              <td className="px-2 py-1.5">
+                                <div className="flex flex-wrap gap-1">
+                                  <Badge
+                                    variant="outline"
+                                    className={cn(
+                                      'h-5 font-normal',
+                                      isLT
+                                        ? 'border-emerald-500/40 text-emerald-800 dark:text-emerald-200'
+                                        : approachingLT
+                                          ? 'border-amber-500/40 text-amber-900 dark:text-amber-200'
+                                          : 'text-muted-foreground',
+                                    )}
+                                  >
                                     {isLT ? 'LT' : 'ST'}
                                   </Badge>
-                                  {l.source && (
-                                    <Badge size="sm" variant="outline" colorPalette={l.source === 'OFFICIAL_STATEMENT' || l.source === 'official_statement' ? 'blue' : l.source === 'MANUAL_ENTRY' || l.source === 'manual_entry' ? 'purple' : 'gray'}>
-                                      {l.source === 'OFFICIAL_STATEMENT' || l.source === 'official_statement' ? 'Official' : l.source === 'MANUAL_ENTRY' || l.source === 'manual_entry' ? 'Manual' : 'Est'}
+                                  {l.source ? (
+                                    <Badge
+                                      variant="outline"
+                                      className={cn(
+                                        'h-5 font-normal',
+                                        srcOfficial
+                                          ? 'border-blue-500/40 text-blue-800 dark:text-blue-200'
+                                          : srcManual
+                                            ? 'border-violet-500/40 text-violet-800 dark:text-violet-200'
+                                            : 'text-muted-foreground',
+                                      )}
+                                    >
+                                      {srcOfficial ? 'Official' : srcManual ? 'Manual' : 'Est'}
                                     </Badge>
-                                  )}
-                                </Box>
-                              </TableCell>
-                              <TableCell textAlign="end">
-                                <Text fontSize="xs" color={approachingLT ? (isDark ? 'yellow.400' : 'yellow.700') : 'fg.muted'}>
-                                  {daysHeld}d
-                                </Text>
-                              </TableCell>
-                              <TableCell textAlign="end">{sh.toLocaleString()}</TableCell>
-                              <TableCell textAlign="end">{cps ? formatMoney(cps, currency) : '-'}</TableCell>
-                              <TableCell textAlign="end">{val ? formatMoney(val, currency, { maximumFractionDigits: 0 }) : '-'}</TableCell>
-                              <TableCell textAlign="end" color={pnl >= 0 ? 'fg.success' : 'fg.error'}>
+                                  ) : null}
+                                </div>
+                              </td>
+                              <td className={cn(
+                                'px-2 py-1.5 text-right',
+                                approachingLT
+                                  ? isDark
+                                    ? 'text-amber-400'
+                                    : 'text-amber-800'
+                                  : 'text-muted-foreground',
+                              )}
+                              >
+                                {daysHeld}d
+                              </td>
+                              <td className="px-2 py-1.5 text-right tabular-nums">{sh.toLocaleString()}</td>
+                              <td className="px-2 py-1.5 text-right tabular-nums">{cps ? formatMoney(cps, currency) : '-'}</td>
+                              <td className="px-2 py-1.5 text-right tabular-nums">{val ? formatMoney(val, currency, { maximumFractionDigits: 0 }) : '-'}</td>
+                              <td className={cn('px-2 py-1.5 text-right tabular-nums', semanticTextColorClass(pnl >= 0 ? 'fg.success' : 'fg.error'))}>
                                 {pnl ? formatMoney(pnl, currency, { maximumFractionDigits: 0 }) : '-'}
-                              </TableCell>
-                              <TableCell w={lotEditMode ? '56px' : '28px'} p={0}>
-                                {lotEditMode && (l.source === 'MANUAL_ENTRY' || l.source === 'manual_entry') ? (
-                                  <Box display="flex" gap={0}>
-                                    <IconButton
-                                      size="2xs"
+                              </td>
+                              <td className="p-0">
+                                {lotEditMode && srcManual ? (
+                                  <div className="flex justify-end gap-0">
+                                    <Button
+                                      type="button"
+                                      size="icon-xs"
                                       variant="ghost"
                                       aria-label="Edit lot"
                                       onClick={() => {
@@ -846,38 +933,41 @@ const PortfolioWorkspace: React.FC = () => {
                                         });
                                       }}
                                     >
-                                      <FiEdit2 />
-                                    </IconButton>
-                                    <IconButton
-                                      size="2xs"
+                                      <Pencil className="size-3.5" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="icon-xs"
                                       variant="ghost"
-                                      colorPalette="red"
+                                      className="text-destructive hover:text-destructive"
                                       aria-label="Delete lot"
                                       onClick={() => l.id && handleLotDelete(l.id)}
                                     >
-                                      <FiTrash2 />
-                                    </IconButton>
-                                  </Box>
+                                      <Trash2 className="size-3.5" />
+                                    </Button>
+                                  </div>
                                 ) : (
-                                  <IconButton
-                                    className="sell-icon"
-                                    size="2xs"
-                                    variant="ghost"
-                                    colorPalette="red"
-                                    aria-label={`Sell ${sh} shares from lot`}
-                                    onClick={() => setTradeTarget({
-                                      symbol: selectedSymbol!,
-                                      currentPrice: lastClose,
-                                      sharesHeld: sh,
-                                      averageCost: cps || undefined,
-                                      positionId: selectedHolding?.id,
-                                    })}
-                                  >
-                                    <FiMinusCircle />
-                                  </IconButton>
+                                  <div className="flex justify-end pr-1">
+                                    <Button
+                                      type="button"
+                                      size="icon-xs"
+                                      variant="ghost"
+                                      className="text-destructive opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive"
+                                      aria-label={`Sell ${sh} shares from lot`}
+                                      onClick={() => setTradeTarget({
+                                        symbol: selectedSymbol!,
+                                        currentPrice: lastClose,
+                                        sharesHeld: sh,
+                                        averageCost: cps || undefined,
+                                        positionId: selectedHolding?.id,
+                                      })}
+                                    >
+                                      <MinusCircle className="size-3.5" />
+                                    </Button>
+                                  </div>
                                 )}
-                              </TableCell>
-                            </TableRow>
+                              </td>
+                            </tr>
                           );
                         })}
                       {lots.length > 0 && (() => {
@@ -895,131 +985,116 @@ const PortfolioWorkspace: React.FC = () => {
                         );
                         const totalPnl = totals.value - totals.cost;
                         return (
-                          <TableRow bg="bg.subtle">
-                            <TableCell colSpan={3}>
-                              <Text fontSize="xs" fontWeight="semibold">Total</Text>
-                            </TableCell>
-                            <TableCell textAlign="end">
-                              <Text fontSize="xs" fontWeight="semibold">{totals.shares.toLocaleString()}</Text>
-                            </TableCell>
-                            <TableCell textAlign="end">
-                              <Text fontSize="xs" fontWeight="semibold">{formatMoney(totals.cost / (totals.shares || 1), currency)}</Text>
-                            </TableCell>
-                            <TableCell textAlign="end">
-                              <Text fontSize="xs" fontWeight="semibold">{formatMoney(totals.value, currency, { maximumFractionDigits: 0 })}</Text>
-                            </TableCell>
-                            <TableCell textAlign="end">
-                              <Text fontSize="xs" fontWeight="semibold" color={totalPnl >= 0 ? 'fg.success' : 'fg.error'}>
-                                {formatMoney(totalPnl, currency, { maximumFractionDigits: 0 })}
-                              </Text>
-                            </TableCell>
-                            <TableCell w="28px" />
-                          </TableRow>
+                          <tr className="border-b border-border bg-muted/40">
+                            <td colSpan={3} className="px-2 py-1.5 font-semibold">Total</td>
+                            <td className="px-2 py-1.5 text-right font-semibold tabular-nums">{totals.shares.toLocaleString()}</td>
+                            <td className="px-2 py-1.5 text-right font-semibold tabular-nums">{formatMoney(totals.cost / (totals.shares || 1), currency)}</td>
+                            <td className="px-2 py-1.5 text-right font-semibold tabular-nums">{formatMoney(totals.value, currency, { maximumFractionDigits: 0 })}</td>
+                            <td className={cn('px-2 py-1.5 text-right font-semibold tabular-nums', semanticTextColorClass(totalPnl >= 0 ? 'fg.success' : 'fg.error'))}>
+                              {formatMoney(totalPnl, currency, { maximumFractionDigits: 0 })}
+                            </td>
+                            <td className="w-7" />
+                          </tr>
                         );
                       })()}
-                    </TableBody>
-                  </TableRoot>
-                </TableScrollArea>
+                    </tbody>
+                  </table>
+                </div>
                 {lotEditMode && (
-                  <Box px={3} py={2} borderTopWidth="1px" borderColor="border.subtle" bg="bg.subtle">
-                    <Text fontSize="xs" fontWeight="semibold" mb={1} color="fg.muted">
+                  <div className="border-t border-border bg-muted/40 px-3 py-2">
+                    <p className="mb-1 text-xs font-semibold text-muted-foreground">
                       {editingLotId ? 'Edit Lot' : 'Add Manual Lot'}
-                    </Text>
-                    <Box display="flex" gap={2} alignItems="end" flexWrap="wrap">
-                      <Box>
-                        <Text fontSize="2xs" color="fg.muted">Date</Text>
+                    </p>
+                    <div className="flex flex-wrap items-end gap-2">
+                      <div>
+                        <p className="text-[10px] text-muted-foreground">Date</p>
                         <Input
-                          size="xs"
+                          className="h-8 w-[130px] text-xs"
                           type="date"
                           value={lotForm.date}
                           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLotForm(f => ({ ...f, date: e.target.value }))}
                           max={new Date().toISOString().slice(0, 10)}
-                          w="130px"
                         />
-                      </Box>
-                      <Box>
-                        <Text fontSize="2xs" color="fg.muted">Shares</Text>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground">Shares</p>
                         <Input
-                          size="xs"
+                          className="h-8 w-20 text-xs"
                           type="number"
                           placeholder="Qty"
                           value={lotForm.qty}
                           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLotForm(f => ({ ...f, qty: e.target.value }))}
                           min={0}
                           step="any"
-                          w="80px"
                         />
-                      </Box>
-                      <Box>
-                        <Text fontSize="2xs" color="fg.muted">Cost/Share</Text>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground">Cost/Share</p>
                         <Input
-                          size="xs"
+                          className="h-8 w-[90px] text-xs"
                           type="number"
                           placeholder="Price"
                           value={lotForm.costPerShare}
                           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLotForm(f => ({ ...f, costPerShare: e.target.value }))}
                           min={0}
                           step="any"
-                          w="90px"
                         />
-                      </Box>
+                      </div>
                       <Button
+                        type="button"
                         size="xs"
-                        colorPalette="purple"
+                        className="bg-violet-600/15 text-violet-900 hover:bg-violet-600/25 dark:text-violet-200"
                         disabled={lotSaving || !lotForm.date || !lotForm.qty || !lotForm.costPerShare}
-                        onClick={handleLotSave}
+                        onClick={() => void handleLotSave()}
                       >
                         {lotSaving ? '...' : editingLotId ? 'Update' : 'Save'}
                       </Button>
-                      {editingLotId && (
+                      {editingLotId ? (
                         <Button
+                          type="button"
                           size="xs"
                           variant="ghost"
                           onClick={() => { setEditingLotId(null); setLotForm(emptyLotForm); }}
                         >
                           Cancel
                         </Button>
-                      )}
-                    </Box>
-                  </Box>
+                      ) : null}
+                    </div>
+                  </div>
                 )}
-              </CardBody>
-            </CardRoot>
+              </CardContent>
+            </Card>
 
             {/* Dividends */}
-            <CardRoot borderWidth="1px" borderColor="border.subtle" maxH={{ base: '50vh', md: '400px' }} overflow="hidden" bg="bg.card">
-              <CardHeader pb={2}>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                  <Text fontWeight="bold">Dividends</Text>
-                  <Box display="flex" gap={2} alignItems="center">
-                    {symbolDividends.length > 0 && (
-                      <Text fontSize="xs" color="fg.muted">
-                        Total {formatMoney(symbolDividends.reduce((s, r: ActivityRow) => s + Number(r.amount || r.net_amount || 0), 0), currency)}
-                      </Text>
-                    )}
-                    <Badge variant="outline">{symbolDividends.length}</Badge>
-                  </Box>
-                </Box>
+            <Card className="max-h-[50vh] gap-0 overflow-hidden border border-border py-0 md:max-h-[400px]">
+              <CardHeader className="flex-row items-center justify-between gap-2 px-4 pb-2">
+                <p className="font-bold">Dividends</p>
+                <div className="flex items-center gap-2">
+                  {symbolDividends.length > 0 ? (
+                    <span className="text-xs text-muted-foreground">
+                      Total {formatMoney(symbolDividends.reduce((s, r: ActivityRow) => s + Number(r.amount || r.net_amount || 0), 0), currency)}
+                    </span>
+                  ) : null}
+                  <Badge variant="outline" className="font-normal">{symbolDividends.length}</Badge>
+                </div>
               </CardHeader>
-              <CardBody p={0}>
-                <TableScrollArea maxH={{ base: '250px', md: '340px' }}>
-                  <TableRoot size="sm">
-                    <TableHeader>
-                      <TableRow>
-                        <TableColumnHeader>Date</TableColumnHeader>
-                        <TableColumnHeader textAlign="end">Amount</TableColumnHeader>
-                        <TableColumnHeader textAlign="end">Per Share</TableColumnHeader>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+              <CardContent className="px-0 pb-0">
+                <div className="max-h-[250px] overflow-auto md:max-h-[340px]">
+                  <table className="w-full border-collapse text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/50">
+                        <th className="px-2 py-1.5 font-medium">Date</th>
+                        <th className="px-2 py-1.5 text-right font-medium">Amount</th>
+                        <th className="px-2 py-1.5 text-right font-medium">Per Share</th>
+                      </tr>
+                    </thead>
+                    <tbody>
                       {symbolDividends.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={3}>
-                            <Text fontSize="xs" color="fg.muted" textAlign="center" py={4}>
-                              No dividend history for {selectedSymbol ?? 'this symbol'}.
-                            </Text>
-                          </TableCell>
-                        </TableRow>
+                        <tr>
+                          <td colSpan={3} className="px-2 py-4 text-center text-muted-foreground">
+                            No dividend history for {selectedSymbol ?? 'this symbol'}.
+                          </td>
+                        </tr>
                       )}
                       {symbolDividends.map((r: ActivityRow, idx: number) => {
                         const day = (r.ts || '').slice(0, 10);
@@ -1029,23 +1104,29 @@ const PortfolioWorkspace: React.FC = () => {
                         const qty = Number(r.quantity || 0);
                         const perShare = qty > 0 ? amt / qty : null;
                         return (
-                          <TableRow id={`div-${day}-${idx}`} key={`div-${r.external_id || idx}`} bg={focused ? 'bg.muted' : undefined}>
-                            <TableCell>{formatDateFriendly(r.ts, timezone)}</TableCell>
-                            <TableCell textAlign="end">{amt ? formatMoney(amt, currency) : '-'}</TableCell>
-                            <TableCell textAlign="end" color="fg.muted">{perShare != null ? formatMoney(perShare, currency, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '-'}</TableCell>
-                          </TableRow>
+                          <tr
+                            id={`div-${day}-${idx}`}
+                            key={`div-${r.external_id || idx}`}
+                            className={cn('border-b border-border', focused && 'bg-muted')}
+                          >
+                            <td className="px-2 py-1.5">{formatDateFriendly(r.ts, timezone)}</td>
+                            <td className="px-2 py-1.5 text-right tabular-nums">{amt ? formatMoney(amt, currency) : '-'}</td>
+                            <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">
+                              {perShare != null ? formatMoney(perShare, currency, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '-'}
+                            </td>
+                          </tr>
                         );
                       })}
-                    </TableBody>
-                  </TableRoot>
-                </TableScrollArea>
-              </CardBody>
-            </CardRoot>
-          </Box>
-        </VStack>
-      </Flex>
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
 
-      {tradeTarget && (
+      {tradeTarget ? (
         <TradeModal
           isOpen={!!tradeTarget}
           symbol={tradeTarget.symbol}
@@ -1055,8 +1136,8 @@ const PortfolioWorkspace: React.FC = () => {
           positionId={tradeTarget.positionId}
           onClose={() => setTradeTarget(null)}
         />
-      )}
-    </VStack>
+      ) : null}
+    </div>
   );
 };
 

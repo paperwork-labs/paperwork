@@ -1,5 +1,4 @@
 import React from 'react';
-import { Box, Text, HStack } from '@chakra-ui/react';
 
 export interface HistogramBin {
   label: string;
@@ -9,9 +8,9 @@ export interface HistogramBin {
 }
 
 const ZONE_COLORS: Record<string, { bar: string; label: string }> = {
-  danger: { bar: 'var(--chakra-colors-status-danger)', label: 'var(--chakra-colors-status-danger)' },
-  success: { bar: 'var(--chakra-colors-status-success)', label: 'var(--chakra-colors-status-success)' },
-  neutral: { bar: 'var(--chakra-colors-brand-400)', label: 'var(--chakra-colors-fg-muted)' },
+  danger: { bar: 'rgb(var(--status-danger))', label: 'rgb(var(--status-danger))' },
+  success: { bar: 'rgb(var(--status-success))', label: 'rgb(var(--status-success))' },
+  neutral: { bar: 'rgb(var(--chart-neutral))', label: 'rgb(var(--muted-foreground))' },
 };
 
 interface BarHistogramProps {
@@ -32,35 +31,44 @@ const BarHistogram: React.FC<BarHistogramProps> = ({
   const maxVal = Math.max(...bins.map((b) => b.value), 1);
 
   return (
-    <Box>
-      {title && <Text fontSize="sm" fontWeight="semibold" mb={1}>{title}</Text>}
-      {subtitle && <Text fontSize="xs" color="fg.muted" mb={2}>{subtitle}</Text>}
-      <Box display="flex" gap="3px" alignItems="flex-end" h={`${height}px`}>
+    <div>
+      {title ? <p className="mb-1 text-sm font-semibold">{title}</p> : null}
+      {subtitle ? <p className="mb-2 text-xs text-muted-foreground">{subtitle}</p> : null}
+      <div className="flex items-end gap-[3px]" style={{ height: `${height}px` }}>
         {bins.map((b) => {
           const pct = (b.value / maxVal) * 100;
           const zone = b.zone || 'neutral';
           const colors = ZONE_COLORS[zone];
           return (
-            <Box key={b.label} flex="1" display="flex" flexDirection="column" alignItems="center" justifyContent="flex-end" h="full">
+            <div
+              key={b.label}
+              className="flex h-full min-w-0 flex-1 flex-col items-center justify-end"
+            >
               {showValues && b.value > 0 && (
-                <Text fontSize="9px" fontWeight="medium" color={colors.label} mb="2px">{b.value}</Text>
+                <span
+                  className="mb-0.5 text-[9px] font-medium"
+                  style={{ color: colors.label }}
+                >
+                  {b.value}
+                </span>
               )}
-              <Box
-                w="full"
-                borderRadius="4px"
-                minH="2px"
-                h={`${Math.max(pct, 2)}%`}
-                bg={colors.bar}
-                opacity={zone === 'neutral' ? 0.75 : 0.85}
+              <div
+                className="w-full min-h-[2px] rounded transition-[height] duration-300 ease-out"
+                style={{
+                  height: `${Math.max(pct, 2)}%`,
+                  backgroundColor: colors.bar,
+                  opacity: zone === 'neutral' ? 0.75 : 0.85,
+                }}
                 title={`${b.label}: ${b.value}`}
-                transition="height 0.3s ease"
               />
-              <Text fontSize="8px" color="fg.muted" mt="3px" textAlign="center" lineHeight="1">{b.label}</Text>
-            </Box>
+              <span className="mt-[3px] text-center text-[8px] leading-none text-muted-foreground">
+                {b.label}
+              </span>
+            </div>
           );
         })}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 };
 
@@ -86,48 +94,51 @@ export const TimeSeriesBar: React.FC<TimeSeriesBarProps> = ({
   };
 
   return (
-    <Box>
-      {title && <Text fontSize="sm" fontWeight="semibold" mb={1}>{title}</Text>}
-      {legend && (
-        <HStack gap={3} mb={2}>
+    <div>
+      {title ? <p className="mb-1 text-sm font-semibold">{title}</p> : null}
+      {legend ? (
+        <div className="mb-2 flex flex-wrap gap-3">
           {legend.map((l) => (
-            <HStack key={l.label} gap={1}>
-              <Box w="10px" h="10px" bg={l.color} borderRadius="sm" opacity={0.7} />
-              <Text fontSize="xs" color="fg.muted">{l.label}</Text>
-            </HStack>
+            <div key={l.label} className="flex items-center gap-1">
+              <span
+                className="h-2.5 w-2.5 rounded-sm opacity-70"
+                style={{ backgroundColor: l.color }}
+              />
+              <span className="text-xs text-muted-foreground">{l.label}</span>
+            </div>
           ))}
-        </HStack>
-      )}
-      <Box position="relative" h={`${height}px`} display="flex" alignItems="flex-end" gap="1px">
+        </div>
+      ) : null}
+      <div className="relative flex items-end gap-px" style={{ height: `${height}px` }}>
         {data.map((pt, i) => (
-          <Box key={i} flex="1" position="relative" h="100%">
+          <div key={i} className="relative h-full min-w-0 flex-1">
             {pt.values.map((v, vi) => {
               const h = (v.value / maxVal) * 100;
               return (
-                <Box
+                <div
                   key={vi}
-                  position="absolute"
-                  bottom="0"
-                  w="full"
-                  bg={v.color}
-                  h={`${h}%`}
-                  opacity={0.5 + vi * 0.15}
-                  borderRadius="sm"
+                  className="absolute bottom-0 w-full rounded-sm transition-[height] duration-300 ease-out"
+                  style={{
+                    backgroundColor: v.color,
+                    height: `${h}%`,
+                    opacity: 0.5 + vi * 0.15,
+                  }}
                   title={`${pt.date}: ${v.value.toFixed(1)}% ${v.label}`}
-                  transition="height 0.3s ease"
                 />
               );
             })}
-          </Box>
+          </div>
         ))}
-      </Box>
-      <HStack justify="space-between" mt={1}>
-        <Text fontSize="9px" color="fg.muted">{fmtDate(data[0]?.date || '')}</Text>
+      </div>
+      <div className="mt-1 flex justify-between">
+        <span className="text-[9px] text-muted-foreground">{fmtDate(data[0]?.date || '')}</span>
         {data.length > 10 && (
-          <Text fontSize="9px" color="fg.muted">{fmtDate(data[Math.floor(data.length / 2)]?.date || '')}</Text>
+          <span className="text-[9px] text-muted-foreground">
+            {fmtDate(data[Math.floor(data.length / 2)]?.date || '')}
+          </span>
         )}
-        <Text fontSize="9px" color="fg.muted">{fmtDate(data[data.length - 1]?.date || '')}</Text>
-      </HStack>
-    </Box>
+        <span className="text-[9px] text-muted-foreground">{fmtDate(data[data.length - 1]?.date || '')}</span>
+      </div>
+    </div>
   );
 };

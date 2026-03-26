@@ -1,21 +1,5 @@
 import React from 'react';
 import {
-  Box,
-  Text,
-  SimpleGrid,
-  CardRoot,
-  CardBody,
-  Badge,
-  VStack,
-  TableScrollArea,
-  TableRoot,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableColumnHeader,
-  TableCell,
-} from '@chakra-ui/react';
-import {
   AreaChart,
   Area,
   XAxis,
@@ -24,6 +8,9 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import type { BacktestResult, BacktestMetrics, BacktestTrade } from '../../types/strategy';
 import { useChartColors } from '../../hooks/useChartColors';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
@@ -31,9 +18,9 @@ import { formatMoney, formatDate } from '../../utils/format';
 
 function colorForValue(value: number, isPercent = false): string {
   if (isPercent || Math.abs(value) < 1e-9) {
-    return value > 0 ? 'status.success' : value < 0 ? 'status.danger' : 'fg.default';
+    return value > 0 ? 'text-emerald-600 dark:text-emerald-400' : value < 0 ? 'text-destructive' : 'text-foreground';
   }
-  return value > 0 ? 'status.success' : value < 0 ? 'status.danger' : 'fg.default';
+  return value > 0 ? 'text-emerald-600 dark:text-emerald-400' : value < 0 ? 'text-destructive' : 'text-foreground';
 }
 
 function formatPercent(value: number | null): string {
@@ -54,25 +41,16 @@ interface MetricCardProps {
 }
 
 function MetricCard({ label, value, formatter, colorKey = 'neutral' }: MetricCardProps) {
-  const colorForValueFn = () => {
-    if (colorKey === 'percent' || colorKey === 'pnl') {
-      return colorForValue(value ?? 0, colorKey === 'percent');
-    }
-    return 'fg.default';
-  };
-  const color = colorForValueFn();
+  const colorClass =
+    colorKey === 'percent' || colorKey === 'pnl' ? colorForValue(value ?? 0, colorKey === 'percent') : 'text-foreground';
   const formattedValue = formatter(value);
   return (
-    <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-      <CardBody p={3}>
-        <Text fontSize="xs" color="fg.muted">
-          {label}
-        </Text>
-        <Text fontSize="lg" fontWeight="bold" color={color}>
-          {formattedValue}
-        </Text>
-      </CardBody>
-    </CardRoot>
+    <Card size="sm">
+      <CardContent className="space-y-0.5 pt-4">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className={cn('text-lg font-bold', colorClass)}>{formattedValue}</p>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -93,9 +71,8 @@ export default function BacktestResults({ result }: { result: BacktestResult }) 
   }, [equity_curve]);
 
   return (
-    <VStack align="stretch" gap={6}>
-      {/* Metrics cards */}
-      <SimpleGrid columns={{ base: 2, md: 4 }} gap={3}>
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <MetricCard
           label="Total Return %"
           value={metrics.total_return_pct}
@@ -108,21 +85,13 @@ export default function BacktestResults({ result }: { result: BacktestResult }) 
           formatter={formatPercent}
           colorKey="percent"
         />
-        <MetricCard
-          label="Sharpe Ratio"
-          value={metrics.sharpe_ratio}
-          formatter={formatRatio}
-        />
+        <MetricCard label="Sharpe Ratio" value={metrics.sharpe_ratio} formatter={formatRatio} />
         <MetricCard
           label="Win Rate"
           value={metrics.win_rate}
           formatter={(v) => (v != null && Number.isFinite(v) ? `${(v * 100).toFixed(1)}%` : '—')}
         />
-        <MetricCard
-          label="Profit Factor"
-          value={metrics.profit_factor}
-          formatter={formatRatio}
-        />
+        <MetricCard label="Profit Factor" value={metrics.profit_factor} formatter={formatRatio} />
         <MetricCard
           label="Total Trades"
           value={metrics.total_trades}
@@ -134,19 +103,12 @@ export default function BacktestResults({ result }: { result: BacktestResult }) 
           formatter={(v) => (v != null && Number.isFinite(v) ? formatMoney(v, currency) : '—')}
           colorKey="pnl"
         />
-        <MetricCard
-          label="Sortino Ratio"
-          value={metrics.sortino_ratio}
-          formatter={formatRatio}
-        />
-      </SimpleGrid>
+        <MetricCard label="Sortino Ratio" value={metrics.sortino_ratio} formatter={formatRatio} />
+      </div>
 
-      {/* Equity curve */}
-      <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-        <CardBody>
-          <Text fontSize="sm" fontWeight="semibold" color="fg.muted" mb={3}>
-            Equity Curve
-          </Text>
+      <Card>
+        <CardContent className="pt-6">
+          <p className="mb-3 text-sm font-semibold text-muted-foreground">Equity Curve</p>
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
@@ -157,18 +119,11 @@ export default function BacktestResults({ result }: { result: BacktestResult }) 
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 10 }}
-                  tickFormatter={(d) => formatDate(d, timezone)}
-                />
-                <YAxis
-                  tick={{ fontSize: 10 }}
-                  tickFormatter={(v) => formatCurrency(Number(v))}
-                />
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(d) => formatDate(d, timezone)} />
+                <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatCurrency(Number(v))} />
                 <Tooltip
-                  formatter={(v: any) => formatCurrency(Number(v ?? 0)) as React.ReactNode}
-                  labelFormatter={(d) => formatDate(d, timezone)}
+                  formatter={(v) => formatCurrency(Number(v ?? 0)) as React.ReactNode}
+                  labelFormatter={(d) => formatDate(String(d), timezone)}
                 />
                 <Area
                   type="monotone"
@@ -180,78 +135,80 @@ export default function BacktestResults({ result }: { result: BacktestResult }) 
               </AreaChart>
             </ResponsiveContainer>
           ) : (
-            <Text fontSize="sm" color="fg.muted">
-              No equity curve data
-            </Text>
+            <p className="text-sm text-muted-foreground">No equity curve data</p>
           )}
-        </CardBody>
-      </CardRoot>
+        </CardContent>
+      </Card>
 
-      {/* Trade list table */}
-      <CardRoot bg="bg.card" borderWidth="1px" borderColor="border.subtle" borderRadius="xl">
-        <CardBody p={0}>
-          <Box px={4} pt={4}>
-            <Text fontSize="sm" fontWeight="semibold" color="fg.muted">
-              Trades
-            </Text>
-          </Box>
+      <Card>
+        <CardContent className="p-0 pt-4">
+          <div className="px-4">
+            <p className="text-sm font-semibold text-muted-foreground">Trades</p>
+          </div>
           {trades.length > 0 ? (
-            <TableScrollArea>
-              <TableRoot size="sm">
-                <TableHeader>
-                  <TableRow>
-                    <TableColumnHeader>Date</TableColumnHeader>
-                    <TableColumnHeader>Symbol</TableColumnHeader>
-                    <TableColumnHeader>Side</TableColumnHeader>
-                    <TableColumnHeader textAlign="end">Qty</TableColumnHeader>
-                    <TableColumnHeader textAlign="end">Price</TableColumnHeader>
-                    <TableColumnHeader textAlign="end">P&L</TableColumnHeader>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+            <div className="mt-2 max-h-[min(60vh,480px)] overflow-auto">
+              <table className="w-full border-collapse text-sm">
+                <thead className="sticky top-0 z-10 border-b border-border bg-card">
+                  <tr>
+                    <th className="px-4 py-2 text-left font-medium text-muted-foreground" scope="col">
+                      Date
+                    </th>
+                    <th className="px-4 py-2 text-left font-medium text-muted-foreground" scope="col">
+                      Symbol
+                    </th>
+                    <th className="px-4 py-2 text-left font-medium text-muted-foreground" scope="col">
+                      Side
+                    </th>
+                    <th className="px-4 py-2 text-right font-medium text-muted-foreground" scope="col">
+                      Qty
+                    </th>
+                    <th className="px-4 py-2 text-right font-medium text-muted-foreground" scope="col">
+                      Price
+                    </th>
+                    <th className="px-4 py-2 text-right font-medium text-muted-foreground" scope="col">
+                      P&L
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
                   {trades.map((trade, idx) => (
-                    <TableRow key={`${trade.symbol}-${trade.date}-${idx}`}>
-                      <TableCell>{formatDate(trade.date, timezone)}</TableCell>
-                      <TableCell>
-                        <Text fontFamily="mono" fontWeight="semibold">
-                          {trade.symbol}
-                        </Text>
-                      </TableCell>
-                      <TableCell>
+                    <tr key={`${trade.symbol}-${trade.date}-${idx}`} className="border-b border-border/80 last:border-0">
+                      <td className="px-4 py-2">{formatDate(trade.date, timezone)}</td>
+                      <td className="px-4 py-2 font-mono font-semibold">{trade.symbol}</td>
+                      <td className="px-4 py-2">
                         <Badge
-                          colorPalette={trade.side === 'buy' ? 'green' : 'red'}
-                          variant="subtle"
-                          size="sm"
+                          variant="outline"
+                          className={
+                            trade.side === 'buy'
+                              ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300'
+                              : 'border-destructive/40 bg-destructive/10 text-destructive'
+                          }
                         >
                           {trade.side === 'buy' ? 'Buy' : 'Sell'}
                         </Badge>
-                      </TableCell>
-                      <TableCell textAlign="end">
-                        {trade.quantity.toLocaleString()}
-                      </TableCell>
-                      <TableCell textAlign="end">
-                        {formatCurrency(trade.price)}
-                      </TableCell>
-                      <TableCell
-                        textAlign="end"
-                        color={trade.pnl >= 0 ? 'status.success' : trade.pnl < 0 ? 'status.danger' : 'fg.default'}
+                      </td>
+                      <td className="px-4 py-2 text-right">{trade.quantity.toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right">{formatCurrency(trade.price)}</td>
+                      <td
+                        className={cn(
+                          'px-4 py-2 text-right',
+                          trade.pnl >= 0 ? 'text-emerald-600 dark:text-emerald-400' : trade.pnl < 0 ? 'text-destructive' : ''
+                        )}
                       >
                         {formatCurrency(trade.pnl)}
-                      </TableCell>
-                    </TableRow>
+                      </td>
+                    </tr>
                   ))}
-                </TableBody>
-              </TableRoot>
-            </TableScrollArea>
+                </tbody>
+              </table>
+            </div>
           ) : (
-            <Box p={4}>
-              <Text fontSize="sm" color="fg.muted">
-                No trades
-              </Text>
-            </Box>
+            <div className="p-4">
+              <p className="text-sm text-muted-foreground">No trades</p>
+            </div>
           )}
-        </CardBody>
-      </CardRoot>
-    </VStack>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

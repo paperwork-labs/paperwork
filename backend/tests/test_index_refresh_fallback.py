@@ -1,9 +1,8 @@
-from fastapi.testclient import TestClient
-from backend.api.main import app
-from backend.models.index_constituent import IndexConstituent
-from backend.tasks.market_data_tasks import refresh_index_constituents
-from backend.tasks import market_data_tasks
 import pytest
+
+from backend.models.index_constituent import IndexConstituent
+
+from backend.tasks.market import backfill as market_backfill_tasks
 
 
 @pytest.mark.destructive
@@ -23,12 +22,12 @@ def test_refresh_index_constituents_records_counters(monkeypatch, db_session):
     monkeypatch.setattr(market_data_service, "get_index_constituents", fake_get_index_constituents)
 
     # Route SessionLocal inside task to our test session
-    monkeypatch.setattr(market_data_tasks, "SessionLocal", lambda: db_session)
+    monkeypatch.setattr(market_backfill_tasks, "SessionLocal", lambda: db_session)
     # Clean existing
     db_session.query(IndexConstituent).delete()
     db_session.commit()
 
-    res = refresh_index_constituents()
+    res = market_backfill_tasks.constituents()
     assert res["status"] == "ok"
     idx = res["indices"]
     # Ensure keys present

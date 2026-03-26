@@ -1,5 +1,4 @@
 import React from 'react';
-import { Box, Text, HStack } from '@chakra-ui/react';
 import { useColorMode } from '../theme/colorMode';
 import FinvizHeatMap from '../components/charts/FinvizHeatMap';
 import TradingViewChart from '../components/charts/TradingViewChart';
@@ -20,30 +19,33 @@ const heatmap = [
   { name: 'JPM', size: 5, change: -4.1, sector: 'Financials', value: 92_000 },
 ];
 
+const successRgb = 'rgb(var(--status-success) / 1)';
+const brandBlue = '#3b82f6';
+
 export const FinvizHeatMap_Basic = () => (
-  <Box p={6}>
+  <div className="p-6">
     <FinvizHeatMap data={heatmap as any} height={360} />
-  </Box>
+  </div>
 );
 
 export const TradingViewChart_Example = () => {
   const { colorMode, toggleColorMode } = useColorMode();
   return (
-    <Box p={6}>
-      <Text
-        as="button"
+    <div className="p-6">
+      <button
+        type="button"
         onClick={toggleColorMode}
-        style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.12)' }}
+        className="rounded-[10px] border border-border px-3 py-2 text-sm"
       >
         Toggle mode ({colorMode})
-      </Text>
-      <Box mt={4}>
+      </button>
+      <div className="mt-4">
         <TradingViewChart symbol="AAPL" height={520} />
-      </Box>
-      <Text mt={3} fontSize="xs" color="fg.muted">
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">
         Note: this loads TradingView’s external embed script at runtime.
-      </Text>
-    </Box>
+      </p>
+    </div>
   );
 };
 
@@ -52,17 +54,17 @@ export const SymbolLink_AndChartPanel = () => {
   const openChart = React.useCallback((sym: string) => setChartSymbol(sym), []);
   return (
     <ChartContext.Provider value={openChart}>
-      <Box p={6}>
-        <Text fontSize="sm" color="fg.muted" mb={3}>
+      <div className="p-6">
+        <p className="mb-3 text-sm text-muted-foreground">
           Hover a symbol for sparkline; click to open the TradingView chart panel.
-        </Text>
-        <HStack gap={4} flexWrap="wrap">
+        </p>
+        <div className="flex flex-row flex-wrap gap-4">
           <SymbolLink symbol="AAPL" />
           <SymbolLink symbol="MSFT" />
           <SymbolLink symbol="NVDA" />
           <SymbolLink symbol="SPY" />
-        </HStack>
-      </Box>
+        </div>
+      </div>
       <ChartSlidePanel symbol={chartSymbol} onClose={() => setChartSymbol(null)} />
     </ChartContext.Provider>
   );
@@ -83,14 +85,14 @@ export const SymbolChartWithMarkers_Example = () => {
   ];
 
   return (
-    <Box p={6}>
-      <Box borderWidth="1px" borderColor="border.subtle" borderRadius="xl" bg="bg.card" p={3}>
+    <div className="p-6">
+      <div className="rounded-xl border border-border bg-card p-3">
         <SymbolChartWithMarkers bars={bars} events={events} height={420} />
-      </Box>
-      <Text mt={3} fontSize="xs" color="fg.muted">
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">
         Note: this loads LightweightCharts from a CDN at runtime.
-      </Text>
-    </Box>
+      </p>
+    </div>
   );
 };
 
@@ -108,11 +110,11 @@ export const BarHistogram_52WeekRange = () => {
     { label: '90-95', value: 171, zone: 'success' as const },
   ];
   return (
-    <Box p={6} maxW="500px">
-      <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={4} bg="bg.card">
+    <div className="p-6 max-w-[500px]">
+      <div className="rounded-lg border border-border bg-card p-4">
         <BarHistogram bins={bins} height={180} title="52-Week Range Distribution" subtitle="Left-skew = capitulation · Right-skew = euphoria" />
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 };
 
@@ -120,23 +122,23 @@ export const TimeSeriesBar_Breadth = () => {
   const data = Array.from({ length: 30 }, (_, i) => ({
     date: `2026-01-${String(i + 1).padStart(2, '0')}`,
     values: [
-      { value: 40 + Math.sin(i / 3) * 20 + Math.random() * 10, color: 'var(--chakra-colors-status-success)', label: '>50DMA' },
-      { value: 30 + Math.cos(i / 4) * 15 + Math.random() * 8, color: 'var(--chakra-colors-brand-500)', label: '>200DMA' },
+      { value: 40 + Math.sin(i / 3) * 20 + Math.random() * 10, color: successRgb, label: '>50DMA' },
+      { value: 30 + Math.cos(i / 4) * 15 + Math.random() * 8, color: brandBlue, label: '>200DMA' },
     ],
   }));
   return (
-    <Box p={6} maxW="500px">
-      <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={4} bg="bg.card">
+    <div className="p-6 max-w-[500px]">
+      <div className="rounded-lg border border-border bg-card p-4">
         <TimeSeriesBar
           data={data}
           height={160}
           title="Breadth Over Time (60d)"
           legend={[
-            { color: 'var(--chakra-colors-status-success)', label: '% > 50DMA' },
-            { color: 'var(--chakra-colors-brand-500)', label: '% > 200DMA' },
+            { color: successRgb, label: '% > 50DMA' },
+            { color: brandBlue, label: '% > 200DMA' },
           ]}
         />
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 };

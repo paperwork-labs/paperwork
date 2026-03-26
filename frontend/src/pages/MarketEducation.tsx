@@ -1,20 +1,15 @@
 import React, { useState, useMemo } from 'react';
-import {
-  Box,
-  Heading,
-  Text,
-  HStack,
-  VStack,
-  Badge,
-  Input,
-  Button,
-  Code,
-  Collapsible,
-  SimpleGrid,
-} from '@chakra-ui/react';
-import { FiChevronDown, FiChevronRight, FiSearch } from 'react-icons/fi';
+import * as Collapsible from "@radix-ui/react-collapsible";
+import { ChevronDown, ChevronRight, Search } from 'lucide-react';
+
 import { STAGE_HEX } from '../constants/chart';
 import { useColorMode } from '../theme/colorMode';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Page, PageHeader } from '@/components/ui/Page';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 
 type GlossaryEntry = { term: string; definition: string; formula: string | null };
 
@@ -32,23 +27,27 @@ const SubStageCard: React.FC<{
   const base = isDark ? '#1e293b' : '#ffffff';
   const bgMixed = `color-mix(in srgb, ${hex} ${isDark ? 24 : 18}%, ${base})`;
 
+  const paletteClass =
+    badgePalette === 'red'
+      ? 'bg-destructive/10 text-destructive'
+      : badgePalette === 'green'
+        ? 'border-transparent bg-[rgb(var(--status-success)/0.12)] text-[rgb(var(--status-success)/1)]'
+        : badgePalette === 'yellow'
+          ? 'border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-400'
+          : badgePalette === 'orange'
+            ? 'border-transparent bg-orange-500/15 text-orange-700 dark:text-orange-400'
+            : 'bg-secondary text-secondary-foreground';
+
   return (
-    <Box
-      p={3}
-      borderRadius="md"
-      borderWidth="1px"
-      borderColor="border.subtle"
-      borderLeftWidth="3px"
-      borderLeftColor={hex}
-      style={{ backgroundColor: bgMixed }}
+    <div
+      className="rounded-md border border-border border-l-[3px] p-3"
+      style={{ borderLeftColor: hex, backgroundColor: bgMixed }}
     >
-      <Badge colorPalette={badgePalette} variant="subtle" mb={1}>
+      <Badge variant="secondary" className={cn('mb-1 font-medium', paletteClass)}>
         {stage}
       </Badge>
-      <Text fontSize="xs" color="fg.muted">
-        {children}
-      </Text>
-    </Box>
+      <p className="text-xs text-muted-foreground">{children}</p>
+    </div>
   );
 };
 
@@ -76,7 +75,7 @@ type DeepDive = {
 };
 
 const StageCycleDiagram: React.FC = () => (
-  <Box position="relative" h="200px" w="100%" my={4} overflow="hidden">
+  <div className="relative my-4 h-[200px] w-full overflow-hidden">
     <svg viewBox="0 0 900 190" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
       <defs>
         <linearGradient id="wave-stageCycle" x1="0" y1="0" x2="1" y2="0">
@@ -108,7 +107,11 @@ const StageCycleDiagram: React.FC = () => (
       <text x="680" y="65" textAnchor="middle" fontSize="11" fontWeight="600" fill="#C05621">3B</text>
       <text x="760" y="105" textAnchor="middle" fontSize="11" fontWeight="600" fill="#E53E3E">4A</text>
     </svg>
-  </Box>
+  </div>
+);
+
+const codeBlock = (s: string) => (
+  <pre className="block whitespace-pre-wrap rounded-md bg-muted p-3 font-mono text-xs">{s}</pre>
 );
 
 const DEEP_DIVES: DeepDive[] = [
@@ -119,9 +122,9 @@ const DEEP_DIVES: DeepDive[] = [
         heading: 'Overview',
         body: (
           <>
-            <Text fontSize="sm" mb={2}>
+            <p className="mb-2 text-sm">
               Stage Analysis here follows Oliver Kell&apos;s refinement of Stan Weinstein&apos;s four-stage market cycle model. The primary anchor shifts from the 30-week SMA (weekly) to <strong>SMA150 (daily)</strong>, enabling higher-resolution classification with <strong>10 sub-stages</strong>.
-            </Text>
+            </p>
             <StageCycleDiagram />
           </>
         ),
@@ -129,9 +132,9 @@ const DEEP_DIVES: DeepDive[] = [
       {
         heading: '10 Sub-Stages',
         body: (
-          <VStack align="stretch" gap={3}>
-            <Text fontSize="sm" fontWeight="semibold">Decline Phase</Text>
-            <SimpleGrid columns={{ base: 1, md: 3 }} gap={2}>
+          <div className="flex flex-col gap-3">
+            <p className="text-sm font-semibold">Decline Phase</p>
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
               <SubStageCard stage="4C" badgePalette="red">
                 Deep decline. Price far below SMA150, slope strongly negative, Ext% &lt; -15%.
               </SubStageCard>
@@ -141,18 +144,18 @@ const DEEP_DIVES: DeepDive[] = [
               <SubStageCard stage="4A" badgePalette="red">
                 Early decline. Below SMA150, slope non-positive, SMA50 falling.
               </SubStageCard>
-            </SimpleGrid>
-            <Text fontSize="sm" fontWeight="semibold">Basing Phase</Text>
-            <SimpleGrid columns={{ base: 1, md: 2 }} gap={2}>
+            </div>
+            <p className="text-sm font-semibold">Basing Phase</p>
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <SubStageCard stage="1A" badgePalette="gray">
                 Early base. Near SMA150 (&lt;5%), slope flat, still non-positive. Accumulation.
               </SubStageCard>
               <SubStageCard stage="1B" badgePalette="gray">
                 Late base / breakout watch. Near SMA150, slope flat or gently rising. Watchlist stage.
               </SubStageCard>
-            </SimpleGrid>
-            <Text fontSize="sm" fontWeight="semibold">Advance Phase</Text>
-            <SimpleGrid columns={{ base: 1, md: 3 }} gap={2}>
+            </div>
+            <p className="text-sm font-semibold">Advance Phase</p>
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
               <SubStageCard stage="2A" badgePalette="green">
                 Early advance. Above SMA150, slope positive, Ext% ≤ 5%. Best risk/reward.
               </SubStageCard>
@@ -162,44 +165,44 @@ const DEEP_DIVES: DeepDive[] = [
               <SubStageCard stage="2C" badgePalette="yellow">
                 Extended advance. Slope up, Ext% &gt; 15% or ATRE_150 &gt; 6.0. Reduce risk.
               </SubStageCard>
-            </SimpleGrid>
-            <Text fontSize="sm" fontWeight="semibold">Distribution Phase</Text>
-            <SimpleGrid columns={{ base: 1, md: 2 }} gap={2}>
+            </div>
+            <p className="text-sm font-semibold">Distribution Phase</p>
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <SubStageCard stage="3A" badgePalette="orange">
                 Early distribution. Above SMA150 but slope weakening. Tighten stops.
               </SubStageCard>
               <SubStageCard stage="3B" badgePalette="orange">
                 Late distribution. Momentum fading, at risk of entering decline. Exit longs.
               </SubStageCard>
-            </SimpleGrid>
-          </VStack>
+            </div>
+          </div>
         ),
       },
       {
         heading: 'Classification Priority',
         body: (
-          <VStack align="stretch" gap={2}>
-            <Text fontSize="sm">Stages are classified in strict priority order (first match wins):</Text>
-            <Code fontSize="xs" p={3} borderRadius="md" display="block" whiteSpace="pre-wrap">
-              {'4C → 4B → 4A → 1A → 1B → 2A → 2B → 2C → 3A → 3B\n\nKey thresholds:\n  SMA150 slope: ±0.35% (20-day lookback)\n  Extension %:  (Close - SMA150) / SMA150 × 100\n  SMA50 slope:  ±0.35% (10-day lookback)'}
-            </Code>
-          </VStack>
+          <div className="flex flex-col gap-2">
+            <p className="text-sm">Stages are classified in strict priority order (first match wins):</p>
+            {codeBlock(
+              '4C → 4B → 4A → 1A → 1B → 2A → 2B → 2C → 3A → 3B\n\nKey thresholds:\n  SMA150 slope: ±0.35% (20-day lookback)\n  Extension %:  (Close - SMA150) / SMA150 × 100\n  SMA50 slope:  ±0.35% (10-day lookback)',
+            )}
+          </div>
         ),
       },
       {
         heading: 'Post-Classification Overrides',
         body: (
-          <VStack align="stretch" gap={2}>
-            <Text fontSize="sm"><strong>ATRE Override:</strong> If ATRE_150 (ATR-extensions to SMA150) exceeds 6.0 while in Stage 2A or 2B, the stock is promoted to 2C. This catches names that are extended in ATR terms even if Ext% hasn&apos;t reached 15%.</Text>
-            <Text fontSize="sm"><strong>RS Modifier:</strong> Stage 2B stocks with negative Mansfield RS are flagged as &quot;2B(RS-)&quot; — the trend is advancing but lagging the market. Lower conviction.</Text>
-            <Text fontSize="sm"><strong>Breakout Confirmation (1B→2A):</strong> Requires: Close &gt; SMA150 AND Volume Ratio &gt; 1.5 AND EMA10 &gt; SMA21 &gt; SMA50.</Text>
-          </VStack>
+          <div className="flex flex-col gap-2">
+            <p className="text-sm"><strong>ATRE Override:</strong> If ATRE_150 (ATR-extensions to SMA150) exceeds 6.0 while in Stage 2A or 2B, the stock is promoted to 2C. This catches names that are extended in ATR terms even if Ext% hasn&apos;t reached 15%.</p>
+            <p className="text-sm"><strong>RS Modifier:</strong> Stage 2B stocks with negative Mansfield RS are flagged as &quot;2B(RS-)&quot; — the trend is advancing but lagging the market. Lower conviction.</p>
+            <p className="text-sm"><strong>Breakout Confirmation (1B→2A):</strong> Requires: Close &gt; SMA150 AND Volume Ratio &gt; 1.5 AND EMA10 &gt; SMA21 &gt; SMA50.</p>
+          </div>
         ),
       },
       {
         heading: 'Color Legend',
         body: (
-          <HStack gap={2} flexWrap="wrap">
+          <div className="flex flex-wrap gap-2">
             {[
               { stage: '1A', label: 'Early base', color: '#A0AEC0' },
               { stage: '1B', label: 'Late base', color: '#718096' },
@@ -212,13 +215,13 @@ const DEEP_DIVES: DeepDive[] = [
               { stage: '4B', label: 'Active decline', color: '#C53030' },
               { stage: '4C', label: 'Deep decline', color: '#9B2C2C' },
             ].map(({ stage, label, color }) => (
-              <HStack key={stage} gap={1}>
-                <Box w="12px" h="12px" borderRadius="sm" bg={color} flexShrink={0} />
-                <Text fontSize="xs" fontWeight="semibold">{stage}</Text>
-                <Text fontSize="xs" color="fg.muted">{label}</Text>
-              </HStack>
+              <div key={stage} className="flex items-center gap-1">
+                <div className="size-3 shrink-0 rounded-sm" style={{ backgroundColor: color }} />
+                <span className="text-xs font-semibold">{stage}</span>
+                <span className="text-xs text-muted-foreground">{label}</span>
+              </div>
             ))}
-          </HStack>
+          </div>
         ),
       },
     ],
@@ -229,30 +232,30 @@ const DEEP_DIVES: DeepDive[] = [
       {
         heading: 'Overview',
         body: (
-          <Text fontSize="sm">The Regime Engine is the <strong>outermost gate</strong> — a mandatory daily calculation that gates all downstream system behavior. It scores 6 macro inputs (1–5 each), computes a composite, and assigns one of 5 regime states.</Text>
+          <p className="text-sm">The Regime Engine is the <strong>outermost gate</strong> — a mandatory daily calculation that gates all downstream system behavior. It scores 6 macro inputs (1–5 each), computes a composite, and assigns one of 5 regime states.</p>
         ),
       },
       {
         heading: '6 Daily Inputs',
         body: (
-          <VStack align="stretch" gap={1}>
-            <Text fontSize="sm">1. <strong>VIX spot</strong> — 30-day implied volatility (fear gauge)</Text>
-            <Text fontSize="sm">2. <strong>VIX3M/VIX ratio</strong> — term structure. &gt;1.0 = contango (calm), &lt;1.0 = backwardation (panic)</Text>
-            <Text fontSize="sm">3. <strong>VVIX/VIX ratio</strong> — volatility-of-volatility. High = unstable vol regime</Text>
-            <Text fontSize="sm">4. <strong>NH−NL</strong> — S&amp;P 500 new 52-week highs minus lows. Positive = healthy breadth</Text>
-            <Text fontSize="sm">5. <strong>% above 200D</strong> — market breadth. &gt;70% = healthy, &lt;25% = broken</Text>
-            <Text fontSize="sm">6. <strong>% above 50D</strong> — shorter-term breadth. &gt;75% = strong, &lt;25% = weak</Text>
-          </VStack>
+          <div className="flex flex-col gap-1">
+            <p className="text-sm">1. <strong>VIX spot</strong> — 30-day implied volatility (fear gauge)</p>
+            <p className="text-sm">2. <strong>VIX3M/VIX ratio</strong> — term structure. &gt;1.0 = contango (calm), &lt;1.0 = backwardation (panic)</p>
+            <p className="text-sm">3. <strong>VVIX/VIX ratio</strong> — volatility-of-volatility. High = unstable vol regime</p>
+            <p className="text-sm">4. <strong>NH−NL</strong> — S&amp;P 500 new 52-week highs minus lows. Positive = healthy breadth</p>
+            <p className="text-sm">5. <strong>% above 200D</strong> — market breadth. &gt;70% = healthy, &lt;25% = broken</p>
+            <p className="text-sm">6. <strong>% above 50D</strong> — shorter-term breadth. &gt;75% = strong, &lt;25% = weak</p>
+          </div>
         ),
       },
       {
         heading: 'Regime States',
         body: (
-          <VStack align="stretch" gap={2}>
-            <Code fontSize="xs" p={3} borderRadius="md" display="block" whiteSpace="pre-wrap">
-              {'Composite = average of 6 scores (1–5 each), rounded to nearest 0.5\n\nR1 (Bull):          1.0–1.75  │ Full exposure, all scan tiers\nR2 (Bull Extended): 1.75–2.50 │ Slightly reduced, Set 1-3\nR3 (Chop):          2.50–3.50 │ Half exposure, Set 1-2 + Short Set 1\nR4 (Bear Rally):    3.50–4.50 │ Minimal longs (Set 1 only), shorts active\nR5 (Bear):          4.50–5.0  │ No new longs, shorts + cash only'}
-            </Code>
-            <HStack gap={2} flexWrap="wrap" mt={2}>
+          <div className="flex flex-col gap-2">
+            {codeBlock(
+              'Composite = average of 6 scores (1–5 each), rounded to nearest 0.5\n\nR1 (Bull):          1.0–1.75  │ Full exposure, all scan tiers\nR2 (Bull Extended): 1.75–2.50 │ Slightly reduced, Set 1-3\nR3 (Chop):          2.50–3.50 │ Half exposure, Set 1-2 + Short Set 1\nR4 (Bear Rally):    3.50–4.50 │ Minimal longs (Set 1 only), shorts active\nR5 (Bear):          4.50–5.0  │ No new longs, shorts + cash only',
+            )}
+            <div className="mt-2 flex flex-wrap gap-2">
               {[
                 { r: 'R1', color: '#22C55E' },
                 { r: 'R2', color: '#86EFAC' },
@@ -260,21 +263,19 @@ const DEEP_DIVES: DeepDive[] = [
                 { r: 'R4', color: '#F97316' },
                 { r: 'R5', color: '#DC2626' },
               ].map(({ r, color }) => (
-                <HStack key={r} gap={1}>
-                  <Box w="12px" h="12px" borderRadius="sm" bg={color} flexShrink={0} />
-                  <Text fontSize="xs" fontWeight="semibold">{r}</Text>
-                </HStack>
+                <div key={r} className="flex items-center gap-1">
+                  <div className="size-3 shrink-0 rounded-sm" style={{ backgroundColor: color }} />
+                  <span className="text-xs font-semibold">{r}</span>
+                </div>
               ))}
-            </HStack>
-          </VStack>
+            </div>
+          </div>
         ),
       },
       {
         heading: 'Portfolio Rules by Regime',
-        body: (
-          <Code fontSize="xs" p={3} borderRadius="md" display="block" whiteSpace="pre-wrap">
-            {'Regime │ Cash Floor │ Max Equity │ Multiplier │ Long Tiers    │ Short Tiers\n───────┼───────────┼───────────┼───────────┼──────────────┼────────────\n R1    │    5%     │   100%    │   1.0×    │ Set 1-2-3-4  │ None\n R2    │   10%     │    90%    │   0.75×   │ Set 1-2-3    │ None\n R3    │   25%     │    75%    │   0.5×    │ Set 1-2      │ Short Set 1\n R4    │   40%     │    60%    │   0.4×    │ Set 1        │ Short Set 1-2\n R5    │   60%     │    40%    │   0.25×   │ None         │ Short Set 1-2'}
-          </Code>
+        body: codeBlock(
+          'Regime │ Cash Floor │ Max Equity │ Multiplier │ Long Tiers    │ Short Tiers\n───────┼───────────┼───────────┼───────────┼──────────────┼────────────\n R1    │    5%     │   100%    │   1.0×    │ Set 1-2-3-4  │ None\n R2    │   10%     │    90%    │   0.75×   │ Set 1-2-3    │ None\n R3    │   25%     │    75%    │   0.5×    │ Set 1-2      │ Short Set 1\n R4    │   40%     │    60%    │   0.4×    │ Set 1        │ Short Set 1-2\n R5    │   60%     │    40%    │   0.25×   │ None         │ Short Set 1-2',
         ),
       },
     ],
@@ -285,27 +286,27 @@ const DEEP_DIVES: DeepDive[] = [
       {
         heading: 'Overview',
         body: (
-          <Text fontSize="sm">The Scan Overlay assigns every stock to a tier based on 6 filters. Tiers are <strong>regime-gated</strong>: R1 sees all long tiers, R5 sees only short tiers. This prevents buying in bear markets.</Text>
+          <p className="text-sm">The Scan Overlay assigns every stock to a tier based on 6 filters. Tiers are <strong>regime-gated</strong>: R1 sees all long tiers, R5 sees only short tiers. This prevents buying in bear markets.</p>
         ),
       },
       {
         heading: 'Long Tiers',
         body: (
-          <VStack align="stretch" gap={2}>
-            <Text fontSize="sm"><strong>Set 1</strong> (highest conviction): Stage 2A/2B, RS &gt; 0, EMA10 Dist_N ≤ 2.0, ATRE pctile ≥ 70, Range ≥ 60%</Text>
-            <Text fontSize="sm"><strong>Set 2</strong>: Stage 2A/2B/2C, RS &gt; -5, EMA10 Dist_N ≤ 3.0, Range ≥ 40%</Text>
-            <Text fontSize="sm"><strong>Set 3</strong>: Stage 1B/2A/2B, EMA10 Dist_N ≤ 4.0</Text>
-            <Text fontSize="sm"><strong>Set 4</strong> (marginal): Stage 1A/1B/2A, minimal filters</Text>
-          </VStack>
+          <div className="flex flex-col gap-2">
+            <p className="text-sm"><strong>Set 1</strong> (highest conviction): Stage 2A/2B, RS &gt; 0, EMA10 Dist_N ≤ 2.0, ATRE pctile ≥ 70, Range ≥ 60%</p>
+            <p className="text-sm"><strong>Set 2</strong>: Stage 2A/2B/2C, RS &gt; -5, EMA10 Dist_N ≤ 3.0, Range ≥ 40%</p>
+            <p className="text-sm"><strong>Set 3</strong>: Stage 1B/2A/2B, EMA10 Dist_N ≤ 4.0</p>
+            <p className="text-sm"><strong>Set 4</strong> (marginal): Stage 1A/1B/2A, minimal filters</p>
+          </div>
         ),
       },
       {
         heading: 'Short Tiers',
         body: (
-          <VStack align="stretch" gap={1}>
-            <Text fontSize="sm"><strong>Short Set 1</strong>: Stage 4A/4B, RS &lt; 0, EMA10 Dist_N ≥ -2.0, Range ≤ 30%</Text>
-            <Text fontSize="sm"><strong>Short Set 2</strong>: Stage 3B/4A/4B/4C, RS &lt; 5</Text>
-          </VStack>
+          <div className="flex flex-col gap-1">
+            <p className="text-sm"><strong>Short Set 1</strong>: Stage 4A/4B, RS &lt; 0, EMA10 Dist_N ≥ -2.0, Range ≤ 30%</p>
+            <p className="text-sm"><strong>Short Set 2</strong>: Stage 3B/4A/4B/4C, RS &lt; 5</p>
+          </div>
         ),
       },
     ],
@@ -316,41 +317,41 @@ const DEEP_DIVES: DeepDive[] = [
       {
         heading: 'Overview',
         body: (
-          <Text fontSize="sm">The Exit Cascade has <strong>9 independently-firing tiers</strong> for long positions and 4 for shorts. Each tier evaluates a different exit condition. The most aggressive (closest to exit) wins.</Text>
+          <p className="text-sm">The Exit Cascade has <strong>9 independently-firing tiers</strong> for long positions and 4 for shorts. Each tier evaluates a different exit condition. The most aggressive (closest to exit) wins.</p>
         ),
       },
       {
         heading: 'Base Exits (T1–T5)',
         body: (
-          <VStack align="stretch" gap={1}>
-            <Text fontSize="sm"><strong>T1 — Stop Loss:</strong> Hard stop at 2× ATR below entry.</Text>
-            <Text fontSize="sm"><strong>T2 — Trailing Stop:</strong> Stage-based trail (1.5× ATR for 2A/2B, 2.0× for 2C, 1.0× for 3A+).</Text>
-            <Text fontSize="sm"><strong>T3 — Stage Deterioration:</strong> 2B/2C→3A = reduce 50%. Any→4x = full exit.</Text>
-            <Text fontSize="sm"><strong>T4 — Time-Based:</strong> 45+ days with &lt;5% gain = reduce. 90+ days negative = exit.</Text>
-            <Text fontSize="sm"><strong>T5 — Profit Target:</strong> Ext% &gt;25% = reduce 25%. Ext% &gt;40% = reduce 50%.</Text>
-          </VStack>
+          <div className="flex flex-col gap-1">
+            <p className="text-sm"><strong>T1 — Stop Loss:</strong> Hard stop at 2× ATR below entry.</p>
+            <p className="text-sm"><strong>T2 — Trailing Stop:</strong> Stage-based trail (1.5× ATR for 2A/2B, 2.0× for 2C, 1.0× for 3A+).</p>
+            <p className="text-sm"><strong>T3 — Stage Deterioration:</strong> 2B/2C→3A = reduce 50%. Any→4x = full exit.</p>
+            <p className="text-sm"><strong>T4 — Time-Based:</strong> 45+ days with &lt;5% gain = reduce. 90+ days negative = exit.</p>
+            <p className="text-sm"><strong>T5 — Profit Target:</strong> Ext% &gt;25% = reduce 25%. Ext% &gt;40% = reduce 50%.</p>
+          </div>
         ),
       },
       {
         heading: 'Regime Exits (T6–T9)',
         body: (
-          <VStack align="stretch" gap={1}>
-            <Text fontSize="sm"><strong>T6 — Regime Transition:</strong> R1/R2→R4/R5 = exit all. R1/R2→R3 = reduce 25%.</Text>
-            <Text fontSize="sm"><strong>T7 — Regime Trail:</strong> Tighter stops in worse regimes (1.0× ATR in R3, 0.75× in R4, exit all in R5).</Text>
-            <Text fontSize="sm"><strong>T8 — Regime Profit-Taking:</strong> R4 + Ext% &gt;10 = reduce 50%. R3 + Ext% &gt;15 = reduce 25%.</Text>
-            <Text fontSize="sm"><strong>T9 — R5 Full Exit:</strong> R5 forces exit of all long positions regardless of stage or profit.</Text>
-          </VStack>
+          <div className="flex flex-col gap-1">
+            <p className="text-sm"><strong>T6 — Regime Transition:</strong> R1/R2→R4/R5 = exit all. R1/R2→R3 = reduce 25%.</p>
+            <p className="text-sm"><strong>T7 — Regime Trail:</strong> Tighter stops in worse regimes (1.0× ATR in R3, 0.75× in R4, exit all in R5).</p>
+            <p className="text-sm"><strong>T8 — Regime Profit-Taking:</strong> R4 + Ext% &gt;10 = reduce 50%. R3 + Ext% &gt;15 = reduce 25%.</p>
+            <p className="text-sm"><strong>T9 — R5 Full Exit:</strong> R5 forces exit of all long positions regardless of stage or profit.</p>
+          </div>
         ),
       },
       {
         heading: 'Short Exits (S1–S4)',
         body: (
-          <VStack align="stretch" gap={1}>
-            <Text fontSize="sm"><strong>S1 — Stage Improvement:</strong> Cover when stage improves to 1A/1B/2A/2B.</Text>
-            <Text fontSize="sm"><strong>S2 — Regime Improvement:</strong> Cover when regime improves to R1/R2.</Text>
-            <Text fontSize="sm"><strong>S3 — Vol Spike Cover:</strong> Ext% &lt; -25% = partial cover (reversal risk).</Text>
-            <Text fontSize="sm"><strong>S4 — Profit Target:</strong> +20% P&amp;L = reduce 50%. +35% = full cover.</Text>
-          </VStack>
+          <div className="flex flex-col gap-1">
+            <p className="text-sm"><strong>S1 — Stage Improvement:</strong> Cover when stage improves to 1A/1B/2A/2B.</p>
+            <p className="text-sm"><strong>S2 — Regime Improvement:</strong> Cover when regime improves to R1/R2.</p>
+            <p className="text-sm"><strong>S3 — Vol Spike Cover:</strong> Ext% &lt; -25% = partial cover (reversal risk).</p>
+            <p className="text-sm"><strong>S4 — Profit Target:</strong> +20% P&amp;L = reduce 50%. +35% = full cover.</p>
+          </div>
         ),
       },
     ],
@@ -361,20 +362,18 @@ const DEEP_DIVES: DeepDive[] = [
       {
         heading: 'Core Formula',
         body: (
-          <VStack align="stretch" gap={2}>
-            <Code fontSize="xs" p={3} borderRadius="md" display="block" whiteSpace="pre-wrap">
-              {'Full Position ($) = [Risk Budget / (ATR%14 × Stop Multiplier)] × Regime Multiplier\n\nThen apply Stage Cap:\n  Capped Position = Full Position × Stage_Cap[stage][regime]'}
-            </Code>
-            <Text fontSize="sm">The formula scales position size inversely to volatility (ATR%) and adjusts for market conditions (regime multiplier). A volatile stock gets a smaller position. A bearish regime shrinks all positions.</Text>
-          </VStack>
+          <div className="flex flex-col gap-2">
+            {codeBlock(
+              'Full Position ($) = [Risk Budget / (ATR%14 × Stop Multiplier)] × Regime Multiplier\n\nThen apply Stage Cap:\n  Capped Position = Full Position × Stage_Cap[stage][regime]',
+            )}
+            <p className="text-sm">The formula scales position size inversely to volatility (ATR%) and adjusts for market conditions (regime multiplier). A volatile stock gets a smaller position. A bearish regime shrinks all positions.</p>
+          </div>
         ),
       },
       {
         heading: 'Stage Caps',
-        body: (
-          <Code fontSize="xs" p={3} borderRadius="md" display="block" whiteSpace="pre-wrap">
-            {'Stage │  R1   │  R2   │  R3   │  R4   │  R5\n──────┼───────┼───────┼───────┼───────┼──────\n 1A   │  0%   │  0%   │  0%   │  0%   │  0%\n 1B   │  0%   │  0%   │  0%   │  0%   │  0%\n 2A   │ 75%   │ 50%   │ 50%   │ 33%   │  0%\n 2B   │ 100%  │ 100%  │ 75%   │  0%   │  0%\n 2C   │ 100%  │ 75%   │ 50%   │  0%   │  0%\n 3A   │ 50%   │ 25%   │  0%   │  0%   │  0%\n 3B+  │  0%   │  0%   │  0%   │  0%   │  0%'}
-          </Code>
+        body: codeBlock(
+          'Stage │  R1   │  R2   │  R3   │  R4   │  R5\n──────┼───────┼───────┼───────┼───────┼──────\n 1A   │  0%   │  0%   │  0%   │  0%   │  0%\n 1B   │  0%   │  0%   │  0%   │  0%   │  0%\n 2A   │ 75%   │ 50%   │ 50%   │ 33%   │  0%\n 2B   │ 100%  │ 100%  │ 75%   │  0%   │  0%\n 2C   │ 100%  │ 75%   │ 50%   │  0%   │  0%\n 3A   │ 50%   │ 25%   │  0%   │  0%   │  0%\n 3B+  │  0%   │  0%   │  0%   │  0%   │  0%',
         ),
       },
     ],
@@ -385,15 +384,13 @@ const DEEP_DIVES: DeepDive[] = [
       {
         heading: 'What it is',
         body: (
-          <Text fontSize="sm">Measures performance relative to SPY over a trailing year. Positive = outperforming the market. Used as a scan filter and the RS modifier for Stage 2B.</Text>
+          <p className="text-sm">Measures performance relative to SPY over a trailing year. Positive = outperforming the market. Used as a scan filter and the RS modifier for Stage 2B.</p>
         ),
       },
       {
         heading: 'How we calculate it',
-        body: (
-          <Code fontSize="xs" p={3} borderRadius="md" display="block" whiteSpace="pre-wrap">
-            {'Daily RS = Close / SPY_Close\n252-day SMA of RS\nMansfield RS% = (RS / SMA252(RS) - 1) × 100'}
-          </Code>
+        body: codeBlock(
+          'Daily RS = Close / SPY_Close\n252-day SMA of RS\nMansfield RS% = (RS / SMA252(RS) - 1) × 100',
         ),
       },
     ],
@@ -403,10 +400,8 @@ const DEEP_DIVES: DeepDive[] = [
     sections: [
       {
         heading: 'Pipeline steps',
-        body: (
-          <Code fontSize="xs" p={3} borderRadius="md" display="block" whiteSpace="pre-wrap">
-            {'Step 0:  REGIME — Load 6 macro inputs → composite → R1–R5 (runs FIRST)\nStep 1:  Compute MAs + ATRs\nStep 2:  Derive Ext%, ATRE, EMA10 Dist_N, slopes, ranges, Vol Ratio\nStep 3:  Classify 10 sub-stages (priority order)\nStep 4:  Post-classify: ATRE override, RS modifier, 2C override\nStep 5:  Scan: regime-gated tier assignment\nStep 6:  Patterns: 7 pattern triggers\nStep 7:  R/R: target/stop (regime-adjusted multipliers)\nStep 8:  Size: regime-adjusted full position × Stage Cap\nStep 9:  Exits: 9-tier cascade for open positions\nStep 10: Store all fields to MarketSnapshot + History'}
-          </Code>
+        body: codeBlock(
+          'Step 0:  REGIME — Load 6 macro inputs → composite → R1–R5 (runs FIRST)\nStep 1:  Compute MAs + ATRs\nStep 2:  Derive Ext%, ATRE, EMA10 Dist_N, slopes, ranges, Vol Ratio\nStep 3:  Classify 10 sub-stages (priority order)\nStep 4:  Post-classify: ATRE override, RS modifier, 2C override\nStep 5:  Scan: regime-gated tier assignment\nStep 6:  Patterns: 7 pattern triggers\nStep 7:  R/R: target/stop (regime-adjusted multipliers)\nStep 8:  Size: regime-adjusted full position × Stage Cap\nStep 9:  Exits: 9-tier cascade for open positions\nStep 10: Store all fields to MarketSnapshot + History',
         ),
       },
     ],
@@ -414,45 +409,45 @@ const DEEP_DIVES: DeepDive[] = [
 ];
 
 const GlossaryCard: React.FC<{ entry: GlossaryEntry }> = ({ entry }) => (
-  <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={4} bg="bg.card">
-    <Text fontSize="sm" fontWeight="semibold" mb={1}>{entry.term}</Text>
-    <Text fontSize="sm" color="fg.muted" mb={entry.formula ? 2 : 0}>{entry.definition}</Text>
-    {entry.formula && (
-      <Code fontSize="xs" p={2} borderRadius="md" display="block" whiteSpace="pre-wrap">{entry.formula}</Code>
-    )}
-  </Box>
+  <Card className="gap-0 py-4 shadow-xs ring-1 ring-foreground/10">
+    <CardContent className="flex flex-col gap-2">
+      <p className="text-sm font-semibold">{entry.term}</p>
+      <p className={cn('text-sm text-muted-foreground', entry.formula && 'mb-2')}>{entry.definition}</p>
+      {entry.formula ? (
+        <pre className="mt-1 block whitespace-pre-wrap rounded-md bg-muted p-2 font-mono text-xs">{entry.formula}</pre>
+      ) : null}
+    </CardContent>
+  </Card>
 );
 
 const DeepDiveSection: React.FC<{ dive: DeepDive }> = ({ dive }) => {
   const [open, setOpen] = useState(false);
   return (
-    <Box borderWidth="1px" borderColor="border.subtle" borderRadius="lg" bg="bg.card" overflow="hidden">
-      <Button variant="ghost" w="100%" justifyContent="flex-start" px={4} py={3} borderRadius={0} onClick={() => setOpen((v) => !v)} _hover={{ bg: 'bg.muted' }}>
-        <HStack gap={2} w="100%">
-          {open ? <FiChevronDown size={16} /> : <FiChevronRight size={16} />}
-          <Text fontSize="sm" fontWeight="semibold">{dive.title}</Text>
-        </HStack>
-      </Button>
-      <Collapsible.Root open={open}>
+    <Card className="gap-0 overflow-hidden py-0 shadow-xs ring-1 ring-foreground/10">
+      <Collapsible.Root open={open} onOpenChange={setOpen}>
+        <Collapsible.Trigger
+          type="button"
+          className="flex w-full cursor-pointer select-none items-center gap-2 rounded-none border-0 bg-transparent px-4 py-3 text-left outline-none hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          {open ? <ChevronDown className="size-4 shrink-0" aria-hidden /> : <ChevronRight className="size-4 shrink-0" aria-hidden />}
+          <span className="text-sm font-semibold">{dive.title}</span>
+        </Collapsible.Trigger>
         <Collapsible.Content>
-          <VStack align="stretch" gap={4} px={5} pb={5} pt={2}>
+          <div className="flex flex-col gap-4 px-5 pt-2 pb-5">
             {dive.sections.map((s) => (
-              <Box key={s.heading}>
-                <Text fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wide" color="fg.muted" mb={2}>{s.heading}</Text>
+              <div key={s.heading}>
+                <p className="mb-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">{s.heading}</p>
                 {s.body}
-              </Box>
+              </div>
             ))}
-          </VStack>
+          </div>
         </Collapsible.Content>
       </Collapsible.Root>
-    </Box>
+    </Card>
   );
 };
 
-type TabId = 'glossary' | 'deep-dives';
-
 const MarketEducation: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabId>('deep-dives');
   const [search, setSearch] = useState('');
 
   const filteredGlossary = useMemo(() => {
@@ -464,66 +459,54 @@ const MarketEducation: React.FC = () => {
   }, [search]);
 
   return (
-    <Box p={4}>
-      <Box mb={6}>
-        <Heading size="md">Stage Analysis — Education</Heading>
-        <Text color="fg.muted" fontSize="sm" mt={1}>
-          Oliver Kell&apos;s refinement of Weinstein Stage Analysis. SMA150 anchor, 10 sub-stages, Market Regime Engine, Scan Overlay, Exit Cascade, and ATR-based Position Sizing.
-        </Text>
-      </Box>
+    <Page>
+      <PageHeader
+        title="Stage Analysis — Education"
+        subtitle="Oliver Kell&apos;s refinement of Weinstein Stage Analysis. SMA150 anchor, 10 sub-stages, Market Regime Engine, Scan Overlay, Exit Cascade, and ATR-based Position Sizing."
+      />
 
-      <HStack gap={1} borderBottomWidth="1px" borderColor="border.subtle" pb={0} mb={4}>
-        {(['deep-dives', 'glossary'] as TabId[]).map((tab) => {
-          const isActive = activeTab === tab;
-          return (
-            <Button
-              key={tab}
-              size="sm"
-              variant={isActive ? 'solid' : 'ghost'}
-              bg={isActive ? 'amber.500' : undefined}
-              color={isActive ? 'white' : undefined}
-              _hover={isActive ? { bg: 'amber.400' } : undefined}
-              onClick={() => setActiveTab(tab)}
-              borderBottomRadius={0}
-            >
-              {tab === 'glossary' ? 'Glossary' : 'System Deep-Dives'}
-            </Button>
-          );
-        })}
-      </HStack>
+      <Tabs defaultValue="deep-dives" className="w-full">
+        <TabsList variant="line" className="mb-4 w-full justify-start sm:w-auto">
+          <TabsTrigger value="deep-dives">System Deep-Dives</TabsTrigger>
+          <TabsTrigger value="glossary">Glossary</TabsTrigger>
+        </TabsList>
 
-      {activeTab === 'glossary' && (
-        <Box>
-          <HStack mb={4} maxW="400px">
-            <FiSearch />
-            <Input placeholder="Search terms..." size="sm" value={search} onChange={(e) => setSearch(e.target.value)} />
-          </HStack>
+        <TabsContent value="glossary" className="mt-0">
+          <div className="mb-4 flex max-w-[400px] items-center gap-2">
+            <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+            <Input
+              placeholder="Search terms..."
+              className="h-8"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
           {filteredGlossary.length === 0 ? (
-            <Text fontSize="sm" color="fg.muted">No terms match &quot;{search}&quot;.</Text>
+            <p className="text-sm text-muted-foreground">No terms match &quot;{search}&quot;.</p>
           ) : (
-            <Box display="grid" gridTemplateColumns={{ base: '1fr', md: '1fr 1fr', xl: '1fr 1fr 1fr' }} gap={3}>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
               {filteredGlossary.map((entry) => (
                 <GlossaryCard key={entry.term} entry={entry} />
               ))}
-            </Box>
+            </div>
           )}
-        </Box>
-      )}
+        </TabsContent>
 
-      {activeTab === 'deep-dives' && (
-        <VStack align="stretch" gap={3}>
-          {DEEP_DIVES.map((dive) => (
-            <DeepDiveSection key={dive.title} dive={dive} />
-          ))}
-        </VStack>
-      )}
+        <TabsContent value="deep-dives" className="mt-0">
+          <div className="flex flex-col gap-3">
+            {DEEP_DIVES.map((dive) => (
+              <DeepDiveSection key={dive.title} dive={dive} />
+            ))}
+          </div>
+        </TabsContent>
+      </Tabs>
 
-      <Box mt={8} pt={4} borderTopWidth="1px" borderColor="border.subtle">
-        <Text fontSize="xs" color="fg.subtle" fontStyle="italic">
+      <div className="mt-8 border-t border-border pt-4">
+        <p className="text-xs text-muted-foreground italic">
           Reflects the same calculations as the backend. Source: backend/services/market/indicator_engine.py
-        </Text>
-      </Box>
-    </Box>
+        </p>
+      </div>
+    </Page>
   );
 };
 

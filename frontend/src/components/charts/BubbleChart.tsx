@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { Box, Text, HStack, VStack } from '@chakra-ui/react';
 import {
   ScatterChart,
   Scatter,
@@ -11,7 +10,10 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
-import { SECTOR_PALETTE, STAGE_COLORS, STAGE_HEX } from '../../constants/chart';
+
+import { cn } from '@/lib/utils';
+
+import { SECTOR_PALETTE, STAGE_HEX } from '../../constants/chart';
 import { useChartColors } from '../../hooks/useChartColors';
 import { useColorMode } from '../../theme/colorMode';
 
@@ -42,8 +44,6 @@ const NUMERIC_COLUMNS = [
 
 const COLOR_COLUMNS = ['stage_label', 'sector', 'ma_bucket'] as const;
 
-// STAGE_HEX imported from constants/chart
-
 const MA_BUCKET_HEX: Record<string, string> = {
   above_all: '#38A169',
   above_50: '#48BB78',
@@ -68,22 +68,17 @@ type DropdownProps = {
 };
 
 const Dropdown: React.FC<DropdownProps> = ({ label, value, options, onChange }) => (
-  <VStack gap={0} align="start" minW="130px">
-    <Text fontSize="10px" fontWeight="semibold" color="fg.muted" textTransform="uppercase" letterSpacing="wide">
+  <div className="flex min-w-[130px] flex-col items-start gap-0">
+    <span className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
       {label}
-    </Text>
+    </span>
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      style={{
-        width: '100%',
-        fontSize: 'var(--chakra-fontSizes-xs)',
-        backgroundColor: 'var(--chakra-colors-bg-subtle)',
-        border: '1px solid var(--chakra-colors-border-subtle)',
-        borderRadius: 'var(--chakra-radii-md)',
-        padding: 'var(--chakra-space-2) var(--chakra-space-2)',
-        cursor: 'pointer',
-      }}
+      className={cn(
+        'mt-0.5 w-full cursor-pointer rounded-md border border-border bg-muted px-2 py-2 text-xs',
+        'text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
+      )}
     >
       {options.map((opt) => (
         <option key={opt} value={opt}>
@@ -91,38 +86,42 @@ const Dropdown: React.FC<DropdownProps> = ({ label, value, options, onChange }) 
         </option>
       ))}
     </select>
-  </VStack>
+  </div>
 );
 
 const CustomTooltip: React.FC<any> = ({ active, payload }) => {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
   return (
-    <Box bg="bg.panel" borderWidth="1px" borderColor="border.subtle" borderRadius="lg" p={3} shadow="md" minW="180px">
-      <Text fontSize="sm" fontWeight="bold" mb={1}>{d.symbol}</Text>
-      <Box display="flex" flexDirection="column" gap="2px">
-        <HStack justify="space-between" fontSize="xs">
-          <Text color="fg.muted">{COLUMN_LABELS[d._xKey] || d._xKey}</Text>
-          <Text fontWeight="medium">{fmtVal(d._xVal)}</Text>
-        </HStack>
-        <HStack justify="space-between" fontSize="xs">
-          <Text color="fg.muted">{COLUMN_LABELS[d._yKey] || d._yKey}</Text>
-          <Text fontWeight="medium">{fmtVal(d._yVal)}</Text>
-        </HStack>
+    <div
+      className={cn(
+        'min-w-[180px] rounded-lg border border-border bg-popover p-3 text-popover-foreground shadow-md'
+      )}
+    >
+      <div className="mb-1 text-sm font-bold">{d.symbol}</div>
+      <div className="flex flex-col gap-0.5">
+        <div className="flex justify-between gap-2 text-xs">
+          <span className="text-muted-foreground">{COLUMN_LABELS[d._xKey] || d._xKey}</span>
+          <span className="font-medium">{fmtVal(d._xVal)}</span>
+        </div>
+        <div className="flex justify-between gap-2 text-xs">
+          <span className="text-muted-foreground">{COLUMN_LABELS[d._yKey] || d._yKey}</span>
+          <span className="font-medium">{fmtVal(d._yVal)}</span>
+        </div>
         {d.sector && (
-          <HStack justify="space-between" fontSize="xs">
-            <Text color="fg.muted">Sector</Text>
-            <Text>{d.sector}</Text>
-          </HStack>
+          <div className="flex justify-between gap-2 text-xs">
+            <span className="text-muted-foreground">Sector</span>
+            <span>{d.sector}</span>
+          </div>
         )}
         {d.stage_label && (
-          <HStack justify="space-between" fontSize="xs">
-            <Text color="fg.muted">Stage</Text>
-            <Text>{d.stage_label}</Text>
-          </HStack>
+          <div className="flex justify-between gap-2 text-xs">
+            <span className="text-muted-foreground">Stage</span>
+            <span>{d.stage_label}</span>
+          </div>
         )}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 };
 
@@ -203,7 +202,7 @@ const BubbleChart: React.FC<BubbleChartProps> = ({
     }));
 
     return { chartData: points, colorMap: cMap, legendItems: legend };
-  }, [data, xKey, yKey, colorKey, sizeKey]);
+  }, [data, xKey, yKey, colorKey, sizeKey, darkIdx]);
 
   const groupedByColor = useMemo(() => {
     const groups: Record<string, typeof chartData> = {};
@@ -217,20 +216,20 @@ const BubbleChart: React.FC<BubbleChartProps> = ({
 
   if (data.length === 0) {
     return (
-      <Box p={4} textAlign="center">
-        <Text fontSize="sm" color="fg.muted">No data available for bubble chart</Text>
-      </Box>
+      <div className="p-4 text-center">
+        <p className="text-sm text-muted-foreground">No data available for bubble chart</p>
+      </div>
     );
   }
 
   return (
-    <Box>
-      <HStack gap={3} flexWrap="wrap" mb={3}>
+    <div>
+      <div className="mb-3 flex flex-wrap gap-3">
         <Dropdown label="X Axis" value={xKey} options={NUMERIC_COLUMNS} onChange={setXKey} />
         <Dropdown label="Y Axis" value={yKey} options={NUMERIC_COLUMNS} onChange={setYKey} />
         <Dropdown label="Color" value={colorKey} options={COLOR_COLUMNS} onChange={setColorKey} />
         <Dropdown label="Size" value={sizeKey} options={NUMERIC_COLUMNS} onChange={setSizeKey} />
-      </HStack>
+      </div>
 
       <ResponsiveContainer width="100%" height={420}>
         <ScatterChart margin={{ top: 10, right: 20, bottom: 30, left: 10 }}>
@@ -273,16 +272,19 @@ const BubbleChart: React.FC<BubbleChartProps> = ({
       </ResponsiveContainer>
 
       {legendItems.length > 0 && legendItems.length <= 20 && (
-        <Box display="flex" flexWrap="wrap" gap="6px" mt={2} px={1} justifyContent="center">
+        <div className="mt-2 flex flex-wrap justify-center gap-1.5 px-1">
           {legendItems.map((item) => (
-            <HStack key={item.label} gap={1}>
-              <Box w="8px" h="8px" borderRadius="full" flexShrink={0} bg={item.color} />
-              <Text fontSize="10px" color="fg.muted">{item.label}</Text>
-            </HStack>
+            <div key={item.label} className="flex items-center gap-1">
+              <span
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{ backgroundColor: item.color }}
+              />
+              <span className="text-[10px] text-muted-foreground">{item.label}</span>
+            </div>
           ))}
-        </Box>
+        </div>
       )}
-    </Box>
+    </div>
   );
 };
 
