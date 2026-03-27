@@ -9,9 +9,46 @@ alwaysApply: true
 
 When working on bulk file edits, doc rewrites, search-heavy exploration, multi-file rename/refactor, or mechanical restructuring — spawn fast subagents via the Task tool. The expensive model (Opus) orchestrates and reviews; subagents do the heavy lifting.
 
+**Token audit insight**: ~90% of token spend is reading/searching, not reasoning. Delegate bulk reading to fast models; reserve Opus for synthesis and judgment.
+
 **Never delegate**: strategic decisions, architecture design, multi-file reasoning that requires cross-referencing, compliance/legal content edits, security-sensitive changes, or anything touching PII handling.
 
 **Always delegate**: file searches across >5 files, doc trimming/reformatting, repetitive edits across many files, content migration between locations, boilerplate generation.
+
+## Smart Delegation by Subagent Type
+
+### Shell Subagent (`subagent_type: "shell"`)
+- API calls (curl, gh, render CLI)
+- Running tests (`make test`, `npm test`, `pytest`)
+- Git operations (status, log, diff, branch listing)
+- Environment checks and verification
+- Any command that just needs output parsing
+- Docker/container operations
+
+### Explore Subagent (`subagent_type: "explore"`)
+- Finding files by pattern across 5+ directories
+- Searching for symbols/patterns in unfamiliar code
+- Answering "where is X?" or "how does Y work?" questions
+- Initial codebase exploration before making changes
+- Thoroughness levels: "quick" (basic search), "medium" (moderate exploration), "very thorough" (comprehensive analysis)
+
+### GeneralPurpose Subagent (`subagent_type: "generalPurpose"`)
+- Multi-step tasks that need both search and edits
+- Researching complex questions across many files
+- Tasks where you're not confident in the quick answer
+
+### Keep in Opus (don't delegate)
+- Financial calculations and business logic
+- Security-sensitive code (auth, credentials, encryption, PII)
+- Architecture decisions and trade-offs
+- Compliance/legal content edits
+- Code review of subagent output for correctness
+- Complex multi-step reasoning requiring cross-file context
+- Anything where a mistake is costly
+
+## Quality Gate
+
+Never delegate to save tokens if it compromises correctness. Fast models make mistakes on nuanced logic. When in doubt, do it yourself. Always review subagent output before applying changes.
 
 ## Quality Gates for Delegated Work
 
