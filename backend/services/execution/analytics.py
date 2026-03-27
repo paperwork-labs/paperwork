@@ -1,19 +1,145 @@
-"""
-Execution Analytics
-===================
+"""Execution analytics service."""
 
-Track and analyze order execution quality including slippage,
-fill latency, and comparison to benchmarks.
-"""
-
-import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from decimal import Decimal
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 
-logger = logging.getLogger(__name__)
+from backend.models.execution import ExecutionMetrics
+
+
+class ExecutionAnalyticsService:
+    """Service for analyzing execution quality."""
+
+    def __init__(self, db: Session) -> None:
+        self.db = db
+
+    def record_fill(
+        self,
+        order_id: int,
+        user_id: int,
+        symbol: str,
+        broker: str,
+        side: str,
+        expected_price: Optional[Decimal],
+        fill_price: Decimal,
+        quantity_ordered: int,
+        quantity_filled: int,
+        submitted_at: Optional[datetime],
+        filled_at: datetime,
+    ) -> ExecutionMetrics:
+        """Record execution metrics for a filled order."""
+        side_norm = (side or "").lower()
+
+        # Calculate slippage
+        slippage_pct: Optional[float] = None
+        slippage_dollars: Optional[Decimal] = None
+        if expected_price is not None and expected_price > 0:
+            slippage_pct = float((fill_price - expected_price) / expected_price * 100)
+            slippage_dollars = (fill_price - expected_price) * quantity_filled
+            # Negative slippage is good for buys, bad for sells
+            if side_norm == "sell":
+                slippage_pct = -slippage_pct
+                slippage_dollars = -slippage_dollars
+
+        # Calculate time to fill
+        time_to_fill_ms: Optional[int] = None
+        if submitted_at is not None and filled_at is not None:
+            time_to_fill_ms = int((filled_at - submitted_at).total_seconds() * 1000)
+
+        # Calculate fill rate
+        fill_rate = quantity_filled / quantity_ordered if quantity_ordered > 0 else 0.0
+
+        partial_fills: Optional[int] = None
+        if quantity_ordered > 0 and 0 < quantity_filled < quantity_ordered:
+            partial_fills = 1
+
+        metrics = ExecutionMetrics(
+            order_id=order_id,
+            user_id=user_id,
+            symbol=symbol,
+            broker=broker,
+            side=side_norm or side,
+            expected_price=expected_price,
+            fill_price=fill_price,
+            slippage_pct=slippage_pct,
+            slippage_dollars=slippage_dollars,
+            submitted_at=submitted_at,
+            filled_at=filled_at,
+            time_to_fill_ms=time_to_fill_ms,
+            fill_rate=fill_rate,
+            partial_fills=partial_fills,
+        )
+        self.db.add(metrics)
+        return metrics
+
+    def get_broker_stats(
+        self,
+        user_id: int,
+        days: int = 30,
+    ) -> Dict[str, Dict[str, Any]]:
+        """Get execution stats grouped by broker."""
+        cutoff = datetime.utcnow() - timedelta(days=days)
+
+        results = (
+            self.db.query(
+                ExecutionMetrics.broker,
+                func.count(ExecutionMetrics.id).label("total_orders"),
+                func.avg(ExecutionMetrics.slippage_pct).label("avg_slippage_pct"),
+                func.avg(ExecutionMetrics.time_to_fill_ms).label("avg_time_to_fill_ms"),
+                func.avg(ExecutionMetrics.fill_rate).label("avg_fill_rate"),
+            )
+            .filter(
+                ExecutionMetrics.user_id == user_id,
+                ExecutionMetrics.created_at >= cutoff,
+            )
+            .group_by(ExecutionMetrics.broker)
+            .all()
+        )
+
+        return {
+            r.broker: {
+                "total_orders": r.total_orders,
+                "avg_slippage_pct": round(r.avg_slippage_pct or 0, 4),
+                "avg_time_to_fill_ms": int(r.avg_time_to_fill_ms or 0),
+                "avg_fill_rate": round(r.avg_fill_rate or 0, 4),
+            }
+            for r in results
+        }
+
+    def get_symbol_stats(
+        self,
+        user_id: int,
+        days: int = 30,
+    ) -> Dict[str, Dict[str, Any]]:
+        """Get execution stats grouped by symbol."""
+        cutoff = datetime.utcnow() - timedelta(days=days)
+
+        results = (
+            self.db.query(
+                ExecutionMetrics.symbol,
+                func.count(ExecutionMetrics.id).label("total_orders"),
+                func.avg(ExecutionMetrics.slippage_pct).label("avg_slippage_pct"),
+            )
+            .filter(
+                ExecutionMetrics.user_id == user_id,
+                ExecutionMetrics.created_at >= cutoff,
+            )
+            .group_by(ExecutionMetrics.symbol)
+            .order_by(func.count(ExecutionMetrics.id).desc())
+            .limit(20)
+            .all()
+        )
+
+        return {
+            r.symbol: {
+                "total_orders": r.total_orders,
+                "avg_slippage_pct": round(r.avg_slippage_pct or 0, 4),
+            }
+            for r in results
+        }
 
 
 def calculate_order_slippage(
@@ -79,7 +205,7 @@ def update_order_analytics(
     if not order:
         return {"error": "order_not_found"}
 
-    analytics = {}
+    analytics: Dict = {}
 
     # Calculate slippage if we have decision price
     if order.decision_price and order.decision_price > 0:

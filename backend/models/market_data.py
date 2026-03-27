@@ -194,6 +194,8 @@ class MarketSnapshot(Base):
 
     # Stage analysis (v4 — Oliver Kell / Weinstein refined, SMA150 anchor)
     stage_label = Column(String(10))  # 1A, 1B, 2A, 2B, 2C, 3A, 3B, 4A, 4B, 4C
+    stage_4h = Column(String(10), nullable=True)  # 4H timeframe stage (v4 labels)
+    stage_confirmed = Column(Boolean, nullable=True)  # True if daily and 4H agree
     stage_label_5d_ago = Column(String(10))
     current_stage_days = Column(Integer)
     previous_stage_label = Column(String(10))
@@ -325,6 +327,8 @@ class MarketSnapshotHistory(Base):
 
     rs_mansfield_pct = Column(Float)
     stage_label = Column(String(10))  # 1A, 1B, 2A, 2B, 2C, 3A, 3B, 4A, 4B, 4C
+    stage_4h = Column(String(10), nullable=True)
+    stage_confirmed = Column(Boolean, nullable=True)
     stage_label_5d_ago = Column(String(10))
     current_stage_days = Column(Integer)
     previous_stage_label = Column(String(10))

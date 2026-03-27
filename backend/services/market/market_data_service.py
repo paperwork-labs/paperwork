@@ -313,7 +313,13 @@ class MarketDataService:
                 snapshot.update(compute_trendline_counts(ensure_oldest_first(chart_df)))
         except Exception as e:
             logger.warning("chart_metrics_computation failed: %s", e)
-        for key in ("stage_label", "stage_slope_pct", "stage_dist_pct"):
+        for key in (
+            "stage_label",
+            "stage_4h",
+            "stage_confirmed",
+            "stage_slope_pct",
+            "stage_dist_pct",
+        ):
             snapshot.setdefault(key, None)
 
         return snapshot
@@ -1332,6 +1338,8 @@ class MarketDataService:
             "atrx_sma_150": getattr(row, "atrx_sma_150", None),
             "rs_mansfield_pct": getattr(row, "rs_mansfield_pct", None),
             "stage_label": getattr(row, "stage_label", None),
+            "stage_4h": getattr(row, "stage_4h", None),
+            "stage_confirmed": getattr(row, "stage_confirmed", None),
             "stage_label_5d_ago": getattr(row, "stage_label_5d_ago", None),
             "stage_slope_pct": getattr(row, "stage_slope_pct", None),
             "stage_dist_pct": getattr(row, "stage_dist_pct", None),
@@ -1467,6 +1475,10 @@ class MarketDataService:
                         snapshot["stage_dist_pct"] = stage.get("stage_dist_pct")
                     if stage.get("rs_mansfield_pct") is not None:
                         snapshot["rs_mansfield_pct"] = stage.get("rs_mansfield_pct")
+                    lbl = snapshot.get("stage_label")
+                    if lbl is not None:
+                        snapshot["stage_4h"] = lbl
+                        snapshot["stage_confirmed"] = True
                     # Stage 5 trading days ago: drop newest 5 bars and recompute
                     try:
                         stage_prev = compute_weinstein_stage_from_daily(
@@ -1599,6 +1611,10 @@ class MarketDataService:
                         snapshot["stage_dist_pct"] = stage.get("stage_dist_pct")
                     if stage.get("rs_mansfield_pct") is not None:
                         snapshot["rs_mansfield_pct"] = stage.get("rs_mansfield_pct")
+                    lbl = snapshot.get("stage_label")
+                    if lbl is not None:
+                        snapshot["stage_4h"] = lbl
+                        snapshot["stage_confirmed"] = True
                     try:
                         stage_prev = compute_weinstein_stage_from_daily(
                             data.iloc[5:].copy(),

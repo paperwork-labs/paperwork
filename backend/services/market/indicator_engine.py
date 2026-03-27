@@ -457,6 +457,14 @@ def compute_full_indicator_series(
             if col in stage_df.columns:
                 out[col] = stage_df[col]
 
+    # Multi-timeframe stage: 4H uses daily stage until dedicated 4H bars exist.
+    if "stage_label" in out.columns:
+        out["stage_4h"] = out["stage_label"]
+        out["stage_confirmed"] = True
+    else:
+        out["stage_4h"] = pd.Series("UNKNOWN", index=out.index, dtype=object)
+        out["stage_confirmed"] = pd.Series(pd.NA, index=out.index, dtype="boolean")
+
     return out
 
 
@@ -647,25 +655,41 @@ def weekly_from_daily(df_daily_newest_first: pd.DataFrame) -> pd.DataFrame:
     return weekly
 
 
-def classify_stage_v4_scalar(
-    close: float,
+def classify_stage_for_timeframe(
+    price: float,
     sma150: float,
     sma50: float,
-    sma21: float,
     ema10: float,
-    sma150_slope: float,
-    sma50_slope: float,
-    ext_pct: float,
-    atre_150: float,
-    vol_ratio: float,
+    prev_stage: Optional[str] = None,
+    *,
+    sma21: float = 0.0,
+    sma150_slope: Optional[float] = None,
+    sma50_slope: Optional[float] = None,
+    ext_pct: Optional[float] = None,
+    vol_ratio: float = 0.0,
 ) -> str:
-    """Classify a single bar into one of 10 v4 sub-stages.
+    """Classify stage for any timeframe using core v4 rules (SMA150 anchor).
 
-    Priority order (first match wins): 4C→4B→4A→1A→1B→2A→2B→2C→3A→3B
+    Requires *sma150_slope* and *sma50_slope* for classification. *ext_pct* defaults
+    to ``(price - sma150) / sma150 * 100`` when omitted. If slopes are missing,
+    returns *prev_stage* when set, else ``"UNKNOWN"``.
+
+    ATRE (2A/2B→2C) and Mansfield RS (2B→2B(RS-)) post-steps are applied in
+    :func:`classify_stage_v4_series` and :func:`compute_weinstein_stage_from_daily`,
+    not in this function.
+
+    Priority order (first match wins): 4C→4B→4A→1A→1B→2A→2B→2C→3A→3B.
     See Stage_Analysis_v4.docx Section 4 for full rules.
     """
+    if sma150_slope is None or sma50_slope is None:
+        return prev_stage if prev_stage is not None else "UNKNOWN"
+    if ext_pct is None:
+        if sma150 == 0:
+            return prev_stage if prev_stage is not None else "UNKNOWN"
+        ext_pct = (price - sma150) / sma150 * 100.0
+
     SLOPE_T = 0.35  # ±0.35% slope threshold
-    above = close > sma150
+    above = price > sma150
     below = not above
 
     slope_strongly_down = sma150_slope < -SLOPE_T
@@ -706,6 +730,37 @@ def classify_stage_v4_scalar(
         return "3A"
     # 3B: Late distribution — everything else
     return "3B"
+
+
+def classify_stage_v4_scalar(
+    close: float,
+    sma150: float,
+    sma50: float,
+    sma21: float,
+    ema10: float,
+    sma150_slope: float,
+    sma50_slope: float,
+    ext_pct: float,
+    atre_150: float,
+    vol_ratio: float,
+) -> str:
+    """Classify a single bar into one of 10 v4 sub-stages.
+
+    Delegates to :func:`classify_stage_for_timeframe`. *atre_150* is accepted for
+    API compatibility; ATRE override is applied in callers after this returns.
+    """
+    _ = atre_150
+    return classify_stage_for_timeframe(
+        close,
+        sma150,
+        sma50,
+        ema10,
+        sma21=sma21,
+        sma150_slope=sma150_slope,
+        sma50_slope=sma50_slope,
+        ext_pct=ext_pct,
+        vol_ratio=vol_ratio,
+    )
 
 
 def classify_stage_v4_series(

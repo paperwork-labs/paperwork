@@ -81,9 +81,14 @@ const portfolioItems = [
   { label: 'Workspace', icon: LayoutGrid, path: '/portfolio/workspace' },
 ];
 
-const settingsItems = [{ label: 'Settings', icon: Settings, path: '/settings' }];
+function buildSettingsItems(_isAdmin: boolean) {
+  const items: { label: string; icon: typeof Settings; path: string }[] = [
+    { label: 'Settings', icon: Settings, path: '/settings' },
+  ];
+  return items;
+}
 
-function buildMarketItems(strategyEnabled: boolean, isAdmin: boolean) {
+function buildMarketItems(strategyEnabled: boolean) {
   type Item = { label: string; icon: typeof Home; path: string };
   const items: Item[] = [
     { label: 'Dashboard', icon: Home, path: '/' },
@@ -93,9 +98,6 @@ function buildMarketItems(strategyEnabled: boolean, isAdmin: boolean) {
     items.push({ label: 'Strategies', icon: Target, path: '/market/strategies' });
   }
   items.push({ label: 'Education', icon: BookOpen, path: '/market/education' });
-  if (isAdmin) {
-    items.push({ label: 'Agent Guru', icon: Brain, path: '/admin/agent' });
-  }
   return items;
 }
 
@@ -188,10 +190,8 @@ const DashboardLayout: React.FC = () => {
   const portfolioEnabled = isAdmin || (!marketOnly && Boolean(appSettings?.portfolio_enabled));
   const strategyEnabled = isAdmin || (!marketOnly && Boolean(appSettings?.strategy_enabled));
 
-  const marketItems = useMemo(
-    () => buildMarketItems(strategyEnabled, isAdmin),
-    [strategyEnabled, isAdmin]
-  );
+  const marketItems = useMemo(() => buildMarketItems(strategyEnabled), [strategyEnabled]);
+  const settingsNavItems = useMemo(() => buildSettingsItems(isAdmin), [isAdmin]);
 
   const { health: adminHealth, loading: healthLoading } = useAdminHealth();
   const healthStatus = adminHealth?.composite_status ?? 'red';
@@ -326,7 +326,7 @@ const DashboardLayout: React.FC = () => {
       <div className={cn('flex flex-col gap-2 py-4', opts.pxClass)}>
         {renderSection('MARKET', marketItems, opts.showLabel, next())}
         {portfolioEnabled ? renderSection('PORTFOLIO', portfolioItems, opts.showLabel, next()) : null}
-        {isAdmin ? renderSection('SETTINGS', settingsItems, opts.showLabel, next()) : null}
+        {isAdmin ? renderSection('SETTINGS', settingsNavItems, opts.showLabel, next()) : null}
       </div>
     );
   };

@@ -29,9 +29,10 @@ from .institutional_holding import InstitutionalHolding
 from .position import Position, PositionType, PositionStatus
 from .trade import Trade, TradeSignal
 from .order import Order, OrderSide, OrderType, OrderStatus
+from .execution import ExecutionMetrics
 
 # Portfolio Management
-from .portfolio import PortfolioSnapshot, Category, PositionCategory
+from .portfolio import PortfolioHistory, PortfolioSnapshot, Category, PositionCategory
 
 # Tax Lots & Cost Basis
 from .tax_lot import TaxLot, TaxLotMethod, TaxLotSource
@@ -99,6 +100,7 @@ __all__ = [
     "Dividend",
     "Option",
     "OptionType",
+    "PortfolioHistory",
     "PortfolioSnapshot",
     "Category",
     "PositionCategory",
@@ -108,6 +110,7 @@ __all__ = [
     "OrderSide",
     "OrderType",
     "OrderStatus",
+    "ExecutionMetrics",
     "Watchlist",
     "AgentAction",
 ]

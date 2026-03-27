@@ -7,6 +7,7 @@ export type User = {
   username: string;
   email: string;
   full_name?: string | null;
+  is_verified?: boolean | null;
   is_active: boolean;
   role?: string | null;
   timezone?: string | null;
@@ -61,21 +62,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const sync = async () => {
       try {
         if (token) {
-          const me: any = await authApi.me();
-          setUser(me);
-          const pref = me?.ui_preferences?.color_mode_preference;
+          const [meResult, appResult] = await Promise.allSettled([
+            authApi.me(),
+            appSettingsApi.get(),
+          ]);
+          if (meResult.status === 'rejected') {
+            throw meResult.reason;
+          }
+          const me = meResult.value;
+          setUser(me as User);
+          const pref = (me as any)?.ui_preferences?.color_mode_preference;
           if (pref === 'system' || pref === 'light' || pref === 'dark') {
             setColorModePreference(pref);
           }
-          try {
-            const app = await appSettingsApi.get();
-            setAppSettings(app as AppSettings);
-          } catch {
+          if (appResult.status === 'fulfilled') {
+            setAppSettings(appResult.value as AppSettings);
+          } else {
             setAppSettings(null);
           }
         }
       } catch {
-        // invalid token -> clear
         try { localStorage.removeItem('qm_token'); } catch { }
         setToken(null);
         setUser(null);
@@ -91,24 +97,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     const res: any = await authApi.login({ email, password });
     const t = res?.access_token;
-    if (t) {
-      localStorage.setItem('qm_token', t);
-      setToken(t);
-      const me: any = await authApi.me();
-      setUser(me);
-      const pref = me?.ui_preferences?.color_mode_preference;
-      if (pref === 'system' || pref === 'light' || pref === 'dark') {
-        setColorModePreference(pref);
-      }
-      try {
-        const app = await appSettingsApi.get();
-        setAppSettings(app as AppSettings);
-      } catch {
-        setAppSettings(null);
-      } finally {
-        setAppSettingsReady(true);
-      }
+    if (!t) {
+      throw new Error(res?.detail || 'Login failed - no token received');
     }
+    localStorage.setItem('qm_token', t);
+    setToken(t);
+    const [meResult, appResult] = await Promise.allSettled([
+      authApi.me(),
+      appSettingsApi.get(),
+    ]);
+    if (meResult.status === 'rejected') {
+      throw meResult.reason instanceof Error
+        ? meResult.reason
+        : new Error('Failed to load user profile');
+    }
+    const me = meResult.value;
+    setUser(me as User);
+    const pref = (me as any)?.ui_preferences?.color_mode_preference;
+    if (pref === 'system' || pref === 'light' || pref === 'dark') {
+      setColorModePreference(pref);
+    }
+    if (appResult.status === 'fulfilled') {
+      setAppSettings(appResult.value as AppSettings);
+    } else {
+      setAppSettings(null);
+    }
+    setAppSettingsReady(true);
   };
 
   const register = async (username: string, email: string, password: string, full_name?: string) => {
@@ -148,20 +162,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setToken(t);
       void (async () => {
         try {
-          const me: any = await authApi.me();
-          setUser(me);
-          const pref = me?.ui_preferences?.color_mode_preference;
+          const [meResult, appResult] = await Promise.allSettled([
+            authApi.me(),
+            appSettingsApi.get(),
+          ]);
+          if (meResult.status === 'rejected') {
+            throw meResult.reason;
+          }
+          const me = meResult.value;
+          setUser(me as User);
+          const pref = (me as any)?.ui_preferences?.color_mode_preference;
           if (pref === 'system' || pref === 'light' || pref === 'dark') {
             setColorModePreference(pref);
           }
-          try {
-            const app = await appSettingsApi.get();
-            setAppSettings(app as AppSettings);
-          } catch {
+          if (appResult.status === 'fulfilled') {
+            setAppSettings(appResult.value as AppSettings);
+          } else {
             setAppSettings(null);
-          } finally {
-            setAppSettingsReady(true);
           }
+          setAppSettingsReady(true);
         } catch {
           try {
             localStorage.removeItem('qm_token');

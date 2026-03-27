@@ -116,6 +116,10 @@ interface SortableTableProps<T = any> {
   initialFiltersOpen?: boolean;
   collapseAfterPresetLabels?: string[];
   onRowClick?: (row: T) => void;
+  /** Rendered on the right side of the filters bar (before the row count), when filters are enabled */
+  endToolbar?: React.ReactNode;
+  /** Extra classes merged onto each body row (e.g. density hints); cell padding still comes from `size` */
+  rowClassName?: string;
 }
 
 function SortableTable<T = any>({
@@ -134,6 +138,8 @@ function SortableTable<T = any>({
   initialFiltersOpen = true,
   collapseAfterPresetLabels = [],
   onRowClick,
+  endToolbar,
+  rowClassName,
 }: SortableTableProps<T>) {
   const { tableDensity } = useUserPreferences();
   const size: 'sm' | 'md' | 'lg' = sizeProp ?? (tableDensity === 'compact' ? 'sm' : 'md');
@@ -505,9 +511,12 @@ function SortableTable<T = any>({
                 </Button>
               )}
             </div>
-            <span className="text-xs text-muted-foreground">
-              {sortedData.length} of {data.length}
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              {endToolbar}
+              <span className="text-xs text-muted-foreground">
+                {sortedData.length} of {data.length}
+              </span>
+            </div>
           </div>
 
           {!filtersOpen && filterSummary && (
@@ -746,9 +755,11 @@ function SortableTable<T = any>({
                   <tr
                     key={index}
                     className={cn(
-                      'min-h-[44px] border-b border-border/80 transition-colors last:border-0',
+                      size === 'sm' ? 'min-h-0' : 'min-h-[44px]',
+                      'border-b border-border/80 transition-colors last:border-0',
                       variant === 'striped' && index % 2 === 1 && 'bg-muted/40',
                       onRowClick && 'cursor-pointer hover:bg-muted/50',
+                      rowClassName,
                     )}
                     onClick={onRowClick ? () => onRowClick(item) : undefined}
                     aria-label={onRowClick ? 'View details' : undefined}

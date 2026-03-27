@@ -1,3 +1,7 @@
+from datetime import date, datetime
+from decimal import Decimal
+from typing import Optional
+
 from sqlalchemy import (
     Column,
     Integer,
@@ -9,8 +13,10 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     UniqueConstraint,
+    Date,
+    Numeric,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from backend.models import Base
 
@@ -22,6 +28,40 @@ from backend.models import Base
 # =============================================================================
 
 # Account model removed - replaced by broker-agnostic BrokerAccount model
+
+
+class PortfolioHistory(Base):
+    """Daily portfolio value snapshots for drawdown tracking."""
+
+    __tablename__ = "portfolio_history"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    account_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("broker_accounts.id"), nullable=True, index=True
+    )
+    as_of_date: Mapped[date] = mapped_column(Date, index=True)
+
+    # Value metrics
+    total_value: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    cash_value: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    positions_value: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+
+    # Drawdown metrics (computed)
+    peak_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 2), nullable=True)
+    drawdown_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    drawdown_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "account_id",
+            "as_of_date",
+            name="uix_portfolio_history_user_account_date",
+        ),
+    )
 
 
 class Category(Base):

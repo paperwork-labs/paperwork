@@ -18,6 +18,7 @@ celery_app = Celery(
         "backend.tasks.market.iv",
         "backend.tasks.market.maintenance",
         "backend.tasks.market.regime",
+        "backend.tasks.market.regime_alerts",
         # Portfolio
         "backend.tasks.portfolio.sync",
         "backend.tasks.portfolio.reconciliation",
@@ -29,6 +30,8 @@ celery_app = Celery(
         # Operations
         "backend.tasks.ops.auto_ops",
         "backend.tasks.ops.ibkr_watchdog",
+        # Nightly pipeline orchestrator (step-tracked 10-step run)
+        "backend.tasks.pipeline.orchestrator",
     ],
 )
 

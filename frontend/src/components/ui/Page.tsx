@@ -1,10 +1,19 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 
-export function Page({ children, className, ...props }: React.ComponentProps<'div'> & { children: React.ReactNode }) {
+export interface PageProps extends React.ComponentProps<'div'> {
+  children: React.ReactNode;
+  fullWidth?: boolean;
+}
+
+export function Page({ children, className, fullWidth, ...props }: PageProps) {
   return (
     <div
-      className={cn('mx-auto w-full max-w-[1200px] px-4 py-6 md:px-6 md:py-8', className)}
+      className={cn(
+        'mx-auto w-full px-4 py-6 md:px-6 md:py-8',
+        !fullWidth && 'max-w-[1200px]',
+        className
+      )}
       {...props}
     >
       {children}

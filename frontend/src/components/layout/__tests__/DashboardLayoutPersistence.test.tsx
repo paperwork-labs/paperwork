@@ -147,19 +147,6 @@ describe('DashboardLayout sidebar persistence', () => {
     const strategies = container.querySelector('[data-nav-path="/market/strategies"]');
     expect(strategies?.getAttribute('data-active')).toBe('true');
   });
-
-  it('shows Agent Guru in MARKET for admin users', () => {
-    mockedAuth = {
-      user: { username: 'admin', role: 'admin' },
-      logout: vi.fn(),
-      appSettings: { market_only_mode: true, portfolio_enabled: false, strategy_enabled: false },
-      appSettingsReady: true,
-      ready: true,
-    };
-    const { container } = renderWithProviders(<DashboardLayout />);
-    expect(container.querySelectorAll('[data-nav-path="/admin/agent"]').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('SETTINGS').length).toBeGreaterThan(0);
-  });
 });
 
 

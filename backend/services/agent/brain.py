@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
@@ -2125,7 +2126,8 @@ class AgentBrain:
             return False
         try:
             key = f"agent:conversation:{self.session_id}"
-            redis.setex(key, 7200, json.dumps(self._conversation))  # 2hr TTL
+            ttl = int(os.getenv("AGENT_CONVERSATION_TTL_SECONDS", "604800"))
+            redis.setex(key, ttl, json.dumps(self._conversation))
             return True
         except Exception as e:
             logger.warning("Failed to save conversation: %s", e)

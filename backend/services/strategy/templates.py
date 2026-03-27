@@ -1,7 +1,8 @@
 """Pre-built hedge fund strategy templates -- v4 Stage Analysis aware.
 
 Each template uses v4 fields: stage_label (10 sub-stages), regime_state (R1-R5),
-scan_tier, action_label, ext_pct, ema10_dist_n, sma150_slope, etc.
+scan_tier, action_label, ext_pct, ema10_dist_n, sma150_slope, ttm_squeeze_on,
+ttm_momentum, etc.
 
 New operators available: in, not_in, starts_with, contains.
 """
@@ -15,7 +16,7 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
         "name": "V4 Stage 2 Breakout (Regime-Gated)",
         "description": (
             "Stage Analysis v4 breakout: enter on 2A/2B with positive RS, "
-            "SMA150 rising, only in R1/R2 regimes. Exit on stage deterioration or R5."
+            "SMA150 rising, only in R1-R3 regimes. Exit on stage deterioration or R5."
         ),
         "strategy_type": "breakout",
         "default_config": {
@@ -23,7 +24,7 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
                 "logic": "and",
                 "conditions": [
                     {"field": "stage_label", "operator": "in", "value": ["2A", "2B"]},
-                    {"field": "regime_state", "operator": "in", "value": ["R1", "R2"]},
+                    {"field": "regime_state", "operator": "in", "value": ["R1", "R2", "R3"]},
                     {"field": "rs_mansfield_pct", "operator": "gt", "value": 0},
                     {"field": "sma150_slope", "operator": "gt", "value": 0},
                     {"field": "ema10_dist_n", "operator": "gt", "value": -1.0},
@@ -52,7 +53,7 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
         "description": (
             "Highest-conviction longs from Scan Overlay Set 1: "
             "stage 2A/2B, RS > 0, EMA10 distance > 0, tight ATRE. "
-            "Regime R1 only."
+            "Regimes R1-R3 only."
         ),
         "strategy_type": "breakout",
         "default_config": {
@@ -60,7 +61,7 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
                 "logic": "and",
                 "conditions": [
                     {"field": "scan_tier", "operator": "eq", "value": "Set 1"},
-                    {"field": "regime_state", "operator": "eq", "value": "R1"},
+                    {"field": "regime_state", "operator": "in", "value": ["R1", "R2", "R3"]},
                     {"field": "action_label", "operator": "eq", "value": "BUY"},
                 ],
                 "groups": [],
@@ -120,7 +121,7 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
         "name": "V4 Pullback Buy Zone",
         "description": (
             "Buy pullbacks in Stage 2: EMA10 distance pulls negative "
-            "with positive RS and rising SMA150. Regime R1-R2."
+            "with positive RS and rising SMA150. Regimes R1-R3."
         ),
         "strategy_type": "breakout",
         "default_config": {
@@ -131,7 +132,7 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
                     {"field": "ema10_dist_n", "operator": "between", "value": -2.0, "value_high": -0.3},
                     {"field": "rs_mansfield_pct", "operator": "gt", "value": 0},
                     {"field": "sma150_slope", "operator": "gt", "value": 0},
-                    {"field": "regime_state", "operator": "in", "value": ["R1", "R2"]},
+                    {"field": "regime_state", "operator": "in", "value": ["R1", "R2", "R3"]},
                 ],
                 "groups": [],
             },
@@ -249,6 +250,101 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
         "max_positions": 8,
         "stop_loss_pct": 8.0,
     },
+    {
+        "id": "short_breakdown",
+        "name": "Stage 4 Breakdown Short",
+        "description": (
+            "Short stocks breaking down into Stage 4 during bear regimes; "
+            "weak RS (below -1%). Exit on early-stage recovery or R1/R2."
+        ),
+        "strategy_type": "short",
+        "default_config": {
+            "entry_rules": {
+                "logic": "and",
+                "conditions": [
+                    {"field": "stage_label", "operator": "in", "value": ["4A", "4B"]},
+                    {"field": "regime_state", "operator": "in", "value": ["R4", "R5"]},
+                    {"field": "rs_mansfield_pct", "operator": "lt", "value": -1.0},
+                ],
+                "groups": [],
+            },
+            "exit_rules": {
+                "logic": "or",
+                "conditions": [
+                    {"field": "stage_label", "operator": "in", "value": ["1B", "2A"]},
+                    {"field": "regime_state", "operator": "in", "value": ["R1", "R2"]},
+                ],
+                "groups": [],
+            },
+        },
+        "position_size_pct": 3.0,
+        "max_positions": 5,
+        "stop_loss_pct": 10.0,
+    },
+    {
+        "id": "short_stage3_distribution",
+        "name": "Stage 3 Distribution Short (Bear)",
+        "description": (
+            "Short distribution-phase names in R4/R5: Stage 3A/3B with "
+            "negative RS and declining SMA150."
+        ),
+        "strategy_type": "short",
+        "default_config": {
+            "entry_rules": {
+                "logic": "and",
+                "conditions": [
+                    {"field": "stage_label", "operator": "in", "value": ["3A", "3B"]},
+                    {"field": "regime_state", "operator": "in", "value": ["R4", "R5"]},
+                    {"field": "rs_mansfield_pct", "operator": "lt", "value": 0},
+                    {"field": "sma150_slope", "operator": "lt", "value": 0},
+                ],
+                "groups": [],
+            },
+            "exit_rules": {
+                "logic": "or",
+                "conditions": [
+                    {"field": "stage_label", "operator": "in", "value": ["1B", "2A", "2B"]},
+                    {"field": "regime_state", "operator": "in", "value": ["R1", "R2"]},
+                ],
+                "groups": [],
+            },
+        },
+        "position_size_pct": 2.5,
+        "max_positions": 6,
+        "stop_loss_pct": 9.0,
+    },
+    {
+        "id": "short_r5_liquidation",
+        "name": "R5 Liquidation Short (4C)",
+        "description": (
+            "Aggressive short on late Stage 4C in the weakest regime (R5) "
+            "with deeply negative RS. Tighter risk; cover on regime or stage lift."
+        ),
+        "strategy_type": "short",
+        "default_config": {
+            "entry_rules": {
+                "logic": "and",
+                "conditions": [
+                    {"field": "stage_label", "operator": "eq", "value": "4C"},
+                    {"field": "regime_state", "operator": "eq", "value": "R5"},
+                    {"field": "rs_mansfield_pct", "operator": "lt", "value": -5.0},
+                ],
+                "groups": [],
+            },
+            "exit_rules": {
+                "logic": "or",
+                "conditions": [
+                    {"field": "stage_label", "operator": "not_in", "value": ["4B", "4C"]},
+                    {"field": "regime_state", "operator": "in", "value": ["R1", "R2", "R3"]},
+                    {"field": "rs_mansfield_pct", "operator": "gt", "value": 0},
+                ],
+                "groups": [],
+            },
+        },
+        "position_size_pct": 2.0,
+        "max_positions": 4,
+        "stop_loss_pct": 12.0,
+    },
     # ── Sector / ETF Templates ────────────────────────────────────
     {
         "id": "v4_sector_rotation",
@@ -289,7 +385,7 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
         "name": "V4 TD Sequential Counter-Trend",
         "description": (
             "Counter-trend entries on TD buy completion: RSI < 40, "
-            "not in Stage 4 decline. Quick exit on recovery."
+            "not in Stage 4 decline. Long entries only in R1-R3."
         ),
         "strategy_type": "mean_reversion",
         "default_config": {
@@ -299,7 +395,7 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
                     {"field": "td_buy_complete", "operator": "eq", "value": True},
                     {"field": "rsi_14", "operator": "lt", "value": 40},
                     {"field": "stage_label", "operator": "not_in", "value": ["4A", "4B", "4C"]},
-                    {"field": "regime_state", "operator": "not_in", "value": ["R5"]},
+                    {"field": "regime_state", "operator": "in", "value": ["R1", "R2", "R3"]},
                 ],
                 "groups": [],
             },
@@ -316,6 +412,76 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
         "max_positions": 15,
         "stop_loss_pct": 3.0,
         "max_holding_days": 5,
+    },
+    # ── TTM Squeeze ───────────────────────────────────────────────
+    {
+        "id": "v4_ttm_squeeze_stage2_long",
+        "name": "V4 TTM Squeeze Stage 2 Long",
+        "description": (
+            "Enter when volatility squeeze is on (Bollinger inside Keltner) in Stage 2, "
+            "positive TTM momentum, RS and SMA150 constructive. R1-R3 only."
+        ),
+        "strategy_type": "breakout",
+        "default_config": {
+            "entry_rules": {
+                "logic": "and",
+                "conditions": [
+                    {"field": "ttm_squeeze_on", "operator": "eq", "value": True},
+                    {"field": "stage_label", "operator": "in", "value": ["2A", "2B", "2C"]},
+                    {"field": "regime_state", "operator": "in", "value": ["R1", "R2", "R3"]},
+                    {"field": "ttm_momentum", "operator": "gt", "value": 0},
+                    {"field": "rs_mansfield_pct", "operator": "gt", "value": 0},
+                    {"field": "sma150_slope", "operator": "gt", "value": 0},
+                ],
+                "groups": [],
+            },
+            "exit_rules": {
+                "logic": "or",
+                "conditions": [
+                    {"field": "ttm_momentum", "operator": "lt", "value": 0},
+                    {"field": "stage_label", "operator": "starts_with", "value": "3"},
+                    {"field": "regime_state", "operator": "in", "value": ["R4", "R5"]},
+                ],
+                "groups": [],
+            },
+        },
+        "position_size_pct": 4.0,
+        "max_positions": 12,
+        "stop_loss_pct": 8.0,
+    },
+    {
+        "id": "v4_ttm_squeeze_oversold_long",
+        "name": "V4 TTM Squeeze Oversold Long",
+        "description": (
+            "Squeeze compression with RSI washed out, not in Stage 4, "
+            "favorable regimes R1-R3. Exit on momentum flip or squeeze release."
+        ),
+        "strategy_type": "mean_reversion",
+        "default_config": {
+            "entry_rules": {
+                "logic": "and",
+                "conditions": [
+                    {"field": "ttm_squeeze_on", "operator": "eq", "value": True},
+                    {"field": "rsi_14", "operator": "lt", "value": 35},
+                    {"field": "stage_label", "operator": "not_in", "value": ["4A", "4B", "4C"]},
+                    {"field": "regime_state", "operator": "in", "value": ["R1", "R2", "R3"]},
+                ],
+                "groups": [],
+            },
+            "exit_rules": {
+                "logic": "or",
+                "conditions": [
+                    {"field": "rsi_14", "operator": "gt", "value": 55},
+                    {"field": "ttm_squeeze_on", "operator": "eq", "value": False},
+                    {"field": "regime_state", "operator": "in", "value": ["R4", "R5"]},
+                ],
+                "groups": [],
+            },
+        },
+        "position_size_pct": 3.0,
+        "max_positions": 10,
+        "stop_loss_pct": 6.0,
+        "max_holding_days": 15,
     },
 ]
 

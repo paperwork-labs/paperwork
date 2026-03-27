@@ -46,6 +46,7 @@ from backend.tasks.market.maintenance import (
     recover_jobs_impl,
 )
 from backend.tasks.market.regime import compute_daily, vix_alert
+from backend.tasks.market.regime_alerts import check_regime_alerts
 
 __all__ = [
     "STALE_JOB_RUN_MINUTES",
@@ -66,6 +67,7 @@ __all__ = [
     "symbols",
     "daily_bootstrap",
     "stage_changes",
+    "check_regime_alerts",
     "compute_daily",
     "compute_rank",
     "enrich_index",

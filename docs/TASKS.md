@@ -92,16 +92,16 @@ Current execution plan organized by phase. One task per PR where possible.
 | 4.5.7 | Retire market_data_tasks.py | DONE | Market tasks live in `backend/tasks/market/`; Celery paths are `backend.tasks.market.<module>.<function>` (see `job_catalog.py`) |
 | 4.5.8 | Agent inline tools + hardening | DONE | INLINE_ONLY_AGENT_TOOLS for read_file/list_files, path traversal protection, RegimeBanner fix |
 
-## Phase 5: Quant Platform Core [PLANNED]
+## Phase 5: Quant Platform Core [IN PROGRESS]
 
 | ID | Task | Status | Acceptance Criteria |
 |----|------|--------|---------------------|
-| 5.1 | Strategy templates update | PLANNED | Regime-aware entries, short templates, extended stage fields in rule_evaluator.py |
-| 5.2 | TTM Squeeze indicator | PLANNED | Bollinger + Keltner squeeze detection in indicator_engine.py |
+| 5.1 | Strategy templates update | DONE | Regime-aware entries (R1-R3 for longs), 3 short templates, 2 TTM squeeze templates in templates.py |
+| 5.2 | TTM Squeeze indicator | DONE | Bollinger + Keltner squeeze detection in indicator_engine.py, ttm_squeeze_on/ttm_momentum columns |
 | 5.3 | Multi-timeframe confirmation | PLANNED | Add 4H + Daily timeframe support to stage classification |
-| 5.4 | Trailing stop optimization | PLANNED | Adaptive trailing stop logic in exit_cascade, ATR-based with regime adjustment |
-| 5.5 | Position reconciliation service | PLANNED | Broker position vs internal state reconciliation with discrepancy alerts |
-| 5.6 | Drawdown alerts + PortfolioHistory | PLANNED | Track daily portfolio equity, alert on drawdown thresholds |
+| 5.4 | Trailing stop optimization | DONE | Adaptive trailing stop logic in exit_cascade._tier2_trailing_stop, ATR-based with regime adjustment |
+| 5.5 | Position reconciliation service | DONE | ReconciliationService in backend/services/portfolio/reconciliation.py with discrepancy detection |
+| 5.6 | Drawdown alerts + PortfolioHistory | DONE | PortfolioHistory model, DrawdownService in backend/services/portfolio/drawdown.py |
 | 5.7 | Execution analytics | PLANNED | Fill quality, slippage tracking, broker comparison metrics |
 | 5.8 | Real-time regime monitoring | PLANNED | Intraday VIX spike detection, regime shift alerts |
 
@@ -114,19 +114,19 @@ Current execution plan organized by phase. One task per PR where possible.
 | 5.5.3 | Action queue panel | PLANNED | Pending/completed actions sidebar with approve/reject |
 | 5.5.4 | Session history | PLANNED | List past sessions, resume or review old conversations |
 
-## Phase 6: Pipeline [PLANNED]
+## Phase 6: Pipeline [DONE]
 
 | ID | Task | Status | Acceptance Criteria |
 |----|------|--------|---------------------|
-| 6.1 | Nightly pipeline (full sequence) | PLANNED | 10-step sequence per spec Section 14.1 |
-| 6.2 | New data feeds | PLANNED | VIX/VIX3M/VVIX, NH-NL, breadth (%above200D, %above50D) |
+| 6.1 | Nightly pipeline (full sequence) | DONE | PipelineOrchestrator in backend/tasks/pipeline/orchestrator.py with 10-step sequence, per-step tracking |
+| 6.2 | New data feeds | DONE | VIX/VIX3M/VVIX, NH-NL, breadth in backend/services/market/regime_inputs.py |
 
 ## Phase 7: Education & Content [PLANNED]
 
 | ID | Task | Status | Acceptance Criteria |
 |----|------|--------|---------------------|
-| 7.1 | Education page rewrite | PLANNED | Stage Analysis content: 10 sub-stages, regime engine, scan overlay, exit cascade |
-| 7.2 | Interactive stage examples | PLANNED | Live chart examples for each stage with annotations |
+| 7.1 | Education page rewrite | PLANNED | Stage Analysis content in /market/education: 10 sub-stages, regime engine, scan overlay, exit cascade |
+| 7.2 | Interactive stage examples | PLANNED | StageChartExample + InteractiveStageExplorer components with stage color coding |
 
 ---
 

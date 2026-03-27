@@ -61,6 +61,16 @@ CATALOG: List[JobTemplate] = [
         default_tz="UTC",
         kwargs={"history_days": 20, "history_batch_size": 25},
     ),
+    JobTemplate(
+        id="check_regime_alerts",
+        display_name="Regime Alert Monitor",
+        group="market_data",
+        task="backend.tasks.market.regime_alerts.check_regime_alerts",
+        description="VIX spike and regime-shift checks using latest MarketRegime row; schedule every 5 min during RTH",
+        default_cron="*/5 9-16 * * 1-5",
+        default_tz="America/New_York",
+        timeout_s=60,
+    ),
     # ── Orders ─────────────────────────────────────────────────────
     JobTemplate(
         id="monitor-open-orders",

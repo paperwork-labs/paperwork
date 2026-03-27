@@ -17,20 +17,20 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
-interface Capability {
+export interface Capability {
   name: string
   description: string
   risk: "safe" | "moderate"
 }
 
-interface CapabilityGroup {
+export interface CapabilityGroup {
   title: string
   icon: React.ElementType
   description: string
   capabilities: Capability[]
 }
 
-const CAPABILITY_GROUPS: CapabilityGroup[] = [
+export const CAPABILITY_GROUPS: CapabilityGroup[] = [
   {
     title: "Market Insights",
     icon: TrendingUp,

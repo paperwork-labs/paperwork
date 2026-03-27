@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Bell, Cpu, Layers, Sliders, User, Shield, Activity } from 'lucide-react';
+import { Bell, Cpu, Sliders, User, Shield, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -82,9 +82,6 @@ const SettingsShell: React.FC = () => {
                   <MenuLink to="/settings/admin/system">System Status</MenuLink>
                   <MenuLink to="/settings/admin/users">Users</MenuLink>
                   <MenuLink to="/settings/admin/agent">Agent</MenuLink>
-                  <MenuLink to="/settings/admin/agent/capabilities">
-                    Agent capabilities
-                  </MenuLink>
                 </>
               )}
             </div>
@@ -100,11 +97,6 @@ const SettingsShell: React.FC = () => {
                 {iconNav('/settings/admin/system', 'System Status', <Activity className="size-4" />)}
                 {iconNav('/settings/admin/users', 'Users', <User className="size-4" />)}
                 {iconNav('/settings/admin/agent', 'Agent', <Cpu className="size-4" />)}
-                {iconNav(
-                  '/settings/admin/agent/capabilities',
-                  'Agent capabilities',
-                  <Layers className="size-4" />,
-                )}
               </>
             ) : null}
           </nav>

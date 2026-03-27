@@ -593,6 +593,8 @@ const MarketTracked: React.FC = () => {
     setEtfOnly(etfOnlyDeepLink);
   }, [etfOnlyDeepLink]);
 
+  const [compact, setCompact] = React.useState(false);
+
   const tableRows = React.useMemo(() => {
     let d = rows;
     if (etfOnly) {
@@ -607,7 +609,7 @@ const MarketTracked: React.FC = () => {
   return (
     <ChartContext.Provider value={openChart}>
       <PortfolioSymbolsContext.Provider value={portfolioSymbols}>
-        <Page>
+        <Page fullWidth>
           <PageHeader
             title="Market Tracked"
             subtitle="Tracked symbols with technical indicators. Use presets or custom filters to find setups."
@@ -657,12 +659,26 @@ const MarketTracked: React.FC = () => {
               columns={columns}
               defaultSortBy="symbol"
               defaultSortOrder="asc"
+              size={compact ? 'sm' : 'md'}
+              rowClassName={compact ? 'py-1 text-xs' : 'py-2 text-sm'}
               maxHeight="70vh"
               filtersEnabled
               filterPresets={filterPresets}
               initialFilters={deepLinkFilters}
               initialFiltersOpen={!etfOnlyDeepLink}
               emptyMessage={loading ? 'Loading…' : 'No tracked symbols yet.'}
+              endToolbar={
+                <Button
+                  type="button"
+                  size="xs"
+                  variant={compact ? 'default' : 'outline'}
+                  aria-pressed={compact}
+                  aria-label={compact ? 'Switch to comfortable table density' : 'Switch to compact table density'}
+                  onClick={() => setCompact((v) => !v)}
+                >
+                  Compact
+                </Button>
+              }
             />
           </div>
         </Page>

@@ -30,6 +30,7 @@ const SettingsNotifications = React.lazy(() => import('./pages/SettingsNotificat
 const PortfolioWorkspace = React.lazy(() => import('./pages/PortfolioWorkspace'));
 const Login = React.lazy(() => import('./pages/Login'));
 const Register = React.lazy(() => import('./pages/Register'));
+const Onboarding = React.lazy(() => import('./pages/Onboarding'));
 const AuthCallback = React.lazy(() => import('./pages/AuthCallback'));
 const SystemStatus = React.lazy(() => import('./pages/SystemStatus'));
 const MarketDashboard = React.lazy(() => import('./pages/MarketDashboard'));
@@ -39,7 +40,6 @@ const MarketIntelligence = React.lazy(() => import('./pages/MarketIntelligence')
 const Invite = React.lazy(() => import('./pages/Invite'));
 const SettingsUsers = React.lazy(() => import('./pages/SettingsUsers'));
 const AdminAgent = React.lazy(() => import('./pages/AdminAgent'));
-const AdminAgentCapabilities = React.lazy(() => import('./pages/AdminAgentCapabilities'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -73,6 +73,7 @@ function App() {
               <Router>
                 <Suspense fallback={<RouteFallback />}>
                   <Routes>
+                      <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
                       <Route path="/" element={<RequireAuth><DashboardLayout /></RequireAuth>}>
                         {/* Market */}
                         <Route index element={<MarketDashboard />} />
@@ -108,11 +109,15 @@ function App() {
                           <Route path="market/strategies/:strategyId" element={<StrategyDetail />} />
                         </Route>
 
-                        {/* Admin agent (top-level alias; also available under /settings/admin/*) */}
-                        <Route element={<RequireAdmin />}>
-                          <Route path="admin/agent" element={<AdminAgent />} />
-                          <Route path="admin/agent/capabilities" element={<AdminAgentCapabilities />} />
-                        </Route>
+                        {/* Legacy /admin/agent → canonical /settings/admin/agent */}
+                        <Route
+                          path="admin/agent"
+                          element={<Navigate to="/settings/admin/agent" replace />}
+                        />
+                        <Route
+                          path="admin/agent/capabilities"
+                          element={<Navigate to="/settings/admin/agent" replace />}
+                        />
 
                         {/* Settings */}
                         <Route path="settings" element={<SettingsShell />}>
@@ -127,7 +132,7 @@ function App() {
                             <Route path="admin/agent" element={<AdminAgent />} />
                             <Route
                               path="admin/agent/capabilities"
-                              element={<AdminAgentCapabilities />}
+                              element={<Navigate to="/settings/admin/agent" replace />}
                             />
                           </Route>
                         </Route>

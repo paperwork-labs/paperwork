@@ -1,9 +1,10 @@
 import * as React from "react"
 import axios from "axios"
 import { useQueryClient } from "@tanstack/react-query"
-import { RefreshCw } from "lucide-react"
+import { ChevronRight, Info, RefreshCw, X } from "lucide-react"
 
 import api from "@/services/api"
+import { CAPABILITY_GROUPS } from "./AdminAgentCapabilities"
 
 import {
   AgentChatPanel,
@@ -15,7 +16,13 @@ import {
   type HealthSignal,
 } from "@/components/agent"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import { Skeleton } from "@/components/ui/skeleton"
 import StatCard from "@/components/admin/StatCard"
 import {
@@ -99,6 +106,115 @@ function normalizeRunAction(raw: Record<string, unknown>): AgentAction {
   }
 }
 
+interface CapabilitiesSidebarProps {
+  onClose: () => void
+}
+
+const CapabilitiesSidebar: React.FC<CapabilitiesSidebarProps> = ({ onClose }) => {
+  const [openGroups, setOpenGroups] = React.useState<Set<string>>(new Set())
+
+  const toggleGroup = (title: string) => {
+    setOpenGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(title)) {
+        next.delete(title)
+      } else {
+        next.add(title)
+      }
+      return next
+    })
+  }
+
+  const totalCapabilities = CAPABILITY_GROUPS.reduce(
+    (sum, g) => sum + g.capabilities.length,
+    0
+  )
+
+  return (
+    <div className="flex h-full w-72 flex-col border-l border-border bg-card">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">Capabilities</h3>
+          <p className="text-xs text-muted-foreground">
+            {totalCapabilities} tools available
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7"
+          onClick={onClose}
+          aria-label="Close capabilities panel"
+        >
+          <X className="size-4" />
+        </Button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="p-2">
+          {CAPABILITY_GROUPS.map((group) => {
+            const Icon = group.icon
+            const isOpen = openGroups.has(group.title)
+            return (
+              <Collapsible
+                key={group.title}
+                open={isOpen}
+                onOpenChange={() => toggleGroup(group.title)}
+              >
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left transition-colors hover:bg-muted/50"
+                  >
+                    <ChevronRight
+                      className={`size-4 shrink-0 text-muted-foreground transition-transform ${
+                        isOpen ? "rotate-90" : ""
+                      }`}
+                    />
+                    <Icon className="size-4 shrink-0 text-primary" />
+                    <span className="flex-1 text-sm font-medium text-foreground">
+                      {group.title}
+                    </span>
+                    <Badge variant="secondary" className="text-[10px]">
+                      {group.capabilities.length}
+                    </Badge>
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <ul className="ml-6 space-y-1 pb-2 pl-2">
+                    {group.capabilities.map((cap) => (
+                      <li
+                        key={cap.name}
+                        className="rounded-md px-2 py-1.5 text-xs"
+                      >
+                        <div className="flex items-start gap-1.5">
+                          <Badge
+                            variant={cap.risk === "safe" ? "secondary" : "outline"}
+                            className="mt-0.5 shrink-0 text-[9px] capitalize"
+                          >
+                            {cap.risk}
+                          </Badge>
+                          <div className="min-w-0">
+                            <code className="text-[11px] font-medium text-primary">
+                              {cap.name}
+                            </code>
+                            <p className="text-[11px] leading-tight text-muted-foreground">
+                              {cap.description}
+                            </p>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </CollapsibleContent>
+              </Collapsible>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const AdminAgent: React.FC = () => {
   const queryClient = useQueryClient()
   const { health } = useAdminHealth()
@@ -119,6 +235,7 @@ const AdminAgent: React.FC = () => {
   >(null)
   const [settingsError, setSettingsError] = React.useState<string | null>(null)
   const [approveError, setApproveError] = React.useState<string | null>(null)
+  const [showCapabilities, setShowCapabilities] = React.useState(false)
 
   const healthData = React.useMemo(
     () => adminHealthToAgentHealth(health),
@@ -305,24 +422,36 @@ const AdminAgent: React.FC = () => {
             remediation.
           </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="shrink-0"
-          onClick={() => {
-            void handleRefresh()
-          }}
-          disabled={refreshing}
-          aria-busy={refreshing}
-          aria-label="Reload agent data and health"
-        >
-          <RefreshCw
-            className={`mr-2 size-4 ${refreshing ? "animate-spin" : ""}`}
-            aria-hidden
-          />
-          Reload
-        </Button>
+        <div className="flex shrink-0 gap-2">
+          <Button
+            type="button"
+            variant={showCapabilities ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => setShowCapabilities(!showCapabilities)}
+            aria-pressed={showCapabilities}
+            aria-label="Toggle capabilities panel"
+          >
+            <Info className="mr-2 size-4" aria-hidden />
+            Capabilities
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              void handleRefresh()
+            }}
+            disabled={refreshing}
+            aria-busy={refreshing}
+            aria-label="Reload agent data and health"
+          >
+            <RefreshCw
+              className={`mr-2 size-4 ${refreshing ? "animate-spin" : ""}`}
+              aria-hidden
+            />
+            Reload
+          </Button>
+        </div>
       </header>
 
       {(settingsQuery.isError ||
@@ -477,6 +606,9 @@ const AdminAgent: React.FC = () => {
             approvingActionId={approvingActionId}
           />
         </section>
+        {showCapabilities && (
+          <CapabilitiesSidebar onClose={() => setShowCapabilities(false)} />
+        )}
       </div>
     </div>
   )

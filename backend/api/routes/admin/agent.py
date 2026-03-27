@@ -449,7 +449,28 @@ async def agent_chat(
     
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
-    
+
+    # New chat (no client session) or brain ended on a different session id: persist
+    # a row so /agent/sessions and the session sidebar include this conversation.
+    if not request.session_id or brain.session_id != request.session_id:
+        try:
+            now = datetime.utcnow()
+            session_action = AgentAction(
+                action_type="session_start",
+                action_name="Chat session started",
+                payload=None,
+                risk_level="safe",
+                status="completed",
+                context_summary="Chat session started",
+                session_id=brain.session_id,
+                completed_at=now,
+            )
+            db.add(session_action)
+            db.commit()
+        except Exception as e:
+            logger.warning("Failed to create session action: %s", e)
+            db.rollback()
+
     return ChatResponse(
         session_id=result["session_id"],
         response=result.get("response", ""),
