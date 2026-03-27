@@ -42,7 +42,11 @@ def _run_migrations() -> None:
         if result.returncode == 0:
             logger.info("Alembic migrations applied successfully")
         else:
-            logger.error("Alembic migration failed (exit code %s): %s", result.returncode, result.stderr[:500])
+            logger.error(
+                "Alembic migration failed (exit code %s): %s",
+                result.returncode,
+                result.stderr[:500],
+            )
             raise RuntimeError(f"Alembic migration failed with exit code {result.returncode}")
     except Exception:
         logger.error("Could not run Alembic migrations", exc_info=True)

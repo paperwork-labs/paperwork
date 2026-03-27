@@ -27,6 +27,8 @@ async def trigger_seed_ingestion(
     db: AsyncSession = Depends(get_db),
     _auth: None = Depends(_require_admin),
 ):
-    repo_root = os.environ.get("REPO_ROOT", os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+    repo_root = os.environ.get(
+        "REPO_ROOT", os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    )
     count = await ingest_docs(db, repo_root)
     return success_response({"episodes_created": count})

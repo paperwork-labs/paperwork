@@ -1,12 +1,13 @@
 """P11.3: Memory system — store and retrieve episodes with hybrid search.
 
-Phase 1 implementation:
-- Full-text search (Postgres tsvector) for relevance
-- Recency bias via timestamp-based ordering
-- D15: Memory fatigue — recently-recalled episodes penalized 0.5x via Redis (24h TTL)
-- D11: PII scrubbing on all stored text
+D5: Hybrid retrieval with RRF fusion:
+- Vector similarity (pgvector, weight 0.40)
+- Full-text search (Postgres tsvector, weight 0.35)
+- Entity graph traversal (weight 0.15) — Phase 2
+- Recency bias (weight 0.10)
 
-Vector similarity (pgvector) and full RRF-based ranking will be added in Phase 2.
+D11: PII scrubbing on all stored text
+D15: Memory fatigue — recently-recalled episodes penalized 0.5x via Redis (24h TTL)
 """
 
 import logging
@@ -15,11 +16,17 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.episode import Episode
+from app.services.embeddings import embed_text
 from app.services.pii import scrub_pii
 
 logger = logging.getLogger(__name__)
 
 RRF_K = 60
+
+VECTOR_WEIGHT = 0.40
+FTS_WEIGHT = 0.35
+RECENCY_WEIGHT = 0.10
+ENTITY_WEIGHT = 0.15  # Reserved for Phase 2
 
 
 async def store_episode(
@@ -39,9 +46,17 @@ async def store_episode(
     tokens_in: int | None = None,
     tokens_out: int | None = None,
     metadata: dict | None = None,
+    skip_embedding: bool = False,
 ) -> Episode:
     scrubbed_summary = scrub_pii(summary)
     scrubbed_context = scrub_pii(full_context) if full_context else None
+
+    embedding: list[float] | None = None
+    if not skip_embedding:
+        embed_text_input = scrubbed_summary
+        if scrubbed_context:
+            embed_text_input = f"{scrubbed_summary}\n\n{scrubbed_context[:2000]}"
+        embedding = await embed_text(embed_text_input)
 
     episode = Episode(
         organization_id=organization_id,
@@ -58,10 +73,17 @@ async def store_episode(
         tokens_in=tokens_in,
         tokens_out=tokens_out,
         metadata_=metadata or {},
+        embedding=embedding,
     )
     db.add(episode)
     await db.flush()
-    logger.info("Stored episode %s (org=%s, source=%s)", episode.id, organization_id, source)
+    logger.info(
+        "Stored episode %s (org=%s, source=%s, has_embedding=%s)",
+        episode.id,
+        organization_id,
+        source,
+        embedding is not None,
+    )
     return episode
 
 
@@ -73,10 +95,53 @@ async def search_episodes(
     limit: int = 10,
     fatigue_ids: set[int] | None = None,
 ) -> list[Episode]:
-    """Hybrid search: full-text + recency, ranked by RRF.
-    Vector search requires embeddings (Phase 2). For P1, FTS + recency."""
+    """D5: Hybrid search with RRF fusion.
 
+    Combines:
+    - Vector similarity (pgvector cosine distance)
+    - Full-text search (Postgres tsvector)
+    - Recency bias
+
+    Entity graph traversal (D5 4th path) deferred to Phase 2.
+    """
     fatigue_ids = fatigue_ids or set()
+    candidate_limit = limit * 3
+
+    scores: dict[int, dict[str, float]] = {}
+
+    query_embedding = await embed_text(query)
+    if query_embedding:
+        vector_query = text("""
+            SELECT id,
+                   1 - (embedding <=> :embedding::vector) AS similarity,
+                   EXTRACT(EPOCH FROM (NOW() - created_at)) / 86400.0 AS age_days
+            FROM agent_episodes
+            WHERE organization_id = :org_id
+              AND embedding IS NOT NULL
+            ORDER BY embedding <=> :embedding::vector
+            LIMIT :limit_val
+        """)
+        result = await db.execute(
+            vector_query,
+            {
+                "embedding": str(query_embedding),
+                "org_id": organization_id,
+                "limit_val": candidate_limit,
+            },
+        )
+        for rank, row in enumerate(result.fetchall()):
+            episode_id = int(row[0])
+            similarity = float(row[1] or 0.0)
+            age_days = float(row[2] or 0.0)
+            if episode_id not in scores:
+                scores[episode_id] = {
+                    "vector": 0.0,
+                    "fts": 0.0,
+                    "recency": 0.0,
+                    "age_days": age_days,
+                }
+            scores[episode_id]["vector"] = 1.0 / (RRF_K + rank + 1)
+            scores[episode_id]["vector_sim"] = similarity
 
     fts_query = text("""
         SELECT id,
@@ -88,23 +153,29 @@ async def search_episodes(
         ORDER BY fts_score DESC
         LIMIT :limit_val
     """)
-
     result = await db.execute(
         fts_query,
-        {"query": query, "org_id": organization_id, "limit_val": limit * 3},
+        {"query": query, "org_id": organization_id, "limit_val": candidate_limit},
     )
-    rows = result.fetchall()
-
-    scored: list[tuple[int, float]] = []
-    for rank, row in enumerate(rows):
-        episode_id = row[0]
+    for rank, row in enumerate(result.fetchall()):
+        episode_id = int(row[0])
         fts_score = float(row[1] or 0.0)
         age_days = float(row[2] or 0.0)
+        if episode_id not in scores:
+            scores[episode_id] = {"vector": 0.0, "fts": 0.0, "recency": 0.0, "age_days": age_days}
+        scores[episode_id]["fts"] = 1.0 / (RRF_K + rank + 1)
+        scores[episode_id]["fts_raw"] = fts_score
 
-        fts_component = 0.35 * fts_score
-        position_component = 0.15 * (1.0 / (RRF_K + rank + 1))
-        recency_component = 0.25 * (1.0 / (1.0 + age_days * 0.1))
-        combined = fts_component + position_component + recency_component
+    scored: list[tuple[int, float]] = []
+    for episode_id, components in scores.items():
+        age_days = components.get("age_days", 0.0)
+        recency_score = 1.0 / (1.0 + age_days * 0.1)
+
+        combined = (
+            VECTOR_WEIGHT * components["vector"]
+            + FTS_WEIGHT * components["fts"]
+            + RECENCY_WEIGHT * recency_score
+        )
 
         if episode_id in fatigue_ids:
             combined *= 0.5

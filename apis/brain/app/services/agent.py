@@ -27,7 +27,7 @@ from app.services.pii import scrub_pii
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT_TEMPLATE = """You are the Brain for {org_name} — an intelligent assistant with memory.
+SYSTEM_PROMPT_TEMPLATE = """You are the Brain for {org_name} — an intelligent assistant.
 You are operating as the {persona} persona.
 
 ## Your Memory (retrieved context)
@@ -60,7 +60,13 @@ async def process(
     is_duplicate = await idempotency.check_and_set(redis_client, request_id, organization_id)
     if is_duplicate:
         logger.info("Duplicate request %s, skipping", request_id)
-        return {"response": "[Duplicate request — already processed]", "persona": "system", "model": "none", "tokens_in": 0, "tokens_out": 0}
+        return {
+            "response": "[Duplicate request — already processed]",
+            "persona": "system",
+            "model": "none",
+            "tokens_in": 0,
+            "tokens_out": 0,
+        }
 
     persona = route_persona(message, channel_id=channel_id)
     logger.info("Routed to persona=%s (org=%s, user=%s)", persona, organization_id, user_id)
@@ -78,8 +84,7 @@ async def process(
         recalled_ids = [e.id for e in episodes]
         await memory.mark_recalled(redis_client, organization_id, recalled_ids)
         memory_context = "\n\n".join(
-            f"[{e.source} | {e.created_at.strftime('%Y-%m-%d')}] {e.summary}"
-            for e in episodes
+            f"[{e.source} | {e.created_at.strftime('%Y-%m-%d')}] {e.summary}" for e in episodes
         )
     else:
         memory_context = "(No relevant memories found yet.)"
@@ -104,7 +109,10 @@ async def process(
         db,
         organization_id=organization_id,
         source=f"brain:{channel or 'api'}",
-        summary=f"User: {scrub_pii(message[:200])}\nBrain ({persona}): {scrub_pii(result['content'][:200])}",
+        summary=(
+            f"User: {scrub_pii(message[:200])}\n"
+            f"Brain ({persona}): {scrub_pii(result['content'][:200])}"
+        ),
         full_context=scrub_pii(f"User: {message}\nBrain: {result['content']}"),
         user_id=user_id,
         channel=channel,
