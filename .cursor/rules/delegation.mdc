@@ -1,0 +1,81 @@
+---
+description: When to delegate work to fast/cheap subagents
+alwaysApply: true
+---
+
+# Smart Delegation
+
+Delegate to `Task` with `model: "fast"` and appropriate `subagent_type` for:
+
+## Shell Subagent (`subagent_type: "shell"`)
+- API calls (curl, gh, render CLI)
+- Running tests (`make test`, `pnpm test`, `pytest`)
+- Git operations (status, log, diff, branch listing)
+- Environment checks and verification
+- Any command that just needs output parsing
+- Docker/container operations
+
+## Explore Subagent (`subagent_type: "explore"`)
+- Finding files by pattern across 5+ directories
+- Searching for symbols/patterns in unfamiliar code
+- Answering "where is X?" or "how does Y work?" questions
+- Initial codebase exploration before making changes
+- Thoroughness levels: "quick" (basic search), "medium" (moderate exploration), "very thorough" (comprehensive analysis)
+
+## GeneralPurpose Subagent (`subagent_type: "generalPurpose"`)
+- Multi-step tasks that need both search and edits
+- Researching complex questions across many files
+- Tasks where you're not confident in the quick answer
+
+## Keep in Opus (don't delegate)
+- Tax calculations and compliance logic (financial accuracy is critical)
+- Security-sensitive code (auth, credentials, encryption, PII/SSN handling)
+- Architecture decisions and trade-offs
+- Brain API reasoning, memory logic, and persona routing
+- State Filing Engine portal automation scripts
+- Code review of subagent output for correctness
+- Complex multi-step reasoning requiring cross-file context
+- Anything where a mistake is costly or compliance-related
+
+## Parallel Execution
+
+When multiple independent tasks are needed, launch them in a **single message** with multiple Task tool calls:
+
+```
+# Good: Single message, parallel execution
+Task 1 (shell): git status && git diff
+Task 2 (shell): pnpm run type-check
+Task 3 (explore): Find all uses of TaxCalculator
+
+# Bad: Sequential messages
+Message 1: Task (shell): git status
+[wait]
+Message 2: Task (shell): pnpm run type-check
+[wait]
+```
+
+## Commit + PR Pattern
+
+Delegate the entire git workflow to a single shell subagent:
+
+```
+Task(shell): 
+1. git add -A
+2. git commit -m "message"  
+3. git push -u origin branch
+4. gh pr create --title "..." --body "..."
+5. gh pr edit <number> --add-reviewer @copilot
+Report PR URL.
+```
+
+## Quality Gate
+
+Never delegate to save tokens if it compromises correctness. Fast models make mistakes on nuanced logic. When in doubt, do it yourself. Always review subagent output before applying changes.
+
+## Token Efficiency Principle
+
+Before any tool call, ask:
+- Can a fast model do this without quality loss?
+- Can I batch this with other independent operations?
+
+If yes, delegate. This rule complements `token-management.mdc` which covers the broader orchestration strategy.
