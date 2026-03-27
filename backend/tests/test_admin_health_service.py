@@ -50,6 +50,7 @@ def test_all_green():
     svc._build_jobs_dimension = MagicMock(return_value={"status": "green"})
     svc._build_audit_dimension = MagicMock(return_value={"status": "green"})
     svc._build_regime_dimension = MagicMock(return_value={"status": "green"})
+    svc._build_fundamentals_dimension = MagicMock(return_value={"status": "ok"})
     svc._build_task_runs = MagicMock(return_value={})
 
     result = svc.get_composite_health(MagicMock())
@@ -66,6 +67,7 @@ def test_single_failure_is_yellow():
     svc._build_jobs_dimension = MagicMock(return_value={"status": "red"})
     svc._build_audit_dimension = MagicMock(return_value={"status": "green"})
     svc._build_regime_dimension = MagicMock(return_value={"status": "green"})
+    svc._build_fundamentals_dimension = MagicMock(return_value={"status": "ok"})
     svc._build_task_runs = MagicMock(return_value={})
 
     result = svc.get_composite_health(MagicMock())
@@ -80,6 +82,7 @@ def test_multiple_failures_is_red():
     svc._build_jobs_dimension = MagicMock(return_value={"status": "red"})
     svc._build_audit_dimension = MagicMock(return_value={"status": "green"})
     svc._build_regime_dimension = MagicMock(return_value={"status": "green"})
+    svc._build_fundamentals_dimension = MagicMock(return_value={"status": "ok"})
     svc._build_task_runs = MagicMock(return_value={})
 
     result = svc.get_composite_health(MagicMock())
@@ -96,6 +99,7 @@ def test_response_includes_task_runs_and_thresholds():
     svc._build_jobs_dimension = MagicMock(return_value={"status": "green"})
     svc._build_audit_dimension = MagicMock(return_value={"status": "green"})
     svc._build_regime_dimension = MagicMock(return_value={"status": "green"})
+    svc._build_fundamentals_dimension = MagicMock(return_value={"status": "ok"})
     svc._build_task_runs = MagicMock(return_value=task_data)
 
     result = svc.get_composite_health(MagicMock())
@@ -199,3 +203,67 @@ def test_task_runs_loads_from_redis():
     runs = svc._build_task_runs()
     assert runs.get("admin_coverage_refresh") is not None
     assert runs["admin_coverage_refresh"]["ts"] == "2025-01-01T00:00:00"
+
+def test_fundamentals_ok_at_pass_threshold():
+    svc = _mock_service()
+    db = MagicMock()
+    q = db.query.return_value
+    q.filter.return_value = q
+    q.scalar.return_value = 80
+
+    with patch(
+        "backend.services.market.universe.tracked_symbols_with_source",
+        return_value=(["S" + str(i) for i in range(100)], True),
+    ):
+        dim = svc._build_fundamentals_dimension(db)
+    assert dim["status"] == "ok"
+    assert dim["fundamentals_fill_pct"] == 80.0
+    assert dim["filled_count"] == 80
+    assert dim["tracked_total"] == 100
+
+
+def test_fundamentals_warning_between_warn_and_pass():
+    svc = _mock_service()
+    db = MagicMock()
+    q = db.query.return_value
+    q.filter.return_value = q
+    q.scalar.return_value = 60
+
+    with patch(
+        "backend.services.market.universe.tracked_symbols_with_source",
+        return_value=(["S" + str(i) for i in range(100)], True),
+    ):
+        dim = svc._build_fundamentals_dimension(db)
+    assert dim["status"] == "warning"
+    assert dim["fundamentals_fill_pct"] == 60.0
+
+
+def test_fundamentals_error_below_warn():
+    svc = _mock_service()
+    db = MagicMock()
+    q = db.query.return_value
+    q.filter.return_value = q
+    q.scalar.return_value = 10
+
+    with patch(
+        "backend.services.market.universe.tracked_symbols_with_source",
+        return_value=(["S" + str(i) for i in range(100)], True),
+    ):
+        dim = svc._build_fundamentals_dimension(db)
+    assert dim["status"] == "error"
+    assert dim["fundamentals_fill_pct"] == 10.0
+
+
+def test_composite_counts_fundamentals_warning_as_failure():
+    svc = _mock_service()
+    svc._build_coverage_dimension = MagicMock(return_value={"status": "green"})
+    svc._build_stage_dimension = MagicMock(return_value={"status": "green"})
+    svc._build_jobs_dimension = MagicMock(return_value={"status": "green"})
+    svc._build_audit_dimension = MagicMock(return_value={"status": "green"})
+    svc._build_regime_dimension = MagicMock(return_value={"status": "green"})
+    svc._build_fundamentals_dimension = MagicMock(return_value={"status": "warning"})
+    svc._build_task_runs = MagicMock(return_value={})
+
+    result = svc.get_composite_health(MagicMock())
+    assert result["composite_status"] == "yellow"
+    assert "fundamentals" in result["composite_reason"]

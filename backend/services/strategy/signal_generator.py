@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class SignalGenerator:
-    _V4_CONTEXT_FIELDS = (
+    _STAGE_CONTEXT_FIELDS = (
         "regime_state", "regime_multiplier", "scan_tier", "action_label",
         "stage_label", "ext_pct", "ema10_dist_n", "sma150_slope",
     )
@@ -21,9 +21,9 @@ class SignalGenerator:
         signals: List[Dict[str, Any]] = []
         for match in matches:
             ctx = match.get("context", {})
-            v4_ctx = {k: match.get(k) for k in self._V4_CONTEXT_FIELDS if match.get(k) is not None}
-            if v4_ctx:
-                ctx = {**ctx, "v4": v4_ctx}
+            stage_ctx = {k: match.get(k) for k in self._STAGE_CONTEXT_FIELDS if match.get(k) is not None}
+            if stage_ctx:
+                ctx = {**ctx, "stage_analysis": stage_ctx}
 
             signal = {
                 "strategy_id": strategy.id,
@@ -39,7 +39,7 @@ class SignalGenerator:
                 signal["action"],
                 signal["symbol"],
                 strategy.name,
-                v4_ctx.get("regime_state", "?"),
-                v4_ctx.get("scan_tier", "?"),
+                stage_ctx.get("regime_state", "?"),
+                stage_ctx.get("scan_tier", "?"),
             )
         return signals

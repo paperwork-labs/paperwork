@@ -21,6 +21,18 @@ from backend.models.broker_account import BrokerType
 logger = logging.getLogger(__name__)
 
 
+def _import_schwab_service():
+    """Lazy import for Schwab to avoid circular dependencies."""
+    from backend.services.portfolio.schwab_sync_service import SchwabSyncService
+    return SchwabSyncService()
+
+
+def _import_alpaca_service():
+    """Lazy import for Alpaca to avoid circular dependencies."""
+    from backend.services.portfolio.alpaca_sync_service import AlpacaSyncService
+    return AlpacaSyncService()
+
+
 class BrokerSyncService:
     """
     Universal broker sync service that coordinates between broker-specific services.
@@ -37,31 +49,33 @@ class BrokerSyncService:
         self._broker_services = {}
 
     def get_available_brokers(self):
-        return [BrokerType.IBKR, BrokerType.TASTYTRADE, BrokerType.SCHWAB]
+        return [BrokerType.IBKR, BrokerType.TASTYTRADE, BrokerType.SCHWAB, BrokerType.ALPACA]
 
     def _get_broker_service(self, broker_type):
         from backend.models.broker_account import BrokerType
 
-        # Support DI with enum keys
-        if isinstance(broker_type, BrokerType):
-            if broker_type in self._broker_services:
-                return self._broker_services[broker_type]
-            # Instantiate on demand using current module symbol so @patch works
-            if broker_type == BrokerType.IBKR:
-                instance = IBKRSyncService()
-            elif broker_type == BrokerType.TASTYTRADE:
-                instance = TastyTradeSyncService()
-            elif broker_type == BrokerType.SCHWAB:
-                from backend.services.portfolio.schwab_sync_service import SchwabSyncService
+        if not isinstance(broker_type, BrokerType):
+            raise ValueError(f"Unsupported broker: {broker_type}")
 
-                instance = SchwabSyncService()
-            else:
-                raise ValueError(f"Unsupported broker: {broker_type}")
-            self._broker_services[broker_type] = instance
-            return instance
+        # Return cached instance if available (enables DI in tests)
+        if broker_type in self._broker_services:
+            return self._broker_services[broker_type]
 
-        # Unsupported non-enum broker markers should raise
-        raise ValueError(f"Unsupported broker: {broker_type}")
+        # Factory registry with lazy imports to preserve @patch in tests
+        factories = {
+            BrokerType.IBKR: lambda: IBKRSyncService(),
+            BrokerType.TASTYTRADE: lambda: TastyTradeSyncService(),
+            BrokerType.SCHWAB: _import_schwab_service,
+            BrokerType.ALPACA: _import_alpaca_service,
+        }
+
+        factory = factories.get(broker_type)
+        if not factory:
+            raise ValueError(f"Unsupported broker: {broker_type}")
+
+        instance = factory()
+        self._broker_services[broker_type] = instance
+        return instance
 
     def sync_account(
         self, account_id: str, db=None, sync_type: str = "comprehensive"
@@ -97,7 +111,7 @@ class BrokerSyncService:
                 }
 
             logger.info(
-                f"🚀 Starting {sync_type} sync for {broker_account.broker} account {broker_account.account_number}"
+                f"Starting {sync_type} sync for {broker_account.broker} account {broker_account.account_number}"
             )
 
             # Route to appropriate broker service
@@ -141,7 +155,7 @@ class BrokerSyncService:
             # Let unknown broker errors propagate to tests
             raise
         except Exception as e:
-            logger.error(f"❌ Error syncing account {account_id}: {e}")
+            logger.error(f"Error syncing account {account_id}: {e}")
             # Update account status if possible
             try:
                 from backend.models.broker_account import SyncStatus
@@ -194,7 +208,7 @@ class BrokerSyncService:
                 }
 
             logger.info(
-                f"🚀 Starting {sync_type} sync for {broker_account.broker} account {broker_account.account_number}"
+                f"Starting {sync_type} sync for {broker_account.broker} account {broker_account.account_number}"
             )
 
             service = self._get_broker_service(broker_account.broker)
@@ -222,7 +236,7 @@ class BrokerSyncService:
         except ValueError:
             raise
         except Exception as e:
-            logger.error(f"❌ Error syncing account {account_id}: {e}")
+            logger.error(f"Error syncing account {account_id}: {e}")
             try:
                 from backend.models.broker_account import SyncStatus
 
@@ -272,7 +286,7 @@ class BrokerSyncService:
             return results
 
         except Exception as e:
-            logger.error(f"❌ Error syncing all enabled accounts: {e}")
+            logger.error(f"Error syncing all enabled accounts: {e}")
             return {"status": "error", "error": str(e)}
         finally:
             if db is None:

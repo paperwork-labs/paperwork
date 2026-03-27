@@ -205,20 +205,20 @@ class RiskGate:
 
         if result.shares <= 0:
             raise RiskViolation(
-                f"v4 sizing: {snap.stage_label} in {regime_state} has 0% stage cap "
+                f"Position sizing: {snap.stage_label} in {regime_state} has 0% stage cap "
                 f"— no new longs allowed"
             )
 
         if req.quantity > result.shares:
             logger.warning(
-                "v4 sizing cap: %s requested %d shares, v4 max is %d "
+                "Position sizing cap: %s requested %d shares, max is %d "
                 "(stage=%s, regime=%s, cap=%.0f%%)",
                 req.symbol, req.quantity, result.shares,
                 snap.stage_label, regime_state, result.stage_cap * 100,
             )
             return (
-                f"v4 sizing: requested {req.quantity} shares exceeds "
-                f"v4 max of {result.shares} "
+                f"Position sizing: requested {req.quantity} shares exceeds "
+                f"max of {result.shares} "
                 f"(stage {snap.stage_label}, regime {regime_state}, "
                 f"cap {result.stage_cap:.0%})"
             )

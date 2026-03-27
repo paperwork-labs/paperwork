@@ -1,7 +1,7 @@
 """
 Admin Health Service -- Strict composite health aggregation.
 
-Composes coverage, stage quality, jobs, audit, and task-run data into a
+Composes coverage, stage quality, jobs, audit, fundamentals, regime, and task-run data into a
 single response so the Admin Dashboard needs only one fetch.
 """
 
@@ -12,6 +12,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy import distinct, func
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,8 @@ HEALTH_THRESHOLDS: Dict[str, float] = {
     "jobs_lookback_hours": 24,
     "audit_daily_fill_pct_min": 95.0,
     "audit_snapshot_fill_pct_min": 90.0,
+    "fundamentals_fill_pct_pass": 80.0,
+    "fundamentals_fill_pct_warn": 50.0,
 }
 
 # Task-status keys we pull from Redis (matches legacy _task_status_keys logic).
@@ -46,11 +49,17 @@ _TASK_STATUS_KEYS: List[str] = sorted({
     "market_universe_tracked_refresh",
     "admin_backfill_since_date",
     "compute_daily_regime",
+    "market_snapshots_fundamentals_fill",
 })
 
 
 def _dim_status(ok: bool) -> str:
     return "green" if ok else "red"
+
+
+def _composite_dimension_ok(status: Optional[str]) -> bool:
+    """True if dimension passes composite aggregation (green, or fundamentals ok)."""
+    return status in ("green", "ok")
 
 
 class AdminHealthService:
@@ -70,6 +79,7 @@ class AdminHealthService:
         jobs = self._build_jobs_dimension(db)
         audit = self._build_audit_dimension()
         regime = self._build_regime_dimension(db)
+        fundamentals = self._build_fundamentals_dimension(db)
         task_runs = self._build_task_runs()
 
         dims = {
@@ -78,9 +88,10 @@ class AdminHealthService:
             "jobs": jobs,
             "audit": audit,
             "regime": regime,
+            "fundamentals": fundamentals,
         }
 
-        failures = [name for name, dim in dims.items() if dim.get("status") != "green"]
+        failures = [name for name, dim in dims.items() if not _composite_dimension_ok(dim.get("status"))]
         if not failures:
             composite_status = "green"
             composite_reason = "All health dimensions pass."
@@ -284,6 +295,57 @@ class AdminHealthService:
         except Exception as exc:
             logger.exception("audit dimension failed: %s", exc)
             return {"status": "red", "error": str(exc)}
+
+    def _build_fundamentals_dimension(self, db: Session) -> Dict[str, Any]:
+        try:
+            from backend.models.market_data import MarketSnapshot
+            from backend.services.market.universe import tracked_symbols_with_source
+
+            tracked_list, _ = tracked_symbols_with_source(
+                db, redis_client=self._svc.redis_client
+            )
+            universe = sorted({str(s).upper() for s in (tracked_list or []) if s})
+            total = len(universe)
+            if total == 0:
+                return {
+                    "status": "error",
+                    "error": "no tracked symbols",
+                    "fundamentals_fill_pct": 0.0,
+                    "tracked_total": 0,
+                    "filled_count": 0,
+                }
+
+            filled = (
+                db.query(func.count(distinct(MarketSnapshot.symbol)))
+                .filter(
+                    MarketSnapshot.analysis_type == "technical_snapshot",
+                    MarketSnapshot.symbol.in_(universe),
+                    MarketSnapshot.sector.isnot(None),
+                    MarketSnapshot.pe_ttm.isnot(None),
+                )
+                .scalar()
+            )
+            filled_n = int(filled or 0)
+            pct = (float(filled_n) / float(total)) * 100.0
+
+            pass_pct = float(HEALTH_THRESHOLDS["fundamentals_fill_pct_pass"])
+            warn_pct = float(HEALTH_THRESHOLDS["fundamentals_fill_pct_warn"])
+            if pct >= pass_pct:
+                st = "ok"
+            elif pct >= warn_pct:
+                st = "warning"
+            else:
+                st = "error"
+
+            return {
+                "status": st,
+                "fundamentals_fill_pct": round(pct, 1),
+                "tracked_total": total,
+                "filled_count": filled_n,
+            }
+        except Exception as exc:
+            logger.exception("fundamentals dimension failed: %s", exc)
+            return {"status": "error", "error": str(exc)}
 
     def _build_task_runs(self) -> Dict[str, Any]:
         out: Dict[str, Any] = {}

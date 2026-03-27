@@ -3,15 +3,61 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 from backend.tasks.celery_app import celery_app
 from backend.database import SessionLocal
 from backend.models.order import Order, OrderStatus
+from backend.models.position import Position, PositionStatus
 from backend.services.execution.order_manager import OrderManager
 
 logger = logging.getLogger(__name__)
 
 STALE_SUBMITTED_THRESHOLD = timedelta(hours=1)
+
+
+def _attribute_position_to_strategy(db, order: Order) -> Optional[int]:
+    """When a strategy-generated order fills, attribute the position to that strategy.
+    
+    Returns the position ID if attributed, None otherwise.
+    """
+    if not order.strategy_id:
+        return None
+    
+    if order.status != OrderStatus.FILLED.value:
+        return None
+    
+    # Find the position for this symbol/user
+    position = (
+        db.query(Position)
+        .filter(
+            Position.symbol == order.symbol,
+            Position.user_id == order.user_id,
+            Position.status == PositionStatus.OPEN,
+        )
+        .first()
+    )
+    
+    if not position:
+        logger.debug(
+            "No open position for %s user_id=%d to attribute to strategy %d",
+            order.symbol, order.user_id, order.strategy_id,
+        )
+        return None
+    
+    # Only attribute if not already attributed or if this is a new fill
+    if position.strategy_id is None:
+        position.strategy_id = order.strategy_id
+        position.entry_signal_id = order.signal_id
+        db.add(position)
+        db.commit()
+        logger.info(
+            "Attributed position %s (id=%d) to strategy_id=%d",
+            order.symbol, position.id, order.strategy_id,
+        )
+        return position.id
+    
+    return None
 
 
 @celery_app.task(bind=True, max_retries=3, soft_time_limit=120, time_limit=180)
@@ -91,6 +137,10 @@ def monitor_open_orders_task(self) -> dict:
                     old_status,
                     new_status,
                 )
+                
+                # Attribute position to strategy when order fills
+                if new_status == OrderStatus.FILLED.value:
+                    _attribute_position_to_strategy(db, order)
 
             if (
                 order.submitted_at

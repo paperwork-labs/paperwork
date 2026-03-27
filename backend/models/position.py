@@ -123,6 +123,10 @@ class Position(Base):
     # Data source
     last_sync_id = Column(Integer, ForeignKey("account_syncs.id"))
     broker_position_id = Column(String(100))  # Broker's internal position ID
+    
+    # Strategy attribution (for positions opened by strategy signals)
+    strategy_id = Column(Integer, ForeignKey("strategies.id"), nullable=True, index=True)
+    entry_signal_id = Column(Integer, ForeignKey("signals.id"), nullable=True)
 
     # Timestamps
     created_at = Column(DateTime, default=func.now(), nullable=False)

@@ -269,23 +269,78 @@ def _auto_execute_signals(
     """Create orders for each signal when auto_execute is enabled.
 
     Returns (count, order_ids). Celery execution is queued by the caller after commit.
+    
+    Note: Orders are created with PREVIEW status so OrderManager.submit() will accept them.
+    The user_id is inherited from the strategy owner.
+    
+    All auto-orders are validated through RiskGate before creation.
     """
     from backend.models.order import Order, OrderStatus
+    from backend.services.execution.risk_gate import RiskGate, RiskViolation
+    from backend.services.execution.broker_base import OrderRequest
 
+    risk_gate = RiskGate()
     count = 0
     order_ids: list[int] = []
+    
+    # Get portfolio equity for risk checks
+    portfolio_equity = _get_user_portfolio_equity(db, strategy.user_id)
+    params = strategy.parameters or {}
+    risk_budget = params.get("risk_budget", 1000.0)
+    
     for sig in signals:
         try:
             order_side = _order_side_from_signal(sig)
+            quantity = _compute_position_size(db, strategy, sig)
+            
+            # Skip order creation when position size is zero (Stage cap blocks entry)
+            if quantity <= 0:
+                logger.info(
+                    "Skipping auto-order for %s: position size is 0 (Stage cap or sizing constraint)",
+                    sig.symbol,
+                )
+                continue
+            
+            # Build OrderRequest for RiskGate validation
+            price_estimate = float(sig.entry_price) if sig.entry_price else 0.0
+            req = OrderRequest(
+                symbol=sig.symbol,
+                side=order_side.upper(),
+                order_type="MARKET",
+                quantity=quantity,
+            )
+            
+            # Validate through RiskGate before creating order
+            try:
+                warnings = risk_gate.check(
+                    req=req,
+                    price_estimate=price_estimate,
+                    db=db,
+                    portfolio_equity=portfolio_equity,
+                    risk_budget=float(risk_budget),
+                )
+                if warnings:
+                    logger.info(
+                        "RiskGate warnings for %s: %s",
+                        sig.symbol, "; ".join(warnings),
+                    )
+            except RiskViolation as rv:
+                logger.warning(
+                    "RiskGate rejected auto-order for %s: %s",
+                    sig.symbol, str(rv),
+                )
+                continue
+            
             order = Order(
                 symbol=sig.symbol,
                 side=order_side,
                 order_type="market",
-                status=OrderStatus.PENDING_SUBMIT.value,
-                quantity=_compute_default_quantity(strategy, sig),
+                status=OrderStatus.PREVIEW.value,  # Must be PREVIEW for OrderManager.submit()
+                quantity=quantity,
                 source="strategy",
                 strategy_id=strategy.id,
                 signal_id=sig.id,
+                user_id=strategy.user_id,  # Required for OrderManager operations
                 created_by=f"strategy:{strategy.id}",
                 broker_type="ibkr",
             )
@@ -296,10 +351,11 @@ def _auto_execute_signals(
             sig.status = SignalStatus.TRIGGERED
             count += 1
             logger.info(
-                "Auto-order created for signal %s %s (side=%s) from strategy %s",
+                "Auto-order created for signal %s %s (side=%s, qty=%s) from strategy %s",
                 sig.signal_type.value,
                 sig.symbol,
                 order_side,
+                quantity,
                 strategy.name,
             )
         except Exception:
@@ -308,8 +364,92 @@ def _auto_execute_signals(
     return count, order_ids
 
 
+def _get_user_portfolio_equity(db, user_id: int) -> float | None:
+    """Lookup total portfolio equity for a user."""
+    if not user_id:
+        return None
+    try:
+        from backend.models.account_balance import AccountBalance
+        balance = (
+            db.query(AccountBalance)
+            .filter(AccountBalance.user_id == user_id)
+            .order_by(AccountBalance.as_of_date.desc())
+            .first()
+        )
+        if balance and balance.total_value:
+            return float(balance.total_value)
+    except Exception as e:
+        logger.warning("Failed to lookup portfolio equity for user %s: %s", user_id, e)
+    return None
+
+
+def _compute_position_size(db, strategy: Strategy, signal: Signal) -> float:
+    """Compute position size using Stage Analysis sizing formula when possible.
+    
+    Falls back to strategy parameters or defaults if sizing data unavailable.
+    """
+    from backend.services.execution.risk_gate import compute_position_size
+    from backend.services.market.regime_engine import get_current_regime
+    from backend.models.market_data import MarketSnapshot
+    
+    params = strategy.parameters or {}
+    
+    # Honor explicit fixed size from strategy params
+    fixed = params.get("position_size") or params.get("quantity")
+    if fixed:
+        return float(fixed)
+    
+    # Try Stage Analysis sizing
+    sym = signal.symbol.upper()
+    snap = (
+        db.query(MarketSnapshot)
+        .filter(
+            MarketSnapshot.symbol == sym,
+            MarketSnapshot.analysis_type == "technical_snapshot",
+        )
+        .order_by(MarketSnapshot.analysis_timestamp.desc())
+        .first()
+    )
+    
+    if snap and snap.atrp_14 and snap.stage_label and signal.entry_price:
+        regime = get_current_regime(db)
+        regime_state = regime.regime_state if regime else "R3"
+        
+        # Use strategy risk budget or default 1% of typical account ($100k = $1k risk)
+        risk_budget = params.get("risk_budget", 1000.0)
+        stop_multiplier = params.get("stop_multiplier", 2.0)
+        
+        result = compute_position_size(
+            risk_budget=float(risk_budget),
+            atrp_14=float(snap.atrp_14),
+            stop_multiplier=float(stop_multiplier),
+            regime_state=regime_state,
+            stage_label=snap.stage_label,
+            current_price=float(signal.entry_price),
+        )
+        
+        if result.shares > 0:
+            logger.debug(
+                "Sizing %s: stage=%s, regime=%s, cap=%.0f%%, shares=%d",
+                sym, snap.stage_label, regime_state, result.stage_cap * 100, result.shares
+            )
+            return float(result.shares)
+        else:
+            logger.warning(
+                "Sizing %s: stage=%s in regime=%s has 0%% cap, skipping",
+                sym, snap.stage_label, regime_state
+            )
+            return 0  # Stage cap blocks this entry
+    
+    # Fallback to simple max_value sizing
+    max_value = params.get("max_position_value", 5_000)
+    if signal.entry_price and signal.entry_price > 0:
+        return max(1, int(max_value / signal.entry_price))
+    return 1
+
+
 def _compute_default_quantity(strategy: Strategy, signal: Signal) -> float:
-    """Determine order quantity from strategy parameters or a sensible default."""
+    """Legacy wrapper - use _compute_position_size for new code."""
     params = strategy.parameters or {}
     fixed = params.get("position_size") or params.get("quantity")
     if fixed:

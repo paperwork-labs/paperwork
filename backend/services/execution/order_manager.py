@@ -34,12 +34,35 @@ class OrderManager:
         req: OrderRequest,
         user_id: int,
         broker_type: str = "ibkr",
+        risk_budget: Optional[float] = None,
+        portfolio_equity: Optional[float] = None,
     ) -> Dict[str, Any]:
-        """Preview order: risk check → whatIfOrder → persist."""
+        """Preview order: risk check → whatIfOrder → persist.
+        
+        Enforces correct order: RiskGate FIRST (rejects bad orders before
+        consuming broker API quota), then broker preview.
+        
+        Args:
+            risk_budget: Dollar amount willing to risk on this trade (for position sizing)
+            portfolio_equity: Total portfolio value (for max position % check)
+        """
         price = self.risk_gate.estimate_price(
             db, req.symbol, req.limit_price, req.stop_price
         )
-        warnings = self.risk_gate.check(req, price, db)
+        
+        # Lookup portfolio equity if not provided
+        if portfolio_equity is None:
+            portfolio_equity = self._get_portfolio_equity(db, user_id)
+        
+        # Default risk budget to 1% of portfolio if not specified
+        if risk_budget is None and portfolio_equity and portfolio_equity > 0:
+            risk_budget = portfolio_equity * 0.01
+        
+        warnings = self.risk_gate.check(
+            req, price, db,
+            portfolio_equity=portfolio_equity,
+            risk_budget=risk_budget,
+        )
 
         executor = broker_router.get(broker_type)
         preview: PreviewResult = await executor.preview_order(req)
@@ -73,6 +96,22 @@ class OrderManager:
             "preview": preview.raw,
             "warnings": warnings,
         }
+    
+    def _get_portfolio_equity(self, db: Session, user_id: int) -> Optional[float]:
+        """Lookup total portfolio equity for a user."""
+        try:
+            from backend.models.account_balance import AccountBalance
+            balance = (
+                db.query(AccountBalance)
+                .filter(AccountBalance.user_id == user_id)
+                .order_by(AccountBalance.as_of_date.desc())
+                .first()
+            )
+            if balance and balance.total_value:
+                return float(balance.total_value)
+        except Exception as e:
+            logger.warning("Failed to lookup portfolio equity for user %s: %s", user_id, e)
+        return None
 
     async def submit(
         self,

@@ -102,6 +102,27 @@ CATALOG: List[JobTemplate] = [
         default_tz="UTC",
         queue="orders",
     ),
+    # ── Strategy ────────────────────────────────────────────────────
+    JobTemplate(
+        id="evaluate-strategy-entries",
+        display_name="Evaluate Strategy Entry Rules",
+        group="strategy",
+        task="backend.tasks.strategy_tasks.evaluate_strategies_task",
+        description="Evaluate entry rules for all active strategies against latest snapshots",
+        default_cron="0 2 * * 1-5",
+        default_tz="America/New_York",
+        timeout_s=660,
+    ),
+    JobTemplate(
+        id="evaluate-exit-cascade",
+        display_name="Evaluate Exit Cascade",
+        group="strategy",
+        task="backend.tasks.strategy.exit_evaluation.evaluate_exits_task",
+        description="Evaluate 9-tier exit cascade for open positions — stop loss, trailing, stage, regime, time",
+        default_cron="30 2 * * 1-5",
+        default_tz="America/New_York",
+        timeout_s=660,
+    ),
     # ── Maintenance ───────────────────────────────────────────────
     JobTemplate(
         id="admin_retention_enforce",

@@ -25,6 +25,7 @@ celery_app = Celery(
         "backend.tasks.portfolio.orders",
         # Strategy
         "backend.tasks.strategy.tasks",
+        "backend.tasks.strategy.exit_evaluation",
         # Intelligence
         "backend.tasks.intelligence.tasks",
         # Operations

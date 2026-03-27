@@ -162,3 +162,58 @@ class AlpacaExecutor:
 
     def is_paper_trading(self) -> bool:
         return getattr(settings, "ALPACA_TRADING_MODE", "paper").lower() != "live"
+
+    async def get_positions(self) -> list:
+        """Get all open positions from Alpaca."""
+        try:
+            import httpx
+            from dataclasses import dataclass
+
+            @dataclass
+            class AlpacaPosition:
+                symbol: str
+                qty: str
+                avg_entry_price: str
+                market_value: str
+                unrealized_pl: str
+                side: str
+
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    f"{self._get_base_url()}/v2/positions",
+                    headers=self._get_headers(),
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    return [
+                        AlpacaPosition(
+                            symbol=p.get("symbol", ""),
+                            qty=p.get("qty", "0"),
+                            avg_entry_price=p.get("avg_entry_price", "0"),
+                            market_value=p.get("market_value", "0"),
+                            unrealized_pl=p.get("unrealized_pl", "0"),
+                            side=p.get("side", "long"),
+                        )
+                        for p in data
+                    ]
+                logger.error("Alpaca get_positions failed: %s", resp.text)
+                return []
+        except Exception as e:
+            logger.error("Alpaca get_positions error: %s", e)
+            return []
+
+    async def get_account(self) -> dict:
+        """Get account information from Alpaca."""
+        try:
+            import httpx
+
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    f"{self._get_base_url()}/v2/account",
+                    headers=self._get_headers(),
+                )
+                if resp.status_code == 200:
+                    return resp.json()
+                return {"error": f"Account fetch failed: {resp.status_code}"}
+        except Exception as e:
+            return {"error": str(e)}

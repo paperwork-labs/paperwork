@@ -45,10 +45,12 @@ def create_default_router() -> BrokerRouter:
     """Factory that wires up all available broker executors."""
     from backend.services.execution.ibkr_executor import IBKRExecutor
     from backend.services.execution.alpaca_executor import AlpacaExecutor
+    from backend.services.execution.paper_executor import PaperExecutor
 
     router = BrokerRouter()
     router.register("ibkr", IBKRExecutor())
     router.register("alpaca", AlpacaExecutor())
+    router.register("paper", PaperExecutor())
     return router
 
 

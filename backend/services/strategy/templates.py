@@ -1,6 +1,6 @@
-"""Pre-built hedge fund strategy templates -- v4 Stage Analysis aware.
+"""Pre-built hedge fund strategy templates -- Stage Analysis aware.
 
-Each template uses v4 fields: stage_label (10 sub-stages), regime_state (R1-R5),
+Each template uses extended fields: stage_label (10 sub-stages), regime_state (R1-R5),
 scan_tier, action_label, ext_pct, ema10_dist_n, sma150_slope, ttm_squeeze_on,
 ttm_momentum, etc.
 
@@ -12,10 +12,10 @@ from typing import Any, Dict, List
 STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
     # ── Long Templates ────────────────────────────────────────────
     {
-        "id": "v4_stage2_breakout",
-        "name": "V4 Stage 2 Breakout (Regime-Gated)",
+        "id": "stage2_breakout",
+        "name": "Stage 2 Breakout",
         "description": (
-            "Stage Analysis v4 breakout: enter on 2A/2B with positive RS, "
+            "Stage Analysis breakout: enter on 2A/2B with positive RS, "
             "SMA150 rising, only in R1-R3 regimes. Exit on stage deterioration or R5."
         ),
         "strategy_type": "breakout",
@@ -48,8 +48,8 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
         "universe_filter": {"indices": ["sp500", "nasdaq100"]},
     },
     {
-        "id": "v4_scan_set1_elite",
-        "name": "V4 Scan Set 1 Elite Longs",
+        "id": "scan_set1_elite",
+        "name": "Scan Set 1 Elite",
         "description": (
             "Highest-conviction longs from Scan Overlay Set 1: "
             "stage 2A/2B, RS > 0, EMA10 distance > 0, tight ATRE. "
@@ -82,10 +82,10 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
         "universe_filter": {"indices": ["sp500", "nasdaq100"]},
     },
     {
-        "id": "v4_momentum_trend",
-        "name": "V4 Momentum Trend Following",
+        "id": "momentum_trend",
+        "name": "Momentum Trend Following",
         "description": (
-            "Trend-following on v4 metrics: price above SMA150, "
+            "Trend-following on extended metrics: price above SMA150, "
             "positive slope, RSI > 50, regime R1-R3. "
             "Exit on EMA10 distance collapse or stage break."
         ),
@@ -117,8 +117,8 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
         "stop_loss_pct": 10.0,
     },
     {
-        "id": "v4_pullback_buy",
-        "name": "V4 Pullback Buy Zone",
+        "id": "pullback_buy",
+        "name": "Pullback Buy Zone",
         "description": (
             "Buy pullbacks in Stage 2: EMA10 distance pulls negative "
             "with positive RS and rising SMA150. Regimes R1-R3."
@@ -151,8 +151,8 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
         "stop_loss_pct": 7.0,
     },
     {
-        "id": "v4_mean_reversion",
-        "name": "V4 Mean Reversion RSI Bounce",
+        "id": "mean_reversion",
+        "name": "Mean Reversion RSI Bounce",
         "description": (
             "Buy oversold bounces: RSI < 30, above SMA150 (Stage 1B/2C territory), "
             "not in late-stage decline. Quick exit on recovery."
@@ -185,8 +185,8 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
     },
     # ── Short Templates ───────────────────────────────────────────
     {
-        "id": "v4_stage4_short",
-        "name": "V4 Stage 4 Short (Regime-Gated)",
+        "id": "stage4_short",
+        "name": "Stage 4 Short",
         "description": (
             "Short declining stocks in Stage 4A/4B with negative RS, "
             "falling SMA150, only in R4/R5 regimes."
@@ -219,8 +219,8 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
         "stop_loss_pct": 10.0,
     },
     {
-        "id": "v4_scan_short_set1",
-        "name": "V4 Scan Short Set 1",
+        "id": "scan_short_set1",
+        "name": "Scan Short Set 1",
         "description": (
             "Short stocks flagged by Scan Overlay Short Set 1: "
             "Stage 4, negative RS, high extension below SMA150. R4/R5 only."
@@ -347,8 +347,8 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
     },
     # ── Sector / ETF Templates ────────────────────────────────────
     {
-        "id": "v4_sector_rotation",
-        "name": "V4 Sector Rotation ETF",
+        "id": "sector_rotation",
+        "name": "Sector Rotation ETF",
         "description": (
             "Momentum on sector ETFs: Stage 2, top RS (>5%), "
             "rising SMA150. Regime-adaptive position sizing."
@@ -381,8 +381,8 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
     },
     # ── Counter-Trend ─────────────────────────────────────────────
     {
-        "id": "v4_td_counter_trend",
-        "name": "V4 TD Sequential Counter-Trend",
+        "id": "td_counter_trend",
+        "name": "TD Sequential Counter-Trend",
         "description": (
             "Counter-trend entries on TD buy completion: RSI < 40, "
             "not in Stage 4 decline. Long entries only in R1-R3."
@@ -415,8 +415,8 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
     },
     # ── TTM Squeeze ───────────────────────────────────────────────
     {
-        "id": "v4_ttm_squeeze_stage2_long",
-        "name": "V4 TTM Squeeze Stage 2 Long",
+        "id": "ttm_squeeze_stage2_long",
+        "name": "TTM Squeeze Stage 2 Long",
         "description": (
             "Enter when volatility squeeze is on (Bollinger inside Keltner) in Stage 2, "
             "positive TTM momentum, RS and SMA150 constructive. R1-R3 only."
@@ -450,8 +450,8 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
         "stop_loss_pct": 8.0,
     },
     {
-        "id": "v4_ttm_squeeze_oversold_long",
-        "name": "V4 TTM Squeeze Oversold Long",
+        "id": "ttm_squeeze_oversold_long",
+        "name": "TTM Squeeze Oversold Long",
         "description": (
             "Squeeze compression with RSI washed out, not in Stage 4, "
             "favorable regimes R1-R3. Exit on momentum flip or squeeze release."

@@ -9,6 +9,7 @@ from .broker_base import BrokerExecutor, OrderRequest, OrderResult
 from .broker_router import BrokerRouter
 from .risk_gate import RiskGate, RiskViolation
 from .order_manager import OrderManager
+from .paper_executor import PaperExecutor
 
 __all__ = [
     "BrokerExecutor",
@@ -18,4 +19,5 @@ __all__ = [
     "RiskGate",
     "RiskViolation",
     "OrderManager",
+    "PaperExecutor",
 ]

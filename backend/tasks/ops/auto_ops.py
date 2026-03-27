@@ -105,6 +105,9 @@ REMEDIATION_MAP = {
     "regime": [
         ("backend.tasks.market.regime.compute_daily", {}),
     ],
+    "fundamentals": [
+        ("backend.tasks.market.fundamentals.fill_missing", {}),
+    ],
 }
 
 
@@ -178,7 +181,7 @@ def _rule_based_remediation(health: dict) -> dict:
 
     for dim_name, dim_data in dimensions.items():
         status = dim_data.get("status", "unknown")
-        if status == "green":
+        if status in ("green", "ok"):
             _clear_retries(dim_name)
             continue
 

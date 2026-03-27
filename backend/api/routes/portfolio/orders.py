@@ -1,4 +1,10 @@
-"""Portfolio order execution routes."""
+"""Portfolio order execution routes.
+
+All order operations go through OrderManager which enforces:
+- RiskGate checks BEFORE broker preview
+- Single execution path through BrokerRouter
+- Stage Analysis position sizing when risk_budget is provided
+"""
 
 from __future__ import annotations
 from typing import Optional
@@ -10,9 +16,14 @@ from sqlalchemy.orm import Session
 from backend.api.dependencies import get_current_user
 from backend.database import get_db
 from backend.models.user import User
-from backend.services.execution.order_service import order_service, RiskViolation
+from backend.services.execution.order_manager import OrderManager
+from backend.services.execution.broker_base import OrderRequest
+from backend.services.execution.risk_gate import RiskViolation
 
 router = APIRouter(prefix="/portfolio/orders", tags=["orders"])
+
+# Singleton manager instance
+_order_manager = OrderManager()
 
 
 class OrderPreviewRequest(BaseModel):
@@ -22,6 +33,7 @@ class OrderPreviewRequest(BaseModel):
     quantity: float
     limit_price: Optional[float] = None
     stop_price: Optional[float] = None
+    broker_type: str = Field(default="ibkr", description="Broker to use: ibkr, alpaca")
 
 
 class OrderSubmitRequest(BaseModel):
@@ -34,16 +46,21 @@ async def preview_order(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    """Preview an order with risk checks and broker what-if."""
     try:
-        result = await order_service.preview_order(
-            db,
+        order_req = OrderRequest.from_user_input(
             symbol=req.symbol,
             side=req.side,
             order_type=req.order_type,
             quantity=req.quantity,
-            user_id=user.id,
             limit_price=req.limit_price,
             stop_price=req.stop_price,
+        )
+        result = await _order_manager.preview(
+            db=db,
+            req=order_req,
+            user_id=user.id,
+            broker_type=req.broker_type,
         )
     except RiskViolation as exc:
         raise HTTPException(status_code=422, detail=str(exc))
@@ -58,7 +75,8 @@ async def submit_order(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    result = await order_service.submit_order(db, order_id=req.order_id, user_id=user.id)
+    """Submit a previewed order for execution."""
+    result = await _order_manager.submit(db=db, order_id=req.order_id, user_id=user.id)
     err = result.get("error")
     if err:
         raise HTTPException(
@@ -75,8 +93,9 @@ def list_orders(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    orders = order_service.list_orders(
-        db, user_id=user.id, status=status, symbol=symbol, limit=limit,
+    """List orders for the current user."""
+    orders = _order_manager.list_orders(
+        db=db, user_id=user.id, status=status, symbol=symbol, limit=limit,
     )
     return {"data": orders}
 
@@ -87,8 +106,9 @@ async def poll_order_status(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    result = await order_service.poll_order_status(
-        db, order_id=order_id, user_id=user.id,
+    """Poll broker for latest order status."""
+    result = await _order_manager.poll_status(
+        db=db, order_id=order_id, user_id=user.id,
     )
     err = result.get("error")
     if err:
@@ -104,7 +124,8 @@ def get_order(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    order = order_service.get_order(db, order_id, user_id=user.id)
+    """Get a single order by ID."""
+    order = _order_manager.get_order(db=db, order_id=order_id, user_id=user.id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     return {"data": order}
@@ -116,8 +137,9 @@ async def cancel_order(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    result = await order_service.cancel_order(
-        db, order_id=order_id, user_id=user.id,
+    """Cancel a submitted order."""
+    result = await _order_manager.cancel(
+        db=db, order_id=order_id, user_id=user.id,
     )
     err = result.get("error")
     if err:
