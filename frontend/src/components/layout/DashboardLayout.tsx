@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   Activity,
@@ -70,13 +70,6 @@ function displayName(user: { full_name?: string | null; username?: string } | nu
   return raw ? toTitleCase(raw) : 'Guest';
 }
 
-const marketItems = [
-  { label: 'Dashboard', icon: Home, path: '/' },
-  { label: 'Tracked', icon: List, path: '/market/tracked' },
-  { label: 'Intelligence', icon: FileText, path: '/market/intelligence' },
-  { label: 'Education', icon: BookOpen, path: '/market/education' },
-];
-
 const portfolioItems = [
   { label: 'Overview', icon: PieChart, path: '/portfolio' },
   { label: 'Holdings', icon: List, path: '/portfolio/holdings' },
@@ -88,12 +81,25 @@ const portfolioItems = [
   { label: 'Workspace', icon: LayoutGrid, path: '/portfolio/workspace' },
 ];
 
-const strategyItems = [
-  { label: 'Strategy Manager', icon: Brain, path: '/strategies-manager' },
-  { label: 'Strategies', icon: Target, path: '/strategies' },
-];
-
 const settingsItems = [{ label: 'Settings', icon: Settings, path: '/settings' }];
+
+function buildMarketItems(strategyEnabled: boolean, isAdmin: boolean) {
+  type Item = { label: string; icon: typeof Home; path: string };
+  const items: Item[] = [
+    { label: 'Dashboard', icon: Home, path: '/' },
+    { label: 'Tracked', icon: List, path: '/market/tracked' },
+  ];
+  if (strategyEnabled) {
+    items.push({ label: 'Strategies', icon: Target, path: '/market/strategies' });
+  }
+  items.push({ label: 'Education', icon: BookOpen, path: '/market/education' });
+  if (isAdmin) {
+    items.push({ label: 'Agent Guru', icon: Brain, path: '/admin/agent' });
+  }
+  return items;
+}
+
+type MarketNavItem = { label: string; icon: typeof Home; path: string };
 
 interface NavItemProps {
   icon: React.ElementType<{ className?: string; size?: number }>;
@@ -181,6 +187,11 @@ const DashboardLayout: React.FC = () => {
   const isAdmin = user?.role === 'admin';
   const portfolioEnabled = isAdmin || (!marketOnly && Boolean(appSettings?.portfolio_enabled));
   const strategyEnabled = isAdmin || (!marketOnly && Boolean(appSettings?.strategy_enabled));
+
+  const marketItems = useMemo(
+    () => buildMarketItems(strategyEnabled, isAdmin),
+    [strategyEnabled, isAdmin]
+  );
 
   const { health: adminHealth, loading: healthLoading } = useAdminHealth();
   const healthStatus = adminHealth?.composite_status ?? 'red';
@@ -271,7 +282,7 @@ const DashboardLayout: React.FC = () => {
 
   const renderSection = (
     title: string,
-    items: typeof marketItems,
+    items: MarketNavItem[] | typeof portfolioItems,
     showLabel: boolean,
     sectionIndex: number
   ) => (
@@ -315,7 +326,6 @@ const DashboardLayout: React.FC = () => {
       <div className={cn('flex flex-col gap-2 py-4', opts.pxClass)}>
         {renderSection('MARKET', marketItems, opts.showLabel, next())}
         {portfolioEnabled ? renderSection('PORTFOLIO', portfolioItems, opts.showLabel, next()) : null}
-        {strategyEnabled ? renderSection('STRATEGY', strategyItems, opts.showLabel, next()) : null}
         {isAdmin ? renderSection('SETTINGS', settingsItems, opts.showLabel, next()) : null}
       </div>
     );

@@ -15,6 +15,7 @@ that key (UTF-8 string: full | safe | ask) or fall back to
 ``settings.AGENT_AUTONOMY_LEVEL`` from env when the key is unset.
 """
 
+import logging
 from datetime import datetime
 from typing import List, Optional
 
@@ -28,6 +29,8 @@ from backend.models import User
 from backend.models.agent_action import AgentAction
 
 router = APIRouter(prefix="/agent", tags=["agent"])
+
+logger = logging.getLogger(__name__)
 
 AGENT_AUTONOMY_LEVELS: tuple[str, ...] = ("full", "safe", "ask")
 
@@ -217,6 +220,59 @@ def list_agent_sessions(
         )
         for row in rows
     ]
+
+
+class SessionMessagesResponse(BaseModel):
+    """Response for session messages endpoint."""
+    session_id: str
+    messages: List[dict]
+    found: bool
+
+
+@router.get("/sessions/{session_id}/messages", response_model=SessionMessagesResponse)
+def get_session_messages(
+    session_id: str,
+    _admin: User = Depends(get_admin_user),
+):
+    """Get conversation messages for a specific session from Redis.
+    
+    Returns the full message history for resuming a past conversation.
+    Messages are stored in Redis with a 2-hour TTL.
+    """
+    from backend.services.market.market_data_service import market_data_service
+    import json
+    
+    redis = market_data_service.redis_client
+    if not redis:
+        raise HTTPException(
+            status_code=503,
+            detail="Conversation store unavailable"
+        )
+    
+    redis_key = f"agent:conversation:{session_id}"
+    try:
+        raw = redis.get(redis_key)
+        if not raw:
+            return SessionMessagesResponse(
+                session_id=session_id,
+                messages=[],
+                found=False,
+            )
+        
+        data = json.loads(raw.decode("utf-8") if isinstance(raw, bytes) else raw)
+        messages = data if isinstance(data, list) else []
+        
+        return SessionMessagesResponse(
+            session_id=session_id,
+            messages=messages,
+            found=True,
+        )
+    except Exception:
+        logger.exception("Failed to load conversation for session %s", session_id)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to load conversation",
+        )
 
 
 @router.get("/actions/{action_id}", response_model=AgentActionResponse)

@@ -185,10 +185,14 @@ def test_compute_snapshot_from_db_sets_previous_stage_on_transition(db_session, 
         db_session, bm, df_newest_first, interval="1d", data_source="unit_test", is_adjusted=True
     )
 
+    # History row must be BEFORE the snapshot's as-of date (price data max date).
+    # The snapshot uses newest price bar date as snapshot_as_of_dt, and filters
+    # history with `as_of_date < snapshot_as_of_dt` to avoid double-counting.
+    # Using 2 days ago ensures the history row is included in the query.
     hist = MarketSnapshotHistory(
         symbol=sym,
         analysis_type="technical_snapshot",
-        as_of_date=(now - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0),
+        as_of_date=(now - timedelta(days=2)).replace(hour=0, minute=0, second=0, microsecond=0),
         stage_label="2A",
         current_stage_days=9,
         previous_stage_label="1",

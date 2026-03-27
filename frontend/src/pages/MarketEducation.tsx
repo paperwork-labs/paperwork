@@ -3,6 +3,7 @@ import * as Collapsible from "@radix-ui/react-collapsible";
 import { ChevronDown, ChevronRight, Search } from 'lucide-react';
 
 import { STAGE_HEX } from '../constants/chart';
+import { InteractiveStageExplorer } from '@/components/education/StageChartExample';
 import { useColorMode } from '../theme/colorMode';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -175,6 +176,7 @@ const DEEP_DIVES: DeepDive[] = [
                 Late distribution. Momentum fading, at risk of entering decline. Exit longs.
               </SubStageCard>
             </div>
+            <InteractiveStageExplorer className="mt-4" />
           </div>
         ),
       },

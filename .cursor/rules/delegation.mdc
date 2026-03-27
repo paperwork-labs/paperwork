@@ -28,5 +28,44 @@ Delegate to `Task` with `model: "fast"` and appropriate `subagent_type` for:
 - Code review of subagent output for correctness
 - Complex multi-step reasoning
 
+## Parallel Execution
+
+When multiple independent tasks are needed, launch them in a **single message** with multiple Task tool calls:
+
+```
+# Good: Single message, parallel execution
+Task 1 (shell): git status && git diff
+Task 2 (shell): npm run type-check
+Task 3 (explore): Find all uses of FooService
+
+# Bad: Sequential messages
+Message 1: Task (shell): git status
+[wait]
+Message 2: Task (shell): npm run type-check
+[wait]
+```
+
+## Commit + PR Pattern
+
+Delegate the entire git workflow to a single shell subagent:
+
+```
+Task(shell): 
+1. git add -A
+2. git commit -m "message"  
+3. git push -u origin branch
+4. gh pr create --title "..." --body "..."
+Report PR URL.
+```
+
 ## Quality Gate
+
 Never delegate to save tokens if it compromises correctness. Fast models make mistakes on nuanced logic. When in doubt, do it yourself.
+
+## Token Efficiency Principle
+
+Always optimize for token efficiency. Before any tool call, ask:
+- Can a fast model do this without quality loss?
+- Can I batch this with other independent operations?
+
+If yes, delegate. See also: `token-efficiency.mdc`

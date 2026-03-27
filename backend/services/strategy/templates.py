@@ -163,7 +163,7 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
                 "conditions": [
                     {"field": "rsi_14", "operator": "lt", "value": 30},
                     {"field": "stage_label", "operator": "not_in", "value": ["4A", "4B", "4C"]},
-                    {"field": "regime_state", "operator": "not_in", "value": ["R5"]},
+                    {"field": "regime_state", "operator": "in", "value": ["R1", "R2", "R3"]},
                     {"field": "sma150_slope", "operator": "gte", "value": 0},
                 ],
                 "groups": [],

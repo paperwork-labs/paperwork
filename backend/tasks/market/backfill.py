@@ -196,8 +196,13 @@ def daily_bars(days: int = 200) -> dict:
     time_limit=_DEFAULT_HARD,
 )
 @task_run("market_indices_constituents_refresh")
-def constituents() -> dict:
-    """Refresh index constituents for major US indices."""
+def constituents(index: str | None = None) -> dict:
+    """Refresh index constituents for major US indices.
+    
+    Args:
+        index: Optional specific index to refresh. One of: SP500, NASDAQ100,
+               DOW30, RUSSELL2000, or "all". If None or "all", refreshes all indices.
+    """
     _set_task_status("market_indices_constituents_refresh", "running")
     loop = setup_event_loop()
     results = {}
@@ -209,7 +214,19 @@ def constituents() -> dict:
         preflight = {
             "has_fmp_key": bool(getattr(_settings, "FMP_API_KEY", "")),
         }
-        for idx in ["SP500", "NASDAQ100", "DOW30", "RUSSELL2000"]:
+        all_indices = ["SP500", "NASDAQ100", "DOW30", "RUSSELL2000"]
+        indices_to_refresh = all_indices
+        if index and index.upper() != "ALL":
+            idx_upper = index.upper()
+            if idx_upper in all_indices:
+                indices_to_refresh = [idx_upper]
+            else:
+                _set_task_status("market_indices_constituents_refresh", "error")
+                return {
+                    "error": f"Unknown index: {index}. Valid: {', '.join(all_indices)} or 'all'",
+                    "preflight": preflight,
+                }
+        for idx in indices_to_refresh:
             try:
                 symbols = set(
                     loop.run_until_complete(market_data_service.get_index_constituents(idx))
@@ -294,6 +311,7 @@ def constituents() -> dict:
         return res
     finally:
         session.close()
+        loop.close()
 
 
 @shared_task(

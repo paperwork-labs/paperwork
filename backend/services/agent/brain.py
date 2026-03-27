@@ -523,6 +523,65 @@ class AgentBrain:
         if tool_name == "get_regime_history":
             return await self._tool_get_regime_history(args.get("days", 30))
 
+        # Market Context tools
+        if tool_name == "get_rotation_analysis":
+            return await self._tool_get_rotation_analysis()
+
+        if tool_name == "get_breadth_momentum":
+            return await self._tool_get_breadth_momentum(args.get("days", 20))
+
+        if tool_name == "compare_historical_regime":
+            return await self._tool_compare_historical_regime(args.get("lookback_years", 2))
+
+        if tool_name == "get_market_internals":
+            return await self._tool_get_market_internals()
+
+        # Research & Strategy tools
+        if tool_name == "backtest_scan":
+            return await self._tool_backtest_scan(
+                args.get("scan_tier", "Set 1"),
+                args.get("days", 90),
+                args.get("holding_period", 20),
+            )
+
+        if tool_name == "get_similar_setups":
+            return await self._tool_get_similar_setups(
+                args.get("symbol", ""),
+                args.get("limit", 10),
+            )
+
+        if tool_name == "get_strategy_stats":
+            return await self._tool_get_strategy_stats(args.get("strategy_id"))
+
+        if tool_name == "analyze_historical_entry":
+            return await self._tool_analyze_historical_entry(
+                args.get("stage", "2A"),
+                args.get("regime", "R3"),
+                args.get("days", 180),
+            )
+
+        if tool_name == "list_strategies":
+            return await self._tool_list_strategies()
+
+        if tool_name == "run_backtest":
+            return await self._tool_run_backtest(
+                args.get("strategy_id"),
+                args.get("start_date"),
+                args.get("end_date"),
+                args.get("initial_capital", 100000),
+            )
+
+        if tool_name == "list_strategy_templates":
+            return await self._tool_list_strategy_templates()
+
+        if tool_name == "create_strategy":
+            return await self._tool_create_strategy(
+                args.get("name", ""),
+                args.get("template_id", ""),
+                args.get("description"),
+                args.get("overrides", {}),
+            )
+
         return {"error": f"Unknown safe tool: {tool_name}"}
     
     async def _dispatch_celery_task(
@@ -1395,6 +1454,628 @@ class AgentBrain:
             else:
                 break
         return count
+
+    # ==================== MARKET CONTEXT TOOLS ====================
+
+    async def _tool_get_rotation_analysis(self) -> Dict[str, Any]:
+        """Analyze sector rotation by comparing performance across time windows."""
+        try:
+            from sqlalchemy import func
+            from backend.models.market_data import MarketSnapshot
+
+            results = (
+                self.db.query(
+                    MarketSnapshot.sector,
+                    func.avg(MarketSnapshot.perf_5d).label("avg_5d"),
+                    func.avg(MarketSnapshot.perf_20d).label("avg_20d"),
+                    func.avg(MarketSnapshot.perf_60d).label("avg_60d"),
+                    func.count(MarketSnapshot.id).label("count"),
+                )
+                .filter(MarketSnapshot.sector.isnot(None))
+                .group_by(MarketSnapshot.sector)
+                .all()
+            )
+
+            sectors = []
+            for r in results:
+                if r.count < 3:
+                    continue
+                avg_5d = float(r.avg_5d) if r.avg_5d else 0
+                avg_20d = float(r.avg_20d) if r.avg_20d else 0
+                avg_60d = float(r.avg_60d) if r.avg_60d else 0
+                momentum = avg_5d - avg_20d
+                sectors.append({
+                    "sector": r.sector,
+                    "perf_5d": round(avg_5d, 2),
+                    "perf_20d": round(avg_20d, 2),
+                    "perf_60d": round(avg_60d, 2),
+                    "momentum": round(momentum, 2),
+                    "stocks": r.count,
+                })
+
+            sectors.sort(key=lambda x: x["momentum"], reverse=True)
+            leaders = [s["sector"] for s in sectors[:3]]
+            laggards = [s["sector"] for s in sectors[-3:]]
+
+            return {
+                "sectors": sectors,
+                "leaders": leaders,
+                "laggards": laggards,
+                "rotation_signal": (
+                    "Risk-on" if sectors and sectors[0]["momentum"] > 1
+                    else "Risk-off" if sectors and sectors[-1]["momentum"] < -1
+                    else "Neutral"
+                ),
+            }
+        except Exception as e:
+            logger.error("Failed to get rotation analysis: %s", e)
+            return {"error": str(e)}
+
+    async def _tool_get_breadth_momentum(self, days: int = 20) -> Dict[str, Any]:
+        """Get market breadth indicators over time."""
+        try:
+            from datetime import date, timedelta
+            from backend.models.market_data import MarketRegime
+
+            cutoff = date.today() - timedelta(days=days)
+            results = (
+                self.db.query(MarketRegime)
+                .filter(MarketRegime.as_of_date >= cutoff)
+                .order_by(MarketRegime.as_of_date.desc())
+                .all()
+            )
+
+            if not results:
+                return {"error": "No breadth data available"}
+
+            latest = results[0]
+            oldest = results[-1] if len(results) > 1 else latest
+
+            nh_nl_trend = (
+                (float(latest.nh_nl or 0) - float(oldest.nh_nl or 0))
+                if latest.nh_nl and oldest.nh_nl else 0
+            )
+            pct_200d_trend = (
+                (float(latest.pct_above_200d or 0) - float(oldest.pct_above_200d or 0))
+                if latest.pct_above_200d and oldest.pct_above_200d else 0
+            )
+
+            return {
+                "current": {
+                    "pct_above_200d": round(float(latest.pct_above_200d or 0), 1),
+                    "pct_above_50d": round(float(latest.pct_above_50d or 0), 1),
+                    "nh_nl": round(float(latest.nh_nl or 0), 2),
+                },
+                "trend": {
+                    "nh_nl_change": round(nh_nl_trend, 2),
+                    "pct_200d_change": round(pct_200d_trend, 1),
+                    "days": days,
+                },
+                "interpretation": (
+                    "Improving breadth" if nh_nl_trend > 0.1 and pct_200d_trend > 2
+                    else "Deteriorating breadth" if nh_nl_trend < -0.1 and pct_200d_trend < -2
+                    else "Mixed breadth"
+                ),
+            }
+        except Exception as e:
+            logger.error("Failed to get breadth momentum: %s", e)
+            return {"error": str(e)}
+
+    async def _tool_compare_historical_regime(self, lookback_years: int = 2) -> Dict[str, Any]:
+        """Find historical periods with similar regime characteristics."""
+        try:
+            from datetime import date, timedelta
+            from backend.models.market_data import MarketRegime
+
+            current = (
+                self.db.query(MarketRegime)
+                .order_by(MarketRegime.as_of_date.desc())
+                .first()
+            )
+            if not current:
+                return {"error": "No current regime data"}
+
+            cutoff = date.today() - timedelta(days=lookback_years * 365)
+            historical = (
+                self.db.query(MarketRegime)
+                .filter(
+                    MarketRegime.as_of_date >= cutoff,
+                    MarketRegime.as_of_date < date.today() - timedelta(days=30),
+                )
+                .all()
+            )
+
+            def similarity_score(h):
+                score = 0
+                if h.regime_state == current.regime_state:
+                    score += 50
+                if current.composite_score and h.composite_score:
+                    diff = abs(float(current.composite_score) - float(h.composite_score))
+                    score += max(0, 30 - diff * 10)
+                if current.vix_spot and h.vix_spot:
+                    vix_diff = abs(float(current.vix_spot) - float(h.vix_spot))
+                    score += max(0, 20 - vix_diff)
+                return score
+
+            matches = []
+            for h in historical:
+                sim = similarity_score(h)
+                if sim > 50:
+                    matches.append({
+                        "date": h.as_of_date.strftime("%Y-%m-%d"),
+                        "regime": h.regime_state,
+                        "score": round(sim, 1),
+                        "vix": round(float(h.vix_spot), 1) if h.vix_spot else None,
+                    })
+
+            matches.sort(key=lambda x: x["score"], reverse=True)
+
+            return {
+                "current_regime": current.regime_state,
+                "current_score": round(float(current.composite_score), 1) if current.composite_score else None,
+                "similar_periods": matches[:10],
+                "match_count": len(matches),
+            }
+        except Exception as e:
+            logger.error("Failed to compare historical regime: %s", e)
+            return {"error": str(e)}
+
+    async def _tool_get_market_internals(self) -> Dict[str, Any]:
+        """Get VIX analysis and market internals."""
+        try:
+            from backend.models.market_data import MarketRegime
+
+            latest = (
+                self.db.query(MarketRegime)
+                .order_by(MarketRegime.as_of_date.desc())
+                .first()
+            )
+            if not latest:
+                return {"error": "No market internals data"}
+
+            vix_spot = float(latest.vix_spot) if latest.vix_spot else None
+            vix3m_ratio = float(latest.vix3m_vix_ratio) if latest.vix3m_vix_ratio else None
+            vvix_ratio = float(latest.vvix_vix_ratio) if latest.vvix_vix_ratio else None
+
+            term_structure = "Contango" if vix3m_ratio and vix3m_ratio > 1.05 else (
+                "Backwardation" if vix3m_ratio and vix3m_ratio < 0.95 else "Flat"
+            )
+
+            return {
+                "vix": {
+                    "spot": round(vix_spot, 2) if vix_spot else None,
+                    "vix3m_ratio": round(vix3m_ratio, 3) if vix3m_ratio else None,
+                    "vvix_ratio": round(vvix_ratio, 3) if vvix_ratio else None,
+                    "term_structure": term_structure,
+                },
+                "breadth": {
+                    "pct_above_200d": round(float(latest.pct_above_200d), 1) if latest.pct_above_200d else None,
+                    "pct_above_50d": round(float(latest.pct_above_50d), 1) if latest.pct_above_50d else None,
+                    "nh_nl": round(float(latest.nh_nl), 2) if latest.nh_nl else None,
+                },
+                "regime": latest.regime_state,
+                "volatility_assessment": (
+                    "Elevated fear" if vix_spot and vix_spot > 25
+                    else "Complacent" if vix_spot and vix_spot < 15
+                    else "Normal"
+                ),
+            }
+        except Exception as e:
+            logger.error("Failed to get market internals: %s", e)
+            return {"error": str(e)}
+
+    # ==================== RESEARCH & STRATEGY TOOLS ====================
+
+    async def _tool_backtest_scan(
+        self, scan_tier: str = "Set 1", days: int = 90, holding_period: int = 20
+    ) -> Dict[str, Any]:
+        """Get historical performance for a scan tier."""
+        try:
+            from datetime import date, timedelta
+            from sqlalchemy import func
+            from backend.models.market_data import MarketSnapshotHistory
+
+            cutoff = date.today() - timedelta(days=days)
+            perf_field = {
+                5: MarketSnapshotHistory.perf_5d,
+                10: MarketSnapshotHistory.perf_10d,
+                20: MarketSnapshotHistory.perf_20d,
+                60: MarketSnapshotHistory.perf_60d,
+            }.get(holding_period, MarketSnapshotHistory.perf_20d)
+
+            results = (
+                self.db.query(
+                    func.count(MarketSnapshotHistory.id).label("total"),
+                    func.avg(perf_field).label("avg_return"),
+                    func.count(func.nullif(perf_field > 0, False)).label("winners"),
+                )
+                .filter(
+                    MarketSnapshotHistory.scan_tier == scan_tier,
+                    MarketSnapshotHistory.as_of_date >= cutoff,
+                    perf_field.isnot(None),
+                )
+                .first()
+            )
+
+            total = results.total or 0
+            winners = results.winners or 0
+            avg_ret = float(results.avg_return) if results.avg_return else 0
+
+            return {
+                "scan_tier": scan_tier,
+                "period_days": days,
+                "holding_period": holding_period,
+                "total_signals": total,
+                "win_rate": round(winners / total * 100, 1) if total > 0 else 0,
+                "avg_return": round(avg_ret, 2),
+                "note": "Based on historical snapshot data" if total > 0 else "Insufficient data",
+            }
+        except Exception as e:
+            logger.error("Failed to backtest scan: %s", e)
+            return {"error": str(e)}
+
+    async def _tool_get_similar_setups(self, symbol: str, limit: int = 10) -> Dict[str, Any]:
+        """Find stocks with similar technical setups."""
+        try:
+            from backend.models.market_data import MarketSnapshot
+
+            sym = (symbol or "").strip().upper()
+            if not sym:
+                return {"error": "symbol is required"}
+
+            ref = (
+                self.db.query(MarketSnapshot)
+                .filter(MarketSnapshot.symbol == sym)
+                .first()
+            )
+            if not ref:
+                return {"error": f"No data for {sym}"}
+
+            # Cap candidates to avoid memory issues on large universes
+            candidates = (
+                self.db.query(MarketSnapshot)
+                .filter(
+                    MarketSnapshot.symbol != sym,
+                    MarketSnapshot.stage_label == ref.stage_label,
+                )
+                .limit(500)
+                .all()
+            )
+
+            def similarity(c):
+                score = 100
+                if ref.rs_mansfield_pct and c.rs_mansfield_pct:
+                    score -= abs(float(ref.rs_mansfield_pct) - float(c.rs_mansfield_pct)) * 2
+                if ref.scan_tier and c.scan_tier and ref.scan_tier == c.scan_tier:
+                    score += 20
+                return max(0, score)
+
+            matches = []
+            for c in candidates:
+                sim = similarity(c)
+                if sim > 50:
+                    matches.append({
+                        "symbol": c.symbol,
+                        "stage": c.stage_label,
+                        "scan_tier": c.scan_tier,
+                        "rs_rank": round(float(c.rs_mansfield_pct), 1) if c.rs_mansfield_pct else None,
+                        "sector": c.sector,
+                        "similarity": round(sim, 1),
+                    })
+
+            matches.sort(key=lambda x: x["similarity"], reverse=True)
+
+            return {
+                "reference": {
+                    "symbol": sym,
+                    "stage": ref.stage_label,
+                    "rs_rank": round(float(ref.rs_mansfield_pct), 1) if ref.rs_mansfield_pct else None,
+                },
+                "similar": matches[:limit],
+                "count": len(matches),
+            }
+        except Exception as e:
+            logger.error("Failed to get similar setups: %s", e)
+            return {"error": str(e)}
+
+    async def _tool_get_strategy_stats(self, strategy_id: Optional[int] = None) -> Dict[str, Any]:
+        """Get performance statistics for strategies."""
+        try:
+            from backend.models.strategy import Strategy
+
+            if strategy_id:
+                strat = self.db.query(Strategy).filter(Strategy.id == strategy_id).first()
+                if not strat:
+                    return {"error": f"Strategy {strategy_id} not found"}
+                return {
+                    "id": strat.id,
+                    "name": strat.name,
+                    "status": strat.status,
+                    "created": strat.created_at.isoformat() if strat.created_at else None,
+                }
+
+            strategies = self.db.query(Strategy).all()
+            return {
+                "strategies": [
+                    {
+                        "id": s.id,
+                        "name": s.name,
+                        "status": s.status,
+                    }
+                    for s in strategies
+                ],
+                "count": len(strategies),
+            }
+        except Exception as e:
+            logger.error("Failed to get strategy stats: %s", e)
+            return {"error": str(e)}
+
+    async def _tool_analyze_historical_entry(
+        self, stage: str, regime: str = "R3", days: int = 180
+    ) -> Dict[str, Any]:
+        """Analyze how entries in a specific stage performed under a regime."""
+        try:
+            from datetime import date, timedelta
+            from sqlalchemy import func
+            from backend.models.market_data import MarketSnapshotHistory
+
+            cutoff = date.today() - timedelta(days=days)
+            results = (
+                self.db.query(
+                    func.count(MarketSnapshotHistory.id).label("total"),
+                    func.avg(MarketSnapshotHistory.perf_20d).label("avg_20d"),
+                    func.avg(MarketSnapshotHistory.perf_60d).label("avg_60d"),
+                    func.count(func.nullif(MarketSnapshotHistory.perf_20d > 0, False)).label("winners_20d"),
+                )
+                .filter(
+                    MarketSnapshotHistory.stage_label == stage,
+                    MarketSnapshotHistory.regime_state == regime,
+                    MarketSnapshotHistory.as_of_date >= cutoff,
+                )
+                .first()
+            )
+
+            total = results.total or 0
+            winners = results.winners_20d or 0
+
+            return {
+                "stage": stage,
+                "regime": regime,
+                "period_days": days,
+                "total_entries": total,
+                "win_rate_20d": round(winners / total * 100, 1) if total > 0 else 0,
+                "avg_return_20d": round(float(results.avg_20d), 2) if results.avg_20d else 0,
+                "avg_return_60d": round(float(results.avg_60d), 2) if results.avg_60d else 0,
+                "interpretation": (
+                    f"Stage {stage} entries in {regime} have "
+                    + (f"{round(winners/total*100)}% win rate" if total > 0 else "insufficient data")
+                ),
+            }
+        except Exception as e:
+            logger.error("Failed to analyze historical entry: %s", e)
+            return {"error": str(e)}
+
+    async def _tool_list_strategies(self) -> Dict[str, Any]:
+        """List all saved strategies."""
+        try:
+            from backend.models.strategy import Strategy
+
+            strategies = self.db.query(Strategy).order_by(Strategy.created_at.desc()).all()
+            return {
+                "strategies": [
+                    {
+                        "id": s.id,
+                        "name": s.name,
+                        "status": s.status,
+                        "description": s.description[:100] if s.description else None,
+                    }
+                    for s in strategies
+                ],
+                "count": len(strategies),
+            }
+        except Exception as e:
+            logger.error("Failed to list strategies: %s", e)
+            return {"error": str(e)}
+
+    async def _tool_run_backtest(
+        self,
+        strategy_id: Optional[int],
+        start_date: Optional[str],
+        end_date: Optional[str],
+        initial_capital: float = 100000,
+    ) -> Dict[str, Any]:
+        """Run a backtest for a strategy."""
+        try:
+            if not strategy_id or not start_date or not end_date:
+                return {"error": "strategy_id, start_date, and end_date are required"}
+
+            from datetime import datetime
+            from backend.models.strategy import Strategy
+            from backend.models.market_data import MarketSnapshot
+            from backend.services.strategy.backtest_engine import BacktestEngine
+            from backend.services.strategy.rule_evaluator import (
+                ConditionGroup, Condition, LogicalOperator, ConditionOperator
+            )
+
+            strategy = self.db.query(Strategy).filter(Strategy.id == strategy_id).first()
+            if not strategy:
+                return {"error": f"Strategy {strategy_id} not found"}
+
+            params = strategy.parameters or {}
+            entry_rules_raw = params.get("entry_rules")
+            exit_rules_raw = params.get("exit_rules")
+            if not entry_rules_raw or not exit_rules_raw:
+                return {"error": "Strategy must have entry_rules and exit_rules in parameters"}
+
+            def parse_group(data: dict) -> ConditionGroup:
+                conditions = [
+                    Condition(
+                        field=c["field"],
+                        operator=ConditionOperator(c["operator"]),
+                        value=c["value"],
+                        value_high=c.get("value_high"),
+                    )
+                    for c in data.get("conditions", [])
+                ]
+                groups = [parse_group(g) for g in data.get("groups", [])]
+                return ConditionGroup(
+                    logic=LogicalOperator(data.get("logic", "and")),
+                    conditions=conditions,
+                    groups=groups,
+                )
+
+            entry_rules = parse_group(entry_rules_raw)
+            exit_rules = parse_group(exit_rules_raw)
+
+            try:
+                start = datetime.strptime(start_date, "%Y-%m-%d").date()
+                end = datetime.strptime(end_date, "%Y-%m-%d").date()
+            except ValueError:
+                return {"error": "Invalid date format. Use YYYY-MM-DD"}
+
+            symbols = params.get("universe_symbols", [])
+            if not symbols:
+                snaps = (
+                    self.db.query(MarketSnapshot.symbol)
+                    .filter(MarketSnapshot.is_valid.is_(True))
+                    .distinct()
+                    .limit(100)
+                    .all()
+                )
+                symbols = [s[0] for s in snaps]
+
+            engine = BacktestEngine()
+            result = engine.run(
+                db=self.db,
+                entry_rules=entry_rules,
+                exit_rules=exit_rules,
+                symbols=symbols,
+                start_date=start,
+                end_date=end,
+                initial_capital=initial_capital,
+                position_size_pct=params.get("position_size_pct", 5.0) / 100,
+            )
+
+            return {
+                "strategy": strategy.name,
+                "period": f"{start_date} to {end_date}",
+                "initial_capital": result.metrics.initial_capital,
+                "final_capital": round(result.metrics.final_capital, 2),
+                "total_return_pct": round(result.metrics.total_return_pct, 2),
+                "max_drawdown_pct": round(result.metrics.max_drawdown_pct, 2),
+                "sharpe_ratio": round(result.metrics.sharpe_ratio, 2) if result.metrics.sharpe_ratio else None,
+                "total_trades": result.metrics.total_trades,
+                "win_rate": round(result.metrics.win_rate * 100, 1),
+            }
+        except Exception as e:
+            logger.error("Failed to run backtest: %s", e)
+            return {"error": str(e)}
+
+    async def _tool_list_strategy_templates(self) -> Dict[str, Any]:
+        """List available strategy templates."""
+        try:
+            from backend.services.strategy.templates import list_templates
+
+            templates = list_templates()
+            return {
+                "templates": [
+                    {
+                        "id": t["id"],
+                        "name": t["name"],
+                        "description": t.get("description", ""),
+                        "strategy_type": t.get("strategy_type", "custom"),
+                    }
+                    for t in templates
+                ],
+                "count": len(templates),
+                "tip": "Use create_strategy with template_id to create a strategy based on any template.",
+            }
+        except Exception as e:
+            logger.error("Failed to list strategy templates: %s", e)
+            return {"error": str(e)}
+
+    async def _tool_create_strategy(
+        self,
+        name: str,
+        template_id: str,
+        description: Optional[str] = None,
+        overrides: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Create a strategy from a template."""
+        try:
+            if not name or not name.strip():
+                return {"error": "Strategy name is required"}
+            if not template_id:
+                return {"error": "template_id is required - use list_strategy_templates to see options"}
+
+            from backend.services.strategy.templates import get_template
+            from backend.models.strategy import Strategy, StrategyType
+            from backend.models import User
+
+            template = get_template(template_id)
+            if not template:
+                return {"error": f"Template '{template_id}' not found"}
+
+            try:
+                stype = StrategyType(template.get("strategy_type", "custom"))
+            except ValueError:
+                stype = StrategyType.CUSTOM
+
+            config = dict(template.get("default_config", {}))
+            if overrides:
+                for k, v in overrides.items():
+                    if k in config:
+                        if isinstance(config[k], dict) and isinstance(v, dict):
+                            config[k].update(v)
+                        else:
+                            config[k] = v
+                    else:
+                        config[k] = v
+
+            # TODO: Pass authenticated user to brain for proper ownership
+            # For now, get admin user (agent is admin-only)
+            from backend.models.user import UserRole
+            user = (
+                self.db.query(User)
+                .filter(User.role == UserRole.ADMIN)
+                .first()
+            )
+            if not user:
+                return {"error": "No admin user found - strategy creation requires admin"}
+
+            existing = (
+                self.db.query(Strategy)
+                .filter(Strategy.user_id == user.id, Strategy.name == name.strip())
+                .first()
+            )
+            if existing:
+                return {"error": f"Strategy named '{name}' already exists"}
+
+            strategy = Strategy(
+                user_id=user.id,
+                name=name.strip(),
+                description=description or template.get("description", ""),
+                strategy_type=stype,
+                parameters=config,
+                status="active",
+                position_size_pct=template.get("position_size_pct", 5.0),
+                max_positions=template.get("max_positions", 10),
+            )
+            self.db.add(strategy)
+            self.db.commit()
+            self.db.refresh(strategy)
+
+            return {
+                "success": True,
+                "strategy_id": strategy.id,
+                "name": strategy.name,
+                "template_used": template_id,
+                "tip": f"Strategy created! Use run_backtest with strategy_id={strategy.id} to test it.",
+            }
+        except Exception as e:
+            logger.error("Failed to create strategy: %s", e)
+            self.db.rollback()
+            return {"error": str(e)}
 
     # ==================== CONVERSATION PERSISTENCE ====================
     

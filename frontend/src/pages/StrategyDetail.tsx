@@ -151,7 +151,7 @@ export default function StrategyDetail() {
     return (
       <Page>
         <p className={cn('text-sm', semanticTextColorClass('status.danger'))}>Strategy not found</p>
-        <Button className="mt-4" onClick={() => navigate('/strategies')}>
+        <Button className="mt-4" onClick={() => navigate('/market/strategies')}>
           Back to Strategies
         </Button>
       </Page>
@@ -165,7 +165,7 @@ export default function StrategyDetail() {
   return (
     <Page>
       <div className="mb-4">
-        <Button size="sm" variant="ghost" className="gap-1" onClick={() => navigate('/strategies')}>
+        <Button size="sm" variant="ghost" className="gap-1" onClick={() => navigate('/market/strategies')}>
           <ArrowLeft className="size-4" aria-hidden />
           Back
         </Button>

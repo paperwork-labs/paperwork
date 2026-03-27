@@ -98,21 +98,53 @@ def _tier1_stop_loss(ctx: PositionContext) -> ExitSignal:
 
 
 def _tier2_trailing_stop(ctx: PositionContext) -> ExitSignal:
-    """T2: Stage-based trailing stop via SMA proximity.
+    """T2: Adaptive trailing stop based on stage, regime, and volatility.
 
-    2A/2B: trail at 1.5× ATR below recent high
-    2C: trail at 2.0× ATR (wider for extended moves)
-    3A+: trail at 1.0× ATR (tighter as momentum fades)
+    Base multipliers by stage:
+      2A/2B: 1.5× ATR
+      2C: 2.0× ATR (wider for extended moves)
+      3A+: 1.0× ATR (tighter as momentum fades)
+
+    Regime adjustment:
+      R1/R2: no change (favorable)
+      R3: -0.25× (slightly tighter)
+      R4/R5: -0.5× (much tighter, protect gains)
+
+    Volatility adjustment (atrp_14):
+      Low vol (<2%): -0.25× (tighter, less room needed)
+      High vol (>4%): +0.25× (wider, avoid whipsaws)
     """
-    multiplier = 1.5
+    # Base multiplier by stage
+    base_mult = 1.5
     if ctx.stage_label == "2C":
-        multiplier = 2.0
+        base_mult = 2.0
     elif ctx.stage_label.startswith("3"):
-        multiplier = 1.0
+        base_mult = 1.0
+
+    # Regime adjustment
+    regime_adj = 0.0
+    if ctx.regime_state == REGIME_R3:
+        regime_adj = -0.25
+    elif ctx.regime_state in (REGIME_R4, REGIME_R5):
+        regime_adj = -0.5
+
+    # Volatility adjustment
+    vol_adj = 0.0
+    if ctx.atrp_14 < 2.0:
+        vol_adj = -0.25
+    elif ctx.atrp_14 > 4.0:
+        vol_adj = 0.25
+
+    # Final multiplier (minimum 0.5 to avoid unreasonably tight stops)
+    multiplier = max(0.5, base_mult + regime_adj + vol_adj)
 
     trail_distance = multiplier * ctx.atr_14
     if ctx.pnl_pct > 0 and ctx.current_price < (ctx.entry_price * (1 + ctx.pnl_pct / 100) - trail_distance):
-        return ExitSignal("T2", ExitAction.EXIT, f"Trailing stop ({multiplier}× ATR, stage={ctx.stage_label})", 9)
+        return ExitSignal(
+            "T2", ExitAction.EXIT,
+            f"Trailing stop ({multiplier:.2f}× ATR, stage={ctx.stage_label}, regime={ctx.regime_state})",
+            9
+        )
     return ExitSignal("T2", ExitAction.HOLD, "Trail not hit", 0)
 
 

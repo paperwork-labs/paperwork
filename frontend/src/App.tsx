@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { AccountProvider } from './context/AccountContext';
@@ -20,6 +20,7 @@ const PortfolioTransactions = React.lazy(() => import('./pages/portfolio/Portfol
 const PortfolioTaxCenter = React.lazy(() => import('./pages/portfolio/PortfolioTaxCenter'));
 const PortfolioOrders = React.lazy(() => import('./pages/portfolio/PortfolioOrders'));
 const Strategies = React.lazy(() => import('./pages/Strategies'));
+const StrategiesManager = React.lazy(() => import('./pages/StrategiesManager'));
 const StrategyDetail = React.lazy(() => import('./pages/StrategyDetail'));
 const SettingsShell = React.lazy(() => import('./pages/SettingsShell'));
 const SettingsConnections = React.lazy(() => import('./pages/SettingsConnections'));
@@ -54,6 +55,14 @@ const RouteFallback: React.FC = () => (
   <div style={{ padding: 16, fontFamily: 'system-ui' }}>Loading…</div>
 );
 
+function LegacyStrategyDetailRedirect() {
+  const { strategyId } = useParams<{ strategyId: string }>();
+  if (!strategyId) {
+    return <Navigate to="/market/strategies" replace />;
+  }
+  return <Navigate to={`/market/strategies/${strategyId}`} replace />;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -72,6 +81,14 @@ function App() {
                         <Route path="market/education" element={<MarketEducation />} />
                         <Route path="market/intelligence" element={<MarketIntelligence />} />
 
+                        {/* Legacy strategy URLs → /market/strategies* */}
+                        <Route path="strategies" element={<Navigate to="/market/strategies" replace />} />
+                        <Route path="strategies/:strategyId" element={<LegacyStrategyDetailRedirect />} />
+                        <Route
+                          path="strategies-manager"
+                          element={<Navigate to="/market/strategies/manage" replace />}
+                        />
+
                         {/* Portfolio section */}
                         <Route element={<RequireNonMarketAccess section="portfolio" />}>
                           <Route path="portfolio" element={<PortfolioOverview />} />
@@ -84,11 +101,17 @@ function App() {
                           <Route path="portfolio/workspace" element={<PortfolioWorkspace />} />
                         </Route>
 
-                        {/* Strategy section */}
+                        {/* Strategy (under Market in nav) */}
                         <Route element={<RequireNonMarketAccess section="strategy" />}>
-                          <Route path="strategies" element={<Strategies />} />
-                          <Route path="strategies/:strategyId" element={<StrategyDetail />} />
-                          <Route path="strategies-manager" element={<Navigate to="/strategies" replace />} />
+                          <Route path="market/strategies" element={<Strategies />} />
+                          <Route path="market/strategies/manage" element={<StrategiesManager />} />
+                          <Route path="market/strategies/:strategyId" element={<StrategyDetail />} />
+                        </Route>
+
+                        {/* Admin agent (top-level alias; also available under /settings/admin/*) */}
+                        <Route element={<RequireAdmin />}>
+                          <Route path="admin/agent" element={<AdminAgent />} />
+                          <Route path="admin/agent/capabilities" element={<AdminAgentCapabilities />} />
                         </Route>
 
                         {/* Settings */}

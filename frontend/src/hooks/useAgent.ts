@@ -98,6 +98,29 @@ export function useAgentSessions() {
   })
 }
 
+export interface SessionMessagesResponse {
+  session_id: string
+  messages: Array<{
+    role: string
+    content: string
+  }>
+  found: boolean
+}
+
+export function useSessionMessages(sessionId: string | null) {
+  return useQuery<SessionMessagesResponse>({
+    queryKey: ["agent", "sessions", sessionId, "messages"],
+    queryFn: async () => {
+      if (!sessionId) throw new Error("No session ID")
+      const res = await api.get<SessionMessagesResponse>(
+        `/admin/agent/sessions/${sessionId}/messages`
+      )
+      return res.data
+    },
+    enabled: !!sessionId,
+  })
+}
+
 export function useAgentSettings() {
   return useQuery<AgentSettingsResponse>({
     queryKey: ["agent", "settings"],

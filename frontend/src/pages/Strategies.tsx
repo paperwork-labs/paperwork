@@ -195,7 +195,7 @@ const Strategies: React.FC = () => {
         const created = extractData<Strategy>(resp);
         if (created?.id) {
           closeDialog();
-          navigate(`/strategies/${created.id}`);
+          navigate(`/market/strategies/${created.id}`);
         }
       } else {
         const resp = await api.post('/strategies', {
@@ -207,7 +207,7 @@ const Strategies: React.FC = () => {
         const created = extractData<Strategy>(resp);
         if (created?.id) {
           closeDialog();
-          navigate(`/strategies/${created.id}`);
+          navigate(`/market/strategies/${created.id}`);
         }
       }
     } catch (err) {
@@ -246,7 +246,7 @@ const Strategies: React.FC = () => {
               <StrategyCard
                 key={s.id}
                 strategy={s}
-                onClick={() => navigate(`/strategies/${s.id}`)}
+                onClick={() => navigate(`/market/strategies/${s.id}`)}
                 timezone={timezone}
               />
             ))}

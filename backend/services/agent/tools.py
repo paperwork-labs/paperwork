@@ -466,6 +466,245 @@ AGENT_TOOLS: List[Dict[str, Any]] = [
             },
         },
     },
+    # ==================== MARKET CONTEXT TOOLS ====================
+    {
+        "type": "function",
+        "function": {
+            "name": "get_rotation_analysis",
+            "description": "Analyze sector rotation by comparing sector performance over 5, 20, and 60 day windows. Shows money flow leaders/laggards.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_breadth_momentum",
+            "description": "Get market breadth indicators: % above 200D/50D SMA, new highs vs new lows trend, advancing/declining analysis.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "days": {
+                        "type": "integer",
+                        "description": "Days of history for trend analysis",
+                        "default": 20,
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "compare_historical_regime",
+            "description": "Find historical periods with similar market regime characteristics. Useful for understanding what happened next in similar conditions.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "lookback_years": {
+                        "type": "integer",
+                        "description": "Years of history to search",
+                        "default": 2,
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_market_internals",
+            "description": "Get VIX analysis (spot, term structure via VIX3M ratio, VVIX), breadth percentages, and overall volatility assessment.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    # ==================== RESEARCH & STRATEGY TOOLS ====================
+    {
+        "type": "function",
+        "function": {
+            "name": "backtest_scan",
+            "description": "Get historical win rate and average return for a scan tier. Shows how Set 1/2/3 picks have performed.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "scan_tier": {
+                        "type": "string",
+                        "description": "Scan tier to analyze (e.g., 'Set 1', 'Set 2', 'Short Set 1')",
+                        "default": "Set 1",
+                    },
+                    "days": {
+                        "type": "integer",
+                        "description": "Days of historical data to analyze",
+                        "default": 90,
+                    },
+                    "holding_period": {
+                        "type": "integer",
+                        "description": "Forward return window in days (5, 10, 20, 60)",
+                        "default": 20,
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_similar_setups",
+            "description": "Find stocks with similar technical setups: matching stage, RS rank, and pattern characteristics.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "symbol": {
+                        "type": "string",
+                        "description": "Reference symbol to find similar setups for",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max results to return",
+                        "default": 10,
+                    },
+                },
+                "required": ["symbol"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_strategy_stats",
+            "description": "Get performance statistics for saved strategies: win rate, avg return, Sharpe, max drawdown.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "strategy_id": {
+                        "type": "integer",
+                        "description": "Strategy ID (optional - omit to list all strategies with summary stats)",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "analyze_historical_entry",
+            "description": "Analyze how stocks entering a specific stage performed under given regime. E.g., 'How did Stage 2A entries perform in R3?'",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "stage": {
+                        "type": "string",
+                        "description": "Stage label (e.g., '2A', '2B', '1B')",
+                    },
+                    "regime": {
+                        "type": "string",
+                        "description": "Regime state (R1, R2, R3, R4, R5)",
+                        "default": "R3",
+                    },
+                    "days": {
+                        "type": "integer",
+                        "description": "Days of history to analyze",
+                        "default": 180,
+                    },
+                },
+                "required": ["stage"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_strategies",
+            "description": "List all saved strategies with their status and basic info.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_backtest",
+            "description": "Run a backtest for a strategy over specified date range. Returns performance metrics and trade list.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "strategy_id": {
+                        "type": "integer",
+                        "description": "Strategy ID to backtest",
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD)",
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD)",
+                    },
+                    "initial_capital": {
+                        "type": "number",
+                        "description": "Starting capital",
+                        "default": 100000,
+                    },
+                },
+                "required": ["strategy_id", "start_date", "end_date"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_strategy_templates",
+            "description": "List available strategy templates (breakout, pullback, momentum, etc.) that can be used as starting points.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_strategy",
+            "description": "Create a new strategy from a template or custom rules. Use after discussing strategy goals with user.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Strategy name (unique, descriptive)",
+                    },
+                    "template_id": {
+                        "type": "string",
+                        "description": "Template ID to base strategy on (use list_strategy_templates to see options)",
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Strategy description",
+                    },
+                    "overrides": {
+                        "type": "object",
+                        "description": "Optional overrides to template defaults (e.g., entry stages, RS threshold)",
+                    },
+                },
+                "required": ["name", "template_id"],
+            },
+        },
+    },
     # ==================== CODEBASE EXPLORATION TOOLS ====================
     {
         "type": "function",
@@ -522,6 +761,20 @@ INLINE_ONLY_AGENT_TOOLS: FrozenSet[str] = frozenset({
     "get_top_scans",
     "get_exit_alerts",
     "get_regime_history",
+    # Market Context tools
+    "get_rotation_analysis",
+    "get_breadth_momentum",
+    "compare_historical_regime",
+    "get_market_internals",
+    # Research & Strategy tools
+    "backtest_scan",
+    "get_similar_setups",
+    "get_strategy_stats",
+    "analyze_historical_entry",
+    "list_strategies",
+    "run_backtest",
+    "list_strategy_templates",
+    "create_strategy",
 })
 
 TOOL_TO_CELERY_TASK: Dict[str, str] = {

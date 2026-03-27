@@ -319,6 +319,25 @@ def compute_full_indicator_series(
         [np.inf, -np.inf], np.nan
     )
 
+    # TTM Squeeze: Bollinger Bands inside Keltner Channels indicates low volatility
+    # Keltner Channels: EMA(20) +/- 1.5 * ATR(10)
+    ema_20 = close.ewm(span=20, adjust=False).mean()
+    atr_10 = calculate_atr_series(ohlcv, 10) if has_hlc else pd.Series(np.nan, index=close.index)
+    kc_mult = 1.5
+    out["keltner_upper"] = ema_20 + kc_mult * atr_10
+    out["keltner_lower"] = ema_20 - kc_mult * atr_10
+
+    # Squeeze on when BB is inside KC (low volatility, potential breakout)
+    bb_upper = out["bollinger_upper"]
+    bb_lower = out["bollinger_lower"]
+    kc_upper = out["keltner_upper"]
+    kc_lower = out["keltner_lower"]
+    out["ttm_squeeze_on"] = (bb_lower > kc_lower) & (bb_upper < kc_upper)
+
+    # Momentum for direction: smoothed deviation from EMA20 (KC midline)
+    mom_src = close - ema_20
+    out["ttm_momentum"] = mom_src.rolling(12).mean()
+
     rsi_s = out["rsi"]
     rsi_min = rsi_s.rolling(14).min()
     rsi_max = rsi_s.rolling(14).max()

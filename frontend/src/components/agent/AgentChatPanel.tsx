@@ -73,9 +73,31 @@ export function AgentChatPanel({
         className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4"
       >
         {messages.length === 0 && !isLoading && (
-          <p className="text-center text-sm text-muted-foreground">
-            No messages yet. Send a prompt to start.
-          </p>
+          <div className="flex flex-col items-center justify-center gap-4 py-8">
+            <div className="rounded-full bg-primary/10 p-3">
+              <Zap className="size-6 text-primary" />
+            </div>
+            <div className="text-center">
+              <h3 className="text-base font-medium text-foreground">
+                Welcome to Agent Guru
+              </h3>
+              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                I can help you analyze markets, review positions, and monitor system health. Try one of these:
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2 max-w-md">
+              {QUICK_ACTIONS.map((action) => (
+                <button
+                  key={action.label}
+                  type="button"
+                  onClick={() => onSendMessage(action.prompt)}
+                  className="rounded-full border border-border bg-muted/50 px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted hover:border-primary/50"
+                >
+                  {action.label}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
         {messages.map((m) => (
           <AgentMessage

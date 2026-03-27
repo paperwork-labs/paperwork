@@ -89,12 +89,12 @@ describe('DashboardLayout sidebar persistence', () => {
     expect(screen.getAllByText('MARKET').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Tracked').length).toBeGreaterThan(0);
     expect(screen.queryByText('PORTFOLIO')).toBeNull();
-    expect(screen.queryByText('STRATEGY')).toBeNull();
+    expect(screen.queryByText('Agent Guru')).toBeNull();
     expect(screen.queryByText('Overview')).toBeNull();
     expect(screen.queryByRole('button', { name: /account filter/i })).toBeNull();
   });
 
-  it('shows portfolio and strategy sections when section flags are enabled', () => {
+  it('shows portfolio and Strategies under MARKET when section flags are enabled', () => {
     mockedAuth = {
       user: { username: 'tester', role: 'user' },
       logout: vi.fn(),
@@ -110,10 +110,11 @@ describe('DashboardLayout sidebar persistence', () => {
     };
     renderWithProviders(<DashboardLayout />);
     expect(screen.getByText('PORTFOLIO')).toBeInTheDocument();
-    expect(screen.getByText('STRATEGY')).toBeInTheDocument();
+    expect(screen.queryByText('STRATEGY')).toBeNull();
     expect(screen.getByText('Workspace')).toBeInTheDocument();
     expect(screen.getByText('Strategies')).toBeInTheDocument();
     expect(screen.getByText('Overview')).toBeInTheDocument();
+    expect(screen.queryByText('Agent Guru')).toBeNull();
     expect(screen.getByRole('button', { name: /account filter/i })).toBeInTheDocument();
   });
 
@@ -132,7 +133,7 @@ describe('DashboardLayout sidebar persistence', () => {
     expect(portfolioCategories?.getAttribute('data-active')).toBe('true');
   });
 
-  it('does not keep strategies active on strategy manager route', () => {
+  it('highlights Strategies nav on strategy detail route', () => {
     mockedAuth = {
       user: { username: 'tester', role: 'user' },
       logout: vi.fn(),
@@ -140,11 +141,24 @@ describe('DashboardLayout sidebar persistence', () => {
       appSettingsReady: true,
       ready: true,
     };
-    const { container } = renderWithProviders(<DashboardLayout />, { route: '/strategies-manager' });
-    const strategyManager = container.querySelector('[data-nav-path="/strategies-manager"]');
-    const strategies = container.querySelector('[data-nav-path="/strategies"]');
-    expect(strategyManager?.getAttribute('data-active')).toBe('true');
-    expect(strategies?.getAttribute('data-active')).toBe('false');
+    const { container } = renderWithProviders(<DashboardLayout />, {
+      route: '/market/strategies/strat-1',
+    });
+    const strategies = container.querySelector('[data-nav-path="/market/strategies"]');
+    expect(strategies?.getAttribute('data-active')).toBe('true');
+  });
+
+  it('shows Agent Guru in MARKET for admin users', () => {
+    mockedAuth = {
+      user: { username: 'admin', role: 'admin' },
+      logout: vi.fn(),
+      appSettings: { market_only_mode: true, portfolio_enabled: false, strategy_enabled: false },
+      appSettingsReady: true,
+      ready: true,
+    };
+    const { container } = renderWithProviders(<DashboardLayout />);
+    expect(container.querySelectorAll('[data-nav-path="/admin/agent"]').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('SETTINGS').length).toBeGreaterThan(0);
   });
 });
 

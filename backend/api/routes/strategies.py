@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from backend.api.dependencies import get_current_user
 from backend.database import get_db
 from backend.models.user import User
-from backend.models.strategy import Strategy, StrategyType, StrategyStatus
+from backend.models.strategy import Strategy, StrategyType, StrategyStatus, BacktestRun, RunStatus
 from backend.models.market_data import MarketSnapshot
 from backend.services.strategy.rule_evaluator import (
     RuleEvaluator,
@@ -475,6 +475,12 @@ def run_backtest(
             )
             symbols = [s[0] for s in snaps]
 
+    import time
+    from datetime import datetime
+
+    started_at = datetime.utcnow()
+    start_time = time.perf_counter()
+
     engine = BacktestEngine()
     result = engine.run(
         db=db,
@@ -487,8 +493,54 @@ def run_backtest(
         position_size_pct=req.position_size_pct / 100,
     )
 
+    execution_time = time.perf_counter() - start_time
+
+    backtest_run = BacktestRun(
+        strategy_id=strategy.id,
+        user_id=user.id,
+        name=f"{strategy.name} - {req.start_date} to {req.end_date}",
+        start_date=datetime.combine(req.start_date, datetime.min.time()),
+        end_date=datetime.combine(req.end_date, datetime.min.time()),
+        initial_capital=req.initial_capital,
+        status=RunStatus.COMPLETED,
+        final_portfolio_value=result.metrics.final_capital,
+        total_return_pct=result.metrics.total_return_pct,
+        max_drawdown_pct=result.metrics.max_drawdown_pct,
+        sharpe_ratio=result.metrics.sharpe_ratio,
+        total_trades=result.metrics.total_trades,
+        win_rate_pct=result.metrics.win_rate * 100,
+        trades_executed=result.metrics.total_trades,
+        execution_time_seconds=round(execution_time, 2),
+        daily_returns=result.daily_returns,
+        portfolio_values=[e["equity"] for e in result.equity_curve],
+        trade_history=[
+            {
+                "symbol": t.symbol,
+                "side": t.side,
+                "quantity": t.quantity,
+                "price": t.price,
+                "date": str(t.date),
+                "pnl": t.pnl,
+            }
+            for t in result.trades
+        ],
+        performance_metrics={
+            "sortino_ratio": result.metrics.sortino_ratio,
+            "profit_factor": result.metrics.profit_factor,
+            "avg_trade_pnl": result.metrics.avg_trade_pnl,
+            "max_win": result.metrics.max_win,
+            "max_loss": result.metrics.max_loss,
+        },
+        started_at=started_at,
+        completed_at=datetime.utcnow(),
+    )
+    db.add(backtest_run)
+    db.commit()
+    db.refresh(backtest_run)
+
     return {
         "data": {
+            "backtest_run_id": backtest_run.id,
             "strategy_id": strategy.id,
             "metrics": {
                 "initial_capital": result.metrics.initial_capital,
@@ -516,5 +568,89 @@ def run_backtest(
                 }
                 for t in result.trades
             ],
+        }
+    }
+
+
+@router.get("/{strategy_id}/backtests")
+def list_strategy_backtests(
+    strategy_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """List all backtest runs for a strategy."""
+    strategy = (
+        db.query(Strategy)
+        .filter(Strategy.id == strategy_id, Strategy.user_id == user.id)
+        .first()
+    )
+    if not strategy:
+        raise HTTPException(status_code=404, detail="Strategy not found")
+
+    runs = (
+        db.query(BacktestRun)
+        .filter(
+            BacktestRun.strategy_id == strategy_id,
+            BacktestRun.user_id == user.id,
+        )
+        .order_by(BacktestRun.created_at.desc())
+        .all()
+    )
+
+    return {
+        "data": [
+            {
+                "id": r.id,
+                "name": r.name,
+                "start_date": r.start_date.date().isoformat() if r.start_date else None,
+                "end_date": r.end_date.date().isoformat() if r.end_date else None,
+                "status": r.status.value if r.status else None,
+                "total_return_pct": r.total_return_pct,
+                "max_drawdown_pct": r.max_drawdown_pct,
+                "total_trades": r.total_trades,
+                "win_rate_pct": r.win_rate_pct,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in runs
+        ],
+        "count": len(runs),
+    }
+
+
+@router.get("/backtests/{backtest_id}")
+def get_backtest_run(
+    backtest_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Get details of a specific backtest run."""
+    run = (
+        db.query(BacktestRun)
+        .filter(BacktestRun.id == backtest_id, BacktestRun.user_id == user.id)
+        .first()
+    )
+    if not run:
+        raise HTTPException(status_code=404, detail="Backtest run not found")
+
+    return {
+        "data": {
+            "id": run.id,
+            "strategy_id": run.strategy_id,
+            "name": run.name,
+            "start_date": run.start_date.date().isoformat() if run.start_date else None,
+            "end_date": run.end_date.date().isoformat() if run.end_date else None,
+            "initial_capital": run.initial_capital,
+            "status": run.status.value if run.status else None,
+            "final_portfolio_value": run.final_portfolio_value,
+            "total_return_pct": run.total_return_pct,
+            "max_drawdown_pct": run.max_drawdown_pct,
+            "sharpe_ratio": run.sharpe_ratio,
+            "total_trades": run.total_trades,
+            "win_rate_pct": run.win_rate_pct,
+            "execution_time_seconds": run.execution_time_seconds,
+            "trade_history": run.trade_history,
+            "portfolio_values": run.portfolio_values,
+            "performance_metrics": run.performance_metrics,
+            "created_at": run.created_at.isoformat() if run.created_at else None,
         }
     }

@@ -47,6 +47,9 @@ export const STAGE_HEX: Record<string, [string, string]> = {
   '4':       ['#E53E3E', '#FC8181'],
 };
 
+/** Valid stage keys for the 10 sub-stages (Stage Analysis). */
+export type StageKey = '1A' | '1B' | '2A' | '2B' | '2C' | '3A' | '3B' | '4A' | '4B' | '4C';
+
 /** Regime colors (Market Regime Engine R1–R5). */
 export const REGIME_HEX: Record<string, string> = {
   R1: '#22C55E',  // Bull — green

@@ -5,6 +5,17 @@ alwaysApply: true
 
 # Token Management & AI Development Workflow
 
+## Core Principle: Token Efficiency
+
+**Always optimize for token efficiency without dropping quality.**
+
+Before any tool call, ask:
+1. Can a fast model do this without quality loss? → Delegate
+2. Can I batch this with other independent operations? → Parallel Task calls
+3. Is this mechanical work that doesn't need reasoning? → Delegate
+
+See `delegation.mdc` and `token-efficiency.mdc` for detailed patterns.
+
 ## Delegation Rules
 
 **Opus (orchestrator) handles:**

@@ -3,6 +3,8 @@ import axios from "axios"
 import { useQueryClient } from "@tanstack/react-query"
 import { RefreshCw } from "lucide-react"
 
+import api from "@/services/api"
+
 import {
   AgentChatPanel,
   AgentHealthPanel,
@@ -212,7 +214,50 @@ const AdminAgent: React.FC = () => {
   const handleNewChat = React.useCallback(() => {
     setMessages([])
     setCurrentSessionId(null)
+    setSelectedSessionId(undefined)
   }, [])
+
+  const handleSelectSession = React.useCallback(
+    async (sessionId: string) => {
+      const previousSessionId = currentSessionId
+      setSelectedSessionId(sessionId)
+      setCurrentSessionId(sessionId)
+      try {
+        const res = await api.get<{
+          session_id: string
+          messages: Array<{ role: string; content: string }>
+          found: boolean
+        }>(`/admin/agent/sessions/${sessionId}/messages`)
+
+        if (res.data.found && res.data.messages.length > 0) {
+          // Filter to only user/assistant roles, normalize assistant->agent
+          const loadedMessages: ChatMessage[] = res.data.messages
+            .filter((m) => m.role === "user" || m.role === "assistant")
+            .map((m: { role: string; content: string }, i: number) => ({
+              id: `${sessionId}-${i}`,
+              role: m.role === "assistant" ? "agent" : "user",
+              content: m.content,
+              timestamp: new Date(),
+            }))
+          setMessages(loadedMessages)
+        } else {
+          setMessages([])
+        }
+      } catch (err) {
+        // Revert session on error
+        setCurrentSessionId(previousSessionId)
+        setSelectedSessionId(previousSessionId ?? undefined)
+        const errMsg: ChatMessage = {
+          id: newMessageId(),
+          role: "agent",
+          content: `Could not load session: ${getAxiosErrorMessage(err)}`,
+          timestamp: new Date(),
+        }
+        setMessages((prev) => [...prev, errMsg])
+      }
+    },
+    [currentSessionId]
+  )
 
   const handleApproveAction = React.useCallback(
     async (actionId: number, approved: boolean) => {
@@ -386,14 +431,14 @@ const AdminAgent: React.FC = () => {
               <AgentSessionList
                 sessions={sessionsQuery.data ?? []}
                 selectedSessionId={selectedSessionId}
-                onSelectSession={setSelectedSessionId}
+                onSelectSession={handleSelectSession}
               />
             </>
           )}
         </aside>
 
         <section
-          className="flex h-[32rem] max-h-[calc(100vh-20rem)] min-w-0 flex-1 flex-col overflow-hidden"
+          className="flex h-[calc(100vh-14rem)] min-h-[24rem] min-w-0 flex-1 flex-col overflow-hidden"
           aria-labelledby="agent-chat-heading"
         >
           <div className="mb-2 flex items-center justify-between">
