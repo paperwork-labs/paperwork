@@ -3,6 +3,17 @@ export type StrategyStatus = 'draft' | 'active' | 'paused' | 'stopped' | 'archiv
 export type RunStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 export type ExecutionMode = 'backtest' | 'paper' | 'live';
 
+/** Derived from latest `strategy_backtests` row (auto-backtest pipeline + veto gates). */
+export type BacktestValidationStatus = 'PENDING' | 'RUNNING' | 'PASSED' | 'FAILED' | 'VETOED';
+
+export interface BacktestValidationSummary {
+  status: BacktestValidationStatus;
+  sharpe_ratio: number | null;
+  max_drawdown_pct: number | null;
+  /** Fraction 0–1 when present. */
+  win_rate: number | null;
+}
+
 export interface Strategy {
   id: number;
   name: string;
@@ -18,6 +29,7 @@ export interface Strategy {
   run_frequency?: string | null;
   created_at: string;
   updated_at: string;
+  backtest_validation?: BacktestValidationSummary | null;
 }
 
 export interface StrategyRun {

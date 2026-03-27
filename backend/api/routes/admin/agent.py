@@ -106,8 +106,8 @@ def _get_autonomy_level() -> str:
                 level = raw.decode("utf-8") if isinstance(raw, bytes) else raw
                 if level in AGENT_AUTONOMY_LEVELS:
                     return level
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to read agent autonomy level from Redis: %s", e)
     return settings.AGENT_AUTONOMY_LEVEL
 
 

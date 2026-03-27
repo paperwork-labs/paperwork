@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { Page, PageHeader } from '../components/ui/Page';
 import { EntryExitRules } from '../components/strategy/RuleDisplay';
 import BacktestResults from '../components/strategy/BacktestResults';
+import { BacktestStatusBadge } from '../components/strategy/BacktestStatusBadge';
 import api from '../services/api';
 import { formatDateFriendly } from '../utils/format';
 import { useUserPreferences } from '../hooks/useUserPreferences';
@@ -198,6 +199,7 @@ export default function StrategyDetail() {
                 Resume
               </Button>
             )}
+            <BacktestStatusBadge validation={strategy.backtest_validation} className="h-6 px-2.5 text-xs" />
             <Badge
               variant="outline"
               className={cn('h-6 px-2.5 text-xs font-medium', STATUS_BADGE_CLASS[strategy.status] ?? STATUS_BADGE_CLASS.draft)}

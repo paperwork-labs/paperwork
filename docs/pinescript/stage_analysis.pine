@@ -1,0 +1,168 @@
+// AxiomFolio — Stage Analysis overlay for TradingView (Pine v5).
+// Classification aligns with backend/services/market/indicator_engine.py
+// (classify_stage_for_timeframe + 1B→2A breakout + ATRE→2C). RS modifier omitted.
+
+//@version=5
+indicator("AxiomFolio Stage Analysis", shorttitle="AF Stage", overlay = true, max_lines_count = 500, max_labels_count = 500)
+
+// ── Inputs ───────────────────────────────────────────────────────────────
+
+string G_MA = "Moving averages"
+string G_STAGE = "Stage background"
+string G_SLOPE = "SMA150 slope line"
+string G_CLASS = "Classification (advanced)"
+string G_ALERT = "Alerts"
+
+showSma5   = input.bool(true,  "Show SMA 5",   group = G_MA, inline = "ma5")
+len5       = input.int(5,   "Len", minval = 1, group = G_MA, inline = "ma5")
+showSma10  = input.bool(true,  "Show SMA 10",  group = G_MA, inline = "ma10")
+len10      = input.int(10,  "Len", minval = 1, group = G_MA, inline = "ma10")
+showSma21  = input.bool(true,  "Show SMA 21",  group = G_MA, inline = "ma21")
+len21      = input.int(21,  "Len", minval = 1, group = G_MA, inline = "ma21")
+showSma50  = input.bool(true,  "Show SMA 50",  group = G_MA, inline = "ma50")
+len50      = input.int(50,  "Len", minval = 1, group = G_MA, inline = "ma50")
+showSma100 = input.bool(false, "Show SMA 100", group = G_MA, inline = "ma100")
+len100     = input.int(100, "Len", minval = 1, group = G_MA, inline = "ma100")
+showSma150Line = input.bool(true, "Show SMA 150 (anchor)", group = G_MA, inline = "ma150")
+len150     = input.int(150, "Len", minval = 1, group = G_MA, inline = "ma150")
+showSma200 = input.bool(true,  "Show SMA 200", group = G_MA, inline = "ma200")
+len200     = input.int(200, "Len", minval = 1, group = G_MA, inline = "ma200")
+
+showBg2A     = input.bool(true, "Highlight Stage 2A (light green)", group = G_STAGE)
+showBg2B     = input.bool(true, "Highlight Stage 2B / 2C (green)",  group = G_STAGE)
+showBg3A     = input.bool(true, "Highlight Stage 3A (light orange)", group = G_STAGE)
+showBg4      = input.bool(true, "Highlight Stage 4 — 4A/4B/4C (red)", group = G_STAGE)
+bgTransp     = input.int(88, "Background transparency (0 = opaque)", minval = 0, maxval = 100, group = G_STAGE)
+
+showSlopeNeutral = input.bool(true, "Use neutral color when |slope| ≤ threshold", group = G_SLOPE)
+slopeNeutralTh   = input.float(0.35, "Flat slope threshold (%)", step = 0.05, minval = 0.0, group = G_SLOPE)
+colSlopeUp       = input.color(color.new(color.green, 0), "Slope up",   group = G_SLOPE)
+colSlopeDown     = input.color(color.new(color.red, 0),   "Slope down", group = G_SLOPE)
+colSlopeFlat     = input.color(color.new(color.gray, 30), "Slope flat", group = G_SLOPE)
+
+slopeLookback150 = input.int(20, "SMA150 slope lookback (bars)", minval = 1, group = G_CLASS)
+slopeLookback50  = input.int(10, "SMA50 slope lookback (bars)",  minval = 1, group = G_CLASS)
+volAvgLen        = input.int(20, "Volume average length (vol ratio)", minval = 1, group = G_CLASS)
+atrLen           = input.int(14, "ATR length (ATRE override)", minval = 1, group = G_CLASS)
+atrePromote      = input.float(6.0, "ATRE promote to 2C if >", step = 0.5, minval = 0.0, group = G_CLASS)
+breakoutVolMult  = input.float(1.5, "1B→2A breakout vol ratio >", step = 0.1, minval = 0.0, group = G_CLASS)
+
+alertCross150 = input.bool(true, "Alert: close crosses above SMA150", group = G_ALERT)
+alert2Ato2B   = input.bool(true, "Alert: Stage 2A → 2B transition", group = G_ALERT)
+alertBelow21  = input.bool(true, "Alert: close crosses below SMA21", group = G_ALERT)
+
+// ── Core series (v4: extension % vs SMA150; slopes = % change over N bars) ──
+
+float sma5   = ta.sma(close, len5)
+float sma10  = ta.sma(close, len10)
+float sma21  = ta.sma(close, len21)
+float sma50  = ta.sma(close, len50)
+float sma100 = ta.sma(close, len100)
+float sma150 = ta.sma(close, len150)
+float sma200 = ta.sma(close, len200)
+float ema10  = ta.ema(close, 10)
+
+float ext_pct = na(sma150) or sma150 == 0.0 ? na : (close - sma150) / sma150 * 100.0
+float sma150_slope = na(sma150[slopeLookback150]) or sma150[slopeLookback150] == 0.0 ? na : (sma150 - sma150[slopeLookback150]) / sma150[slopeLookback150] * 100.0
+float sma50_slope = na(sma50[slopeLookback50]) or sma50[slopeLookback50] == 0.0 ? na : (sma50 - sma50[slopeLookback50]) / sma50[slopeLookback50] * 100.0
+
+float vol_avg = ta.sma(volume, volAvgLen)
+float vol_ratio = na(vol_avg) or vol_avg == 0.0 ? na : volume / vol_avg
+
+float atr14 = ta.atr(atrLen)
+float atre_150 = na(atr14) or atr14 == 0.0 ? na : (close - sma150) / atr14
+
+// v4 slope band on SMA150 (±0.35%); priority 4C→4B→4A→1A→1B→2A→2B→2C→3A→3B
+float SLOPE_T = 0.35
+
+// Pass series as args so the UDF does not rely on implicit global access (portable Pine v5).
+f_classify(float c, float s150, float s50, float s21, float e10, float ext, float sl150, float sl50, float vr, float atre, float volMult, float atreThr) =>
+    string st = "UNKNOWN"
+    if na(sl150) or na(sl50) or na(ext)
+        st := "UNKNOWN"
+    else
+        bool above = c > s150
+        bool below = not above
+        bool slope_strongly_down = sl150 < -SLOPE_T
+        bool slope_down_or_flat = sl150 <= 0.0
+        bool slope_flat = math.abs(sl150) <= SLOPE_T
+        bool slope_up = sl150 > SLOPE_T
+        bool slope_positive = sl150 > 0.0
+        if below and slope_strongly_down and ext < -15.0
+            st := "4C"
+        else if below and slope_strongly_down
+            st := "4B"
+        else if below and slope_down_or_flat and sl50 < 0.0
+            st := "4A"
+        else if math.abs(ext) < 5.0 and slope_flat and sl150 <= 0.0
+            st := "1A"
+        else if math.abs(ext) < 5.0 and (slope_flat or (slope_positive and not slope_up))
+            if above and not na(vr) and vr > volMult and e10 > s21 and s21 > s50
+                st := "2A"
+            else
+                st := "1B"
+        else if above and slope_positive and ext <= 5.0
+            st := "2A"
+        else if above and slope_up and ext <= 15.0
+            st := "2B"
+        else if above and slope_up and ext > 15.0
+            st := "2C"
+        else if above and not slope_up
+            st := "3A"
+        else
+            st := "3B"
+        if (st == "2A" or st == "2B") and not na(atre) and atre > atreThr
+            st := "2C"
+    st
+
+string stage = f_classify(close, sma150, sma50, sma21, ema10, ext_pct, sma150_slope, sma50_slope, vol_ratio, atre_150, breakoutVolMult, atrePromote)
+
+// ── SMA150 line color from slope (optional neutral band inside ±threshold %) ──
+
+color col150 =
+     na(sma150_slope) ? color.gray :
+     showSlopeNeutral and math.abs(sma150_slope) <= slopeNeutralTh ? colSlopeFlat :
+     sma150_slope > 0.0 ? colSlopeUp : colSlopeDown
+
+plot(showSma5   ? sma5   : na, "SMA 5",   color = color.new(color.teal,    35), linewidth = 1)
+plot(showSma10  ? sma10  : na, "SMA 10",  color = color.new(color.blue,    40), linewidth = 1)
+plot(showSma21  ? sma21  : na, "SMA 21",  color = color.new(color.orange,  35), linewidth = 1)
+plot(showSma50  ? sma50  : na, "SMA 50",  color = color.new(color.purple,  40), linewidth = 1)
+plot(showSma100 ? sma100 : na, "SMA 100", color = color.new(color.fuchsia, 45), linewidth = 1)
+plot(showSma150Line ? sma150 : na, "SMA 150", color = col150, linewidth = 2)
+plot(showSma200 ? sma200 : na, "SMA 200", color = color.new(color.black,   50), linewidth = 1)
+
+// ── Backgrounds: 2C grouped with 2B (both advance); 4 = 4A/4B/4C ─────────
+
+color bg2A = color.new(#A8E6A3, bgTransp)
+color bg2B = color.new(#2E7D32, bgTransp)
+color bg3A = color.new(#FFCC80, bgTransp)
+color bg4  = color.new(#E53935, bgTransp)
+
+bool is4 = stage == "4A" or stage == "4B" or stage == "4C"
+bool is2A = stage == "2A"
+bool is2Adv = stage == "2B" or stage == "2C"
+bool is3A = stage == "3A"
+
+color stageBg =
+     showBg4 and is4 ? bg4 :
+     showBg3A and is3A ? bg3A :
+     showBg2B and is2Adv ? bg2B :
+     showBg2A and is2A ? bg2A :
+     na
+
+bgcolor(stageBg, title = "Stage zone")
+
+// ── Alerts (bar close). Messages use TV placeholders: {{ticker}}, {{interval}}, {{time}} ──
+
+bool crossAbove150 = ta.crossover(close, sma150)
+bool crossBelow21  = ta.crossunder(close, sma21)
+bool trans2Ato2B = stage == "2B" and stage[1] == "2A"
+
+if barstate.isconfirmed
+    if alertCross150 and crossAbove150
+        alert("{{ticker}} {{interval}}: Close crossed above SMA150 — potential Stage 2 entry context (confirm stage on chart).", alert.freq_once_per_bar_close)
+    if alert2Ato2B and trans2Ato2B
+        alert("{{ticker}} {{interval}}: Stage 2A → 2B — SMA150 slope strongly up with moderate extension (v4-style).", alert.freq_once_per_bar_close)
+    if alertBelow21 and crossBelow21
+        alert("{{ticker}} {{interval}}: Close crossed below SMA21 — exit / risk warning (short-term trend softening).", alert.freq_once_per_bar_close)

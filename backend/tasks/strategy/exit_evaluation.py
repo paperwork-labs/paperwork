@@ -27,6 +27,39 @@ from backend.services.market.regime_engine import get_current_regime
 logger = logging.getLogger(__name__)
 
 
+def _auto_submit_exit_order(order_id: int, exit_tier: str) -> None:
+    """Queue exit order for execution after circuit breaker check.
+    
+    Args:
+        order_id: Database ID of the order to submit
+        exit_tier: Exit tier that triggered this order (for logging)
+    """
+    from backend.services.risk.circuit_breaker import circuit_breaker
+    
+    # Check circuit breaker - exits are allowed in tier 2 but not tier 3
+    allowed, reason, tier = circuit_breaker.can_trade(is_exit=True)
+    
+    if not allowed:
+        logger.warning(
+            "Circuit breaker blocked exit order %s: %s",
+            order_id,
+            reason,
+        )
+        return
+    
+    try:
+        from backend.tasks.portfolio.orders import execute_order_task
+        execute_order_task.delay(order_id)
+        logger.info(
+            "Exit order %s queued for execution (tier: %s, cb_tier: %s)",
+            order_id,
+            exit_tier,
+            tier,
+        )
+    except Exception as e:
+        logger.error("Failed to queue exit order %s: %s", order_id, e)
+
+
 def _build_position_context(
     position: Position,
     snapshot: MarketSnapshot,
@@ -266,6 +299,8 @@ def evaluate_exits_task() -> dict:
         signals_created = 0
         orders_created = 0
         exit_recommendations = []
+        # Queue execute_order_task only after db.commit() so workers see persisted rows.
+        pending_exit_order_submits: list[tuple[int, str]] = []
         
         for position in positions:
             snapshot = snapshots.get(position.symbol)
@@ -302,13 +337,18 @@ def evaluate_exits_task() -> dict:
                 order = _create_exit_order(db, position, result, snapshot)
                 if order:
                     orders_created += 1
+                    db.flush()  # Get order.id
                     logger.info(
                         "Exit order created: %s %s %d shares (%s via %s)",
                         order.side, position.symbol, order.quantity,
                         result.final_action.value, result.final_tier,
                     )
+                    pending_exit_order_submits.append((order.id, result.final_tier))
         
         db.commit()
+        
+        for order_id, exit_tier in pending_exit_order_submits:
+            _auto_submit_exit_order(order_id, exit_tier)
         
         # Log summary
         if exit_recommendations:

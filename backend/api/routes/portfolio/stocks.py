@@ -9,7 +9,7 @@ import csv
 import io
 import logging
 
-from backend.api.dependencies import get_portfolio_user
+from backend.api.dependencies import get_current_user, get_portfolio_user
 from backend.database import get_db
 from backend.models.position import Position
 from backend.models import BrokerAccount
@@ -103,7 +103,6 @@ def _market_cap_label(market_cap: Optional[float]) -> Optional[str]:
 
 @router.get("/stocks", response_model=Dict[str, Any])
 async def get_stocks(
-    user_id: int | None = Query(None, description="User ID (optional)"),
     account_id: str | None = Query(
         None, description="Filter by account number (e.g., IBKR_ACCOUNT)"
     ),
@@ -111,22 +110,15 @@ async def get_stocks(
         True, description="Enrich with market snapshot (stage, RS, perf, rsi, atr)"
     ),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Return equity positions for Stocks page. Optionally enriched with market snapshot (stage, RS, etc.)."""
     try:
-        user = (
-            db.query(User).first()
-            if user_id is None
-            else db.query(User).filter(User.id == user_id).first()
-        )
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-
         query = (
             db.query(Position)
             .join(BrokerAccount, Position.account_id == BrokerAccount.id)
             .filter(
-                Position.user_id == user.id,
+                Position.user_id == current_user.id,
                 BrokerAccount.is_enabled == True,
                 Position.instrument_type == "STOCK",
                 Position.quantity != 0,
@@ -184,11 +176,12 @@ async def get_stocks(
 async def get_tax_lots_for_stock(
     position_id: int = Path(..., description="Position ID"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Return tax lots associated with a Position (by FK)."""
     try:
         position = db.query(Position).filter(Position.id == position_id).first()
-        if not position:
+        if not position or position.user_id != current_user.id:
             raise HTTPException(status_code=404, detail="Position not found")
 
         lots = (

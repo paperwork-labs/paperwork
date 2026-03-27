@@ -36,13 +36,13 @@ class TaxLotService:
         try:
             # ISO string
             return datetime.fromisoformat(value)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Acquisition date ISO parse failed for %r: %s", value, e)
         try:
             # YYYYMMDD (FlexQuery tradeDate)
             return datetime.strptime(value, "%Y%m%d")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Acquisition date YYYYMMDD parse failed for %r: %s", value, e)
         try:
             # YYYY-MM-DD
             return datetime.strptime(value, "%Y-%m-%d")

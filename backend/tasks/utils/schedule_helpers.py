@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import logging
 from typing import Optional
 
 from celery.schedules import crontab
+
+logger = logging.getLogger(__name__)
 
 
 def build_crontab_schedule(
@@ -39,8 +42,8 @@ def build_crontab_schedule(
     if hasattr(schedule, "tz"):
         try:
             schedule.tz = tz_value
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("build_crontab_schedule failed to set schedule.tz: %s", e)
     return schedule
 
 

@@ -215,6 +215,31 @@ class AlpacaSyncService:
         finally:
             loop.close()
 
+    async def sync_account_comprehensive(
+        self, account_number: str, db: Session
+    ) -> Dict:
+        """Unified contract method for BrokerSyncService compatibility.
+        
+        Args:
+            account_number: The Alpaca account number/ID
+            db: Database session
+            
+        Returns:
+            Dict with sync results
+        """
+        account = (
+            db.query(BrokerAccount)
+            .filter(
+                BrokerAccount.account_number == account_number,
+                BrokerAccount.broker == BrokerType.ALPACA,
+            )
+            .first()
+        )
+        if not account:
+            return {"status": "error", "error": f"Alpaca account {account_number} not found"}
+        
+        return await self.sync_account(db, account, "comprehensive")
+
 
 # Singleton for import convenience
 alpaca_sync_service = AlpacaSyncService()

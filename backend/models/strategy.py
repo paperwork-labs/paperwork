@@ -182,7 +182,10 @@ class Strategy(Base):
     )
     executions = relationship(
         "StrategyExecution", back_populates="strategy", cascade="all, delete-orphan"
-    )  # Fixed: Added missing relationship
+    )
+    backtests = relationship(
+        "StrategyBacktest", back_populates="strategy", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         UniqueConstraint("user_id", "name", name="uq_user_strategy_name"),

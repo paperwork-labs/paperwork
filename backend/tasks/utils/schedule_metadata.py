@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import json
+import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-import json
 
 import redis
 from pydantic import BaseModel, Field
 
 from backend.config import settings
 
+logger = logging.getLogger(__name__)
 
 META_KEY_TEMPLATE = "redbeat:meta:{name}"
 
@@ -141,8 +143,8 @@ def save_schedule_metadata(
             store.delete(meta_key(name))
             return
         store.set(meta_key(name), json.dumps(meta.model_dump()))
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("save_schedule_metadata failed for %s: %s", name, e)
 
 
 def delete_schedule_metadata(name: str, client: Optional[redis.Redis] = None) -> None:

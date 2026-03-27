@@ -1,7 +1,9 @@
 """Position, tax lot, instrument, and option sync steps for IBKR pipeline."""
 
 import asyncio
+import json
 import logging
+import re
 from datetime import datetime
 from decimal import Decimal
 from typing import Dict
@@ -16,10 +18,9 @@ from backend.models.position import Position, PositionStatus, PositionType
 from backend.models.tax_lot import TaxLotSource
 from backend.services.clients.ibkr_flexquery_client import IBKRFlexQueryClient
 
-from .helpers import coerce_date, logger, safe_float, DEFAULT_CURRENCY, DEFAULT_ASSET_CATEGORY
+from .helpers import coerce_date, safe_float, DEFAULT_CURRENCY, DEFAULT_ASSET_CATEGORY
 
-import json
-import re
+logger = logging.getLogger(__name__)
 
 _OCC_RE = re.compile(
     r"^(?P<underlying>[A-Z]{1,6})\s*"
@@ -475,7 +476,13 @@ async def sync_positions_from_open_positions(
                     position_updated_at=datetime.now(),
                 ))
                 synced_count += 1
-            except Exception:
+            except Exception as e:
+                logger.warning(
+                    "Skipping OpenPositions row for account %s symbol %s: %s",
+                    account_number,
+                    sp.get("symbol", "?"),
+                    e,
+                )
                 continue
 
         db.flush()
@@ -663,7 +670,12 @@ async def refresh_prices(db: Session, broker_account: BrokerAccount) -> Dict:
             p.unrealized_pnl = unrealized
             p.unrealized_pnl_pct = unrealized_pct
             updated_positions += 1
-        except Exception:
+        except Exception as e:
+            logger.warning(
+                "refresh_prices: failed updating position metrics for symbol %s: %s",
+                getattr(p, "symbol", "?"),
+                e,
+            )
             continue
 
     lots = db.query(TaxLot).filter(TaxLot.account_id == broker_account.id).all()
@@ -683,7 +695,12 @@ async def refresh_prices(db: Session, broker_account: BrokerAccount) -> Dict:
             lot.unrealized_pnl = unrealized
             lot.unrealized_pnl_pct = unrealized_pct
             updated_lots += 1
-        except Exception:
+        except Exception as e:
+            logger.warning(
+                "refresh_prices: failed updating tax lot metrics for symbol %s: %s",
+                getattr(lot, "symbol", "?"),
+                e,
+            )
             continue
 
     db.flush()

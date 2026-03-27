@@ -76,10 +76,10 @@ class Order(Base):
     broker_order_id = Column(String(100), nullable=True, index=True)
 
     # Lineage: which strategy / signal / position triggered this order
-    strategy_id = Column(Integer, ForeignKey("strategies.id"), nullable=True, index=True)
-    signal_id = Column(Integer, nullable=True, index=True)
-    position_id = Column(Integer, nullable=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    strategy_id = Column(Integer, ForeignKey("strategies.id", ondelete="SET NULL"), nullable=True, index=True)
+    signal_id = Column(Integer, ForeignKey("signals.id", ondelete="SET NULL"), nullable=True, index=True)
+    position_id = Column(Integer, ForeignKey("positions.id", ondelete="SET NULL"), nullable=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
 
     source = Column(String(20), nullable=False, default="manual")
     broker_type = Column(String(20), nullable=False, default="ibkr")

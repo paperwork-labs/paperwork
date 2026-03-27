@@ -1154,8 +1154,12 @@ class DiscordNotifier:
                                 positions
                             )
                             all_alerts.extend(account_alerts)
-                        except:
-                            pass
+                        except Exception as e:
+                            logger.warning(
+                                "generate_portfolio_alerts failed for account %s: %s",
+                                account_id,
+                                e,
+                            )
 
             # Show top priority alerts
             high_priority = [

@@ -216,9 +216,14 @@ class AccountConfigService:
                                     "broker": BrokerType.IBKR,
                                 }
                             )
-                    except Exception:
+                    except Exception as e:
+                        logger.warning(
+                            "IBKR_DISCOVER_ON_SEED: failed building accounts from discovery: %s",
+                            e,
+                        )
                         pass
-            except Exception:
+            except Exception as e:
+                logger.warning("IBKR_DISCOVER_ON_SEED: outer seed block failed: %s", e)
                 pass
             all_accounts.extend(ibkr_accounts)
 
@@ -249,7 +254,8 @@ class AccountConfigService:
                                 "broker": BrokerType.SCHWAB,
                             }
                         )
-            except Exception:
+            except Exception as e:
+                logger.warning("Failed parsing SCHWAB_ACCOUNTS from settings: %s", e)
                 pass
 
             # Process each account

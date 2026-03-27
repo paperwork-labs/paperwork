@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import logging
 import os
 import secrets
 import time
@@ -10,6 +11,8 @@ from typing import Optional, Dict, Tuple
 import redis
 
 from backend.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def _get_redis() -> redis.Redis:
@@ -50,7 +53,8 @@ def save_verifier_for_state(state: str, code_verifier: str, ttl_seconds: int = 6
         r = _get_redis()
         r.setex(f"pkce:{state}", ttl_seconds, code_verifier)
         return
-    except Exception:
+    except Exception as e:
+        logger.warning("PKCE save_verifier Redis setex failed, using in-memory: %s", e)
         # Fallback to in-memory with expiration
         _MEM_STORE[f"pkce:{state}"] = (code_verifier, time.time() + ttl_seconds)
 
@@ -68,8 +72,8 @@ def pop_verifier_for_state(state: str) -> Optional[str]:
         val, _ = pipe.execute()
         if val is not None:
             return val
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("PKCE pop_verifier Redis pipeline failed, trying in-memory: %s", e)
     # Fallback to in-memory
     try:
         val, exp = _MEM_STORE.pop(key)

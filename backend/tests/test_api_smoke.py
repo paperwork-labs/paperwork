@@ -40,12 +40,12 @@ def test_portfolio_live(client):
 
 def test_statements_empty_ok(client):
     r = client.get("/api/v1/portfolio/statements?days=7")
-    assert r.status_code in (200, 500)
+    assert r.status_code in (200, 401, 403, 500)
 
 
 def test_portfolio_stocks_endpoint(client):
     r = client.get("/api/v1/portfolio/stocks")
-    assert r.status_code in (200, 500)
+    assert r.status_code in (200, 401, 403, 500)
 
 
 def test_portfolio_options_endpoints(client):

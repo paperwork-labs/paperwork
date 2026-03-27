@@ -11,7 +11,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
+from backend.api.dependencies import get_market_data_viewer
 from backend.models.market_data import JobRun
+from backend.models.user import User
 
 router = APIRouter(prefix="/intelligence", tags=["intelligence"])
 
@@ -31,6 +33,7 @@ def list_intelligence_briefs(
     brief_type: Optional[str] = Query(None, description="daily, weekly, or monthly"),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
+    _viewer: User = Depends(get_market_data_viewer),
 ):
     """List stored intelligence briefs."""
     q = db.query(JobRun).filter(JobRun.task_name.like("intelligence_%_brief"))
@@ -55,6 +58,7 @@ def list_intelligence_briefs(
 def get_intelligence_brief(
     brief_id: int,
     db: Session = Depends(get_db),
+    _viewer: User = Depends(get_market_data_viewer),
 ):
     """Get a specific intelligence brief by ID."""
     row = (
@@ -76,6 +80,7 @@ def get_intelligence_brief(
 def get_latest_brief(
     brief_type: str = Query("daily", description="daily, weekly, or monthly"),
     db: Session = Depends(get_db),
+    _viewer: User = Depends(get_market_data_viewer),
 ):
     """Get the most recent brief of a given type."""
     row = (

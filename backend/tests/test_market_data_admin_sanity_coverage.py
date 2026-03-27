@@ -28,7 +28,10 @@ def test_admin_sanity_coverage_payload(db_session, monkeypatch):
     # Force route codepaths to use pytest DB session.
     app.dependency_overrides[get_db] = lambda: db_session
     try:
-        monkeypatch.setattr(routes, "tracked_symbols", lambda _db, redis_client=None: ["AAA", "BBB"])
+        async def _fake_tracked_symbols_async(_db, redis_async=None):
+            return ["AAA", "BBB"]
+
+        monkeypatch.setattr(routes, "tracked_symbols_async", _fake_tracked_symbols_async)
 
         # Latest daily OHLCV exists for AAA only.
         db_session.add(

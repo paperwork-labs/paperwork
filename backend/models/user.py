@@ -84,6 +84,9 @@ class User(Base):
     # UI Preferences (theme, table density, etc.)
     ui_preferences = Column(JSON)
 
+    # External Integrations (SHA-256 hex digest of TradingView webhook secret)
+    tv_webhook_secret = Column(String(64), unique=True, nullable=True, index=True)
+
     # Audit
     created_at = Column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
@@ -122,6 +125,9 @@ class User(Base):
     )
     strategy_executions = relationship(
         "StrategyExecution", back_populates="user", cascade="all, delete-orphan"
+    )
+    notifications = relationship(
+        "Notification", back_populates="user", cascade="all, delete-orphan"
     )
 
     __table_args__ = (

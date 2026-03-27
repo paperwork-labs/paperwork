@@ -1,6 +1,4 @@
-"""Statements endpoint powering frontend Transactions.tsx.
-Unauthenticated for dev: accepts optional user_id.
-"""
+"""Statements endpoint powering frontend Transactions.tsx."""
 
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
@@ -9,6 +7,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from backend.api.dependencies import get_current_user
 from backend.database import get_db
 from backend.models import BrokerAccount
 from backend.models.user import User
@@ -22,26 +21,18 @@ router = APIRouter()
 @router.get("/statements")
 async def get_statements(
     days: int = Query(30, ge=1, le=3650),
-    user_id: Optional[int] = Query(None, description="User ID (optional)"),
     account_id: Optional[str] = Query(
         None, description="Filter by account number (e.g., IBKR_ACCOUNT)"
     ),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    """Return unified transaction statements for last N days for the user."""
+    """Return unified transaction statements for last N days for the authenticated user."""
     try:
-        user = (
-            db.query(User).first()
-            if user_id is None
-            else db.query(User).filter(User.id == user_id).first()
-        )
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-
         cutoff = datetime.utcnow() - timedelta(days=days)
         # Base filter: all user's accounts
         account_ids_q = db.query(BrokerAccount.id).filter(
-            BrokerAccount.user_id == user.id
+            BrokerAccount.user_id == current_user.id
         )
         # Optional filter: specific account number
         if account_id:
@@ -49,7 +40,7 @@ async def get_statements(
                 db.query(BrokerAccount)
                 .filter(
                     BrokerAccount.account_number == account_id,
-                    BrokerAccount.user_id == user.id,
+                    BrokerAccount.user_id == current_user.id,
                 )
                 .first()
             )

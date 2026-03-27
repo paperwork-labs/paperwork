@@ -55,11 +55,26 @@ from .options import Option, OptionType
 # Strategy & Signals (required for User.strategies / User.strategy_executions)
 from .strategy import Strategy, StrategyExecution
 
+# Backtesting
+from .backtest import StrategyBacktest, BacktestStatus
+
 # Watchlist
 from .watchlist import Watchlist
 
 # Agent / Auto-Ops
 from .agent_action import AgentAction
+
+# Notifications (required for User.notifications ↔ Notification.user)
+from .notification import (
+    Notification,
+    NotificationChannel,
+    NotificationDelivery,
+    NotificationPreference,
+    NotificationStatus,
+    NotificationTemplate,
+    NotificationType,
+    Priority,
+)
 
 # Essential models list
 __all__ = [
@@ -113,4 +128,14 @@ __all__ = [
     "ExecutionMetrics",
     "Watchlist",
     "AgentAction",
+    "Notification",
+    "NotificationChannel",
+    "NotificationDelivery",
+    "NotificationPreference",
+    "NotificationStatus",
+    "NotificationTemplate",
+    "NotificationType",
+    "Priority",
+    "StrategyBacktest",
+    "BacktestStatus",
 ]

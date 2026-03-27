@@ -8,7 +8,7 @@ def test_recompute_indicators_warns_when_benchmark_missing(db_session, monkeypat
             return None
 
     # Avoid Redis + background status updates during the test.
-    market_data_service._redis_client = DummyRedis()
+    market_data_service._redis_sync = DummyRedis()
     monkeypatch.setattr(market_indicators_tasks, "SessionLocal", lambda: db_session)
     monkeypatch.setattr(market_indicators_tasks, "_set_task_status", lambda *args, **kwargs: None)
     monkeypatch.setattr(market_indicators_tasks, "_get_tracked_symbols_safe", lambda _session: ["AAA"])

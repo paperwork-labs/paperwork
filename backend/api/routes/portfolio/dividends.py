@@ -1,5 +1,5 @@
 """Dividends endpoint `/api/v1/portfolio/dividends` consumed by React DividendsCalendar.
-Returns dividends for the specified user (or default first user) over the given number of days.
+Returns dividends for the authenticated user over the given number of days.
 """
 
 from datetime import datetime, timedelta
@@ -9,6 +9,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from backend.api.dependencies import get_current_user
 from backend.database import get_db
 from backend.models.transaction import Dividend
 from backend.models.user import User
@@ -22,30 +23,22 @@ router = APIRouter()
 @router.get("/dividends", response_model=Dict[str, Any])
 async def get_dividends(
     days: int = Query(365, ge=1, le=3650),
-    user_id: int | None = Query(None, description="User ID (optional)"),
     account_id: str | None = Query(
         None, description="Filter by account number (e.g., U19491234)"
     ),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    """Return dividend rows within the last `days` days for the given user.
+    """Return dividend rows within the last `days` days for the authenticated user.
     The frontend calls `/portfolio/dividends?days=365` so we support that query param.
     """
     try:
         cutoff_date = datetime.utcnow() - timedelta(days=days)
 
-        # Determine user (temporary unauthenticated fallback)
-        if user_id is None:
-            user = db.query(User).first()
-        else:
-            user = db.query(User).filter(User.id == user_id).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-
         base = (
             db.query(Dividend)
             .join(BrokerAccount, Dividend.account_id == BrokerAccount.id)
-            .filter(BrokerAccount.user_id == user.id)
+            .filter(BrokerAccount.user_id == current_user.id)
             .filter(Dividend.ex_date >= cutoff_date)
         )
         if account_id:

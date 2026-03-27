@@ -176,8 +176,10 @@ class BrokerSyncService:
                         fresh.sync_status = SyncStatus.ERROR
                         fresh.sync_error_message = str(e)
                         session.commit()
-            except Exception:
-                pass
+            except Exception as status_err:
+                logger.warning(
+                    "Failed to update sync error status for %s: %s", account_id, status_err
+                )
             return {"status": "error", "error": str(e)}
         finally:
             if db is None:
@@ -254,8 +256,10 @@ class BrokerSyncService:
                         fresh.sync_status = SyncStatus.ERROR
                         fresh.sync_error_message = str(e)
                         session.commit()
-            except Exception:
-                pass
+            except Exception as status_err:
+                logger.warning(
+                    "Failed to update sync error status for %s: %s", account_id, status_err
+                )
             return {"status": "error", "error": str(e)}
         finally:
             if db is None:

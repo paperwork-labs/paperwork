@@ -13,7 +13,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from backend.database import get_db
+from backend.api.dependencies import get_market_data_viewer
 from backend.models.market_data import MarketRegime
+from backend.models.user import User
 
 router = APIRouter(prefix="/regime", tags=["regime"])
 
@@ -21,6 +23,7 @@ router = APIRouter(prefix="/regime", tags=["regime"])
 @router.get("/current")
 async def get_current_regime(
     db: Session = Depends(get_db),
+    _viewer: User = Depends(get_market_data_viewer),
 ) -> Dict[str, Any]:
     """Get the most recent market regime state."""
     from backend.services.market.regime_engine import get_current_regime as _get_regime
@@ -56,6 +59,7 @@ async def get_current_regime(
 async def get_regime_history(
     days: int = Query(90, ge=1, le=365),
     db: Session = Depends(get_db),
+    _viewer: User = Depends(get_market_data_viewer),
 ) -> Dict[str, Any]:
     """Get regime history for the last N days."""
     # MarketRegime.as_of_date is DateTime (see models/market_data.py); rows are

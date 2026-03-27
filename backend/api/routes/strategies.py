@@ -13,6 +13,7 @@ from backend.api.dependencies import get_current_user
 from backend.database import get_db
 from backend.models.user import User
 from backend.models.strategy import Strategy, StrategyType, StrategyStatus, BacktestRun, RunStatus
+from backend.models.backtest import StrategyBacktest, BacktestStatus
 from backend.models.market_data import MarketSnapshot
 from backend.services.strategy.rule_evaluator import (
     RuleEvaluator,
@@ -108,7 +109,61 @@ class StrategyResponse(BaseModel):
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _strategy_to_dict(s: Strategy) -> Dict[str, Any]:
+def _fetch_latest_strategy_backtests(
+    db: Session, strategy_ids: List[int]
+) -> Dict[int, StrategyBacktest]:
+    """Most recent StrategyBacktest row per strategy (auto-backtest / validation pipeline)."""
+    if not strategy_ids:
+        return {}
+    rows = (
+        db.query(StrategyBacktest)
+        .filter(StrategyBacktest.strategy_id.in_(strategy_ids))
+        .order_by(StrategyBacktest.created_at.desc(), StrategyBacktest.id.desc())
+        .all()
+    )
+    out: Dict[int, StrategyBacktest] = {}
+    for r in rows:
+        if r.strategy_id not in out:
+            out[r.strategy_id] = r
+    return out
+
+
+def _metrics_from_backtest_row(bt: StrategyBacktest) -> Dict[str, Any]:
+    return {
+        "sharpe_ratio": float(bt.sharpe_ratio) if bt.sharpe_ratio is not None else None,
+        "max_drawdown_pct": float(bt.max_drawdown_pct) if bt.max_drawdown_pct is not None else None,
+        "win_rate": float(bt.win_rate) if bt.win_rate is not None else None,
+    }
+
+
+def _backtest_validation_payload(bt: Optional[StrategyBacktest]) -> Dict[str, Any]:
+    """
+    UI validation status for the latest auto-backtest row.
+
+    Maps DB BacktestStatus + veto flags to PENDING | RUNNING | PASSED | FAILED | VETOED.
+    """
+    if bt is None:
+        return {"status": "PENDING", "sharpe_ratio": None, "max_drawdown_pct": None, "win_rate": None}
+
+    if bt.status == BacktestStatus.PENDING:
+        return {**_metrics_from_backtest_row(bt), "status": "PENDING"}
+    if bt.status == BacktestStatus.RUNNING:
+        return {**_metrics_from_backtest_row(bt), "status": "RUNNING"}
+    if bt.status == BacktestStatus.FAILED:
+        return {**_metrics_from_backtest_row(bt), "status": "FAILED"}
+    if bt.status == BacktestStatus.CANCELLED:
+        return {**_metrics_from_backtest_row(bt), "status": "PENDING"}
+
+    # COMPLETED
+    payload = {**_metrics_from_backtest_row(bt), "status": "PASSED"}
+    if bt.passed_veto_gates is False:
+        payload["status"] = "VETOED"
+    return payload
+
+
+def _strategy_to_dict(
+    s: Strategy, latest_backtest: Optional[StrategyBacktest] = None
+) -> Dict[str, Any]:
     return {
         "id": s.id,
         "name": s.name,
@@ -124,6 +179,7 @@ def _strategy_to_dict(s: Strategy) -> Dict[str, Any]:
         "run_frequency": s.run_frequency,
         "created_at": s.created_at.isoformat() if s.created_at else None,
         "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+        "backtest_validation": _backtest_validation_payload(latest_backtest),
     }
 
 
@@ -163,7 +219,9 @@ def list_strategies(
         .order_by(Strategy.created_at.desc())
         .all()
     )
-    return {"data": [_strategy_to_dict(s) for s in strategies]}
+    sids = [s.id for s in strategies]
+    latest_bt = _fetch_latest_strategy_backtests(db, sids)
+    return {"data": [_strategy_to_dict(s, latest_bt.get(s.id)) for s in strategies]}
 
 
 # ---------------------------------------------------------------------------
@@ -232,7 +290,8 @@ def create_strategy_from_template(
     db.add(strategy)
     db.commit()
     db.refresh(strategy)
-    return {"data": _strategy_to_dict(strategy)}
+    latest_bt = _fetch_latest_strategy_backtests(db, [strategy.id])
+    return {"data": _strategy_to_dict(strategy, latest_bt.get(strategy.id))}
 
 
 @router.post("", status_code=201)
@@ -270,7 +329,8 @@ def create_strategy(
     db.add(strategy)
     db.commit()
     db.refresh(strategy)
-    return {"data": _strategy_to_dict(strategy)}
+    latest_bt = _fetch_latest_strategy_backtests(db, [strategy.id])
+    return {"data": _strategy_to_dict(strategy, latest_bt.get(strategy.id))}
 
 
 @router.get("/{strategy_id}")
@@ -286,7 +346,8 @@ def get_strategy(
     )
     if not strategy:
         raise HTTPException(status_code=404, detail="Strategy not found")
-    return {"data": _strategy_to_dict(strategy)}
+    latest_bt = _fetch_latest_strategy_backtests(db, [strategy.id])
+    return {"data": _strategy_to_dict(strategy, latest_bt.get(strategy.id))}
 
 
 @router.put("/{strategy_id}")
@@ -345,7 +406,8 @@ def update_strategy(
     strategy.modified_by_user_id = user.id
     db.commit()
     db.refresh(strategy)
-    return {"data": _strategy_to_dict(strategy)}
+    latest_bt = _fetch_latest_strategy_backtests(db, [strategy.id])
+    return {"data": _strategy_to_dict(strategy, latest_bt.get(strategy.id))}
 
 
 @router.delete("/{strategy_id}")

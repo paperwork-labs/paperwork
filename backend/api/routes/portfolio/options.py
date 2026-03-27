@@ -257,6 +257,7 @@ async def get_unified_options_summary(
 @router.get("/chain/{symbol}", response_model=Dict[str, Any])
 async def get_option_chain(
     symbol: str,
+    user: User = Depends(get_portfolio_user),
     db: Session = Depends(get_db),
 ):
     """Fetch live option chain for a symbol. Requires IB Gateway connection."""
@@ -357,7 +358,9 @@ async def get_options_history(
 
 
 @router.get("/gateway-status", response_model=Dict[str, Any])
-async def get_gateway_status():
+async def get_gateway_status(
+    user: User = Depends(get_portfolio_user),
+):
     """Check IB Gateway connection status."""
     try:
         from backend.services.clients.ibkr_client import ibkr_client, IBKR_AVAILABLE

@@ -28,7 +28,7 @@ from backend.tasks.celery_app import celery_app
 from celery.result import AsyncResult
 from fastapi import Query
 from typing import Dict, Any
-from backend.api.routes.auth import get_current_user
+from backend.api.dependencies import get_current_user
 from backend.models.user import User
 import logging
 
@@ -624,6 +624,7 @@ async def refresh_prices(
     symbols: Optional[List[str]] = Query(
         default=None, description="Optional subset of symbols to refresh"
     ),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     from backend.services.market.market_data_service import MarketDataService
@@ -631,9 +632,23 @@ async def refresh_prices(
     try:
         market_service = MarketDataService()
 
-        # Load target positions
-        q = db.query(BrokerAccount, Position).join(
-            Position, Position.account_id == BrokerAccount.id
+        if account_id is not None:
+            owned = (
+                db.query(BrokerAccount)
+                .filter(
+                    BrokerAccount.id == account_id,
+                    BrokerAccount.user_id == current_user.id,
+                )
+                .first()
+            )
+            if not owned:
+                raise HTTPException(status_code=404, detail="Account not found")
+
+        # Load target positions (only this user's broker accounts)
+        q = (
+            db.query(BrokerAccount, Position)
+            .join(Position, Position.account_id == BrokerAccount.id)
+            .filter(BrokerAccount.user_id == current_user.id)
         )
         if account_id is not None:
             q = q.filter(BrokerAccount.id == account_id)
@@ -678,8 +693,12 @@ async def refresh_prices(
             except Exception:
                 continue
 
-        # Update tax lots for same scope
-        tq = db.query(TaxLot)
+        # Update tax lots for same scope (only this user's accounts)
+        tq = (
+            db.query(TaxLot)
+            .join(BrokerAccount, TaxLot.account_id == BrokerAccount.id)
+            .filter(BrokerAccount.user_id == current_user.id)
+        )
         if account_id is not None:
             tq = tq.filter(TaxLot.account_id == account_id)
         if symbols:
@@ -720,7 +739,10 @@ async def refresh_prices(
 
 
 @router.get("/flexquery-diagnostic")
-async def flexquery_diagnostic(db: Session = Depends(get_db)):
+async def flexquery_diagnostic(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Diagnostic endpoint: fetch FlexQuery XML and return structured report.
 
     Returns sections present, row counts, date range, and account IDs
@@ -735,7 +757,11 @@ async def flexquery_diagnostic(db: Session = Depends(get_db)):
 
     accounts = (
         db.query(BrokerAccount)
-        .filter(BrokerAccount.broker == BrokerType.IBKR, BrokerAccount.is_enabled == True)
+        .filter(
+            BrokerAccount.broker == BrokerType.IBKR,
+            BrokerAccount.is_enabled == True,
+            BrokerAccount.user_id == current_user.id,
+        )
         .all()
     )
     if not accounts:

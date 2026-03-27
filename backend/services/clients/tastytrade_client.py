@@ -368,10 +368,14 @@ class TastyTradeClient:
                             "commission": float(getattr(t, "commission", 0) or 0),
                         }
                     )
-                except Exception:
+                except Exception as e:
+                    logger.warning(
+                        "Skipping TastyTrade history row (normalize failed): %s", e
+                    )
                     continue
             return results
-        except Exception:
+        except Exception as e:
+            logger.warning("TastyTrade get_history (raw) failed for %s: %s", account_number, e)
             return []
 
     async def get_trade_history(
@@ -418,7 +422,12 @@ class TastyTradeClient:
                             "executed_at": executed_iso,
                         }
                     )
-                except Exception:
+                except Exception as e:
+                    logger.warning(
+                        "Skipping TastyTrade trade history row for %s: %s",
+                        account_number,
+                        e,
+                    )
                     continue
             return results
         except Exception as e:
@@ -609,7 +618,13 @@ class TastyTradeClient:
                         days_held = (
                             datetime.now() - datetime.strptime(acq_str, "%Y-%m-%d")
                         ).days
-                    except Exception:
+                    except Exception as e:
+                        logger.warning(
+                            "TastyTrade days_held parse failed for %s (acq_str=%s): %s",
+                            getattr(position, "symbol", "?"),
+                            acq_str,
+                            e,
+                        )
                         days_held = 0
 
                     tax_lots.append(
@@ -802,8 +817,10 @@ class TastyTradeClient:
                         exp.strftime("%m/%d/%y") if hasattr(exp, "strftime") else str(exp)
                     )
                     opt_desc += f" exp {exp_str}"
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(
+                        "TastyTrade transaction description: expiration format failed: %s", e
+                    )
             label = next(
                 (v for k, v in action_map.items() if k in action), "Settlement"
             )
@@ -841,7 +858,8 @@ class TastyTradeClient:
                         "expiration": getattr(other, "expiration_date", ""),
                         "action": getattr(other, "action", ""),
                     }
-            except Exception:
+            except Exception as e:
+                logger.warning("TastyTrade _find_related_option: skip candidate: %s", e)
                 continue
         return None
 

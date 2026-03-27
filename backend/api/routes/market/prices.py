@@ -96,6 +96,7 @@ async def get_indicator_series(
     symbol: str,
     indicators: str | None = None,
     period: str = "1y",
+    user: User | None = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ):
     """Read pre-computed indicator series from MarketSnapshotHistory."""

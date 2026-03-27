@@ -12,6 +12,8 @@ from backend.models.order import Order, OrderStatus
 from backend.services.execution.broker_base import OrderRequest, OrderResult, PreviewResult
 from backend.services.execution.broker_router import broker_router
 from backend.services.execution.risk_gate import RiskGate, RiskViolation
+from backend.services.risk.circuit_breaker import circuit_breaker
+from backend.services.risk.pre_trade_validator import PreTradeValidator
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +121,10 @@ class OrderManager:
         order_id: int,
         user_id: int,
     ) -> Dict[str, Any]:
-        """Submit a previewed order for execution."""
+        """Submit a previewed order for execution.
+        
+        Flow: PreTradeValidator → CircuitBreaker size adjustment → Broker submit
+        """
         order = (
             db.query(Order)
             .filter(Order.id == order_id, Order.user_id == user_id)
@@ -130,11 +135,64 @@ class OrderManager:
         if order.status != OrderStatus.PREVIEW.value:
             return {"error": f"Order is in '{order.status}' state, cannot submit"}
 
-        req = OrderRequest(
+        # ========================================
+        # PRE-TRADE VALIDATION (Circuit Breaker + Risk Checks)
+        # ========================================
+        is_exit = order.side.lower() == "sell" and order.position_id is not None
+        portfolio_equity = self._get_portfolio_equity(db, user_id) or 100_000
+
+        validator = PreTradeValidator(db, user_id=user_id)
+        validation = validator.validate(order, portfolio_equity, is_exit=is_exit)
+
+        if not validation.allowed:
+            order.status = OrderStatus.REJECTED.value
+            order.error_message = f"Pre-trade validation failed: {validation.summary}"
+            db.commit()
+            db.refresh(order)
+            logger.warning(
+                "Order %s rejected by pre-trade validator: %s",
+                order_id,
+                validation.reasons,
+            )
+            return {
+                **_order_to_dict(order),
+                "validation": {
+                    "allowed": False,
+                    "reasons": validation.reasons,
+                    "checks": [
+                        {"name": c.name, "passed": c.passed, "reason": c.reason}
+                        for c in validation.checks
+                    ],
+                },
+            }
+
+        # Apply size multiplier from circuit breaker (tier 1 = 50% size)
+        adjusted_quantity = int(order.quantity * validation.size_multiplier)
+        if adjusted_quantity <= 0:
+            order.status = OrderStatus.REJECTED.value
+            order.error_message = "Order quantity reduced to zero by circuit breaker"
+            db.commit()
+            db.refresh(order)
+            return {
+                **_order_to_dict(order),
+                "validation": {"allowed": False, "reasons": ["Size reduced to zero"]},
+            }
+
+        # Log if quantity was adjusted
+        if adjusted_quantity != order.quantity:
+            logger.info(
+                "Order %s quantity adjusted from %d to %d (size_multiplier=%.2f)",
+                order_id,
+                order.quantity,
+                adjusted_quantity,
+                validation.size_multiplier,
+            )
+
+        req = OrderRequest.from_user_input(
             symbol=order.symbol,
-            side=order.side.upper(),
-            order_type=order.order_type.upper(),
-            quantity=order.quantity,
+            side=order.side,
+            order_type=order.order_type,
+            quantity=adjusted_quantity,
             limit_price=order.limit_price,
             stop_price=order.stop_price,
         )
@@ -149,6 +207,9 @@ class OrderManager:
             order.status = OrderStatus.SUBMITTED.value
             order.broker_order_id = result.broker_order_id
             order.submitted_at = datetime.now(timezone.utc)
+            # Update quantity if it was adjusted
+            if adjusted_quantity != order.quantity:
+                order.quantity = adjusted_quantity
 
         db.commit()
         db.refresh(order)

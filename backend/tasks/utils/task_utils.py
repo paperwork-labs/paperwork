@@ -44,8 +44,8 @@ def task_run(task_name: str, *, lock_key: Optional[Callable[..., Optional[str]]]
                         if not acquired:
                             return {"status": "skipped", "reason": "locked", "lock_key": key}
                         lock_id = key
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning("task_run redis lock failed for %s: %s", task_name, e)
             session = SessionLocal()
             job = JobRun(
                 task_name=task_name,
@@ -60,8 +60,8 @@ def task_run(task_name: str, *, lock_key: Optional[Callable[..., Optional[str]]]
             # Publish 'running'
             try:
                 _publish_status(task_name, "running", {"id": job.id, "params": kwargs})
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("task_run publish status running failed for %s: %s", task_name, e)
             try:
                 result = func(*args, **kwargs)
                 counters = None
@@ -73,8 +73,8 @@ def task_run(task_name: str, *, lock_key: Optional[Callable[..., Optional[str]]]
                         nonfatal_error = result.get("error")
                         if nonfatal_error:
                             job.error = str(nonfatal_error)[:10000]
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning("task_run store nonfatal job error failed for %s: %s", task_name, e)
                 job.status = "ok"
                 job.finished_at = datetime.utcnow()
                 duration = _job_duration_seconds(job)
@@ -85,8 +85,8 @@ def task_run(task_name: str, *, lock_key: Optional[Callable[..., Optional[str]]]
                 session.commit()
                 try:
                     _publish_status(task_name, "ok", {"id": job.id, "payload": result})
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning("task_run publish status ok failed for %s: %s", task_name, e)
                 _emit_alerts(
                     event="success",
                     task_name=task_name,
@@ -114,8 +114,8 @@ def task_run(task_name: str, *, lock_key: Optional[Callable[..., Optional[str]]]
                 session.commit()
                 try:
                     _publish_status(task_name, "error", {"id": job.id, "error": str(exc)})
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning("task_run publish status error failed for %s: %s", task_name, e)
                 _emit_alerts(
                     event="failure",
                     task_name=task_name,
@@ -131,8 +131,8 @@ def task_run(task_name: str, *, lock_key: Optional[Callable[..., Optional[str]]]
                 if lock_id is not None:
                     try:
                         market_data_service.redis_client.delete(f"lock:{task_name}:{lock_id}")
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning("task_run redis lock release failed for %s: %s", task_name, e)
 
         return wrapper
 
@@ -180,8 +180,8 @@ def _job_duration_seconds(job: JobRun) -> float:
             start = start.replace(tzinfo=None)
         if end.tzinfo and not start.tzinfo:
             end = end.replace(tzinfo=None)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("_job_duration_seconds timezone normalize failed: %s", e)
     return max((end - start).total_seconds(), 0.0)
 
 

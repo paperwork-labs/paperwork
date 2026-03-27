@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Page, PageHeader } from '../components/ui/Page';
 import EmptyState from '../components/ui/EmptyState';
 import StrategyTemplateCard from '../components/strategy/StrategyTemplateCard';
+import { BacktestStatusBadge } from '../components/strategy/BacktestStatusBadge';
 import api from '../services/api';
 import { formatDateFriendly } from '../utils/format';
 import { useUserPreferences } from '../hooks/useUserPreferences';
@@ -79,10 +80,13 @@ function StrategyCard({
       <CardContent className="flex flex-col gap-3 px-5 py-0">
         <div className="flex items-start justify-between gap-2">
           <p className="font-medium text-foreground">{strategy.name}</p>
-          <Badge variant="outline" className={cn('h-5 gap-1 text-[10px] font-medium', cfg.className)}>
-            <Icon className="size-3" aria-hidden />
-            {strategy.status}
-          </Badge>
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+            <BacktestStatusBadge validation={strategy.backtest_validation} stopRowClick />
+            <Badge variant="outline" className={cn('h-5 gap-1 text-[10px] font-medium', cfg.className)}>
+              <Icon className="size-3" aria-hidden />
+              {strategy.status}
+            </Badge>
+          </div>
         </div>
         {strategy.description ? (
           <p className="line-clamp-2 text-sm text-muted-foreground">{strategy.description}</p>

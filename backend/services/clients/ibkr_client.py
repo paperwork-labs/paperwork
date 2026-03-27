@@ -303,8 +303,8 @@ class IBKRClient:
             )
             try:
                 self.ib.disconnect()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("IBKR disconnect during event-loop mismatch failed: %s", e)
             self.ib = None
             self.connected = False
 
@@ -353,11 +353,13 @@ class IBKRClient:
             accounts: List[str] = []
             try:
                 accounts = list(self.ib.managedAccounts()) or []
-            except Exception:
+            except Exception as e:
+                logger.warning("IBKR managedAccounts() failed: %s", e)
                 accounts = []
             self.managed_accounts = accounts
             return accounts
-        except Exception:
+        except Exception as e:
+            logger.warning("IBKR discover_managed_accounts failed: %s", e)
             return []
 
     def is_connected(self) -> bool:

@@ -16,6 +16,7 @@ import finnhub
 import fmpsdk
 import pandas as pd
 import redis
+import redis.asyncio as aioredis
 import yfinance as yf
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
@@ -30,7 +31,8 @@ from backend.services.market.indicator_engine import (
     calculate_performance_windows,
     classify_ma_bucket_from_ma,
     compute_atr_matrix_metrics,
-    compute_core_indicators,
+    compute_full_indicator_series,
+    extract_latest_values,
     compute_gap_counts,
     compute_td_sequential_counts,
     compute_trendline_counts,
@@ -76,7 +78,8 @@ class MarketDataService:
     """
 
     def __init__(self) -> None:
-        self._redis_client = None
+        self._redis_sync: Optional[redis.Redis] = None
+        self._redis_async: Optional[aioredis.Redis] = None
         self.cache_ttl_seconds = int(getattr(settings, "MARKET_DATA_CACHE_TTL", 300))
 
         # Optional API clients
@@ -112,17 +115,30 @@ class MarketDataService:
 
     @property
     def redis_client(self) -> redis.Redis:
-        if self._redis_client is None:
+        """Sync Redis for Celery, HTTP sync handlers, and `tracked_symbols*`."""
+        return self._sync_redis
+
+    @property
+    def _sync_redis(self) -> redis.Redis:
+        if self._redis_sync is None:
             url = getattr(settings, "REDIS_URL", None)
             if not url:
                 raise RuntimeError("REDIS_URL is not configured")
-            self._redis_client = redis.from_url(url)
-        return self._redis_client
+            self._redis_sync = redis.from_url(url)
+        return self._redis_sync
+
+    async def _get_redis(self) -> aioredis.Redis:
+        if self._redis_async is None:
+            url = getattr(settings, "REDIS_URL", None)
+            if not url:
+                raise RuntimeError("REDIS_URL is not configured")
+            self._redis_async = aioredis.from_url(url)
+        return self._redis_async
 
     def is_backfill_5m_enabled(self) -> bool:
         """Check admin toggle stored in Redis; default to enabled on errors."""
         try:
-            raw = self.redis_client.get("coverage:backfill_5m_enabled")
+            raw = self._sync_redis.get("coverage:backfill_5m_enabled")
             if raw is None:
                 return True
             if isinstance(raw, (bytes, bytearray)):
@@ -130,6 +146,19 @@ class MarketDataService:
             return str(raw).strip().lower() not in ("0", "false", "off", "disabled")
         except Exception:
             # Fail open if Redis unavailable so daily flows aren't blocked
+            return True
+
+    async def is_backfill_5m_enabled_async(self) -> bool:
+        """Async variant for FastAPI async routes (non-blocking Redis)."""
+        try:
+            r = await self._get_redis()
+            raw = await r.get("coverage:backfill_5m_enabled")
+            if raw is None:
+                return True
+            if isinstance(raw, (bytes, bytearray)):
+                raw = raw.decode()
+            return str(raw).strip().lower() not in ("0", "false", "off", "disabled")
+        except Exception:
             return True
 
     def benchmark_health(
@@ -194,7 +223,9 @@ class MarketDataService:
             )
         except Exception:
             as_of_ts = None
-        indicators = compute_core_indicators(df_oldest)
+        # Use canonical indicator pipeline (not deprecated compute_core_indicators)
+        indicator_series = compute_full_indicator_series(df_oldest)
+        indicators = extract_latest_values(indicator_series)
         indicators["current_price"] = price
         indicators.update(compute_atr_matrix_metrics(df_oldest, indicators))
         indicators.update(calculate_performance_windows(df_newest))
@@ -622,7 +653,8 @@ class MarketDataService:
     async def get_current_price(self, symbol: str) -> Optional[float]:
         """Get current price for a symbol with provider policy and 60s Redis cache."""
         cache_key = f"price:{symbol}"
-        cached = self.redis_client.get(cache_key)
+        r = await self._get_redis()
+        cached = await r.get(cache_key)
         if cached:
             try:
                 return float(cached)
@@ -644,7 +676,7 @@ class MarketDataService:
                     )
                     price = float(hist["Close"].iloc[-1]) if not hist.empty else None
                 if price is not None:
-                    self.redis_client.setex(cache_key, 60, str(price))
+                    await r.setex(cache_key, 60, str(price))
                     return float(price)
             except Exception:
                 continue
@@ -953,7 +985,8 @@ class MarketDataService:
         - Cache TTL: 300s for intraday; 3600s for daily+
         """
         cache_key = f"historical:{symbol}:{period}:{interval}"
-        cached = self.redis_client.get(cache_key)
+        r = await self._get_redis()
+        cached = await r.get(cache_key)
         if cached:
             try:
                 df_cached = pd.read_json(cached, orient="index")
@@ -974,7 +1007,7 @@ class MarketDataService:
                     if max_bars and interval == "1d":
                         db_df = db_df.head(max_bars)
                     ttl = 300 if interval in ("1m", "5m") else 3600
-                    self.redis_client.setex(cache_key, ttl, db_df.to_json(orient="index"))
+                    await r.setex(cache_key, ttl, db_df.to_json(orient="index"))
                     logger.info("L2 DB hit for %s (%s/%s): %d bars", symbol, period, interval, len(db_df))
                     if return_provider:
                         return db_df, "db"
@@ -1015,7 +1048,7 @@ class MarketDataService:
                     if max_bars and interval == "1d":
                         df = df.head(max_bars)
                     ttl = 300 if interval in ("1m", "5m") else 3600
-                    self.redis_client.setex(cache_key, ttl, df.to_json(orient="index"))
+                    await r.setex(cache_key, ttl, df.to_json(orient="index"))
                     try:
                         db_session = SessionLocal()
                         self.persist_price_bars(db_session, symbol, df, interval=interval, data_source=provider_used or "provider")
@@ -1149,7 +1182,8 @@ class MarketDataService:
         """
         cache_key = f"index_constituents:{index_name}"
         # Redis cache
-        cached = self.redis_client.get(cache_key)
+        r = await self._get_redis()
+        cached = await r.get(cache_key)
         if cached:
             try:
                 obj = json.loads(cached)
@@ -1232,10 +1266,10 @@ class MarketDataService:
         # Normalize and cache
         out = sorted(list({s for s in symbols if s and len(s) <= 5}))
         try:
-            self.redis_client.setex(cache_key, 24 * 3600, json.dumps({"symbols": out}))
+            await r.setex(cache_key, 24 * 3600, json.dumps({"symbols": out}))
             # Store lightweight meta for observability
             meta_key = f"{cache_key}:meta"
-            self.redis_client.setex(
+            await r.setex(
                 meta_key,
                 24 * 3600,
                 json.dumps({"provider_used": provider_used, "fallback_used": bool(fallback_used), "count": len(out)}),
@@ -2208,7 +2242,7 @@ class MarketDataService:
             )
 
         tracked_list, tracked_from_redis = tracked_symbols_with_source(
-            db, redis_client=self.redis_client
+            db, redis_client=self._sync_redis
         )
         tracked_total = len(set(tracked_list))
         if tracked_total:

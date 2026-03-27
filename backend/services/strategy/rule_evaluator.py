@@ -36,12 +36,85 @@ class Condition:
     value: Any
     value_high: Optional[Any] = None  # for BETWEEN
 
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Condition":
+        """Parse condition from dict. Validates operator enum."""
+        if not isinstance(data, dict):
+            raise ValueError(f"Condition must be dict, got {type(data)}")
+        
+        field_name = data.get("field", "")
+        if not field_name:
+            raise ValueError("Condition missing 'field'")
+        
+        op_str = data.get("operator", "eq")
+        try:
+            operator = ConditionOperator(op_str)
+        except ValueError:
+            raise ValueError(f"Invalid operator '{op_str}'. Valid: {[e.value for e in ConditionOperator]}")
+        
+        return cls(
+            field=field_name,
+            operator=operator,
+            value=data.get("value"),
+            value_high=data.get("value_high"),
+        )
+
 
 @dataclass
 class ConditionGroup:
     logic: LogicalOperator = LogicalOperator.AND
     conditions: List[Condition] = field(default_factory=list)
     groups: List["ConditionGroup"] = field(default_factory=list)
+
+    @classmethod
+    def from_json(cls, data: Any) -> "ConditionGroup":
+        """
+        Parse ConditionGroup from JSON-compatible structure.
+        
+        Accepts:
+        - None/empty: returns empty AND group
+        - List of condition dicts: returns AND group with those conditions
+        - Dict with logic/conditions/groups: returns full nested structure
+        
+        Raises ValueError on invalid input for clear error handling.
+        """
+        if not data:
+            return cls(logic=LogicalOperator.AND, conditions=[], groups=[])
+        
+        # List of conditions -> AND group
+        if isinstance(data, list):
+            conditions = []
+            for i, item in enumerate(data):
+                if not isinstance(item, dict):
+                    raise ValueError(f"Condition at index {i} must be dict, got {type(item)}")
+                conditions.append(Condition.from_dict(item))
+            return cls(logic=LogicalOperator.AND, conditions=conditions, groups=[])
+        
+        # Dict with full structure
+        if isinstance(data, dict):
+            logic_str = data.get("logic", "and")
+            try:
+                logic = LogicalOperator(logic_str)
+            except ValueError:
+                raise ValueError(f"Invalid logic '{logic_str}'. Valid: 'and', 'or'")
+            
+            conditions = []
+            for i, c in enumerate(data.get("conditions", [])):
+                try:
+                    conditions.append(Condition.from_dict(c))
+                except ValueError as e:
+                    raise ValueError(f"Invalid condition at index {i}: {e}")
+            
+            groups = []
+            for i, g in enumerate(data.get("groups", [])):
+                try:
+                    groups.append(cls.from_json(g))
+                except ValueError as e:
+                    raise ValueError(f"Invalid group at index {i}: {e}")
+            
+            return cls(logic=logic, conditions=conditions, groups=groups)
+        
+        raise ValueError(f"ConditionGroup must be list, dict, or None. Got {type(data)}")
 
 
 @dataclass

@@ -30,7 +30,7 @@ from backend.models.market_data import (
     JobRun,
 )
 from backend.services.market.market_data_service import MarketDataService
-from backend.services.market.universe import tracked_symbols
+from backend.services.market.universe import tracked_symbols_async
 from backend.services.market.admin_health_service import AdminHealthService
 from backend.services.notifications.discord_bot import discord_bot_client
 from backend.api.dependencies import get_admin_user
@@ -107,7 +107,8 @@ async def admin_sanity_coverage(
 ) -> Dict[str, Any]:
     """Quick DB sanity checks for coverage (no Redis cache dependence)."""
     svc = MarketDataService()
-    tracked = tracked_symbols(db, redis_client=svc.redis_client)
+    r = await svc._get_redis()
+    tracked = await tracked_symbols_async(db, redis_async=r)
     tracked_set = set(tracked)
     tracked_total = len(tracked_set)
 
@@ -226,7 +227,7 @@ async def get_backfill_5m_toggle(
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
     svc = MarketDataService()
-    return {"backfill_5m_enabled": svc.coverage.is_backfill_5m_enabled()}
+    return {"backfill_5m_enabled": await svc.is_backfill_5m_enabled_async()}
 
 
 @router.post("/backfill/5m/toggle")
@@ -236,7 +237,8 @@ async def set_backfill_5m_toggle(
 ) -> Dict[str, Any]:
     svc = MarketDataService()
     try:
-        svc.redis_client.set("coverage:backfill_5m_enabled", "true" if enabled else "false")
+        r = await svc._get_redis()
+        await r.set("coverage:backfill_5m_enabled", "true" if enabled else "false")
         return {"backfill_5m_enabled": enabled}
     except Exception as e:
         logger.error(f"toggle error: {e}")
@@ -251,12 +253,8 @@ async def backfill_stale_daily(
     """Backfill daily bars for symbols currently marked stale (>48h) in coverage."""
     svc = MarketDataService()
     try:
-        tracked: List[str] = []
-        try:
-            raw = svc.redis_client.get("tracked:all")
-            tracked = json.loads(raw.decode() if isinstance(raw, (bytes, bytearray)) else raw) if raw else []
-        except Exception:
-            tracked = []
+        r = await svc._get_redis()
+        tracked = await tracked_symbols_async(db, redis_async=r)
         tracked = sorted({str(s).upper() for s in (tracked or []) if s})
         if not tracked:
             tracked = sorted({str(s).upper() for (s,) in db.query(PriceData.symbol).distinct().all() if s})
@@ -357,7 +355,7 @@ async def admin_send_snapshot_digest_to_discord(
         raise HTTPException(status_code=400, detail="No channel_id provided")
 
     svc = MarketDataService()
-    tracked = tracked_symbols(db, redis_client=svc.redis_client)
+    tracked = await tracked_symbols_async(db, redis_async=await svc._get_redis())
     if not tracked:
         raise HTTPException(status_code=400, detail="No tracked symbols available")
 
@@ -616,6 +614,9 @@ def _get_autofix_redis_key(job_id: str) -> str:
     return f"autofix:{job_id}"
 
 
+_AUTOFIX_REDIS_TTL_S = int(timedelta(hours=2).total_seconds())
+
+
 @router.post("/auto-fix", response_model=AutoFixResponse)
 async def start_auto_fix(
     _admin: User = Depends(get_admin_user),
@@ -623,7 +624,6 @@ async def start_auto_fix(
 ) -> AutoFixResponse:
     """Agent-powered auto-fix for all market data issues."""
     import uuid
-    import redis
 
     service = AdminHealthService()
     health = service.get_composite_health(db)
@@ -638,7 +638,8 @@ async def start_auto_fix(
         return AutoFixResponse(status="ok", message="Red dimensions detected but no remediation actions available")
 
     job_id = str(uuid.uuid4())[:8]
-    r = redis.from_url(settings.REDIS_URL)
+    mds = MarketDataService()
+    r = await mds._get_redis()
 
     job_data = {
         "job_id": job_id,
@@ -649,14 +650,14 @@ async def start_auto_fix(
         "total_count": len(plan),
         "current_task": plan[0].task if plan else None,
     }
-    r.setex(_get_autofix_redis_key(job_id), timedelta(hours=2), json.dumps(job_data))
+    await r.setex(_get_autofix_redis_key(job_id), _AUTOFIX_REDIS_TTL_S, json.dumps(job_data))
 
-    _execute_autofix_plan(job_id, plan, r)
+    await _execute_autofix_plan(job_id, plan, r)
 
     return AutoFixResponse(status="fixing", job_id=job_id, plan=plan, estimated_minutes=len(plan) * 2, message=f"Agent fixing {len(plan)} issues")
 
 
-def _execute_autofix_plan(job_id: str, plan: List[AutoFixPlanItem], r) -> None:
+async def _execute_autofix_plan(job_id: str, plan: List[AutoFixPlanItem], r) -> None:
     from backend.tasks.celery_app import celery_app
 
     task_map = {
@@ -676,11 +677,13 @@ def _execute_autofix_plan(job_id: str, plan: List[AutoFixPlanItem], r) -> None:
             item.started_at = datetime.utcnow().isoformat()
 
     key = _get_autofix_redis_key(job_id)
-    raw = r.get(key)
+    raw = await r.get(key)
     if raw:
+        if isinstance(raw, (bytes, bytearray)):
+            raw = raw.decode()
         data = json.loads(raw)
         data["plan"] = [item.model_dump() for item in plan]
-        r.setex(key, timedelta(hours=2), json.dumps(data))
+        await r.setex(key, _AUTOFIX_REDIS_TTL_S, json.dumps(data))
 
 
 @router.get("/auto-fix/{job_id}/status", response_model=AutoFixStatusResponse)
@@ -689,17 +692,19 @@ async def get_auto_fix_status(
     _admin: User = Depends(get_admin_user),
 ) -> AutoFixStatusResponse:
     """Get the status of an auto-fix job."""
-    import redis
     from celery.result import AsyncResult
     from backend.tasks.celery_app import celery_app
 
-    r = redis.from_url(settings.REDIS_URL)
+    mds = MarketDataService()
+    r = await mds._get_redis()
     key = _get_autofix_redis_key(job_id)
-    raw = r.get(key)
+    raw = await r.get(key)
 
     if not raw:
         raise HTTPException(status_code=404, detail=f"Auto-fix job {job_id} not found")
 
+    if isinstance(raw, (bytes, bytearray)):
+        raw = raw.decode()
     data = json.loads(raw)
     plan = [AutoFixPlanItem(**item) for item in data.get("plan", [])]
 
@@ -750,7 +755,7 @@ async def get_auto_fix_status(
     if overall_status in ("completed", "failed"):
         data["finished_at"] = datetime.utcnow().isoformat()
 
-    r.setex(key, timedelta(hours=2), json.dumps(data))
+    await r.setex(key, _AUTOFIX_REDIS_TTL_S, json.dumps(data))
 
     return AutoFixStatusResponse(
         job_id=job_id, status=overall_status, plan=plan, completed_count=completed_count,

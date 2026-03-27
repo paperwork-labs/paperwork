@@ -303,10 +303,10 @@ def _auto_execute_signals(
             
             # Build OrderRequest for RiskGate validation
             price_estimate = float(sig.entry_price) if sig.entry_price else 0.0
-            req = OrderRequest(
+            req = OrderRequest.from_user_input(
                 symbol=sig.symbol,
-                side=order_side.upper(),
-                order_type="MARKET",
+                side=order_side,
+                order_type="market",
                 quantity=quantity,
             )
             
