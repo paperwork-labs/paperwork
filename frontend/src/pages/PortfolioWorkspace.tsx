@@ -762,7 +762,14 @@ const PortfolioWorkspace: React.FC = () => {
                     showHeader={false}
                     theme="dark"
                   />
-                ) : barsError && !barsQuery.isPending ? (
+                ) : barsQuery.isPending ? (
+                  <div className="flex items-center justify-center" style={{ height: chartHeight }}>
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+                      <p className="text-sm text-muted-foreground">Loading chart...</p>
+                    </div>
+                  </div>
+                ) : barsError ? (
                   <div className="flex flex-col items-center justify-center gap-3" style={{ height: chartHeight }}>
                     <p className="text-muted-foreground">No price data available for {selectedSymbol}</p>
                     <Button type="button" size="sm" variant="outline" onClick={() => setShowAdvanced(true)}>
