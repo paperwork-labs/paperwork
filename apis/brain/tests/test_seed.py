@@ -74,6 +74,7 @@ async def test_seeded_docs_are_retrievable(db_session):
         summary="[KNOWLEDGE.md] Decision D4 — MeF Transmitter",
         full_context="We decided to own our IRS MeF Transmitter as the north star.",
         importance=0.8,
+        skip_embedding=True,
     )
     await db_session.flush()
 
@@ -82,6 +83,7 @@ async def test_seeded_docs_are_retrievable(db_session):
         organization_id="test-org",
         query="MeF transmitter",
         limit=5,
+        skip_embedding=True,
     )
 
     assert len(episodes) >= 1
@@ -96,5 +98,6 @@ async def test_search_returns_empty_for_no_matches(db_session):
         organization_id="nonexistent-org",
         query="something random",
         limit=5,
+        skip_embedding=True,
     )
     assert episodes == []

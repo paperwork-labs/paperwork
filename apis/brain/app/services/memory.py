@@ -94,6 +94,7 @@ async def search_episodes(
     query: str,
     limit: int = 10,
     fatigue_ids: set[int] | None = None,
+    skip_embedding: bool = False,
 ) -> list[Episode]:
     """D5: Hybrid search with RRF fusion.
 
@@ -103,13 +104,16 @@ async def search_episodes(
     - Recency bias
 
     Entity graph traversal (D5 4th path) deferred to Phase 2.
+
+    Args:
+        skip_embedding: Skip vector search (for tests or when embeddings unavailable).
     """
     fatigue_ids = fatigue_ids or set()
     candidate_limit = limit * 3
 
     scores: dict[int, dict[str, float]] = {}
 
-    query_embedding = await embed_text(query)
+    query_embedding = None if skip_embedding else await embed_text(query)
     if query_embedding:
         vector_query = text("""
             SELECT id,

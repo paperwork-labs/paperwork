@@ -87,9 +87,9 @@ def fake_redis() -> FakeRedis:
 
 
 @pytest.fixture
-def redis_mock() -> FakeRedis:
+def redis_mock(fake_redis: FakeRedis) -> FakeRedis:
     """Alias for fake_redis for use in integration tests."""
-    return FakeRedis()
+    return fake_redis
 
 
 @pytest_asyncio.fixture

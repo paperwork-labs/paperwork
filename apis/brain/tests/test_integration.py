@@ -28,6 +28,7 @@ async def test_store_and_search_basic(db_session):
         organization_id="test-org",
         query="MeF deadline",
         limit=5,
+        skip_embedding=True,
     )
 
     assert len(episodes) >= 1
@@ -121,6 +122,7 @@ async def test_organization_isolation(db_session):
         organization_id="org-a",
         query="secret data",
         limit=10,
+        skip_embedding=True,
     )
 
     episodes_b = await memory.search_episodes(
@@ -128,6 +130,7 @@ async def test_organization_isolation(db_session):
         organization_id="org-b",
         query="secret data",
         limit=10,
+        skip_embedding=True,
     )
 
     assert all(e.organization_id == "org-a" for e in episodes_a)
