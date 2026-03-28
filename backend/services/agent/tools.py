@@ -423,8 +423,8 @@ AGENT_TOOLS: List[Dict[str, Any]] = [
                 "properties": {
                     "scan_tier": {
                         "type": "string",
-                        "description": "Scan tier to filter by (e.g., 'Set 1', 'Set 2', 'Short Set 1')",
-                        "default": "Set 1",
+                        "description": "Scan tier to filter by (e.g., 'Breakout Elite', 'Breakout Standard', 'Breakdown Elite')",
+                        "default": "Breakout Elite",
                     },
                     "limit": {
                         "type": "integer",
@@ -532,14 +532,14 @@ AGENT_TOOLS: List[Dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "backtest_scan",
-            "description": "Get historical win rate and average return for a scan tier. Shows how Set 1/2/3 picks have performed.",
+            "description": "Get historical win rate and average return for a scan tier. Shows how Breakout Elite/Standard picks have performed.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "scan_tier": {
                         "type": "string",
-                        "description": "Scan tier to analyze (e.g., 'Set 1', 'Set 2', 'Short Set 1')",
-                        "default": "Set 1",
+                        "description": "Scan tier to analyze (e.g., 'Breakout Elite', 'Breakout Standard', 'Breakdown Elite')",
+                        "default": "Breakout Elite",
                     },
                     "days": {
                         "type": "integer",

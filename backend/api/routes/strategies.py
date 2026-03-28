@@ -31,7 +31,24 @@ from backend.services.strategy.templates import (
 )
 from backend.services.strategy.context_builder import snapshot_to_context
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
+
+
+def _trigger_auto_backtest(strategy_id: int, change_type: str = "update") -> None:
+    """Queue auto-backtest for strategy if rules are present.
+    
+    Fire-and-forget: logs errors but doesn't propagate them to the API caller.
+    """
+    try:
+        from backend.tasks.strategy.auto_backtest import trigger_auto_backtest_on_change
+        trigger_auto_backtest_on_change.delay(strategy_id, change_type=change_type)
+        logger.info("Queued auto-backtest for strategy %s (%s)", strategy_id, change_type)
+    except Exception as e:
+        logger.warning("Failed to queue auto-backtest for strategy %s: %s", strategy_id, e)
 
 _evaluator = RuleEvaluator()
 _signal_gen = SignalGenerator()
@@ -290,6 +307,10 @@ def create_strategy_from_template(
     db.add(strategy)
     db.commit()
     db.refresh(strategy)
+
+    # Queue auto-backtest for new template-based strategy
+    _trigger_auto_backtest(strategy.id, change_type="create_from_template")
+
     latest_bt = _fetch_latest_strategy_backtests(db, [strategy.id])
     return {"data": _strategy_to_dict(strategy, latest_bt.get(strategy.id))}
 
@@ -329,6 +350,10 @@ def create_strategy(
     db.add(strategy)
     db.commit()
     db.refresh(strategy)
+
+    # Queue auto-backtest for new strategy
+    _trigger_auto_backtest(strategy.id, change_type="create")
+
     latest_bt = _fetch_latest_strategy_backtests(db, [strategy.id])
     return {"data": _strategy_to_dict(strategy, latest_bt.get(strategy.id))}
 
@@ -400,12 +425,19 @@ def update_strategy(
                 detail=f"Invalid status '{req.status}'",
             )
 
+    rules_changed = False
     if req.config is not None:
         strategy.parameters = req.config
+        rules_changed = True
 
     strategy.modified_by_user_id = user.id
     db.commit()
     db.refresh(strategy)
+
+    # Queue auto-backtest if rules/config changed
+    if rules_changed:
+        _trigger_auto_backtest(strategy.id, change_type="update")
+
     latest_bt = _fetch_latest_strategy_backtests(db, [strategy.id])
     return {"data": _strategy_to_dict(strategy, latest_bt.get(strategy.id))}
 

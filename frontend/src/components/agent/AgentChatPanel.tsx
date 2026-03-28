@@ -17,7 +17,7 @@ interface QuickAction {
 const QUICK_ACTIONS: QuickAction[] = [
   { label: "Market Breadth", prompt: "What's the stage distribution across the market?" },
   { label: "Sector Leaders", prompt: "Which sectors are strongest right now?" },
-  { label: "Trade Ideas", prompt: "Show me the top Set 1 scan picks" },
+  { label: "Trade Ideas", prompt: "Show me the top Breakout Elite scan picks" },
   { label: "Exit Review", prompt: "Any positions I should review for exits?" },
   { label: "Regime Status", prompt: "What's the current regime and recent history?" },
 ]

@@ -139,6 +139,7 @@ temp/
 *.sqlite
 *.sqlite3
 data/
+!frontend/src/data/
 postgres_data/
 redis_data/
 

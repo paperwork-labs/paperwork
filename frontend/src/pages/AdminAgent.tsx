@@ -347,7 +347,6 @@ const AdminAgent: React.FC = () => {
         }>(`/admin/agent/sessions/${sessionId}/messages`)
 
         if (res.data.found && res.data.messages.length > 0) {
-          // Filter to only user/assistant roles, normalize assistant->agent
           const loadedMessages: ChatMessage[] = res.data.messages
             .filter((m) => m.role === "user" || m.role === "assistant")
             .map((m: { role: string; content: string }, i: number) => ({
@@ -357,11 +356,21 @@ const AdminAgent: React.FC = () => {
               timestamp: new Date(),
             }))
           setMessages(loadedMessages)
+        } else if (!res.data.found) {
+          const expiredMsg: ChatMessage = {
+            id: newMessageId(),
+            role: "agent",
+            content:
+              "This conversation history is no longer available. " +
+              "The session record exists, but the messages were not preserved. " +
+              "You can start a new conversation using the **New Chat** button.",
+            timestamp: new Date(),
+          }
+          setMessages([expiredMsg])
         } else {
           setMessages([])
         }
       } catch (err) {
-        // Revert session on error
         setCurrentSessionId(previousSessionId)
         setSelectedSessionId(previousSessionId ?? undefined)
         const errMsg: ChatMessage = {

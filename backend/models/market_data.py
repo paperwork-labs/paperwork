@@ -210,7 +210,7 @@ class MarketSnapshot(Base):
     ema10_dist_pct = Column(Float)  # (Close - EMA10) / EMA10 * 100
     ema10_dist_n = Column(Float)  # ema10_dist_pct / atrp_14 (ATR-normalized)
     vol_ratio = Column(Float)  # volume / volume_avg_20d
-    scan_tier = Column(String(20))  # Set 1-4, Short Set 1-3
+    scan_tier = Column(String(20))  # Breakout Elite/Standard, Early Base, Speculative, Breakdown Elite/Standard
     action_label = Column(String(10))  # BUY, HOLD, WATCH, REDUCE, SHORT, AVOID
     regime_state = Column(String(10))  # R1, R2, R3, R4, R5 (denormalized from MarketRegime)
 

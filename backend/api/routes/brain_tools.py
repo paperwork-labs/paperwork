@@ -207,7 +207,7 @@ async def tools_stage(
 @router.get("/scan")
 async def tools_scan(
     db: Session = Depends(get_db),
-    scan_tier: Optional[str] = Query(None, description="Filter by scan tier, e.g. Set 1"),
+    scan_tier: Optional[str] = Query(None, description="Filter by scan tier, e.g. Breakout Elite"),
     limit: int = Query(50, ge=1, le=500),
 ) -> Dict[str, Any]:
     """Scan candidates: latest technical snapshot per symbol with a scan tier."""

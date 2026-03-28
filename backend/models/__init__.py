@@ -63,6 +63,7 @@ from .watchlist import Watchlist
 
 # Agent / Auto-Ops
 from .agent_action import AgentAction
+from .agent_message import AgentMessage, load_conversation_from_db, save_conversation_to_db
 
 # Notifications (required for User.notifications ↔ Notification.user)
 from .notification import (
@@ -128,6 +129,9 @@ __all__ = [
     "ExecutionMetrics",
     "Watchlist",
     "AgentAction",
+    "AgentMessage",
+    "load_conversation_from_db",
+    "save_conversation_to_db",
     "Notification",
     "NotificationChannel",
     "NotificationDelivery",

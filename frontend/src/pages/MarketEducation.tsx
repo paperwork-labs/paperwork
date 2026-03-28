@@ -255,7 +255,7 @@ const DEEP_DIVES: DeepDive[] = [
         body: (
           <div className="flex flex-col gap-2">
             {codeBlock(
-              'Composite = average of 6 scores (1–5 each), rounded to nearest 0.5\n\nR1 (Bull):          1.0–1.75  │ Full exposure, all scan tiers\nR2 (Bull Extended): 1.75–2.50 │ Slightly reduced, Set 1-3\nR3 (Chop):          2.50–3.50 │ Half exposure, Set 1-2 + Short Set 1\nR4 (Bear Rally):    3.50–4.50 │ Minimal longs (Set 1 only), shorts active\nR5 (Bear):          4.50–5.0  │ No new longs, shorts + cash only',
+              'Composite = average of 6 scores (1–5 each), rounded to nearest 0.5\n\nR1 (Bull):          1.0–1.75  │ Full exposure, all scan tiers\nR2 (Bull Extended): 1.75–2.50 │ Slightly reduced, Elite/Standard/Base\nR3 (Chop):          2.50–3.50 │ Half exposure, Elite/Standard + Breakdown Elite\nR4 (Bear Rally):    3.50–4.50 │ Minimal longs (Elite only), shorts active\nR5 (Bear):          4.50–5.0  │ No new longs, shorts + cash only',
             )}
             <div className="mt-2 flex flex-wrap gap-2">
               {[
@@ -277,7 +277,7 @@ const DEEP_DIVES: DeepDive[] = [
       {
         heading: 'Portfolio Rules by Regime',
         body: codeBlock(
-          'Regime │ Cash Floor │ Max Equity │ Multiplier │ Long Tiers    │ Short Tiers\n───────┼───────────┼───────────┼───────────┼──────────────┼────────────\n R1    │    5%     │   100%    │   1.0×    │ Set 1-2-3-4  │ None\n R2    │   10%     │    90%    │   0.75×   │ Set 1-2-3    │ None\n R3    │   25%     │    75%    │   0.5×    │ Set 1-2      │ Short Set 1\n R4    │   40%     │    60%    │   0.4×    │ Set 1        │ Short Set 1-2\n R5    │   60%     │    40%    │   0.25×   │ None         │ Short Set 1-2',
+          'Regime │ Cash Floor │ Max Equity │ Multiplier │ Long Tiers                        │ Short Tiers\n───────┼───────────┼───────────┼───────────┼──────────────────────────────────┼──────────────────\n R1    │    5%     │   100%    │   1.0×    │ Elite/Standard/Base/Speculative  │ None\n R2    │   10%     │    90%    │   0.75×   │ Elite/Standard/Base              │ None\n R3    │   25%     │    75%    │   0.5×    │ Elite/Standard                   │ Breakdown Elite\n R4    │   40%     │    60%    │   0.4×    │ Elite                            │ Breakdown Elite/Std\n R5    │   60%     │    40%    │   0.25×   │ None                             │ Breakdown Elite/Std',
         ),
       },
     ],
@@ -295,10 +295,10 @@ const DEEP_DIVES: DeepDive[] = [
         heading: 'Long Tiers',
         body: (
           <div className="flex flex-col gap-2">
-            <p className="text-sm"><strong>Set 1</strong> (highest conviction): Stage 2A/2B, RS &gt; 0, EMA10 Dist_N ≤ 2.0, ATRE pctile ≥ 70, Range ≥ 60%</p>
-            <p className="text-sm"><strong>Set 2</strong>: Stage 2A/2B/2C, RS &gt; -5, EMA10 Dist_N ≤ 3.0, Range ≥ 40%</p>
-            <p className="text-sm"><strong>Set 3</strong>: Stage 1B/2A/2B, EMA10 Dist_N ≤ 4.0</p>
-            <p className="text-sm"><strong>Set 4</strong> (marginal): Stage 1A/1B/2A, minimal filters</p>
+            <p className="text-sm"><strong>Breakout Elite</strong> (highest conviction): Stage 2A/2B, RS &gt; 0, EMA10 Dist_N ≤ 2.0, ATRE pctile ≥ 70, Range ≥ 60%</p>
+            <p className="text-sm"><strong>Breakout Standard</strong>: Stage 2A/2B/2C, RS &gt; -5, EMA10 Dist_N ≤ 3.0, Range ≥ 40%</p>
+            <p className="text-sm"><strong>Early Base</strong>: Stage 1B/2A/2B, EMA10 Dist_N ≤ 4.0</p>
+            <p className="text-sm"><strong>Speculative</strong> (marginal): Stage 1A/1B/2A, minimal filters</p>
           </div>
         ),
       },
@@ -306,8 +306,8 @@ const DEEP_DIVES: DeepDive[] = [
         heading: 'Short Tiers',
         body: (
           <div className="flex flex-col gap-1">
-            <p className="text-sm"><strong>Short Set 1</strong>: Stage 4A/4B, RS &lt; 0, EMA10 Dist_N ≥ -2.0, Range ≤ 30%</p>
-            <p className="text-sm"><strong>Short Set 2</strong>: Stage 3B/4A/4B/4C, RS &lt; 5</p>
+            <p className="text-sm"><strong>Breakdown Elite</strong>: Stage 4A/4B, RS &lt; 0, EMA10 Dist_N ≥ -2.0, Range ≤ 30%</p>
+            <p className="text-sm"><strong>Breakdown Standard</strong>: Stage 3B/4A/4B/4C, RS &lt; 5</p>
           </div>
         ),
       },

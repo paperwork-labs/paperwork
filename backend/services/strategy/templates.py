@@ -48,10 +48,10 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
         "universe_filter": {"indices": ["sp500", "nasdaq100"]},
     },
     {
-        "id": "scan_set1_elite",
-        "name": "Scan Set 1 Elite",
+        "id": "scan_breakout_elite",
+        "name": "Scan Breakout Elite",
         "description": (
-            "Highest-conviction longs from Scan Overlay Set 1: "
+            "Highest-conviction longs from Scan Overlay Breakout Elite: "
             "stage 2A/2B, RS > 0, EMA10 distance > 0, tight ATRE. "
             "Regimes R1-R3 only."
         ),
@@ -60,7 +60,7 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
             "entry_rules": {
                 "logic": "and",
                 "conditions": [
-                    {"field": "scan_tier", "operator": "eq", "value": "Set 1"},
+                    {"field": "scan_tier", "operator": "eq", "value": "Breakout Elite"},
                     {"field": "regime_state", "operator": "in", "value": ["R1", "R2", "R3"]},
                     {"field": "action_label", "operator": "eq", "value": "BUY"},
                 ],
@@ -70,7 +70,7 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
                 "logic": "or",
                 "conditions": [
                     {"field": "action_label", "operator": "in", "value": ["REDUCE", "AVOID"]},
-                    {"field": "scan_tier", "operator": "not_in", "value": ["Set 1", "Set 2"]},
+                    {"field": "scan_tier", "operator": "not_in", "value": ["Breakout Elite", "Breakout Standard"]},
                     {"field": "regime_state", "operator": "in", "value": ["R4", "R5"]},
                 ],
                 "groups": [],
@@ -219,10 +219,10 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
         "stop_loss_pct": 10.0,
     },
     {
-        "id": "scan_short_set1",
-        "name": "Scan Short Set 1",
+        "id": "scan_breakdown_elite",
+        "name": "Scan Breakdown Elite",
         "description": (
-            "Short stocks flagged by Scan Overlay Short Set 1: "
+            "Short stocks flagged by Scan Overlay Breakdown Elite: "
             "Stage 4, negative RS, high extension below SMA150. R4/R5 only."
         ),
         "strategy_type": "short",
@@ -230,7 +230,7 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
             "entry_rules": {
                 "logic": "and",
                 "conditions": [
-                    {"field": "scan_tier", "operator": "eq", "value": "Short Set 1"},
+                    {"field": "scan_tier", "operator": "eq", "value": "Breakdown Elite"},
                     {"field": "regime_state", "operator": "in", "value": ["R4", "R5"]},
                     {"field": "action_label", "operator": "eq", "value": "SHORT"},
                 ],

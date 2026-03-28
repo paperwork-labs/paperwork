@@ -105,7 +105,7 @@ def generate_weekly_brief(db: Session, as_of: date | None = None) -> dict[str, A
     set1_entries = [
         {"symbol": s.symbol, "stage": s.stage_label, "scan_tier": s.scan_tier}
         for s in snapshots
-        if s.scan_tier and "Set 1" in str(s.scan_tier)
+        if s.scan_tier and "Breakout Elite" in str(s.scan_tier)
     ]
 
     sector_analysis = _compute_sector_analysis(snapshots)
@@ -213,7 +213,7 @@ def _find_scan_changes(snapshots: list) -> list[dict]:
     for s in snapshots:
         if s.scan_tier and s.stage_label:
             tier_str = str(s.scan_tier)
-            if "Set 1" in tier_str or "Short" in tier_str:
+            if "Breakout Elite" in tier_str or "Breakdown" in tier_str:
                 changes.append({
                     "symbol": s.symbol,
                     "scan_tier": tier_str,
@@ -272,7 +272,7 @@ def _compute_top_picks(snapshots: list) -> dict:
     buy_list = [
         {"symbol": s.symbol, "stage": s.stage_label, "scan_tier": s.scan_tier}
         for s in snapshots
-        if s.stage_label and s.stage_label.startswith("2") and s.scan_tier and "Set 1" in str(s.scan_tier)
+        if s.stage_label and s.stage_label.startswith("2") and s.scan_tier and "Breakout Elite" in str(s.scan_tier)
     ]
     watch_list = [
         {"symbol": s.symbol, "stage": s.stage_label}
@@ -282,7 +282,7 @@ def _compute_top_picks(snapshots: list) -> dict:
     short_list = [
         {"symbol": s.symbol, "stage": s.stage_label, "scan_tier": s.scan_tier}
         for s in snapshots
-        if s.scan_tier and "Short" in str(s.scan_tier)
+        if s.scan_tier and "Breakdown" in str(s.scan_tier)
     ]
     return {
         "buy": buy_list[:10],

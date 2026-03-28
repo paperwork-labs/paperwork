@@ -514,7 +514,7 @@ class AgentBrain:
 
         if tool_name == "get_top_scans":
             return await self._tool_get_top_scans(
-                args.get("scan_tier", "Set 1"),
+                args.get("scan_tier", "Breakout Elite"),
                 args.get("limit", 10),
             )
 
@@ -540,7 +540,7 @@ class AgentBrain:
         # Research & Strategy tools
         if tool_name == "backtest_scan":
             return await self._tool_backtest_scan(
-                args.get("scan_tier", "Set 1"),
+                args.get("scan_tier", "Breakout Elite"),
                 args.get("days", 90),
                 args.get("holding_period", 20),
             )
@@ -1306,7 +1306,7 @@ class AgentBrain:
             return {"error": str(e)}
 
     async def _tool_get_top_scans(
-        self, scan_tier: str = "Set 1", limit: int = 10
+        self, scan_tier: str = "Breakout Elite", limit: int = 10
     ) -> Dict[str, Any]:
         """Get top stocks passing scan overlay filters."""
         try:
@@ -1661,7 +1661,7 @@ class AgentBrain:
     # ==================== RESEARCH & STRATEGY TOOLS ====================
 
     async def _tool_backtest_scan(
-        self, scan_tier: str = "Set 1", days: int = 90, holding_period: int = 20
+        self, scan_tier: str = "Breakout Elite", days: int = 90, holding_period: int = 20
     ) -> Dict[str, Any]:
         """Get historical performance for a scan tier."""
         try:
@@ -2112,41 +2112,70 @@ class AgentBrain:
                 break
 
     def _save_conversation(self) -> bool:
-        """Save conversation to Redis."""
+        """Save conversation to PostgreSQL (primary) and Redis (cache).
+
+        Conversations are now persisted to PostgreSQL for indefinite retention.
+        Redis is used as a cache for fast access during active sessions.
+        """
         self._trim_conversation_for_persistence()
-        redis = self._get_redis()
-        if not redis:
-            return False
+
+        saved_to_db = False
         try:
-            key = f"agent:conversation:{self.session_id}"
-            ttl = int(os.getenv("AGENT_CONVERSATION_TTL_SECONDS", "604800"))
-            redis.setex(key, ttl, json.dumps(self._conversation))
-            return True
+            from backend.models.agent_message import save_conversation_to_db
+
+            saved_to_db = save_conversation_to_db(
+                self.db, self.session_id, self._conversation
+            )
+            if not saved_to_db:
+                logger.warning("Failed to save conversation to DB")
         except Exception as e:
-            logger.warning("Failed to save conversation: %s", e)
-            return False
+            logger.warning("Failed to save conversation to DB: %s", e)
+
+        redis = self._get_redis()
+        if redis:
+            try:
+                key = f"agent:conversation:{self.session_id}"
+                ttl = int(os.getenv("AGENT_CONVERSATION_TTL_SECONDS", "604800"))
+                redis.setex(key, ttl, json.dumps(self._conversation))
+            except Exception as e:
+                logger.warning("Failed to save conversation to Redis cache: %s", e)
+
+        return saved_to_db
 
     def _load_conversation(self, session_id: str) -> str:
-        """Load conversation from Redis.
+        """Load conversation from Redis (cache) or PostgreSQL (permanent).
+
+        Checks Redis first for fast access during active sessions.
+        Falls back to PostgreSQL for sessions with expired Redis keys.
 
         Returns:
             ``loaded``, ``missing``, or ``unavailable``.
         """
         redis = self._get_redis()
-        if not redis:
-            return "unavailable"
+        if redis:
+            try:
+                key = f"agent:conversation:{session_id}"
+                data = redis.get(key)
+                if data:
+                    self._conversation = json.loads(
+                        data.decode("utf-8") if isinstance(data, bytes) else data
+                    )
+                    self.session_id = session_id
+                    return "loaded"
+            except Exception as e:
+                logger.warning("Failed to load conversation from Redis: %s", e)
+
         try:
-            key = f"agent:conversation:{session_id}"
-            data = redis.get(key)
-            if not data:
-                return "missing"
-            self._conversation = json.loads(
-                data.decode("utf-8") if isinstance(data, bytes) else data
-            )
-            self.session_id = session_id
-            return "loaded"
+            from backend.models.agent_message import load_conversation_from_db
+
+            conversation = load_conversation_from_db(self.db, session_id)
+            if conversation:
+                self._conversation = conversation
+                self.session_id = session_id
+                return "loaded"
+            return "missing"
         except Exception as e:
-            logger.warning("Failed to load conversation: %s", e)
+            logger.warning("Failed to load conversation from DB: %s", e)
             return "unavailable"
     
     async def chat(self, user_message: str) -> Dict[str, Any]:

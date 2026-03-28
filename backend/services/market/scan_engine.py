@@ -3,7 +3,7 @@
 Assigns stocks to scan tiers based on 6 filters per tier.
 Tiers are regime-gated: R1 sees all tiers, R5 sees only short tiers.
 
-4 long tiers (Set 1–4) + 2 short tiers (Short Set 1–2).
+4 long tiers (Breakout Elite/Standard, Early Base, Speculative) + 2 short tiers (Breakdown Elite/Standard).
 """
 from __future__ import annotations
 
@@ -24,22 +24,22 @@ logger = logging.getLogger(__name__)
 
 # ── Tier definitions ──
 
-TIER_SET_1 = "Set 1"  # Best long candidates
-TIER_SET_2 = "Set 2"
-TIER_SET_3 = "Set 3"
-TIER_SET_4 = "Set 4"  # Marginal longs
-TIER_SHORT_1 = "Short Set 1"  # Best short candidates
-TIER_SHORT_2 = "Short Set 2"
+TIER_BREAKOUT_ELITE = "Breakout Elite"  # Best long candidates
+TIER_BREAKOUT_STANDARD = "Breakout Standard"
+TIER_EARLY_BASE = "Early Base"
+TIER_SPECULATIVE = "Speculative"  # Marginal longs
+TIER_BREAKDOWN_ELITE = "Breakdown Elite"  # Best short candidates
+TIER_BREAKDOWN_STANDARD = "Breakdown Standard"
 
-ALL_LONG_TIERS = [TIER_SET_1, TIER_SET_2, TIER_SET_3, TIER_SET_4]
-ALL_SHORT_TIERS = [TIER_SHORT_1, TIER_SHORT_2]
+ALL_LONG_TIERS = [TIER_BREAKOUT_ELITE, TIER_BREAKOUT_STANDARD, TIER_EARLY_BASE, TIER_SPECULATIVE]
+ALL_SHORT_TIERS = [TIER_BREAKDOWN_ELITE, TIER_BREAKDOWN_STANDARD]
 
 # Regime → which long tiers are accessible
 REGIME_LONG_ACCESS = {
-    REGIME_R1: [TIER_SET_1, TIER_SET_2, TIER_SET_3, TIER_SET_4],
-    REGIME_R2: [TIER_SET_1, TIER_SET_2, TIER_SET_3],
-    REGIME_R3: [TIER_SET_1, TIER_SET_2],
-    REGIME_R4: [TIER_SET_1],
+    REGIME_R1: [TIER_BREAKOUT_ELITE, TIER_BREAKOUT_STANDARD, TIER_EARLY_BASE, TIER_SPECULATIVE],
+    REGIME_R2: [TIER_BREAKOUT_ELITE, TIER_BREAKOUT_STANDARD, TIER_EARLY_BASE],
+    REGIME_R3: [TIER_BREAKOUT_ELITE, TIER_BREAKOUT_STANDARD],
+    REGIME_R4: [TIER_BREAKOUT_ELITE],
     REGIME_R5: [],
 }
 
@@ -47,9 +47,9 @@ REGIME_LONG_ACCESS = {
 REGIME_SHORT_ACCESS = {
     REGIME_R1: [],
     REGIME_R2: [],
-    REGIME_R3: [TIER_SHORT_1],
-    REGIME_R4: [TIER_SHORT_1, TIER_SHORT_2],
-    REGIME_R5: [TIER_SHORT_1, TIER_SHORT_2],
+    REGIME_R3: [TIER_BREAKDOWN_ELITE],
+    REGIME_R4: [TIER_BREAKDOWN_ELITE, TIER_BREAKDOWN_STANDARD],
+    REGIME_R5: [TIER_BREAKDOWN_ELITE, TIER_BREAKDOWN_STANDARD],
 }
 
 
@@ -73,10 +73,10 @@ def _safe(val: Optional[float], default: float = 0.0) -> float:
 def classify_long_tier(inp: ScanInput, regime: str) -> Optional[str]:
     """Assign a stock to the best matching long tier, or None if no match.
 
-    Set 1 (highest conviction): 2A/2B stage, RS > 0, tight EMA10, top ATRE percentile, high range
-    Set 2: 2A/2B/2C, RS > -5, moderate EMA10 distance
-    Set 3: 1B/2A/2B, any RS, wider EMA10 tolerance
-    Set 4: 1A/1B/2A, weaker metrics but still long-eligible
+    Breakout Elite (highest conviction): 2A/2B stage, RS > 0, tight EMA10, top ATRE percentile, high range
+    Breakout Standard: 2A/2B/2C, RS > -5, moderate EMA10 distance
+    Early Base: 1B/2A/2B, any RS, wider EMA10 tolerance
+    Speculative: 1A/1B/2A, weaker metrics but still long-eligible
     """
     stage = inp.stage_label
     rs = _safe(inp.rs_mansfield)
@@ -86,25 +86,25 @@ def classify_long_tier(inp: ScanInput, regime: str) -> Optional[str]:
 
     accessible = REGIME_LONG_ACCESS.get(regime, [])
 
-    # Set 1 — highest conviction
-    if TIER_SET_1 in accessible:
+    # Breakout Elite — highest conviction
+    if TIER_BREAKOUT_ELITE in accessible:
         if stage in ("2A", "2B") and rs > 0 and dist_n <= 2.0 and atre_p >= 70 and range52 >= 60:
-            return TIER_SET_1
+            return TIER_BREAKOUT_ELITE
 
-    # Set 2
-    if TIER_SET_2 in accessible:
+    # Breakout Standard
+    if TIER_BREAKOUT_STANDARD in accessible:
         if stage in ("2A", "2B", "2C") and rs > -5 and dist_n <= 3.0 and range52 >= 40:
-            return TIER_SET_2
+            return TIER_BREAKOUT_STANDARD
 
-    # Set 3
-    if TIER_SET_3 in accessible:
+    # Early Base
+    if TIER_EARLY_BASE in accessible:
         if stage in ("1B", "2A", "2B") and dist_n <= 4.0:
-            return TIER_SET_3
+            return TIER_EARLY_BASE
 
-    # Set 4 — marginal
-    if TIER_SET_4 in accessible:
+    # Speculative — marginal
+    if TIER_SPECULATIVE in accessible:
         if stage in ("1A", "1B", "2A"):
-            return TIER_SET_4
+            return TIER_SPECULATIVE
 
     return None
 
@@ -112,8 +112,8 @@ def classify_long_tier(inp: ScanInput, regime: str) -> Optional[str]:
 def classify_short_tier(inp: ScanInput, regime: str) -> Optional[str]:
     """Assign a stock to the best matching short tier, or None if no match.
 
-    Short Set 1: 4A/4B stage, RS < 0, tight EMA10 (below), low range
-    Short Set 2: 3B/4A/4B/4C, RS < 5, wider tolerance
+    Breakdown Elite: 4A/4B stage, RS < 0, tight EMA10 (below), low range
+    Breakdown Standard: 3B/4A/4B/4C, RS < 5, wider tolerance
     """
     stage = inp.stage_label
     rs = _safe(inp.rs_mansfield)
@@ -122,15 +122,15 @@ def classify_short_tier(inp: ScanInput, regime: str) -> Optional[str]:
 
     accessible = REGIME_SHORT_ACCESS.get(regime, [])
 
-    # Short Set 1 — highest conviction shorts
-    if TIER_SHORT_1 in accessible:
+    # Breakdown Elite — highest conviction shorts
+    if TIER_BREAKDOWN_ELITE in accessible:
         if stage in ("4A", "4B") and rs < 0 and dist_n >= -2.0 and range52 <= 30:
-            return TIER_SHORT_1
+            return TIER_BREAKDOWN_ELITE
 
-    # Short Set 2
-    if TIER_SHORT_2 in accessible:
+    # Breakdown Standard
+    if TIER_BREAKDOWN_STANDARD in accessible:
         if stage in ("3B", "4A", "4B", "4C") and rs < 5:
-            return TIER_SHORT_2
+            return TIER_BREAKDOWN_STANDARD
 
     return None
 
@@ -145,18 +145,18 @@ def classify_scan_tier(inp: ScanInput, regime: str) -> Optional[str]:
 
 def derive_action_label(stage_label: str, scan_tier: Optional[str], regime: str) -> str:
     """Derive the action label (BUY/HOLD/WATCH/REDUCE/SHORT/AVOID) from stage + scan + regime."""
-    if scan_tier in (TIER_SHORT_1, TIER_SHORT_2):
+    if scan_tier in (TIER_BREAKDOWN_ELITE, TIER_BREAKDOWN_STANDARD):
         return "SHORT"
 
-    if scan_tier == TIER_SET_1:
+    if scan_tier == TIER_BREAKOUT_ELITE:
         return "BUY"
 
-    if scan_tier == TIER_SET_2:
+    if scan_tier == TIER_BREAKOUT_STANDARD:
         if regime in (REGIME_R1, REGIME_R2):
             return "BUY"
         return "WATCH"
 
-    if scan_tier in (TIER_SET_3, TIER_SET_4):
+    if scan_tier in (TIER_EARLY_BASE, TIER_SPECULATIVE):
         return "WATCH"
 
     # No scan tier — derive from stage

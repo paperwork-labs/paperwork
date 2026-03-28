@@ -119,6 +119,29 @@ All task references must match `@shared_task(name="...")` exactly. Found 4 criti
 3. `backend.tasks.intelligence.tasks.*` vs `backend.tasks.intelligence_tasks.*`
 4. `recover_stale_job_runs_impl` vs `recover_stale_job_runs`
 
+### D3 — Scan tier rename (2026-03-28)
+
+Renamed informal "Set 1/2/3/4" terminology to descriptive labels:
+- `Set 1` → `Breakout Elite` (2A/2B, RS>0, tight EMA10, top ATRE)
+- `Set 2` → `Breakout Standard` (2A/2B/2C, relaxed criteria)
+- `Set 3` → `Early Base` (1B/2A/2B, pattern forming)
+- `Set 4` → `Speculative` (1A/1B, early stage)
+- `Short Set 1` → `Breakdown Elite` (4A/4B, RS<0)
+- `Short Set 2` → `Breakdown Standard` (3B/4A/4B/4C)
+
+Rationale: "Set 1" was internal jargon with no meaning to users. New names describe the setup quality. Constants renamed (TIER_SET_1 → TIER_BREAKOUT_ELITE).
+
+### D4 — AgentChat persistence (2026-03-28)
+
+Conversations now persist to PostgreSQL via `agent_messages` table instead of Redis-only. Redis remains as a 7-day TTL cache for performance. Fallback: if Redis key expires, load from DB.
+
+Migration: `0012_add_agent_messages.py`
+Retention: Indefinite (matches session list behavior). Archive strategy TBD.
+
+### D5 — Auto-backtest on strategy change (2026-03-28)
+
+Added `_trigger_auto_backtest()` hook to strategy create/update endpoints. Fire-and-forget: queues `trigger_auto_backtest_on_change` task without blocking the API response. Only triggers when `config` (rules) changes.
+
 ### D2 — Regime as hard gate (2026-03-23)
 
 6 daily inputs → composite score → R1-R5:

@@ -232,40 +232,50 @@ class SessionMessagesResponse(BaseModel):
 @router.get("/sessions/{session_id}/messages", response_model=SessionMessagesResponse)
 def get_session_messages(
     session_id: str,
+    db: Session = Depends(get_db),
     _admin: User = Depends(get_admin_user),
 ):
-    """Get conversation messages for a specific session from Redis.
-    
+    """Get conversation messages for a specific session.
+
+    Checks Redis first (for active sessions), then falls back to PostgreSQL
+    (for sessions where the Redis cache has expired).
+
     Returns the full message history for resuming a past conversation.
-    Messages are stored in Redis with a 2-hour TTL.
     """
     from backend.services.market.market_data_service import market_data_service
+    from backend.models.agent_message import load_conversation_from_db
     import json
-    
+
     redis = market_data_service.redis_client
-    if not redis:
-        raise HTTPException(
-            status_code=503,
-            detail="Conversation store unavailable"
-        )
-    
-    redis_key = f"agent:conversation:{session_id}"
+    if redis:
+        try:
+            redis_key = f"agent:conversation:{session_id}"
+            raw = redis.get(redis_key)
+            if raw:
+                data = json.loads(
+                    raw.decode("utf-8") if isinstance(raw, bytes) else raw
+                )
+                messages = data if isinstance(data, list) else []
+                return SessionMessagesResponse(
+                    session_id=session_id,
+                    messages=messages,
+                    found=True,
+                )
+        except Exception:
+            logger.warning("Failed to load conversation from Redis for %s", session_id)
+
     try:
-        raw = redis.get(redis_key)
-        if not raw:
+        messages = load_conversation_from_db(db, session_id)
+        if messages:
             return SessionMessagesResponse(
                 session_id=session_id,
-                messages=[],
-                found=False,
+                messages=messages,
+                found=True,
             )
-        
-        data = json.loads(raw.decode("utf-8") if isinstance(raw, bytes) else raw)
-        messages = data if isinstance(data, list) else []
-        
         return SessionMessagesResponse(
             session_id=session_id,
-            messages=messages,
-            found=True,
+            messages=[],
+            found=False,
         )
     except Exception:
         logger.exception("Failed to load conversation for session %s", session_id)
