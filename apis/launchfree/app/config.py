@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     SESSION_COOKIE_NAME: str = "session"
 
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/launchfree"
+
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 
 
