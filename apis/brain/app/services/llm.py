@@ -77,7 +77,7 @@ async def _openai_fallback(
     """D14 fallback: OpenAI GPT-4o."""
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
-            oai_messages = [{"role": "system", "content": system_prompt}] + messages
+            oai_messages = [{"role": "system", "content": system_prompt}, *messages]
             res = await client.post(
                 "https://api.openai.com/v1/chat/completions",
                 headers={

@@ -1,17 +1,21 @@
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 from httpx import ASGITransport, AsyncClient
 
-from app.main import app
 from app.database import get_db
+from app.main import app
 
 
 @pytest.fixture(autouse=True)
 def _override_db():
     """Mock DB session scoped to each test — avoids global leak."""
+
     async def mock_db():
         db = AsyncMock()
-        db.execute = AsyncMock(return_value=AsyncMock(fetchall=lambda: [], scalars=lambda: AsyncMock(all=lambda: [])))
+        db.execute = AsyncMock(
+            return_value=AsyncMock(fetchall=lambda: [], scalars=lambda: AsyncMock(all=lambda: []))
+        )
         db.flush = AsyncMock()
         db.add = lambda x: None
         yield db
@@ -55,6 +59,7 @@ async def test_process_requires_message():
 @pytest.mark.asyncio
 async def test_process_with_brain_secret():
     from app.config import settings
+
     original = settings.BRAIN_API_SECRET
     settings.BRAIN_API_SECRET = "test-secret"
     try:

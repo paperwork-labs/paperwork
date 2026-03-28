@@ -26,7 +26,7 @@ class Entity(Base):
     last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     mention_count: Mapped[int] = mapped_column(Integer, server_default=text("1"))
     status: Mapped[str] = mapped_column(Text, server_default=text("'active'"))
-    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, server_default=text("'{}'::jsonb"))
+    properties: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
 
 
 class EntityEdge(Base):
