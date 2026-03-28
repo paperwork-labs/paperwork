@@ -9,6 +9,7 @@ import TradeModal from '../components/orders/TradeModal';
 import StageBadge from '../components/shared/StageBadge';
 import PnlText from '../components/shared/PnlText';
 import { useAuth } from '../context/AuthContext';
+import { isPlatformAdminRole } from '../utils/userRole';
 import { ETF_SYMBOL_SET } from '../constants/etf';
 import { usePortfolioSymbols } from '../hooks/usePortfolioSymbols';
 import { useUserPreferences } from '../hooks/useUserPreferences';
@@ -120,7 +121,7 @@ const MarketTracked: React.FC = () => {
   const location = useLocation();
   const { timezone, currency } = useUserPreferences();
   const { user } = useAuth();
-  const canEditPlan = user?.role === 'admin' || user?.role === 'analyst';
+  const canEditPlan = isPlatformAdminRole(user?.role) || user?.role === 'analyst';
   const [rows, setRows] = React.useState<any[]>([]);
   const [trackedCount, setTrackedCount] = React.useState<number>(0);
   const [loading, setLoading] = React.useState<boolean>(false);

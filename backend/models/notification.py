@@ -2,7 +2,7 @@
 Notifications System
 ==================================
 
-Discord notifications and in-app alerts for portfolio events, strategy execution, and system status.
+In-app notifications and optional Brain webhook relay for portfolio events, strategy execution, and system status.
 """
 
 from sqlalchemy import (
@@ -39,7 +39,7 @@ class NotificationType(enum.Enum):
 
 
 class NotificationChannel(enum.Enum):
-    DISCORD = "discord"  # Discord webhook
+    DISCORD = "discord"  # Legacy channel value (prefer IN_APP + Brain webhook for new code)
     EMAIL = "email"  # Email notification
     IN_APP = "in_app"  # In-app notification
     SMS = "sms"  # SMS notification

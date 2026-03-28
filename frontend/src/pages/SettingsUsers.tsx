@@ -43,9 +43,9 @@ type InviteRow = {
 };
 
 const ROLE_OPTIONS = [
-  { label: 'Viewer', value: 'readonly' },
+  { label: 'Viewer', value: 'viewer' },
   { label: 'Analyst', value: 'analyst' },
-  { label: 'Admin', value: 'admin' },
+  { label: 'Owner', value: 'owner' },
 ];
 
 const selectClass =
@@ -60,7 +60,7 @@ const SettingsUsers: React.FC = () => {
   const [invites, setInvites] = useState<InviteRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState('readonly');
+  const [inviteRole, setInviteRole] = useState('viewer');
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
   const [deleting, setDeleting] = useState(false);

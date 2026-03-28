@@ -35,6 +35,7 @@ class OrderType(enum.Enum):
 
 class OrderStatus(enum.Enum):
     PREVIEW = "preview"
+    PENDING_APPROVAL = "pending_approval"
     PENDING_SUBMIT = "pending_submit"
     SUBMITTED = "submitted"
     PARTIALLY_FILLED = "partially_filled"
@@ -80,6 +81,7 @@ class Order(Base):
     signal_id = Column(Integer, ForeignKey("signals.id", ondelete="SET NULL"), nullable=True, index=True)
     position_id = Column(Integer, ForeignKey("positions.id", ondelete="SET NULL"), nullable=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    approved_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     source = Column(String(20), nullable=False, default="manual")
     broker_type = Column(String(20), nullable=False, default="ibkr")

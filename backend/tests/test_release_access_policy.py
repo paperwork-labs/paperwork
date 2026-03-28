@@ -55,7 +55,7 @@ def _elevate_user_to_admin(username: str) -> None:
     try:
         user = db.query(User).filter(User.username == username).first()
         assert user is not None
-        user.role = UserRole.ADMIN
+        user.role = UserRole.OWNER
         db.commit()
     finally:
         db.close()
@@ -87,8 +87,8 @@ def test_release_policy_matrix_non_admin_rules():
         portfolio_enabled=False,
         strategy_enabled=False,
     )
-    user = SimpleNamespace(role=UserRole.USER)
-    admin = SimpleNamespace(role=UserRole.ADMIN)
+    user = SimpleNamespace(role=UserRole.ANALYST)
+    admin = SimpleNamespace(role=UserRole.OWNER)
 
     # Admin always allowed.
     assert evaluate_release_access("market", admin, app_settings)[0] is True
@@ -170,7 +170,7 @@ async def test_require_non_market_access_admin_bypass_without_app_settings():
         "scheme": "http",
     }
     request = Request(scope)
-    admin_user = SimpleNamespace(role=UserRole.ADMIN)
+    admin_user = SimpleNamespace(role=UserRole.OWNER)
     result = await require_non_market_access(
         request=request,
         current_user=admin_user,

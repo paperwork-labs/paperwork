@@ -1,7 +1,7 @@
 """Intelligence Brief Generator — produces daily/weekly/monthly summaries.
 
 Queries MarketSnapshot, MarketRegime, positions, and stage transitions
-to produce structured briefs that can be rendered in-app or sent via Discord.
+to produce structured briefs that can be rendered in-app or sent via Brain webhook.
 """
 
 from __future__ import annotations

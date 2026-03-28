@@ -3,8 +3,10 @@ AxiomFolio V1 - API Dependencies
 Common dependencies for API endpoints.
 """
 
+import secrets
+
 from fastapi import Depends, HTTPException, status, Security, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import APIKeyHeader, HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 import logging
 from typing import Optional, List, Literal
@@ -14,11 +16,40 @@ from backend.models.user import User
 from backend.models.user import UserRole
 from backend.api.security import decode_token
 from backend.services.core.app_settings_service import get_or_create_app_settings
+from backend.config import settings
 
 logger = logging.getLogger(__name__)
 
 security = HTTPBearer()
 optional_security = HTTPBearer(auto_error=False)
+
+_brain_api_key_header = APIKeyHeader(name="X-Brain-Api-Key", auto_error=False)
+
+
+async def verify_brain_api_key(
+    api_key: Optional[str] = Security(_brain_api_key_header),
+) -> None:
+    """Validate Brain tool API requests (machine-to-machine). Header: X-Brain-Api-Key."""
+    expected = settings.BRAIN_API_KEY
+    if not expected:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Brain API is not configured (BRAIN_API_KEY)",
+        )
+    if api_key is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing Brain API key",
+        )
+    provided = api_key.encode("utf-8")
+    expected_b = expected.encode("utf-8")
+    if len(provided) != len(expected_b) or not secrets.compare_digest(
+        provided, expected_b
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing Brain API key",
+        )
 
 
 async def get_current_user(
@@ -80,11 +111,9 @@ async def get_portfolio_user(
 
 async def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
     """
-    Dependency to ensure current user has admin privileges.
+    Dependency to ensure current user has operator (platform admin) privileges.
     """
-    from backend.models.user import UserRole
-
-    if current_user.role != UserRole.ADMIN:
+    if current_user.role != UserRole.OWNER:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required"
         )
@@ -92,18 +121,43 @@ async def get_admin_user(current_user: User = Depends(get_current_user)) -> User
     return current_user
 
 
+def require_role(*allowed_roles: UserRole):
+    """Dependency factory: current user must have one of the allowed roles."""
+
+    allowed_values = [r.value for r in allowed_roles]
+
+    async def check_role(user: User = Depends(get_current_user)) -> User:
+        role_val = user.role.value if isinstance(user.role, UserRole) else str(user.role)
+        if role_val not in allowed_values:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Requires role: {', '.join(r.value for r in allowed_roles)}",
+            )
+        return user
+
+    return check_role
+
+
 def require_roles(roles: List[UserRole]):
     """
     Factory dependency to enforce one of the allowed roles on an endpoint/router.
     Usage:
-      router = APIRouter(dependencies=[Depends(require_roles([UserRole.ADMIN]))])
+      router = APIRouter(dependencies=[Depends(require_roles([UserRole.OWNER]))])
     """
+    allowed_values = {r.value for r in roles}
+
     async def _dep(current_user: User = Depends(get_current_user)) -> User:
-        if current_user.role not in roles:
+        cur = (
+            current_user.role.value
+            if isinstance(current_user.role, UserRole)
+            else str(current_user.role)
+        )
+        if cur not in allowed_values:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient role"
             )
         return current_user
+
     return _dep
 
 
@@ -203,7 +257,7 @@ def evaluate_release_access(
     """
     if current_user is None:
         return False, "Authentication required"
-    if current_user.role == UserRole.ADMIN:
+    if current_user.role == UserRole.OWNER:
         return True, None
     if section == "market":
         return True, None
@@ -243,7 +297,7 @@ async def require_non_market_access(
 
     # Admin should never be blocked by release toggles, and this avoids coupling
     # admin route availability to app_settings migration timing.
-    if current_user.role == UserRole.ADMIN:
+    if current_user.role == UserRole.OWNER:
         return current_user
 
     section = _section_from_path(request.url.path or "")

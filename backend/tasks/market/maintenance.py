@@ -46,7 +46,7 @@ def prune_old_bars(max_days_5m: int = 90) -> dict:
         warning = None
         if warn_threshold and deleted_count >= warn_threshold:
             warning = f"Retention deleted {deleted_count} rows (>= {warn_threshold})"
-            alert_service.send_discord(
+            alert_service.send_alert(
                 "system_status",
                 title="Market Data Retention Spike",
                 description="5m retention deleted more rows than expected.",

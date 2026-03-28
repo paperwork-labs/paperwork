@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { isPlatformAdminRole } from '../../utils/userRole';
 
 type Section = 'portfolio' | 'strategy';
 
@@ -10,7 +11,7 @@ const RequireNonMarketAccess: React.FC<{ children?: React.ReactElement; section?
   if (!ready || !appSettingsReady) {
     return null;
   }
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = isPlatformAdminRole(user?.role);
   if (isAdmin) {
     return children ?? <Outlet />;
   }

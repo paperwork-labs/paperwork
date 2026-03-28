@@ -21,7 +21,7 @@ def test_bootstrap_daily_coverage_tracked_defaults_to_rolling_20_day_history(db_
     )
     monkeypatch.setattr(
         "backend.tasks.intelligence.tasks.generate_daily_digest_task",
-        lambda deliver_discord=True: {"status": "ok"},
+        lambda deliver_brain=True: {"status": "ok"},
     )
 
     called = {}

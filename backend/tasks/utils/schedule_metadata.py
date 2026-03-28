@@ -38,7 +38,10 @@ class SafetyConfig(BaseModel):
 
 
 class HookConfig(BaseModel):
-    """Optional alert integrations."""
+    """Optional alert hooks (Brain ops_alert + Prometheus).
+
+    Fields ``discord_*`` are legacy JSON keys from RedBeat metadata; values are sent as routing metadata on Brain ``ops_alert``, not to Discord URLs.
+    """
 
     discord_webhook: Optional[str] = None
     discord_channels: List[str] = Field(default_factory=list)

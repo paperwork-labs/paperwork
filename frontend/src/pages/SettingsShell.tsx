@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { isPlatformAdminRole } from '../utils/userRole';
 import { Bell, Cpu, Sliders, User, Shield, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -74,7 +75,7 @@ const SettingsShell: React.FC = () => {
               <MenuLink to="/settings/preferences">Preferences</MenuLink>
               <MenuLink to="/settings/connections">Connections</MenuLink>
               <MenuLink to="/settings/notifications">Notifications</MenuLink>
-              {user?.role === 'admin' && (
+              {isPlatformAdminRole(user?.role) && (
                 <>
                   <p className="mt-4 px-2 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
                     Admin
@@ -92,7 +93,7 @@ const SettingsShell: React.FC = () => {
             {iconNav('/settings/preferences', 'Preferences', <Sliders className="size-4" />)}
             {iconNav('/settings/connections', 'Connections', <Shield className="size-4" />)}
             {iconNav('/settings/notifications', 'Notifications', <Bell className="size-4" />)}
-            {user?.role === 'admin' ? (
+            {isPlatformAdminRole(user?.role) ? (
               <>
                 {iconNav('/settings/admin/system', 'System Status', <Activity className="size-4" />)}
                 {iconNav('/settings/admin/users', 'Users', <User className="size-4" />)}

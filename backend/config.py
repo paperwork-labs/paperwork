@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     
     # LLM / Agent API Keys
     OPENAI_API_KEY: Optional[str] = None
+    # Service-to-service key for Brain tool HTTP routes (header X-Brain-Api-Key)
+    BRAIN_API_KEY: Optional[str] = None
+    BRAIN_TOOLS_USER_ID: int = 1  # Portfolio / order context for those routes
+    BRAIN_WEBHOOK_URL: Optional[str] = None
+    BRAIN_WEBHOOK_SECRET: Optional[str] = None
     # Agent autonomy level: "full" (auto-execute all), "safe" (auto-execute safe only), "ask" (always ask)
     AGENT_AUTONOMY_LEVEL: str = "safe"
 
@@ -70,14 +75,12 @@ class Settings(BaseSettings):
     SCHWAB_AUTH_BASE: Optional[str] = None
     SCHWAB_CLIENT_ID_SUFFIX: Optional[str] = None
 
-    # Discord Configuration (5 separate webhooks for different purposes)
-    DISCORD_WEBHOOK_SIGNALS: Optional[str] = None  # Entry/exit signals
-    DISCORD_WEBHOOK_PORTFOLIO_DIGEST: Optional[str] = None  # Portfolio summaries
-    DISCORD_WEBHOOK_MORNING_BREW: Optional[str] = None  # Daily scans & market updates
-    DISCORD_WEBHOOK_PLAYGROUND: Optional[str] = None  # Test notifications
-    DISCORD_WEBHOOK_SYSTEM_STATUS: Optional[str] = None  # System status updates
-
-    # Discord Bot API (token + channel IDs). Prefer this for production-ready, scheduled messaging.
+    # Legacy Discord env vars (unused by app code; notifications use BRAIN_WEBHOOK_URL).
+    DISCORD_WEBHOOK_SIGNALS: Optional[str] = None
+    DISCORD_WEBHOOK_PORTFOLIO_DIGEST: Optional[str] = None
+    DISCORD_WEBHOOK_MORNING_BREW: Optional[str] = None
+    DISCORD_WEBHOOK_PLAYGROUND: Optional[str] = None
+    DISCORD_WEBHOOK_SYSTEM_STATUS: Optional[str] = None
     DISCORD_BOT_TOKEN: Optional[str] = None
     DISCORD_BOT_DEFAULT_CHANNEL_ID: Optional[str] = None
 
@@ -97,6 +100,10 @@ class Settings(BaseSettings):
 
     # Risk management
     MAX_SINGLE_POSITION_PCT: float = 0.15
+
+    # Trade approval settings (Tier 3 / human-in-the-loop)
+    TRADE_APPROVAL_MODE: str = "all"  # all | threshold | analyst_only | none
+    TRADE_APPROVAL_THRESHOLD: float = 5000.0  # USD value threshold
 
     # Google OAuth
     GOOGLE_CLIENT_ID: Optional[str] = None

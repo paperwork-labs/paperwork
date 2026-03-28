@@ -60,10 +60,42 @@ Architectural decisions with rationale. Grouped by domain, newest first within e
 | ID | Date | Decision |
 |----|------|----------|
 | D21 | 2026-03-24 | **AxiomFolio is a Paperwork Brain skill** — exposes clean API surface |
+| D32 | 2026-03-27 | **Brain API key auth** — X-Brain-Api-Key header validated via secrets.compare_digest |
+| D33 | 2026-03-27 | **Unified notifications via Brain** — Discord removed, all alerts route through Brain webhook |
+| D34 | 2026-03-27 | **Three-tier user roles** — owner/analyst/viewer replacing admin/user/readonly |
+| D35 | 2026-03-27 | **Trade approval workflow** — Tier 3 actions require owner approval, ApprovalService tracks state |
+
+### Risk & Execution
+
+| ID | Date | Decision |
+|----|------|----------|
+| D36 | 2026-03-27 | **Circuit breaker with 3 tiers** — 2%/3%/5% daily loss limits, kill switch at 5% |
+| D37 | 2026-03-27 | **Trading day resets at 4 AM ET** — configurable via trading_day_timezone/trading_day_reset_hour |
+| D38 | 2026-03-27 | **TradingView webhook secrets hashed** — SHA-256 hex, constant-time comparison |
+| D39 | 2026-03-27 | **Webhook orders start as PREVIEW** — OrderManager.submit() handles state transitions |
+
+### Data Pipeline
+
+| ID | Date | Decision |
+|----|------|----------|
+| D40 | 2026-03-27 | **Redis Streams for real-time events** — price:feed:alpaca, signals:evaluated, signals:output |
+| D41 | 2026-03-27 | **Async Redis in async contexts** — redis.asyncio for FastAPI routes and services |
 
 ---
 
 ## Decision Details
+
+### D32–D41 — Gold Standard & Brain Integration (2026-03-27)
+
+Major rebuild implementing production-grade trading infrastructure:
+
+**Circuit Breaker (D36)**: Three daily loss tiers (2%, 3%, 5%) with progressive restrictions. Kill switch at 5% halts all trading. Configurable via `CircuitBreakerConfig` dataclass.
+
+**Brain Integration (D32, D33, D35)**: AxiomFolio exposes `/api/v1/tools/*` endpoints for Brain orchestrator. API key in header, webhooks for events. Discord service deleted — Brain handles Slack routing.
+
+**User Roles (D34)**: Migrated from `admin/user/readonly` to `owner/analyst/viewer`. Analyst can propose trades but requires owner approval. Stored as VARCHAR via SQLEnum(native_enum=False).
+
+**Async Redis (D41)**: All async functions must use `redis.asyncio` to avoid blocking the event loop. Sync Redis retained only for sync callers (Celery tasks).
 
 ### D31 — Agent codebase access policy (2026-03-26)
 

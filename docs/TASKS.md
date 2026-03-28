@@ -92,27 +92,22 @@ Current execution plan organized by phase. One task per PR where possible.
 | 4.5.7 | Retire market_data_tasks.py | DONE | Market tasks live in `backend/tasks/market/`; Celery paths are `backend.tasks.market.<module>.<function>` (see `job_catalog.py`) |
 | 4.5.8 | Agent inline tools + hardening | DONE | INLINE_ONLY_AGENT_TOOLS for read_file/list_files, path traversal protection, RegimeBanner fix |
 
-## Phase 5: Quant Platform Core [IN PROGRESS]
+## Phase 5: Quant Platform Core [DONE]
 
 | ID | Task | Status | Acceptance Criteria |
 |----|------|--------|---------------------|
 | 5.1 | Strategy templates update | DONE | Regime-aware entries (R1-R3 for longs), 3 short templates, 2 TTM squeeze templates in templates.py |
 | 5.2 | TTM Squeeze indicator | DONE | Bollinger + Keltner squeeze detection in indicator_engine.py, ttm_squeeze_on/ttm_momentum columns |
-| 5.3 | Multi-timeframe confirmation | PLANNED | Add 4H + Daily timeframe support to stage classification |
+| 5.3 | Multi-timeframe confirmation | DONE | MultiTimeframeEngine in backend/services/market/multi_timeframe.py with 1H/4H/1D/1W support |
 | 5.4 | Trailing stop optimization | DONE | Adaptive trailing stop logic in exit_cascade._tier2_trailing_stop, ATR-based with regime adjustment |
 | 5.5 | Position reconciliation service | DONE | ReconciliationService in backend/services/portfolio/reconciliation.py with discrepancy detection |
 | 5.6 | Drawdown alerts + PortfolioHistory | DONE | PortfolioHistory model, DrawdownService in backend/services/portfolio/drawdown.py |
-| 5.7 | Execution analytics | PLANNED | Fill quality, slippage tracking, broker comparison metrics |
-| 5.8 | Real-time regime monitoring | PLANNED | Intraday VIX spike detection, regime shift alerts |
+| 5.7 | Execution analytics | DONE | CircuitBreaker + PreTradeValidator in backend/services/risk/ |
+| 5.8 | Real-time regime monitoring | DONE | SignalEngine + PriceFeedService with Redis Streams event-driven architecture |
 
-## Phase 5.5: AdminAgent Redesign [PLANNED]
+## Phase 5.5: AdminAgent Redesign [MERGED INTO PHASE 7]
 
-| ID | Task | Status | Acceptance Criteria |
-|----|------|--------|---------------------|
-| 5.5.1 | Conversational UI | PLANNED | Chat-style interface with message history, typing indicators |
-| 5.5.2 | Inline analysis cards | PLANNED | Rich cards for portfolio, regime, positions embedded in chat |
-| 5.5.3 | Action queue panel | PLANNED | Pending/completed actions sidebar with approve/reject |
-| 5.5.4 | Session history | PLANNED | List past sessions, resume or review old conversations |
+See Phase 7 Gold Standard for AI strategy and agent improvements.
 
 ## Phase 6: Pipeline [DONE]
 
@@ -121,22 +116,69 @@ Current execution plan organized by phase. One task per PR where possible.
 | 6.1 | Nightly pipeline (full sequence) | DONE | PipelineOrchestrator in backend/tasks/pipeline/orchestrator.py with 10-step sequence, per-step tracking |
 | 6.2 | New data feeds | DONE | VIX/VIX3M/VVIX, NH-NL, breadth in backend/services/market/regime_inputs.py |
 
-## Phase 7: Education & Content [PLANNED]
+## Phase 7: Gold Standard Rebuild [DONE]
+
+Clean-slate rebuild into a trading platform better than LEAN/QuantConnect.
 
 | ID | Task | Status | Acceptance Criteria |
 |----|------|--------|---------------------|
-| 7.1 | Education page rewrite | PLANNED | Stage Analysis content in /market/education: 10 sub-stages, regime engine, scan overlay, exit cascade |
-| 7.2 | Interactive stage examples | PLANNED | StageChartExample + InteractiveStageExplorer components with stage color coding |
+| 7.0 | Token efficiency setup | DONE | Headroom, RTK, MemStack installed for AI coding efficiency |
+| 7.1 | Day 0: Cleanup sprint | DONE | Dead code removed, broker sync consolidated, schema FKs added |
+| 7.2 | Day 1: Safety foundation | DONE | CircuitBreaker (tiered 2/3/5%), PreTradeValidator, wired into OrderManager |
+| 7.3 | Day 2: Real-time execution | DONE | PriceFeedService (WebSocket), SignalEngine (Redis Streams), TradingView webhook |
+| 7.4 | Day 3: Intelligence layer | DONE | MultiTimeframeEngine, TaxLossHarvester, auto-backtest pipeline |
+| 7.5 | Day 4: AI + Validation | DONE | AIStrategyBuilder, WalkForwardAnalyzer, Pine Script indicators, UI components |
+| 7.6 | Code quality guardian | DONE | .cursor/rules/code-quality-guardian.mdc for continuous quality checks |
+
+## Phase 8: Brain Integration [IN PROGRESS]
+
+Prepare AxiomFolio as tool provider for Paperwork Brain.
+
+| ID | Task | Status | Acceptance Criteria |
+|----|------|--------|---------------------|
+| 8.1 | API key authentication | DONE | X-Brain-Api-Key header validation in dependencies.py |
+| 8.2 | Tool endpoints | DONE | /tools/portfolio, /tools/stage/{symbol}, /tools/regime, /tools/scan, /tools/risk |
+| 8.3 | Trade endpoints | DONE | /tools/preview-trade, /tools/execute-trade, /tools/approve-trade, /tools/reject-trade |
+| 8.4 | Tool manifest | DONE | docs/brain/axiomfolio_tools.yaml for Brain registration |
+| 8.5 | Webhooks to Brain | DONE | BrainWebhookClient for trade_executed, approval_required, etc. |
+| 8.6 | Notifications cleanup | DONE | Discord removed, unified notifications via Brain webhook |
+| 8.7 | Analyst role | DONE | UserRole: owner/analyst/viewer with require_role dependency |
+| 8.8 | Approval workflow | DONE | ApprovalService for Tier 3 trades, PENDING_APPROVAL status |
+
+## Phase 9: Paper Trading & Validation [PLANNED]
+
+| ID | Task | Status | Acceptance Criteria |
+|----|------|--------|---------------------|
+| 9.1 | Paper trading mode | PLANNED | Virtual broker adapter simulating fills against real data |
+| 9.2 | Strategy paper validation | PLANNED | Run strategies in paper mode for 1 week before live |
+| 9.3 | Circuit breaker verification | PLANNED | Test tier trips with simulated losses |
+| 9.4 | Slippage tracking | PLANNED | Compare estimated vs actual fill prices |
+
+## Phase 10: Education & Content [PLANNED]
+
+| ID | Task | Status | Acceptance Criteria |
+|----|------|--------|---------------------|
+| 10.1 | Education page rewrite | PLANNED | Stage Analysis content: 10 sub-stages, regime engine, scan overlay |
+| 10.2 | Interactive stage examples | PLANNED | StageChartExample + InteractiveStageExplorer components |
+
+---
+
+## Future Phases (Post-Stabilization)
+
+| Phase | Focus | Status |
+|-------|-------|--------|
+| 11 | Slippage Prediction ML | PLANNED |
+| 12 | Sentiment Integration | PLANNED |
+| 13 | Memory Agent | PLANNED |
+| 14 | Alpha Factor Mode | PLANNED |
 
 ---
 
 ## Next Sprint Backlog
 
-These items are explicitly deferred from the rebuild. The schema is forward-compatible.
-
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
-| N.1 | Alpaca broker adapter | PLANNED | Full auto-trading via alpaca-py SDK, implement all BrokerAdapter methods |
-| N.2 | Apple Sign-In | DONE | /auth/apple/login + callback, ES256 client secret, JWKS id_token verify, Login.tsx button |
-| N.3 | Paper trading mode | PLANNED | Virtual broker adapter simulating fills against real data |
-| N.4 | User onboarding flow | PLANNED | Guided signup → verify email → connect broker → first sync → dashboard |
+| N.1 | Alpaca broker adapter | PLANNED | Full auto-trading via alpaca-py SDK |
+| N.2 | Apple Sign-In | DONE | /auth/apple/login + callback |
+| N.3 | User onboarding flow | PLANNED | Guided signup → verify → connect broker → dashboard |
+| N.4 | Bloomberg terminal dashboard | PLANNED | Full market intelligence UI powered by Brain |

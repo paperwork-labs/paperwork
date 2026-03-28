@@ -32,7 +32,7 @@ from backend.models.market_data import (
 from backend.services.market.market_data_service import MarketDataService
 from backend.services.market.universe import tracked_symbols_async
 from backend.services.market.admin_health_service import AdminHealthService
-from backend.services.notifications.discord_bot import discord_bot_client
+from backend.services.brain.webhook_client import brain_webhook
 from backend.api.dependencies import get_admin_user
 from backend.api.routes.utils import serialize_job_runs
 from backend.config import settings
@@ -347,12 +347,11 @@ async def admin_send_snapshot_digest_to_discord(
     _admin: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
-    """Send a compact snapshot digest to Discord."""
-    if not discord_bot_client.is_configured():
-        raise HTTPException(status_code=400, detail="DISCORD_BOT_TOKEN not configured")
-    resolved_channel = channel_id or getattr(settings, "DISCORD_BOT_DEFAULT_CHANNEL_ID", None)
-    if not resolved_channel:
-        raise HTTPException(status_code=400, detail="No channel_id provided")
+    """Send a compact MarketSnapshot digest to Brain (path name kept for API compatibility)."""
+    if not brain_webhook.webhook_url:
+        raise HTTPException(status_code=400, detail="BRAIN_WEBHOOK_URL not configured")
+    # channel_id retained for API compatibility; Brain routes the payload server-side.
+    _ = channel_id
 
     svc = MarketDataService()
     tracked = await tracked_symbols_async(db, redis_async=await svc._get_redis())
@@ -406,8 +405,16 @@ async def admin_send_snapshot_digest_to_discord(
         lines.extend(top_lines)
 
     content = "\n".join(lines)
-    ok = await discord_bot_client.send_message(channel_id=resolved_channel, content=content)
-    return {"status": "ok" if ok else "error", "channel_id": resolved_channel, "sent": bool(ok)}
+    ok = await brain_webhook.notify(
+        "snapshot_digest",
+        {
+            "content": content,
+            "universe_have": have,
+            "universe_total": total,
+        },
+        user_id=_admin.id,
+    )
+    return {"status": "ok" if ok else "error", "sent": bool(ok), "destination": "brain"}
 
 
 # ── DB history and maintenance ──

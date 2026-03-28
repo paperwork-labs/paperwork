@@ -67,7 +67,7 @@ Modules and Prefixes
   - POST `/admin/backfill/coverage/refresh` – refresh coverage cache (admin)
   - POST `/admin/backfill/5m/toggle` – toggle 5m backfill (admin)
   - POST `/admin/retention/enforce` – enforce retention (admin)
-  - POST `/admin/snapshots/discord-digest` – snapshot digest to Discord (admin)
+  - POST `/admin/snapshots/discord-digest` – snapshot digest to Brain webhook (admin; path unchanged)
   - POST `/admin/tasks/run` – admin run task (admin)
   - POST `/indices/constituents/refresh` – refresh constituents (admin)
   - POST `/symbols/{symbol}/refresh` – refresh symbol (admin)

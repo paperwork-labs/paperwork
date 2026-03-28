@@ -444,7 +444,7 @@ def stage_changes() -> dict:
                     c["symbol"]: f'{c["from_stage"]} → {c["to_stage"]}'
                     for c in changes[:25]
                 }
-                alert_service.send_discord(
+                alert_service.send_alert(
                     "portfolio_stage_change",
                     title="Portfolio Stage Changes",
                     description=f"{len(changes)} held symbol(s) changed stage today.",
@@ -452,7 +452,7 @@ def stage_changes() -> dict:
                     severity="warning",
                 )
             except Exception as e:
-                logger.warning("discord_stage_change_alert failed: %s", e)
+                logger.warning("stage_change_ops_alert failed: %s", e)
 
         return {
             "status": "ok",

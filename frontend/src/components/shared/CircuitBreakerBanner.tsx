@@ -12,6 +12,7 @@ import {
 import hotToast from 'react-hot-toast';
 
 import { useAuth } from '../../context/AuthContext';
+import { isPlatformAdminRole } from '../../utils/userRole';
 import { useCircuitBreakerStatus, useResetCircuitBreakerKillSwitch } from '../../hooks/useCircuitBreaker';
 import type { CircuitBreakerStatus } from '../../types/circuitBreaker';
 
@@ -112,7 +113,7 @@ function BannerBody({
  */
 export function CircuitBreakerBanner() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = isPlatformAdminRole(user?.role);
   const { data, isPending, isError } = useCircuitBreakerStatus();
   const resetMutation = useResetCircuitBreakerKillSwitch();
 

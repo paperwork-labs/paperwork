@@ -15,7 +15,7 @@ from backend.services.market.market_data_service import market_data_service, Mar
 @pytest.fixture(autouse=True)
 def allow_admin_user():
     class _DummyUser:
-        role = UserRole.ADMIN
+        role = UserRole.OWNER
         is_active = True
         email = "admin@example.com"
 

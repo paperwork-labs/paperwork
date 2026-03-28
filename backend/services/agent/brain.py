@@ -681,27 +681,20 @@ class AgentBrain:
             return {"error": str(e)}
     
     async def _tool_send_alert(self, message: str, severity: str) -> Dict[str, Any]:
-        """Send a Discord alert."""
-        webhook_url = settings.DISCORD_WEBHOOK_SYSTEM_STATUS
-        if not webhook_url:
+        """Send an alert to Brain webhook."""
+        from backend.services.brain.webhook_client import brain_webhook
+
+        if not brain_webhook.webhook_url:
             logger.info("Alert (no webhook): [%s] %s", severity, message)
             return {"status": "logged", "message": "No webhook configured"}
-        
-        color_map = {"info": 3447003, "warning": 16776960, "error": 15158332, "critical": 10038562}
-        
-        payload = {
-            "embeds": [{
-                "title": f"Agent Alert: {severity.upper()}",
-                "description": message,
-                "color": color_map.get(severity, 3447003),
-                "timestamp": datetime.utcnow().isoformat(),
-            }]
-        }
-        
+
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(webhook_url, json=payload) as resp:
-                    return {"status": "sent" if resp.status < 300 else "failed"}
+            ok = await brain_webhook.notify(
+                "agent_alert",
+                {"message": message, "severity": severity},
+                user_id=None,
+            )
+            return {"status": "sent" if ok else "failed"}
         except Exception as e:
             return {"error": str(e)}
     
@@ -2038,7 +2031,7 @@ class AgentBrain:
             from backend.models.user import UserRole
             user = (
                 self.db.query(User)
-                .filter(User.role == UserRole.ADMIN)
+                .filter(User.role == UserRole.OWNER)
                 .first()
             )
             if not user:

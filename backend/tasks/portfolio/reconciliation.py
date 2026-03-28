@@ -275,7 +275,7 @@ def monitor_portfolio_drawdown(
 
     Args:
         thresholds: Drawdown percentages to alert on (default: 5, 10, 15, 20%)
-        send_alerts: Whether to send Discord alerts for triggered thresholds
+        send_alerts: Whether to send Brain webhook alerts for triggered thresholds
 
     Returns:
         Dict with current drawdown metrics and any triggered alerts

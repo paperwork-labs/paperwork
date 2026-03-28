@@ -15,7 +15,7 @@ from backend.models.user import UserRole
 @pytest.fixture(autouse=True)
 def allow_market_data_viewer():
     class _DummyUser:
-        role = UserRole.ADMIN
+        role = UserRole.OWNER
         is_active = True
         email = "admin@example.com"
 

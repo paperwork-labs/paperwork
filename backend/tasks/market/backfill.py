@@ -295,7 +295,7 @@ def constituents(index: str | None = None) -> dict:
             try:
                 from backend.services.notifications.alerts import alert_service
 
-                alert_service.send_discord(
+                alert_service.send_alert(
                     "system_status",
                     title="Index Constituents Health Check Warning",
                     description="One or more indices have low/missing constituent counts after refresh.",
@@ -303,7 +303,7 @@ def constituents(index: str | None = None) -> dict:
                     severity="warning",
                 )
             except Exception as e:
-                logger.warning("discord_health_check_alert failed: %s", e)
+                logger.warning("ops_alert for constituents health check failed: %s", e)
             logger.warning("Index constituents health check: %s", "; ".join(warnings))
 
         res = {"status": "ok", "preflight": preflight, "indices": results, "health_warnings": warnings}

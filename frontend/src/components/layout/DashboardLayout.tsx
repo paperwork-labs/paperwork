@@ -24,6 +24,7 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { portfolioApi } from '../../services/api';
 import { useAccountContext } from '../../context/AccountContext';
 import { useAuth } from '../../context/AuthContext';
+import { isPlatformAdminRole } from '../../utils/userRole';
 import AppDivider from '../ui/AppDivider';
 import AppLogo from '../ui/AppLogo';
 import useAdminHealth from '../../hooks/useAdminHealth';
@@ -186,7 +187,7 @@ const DashboardLayout: React.FC = () => {
   const notifications: NotificationItem[] = [];
   const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
   const marketOnly = appSettingsReady ? Boolean(appSettings?.market_only_mode) : true;
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = isPlatformAdminRole(user?.role);
   const portfolioEnabled = isAdmin || (!marketOnly && Boolean(appSettings?.portfolio_enabled));
   const strategyEnabled = isAdmin || (!marketOnly && Boolean(appSettings?.strategy_enabled));
 

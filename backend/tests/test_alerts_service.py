@@ -1,5 +1,4 @@
 from backend.services.notifications.alerts import AlertService
-from backend.config import settings
 
 
 class _StubHTTP:
@@ -16,25 +15,37 @@ class _StubHTTP:
         return _Resp()
 
 
-def test_alert_service_resolves_discord_aliases(monkeypatch):
-    monkeypatch.setattr(settings, "DISCORD_WEBHOOK_SYSTEM_STATUS", "https://discord/system")
-    stub = _StubHTTP()
-    svc = AlertService(http_client=stub)
-    sent = svc.send_discord("system_status", "Test", "Payload", fields={"Foo": "Bar"})
-    assert sent is True
-    assert stub.calls[0][0] == "https://discord/system"
+class _StubBrain:
+    def __init__(self):
+        self.calls = []
+        self.webhook_url = "https://brain.example/hook"
+
+    def notify_sync(self, event, data, user_id=None):
+        self.calls.append((event, data, user_id))
+        return True
 
 
-def test_alert_service_accepts_list_descriptors(monkeypatch):
-    monkeypatch.setattr(settings, "DISCORD_WEBHOOK_SYSTEM_STATUS", "https://discord/system")
-    stub = _StubHTTP()
-    svc = AlertService(http_client=stub)
-    custom_url = "https://discord/custom"
-    sent = svc.send_discord(["system_status", custom_url], "List Test", "Desc")
+def test_alert_service_send_alert():
+    stub_http = _StubHTTP()
+    stub_brain = _StubBrain()
+    svc = AlertService(http_client=stub_http, brain=stub_brain)
+    sent = svc.send_alert("system_status", "Test", "Payload", fields={"Foo": "Bar"})
     assert sent is True
-    targets = [call[0] for call in stub.calls]
-    assert "https://discord/system" in targets
-    assert custom_url in targets
+    assert stub_brain.calls[0][0] == "ops_alert"
+    assert stub_brain.calls[0][1]["title"] == "Test"
+    assert stub_brain.calls[0][1]["fields"]["Foo"] == "Bar"
+    assert "system_status" in stub_brain.calls[0][1]["channels"]
+
+
+def test_alert_service_send_alert_list_descriptor():
+    stub_http = _StubHTTP()
+    stub_brain = _StubBrain()
+    svc = AlertService(http_client=stub_http, brain=stub_brain)
+    sent = svc.send_alert(["system_status", "playground"], "List Test", "Desc")
+    assert sent is True
+    ch = stub_brain.calls[0][1]["channels"]
+    assert "system_status" in ch
+    assert "playground" in ch
 
 
 def test_alert_service_pushes_prometheus(monkeypatch):
@@ -50,4 +61,3 @@ def test_alert_service_pushes_prometheus(monkeypatch):
     url, kwargs = stub.calls[0]
     assert url == "https://prom/push"
     assert "axiomfolio_task_duration_seconds" in kwargs["data"]
-

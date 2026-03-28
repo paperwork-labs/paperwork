@@ -340,7 +340,7 @@ def daily_bootstrap(
     try:
         from backend.tasks.intelligence.tasks import generate_daily_digest_task
 
-        res11 = generate_daily_digest_task(deliver_discord=True)
+        res11 = generate_daily_digest_task(deliver_brain=True)
     except Exception as exc:
         logger.warning("Daily digest generation failed (non-fatal): %s", exc)
         res11 = {"status": "error", "error": str(exc)}

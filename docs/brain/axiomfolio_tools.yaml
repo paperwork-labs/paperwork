@@ -1,0 +1,105 @@
+name: axiomfolio
+version: "1.0"
+description: "AxiomFolio trading tools for Brain integration"
+base_url: ${AXIOMFOLIO_API_URL}
+auth:
+  type: api_key
+  header: X-Brain-Api-Key
+  env_var: AXIOMFOLIO_API_KEY
+
+tools:
+  - name: get_portfolio
+    description: "Get user's portfolio summary with positions, P&L, and risk exposure"
+    method: GET
+    path: /api/v1/tools/portfolio
+    tier: 0
+    timeout_seconds: 10
+    
+  - name: get_market_regime
+    description: "Get current market regime (R1-R5) and recommendation"
+    method: GET
+    path: /api/v1/tools/regime
+    tier: 0
+    timeout_seconds: 5
+    
+  - name: stage_analysis
+    description: "Get Stage Analysis for a specific symbol"
+    method: GET
+    path: /api/v1/tools/stage/{symbol}
+    tier: 0
+    timeout_seconds: 5
+    parameters:
+      - name: symbol
+        type: string
+        required: true
+        description: "Stock ticker symbol"
+    
+  - name: run_scan
+    description: "Run market scans and return candidates"
+    method: GET
+    path: /api/v1/tools/scan
+    tier: 0
+    timeout_seconds: 15
+    
+  - name: get_risk_status
+    description: "Get circuit breaker status and risk metrics"
+    method: GET
+    path: /api/v1/tools/risk
+    tier: 0
+    timeout_seconds: 5
+    
+  - name: preview_trade
+    description: "Create a trade preview for user approval"
+    method: POST
+    path: /api/v1/tools/preview-trade
+    tier: 2
+    timeout_seconds: 15
+    parameters:
+      - name: symbol
+        type: string
+        required: true
+      - name: side
+        type: string
+        enum: [buy, sell]
+        required: true
+      - name: quantity
+        type: number
+        required: true
+        description: "Number of shares (supports fractional)"
+    
+  - name: execute_trade
+    description: "Execute an approved trade order"
+    method: POST
+    path: /api/v1/tools/execute-trade
+    tier: 3
+    timeout_seconds: 30
+    parameters:
+      - name: order_id
+        type: integer
+        required: true
+
+  - name: approve_trade
+    description: "Approve a pending trade order (owner only)"
+    method: POST
+    path: /api/v1/tools/approve-trade
+    tier: 3
+    timeout_seconds: 10
+    parameters:
+      - name: order_id
+        type: integer
+        required: true
+
+  - name: reject_trade
+    description: "Reject a pending trade order"
+    method: POST
+    path: /api/v1/tools/reject-trade
+    tier: 3
+    timeout_seconds: 10
+    parameters:
+      - name: order_id
+        type: integer
+        required: true
+      - name: reason
+        type: string
+        required: false
+        description: "Reason for rejection"

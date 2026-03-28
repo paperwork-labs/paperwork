@@ -14,6 +14,8 @@
 - [Scheduling](#scheduling)
 - [Broker Data Strategy](#broker-data-strategy)
 - [Production Infrastructure](#production-infrastructure)
+- [Real-Time Trading Architecture](#real-time-trading-architecture)
+- [Brain Integration](#brain-integration)
 - [Known Gaps](#known-gaps)
 
 ---
@@ -104,7 +106,7 @@ Row counts below are illustrative; run DB queries for current state.
 
 | Prefix | File | Purpose |
 |--------|------|---------|
-| `/api/v1/auth` | `auth.py` | Login, register, me |
+| `/api/v1/auth` | `auth.py` | Login, register, me, Google/Apple OAuth |
 | `/api/v1/accounts` | `account_management.py` | Add/sync/delete broker accounts |
 | `/api/v1/portfolio` | `portfolio.py` | General portfolio endpoints |
 | `/api/v1/portfolio/live` | `portfolio_live.py` | Live portfolio data |
@@ -116,8 +118,14 @@ Row counts below are illustrative; run DB queries for current state.
 | `/api/v1/portfolio/categories` | `portfolio_categories.py` | Category CRUD + reorder |
 | `/api/v1/portfolio` (activity) | `activity.py` | Activity feed (UNION ALL) |
 | `/api/v1/market-data` | `market_data.py` | Market data + technicals + volatility dashboard |
+| `/api/v1/market-data/regime` | `market/regime.py` | Current regime, history |
+| `/api/v1/market-data/intelligence` | `market/intelligence.py` | Intelligence briefs |
 | `/api/v1/strategies` | `strategies.py` | Strategy management |
+| `/api/v1/risk` | `risk.py` | Circuit breaker status + reset |
+| `/api/v1/tools/*` | `brain_tools.py` | Brain tool endpoints (API key auth) |
+| `/api/v1/webhooks/tradingview` | `webhooks/tradingview.py` | TradingView alert webhook |
 | `/api/v1/admin` | `admin.py` | Admin operations |
+| `/api/v1/admin/agent` | `admin/agent.py` | Agent management |
 | `/api/v1/admin/schedules` | `admin_scheduler.py` | Cron schedule CRUD |
 | `/api/v1/aggregator` | `aggregator.py` | OAuth callbacks, aggregation |
 
@@ -133,6 +141,8 @@ Row counts below are illustrative; run DB queries for current state.
 | `portfolio/portfolio_analytics_service.py` | Portfolio analytics |
 | `portfolio/account_credentials_service.py` | Encrypted credential management |
 | `portfolio/tax_lot_service.py` | Tax lot computations |
+| `portfolio/reconciliation.py` | Position reconciliation service |
+| `portfolio/drawdown.py` | Drawdown tracking + alerts |
 | `clients/ibkr_flexquery_client.py` | FlexQuery API + XML parsers (2040 lines - refactor target) |
 | `clients/ibkr_client.py` | IB Gateway (ib_insync) client |
 | `clients/tastytrade_client.py` | TastyTrade API client |
@@ -141,6 +151,19 @@ Row counts below are illustrative; run DB queries for current state.
 | `market/coverage_service.py` | Coverage pipeline |
 | `market/snapshot_service.py` | Snapshot persistence |
 | `market/provider_service.py` | Multi-provider OHLCV fetch |
+| `market/price_feed.py` | Alpaca WebSocket → Redis Streams |
+| `market/multi_timeframe.py` | Multi-timeframe stage confirmation (1H/4H/1D/1W) |
+| `market/regime_inputs.py` | VIX, breadth, NH-NL data feeds |
+| `engine/signal_engine.py` | Real-time strategy evaluation via Redis Streams |
+| `risk/circuit_breaker.py` | 3-tier daily loss limits |
+| `risk/pre_trade_validator.py` | Position sizing + concentration checks |
+| `execution/order_manager.py` | Single order path (preview → submit → fill) |
+| `execution/approval_service.py` | Trade approval workflow for Tier 3 |
+| `strategy/ai_strategy_builder.py` | LLM-powered strategy generation |
+| `strategy/walk_forward.py` | Walk-forward validation with veto gates |
+| `strategy/rule_evaluator.py` | Condition tree evaluation engine |
+| `brain/webhook_client.py` | Notify Brain of trade events |
+| `notifications/notification_service.py` | Unified in-app + Brain notifications |
 | `security/credential_vault.py` | Fernet encryption vault |
 
 ### Celery Tasks (`backend/tasks/`)
@@ -319,9 +342,128 @@ flowchart TB
 | TLS | Self-signed / HTTP | Cloudflare Full (strict) + Render cert |
 | Docker Compose | `infra/compose.dev.yaml` | Render `render.yaml` |
 
+## Real-Time Trading Architecture
+
+### Event-Driven Flow
+
+```mermaid
+flowchart LR
+    subgraph inputs ["Real-Time Inputs"]
+        Alpaca["Alpaca WebSocket"]
+        TV["TradingView Webhook"]
+    end
+
+    subgraph streams ["Redis Streams"]
+        PriceFeed["price:feed:alpaca"]
+        SignalsEval["signals:evaluated"]
+        SignalsOut["signals:output"]
+    end
+
+    subgraph engine ["Trading Engine"]
+        PFS["PriceFeedService"]
+        SE["SignalEngine"]
+        OM["OrderManager"]
+    end
+
+    subgraph risk ["Risk Layer"]
+        CB["CircuitBreaker"]
+        PTV["PreTradeValidator"]
+    end
+
+    subgraph exec ["Execution"]
+        BR["BrokerRouter"]
+        Brain["Brain Webhook"]
+    end
+
+    Alpaca --> PFS --> PriceFeed
+    TV --> OM
+    PriceFeed --> SE --> SignalsEval
+    SE --> SignalsOut --> OM
+    OM --> CB --> PTV --> BR
+    OM --> Brain
+```
+
+### Key Components
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| PriceFeedService | `backend/services/market/price_feed.py` | Alpaca WebSocket → Redis Streams |
+| SignalEngine | `backend/services/engine/signal_engine.py` | Consumes prices, evaluates strategies, emits signals |
+| CircuitBreaker | `backend/services/risk/circuit_breaker.py` | 3-tier daily loss limits (2%/3%/5%) |
+| PreTradeValidator | `backend/services/risk/pre_trade_validator.py` | Position sizing, concentration checks |
+| OrderManager | `backend/services/execution/order_manager.py` | Single order path, preview → submit → fill |
+| BrainWebhookClient | `backend/services/brain/webhook_client.py` | Notifies Brain of trades, alerts, approvals |
+
+### Circuit Breaker Tiers
+
+| Tier | Loss % | Behavior |
+|------|--------|----------|
+| 1 | 2% | Warning, position caps at 50% |
+| 2 | 3% | Limit orders only, position caps at 25% |
+| 3 | 5% | Kill switch - all trading halted |
+
+Resets at 4 AM ET (configurable via `trading_day_timezone`, `trading_day_reset_hour`).
+
+---
+
+## Brain Integration
+
+AxiomFolio exposes itself as a tool provider for the Paperwork Brain orchestrator.
+
+### Tool Endpoints
+
+| Endpoint | Method | Tier | Description |
+|----------|--------|------|-------------|
+| `/api/v1/tools/portfolio` | GET | 0 | Portfolio summary |
+| `/api/v1/tools/regime` | GET | 0 | Market regime R1-R5 |
+| `/api/v1/tools/stage/{symbol}` | GET | 0 | Stage Analysis |
+| `/api/v1/tools/scan` | GET | 0 | Run scans |
+| `/api/v1/tools/risk` | GET | 0 | Circuit breaker status |
+| `/api/v1/tools/preview-trade` | POST | 2 | Create PREVIEW order |
+| `/api/v1/tools/execute-trade` | POST | 3 | Execute order |
+| `/api/v1/tools/approve-trade` | POST | 3 | Approve pending |
+| `/api/v1/tools/reject-trade` | POST | 3 | Reject pending |
+
+Authentication: `X-Brain-Api-Key` header (compared via `secrets.compare_digest`).
+
+### Webhook Events
+
+AxiomFolio → Brain via POST to `{BRAIN_WEBHOOK_URL}/webhooks/axiomfolio`:
+
+| Event | Trigger |
+|-------|---------|
+| `trade_executed` | Order filled |
+| `position_closed` | Position fully closed |
+| `stop_triggered` | Stop loss hit |
+| `risk_gate_activated` | Circuit breaker tripped |
+| `approval_required` | Tier 3 trade needs approval |
+
+### User Roles
+
+| Role | Permissions |
+|------|-------------|
+| `owner` | Full access, approve/execute trades |
+| `analyst` | Read access, propose trades (needs approval) |
+| `viewer` | Read-only |
+
+### Approval Workflow
+
+```
+1. Brain calls POST /tools/preview-trade
+2. If approval required → status = PENDING_APPROVAL
+3. AxiomFolio webhooks Brain: approval_required
+4. Brain posts to Slack with [Approve] [Reject]
+5. User clicks → Brain calls approve-trade or reject-trade
+6. Brain calls execute-trade → broker execution
+7. AxiomFolio webhooks Brain: trade_executed
+```
+
+---
+
 ## Known Gaps
 
 1. `dividends` table has 0 rows -- IBKR data ready but sync not yet triggered post-FlexQuery fix
 2. `transfers` table has 0 rows -- same as above
 3. TastyTrade sync stuck (`RUNNING`) due to encryption token mismatch
 4. IBKR sync code needs refactor (2 x 2000+ line files with god functions)
+5. Paper trading mode not yet implemented (planned Phase 9)

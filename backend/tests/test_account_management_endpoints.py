@@ -37,7 +37,7 @@ def auth_user(db_session):
         email="accttest@example.com",
         username="accttestuser",
         password_hash="dummy",
-        role=UserRole.ADMIN,
+        role=UserRole.OWNER,
     )
     db_session.add(user)
     db_session.commit()

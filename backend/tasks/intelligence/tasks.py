@@ -22,8 +22,8 @@ def _setup_loop():
     time_limit=360,
 )
 @task_run("intelligence_daily_digest")
-def generate_daily_digest_task(deliver_discord: bool = True) -> dict:
-    """Generate daily intelligence digest and optionally deliver to Discord."""
+def generate_daily_digest_task(deliver_brain: bool = True) -> dict:
+    """Generate daily intelligence digest and optionally deliver to Brain webhook."""
     from backend.services.intelligence.brief_generator import generate_daily_digest
 
     session = SessionLocal()
@@ -32,11 +32,11 @@ def generate_daily_digest_task(deliver_discord: bool = True) -> dict:
 
         _store_brief(session, brief)
 
-        if deliver_discord:
-            from backend.services.intelligence.brief_delivery import deliver_daily_digest_discord
+        if deliver_brain:
+            from backend.services.intelligence.brief_delivery import deliver_daily_digest_brain
             loop = _setup_loop()
             try:
-                loop.run_until_complete(deliver_daily_digest_discord(brief))
+                loop.run_until_complete(deliver_daily_digest_brain(brief))
             finally:
                 loop.close()
 
@@ -60,8 +60,8 @@ def generate_daily_digest_task(deliver_discord: bool = True) -> dict:
     time_limit=660,
 )
 @task_run("intelligence_weekly_brief")
-def generate_weekly_brief_task(deliver_discord: bool = True) -> dict:
-    """Generate weekly strategy brief and optionally deliver to Discord."""
+def generate_weekly_brief_task(deliver_brain: bool = True) -> dict:
+    """Generate weekly strategy brief and optionally deliver to Brain webhook."""
     from backend.services.intelligence.brief_generator import generate_weekly_brief
 
     session = SessionLocal()
@@ -70,11 +70,11 @@ def generate_weekly_brief_task(deliver_discord: bool = True) -> dict:
 
         _store_brief(session, brief)
 
-        if deliver_discord:
-            from backend.services.intelligence.brief_delivery import deliver_weekly_brief_discord
+        if deliver_brain:
+            from backend.services.intelligence.brief_delivery import deliver_weekly_brief_brain
             loop = _setup_loop()
             try:
-                loop.run_until_complete(deliver_weekly_brief_discord(brief))
+                loop.run_until_complete(deliver_weekly_brief_brain(brief))
             finally:
                 loop.close()
 
@@ -97,14 +97,25 @@ def generate_weekly_brief_task(deliver_discord: bool = True) -> dict:
     time_limit=660,
 )
 @task_run("intelligence_monthly_review")
-def generate_monthly_review_task(deliver_discord: bool = True) -> dict:
-    """Generate monthly review."""
+def generate_monthly_review_task(deliver_brain: bool = True) -> dict:
+    """Generate monthly review and optionally deliver to Brain webhook."""
     from backend.services.intelligence.brief_generator import generate_monthly_review
 
     session = SessionLocal()
     try:
         brief = generate_monthly_review(session)
         _store_brief(session, brief)
+
+        if deliver_brain:
+            from backend.services.brain.webhook_client import brain_webhook
+
+            loop = _setup_loop()
+            try:
+                loop.run_until_complete(
+                    brain_webhook.notify("monthly_review", brief, user_id=None)
+                )
+            finally:
+                loop.close()
 
         logger.info(
             "Monthly review generated: regime_transitions=%d",

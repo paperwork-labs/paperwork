@@ -133,18 +133,31 @@ def vix_alert(
                 )
 
                 try:
-                    from backend.services.notifications.discord_service import discord_notifier
+                    from backend.services.notifications.notification_service import (
+                        notification_service,
+                    )
 
-                    if discord_notifier.is_configured():
-                        discord_notifier.send_message(
-                            f"**VIX Spike Alert**\n\n"
-                            f"VIX: **{vix_current:.1f}** ({vix_change_pct:+.1f}% from {vix_prior:.1f})\n"
-                            f"Regime: **{regime_result.regime_state}** "
-                            f"(score: {regime_result.composite_score:.1f})\n"
-                            f"Multiplier: {regime_result.regime_multiplier:.2f}x"
+                    if notification_service.is_brain_configured():
+                        notification_service.notify_system_sync(
+                            "VIX spike — regime recalculated",
+                            (
+                                f"VIX: {vix_current:.1f} ({vix_change_pct:+.1f}% from {vix_prior:.1f}). "
+                                f"Regime: {regime_result.regime_state} "
+                                f"(score: {regime_result.composite_score:.1f}). "
+                                f"Multiplier: {regime_result.regime_multiplier:.2f}x"
+                            ),
+                            brain_event="vix_spike_regime",
+                            extra_data={
+                                "vix_current": vix_current,
+                                "vix_prior": vix_prior,
+                                "vix_change_pct": vix_change_pct,
+                                "regime_state": regime_result.regime_state,
+                                "composite_score": regime_result.composite_score,
+                                "regime_multiplier": regime_result.regime_multiplier,
+                            },
                         )
                 except Exception as e:
-                    logger.debug("Discord notification failed: %s", e)
+                    logger.debug("Brain notification failed: %s", e)
 
             except Exception as e:
                 logger.warning("Regime recalculation after VIX spike failed: %s", e)

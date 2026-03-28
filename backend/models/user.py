@@ -5,6 +5,8 @@ User Management Models
 Multi-user authentication, preferences, and user isolation.
 """
 
+from enum import Enum
+
 from sqlalchemy import (
     Column,
     Integer,
@@ -19,7 +21,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-import enum
 import sqlalchemy as sa
 
 from . import Base
@@ -29,11 +30,12 @@ from . import Base
 # =============================================================================
 
 
-class UserRole(enum.Enum):
-    ADMIN = "admin"
-    USER = "user"
-    READONLY = "readonly"
-    ANALYST = "analyst"
+class UserRole(str, Enum):
+    """Access roles stored as lowercase strings in the database (VARCHAR, not PG enum)."""
+
+    OWNER = "owner"  # Full access, operator/admin routes, can execute trades
+    ANALYST = "analyst"  # Read + propose trades (approval flow TBD)
+    VIEWER = "viewer"  # Read-only access
 
 
 # =============================================================================
@@ -59,13 +61,17 @@ class User(Base):
     oauth_id = Column(String(255), nullable=True)        # provider's unique user ID
     avatar_url = Column(Text, nullable=True)
 
-    # Authentication & Access
+    # Authentication & Access (VARCHAR; migrated from PostgreSQL userrole enum)
     role = Column(
-        SQLEnum(UserRole),
-        default=UserRole.USER,
-        # SQLAlchemy Enum(UserRole) stores the *name* (e.g. 'USER') by default.
-        server_default=UserRole.USER.name,
+        SQLEnum(
+            UserRole,
+            values_callable=lambda x: [m.value for m in UserRole],
+            native_enum=False,
+            length=20,
+        ),
         nullable=False,
+        server_default=UserRole.ANALYST.value,
+        default=UserRole.ANALYST,
     )
     # Add DB-level defaults so raw SQL inserts and bulk loads are safe.
     is_active = Column(Boolean, default=True, server_default=sa.text("true"), nullable=False)

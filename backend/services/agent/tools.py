@@ -81,7 +81,7 @@ AGENT_TOOLS: List[Dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "send_alert",
-            "description": "Send an alert notification via Discord webhook.",
+            "description": "Send an alert notification via Brain webhook.",
             "parameters": {
                 "type": "object",
                 "properties": {

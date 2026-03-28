@@ -353,12 +353,12 @@ async def google_callback(
                 username = f"{username}_{google_sub[:6]}"
 
             active_invite = _find_active_invite_for_email(db, email)
-            role = UserRole.USER
+            role = UserRole.ANALYST
             if active_invite is not None:
                 role = (
                     active_invite.role
                     if isinstance(active_invite.role, UserRole)
-                    else UserRole.USER
+                    else UserRole.ANALYST
                 )
 
             user = User(
@@ -533,12 +533,12 @@ async def apple_callback(
                 username = f"{username}_{apple_sub[:6]}"
 
             active_invite = _find_active_invite_for_email(db, email)
-            role = UserRole.USER
+            role = UserRole.ANALYST
             if active_invite is not None:
                 role = (
                     active_invite.role
                     if isinstance(active_invite.role, UserRole)
-                    else UserRole.USER
+                    else UserRole.ANALYST
                 )
 
             user = User(
@@ -663,6 +663,7 @@ async def register_user(
         email=normalized_email,
         password_hash=hashed_password,
         full_name=user_data.full_name,
+        role=UserRole.ANALYST,
         is_active=True,
         is_verified=False,
         is_approved=False,
@@ -774,7 +775,7 @@ async def accept_invite(
         email=normalized_invite_email,
         password_hash=get_password_hash(payload.password),
         full_name=payload.full_name,
-        role=invite.role if isinstance(invite.role, UserRole) else UserRole.READONLY,
+        role=invite.role if isinstance(invite.role, UserRole) else UserRole.VIEWER,
         is_active=True,
         is_verified=True,
         is_approved=True,

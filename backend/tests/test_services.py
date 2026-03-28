@@ -147,61 +147,26 @@ class TestIndexConstituentsService:
             logger.warning(f"⚠️ ATR universe test failed: {e}")
 
 
-class TestDiscordNotificationService:
-    """Test Discord notification service functionality."""
+class TestNotificationService:
+    """Test notification service (Brain + in-app wiring)."""
 
-    def test_discord_service_import(self):
-        """Test Discord service can be imported."""
-        try:
-            from backend.services.notifications.discord_service import discord_notifier
+    def test_notification_service_import(self):
+        """Notification service imports and exposes Brain configuration helper."""
+        from backend.services.notifications.notification_service import notification_service
 
-            assert discord_notifier is not None
-            assert hasattr(discord_notifier, "send_entry_signal")
-            assert hasattr(discord_notifier, "send_custom_alert")
-            assert hasattr(discord_notifier, "is_configured")
+        assert notification_service is not None
+        assert hasattr(notification_service, "notify_user")
+        assert hasattr(notification_service, "notify_system_sync")
+        assert hasattr(notification_service, "is_brain_configured")
+        assert isinstance(notification_service.is_brain_configured(), bool)
 
-            logger.info("✅ Discord Service import test passed")
+    def test_alert_service_import(self):
+        """Ops alerts use Brain webhook client."""
+        from backend.services.notifications.alerts import AlertService, alert_service
 
-        except Exception as e:
-            pytest.fail(f"Discord Service import failed: {e}")
-
-    def test_discord_configuration(self):
-        """Test Discord configuration status."""
-        try:
-            from backend.services.notifications.discord_service import discord_notifier
-
-            is_configured = discord_notifier.is_configured()
-            assert isinstance(is_configured, bool)
-
-            if is_configured:
-                logger.info("✅ Discord webhooks configured")
-            else:
-                logger.warning("⚠️ Discord webhooks not configured")
-
-        except Exception as e:
-            logger.warning(f"⚠️ Discord configuration test failed: {e}")
-
-    @pytest.mark.asyncio
-    async def test_discord_webhook_connectivity(self):
-        """Test Discord webhook connectivity."""
-        try:
-            from backend.services.notifications.discord_service import discord_notifier
-
-            if not discord_notifier.is_configured():
-                pytest.skip("Discord webhooks not configured")
-
-            results = await discord_notifier.test_webhooks()
-
-            if results:
-                success_count = sum(1 for result in results if "Success" in result)
-                logger.info(
-                    f"✅ Discord connectivity test: {success_count}/{len(results)} working"
-                )
-            else:
-                logger.warning("⚠️ Discord webhook test returned no results")
-
-        except Exception as e:
-            logger.warning(f"⚠️ Discord connectivity test failed: {e}")
+        assert alert_service is not None
+        assert hasattr(alert_service, "send_alert")
+        assert hasattr(AlertService, "send_alert")
 
 
 class TestDatabaseServices:
@@ -259,11 +224,10 @@ async def run_service_tests():
         await index_test.test_dow30_constituents()
         await index_test.test_atr_universe_generation()
 
-        # Test Discord Service
-        discord_test = TestDiscordNotificationService()
-        discord_test.test_discord_service_import()
-        discord_test.test_discord_configuration()
-        await discord_test.test_discord_webhook_connectivity()
+        # Test notification / Brain wiring
+        notif_test = TestNotificationService()
+        notif_test.test_notification_service_import()
+        notif_test.test_alert_service_import()
 
         # Test Service Integration
         integration_test = TestServiceIntegration()

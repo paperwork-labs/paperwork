@@ -118,7 +118,7 @@ def check_drawdown_alerts(
 
 
 def send_drawdown_alert(alert: Dict) -> bool:
-    """Send a drawdown alert via Discord.
+    """Send a drawdown alert to Brain webhook.
 
     Args:
         alert: Alert dict from check_drawdown_alerts
@@ -127,25 +127,27 @@ def send_drawdown_alert(alert: Dict) -> bool:
         True if sent successfully
     """
     try:
-        from backend.services.notifications.discord_service import discord_notifier
+        from backend.services.notifications.notification_service import notification_service
 
-        if not discord_notifier.is_configured():
-            logger.warning("Discord not configured, skipping drawdown alert")
+        if not notification_service.is_brain_configured():
+            logger.warning("Brain webhook not configured, skipping drawdown alert")
             return False
 
         severity = alert.get("severity", "info")
-        emoji = "🔴" if severity == "critical" else "🟡" if severity == "warning" else "🔵"
-
+        title = "Portfolio drawdown alert"
         message = (
-            f"{emoji} **Portfolio Drawdown Alert**\n\n"
-            f"Drawdown: **{alert.get('actual_pct', 0):.1f}%** (threshold: {alert.get('threshold_pct', 0):.0f}%)\n"
-            f"Peak Value: ${alert.get('peak_value', 0):,.0f} on {alert.get('peak_date', 'N/A')}\n"
-            f"Current Value: ${alert.get('current_value', 0):,.0f}\n"
-            f"Loss from Peak: ${alert.get('drawdown_dollars', 0):,.0f}"
+            f"Drawdown: {alert.get('actual_pct', 0):.1f}% (threshold: {alert.get('threshold_pct', 0):.0f}%). "
+            f"Peak: ${alert.get('peak_value', 0):,.0f} on {alert.get('peak_date', 'N/A')}. "
+            f"Current: ${alert.get('current_value', 0):,.0f}. "
+            f"Loss from peak: ${alert.get('drawdown_dollars', 0):,.0f}."
         )
 
-        discord_notifier.send_message(message)
-        return True
+        return notification_service.notify_system_sync(
+            title,
+            message,
+            brain_event="portfolio_drawdown",
+            extra_data={"severity": severity, "alert": alert},
+        )
 
     except Exception as e:
         logger.warning("Failed to send drawdown alert: %s", e)

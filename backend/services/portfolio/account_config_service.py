@@ -144,7 +144,7 @@ class AccountConfigService:
                     first_name="Default",
                     last_name="AxiomFolio User",
                     is_active=True,
-                    role=UserRole.ADMIN,
+                    role=UserRole.OWNER,
                 )
                 session.add(user)
                 session.commit()

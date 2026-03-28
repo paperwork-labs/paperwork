@@ -15,10 +15,15 @@ class UserInvite(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
     role = Column(
-        SQLEnum(UserRole),
-        default=UserRole.READONLY,
-        server_default=UserRole.READONLY.name,
+        SQLEnum(
+            UserRole,
+            values_callable=lambda x: [m.value for m in UserRole],
+            native_enum=False,
+            length=20,
+        ),
         nullable=False,
+        server_default=UserRole.VIEWER.value,
+        default=UserRole.VIEWER,
     )
     token = Column(String(64), unique=True, nullable=False, index=True)
     created_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)

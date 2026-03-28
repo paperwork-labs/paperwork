@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
 import { useAuth } from './AuthContext';
+import { isPlatformAdminRole } from '../utils/userRole';
 
 export type SelectedAccount = 'all' | 'taxable' | 'ira' | string; // string = concrete account id like U12345678
 
@@ -51,7 +52,7 @@ export const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [refetchVersion, setRefetchVersion] = useState(0);
   const { token, ready, user, appSettings, appSettingsReady } = useAuth();
   const marketOnly = appSettingsReady ? Boolean(appSettings?.market_only_mode) : true;
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = isPlatformAdminRole(user?.role);
   const portfolioEnabled = isAdmin || (!marketOnly && Boolean(appSettings?.portfolio_enabled));
 
   // Bootstrap selected from URL or localStorage

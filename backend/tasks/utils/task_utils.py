@@ -164,8 +164,7 @@ def _active_schedule_metadata() -> ScheduleMetadata | None:
 
 
 def _default_hooks() -> HookConfig | None:
-    system_hook = getattr(settings, "DISCORD_WEBHOOK_SYSTEM_STATUS", None)
-    if system_hook:
+    if getattr(settings, "BRAIN_WEBHOOK_URL", None):
         return HookConfig(discord_webhook="system_status", alert_on=["failure"])
     return None
 
@@ -273,7 +272,7 @@ def _emit_alerts(
         if mentions.strip():
             description = f"{description}\n{mentions}"
 
-    alert_service.send_discord(
+    alert_service.send_alert(
         descriptor,
         title=f"{task_name}: {event.upper()}",
         description=description,

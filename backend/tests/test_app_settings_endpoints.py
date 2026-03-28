@@ -49,7 +49,7 @@ def _elevate_user_to_admin(username: str) -> None:
     try:
         user = db.query(User).filter(User.username == username).first()
         assert user is not None
-        user.role = UserRole.ADMIN
+        user.role = UserRole.OWNER
         db.commit()
     finally:
         db.close()

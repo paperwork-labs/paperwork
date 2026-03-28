@@ -5,33 +5,24 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Union
 
 import requests
 
-from backend.config import settings
+from backend.services.brain.webhook_client import BrainWebhookClient, brain_webhook
 
-
-def _discord_alias_map() -> Dict[str, Optional[str]]:
-    return {
-        "signals": settings.DISCORD_WEBHOOK_SIGNALS,
-        "portfolio": settings.DISCORD_WEBHOOK_PORTFOLIO_DIGEST,
-        "portfolio_digest": settings.DISCORD_WEBHOOK_PORTFOLIO_DIGEST,
-        "morning": settings.DISCORD_WEBHOOK_MORNING_BREW,
-        "morning_brew": settings.DISCORD_WEBHOOK_MORNING_BREW,
-        "playground": settings.DISCORD_WEBHOOK_PLAYGROUND,
-        "system": settings.DISCORD_WEBHOOK_SYSTEM_STATUS,
-        "system_status": settings.DISCORD_WEBHOOK_SYSTEM_STATUS,
-    }
-
-
-DiscordDescriptor = Union[str, Sequence[str], None]
+AlertDescriptor = Union[str, Sequence[str], None]
 
 
 class AlertService:
-    """Lightweight alert dispatcher for Discord webhooks + Prometheus push endpoints."""
+    """Ops alert dispatcher: Brain webhook + optional Prometheus push."""
 
-    def __init__(self, http_client: Optional[Any] = None) -> None:
+    def __init__(
+        self,
+        http_client: Optional[Any] = None,
+        brain: Optional[BrainWebhookClient] = None,
+    ) -> None:
         self.http = http_client or requests.Session()
+        self._brain = brain or brain_webhook
         self.logger = logging.getLogger(__name__)
 
-    def _iter_descriptor_tokens(self, descriptor: DiscordDescriptor) -> Iterable[str]:
+    def _iter_descriptor_tokens(self, descriptor: AlertDescriptor) -> Iterable[str]:
         if descriptor is None:
             return []
         if isinstance(descriptor, str):
@@ -43,59 +34,33 @@ class AlertService:
             tokens.append(str(item))
         return tokens
 
-    def _resolve_discord_targets(self, descriptor: DiscordDescriptor) -> List[str]:
-        tokens: List[str] = []
-        for raw in self._iter_descriptor_tokens(descriptor):
-            for segment in str(raw).split(","):
-                segment = segment.strip()
-                if segment:
-                    tokens.append(segment)
-        if not tokens:
-            return []
-        aliases = _discord_alias_map()
-        urls: List[str] = []
-        for token in tokens:
-            if token.lower().startswith("http"):
-                urls.append(token)
-                continue
-            key = token.replace("-", "_").lower()
-            resolved = aliases.get(key)
-            if resolved:
-                urls.append(resolved)
-        return [url for url in urls if url]
-
-    def send_discord(
+    def send_alert(
         self,
-        descriptor: DiscordDescriptor,
+        descriptor: AlertDescriptor,
         title: str,
         description: str,
         *,
         fields: Optional[Dict[str, str]] = None,
         severity: str = "info",
     ) -> bool:
-        urls = self._resolve_discord_targets(descriptor)
-        if not urls:
+        """Send an operational alert to Brain (descriptor tokens are included as routing metadata)."""
+        channels = list(self._iter_descriptor_tokens(descriptor))
+        if not channels:
+            return False
+        if not self._brain.webhook_url:
+            self.logger.debug("Brain webhook not configured, skipping ops alert")
             return False
 
-        color_map = {"info": 0x3B82F6, "warning": 0xF59E0B, "error": 0xEF4444}
-        embed = {
+        data: Dict[str, Any] = {
             "title": title[:256],
-            "description": description[:1800],
-            "color": color_map.get(severity, color_map["info"]),
+            "description": description[:8000],
+            "severity": severity,
+            "channels": channels,
         }
         if fields:
-            embed["fields"] = [{"name": k[:256], "value": str(v)[:1024]} for k, v in fields.items()]
+            data["fields"] = fields
 
-        payload = {"embeds": [embed]}
-        success = False
-        for url in urls:
-            try:
-                response = self.http.post(url, json=payload, timeout=5)
-                response.raise_for_status()
-                success = True
-            except Exception as exc:  # pragma: no cover - best effort logging
-                self.logger.warning("Failed to post Discord alert: %s", exc)
-        return success
+        return self._brain.notify_sync("ops_alert", data, user_id=None)
 
     def push_prometheus_metric(
         self,
@@ -127,6 +92,4 @@ class AlertService:
 
 alert_service = AlertService()
 
-
-__all__ = ["AlertService", "alert_service"]
-
+__all__ = ["AlertService", "alert_service", "AlertDescriptor"]

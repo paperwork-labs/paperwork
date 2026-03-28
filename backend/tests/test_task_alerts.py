@@ -19,7 +19,7 @@ def test_emit_alerts_sends_discord_when_configured(monkeypatch):
     )
     monkeypatch.setattr(
         alert_service,
-        "send_discord",
+        "send_alert",
         lambda descriptor, **kwargs: discord_calls.append((descriptor, kwargs)) or True,
     )
 
@@ -55,7 +55,7 @@ def test_emit_alerts_skips_events_not_opted_in(monkeypatch):
     )
     monkeypatch.setattr(
         alert_service,
-        "send_discord",
+        "send_alert",
         lambda descriptor, **kwargs: discord_calls.append((descriptor, kwargs)) or True,
     )
 
@@ -81,7 +81,7 @@ def test_discord_mentions_appended(monkeypatch):
     monkeypatch.setattr(alert_service, "push_prometheus_metric", lambda *_, **__: True)
     monkeypatch.setattr(
         alert_service,
-        "send_discord",
+        "send_alert",
         lambda descriptor, **kwargs: discord_calls.append((descriptor, kwargs)) or True,
     )
 

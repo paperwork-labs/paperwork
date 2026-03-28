@@ -49,6 +49,7 @@ from backend.api.routes.market import router as market_router
 # Webhooks
 from backend.api.routes.webhooks import router as webhooks_router
 from backend.api.routes.risk import router as risk_router
+from backend.api.routes.brain_tools import router as brain_tools_router
 from backend.api.dependencies import require_non_market_access
 
 # Model imports
@@ -273,7 +274,7 @@ async def startup_event():
                             username=admin_user,
                             email=admin_email,
                             password_hash=get_password_hash(admin_password),
-                            role=UserRole.ADMIN,
+                            role=UserRole.OWNER,
                             is_active=True,
                             is_verified=True,
                             is_approved=True,
@@ -455,6 +456,11 @@ app.include_router(
     webhooks_router,
     prefix="/api/v1/webhooks",
     tags=["Webhooks"],
+)
+app.include_router(
+    brain_tools_router,
+    prefix="/api/v1/tools",
+    tags=["Brain Tools"],
 )
 
 

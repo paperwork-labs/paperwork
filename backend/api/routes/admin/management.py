@@ -26,7 +26,7 @@ router = APIRouter()
 
 class InviteUserRequest(BaseModel):
     email: EmailStr
-    role: str = "readonly"
+    role: str = "viewer"
     expires_in_days: int = 7
 
 
@@ -38,14 +38,14 @@ class UpdateUserRequest(BaseModel):
 def _parse_role(role: str | None) -> UserRole:
     raw = (role or "").strip().lower()
     if not raw:
-        return UserRole.READONLY
-    if raw == "viewer":
-        return UserRole.READONLY
-    if raw == "user":
-        # Legacy alias kept for backward compatibility during migration.
-        return UserRole.READONLY
-    if raw == "analyst":
-        return UserRole.ANALYST
+        return UserRole.VIEWER
+    legacy = {
+        "admin": UserRole.OWNER,
+        "user": UserRole.ANALYST,
+        "readonly": UserRole.VIEWER,
+    }
+    if raw in legacy:
+        return legacy[raw]
     for r in UserRole:
         if raw == r.value or raw == r.name.lower():
             return r
@@ -55,19 +55,20 @@ def _parse_role(role: str | None) -> UserRole:
 def _role_value(role_obj: Any) -> str:
     """Normalize role payloads coming from enum, raw string, or legacy rows."""
     if role_obj is None:
-        return "readonly"
+        return UserRole.VIEWER.value
     if isinstance(role_obj, UserRole):
-        if role_obj == UserRole.USER:
-            return "readonly"
         return role_obj.value
-    # SQLAlchemy enum columns can surface raw strings during legacy drift.
     raw = str(role_obj).strip()
     if not raw:
-        return "readonly"
+        return UserRole.VIEWER.value
     lowered = raw.lower()
-    # Keep API stable even when legacy values still exist.
-    if lowered == "user":
-        return "readonly"
+    legacy_map = {
+        "admin": UserRole.OWNER.value,
+        "user": UserRole.ANALYST.value,
+        "readonly": UserRole.VIEWER.value,
+    }
+    if lowered in legacy_map:
+        return legacy_map[lowered]
     for r in UserRole:
         if lowered == r.value or lowered == r.name.lower():
             return r.value
