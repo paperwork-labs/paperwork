@@ -22,7 +22,7 @@ interface BottomUpViewProps {
   snapshots: any[];
 }
 
-function chakraPaletteToBadge(active: boolean, palette: string): string {
+function colorToBadgeClass(active: boolean, palette: string): string {
   const subtle = (border: string, bgOn: string, bgOff: string, textOff: string) =>
     cn(
       'cursor-pointer border font-normal transition-opacity hover:opacity-85',
@@ -159,7 +159,7 @@ const BottomUpView: React.FC<BottomUpViewProps> = ({ snapshots }) => {
           <Badge
             key={action}
             variant="outline"
-            className={chakraPaletteToBadge(actionFilter === action, ACTION_COLORS[action] || 'gray')}
+            className={colorToBadgeClass(actionFilter === action, ACTION_COLORS[action] || 'gray')}
             onClick={() => setActionFilter(prev => prev === action ? null : action)}
           >
             {action}: {count}
@@ -228,7 +228,7 @@ const BottomUpView: React.FC<BottomUpViewProps> = ({ snapshots }) => {
                       {action && (
                         <Badge
                           variant="outline"
-                          className={cn('font-normal', chakraPaletteToBadge(false, ACTION_COLORS[action] || 'gray'))}
+                          className={cn('font-normal', colorToBadgeClass(false, ACTION_COLORS[action] || 'gray'))}
                         >
                           {action}
                         </Badge>

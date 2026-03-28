@@ -87,6 +87,7 @@ class OrderManager:
             estimated_equity_with_loan=preview.estimated_equity_with_loan,
             preview_data=preview.raw,
             user_id=user_id,
+            decision_price=price,  # Capture decision price for slippage tracking
         )
         db.add(order)
         db.commit()
@@ -114,6 +115,50 @@ class OrderManager:
         except Exception as e:
             logger.warning("Failed to lookup portfolio equity for user %s: %s", user_id, e)
         return None
+
+    def _compute_slippage_metrics(self, order: Order) -> None:
+        """Compute slippage metrics when order is filled.
+        
+        Updates order.slippage_pct, slippage_dollars, and fill_latency_ms.
+        Slippage is positive when execution is worse than decision price:
+        - For buys: positive slippage = filled higher than decision
+        - For sells: positive slippage = filled lower than decision
+        """
+        if order.decision_price is None or order.filled_avg_price is None:
+            return
+        
+        decision = float(order.decision_price)
+        fill = float(order.filled_avg_price)
+        qty = float(order.filled_quantity or order.quantity or 0)
+        
+        if decision <= 0:
+            return
+        
+        # Calculate slippage (positive = worse execution)
+        if order.side.lower() == "buy":
+            # For buys: higher fill = worse = positive slippage
+            slippage_pct = ((fill - decision) / decision) * 100
+            slippage_dollars = (fill - decision) * qty
+        else:
+            # For sells: lower fill = worse = positive slippage
+            slippage_pct = ((decision - fill) / decision) * 100
+            slippage_dollars = (decision - fill) * qty
+        
+        order.slippage_pct = round(slippage_pct, 4)
+        order.slippage_dollars = round(slippage_dollars, 2)
+        
+        # Calculate fill latency
+        if order.submitted_at and order.filled_at:
+            latency = (order.filled_at - order.submitted_at).total_seconds() * 1000
+            order.fill_latency_ms = int(latency)
+        
+        logger.info(
+            "Order %s slippage: %.4f%% ($%.2f), latency: %s ms",
+            order.id,
+            order.slippage_pct,
+            order.slippage_dollars,
+            order.fill_latency_ms,
+        )
 
     async def submit(
         self,
@@ -293,6 +338,9 @@ class OrderManager:
             order.filled_avg_price = result.avg_fill_price
         if new_status == OrderStatus.FILLED.value and not order.filled_at:
             order.filled_at = datetime.now(timezone.utc)
+            
+            # Compute slippage metrics on fill
+            self._compute_slippage_metrics(order)
 
         db.commit()
         db.refresh(order)
@@ -348,6 +396,14 @@ def _order_to_dict(order: Order) -> Dict[str, Any]:
         "estimated_margin_impact": order.estimated_margin_impact,
         "preview_data": order.preview_data,
         "error_message": order.error_message,
+        # Execution quality analytics
+        "decision_price": order.decision_price,
+        "slippage_pct": order.slippage_pct,
+        "slippage_dollars": order.slippage_dollars,
+        "fill_latency_ms": order.fill_latency_ms,
+        "vwap_at_fill": order.vwap_at_fill,
+        "spread_at_order": order.spread_at_order,
+        # Timestamps
         "submitted_at": order.submitted_at.isoformat() if order.submitted_at else None,
         "filled_at": order.filled_at.isoformat() if order.filled_at else None,
         "cancelled_at": order.cancelled_at.isoformat() if order.cancelled_at else None,

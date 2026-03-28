@@ -105,9 +105,13 @@ interface Props {
 
 const getCssColor = (token: string, fallback: string) => {
   if (typeof document === 'undefined') return fallback;
-  const name = token.replace(/\./g, '-');
-  const v = getComputedStyle(document.documentElement).getPropertyValue(`--chakra-colors-${name}`).trim();
-  return v || fallback;
+  const varName = token.replace(/\./g, '-');
+  const v = getComputedStyle(document.documentElement).getPropertyValue(`--${varName}`).trim();
+  if (v) {
+    if (v.match(/^\d/)) return `rgb(${v})`;
+    return v;
+  }
+  return fallback;
 };
 
 const toDaySec = (iso: string): UTCTimestamp => {

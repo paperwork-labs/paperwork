@@ -716,3 +716,102 @@ def get_backtest_run(
             "created_at": run.created_at.isoformat() if run.created_at else None,
         }
     }
+
+
+# ---------------------------------------------------------------------------
+# Paper Trading Validation
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{strategy_id}/paper-validation/start")
+def start_paper_validation(
+    strategy_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Start paper trading validation for a strategy.
+    
+    Strategy must pass paper validation before it can be promoted to live trading.
+    Default validation requires:
+    - 7+ days of paper trading
+    - 5+ paper trades
+    - Win rate >= 40%
+    - Max drawdown <= 15%
+    """
+    from backend.services.strategy.paper_validator import PaperValidator
+    
+    validator = PaperValidator(db)
+    result = validator.start_validation(strategy_id, user.id)
+    
+    if "error" in result:
+        status_code = 404 if "not found" in result["error"].lower() else 400
+        raise HTTPException(status_code=status_code, detail=result["error"])
+    
+    return result
+
+
+@router.get("/{strategy_id}/paper-validation/status")
+def get_paper_validation_status(
+    strategy_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Get current paper validation status and metrics."""
+    from backend.services.strategy.paper_validator import PaperValidator
+    
+    validator = PaperValidator(db)
+    result = validator.check_validation(strategy_id, user.id)
+    
+    return {
+        "status": result.status.value,
+        "days_elapsed": result.days_elapsed,
+        "trades_count": result.trades_count,
+        "win_rate_pct": result.win_rate_pct,
+        "total_return_pct": result.total_return_pct,
+        "max_drawdown_pct": result.max_drawdown_pct,
+        "profit_factor": result.profit_factor,
+        "checks": result.checks,
+        "can_go_live": result.can_go_live,
+        "message": result.message,
+    }
+
+
+@router.post("/{strategy_id}/paper-validation/promote")
+def promote_to_live(
+    strategy_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Promote a validated strategy to live trading.
+    
+    Only succeeds if paper validation has passed all checks.
+    """
+    from backend.services.strategy.paper_validator import PaperValidator
+    
+    validator = PaperValidator(db)
+    result = validator.promote_to_live(strategy_id, user.id)
+    
+    if "error" in result:
+        status_code = 404 if "not found" in result["error"].lower() else 400
+        raise HTTPException(status_code=status_code, detail=result["error"])
+    
+    return result
+
+
+@router.post("/{strategy_id}/paper-validation/reset")
+def reset_paper_validation(
+    strategy_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Reset paper validation to start over."""
+    from backend.services.strategy.paper_validator import PaperValidator
+    
+    validator = PaperValidator(db)
+    result = validator.reset_validation(strategy_id, user.id)
+    
+    if "error" in result:
+        status_code = 404 if "not found" in result["error"].lower() else 400
+        raise HTTPException(status_code=status_code, detail=result["error"])
+    
+    return result

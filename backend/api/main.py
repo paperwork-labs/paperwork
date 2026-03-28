@@ -50,6 +50,7 @@ from backend.api.routes.market import router as market_router
 from backend.api.routes.webhooks import router as webhooks_router
 from backend.api.routes.risk import router as risk_router
 from backend.api.routes.brain_tools import router as brain_tools_router
+from backend.api.routes.execution import router as execution_router
 from backend.api.dependencies import require_non_market_access
 
 # Model imports
@@ -409,6 +410,12 @@ app.include_router(
     risk_router,
     prefix="/api/v1",
     tags=["Risk"],
+    dependencies=[Depends(require_non_market_access)],
+)
+app.include_router(
+    execution_router,
+    prefix="/api/v1",
+    tags=["Execution"],
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(strategies, prefix="/api/v1/strategies", tags=["Strategies"])

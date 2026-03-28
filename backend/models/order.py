@@ -100,6 +100,10 @@ class Order(Base):
     vwap_at_fill = Column(Float, nullable=True)  # VWAP at fill time for comparison
     spread_at_order = Column(Float, nullable=True)  # Bid-ask spread when order placed
 
+    # Trade P&L (populated when order closes/reduces a position)
+    realized_pnl = Column(Float, nullable=True)  # Actual profit/loss in dollars for closing trades
+    cost_basis = Column(Float, nullable=True)  # Entry cost basis used to compute realized_pnl
+
     error_message = Column(String(500), nullable=True)
     submitted_at = Column(DateTime(timezone=True), nullable=True)
     filled_at = Column(DateTime(timezone=True), nullable=True)

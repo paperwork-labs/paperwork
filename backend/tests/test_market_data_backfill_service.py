@@ -89,7 +89,7 @@ def test_compute_snapshot_from_db_uses_existing_fundamentals(db_session):
     assert snap.get("market_cap") == 123456789.0
 
 
-def test_compute_snapshot_from_db_populates_v2_indicators(db_session):
+def test_compute_snapshot_from_db_populates_v2_indicators(db_session, monkeypatch):
     sym = "TESTV2"
     bm = "SPY"
     now = datetime.utcnow().replace(microsecond=0)
@@ -110,6 +110,11 @@ def test_compute_snapshot_from_db_populates_v2_indicators(db_session):
     )
     market_data_service.persist_price_bars(
         db_session, bm, df_newest_first, interval="1d", data_source="unit_test", is_adjusted=True
+    )
+
+    monkeypatch.setattr(
+        market_data_service, "get_fundamentals_info",
+        lambda *a, **kw: {"sector": "Test", "industry": "Test"},
     )
 
     snap = market_data_service.compute_snapshot_from_db(db_session, sym)
@@ -201,6 +206,10 @@ def test_compute_snapshot_from_db_sets_previous_stage_on_transition(db_session, 
     db_session.add(hist)
     db_session.commit()
 
+    monkeypatch.setattr(
+        market_data_service, "get_fundamentals_info",
+        lambda *a, **kw: {"sector": "Test", "industry": "Test"},
+    )
     monkeypatch.setattr(
         mds_module,
         "compute_weinstein_stage_from_daily",

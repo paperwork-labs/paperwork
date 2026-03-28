@@ -10,6 +10,7 @@ import {
   LayoutGrid,
   List,
   Menu,
+  Monitor,
   PieChart,
   Settings,
   Shield,
@@ -98,7 +99,9 @@ function buildMarketItems(strategyEnabled: boolean) {
   if (strategyEnabled) {
     items.push({ label: 'Strategies', icon: Target, path: '/market/strategies' });
   }
+  items.push({ label: 'Intelligence', icon: Brain, path: '/market/intelligence' });
   items.push({ label: 'Education', icon: BookOpen, path: '/market/education' });
+  items.push({ label: 'Terminal', icon: Monitor, path: '/terminal' });
   return items;
 }
 

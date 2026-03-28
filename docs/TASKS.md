@@ -130,7 +130,7 @@ Clean-slate rebuild into a trading platform better than LEAN/QuantConnect.
 | 7.5 | Day 4: AI + Validation | DONE | AIStrategyBuilder, WalkForwardAnalyzer, Pine Script indicators, UI components |
 | 7.6 | Code quality guardian | DONE | .cursor/rules/code-quality-guardian.mdc for continuous quality checks |
 
-## Phase 8: Brain Integration [IN PROGRESS]
+## Phase 8: Brain Integration [DONE]
 
 Prepare AxiomFolio as tool provider for Paperwork Brain.
 
@@ -145,32 +145,66 @@ Prepare AxiomFolio as tool provider for Paperwork Brain.
 | 8.7 | Analyst role | DONE | UserRole: owner/analyst/viewer with require_role dependency |
 | 8.8 | Approval workflow | DONE | ApprovalService for Tier 3 trades, PENDING_APPROVAL status |
 
-## Phase 9: Paper Trading & Validation [PLANNED]
+## Phase 9: Paper Trading & Validation [DONE]
 
 | ID | Task | Status | Acceptance Criteria |
 |----|------|--------|---------------------|
-| 9.1 | Paper trading mode | PLANNED | Virtual broker adapter simulating fills against real data |
-| 9.2 | Strategy paper validation | PLANNED | Run strategies in paper mode for 1 week before live |
-| 9.3 | Circuit breaker verification | PLANNED | Test tier trips with simulated losses |
-| 9.4 | Slippage tracking | PLANNED | Compare estimated vs actual fill prices |
+| 9.1 | Paper trading mode | DONE | PaperExecutor in backend/services/execution/paper_executor.py with virtual fills |
+| 9.2 | Strategy paper validation | DONE | PaperValidator service with min_trades, min_win_rate, max_drawdown thresholds |
+| 9.3 | Circuit breaker verification | DONE | Comprehensive test suite in test_circuit_breaker_simulation.py |
+| 9.4 | Slippage tracking | DONE | SlippageTracker service + decision_price/slippage_pct on Order model |
 
-## Phase 10: Education & Content [PLANNED]
+## Phase 10: Education & Content [DONE]
 
 | ID | Task | Status | Acceptance Criteria |
 |----|------|--------|---------------------|
-| 10.1 | Education page rewrite | PLANNED | Stage Analysis content: 10 sub-stages, regime engine, scan overlay |
-| 10.2 | Interactive stage examples | PLANNED | StageChartExample + InteractiveStageExplorer components |
+| 10.1 | Education page rewrite | DONE | MarketEducation.tsx with Stage Analysis content, deep-dives, glossary |
+| 10.2 | Interactive stage examples | DONE | StageChartExample + InteractiveStageExplorer components |
+
+## Phase 11: Slippage Prediction ML [DONE]
+
+| ID | Task | Status | Acceptance Criteria |
+|----|------|--------|---------------------|
+| 11.1 | SlippagePredictor service | DONE | GradientBoostingRegressor model in backend/services/ml/slippage_predictor.py |
+| 11.2 | Feature engineering | DONE | Order size, time of day, spread, ATR, volume ratio features |
+| 11.3 | Model persistence | DONE | Pickle save/load with model versioning |
+
+## Phase 12: Sentiment Integration [DONE]
+
+| ID | Task | Status | Acceptance Criteria |
+|----|------|--------|---------------------|
+| 12.1 | SentimentService | DONE | backend/services/market/sentiment_service.py with StockTwits + Finnhub |
+| 12.2 | Batch sentiment | DONE | get_batch_sentiment for multiple symbols |
+| 12.3 | Alert detection | DONE | detect_alerts for extreme sentiment levels |
+
+## Phase 13: Memory Agent [DONE]
+
+| ID | Task | Status | Acceptance Criteria |
+|----|------|--------|---------------------|
+| 13.1 | AgentMemory model | DONE | SQLAlchemy model with embedding support |
+| 13.2 | MemoryService | DONE | store, search (semantic + keyword), find_similar_situations |
+| 13.3 | Alembic migration | DONE | 0010_add_agent_memories.py creates table with indexes |
+
+## Phase 14: Alpha Factor Engine [DONE]
+
+| ID | Task | Status | Acceptance Criteria |
+|----|------|--------|---------------------|
+| 14.1 | AlphaEngine | DONE | backend/services/strategy/alpha_engine.py with 8 factors |
+| 14.2 | Factor categories | DONE | Momentum, Value, Quality, Volatility, Technical |
+| 14.3 | Regime-weighted scoring | DONE | Factor weights adjust by market regime |
+| 14.4 | Top picks generation | DONE | get_top_picks with composite scores |
 
 ---
 
-## Future Phases (Post-Stabilization)
+## Cleanup & Quality [DONE]
 
-| Phase | Focus | Status |
-|-------|-------|--------|
-| 11 | Slippage Prediction ML | PLANNED |
-| 12 | Sentiment Integration | PLANNED |
-| 13 | Memory Agent | PLANNED |
-| 14 | Alpha Factor Mode | PLANNED |
+| ID | Task | Status | Acceptance Criteria |
+|----|------|--------|---------------------|
+| C.1 | Chakra UI removal | DONE | All Chakra imports removed, CircuitBreakerBanner migrated to shadcn |
+| C.2 | alpha_engine field names | DONE | Correct MarketSnapshot field names (sma_150, vol_ratio, etc.) |
+| C.3 | paper_validator P&L | DONE | Uses realized_pnl instead of slippage for validation metrics |
+| C.4 | Order model additions | DONE | realized_pnl + cost_basis columns (migration 0011) |
+| C.5 | PaperValidator tests | DONE | test_paper_validator.py with 33 test cases |
 
 ---
 
@@ -178,7 +212,18 @@ Prepare AxiomFolio as tool provider for Paperwork Brain.
 
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
-| N.1 | Alpaca broker adapter | PLANNED | Full auto-trading via alpaca-py SDK |
+| N.1 | Alpaca broker adapter | DONE | AlpacaExecutor in backend/services/execution/alpaca_executor.py |
 | N.2 | Apple Sign-In | DONE | /auth/apple/login + callback |
-| N.3 | User onboarding flow | PLANNED | Guided signup → verify → connect broker → dashboard |
-| N.4 | Bloomberg terminal dashboard | PLANNED | Full market intelligence UI powered by Brain |
+| N.3 | User onboarding flow | DONE | Onboarding.tsx with 5-step flow |
+| N.4 | Bloomberg terminal dashboard | DONE | Terminal.tsx at /terminal with 4-pane layout |
+
+---
+
+## Future Phases (Post-Stabilization)
+
+| Phase | Focus | Status |
+|-------|-------|--------|
+| 15 | Live Trading Integration | PLANNED |
+| 16 | Portfolio Optimization | PLANNED |
+| 17 | Risk Analytics Dashboard | PLANNED |
+| 18 | Mobile App | PLANNED |
