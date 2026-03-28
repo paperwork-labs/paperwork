@@ -44,7 +44,9 @@ async def vault_get(name: str) -> VaultResult:
             list_res.raise_for_status()
             list_body = list_res.json()
             if not list_body.get("success"):
-                return VaultResult(success=False, error=list_body.get("error", "Failed to list secrets"))
+                return VaultResult(
+                    success=False, error=list_body.get("error", "Failed to list secrets")
+                )
             secrets = list_body.get("data", [])
 
             match = next((s for s in secrets if s["name"] == name), None)
@@ -55,7 +57,9 @@ async def vault_get(name: str) -> VaultResult:
             get_res.raise_for_status()
             get_body = get_res.json()
             if not get_body.get("success"):
-                return VaultResult(success=False, error=get_body.get("error", "Failed to get secret"))
+                return VaultResult(
+                    success=False, error=get_body.get("error", "Failed to get secret")
+                )
             secret_data = get_body.get("data", {})
             return VaultResult(
                 success=True,

@@ -1,10 +1,43 @@
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import Boolean, Computed, DateTime, Float, Integer, SmallInteger, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.types import UserDefinedType
 
 from app.models.base import Base
+
+
+class Vector(UserDefinedType):
+    """Custom type for pgvector VECTOR column."""
+
+    cache_ok = True
+
+    def __init__(self, dim: int = 1536):
+        self.dim = dim
+
+    def get_col_spec(self) -> str:
+        return f"VECTOR({self.dim})"
+
+    def bind_processor(self, dialect: Any) -> Any:
+        def process(value: list[float] | None) -> str | None:
+            if value is None:
+                return None
+            return str(value)
+
+        return process
+
+    def result_processor(self, dialect: Any, coltype: Any) -> Any:
+        def process(value: Any) -> list[float] | None:
+            if value is None:
+                return None
+            if isinstance(value, str):
+                clean = value.strip("[]")
+                return [float(x) for x in clean.split(",")]
+            return value
+
+        return process
 
 
 class Episode(Base):
@@ -31,8 +64,10 @@ class Episode(Base):
     product: Mapped[str | None] = mapped_column(Text)
     summary: Mapped[str] = mapped_column(Text, nullable=False)
     full_context: Mapped[str | None] = mapped_column(Text)
-    # embedding stored as pgvector VECTOR(1536) — added via raw SQL in migration
-    embedding_model: Mapped[str] = mapped_column(Text, server_default=text("'text-embedding-3-small'"))
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(1536), nullable=True)
+    embedding_model: Mapped[str] = mapped_column(
+        Text, server_default=text("'text-embedding-3-small'")
+    )
     importance: Mapped[float] = mapped_column(Float, server_default=text("0.5"))
     freshness: Mapped[float] = mapped_column(Float, server_default=text("1.0"))
     quality_signal: Mapped[int | None] = mapped_column(SmallInteger)
@@ -44,6 +79,9 @@ class Episode(Base):
     metadata_: Mapped[dict] = mapped_column("metadata", JSONB, server_default=text("'{}'::jsonb"))
     search_vector: Mapped[str | None] = mapped_column(
         TSVECTOR,
-        Computed("to_tsvector('english', coalesce(summary, '') || ' ' || coalesce(full_context, ''))", persisted=True),
+        Computed(
+            "to_tsvector('english', coalesce(summary, '') || ' ' || coalesce(full_context, ''))",
+            persisted=True,
+        ),
         nullable=True,
     )

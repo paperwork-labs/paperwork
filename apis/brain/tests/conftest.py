@@ -22,6 +22,7 @@ class FakeRedis:
 
     def __init__(self) -> None:
         self._store: dict[str, str] = {}
+        self._sets: dict[str, set[str]] = {}
 
     async def get(self, key: str) -> str | None:
         return self._store.get(key)
@@ -32,12 +33,30 @@ class FakeRedis:
     async def delete(self, *keys: str) -> None:
         for key in keys:
             self._store.pop(key, None)
+            self._sets.pop(key, None)
 
     async def ping(self) -> bool:
         return True
 
     async def aclose(self) -> None:
         self._store.clear()
+        self._sets.clear()
+
+    async def smembers(self, key: str) -> set[str]:
+        return self._sets.get(key, set())
+
+    async def sadd(self, key: str, *values: str) -> int:
+        if key not in self._sets:
+            self._sets[key] = set()
+        added = 0
+        for v in values:
+            if v not in self._sets[key]:
+                self._sets[key].add(v)
+                added += 1
+        return added
+
+    async def expire(self, key: str, ttl: int) -> bool:
+        return key in self._store or key in self._sets
 
 
 @pytest_asyncio.fixture
@@ -65,6 +84,12 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 @pytest.fixture
 def fake_redis() -> FakeRedis:
     return FakeRedis()
+
+
+@pytest.fixture
+def redis_mock(fake_redis: FakeRedis) -> FakeRedis:
+    """Alias for fake_redis for use in integration tests."""
+    return fake_redis
 
 
 @pytest_asyncio.fixture

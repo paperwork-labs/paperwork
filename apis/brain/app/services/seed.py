@@ -52,8 +52,24 @@ def _chunk_by_headers(text: str, max_size: int = CHUNK_SIZE) -> list[dict[str, s
     return chunks
 
 
-async def ingest_docs(db: AsyncSession, repo_root: str, organization_id: str = "paperwork-labs") -> int:
-    """Ingest all venture docs as seed episodes. Returns count of episodes created."""
+async def ingest_docs(
+    db: AsyncSession,
+    repo_root: str,
+    organization_id: str = "paperwork-labs",
+    skip_embedding: bool = True,
+) -> int:
+    """Ingest all venture docs as seed episodes.
+
+    Args:
+        db: Database session
+        repo_root: Root directory of the paperwork repo
+        organization_id: Organization to seed docs into
+        skip_embedding: Skip embedding generation for cost efficiency (default True).
+                        Embeddings can be generated later via backfill.
+
+    Returns:
+        Count of episodes created.
+    """
     total = 0
 
     for doc_path in DOCS_TO_INGEST:
@@ -77,10 +93,13 @@ async def ingest_docs(db: AsyncSession, repo_root: str, organization_id: str = "
                 full_context=chunk["content"],
                 importance=0.8,
                 metadata={"doc": doc_path, "section": chunk["header"]},
+                skip_embedding=skip_embedding,
             )
             total += 1
 
         logger.info("Ingested %s: %d chunks", doc_path, len(chunks))
 
-    logger.info("Seed ingestion complete: %d total episodes", total)
+    logger.info(
+        "Seed ingestion complete: %d total episodes (embeddings_skipped=%s)", total, skip_embedding
+    )
     return total
