@@ -204,6 +204,8 @@ async def search_episodes(
 
 async def get_fatigue_ids(redis_client, organization_id: str) -> set[int]:
     """D15: Get recently-recalled episode IDs from Redis."""
+    if redis_client is None:
+        return set()
     try:
         key = f"brain:fatigue:{organization_id}"
         members = await redis_client.smembers(key)
@@ -214,7 +216,7 @@ async def get_fatigue_ids(redis_client, organization_id: str) -> set[int]:
 
 async def mark_recalled(redis_client, organization_id: str, episode_ids: list[int]) -> None:
     """D15: Mark episodes as recently recalled (24h TTL)."""
-    if not episode_ids:
+    if not episode_ids or redis_client is None:
         return
     try:
         key = f"brain:fatigue:{organization_id}"

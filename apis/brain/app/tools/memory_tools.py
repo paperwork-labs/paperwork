@@ -44,7 +44,7 @@ def reset_organization_id(token: contextvars.Token) -> None:
 
 async def search_memory(query: str, limit: int = 5) -> str:
     """Search Brain's episodic memory for relevant past conversations and knowledge."""
-    if _db_session_factory is None or _redis_client is None:
+    if _db_session_factory is None:
         logger.warning("search_memory called before configure()")
         return "Memory search is not configured."
 
