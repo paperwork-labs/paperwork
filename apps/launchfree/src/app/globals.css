@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 @import "@paperwork-labs/ui/themes.css";
 
 @custom-variant dark (&:is(.dark *));
