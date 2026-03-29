@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, or_
 from datetime import date, datetime, timedelta
 from typing import Dict, Any, List, Optional
 import logging
@@ -382,6 +382,10 @@ async def get_margin_health(
 
 @router.get("/dashboard/pnl-summary", response_model=Dict[str, Any])
 async def get_pnl_summary(
+    account_id: Optional[str] = Query(
+        None,
+        description="Filter by broker account number; if numeric-only, also matches broker_accounts.id",
+    ),
     user: User = Depends(get_portfolio_user),
     db: Session = Depends(get_db),
 ):
@@ -406,16 +410,38 @@ async def get_pnl_summary(
                 },
             }
 
-        unrealized_row = (
-            db.query(func.coalesce(func.sum(Position.unrealized_pnl), 0))
-            .filter(Position.user_id == user.id)
-            .scalar()
+        filter_ref = (account_id or "").strip() or None
+        filter_broker_pk: Optional[int] = None
+        if filter_ref:
+            ba_base = db.query(BrokerAccount).filter(
+                BrokerAccount.user_id == user.id,
+                BrokerAccount.is_enabled.is_(True),
+            )
+            if filter_ref.isdigit():
+                acc = ba_base.filter(
+                    or_(
+                        BrokerAccount.account_number == filter_ref,
+                        BrokerAccount.id == int(filter_ref),
+                    )
+                ).first()
+            else:
+                acc = ba_base.filter(BrokerAccount.account_number == filter_ref).first()
+            if acc is None:
+                raise HTTPException(status_code=404, detail="Account not found")
+            filter_broker_pk = acc.id
+            acct_ids = [filter_broker_pk]
+
+        unrealized_q = db.query(func.coalesce(func.sum(Position.unrealized_pnl), 0)).filter(
+            Position.user_id == user.id,
+            Position.account_id.in_(acct_ids),
         )
-        options_unrealized_row = (
-            db.query(func.coalesce(func.sum(Option.unrealized_pnl), 0))
-            .filter(Option.user_id == user.id, Option.open_quantity != 0)
-            .scalar()
+        options_unrealized_q = db.query(func.coalesce(func.sum(Option.unrealized_pnl), 0)).filter(
+            Option.user_id == user.id,
+            Option.open_quantity != 0,
+            Option.account_id.in_(acct_ids),
         )
+        unrealized_row = unrealized_q.scalar()
+        options_unrealized_row = options_unrealized_q.scalar()
         unrealized_pnl = float(unrealized_row or 0) + float(options_unrealized_row or 0)
 
         realized_row = (

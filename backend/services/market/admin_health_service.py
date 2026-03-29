@@ -350,15 +350,11 @@ class AdminHealthService:
             return {"status": "error", "error": str(exc)}
 
     def _build_portfolio_sync_dimension(self, db: Session) -> Dict[str, Any]:
-        """Check if broker accounts have synced recently (within 24h).
-        
-        Uses datetime.now() to match broker_sync_service which sets
-        last_successful_sync with datetime.now().
-        """
+        """Check if broker accounts have synced recently (within 24h)."""
         try:
             from backend.models import BrokerAccount
 
-            cutoff = datetime.now() - timedelta(hours=24)
+            cutoff = datetime.utcnow() - timedelta(hours=24)
             accounts = db.query(BrokerAccount).filter(
                 BrokerAccount.is_enabled.is_(True)
             ).all()

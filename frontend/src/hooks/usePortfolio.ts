@@ -9,6 +9,7 @@ import {
   activityApi,
   unwrapResponse,
   unwrapResponseSingle,
+  type PnlSummaryData,
 } from '../services/api';
 import type { EnrichedPosition } from '../types/portfolio';
 import toast from 'react-hot-toast';
@@ -382,27 +383,20 @@ export const useDividendSummary = (accountId?: string) => {
   });
 };
 
-export interface PnlSummaryData {
-  unrealized_pnl: number;
-  realized_pnl: number;
-  total_dividends: number;
-  total_fees: number;
-  total_return: number;
-}
+const PNL_SUMMARY_QUERY_DEFAULTS: PnlSummaryData = {
+  unrealized_pnl: 0,
+  realized_pnl: 0,
+  total_dividends: 0,
+  total_fees: 0,
+  total_return: 0,
+};
 
-export const usePnlSummary = () => {
-  const defaults: PnlSummaryData = {
-    unrealized_pnl: 0,
-    realized_pnl: 0,
-    total_dividends: 0,
-    total_fees: 0,
-    total_return: 0,
-  };
+export const usePnlSummary = (accountId?: string) => {
   return useQuery<PnlSummaryData>({
-    queryKey: ['portfolio-pnl-summary'],
+    queryKey: ['portfolio-pnl-summary', accountId],
     queryFn: async () => {
-      const r = await portfolioApi.getPnlSummary();
-      return (r as any)?.data?.data ?? (r as any)?.data ?? (r as any) ?? defaults;
+      const r = await portfolioApi.getPnlSummary(accountId);
+      return r ?? PNL_SUMMARY_QUERY_DEFAULTS;
     },
     staleTime: 60_000,
   });

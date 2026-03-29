@@ -2,7 +2,6 @@
 import axios, { AxiosResponse, AxiosError } from 'axios';
 
 import { normalizeRegimeCurrentBody } from './regimeCurrentNormalize';
-import type { PnlSummaryData } from '../hooks/usePortfolio';
 
 declare module 'axios' {
   interface AxiosRequestConfig<D = any> {
@@ -218,6 +217,22 @@ export interface DashboardResponse {
   summary?: DashboardSummary;
 }
 
+/** Payload inside GET /portfolio/dashboard/pnl-summary `data` field */
+export interface PnlSummaryData {
+  unrealized_pnl: number;
+  realized_pnl: number;
+  total_dividends: number;
+  total_fees: number;
+  total_return: number;
+  generated_at?: string;
+}
+
+/** JSON body from GET /portfolio/dashboard/pnl-summary (after axios `response.data` unwrap). */
+export interface PnlSummaryResponse {
+  status?: string;
+  data?: PnlSummaryData;
+}
+
 export interface StatementsResponse {
   data?: { transactions?: unknown[] };
   transactions?: unknown[];
@@ -420,8 +435,12 @@ export const portfolioApi = {
     return makeOptimizedRequest(() => api.get(`/portfolio/dividends/summary${q}`));
   },
 
-  getPnlSummary: async (): Promise<{ data: PnlSummaryData }> => {
-    return makeOptimizedRequest(() => api.get('/portfolio/dashboard/pnl-summary'));
+  getPnlSummary: async (accountId?: string): Promise<PnlSummaryData | undefined> => {
+    const q = accountId ? `?account_id=${encodeURIComponent(accountId)}` : '';
+    const body = await makeOptimizedRequest<PnlSummaryResponse>(() =>
+      api.get(`/portfolio/dashboard/pnl-summary${q}`),
+    );
+    return body?.data;
   },
 
   getLiveSummary: async (accountId?: string) => {

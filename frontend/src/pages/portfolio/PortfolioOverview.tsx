@@ -86,8 +86,6 @@ const PortfolioOverview: React.FC = () => {
   const liveData = liveQuery.data ?? {};
   const riskQuery = useRiskMetrics();
   const riskData = riskQuery.data ?? {};
-  const pnlSummaryQuery = usePnlSummary();
-  const pnlSummary = pnlSummaryQuery.data;
   const positions = (positionsQuery.data ?? []) as EnrichedPosition[];
   const dashboard = overview.summary.data as DashboardResponse | undefined;
   const rawAccounts = overview.accountsData ?? [];
@@ -147,6 +145,11 @@ const PortfolioOverview: React.FC = () => {
 
   const filterState = useAccountFilter(positions as import('../../hooks/useAccountFilter').FilterableItem[], accounts);
   const filteredPositions = filterState.filteredData as EnrichedPosition[];
+
+  const pnlSummaryQuery = usePnlSummary(
+    filterState.selectedAccount === 'all' ? undefined : filterState.selectedAccount,
+  );
+  const pnlSummary = pnlSummaryQuery.data;
 
   const summary = (dashboard?.data?.summary ?? dashboard?.summary ?? dashboard) as
     | import('../../services/api').DashboardSummary

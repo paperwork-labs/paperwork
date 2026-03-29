@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 import json
 
+from backend.models import BrokerAccount
 from backend.services.market.admin_health_service import (
     AdminHealthService,
     HEALTH_THRESHOLDS,
@@ -29,6 +30,13 @@ def _make_db():
     q.count.return_value = 0
     q.filter.return_value = q
     q.order_by.return_value.first.return_value = None
+    return db
+
+
+def _mock_db_portfolio_sync(accounts):
+    """Mock session for _build_portfolio_sync_dimension: query(BrokerAccount).filter(...).all()."""
+    db = MagicMock()
+    db.query.return_value.filter.return_value.all.return_value = accounts
     return db
 
 
@@ -261,9 +269,9 @@ def test_fundamentals_error_below_warn():
 
 def test_portfolio_sync_ok_when_no_enabled_accounts():
     svc = _mock_service()
-    db = MagicMock()
-    db.query.return_value.filter.return_value.all.return_value = []
+    db = _mock_db_portfolio_sync([])
     dim = svc._build_portfolio_sync_dimension(db)
+    db.query.assert_called_once_with(BrokerAccount)
     assert dim["status"] == "ok"
     assert dim["total_accounts"] == 0
     assert dim["stale_accounts"] == 0
@@ -280,9 +288,9 @@ def test_portfolio_sync_green_when_all_accounts_fresh():
     a2 = MagicMock()
     a2.last_successful_sync = now - timedelta(hours=2)
     a2.account_number = "U222"
-    db = MagicMock()
-    db.query.return_value.filter.return_value.all.return_value = [a1, a2]
+    db = _mock_db_portfolio_sync([a1, a2])
     dim = svc._build_portfolio_sync_dimension(db)
+    db.query.assert_called_once_with(BrokerAccount)
     assert dim["status"] == "green"
     assert dim["total_accounts"] == 2
     assert dim["stale_accounts"] == 0
@@ -301,9 +309,9 @@ def test_portfolio_sync_red_when_some_accounts_stale():
     never = MagicMock()
     never.last_successful_sync = None
     never.account_number = "NEVER1"
-    db = MagicMock()
-    db.query.return_value.filter.return_value.all.return_value = [fresh, old, never]
+    db = _mock_db_portfolio_sync([fresh, old, never])
     dim = svc._build_portfolio_sync_dimension(db)
+    db.query.assert_called_once_with(BrokerAccount)
     assert dim["status"] == "red"
     assert dim["total_accounts"] == 3
     assert dim["stale_accounts"] == 2
@@ -315,6 +323,7 @@ def test_portfolio_sync_error_on_exception():
     db = MagicMock()
     db.query.side_effect = RuntimeError("db unavailable")
     dim = svc._build_portfolio_sync_dimension(db)
+    db.query.assert_called_once_with(BrokerAccount)
     assert dim["status"] == "error"
     assert dim["error"] == "db unavailable"
 
