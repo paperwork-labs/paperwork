@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Dict, List, Optional
 
@@ -197,11 +197,94 @@ class AlpacaSyncService:
     async def _sync_trades(self, db: Session, account: BrokerAccount) -> Dict:
         """Sync recent trades/activities from Alpaca.
         
-        Note: Full implementation would use /v2/activities endpoint.
-        Placeholder for now.
+        Fetches FILL activities from Alpaca and upserts them as Trade records.
+        Uses execution_id (Alpaca activity id) for deduplication.
         """
-        # TODO: Implement activity sync via /v2/activities
-        return {"synced": 0}
+        from dateutil.parser import isoparse
+
+        # Fetch last 30 days of fills
+        after_date = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+        activities = await self._executor.get_account_activities(
+            activity_types="FILL",
+            after=after_date,
+        )
+
+        if not activities:
+            logger.info("Alpaca: no fill activities to sync for %s", account.account_number)
+            return {"synced": 0}
+
+        synced = 0
+        skipped = 0
+        is_paper = (
+            getattr(settings, "ALPACA_TRADING_MODE", "paper").lower() == "paper"
+        )
+
+        for activity in activities:
+            execution_id = activity.get("id")
+            if not execution_id:
+                skipped += 1
+                continue
+
+            # Check if trade already exists
+            existing = (
+                db.query(Trade)
+                .filter(
+                    Trade.account_id == account.id,
+                    Trade.execution_id == execution_id,
+                )
+                .first()
+            )
+            if existing:
+                skipped += 1
+                continue
+
+            # Parse execution time
+            exec_time_str = activity.get("transaction_time")
+            exec_time = None
+            if exec_time_str:
+                try:
+                    exec_time = isoparse(exec_time_str)
+                except Exception:
+                    exec_time = datetime.now(timezone.utc)
+
+            # Map side
+            side_raw = activity.get("side", "").upper()
+            side = "BUY" if side_raw in ("BUY", "LONG") else "SELL"
+
+            # Parse numeric fields
+            qty = Decimal(str(activity.get("qty", 0)))
+            price = Decimal(str(activity.get("price", 0)))
+            total_value = qty * price
+
+            trade = Trade(
+                account_id=account.id,
+                symbol=activity.get("symbol", ""),
+                side=side,
+                quantity=qty,
+                price=price,
+                total_value=total_value,
+                order_id=activity.get("order_id"),
+                execution_id=execution_id,
+                execution_time=exec_time,
+                status="FILLED",
+                is_paper_trade=is_paper,
+                commission=Decimal("0"),
+                fees=Decimal("0"),
+                trade_metadata=activity,
+            )
+            db.add(trade)
+            synced += 1
+
+        if synced > 0:
+            db.flush()
+            logger.info(
+                "Alpaca: synced %d trades for %s (skipped %d existing)",
+                synced,
+                account.account_number,
+                skipped,
+            )
+
+        return {"synced": synced, "skipped": skipped}
 
     def sync_account_sync(
         self, db: Session, account: BrokerAccount, sync_type: str = "comprehensive"

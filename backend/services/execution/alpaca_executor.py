@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict
+from typing import Any, Dict, List, Optional
 
 from backend.config import settings
 from backend.services.execution.broker_base import (
@@ -217,3 +217,72 @@ class AlpacaExecutor:
                 return {"error": f"Account fetch failed: {resp.status_code}"}
         except Exception as e:
             return {"error": str(e)}
+
+    async def get_account_activities(
+        self,
+        activity_types: str = "FILL",
+        after: Optional[str] = None,
+        until: Optional[str] = None,
+        page_size: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """Fetch account activities (trades/fills) from Alpaca.
+        
+        Args:
+            activity_types: Comma-separated activity types (default: FILL)
+            after: ISO timestamp for start date
+            until: ISO timestamp for end date
+            page_size: Results per page (max 100)
+            
+        Returns:
+            List of activity objects with trade details
+        """
+        import httpx
+
+        all_activities: List[Dict[str, Any]] = []
+        page_token: Optional[str] = None
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                while True:
+                    params: Dict[str, Any] = {
+                        "activity_types": activity_types,
+                        "page_size": page_size,
+                    }
+                    if after:
+                        params["after"] = after
+                    if until:
+                        params["until"] = until
+                    if page_token:
+                        params["page_token"] = page_token
+
+                    resp = await client.get(
+                        f"{self._get_base_url()}/v2/account/activities",
+                        headers=self._get_headers(),
+                        params=params,
+                    )
+
+                    if resp.status_code != 200:
+                        logger.error(
+                            "Alpaca activities fetch failed: %s %s",
+                            resp.status_code,
+                            resp.text[:200],
+                        )
+                        break
+
+                    data = resp.json()
+                    if not data:
+                        break
+
+                    all_activities.extend(data)
+
+                    # Alpaca uses last activity ID as cursor
+                    if len(data) < page_size:
+                        break
+                    page_token = data[-1].get("id")
+                    if not page_token:
+                        break
+
+        except Exception as e:
+            logger.error("Alpaca get_account_activities error: %s", e)
+
+        return all_activities
