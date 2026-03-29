@@ -17,16 +17,25 @@ python-multipart>=0.0.17
 # Auth
 python-jose[cryptography]>=3.3.0
 
-# AI / LLM
+# AI / LLM — multi-provider (D20)
+anthropic>=0.50.0
 openai>=1.57.0
+google-genai>=1.0.0
+
+# MCP server
+fastmcp>=2.6.0
 
 # Redis
 redis>=5.2.0
+
+# Observability (D41)
+langfuse>=2.0.0
 
 # Utilities
 httpx>=0.28.0
 slowapi>=0.1.9
 cryptography>=44.0.0
+pyyaml>=6.0.0
 
 # Dev / Test
 pytest>=8.3.0
