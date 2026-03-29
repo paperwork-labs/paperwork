@@ -28,7 +28,7 @@ import type { FLArticlesProps } from "../fl-articles";
 import type { DEArticlesProps } from "../de-articles";
 import type { WYArticlesProps } from "../wy-articles";
 import type { NYArticlesProps } from "../ny-articles";
-import type { NVArticlesProps } from "../nv-articles";
+import type { NVArticlesProps, NVManager } from "../nv-articles";
 import type { ILArticlesProps } from "../il-articles";
 import type { GAArticlesProps } from "../ga-articles";
 import type { WAArticlesProps } from "../wa-articles";
@@ -305,6 +305,8 @@ describe("Props interfaces — exported types", () => {
     expectTypeOf<RequiredKeysOf<NVArticlesProps>>().toEqualTypeOf<
       "llcName" | "registeredAgent" | "managers" | "organizer"
     >();
+    expectTypeOf<NVManager>().toBeObject();
+    expectTypeOf<RequiredKeysOf<NVManager>>().toEqualTypeOf<"name">();
   });
 
   it("IL exports ILArticlesProps", () => {

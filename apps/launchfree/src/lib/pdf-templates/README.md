@@ -69,11 +69,15 @@ Use these pages as the starting point for manual verification:
 
 ## Testing
 
-There are **no Vitest tests inside `apps/launchfree`** targeting these PDF components today. Use the following to validate related configuration and catch fee drift:
+**LaunchFree PDF templates (Vitest)**
+
+From the repository root, run the suite that covers these components (render-to-buffer smoke tests, fixture/required-key checks, and exported prop types):
+
+```bash
+pnpm --filter @paperwork-labs/launchfree test
+```
 
 **Filing engine (fee and portal URL accuracy)**
-
-From the repository root:
 
 ```bash
 pnpm --filter @paperwork-labs/filing-engine test
