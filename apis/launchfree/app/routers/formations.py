@@ -96,7 +96,7 @@ async def update_formation(
     db: AsyncSession = Depends(get_db),
     user_id: str = Depends(require_session),
 ):
-    """Update a formation. Only allowed for draft/failed status unless admin."""
+    """Update a formation. Only allowed while status is draft or failed."""
     result = await db.execute(
         select(Formation).where(
             Formation.id == formation_id,
@@ -119,14 +119,28 @@ async def update_formation(
 
     update_data = body.model_dump(exclude_unset=True)
 
-    if "registered_agent" in update_data and update_data["registered_agent"]:
-        update_data["registered_agent"] = body.registered_agent.model_dump()
-    if "members" in update_data and update_data["members"]:
-        update_data["members"] = [m.model_dump() for m in body.members]
-    if "principal_address" in update_data and update_data["principal_address"]:
-        update_data["principal_address"] = body.principal_address.model_dump()
-    if "mailing_address" in update_data and update_data["mailing_address"]:
-        update_data["mailing_address"] = body.mailing_address.model_dump()
+    if "registered_agent" in update_data:
+        update_data["registered_agent"] = (
+            body.registered_agent.model_dump() if body.registered_agent is not None else {}
+        )
+    if "members" in update_data:
+        update_data["members"] = (
+            [m.model_dump() for m in body.members] if body.members is not None else []
+        )
+    if "principal_address" in update_data:
+        update_data["principal_address"] = (
+            body.principal_address.model_dump() if body.principal_address is not None else {}
+        )
+    if "mailing_address" in update_data:
+        update_data["mailing_address"] = (
+            body.mailing_address.model_dump() if body.mailing_address is not None else None
+        )
+    if "screenshots" in update_data:
+        update_data["screenshots"] = (
+            list(body.screenshots) if body.screenshots is not None else []
+        )
+    if "error_log" in update_data:
+        update_data["error_log"] = body.error_log if body.error_log is not None else {}
 
     for field, value in update_data.items():
         setattr(formation, field, value)

@@ -5,7 +5,7 @@
  * Uses Playwright for browser automation with multi-selector fallback strategy.
  */
 
-import type { Browser, BrowserContext, Page } from "playwright";
+import type { Browser, BrowserContext, Locator, Page } from "playwright";
 import type {
   FilingHandler,
   FilingResult,
@@ -142,12 +142,19 @@ export abstract class BasePortalHandler implements FilingHandler {
     }
 
     for (const field of step.fields) {
+      const raw = fieldValues[field.fieldId] ?? field.value;
+      const mapKey = fieldValues[field.fieldId] ?? field.value ?? "";
       const value =
-        fieldValues[field.fieldId] ?? field.value ?? field.valueMapping?.[fieldValues[field.fieldId] ?? ""];
+        field.valueMapping != null && mapKey in field.valueMapping
+          ? field.valueMapping[mapKey]
+          : raw;
 
       if (value == null) continue;
 
-      const element = await this.findElement(page, field.selector, field.fallbackSelectors);
+      const element = await this.findElement(page, field.selector, {
+        fallbacks: field.fallbackSelectors,
+        selectorType: field.selectorType,
+      });
 
       if (!element) {
         throw new Error(`Could not find field: ${field.fieldId} (${field.selector})`);
@@ -188,16 +195,38 @@ export abstract class BasePortalHandler implements FilingHandler {
     }
   }
 
+  protected resolveLocator(
+    page: Page,
+    selector: string,
+    selectorType: PortalStep["fields"][number]["selectorType"]
+  ): Locator {
+    switch (selectorType) {
+      case "xpath":
+        return page.locator(selector.startsWith("xpath=") ? selector : `xpath=${selector}`);
+      case "text":
+        return page.locator(selector.startsWith("text=") ? selector : `text=${selector}`);
+      case "aria":
+        return page.getByLabel(selector);
+      case "css":
+      default:
+        return page.locator(selector);
+    }
+  }
+
   protected async findElement(
     page: Page,
     primarySelector: string,
-    fallbacks?: string[]
-  ): Promise<ReturnType<Page["locator"]> | null> {
-    const selectors = [primarySelector, ...(fallbacks ?? [])];
+    options?: {
+      fallbacks?: string[];
+      selectorType?: PortalStep["fields"][number]["selectorType"];
+    }
+  ): Promise<Locator | null> {
+    const selectorType = options?.selectorType ?? "css";
+    const selectors = [primarySelector, ...(options?.fallbacks ?? [])];
 
     for (const selector of selectors) {
       try {
-        const locator = page.locator(selector);
+        const locator = this.resolveLocator(page, selector, selectorType);
         const count = await locator.count();
         if (count > 0) {
           return locator.first();
@@ -211,6 +240,7 @@ export abstract class BasePortalHandler implements FilingHandler {
   }
 
   protected async captureScreenshot(page: Page, stepName: string): Promise<string> {
+    // Phase 2: upload to durable storage and return URLs; base64 data URLs are interim only.
     const buffer = await page.screenshot({ fullPage: true });
     const timestamp = Date.now();
     const filename = `${this.config.stateCode}-${stepName}-${timestamp}.png`;

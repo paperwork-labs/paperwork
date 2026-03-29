@@ -50,7 +50,11 @@ export type Address = z.infer<typeof AddressSchema>;
 export const MemberSchema = z.object({
   name: z.string().min(1),
   address: AddressSchema,
-  role: z.enum(["member", "manager", "organizer"]),
+  role: z.enum([
+    MemberRole.MEMBER,
+    MemberRole.MANAGER,
+    MemberRole.ORGANIZER,
+  ]),
   ownershipPercentage: z.number().min(0).max(100).optional(),
   isOrganizer: z.boolean().default(false),
 });
@@ -210,5 +214,5 @@ export const StateFilingTiers: Record<string, FilingTier> = {
 };
 
 export function getFilingTier(stateCode: string): FilingTier {
-  return StateFilingTiers[stateCode] ?? "portal";
+  return StateFilingTiers[stateCode.toUpperCase()] ?? "portal";
 }

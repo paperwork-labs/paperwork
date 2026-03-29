@@ -39,20 +39,21 @@ export class StateFilingOrchestrator implements FilingOrchestrator {
     this.handlers.set(handler.tier, tierHandlers);
 
     for (const state of handler.supportedStates) {
-      this.stateHandlerCache.set(state, handler);
+      this.stateHandlerCache.set(state.toUpperCase(), handler);
     }
   }
 
   getHandlerForState(stateCode: string): FilingHandler | null {
-    const cached = this.stateHandlerCache.get(stateCode);
+    const normalized = stateCode.toUpperCase();
+    const cached = this.stateHandlerCache.get(normalized);
     if (cached) return cached;
 
-    const tier = getFilingTier(stateCode);
+    const tier = getFilingTier(normalized);
     const handlers = this.handlers.get(tier) ?? [];
 
     for (const handler of handlers) {
-      if (handler.canHandle(stateCode)) {
-        this.stateHandlerCache.set(stateCode, handler);
+      if (handler.canHandle(normalized)) {
+        this.stateHandlerCache.set(normalized, handler);
         return handler;
       }
     }
@@ -107,7 +108,8 @@ export class StateFilingOrchestrator implements FilingOrchestrator {
       request.stateCode,
       "MAX_RETRIES_EXCEEDED",
       lastError?.message ?? "Maximum retry attempts exceeded",
-      { retryCount, lastError: lastError?.stack }
+      { lastError: lastError?.stack },
+      retryCount
     );
   }
 
@@ -134,17 +136,18 @@ export class StateFilingOrchestrator implements FilingOrchestrator {
     stateCode: string,
     errorCode: string,
     errorMessage: string,
-    errorDetails?: Record<string, unknown>
+    errorDetails?: Record<string, unknown>,
+    retryCount = 0
   ): FilingResult {
     return {
       success: false,
       formationId,
       status: FormationStatus.FAILED,
-      tier: getFilingTier(stateCode),
+      tier: getFilingTier(stateCode.toUpperCase()),
       errorCode,
       errorMessage,
       errorDetails,
-      retryCount: 0,
+      retryCount,
       screenshots: [],
       documents: [],
     };
@@ -170,6 +173,6 @@ export class StateFilingOrchestrator implements FilingOrchestrator {
   }
 }
 
-export function createOrchestrator(): FilingOrchestrator {
+export function createOrchestrator(): StateFilingOrchestrator {
   return new StateFilingOrchestrator();
 }
