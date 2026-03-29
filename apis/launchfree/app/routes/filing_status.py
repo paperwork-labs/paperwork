@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,10 +16,13 @@ from app.config import settings
 from app.database import get_db
 from app.dependencies import require_session
 from app.models.formation import Formation
+from app.schemas.base import success_response
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/filings", tags=["filing-status"])
+
+_internal_secret_unset_warned = False
 
 STATUS_HISTORY_KEY = "_status_history"
 FILING_ERROR_MESSAGE_KEY = "_filing_error_message"
@@ -146,20 +150,24 @@ def _filing_error_message(error_log: dict[str, Any] | None) -> str | None:
 
 
 async def require_filing_internal(request: Request) -> None:
+    global _internal_secret_unset_warned
     secret = settings.FILING_STATUS_INTERNAL_SECRET
-    if secret:
-        token = request.headers.get("X-Filing-Internal-Token")
-        if token != secret:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid or missing internal filing token",
+    if not secret:
+        if not _internal_secret_unset_warned:
+            _internal_secret_unset_warned = True
+            logger.warning(
+                "FILING_STATUS_INTERNAL_SECRET is unset; POST filing status updates are disabled. "
+                "Set the secret and use header X-Filing-Internal-Token for workers.",
             )
-        return
-    if settings.ENVIRONMENT == "production":
-        logger.error("FILING_STATUS_INTERNAL_SECRET unset in production")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Filing status updates are not configured",
+        )
+    token = request.headers.get("X-Filing-Internal-Token")
+    if token != secret:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing internal filing token",
         )
 
 
@@ -193,6 +201,10 @@ def _parse_formation_id(formation_id: str) -> int:
         ) from None
 
 
+def _filing_status_to_json_dict(resp: FilingStatusResponse) -> dict[str, Any]:
+    return resp.model_dump(mode="json")
+
+
 def _formation_to_response(f: Formation) -> FilingStatusResponse:
     elog = f.error_log if isinstance(f.error_log, dict) else {}
     history_raw = _load_history(elog)
@@ -209,12 +221,12 @@ def _formation_to_response(f: Formation) -> FilingStatusResponse:
     )
 
 
-@router.get("/{formation_id}/status", response_model=FilingStatusResponse)
+@router.get("/{formation_id}/status")
 async def get_filing_status(
     formation_id: str,
     db: AsyncSession = Depends(get_db),
     user_id: str = Depends(require_session),
-) -> FilingStatusResponse:
+) -> JSONResponse:
     """Return filing status and transition history for the current user's formation."""
     fid = _parse_formation_id(formation_id)
     result = await db.execute(
@@ -229,16 +241,18 @@ async def get_filing_status(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Formation not found",
         )
-    return _formation_to_response(formation)
+    return success_response(
+        _filing_status_to_json_dict(_formation_to_response(formation)),
+    )
 
 
-@router.post("/{formation_id}/status", response_model=FilingStatusResponse)
+@router.post("/{formation_id}/status")
 async def update_filing_status(
     formation_id: str,
     body: FilingStatusUpdateBody,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(require_filing_internal),
-) -> FilingStatusResponse:
+) -> JSONResponse:
     """Apply a status transition (filing engine / workers). Requires internal token."""
     if body.status not in FILING_STATUSES:
         raise HTTPException(
@@ -295,4 +309,6 @@ async def update_filing_status(
         from_status,
         body.status,
     )
-    return _formation_to_response(formation)
+    return success_response(
+        _filing_status_to_json_dict(_formation_to_response(formation)),
+    )
