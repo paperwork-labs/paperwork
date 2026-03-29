@@ -31,7 +31,9 @@ async function ensureDir(dir: string): Promise<void> {
     await mkdir(dir, { recursive: true });
   } catch (cause) {
     const msg = cause instanceof Error ? cause.message : String(cause);
-    throw new Error(`captureStep: could not create output directory ${JSON.stringify(dir)}: ${msg}`);
+    throw new Error(
+      `screenshot: could not create output directory ${JSON.stringify(dir)}: ${msg}`,
+    );
   }
 }
 
