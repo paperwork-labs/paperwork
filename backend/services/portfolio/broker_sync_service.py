@@ -142,7 +142,7 @@ class BrokerSyncService:
             )
 
             # Update sync status
-            broker_account.last_successful_sync = datetime.now()
+            broker_account.last_successful_sync = datetime.utcnow()
             from backend.models.broker_account import SyncStatus
 
             broker_account.sync_status = SyncStatus.SUCCESS
@@ -227,7 +227,7 @@ class BrokerSyncService:
 
             result = await maybe_coro if inspect.isawaitable(maybe_coro) else maybe_coro
 
-            broker_account.last_successful_sync = datetime.now()
+            broker_account.last_successful_sync = datetime.utcnow()
             from backend.models.broker_account import SyncStatus
 
             broker_account.sync_status = SyncStatus.SUCCESS

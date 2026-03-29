@@ -30,7 +30,7 @@ def sync_account_task(account_id: int, sync_type: str = "comprehensive") -> dict
     """Run broker account sync in a Celery worker (separate process)."""
     session = SessionLocal()
     sync_record = None
-    started_at = datetime.now()
+    started_at = datetime.utcnow()
     try:
         account = session.query(BrokerAccount).filter(BrokerAccount.id == account_id).first()
         if not account:
@@ -63,7 +63,7 @@ def sync_account_task(account_id: int, sync_type: str = "comprehensive") -> dict
         finally:
             loop.close()
 
-        completed_at = datetime.now()
+        completed_at = datetime.utcnow()
         duration_seconds = int((completed_at - started_at).total_seconds())
 
         is_error = isinstance(result, dict) and result.get("status") == "error"
@@ -110,7 +110,7 @@ def sync_account_task(account_id: int, sync_type: str = "comprehensive") -> dict
         if sync_record:
             try:
                 sync_record.status = SyncStatus.ERROR
-                sync_record.completed_at = datetime.now()
+                sync_record.completed_at = datetime.utcnow()
                 sync_record.duration_seconds = int(
                     (sync_record.completed_at - started_at).total_seconds()
                 )
@@ -209,7 +209,7 @@ def recover_stale_syncs() -> dict:
     """
     session = SessionLocal()
     try:
-        cutoff = datetime.now() - timedelta(minutes=STALE_SYNC_THRESHOLD_MINUTES)
+        cutoff = datetime.utcnow() - timedelta(minutes=STALE_SYNC_THRESHOLD_MINUTES)
         stale_accounts = (
             session.query(BrokerAccount)
             .filter(
@@ -243,7 +243,7 @@ def recover_stale_syncs() -> dict:
             )
             for sr in stale_syncs:
                 sr.status = SyncStatus.ERROR
-                sr.completed_at = datetime.now()
+                sr.completed_at = datetime.utcnow()
                 sr.duration_seconds = int((sr.completed_at - sr.started_at).total_seconds())
                 sr.error_message = "Timed out — auto-recovered by recover_stale_syncs"
 

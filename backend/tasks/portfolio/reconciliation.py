@@ -5,7 +5,9 @@ Position and order reconciliation against broker-reported data.
 
 import asyncio
 import logging
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy.orm import Session
 
 from backend.tasks.celery_app import celery_app
 
@@ -122,7 +124,7 @@ def reconcile_positions(self) -> Dict:
                 local_pos_map = {p.symbol: p for p in local_positions}
 
                 # Get broker positions
-                broker_positions = _fetch_broker_positions(account)
+                broker_positions = _fetch_broker_positions(account, db)
 
                 if broker_positions is None:
                     logger.debug(
@@ -203,15 +205,136 @@ def reconcile_positions(self) -> Dict:
         db.close()
 
 
-def _fetch_broker_positions(account) -> List[Dict] | None:
+async def _fetch_tastytrade_positions_async(
+    account: Any, db: Session
+) -> Optional[List[Dict[str, Any]]]:
+    """Connect to TastyTrade, fetch positions, return normalized rows or None on failure."""
+    from backend.services.clients.tastytrade_client import (
+        TASTYTRADE_AVAILABLE,
+        TastyTradeClient,
+    )
+    from backend.services.portfolio.account_credentials_service import (
+        CredentialsNotFoundError,
+        account_credentials_service,
+    )
+
+    if not TASTYTRADE_AVAILABLE:
+        logger.debug("TastyTrade SDK not available; skipping broker position fetch")
+        return None
+
+    client = TastyTradeClient()
+    raw: List[Dict[str, Any]] = []
+    try:
+        try:
+            payload = account_credentials_service.get_decrypted(account.id, db)
+            ok = await client.connect_with_credentials(
+                client_secret=payload["client_secret"],
+                refresh_token=payload["refresh_token"],
+            )
+        except CredentialsNotFoundError:
+            ok = await client.connect_with_retry()
+        if not ok:
+            logger.warning(
+                "TastyTrade connect failed for reconciliation (account=%s)",
+                getattr(account, "account_number", account.id),
+            )
+            return None
+
+        # Validate that the requested account number exists in the TastyTrade session.
+        target_account_number = getattr(account, "account_number", None)
+        session_account_numbers: List[str] = []
+        try:
+            session_accounts = getattr(client, "accounts", []) or []
+            session_account_numbers = [
+                getattr(a, "account_number", None)
+                for a in session_accounts
+                if getattr(a, "account_number", None) is not None
+            ]
+        except Exception:
+            # If we cannot determine session accounts, skip reconciliation to avoid
+            # misinterpreting an unknown account as having zero positions.
+            logger.warning(
+                "TastyTrade accounts unavailable after connect; skipping reconciliation "
+                "(account=%s)",
+                getattr(account, "account_number", account.id),
+            )
+            return None
+
+        if not target_account_number or target_account_number not in session_account_numbers:
+            logger.warning(
+                "TastyTrade account number %s not found in session accounts %s; "
+                "skipping reconciliation",
+                target_account_number or getattr(account, "id", None),
+                session_account_numbers,
+            )
+            return None
+
+       raw = await client.get_current_positions(target_account_number)
+    except Exception as e:
+        logger.warning(
+            "TastyTrade position fetch failed for account %s: %s",
+            getattr(account, "account_number", account.id),
+            e,
+        )
+        return None
+    finally:
+        try:
+            await client.disconnect()
+        except Exception as disc_e:
+            logger.debug("TastyTrade disconnect after reconciliation fetch: %s", disc_e)
+
+    out: List[Dict[str, Any]] = []
+    for pos in raw:
+        instr = (pos.get("instrument_type") or "").lower()
+        if "option" in instr:
+            continue
+        symbol = pos.get("symbol")
+        if not symbol:
+            continue
+        qty = float(pos.get("quantity") or 0)
+        direction = (pos.get("quantity_direction") or "").strip().lower()
+        if direction == "short":
+            qty = -abs(qty)
+        elif direction == "long" and qty != 0:
+            qty = abs(qty)
+        magnitude = abs(qty)
+        if magnitude <= 0.001:
+            continue
+        avg = float(pos.get("average_open_price") or 0)
+        cost_basis = magnitude * avg
+        mark_value_raw = pos.get("mark_value")
+        market_value: Optional[float] = None
+        if mark_value_raw is not None:
+            try:
+                market_value = float(mark_value_raw)
+            except (TypeError, ValueError):
+                market_value = None
+        # The TastyTrade client may normalize missing mark_value to 0.0;
+        # treat None or near-zero values as "missing" and fall back.
+        if market_value is None or abs(market_value) < 1e-6:
+            mark = float(pos.get("mark") or 0)
+            mult = float(pos.get("multiplier") or 1.0)
+            market_value = magnitude * mark * mult
+        out.append(
+            {
+                "symbol": symbol,
+                "quantity": magnitude,
+                "cost_basis": cost_basis,
+                "market_value": market_value,
+            }
+        )
+    return out
+
+
+def _fetch_broker_positions(account, db: Session) -> Optional[List[Dict]]:
     """Fetch current positions from the broker for an account.
 
     Returns list of dicts with: symbol, quantity, cost_basis, market_value
-    Returns None if the broker adapter is not yet implemented.
+    Returns None if the broker adapter is not yet implemented or fetch failed.
     """
     from backend.models.broker_account import BrokerType
-    
-    positions = []
+
+    positions: List[Dict] = []
 
     try:
         if account.broker == BrokerType.IBKR:
@@ -244,9 +367,14 @@ def _fetch_broker_positions(account) -> List[Dict] | None:
             return None
 
         elif account.broker == BrokerType.TASTYTRADE:
-            # TastyTrade positions synced via SDK
-            logger.debug("TastyTrade reconciliation not yet implemented")
-            return None
+            loop = asyncio.new_event_loop()
+            try:
+                positions = loop.run_until_complete(
+                    _fetch_tastytrade_positions_async(account, db)
+                )
+            finally:
+                loop.close()
+            return positions
 
         else:
             logger.warning("Unknown broker type: %s", account.broker)

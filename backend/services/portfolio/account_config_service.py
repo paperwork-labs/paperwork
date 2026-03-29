@@ -283,7 +283,7 @@ class AccountConfigService:
                         # Update existing account
                         existing.account_name = account_config["account_name"]
                         existing.account_type = account_config["account_type"]
-                        existing.updated_at = datetime.now()
+                        existing.updated_at = datetime.utcnow()
                         results["updated"] += 1
                         logger.info(f"Updated existing account: {account_number}")
                     else:
@@ -298,7 +298,7 @@ class AccountConfigService:
                             is_enabled=True,
                             api_credentials_stored=False,  # Will be set when credentials are added
                             currency="USD",
-                            created_at=datetime.now(),
+                            created_at=datetime.utcnow(),
                         )
                         session.add(new_account)
                         results["created"] += 1
