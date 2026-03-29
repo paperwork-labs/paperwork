@@ -8,18 +8,19 @@
  * Checks:
  * 1. All configs parse against Zod schema
  * 2. Filing fees match known values
- * 3. Portal URLs are .gov domains
+ * 3. Portal URLs use approved official domains (.gov or state-authorized portals)
  * 4. lastVerified is within 90 days
  * 5. Critical fields have fallback selectors
  */
 
+import { createRequire } from "node:module";
 import { readFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
 import { PortalConfigSchema } from "../src/types.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const PORTALS_DIR = join(__dirname, "../../data/src/portals");
+const require = createRequire(import.meta.url);
+const dataPackagePath = require.resolve("@paperwork-labs/data/package.json");
+const PORTALS_DIR = join(dirname(dataPackagePath), "src/portals");
 
 interface ValidationResult {
   state: string;

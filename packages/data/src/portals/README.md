@@ -9,7 +9,7 @@
 1. **Verify against official source** - Only use .gov or official state SOS websites
 2. **Document the source URL** in the config's `notes` field
 3. **Update `lastVerified`** timestamp
-4. **Run validation tests**: `pnpm --filter @paperwork-labs/filing-engine test:validate`
+4. **Run validation tests**: `pnpm --filter @paperwork-labs/filing-engine validate`
 5. **Log changes** in `docs/KNOWLEDGE.md` with date and source
 
 ### Official Sources (Bookmark These)
@@ -61,7 +61,7 @@ Selectors are placeholders until verified against live portals. Before productio
 
 ```bash
 # Run all critical validations (fees + URLs)
-pnpm --filter @paperwork-labs/filing-engine test:validate
+pnpm --filter @paperwork-labs/filing-engine validate
 
 # Run just fee accuracy tests
 pnpm --filter @paperwork-labs/filing-engine test:fees
@@ -83,7 +83,7 @@ When updating a config, add to `docs/KNOWLEDGE.md`:
 **Source**: {OFFICIAL_URL}
 **Change**: {WHAT_CHANGED}
 **Verified by**: {YOUR_NAME}
-**Test command**: `pnpm --filter @paperwork-labs/filing-engine test:validate`
+**Test command**: `pnpm --filter @paperwork-labs/filing-engine validate`
 ```
 
 ## Red Flags (Reject PR If)

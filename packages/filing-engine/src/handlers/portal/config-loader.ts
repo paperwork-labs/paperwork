@@ -2,17 +2,21 @@
  * Portal Config Loader
  *
  * Loads state portal configurations from the @paperwork-labs/data package.
- * Uses dynamic import with JSON assertion for ESM compatibility.
+ * Uses createRequire for proper package resolution that works after tsc compilation.
  */
 
+import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import type { PortalConfig } from "../../types.js";
 import { PortalConfigSchema } from "../../types.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const PORTALS_DIR = join(__dirname, "../../../../data/src/portals");
+const require = createRequire(import.meta.url);
+
+function getPortalsDir(): string {
+  const dataPackagePath = require.resolve("@paperwork-labs/data/package.json");
+  return join(dirname(dataPackagePath), "src/portals");
+}
 
 const configCache = new Map<string, PortalConfig>();
 
@@ -23,7 +27,8 @@ export function loadPortalConfig(stateCode: string): PortalConfig {
     return configCache.get(upperState)!;
   }
 
-  const configPath = join(PORTALS_DIR, `${upperState.toLowerCase()}.json`);
+  const portalsDir = getPortalsDir();
+  const configPath = join(portalsDir, `${upperState.toLowerCase()}.json`);
 
   try {
     const raw = readFileSync(configPath, "utf-8");

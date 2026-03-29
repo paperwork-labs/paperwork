@@ -17,21 +17,8 @@ import {
   type RegisteredAgent,
   type WizardStep,
 } from "@/lib/stores/formation";
+import { STATE_FILING_FEES } from "@paperwork-labs/data/portals/fees";
 import { ArrowLeft, CheckCircle2, Loader2, Pencil } from "lucide-react";
-
-/** State filing fees (USD) for supported formation states */
-export const STATE_FEES: Record<string, number> = {
-  CA: 70,
-  TX: 300,
-  FL: 125,
-  DE: 90,
-  WY: 100,
-  NY: 200,
-  NV: 425,
-  IL: 150,
-  GA: 100,
-  WA: 180,
-};
 
 function formatAddress(addr: Address | undefined): string {
   if (!addr?.street1?.trim()) {
@@ -145,8 +132,8 @@ export function ReviewStep() {
 
   const stateCode = data.stateCode?.toUpperCase() ?? "";
   const filingFee =
-    stateCode && STATE_FEES[stateCode] != null
-      ? STATE_FEES[stateCode]
+    stateCode && STATE_FILING_FEES[stateCode] != null
+      ? STATE_FILING_FEES[stateCode]
       : null;
 
   const businessDisplay = [data.businessName, data.nameSuffix]

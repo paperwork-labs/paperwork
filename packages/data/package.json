@@ -5,10 +5,12 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
+    "./package.json": "./package.json",
     "./schemas/*": "./src/schemas/*.ts",
     "./engine/*": "./src/engine/*.ts",
     "./types/*": "./src/types/*.ts",
-    "./portals/*": "./src/portals/*.json"
+    "./portals/*": "./src/portals/*.json",
+    "./portals/fees": "./src/portals/fees.ts"
   },
   "dependencies": {
     "zod": "^3.25.0"

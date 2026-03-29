@@ -9,19 +9,29 @@ import {
   CardTitle,
 } from "@paperwork-labs/ui";
 import { cn } from "@paperwork-labs/ui/lib/utils";
+import {
+  STATE_FILING_FEES,
+  STATE_NAMES,
+} from "@paperwork-labs/data/portals/fees";
 
-const POPULAR_STATES = [
-  { code: "CA", name: "California", feeCents: 7_000 },
-  { code: "TX", name: "Texas", feeCents: 30_000 },
-  { code: "FL", name: "Florida", feeCents: 12_500 },
-  { code: "DE", name: "Delaware", feeCents: 9_000 },
-  { code: "WY", name: "Wyoming", feeCents: 10_000 },
-  { code: "NY", name: "New York", feeCents: 20_000 },
-  { code: "NV", name: "Nevada", feeCents: 42_500 },
-  { code: "IL", name: "Illinois", feeCents: 15_000 },
-  { code: "GA", name: "Georgia", feeCents: 10_000 },
-  { code: "WA", name: "Washington", feeCents: 18_000 },
+const POPULAR_STATE_ORDER = [
+  "CA",
+  "TX",
+  "FL",
+  "DE",
+  "WY",
+  "NY",
+  "NV",
+  "IL",
+  "GA",
+  "WA",
 ] as const;
+
+const POPULAR_STATES = POPULAR_STATE_ORDER.map((code) => ({
+  code,
+  name: STATE_NAMES[code],
+  feeCents: STATE_FILING_FEES[code] * 100,
+}));
 
 function formatFilingFee(cents: number): string {
   return new Intl.NumberFormat("en-US", {

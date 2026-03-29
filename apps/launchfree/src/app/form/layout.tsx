@@ -20,7 +20,7 @@ export default function FormationWizardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { currentStep, canProceed } = useFormationStore();
+  const { currentStep } = useFormationStore();
   const currentIndex = WIZARD_STEPS.indexOf(currentStep);
   const progress = ((currentIndex + 1) / WIZARD_STEPS.length) * 100;
 

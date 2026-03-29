@@ -34,9 +34,9 @@ export default function LaunchFreeHomePage() {
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
             <Building2 className="h-8 w-8 text-cyan-400" />
-            <h3 className="mt-4 font-semibold text-white">All 50 States</h3>
+            <h3 className="mt-4 font-semibold text-white">Top 10 States</h3>
             <p className="mt-2 text-sm text-slate-400">
-              Form your LLC in any state. We file directly with the Secretary of State.
+              California, Texas, Florida, Delaware, and 6 more. Additional states coming soon.
             </p>
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
