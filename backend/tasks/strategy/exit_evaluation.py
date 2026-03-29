@@ -80,17 +80,22 @@ def _build_position_context(
         delta = datetime.now(timezone.utc) - position.created_at.replace(tzinfo=timezone.utc)
         days_held = delta.days
     
-    # Calculate P&L %
-    pnl_pct = 0.0
-    if position.average_cost and float(position.average_cost) > 0:
-        current = float(snapshot.current_price)
-        entry = float(position.average_cost)
-        pnl_pct = ((current - entry) / entry) * 100
-    
     # Determine side from position type
     side = "LONG"
     if position.position_type in (PositionType.SHORT, PositionType.OPTION_SHORT, PositionType.FUTURE_SHORT):
         side = "SHORT"
+    
+    # Calculate P&L %
+    # For shorts: profit when price drops (entry - current) / entry
+    # For longs: profit when price rises (current - entry) / entry
+    pnl_pct = 0.0
+    if position.average_cost and float(position.average_cost) > 0:
+        current = float(snapshot.current_price)
+        entry = float(position.average_cost)
+        if side == "SHORT":
+            pnl_pct = ((entry - current) / entry) * 100
+        else:
+            pnl_pct = ((current - entry) / entry) * 100
     
     # Get required snapshot fields with defaults
     atr_14 = float(snapshot.atr_14 or 0)
@@ -156,10 +161,31 @@ def _create_exit_signal(
         )
         return None
     
-    # Get or create a strategy run for exit signals
+    # Get strategy and its latest run for exit signals
     strategy = db.query(Strategy).get(strategy_id)
     if not strategy:
         return None
+    
+    # Get the latest strategy run for this strategy
+    latest_run = (
+        db.query(StrategyRun)
+        .filter(StrategyRun.strategy_id == strategy_id)
+        .order_by(StrategyRun.started_at.desc())
+        .first()
+    )
+    
+    # If no strategy run exists, create a placeholder for exit evaluations
+    if not latest_run:
+        latest_run = StrategyRun(
+            strategy_id=strategy_id,
+            status=RunStatus.COMPLETED,
+            started_at=datetime.now(timezone.utc),
+            ended_at=datetime.now(timezone.utc),
+            run_type="exit_evaluation",
+        )
+        db.add(latest_run)
+        db.flush()  # Get ID
+        logger.info("Created placeholder StrategyRun %s for exit signals", latest_run.id)
     
     # Check if we already have an active exit signal for this position
     existing = (
@@ -178,7 +204,7 @@ def _create_exit_signal(
     
     signal = Signal(
         strategy_id=strategy_id,
-        strategy_run_id=0,  # Will be updated when we have proper run tracking
+        strategy_run_id=latest_run.id,
         symbol=position.symbol,
         signal_type=_action_to_signal_type(cascade_result.final_action),
         signal_strength=cascade_result.signals[0].urgency / 10.0 if cascade_result.signals else 0.5,

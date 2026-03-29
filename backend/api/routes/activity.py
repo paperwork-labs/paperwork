@@ -1,11 +1,17 @@
+"""Activity feed endpoints.
+
+All endpoints require authentication via JWT.
+Activity is scoped to accounts owned by the authenticated user.
+"""
+
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from backend.api.dependencies import get_optional_user
+from backend.api.dependencies import get_current_user, require_role
 from backend.database import SessionLocal
 from backend.models.broker_account import BrokerAccount
-from backend.models.user import User
+from backend.models.user import User, UserRole
 from backend.services.portfolio.activity_aggregator import activity_aggregator
 
 router = APIRouter()
@@ -19,17 +25,28 @@ def get_db():
         db.close()
 
 
-def _resolve_account_id(db, account_id_raw: Optional[str]) -> Optional[int]:
-    """Resolve account_id which may be an int PK or account_number string."""
+def _resolve_account_id(db, account_id_raw: Optional[str], user_id: int) -> Optional[int]:
+    """Resolve account_id (int PK or account_number string) scoped to user.
+
+    Returns None if account_id_raw is None (meaning "all user accounts").
+    Raises HTTPException 404 if account exists but user doesn't own it.
+    """
     if account_id_raw is None:
         return None
     try:
-        return int(account_id_raw)
-    except (ValueError, TypeError):
-        row = db.query(BrokerAccount.id).filter(
-            BrokerAccount.account_number == account_id_raw
+        account_id = int(account_id_raw)
+        account = db.query(BrokerAccount).filter(
+            BrokerAccount.id == account_id,
+            BrokerAccount.user_id == user_id,
         ).first()
-        return row[0] if row else None
+    except (ValueError, TypeError):
+        account = db.query(BrokerAccount).filter(
+            BrokerAccount.account_number == account_id_raw,
+            BrokerAccount.user_id == user_id,
+        ).first()
+    if account_id_raw and not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    return account.id if account else None
 
 
 @router.get("/activity")
@@ -42,14 +59,15 @@ async def get_activity(
     side: Optional[str] = Query(None, description="BUY or SELL"),
     limit: int = Query(200, ge=1, le=1000),
     offset: int = Query(0, ge=0),
-    user: User | None = Depends(get_optional_user),
-    db = Depends(get_db),
+    user: User = Depends(get_current_user),
+    db=Depends(get_db),
 ) -> Dict[str, Any]:
     try:
-        resolved_id = _resolve_account_id(db, account_id)
+        resolved_id = _resolve_account_id(db, account_id, user.id)
         result = activity_aggregator.get_activity(
             db=db,
             account_id=resolved_id,
+            user_id=user.id,
             start=start,
             end=end,
             symbol=symbol,
@@ -60,6 +78,8 @@ async def get_activity(
             use_mv=True,
         )
         return {"status": "success", "data": {"activity": result["activity"], "total": result["total"]}}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -70,29 +90,33 @@ async def get_activity_daily_summary(
     start: Optional[date] = Query(None),
     end: Optional[date] = Query(None),
     symbol: Optional[str] = Query(None),
-    user: User | None = Depends(get_optional_user),
-    db = Depends(get_db),
+    user: User = Depends(get_current_user),
+    db=Depends(get_db),
 ) -> Dict[str, Any]:
     try:
-        resolved_id = _resolve_account_id(db, account_id)
+        resolved_id = _resolve_account_id(db, account_id, user.id)
         rows = activity_aggregator.get_daily_summary(
             db=db,
             account_id=resolved_id,
+            user_id=user.id,
             start=start,
             end=end,
             symbol=symbol,
             use_mv=True,
         )
         return {"status": "success", "data": {"daily": rows}}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/activity/refresh")
 async def refresh_activity_materialized_views(
-    user: User | None = Depends(get_optional_user),
-    db = Depends(get_db),
+    user: User = Depends(require_role(UserRole.OWNER)),
+    db=Depends(get_db),
 ) -> Dict[str, Any]:
+    """Refresh activity materialized views. Requires OWNER role (expensive operation)."""
     try:
         res = activity_aggregator.refresh_materialized_views(db)
         return {"status": "success", "data": res}

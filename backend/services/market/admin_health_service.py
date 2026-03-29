@@ -81,6 +81,7 @@ class AdminHealthService:
         regime = self._build_regime_dimension(db)
         fundamentals = self._build_fundamentals_dimension(db)
         portfolio_sync = self._build_portfolio_sync_dimension(db)
+        ibkr_gateway = self._build_ibkr_gateway_dimension()
         task_runs = self._build_task_runs()
 
         dims = {
@@ -91,6 +92,7 @@ class AdminHealthService:
             "regime": regime,
             "fundamentals": fundamentals,
             "portfolio_sync": portfolio_sync,
+            "ibkr_gateway": ibkr_gateway,
         }
 
         failures = [name for name, dim in dims.items() if not _composite_dimension_ok(dim.get("status"))]
@@ -382,6 +384,48 @@ class AdminHealthService:
         except Exception as exc:
             logger.exception("portfolio_sync dimension failed: %s", exc)
             return {"status": "error", "error": str(exc)}
+
+    def _build_ibkr_gateway_dimension(self) -> Dict[str, Any]:
+        """Check IBKR Gateway connection status.
+        
+        Uses the connection_health property from the IBKR client which is
+        updated by the ibkr_watchdog task.
+        """
+        try:
+            from backend.services.clients.ibkr_client import ibkr_client
+            
+            health = getattr(ibkr_client, "connection_health", {})
+            status = health.get("status", "unknown")
+            last_ping = health.get("last_ping")
+            
+            # Check if last ping was recent (within 10 minutes)
+            is_stale = True
+            if last_ping:
+                try:
+                    if isinstance(last_ping, str):
+                        last_ping_dt = datetime.fromisoformat(last_ping.replace("Z", "+00:00"))
+                    else:
+                        last_ping_dt = last_ping
+                    is_stale = (datetime.utcnow() - last_ping_dt.replace(tzinfo=None)) > timedelta(minutes=10)
+                except Exception:
+                    pass
+            
+            if status == "connected" and not is_stale:
+                dim_status = "green"
+            elif status in ("connected", "reconnected"):
+                dim_status = "yellow"  # Connected but stale ping
+            else:
+                dim_status = "red"
+            
+            return {
+                "status": dim_status,
+                "connection_status": status,
+                "last_ping": str(last_ping) if last_ping else None,
+                "is_stale": is_stale,
+            }
+        except Exception as exc:
+            logger.warning("ibkr_gateway dimension failed: %s", exc)
+            return {"status": "yellow", "error": str(exc), "note": "IBKR client not available"}
 
     def _build_task_runs(self) -> Dict[str, Any]:
         out: Dict[str, Any] = {}

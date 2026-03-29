@@ -41,6 +41,7 @@ class ActivityAggregatorService:
         self,
         db: Session,
         account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
         start: Optional[date] = None,
         end: Optional[date] = None,
         symbol: Optional[str] = None,
@@ -50,10 +51,23 @@ class ActivityAggregatorService:
         offset: int = 0,
         use_mv: bool = True,
     ) -> Dict[str, Any]:
-        """Return unified activity rows and total count."""
+        """Return unified activity rows and total count.
+
+        Args:
+            user_id: Required for security - scopes query to user's accounts.
+        """
         params: Dict[str, Any] = {}
         where_clauses: List[str] = []
         order = "ORDER BY ts DESC"
+
+        # Get user's account IDs for scoping
+        user_account_ids: Optional[Tuple[int, ...]] = None
+        if user_id is not None:
+            from backend.models.broker_account import BrokerAccount
+            rows = db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user_id).all()
+            user_account_ids = tuple(r[0] for r in rows) if rows else ()
+            if not user_account_ids:
+                return {"activity": [], "total": 0}
 
         if use_mv and self._mv_exists(db, self.activity_mv):
             base = f"SELECT * FROM {self.activity_mv}"
@@ -147,6 +161,10 @@ class ActivityAggregatorService:
         if account_id is not None:
             where_clauses.append("account_id = :account_id")
             params["account_id"] = account_id
+        elif user_account_ids is not None:
+            # Use ANY() with array parameter for safe parameterized query
+            where_clauses.append("account_id = ANY(:user_account_ids)")
+            params["user_account_ids"] = list(user_account_ids)
         if start is not None:
             where_clauses.append("day >= :start")
             params["start"] = start
@@ -185,14 +203,28 @@ class ActivityAggregatorService:
         self,
         db: Session,
         account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
         start: Optional[date] = None,
         end: Optional[date] = None,
         symbol: Optional[str] = None,
         use_mv: bool = True,
     ) -> List[Dict[str, Any]]:
-        """Return per-day aggregated counts and money in/out."""
+        """Return per-day aggregated counts and money in/out.
+
+        Args:
+            user_id: Required for security - scopes query to user's accounts.
+        """
         params: Dict[str, Any] = {}
         where_clauses: List[str] = []
+
+        # Get user's account IDs for scoping
+        user_account_ids: Optional[Tuple[int, ...]] = None
+        if user_id is not None:
+            from backend.models.broker_account import BrokerAccount
+            rows = db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user_id).all()
+            user_account_ids = tuple(r[0] for r in rows) if rows else ()
+            if not user_account_ids:
+                return []
 
         if use_mv and self._mv_exists(db, self.daily_mv):
             base = f"SELECT * FROM {self.daily_mv}"
@@ -298,6 +330,10 @@ class ActivityAggregatorService:
         if account_id is not None:
             where_clauses.append("account_id = :account_id")
             params["account_id"] = account_id
+        elif user_account_ids is not None:
+            # Use ANY() with array parameter for safe parameterized query
+            where_clauses.append("account_id = ANY(:user_account_ids)")
+            params["user_account_ids"] = list(user_account_ids)
         if start is not None:
             where_clauses.append("day >= :start")
             params["start"] = start

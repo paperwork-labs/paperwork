@@ -420,7 +420,7 @@ def compute_full_indicator_series(
     out["td_buy_complete"] = td_buy_c
     out["td_sell_complete"] = td_sell_c
 
-    # ── 8. v4 derived fields ──
+    # ── 8. Stage Analysis spec derived fields ──
 
     out["ext_pct"] = ((close - out["sma_150"]) / out["sma_150"] * 100).replace(
         [np.inf, -np.inf], np.nan
@@ -441,19 +441,19 @@ def compute_full_indicator_series(
         [np.inf, -np.inf], np.nan
     )
 
-    # ── 9. Stage / RS (v4 — SMA150 anchor, 10 sub-stages) ──
+    # ── 9. Stage / RS (Stage Analysis spec — SMA150 anchor, 10 sub-stages) ──
 
     if spy_df is not None and not spy_df.empty:
         ohlcv_newest = ohlcv.iloc[::-1]
         spy_newest = spy_df.iloc[::-1]
         stage_df = compute_weinstein_stage_series_from_daily(ohlcv_newest, spy_newest)
-        v4_cols = [
+        stage_analysis_cols = [
             "stage_label", "stage_slope_pct", "stage_dist_pct",
             "ext_pct", "sma150_slope", "sma50_slope",
             "ema10_dist_pct", "ema10_dist_n", "vol_ratio",
             "rs_mansfield_pct",
         ]
-        for col in v4_cols:
+        for col in stage_analysis_cols:
             if col in stage_df.columns:
                 out[col] = stage_df[col]
 
@@ -668,14 +668,14 @@ def classify_stage_for_timeframe(
     ext_pct: Optional[float] = None,
     vol_ratio: float = 0.0,
 ) -> str:
-    """Classify stage for any timeframe using core v4 rules (SMA150 anchor).
+    """Classify stage for any timeframe using core Stage Analysis spec rules (SMA150 anchor).
 
     Requires *sma150_slope* and *sma50_slope* for classification. *ext_pct* defaults
     to ``(price - sma150) / sma150 * 100`` when omitted. If slopes are missing,
     returns *prev_stage* when set, else ``"UNKNOWN"``.
 
     ATRE (2A/2B→2C) and Mansfield RS (2B→2B(RS-)) post-steps are applied in
-    :func:`classify_stage_v4_series` and :func:`compute_weinstein_stage_from_daily`,
+    :func:`classify_stage_series` and :func:`compute_weinstein_stage_from_daily`,
     not in this function.
 
     Priority order (first match wins): 4C→4B→4A→1A→1B→2A→2B→2C→3A→3B.
@@ -728,11 +728,14 @@ def classify_stage_for_timeframe(
     # 3A: Early distribution — above SMA150 but slope weakening
     if above and not slope_up:
         return "3A"
-    # 3B: Late distribution — everything else
-    return "3B"
+    # 3B: Late distribution — catch-all for remaining above SMA150 bars
+    if above:
+        return "3B"
+    # 4A fallback: remaining below SMA150 bars get base/accumulation classification
+    return "4A"
 
 
-def classify_stage_v4_scalar(
+def classify_stage_scalar(
     close: float,
     sma150: float,
     sma50: float,
@@ -744,7 +747,7 @@ def classify_stage_v4_scalar(
     atre_150: float,
     vol_ratio: float,
 ) -> str:
-    """Classify a single bar into one of 10 v4 sub-stages.
+    """Classify a single bar into one of 10 Stage Analysis spec sub-stages.
 
     Delegates to :func:`classify_stage_for_timeframe`. *atre_150* is accepted for
     API compatibility; ATRE override is applied in callers after this returns.
@@ -763,7 +766,7 @@ def classify_stage_v4_scalar(
     )
 
 
-def classify_stage_v4_series(
+def classify_stage_series(
     close: pd.Series,
     sma150: pd.Series,
     sma50: pd.Series,
@@ -776,7 +779,7 @@ def classify_stage_v4_series(
     vol_ratio: pd.Series,
     rs_mansfield: pd.Series,
 ) -> pd.Series:
-    """Vectorized v4 stage classification for full time series.
+    """Vectorized Stage Analysis spec stage classification for full time series.
 
     Priority order (first match wins): 4C→4B→4A→1A→1B→2A→2B→2C→3A→3B.
     Post-classification: ATRE override (2A/2B + ATRE_150 > 6 → 2C),
@@ -803,7 +806,7 @@ def classify_stage_v4_series(
         stage[hit] = label
         assigned = assigned | hit
 
-    # Priority order: 4C→4B→4A→1A→1B→2A→2B→2C→3A→3B
+    # Priority order: 4C→4B→4A→1A→1B→2A→2B→2C→3A→3B→remaining below
     assign(below & slope_strongly_down & (ext_pct < -15), "4C")
     assign(below & slope_strongly_down, "4B")
     assign(below & slope_down_or_flat & (sma50_slope < 0), "4A")
@@ -813,7 +816,10 @@ def classify_stage_v4_series(
     assign(above & slope_up & (ext_pct <= 15), "2B")
     assign(above & slope_up & (ext_pct > 15), "2C")
     assign(above & ~slope_up, "3A")
-    assign(has_data, "3B")
+    # 3B: Late distribution — above SMA150 but flat/negative slope (catch-all for above)
+    assign(above, "3B")
+    # 4A fallback: remaining below SMA150 bars get base/accumulation classification
+    assign(below, "4A")
 
     # Post-classification: Breakout override — 1B with volume + stacked MAs → promote to 2A
     breakout = (
@@ -837,7 +843,7 @@ def compute_weinstein_stage_from_daily(
     daily_sym_newest_first: pd.DataFrame,
     daily_bm_newest_first: pd.DataFrame,
 ) -> Dict[str, Any]:
-    """Compute Stage Analysis v4 from daily OHLCV (both newest->first).
+    """Compute Stage Analysis (spec) from daily OHLCV (both newest->first).
 
     Uses SMA150 as primary anchor per Stage_Analysis_v4.docx.
     Returns latest bar's stage + supporting metrics.
@@ -877,7 +883,7 @@ def compute_weinstein_stage_from_daily(
     ema10 = close.ewm(span=10, adjust=False).mean()
     vol_avg = volume.rolling(20).mean()
 
-    # v4 metrics
+    # Stage Analysis spec metrics
     ext_pct = ((close - sma150) / sma150 * 100).replace([np.inf, -np.inf], np.nan)
     sma150_slope_s = ((sma150 - sma150.shift(20)) / sma150.shift(20) * 100).replace([np.inf, -np.inf], np.nan)
     sma50_slope_s = ((sma50 - sma50.shift(10)) / sma50.shift(10) * 100).replace([np.inf, -np.inf], np.nan)
@@ -915,7 +921,7 @@ def compute_weinstein_stage_from_daily(
     if c is None or s150 is None or sl150 is None or ep is None:
         return dict(unknown)
 
-    stage_label = classify_stage_v4_scalar(
+    stage_label = classify_stage_scalar(
         c, s150, s50 or 0, s21 or 0, e10 or 0,
         sl150, sl50 or 0, ep, at150 or 0, vr or 0,
     )
@@ -948,7 +954,7 @@ def compute_weinstein_stage_series_from_daily(
     daily_sym_newest_first: pd.DataFrame,
     daily_bm_newest_first: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Compute daily v4 stage/RS series using SMA150 as primary anchor.
+    """Compute daily stage/RS series (Stage Analysis spec) using SMA150 as primary anchor.
 
     Output columns (daily resolution — no weekly forward-fill):
     - stage_label: 1A|1B|2A|2B|2B(RS-)|2C|3A|3B|4A|4B|4C|UNKNOWN
@@ -995,7 +1001,7 @@ def compute_weinstein_stage_series_from_daily(
     rs_mansfield = ((rs / rs_ma - 1.0) * 100.0).replace([np.inf, -np.inf], np.nan)
 
     # Vectorized stage classification
-    stage_label = classify_stage_v4_series(
+    stage_label = classify_stage_series(
         close, sma150, sma50, sma21, ema10,
         sma150_slope, sma50_slope, ext_pct, atre_150,
         vol_ratio, rs_mansfield,

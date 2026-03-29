@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
 from backend.api.routes.portfolio.orders import router
+from backend.models.user import UserRole
 from backend.services.execution.risk_gate import RiskViolation
 
 ORDER_MGR_PATH = "backend.api.routes.portfolio.orders._order_manager"
@@ -21,7 +22,7 @@ def mock_user():
     user = MagicMock()
     user.id = 1
     user.email = "test@axiomfolio.com"
-    user.role = "admin"
+    user.role = UserRole.OWNER
     return user
 
 

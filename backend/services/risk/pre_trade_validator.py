@@ -107,7 +107,7 @@ class PreTradeValidator:
             checks.append(self._check_wash_sale_risk(order))
 
         all_passed = all(c.passed for c in checks)
-        size_mult = circuit_breaker.get_size_multiplier() if all_passed else 0.0
+        size_mult = circuit_breaker.get_size_multiplier(is_exit=is_exit) if all_passed else 0.0
 
         result = ValidationResult(
             allowed=all_passed,
@@ -127,13 +127,56 @@ class PreTradeValidator:
         return result
 
     def _check_circuit_breaker(self, is_exit: bool) -> ValidationCheck:
-        """Check if circuit breaker allows trading."""
+        """Check if circuit breaker allows trading.
+        
+        Also syncs starting equity from AccountBalance if trading day reset.
+        """
+        # Sync starting equity if needed (lazy sync on first trade of day)
+        self._ensure_starting_equity_synced()
+        
         allowed, reason, tier = circuit_breaker.can_trade(is_exit=is_exit)
         return ValidationCheck(
             name="circuit_breaker",
             passed=allowed,
             reason=None if allowed else reason,
         )
+    
+    def _ensure_starting_equity_synced(self) -> None:
+        """Sync starting equity to circuit breaker from latest AccountBalance.
+        
+        Uses Redis key scoped by user_id to track if already synced today.
+        This ensures circuit breaker uses real portfolio value for daily loss % calculation.
+        """
+        if not self.user_id:
+            return
+        
+        try:
+            from backend.services.cache import redis_client
+            from backend.models.account_balance import AccountBalance
+            
+            # Scope key by user to prevent cross-user blocking
+            sync_key = f"circuit:equity_synced:{self.user_id}"
+            if redis_client.exists(sync_key):
+                return  # Already synced today for this user
+            
+            # Get total equity across user's accounts
+            balance = (
+                self.db.query(AccountBalance)
+                .filter(AccountBalance.user_id == self.user_id)
+                .order_by(AccountBalance.as_of_date.desc())
+                .first()
+            )
+            if balance and balance.total_value:
+                equity = float(balance.total_value)
+                circuit_breaker.set_starting_equity(equity)
+                # Set flag with TTL until next trading day reset (max 24h)
+                redis_client.setex(sync_key, 86400, "1")
+                logger.info(
+                    "Circuit breaker starting equity synced: $%.2f (user %s)",
+                    equity, self.user_id
+                )
+        except Exception as e:
+            logger.warning("Failed to sync starting equity: %s", e)
 
     def _check_position_limit(
         self, order: Order, portfolio_equity: float

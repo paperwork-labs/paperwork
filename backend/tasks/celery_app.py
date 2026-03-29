@@ -68,5 +68,13 @@ celery_app.conf.update(
             "task": "backend.tasks.auto_ops_tasks.auto_remediate_health",
             "schedule": 900.0,
         },
+        "monitor-open-orders": {
+            "task": "backend.tasks.portfolio.orders.monitor_open_orders_task",
+            "schedule": 60.0,  # every minute
+        },
+        "ibkr-watchdog": {
+            "task": "backend.tasks.ibkr_watchdog.ping_ibkr_connection",
+            "schedule": 300.0,  # every 5 min
+        },
     },
 )

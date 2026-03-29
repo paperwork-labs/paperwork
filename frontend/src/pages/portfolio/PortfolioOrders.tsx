@@ -1,10 +1,12 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader2 } from 'lucide-react';
+import hotToast from 'react-hot-toast';
 import { ChartContext, ChartSlidePanel } from '../../components/market/SymbolChartUI';
 import SortableTable, { type Column } from '../../components/SortableTable';
 import PageHeader from '../../components/ui/PageHeader';
 import { formatMoney, formatDateTimeFriendly } from '../../utils/format';
-import api from '../../services/api';
+import api, { handleApiError } from '../../services/api';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +36,7 @@ const PortfolioOrders: React.FC = () => {
   const { timezone } = useUserPreferences();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [chartSymbol, setChartSymbol] = useState<string | null>(null);
+  const [cancellingOrderId, setCancellingOrderId] = useState<number | null>(null);
   const openChart = useCallback((sym: string) => setChartSymbol(sym), []);
 
   const ordersQuery = useQuery<OrderRow[]>({
@@ -64,14 +67,21 @@ const PortfolioOrders: React.FC = () => {
     }
   }, [allOrders, statusFilter]);
 
-  const handleCancel = async (orderId: number) => {
-    try {
-      await api.delete(`/portfolio/orders/${orderId}`);
-      queryClient.invalidateQueries({ queryKey: ['allOrders'] });
-    } catch {
-      // silently handled -- status will update on next poll
-    }
-  };
+  const handleCancel = useCallback(
+    async (orderId: number) => {
+      setCancellingOrderId(orderId);
+      try {
+        await api.delete(`/portfolio/orders/${orderId}`);
+        queryClient.invalidateQueries({ queryKey: ['allOrders'] });
+      } catch (e: unknown) {
+        console.error('Cancel order failed', { orderId, error: e });
+        hotToast.error(`Could not cancel order: ${handleApiError(e)}`);
+      } finally {
+        setCancellingOrderId(null);
+      }
+    },
+    [queryClient],
+  );
 
   const columns: Column<OrderRow>[] = useMemo(
     () => [
@@ -241,17 +251,28 @@ const PortfolioOrders: React.FC = () => {
         sortable: false,
         render: (_v, o) => {
           if (ACTIVE_STATUSES.has(o.status) && o.status !== 'preview') {
+            const isCancelling = cancellingOrderId === o.id;
             return (
               <Button
+                type="button"
                 size="xs"
                 variant="outline"
                 className="h-7 border-destructive/40 text-destructive hover:bg-destructive/10"
+                disabled={isCancelling}
+                aria-busy={isCancelling}
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleCancel(o.id);
+                  void handleCancel(o.id);
                 }}
               >
-                Cancel
+                {isCancelling ? (
+                  <>
+                    <Loader2 className="size-3 shrink-0 animate-spin" aria-hidden />
+                    Cancel
+                  </>
+                ) : (
+                  'Cancel'
+                )}
               </Button>
             );
           }
@@ -270,7 +291,7 @@ const PortfolioOrders: React.FC = () => {
         width: '80px',
       },
     ],
-    [openChart, timezone],
+    [openChart, timezone, handleCancel, cancellingOrderId],
   );
 
   const activeCount = allOrders.filter((o) => ACTIVE_STATUSES.has(o.status)).length;

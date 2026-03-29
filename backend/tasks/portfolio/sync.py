@@ -25,9 +25,30 @@ def _extract_count(result: dict, key: str) -> int | None:
     return None
 
 
+SYNC_LOCK_TTL_SECONDS = 900  # 15 minutes - matches soft_time_limit
+
+
 @shared_task(name="backend.tasks.account_sync.sync_account_task", soft_time_limit=900, time_limit=960)
 def sync_account_task(account_id: int, sync_type: str = "comprehensive") -> dict:
-    """Run broker account sync in a Celery worker (separate process)."""
+    """Run broker account sync in a Celery worker (separate process).
+    
+    Uses Redis lock to prevent concurrent syncs for the same account.
+    """
+    # Acquire per-account lock to prevent concurrent syncs
+    lock_key = f"sync:account:{account_id}"
+    try:
+        from backend.services.cache import redis_client
+        lock_acquired = redis_client.set(
+            lock_key, "1", nx=True, ex=SYNC_LOCK_TTL_SECONDS
+        )
+        if not lock_acquired:
+            logger.warning(
+                "Sync for account %s blocked by concurrent sync (lock held)", account_id
+            )
+            return {"status": "skipped", "error": "Sync already in progress"}
+    except Exception as e:
+        logger.warning("Redis lock failed for account %s sync, proceeding: %s", account_id, e)
+    
     session = SessionLocal()
     sync_record = None
     started_at = datetime.utcnow()
@@ -133,6 +154,12 @@ def sync_account_task(account_id: int, sync_type: str = "comprehensive") -> dict
         return {"status": "error", "error": str(e)}
     finally:
         session.close()
+        # Release sync lock
+        try:
+            from backend.services.cache import redis_client
+            redis_client.delete(lock_key)
+        except Exception:
+            pass  # Lock will expire on TTL
 
 
 @shared_task(name="backend.tasks.account_sync.sync_all_ibkr_accounts")

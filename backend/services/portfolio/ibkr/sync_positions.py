@@ -423,10 +423,8 @@ async def sync_positions_from_tax_lots(
         return {"synced": synced_count}
     except Exception as exc:
         logger.error("Error syncing positions from tax lots: %s", exc)
-        try:
-            db.rollback()
-        except Exception:
-            pass
+        # Do not rollback: runs inside multi-step IBKR sync; rollback would discard
+        # uncommitted work from earlier steps. Pipeline orchestrator rolls back on failure.
         return {"error": str(exc)}
 
 
@@ -490,10 +488,8 @@ async def sync_positions_from_open_positions(
         return {"synced": synced_count}
     except Exception as exc:
         logger.error("Error syncing positions from OpenPositions: %s", exc)
-        try:
-            db.rollback()
-        except Exception:
-            pass
+        # Do not rollback: runs inside multi-step IBKR sync; rollback would discard
+        # uncommitted work from earlier steps. Pipeline orchestrator rolls back on failure.
         return {"error": str(exc)}
 
 

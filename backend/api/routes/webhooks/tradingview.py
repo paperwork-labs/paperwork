@@ -116,6 +116,28 @@ async def receive_tradingview_alert(
             detail="Invalid webhook secret",
         )
 
+    # Idempotency check - prevent duplicate orders from repeated webhook calls
+    # Key is based on user + symbol + action + quantity + price (rounded)
+    idempotency_payload = f"{user.id}:{alert.symbol}:{alert.action}:{alert.quantity}:{alert.price or 0:.2f}:{alert.strategy_name or ''}"
+    idempotency_key = f"webhook:tv:idem:{hashlib.sha256(idempotency_payload.encode()).hexdigest()[:32]}"
+    
+    try:
+        from backend.services.cache import redis_client
+        # Atomic SET NX EX - only one request wins, others see key exists
+        # 60 second TTL prevents duplicate processing
+        acquired = redis_client.set(idempotency_key, "1", nx=True, ex=60)
+        if not acquired:
+            logger.info(
+                "Duplicate TradingView alert blocked (idempotency key exists): %s %s for user %s",
+                alert.action, alert.symbol, user.id,
+            )
+            return WebhookResponse(
+                success=False,
+                message="Duplicate alert - already processed",
+            )
+    except Exception as e:
+        logger.warning("Idempotency check failed, proceeding: %s", e)
+
     # Check circuit breaker
     is_exit = alert.action.lower() in ("sell", "close")
     allowed, reason, tier = circuit_breaker.can_trade(is_exit=is_exit)
@@ -195,7 +217,9 @@ async def receive_tradingview_alert(
         )
 
     # Apply circuit breaker size multiplier
-    size_mult = circuit_breaker.get_size_multiplier()
+    # Treat SELL as exit (allows exits at tier 2 when entries blocked)
+    is_exit = side.upper() == "SELL"
+    size_mult = circuit_breaker.get_size_multiplier(is_exit=is_exit)
     adjusted_quantity = int(quantity * size_mult)
 
     if adjusted_quantity <= 0:

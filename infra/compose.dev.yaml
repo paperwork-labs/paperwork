@@ -206,6 +206,7 @@ services:
       PASSWORD: "${IBKR_PASSWORD:-}"
       GATEWAY_OR_TWS: gateway
       IBC_TradingMode: ${IBKR_TRADING_MODE:-paper}
+      # Default to read-only for safety; set IBC_READONLY_API=no in env to enable orders
       IBC_ReadOnlyApi: "${IBC_READONLY_API:-yes}"
       IBC_ExistingSessionDetectedAction: primary
       IBC_AcceptIncomingConnectionAction: accept

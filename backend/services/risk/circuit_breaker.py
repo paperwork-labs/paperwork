@@ -163,17 +163,24 @@ class CircuitBreaker:
             )
         return True, "OK"
 
-    def get_size_multiplier(self) -> float:
+    def get_size_multiplier(self, is_exit: bool = False) -> float:
         """
         Get position size multiplier based on current tier.
 
-        Returns:
-            1.0 for normal, 0.5 for tier 1, 0.0 for tier 2+
-        """
-        allowed, _, tier = self.can_trade(is_exit=False)
+        Args:
+            is_exit: True if this is an exit/close order. At Tier 2 (entries blocked),
+                     exits are still allowed so multiplier should be 1.0 for exits.
 
-        if tier >= 2:
-            return 0.0
+        Returns:
+            1.0 for normal (or exits at tier 2), 0.5 for tier 1, 0.0 for tier 2+ entries
+        """
+        allowed, _, tier = self.can_trade(is_exit=is_exit)
+
+        if tier >= 3:
+            return 0.0  # Full halt - no trades at all
+        if tier == 2:
+            # Tier 2: entries blocked, exits allowed
+            return 1.0 if is_exit else 0.0
         if tier == 1:
             return 0.5
         return 1.0

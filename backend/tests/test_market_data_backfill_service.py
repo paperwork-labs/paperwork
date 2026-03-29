@@ -60,8 +60,13 @@ def test_persist_price_bars_delta_only(db_session):
     assert count == 2
 
 
-def test_compute_snapshot_from_db_uses_existing_fundamentals(db_session):
+def test_compute_snapshot_from_db_uses_existing_fundamentals(db_session, monkeypatch):
     sym = "TESTF"
+    monkeypatch.setattr(
+        market_data_service,
+        "get_fundamentals_info",
+        lambda *a, **kw: {},
+    )
     # Seed 120 days of prices to enable indicator computation
     start = datetime.utcnow().replace(microsecond=0) - timedelta(days=130)
     dates = [start + timedelta(days=i) for i in range(120)]
@@ -309,6 +314,11 @@ def test_compute_snapshot_from_db_preserves_run_length_when_history_stage_is_unk
             "stage_dist_pct": 1.2,
             "rs_mansfield_pct": 0.3,
         },
+    )
+    monkeypatch.setattr(
+        market_data_service,
+        "get_fundamentals_info",
+        lambda *a, **kw: {},
     )
 
     snap = market_data_service.compute_snapshot_from_db(db_session, sym)

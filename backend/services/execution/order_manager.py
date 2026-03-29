@@ -17,6 +17,9 @@ from backend.services.risk.pre_trade_validator import PreTradeValidator
 
 logger = logging.getLogger(__name__)
 
+# Submit lock TTL - prevents double-submit race condition
+SUBMIT_LOCK_TTL_SECONDS = 30
+
 
 class OrderManager:
     """Unified order lifecycle manager.
@@ -168,8 +171,24 @@ class OrderManager:
     ) -> Dict[str, Any]:
         """Submit a previewed order for execution.
         
-        Flow: PreTradeValidator → CircuitBreaker size adjustment → Broker submit
+        Flow: Acquire submit lock → PreTradeValidator → CircuitBreaker size adjustment → Broker submit
+        
+        Uses Redis lock to prevent double-submit race condition when parallel
+        HTTP requests or Celery retries attempt to submit the same order.
         """
+        # Acquire submit lock to prevent race condition
+        lock_key = f"order:submit:{order_id}"
+        try:
+            from backend.services.cache import redis_client
+            lock_acquired = redis_client.set(
+                lock_key, "1", nx=True, ex=SUBMIT_LOCK_TTL_SECONDS
+            )
+            if not lock_acquired:
+                logger.warning("Order %s submit blocked by concurrent request", order_id)
+                return {"error": "Order submission already in progress"}
+        except Exception as e:
+            logger.warning("Redis lock failed for order %s, proceeding with DB check: %s", order_id, e)
+        
         order = (
             db.query(Order)
             .filter(Order.id == order_id, Order.user_id == user_id)
@@ -341,6 +360,41 @@ class OrderManager:
             
             # Compute slippage metrics on fill
             self._compute_slippage_metrics(order)
+            
+            # Record fill with circuit breaker for daily loss tracking
+            try:
+                from backend.models.position import Position, PositionType
+                
+                fill_price = float(order.filled_avg_price or 0)
+                fill_qty = float(order.filled_quantity or order.quantity or 0)
+                is_exit = order.side.lower() == "sell" and order.position_id is not None
+                
+                # Calculate P&L for exits using position's average_cost
+                pnl = 0.0
+                if is_exit and order.position_id:
+                    position = db.query(Position).filter(Position.id == order.position_id).first()
+                    if position and position.average_cost:
+                        avg_cost = float(position.average_cost)
+                        # Check if short position (profit when price drops)
+                        is_short = position.position_type in (
+                            PositionType.SHORT, PositionType.OPTION_SHORT, PositionType.FUTURE_SHORT
+                        )
+                        if is_short:
+                            pnl = (avg_cost - fill_price) * fill_qty
+                        else:
+                            pnl = (fill_price - avg_cost) * fill_qty
+                
+                circuit_breaker.record_fill(
+                    symbol=order.symbol,
+                    pnl=pnl,
+                    is_exit=is_exit,
+                )
+                logger.info(
+                    "Order %s fill recorded with circuit breaker: pnl=%.2f, is_exit=%s",
+                    order.id, pnl, is_exit
+                )
+            except Exception as e:
+                logger.warning("Failed to record fill with circuit breaker for order %s: %s", order.id, e)
 
         db.commit()
         db.refresh(order)

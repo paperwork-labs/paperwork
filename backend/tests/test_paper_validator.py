@@ -642,12 +642,12 @@ class TestValidationConfig:
         """Verifies default configuration values."""
         config = ValidationConfig()
 
-        assert config.min_duration_days == 7
-        assert config.min_trades == 5
+        assert config.min_duration_days == 14
+        assert config.min_trades == 30
         assert config.max_drawdown_pct == 15.0
         assert config.min_win_rate_pct == 40.0
-        assert config.min_profit_factor == 1.0
-        assert config.max_avg_loss_pct == 5.0
+        assert config.min_profit_factor == 1.2
+        assert config.max_avg_loss_pct == 3.0
 
     def test_custom_config_values(self):
         """Custom config values are respected."""

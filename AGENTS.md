@@ -17,6 +17,27 @@ Welcome, agent. This is a quantitative portfolio intelligence platform built for
 2. **Intelligence** — Market data pipeline: OHLCV → indicators → MarketSnapshot (latest) + MarketSnapshotHistory (daily ledger). Stage Analysis with SMA150 anchor, 10 sub-stages, Market Regime Engine.
 3. **Strategy** — Rule evaluator, backtester, signal generator, order engine with risk gates and exit cascade.
 
+## Trading North Star
+
+14 non-negotiable principles. See [TRADING_PRINCIPLES.md](docs/TRADING_PRINCIPLES.md).
+
+| # | Principle | Code Enforcement |
+|---|-----------|------------------|
+| 1 | Risk First | MAX_SINGLE_POSITION_PCT |
+| 2 | Cut Losses | exit_cascade |
+| 3 | Portfolio Heat | (TODO) |
+| 4 | Size by Volatility | compute_position_size |
+| 5 | Conviction Scaling | STAGE_CAPS × regime_mult |
+| 6 | R-Multiple | (TODO) |
+| 7 | Stage Discipline | stage caps block wrong stages |
+| 8 | Regime Gate | REGIME_LONG_ACCESS |
+| 9 | Relative Strength | RS Mansfield in scan |
+| 10 | Mechanical Rules | RuleEvaluator |
+| 11 | Let Winners Run | adaptive trailing |
+| 12 | Volume Confirms | vol_ratio check |
+| 13 | Review Trades | (TODO: journal) |
+| 14 | Expectancy | paper validation |
+
 ## Persona Rules
 
 Context-specific AI rules activate based on which files you're editing:
@@ -26,6 +47,9 @@ Context-specific AI rules activate based on which files you're editing:
 | Staff Engineer | `engineering.mdc` | Always | Architecture, code conventions, tech stack |
 | Quant Analyst | `quant-analyst.mdc` | `indicator_engine*`, `stage*`, `regime*`, `backtest*` | Stage Analysis, financial math, indicators |
 | Portfolio Manager | `portfolio-manager.mdc` | `portfolio*`, `order*`, `risk*`, `execution*` | Position sizing, risk gates, exit cascade, brokers |
+| Risk Manager | `risk-manager.mdc` | `risk*`, `circuit*` | Capital protection |
+| Swing Trader | `swing-trader.mdc` | `scan*`, `stage*` | SEPA entries |
+| Systematic Trader | `systematic-trader.mdc` | `backtest*` | System validation |
 | UX Lead | `ux-lead.mdc` | `*.tsx`, `*.css` | Chakra v3, design system, accessibility, charts |
 | Ops Engineer | `ops-engineer.mdc` | `tasks/*`, `celery*`, `compose*`, `Makefile` | Pipelines, Celery, Docker, monitoring |
 | Git Workflow | `git-workflow.mdc` | Always | Branch naming, commits, PR standards |

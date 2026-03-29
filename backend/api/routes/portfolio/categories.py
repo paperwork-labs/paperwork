@@ -1,4 +1,8 @@
-"""Portfolio categories CRUD and position assignment."""
+"""Portfolio categories CRUD and position assignment.
+
+All endpoints require authentication via JWT.
+Categories are scoped to the authenticated user.
+"""
 
 from typing import Any, Dict, List, Optional
 import logging
@@ -18,16 +22,6 @@ from backend.models.user import User
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-def _get_user(db: Session, user_id: Optional[int] = None) -> User:
-    if user_id is None:
-        user = db.query(User).first()
-    else:
-        user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
 
 
 class CategoryCreate(BaseModel):
@@ -51,11 +45,10 @@ class AssignPositionsRequest(BaseModel):
 
 @router.get("/categories/views")
 async def list_category_views(
-    user_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     """Return available category view types for the user."""
-    user = _get_user(db, user_id)
     types = (
         db.query(Category.category_type)
         .filter(Category.user_id == user.id)
@@ -79,12 +72,11 @@ async def list_category_views(
 
 @router.get("/categories", response_model=Dict[str, Any])
 async def list_categories(
-    user_id: Optional[int] = Query(None),
-    category_type: Optional[str] = Query(None),
+    category_type: Optional[str] = None,
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     """List categories with position counts and actual allocation %. Optionally filter by category_type."""
-    user = _get_user(db, user_id)
     q = db.query(Category).filter(Category.user_id == user.id)
     if category_type:
         q = q.filter(Category.category_type == category_type)
@@ -153,11 +145,10 @@ async def list_categories(
 @router.post("/categories", response_model=Dict[str, Any])
 async def create_category(
     body: CategoryCreate,
-    user_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     """Create a category."""
-    user = _get_user(db, user_id)
     cat_type = body.category_type or "custom"
     existing = db.query(Category).filter(
         Category.user_id == user.id,
@@ -187,11 +178,10 @@ class ReorderRequest(BaseModel):
 @router.put("/categories/reorder", response_model=Dict[str, Any])
 async def reorder_categories(
     body: ReorderRequest,
-    user_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     """Persist display order for categories. ordered_ids is the full list in desired order."""
-    user = _get_user(db, user_id)
     for idx, cat_id in enumerate(body.ordered_ids):
         db.query(Category).filter(
             Category.id == cat_id,
@@ -203,12 +193,11 @@ async def reorder_categories(
 
 @router.get("/categories/rebalance-suggestions", response_model=Dict[str, Any])
 async def get_rebalance_suggestions(
-    user_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     """Compute rebalancing suggestions based on target vs actual allocations."""
     try:
-        user = _get_user(db, user_id)
         acct_ids = [a.id for a in db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user.id).all()]
         if not acct_ids:
             return {"status": "success", "data": {"suggestions": [], "total_value": 0}}
@@ -390,12 +379,14 @@ async def apply_preset(
 @router.get("/categories/{category_id}", response_model=Dict[str, Any])
 async def get_category(
     category_id: int = Path(...),
-    user_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     """Get one category with positions."""
-    _get_user(db, user_id)
-    cat = db.query(Category).filter(Category.id == category_id).first()
+    cat = db.query(Category).filter(
+        Category.id == category_id,
+        Category.user_id == user.id,
+    ).first()
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
     position_ids = [
@@ -454,12 +445,14 @@ async def get_category(
 async def update_category(
     category_id: int = Path(...),
     body: Optional[CategoryUpdate] = None,
-    user_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     """Update a category."""
-    _get_user(db, user_id)
-    cat = db.query(Category).filter(Category.id == category_id).first()
+    cat = db.query(Category).filter(
+        Category.id == category_id,
+        Category.user_id == user.id,
+    ).first()
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
     if body:
@@ -479,12 +472,14 @@ async def update_category(
 @router.delete("/categories/{category_id}", response_model=Dict[str, Any])
 async def delete_category(
     category_id: int = Path(...),
-    user_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     """Delete a category and its position assignments."""
-    _get_user(db, user_id)
-    cat = db.query(Category).filter(Category.id == category_id).first()
+    cat = db.query(Category).filter(
+        Category.id == category_id,
+        Category.user_id == user.id,
+    ).first()
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
     db.query(PositionCategory).filter(PositionCategory.category_id == category_id).delete()
@@ -497,12 +492,14 @@ async def delete_category(
 async def assign_positions(
     category_id: int = Path(...),
     body: Optional[AssignPositionsRequest] = None,
-    user_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     """Assign positions to a category (adds to existing)."""
-    user = _get_user(db, user_id)
-    cat = db.query(Category).filter(Category.id == category_id).first()
+    cat = db.query(Category).filter(
+        Category.id == category_id,
+        Category.user_id == user.id,
+    ).first()
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
     position_ids = body.position_ids if body else []
@@ -529,11 +526,16 @@ async def assign_positions(
 async def unassign_position(
     category_id: int = Path(...),
     position_id: int = Path(...),
-    user_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     """Remove a position from a category."""
-    _get_user(db, user_id)
+    cat = db.query(Category).filter(
+        Category.id == category_id,
+        Category.user_id == user.id,
+    ).first()
+    if not cat:
+        raise HTTPException(status_code=404, detail="Category not found")
     link = db.query(PositionCategory).filter(
         PositionCategory.category_id == category_id,
         PositionCategory.position_id == position_id,

@@ -4,6 +4,8 @@ All order operations go through OrderManager which enforces:
 - RiskGate checks BEFORE broker preview
 - Single execution path through BrokerRouter
 - Stage Analysis position sizing when risk_budget is provided
+
+Mutation routes (preview, submit, cancel) require OWNER or ANALYST role.
 """
 
 from __future__ import annotations
@@ -13,9 +15,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from backend.api.dependencies import get_current_user
+from backend.api.dependencies import get_current_user, require_role
 from backend.database import get_db
-from backend.models.user import User
+from backend.models.user import User, UserRole
 from backend.services.execution.order_manager import OrderManager
 from backend.services.execution.broker_base import OrderRequest
 from backend.services.execution.risk_gate import RiskViolation
@@ -44,9 +46,9 @@ class OrderSubmitRequest(BaseModel):
 async def preview_order(
     req: OrderPreviewRequest,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_role(UserRole.OWNER, UserRole.ANALYST)),
 ):
-    """Preview an order with risk checks and broker what-if."""
+    """Preview an order with risk checks and broker what-if. Requires OWNER or ANALYST role."""
     try:
         order_req = OrderRequest.from_user_input(
             symbol=req.symbol,
@@ -73,9 +75,9 @@ async def preview_order(
 async def submit_order(
     req: OrderSubmitRequest,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_role(UserRole.OWNER, UserRole.ANALYST)),
 ):
-    """Submit a previewed order for execution."""
+    """Submit a previewed order for execution. Requires OWNER or ANALYST role."""
     result = await _order_manager.submit(db=db, order_id=req.order_id, user_id=user.id)
     err = result.get("error")
     if err:
@@ -135,9 +137,9 @@ def get_order(
 async def cancel_order(
     order_id: int,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_role(UserRole.OWNER, UserRole.ANALYST)),
 ):
-    """Cancel a submitted order."""
+    """Cancel a submitted order. Requires OWNER or ANALYST role."""
     result = await _order_manager.cancel(
         db=db, order_id=order_id, user_id=user.id,
     )

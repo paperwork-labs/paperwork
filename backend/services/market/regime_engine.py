@@ -1,4 +1,4 @@
-"""Market Regime Engine (v4 Section 10)
+"""Market Regime Engine (Stage Analysis spec Section 10)
 
 The Regime Engine is the outermost gate for all downstream modules.
 6 daily inputs → individual scores (1–5) → composite → R1–R5.
@@ -58,7 +58,7 @@ class RegimeResult:
     regime_multiplier: float
 
 
-# ── Scoring functions (1–5 per v4 thresholds) ──
+# ── Scoring functions (1–5 per Stage Analysis spec thresholds) ──
 
 def score_vix(vix: float) -> float:
     """VIX spot → 1 (low fear) to 5 (extreme fear)."""

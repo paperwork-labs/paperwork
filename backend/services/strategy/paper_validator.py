@@ -34,13 +34,16 @@ class ValidationStatus(str, Enum):
 
 @dataclass
 class ValidationConfig:
-    """Configuration for paper trading validation."""
-    min_duration_days: int = 7
-    min_trades: int = 5
+    """Configuration for paper trading validation.
+    
+    Raised thresholds for go-live readiness given system complexity.
+    """
+    min_duration_days: int = 14  # 2 weeks minimum validation
+    min_trades: int = 30  # Statistical significance
     max_drawdown_pct: float = 15.0
     min_win_rate_pct: float = 40.0
-    min_profit_factor: float = 1.0
-    max_avg_loss_pct: float = 5.0
+    min_profit_factor: float = 1.2  # Must demonstrate edge
+    max_avg_loss_pct: float = 3.0  # Tighter loss control
 
 
 @dataclass

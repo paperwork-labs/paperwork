@@ -61,6 +61,7 @@ def test_all_green():
     svc._build_regime_dimension = MagicMock(return_value={"status": "green"})
     svc._build_fundamentals_dimension = MagicMock(return_value={"status": "ok"})
     svc._build_portfolio_sync_dimension = MagicMock(return_value={"status": "ok"})
+    svc._build_ibkr_gateway_dimension = MagicMock(return_value={"status": "green"})
     svc._build_task_runs = MagicMock(return_value={})
 
     result = svc.get_composite_health(MagicMock())
@@ -79,6 +80,7 @@ def test_single_failure_is_yellow():
     svc._build_regime_dimension = MagicMock(return_value={"status": "green"})
     svc._build_fundamentals_dimension = MagicMock(return_value={"status": "ok"})
     svc._build_portfolio_sync_dimension = MagicMock(return_value={"status": "ok"})
+    svc._build_ibkr_gateway_dimension = MagicMock(return_value={"status": "green"})
     svc._build_task_runs = MagicMock(return_value={})
 
     result = svc.get_composite_health(MagicMock())
@@ -95,6 +97,7 @@ def test_multiple_failures_is_red():
     svc._build_regime_dimension = MagicMock(return_value={"status": "green"})
     svc._build_fundamentals_dimension = MagicMock(return_value={"status": "ok"})
     svc._build_portfolio_sync_dimension = MagicMock(return_value={"status": "ok"})
+    svc._build_ibkr_gateway_dimension = MagicMock(return_value={"status": "green"})
     svc._build_task_runs = MagicMock(return_value={})
 
     result = svc.get_composite_health(MagicMock())
@@ -113,6 +116,7 @@ def test_response_includes_task_runs_and_thresholds():
     svc._build_regime_dimension = MagicMock(return_value={"status": "green"})
     svc._build_fundamentals_dimension = MagicMock(return_value={"status": "ok"})
     svc._build_portfolio_sync_dimension = MagicMock(return_value={"status": "ok"})
+    svc._build_ibkr_gateway_dimension = MagicMock(return_value={"status": "green"})
     svc._build_task_runs = MagicMock(return_value=task_data)
 
     result = svc.get_composite_health(MagicMock())
@@ -337,6 +341,7 @@ def test_composite_counts_fundamentals_warning_as_failure():
     svc._build_regime_dimension = MagicMock(return_value={"status": "green"})
     svc._build_fundamentals_dimension = MagicMock(return_value={"status": "warning"})
     svc._build_portfolio_sync_dimension = MagicMock(return_value={"status": "ok"})
+    svc._build_ibkr_gateway_dimension = MagicMock(return_value={"status": "green"})
     svc._build_task_runs = MagicMock(return_value={})
 
     result = svc.get_composite_health(MagicMock())

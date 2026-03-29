@@ -1,6 +1,6 @@
 """Pre-trade risk gate — validates orders before they reach any broker.
 
-Includes v4 position sizing (ATR-based with Regime Multiplier x Stage Cap).
+Includes Stage Analysis spec position sizing (ATR-based with Regime Multiplier x Stage Cap).
 See Stage_Analysis_v4.docx Section 9.
 """
 
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 MAX_ORDER_VALUE = 100_000
 MAX_SINGLE_POSITION_PCT = app_settings.MAX_SINGLE_POSITION_PCT
 
-# v4 Stage Caps: maximum % of full position allowed per stage per regime
+# Stage Analysis spec Stage Caps: maximum % of full position allowed per stage per regime
 # Format: stage_label → {regime → cap_fraction}
 STAGE_CAPS = {
     "1A": {REGIME_R1: 0.0, REGIME_R2: 0.0, REGIME_R3: 0.0, REGIME_R4: 0.0, REGIME_R5: 0.0},
@@ -49,7 +49,7 @@ DEFAULT_STOP_MULTIPLIER = 2.0
 
 @dataclass
 class PositionSizeResult:
-    """v4 position sizing output."""
+    """Stage Analysis spec position sizing output."""
     full_position_dollars: float
     stage_cap: float  # 0.0–1.0 fraction
     capped_position_dollars: float
@@ -70,7 +70,7 @@ def compute_position_size(
     stage_label: str,
     current_price: float,
 ) -> PositionSizeResult:
-    """v4 Position Sizing Formula (Section 9):
+    """Stage Analysis spec Position Sizing Formula (Section 9):
 
     Full Position ($) = [Risk Budget / (ATR%14 × Stop Multiplier)] × Regime Multiplier
     Then apply Stage Cap.
@@ -161,22 +161,22 @@ class RiskGate:
                 )
 
         if db and price_estimate > 0 and risk_budget and risk_budget > 0:
-            v4_warning = self._check_v4_sizing(
+            sizing_warning = self._check_stage_regime_sizing(
                 db, req, price_estimate, risk_budget
             )
-            if v4_warning:
-                warnings.append(v4_warning)
+            if sizing_warning:
+                warnings.append(sizing_warning)
 
         return warnings
 
-    def _check_v4_sizing(
+    def _check_stage_regime_sizing(
         self,
         db: Session,
         req: OrderRequest,
         price_estimate: float,
         risk_budget: float,
     ) -> Optional[str]:
-        """Enforce v4 position sizing as a soft cap. Returns warning or None."""
+        """Enforce Stage Analysis spec position sizing as a soft cap. Returns warning or None."""
         from backend.services.market.regime_engine import get_current_regime
 
         snap = (
