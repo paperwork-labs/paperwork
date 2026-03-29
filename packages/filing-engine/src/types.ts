@@ -152,15 +152,19 @@ export const PortalConfigSchema = z.object({
   loginUrl: z.string().url().optional(),
   supportsRALogin: z.boolean().default(false),
   raLoginUrl: z.string().url().optional(),
-  filingFee: z.number(),
-  expeditedFee: z.number().optional(),
-  paymentMethods: z.array(z.enum(["card", "ach", "check"])),
-  steps: z.array(PortalStepSchema),
-  confirmationPageSelector: z.string(),
+  filingFee: z.number().min(1),
+  expeditedFee: z.number().nullable().optional(),
+  paymentMethods: z.array(z.enum(["card", "ach", "check"])).min(1),
+  steps: z.array(PortalStepSchema).min(1),
+  confirmationPageSelector: z.string().min(1),
   filingNumberSelector: z.string().optional(),
-  estimatedProcessingDays: z.number(),
+  estimatedProcessingDays: z.number().min(1).max(60),
   lastVerified: z.string().datetime(),
   notes: z.string().optional(),
+  // Source documentation (recommended, will become required)
+  feeSourceUrl: z.string().url().optional(),
+  portalSourceUrl: z.string().url().optional(),
+  verifiedBy: z.string().optional(),
 });
 
 export type PortalConfig = z.infer<typeof PortalConfigSchema>;
