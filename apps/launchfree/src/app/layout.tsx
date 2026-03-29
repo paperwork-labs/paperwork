@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { Providers } from "@/lib/providers";
 import "./globals.css";
 
 const inter = Inter({
@@ -29,7 +30,7 @@ export default function RootLayout({
         data-theme="launchfree"
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans`}
       >
-        {children}
+        <Providers>{children}</Providers>
         <Analytics />
       </body>
     </html>

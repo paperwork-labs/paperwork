@@ -1,0 +1,267 @@
+{
+  "stateCode": "WY",
+  "stateName": "Wyoming",
+  "portalUrl": "https://wyobiz.wyo.gov",
+  "loginRequired": true,
+  "supportsRALogin": false,
+  "filingFee": 100,
+  "expeditedFee": null,
+  "paymentMethods": ["card"],
+  "estimatedProcessingDays": 2,
+  "lastVerified": "2026-03-28T00:00:00Z",
+  "notes": "Physical Wyoming address required for registered office. Online filing through WyoBiz is very fast (same day to 1–2 business days); no separate expedited tier online.",
+  "confirmationPageSelector": "[data-testid='confirmation-number'], .confirmation-success, #confirmationNumber, [id*='confirmation']",
+  "filingNumberSelector": "[data-testid='filing-number'], .filing-number, #filingNumber, [id*='FilingNumber']",
+  "steps": [
+    {
+      "name": "entity-type",
+      "fields": [
+        {
+          "fieldId": "entityType",
+          "selector": "#entityType",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='entityType']", "select[aria-label*='Entity']", "[id*='EntityType']"],
+          "inputType": "select",
+          "value": "LLC"
+        }
+      ],
+      "submitButton": "#continueBtn, button[type='submit'], button:has-text('Continue')",
+      "waitForNavigation": true,
+      "screenshotAfter": true
+    },
+    {
+      "name": "business-name",
+      "fields": [
+        {
+          "fieldId": "businessName",
+          "selector": "#llcName",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='llcName']", "input[aria-label*='Business Name']", "#businessName", "input[name*='Name']"],
+          "inputType": "text"
+        },
+        {
+          "fieldId": "nameSuffix",
+          "selector": "#nameSuffix",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='nameSuffix']", "select[aria-label*='Suffix']"],
+          "inputType": "select",
+          "value": "LLC"
+        }
+      ],
+      "submitButton": "#checkNameBtn, button:has-text('Check'), button:has-text('Continue')",
+      "waitForNavigation": true,
+      "screenshotAfter": true
+    },
+    {
+      "name": "registered-agent",
+      "fields": [
+        {
+          "fieldId": "agentType",
+          "selector": "#agentType",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='agentType']", "select[aria-label*='Registered Agent']"],
+          "inputType": "select",
+          "valueMapping": {
+            "individual": "INDIVIDUAL",
+            "corporation": "COMMERCIAL"
+          }
+        },
+        {
+          "fieldId": "agentName",
+          "selector": "#agentName",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='agentName']", "input[aria-label*='Agent Name']"],
+          "inputType": "text"
+        },
+        {
+          "fieldId": "agentStreet",
+          "selector": "#agentStreet",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='agentStreet']", "input[aria-label*='Street']"],
+          "inputType": "text"
+        },
+        {
+          "fieldId": "agentCity",
+          "selector": "#agentCity",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='agentCity']"],
+          "inputType": "text"
+        },
+        {
+          "fieldId": "agentState",
+          "selector": "#agentState",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='agentState']"],
+          "inputType": "select",
+          "value": "WY"
+        },
+        {
+          "fieldId": "agentZip",
+          "selector": "#agentZip",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='agentZip']", "input[aria-label*='ZIP']"],
+          "inputType": "text"
+        }
+      ],
+      "submitButton": "#continueBtn, button[type='submit']",
+      "waitForNavigation": true,
+      "screenshotAfter": true
+    },
+    {
+      "name": "principal-address",
+      "fields": [
+        {
+          "fieldId": "principalStreet",
+          "selector": "#principalStreet",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='principalStreet']", "input[aria-label*='Principal']"],
+          "inputType": "text"
+        },
+        {
+          "fieldId": "principalCity",
+          "selector": "#principalCity",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='principalCity']"],
+          "inputType": "text"
+        },
+        {
+          "fieldId": "principalState",
+          "selector": "#principalState",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='principalState']"],
+          "inputType": "select",
+          "value": "WY"
+        },
+        {
+          "fieldId": "principalZip",
+          "selector": "#principalZip",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='principalZip']"],
+          "inputType": "text"
+        }
+      ],
+      "submitButton": "#continueBtn, button[type='submit']",
+      "waitForNavigation": true,
+      "screenshotAfter": true
+    },
+    {
+      "name": "management-structure",
+      "fields": [
+        {
+          "fieldId": "managementType",
+          "selector": "#managementType",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='managementType']", "select[aria-label*='Management']"],
+          "inputType": "select",
+          "valueMapping": {
+            "member": "MEMBER_MANAGED",
+            "manager": "MANAGER_MANAGED"
+          }
+        }
+      ],
+      "submitButton": "#continueBtn, button[type='submit']",
+      "waitForNavigation": true,
+      "screenshotAfter": true
+    },
+    {
+      "name": "organizer",
+      "fields": [
+        {
+          "fieldId": "organizerName",
+          "selector": "#organizerName",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='organizerName']", "input[aria-label*='Organizer']"],
+          "inputType": "text"
+        },
+        {
+          "fieldId": "organizerStreet",
+          "selector": "#organizerStreet",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='organizerStreet']"],
+          "inputType": "text"
+        },
+        {
+          "fieldId": "organizerCity",
+          "selector": "#organizerCity",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='organizerCity']"],
+          "inputType": "text"
+        },
+        {
+          "fieldId": "organizerState",
+          "selector": "#organizerState",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='organizerState']"],
+          "inputType": "select"
+        },
+        {
+          "fieldId": "organizerZip",
+          "selector": "#organizerZip",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='organizerZip']"],
+          "inputType": "text"
+        }
+      ],
+      "submitButton": "#continueBtn, button[type='submit']",
+      "waitForNavigation": true,
+      "screenshotAfter": true
+    },
+    {
+      "name": "review",
+      "fields": [],
+      "submitButton": "#submitBtn, button:has-text('Submit'), button:has-text('File')",
+      "waitForNavigation": true,
+      "screenshotAfter": true
+    },
+    {
+      "name": "payment",
+      "fields": [
+        {
+          "fieldId": "cardNumber",
+          "selector": "#cardNumber",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='cardNumber']", "input[aria-label*='Card Number']", "input[autocomplete='cc-number']"],
+          "inputType": "text"
+        },
+        {
+          "fieldId": "cardExpMonth",
+          "selector": "#expMonth",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='expMonth']", "select[aria-label*='Month']"],
+          "inputType": "select"
+        },
+        {
+          "fieldId": "cardExpYear",
+          "selector": "#expYear",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='expYear']", "select[aria-label*='Year']"],
+          "inputType": "select"
+        },
+        {
+          "fieldId": "cardCvv",
+          "selector": "#cvv",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='cvv']", "input[aria-label*='CVV']", "input[autocomplete='cc-csc']"],
+          "inputType": "text"
+        },
+        {
+          "fieldId": "billingName",
+          "selector": "#billingName",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='billingName']", "input[aria-label*='Name on card']"],
+          "inputType": "text"
+        },
+        {
+          "fieldId": "billingZip",
+          "selector": "#billingZip",
+          "selectorType": "css",
+          "fallbackSelectors": ["[name='billingZip']", "input[aria-label*='Billing ZIP']"],
+          "inputType": "text"
+        }
+      ],
+      "submitButton": "#payBtn, button:has-text('Pay'), button:has-text('Submit Payment')",
+      "waitForNavigation": true,
+      "screenshotAfter": true
+    }
+  ]
+}

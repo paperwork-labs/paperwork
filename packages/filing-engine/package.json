@@ -15,7 +15,13 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "lint": "eslint src/",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:fees": "vitest run --grep 'Fee Accuracy'",
+    "test:urls": "vitest run --grep 'Portal URL'",
+    "validate": "vitest run --grep 'CRITICAL'",
+    "validate-configs": "tsx scripts/validate-configs.ts"
   },
   "dependencies": {
     "@paperwork-labs/data": "workspace:*",
@@ -24,7 +30,9 @@
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "typescript": "^5.4.0"
+    "tsx": "^4.19.0",
+    "typescript": "^5.4.0",
+    "vitest": "^3.2.0"
   },
   "peerDependencies": {
     "playwright": "^1.45.0"
