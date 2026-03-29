@@ -19,6 +19,7 @@ import type {
   FormationRequest,
 } from "./types.js";
 import { FormationStatus, getFilingTier } from "./types.js";
+import { createAllPortalHandlers } from "./handlers/index.js";
 
 const MAX_RETRIES = 3;
 const BASE_RETRY_DELAY_MS = 1000;
@@ -173,6 +174,18 @@ export class StateFilingOrchestrator implements FilingOrchestrator {
   }
 }
 
-export function createOrchestrator(): StateFilingOrchestrator {
-  return new StateFilingOrchestrator();
+export function createOrchestrator(
+  options: { registerDefaultHandlers?: boolean } = {}
+): StateFilingOrchestrator {
+  const { registerDefaultHandlers = true } = options;
+  const orchestrator = new StateFilingOrchestrator();
+
+  if (registerDefaultHandlers) {
+    const portalHandlers = createAllPortalHandlers();
+    for (const handler of portalHandlers) {
+      orchestrator.registerHandler(handler);
+    }
+  }
+
+  return orchestrator;
 }
