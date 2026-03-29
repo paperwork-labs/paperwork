@@ -99,7 +99,7 @@ async def complete_with_mcp(
             continue
         disabled_configs[tool_name] = {"enabled": False}
 
-    mcp_server_url = settings.BRAIN_URL.rstrip("/") + "/mcp"
+    mcp_server_url = settings.BRAIN_URL.rstrip("/") + "/mcp/"
 
     payload: dict[str, Any] = {
         "model": model,
@@ -201,7 +201,7 @@ async def complete_openai_with_mcp(
     if not api_key:
         return _mock_response(messages)
 
-    mcp_server_url = settings.BRAIN_URL.rstrip("/") + "/mcp"
+    mcp_server_url = settings.BRAIN_URL.rstrip("/") + "/mcp/"
 
     restricted = TIER_DISABLED_TOOLS - (enabled_write_tools or set())
     tier_notice = ""
