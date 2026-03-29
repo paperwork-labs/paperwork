@@ -34,7 +34,11 @@ yarn-error.log*
 .pnpm-debug.log*
 *.tsbuildinfo
 
-# Environment variables (actual env files, not examples)
+# === Secrets & Environment ===
+# Vault-first architecture: Studio Vault → sync-secrets.sh → .env.secrets
+# .env.local holds only SECRETS_API_KEY (your one key)
+# infra/env.dev.defaults is tracked (non-secret Docker networking)
+# See docs/SECRETS.md for the full workflow
 infra/env.dev
 infra/env.test
 infra/env.prod

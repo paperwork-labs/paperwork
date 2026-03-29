@@ -1,3 +1,4 @@
+import hmac
 import logging
 
 from fastapi import APIRouter, Depends, Header, HTTPException
@@ -26,7 +27,7 @@ def _verify_api_secret(x_brain_secret: str | None = Header(None, alias="X-Brain-
         if settings.ENVIRONMENT == "development":
             return
         raise HTTPException(status_code=503, detail="Brain API secret not configured")
-    if not x_brain_secret or x_brain_secret != expected:
+    if not x_brain_secret or not hmac.compare_digest(x_brain_secret, expected):
         raise HTTPException(status_code=401, detail="Invalid or missing X-Brain-Secret")
 
 

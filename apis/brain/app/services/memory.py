@@ -211,6 +211,7 @@ async def get_fatigue_ids(redis_client, organization_id: str) -> set[int]:
         members = await redis_client.smembers(key)
         return {int(m) for m in members}
     except Exception:
+        logger.warning("get_fatigue_ids failed", exc_info=True)
         return set()
 
 

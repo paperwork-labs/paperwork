@@ -80,7 +80,7 @@ if settings.FRONTEND_URL.startswith("https://"):
         allowed_origins.append(f"{parsed.scheme}://{host[4:]}")
     else:
         allowed_origins.append(f"{parsed.scheme}://www.{host}")
-if settings.FRONTEND_URL != "http://localhost:3000":
+if settings.ENVIRONMENT == "development" and settings.FRONTEND_URL != "http://localhost:3000":
     allowed_origins.append("http://localhost:3000")
 
 app.add_middleware(CorrelationIdMiddleware)
@@ -88,8 +88,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-CSRF-Token", "X-Correlation-ID"],
 )
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)

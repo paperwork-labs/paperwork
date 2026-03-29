@@ -13,12 +13,19 @@ app = FastAPI(
     redoc_url="/redoc" if settings.DEBUG else None,
 )
 
+allowed_origins = [settings.FRONTEND_URL]
+if settings.ENVIRONMENT == "development":
+    origins_to_add = ["http://localhost:3002"]
+    for origin in origins_to_add:
+        if origin != settings.FRONTEND_URL:
+            allowed_origins.append(origin)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL, "http://localhost:3002"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-CSRF-Token", "X-Correlation-ID"],
 )
 
 app.include_router(health.router)

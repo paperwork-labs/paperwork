@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 import json
 import logging
 from typing import Any, Literal
@@ -44,7 +45,7 @@ def _verify_axiomfolio_webhook(
             status_code=503,
             detail="AxiomFolio webhook secret not configured",
         )
-    if not x_webhook_secret or x_webhook_secret != expected:
+    if not x_webhook_secret or not hmac.compare_digest(x_webhook_secret, expected):
         raise HTTPException(status_code=401, detail="Invalid or missing X-Webhook-Secret")
 
 

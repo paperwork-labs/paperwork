@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const clientSchema = z.object({
-  apiUrl: z.string().default("http://localhost:8000"),
+  apiUrl: z.string().default("http://localhost:8001"),
   posthogKey: z.string().default(""),
   posthogHost: z.string().default("https://us.i.posthog.com"),
   sentryDsn: z.string().default(""),

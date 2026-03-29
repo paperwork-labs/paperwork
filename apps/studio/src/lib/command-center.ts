@@ -351,7 +351,7 @@ export async function getInfrastructureStatus(): Promise<InfraStatus[]> {
     checkWithLatency(
       "FileFree API",
       "core",
-      "https://api.filefree.ai/health",
+      `${normalizeBaseUrl(process.env.FILEFREE_API_URL) || "https://api.filefree.ai"}/health`,
       "https://dashboard.render.com",
       { validateJson: true },
     ),

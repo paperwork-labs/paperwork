@@ -44,9 +44,18 @@ services:
     region: oregon
     plan: starter
     buildCommand: cd apis/launchfree && pip install -r requirements.txt
+    preDeployCommand: cd apis/launchfree && alembic upgrade head
     startCommand: cd apis/launchfree && gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
     healthCheckPath: /health
     envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ENCRYPTION_KEY
+        generateValue: true
       - key: FRONTEND_URL
         value: https://launchfree.ai
       - key: ENVIRONMENT

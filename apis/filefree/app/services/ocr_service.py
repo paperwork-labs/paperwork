@@ -3,8 +3,10 @@
 import json
 import logging
 import re
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any
 
+import anyio
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
@@ -49,17 +51,21 @@ def _extract_ssn(text: str) -> tuple[str, str]:
 
 
 def _dollars_to_cents(value: str | float | int) -> int:
-    """Convert a dollar amount (string or number) to integer cents."""
+    """Convert a dollar amount (string or number) to integer cents.
+
+    Uses Decimal arithmetic to avoid floating-point rounding errors
+    on monetary values.
+    """
     if isinstance(value, int):
         return value
     if isinstance(value, float):
-        return round(value * 100)
+        return int((Decimal(str(value)) * 100).to_integral_value(rounding=ROUND_HALF_UP))
     cleaned = re.sub(r"[,$\s]", "", str(value))
     if not cleaned:
         return 0
     try:
-        return round(float(cleaned) * 100)
-    except ValueError:
+        return int((Decimal(cleaned) * 100).to_integral_value(rounding=ROUND_HALF_UP))
+    except InvalidOperation:
         return 0
 
 
@@ -86,13 +92,26 @@ def _mock_extraction() -> W2ExtractionResult:
     )
 
 
+_vision_client = None
+
+
+def _get_vision_client():
+    """Return a cached Cloud Vision client (one per process)."""
+    global _vision_client
+    if _vision_client is None:
+        from google.cloud import vision
+
+        _vision_client = vision.ImageAnnotatorClient()
+    return _vision_client
+
+
 async def _cloud_vision_ocr(image_bytes: bytes) -> dict[str, Any]:
     """Call GCP Cloud Vision DOCUMENT_TEXT_DETECTION. Returns structured text + bounding boxes."""
     from google.cloud import vision
 
-    client = vision.ImageAnnotatorClient()
+    client = _get_vision_client()
     image = vision.Image(content=image_bytes)
-    response = client.document_text_detection(image=image)
+    response = await anyio.to_thread.run_sync(lambda: client.document_text_detection(image=image))
 
     if response.error.message:
         raise RuntimeError(f"Cloud Vision error: {response.error.message}")
@@ -171,7 +190,13 @@ async def _gpt_mini_map_fields(scrubbed_text: str, blocks: list[dict[str, Any]])
 
 
 async def _gpt_vision_fallback(image_bytes: bytes) -> dict[str, Any]:
-    """Use GPT-4o vision for low-confidence extractions. Sends actual image."""
+    """Use GPT-4o vision for low-confidence extractions. Sends actual image.
+
+    SSN is deliberately excluded from the prompt and expected output fields.
+    Per security policy, SSNs are only extracted locally via regex from Cloud
+    Vision text output and are NEVER sent to or requested from any LLM.
+    The caller must merge SSN from the local extraction step.
+    """
     import base64
 
     from openai import AsyncOpenAI
@@ -188,9 +213,9 @@ async def _gpt_vision_fallback(image_bytes: bytes) -> dict[str, Any]:
                 "content": (
                     "You are a W-2 form data extractor. Extract all fields from this W-2 image. "
                     "Dollar amounts as numbers. "
-                    "SSN should be extracted but will be handled securely. "
+                    "Do NOT extract the SSN — skip Box a entirely. "
                     "Output JSON with keys: employer_name, employer_ein, employer_address, "
-                    "employee_name, employee_address, employee_ssn, wages, federal_tax_withheld, "
+                    "employee_name, employee_address, wages, federal_tax_withheld, "
                     "social_security_wages, social_security_tax, medicare_wages, medicare_tax, "
                     "state, state_wages, state_tax_withheld, confidence."
                 ),
@@ -198,7 +223,10 @@ async def _gpt_vision_fallback(image_bytes: bytes) -> dict[str, Any]:
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "Extract all W-2 fields from this image."},
+                    {
+                        "type": "text",
+                        "text": ("Extract all W-2 fields from this image (except SSN)."),
+                    },
                     {
                         "type": "image_url",
                         "image_url": {"url": f"data:image/jpeg;base64,{b64}", "detail": "high"},
@@ -244,7 +272,7 @@ async def process_w2(image_bytes: bytes) -> W2ExtractionResult:
         logger.info("Mock mode: returning hardcoded W2 data (no API keys)")
         return _mock_extraction()
 
-    processed = preprocess_image(image_bytes)
+    processed = await anyio.to_thread.run_sync(lambda: preprocess_image(image_bytes))
 
     try:
         ocr_result = await _cloud_vision_ocr(processed)
@@ -277,8 +305,9 @@ async def process_w2(image_bytes: bytes) -> W2ExtractionResult:
         logger.warning("Cloud Vision returned empty text, trying GPT-4o vision fallback")
         try:
             fields = await _gpt_vision_fallback(processed)
-            ssn = str(fields.pop("employee_ssn", ""))
-            return _build_result(fields, ssn, "gpt4o-vision-empty-ocr")
+            # SSN unavailable: Cloud Vision returned no text for local regex extraction,
+            # and vision fallback intentionally excludes SSN from LLM output.
+            return _build_result(fields, "", "gpt4o-vision-empty-ocr")
         except Exception as exc:
             return _handle_openai_error(exc, "vision fallback (empty OCR)")
 
@@ -296,9 +325,8 @@ async def process_w2(image_bytes: bytes) -> W2ExtractionResult:
         logger.info("Low confidence (%.2f), escalating to GPT-4o vision", confidence)
         try:
             vision_fields = await _gpt_vision_fallback(processed)
-            vision_ssn = str(vision_fields.pop("employee_ssn", ""))
-            if not ssn and vision_ssn:
-                ssn = vision_ssn
+            # SSN comes only from local Cloud Vision regex extraction (above),
+            # never from the vision LLM fallback.
             if float(vision_fields.get("confidence", 0)) > confidence:
                 fields = vision_fields
                 tier = "gpt4o-vision-fallback"
