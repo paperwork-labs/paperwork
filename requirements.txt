@@ -59,5 +59,5 @@ PyJWT==2.12.1
 email-validator==2.3.0
 cryptography==46.0.5
 httpx==0.28.1
-croniter==1.4.1
+croniter==6.2.2
 resend>=2.0.0
