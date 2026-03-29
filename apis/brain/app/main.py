@@ -66,9 +66,13 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     _run_migrations()
     await init_redis()
     init_langfuse()
-    redis_client = get_redis()
+    try:
+        redis_client = get_redis()
+    except RuntimeError:
+        redis_client = None
+        logger.warning("Redis unavailable — memory tools will operate without caching")
     memory_tools.configure(async_session_factory, redis_client)
-    logger.info("Memory tools configured with DB session factory and Redis")
+    logger.info("Memory tools configured (redis=%s)", "connected" if redis_client else "disabled")
     yield
     from app.services.llm import close_clients
     await close_clients()
