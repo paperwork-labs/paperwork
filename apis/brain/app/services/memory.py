@@ -117,12 +117,12 @@ async def search_episodes(
     if query_embedding:
         vector_query = text("""
             SELECT id,
-                   1 - (embedding <=> :embedding::vector) AS similarity,
+                   1 - (embedding <=> CAST(:embedding AS vector)) AS similarity,
                    EXTRACT(EPOCH FROM (NOW() - created_at)) / 86400.0 AS age_days
             FROM agent_episodes
             WHERE organization_id = :org_id
               AND embedding IS NOT NULL
-            ORDER BY embedding <=> :embedding::vector
+            ORDER BY embedding <=> CAST(:embedding AS vector)
             LIMIT :limit_val
         """)
         result = await db.execute(
