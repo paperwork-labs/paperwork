@@ -1,0 +1,32 @@
+{
+  "name": "@paperwork-labs/filing-engine",
+  "version": "0.1.0",
+  "description": "State Filing Engine - automated LLC formation submission",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint src/",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@paperwork-labs/data": "workspace:*",
+    "playwright": "^1.45.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0"
+  },
+  "peerDependencies": {
+    "playwright": "^1.45.0"
+  }
+}
