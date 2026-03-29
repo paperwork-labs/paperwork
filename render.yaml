@@ -56,17 +56,18 @@ services:
       - key: PYTHON_VERSION
         value: "3.11.0"
 
-  # Brain API — Paperwork Labs meta-product (consumer name TBD). Deploy in separate Render workspace if desired.
+  # Brain API — Paperwork Labs command-center / agent backend.
   - type: web
     name: brain-api
     runtime: docker
     region: oregon
     plan: starter
-    dockerfilePath: ./apis/brain/Dockerfile
-    dockerContext: ./
-    preDeployCommand: cd apis/brain && alembic upgrade head
+    numInstances: 1
+    dockerfilePath: apis/brain/Dockerfile
+    dockerContext: apis/brain
     healthCheckPath: /health
     envVars:
+      # Set in Dashboard, link from a Render Postgres in this Blueprint, or use fromDatabase when a DB is defined below.
       - key: DATABASE_URL
         sync: false
       - key: REDIS_URL
@@ -79,19 +80,43 @@ services:
         sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
       - key: BRAIN_API_SECRET
+        generateValue: true
+      - key: BRAIN_MCP_TOKEN
+        generateValue: true
+      - key: BRAIN_URL
+        value: https://brain.paperworklabs.com
+      - key: AXIOMFOLIO_API_URL
         sync: false
-      - key: SECRETS_API_KEY
+      - key: AXIOMFOLIO_API_KEY
         sync: false
-      - key: STUDIO_URL
-        value: https://paperworklabs.com
+      - key: RENDER_API_KEY
+        sync: false
+      - key: VERCEL_TOKEN
+        sync: false
+      - key: NEON_API_KEY
+        sync: false
+      - key: N8N_URL
+        value: https://n8n.paperworklabs.com
+      - key: N8N_API_KEY
+        sync: false
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+      - key: LANGFUSE_PUBLIC_KEY
+        sync: false
+      - key: LANGFUSE_SECRET_KEY
+        sync: false
+      - key: LANGFUSE_HOST
+        value: https://langfuse.paperworklabs.com
       - key: FRONTEND_URL
         value: https://paperworklabs.com
       - key: ENVIRONMENT
         value: production
       - key: DEBUG
         value: "false"
-      - key: MAX_ITERATIONS
-        sync: false
-      - key: REPO_ROOT
-        value: /

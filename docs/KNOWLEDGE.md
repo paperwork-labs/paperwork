@@ -2,8 +2,8 @@
 
 Organizational memory for Paperwork Labs (FileFree, LaunchFree, Distill, Trinkets). AI agents read this at session start. Update after significant decisions, learnings, or pattern discoveries.
 
-**Last Updated**: 2026-03-20
-**Version**: 10.2 (D84 — 100% deterministic data, zero AI)
+**Last Updated**: 2026-03-29
+**Version**: 10.3 (D85 — MCP-first Brain architecture)
 
 ---
 
@@ -298,6 +298,21 @@ Full text in [docs/archive/KNOWLEDGE-ARCHIVE.md](archive/KNOWLEDGE-ARCHIVE.md).
 **Maintenance model**: `pnpm parse:tax` + `pnpm parse:formation` are idempotent scripts. n8n `data-source-monitor` watches Tax Foundation, llcrequirements.com, and discern.com for changes. When a source updates: re-run parser, review diff, commit. No AI drift to worry about.
 
 **Supersedes**: D83 (which still used AI for supplementary fields). D82 Layers 2-6 still apply as defense-in-depth.
+
+### D85 — MCP-First Brain Architecture (2026-03-29)
+
+**Context**: Brain API needed tool execution capabilities (GitHub, infra health, AxiomFolio trading, memory). Two approaches: build our own iterative agent loop with native tool_use, or expose tools as an MCP server and let LLM providers handle the loop.
+
+**Decision**: MCP-first architecture. Brain exposes 22 tools via FastMCP at `/mcp`. Anthropic's MCP Connector and OpenAI's Responses API MCP connect server-side, discovering and executing tools iteratively without our code managing the loop. Combined with ClassifyAndRoute (D20) for multi-provider model routing via Gemini Flash classification, circuit breaker (D38) per provider, and constitutional safety checks (D37).
+
+**Alternatives Considered**:
+1. Native tool_use with client-side dispatch loop — rejected: 3x more code, we manage iteration/parsing, provider-locked
+2. LangChain/LlamaIndex frameworks — rejected: adds abstraction layer, vendor lock-in, overhead for our use case
+3. Deferred tool execution to Phase 3 — rejected: user requested tools from day one
+
+**Reversibility**: Medium. MCP is an open standard with growing adoption. The tool implementations are provider-agnostic Python functions. If MCP support degrades, we can wrap them in native tool_use with ~2 days of work.
+
+**Impact**: Reduces Brain API code by ~60% vs native loop. Enables multi-provider routing (Anthropic + OpenAI + Gemini). Makes Brain itself a potential MCP server for Distill B2B API.
 
 ---
 

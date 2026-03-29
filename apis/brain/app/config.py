@@ -1,4 +1,4 @@
-from pydantic import model_validator
+from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -33,16 +33,39 @@ class Settings(BaseSettings):
 
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
+    GOOGLE_API_KEY: str = ""
+    GITHUB_TOKEN: str = ""
+    GITHUB_REPO: str = "paperwork-labs/paperwork"
     SECRETS_API_KEY: str = ""
     BRAIN_API_SECRET: str = ""
+    BRAIN_MCP_TOKEN: str = ""
     STUDIO_URL: str = "https://paperworklabs.com"
+    BRAIN_URL: str = "https://brain.paperworklabs.com"
+    AXIOMFOLIO_API_URL: str = "http://localhost:8100"
+    AXIOMFOLIO_API_KEY: str = ""
+    AXIOMFOLIO_WEBHOOK_SECRET: str = ""
     MAX_ITERATIONS: int = 5
+    LANGFUSE_PUBLIC_KEY: str = ""
+    LANGFUSE_SECRET_KEY: str = ""
+    LANGFUSE_HOST: str = "https://langfuse.paperworklabs.com"
 
     FRONTEND_URL: str = "http://localhost:3000"
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
 
     APP_VERSION: str = "0.1.0"
+
+    # Infra health tools (optional; empty = tool reports not configured)
+    RENDER_API_KEY: str = ""
+    VERCEL_TOKEN: str = Field(
+        default="",
+        validation_alias=AliasChoices("VERCEL_TOKEN", "VERCEL_API_TOKEN"),
+    )
+    NEON_API_KEY: str = ""
+    N8N_URL: str = "https://n8n.paperworklabs.com"
+    N8N_API_KEY: str = ""
+    UPSTASH_REDIS_REST_URL: str = ""
+    UPSTASH_REDIS_REST_TOKEN: str = ""
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

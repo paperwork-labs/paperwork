@@ -1,0 +1,85 @@
+{
+  "version": "1.0.0",
+  "updated": "2026-03-29",
+  "models": {
+    "gemini-2.5-flash": {
+      "provider": "google",
+      "display_name": "Gemini 2.5 Flash",
+      "cost_per_1m_input": 0.075,
+      "cost_per_1m_output": 0.30,
+      "capabilities": ["text", "classification", "extraction"],
+      "mcp_support": false,
+      "max_context": 1048576,
+      "active": true,
+      "notes": "Cheapest classifier. Used for routing decisions."
+    },
+    "gpt-4o-mini": {
+      "provider": "openai",
+      "display_name": "GPT-4o Mini",
+      "cost_per_1m_input": 0.15,
+      "cost_per_1m_output": 0.60,
+      "capabilities": ["text", "structured_output"],
+      "mcp_support": false,
+      "max_context": 128000,
+      "active": true,
+      "notes": "Simple queries, 70-80% of traffic. Cheapest quality text."
+    },
+    "o4-mini": {
+      "provider": "openai",
+      "display_name": "o4-mini",
+      "cost_per_1m_input": 1.10,
+      "cost_per_1m_output": 4.40,
+      "capabilities": ["text", "reasoning", "math", "structured_output"],
+      "mcp_support": false,
+      "max_context": 200000,
+      "active": true,
+      "notes": "Reasoning specialist. Tax calculations, financial analysis, risk."
+    },
+    "gpt-4o": {
+      "provider": "openai",
+      "display_name": "GPT-4o",
+      "cost_per_1m_input": 2.50,
+      "cost_per_1m_output": 10.00,
+      "capabilities": ["text", "tools", "reasoning", "structured_output"],
+      "mcp_support": true,
+      "max_context": 128000,
+      "active": true,
+      "notes": "Alt tool orchestration. A/B with Sonnet. Adversarial reviewer (D20 Pattern 4)."
+    },
+    "claude-sonnet-4-20250514": {
+      "provider": "anthropic",
+      "display_name": "Claude Sonnet 4",
+      "cost_per_1m_input": 3.00,
+      "cost_per_1m_output": 15.00,
+      "capabilities": ["text", "tools", "reasoning", "code"],
+      "mcp_support": true,
+      "max_context": 200000,
+      "active": true,
+      "notes": "Primary tool orchestration via MCP. Best tool use accuracy."
+    },
+    "claude-opus-4-20250618": {
+      "provider": "anthropic",
+      "display_name": "Claude Opus 4",
+      "cost_per_1m_input": 15.00,
+      "cost_per_1m_output": 75.00,
+      "capabilities": ["text", "tools", "reasoning", "code", "complex_analysis"],
+      "mcp_support": true,
+      "max_context": 200000,
+      "active": true,
+      "notes": "Complex multi-domain reasoning. Rare, expensive, last resort."
+    }
+  },
+  "routing_defaults": {
+    "simple_text": "gpt-4o-mini",
+    "tool_orchestration": "claude-sonnet-4-20250514",
+    "tool_orchestration_alt": "gpt-4o",
+    "reasoning": "o4-mini",
+    "complex": "claude-opus-4-20250618",
+    "classifier": "gemini-2.5-flash"
+  },
+  "circuit_breaker": {
+    "window_seconds": 300,
+    "failure_threshold_pct": 50,
+    "cooldown_seconds": 60
+  }
+}
