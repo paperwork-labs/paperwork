@@ -25,6 +25,7 @@ import {
   useDividendSummary,
   useLiveSummary,
   useRiskMetrics,
+  usePnlSummary,
 } from '../../hooks/usePortfolio';
 import { useChartColors } from '../../hooks/useChartColors';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
@@ -85,6 +86,8 @@ const PortfolioOverview: React.FC = () => {
   const liveData = liveQuery.data ?? {};
   const riskQuery = useRiskMetrics();
   const riskData = riskQuery.data ?? {};
+  const pnlSummaryQuery = usePnlSummary();
+  const pnlSummary = pnlSummaryQuery.data;
   const positions = (positionsQuery.data ?? []) as EnrichedPosition[];
   const dashboard = overview.summary.data as DashboardResponse | undefined;
   const rawAccounts = overview.accountsData ?? [];
@@ -258,6 +261,18 @@ const PortfolioOverview: React.FC = () => {
                     }
                     color={filteredPnl >= 0 ? 'status.success' : 'status.danger'}
                   />
+                  {pnlSummary && (
+                    <StatCard
+                      label="Realized P&L"
+                      value={formatMoney(pnlSummary.realized_pnl, currency)}
+                      sub={
+                        pnlSummary.total_dividends > 0
+                          ? `+${formatMoney(pnlSummary.total_dividends, currency, { maximumFractionDigits: 0 })} dividends`
+                          : undefined
+                      }
+                      color={pnlSummary.realized_pnl >= 0 ? 'status.success' : 'status.danger'}
+                    />
+                  )}
                   <StatCard label="Positions" value={pos.length} />
                 </div>
 

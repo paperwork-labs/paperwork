@@ -419,6 +419,10 @@ export const portfolioApi = {
     return makeOptimizedRequest(() => api.get(`/portfolio/dividends/summary${q}`));
   },
 
+  getPnlSummary: async () => {
+    return makeOptimizedRequest(() => api.get('/portfolio/dashboard/pnl-summary'));
+  },
+
   getLiveSummary: async (accountId?: string) => {
     const q = accountId ? `?account_id=${encodeURIComponent(accountId)}` : '';
     return makeOptimizedRequest(() => api.get(`/portfolio/live/summary${q}`));

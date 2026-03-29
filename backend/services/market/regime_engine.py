@@ -264,6 +264,30 @@ def get_current_regime(db: Session) -> Optional[MarketRegime]:
     return db.execute(stmt).scalar_one_or_none()
 
 
+def get_current_and_previous_regime(
+    db: Session,
+) -> tuple[Optional[MarketRegime], Optional[MarketRegime]]:
+    """Get current and previous regime rows for transition detection.
+    
+    Returns:
+        Tuple of (current_regime, previous_regime). Either may be None.
+    """
+    from sqlalchemy import select
+
+    current = get_current_regime(db)
+    if not current:
+        return None, None
+    
+    stmt = (
+        select(MarketRegime)
+        .where(MarketRegime.as_of_date < current.as_of_date)
+        .order_by(MarketRegime.as_of_date.desc())
+        .limit(1)
+    )
+    previous = db.execute(stmt).scalar_one_or_none()
+    return current, previous
+
+
 def get_regime_for_date(db: Session, as_of: date) -> Optional[MarketRegime]:
     """Get regime for a specific date."""
     from sqlalchemy import select

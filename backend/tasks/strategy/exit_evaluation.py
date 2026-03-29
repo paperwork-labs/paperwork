@@ -22,7 +22,7 @@ from backend.services.execution.exit_cascade import (
     ExitAction,
     CascadeResult,
 )
-from backend.services.market.regime_engine import get_current_regime
+from backend.services.market.regime_engine import get_current_and_previous_regime
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ def _build_position_context(
         atr_14=atr_14,
         atrp_14=atrp_14,
         stage_label=stage_label,
-        previous_stage_label=None,  # TODO: Track previous stage
+        previous_stage_label=snapshot.previous_stage_label,
         current_stage_days=current_stage_days,
         ext_pct=ext_pct,
         sma150_slope=sma150_slope,
@@ -259,10 +259,10 @@ def evaluate_exits_task() -> dict:
     """
     db = SessionLocal()
     try:
-        # Get current regime
-        regime = get_current_regime(db)
-        regime_state = regime.regime_state if regime else "R3"
-        previous_regime = None  # TODO: Track regime history
+        # Get current and previous regime for transition detection
+        regime_row, prev_regime_row = get_current_and_previous_regime(db)
+        regime_state = regime_row.regime_state if regime_row else "R3"
+        previous_regime_state = prev_regime_row.regime_state if prev_regime_row else None
         
         # Load all open positions
         positions = (
@@ -309,7 +309,7 @@ def evaluate_exits_task() -> dict:
             
             # Build context
             ctx = _build_position_context(
-                position, snapshot, regime_state, previous_regime
+                position, snapshot, regime_state, previous_regime_state
             )
             if not ctx:
                 continue

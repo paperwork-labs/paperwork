@@ -382,6 +382,31 @@ export const useDividendSummary = (accountId?: string) => {
   });
 };
 
+export interface PnlSummaryData {
+  unrealized_pnl: number;
+  realized_pnl: number;
+  total_dividends: number;
+  total_fees: number;
+  total_return: number;
+}
+
+export const usePnlSummary = () => {
+  return useQuery<PnlSummaryData>({
+    queryKey: ['portfolio-pnl-summary'],
+    queryFn: async () => {
+      const r = await portfolioApi.getPnlSummary();
+      return (r as any)?.data?.data ?? (r as any)?.data ?? {
+        unrealized_pnl: 0,
+        realized_pnl: 0,
+        total_dividends: 0,
+        total_fees: 0,
+        total_return: 0,
+      };
+    },
+    staleTime: 60_000,
+  });
+};
+
 export const useLiveSummary = (accountId?: string) => {
   return useQuery({
     queryKey: ['portfolio-live-summary', accountId],
