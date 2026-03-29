@@ -33,11 +33,11 @@ DEFAULT_WEBHOOK_ORG_ID = "paperwork-labs"
 def _verify_axiomfolio_webhook(
     x_webhook_secret: str | None = Header(None, alias="X-Webhook-Secret"),
 ) -> None:
-    expected = settings.AXIOMFOLIO_API_KEY
+    expected = settings.AXIOMFOLIO_WEBHOOK_SECRET or settings.AXIOMFOLIO_API_KEY
     if not expected:
         if settings.ENVIRONMENT == "development":
             logger.warning(
-                "AXIOMFOLIO_API_KEY not set; accepting AxiomFolio webhooks without secret (dev only)"
+                "Webhook secret not set; accepting AxiomFolio webhooks without auth (dev only)"
             )
             return
         raise HTTPException(

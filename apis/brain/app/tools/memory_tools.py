@@ -20,11 +20,16 @@ _organization_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
 )
 
 
-def configure(db_session_factory: async_sessionmaker[AsyncSession], redis_client: Any) -> None:
+def configure(
+    db_session_factory: async_sessionmaker[AsyncSession],
+    redis_client: Any,
+    default_organization_id: str = "paperwork-labs",
+) -> None:
     """Called during app startup to inject dependencies."""
     global _db_session_factory, _redis_client
     _db_session_factory = db_session_factory
     _redis_client = redis_client
+    _organization_id.set(default_organization_id)
 
 
 def set_organization_id(organization_id: str) -> contextvars.Token:

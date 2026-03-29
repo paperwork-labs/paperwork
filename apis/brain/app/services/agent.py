@@ -102,14 +102,22 @@ _SSN_PATTERN = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
 _EIN_PATTERN = re.compile(r"\b\d{2}-\d{7}\b")
 
 
+_API_KEY_PATTERNS = re.compile(
+    r"(sk-[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{36,}|ghu_[a-zA-Z0-9]{36,}"
+    r"|xox[bpsa]-[a-zA-Z0-9\-]{10,}|AKIA[0-9A-Z]{16})"
+)
+
+
 def _check_pii_leak(text: str) -> bool:
-    """Check if response contains unmasked SSN or EIN patterns."""
+    """Check if response contains unmasked SSN, EIN, or API key patterns."""
     for m in _SSN_PATTERN.findall(text):
         if not m.startswith("XXX") and not m.startswith("***"):
             return True
     for m in _EIN_PATTERN.findall(text):
         if not m.startswith("XX") and not m.startswith("**"):
             return True
+    if _API_KEY_PATTERNS.search(text):
+        return True
     return False
 
 

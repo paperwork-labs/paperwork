@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     BRAIN_URL: str = "https://brain.paperworklabs.com"
     AXIOMFOLIO_API_URL: str = "http://localhost:8100"
     AXIOMFOLIO_API_KEY: str = ""
+    AXIOMFOLIO_WEBHOOK_SECRET: str = ""
     MAX_ITERATIONS: int = 5
     LANGFUSE_PUBLIC_KEY: str = ""
     LANGFUSE_SECRET_KEY: str = ""

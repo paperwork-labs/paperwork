@@ -1,3 +1,4 @@
+import hmac
 import logging
 import subprocess
 from collections.abc import AsyncGenerator
@@ -69,6 +70,8 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     memory_tools.configure(async_session_factory, redis_client)
     logger.info("Memory tools configured with DB session factory and Redis")
     yield
+    from app.services.llm import close_clients
+    await close_clients()
     await close_redis()
     await engine.dispose()
     logger.info("Brain API shut down")
@@ -133,9 +136,21 @@ async def mcp_auth_middleware(request: Request, call_next):
     """Validate MCP token on /mcp endpoints. Reject unauthenticated requests."""
     if request.url.path.startswith("/mcp"):
         token = settings.BRAIN_MCP_TOKEN
-        if token:
+        if not token:
+            if settings.ENVIRONMENT != "development":
+                return JSONResponse(
+                    status_code=503,
+                    content={"error": "MCP token not configured"},
+                )
+        else:
             auth_header = request.headers.get("authorization", "")
-            if not auth_header.endswith(token) and request.headers.get("x-mcp-token") != token:
+            provided_token = ""
+            if auth_header.lower().startswith("bearer "):
+                provided_token = auth_header[7:].strip()
+            mcp_header = (request.headers.get("x-mcp-token") or "").strip()
+            if not hmac.compare_digest(provided_token, token) and not hmac.compare_digest(
+                mcp_header, token
+            ):
                 return JSONResponse(status_code=401, content={"error": "Invalid MCP token"})
     return await call_next(request)
 

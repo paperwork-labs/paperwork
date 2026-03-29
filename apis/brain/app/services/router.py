@@ -61,11 +61,12 @@ class CircuitBreaker:
 
     WINDOW_SECONDS = 300
     FAILURE_THRESHOLD_PCT = 50
+    MIN_REQUESTS_FOR_RATE = 5
     COOLDOWN_SECONDS = 60
 
     def __init__(self, redis_client: Any | None = None):
         self._redis = redis_client
-        self._local_failures: dict[str, list[float]] = {}
+        self._local_events: dict[str, list[tuple[float, bool]]] = {}
 
     async def is_open(self, provider: str) -> bool:
         """Check if circuit is open (provider should be skipped)."""
@@ -77,39 +78,55 @@ class CircuitBreaker:
             except Exception:
                 pass
 
-        failures = self._local_failures.get(provider, [])
+        events = self._local_events.get(provider, [])
         now = time.time()
-        recent = [t for t in failures if now - t < self.COOLDOWN_SECONDS]
-        return len(recent) >= 3
+        recent = [(t, ok) for t, ok in events if now - t < self.WINDOW_SECONDS]
+        if len(recent) < self.MIN_REQUESTS_FOR_RATE:
+            return False
+        failures = sum(1 for _, ok in recent if not ok)
+        return (failures / len(recent) * 100) >= self.FAILURE_THRESHOLD_PCT
 
     async def record_success(self, provider: str) -> None:
+        now = time.time()
+        self._local_events.setdefault(provider, []).append((now, True))
+        self._prune_local(provider, now)
         if self._redis:
             try:
-                key = f"circuit:{provider}:failures"
-                await self._redis.delete(key)
                 await self._redis.delete(f"circuit:{provider}:cooldown")
             except Exception:
                 pass
 
     async def record_failure(self, provider: str) -> None:
         now = time.time()
+        self._local_events.setdefault(provider, []).append((now, False))
+        self._prune_local(provider, now)
 
         if self._redis:
             try:
                 key = f"circuit:{provider}:failures"
                 await self._redis.zadd(key, {str(now): now})
                 await self._redis.zremrangebyscore(key, 0, now - self.WINDOW_SECONDS)
-                count = await self._redis.zcard(key)
-                if count >= 3:
-                    cooldown_key = f"circuit:{provider}:cooldown"
-                    await self._redis.setex(cooldown_key, self.COOLDOWN_SECONDS, "1")
-                    logger.warning("Circuit OPEN for provider=%s (failures=%d)", provider, count)
+                total_key = f"circuit:{provider}:total"
+                await self._redis.zadd(total_key, {str(now): now})
+                await self._redis.zremrangebyscore(total_key, 0, now - self.WINDOW_SECONDS)
+                fail_count = await self._redis.zcard(key)
+                total_count = await self._redis.zcard(total_key)
+                if total_count >= self.MIN_REQUESTS_FOR_RATE:
+                    rate = (fail_count / total_count) * 100
+                    if rate >= self.FAILURE_THRESHOLD_PCT:
+                        cooldown_key = f"circuit:{provider}:cooldown"
+                        await self._redis.setex(cooldown_key, self.COOLDOWN_SECONDS, "1")
+                        logger.warning(
+                            "Circuit OPEN for provider=%s (rate=%.0f%%, %d/%d)",
+                            provider, rate, fail_count, total_count,
+                        )
             except Exception:
                 pass
 
-        self._local_failures.setdefault(provider, []).append(now)
-        self._local_failures[provider] = [
-            t for t in self._local_failures[provider] if now - t < self.WINDOW_SECONDS
+    def _prune_local(self, provider: str, now: float) -> None:
+        self._local_events[provider] = [
+            (t, ok) for t, ok in self._local_events.get(provider, [])
+            if now - t < self.WINDOW_SECONDS
         ]
 
 

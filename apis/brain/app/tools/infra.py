@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import re
 from datetime import UTC, datetime
@@ -392,3 +393,78 @@ async def check_upstash_status() -> str:
     except Exception as e:
         logger.warning("check_upstash_status failed: %s", e)
         return f"Upstash check failed: {e}"
+
+
+# -- n8n Workflow Management ---------------------------------------------------
+
+
+async def list_n8n_workflows() -> str:
+    """List all n8n workflows with their active status."""
+    url = (settings.N8N_URL or "").strip().rstrip("/")
+    key = (settings.N8N_API_KEY or "").strip()
+    if not url or not key:
+        return "n8n: not configured."
+
+    try:
+        async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
+            r = await client.get(
+                f"{url}/api/v1/workflows",
+                headers={"X-N8N-API-KEY": key},
+            )
+            if r.status_code != 200:
+                return f"n8n: HTTP {r.status_code}"
+            data = r.json().get("data", [])
+            lines = [f"{'ACTIVE' if w.get('active') else 'INACTIVE':8} | {w.get('id'):>5} | {w.get('name', '?')}" for w in data]
+            return f"n8n workflows ({len(data)}):\n" + "\n".join(lines)
+    except Exception as e:
+        return f"n8n list failed: {e}"
+
+
+async def activate_n8n_workflow(workflow_id: str, active: bool = True) -> str:
+    """Activate or deactivate an n8n workflow by ID."""
+    url = (settings.N8N_URL or "").strip().rstrip("/")
+    key = (settings.N8N_API_KEY or "").strip()
+    if not url or not key:
+        return "n8n: not configured."
+
+    action = "activate" if active else "deactivate"
+    try:
+        async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
+            r = await client.patch(
+                f"{url}/api/v1/workflows/{workflow_id}",
+                headers={"X-N8N-API-KEY": key, "Content-Type": "application/json"},
+                json={"active": active},
+            )
+            if r.status_code != 200:
+                return f"n8n: failed to {action} workflow {workflow_id} — HTTP {r.status_code}: {r.text[:200]}"
+            name = r.json().get("name", workflow_id)
+            return f"n8n: workflow '{name}' (ID: {workflow_id}) is now {'ACTIVE' if active else 'INACTIVE'}."
+    except Exception as e:
+        return f"n8n {action} failed: {e}"
+
+
+async def import_n8n_workflow(workflow_json: str) -> str:
+    """Import a workflow into n8n from JSON string."""
+    url = (settings.N8N_URL or "").strip().rstrip("/")
+    key = (settings.N8N_API_KEY or "").strip()
+    if not url or not key:
+        return "n8n: not configured."
+
+    try:
+        workflow_data = json.loads(workflow_json)
+    except json.JSONDecodeError as e:
+        return f"Invalid JSON: {e}"
+
+    try:
+        async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
+            r = await client.post(
+                f"{url}/api/v1/workflows",
+                headers={"X-N8N-API-KEY": key, "Content-Type": "application/json"},
+                json=workflow_data,
+            )
+            if r.status_code not in (200, 201):
+                return f"n8n: import failed — HTTP {r.status_code}: {r.text[:200]}"
+            result = r.json()
+            return f"n8n: imported workflow '{result.get('name', '?')}' (ID: {result.get('id', '?')})."
+    except Exception as e:
+        return f"n8n import failed: {e}"

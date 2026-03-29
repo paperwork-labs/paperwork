@@ -33,6 +33,14 @@ def _get_client(name: str, timeout: float = 60.0) -> httpx.AsyncClient:
     return _http_clients[name]
 
 
+async def close_clients() -> None:
+    """Close all httpx clients. Call during app shutdown."""
+    for name, client in _http_clients.items():
+        if not client.is_closed:
+            await client.aclose()
+    _http_clients.clear()
+
+
 def _load_registry() -> dict[str, Any]:
     global _registry
     if _registry is None:
@@ -295,21 +303,21 @@ async def _complete_gemini(
         )
         res.raise_for_status()
         data = res.json()
-            text = (
-                data.get("candidates", [{}])[0]
-                .get("content", {})
-                .get("parts", [{}])[0]
-                .get("text", "")
-            )
-            usage = data.get("usageMetadata", {})
-            return {
-                "content": text,
-                "model": model,
-                "provider": "google",
-                "tokens_in": usage.get("promptTokenCount", 0),
-                "tokens_out": usage.get("candidatesTokenCount", 0),
-                "tool_calls": [],
-            }
+        text = (
+            data.get("candidates", [{}])[0]
+            .get("content", {})
+            .get("parts", [{}])[0]
+            .get("text", "")
+        )
+        usage = data.get("usageMetadata", {})
+        return {
+            "content": text,
+            "model": model,
+            "provider": "google",
+            "tokens_in": usage.get("promptTokenCount", 0),
+            "tokens_out": usage.get("candidatesTokenCount", 0),
+            "tool_calls": [],
+        }
     except Exception:
         logger.error("Gemini call failed", exc_info=True)
         return _mock_response(messages)
@@ -349,14 +357,14 @@ async def _complete_openai_text(
         data = res.json()
         choice = data["choices"][0]["message"]
         usage = data.get("usage", {})
-            return {
-                "content": choice.get("content", ""),
-                "model": data.get("model", model),
-                "provider": "openai",
-                "tokens_in": usage.get("prompt_tokens", 0),
-                "tokens_out": usage.get("completion_tokens", 0),
-                "tool_calls": [],
-            }
+        return {
+            "content": choice.get("content", ""),
+            "model": data.get("model", model),
+            "provider": "openai",
+            "tokens_in": usage.get("prompt_tokens", 0),
+            "tokens_out": usage.get("completion_tokens", 0),
+            "tool_calls": [],
+        }
     except Exception:
         logger.error("OpenAI text call failed", exc_info=True)
         return _mock_response(messages)
@@ -394,18 +402,18 @@ async def _complete_anthropic_text(
         )
         res.raise_for_status()
         data = res.json()
-            content = "".join(
-                b.get("text", "") for b in data.get("content", []) if b.get("type") == "text"
-            )
-            usage = data.get("usage", {})
-            return {
-                "content": content,
-                "model": data.get("model", model),
-                "provider": "anthropic",
-                "tokens_in": usage.get("input_tokens", 0),
-                "tokens_out": usage.get("output_tokens", 0),
-                "tool_calls": [],
-            }
+        content = "".join(
+            b.get("text", "") for b in data.get("content", []) if b.get("type") == "text"
+        )
+        usage = data.get("usage", {})
+        return {
+            "content": content,
+            "model": data.get("model", model),
+            "provider": "anthropic",
+            "tokens_in": usage.get("input_tokens", 0),
+            "tokens_out": usage.get("output_tokens", 0),
+            "tool_calls": [],
+        }
     except Exception:
         logger.error("Anthropic text call failed", exc_info=True)
         return _mock_response(messages)
@@ -471,6 +479,16 @@ Rules:
         required_keys = {"model", "provider", "tools_needed", "domain", "confidence"}
         if not required_keys.issubset(result.keys()):
             raise ValueError(f"Missing keys: {required_keys - result.keys()}")
+        valid_providers = {"openai", "anthropic", "google"}
+        valid_domains = {"general", "infra", "trading", "tax", "code", "social"}
+        if result["provider"] not in valid_providers:
+            result["provider"] = "anthropic"
+        if result["domain"] not in valid_domains:
+            result["domain"] = "general"
+        if not isinstance(result.get("tools_needed"), bool):
+            result["tools_needed"] = bool(result["tools_needed"])
+        conf = result.get("confidence", 0.5)
+        result["confidence"] = max(0.0, min(1.0, float(conf)))
         return result
     except Exception:
         logger.warning("Classification failed, defaulting to Sonnet + MCP", exc_info=True)
