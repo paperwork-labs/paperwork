@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:3002"
     DEBUG: bool = True
     SESSION_COOKIE_NAME: str = "session"
+    # Filing-engine POST /filings/{id}/status — send header X-Filing-Internal-Token
+    FILING_STATUS_INTERNAL_SECRET: str | None = None
 
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/launchfree"
 
