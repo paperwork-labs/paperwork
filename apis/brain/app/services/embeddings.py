@@ -22,6 +22,13 @@ def _get_http_client() -> httpx.AsyncClient:
     return _http_client
 
 
+async def close_client() -> None:
+    global _http_client
+    if _http_client and not _http_client.is_closed:
+        await _http_client.aclose()
+        _http_client = None
+
+
 EMBEDDING_MODEL = "text-embedding-3-small"
 EMBEDDING_DIMENSIONS = 1536
 MAX_INPUT_TOKENS = 8191

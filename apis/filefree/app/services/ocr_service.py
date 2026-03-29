@@ -3,7 +3,7 @@
 import json
 import logging
 import re
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any
 
 import anyio
@@ -59,12 +59,12 @@ def _dollars_to_cents(value: str | float | int) -> int:
     if isinstance(value, int):
         return value
     if isinstance(value, float):
-        return int(Decimal(str(value)) * 100)
+        return int((Decimal(str(value)) * 100).to_integral_value(rounding=ROUND_HALF_UP))
     cleaned = re.sub(r"[,$\s]", "", str(value))
     if not cleaned:
         return 0
     try:
-        return int(Decimal(cleaned) * 100)
+        return int((Decimal(cleaned) * 100).to_integral_value(rounding=ROUND_HALF_UP))
     except InvalidOperation:
         return 0
 
@@ -111,9 +111,7 @@ async def _cloud_vision_ocr(image_bytes: bytes) -> dict[str, Any]:
 
     client = _get_vision_client()
     image = vision.Image(content=image_bytes)
-    response = await anyio.to_thread.run_sync(
-        lambda: client.document_text_detection(image=image)
-    )
+    response = await anyio.to_thread.run_sync(lambda: client.document_text_detection(image=image))
 
     if response.error.message:
         raise RuntimeError(f"Cloud Vision error: {response.error.message}")
@@ -225,7 +223,10 @@ async def _gpt_vision_fallback(image_bytes: bytes) -> dict[str, Any]:
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "Extract all W-2 fields from this image (except SSN)."},
+                    {
+                        "type": "text",
+                        "text": ("Extract all W-2 fields from this image (except SSN)."),
+                    },
                     {
                         "type": "image_url",
                         "image_url": {"url": f"data:image/jpeg;base64,{b64}", "detail": "high"},

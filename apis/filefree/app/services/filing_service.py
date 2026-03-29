@@ -96,7 +96,7 @@ async def advance_status(
     current = filing.status.value
     allowed = VALID_TRANSITIONS.get(current, [])
     if target.value not in allowed:
-        raise ValueError(
+        raise ConflictError(
             f"Cannot transition from '{current}' to '{target.value}'. "
             f"Allowed transitions: {allowed}"
         )

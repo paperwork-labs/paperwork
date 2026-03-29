@@ -13,6 +13,9 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 if [ -f "$REPO_ROOT/.env.local" ]; then
   set -a; source "$REPO_ROOT/.env.local"; set +a
 fi
+if [ -f "$REPO_ROOT/apps/studio/.env.local" ]; then
+  set -a; source "$REPO_ROOT/apps/studio/.env.local"; set +a
+fi
 
 VAULT_URL="${VAULT_URL:-https://paperworklabs.com}"
 SECRETS_API_KEY="${SECRETS_API_KEY:?Set SECRETS_API_KEY in .env.local}"
@@ -50,7 +53,8 @@ while IFS= read -r line; do
     echo "  ✓ ${name}"
     ((count++))
   else
-    echo "  ✗ ${name} (HTTP ${http_code})"
+    body=$(echo "$resp" | sed '$d')
+    echo "  ✗ ${name} (HTTP ${http_code}): ${body}"
     ((errors++))
   fi
 done < "$SECRETS_FILE"

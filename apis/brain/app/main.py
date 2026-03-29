@@ -77,7 +77,12 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     _app.mount("/mcp", mcp_application)
     logger.info("FastMCP server mounted at /mcp (22 tools, auth-protected)")
     yield
+    from app.services.embeddings import close_client as close_embeddings_client
+    from app.services.entity_extraction import close_client as close_extraction_client
     from app.services.llm import close_clients
+
+    await close_embeddings_client()
+    await close_extraction_client()
     await close_clients()
     await close_redis()
     await engine.dispose()

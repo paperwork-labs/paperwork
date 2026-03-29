@@ -13,9 +13,8 @@ export function middleware(request: NextRequest) {
     pathname.startsWith(prefix)
   );
   if (isProtected && !hasSession) {
-    const loginUrl = new URL("/auth/login", request.url);
-    loginUrl.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(loginUrl);
+    // Auth routes (/auth/login, etc.) are not built yet — send users home instead of a 404.
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
   const isAuthPage = AUTH_PAGES.some((page) => pathname.startsWith(page));
