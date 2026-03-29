@@ -49,6 +49,17 @@ CATALOG: List[JobTemplate] = [
         default_tz="UTC",
         queue="account_sync",
     ),
+    JobTemplate(
+        id="recover-stale-syncs",
+        display_name="Recover Stale Syncs",
+        group="portfolio",
+        task="backend.tasks.account_sync.recover_stale_syncs",
+        description="Reset broker accounts stuck in RUNNING state for > 10 min",
+        default_cron="*/5 * * * *",
+        default_tz="UTC",
+        queue="account_sync",
+        timeout_s=120,
+    ),
     # ── Market Data ────────────────────────────────────────────────
     # THE nightly pipeline: constituents, tracked, bars, indicators, history, regime, coverage
     JobTemplate(

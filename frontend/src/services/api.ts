@@ -2,6 +2,7 @@
 import axios, { AxiosResponse, AxiosError } from 'axios';
 
 import { normalizeRegimeCurrentBody } from './regimeCurrentNormalize';
+import type { PnlSummaryData } from '../hooks/usePortfolio';
 
 declare module 'axios' {
   interface AxiosRequestConfig<D = any> {
@@ -419,7 +420,7 @@ export const portfolioApi = {
     return makeOptimizedRequest(() => api.get(`/portfolio/dividends/summary${q}`));
   },
 
-  getPnlSummary: async () => {
+  getPnlSummary: async (): Promise<{ data: PnlSummaryData }> => {
     return makeOptimizedRequest(() => api.get('/portfolio/dashboard/pnl-summary'));
   },
 

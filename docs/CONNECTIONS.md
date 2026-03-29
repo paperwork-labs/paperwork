@@ -247,6 +247,23 @@ flowchart TD
 
 **Makefile**: `make ib-up` | `make ib-down` | `make ib-verify`.
 
+### Session Persistence
+
+IB Gateway settings are persisted via `TWS_SETTINGS_PATH=/settings` and `ibkr-settings` Docker volume. This ensures:
+
+- API port configuration (4001 for live, 4002 for paper) survives container restarts
+- Gateway preferences are retained
+- 2FA is only required after cold restarts or weekly session expiry
+
+### 2FA Behavior
+
+IBKR requires second-factor authentication. Best practices:
+
+- Use **IBKR Mobile (IB Key)** push notifications - acknowledge on phone
+- Session persists after initial auth, reducing 2FA frequency
+- Full 2FA only needed after: weekly credential expiry, container recreation without volume, manual logout
+- `IBC_AcceptIncomingConnectionAction=accept` auto-accepts API client connections
+
 ### Multi-tenant (future)
 
 One authenticated session per IBKR username per container. **Current**: dev = single Gateway container from env; production = per-account gateway host/port/client_id in encrypted credentials, one concurrent Gateway user. **Future options**: (A) Container-per-user via Docker/K8s orchestrator, port allocation, connection pool keyed by user; (B) IBKR Client Portal API (REST, no container, read-only focused). Migration: add orchestrator, switch `IBKRClient` from singleton to pool, add container lifecycle.

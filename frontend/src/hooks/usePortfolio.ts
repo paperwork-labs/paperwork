@@ -391,17 +391,18 @@ export interface PnlSummaryData {
 }
 
 export const usePnlSummary = () => {
+  const defaults: PnlSummaryData = {
+    unrealized_pnl: 0,
+    realized_pnl: 0,
+    total_dividends: 0,
+    total_fees: 0,
+    total_return: 0,
+  };
   return useQuery<PnlSummaryData>({
     queryKey: ['portfolio-pnl-summary'],
     queryFn: async () => {
       const r = await portfolioApi.getPnlSummary();
-      return (r as any)?.data?.data ?? (r as any)?.data ?? {
-        unrealized_pnl: 0,
-        realized_pnl: 0,
-        total_dividends: 0,
-        total_fees: 0,
-        total_return: 0,
-      };
+      return (r as any)?.data?.data ?? (r as any)?.data ?? (r as any) ?? defaults;
     },
     staleTime: 60_000,
   });

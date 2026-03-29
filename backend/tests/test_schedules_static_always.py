@@ -46,7 +46,7 @@ def test_seed_creates_correct_fields(db_session):
     seed(db_session)
     row = db_session.query(CronSchedule).filter(CronSchedule.id == "admin_coverage_backfill").first()
     assert row is not None
-    assert row.cron == "0 3 * * *"
+    assert row.cron == "0 1 * * *"
     assert row.task == "backend.tasks.market.coverage.daily_bootstrap"
     assert row.group == "market_data"
     assert row.enabled is True
@@ -138,7 +138,7 @@ def test_render_sync_creates_new_cron(db_session):
         display_name="Sync Test",
         group="test",
         task="backend.tasks.test.run",
-        cron="0 3 * * *",
+        cron="0 1 * * *",
         enabled=True,
     )
     db_session.add(schedule)
@@ -237,7 +237,7 @@ def test_create_and_delete_schedule(db_session):
                 "id": "api_test_job",
                 "display_name": "API Test",
                 "task": "backend.tasks.test.run",
-                "cron": "0 3 * * *",
+                "cron": "0 1 * * *",
             })
             assert resp.status_code == 200
             assert resp.json()["status"] == "ok"
@@ -261,7 +261,7 @@ def test_pause_and_resume_schedule(db_session):
         display_name="Pause Test",
         group="test",
         task="backend.tasks.test.run",
-        cron="0 3 * * *",
+        cron="0 1 * * *",
         enabled=True,
     )
     db_session.add(schedule)
@@ -353,7 +353,7 @@ def test_audit_trail_on_create_and_delete(db_session):
                 "id": "audit_trail_test",
                 "display_name": "Audit Trail Test",
                 "task": "backend.tasks.test.run",
-                "cron": "0 3 * * *",
+                "cron": "0 1 * * *",
             })
             client.delete("/api/v1/admin/schedules/audit_trail_test")
 

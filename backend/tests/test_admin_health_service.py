@@ -1,5 +1,6 @@
 """Tests for AdminHealthService strict composite health logic."""
 
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 import json
 
@@ -51,6 +52,7 @@ def test_all_green():
     svc._build_audit_dimension = MagicMock(return_value={"status": "green"})
     svc._build_regime_dimension = MagicMock(return_value={"status": "green"})
     svc._build_fundamentals_dimension = MagicMock(return_value={"status": "ok"})
+    svc._build_portfolio_sync_dimension = MagicMock(return_value={"status": "ok"})
     svc._build_task_runs = MagicMock(return_value={})
 
     result = svc.get_composite_health(MagicMock())
@@ -68,6 +70,7 @@ def test_single_failure_is_yellow():
     svc._build_audit_dimension = MagicMock(return_value={"status": "green"})
     svc._build_regime_dimension = MagicMock(return_value={"status": "green"})
     svc._build_fundamentals_dimension = MagicMock(return_value={"status": "ok"})
+    svc._build_portfolio_sync_dimension = MagicMock(return_value={"status": "ok"})
     svc._build_task_runs = MagicMock(return_value={})
 
     result = svc.get_composite_health(MagicMock())
@@ -83,6 +86,7 @@ def test_multiple_failures_is_red():
     svc._build_audit_dimension = MagicMock(return_value={"status": "green"})
     svc._build_regime_dimension = MagicMock(return_value={"status": "green"})
     svc._build_fundamentals_dimension = MagicMock(return_value={"status": "ok"})
+    svc._build_portfolio_sync_dimension = MagicMock(return_value={"status": "ok"})
     svc._build_task_runs = MagicMock(return_value={})
 
     result = svc.get_composite_health(MagicMock())
@@ -100,6 +104,7 @@ def test_response_includes_task_runs_and_thresholds():
     svc._build_audit_dimension = MagicMock(return_value={"status": "green"})
     svc._build_regime_dimension = MagicMock(return_value={"status": "green"})
     svc._build_fundamentals_dimension = MagicMock(return_value={"status": "ok"})
+    svc._build_portfolio_sync_dimension = MagicMock(return_value={"status": "ok"})
     svc._build_task_runs = MagicMock(return_value=task_data)
 
     result = svc.get_composite_health(MagicMock())
@@ -254,6 +259,66 @@ def test_fundamentals_error_below_warn():
     assert dim["fundamentals_fill_pct"] == 10.0
 
 
+def test_portfolio_sync_ok_when_no_enabled_accounts():
+    svc = _mock_service()
+    db = MagicMock()
+    db.query.return_value.filter.return_value.all.return_value = []
+    dim = svc._build_portfolio_sync_dimension(db)
+    assert dim["status"] == "ok"
+    assert dim["total_accounts"] == 0
+    assert dim["stale_accounts"] == 0
+    assert dim["stale_list"] == []
+    assert "no broker accounts" in dim["note"]
+
+
+def test_portfolio_sync_green_when_all_accounts_fresh():
+    svc = _mock_service()
+    now = datetime.now()
+    a1 = MagicMock()
+    a1.last_successful_sync = now - timedelta(hours=1)
+    a1.account_number = "U111"
+    a2 = MagicMock()
+    a2.last_successful_sync = now - timedelta(hours=2)
+    a2.account_number = "U222"
+    db = MagicMock()
+    db.query.return_value.filter.return_value.all.return_value = [a1, a2]
+    dim = svc._build_portfolio_sync_dimension(db)
+    assert dim["status"] == "green"
+    assert dim["total_accounts"] == 2
+    assert dim["stale_accounts"] == 0
+    assert dim["stale_list"] == []
+
+
+def test_portfolio_sync_red_when_some_accounts_stale():
+    svc = _mock_service()
+    now = datetime.now()
+    fresh = MagicMock()
+    fresh.last_successful_sync = now - timedelta(hours=1)
+    fresh.account_number = "FRESH1"
+    old = MagicMock()
+    old.last_successful_sync = now - timedelta(hours=48)
+    old.account_number = "STALE1"
+    never = MagicMock()
+    never.last_successful_sync = None
+    never.account_number = "NEVER1"
+    db = MagicMock()
+    db.query.return_value.filter.return_value.all.return_value = [fresh, old, never]
+    dim = svc._build_portfolio_sync_dimension(db)
+    assert dim["status"] == "red"
+    assert dim["total_accounts"] == 3
+    assert dim["stale_accounts"] == 2
+    assert set(dim["stale_list"]) == {"STALE1", "NEVER1"}
+
+
+def test_portfolio_sync_error_on_exception():
+    svc = _mock_service()
+    db = MagicMock()
+    db.query.side_effect = RuntimeError("db unavailable")
+    dim = svc._build_portfolio_sync_dimension(db)
+    assert dim["status"] == "error"
+    assert dim["error"] == "db unavailable"
+
+
 def test_composite_counts_fundamentals_warning_as_failure():
     svc = _mock_service()
     svc._build_coverage_dimension = MagicMock(return_value={"status": "green"})
@@ -262,6 +327,7 @@ def test_composite_counts_fundamentals_warning_as_failure():
     svc._build_audit_dimension = MagicMock(return_value={"status": "green"})
     svc._build_regime_dimension = MagicMock(return_value={"status": "green"})
     svc._build_fundamentals_dimension = MagicMock(return_value={"status": "warning"})
+    svc._build_portfolio_sync_dimension = MagicMock(return_value={"status": "ok"})
     svc._build_task_runs = MagicMock(return_value={})
 
     result = svc.get_composite_health(MagicMock())

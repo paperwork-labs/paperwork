@@ -108,6 +108,10 @@ REMEDIATION_MAP = {
     "fundamentals": [
         ("backend.tasks.market.fundamentals.fill_missing", {}),
     ],
+    "portfolio_sync": [
+        ("backend.tasks.account_sync.sync_all_ibkr_accounts", {}),
+        ("backend.tasks.account_sync.sync_all_schwab_accounts", {}),
+    ],
 }
 
 

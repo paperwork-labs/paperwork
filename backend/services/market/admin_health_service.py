@@ -80,6 +80,7 @@ class AdminHealthService:
         audit = self._build_audit_dimension()
         regime = self._build_regime_dimension(db)
         fundamentals = self._build_fundamentals_dimension(db)
+        portfolio_sync = self._build_portfolio_sync_dimension(db)
         task_runs = self._build_task_runs()
 
         dims = {
@@ -89,6 +90,7 @@ class AdminHealthService:
             "audit": audit,
             "regime": regime,
             "fundamentals": fundamentals,
+            "portfolio_sync": portfolio_sync,
         }
 
         failures = [name for name, dim in dims.items() if not _composite_dimension_ok(dim.get("status"))]
@@ -347,6 +349,44 @@ class AdminHealthService:
             logger.exception("fundamentals dimension failed: %s", exc)
             return {"status": "error", "error": str(exc)}
 
+    def _build_portfolio_sync_dimension(self, db: Session) -> Dict[str, Any]:
+        """Check if broker accounts have synced recently (within 24h).
+        
+        Uses datetime.now() to match broker_sync_service which sets
+        last_successful_sync with datetime.now().
+        """
+        try:
+            from backend.models import BrokerAccount
+
+            cutoff = datetime.now() - timedelta(hours=24)
+            accounts = db.query(BrokerAccount).filter(
+                BrokerAccount.is_enabled.is_(True)
+            ).all()
+
+            if not accounts:
+                return {
+                    "status": "ok",
+                    "total_accounts": 0,
+                    "stale_accounts": 0,
+                    "stale_list": [],
+                    "note": "no broker accounts configured",
+                }
+
+            stale = [
+                a for a in accounts
+                if not a.last_successful_sync or a.last_successful_sync < cutoff
+            ]
+
+            return {
+                "status": "green" if not stale else "red",
+                "total_accounts": len(accounts),
+                "stale_accounts": len(stale),
+                "stale_list": [a.account_number for a in stale[:5]],
+            }
+        except Exception as exc:
+            logger.exception("portfolio_sync dimension failed: %s", exc)
+            return {"status": "error", "error": str(exc)}
+
     def _build_task_runs(self) -> Dict[str, Any]:
         out: Dict[str, Any] = {}
         try:
@@ -356,7 +396,8 @@ class AdminHealthService:
                     key = f"taskstatus:{task_name}:last"
                     raw = r.get(key)
                     out[task_name] = json.loads(raw) if raw else None
-                except Exception:
+                except Exception as e:
+                    logger.warning("failed to load task status for %s: %s", task_name, e)
                     out[task_name] = None
         except Exception as exc:
             logger.exception("task runs load failed: %s", exc)

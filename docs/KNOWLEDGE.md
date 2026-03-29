@@ -54,6 +54,7 @@ Architectural decisions with rationale. Grouped by domain, newest first within e
 | D29 | 2026-03-25 | **Celery task routing must match `name=`** exactly — no auto-derivation |
 | D30 | 2026-03-25 | **Quarterly dependency audit** — Postgres, Python, Vite major versions |
 | D31 | 2026-03-26 | **Agent codebase access policy** — allowlist prefixes, denylist sensitive patterns |
+| D42 | 2026-03-28 | **IBKR Gateway settings persistence** — `TWS_SETTINGS_PATH` + `ibkr-settings` volume, IBC auto-accept API clients, `portfolio_sync` health dimension |
 
 ### Platform Integration
 
@@ -141,6 +142,19 @@ Retention: Indefinite (matches session list behavior). Archive strategy TBD.
 ### D5 — Auto-backtest on strategy change (2026-03-28)
 
 Added `_trigger_auto_backtest()` hook to strategy create/update endpoints. Fire-and-forget: queues `trigger_auto_backtest_on_change` task without blocking the API response. Only triggers when `config` (rules) changes.
+
+### D42 — IBKR Gateway Settings Persistence (2026-03-28)
+
+**Decision**: Use TWS_SETTINGS_PATH + volume mount for Gateway settings persistence.
+
+**Context**: Gateway's jts.ini was defaulting to LocalServerPort=4000 but the `ghcr.io/extrange/ibkr:stable` image's socat forwards to 4001 (live) / 4002 (paper). Without persistence, settings reset on every container restart.
+
+**Solution**:
+
+- Added `TWS_SETTINGS_PATH=/settings` env var
+- Added `ibkr-settings` named volume mounted at `/settings`
+- Added `IBC_AcceptIncomingConnectionAction=accept` for auto-accept API clients
+- Added portfolio_sync health dimension to auto-ops monitoring
 
 ### D2 — Regime as hard gate (2026-03-23)
 
