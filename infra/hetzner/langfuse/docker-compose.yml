@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  langfuse:
+    image: langfuse/langfuse:latest
+    restart: always
+    ports:
+      - "3100:3000"
+    environment:
+      - DATABASE_URL=${LANGFUSE_DATABASE_URL:-postgresql://langfuse:langfuse_dev@langfuse-db:5432/langfuse}
+      - NEXTAUTH_URL=${LANGFUSE_URL:-https://langfuse.paperworklabs.com}
+      - NEXTAUTH_SECRET=${LANGFUSE_NEXTAUTH_SECRET}
+      - SALT=${LANGFUSE_SALT}
+      - TELEMETRY_ENABLED=false
+    depends_on:
+      langfuse-db:
+        condition: service_healthy
+
+  langfuse-db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=langfuse
+      - POSTGRES_PASSWORD=langfuse_dev
+      - POSTGRES_DB=langfuse
+    volumes:
+      - langfuse_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langfuse"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  langfuse_data:

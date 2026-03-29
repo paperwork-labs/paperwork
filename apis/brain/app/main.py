@@ -11,10 +11,13 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from app.config import settings
-from app.database import engine
+from app.database import async_session_factory, engine
+from app.mcp_server import create_mcp_app
 from app.rate_limit import limiter
-from app.redis import close_redis, init_redis
-from app.routers import admin, brain, health
+from app.redis import close_redis, get_redis, init_redis
+from app.routers import admin, brain, health, webhooks
+from app.services.observability import init_langfuse
+from app.tools import memory_tools
 from app.utils.correlation import CorrelationIdMiddleware
 from app.utils.exceptions import AppException, app_exception_handler
 from app.utils.pii_scrubber import setup_pii_scrubbing
@@ -61,6 +64,10 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Brain API starting up (env=%s, db=%s)", settings.ENVIRONMENT, masked)
     _run_migrations()
     await init_redis()
+    init_langfuse()
+    redis_client = get_redis()
+    memory_tools.configure(async_session_factory, redis_client)
+    logger.info("Memory tools configured with DB session factory and Redis")
     yield
     await close_redis()
     await engine.dispose()
@@ -115,4 +122,23 @@ async def unhandled_exception_handler(_request: Request, exc: Exception) -> JSON
 
 app.include_router(health.router)
 app.include_router(brain.router, prefix="/api/v1")
+app.include_router(webhooks.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
+
+mcp_app = create_mcp_app()
+
+
+@app.middleware("http")
+async def mcp_auth_middleware(request: Request, call_next):
+    """Validate MCP token on /mcp endpoints. Reject unauthenticated requests."""
+    if request.url.path.startswith("/mcp"):
+        token = settings.BRAIN_MCP_TOKEN
+        if token:
+            auth_header = request.headers.get("authorization", "")
+            if not auth_header.endswith(token) and request.headers.get("x-mcp-token") != token:
+                return JSONResponse(status_code=401, content={"error": "Invalid MCP token"})
+    return await call_next(request)
+
+
+app.mount("/mcp", mcp_app)
+logger.info("FastMCP server mounted at /mcp (22 tools, auth-protected)")
