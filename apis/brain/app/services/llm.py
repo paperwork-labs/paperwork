@@ -433,9 +433,9 @@ async def classify_query(message: str, channel_id: str | None = None) -> dict:
     api_key = settings.GOOGLE_API_KEY
     if not api_key:
         return {
-            "model": "gpt-4o-mini",
-            "provider": "openai",
-            "tools_needed": False,
+            "model": "claude-sonnet-4-20250514",
+            "provider": "anthropic",
+            "tools_needed": True,
             "domain": "general",
             "confidence": 0.5,
         }
@@ -511,11 +511,11 @@ Rules:
         result["confidence"] = max(0.0, min(1.0, float(conf)))
         return result
     except Exception:
-        logger.warning("Classification failed, defaulting to GPT-4o-mini (no tools)", exc_info=True)
+        logger.warning("Classification failed, defaulting to Sonnet + MCP", exc_info=True)
         return {
-            "model": "gpt-4o-mini",
-            "provider": "openai",
-            "tools_needed": False,
+            "model": "claude-sonnet-4-20250514",
+            "provider": "anthropic",
+            "tools_needed": True,
             "domain": "general",
             "confidence": 0.5,
         }
