@@ -9,12 +9,14 @@ alwaysApply: true
 
 **Always optimize for token efficiency without dropping quality.**
 
+**Token audit insight**: ~90% of token spend is reading/searching, not reasoning. Delegate bulk reading to fast models; reserve Opus for synthesis and judgment.
+
 Before any tool call, ask:
 1. Can a fast model do this without quality loss? → Delegate
 2. Can I batch this with other independent operations? → Parallel Task calls
 3. Is this mechanical work that doesn't need reasoning? → Delegate
 
-See `delegation.mdc` and `token-efficiency.mdc` for detailed patterns.
+See `delegation.mdc` for detailed patterns.
 
 ## Delegation Rules
 
@@ -48,14 +50,21 @@ When a subagent produces output:
 
 ## Chat Lifecycle
 
-After ~15 tool calls or when context is getting heavy:
-- Proactively suggest starting a fresh chat
-- Provide a carry-forward prompt including:
-  - Current branch name
-  - What was completed
-  - What's next
-  - Key files touched
-  - Any open questions
+After ~15+ substantive tool calls, or when you detect the conversation summary has kicked in (context from earlier feels incomplete), proactively suggest starting a fresh chat. Provide a carry-forward prompt:
+
+```
+Suggested prompt for new chat:
+
+Continue work on branch `[branch-name]`.
+
+Completed: [bullet list of what's done]
+Next up: [bullet list of remaining work]
+Key files touched: [list]
+Current state: [any important context]
+Open questions: [if any]
+```
+
+This prevents context fog in long sessions and ensures important details survive the handoff.
 
 ## Doc Hygiene
 

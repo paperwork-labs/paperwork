@@ -9,16 +9,23 @@ Delegate to `Task` with `model: "fast"` and appropriate `subagent_type` for:
 
 ## Shell Subagent (`subagent_type: "shell"`)
 - API calls (curl, gh, render CLI)
-- Running tests (`make test`, `npm test`)
-- Git operations (status, log, diff)
+- Running tests (`make test`, `npm test`, `pytest`)
+- Git operations (status, log, diff, branch listing)
 - Environment checks and verification
+- Docker/container operations
 - Any command that just needs output parsing
 
 ## Explore Subagent (`subagent_type: "explore"`)
 - Finding files by pattern across 5+ directories
 - Searching for symbols/patterns in unfamiliar code
-- Answering "where is X?" questions
-- Initial codebase exploration
+- Answering "where is X?" or "how does Y work?" questions
+- Initial codebase exploration before making changes
+- Thoroughness levels: "quick" (basic search), "medium" (moderate exploration), "very thorough" (comprehensive analysis)
+
+## GeneralPurpose Subagent (`subagent_type: "generalPurpose"`)
+- Multi-step tasks that need both search and edits
+- Researching complex questions across many files
+- Tasks where you're not confident in the quick answer
 
 ## Keep in Opus (don't delegate)
 - Financial calculations and indicator logic
@@ -55,6 +62,7 @@ Task(shell):
 2. git commit -m "message"  
 3. git push -u origin branch
 4. gh pr create --title "..." --body "..."
+5. gh pr edit <number> --add-reviewer @copilot
 Report PR URL.
 ```
 
