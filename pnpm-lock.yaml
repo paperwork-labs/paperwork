@@ -242,8 +242,8 @@ importers:
         specifier: ^19.2.0
         version: 19.2.4(react@19.2.4)
       zod:
-        specifier: ^4.3.6
-        version: 4.3.6
+        specifier: ^3.23.0
+        version: 3.25.76
       zustand:
         specifier: ^5.0.0
         version: 5.0.12(@types/react@19.2.14)(immer@11.1.4)(react@19.2.4)(use-sync-external-store@1.6.0(react@19.2.4))
