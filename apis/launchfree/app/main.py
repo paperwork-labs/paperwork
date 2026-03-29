@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.routes import filing_status
 from app.routers import auth, formations, health
 
 app = FastAPI(
@@ -23,3 +24,4 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(formations.router, prefix="/api/v1")
+app.include_router(filing_status.router)
