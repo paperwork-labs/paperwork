@@ -171,6 +171,15 @@ async def complete_with_mcp(
         return _mock_response(messages)
     except Exception:
         logger.error("Anthropic MCP call failed", exc_info=True)
+        if settings.OPENAI_API_KEY:
+            logger.info("Falling back to OpenAI with MCP (generic exception)")
+            return await complete_openai_with_mcp(
+                system_prompt=system_prompt,
+                messages=messages,
+                model="gpt-4o",
+                max_tokens=max_tokens,
+                enabled_write_tools=enabled_write_tools,
+            )
         return _mock_response(messages)
 
 
@@ -424,9 +433,9 @@ async def classify_query(message: str, channel_id: str | None = None) -> dict:
     api_key = settings.GOOGLE_API_KEY
     if not api_key:
         return {
-            "model": "claude-sonnet-4-20250514",
-            "provider": "anthropic",
-            "tools_needed": True,
+            "model": "gpt-4o-mini",
+            "provider": "openai",
+            "tools_needed": False,
             "domain": "general",
             "confidence": 0.5,
         }
@@ -455,20 +464,31 @@ Rules:
 - Complex multi-domain reasoning -> claude-opus-4-20250618, tools_needed=true"""
 
     try:
-        client = _get_client("gemini_classify", timeout=10.0)
-        res = await client.post(
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-            params={"key": api_key},
-            json={
-                "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {
-                    "responseMimeType": "application/json",
-                    "maxOutputTokens": 100,
-                },
-            },
-        )
-        res.raise_for_status()
-        data = res.json()
+        client = _get_client("gemini_classify", timeout=15.0)
+        last_err = None
+        data = None
+        for attempt in range(2):
+            try:
+                res = await client.post(
+                    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+                    params={"key": api_key},
+                    json={
+                        "contents": [{"parts": [{"text": prompt}]}],
+                        "generationConfig": {
+                            "responseMimeType": "application/json",
+                            "maxOutputTokens": 100,
+                        },
+                    },
+                )
+                res.raise_for_status()
+                data = res.json()
+                break
+            except Exception as e:
+                last_err = e
+                if attempt == 0:
+                    logger.warning("Classifier attempt 1 failed, retrying: %s", e)
+        if data is None:
+            raise last_err or ValueError("Classification failed after retries")
         text = (
             data.get("candidates", [{}])[0]
             .get("content", {})
@@ -491,11 +511,11 @@ Rules:
         result["confidence"] = max(0.0, min(1.0, float(conf)))
         return result
     except Exception:
-        logger.warning("Classification failed, defaulting to Sonnet + MCP", exc_info=True)
+        logger.warning("Classification failed, defaulting to GPT-4o-mini (no tools)", exc_info=True)
         return {
-            "model": "claude-sonnet-4-20250514",
-            "provider": "anthropic",
-            "tools_needed": True,
+            "model": "gpt-4o-mini",
+            "provider": "openai",
+            "tools_needed": False,
             "domain": "general",
             "confidence": 0.5,
         }
