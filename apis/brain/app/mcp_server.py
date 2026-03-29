@@ -173,4 +173,4 @@ mcp.tool(
 
 def create_mcp_app():
     """Create the ASGI app for mounting in FastAPI."""
-    return mcp.http_app(path="/mcp")
+    return mcp.http_app(path="/")
