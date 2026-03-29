@@ -18,7 +18,7 @@ function getProductionServices(): {
   return [
     {
       name: "Render API",
-      url: "https://api.filefree.ai/health",
+      url: `${process.env.FILEFREE_API_URL || "https://api.filefree.ai"}/health`,
       dashboardUrl: "https://dashboard.render.com",
       accessHint: "Render dashboard > filefree-api service. Manage deploys, env vars, logs.",
       category: "core",

@@ -1,3 +1,4 @@
+import hmac
 import logging
 import os
 
@@ -18,7 +19,7 @@ def _require_admin(x_brain_secret: str | None = Header(None, alias="X-Brain-Secr
     expected = settings.BRAIN_API_SECRET
     if not expected:
         raise HTTPException(status_code=503, detail="BRAIN_API_SECRET not configured")
-    if not x_brain_secret or x_brain_secret != expected:
+    if not x_brain_secret or not hmac.compare_digest(x_brain_secret, expected):
         raise HTTPException(status_code=401, detail="Admin access required")
 
 

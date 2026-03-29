@@ -1,7 +1,7 @@
 .PHONY: dev dev-d dev-all dev-filefree dev-launchfree dev-studio dev-trinkets dev-distill \
 	dev-local-filefree dev-local-launchfree dev-local-studio dev-local-trinkets dev-local-distill \
 	stop test test-local lint lint-local format format-local migrate migrate-local migration seed clean \
-	setup setup-hooks bootstrap help logs logs-api logs-web shell-api shell-web db env-pull env-check \
+	setup setup-hooks bootstrap secrets help logs logs-api logs-web shell-api shell-web db env-pull env-check \
 	n8n-activate-inactive
 
 COMPOSE_PROJECT ?= paperwork
@@ -13,9 +13,13 @@ WEB_SERVICE ?= web-filefree
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
-setup: setup-hooks ## First-time setup: copy env files, install git hooks
-	@test -f infra/env.dev || cp infra/env.dev.example infra/env.dev
-	@echo "✓ Environment files ready. Edit infra/env.dev as needed."
+secrets: ## Sync vault secrets → .env.secrets
+	@chmod +x scripts/sync-secrets.sh
+	@./scripts/sync-secrets.sh
+
+setup: setup-hooks ## First-time setup: verify env defaults, install git hooks
+	@test -f infra/env.dev.defaults || (echo "ERROR: infra/env.dev.defaults missing" && exit 1)
+	@echo "✓ Environment defaults verified (infra/env.dev.defaults). Run 'make secrets' to sync vault secrets."
 
 setup-hooks: ## Install git hooks (blocks direct pushes to main)
 	@ln -sf ../../infra/git-hooks/pre-push .git/hooks/pre-push

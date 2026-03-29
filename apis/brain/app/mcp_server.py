@@ -7,7 +7,13 @@ Tool implementations live in app/tools/. This module registers them as
 FastMCP tools and configures the server.
 """
 
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from starlette.applications import Starlette
 
 from fastmcp import FastMCP
 
@@ -171,6 +177,6 @@ mcp.tool(
 )(_vault_get_wrapper)
 
 
-def create_mcp_app():
+def create_mcp_app() -> "Starlette":
     """Create the ASGI app for mounting in FastAPI."""
     return mcp.http_app(path="/")

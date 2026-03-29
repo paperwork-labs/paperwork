@@ -41,9 +41,12 @@ services:
       - ../apis/filefree:/app
       - ../pyproject.toml:/pyproject.toml:ro
     env_file:
-      - env.dev
+      - env.dev.defaults
+      - ../.env.secrets
     environment:
       PORT: 8001
+      DATABASE_URL: postgresql+asyncpg://filefree:filefree_dev@postgres:5432/filefree_dev
+      TEST_DATABASE_URL: postgresql+asyncpg://filefree:filefree_dev@postgres:5432/filefree_test
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
     depends_on:
       postgres:
@@ -67,10 +70,12 @@ services:
     volumes:
       - ../apis/launchfree:/app
     env_file:
-      - env.dev
+      - env.dev.defaults
+      - ../.env.secrets
     environment:
       PORT: 8002
       FRONTEND_URL: http://localhost:3002
+      DATABASE_URL: postgresql+asyncpg://filefree:filefree_dev@postgres:5432/launchfree_dev
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8002", "--reload"]
     depends_on:
       postgres:
@@ -79,6 +84,33 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import httpx; r = httpx.get('http://localhost:8002/health'); assert r.status_code == 200"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  api-brain:
+    container_name: brain-api
+    build:
+      context: ../apis/brain
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8000"
+    volumes:
+      - ../apis/brain:/app
+    env_file:
+      - env.dev.defaults
+      - ../.env.secrets
+    environment:
+      DATABASE_URL: postgresql+asyncpg://filefree:filefree_dev@postgres:5432/brain_dev
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; r = httpx.get('http://localhost:8000/health'); assert r.status_code == 200"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -96,7 +128,8 @@ services:
       - /app/node_modules
       - /app/apps/filefree/.next
     env_file:
-      - env.dev
+      - env.dev.defaults
+      - ../.env.secrets
     environment:
       PORT: 3001
     # Root turbo scripts (dev:filefree) are not visible from apps/filefree; use per-app `dev` (see Dockerfile.dev).
@@ -117,7 +150,8 @@ services:
       - /app/node_modules
       - /app/apps/launchfree/.next
     env_file:
-      - env.dev
+      - env.dev.defaults
+      - ../.env.secrets
     environment:
       PORT: 3002
     command: ["pnpm", "dev"]
@@ -137,7 +171,8 @@ services:
       - /app/node_modules
       - /app/apps/trinkets/.next
     env_file:
-      - env.dev
+      - env.dev.defaults
+      - ../.env.secrets
     environment:
       PORT: 3003
     command: ["pnpm", "dev"]
@@ -154,7 +189,8 @@ services:
       - /app/node_modules
       - /app/apps/studio/.next
     env_file:
-      - env.dev
+      - env.dev.defaults
+      - ../.env.secrets
     environment:
       PORT: 3004
     command: ["pnpm", "dev"]
@@ -171,7 +207,8 @@ services:
       - /app/node_modules
       - /app/apps/distill/.next
     env_file:
-      - env.dev
+      - env.dev.defaults
+      - ../.env.secrets
     environment:
       PORT: 3005
     command: ["pnpm", "dev"]

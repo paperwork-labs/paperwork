@@ -76,7 +76,7 @@ class CircuitBreaker:
                 val = await self._redis.get(cooldown_key)
                 return val is not None
             except Exception:
-                pass
+                logger.debug("Circuit breaker Redis op failed", exc_info=True)
 
         events = self._local_events.get(provider, [])
         now = time.time()
@@ -94,7 +94,7 @@ class CircuitBreaker:
             try:
                 await self._redis.delete(f"circuit:{provider}:cooldown")
             except Exception:
-                pass
+                logger.debug("Circuit breaker Redis op failed", exc_info=True)
 
     async def record_failure(self, provider: str) -> None:
         now = time.time()
@@ -121,7 +121,7 @@ class CircuitBreaker:
                             provider, rate, fail_count, total_count,
                         )
             except Exception:
-                pass
+                logger.debug("Circuit breaker Redis op failed", exc_info=True)
 
     def _prune_local(self, provider: str, now: float) -> None:
         self._local_events[provider] = [

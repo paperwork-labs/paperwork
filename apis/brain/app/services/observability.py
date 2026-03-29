@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 _langfuse = None
 
 
-def init_langfuse():
+def init_langfuse() -> None:
     """Initialize Langfuse client. Call during app startup."""
     global _langfuse
     if not settings.LANGFUSE_PUBLIC_KEY or not settings.LANGFUSE_SECRET_KEY:
@@ -88,7 +88,7 @@ class _NoOpSpan:
         pass
 
 
-def flush():
+def flush() -> None:
     """Flush pending Langfuse events."""
     if _langfuse:
         try:
