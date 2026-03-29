@@ -1,10 +1,9 @@
 import logging
 
 from fastapi import APIRouter, Request, UploadFile
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from app.config import settings
+from app.rate_limit import limiter
 from app.schemas.base import error_response, success_response
 from app.schemas.document import DemoExtractionResponse, W2FieldResult
 from app.services.ocr_service import process_w2
@@ -12,8 +11,6 @@ from app.services.ocr_service import process_w2
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/documents", tags=["documents"])
-
-limiter = Limiter(key_func=get_remote_address)
 
 ALLOWED_CONTENT_TYPES = {
     "image/jpeg",

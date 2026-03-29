@@ -12,6 +12,16 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+_http_client: httpx.AsyncClient | None = None
+
+
+def _get_http_client() -> httpx.AsyncClient:
+    global _http_client
+    if _http_client is None or _http_client.is_closed:
+        _http_client = httpx.AsyncClient(timeout=30.0)
+    return _http_client
+
+
 EMBEDDING_MODEL = "text-embedding-3-small"
 EMBEDDING_DIMENSIONS = 1536
 MAX_INPUT_TOKENS = 8191
@@ -31,23 +41,23 @@ async def embed_text(text: str) -> list[float] | None:
     truncated = text[:32000]
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                "https://api.openai.com/v1/embeddings",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": EMBEDDING_MODEL,
-                    "input": truncated,
-                },
-            )
-            response.raise_for_status()
-            data = response.json()
-            embedding = data["data"][0]["embedding"]
-            logger.debug("Generated embedding (%d dimensions)", len(embedding))
-            return embedding
+        client = _get_http_client()
+        response = await client.post(
+            "https://api.openai.com/v1/embeddings",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": EMBEDDING_MODEL,
+                "input": truncated,
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+        embedding = data["data"][0]["embedding"]
+        logger.debug("Generated embedding (%d dimensions)", len(embedding))
+        return embedding
     except httpx.HTTPStatusError as e:
         logger.warning("OpenAI embedding API error: %s", e.response.status_code)
         return None
@@ -72,28 +82,28 @@ async def embed_batch(texts: list[str]) -> list[list[float] | None]:
     truncated = [t[:32000] for t in texts]
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
-                "https://api.openai.com/v1/embeddings",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": EMBEDDING_MODEL,
-                    "input": truncated,
-                },
-            )
-            response.raise_for_status()
-            data = response.json()
+        client = _get_http_client()
+        response = await client.post(
+            "https://api.openai.com/v1/embeddings",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": EMBEDDING_MODEL,
+                "input": truncated,
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
 
-            embeddings: list[list[float] | None] = [None] * len(texts)
-            for item in data["data"]:
-                idx = item["index"]
-                embeddings[idx] = item["embedding"]
+        embeddings: list[list[float] | None] = [None] * len(texts)
+        for item in data["data"]:
+            idx = item["index"]
+            embeddings[idx] = item["embedding"]
 
-            logger.info("Generated %d embeddings in batch", len(texts))
-            return embeddings
+        logger.info("Generated %d embeddings in batch", len(texts))
+        return embeddings
     except Exception:
         logger.warning("Batch embedding generation failed", exc_info=True)
         return [None] * len(texts)

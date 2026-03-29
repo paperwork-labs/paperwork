@@ -64,6 +64,18 @@ async def update_filing_status_type(
     return filing
 
 
+VALID_TRANSITIONS: dict[str, list[str]] = {
+    "draft": ["documents_uploaded", "processing"],
+    "documents_uploaded": ["data_confirmed", "draft"],
+    "data_confirmed": ["calculated", "draft"],
+    "calculated": ["review", "draft"],
+    "processing": ["review", "rejected"],
+    "review": ["submitted", "draft"],
+    "submitted": ["accepted", "rejected"],
+    "rejected": ["draft"],
+}
+
+
 async def advance_status(
     db: AsyncSession,
     filing_id: uuid.UUID,
@@ -76,11 +88,20 @@ async def advance_status(
         raise NotFoundError("Filing not found")
 
     try:
-        filing.status = FilingStatus(new_status)
+        target = FilingStatus(new_status)
     except ValueError as err:
         valid = [s.value for s in FilingStatus]
         raise ConflictError(f"Invalid status. Must be one of: {', '.join(valid)}") from err
 
+    current = filing.status.value
+    allowed = VALID_TRANSITIONS.get(current, [])
+    if target.value not in allowed:
+        raise ValueError(
+            f"Cannot transition from '{current}' to '{target.value}'. "
+            f"Allowed transitions: {allowed}"
+        )
+
+    filing.status = target
     await db.flush()
     await db.refresh(filing)
     return filing

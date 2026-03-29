@@ -4,7 +4,7 @@ import subprocess
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
@@ -73,6 +73,9 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         logger.warning("Redis unavailable — memory tools will operate without caching")
     memory_tools.configure(async_session_factory, redis_client)
     logger.info("Memory tools configured (redis=%s)", "connected" if redis_client else "disabled")
+    mcp_application = create_mcp_app()
+    _app.mount("/mcp", mcp_application)
+    logger.info("FastMCP server mounted at /mcp (22 tools, auth-protected)")
     yield
     from app.services.llm import close_clients
     await close_clients()
@@ -104,15 +107,15 @@ if settings.DEBUG and settings.FRONTEND_URL != "http://localhost:3000":
     allowed_origins.append("http://localhost:3000")
 
 app.add_middleware(CorrelationIdMiddleware)
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-CSRF-Token", "X-Correlation-ID", "X-Brain-Secret"],
 )
-app.state.limiter = limiter
-app.add_middleware(SlowAPIMiddleware)
 
 app.add_exception_handler(AppException, app_exception_handler)  # type: ignore[arg-type]
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -132,11 +135,9 @@ app.include_router(brain.router, prefix="/api/v1")
 app.include_router(webhooks.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 
-mcp_app = create_mcp_app()
-
 
 @app.middleware("http")
-async def mcp_auth_middleware(request: Request, call_next):
+async def mcp_auth_middleware(request: Request, call_next) -> Response:
     """Validate MCP token on /mcp endpoints. Reject unauthenticated requests."""
     if request.url.path.startswith("/mcp"):
         token = settings.BRAIN_MCP_TOKEN
@@ -157,7 +158,3 @@ async def mcp_auth_middleware(request: Request, call_next):
             ):
                 return JSONResponse(status_code=401, content={"error": "Invalid MCP token"})
     return await call_next(request)
-
-
-app.mount("/mcp", mcp_app)
-logger.info("FastMCP server mounted at /mcp (22 tools, auth-protected)")

@@ -1,14 +1,12 @@
 import logging
-import re
 
-SSN_PATTERN = re.compile(r"\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b")
-SSN_REPLACEMENT = "***-**-****"
-EIN_PATTERN = re.compile(r"\b\d{2}-\d{7}\b")
-EIN_REPLACEMENT = "**-*******"
+from app.services.pii import _PATTERNS
 
 
 def _scrub(text: str) -> str:
-    return EIN_PATTERN.sub(EIN_REPLACEMENT, SSN_PATTERN.sub(SSN_REPLACEMENT, text))
+    for pattern, replacement in _PATTERNS:
+        text = pattern.sub(replacement, text)
+    return text
 
 
 class PIIScrubFilter(logging.Filter):

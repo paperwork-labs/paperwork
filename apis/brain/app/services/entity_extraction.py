@@ -15,6 +15,15 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+_http_client: httpx.AsyncClient | None = None
+
+
+def _get_http_client() -> httpx.AsyncClient:
+    global _http_client
+    if _http_client is None or _http_client.is_closed:
+        _http_client = httpx.AsyncClient(timeout=30.0)
+    return _http_client
+
 
 @dataclass
 class ExtractedEntity:
@@ -66,35 +75,35 @@ async def extract_entities(text: str) -> list[ExtractedEntity]:
         text = text[:4000]
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "gpt-4o-mini",
-                    "messages": [{"role": "user", "content": EXTRACTION_PROMPT.format(text=text)}],
-                    "temperature": 0.1,
-                    "max_tokens": 500,
-                },
-            )
-            response.raise_for_status()
-            data = response.json()
-            content = data["choices"][0]["message"]["content"]
+        client = _get_http_client()
+        response = await client.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "gpt-4o-mini",
+                "messages": [{"role": "user", "content": EXTRACTION_PROMPT.format(text=text)}],
+                "temperature": 0.1,
+                "max_tokens": 500,
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+        content = data["choices"][0]["message"]["content"]
 
-            entities_data = json.loads(content)
-            entities = [
-                ExtractedEntity(
-                    name=e["name"],
-                    entity_type=e["entity_type"],
-                    properties=e.get("properties", {}),
-                )
-                for e in entities_data
-            ]
-            logger.debug("Extracted %d entities via GPT-4o-mini", len(entities))
-            return entities
+        entities_data = json.loads(content)
+        entities = [
+            ExtractedEntity(
+                name=e["name"],
+                entity_type=e["entity_type"],
+                properties=e.get("properties", {}),
+            )
+            for e in entities_data
+        ]
+        logger.debug("Extracted %d entities via GPT-4o-mini", len(entities))
+        return entities
     except json.JSONDecodeError:
         logger.warning("Failed to parse entity extraction response as JSON")
         return _regex_extract_entities(text)

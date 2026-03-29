@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, Integer, Text, func, text
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -36,8 +36,8 @@ class EntityEdge(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     organization_id: Mapped[str] = mapped_column(Text, nullable=False)
-    source_entity_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    target_entity_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    source_entity_id: Mapped[int] = mapped_column(Integer, ForeignKey("agent_entities.id"), nullable=False)
+    target_entity_id: Mapped[int] = mapped_column(Integer, ForeignKey("agent_entities.id"), nullable=False)
     relation_type: Mapped[str] = mapped_column(Text, nullable=False)
     weight: Mapped[float] = mapped_column(Float, server_default=text("1.0"))
     evidence_episode_id: Mapped[int | None] = mapped_column(Integer)

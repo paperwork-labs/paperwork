@@ -168,7 +168,8 @@ async def complete_with_mcp(
                 max_tokens=max_tokens,
                 enabled_write_tools=enabled_write_tools,
             )
-        return _mock_response(messages)
+        logger.info("Attempting text-only completion as last resort")
+        return await _text_only_fallback(system_prompt=system_prompt, messages=messages)
     except Exception:
         logger.error("Anthropic MCP call failed", exc_info=True)
         if settings.OPENAI_API_KEY:
@@ -180,7 +181,8 @@ async def complete_with_mcp(
                 max_tokens=max_tokens,
                 enabled_write_tools=enabled_write_tools,
             )
-        return _mock_response(messages)
+        logger.info("Attempting text-only completion as last resort")
+        return await _text_only_fallback(system_prompt=system_prompt, messages=messages)
 
 
 async def complete_openai_with_mcp(
@@ -244,7 +246,25 @@ async def complete_openai_with_mcp(
         return _parse_openai_response(data, model)
     except Exception:
         logger.error("OpenAI MCP call failed", exc_info=True)
-        return _mock_response(messages)
+        logger.info("Attempting text-only completion as last resort")
+        return await _text_only_fallback(system_prompt=system_prompt, messages=messages)
+
+
+async def _text_only_fallback(
+    *,
+    system_prompt: str,
+    messages: list[dict[str, str]],
+) -> dict:
+    """Last-resort text-only completion (no tools) before falling back to mock."""
+    for provider_fn in (_complete_openai_text, _complete_anthropic_text, _complete_gemini):
+        try:
+            result = await provider_fn(system_prompt=system_prompt, messages=messages)
+            if result.get("provider") != "mock":
+                logger.info("Text-only fallback succeeded via %s", result.get("provider"))
+                return result
+        except Exception:
+            continue
+    return _mock_response(messages)
 
 
 async def complete_text(
@@ -489,8 +509,12 @@ Rules:
                     logger.warning("Classifier attempt 1 failed, retrying: %s", e)
         if data is None:
             raise last_err or ValueError("Classification failed after retries")
+        candidates = data.get("candidates", [])
+        if not candidates:
+            logger.warning("Gemini classifier returned empty candidates list")
+            raise ValueError("Gemini returned no candidates")
         text = (
-            data.get("candidates", [{}])[0]
+            candidates[0]
             .get("content", {})
             .get("parts", [{}])[0]
             .get("text", "{}")
