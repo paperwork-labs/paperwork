@@ -2,8 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routes import filing_status
 from app.routers import auth, formations, health
+from app.routes import filing_status
 
 app = FastAPI(
     title="LaunchFree API",
