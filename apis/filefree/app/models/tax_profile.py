@@ -1,7 +1,7 @@
 import uuid
 
 from sqlalchemy import ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -18,7 +18,7 @@ class TaxProfile(TimestampMixin, Base):
     )
     ssn_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
     full_name_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
-    address_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
+    address_encrypted: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     date_of_birth_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
     total_wages: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     total_federal_withheld: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

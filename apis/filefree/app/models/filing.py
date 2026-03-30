@@ -31,7 +31,7 @@ class Filing(TimestampMixin, Base):
     __tablename__ = "filings"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     tax_year: Mapped[int] = mapped_column(Integer, nullable=False)
     filing_status_type: Mapped[FilingStatusType | None] = mapped_column(

@@ -64,7 +64,7 @@ else
 fi
 
 if grep -q '^SLACK_ALERTS_WEBHOOK_URL=' .env; then
-  sed -i "s|^SLACK_ALERTS_WEBHOOK_URL=.*|SLACK_ALERTS_WEBHOOK_URL=https://hooks.slack.com/services/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|" .env
+  echo "  NOTE: SLACK_ALERTS_WEBHOOK_URL preserved as-is (rotate separately via vault)"
 fi
 
 echo "  OK"
@@ -95,7 +95,6 @@ echo "HETZNER_REDIS_PASSWORD=$NEW_REDIS_PASS"
 echo "N8N_BASIC_AUTH_PASSWORD=$NEW_N8N_PASSWORD"
 echo "N8N_ENCRYPTION_KEY=$NEW_N8N_ENCRYPTION_KEY"
 echo "POSTIZ_JWT_SECRET=$NEW_POSTIZ_JWT"
-echo "SLACK_ALERTS_WEBHOOK_URL=https://hooks.slack.com/services/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"
 echo ""
 echo "========================================="
 echo "NEXT STEPS:"
