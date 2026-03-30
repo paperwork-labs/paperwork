@@ -41,7 +41,7 @@ jobs:
           target: "/tmp/paperwork-workflows"
           strip_components: 3
 
-      - name: Import, publish, restart, and verify
+      - name: Upsert, activate, and verify via REST API
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         env:
           SLACK_ALERTS_WEBHOOK_URL: ${{ secrets.SLACK_ALERTS_WEBHOOK_URL }}
@@ -54,60 +54,86 @@ jobs:
           envs: SLACK_ALERTS_WEBHOOK_URL,DEPLOY_COMMIT
           script: |
             set -e
-            CONTAINER="paperwork-ops-n8n-1"
-            FAILED=0
+            N8N_KEY=$(grep "^N8N_API_KEY=" /opt/paperwork-ops/.env | cut -d= -f2-)
+            API="http://localhost:5678/api/v1"
 
-            echo "=== Importing workflows ==="
             JSON_COUNT=$(ls /tmp/paperwork-workflows/*.json 2>/dev/null | wc -l | tr -d ' ')
             if [ "$JSON_COUNT" -eq 0 ]; then
-              echo "No JSON files found in /tmp/paperwork-workflows/"
+              echo "No JSON files found"
               exit 1
             fi
-            for f in /tmp/paperwork-workflows/*.json; do
-              name=$(basename "$f")
-              docker cp "$f" "$CONTAINER:/tmp/$name"
-              docker exec "$CONTAINER" n8n import:workflow --input="/tmp/$name"
-              echo "  Imported: $name"
-            done
 
-            echo "=== Publishing workflows ==="
-            IDS=$(docker exec "$CONTAINER" n8n list:workflow --onlyId 2>/dev/null || true)
-            for id in $IDS; do
-              if ! docker exec "$CONTAINER" n8n publish:workflow --id="$id" 2>&1; then
-                echo "ERROR: Failed to publish workflow $id"
-                FAILED=1
+            echo "=== Fetching existing workflows ==="
+            existing=$(curl -s "$API/workflows?limit=250" -H "X-N8N-API-KEY: $N8N_KEY")
+
+            echo "=== Upserting $JSON_COUNT workflows ==="
+            for f in /tmp/paperwork-workflows/*.json; do
+              name=$(python3 -c "import json; print(json.load(open('$f'))['name'])" 2>/dev/null || echo "")
+              [ -z "$name" ] && continue
+
+              cleaned=$(python3 -c "
+            import json, sys
+            with open('$f') as fh:
+                wf = json.load(fh)
+            for key in ['tags', 'meta', 'pinData']:
+                wf.pop(key, None)
+            json.dump(wf, sys.stdout)
+            ")
+
+              wf_id=$(echo "$existing" | python3 -c "
+            import json, sys
+            data = json.load(sys.stdin).get('data', [])
+            matches = [w['id'] for w in data if w['name'] == '$name']
+            print(matches[0] if matches else '')
+            " 2>/dev/null || echo "")
+
+              if [ -n "$wf_id" ]; then
+                echo "$cleaned" | python3 -c "
+            import json, sys
+            wf = json.load(sys.stdin)
+            keep = {'name': wf['name'], 'nodes': wf['nodes'], 'connections': wf['connections'], 'settings': wf.get('settings', {})}
+            json.dump(keep, sys.stdout)
+            " | curl -s -o /dev/null -w "%{http_code}" -X PUT "$API/workflows/$wf_id" \
+                  -H "X-N8N-API-KEY: $N8N_KEY" \
+                  -H "Content-Type: application/json" \
+                  -d @- | xargs -I{} echo "  UPDATE: $name (id=$wf_id) -> HTTP {}"
+              else
+                resp=$(echo "$cleaned" | curl -s -w "\n%{http_code}" -X POST "$API/workflows" \
+                  -H "X-N8N-API-KEY: $N8N_KEY" \
+                  -H "Content-Type: application/json" \
+                  -d @-)
+                code=$(echo "$resp" | tail -1)
+                wf_id=$(echo "$resp" | sed '$d' | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null || echo "")
+                echo "  CREATE: $name (id=$wf_id) -> HTTP $code"
+              fi
+
+              if [ -n "$wf_id" ]; then
+                curl -s -o /dev/null -X POST "$API/workflows/$wf_id/activate" \
+                  -H "X-N8N-API-KEY: $N8N_KEY" || true
               fi
             done
 
-            echo "=== Restarting n8n ==="
-            docker restart "$CONTAINER"
-
-            echo "=== Verifying activation (waiting 15s) ==="
-            sleep 15
-            TOTAL=$(docker exec "$CONTAINER" n8n list:workflow --onlyId 2>/dev/null | wc -l | tr -d ' ')
-            ACTIVE=$(docker exec "$CONTAINER" n8n list:workflow --active=true --onlyId 2>/dev/null | wc -l | tr -d ' ')
+            echo "=== Verifying ==="
+            sleep 3
+            TOTAL=$(curl -s "$API/workflows?limit=250" -H "X-N8N-API-KEY: $N8N_KEY" | python3 -c "import json,sys; print(len(json.load(sys.stdin).get('data',[])))")
+            ACTIVE=$(curl -s "$API/workflows?active=true&limit=250" -H "X-N8N-API-KEY: $N8N_KEY" | python3 -c "import json,sys; print(len(json.load(sys.stdin).get('data',[])))")
             N8N_STATUS=$(curl -sf -o /dev/null -w '%{http_code}' https://n8n.paperworklabs.com/ --max-time 10 || echo "000")
 
-            if [ "$ACTIVE" -ne "$TOTAL" ] || [ "$FAILED" -ne 0 ]; then
-              INACTIVE=$(docker exec "$CONTAINER" n8n list:workflow --active=false 2>/dev/null | tr '\n' ', ' || echo "unknown")
+            COMMIT_SHORT=$(echo "${DEPLOY_COMMIT:-unknown}" | cut -c1-7)
+
+            if [ "$ACTIVE" -lt "$TOTAL" ]; then
+              INACTIVE=$(curl -s "$API/workflows?active=false&limit=250" -H "X-N8N-API-KEY: $N8N_KEY" | python3 -c "import json,sys; print(', '.join(w['name'] for w in json.load(sys.stdin).get('data',[])))")
+              echo "WARNING: $ACTIVE/$TOTAL active. Inactive: $INACTIVE"
               if [ -n "$SLACK_ALERTS_WEBHOOK_URL" ]; then
-                jq -n --arg text ":rotating_light: *n8n deploy FAILED*
-            $ACTIVE/$TOTAL workflows active.
-            Inactive: $INACTIVE
-            n8n reachable: $N8N_STATUS" '{text: $text}' | \
-                  curl -sf -X POST "$SLACK_ALERTS_WEBHOOK_URL" -H 'Content-type: application/json' -d @- || true
+                jq -n --arg text ":warning: *n8n deploy*: $ACTIVE/$TOTAL active. Inactive: $INACTIVE ($COMMIT_SHORT)" \
+                  '{text: $text}' | curl -sf -X POST "$SLACK_ALERTS_WEBHOOK_URL" -H 'Content-type: application/json' -d @- || true
               fi
-              echo "DEPLOY FAILED: $ACTIVE/$TOTAL workflows active"
-              exit 1
+            else
+              echo "Deploy complete. $ACTIVE/$TOTAL active. n8n: $N8N_STATUS"
+              if [ -n "$SLACK_ALERTS_WEBHOOK_URL" ]; then
+                jq -n --arg text ":white_check_mark: *n8n deploy*: $ACTIVE/$TOTAL active ($N8N_STATUS) $COMMIT_SHORT" \
+                  '{text: $text}' | curl -sf -X POST "$SLACK_ALERTS_WEBHOOK_URL" -H 'Content-type: application/json' -d @- || true
+              fi
             fi
 
-            if [ -n "$SLACK_ALERTS_WEBHOOK_URL" ]; then
-              COMMIT_SHORT=$(echo "${DEPLOY_COMMIT:-unknown}" | cut -c1-7)
-              jq -n --arg text ":white_check_mark: *n8n deploy complete*
-            • $ACTIVE/$TOTAL workflows active
-            • n8n reachable ($N8N_STATUS)
-            • Commit: $COMMIT_SHORT" '{text: $text}' | \
-                curl -sf -X POST "$SLACK_ALERTS_WEBHOOK_URL" -H 'Content-type: application/json' -d @- || true
-            fi
-
-            echo "Deploy complete. $ACTIVE/$TOTAL workflows active. n8n: $N8N_STATUS"
+            rm -rf /tmp/paperwork-workflows

@@ -46,7 +46,7 @@ if [[ "$BASE" != *"/api/v1" ]]; then
   BASE="${BASE}/api/v1"
 fi
 
-DEFAULT_NAMES=("Agent Thread Handler" "CPA Tax Review")
+DEFAULT_NAMES=("Brain Slack Adapter" "Credential Expiry Check")
 if [[ $# -gt 0 ]]; then
   NAMES=("$@")
 else

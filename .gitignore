@@ -75,3 +75,4 @@ htmlcov/
 
 # OS
 Thumbs.db
+gitleaks-report.json

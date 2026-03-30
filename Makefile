@@ -146,6 +146,6 @@ env-pull: ## Pull Vercel production env vars to Studio .env.local
 env-check: ## Validate env vars across all environments (Vercel, local, Hetzner)
 	@bash scripts/env-check.sh
 
-n8n-activate-inactive: ## Activate Agent Thread Handler + CPA Tax Review (needs N8N_API_KEY and N8N_API_URL or N8N_HOST in .env.local)
+n8n-activate-inactive: ## Activate Brain Slack Adapter + Credential Expiry Check (needs N8N_API_KEY and N8N_API_URL or N8N_HOST in .env.local)
 	@chmod +x scripts/n8n-activate-workflows.sh
-	@./scripts/n8n-activate-workflows.sh "Agent Thread Handler" "CPA Tax Review"
+	@./scripts/n8n-activate-workflows.sh "Brain Slack Adapter" "Credential Expiry Check"
