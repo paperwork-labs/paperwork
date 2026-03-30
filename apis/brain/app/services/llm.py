@@ -125,7 +125,7 @@ async def complete_with_mcp(
         "tools": [
             {
                 "type": "tool_search_tool_bm25",
-                "name": "tool_search",
+                "name": "tool_search_tool_bm25",
             },
             {
                 "type": "mcp_toolset",
