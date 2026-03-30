@@ -361,7 +361,7 @@ async def preview_trade(
     return result
 
 
-async def approve_trade(order_id: int, approver_user_id: int = 1) -> str:
+async def approve_trade(order_id: int) -> str:
     """POST /api/v1/tools/approve-trade — Tier 3. Approve a pending order.
 
     Call after preview_trade when status is PENDING_APPROVAL.
@@ -371,7 +371,6 @@ async def approve_trade(order_id: int, approver_user_id: int = 1) -> str:
 
     payload = {
         "order_id": order_id,
-        "approver_user_id": approver_user_id,
     }
 
     try:
@@ -397,7 +396,7 @@ async def approve_trade(order_id: int, approver_user_id: int = 1) -> str:
     return f"✅ Order {order_id} approved.\n{_scrub_json_blob(data)}\n\nUse execute_trade({order_id}) to submit."
 
 
-async def reject_trade(order_id: int, rejector_user_id: int = 1, reason: str = "") -> str:
+async def reject_trade(order_id: int, reason: str = "") -> str:
     """POST /api/v1/tools/reject-trade — Tier 3. Reject a pending order.
 
     Call after preview_trade to cancel without executing.
@@ -407,7 +406,6 @@ async def reject_trade(order_id: int, rejector_user_id: int = 1, reason: str = "
 
     payload: dict[str, Any] = {
         "order_id": order_id,
-        "rejector_user_id": rejector_user_id,
     }
     if reason:
         payload["reason"] = reason

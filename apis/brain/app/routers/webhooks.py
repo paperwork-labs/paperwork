@@ -7,7 +7,9 @@ import json
 import logging
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+import hashlib
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,11 +40,14 @@ KNOWN_EVENTS = frozenset({
 DEFAULT_WEBHOOK_ORG_ID = "paperwork-labs"
 
 
-def _verify_axiomfolio_webhook(
-    x_webhook_secret: str | None = Header(None, alias="X-Webhook-Secret"),
-) -> None:
-    expected = settings.AXIOMFOLIO_WEBHOOK_SECRET or settings.AXIOMFOLIO_API_KEY
-    if not expected:
+async def _verify_axiomfolio_webhook(request: Request) -> None:
+    """Verify AxiomFolio webhook via HMAC-SHA256 signature.
+
+    AxiomFolio sends: X-Webhook-Signature: sha256=<hex>
+    where hex = hmac.new(secret, body, sha256).hexdigest()
+    """
+    expected_secret = settings.AXIOMFOLIO_WEBHOOK_SECRET
+    if not expected_secret:
         if settings.ENVIRONMENT == "development":
             logger.warning(
                 "Webhook secret not set; accepting AxiomFolio webhooks without auth (dev only)"
@@ -52,8 +57,23 @@ def _verify_axiomfolio_webhook(
             status_code=503,
             detail="AxiomFolio webhook secret not configured",
         )
-    if not x_webhook_secret or not hmac.compare_digest(x_webhook_secret, expected):
-        raise HTTPException(status_code=401, detail="Invalid or missing X-Webhook-Secret")
+
+    signature_header = request.headers.get("X-Webhook-Signature", "")
+    if not signature_header.startswith("sha256="):
+        raise HTTPException(
+            status_code=401,
+            detail="Missing or malformed X-Webhook-Signature header",
+        )
+
+    body = await request.body()
+    expected_sig = hmac.new(
+        expected_secret.encode(), body, hashlib.sha256
+    ).hexdigest()
+    received_sig = signature_header[7:]  # strip "sha256=" prefix
+
+    if not hmac.compare_digest(expected_sig, received_sig):
+        logger.warning("AxiomFolio webhook signature mismatch")
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
 
 
 def _normalize_event(event: str) -> str:
