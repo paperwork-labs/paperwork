@@ -476,7 +476,7 @@ Respond with ONLY valid JSON:
   "confidence": 0.0-1.0}}
 
 Rules:
-- ONLY use tools_needed=false for truly simple greetings ("hi", "thanks") or pure explanations
+- Prefer tools_needed=false for simple greetings ("hi", "thanks"), pure explanations, or domain-specific computation (tax math)
 - Project status, task progress, "what to work on", planning questions -> claude-sonnet-4-20250514, tools_needed=true (needs GitHub access to read TASKS.md)
 - Infrastructure status checks -> claude-sonnet-4-20250514, tools_needed=true
 - Code/PR/GitHub operations -> claude-sonnet-4-20250514, tools_needed=true

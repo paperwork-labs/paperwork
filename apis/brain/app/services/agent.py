@@ -75,7 +75,7 @@ async def _load_persona_instructions(persona: str, redis_client: Any) -> str:
     try:
         from app.tools.github import read_github_file
         mdc_path = f"{PERSONA_MDC_PREFIX}{persona}.mdc"
-        content = await read_github_file(mdc_path)
+        content = await read_github_file(mdc_path, max_chars=15000)
         if content and "Not found:" not in content and "error:" not in content.lower():
             if redis_client:
                 try:
