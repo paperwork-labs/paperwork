@@ -46,7 +46,7 @@ from app.tools.infra import (
     list_n8n_workflows,
 )
 from app.tools.memory_tools import search_memory
-from app.tools.vault import vault_get, vault_list
+from app.tools.vault import vault_get, vault_list, vault_set
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +149,7 @@ mcp.tool(
     description="Search Brain's episodic memory for relevant past conversations and knowledge.",
 )(search_memory)
 
-# -- Vault tools (2) -----------------------------------------------------------
+# -- Vault tools (3) -----------------------------------------------------------
 
 
 async def _vault_list_wrapper() -> str:
@@ -175,6 +175,20 @@ mcp.tool(
     name="vault_get",
     description="Retrieve a secret from the vault (Tier 1: value not exposed in responses).",
 )(_vault_get_wrapper)
+
+
+async def _vault_set_wrapper(name: str, value: str, service: str) -> str:
+    """Store or update a secret in the vault (Tier 2: write action)."""
+    result = await vault_set(name, value, service)
+    if result.success:
+        return f"Secret '{name}' saved to vault."
+    return f"Vault error: {result.error}"
+
+
+mcp.tool(
+    name="vault_set",
+    description="Store or update a secret in the vault (Tier 2: write action).",
+)(_vault_set_wrapper)
 
 
 def create_mcp_app() -> "Starlette":

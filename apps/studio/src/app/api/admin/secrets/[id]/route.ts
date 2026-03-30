@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql, ensureSecretsTable } from "@/lib/db";
 import { decrypt } from "@/lib/crypto";
+import { authenticateSecretsRequest } from "@/lib/secrets-auth";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const auth = authenticateSecretsRequest(request);
+  if (!auth.ok) return auth.response;
+
   try {
     const { id } = await params;
     if (!UUID_RE.test(id)) {
