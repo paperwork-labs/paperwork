@@ -26,6 +26,8 @@ from app.utils.pii_scrubber import setup_pii_scrubbing
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
 
+mcp_application = create_mcp_app()
+
 
 def _run_migrations() -> None:
     """Run Alembic migrations on startup. Safe for single-instance deploys."""
@@ -58,7 +60,8 @@ def _run_migrations() -> None:
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
+async def _app_lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
+    """Brain application lifespan — migrations, Redis, memory tools."""
     setup_pii_scrubbing()
     db_url = settings.DATABASE_URL
     masked = db_url[:30] + "..." if len(db_url) > 30 else db_url
@@ -74,19 +77,10 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     memory_tools.configure(async_session_factory, redis_client)
     logger.info("Memory tools configured (redis=%s)", "connected" if redis_client else "disabled")
 
-    mcp_application = create_mcp_app()
     _app.mount("/mcp", mcp_application)
-    logger.info("FastMCP server mounted at /mcp (22 tools, auth-protected)")
+    logger.info("FastMCP server mounted at /mcp (23 tools, auth-protected)")
 
-    mcp_lifespan = getattr(mcp_application, "lifespan_handler", None)
-    if mcp_lifespan is not None:
-        async with mcp_lifespan(_app):
-            logger.info("FastMCP lifespan started — session manager initialized")
-            yield
-            logger.info("FastMCP lifespan ending")
-    else:
-        logger.warning("FastMCP lifespan_handler not found — MCP may not work correctly")
-        yield
+    yield
 
     from app.services.embeddings import close_client as close_embeddings_client
     from app.services.entity_extraction import close_client as close_extraction_client
@@ -98,6 +92,20 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     await close_redis()
     await engine.dispose()
     logger.info("Brain API shut down")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
+    """Combined lifespan: Brain app + FastMCP session manager.
+
+    FastMCP requires its lifespan to run for the StreamableHTTP session manager
+    to initialize. We nest our app lifespan inside the MCP lifespan per FastMCP docs.
+    """
+    async with _app_lifespan(_app):
+        async with mcp_application.lifespan(_app):
+            logger.info("FastMCP lifespan started — session manager initialized")
+            yield
+            logger.info("FastMCP lifespan ending")
 
 
 app = FastAPI(
