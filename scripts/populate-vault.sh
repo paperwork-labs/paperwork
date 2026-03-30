@@ -38,7 +38,6 @@ while IFS= read -r line; do
   # Track section headers (e.g. "# === OPENAI ===") to derive service name
   if [[ "$line" =~ ^#\ ===\ ([A-Z0-9_-]+) ]]; then
     current_service="${BASH_REMATCH[1],,}"
-    current_service="${current_service//-/_}"
     continue
   fi
 
@@ -56,6 +55,15 @@ while IFS= read -r line; do
   
   # Skip if name is empty
   [[ -z "$name" ]] && continue
+
+  # Unquote dotenv-style values: strip surrounding "..." and unescape sequences
+  if [[ "$value" =~ ^\"(.*)\"$ ]]; then
+    value="${BASH_REMATCH[1]}"
+    value="${value//\\\\/\\}"
+    value="${value//\\\"/\"}"
+    value="${value//\\n/$'\n'}"
+    value="${value//\\r/$'\r'}"
+  fi
 
   # Build JSON payload (with optional expires_at)
   if [ -n "$pending_expires" ]; then
