@@ -131,7 +131,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const brainResponse = $input.first().json;\nconst data = brainResponse.data || brainResponse;\n\nif (data.is_duplicate || data.persona === 'system') {\n  return [];\n}\n\nconst response = data.response || 'Brain returned no response.';\nconst persona = data.persona || 'brain';\n\nif (!response.trim()) {\n  return [];\n}\n\nconst text = response.length > 3900\n  ? response.substring(0, 3900) + '\\n\\n_(truncated)_'\n  : response;\n\nreturn [{\n  json: {\n    channel: $('Filter Events').first().json.channel,\n    thread_ts: $('Filter Events').first().json.thread_ts,\n    text: text,\n    username: persona.charAt(0).toUpperCase() + persona.slice(1),\n    icon_emoji: ':brain:'\n  }\n}];"
+        "jsCode": "const brainResponse = $input.first().json;\nconst data = brainResponse.data || brainResponse;\n\nif (data.is_duplicate || data.persona === 'system') {\n  return [];\n}\n\nconst response = data.response || 'Brain returned no response.';\nconst persona = data.persona || 'brain';\n\nif (!response.trim()) {\n  return [];\n}\n\nconst text = response.length > 3900\n  ? response.substring(0, 3900) + '\\n\\n_(truncated)_'\n  : response;\n\n// Persona avatar mapping (hosted on paperworklabs.com/avatars/)\nconst avatarBase = 'https://paperworklabs.com/avatars/';\nconst avatarMap = {\n  'engineering': 'engineering.png',\n  'ea': 'ea.png',\n  'strategy': 'strategy.png',\n  'legal': 'legal.png',\n  'cfo': 'cfo.png',\n  'qa': 'qa.png',\n  'tax-domain': 'tax-domain.png',\n  'cpa': 'cpa.png',\n  'growth': 'growth.png',\n  'social': 'social.png',\n  'partnerships': 'partnerships.png',\n  'ux': 'ux.png',\n  'agent-ops': 'agent-ops.png',\n  'brand': 'brand.png',\n  'brain': 'brain.png'\n};\n\nconst avatarFile = avatarMap[persona.toLowerCase()] || 'brain.png';\nconst icon_url = avatarBase + avatarFile;\n\n// Format persona name for display (capitalize, handle hyphenated)\nconst username = persona.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');\n\nreturn [{\n  json: {\n    channel: $('Filter Events').first().json.channel,\n    thread_ts: $('Filter Events').first().json.thread_ts,\n    text: text,\n    username: username,\n    icon_url: icon_url\n  }\n}];"
       },
       "id": "format_reply",
       "name": "Format Reply",
@@ -152,7 +152,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ channel: $json.channel, thread_ts: $json.thread_ts, text: $json.text, username: $json.username, icon_emoji: $json.icon_emoji }) }}",
+        "jsonBody": "={{ JSON.stringify({ channel: $json.channel, thread_ts: $json.thread_ts, text: $json.text, username: $json.username, icon_url: $json.icon_url }) }}",
         "options": {}
       },
       "id": "post_reply",
