@@ -47,6 +47,11 @@ SINGLE_WORD_KEYWORDS: dict[str, list[str]] = {
     "ux": ["design", "ui", "ux", "accessibility", "animation", "component"],
     "agent-ops": ["model", "routing", "persona", "agent", "workflow", "n8n"],
     "ea": ["briefing", "schedule", "weekly", "daily", "status", "progress", "update"],
+    "trading": [
+        "trade", "stock", "portfolio", "position", "stage", "regime",
+        "scan", "breakout", "stop", "entry", "exit", "order", "buy",
+        "sell", "short", "cover", "pnl", "risk", "circuit",
+    ],
 }
 
 PHRASE_KEYWORDS: dict[str, list[str]] = {
@@ -56,6 +61,10 @@ PHRASE_KEYWORDS: dict[str, list[str]] = {
     "growth": ["landing page", "content marketing"],
     "social": ["social media"],
     "ea": ["what should i", "work on", "project status", "how are we", "what's next"],
+    "trading": [
+        "stop loss", "take profit", "market regime", "stage analysis",
+        "risk gate", "circuit breaker",
+    ],
 }
 
 CHANNEL_PERSONA_MAP: dict[str, str] = {
@@ -70,7 +79,7 @@ CHANNEL_PERSONA_MAP: dict[str, str] = {
     "C0AM014DFL6": "ea",            # #weekly-plan
     "C0ALVG3EW1Z": "social",        # #social-content
     "C0APN01LDJN": "cpa",           # #tax-insights
-    "C0APFJSDB6X": "engineering",   # #trading (engineering until trading persona exists)
+    "C0APFJSDB6X": "trading",       # #trading
 }
 
 

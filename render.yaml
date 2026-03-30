@@ -103,6 +103,8 @@ services:
         sync: false
       - key: AXIOMFOLIO_API_KEY
         sync: false
+      - key: AXIOMFOLIO_WEBHOOK_SECRET
+        sync: false
       - key: RENDER_API_KEY
         sync: false
       - key: VERCEL_TOKEN
