@@ -27,7 +27,7 @@ services:
       retries: 5
 
   n8n:
-    image: n8nio/n8n:latest
+    image: n8nio/n8n:2.13.4
     restart: unless-stopped
     ports:
       - "5678:5678"
@@ -44,8 +44,14 @@ services:
       N8N_HOST: ${N8N_HOST:-localhost}
       N8N_PORT: 5678
       N8N_PROTOCOL: https
+      N8N_EDITOR_BASE_URL: https://${N8N_HOST:-localhost}
       WEBHOOK_URL: https://${N8N_HOST:-localhost}/
+      N8N_PROXY_HOPS: "1"
       N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:?Set N8N_ENCRYPTION_KEY in .env}
+      EXECUTIONS_MODE: queue
+      QUEUE_BULL_REDIS_HOST: redis
+      QUEUE_BULL_REDIS_PORT: 6379
+      QUEUE_BULL_REDIS_PASSWORD: ${REDIS_PASSWORD:-changeme}
       GITHUB_TOKEN: ${GITHUB_PAT:-}
       SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
       SLACK_BOT_USER_ID: ${SLACK_BOT_USER_ID:-}
@@ -56,9 +62,42 @@ services:
       BRAIN_API_URL: ${BRAIN_API_URL:-}
       BRAIN_API_SECRET: ${BRAIN_API_SECRET:-}
       BRAIN_WEBHOOK_SECRET: ${BRAIN_WEBHOOK_SECRET:-}
-      # SECURITY: child_process is required for health-check and daily-briefing
-      # Code nodes (n8n CLI queries). Only admin-authored workflows run here;
-      # no user-supplied code paths exist. Review before adding more builtins.
+      NODE_FUNCTION_ALLOW_BUILTIN: child_process
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      GENERIC_TIMEZONE: America/Los_Angeles
+    volumes:
+      - n8ndata:/home/node/.n8n
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  n8n-worker:
+    image: n8nio/n8n:2.13.4
+    restart: unless-stopped
+    command: worker
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: n8n
+      DB_POSTGRESDB_USER: ${POSTGRES_USER:-ops}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:?Set N8N_ENCRYPTION_KEY in .env}
+      EXECUTIONS_MODE: queue
+      QUEUE_BULL_REDIS_HOST: redis
+      QUEUE_BULL_REDIS_PORT: 6379
+      QUEUE_BULL_REDIS_PASSWORD: ${REDIS_PASSWORD:-changeme}
+      GITHUB_TOKEN: ${GITHUB_PAT:-}
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
+      SLACK_BOT_USER_ID: ${SLACK_BOT_USER_ID:-}
+      SLACK_ALERTS_WEBHOOK_URL: ${SLACK_ALERTS_WEBHOOK_URL:-}
+      VAULT_URL: ${VAULT_URL:-https://paperworklabs.com}
+      SECRETS_API_KEY: ${SECRETS_API_KEY:-}
+      BRAIN_API_URL: ${BRAIN_API_URL:-}
+      BRAIN_API_SECRET: ${BRAIN_API_SECRET:-}
+      BRAIN_WEBHOOK_SECRET: ${BRAIN_WEBHOOK_SECRET:-}
       NODE_FUNCTION_ALLOW_BUILTIN: child_process
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
       GENERIC_TIMEZONE: America/Los_Angeles

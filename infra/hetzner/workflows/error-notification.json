@@ -1,0 +1,58 @@
+{
+  "name": "Error Notification",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "error-trigger",
+      "name": "On Workflow Error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const error = $input.first().json;\nconst wfName = error.workflow?.name || 'Unknown';\nconst wfId = error.workflow?.id || '?';\nconst nodeName = error.execution?.error?.node?.name || 'Unknown node';\nconst errorMsg = error.execution?.error?.message || 'No error message';\nconst executionId = error.execution?.id || '?';\nconst ts = new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' });\n\nconst text = `:rotating_light: *Workflow Error*\\n` +\n  `*Workflow:* ${wfName} (${wfId})\\n` +\n  `*Node:* ${nodeName}\\n` +\n  `*Error:* ${errorMsg}\\n` +\n  `*Execution:* ${executionId}\\n` +\n  `*Time:* ${ts}`;\n\nreturn [{ json: { text, channel: 'C0ALVM4PAE7' } }];"
+      },
+      "id": "format-error",
+      "name": "Format Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.SLACK_BOT_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ channel: $json.channel, text: $json.text, username: 'Engineering', icon_emoji: ':rotating_light:' }) }}",
+        "options": {}
+      },
+      "id": "post-alert",
+      "name": "Post to #alerts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [750, 300]
+    }
+  ],
+  "connections": {
+    "On Workflow Error": {
+      "main": [[{ "node": "Format Error", "type": "main", "index": 0 }]]
+    },
+    "Format Error": {
+      "main": [[{ "node": "Post to #alerts", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
