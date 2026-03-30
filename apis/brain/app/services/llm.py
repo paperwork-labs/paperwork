@@ -123,7 +123,7 @@ async def complete_with_mcp(
         ],
         "tools": [
             {
-                "type": "tool_search_tool_bm25_20251119",
+                "type": "tool_search_tool_bm25",
                 "name": "tool_search",
             },
             {
@@ -250,17 +250,48 @@ async def complete_openai_with_mcp(
         return await _text_only_fallback(system_prompt=system_prompt, messages=messages)
 
 
+def _strip_tool_instructions(system_prompt: str) -> str:
+    """Strip tool-related instructions from system prompt for text-only fallback.
+
+    When MCP fails, we don't want the model to promise tool usage it can't deliver.
+    """
+    lines_to_remove = [
+        "use tools (read_github_file, search_github_code) to find answers",
+        "For project status, task progress, or \"what to work on\" questions, use read_github_file to read docs/TASKS.md",
+        "When using tools, prefer search_memory first for context before calling external tools",
+    ]
+    result = system_prompt
+    for line in lines_to_remove:
+        result = result.replace(f"- {line}.", "")
+        result = result.replace(f"- {line}", "")
+        result = result.replace(line, "")
+
+    fallback_notice = (
+        "\n\n[Note: Operating in text-only mode. Answer from the context provided above. "
+        "If you don't have enough information, say so honestly rather than promising to check.]"
+    )
+    return result.strip() + fallback_notice
+
+
 async def _text_only_fallback(
     *,
     system_prompt: str,
     messages: list[dict[str, str]],
 ) -> dict:
-    """Last-resort text-only completion (no tools) before falling back to mock."""
+    """Last-resort text-only completion (no tools) before falling back to mock.
+
+    Strips tool-related instructions from system prompt so the model doesn't
+    promise to use tools it doesn't have access to.
+    """
+    logger.warning("MCP fallback triggered — switching to text-only mode (no tools)")
+    cleaned_prompt = _strip_tool_instructions(system_prompt)
+
     for provider_fn in (_complete_openai_text, _complete_anthropic_text, _complete_gemini):
         try:
-            result = await provider_fn(system_prompt=system_prompt, messages=messages)
+            result = await provider_fn(system_prompt=cleaned_prompt, messages=messages)
             if result.get("provider") != "mock":
                 logger.info("Text-only fallback succeeded via %s", result.get("provider"))
+                result["fallback_mode"] = True
                 return result
         except Exception:
             continue

@@ -18,11 +18,13 @@ if TYPE_CHECKING:
 from fastmcp import FastMCP
 
 from app.tools.axiomfolio import (
+    approve_trade,
     execute_trade,
+    get_market_regime,
     get_portfolio,
     get_risk_status,
-    get_watchlist,
-    modify_position,
+    preview_trade,
+    reject_trade,
     scan_market,
     stage_analysis,
 )
@@ -115,32 +117,40 @@ mcp.tool(
     description="Import a new workflow into n8n from JSON (Tier 2: draft action).",
 )(import_n8n_workflow)
 
-# -- AxiomFolio trading tools (7) ----------------------------------------------
+# -- AxiomFolio trading tools (8) ----------------------------------------------
 
-mcp.tool(name="scan_market", description="Run market scans for trading candidates.")(
+mcp.tool(name="scan_market", description="Run market scans for trading candidates (Tier 0).")(
     scan_market
 )
 mcp.tool(
-    name="get_portfolio", description="Get current portfolio positions and P&L."
+    name="get_portfolio", description="Get current portfolio positions and P&L (Tier 0)."
 )(get_portfolio)
 mcp.tool(
     name="stage_analysis",
-    description="Get technical stage analysis for a stock symbol.",
+    description="Get technical stage analysis for a stock symbol (Tier 0).",
 )(stage_analysis)
 mcp.tool(
-    name="get_risk_status", description="Get current portfolio risk metrics and gates."
+    name="get_risk_status", description="Get circuit breaker status and risk metrics (Tier 0)."
 )(get_risk_status)
-mcp.tool(name="get_watchlist", description="Get tracked symbols and price alerts.")(
-    get_watchlist
-)
+mcp.tool(
+    name="get_market_regime", description="Get current market regime R1-R5 (Tier 0)."
+)(get_market_regime)
+mcp.tool(
+    name="preview_trade",
+    description="Create a PREVIEW trade order for approval (Tier 2). Returns order_id.",
+)(preview_trade)
+mcp.tool(
+    name="approve_trade",
+    description="Approve a pending trade order by order_id (Tier 3).",
+)(approve_trade)
+mcp.tool(
+    name="reject_trade",
+    description="Reject a pending trade order by order_id (Tier 3).",
+)(reject_trade)
 mcp.tool(
     name="execute_trade",
-    description="Execute a trade order (Tier 3: requires explicit approval).",
+    description="Execute an approved trade order by order_id (Tier 3: REAL trade).",
 )(execute_trade)
-mcp.tool(
-    name="modify_position",
-    description="Modify stop-loss or take-profit on a position (Tier 2: draft action).",
-)(modify_position)
 
 # -- Memory tools (1) ----------------------------------------------------------
 

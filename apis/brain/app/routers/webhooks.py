@@ -20,11 +20,18 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
 # Event names (dot form). Aliases with underscores are normalized in _normalize_event.
+# AxiomFolio sends: trade_executed, position_closed, stop_triggered, risk_gate_activated,
+# scan_alert, approval_required — all normalized to dot form.
 KNOWN_EVENTS = frozenset({
     "trade.executed",
     "trade.rejected",
-    "approval.needed",
+    "position.closed",
+    "stop.triggered",
+    "approval.required",  # AxiomFolio sends approval_required when Tier 3 trade needs approval
+    "approval.needed",    # Alias kept for backwards compatibility
     "risk.alert",
+    "risk.gate.activated",  # AxiomFolio sends risk_gate_activated
+    "scan.alert",           # AxiomFolio sends scan_alert
     "portfolio.update",
 })
 
@@ -81,21 +88,55 @@ class TradeRejectedData(BaseModel):
 
 
 class ApprovalNeededData(BaseModel):
-    """Human approval pending (e.g. Tier-3 execute_trade)."""
+    """Human approval pending (e.g. Tier-3 execute_trade).
 
+    AxiomFolio sends approval_required with order_id, symbol, side, quantity.
+    """
+
+    order_id: int | None = None
     summary: str | None = None
     symbol: str | None = None
     side: str | None = None
     quantity: float | None = None
+    price: float | None = None
     tier: int | None = None
     proposal_id: str | None = None
 
 
 class RiskAlertData(BaseModel):
+    """Risk gate triggered or risk alert."""
+
     severity: str | None = None
     message: str | None = None
     gate: str | None = None
     symbol: str | None = None
+    details: str | None = None
+
+
+class ScanAlertData(BaseModel):
+    """Scan found candidates."""
+
+    candidates: list[dict[str, Any]] | None = None
+    scan_name: str | None = None
+    count: int | None = None
+
+
+class StopTriggeredData(BaseModel):
+    """Stop loss hit."""
+
+    symbol: str | None = None
+    position_id: int | None = None
+    stop_price: float | None = None
+    exit_price: float | None = None
+
+
+class PositionClosedData(BaseModel):
+    """Position fully closed."""
+
+    symbol: str | None = None
+    position_id: int | None = None
+    pnl: float | None = None
+    reason: str | None = None
 
 
 class PortfolioUpdateData(BaseModel):
@@ -127,7 +168,12 @@ def _parse_data_for_event(
         "trade.executed": TradeExecutedData,
         "trade.rejected": TradeRejectedData,
         "approval.needed": ApprovalNeededData,
+        "approval.required": ApprovalNeededData,  # AxiomFolio sends this
         "risk.alert": RiskAlertData,
+        "risk.gate.activated": RiskAlertData,  # AxiomFolio sends this
+        "scan.alert": ScanAlertData,
+        "stop.triggered": StopTriggeredData,
+        "position.closed": PositionClosedData,
         "portfolio.update": PortfolioUpdateData,
     }
     model_cls = parsers.get(event_norm, RawWebhookData)
@@ -168,7 +214,7 @@ def _episode_summary_and_context(
         sym = parsed.symbol or "unknown symbol"
         reason = parsed.reason or "no reason given"
         summary = f"AxiomFolio: trade rejected — {sym}: {reason}{ts_suffix}"
-    elif event_norm == "approval.needed" and isinstance(parsed, ApprovalNeededData):
+    elif event_norm in ("approval.needed", "approval.required") and isinstance(parsed, ApprovalNeededData):
         if parsed.summary:
             core = parsed.summary
         else:
@@ -182,10 +228,19 @@ def _episode_summary_and_context(
                 if p
             ) or "pending approval"
         summary = f"AxiomFolio: approval needed — {core}{ts_suffix}"
-    elif event_norm == "risk.alert" and isinstance(parsed, RiskAlertData):
+    elif event_norm in ("risk.alert", "risk.gate.activated") and isinstance(parsed, RiskAlertData):
         sev = f"[{parsed.severity}] " if parsed.severity else ""
-        msg = parsed.message or parsed.gate or parsed.symbol or "risk event"
+        msg = parsed.message or parsed.gate or parsed.details or parsed.symbol or "risk event"
         summary = f"AxiomFolio: risk alert — {sev}{msg}{ts_suffix}"
+    elif event_norm == "scan.alert" and isinstance(parsed, ScanAlertData):
+        count = parsed.count or (len(parsed.candidates) if parsed.candidates else 0)
+        scan_name = parsed.scan_name or "scan"
+        summary = f"AxiomFolio: {scan_name} found {count} candidates{ts_suffix}"
+    elif event_norm == "stop.triggered" and isinstance(parsed, StopTriggeredData):
+        summary = f"AxiomFolio: stop triggered — {parsed.symbol or 'unknown'} @ {parsed.exit_price or '?'}{ts_suffix}"
+    elif event_norm == "position.closed" and isinstance(parsed, PositionClosedData):
+        pnl_str = f" P&L: {parsed.pnl}" if parsed.pnl is not None else ""
+        summary = f"AxiomFolio: position closed — {parsed.symbol or 'unknown'}{pnl_str}{ts_suffix}"
     elif event_norm == "portfolio.update" and isinstance(parsed, PortfolioUpdateData):
         bits: list[str] = []
         if parsed.pnl is not None:
@@ -208,7 +263,8 @@ def _episode_summary_and_context(
         "data": data,
     }
     full_context = json.dumps(envelope, default=str)
-    importance = 0.65 if event_norm in ("risk.alert", "approval.needed") else 0.5
+    high_importance_events = ("risk.alert", "risk.gate.activated", "approval.needed", "approval.required", "stop.triggered")
+    importance = 0.65 if event_norm in high_importance_events else 0.5
     return summary, full_context, importance
 
 

@@ -1,6 +1,7 @@
-"""AxiomFolio proxy tools — Tier 0 reads, Tier 2 position edits, Tier 3 order execution.
+"""AxiomFolio proxy tools — Tier 0 reads, Tier 2 previews, Tier 3 order execution.
 
-See docs/AXIOMFOLIO_INTEGRATION.md for endpoint contract."""
+Aligned with AxiomFolio's /api/v1/tools/* Brain integration API.
+See docs/AXIOMFOLIO_INTEGRATION.md and AxiomFolio's docs/PAPERWORK_HANDOFF.md."""
 
 from __future__ import annotations
 
@@ -17,9 +18,10 @@ logger = logging.getLogger(__name__)
 
 
 def _axf_client() -> httpx.AsyncClient:
+    """Create AxiomFolio client with X-Brain-Api-Key auth header."""
     headers: dict[str, str] = {}
     if settings.AXIOMFOLIO_API_KEY:
-        headers["X-API-Key"] = settings.AXIOMFOLIO_API_KEY
+        headers["X-Brain-Api-Key"] = settings.AXIOMFOLIO_API_KEY
     return httpx.AsyncClient(
         base_url=settings.AXIOMFOLIO_API_URL.rstrip("/"),
         headers=headers,
@@ -87,7 +89,7 @@ def _format_portfolio_summary(data: Any) -> str:
     positions = data.get("positions") or data.get("holdings") or []
     if isinstance(positions, list) and positions:
         lines.append(f"  • Positions: {len(positions)}")
-        for i, pos in enumerate(positions[:8]):
+        for pos in positions[:8]:
             if isinstance(pos, dict):
                 sym = pos.get("symbol") or pos.get("ticker") or "?"
                 qty = pos.get("quantity") or pos.get("qty") or pos.get("shares")
@@ -155,30 +157,24 @@ def _format_analysis_summary(symbol: str, data: Any) -> str:
     return f"{header}\n{scrub_pii(str(data))}"
 
 
-def _format_watchlist_summary(data: Any) -> str:
+def _format_regime_summary(data: Any) -> str:
     if data is None:
-        return "Watchlist is empty or unavailable."
-    if isinstance(data, list):
-        syms = []
-        for item in data:
-            if isinstance(item, dict):
-                syms.append(str(item.get("symbol") or item.get("ticker") or item))
-            else:
-                syms.append(str(item))
-        return "Watchlist: " + ", ".join(syms) if syms else _scrub_json_blob(data)
+        return "No regime data."
     if isinstance(data, dict):
-        items = data.get("symbols") or data.get("items") or data.get("watchlist")
-        if isinstance(items, list):
-            return _format_watchlist_summary(items)
-        return _scrub_json_blob(data)
+        regime = data.get("regime") or data.get("current_regime") or "Unknown"
+        lines = [f"Market Regime: {regime}"]
+        for key in ("description", "recommendation", "risk_level"):
+            if key in data and data[key]:
+                lines.append(f"  • {key.replace('_', ' ').title()}: {data[key]}")
+        return "\n".join(lines)
     return scrub_pii(str(data))
 
 
 async def scan_market() -> str:
-    """GET /api/v1/scans/run — Tier 0. Run scans, return candidates."""
+    """GET /api/v1/tools/scan — Tier 0. Run scans, return candidates."""
     try:
         async with _axf_client() as client:
-            res = await client.get("/api/v1/scans/run")
+            res = await client.get("/api/v1/tools/scan")
             res.raise_for_status()
             body = res.json()
     except httpx.HTTPStatusError as e:
@@ -198,10 +194,10 @@ async def scan_market() -> str:
 
 
 async def get_portfolio() -> str:
-    """GET /api/v1/portfolio — Tier 0. Positions, P&L, exposure (PII scrubbed)."""
+    """GET /api/v1/tools/portfolio — Tier 0. Positions, P&L, exposure (PII scrubbed)."""
     try:
         async with _axf_client() as client:
-            res = await client.get("/api/v1/portfolio")
+            res = await client.get("/api/v1/tools/portfolio")
             res.raise_for_status()
             body = res.json()
     except httpx.HTTPStatusError as e:
@@ -221,14 +217,14 @@ async def get_portfolio() -> str:
 
 
 async def stage_analysis(symbol: str) -> str:
-    """GET /api/v1/analysis/{symbol} — Tier 0. Technical / stage analysis."""
+    """GET /api/v1/tools/stage/{symbol} — Tier 0. Technical / stage analysis."""
     sym = symbol.strip().upper()
     if not sym:
         return "Error: symbol is required."
 
     try:
         async with _axf_client() as client:
-            res = await client.get(f"/api/v1/analysis/{sym}")
+            res = await client.get(f"/api/v1/tools/stage/{sym}")
             res.raise_for_status()
             body = res.json()
     except httpx.HTTPStatusError as e:
@@ -248,10 +244,10 @@ async def stage_analysis(symbol: str) -> str:
 
 
 async def get_risk_status() -> str:
-    """GET /api/v1/portfolio/risk — Tier 0. Risk metrics and gates (scrubbed)."""
+    """GET /api/v1/tools/risk — Tier 0. Circuit breaker status and risk metrics."""
     try:
         async with _axf_client() as client:
-            res = await client.get("/api/v1/portfolio/risk")
+            res = await client.get("/api/v1/tools/risk")
             res.raise_for_status()
             body = res.json()
     except httpx.HTTPStatusError as e:
@@ -270,37 +266,40 @@ async def get_risk_status() -> str:
     return _format_risk_summary(body.get("data"))
 
 
-async def get_watchlist() -> str:
-    """GET /api/v1/watchlist — Tier 0. Tracked symbols and alerts."""
+async def get_market_regime() -> str:
+    """GET /api/v1/tools/regime — Tier 0. Current market regime (R1-R5)."""
     try:
         async with _axf_client() as client:
-            res = await client.get("/api/v1/watchlist")
+            res = await client.get("/api/v1/tools/regime")
             res.raise_for_status()
             body = res.json()
     except httpx.HTTPStatusError as e:
-        logger.warning("get_watchlist HTTP error: %s", e)
+        logger.warning("get_market_regime HTTP error: %s", e)
         return _http_error_message(e)
     except httpx.RequestError as e:
-        logger.warning("get_watchlist request failed: %s", e)
+        logger.warning("get_market_regime request failed: %s", e)
         return f"Could not reach AxiomFolio: {e}"
     except Exception as e:
-        logger.warning("get_watchlist failed: %s", e)
+        logger.warning("get_market_regime failed: %s", e)
         return f"Unexpected error: {e}"
 
     err = _envelope_error(body, 200)
     if err:
         return err
-    return scrub_pii(_format_watchlist_summary(body.get("data")))
+    return _format_regime_summary(body.get("data"))
 
 
-async def execute_trade(
+async def preview_trade(
     symbol: str,
     side: str,
     quantity: int,
     order_type: str = "limit",
     price: float | None = None,
 ) -> str:
-    """POST /api/v1/orders — Tier 3. Submits a real order when AxiomFolio is live."""
+    """POST /api/v1/tools/preview-trade — Tier 2. Create PREVIEW order for approval.
+
+    Returns order_id for use in approve_trade/reject_trade/execute_trade.
+    """
     sym = symbol.strip().upper()
     if not sym:
         return "Error: symbol is required."
@@ -320,15 +319,135 @@ async def execute_trade(
     if price is not None:
         payload["price"] = price
 
-    warning = (
-        "⚠️ Tier 3 — AxiomFolio may execute a real trade against your broker "
-        "when this environment is connected to live trading. "
-        "Human approval is required in production per integration policy.\n\n"
-    )
+    try:
+        async with _axf_client() as client:
+            res = await client.post("/api/v1/tools/preview-trade", json=payload)
+            res.raise_for_status()
+            body = res.json()
+    except httpx.HTTPStatusError as e:
+        logger.warning("preview_trade HTTP error: %s", e)
+        return _http_error_message(e)
+    except httpx.RequestError as e:
+        logger.warning("preview_trade request failed: %s", e)
+        return f"Could not reach AxiomFolio: {e}"
+    except Exception as e:
+        logger.warning("preview_trade failed: %s", e)
+        return f"Unexpected error: {e}"
+
+    err = _envelope_error(body, 200)
+    if err:
+        return err
+
+    data = body.get("data", {})
+    order_id = data.get("order_id") or data.get("id")
+    status = data.get("status", "PREVIEW")
+    summary = _scrub_json_blob(data)
+
+    result = f"Trade preview created:\n{summary}\n\n"
+    if order_id:
+        result += f"Order ID: {order_id}\n"
+    result += f"Status: {status}\n"
+
+    if status == "PENDING_APPROVAL":
+        result += "\n⚠️ This trade requires approval. Use approve_trade(order_id) or reject_trade(order_id)."
+    else:
+        result += "\nUse execute_trade(order_id) to submit this order."
+
+    return result
+
+
+async def approve_trade(order_id: int, approver_user_id: int = 1) -> str:
+    """POST /api/v1/tools/approve-trade — Tier 3. Approve a pending order.
+
+    Call after preview_trade when status is PENDING_APPROVAL.
+    """
+    if order_id <= 0:
+        return "Error: order_id must be a positive integer."
+
+    payload = {
+        "order_id": order_id,
+        "approver_user_id": approver_user_id,
+    }
 
     try:
         async with _axf_client() as client:
-            res = await client.post("/api/v1/orders", json=payload)
+            res = await client.post("/api/v1/tools/approve-trade", json=payload)
+            res.raise_for_status()
+            body = res.json()
+    except httpx.HTTPStatusError as e:
+        logger.warning("approve_trade HTTP error: %s", e)
+        return _http_error_message(e)
+    except httpx.RequestError as e:
+        logger.warning("approve_trade request failed: %s", e)
+        return f"Could not reach AxiomFolio: {e}"
+    except Exception as e:
+        logger.warning("approve_trade failed: %s", e)
+        return f"Unexpected error: {e}"
+
+    err = _envelope_error(body, 200)
+    if err:
+        return err
+
+    data = body.get("data", {})
+    return f"✅ Order {order_id} approved.\n{_scrub_json_blob(data)}\n\nUse execute_trade({order_id}) to submit."
+
+
+async def reject_trade(order_id: int, rejector_user_id: int = 1, reason: str = "") -> str:
+    """POST /api/v1/tools/reject-trade — Tier 3. Reject a pending order.
+
+    Call after preview_trade to cancel without executing.
+    """
+    if order_id <= 0:
+        return "Error: order_id must be a positive integer."
+
+    payload: dict[str, Any] = {
+        "order_id": order_id,
+        "rejector_user_id": rejector_user_id,
+    }
+    if reason:
+        payload["reason"] = reason
+
+    try:
+        async with _axf_client() as client:
+            res = await client.post("/api/v1/tools/reject-trade", json=payload)
+            res.raise_for_status()
+            body = res.json()
+    except httpx.HTTPStatusError as e:
+        logger.warning("reject_trade HTTP error: %s", e)
+        return _http_error_message(e)
+    except httpx.RequestError as e:
+        logger.warning("reject_trade request failed: %s", e)
+        return f"Could not reach AxiomFolio: {e}"
+    except Exception as e:
+        logger.warning("reject_trade failed: %s", e)
+        return f"Unexpected error: {e}"
+
+    err = _envelope_error(body, 200)
+    if err:
+        return err
+
+    return f"❌ Order {order_id} rejected." + (f" Reason: {reason}" if reason else "")
+
+
+async def execute_trade(order_id: int) -> str:
+    """POST /api/v1/tools/execute-trade — Tier 3. Execute an approved order.
+
+    Call after preview_trade (and approve_trade if required).
+    This submits a REAL trade to the broker.
+    """
+    if order_id <= 0:
+        return "Error: order_id must be a positive integer."
+
+    warning = (
+        "⚠️ Tier 3 — This will execute a REAL trade against the broker "
+        "when AxiomFolio is connected to live trading.\n\n"
+    )
+
+    payload = {"order_id": order_id}
+
+    try:
+        async with _axf_client() as client:
+            res = await client.post("/api/v1/tools/execute-trade", json=payload)
             res.raise_for_status()
             body = res.json()
     except httpx.HTTPStatusError as e:
@@ -344,8 +463,16 @@ async def execute_trade(
     err = _envelope_error(body, 200)
     if err:
         return warning + err
-    summary = _scrub_json_blob(body.get("data"))
-    return warning + f"Order accepted / queued:\n{summary}"
+
+    data = body.get("data", {})
+    status = data.get("status", "SUBMITTED")
+    summary = _scrub_json_blob(data)
+    return f"{warning}Order {order_id} submitted ({status}):\n{summary}"
+
+
+async def get_watchlist() -> str:
+    """AxiomFolio watchlist is not in the Brain tools API. Use scan_market instead."""
+    return "Watchlist endpoint not available in current API. Use scan_market() to find candidates."
 
 
 async def modify_position(
@@ -353,40 +480,11 @@ async def modify_position(
     stop_loss: float | None = None,
     take_profit: float | None = None,
 ) -> str:
-    """PUT /api/v1/positions/{id} — Tier 2. Update stops and targets."""
-    pid = position_id.strip()
-    if not pid:
-        return "Error: position_id is required."
-    if stop_loss is None and take_profit is None:
-        return "Error: provide stop_loss and/or take_profit to update."
+    """Position modification not available in current Brain tools API.
 
-    payload: dict[str, Any] = {}
-    if stop_loss is not None:
-        payload["stop_loss"] = stop_loss
-    if take_profit is not None:
-        payload["take_profit"] = take_profit
-
-    # Avoid path injection: alphanumeric, hyphen, underscore only (e.g. UUIDs)
-    safe_id = "".join(c for c in pid if c.isalnum() or c in "-_")
-    if safe_id != pid:
-        return "Error: position_id contains invalid characters."
-
-    try:
-        async with _axf_client() as client:
-            res = await client.put(f"/api/v1/positions/{safe_id}", json=payload)
-            res.raise_for_status()
-            body = res.json()
-    except httpx.HTTPStatusError as e:
-        logger.warning("modify_position HTTP error: %s", e)
-        return _http_error_message(e)
-    except httpx.RequestError as e:
-        logger.warning("modify_position request failed: %s", e)
-        return f"Could not reach AxiomFolio: {e}"
-    except Exception as e:
-        logger.warning("modify_position failed: %s", e)
-        return f"Unexpected error: {e}"
-
-    err = _envelope_error(body, 200)
-    if err:
-        return err
-    return f"Position updated:\n{_scrub_json_blob(body.get('data'))}"
+    Use preview_trade to create a closing order instead.
+    """
+    return (
+        "Position modification not available in current API. "
+        "To adjust stops or close a position, use preview_trade() to create a closing order."
+    )

@@ -73,10 +73,21 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         logger.warning("Redis unavailable — memory tools will operate without caching")
     memory_tools.configure(async_session_factory, redis_client)
     logger.info("Memory tools configured (redis=%s)", "connected" if redis_client else "disabled")
+
     mcp_application = create_mcp_app()
     _app.mount("/mcp", mcp_application)
     logger.info("FastMCP server mounted at /mcp (22 tools, auth-protected)")
-    yield
+
+    mcp_lifespan = getattr(mcp_application, "lifespan_handler", None)
+    if mcp_lifespan is not None:
+        async with mcp_lifespan(_app):
+            logger.info("FastMCP lifespan started — session manager initialized")
+            yield
+            logger.info("FastMCP lifespan ending")
+    else:
+        logger.warning("FastMCP lifespan_handler not found — MCP may not work correctly")
+        yield
+
     from app.services.embeddings import close_client as close_embeddings_client
     from app.services.entity_extraction import close_client as close_extraction_client
     from app.services.llm import close_clients
