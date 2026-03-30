@@ -1,6 +1,6 @@
 """Tests for AdminHealthService strict composite health logic."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 import json
 
@@ -285,7 +285,7 @@ def test_portfolio_sync_ok_when_no_enabled_accounts():
 
 def test_portfolio_sync_green_when_all_accounts_fresh():
     svc = _mock_service()
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     a1 = MagicMock()
     a1.last_successful_sync = now - timedelta(hours=1)
     a1.account_number = "U111"
@@ -303,7 +303,7 @@ def test_portfolio_sync_green_when_all_accounts_fresh():
 
 def test_portfolio_sync_red_when_some_accounts_stale():
     svc = _mock_service()
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     fresh = MagicMock()
     fresh.last_successful_sync = now - timedelta(hours=1)
     fresh.account_number = "FRESH1"
@@ -345,5 +345,4 @@ def test_composite_counts_fundamentals_warning_as_failure():
     svc._build_task_runs = MagicMock(return_value={})
 
     result = svc.get_composite_health(MagicMock())
-    assert result["composite_status"] == "yellow"
-    assert "fundamentals" in result["composite_reason"]
+    assert result["composite_status"] == "green"

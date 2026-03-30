@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Copy, Loader2, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { adminUsersApi, approveUser, deleteUser } from '../services/api';
 import { formatDate } from '../utils/format';
@@ -36,7 +36,7 @@ type InviteRow = {
   id: number;
   email: string;
   role: string;
-  token: string;
+  token: string | null;
   expires_at: string;
   accepted_at?: string | null;
   created_at?: string;
@@ -324,18 +324,46 @@ const SettingsUsers: React.FC = () => {
                     <th className="px-3 py-2">Email</th>
                     <th className="px-3 py-2">Role</th>
                     <th className="px-3 py-2">Expires</th>
+                    <th className="px-3 py-2">Invite Link</th>
                   </tr>
                 </thead>
                 <tbody>
                   {invites
                     .filter((i) => !i.accepted_at)
-                    .map((i) => (
-                      <tr key={i.id} className="border-b border-border last:border-0">
-                        <td className="px-3 py-2">{i.email}</td>
-                        <td className="px-3 py-2 text-muted-foreground">{i.role}</td>
-                        <td className="px-3 py-2 text-muted-foreground">{formatDate(i.expires_at, timezone)}</td>
-                      </tr>
-                    ))}
+                    .map((i) => {
+                      const link = i.token ? `${window.location.origin}/invite/${i.token}` : '';
+                      const isExpired = new Date(i.expires_at) < new Date();
+                      return (
+                        <tr key={i.id} className={cn('border-b border-border last:border-0', isExpired && 'opacity-50')}>
+                          <td className="px-3 py-2">{i.email}</td>
+                          <td className="px-3 py-2 text-muted-foreground">{i.role}</td>
+                          <td className="px-3 py-2 text-muted-foreground">
+                            {formatDate(i.expires_at, timezone)}
+                            {isExpired ? <span className="ml-1 text-destructive">(expired)</span> : null}
+                          </td>
+                          <td className="px-3 py-2">
+                            {link && !isExpired ? (
+                              <Button
+                                type="button"
+                                size="xs"
+                                variant="outline"
+                                onClick={async () => {
+                                  try {
+                                    await navigator.clipboard.writeText(link);
+                                    toast.success('Invite link copied');
+                                  } catch {
+                                    toast.error('Failed to copy');
+                                  }
+                                }}
+                              >
+                                <Copy className="mr-1 size-3" aria-hidden />
+                                Copy Link
+                              </Button>
+                            ) : null}
+                          </td>
+                        </tr>
+                      );
+                    })}
                 </tbody>
               </table>
             </div>

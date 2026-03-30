@@ -91,18 +91,16 @@ function buildSettingsItems(_isAdmin: boolean) {
   return items;
 }
 
-function buildMarketItems(strategyEnabled: boolean) {
+function buildMarketItems() {
   type Item = { label: string; icon: typeof Home; path: string };
   const items: Item[] = [
     { label: 'Dashboard', icon: Home, path: '/' },
     { label: 'Tracked', icon: List, path: '/market/tracked' },
+    { label: 'Strategies', icon: Target, path: '/market/strategies' },
+    { label: 'Intelligence', icon: Brain, path: '/market/intelligence' },
+    { label: 'Education', icon: BookOpen, path: '/market/education' },
+    { label: 'Terminal', icon: Monitor, path: '/terminal' },
   ];
-  if (strategyEnabled) {
-    items.push({ label: 'Strategies', icon: Target, path: '/market/strategies' });
-  }
-  items.push({ label: 'Intelligence', icon: Brain, path: '/market/intelligence' });
-  items.push({ label: 'Education', icon: BookOpen, path: '/market/education' });
-  items.push({ label: 'Terminal', icon: Monitor, path: '/terminal' });
   return items;
 }
 
@@ -193,9 +191,7 @@ const DashboardLayout: React.FC = () => {
   const marketOnly = appSettingsReady ? Boolean(appSettings?.market_only_mode) : true;
   const isAdmin = isPlatformAdminRole(user?.role);
   const portfolioEnabled = isAdmin || (!marketOnly && Boolean(appSettings?.portfolio_enabled));
-  const strategyEnabled = isAdmin || (!marketOnly && Boolean(appSettings?.strategy_enabled));
-
-  const marketItems = useMemo(() => buildMarketItems(strategyEnabled), [strategyEnabled]);
+  const marketItems = useMemo(() => buildMarketItems(), []);
   const settingsNavItems = useMemo(() => buildSettingsItems(isAdmin), [isAdmin]);
 
   const { health: adminHealth, loading: healthLoading } = useAdminHealth();

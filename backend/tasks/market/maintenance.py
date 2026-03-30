@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from celery import shared_task
 from sqlalchemy import func
 
@@ -34,7 +34,7 @@ def prune_old_bars(max_days_5m: int = 90) -> dict:
         from backend.services.notifications.alerts import alert_service
 
         effective_days = int(max_days_5m or settings.RETENTION_MAX_DAYS_5M)
-        cutoff = datetime.utcnow() - timedelta(days=effective_days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=effective_days)
         deleted = (
             session.query(PriceData)
             .filter(PriceData.interval == "5m", PriceData.date < cutoff)
@@ -71,8 +71,8 @@ def recover_jobs_impl(stale_minutes: int = STALE_JOB_RUN_MINUTES) -> dict:
     """Mark JobRun rows stuck in running as cancelled. Returns counts."""
     session = SessionLocal()
     try:
-        cutoff = datetime.utcnow() - timedelta(minutes=stale_minutes)
-        now = datetime.utcnow()
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=stale_minutes)
+        now = datetime.now(timezone.utc)
         msg = (
             f"Marked cancelled: run exceeded stale threshold ({stale_minutes} min). "
             "Process likely terminated (cron timeout, OOM, or worker restart)."
@@ -155,7 +155,7 @@ def audit_quality(sample_limit: int = 25) -> dict:
 
         payload = {
             "schema_version": 1,
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "tracked_total": len(tracked_set),
             "latest_daily_date": latest_daily_date.isoformat()
             if hasattr(latest_daily_date, "isoformat")

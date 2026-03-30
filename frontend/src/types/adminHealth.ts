@@ -1,7 +1,15 @@
 /** Typed contract for GET /market-data/admin/health */
 
-export interface CoverageDimension {
-  status: 'green' | 'red';
+type DimStatus = 'green' | 'yellow' | 'red' | 'ok' | 'warning' | 'error';
+
+interface BaseDimension {
+  status: DimStatus;
+  category: 'market' | 'broker';
+  advisory?: boolean;
+  error?: string;
+}
+
+export interface CoverageDimension extends BaseDimension {
   daily_pct: number;
   m5_pct: number;
   stale_daily: number;
@@ -9,22 +17,18 @@ export interface CoverageDimension {
   tracked_count: number;
   expected_date: string | null;
   summary: string;
-  error?: string;
 }
 
-export interface StageQualityDimension {
-  status: 'green' | 'red';
+export interface StageQualityDimension extends BaseDimension {
   unknown_rate: number;
   invalid_count: number;
   monotonicity_issues: number;
   stale_stage_count: number;
   total_symbols: number;
   stage_counts: Record<string, number>;
-  error?: string;
 }
 
-export interface JobsDimension {
-  status: 'green' | 'red';
+export interface JobsDimension extends BaseDimension {
   window_hours: number;
   total: number;
   ok_count: number;
@@ -40,20 +44,16 @@ export interface JobsDimension {
     started_at: string | null;
     error: string | null;
   } | null;
-  error?: string;
 }
 
-export interface AuditDimension {
-  status: 'green' | 'red';
+export interface AuditDimension extends BaseDimension {
   tracked_total: number | null;
   daily_fill_pct: number;
   snapshot_fill_pct: number;
   missing_sample: string[];
-  error?: string;
 }
 
-export interface RegimeDimension {
-  status: 'green' | 'red';
+export interface RegimeDimension extends BaseDimension {
   regime_state: string | null;
   composite_score: number | null;
   as_of_date: string | null;
@@ -61,23 +61,49 @@ export interface RegimeDimension {
   multiplier: number | null;
   max_equity_pct: number | null;
   cash_floor_pct: number | null;
-  error?: string;
+}
+
+export interface FundamentalsDimension extends BaseDimension {
+  fundamentals_fill_pct: number;
+  tracked_total: number;
+  filled_count: number;
+}
+
+export interface PortfolioSyncDimension extends BaseDimension {
+  total_accounts: number;
+  stale_accounts: number;
+  stale_list: string[];
+  note?: string;
+}
+
+export interface IbkrGatewayDimension extends BaseDimension {
+  connection_status: string;
+  last_ping: string | null;
+  is_stale: boolean;
+  note?: string;
 }
 
 export interface TaskRunEntry {
+  task: string;
+  status: string;
   ts: string | null;
+  payload?: Record<string, unknown>;
   [key: string]: unknown;
 }
 
 export interface AdminHealthResponse {
   composite_status: 'green' | 'yellow' | 'red';
   composite_reason: string;
+  market_only_mode: boolean;
   dimensions: {
     coverage: CoverageDimension;
     stage_quality: StageQualityDimension;
     jobs: JobsDimension;
     audit: AuditDimension;
     regime: RegimeDimension;
+    fundamentals: FundamentalsDimension;
+    portfolio_sync: PortfolioSyncDimension;
+    ibkr_gateway: IbkrGatewayDimension;
   };
   task_runs: Record<string, TaskRunEntry | null>;
   thresholds: Record<string, number>;

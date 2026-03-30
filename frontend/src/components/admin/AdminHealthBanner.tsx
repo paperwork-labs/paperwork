@@ -26,10 +26,13 @@ function compositeBannerClass(status: string): string {
 function dimBadgeClass(status: string): string {
   switch (status) {
     case 'green':
+    case 'ok':
       return 'border-transparent bg-[rgb(var(--status-success)/0.12)] text-[rgb(var(--status-success)/1)]';
     case 'yellow':
+    case 'warning':
       return 'border-transparent bg-[rgb(var(--status-warning)/0.12)] text-[rgb(var(--status-warning)/1)]';
     case 'red':
+    case 'error':
       return 'border-transparent bg-destructive/10 text-destructive';
     default:
       return 'border-transparent bg-muted text-muted-foreground';
@@ -39,10 +42,13 @@ function dimBadgeClass(status: string): string {
 function dimDotClass(status: string): string {
   switch (status) {
     case 'green':
+    case 'ok':
       return 'bg-[rgb(var(--status-success)/1)]';
     case 'yellow':
+    case 'warning':
       return 'bg-[rgb(var(--status-warning)/1)]';
     case 'red':
+    case 'error':
       return 'bg-[rgb(var(--status-danger)/1)]';
     default:
       return 'bg-muted-foreground';

@@ -112,7 +112,7 @@ describe('DashboardLayout sidebar persistence', () => {
     expect(screen.getByText('PORTFOLIO')).toBeInTheDocument();
     expect(screen.queryByText('STRATEGY')).toBeNull();
     expect(screen.getByText('Workspace')).toBeInTheDocument();
-    expect(screen.getByText('Strategies')).toBeInTheDocument();
+    expect(screen.getAllByText('Strategies').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Overview')).toBeInTheDocument();
     expect(screen.queryByText('Agent Guru')).toBeNull();
     expect(screen.getByRole('button', { name: /account filter/i })).toBeInTheDocument();

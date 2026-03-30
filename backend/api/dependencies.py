@@ -206,14 +206,12 @@ async def get_market_data_viewer(
     return optional_user
 
 
-SectionName = Literal["market", "portfolio", "strategy", "other"]
+SectionName = Literal["market", "portfolio", "other"]
 
 
 def _section_from_path(path: str) -> SectionName:
     if path.startswith("/api/v1/portfolio") or path.startswith("/api/v1/accounts"):
         return "portfolio"
-    if path.startswith("/api/v1/strategies"):
-        return "strategy"
     if path.startswith("/api/v1/market-data"):
         return "market"
     return "other"
@@ -226,20 +224,16 @@ def _non_admin_section_decision(section: SectionName, app_settings) -> tuple[boo
     Policy:
     - Market: available to all authenticated users.
     - Portfolio: requires market_only_mode=false and portfolio_enabled=true.
-    - Strategy: requires market_only_mode=false and strategy_enabled=true.
     - Other sections: unaffected by these release flags.
     """
     if section == "market":
         return True, None
 
-    if section in {"portfolio", "strategy"} and bool(app_settings.market_only_mode):
+    if section == "portfolio" and bool(app_settings.market_only_mode):
         return False, "Market-only mode: access restricted"
 
     if section == "portfolio" and not bool(app_settings.portfolio_enabled):
         return False, "Portfolio section is not enabled"
-
-    if section == "strategy" and not bool(app_settings.strategy_enabled):
-        return False, "Strategy section is not enabled"
 
     return True, None
 
@@ -253,7 +247,7 @@ def evaluate_release_access(
     Notes:
     - Unauthenticated access is left to route-level auth dependencies.
     - Market access is allowed for any authenticated user.
-    - Portfolio/Strategy require app_settings for non-admin decisions.
+    - Portfolio requires app_settings for non-admin decisions.
     """
     if current_user is None:
         return False, "Authentication required"
@@ -288,21 +282,16 @@ async def require_non_market_access(
     When market-only mode is disabled, use per-section release flags for
     non-admin users:
     - portfolio/account APIs -> portfolio_enabled
-    - strategies APIs -> strategy_enabled
     """
-    # Keep legacy/public behavior for endpoints that do not require auth.
-    # Route-specific deps (e.g. get_current_user/get_admin_user) still enforce auth.
     if current_user is None:
         return None
 
-    # Admin should never be blocked by release toggles, and this avoids coupling
-    # admin route availability to app_settings migration timing.
     if current_user.role == UserRole.OWNER:
         return current_user
 
     section = _section_from_path(request.url.path or "")
     app_settings = None
-    if section in {"portfolio", "strategy"}:
+    if section == "portfolio":
         try:
             app_settings = get_or_create_app_settings(db)
         except Exception as e:

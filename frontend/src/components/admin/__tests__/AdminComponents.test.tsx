@@ -19,9 +19,11 @@ afterEach(() => cleanup());
 const MOCK_HEALTH: AdminHealthResponse = {
   composite_status: 'yellow',
   composite_reason: 'Degraded: jobs.',
+  market_only_mode: true,
   dimensions: {
     coverage: {
       status: 'green',
+      category: 'market',
       daily_pct: 98.0,
       m5_pct: 90.0,
       stale_daily: 0,
@@ -32,6 +34,7 @@ const MOCK_HEALTH: AdminHealthResponse = {
     },
     stage_quality: {
       status: 'green',
+      category: 'market',
       unknown_rate: 0.1,
       invalid_count: 0,
       monotonicity_issues: 0,
@@ -41,6 +44,7 @@ const MOCK_HEALTH: AdminHealthResponse = {
     },
     jobs: {
       status: 'red',
+      category: 'market',
       window_hours: 24,
       total: 10,
       ok_count: 8,
@@ -59,6 +63,7 @@ const MOCK_HEALTH: AdminHealthResponse = {
     },
     audit: {
       status: 'green',
+      category: 'market',
       tracked_total: 500,
       daily_fill_pct: 98.0,
       snapshot_fill_pct: 95.0,
@@ -66,6 +71,7 @@ const MOCK_HEALTH: AdminHealthResponse = {
     },
     regime: {
       status: 'green',
+      category: 'market',
       regime_state: 'R2',
       composite_score: 2.2,
       as_of_date: '2026-01-08',
@@ -73,6 +79,31 @@ const MOCK_HEALTH: AdminHealthResponse = {
       multiplier: 0.75,
       max_equity_pct: 90,
       cash_floor_pct: 10,
+    },
+    fundamentals: {
+      status: 'ok',
+      category: 'market',
+      fundamentals_fill_pct: 85.0,
+      tracked_total: 500,
+      filled_count: 425,
+    },
+    portfolio_sync: {
+      status: 'ok',
+      category: 'broker',
+      advisory: true,
+      total_accounts: 0,
+      stale_accounts: 0,
+      stale_list: [],
+      note: 'no broker accounts configured',
+    },
+    ibkr_gateway: {
+      status: 'yellow',
+      category: 'broker',
+      advisory: true,
+      connection_status: 'unknown',
+      last_ping: null,
+      is_stale: true,
+      note: 'IBKR client not available',
     },
   },
   task_runs: {},
@@ -82,7 +113,7 @@ const MOCK_HEALTH: AdminHealthResponse = {
     stage_unknown_rate_max: 0.35,
     stage_invalid_max: 0,
     stage_monotonicity_max: 0,
-    jobs_error_max: 0,
+    jobs_success_rate_min: 0.9,
     jobs_lookback_hours: 24,
     audit_daily_fill_pct_min: 95,
     audit_snapshot_fill_pct_min: 90,
@@ -220,7 +251,7 @@ describe('AdminRunbook', () => {
     expect(header).toBeTruthy();
     await user.click(header);
     expect(screen.getByText(/One or more background jobs have failed/)).toBeTruthy();
-    expect(screen.getByText(/System Status/)).toBeTruthy();
+    expect(screen.getByText(/Recover Stale Jobs/)).toBeTruthy();
   });
 
   it('renders nothing when health is null', () => {

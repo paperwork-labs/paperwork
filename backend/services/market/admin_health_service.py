@@ -1,15 +1,18 @@
 """
-Admin Health Service -- Strict composite health aggregation.
+Admin Health Service -- Composite health aggregation.
 
 Composes coverage, stage quality, jobs, audit, fundamentals, regime, and task-run data into a
 single response so the Admin Dashboard needs only one fetch.
+
+Mode-aware: when market_only_mode is true (AppSettings), broker dimensions
+(portfolio_sync, ibkr_gateway) are advisory and excluded from composite scoring.
 """
 
 from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import distinct, func
@@ -26,7 +29,7 @@ HEALTH_THRESHOLDS: Dict[str, float] = {
     "stage_unknown_rate_max": 0.35,
     "stage_invalid_max": 0,
     "stage_monotonicity_max": 0,
-    "jobs_error_max": 0,
+    "jobs_success_rate_min": 0.90,
     "jobs_lookback_hours": 24,
     "audit_daily_fill_pct_min": 95.0,
     "audit_snapshot_fill_pct_min": 90.0,
@@ -34,22 +37,30 @@ HEALTH_THRESHOLDS: Dict[str, float] = {
     "fundamentals_fill_pct_warn": 50.0,
 }
 
-# Task-status keys we pull from Redis (matches legacy _task_status_keys logic).
+MARKET_DIMS = {"coverage", "stage_quality", "jobs", "audit", "regime", "fundamentals"}
+BROKER_DIMS = {"portfolio_sync", "ibkr_gateway"}
+
+# Task-status keys we pull from Redis for the Agent Activity panel.
 _TASK_STATUS_KEYS: List[str] = sorted({
     "admin_backfill_5m",
     "admin_backfill_daily",
+    "admin_backfill_daily_since_date",
+    "admin_backfill_daily_symbols",
+    "admin_backfill_since_date",
+    "admin_coverage_backfill",
     "admin_coverage_backfill_stale",
     "admin_coverage_refresh",
-    "admin_coverage_backfill",
     "admin_indicators_recompute_universe",
+    "admin_market_data_audit",
     "admin_recover_stale_job_runs",
     "admin_snapshots_history_backfill",
+    "admin_snapshots_history_backfill_date",
     "admin_snapshots_history_record",
-    "market_indices_constituents_refresh",
-    "market_universe_tracked_refresh",
-    "admin_backfill_since_date",
+    "auto_ops_health_check",
     "compute_daily_regime",
+    "market_indices_constituents_refresh",
     "market_snapshots_fundamentals_fill",
+    "market_universe_tracked_refresh",
 })
 
 
@@ -58,8 +69,11 @@ def _dim_status(ok: bool) -> str:
 
 
 def _composite_dimension_ok(status: Optional[str]) -> bool:
-    """True if dimension passes composite aggregation (green, or fundamentals ok)."""
-    return status in ("green", "ok")
+    """True if dimension passes composite aggregation.
+
+    Accepts green/ok (fully healthy) and yellow/warning (degraded but operational).
+    """
+    return status in ("green", "ok", "yellow", "warning")
 
 
 class AdminHealthService:
@@ -74,6 +88,8 @@ class AdminHealthService:
     # ------------------------------------------------------------------
 
     def get_composite_health(self, db: Session) -> Dict[str, Any]:
+        from backend.services.core.app_settings_service import get_or_create_app_settings
+
         coverage = self._build_coverage_dimension(db)
         stage = self._build_stage_dimension(db)
         jobs = self._build_jobs_dimension(db)
@@ -84,7 +100,14 @@ class AdminHealthService:
         ibkr_gateway = self._build_ibkr_gateway_dimension()
         task_runs = self._build_task_runs()
 
-        dims = {
+        market_only = True
+        try:
+            app_settings = get_or_create_app_settings(db)
+            market_only = bool(app_settings.market_only_mode)
+        except Exception:
+            pass
+
+        dims: Dict[str, Any] = {
             "coverage": coverage,
             "stage_quality": stage,
             "jobs": jobs,
@@ -95,7 +118,18 @@ class AdminHealthService:
             "ibkr_gateway": ibkr_gateway,
         }
 
-        failures = [name for name, dim in dims.items() if not _composite_dimension_ok(dim.get("status"))]
+        # Tag each dimension with its category for the frontend
+        for name in dims:
+            dims[name]["category"] = "market" if name in MARKET_DIMS else "broker"
+
+        # Broker dimensions are advisory in market-only mode
+        if market_only:
+            for name in BROKER_DIMS:
+                dims[name]["advisory"] = True
+
+        scored_dims = dims if not market_only else {k: v for k, v in dims.items() if k in MARKET_DIMS}
+        failures = [name for name, dim in scored_dims.items() if not _composite_dimension_ok(dim.get("status"))]
+
         if not failures:
             composite_status = "green"
             composite_reason = "All health dimensions pass."
@@ -109,10 +143,11 @@ class AdminHealthService:
         return {
             "composite_status": composite_status,
             "composite_reason": composite_reason,
+            "market_only_mode": market_only,
             "dimensions": dims,
             "task_runs": task_runs,
             "thresholds": dict(HEALTH_THRESHOLDS),
-            "checked_at": datetime.utcnow().isoformat(),
+            "checked_at": datetime.now(timezone.utc).isoformat(),
         }
 
     # ------------------------------------------------------------------
@@ -174,7 +209,7 @@ class AdminHealthService:
             from backend.models.market_data import JobRun
 
             lookback = int(HEALTH_THRESHOLDS["jobs_lookback_hours"])
-            since = datetime.utcnow() - timedelta(hours=lookback)
+            since = datetime.now(timezone.utc) - timedelta(hours=lookback)
             recent_q = db.query(JobRun).filter(JobRun.started_at >= since)
 
             total = recent_q.count()
@@ -191,7 +226,7 @@ class AdminHealthService:
                 .first()
             )
 
-            ok = error_count <= HEALTH_THRESHOLDS["jobs_error_max"]
+            ok = (completed == 0) or (success_rate >= HEALTH_THRESHOLDS["jobs_success_rate_min"])
 
             return {
                 "status": _dim_status(ok),
@@ -237,7 +272,10 @@ class AdminHealthService:
 
             age_hours = 0.0
             if latest.as_of_date:
-                age_hours = (datetime.utcnow() - latest.as_of_date).total_seconds() / 3600
+                as_of = latest.as_of_date
+                if as_of.tzinfo is None:
+                    as_of = as_of.replace(tzinfo=timezone.utc)
+                age_hours = (datetime.now(timezone.utc) - as_of).total_seconds() / 3600
 
             ok = age_hours < 48
             return {
@@ -356,7 +394,7 @@ class AdminHealthService:
         try:
             from backend.models import BrokerAccount
 
-            cutoff = datetime.utcnow() - timedelta(hours=24)
+            cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
             accounts = db.query(BrokerAccount).filter(
                 BrokerAccount.is_enabled.is_(True)
             ).all()
@@ -406,7 +444,9 @@ class AdminHealthService:
                         last_ping_dt = datetime.fromisoformat(last_ping.replace("Z", "+00:00"))
                     else:
                         last_ping_dt = last_ping
-                    is_stale = (datetime.utcnow() - last_ping_dt.replace(tzinfo=None)) > timedelta(minutes=10)
+                    if last_ping_dt.tzinfo is None:
+                        last_ping_dt = last_ping_dt.replace(tzinfo=timezone.utc)
+                    is_stale = (datetime.now(timezone.utc) - last_ping_dt) > timedelta(minutes=10)
                 except Exception:
                     pass
             

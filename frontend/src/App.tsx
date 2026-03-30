@@ -104,12 +104,10 @@ function App() {
                           <Route path="portfolio/workspace" element={<PortfolioWorkspace />} />
                         </Route>
 
-                        {/* Strategy (under Market in nav) */}
-                        <Route element={<RequireNonMarketAccess section="strategy" />}>
-                          <Route path="market/strategies" element={<Strategies />} />
-                          <Route path="market/strategies/manage" element={<StrategiesManager />} />
-                          <Route path="market/strategies/:strategyId" element={<StrategyDetail />} />
-                        </Route>
+                        {/* Strategy (under Market in nav, same access as market) */}
+                        <Route path="market/strategies" element={<Strategies />} />
+                        <Route path="market/strategies/manage" element={<StrategiesManager />} />
+                        <Route path="market/strategies/:strategyId" element={<StrategyDetail />} />
 
                         {/* Legacy /admin/agent → canonical /settings/admin/agent */}
                         <Route

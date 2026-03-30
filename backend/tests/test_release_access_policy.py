@@ -67,14 +67,12 @@ def _set_app_settings(
     *,
     market_only_mode: bool,
     portfolio_enabled: bool,
-    strategy_enabled: bool,
 ) -> None:
     res = client.patch(
         "/api/v1/admin/app-settings",
         json={
             "market_only_mode": market_only_mode,
             "portfolio_enabled": portfolio_enabled,
-            "strategy_enabled": strategy_enabled,
         },
         headers=_auth(admin_token),
     )
@@ -85,7 +83,6 @@ def test_release_policy_matrix_non_admin_rules():
     app_settings = SimpleNamespace(
         market_only_mode=True,
         portfolio_enabled=False,
-        strategy_enabled=False,
     )
     user = SimpleNamespace(role=UserRole.ANALYST)
     admin = SimpleNamespace(role=UserRole.OWNER)
@@ -93,27 +90,22 @@ def test_release_policy_matrix_non_admin_rules():
     # Admin always allowed.
     assert evaluate_release_access("market", admin, app_settings)[0] is True
     assert evaluate_release_access("portfolio", admin, app_settings)[0] is True
-    assert evaluate_release_access("strategy", admin, app_settings)[0] is True
 
     # Non-admin market is always allowed (authenticated).
     assert evaluate_release_access("market", user, app_settings)[0] is True
 
-    # Non-admin portfolio/strategy blocked by market-only.
+    # Non-admin portfolio blocked by market-only.
     ok, reason = evaluate_release_access("portfolio", user, app_settings)
     assert ok is False
     assert reason == "Market-only mode: access restricted"
-    ok, reason = evaluate_release_access("strategy", user, app_settings)
-    assert ok is False
-    assert reason == "Market-only mode: access restricted"
+
+    # "other" section (including strategies) always allowed for authenticated users.
+    assert evaluate_release_access("other", user, app_settings)[0] is True
 
     # Flip market_only off; section flags decide.
     app_settings.market_only_mode = False
     app_settings.portfolio_enabled = True
-    app_settings.strategy_enabled = False
     assert evaluate_release_access("portfolio", user, app_settings)[0] is True
-    ok, reason = evaluate_release_access("strategy", user, app_settings)
-    assert ok is False
-    assert reason == "Strategy section is not enabled"
 
 
 def test_authenticated_non_admin_market_allowed_and_portfolio_locked_by_default(client: TestClient):
@@ -132,7 +124,6 @@ def test_authenticated_non_admin_market_allowed_and_portfolio_locked_by_default(
             admin_token,
             market_only_mode=True,
             portfolio_enabled=False,
-            strategy_enabled=False,
         )
 
         market_res = client.get(
@@ -153,7 +144,6 @@ def test_authenticated_non_admin_market_allowed_and_portfolio_locked_by_default(
             admin_token,
             market_only_mode=True,
             portfolio_enabled=False,
-            strategy_enabled=False,
         )
 
 

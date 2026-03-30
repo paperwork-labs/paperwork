@@ -5,7 +5,7 @@ AxiomFolio V1 - Authentication Routes
 User authentication, registration, OAuth, email verification, and session management.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Any, Dict
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response, Query
 from fastapi.security import HTTPBearer
@@ -134,7 +134,7 @@ def verify_token(token: str) -> Optional[str]:
 
 def _find_active_invite_for_email(db: Session, email: str) -> Optional[UserInvite]:
     """Pending, non-expired invite for this email (not yet accepted)."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     return (
         db.query(UserInvite)
         .filter(
@@ -375,7 +375,7 @@ async def google_callback(
             )
             db.add(user)
             if active_invite is not None:
-                active_invite.accepted_at = datetime.utcnow()
+                active_invite.accepted_at = datetime.now(timezone.utc)
 
     user.avatar_url = picture
     user.is_verified = True
@@ -555,7 +555,7 @@ async def apple_callback(
             )
             db.add(user)
             if active_invite is not None:
-                active_invite.accepted_at = datetime.utcnow()
+                active_invite.accepted_at = datetime.now(timezone.utc)
 
     if first_name and not user.first_name:
         user.first_name = first_name
@@ -645,6 +645,12 @@ async def schwab_callback(code: str):
 async def register_user(
     user_data: UserCreate, response: Response, db: Session = Depends(get_db)
 ) -> RegisterUserResponse:
+    if not user_data.password or len(user_data.password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 8 characters",
+        )
+
     normalized_email = user_data.email.strip().lower()
     existing_user = (
         db.query(User)
@@ -657,18 +663,25 @@ async def register_user(
             detail="Username or email already registered",
         )
 
+    active_invite = _find_active_invite_for_email(db, normalized_email)
+    has_invite = active_invite is not None
+
     hashed_password = get_password_hash(user_data.password)
     db_user = User(
         username=user_data.username,
         email=normalized_email,
         password_hash=hashed_password,
         full_name=user_data.full_name,
-        role=UserRole.ANALYST,
+        role=active_invite.role if has_invite and isinstance(active_invite.role, UserRole) else UserRole.VIEWER,
         is_active=True,
         is_verified=False,
-        is_approved=False,
+        is_approved=has_invite,
     )
     db.add(db_user)
+
+    if has_invite:
+        active_invite.accepted_at = datetime.now(timezone.utc)
+
     db.commit()
     db.refresh(db_user)
 
@@ -678,8 +691,13 @@ async def register_user(
     )
     _send_verification_email(db_user.email, verify_token_str)
 
-    logger.info("New user registered: %s", user_data.username)
-    return RegisterUserResponse.model_validate(db_user)
+    logger.info("New user registered: %s (invite=%s)", user_data.username, has_invite)
+    resp = RegisterUserResponse.model_validate(db_user)
+    resp.role = getattr(db_user.role, "value", None)
+    resp.has_password = bool(db_user.password_hash)
+    if has_invite:
+        resp.message = "Registration successful. Verify your email to sign in."
+    return resp
 
 
 @router.get("/verify-email")
@@ -730,7 +748,7 @@ async def get_invite(token: str, db: Session = Depends(get_db)) -> Dict[str, Any
         raise HTTPException(status_code=404, detail="Invite not found")
     if invite.accepted_at is not None:
         raise HTTPException(status_code=409, detail="Invite already used")
-    if invite.expires_at < datetime.utcnow():
+    if invite.expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=410, detail="Invite expired")
     return {
         "email": invite.email,
@@ -749,7 +767,7 @@ async def accept_invite(
         raise HTTPException(status_code=404, detail="Invite not found")
     if invite.accepted_at is not None:
         raise HTTPException(status_code=409, detail="Invite already used")
-    if invite.expires_at < datetime.utcnow():
+    if invite.expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=410, detail="Invite expired")
 
     normalized_invite_email = invite.email.strip().lower()
@@ -781,10 +799,13 @@ async def accept_invite(
         is_approved=True,
     )
     db.add(db_user)
-    invite.accepted_at = datetime.utcnow()
+    invite.accepted_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_user)
-    return UserResponse.model_validate(db_user)
+    resp = UserResponse.model_validate(db_user)
+    resp.role = getattr(db_user.role, "value", None)
+    resp.has_password = bool(db_user.password_hash)
+    return resp
 
 
 # ---------------------------------------------------------------------------
@@ -821,6 +842,7 @@ async def login_user(
             detail="Account pending admin approval",
         )
 
+    user.last_login = datetime.now(timezone.utc)
     result = _issue_tokens(user, response)
     db.commit()
     logger.info("User logged in: %s", user.username)
@@ -992,5 +1014,5 @@ async def auth_health_check():
     return {
         "status": "healthy",
         "service": "authentication",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }

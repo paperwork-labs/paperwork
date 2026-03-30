@@ -5,7 +5,7 @@ import json
 import functools
 import logging
 import traceback
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional, Set
 
 from celery import current_task
@@ -51,7 +51,7 @@ def task_run(task_name: str, *, lock_key: Optional[Callable[..., Optional[str]]]
                 task_name=task_name,
                 params=kwargs or {},
                 status="running",
-                started_at=datetime.utcnow(),
+                started_at=datetime.now(timezone.utc),
             )
             session.add(job)
             session.commit()
@@ -76,7 +76,7 @@ def task_run(task_name: str, *, lock_key: Optional[Callable[..., Optional[str]]]
                     except Exception as e:
                         logger.warning("task_run store nonfatal job error failed for %s: %s", task_name, e)
                 job.status = "ok"
-                job.finished_at = datetime.utcnow()
+                job.finished_at = datetime.now(timezone.utc)
                 duration = _job_duration_seconds(job)
                 if counters is not None:
                     counters["duration_s"] = duration
@@ -110,7 +110,7 @@ def task_run(task_name: str, *, lock_key: Optional[Callable[..., Optional[str]]]
             except Exception as exc:
                 job.status = "error"
                 job.error = f"{exc}\n{traceback.format_exc()}"
-                job.finished_at = datetime.utcnow()
+                job.finished_at = datetime.now(timezone.utc)
                 session.commit()
                 try:
                     _publish_status(task_name, "error", {"id": job.id, "error": str(exc)})
@@ -143,7 +143,7 @@ def _publish_status(task: str, status: str, payload: dict | None = None) -> None
     r = market_data_service.redis_client
     r.set(
         f"taskstatus:{task}:last",
-        json.dumps({"task": task, "status": status, "ts": datetime.utcnow().isoformat(), "payload": payload or {}}),
+        json.dumps({"task": task, "status": status, "ts": datetime.now(timezone.utc).isoformat(), "payload": payload or {}}),
     )
 
 
@@ -347,7 +347,7 @@ def resolve_history_days(requested_days: Optional[int]) -> int:
         if last_run:
             last_ts = last_run.finished_at or last_run.started_at
         if last_ts:
-            delta_days = max(0, (datetime.utcnow().date() - last_ts.date()).days)
+            delta_days = max(0, (datetime.now(timezone.utc).date() - last_ts.date()).days)
             return max(minimum_days, delta_days)
     except Exception as e:
         logger.warning("History days lookup failed, using default: %s", e)

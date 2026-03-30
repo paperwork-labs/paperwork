@@ -2,8 +2,6 @@ import React, { useState, useCallback, useEffect } from 'react';
 import {
   AlertTriangle,
   CheckCircle,
-  ChevronDown,
-  ChevronUp,
   Clock,
   Loader2,
   RefreshCw,
@@ -26,7 +24,6 @@ import type { AdminHealthResponse, AutoFixStatusResponse, AutoFixTask } from '..
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import * as CollapsiblePrimitive from "@radix-ui/react-collapsible";
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -74,14 +71,20 @@ const REGIME_LABELS: Record<string, string> = {
 
 const STATUS_ICON: Record<string, typeof CheckCircle> = {
   green: CheckCircle,
+  ok: CheckCircle,
   yellow: AlertTriangle,
+  warning: AlertTriangle,
   red: XCircle,
+  error: XCircle,
 };
 
 const STATUS_DOT: Record<string, string> = {
   green: 'bg-emerald-500',
+  ok: 'bg-emerald-500',
   yellow: 'bg-amber-500',
+  warning: 'bg-amber-500',
   red: 'bg-destructive',
+  error: 'bg-destructive',
 };
 
 const estimateTradingDays = (sinceDate: string): number => {
@@ -129,13 +132,14 @@ const PipelineStatus: React.FC<PipelineStatusProps> = ({ health, loading, sinceD
   const unknownRate = typeof stageQ.unknown_rate === 'number' ? stageQ.unknown_rate : 0;
   const indicatorPct = Math.max(0, Math.min(100, (1 - unknownRate) * 100));
 
-  const compositeOk = coverage.status === 'green' && regime.status === 'green' && jobs.error_count === 0;
+  const jobsOk = jobs.completed_count === 0 || jobs.success_rate >= 0.9;
+  const compositeOk = coverage.status === 'green' && regime.status === 'green' && jobsOk;
   const statusText = compositeOk
     ? `All pipelines healthy. ${jobs.ok_count} tasks completed in the last ${jobs.window_hours}h.`
     : coverage.status !== 'green'
       ? `Coverage needs attention — ${coverage.stale_daily} symbols missing latest bars. Agent will retry automatically.`
-      : jobs.error_count > 0
-        ? `${jobs.error_count} task failure${jobs.error_count > 1 ? 's' : ''} detected. Check agent activity below.`
+      : !jobsOk
+        ? `Task success rate ${(jobs.success_rate * 100).toFixed(0)}% (${jobs.error_count} failures). Check agent activity below.`
         : 'Some dimensions need attention. See details below.';
 
   const barColor = (pct: number) =>
@@ -242,24 +246,29 @@ const AgentActivity: React.FC<AgentActivityProps> = ({ taskRuns }) => {
 
   return (
     <div className="flex flex-col">
-      {entries.map(([name, run]) => (
-        <div
-          key={name}
-          className="flex items-center justify-between gap-2 rounded-md px-3 py-2 transition-colors hover:bg-muted/80"
-        >
-          <div className="flex min-w-0 items-center gap-2.5">
-            <CheckCircle className="size-3 shrink-0 text-emerald-500" aria-hidden />
-            <span className="truncate text-xs text-foreground">{friendlyTaskName(name)}</span>
+      {entries.map(([name, run]) => {
+        const runStatus = (run as Record<string, unknown>)?.status as string | undefined;
+        const RunIcon = runStatus === 'error' ? XCircle : runStatus === 'running' ? Loader2 : CheckCircle;
+        const iconCls = runStatus === 'error' ? 'text-destructive' : runStatus === 'running' ? 'text-amber-500 animate-spin' : 'text-emerald-500';
+        return (
+          <div
+            key={name}
+            className="flex items-center justify-between gap-2 rounded-md px-3 py-2 transition-colors hover:bg-muted/80"
+          >
+            <div className="flex min-w-0 items-center gap-2.5">
+              <RunIcon className={cn('size-3 shrink-0', iconCls)} aria-hidden />
+              <span className="truncate text-xs text-foreground">{friendlyTaskName(name)}</span>
+            </div>
+            <span className="shrink-0 font-mono text-xs text-muted-foreground">{formatRelativeTime(run?.ts)}</span>
           </div>
-          <span className="shrink-0 font-mono text-xs text-muted-foreground">{formatRelativeTime(run?.ts)}</span>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
 
 const getDimensionHint = (key: string, dim: any): string | null => {
-  if (dim.status === 'green') return null;
+  if (dim.status === 'green' || dim.status === 'ok') return null;
   switch (key) {
     case 'coverage':
       return `${dim.stale_daily} stale symbol${dim.stale_daily !== 1 ? 's' : ''} — agent retries hourly`;
@@ -268,9 +277,15 @@ const getDimensionHint = (key: string, dim: any): string | null => {
     case 'audit':
       return 'Fill below threshold — backfill scheduled';
     case 'jobs':
-      return `${dim.error_count} failure${dim.error_count !== 1 ? 's' : ''} — check activity log`;
+      return `${dim.error_count} failure${dim.error_count !== 1 ? 's' : ''} (${(dim.success_rate * 100).toFixed(0)}% success rate)`;
     case 'regime':
       return dim.age_hours > 24 ? 'Regime stale — recomputed at market close' : null;
+    case 'fundamentals':
+      return dim.status === 'warning' ? `Fill at ${dim.fundamentals_fill_pct?.toFixed(0) ?? '?'}%` : 'Fundamentals data incomplete';
+    case 'portfolio_sync':
+      return dim.stale_accounts > 0 ? `${dim.stale_accounts} stale account${dim.stale_accounts !== 1 ? 's' : ''}` : null;
+    case 'ibkr_gateway':
+      return dim.note || (dim.connection_status === 'unknown' ? 'IBKR gateway not configured' : 'Gateway disconnected');
     default:
       return null;
   }
@@ -280,7 +295,6 @@ const SystemStatus: React.FC = () => {
   const { health, loading, refresh } = useAdminHealth();
   const { snapshot, hero: coverageHero } = useCoverageSnapshot({ fillTradingDaysWindow: 60 });
   const { timezone } = useUserPreferences();
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [sanityData, setSanityData] = useState<Record<string, unknown> | null>(null);
   const [sinceDate, setSinceDate] = useState('2021-01-01');
   const [sinceDateSaving, setSinceDateSaving] = useState(false);
@@ -410,7 +424,7 @@ const SystemStatus: React.FC = () => {
   };
 
   const redDimCount = health
-    ? Object.values(health.dimensions).filter((d) => d.status === 'red').length
+    ? Object.values(health.dimensions).filter((d) => d.status === 'red' || d.status === 'error').length
     : 0;
 
   return (
@@ -624,46 +638,84 @@ const SystemStatus: React.FC = () => {
             ) : (
               <div className="flex flex-col gap-1.5">
                 {health &&
-                  Object.entries(health.dimensions).map(([key, dim]) => {
-                    const status = dim.status;
-                    const hint = getDimensionHint(key, dim);
-                    return (
-                      <div key={key} className="rounded-lg bg-muted/50 px-3 py-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <span
+                  Object.entries(health.dimensions)
+                    .filter(([, dim]) => !dim.advisory)
+                    .map(([key, dim]) => {
+                      const status = dim.status;
+                      const hint = getDimensionHint(key, dim);
+                      const isPass = status === 'green' || status === 'ok';
+                      const isWarn = status === 'yellow' || status === 'warning';
+                      return (
+                        <div key={key} className="rounded-lg bg-muted/50 px-3 py-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={cn(
+                                  'size-[7px] shrink-0 rounded-full',
+                                  STATUS_DOT[status] || 'bg-muted-foreground/50',
+                                )}
+                              />
+                              <span className="text-sm font-medium capitalize text-foreground">
+                                {key.replace(/_/g, ' ')}
+                              </span>
+                            </div>
+                            <Badge
+                              variant="outline"
                               className={cn(
-                                'size-[7px] shrink-0 rounded-full',
-                                STATUS_DOT[status] || 'bg-muted-foreground/50',
+                                'font-normal',
+                                isPass
+                                  ? 'border-emerald-500/40 text-emerald-700 dark:text-emerald-300'
+                                  : isWarn
+                                    ? 'border-amber-500/40 text-amber-700 dark:text-amber-300'
+                                    : 'border-destructive/40 text-destructive',
                               )}
-                            />
-                            <span className="text-sm font-medium capitalize text-foreground">
-                              {key.replace(/_/g, ' ')}
-                            </span>
+                            >
+                              {status.toUpperCase()}
+                            </Badge>
                           </div>
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              'font-normal',
-                              status === 'green'
-                                ? 'border-emerald-500/40 text-emerald-700 dark:text-emerald-300'
-                                : 'border-destructive/40 text-destructive',
-                            )}
-                          >
-                            {status.toUpperCase()}
-                          </Badge>
+                          {hint && <p className="mt-1 ml-4 text-[10px] text-muted-foreground">{hint}</p>}
                         </div>
-                        {hint && <p className="mt-1 ml-4 text-[10px] text-muted-foreground">{hint}</p>}
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                {health &&
+                  Object.entries(health.dimensions).some(([, dim]) => dim.advisory) && (
+                    <>
+                      <p className="mt-2 text-[10px] font-medium tracking-wider text-muted-foreground/70 uppercase">
+                        Broker (advisory)
+                      </p>
+                      {Object.entries(health.dimensions)
+                        .filter(([, dim]) => dim.advisory)
+                        .map(([key, dim]) => {
+                          const hint = getDimensionHint(key, dim);
+                          return (
+                            <div key={key} className="rounded-lg bg-muted/30 px-3 py-2 opacity-60">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={cn(
+                                      'size-[7px] shrink-0 rounded-full',
+                                      STATUS_DOT[dim.status] || 'bg-muted-foreground/50',
+                                    )}
+                                  />
+                                  <span className="text-sm font-medium capitalize text-foreground">
+                                    {key.replace(/_/g, ' ')}
+                                  </span>
+                                </div>
+                                <span className="text-[10px] text-muted-foreground">{dim.status.toUpperCase()}</span>
+                              </div>
+                              {hint && <p className="mt-1 ml-4 text-[10px] text-muted-foreground">{hint}</p>}
+                            </div>
+                          );
+                        })}
+                    </>
+                  )}
               </div>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {redDimCount > 0 && <AdminRunbook health={health} />}
+      {redDimCount > 0 && <AdminRunbook health={health} onRefreshHealth={handleRefreshWithPolling} />}
 
       <div>
         <p className="mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">Detailed Diagnostics</p>
@@ -672,24 +724,15 @@ const SystemStatus: React.FC = () => {
 
       <div className="h-px w-full bg-border" role="separator" />
 
-      <CollapsiblePrimitive.Root open={advancedOpen} onOpenChange={setAdvancedOpen}>
-        <CollapsiblePrimitive.Trigger asChild>
-          <Button type="button" variant="ghost" size="sm" className="h-auto gap-2 px-2 text-muted-foreground">
-            {advancedOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-            <span className="text-sm">Operator Actions</span>
-          </Button>
-        </CollapsiblePrimitive.Trigger>
-        <CollapsiblePrimitive.Content className="overflow-hidden">
-          <div className="mt-3">
-            <AdminOperatorActions
-              refreshCoverage={handleRefreshWithPolling}
-              refreshHealth={handleRefreshWithPolling}
-              sanityData={sanityData}
-              setSanityData={setSanityData}
-            />
-          </div>
-        </CollapsiblePrimitive.Content>
-      </CollapsiblePrimitive.Root>
+      <div>
+        <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Operator Actions</p>
+        <AdminOperatorActions
+          refreshCoverage={handleRefreshWithPolling}
+          refreshHealth={handleRefreshWithPolling}
+          sanityData={sanityData}
+          setSanityData={setSanityData}
+        />
+      </div>
     </div>
   );
 };

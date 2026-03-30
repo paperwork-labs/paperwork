@@ -3,7 +3,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { isPlatformAdminRole } from '../../utils/userRole';
 
-type Section = 'portfolio' | 'strategy';
+type Section = 'portfolio';
 
 const RequireNonMarketAccess: React.FC<{ children?: React.ReactElement; section?: Section }> = ({ children, section }) => {
   const { user, appSettings, ready, appSettingsReady } = useAuth();
@@ -22,9 +22,6 @@ const RequireNonMarketAccess: React.FC<{ children?: React.ReactElement; section?
   }
 
   if (section === 'portfolio' && !Boolean(appSettings?.portfolio_enabled)) {
-    return <Navigate to="/" state={{ from: location }} replace />;
-  }
-  if (section === 'strategy' && !Boolean(appSettings?.strategy_enabled)) {
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 

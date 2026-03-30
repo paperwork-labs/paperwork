@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Dict, Any, Optional
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import secrets
 
 from pydantic import BaseModel, EmailStr
@@ -93,26 +93,13 @@ async def list_users(
         users = query.order_by(User.created_at.desc()).all()
 
         return {
-            "users": [
-                {
-                    "id": user.id,
-                    "username": user.username,
-                    "email": user.email,
-                    "role": _role_value(user.role),
-                    "is_active": user.is_active,
-                    "is_verified": user.is_verified,
-                    "last_login": user.last_login.isoformat() if user.last_login else None,
-                    "full_name": user.full_name,
-                    "created_at": user.created_at.isoformat(),
-                }
-                for user in users
-            ],
+            "users": [_user_admin_payload(user) for user in users],
             "total_users": len(users),
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     except Exception as e:
-        logger.error(f"❌ Admin users list error: {e}")
+        logger.error("Admin users list error: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -132,6 +119,7 @@ async def list_user_invites(
                 "id": inv.id,
                 "email": inv.email,
                 "role": _role_value(inv.role),
+                "token": inv.token if not inv.accepted_at and inv.expires_at > datetime.now(timezone.utc) else None,
                 "expires_at": inv.expires_at.isoformat(),
                 "accepted_at": inv.accepted_at.isoformat() if inv.accepted_at else None,
                 "created_at": inv.created_at.isoformat(),
@@ -152,7 +140,7 @@ async def invite_user(
     if db.query(User).filter(User.email == email).first():
         raise HTTPException(status_code=409, detail="User already exists")
     role = _parse_role(payload.role)
-    expires_at = datetime.utcnow() + timedelta(days=max(1, min(payload.expires_in_days, 30)))
+    expires_at = datetime.now(timezone.utc) + timedelta(days=max(1, min(payload.expires_in_days, 30)))
     token = secrets.token_urlsafe(32)
     existing_invite = (
         db.query(UserInvite)
@@ -162,7 +150,7 @@ async def invite_user(
     if existing_invite:
         is_active = (
             existing_invite.accepted_at is None
-            and existing_invite.expires_at >= datetime.utcnow()
+            and existing_invite.expires_at >= datetime.now(timezone.utc)
         )
         if is_active:
             raise HTTPException(status_code=409, detail="Active invite already exists for this email")
@@ -299,10 +287,10 @@ async def system_health_summary(
     ).scalar() or 0
     coverage_age_min = None
     if latest_snap:
-        coverage_age_min = int((datetime.utcnow() - latest_snap).total_seconds() / 60)
+        coverage_age_min = int((datetime.now(timezone.utc) - latest_snap).total_seconds() / 60)
 
     # Pipeline — recent job runs
-    cutoff = datetime.utcnow() - timedelta(hours=24)
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
     recent_jobs = db.execute(
         select(JobRun)
         .where(JobRun.started_at >= cutoff)

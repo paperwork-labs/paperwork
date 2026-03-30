@@ -58,8 +58,14 @@ function getAxiosErrorMessage(err: unknown): string {
   return "Something went wrong."
 }
 
-function dimensionToSignal(status: "green" | "red"): HealthSignal {
-  return status === "green" ? "ok" : "error"
+function dimensionToSignal(status: string): HealthSignal {
+  const map: Record<string, HealthSignal> = {
+    green: "ok",
+    ok: "ok",
+    yellow: "warn",
+    warning: "warn",
+  }
+  return map[status] ?? "error"
 }
 
 function adminHealthToAgentHealth(
