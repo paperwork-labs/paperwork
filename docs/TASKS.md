@@ -992,7 +992,7 @@ Brain as the operating system for building Paperwork Labs. Dogfood path per BRAI
 - **Files/Specs**: `apis/brain/` (greenfield FastAPI). Render Standard ($25/mo per D1/F59). Domain: `brain.paperworklabs.com`. Database: same Neon instance, `agent_*` tables. Health endpoint, BRAIN_API_SECRET auth (D9).
 - **Acceptance Criteria**: Brain API running on Render. Health check passing. Internal auth via shared secret. CORS restricted to n8n and Studio origins.
 - **Depends On**: None (can start immediately)
-- **Status**: NOT STARTED
+- **Status**: DONE
 
 </details>
 
@@ -1005,7 +1005,7 @@ Brain as the operating system for building Paperwork Labs. Dogfood path per BRAI
 - **Files/Specs**: Input normalization, persona selection from `.cursor/rules/*.mdc`, LLM call (Opus primary, Sonnet fallback per D14), tool dispatch, max 5 iterations (D2). Query reformulation before memory search (D4). Request idempotency via Redis (D10).
 - **Acceptance Criteria**: POST `/brain/process` accepts message + context, routes to correct persona, returns LLM response. Fallback chain works when primary model is unavailable. Idempotency prevents duplicate processing.
 - **Depends On**: P11.1
-- **Status**: NOT STARTED
+- **Status**: DONE
 
 </details>
 
@@ -1018,7 +1018,7 @@ Brain as the operating system for building Paperwork Labs. Dogfood path per BRAI
 - **Files/Specs**: Episodes table with pgvector embeddings. Hybrid retrieval: vector (0.4) + FTS (0.35) + entity (0.15) + graph (0.10) with RRF fusion (D5). Memory classification framework: GREEN/YELLOW/RED (D23). PII scrubbing on all stored text (D11). Memory fatigue: recently-recalled episodes penalized (D15).
 - **Acceptance Criteria**: Episodes stored with embeddings. Hybrid retrieval returns relevant memories. PII patterns scrubbed before storage. Memory fatigue prevents repetitive recall.
 - **Depends On**: P11.1
-- **Status**: NOT STARTED
+- **Status**: DONE
 
 </details>
 
@@ -1031,7 +1031,7 @@ Brain as the operating system for building Paperwork Labs. Dogfood path per BRAI
 - **Files/Specs**: Ingest `docs/KNOWLEDGE.md`, `docs/TASKS.md`, `docs/BRAIN_ARCHITECTURE.md`, `docs/PRD.md`, `docs/VENTURE_MASTER_PLAN.md` as seed episodes. Brain knows all venture decisions (D## entries), task status, architecture, and strategy from day 1.
 - **Acceptance Criteria**: All 5 docs ingested as episodes. Brain can answer "what decisions have we made?" and "what's the status of Phase 3?" accurately. Seed episodes refresh on doc changes.
 - **Depends On**: P11.3
-- **Status**: NOT STARTED
+- **Status**: DONE
 
 </details>
 
@@ -1044,7 +1044,7 @@ Brain as the operating system for building Paperwork Labs. Dogfood path per BRAI
 - **Files/Specs**: n8n thin adapter per D2. n8n receives Slack events, forwards to Brain API `/brain/process`, posts response back to thread. Brain API does ALL intelligence (persona routing, memory, tools). n8n is a channel adapter only. Smart persona routing by channel context (per ea.mdc routing rules).
 - **Acceptance Criteria**: Brain responds in Slack threads with venture context. Knows decisions, tasks, architecture. Persona routing works (engineering questions → engineering persona, strategy → strategy persona). Thread history maintained.
 - **Depends On**: P11.2, P11.4
-- **Status**: NOT STARTED
+- **Status**: DONE
 
 </details>
 
@@ -1208,9 +1208,24 @@ These run in parallel with all phases. Some have hard deadlines that block downs
 
 ## Phase 12: Brain Thin-Wrapper Conversion (Parallel Ops)
 
+**Kickoff**: P12.0 (baseline fixes) **DONE** — thin-wrapper conversions (P12.1+) in flight.
+
 Migrate remaining persona-specific n8n workflows from fat graphs (GitHub fetch + multi-node LLM + formatting) to **thin wrappers**: webhook or schedule → HTTP to Brain `POST /brain/process` with the correct persona (and channel context), then post the result to Slack or the next hop. Same pattern as P11.5 (Slack adapter); Brain owns routing, memory, and tools.
 
 See [BRAIN_ARCHITECTURE.md](BRAIN_ARCHITECTURE.md) and Phase 11-alpha (P11.1–P11.5).
+
+<details>
+<summary>P12.0 Brain baseline fixes (D13 persona loading, duplicate response UX, weighted routing, classifier improvement, channel map update, seed knowledge embeddings)</summary>
+
+- **Task ID**: P12.0
+- **Owner**: Founder 1
+- **Branch**: `feat/brain-baseline-fixes`
+- **Files/Specs**: `apis/brain/` (persona loading, agent loop, LLM routing), `apis/brain/scripts/seed_knowledge.py`, `infra/hetzner/workflows/brain-slack-adapter.json`.
+- **Acceptance Criteria**: D13 persona loading reliable; duplicate-response UX addressed; weighted routing and classifier improvements deployed; channel map updated; seed knowledge embedding path aligned with Brain memory.
+- **Depends On**: P11.5
+- **Status**: DONE
+
+</details>
 
 <details>
 <summary>P12.1 CPA Tax Review n8n → Brain thin wrapper</summary>
@@ -1342,7 +1357,8 @@ See [BRAIN_ARCHITECTURE.md](BRAIN_ARCHITECTURE.md) and Phase 11-alpha (P11.1–P
 | Phase 2 (50-State Data) | May 2026 | **COMPLETE** |
 | Phase 4 Tier 1 (Command Center) | March 2026 | **COMPLETE** |
 | Phase 6 Partial (Agent Restructure) | March 2026 | **PARTIAL** (workflows done, personas pending) |
-| Phase 11-alpha (Internal Brain) | April 2026 | NOT STARTED |
+| Phase 11-alpha (Internal Brain) | April 2026 | **COMPLETE** (P11.1–P11.5); P11.6 validation **NOT STARTED** |
+| Phase 12 (Brain Thin-Wrapper Conversion) | Parallel | **KICKOFF** (P12.0 done) |
 | Phase 1.5 (First Trinket) | April 2026 | NOT STARTED |
 | Phase 3 (LaunchFree MVP) | June-July 2026 | NOT STARTED |
 | Phase 5 (User Intelligence) | July 2026 | NOT STARTED |

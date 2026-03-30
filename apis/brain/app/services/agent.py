@@ -38,8 +38,13 @@ from app.services.router import (
 
 logger = logging.getLogger(__name__)
 
+PERSONA_MDC_PREFIX = ".cursor/rules/"
+PERSONA_CACHE_TTL = 3600
+
 SYSTEM_PROMPT_TEMPLATE = """You are the Brain for {org_name} — an intelligent assistant.
 You are operating as the {persona} persona.
+
+{persona_instructions}
 
 ## Your Memory (retrieved context)
 {memory_context}
@@ -47,11 +52,41 @@ You are operating as the {persona} persona.
 ## Rules
 - Be concise and actionable. Lead with the answer.
 - Use your memory to provide personalized, context-aware responses.
-- If you don't have enough context, say so honestly.
+- If you don't have enough context, use tools (read_github_file, search_github_code) to find answers.
 - Never expose raw PII (SSNs, passwords, API keys) in your responses.
 - If asked about something in your memory, cite it naturally.
+- For project status, task progress, or "what to work on" questions, use read_github_file to read docs/TASKS.md.
 - When using tools, prefer search_memory first for context before calling external tools.
 """
+
+
+async def _load_persona_instructions(persona: str, redis_client: Any) -> str:
+    """D13: Load persona .mdc from cache or GitHub. Returns instructions or empty string."""
+    cache_key = f"persona_mdc:{persona}"
+
+    if redis_client:
+        try:
+            cached = await redis_client.get(cache_key)
+            if cached:
+                return cached if isinstance(cached, str) else cached.decode("utf-8")
+        except Exception:
+            logger.debug("Redis persona cache miss/error for %s", persona)
+
+    try:
+        from app.tools.github import read_github_file
+        mdc_path = f"{PERSONA_MDC_PREFIX}{persona}.mdc"
+        content = await read_github_file(mdc_path)
+        if content and "Not found:" not in content and "error:" not in content.lower():
+            if redis_client:
+                try:
+                    await redis_client.setex(cache_key, PERSONA_CACHE_TTL, content)
+                except Exception:
+                    logger.debug("Failed to cache persona .mdc for %s", persona)
+            return content
+    except Exception:
+        logger.warning("Failed to load persona .mdc for %s", persona, exc_info=True)
+
+    return ""
 
 _constitution: list[dict] | None = None
 _circuit_breaker: CircuitBreaker | None = None
@@ -200,13 +235,14 @@ async def process(
     if is_duplicate:
         logger.info("Duplicate request %s, skipping", request_id)
         return {
-            "response": "[Duplicate request — already processed]",
+            "response": "",
             "persona": "system",
             "model": "none",
             "provider": "none",
             "tokens_in": 0,
             "tokens_out": 0,
             "cost": 0.0,
+            "is_duplicate": True,
         }
 
     trace = create_trace(
@@ -220,6 +256,12 @@ async def process(
     logger.info("Routed to persona=%s (org=%s, user=%s)", persona, organization_id, user_id)
     persona_span = trace.span(name="route_persona", input={"message": message[:100]})
     persona_span.end(output={"persona": persona})
+
+    persona_instructions = await _load_persona_instructions(persona, redis_client)
+    if persona_instructions:
+        persona_section = f"## Persona Instructions\n{persona_instructions}"
+    else:
+        persona_section = ""
 
     fatigue_ids = await memory.get_fatigue_ids(redis_client, organization_id)
     episodes = await memory.search_episodes(
@@ -237,11 +279,12 @@ async def process(
             f"[{e.source} | {e.created_at.strftime('%Y-%m-%d')}] {e.summary}" for e in episodes
         )
     else:
-        memory_context = "(No relevant memories found yet.)"
+        memory_context = "(No relevant memories found yet. Use read_github_file to check docs/TASKS.md or docs/KNOWLEDGE.md for project context.)"
 
     system_prompt = SYSTEM_PROMPT_TEMPLATE.format(
         org_name=org_name,
         persona=persona,
+        persona_instructions=persona_section,
         memory_context=memory_context,
     )
 

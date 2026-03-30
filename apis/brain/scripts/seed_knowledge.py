@@ -133,7 +133,7 @@ async def seed_static_knowledge(
     repo_root: str,
     *,
     organization_id: str = "paperwork-labs",
-    skip_embedding: bool = True,
+    skip_embedding: bool = False,
 ) -> int:
     """Ingest persona rules and key repo files as seed:knowledge episodes (one per file).
 

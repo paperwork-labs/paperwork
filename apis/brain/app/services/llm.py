@@ -476,12 +476,15 @@ Respond with ONLY valid JSON:
   "confidence": 0.0-1.0}}
 
 Rules:
-- Simple greetings, questions, explanations -> gpt-4o-mini, tools_needed=false
+- ONLY use tools_needed=false for truly simple greetings ("hi", "thanks") or pure explanations
+- Project status, task progress, "what to work on", planning questions -> claude-sonnet-4-20250514, tools_needed=true (needs GitHub access to read TASKS.md)
 - Infrastructure status checks -> claude-sonnet-4-20250514, tools_needed=true
 - Code/PR/GitHub operations -> claude-sonnet-4-20250514, tools_needed=true
 - Trading/portfolio queries -> claude-sonnet-4-20250514, tools_needed=true
 - Tax calculations, financial math -> o4-mini, tools_needed=false
-- Complex multi-domain reasoning -> claude-opus-4-20250618, tools_needed=true"""
+- Questions about decisions, knowledge, company state -> claude-sonnet-4-20250514, tools_needed=true (needs GitHub to read KNOWLEDGE.md)
+- Complex multi-domain reasoning -> claude-opus-4-20250618, tools_needed=true
+- When in doubt, set tools_needed=true (better to have tools available than not)"""
 
     try:
         client = _get_client("gemini_classify", timeout=15.0)

@@ -3,7 +3,7 @@
 Organizational memory for Paperwork Labs (FileFree, LaunchFree, Distill, Trinkets). AI agents read this at session start. Update after significant decisions, learnings, or pattern discoveries.
 
 **Last Updated**: 2026-03-29
-**Version**: 10.5 (D87 — Vault architecture audit + security fix)
+**Version**: 10.6 (D88 — Brain baseline audit + fixes)
 
 ---
 
@@ -373,6 +373,23 @@ Full text in [docs/archive/KNOWLEDGE-ARCHIVE.md](archive/KNOWLEDGE-ARCHIVE.md).
 **Alternatives**: Considered merging into one vault — rejected. Different access patterns (flat company secrets vs multi-tenant user secrets), different auth models, different lifecycle.
 
 **Reversibility**: Fully reversible. The admin auth fix is a one-line addition. vault_set can be unregistered. Migration changes are pre-production.
+
+### D88 — Brain Baseline Audit: 7 Critical Issues Found (2026-03-29)
+
+**Context**: After deploying the Brain (Phase 11), the first Slack dogfooding session revealed the Brain couldn't answer basic project status questions. A holistic audit of Brain code vs BRAIN_ARCHITECTURE.md uncovered 7 critical issues.
+
+**Decision**: Fix all 7 issues in a single "Brain baseline fixes" PR before proceeding with Phase 12 n8n conversions:
+1. D13 violation — persona .mdc content not loaded into prompts (only name injected)
+2. Duplicate request returns visible "[Duplicate request]" message to Slack
+3. Channel-based persona routing is absolute (overrides content signals)
+4. Classifier marks status/progress queries as "simple" → disables tools
+5. CHANNEL_PERSONA_MAP missing 6 of 12 channels
+6. seed_knowledge.py defaults skip_embedding=True → vector search non-functional
+7. System prompt tells Brain "no context" but doesn't guide it to use tools
+
+**Alternatives**: Could have fixed incrementally, but these are all interconnected (Brain is non-functional without the ensemble).
+
+**Reversibility**: Fully reversible (code changes only, no data migration).
 
 ---
 

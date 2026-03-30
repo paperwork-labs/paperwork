@@ -1,7 +1,14 @@
 """Persona routing — determines which persona handles a request based on
-channel, content keywords, and explicit mentions."""
+channel context (weighted, not absolute), content keywords, and explicit mentions.
+
+Channel context adds a +3 score boost to the channel's default persona but does
+NOT override strong content signals. This means "what's the project status" in
+#alerts still routes to EA (content wins) while a vague "hey" in #engineering
+routes to Engineering (channel wins)."""
 
 import re
+
+CHANNEL_BOOST = 3
 
 SINGLE_WORD_KEYWORDS: dict[str, list[str]] = {
     "engineering": [
@@ -39,7 +46,7 @@ SINGLE_WORD_KEYWORDS: dict[str, list[str]] = {
     "partnerships": ["partner", "outreach", "deal", "pipeline"],
     "ux": ["design", "ui", "ux", "accessibility", "animation", "component"],
     "agent-ops": ["model", "routing", "persona", "agent", "workflow", "n8n"],
-    "ea": ["briefing", "schedule", "weekly", "daily"],
+    "ea": ["briefing", "schedule", "weekly", "daily", "status", "progress", "update"],
 }
 
 PHRASE_KEYWORDS: dict[str, list[str]] = {
@@ -48,16 +55,22 @@ PHRASE_KEYWORDS: dict[str, list[str]] = {
     "cpa": ["tax plan", "client guidance"],
     "growth": ["landing page", "content marketing"],
     "social": ["social media"],
-    "ea": ["what should i", "work on"],
+    "ea": ["what should i", "work on", "project status", "how are we", "what's next"],
 }
 
 CHANNEL_PERSONA_MAP: dict[str, str] = {
-    "C0ALLEKR9FZ": "engineering",
-    "C0ALLJWR1HV": "ea",
-    "C0AM2310P8A": "strategy",
-    "C0AMWB887KJ": "engineering",
-    "C0ALVM4PAE7": "engineering",
-    "C0AM01NHQ3Y": "ea",
+    "C0ALLEKR9FZ": "engineering",   # #engineering
+    "C0ALLJWR1HV": "ea",            # #daily-briefing
+    "C0AM2310P8A": "strategy",      # #decisions
+    "C0AMWB887KJ": "engineering",   # #filing-engine
+    "C0ALVM4PAE7": "engineering",   # #alerts
+    "C0AM01NHQ3Y": "ea",            # #general
+    "C0AMEQV199P": "ea",            # #all-paperwork-labs
+    "C0AMJTZRVA6": "engineering",   # #deployment
+    "C0AM014DFL6": "ea",            # #weekly-plan
+    "C0ALVG3EW1Z": "social",        # #social-content
+    "C0APN01LDJN": "cpa",           # #tax-insights
+    "C0APFJSDB6X": "engineering",   # #trading (engineering until trading persona exists)
 }
 
 
@@ -69,11 +82,12 @@ def route_persona(
     if parent_persona:
         return parent_persona
 
-    if channel_id and channel_id in CHANNEL_PERSONA_MAP:
-        return CHANNEL_PERSONA_MAP[channel_id]
-
     lower = message.lower()
     scores: dict[str, int] = {}
+
+    if channel_id and channel_id in CHANNEL_PERSONA_MAP:
+        channel_persona = CHANNEL_PERSONA_MAP[channel_id]
+        scores[channel_persona] = scores.get(channel_persona, 0) + CHANNEL_BOOST
 
     for persona, phrases in PHRASE_KEYWORDS.items():
         for phrase in phrases:

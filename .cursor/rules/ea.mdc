@@ -83,7 +83,12 @@ The Slack MCP is still used for **reading** channels, searching messages, and lo
 | `#decisions` | `C0AM2310P8A` | Strategy | Decision logging ("log this") |
 | `#filing-engine` | `C0AMWB887KJ` | Engineering | State portal health, stuck submissions |
 | `#alerts` | `C0ALVM4PAE7` | Engineering | Automated infra alerts: deploy results, health check failures, outages |
-| `#general` | `C0AM01NHQ3Y` | Auto-route | Ad-hoc questions, routed to right persona |
+| `#general` | `C0AM01NHQ3Y` | EA | Ad-hoc questions, routed to right persona |
+| `#deployment` | `C0AMJTZRVA6` | Engineering | Deploy status, Render/Vercel notifications |
+| `#weekly-plan` | `C0AM014DFL6` | EA | Weekly planning posts (Sunday 6pm PT) |
+| `#social-content` | `C0ALVG3EW1Z` | Social | Social media content drafts and review |
+| `#tax-insights` | `C0APN01LDJN` | CPA | Tax advisory content, CPA review |
+| `#trading` | `C0APFJSDB6X` | Engineering | AxiomFolio trading signals, portfolio updates |
 
 ### Smart Persona Routing
 
