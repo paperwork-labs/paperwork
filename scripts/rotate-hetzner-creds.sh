@@ -20,7 +20,7 @@ echo ""
 NEW_POSTGRES_PASS=$(openssl rand -hex 16)
 NEW_REDIS_PASS=$(openssl rand -hex 16)
 NEW_N8N_PASSWORD=$(openssl rand -hex 8)
-NEW_N8N_ENCRYPTION_KEY=$(openssl rand -base64 24 | tr -d '/+=' | head -c 32)
+NEW_N8N_ENCRYPTION_KEY=$(openssl rand -hex 16)
 NEW_POSTIZ_JWT=$(openssl rand -hex 32)
 
 echo "Generated new credentials locally."

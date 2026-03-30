@@ -6,3 +6,8 @@ dd09ad9:web/.env.production:generic-api-key:2
 
 # n8n API key in .cursor/mcp.json (gitignored, but may appear in history if ever tracked)
 # CI test secrets are intentionally hardcoded (not real credentials)
+
+# Slack webhook URL was hardcoded in rotate-hetzner-creds.sh (removed in b836ae0).
+# Full BFG history scrub planned as separate PR. Webhook has been rotated.
+ac0b1095a861971a8f67942e62997d8960173816:scripts/rotate-hetzner-creds.sh:slack-webhook-url:98
+ac0b1095a861971a8f67942e62997d8960173816:scripts/rotate-hetzner-creds.sh:slack-webhook-url:67

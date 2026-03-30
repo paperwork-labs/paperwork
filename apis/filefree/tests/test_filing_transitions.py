@@ -88,7 +88,7 @@ async def test_forbidden_transitions_raise_conflict(
     mock_repo_cls.return_value = mock_repo
     db = AsyncMock()
 
-    with pytest.raises(ConflictError, match="Cannot transition|Invalid status"):
+    with pytest.raises(ConflictError, match=r"Cannot transition|Invalid status"):
         await advance_status(db, filing_id, user_id, forbidden_target)
 
     db.flush.assert_not_awaited()
