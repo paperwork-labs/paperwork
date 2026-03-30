@@ -23,25 +23,32 @@ class TestAxiomFolioWebhookAuth:
     def webhook_secret(self) -> str:
         return "test_webhook_secret_123"
 
-    def _sign_payload(self, payload: dict, secret: str) -> str:
-        """Compute HMAC-SHA256 signature matching Brain's expected format."""
-        body_bytes = json.dumps(payload).encode()
+    def _serialize_and_sign(self, payload: dict, secret: str) -> tuple[bytes, str]:
+        """Serialize payload and compute HMAC-SHA256 signature.
+
+        Returns (body_bytes, signature_header) to ensure the signature is
+        computed over the exact bytes that will be sent.
+        """
+        body_bytes = json.dumps(payload, separators=(",", ":")).encode()
         sig = hmac.new(secret.encode(), body_bytes, hashlib.sha256).hexdigest()
-        return f"sha256={sig}"
+        return body_bytes, f"sha256={sig}"
 
     @pytest.mark.asyncio
     async def test_valid_signature_accepted(
         self, client, webhook_payload, webhook_secret
     ):
         """Webhook with valid HMAC signature should be accepted."""
-        signature = self._sign_payload(webhook_payload, webhook_secret)
+        body_bytes, signature = self._serialize_and_sign(webhook_payload, webhook_secret)
 
         with patch("app.config.settings.AXIOMFOLIO_WEBHOOK_SECRET", webhook_secret):
             with patch("app.config.settings.ENVIRONMENT", "production"):
                 response = await client.post(
                     "/api/v1/webhooks/axiomfolio",
-                    json=webhook_payload,
-                    headers={"X-Webhook-Signature": signature},
+                    content=body_bytes,
+                    headers={
+                        "X-Webhook-Signature": signature,
+                        "Content-Type": "application/json",
+                    },
                 )
 
         assert response.status_code == 200
