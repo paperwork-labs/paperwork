@@ -58,8 +58,10 @@
     },
     {
       "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{}}"
+        "respondWith": "noData",
+        "options": {
+          "responseCode": 200
+        }
       },
       "id": "respond",
       "name": "Respond OK",
