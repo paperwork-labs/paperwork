@@ -1,0 +1,47 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "labels": ["dependencies"],
+  "schedule": ["before 7am on Monday"],
+  "timezone": "America/Los_Angeles",
+  "docker-compose": {
+    "fileMatch": ["(^|/)compose\\.ya?ml$", "infra/.+/compose\\.ya?ml$"]
+  },
+  "packageRules": [
+    {
+      "matchManagers": ["docker-compose"],
+      "matchPackageNames": ["n8nio/n8n"],
+      "groupName": "n8n",
+      "automerge": false,
+      "assignees": ["axiomfolio"]
+    },
+    {
+      "matchManagers": ["docker-compose"],
+      "matchPackageNames": ["postgres", "redis"],
+      "groupName": "infrastructure databases",
+      "automerge": false,
+      "assignees": ["axiomfolio"]
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "automerge": true,
+      "automergeType": "pr",
+      "schedule": ["before 7am on Monday"]
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "automergeType": "pr",
+      "groupName": "npm patch updates"
+    },
+    {
+      "matchManagers": ["pip_requirements"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "automergeType": "pr",
+      "groupName": "pip patch updates"
+    }
+  ]
+}

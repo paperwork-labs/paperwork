@@ -53,7 +53,7 @@ jobs:
           fingerprint: ${{ secrets.HETZNER_HOST_FINGERPRINT }}
           envs: SLACK_ALERTS_WEBHOOK_URL,DEPLOY_COMMIT
           script: |
-            set -e
+            set -euo pipefail
             N8N_KEY=$(grep "^N8N_API_KEY=" /opt/paperwork-ops/.env | cut -d= -f2-)
             API="http://localhost:5678/api/v1"
 
@@ -80,23 +80,25 @@ jobs:
             json.dump(wf, sys.stdout)
             ")
 
-              wf_id=$(echo "$existing" | python3 -c "
-            import json, sys
+              wf_id=$(echo "$existing" | WF_NAME="$name" python3 -c "
+            import json, sys, os
             data = json.load(sys.stdin).get('data', [])
-            matches = [w['id'] for w in data if w['name'] == '$name']
+            target = os.environ.get('WF_NAME', '')
+            matches = [w['id'] for w in data if w.get('name') == target]
             print(matches[0] if matches else '')
             " 2>/dev/null || echo "")
 
               if [ -n "$wf_id" ]; then
-                echo "$cleaned" | python3 -c "
+                update_code=$(echo "$cleaned" | python3 -c "
             import json, sys
             wf = json.load(sys.stdin)
             keep = {'name': wf['name'], 'nodes': wf['nodes'], 'connections': wf['connections'], 'settings': wf.get('settings', {})}
             json.dump(keep, sys.stdout)
-            " | curl -s -o /dev/null -w "%{http_code}" -X PUT "$API/workflows/$wf_id" \
+            " | curl -sfS -o /dev/null -w "%{http_code}" -X PUT "$API/workflows/$wf_id" \
                   -H "X-N8N-API-KEY: $N8N_KEY" \
                   -H "Content-Type: application/json" \
-                  -d @- | xargs -I{} echo "  UPDATE: $name (id=$wf_id) -> HTTP {}"
+                  -d @-)
+                echo "  UPDATE: $name (id=$wf_id) -> HTTP $update_code"
               else
                 resp=$(echo "$cleaned" | curl -s -w "\n%{http_code}" -X POST "$API/workflows" \
                   -H "X-N8N-API-KEY: $N8N_KEY" \
@@ -128,6 +130,7 @@ jobs:
                 jq -n --arg text ":warning: *n8n deploy*: $ACTIVE/$TOTAL active. Inactive: $INACTIVE ($COMMIT_SHORT)" \
                   '{text: $text}' | curl -sf -X POST "$SLACK_ALERTS_WEBHOOK_URL" -H 'Content-type: application/json' -d @- || true
               fi
+              exit 1
             else
               echo "Deploy complete. $ACTIVE/$TOTAL active. n8n: $N8N_STATUS"
               if [ -n "$SLACK_ALERTS_WEBHOOK_URL" ]; then

@@ -11,7 +11,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const error = $input.first().json;\nconst wfName = error.workflow?.name || 'Unknown';\nconst wfId = error.workflow?.id || '?';\nconst nodeName = error.execution?.error?.node?.name || 'Unknown node';\nconst errorMsg = error.execution?.error?.message || 'No error message';\nconst executionId = error.execution?.id || '?';\nconst ts = new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' });\n\nconst text = `:rotating_light: *Workflow Error*\\n` +\n  `*Workflow:* ${wfName} (${wfId})\\n` +\n  `*Node:* ${nodeName}\\n` +\n  `*Error:* ${errorMsg}\\n` +\n  `*Execution:* ${executionId}\\n` +\n  `*Time:* ${ts}`;\n\nreturn [{ json: { text, channel: 'C0ALVM4PAE7' } }];"
+        "jsCode": "const error = $input.first().json;\nconst wfName = error.workflow?.name || 'Unknown';\nconst wfId = error.workflow?.id || '?';\nconst nodeName = error.execution?.error?.node?.name || 'Unknown node';\nconst errorMsg = error.execution?.error?.message || 'No error message';\nconst executionId = error.execution?.id || '?';\nconst ts = new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' });\nconst channel = $env.SLACK_ALERTS_CHANNEL_ID || 'C0ALVM4PAE7';\n\nconst text = `:rotating_light: *Workflow Error*\\n` +\n  `*Workflow:* ${wfName} (${wfId})\\n` +\n  `*Node:* ${nodeName}\\n` +\n  `*Error:* ${errorMsg}\\n` +\n  `*Execution:* ${executionId}\\n` +\n  `*Time:* ${ts}`;\n\nreturn [{ json: { text, channel } }];"
       },
       "id": "format-error",
       "name": "Format Error",
