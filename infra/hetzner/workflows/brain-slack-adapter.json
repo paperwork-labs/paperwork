@@ -152,7 +152,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ channel: $json.channel, thread_ts: $json.thread_ts, text: $json.text, username: $json.username, icon_emoji: $json.icon_emoji }) }}",
+        "jsonBody": "={{ JSON.stringify({ channel: $json.channel, thread_ts: $json.thread_ts, text: $json.text, username: $json.username, icon_url: $json.icon_url }) }}",
         "options": {}
       },
       "id": "post_reply",

@@ -237,7 +237,8 @@ def _episode_summary_and_context(
         scan_name = parsed.scan_name or "scan"
         summary = f"AxiomFolio: {scan_name} found {count} candidates{ts_suffix}"
     elif event_norm == "stop.triggered" and isinstance(parsed, StopTriggeredData):
-        summary = f"AxiomFolio: stop triggered — {parsed.symbol or 'unknown'} @ {parsed.exit_price or '?'}{ts_suffix}"
+        exit_str = str(parsed.exit_price) if parsed.exit_price is not None else "?"
+        summary = f"AxiomFolio: stop triggered — {parsed.symbol or 'unknown'} @ {exit_str}{ts_suffix}"
     elif event_norm == "position.closed" and isinstance(parsed, PositionClosedData):
         pnl_str = f" P&L: {parsed.pnl}" if parsed.pnl is not None else ""
         summary = f"AxiomFolio: position closed — {parsed.symbol or 'unknown'}{pnl_str}{ts_suffix}"

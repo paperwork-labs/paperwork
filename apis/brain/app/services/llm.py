@@ -69,7 +69,8 @@ TIER_DISABLED_TOOLS = {
     "commit_github_file",
     "merge_github_pr",
     "execute_trade",
-    "modify_position",
+    "approve_trade",
+    "reject_trade",
 }
 
 

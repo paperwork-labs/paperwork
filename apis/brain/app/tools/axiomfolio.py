@@ -1,7 +1,12 @@
 """AxiomFolio proxy tools — Tier 0 reads, Tier 2 previews, Tier 3 order execution.
 
-Aligned with AxiomFolio's /api/v1/tools/* Brain integration API.
-See docs/AXIOMFOLIO_INTEGRATION.md and AxiomFolio's docs/PAPERWORK_HANDOFF.md."""
+This client targets AxiomFolio's Brain integration API at /api/v1/tools/*,
+authenticated via the X-Brain-Api-Key header.
+
+For end-to-end integration details, refer to AxiomFolio's current Brain
+integration documentation (docs/PAPERWORK_HANDOFF.md in the AxiomFolio repo).
+Note: the legacy docs/AXIOMFOLIO_INTEGRATION.md in this repository describes
+an older X-API-Key, non-/tools/ contract and is not authoritative for this module."""
 
 from __future__ import annotations
 
