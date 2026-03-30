@@ -3,7 +3,7 @@
 Organizational memory for Paperwork Labs (FileFree, LaunchFree, Distill, Trinkets). AI agents read this at session start. Update after significant decisions, learnings, or pattern discoveries.
 
 **Last Updated**: 2026-03-29
-**Version**: 10.3 (D85 — MCP-first Brain architecture)
+**Version**: 10.5 (D87 — Vault architecture audit + security fix)
 
 ---
 
@@ -313,6 +313,66 @@ Full text in [docs/archive/KNOWLEDGE-ARCHIVE.md](archive/KNOWLEDGE-ARCHIVE.md).
 **Reversibility**: Medium. MCP is an open standard with growing adoption. The tool implementations are provider-agnostic Python functions. If MCP support degrades, we can wrap them in native tool_use with ~2 days of work.
 
 **Impact**: Reduces Brain API code by ~60% vs native loop. Enables multi-provider routing (Anthropic + OpenAI + Gemini). Makes Brain itself a potential MCP server for Distill B2B API.
+
+### D86 — Secret Rotation + Credential Expiry Tracking (2026-03-29)
+
+**Context**: PR #66 rewrote `scripts/populate-vault.sh` to read from `.env.secrets` instead of hardcoding values. However, 23 secrets were already exposed in git history (commits `4b30760`, `af1264e`) with actual values: OpenAI API key, Slack bot token, GitHub PATs, Hetzner passwords, n8n credentials, Postiz JWT, admin password.
+
+**Decision**: Rotate all exposed credentials immediately. Track expiry dates in the vault and TASKS.md. BFG-scrub git history after all rotations complete.
+
+**Rotated so far** (2026-03-29):
+- OpenAI API key → new key, updated in vault + Render (brain-api) + GitHub Actions
+- GitHub PAT (fine-grained) → "Paperwork Labs Vault" PAT, expires **2026-06-27**, updated in vault + Render (brain-api GITHUB_TOKEN) + GitHub Actions (as GH_PAT_FINEGRAINED — `GITHUB_` prefix reserved by Actions)
+- Slack app credentials captured in vault (signing secret, client secret, verification token, app ID, client ID, workspace token)
+
+**Rotated 2026-03-29 (session 2)**:
+- Vercel API token → "Infra Health Checks" (Full Account), expires **2026-09-25**
+- Studio admin password → updated on Vercel
+- All 7 n8n credentials updated via API (2x OpenAI, 2x GitHub, 3x Slack) with new keys
+- Vercel Studio env vars updated: ADMIN_ACCESS_PASSWORD, GITHUB_TOKEN
+- Render brain-api VERCEL_TOKEN set
+
+**Still needs rotation** (exposed values still active):
+- Hetzner postgres/Redis passwords — run `./scripts/rotate-hetzner-creds.sh` on VPS
+- n8n admin password + encryption key — included in Hetzner rotation script
+- Postiz JWT secret — included in Hetzner rotation script
+- **BLOCKER**: Hetzner qemu-guest agent not running. Password resets fail silently. Must use Rescue Mode (Hetzner dashboard → Rescue tab → Enable rescue & power cycle) to regain SSH access first.
+- Slack bot token — reinstall didn't regenerate (Slack keeps token when scopes unchanged). BFG scrub will remove from history.
+- Slack alerts webhook URL — replaced with new one, old still in git history
+
+**Credential Expiry Tracking** (implemented 2026-03-29):
+- Vault model supports `expires_at` and `last_rotated_at` fields
+- `populate-vault.sh` parses `# Expires: YYYY-MM-DD` comments from `.env.secrets`
+- n8n workflow `credential-expiry-check.json` runs daily at 8am PT, queries vault, alerts to `#alerts`
+- Tiered urgency: 30-day notice → 14-day warning → 7-day urgent → 1-day critical
+
+**Credential Expiry Dates**:
+- GitHub PAT "Paperwork Labs Vault": **2026-06-27** (rotate by Jun 13)
+- Vercel API token "Infra Health Checks": **2026-09-25** (rotate by Sep 11)
+- Slack Expiring Client Secret: **2026-03-30** (auto-revokes, non-critical)
+
+**Alternatives**: Considered ignoring (repo is private, 2-person team) — rejected. These are production credentials for services handling financial data. Even in a private repo, leaked keys can be extracted from cloned copies.
+
+**Reversibility**: N/A (security hygiene, not an architectural decision).
+
+### D87 — Vault Architecture Audit + Security Fix (2026-03-29)
+
+**Context**: Audit of vault architecture revealed two systems: Studio Vault (company ops, live) and Brain UserVault (per-user, stub). Found critical security issue and architectural confusion.
+
+**Findings & fixes**:
+1. **CRITICAL FIX**: `GET /api/admin/secrets/[id]` had zero authentication — anyone guessing a UUID could read plaintext secrets. Added `authenticateSecretsRequest` auth check. The regular `/api/secrets/[id]` route was already authenticated; the admin route was a copy that missed it.
+2. **`vault_set` exposed on MCP**: Brain could read vault via MCP tools (vault_list, vault_get) but not write. Added vault_set as Tier 2 write action per D61 design.
+3. **Migration drift fixed**: `brain_user_vault` DDL in 001_initial_schema.py had column mismatches vs architecture doc (Section 2) and SQLAlchemy model. Fixed: SERIAL→BIGSERIAL, added description/expires_at/last_rotated_at columns, removed spurious updated_at, added UNIQUE constraint and index.
+
+**Architecture decision (two vaults are correct)**:
+- **Studio Vault** = Paperwork Labs company password manager (60 secrets, AES-256-GCM, flat single-tenant). Stays forever as the Super Brain's infrastructure vault.
+- **Brain UserVault** (`brain_user_vault`) = per-user/per-org encrypted secret store (D61). Scoped by `(user_id, organization_id, name)`. Designed for when org brains need per-user credentials (Plaid OAuth, bank connections). Currently a stub — keep schema, implement services/routes when Distill org brains are real.
+- **Brain vault tools** (vault_list/get/set) currently read/write Studio Vault via HTTP. This is a valid Phase 1 shortcut (founders' vault = company vault). In P2+, add separate user_vault tools for `brain_user_vault`.
+- **`packages/vault`** TypeScript client: well-written but unused. Keep for future Studio dashboard consumers.
+
+**Alternatives**: Considered merging into one vault — rejected. Different access patterns (flat company secrets vs multi-tenant user secrets), different auth models, different lifecycle.
+
+**Reversibility**: Fully reversible. The admin auth fix is a one-line addition. vault_set can be unregistered. Migration changes are pre-production.
 
 ---
 

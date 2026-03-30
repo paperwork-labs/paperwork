@@ -31,8 +31,23 @@ echo ""
 
 count=0
 errors=0
+current_service="general"
+pending_expires=""
 
 while IFS= read -r line; do
+  # Track section headers (e.g. "# === OPENAI ===") to derive service name
+  if [[ "$line" =~ ^#\ ===\ ([A-Z0-9_-]+) ]]; then
+    current_service="${BASH_REMATCH[1],,}"
+    current_service="${current_service//-/_}"
+    continue
+  fi
+
+  # Track "Expires: YYYY-MM-DD" anywhere in a comment — applies to the NEXT key=value line
+  if [[ "$line" =~ ^# ]] && [[ "$line" =~ [Ee]xpires:\ ([0-9]{4}-[0-9]{2}-[0-9]{2}) ]]; then
+    pending_expires="${BASH_REMATCH[1]}T00:00:00Z"
+    continue
+  fi
+
   # Skip comments and empty lines
   [[ -z "$line" || "$line" =~ ^# ]] && continue
   
@@ -41,16 +56,26 @@ while IFS= read -r line; do
   
   # Skip if name is empty
   [[ -z "$name" ]] && continue
+
+  # Build JSON payload (with optional expires_at)
+  if [ -n "$pending_expires" ]; then
+    payload=$(jq -n --arg n "$name" --arg v "$value" --arg s "$current_service" --arg e "$pending_expires" \
+      '{name: $n, value: $v, service: $s, expires_at: $e}')
+    pending_expires=""
+  else
+    payload=$(jq -n --arg n "$name" --arg v "$value" --arg s "$current_service" \
+      '{name: $n, value: $v, service: $s}')
+  fi
   
   resp=$(curl -s -w "\n%{http_code}" -X POST "${VAULT_URL}/api/secrets" \
     -H "Authorization: Bearer ${SECRETS_API_KEY}" \
     -H "Content-Type: application/json" \
-    -d "$(jq -n --arg n "$name" --arg v "$value" '{name: $n, value: $v}')" 2>/dev/null)
+    -d "$payload" 2>/dev/null)
   
   http_code=$(echo "$resp" | tail -1)
   
   if [ "$http_code" = "201" ] || [ "$http_code" = "200" ]; then
-    echo "  ✓ ${name}"
+    echo "  ✓ ${name} (${current_service})"
     ((count++))
   else
     body=$(echo "$resp" | sed '$d')

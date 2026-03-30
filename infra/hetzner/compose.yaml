@@ -45,10 +45,13 @@ services:
       N8N_PORT: 5678
       N8N_PROTOCOL: https
       WEBHOOK_URL: https://${N8N_HOST:-localhost}/
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-}
       GITHUB_TOKEN: ${GITHUB_PAT:-}
       SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
       SLACK_ALERTS_WEBHOOK_URL: ${SLACK_ALERTS_WEBHOOK_URL:-}
       N8N_API_KEY: ${N8N_API_KEY:-}
+      VAULT_URL: ${VAULT_URL:-https://paperworklabs.com}
+      SECRETS_API_KEY: ${SECRETS_API_KEY:-}
       # SECURITY: child_process is required for health-check and daily-briefing
       # Code nodes (n8n CLI queries). Only admin-authored workflows run here;
       # no user-supplied code paths exist. Review before adding more builtins.

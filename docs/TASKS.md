@@ -32,7 +32,10 @@ Work through these in phase order. Each task is scoped for one PR. Reference [PR
 | Column Tax partnership | October 2026 | NOT STARTED | Fallback e-file partner for CA/MA and unsupported forms. |
 | Communication test (IRS) | November 2026 | NOT STARTED | End-to-end transmission verification. |
 | Tax season launch | January 2027 | NOT STARTED | IRS accepts returns ~late January. Hard external deadline. |
-| GitHub PAT rotation | June 1, 2026 | NOT STARTED | n8n.paperworklabs.com fine-grained PAT expires Jun 15, 2026. Rotate 2 weeks early. Update: n8n credentials UI + Hetzner .env + GitHub Actions secrets. |
+| GitHub PAT rotation | June 13, 2026 | DONE (partial) | "Paperwork Labs Vault" PAT created 2026-03-29, expires Jun 27, 2026. Updated in: vault, GitHub Actions (GH_PAT_FINEGRAINED), Render (brain-api GITHUB_TOKEN). Still needs: n8n credentials UI + Hetzner .env. Rotate 2 weeks before Jun 27. |
+| Slack bot token rotation | ASAP | NOT STARTED | Bot token exposed in git history. Click "Reinstall to Paperwork Labs" in Slack app settings. Then update: vault, .env.local, n8n, Hetzner .env. |
+| Hetzner credential rotation | ASAP | NOT STARTED | Postgres password, Redis password, n8n admin password, n8n encryption key, Postiz JWT secret — all exposed in git history. SSH to Hetzner to rotate. |
+| BFG git history scrub | After all rotations | NOT STARTED | 23 secrets in git history (commits 4b30760, af1264e). Run BFG, force push, all collaborators re-clone. |
 
 ---
 
