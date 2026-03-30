@@ -338,7 +338,6 @@ async def tools_execute_trade(
 
 class ApproveTradeBody(BaseModel):
     order_id: int = Field(..., ge=1)
-    approver_user_id: int = Field(..., ge=1)
 
 
 @router.post("/approve-trade")
@@ -347,9 +346,20 @@ async def tools_approve_trade(
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Approve a pending order (owner only); returns to PREVIEW for execute-trade."""
-    approver = db.query(User).filter(User.id == body.approver_user_id).first()
+    uid = _brain_user_id()
+    approver = db.query(User).filter(User.id == uid).first()
     if approver is None:
-        raise HTTPException(status_code=404, detail="Approver user not found")
+        raise HTTPException(
+            status_code=400,
+            detail=f"User id {uid} (BRAIN_TOOLS_USER_ID) not found",
+        )
+    order = (
+        db.query(Order)
+        .filter(Order.id == body.order_id, Order.user_id == uid)
+        .first()
+    )
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
     result = await ApprovalService.approve(db, body.order_id, approver)
     if result.get("error"):
         raise HTTPException(status_code=400, detail=result["error"])
@@ -358,7 +368,6 @@ async def tools_approve_trade(
 
 class RejectTradeBody(BaseModel):
     order_id: int = Field(..., ge=1)
-    rejector_user_id: int = Field(..., ge=1)
     reason: Optional[str] = Field(None, max_length=500)
 
 
@@ -368,9 +377,20 @@ async def tools_reject_trade(
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Reject a pending or preview order."""
-    rejector = db.query(User).filter(User.id == body.rejector_user_id).first()
+    uid = _brain_user_id()
+    rejector = db.query(User).filter(User.id == uid).first()
     if rejector is None:
-        raise HTTPException(status_code=404, detail="Rejector user not found")
+        raise HTTPException(
+            status_code=400,
+            detail=f"User id {uid} (BRAIN_TOOLS_USER_ID) not found",
+        )
+    order = (
+        db.query(Order)
+        .filter(Order.id == body.order_id, Order.user_id == uid)
+        .first()
+    )
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
     result = await ApprovalService.reject(
         db, body.order_id, rejector, reason=body.reason
     )

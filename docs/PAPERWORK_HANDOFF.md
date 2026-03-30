@@ -24,16 +24,30 @@
 
 ### Authentication
 
+**Tool API (Brain → AxiomFolio):**
 ```
 Header: X-Brain-Api-Key: <AXIOMFOLIO_API_KEY>
 ```
 
-Set in AxiomFolio: `BRAIN_API_KEY=af_brain_xxx`
-Set in Brain: `AXIOMFOLIO_API_KEY=af_brain_xxx`
+**Webhooks (AxiomFolio → Brain) — HMAC-SHA256:**
+```
+Header: X-Webhook-Signature: sha256=<hex-encoded-hmac>
+```
+
+AxiomFolio signs the JSON request body with HMAC-SHA256 using `BRAIN_WEBHOOK_SECRET`:
+```python
+signature = hmac.new(secret.encode(), body_bytes, hashlib.sha256).hexdigest()
+headers["X-Webhook-Signature"] = f"sha256={signature}"
+```
+
+Brain verifies by recomputing the HMAC over the raw request body and comparing with `hmac.compare_digest`.
+
+Set in AxiomFolio: `BRAIN_API_KEY=af_brain_xxx`, `BRAIN_WEBHOOK_SECRET=<shared_secret>`
+Set in Brain: `AXIOMFOLIO_API_KEY=af_brain_xxx`, `AXIOMFOLIO_WEBHOOK_SECRET=<same_shared_secret>`
 
 ### Webhook Events (AxiomFolio → Brain)
 
-AxiomFolio sends POST to `{BRAIN_WEBHOOK_URL}/webhooks/axiomfolio`:
+AxiomFolio sends POST to `{BRAIN_WEBHOOK_URL}/api/v1/webhooks/axiomfolio`:
 
 | Event | When |
 |-------|------|
@@ -44,7 +58,7 @@ AxiomFolio sends POST to `{BRAIN_WEBHOOK_URL}/webhooks/axiomfolio`:
 | `scan_alert` | Scan finds candidates |
 | `approval_required` | Tier 3 trade needs approval |
 
-Payload:
+Payload (JSON body, signed with HMAC-SHA256):
 ```json
 {
   "event": "trade_executed",
@@ -84,30 +98,11 @@ EXTERNAL_TOOL_PROVIDERS = {
 
 ### 2. Webhook Handler
 
-Create endpoint `POST /webhooks/axiomfolio`:
+Endpoint `POST /api/v1/webhooks/axiomfolio` — **already implemented** in Brain.
 
-```python
-@router.post("/webhooks/axiomfolio")
-async def axiomfolio_webhook(
-    event: str,
-    data: dict,
-    user_id: Optional[int],
-    timestamp: str,
-    x_webhook_secret: str = Header(None),
-):
-    # Verify secret
-    if x_webhook_secret != settings.AXIOMFOLIO_WEBHOOK_SECRET:
-        raise HTTPException(401, "Invalid webhook secret")
-    
-    # Handle events
-    if event == "approval_required":
-        # Post to Slack with [Approve] [Reject] buttons
-        await post_approval_request_to_slack(data)
-    elif event == "trade_executed":
-        # Store as episode in user's memory
-        await remember_trade(user_id, data)
-    # ... etc
-```
+Auth uses HMAC-SHA256 verification over the raw request body (see Authentication section above).
+
+The handler stores events as episodic memory and should notify Slack for `approval_required` events.
 
 ### 3. Trading Persona
 
@@ -149,7 +144,7 @@ In n8n workflow or Brain API:
 ```
 BRAIN_API_KEY=af_brain_xxx
 BRAIN_WEBHOOK_URL=https://brain.paperworklabs.com
-BRAIN_WEBHOOK_SECRET=secret_here
+BRAIN_WEBHOOK_SECRET=<shared_secret_for_hmac>
 BRAIN_TOOLS_USER_ID=1
 TRADE_APPROVAL_MODE=all
 TRADE_APPROVAL_THRESHOLD=5000
@@ -159,8 +154,10 @@ TRADE_APPROVAL_THRESHOLD=5000
 ```
 AXIOMFOLIO_API_URL=https://api.axiomfolio.com
 AXIOMFOLIO_API_KEY=af_brain_xxx
-AXIOMFOLIO_WEBHOOK_SECRET=secret_here
+AXIOMFOLIO_WEBHOOK_SECRET=<same_shared_secret_for_hmac>
 ```
+
+Note: `BRAIN_WEBHOOK_SECRET` (AxiomFolio) and `AXIOMFOLIO_WEBHOOK_SECRET` (Brain) must be the same value — this is the HMAC-SHA256 signing key for webhook payloads.
 
 ---
 
@@ -228,6 +225,8 @@ curl -H "X-Brain-Api-Key: af_brain_dev_key_change_in_prod" \
 
 Analyst-proposed trades always require owner approval regardless of `TRADE_APPROVAL_MODE`.
 
+Note: `approve-trade` and `reject-trade` endpoints bind to `BRAIN_TOOLS_USER_ID` server-side. Brain does not pass user IDs — the service identity is the approver/rejector.
+
 ---
 
 ## Questions?
@@ -235,5 +234,5 @@ Analyst-proposed trades always require owner approval regardless of `TRADE_APPRO
 Check:
 - `docs/brain/axiomfolio_tools.yaml` for tool definitions
 - `backend/api/routes/brain_tools.py` for endpoint implementation
-- `backend/services/brain/webhook_client.py` for webhook details
+- `backend/services/brain/webhook_client.py` for webhook details (HMAC-SHA256 signing)
 - `backend/services/execution/approval_service.py` for approval logic

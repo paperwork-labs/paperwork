@@ -65,6 +65,7 @@ Architectural decisions with rationale. Grouped by domain, newest first within e
 | D33 | 2026-03-27 | **Unified notifications via Brain** — Discord removed, all alerts route through Brain webhook |
 | D34 | 2026-03-27 | **Three-tier user roles** — owner/analyst/viewer replacing admin/user/readonly |
 | D35 | 2026-03-27 | **Trade approval workflow** — Tier 3 actions require owner approval, ApprovalService tracks state |
+| D43 | 2026-03-30 | **HMAC-SHA256 webhook signing** — AxiomFolio signs webhook body, Brain verifies; approve/reject bind to service identity |
 
 ### Risk & Execution
 
@@ -155,6 +156,21 @@ Added `_trigger_auto_backtest()` hook to strategy create/update endpoints. Fire-
 - Added `ibkr-settings` named volume mounted at `/settings`
 - Added `IBC_AcceptIncomingConnectionAction=accept` for auto-accept API clients
 - Added portfolio_sync health dimension to auto-ops monitoring
+
+### D43 — HMAC-SHA256 Webhook Signing + Approve/Reject Hardening (2026-03-30)
+
+**Decision**: Replace plain `X-Webhook-Secret` header with HMAC-SHA256 body signing. Remove `approver_user_id`/`rejector_user_id` from approve/reject endpoints.
+
+**Context**: Go-live audit (S3) flagged that approve/reject accepting arbitrary user IDs is a cross-user risk with a compromised API key. Webhook auth was plain shared secret comparison — insufficient for payload integrity verification.
+
+**Changes**:
+- `webhook_client.py`: Serializes JSON, computes `hmac.new(secret, body, sha256)`, sends `X-Webhook-Signature: sha256=<hex>`
+- `brain_tools.py`: `ApproveTradeBody` and `RejectTradeBody` no longer accept user IDs; routes bind to `BRAIN_TOOLS_USER_ID`
+- Brain side: `webhooks.py` verifies HMAC over raw request body (parallel PR in Paperwork repo)
+
+**Alternatives**: Plain shared secret (rejected — no payload integrity), OAuth/JWT (overkill for M2M webhook).
+
+**Reversible**: Yes (can fall back to plain secret by reverting both repos).
 
 ### D2 — Regime as hard gate (2026-03-23)
 

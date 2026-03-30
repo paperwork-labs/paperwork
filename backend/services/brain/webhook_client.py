@@ -1,6 +1,9 @@
 """Webhook client for notifying Brain of AxiomFolio events."""
 from __future__ import annotations
 
+import hashlib
+import hmac
+import json
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
@@ -31,6 +34,18 @@ class BrainWebhookClient:
             self._client = httpx.AsyncClient(timeout=10.0)
         return self._client
 
+    def _sign(self, body_bytes: bytes) -> Dict[str, str]:
+        """Compute HMAC-SHA256 signature over body and return auth headers."""
+        headers: Dict[str, str] = {}
+        if self.webhook_secret:
+            sig = hmac.new(
+                self.webhook_secret.encode(),
+                body_bytes,
+                hashlib.sha256,
+            ).hexdigest()
+            headers["X-Webhook-Signature"] = f"sha256={sig}"
+        return headers
+
     async def notify(
         self,
         event: str,
@@ -50,16 +65,16 @@ class BrainWebhookClient:
             "source": "axiomfolio",
         }
 
-        headers = {}
-        if self.webhook_secret:
-            headers["X-Webhook-Secret"] = self.webhook_secret
+        body_bytes = json.dumps(payload, default=str).encode()
+        headers = self._sign(body_bytes)
+        headers["Content-Type"] = "application/json"
 
         try:
             client = await self._get_client()
             base_url = self.webhook_url.rstrip("/")
             response = await client.post(
-                f"{base_url}/webhooks/axiomfolio",
-                json=payload,
+                f"{base_url}/api/v1/webhooks/axiomfolio",
+                content=body_bytes,
                 headers=headers,
             )
             if response.status_code >= 400:
@@ -94,16 +109,16 @@ class BrainWebhookClient:
             "source": "axiomfolio",
         }
 
-        headers: Dict[str, str] = {}
-        if self.webhook_secret:
-            headers["X-Webhook-Secret"] = self.webhook_secret
+        body_bytes = json.dumps(payload, default=str).encode()
+        headers = self._sign(body_bytes)
+        headers["Content-Type"] = "application/json"
 
         try:
             base_url = self.webhook_url.rstrip("/")
             with httpx.Client(timeout=10.0) as client:
                 response = client.post(
-                    f"{base_url}/webhooks/axiomfolio",
-                    json=payload,
+                    f"{base_url}/api/v1/webhooks/axiomfolio",
+                    content=body_bytes,
                     headers=headers,
                 )
             if response.status_code >= 400:
