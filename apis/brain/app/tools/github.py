@@ -63,11 +63,15 @@ def _error_message(prefix: str, response: httpx.Response) -> str:
     return _scrub(f"{prefix} HTTP {response.status_code}: {detail}".strip())
 
 
-async def read_github_file(path: str, ref: str = "main") -> str:
+async def read_github_file(
+    path: str, ref: str = "main", *, max_chars: int | None = None
+) -> str:
     """Read one file from the configured repo at ref.
 
-    Returns UTF-8 text, truncated to 5000 characters if larger.
+    Returns UTF-8 text, truncated to max_chars (default _MAX_FILE_READ) if larger.
+    Pass a higher max_chars for internal use (e.g. persona .mdc loading).
     """
+    limit = max_chars if max_chars is not None else _MAX_FILE_READ
     owner, repo = _repo_parts()
     enc_path = quote(path.strip().lstrip("/"), safe="/")
     url = f"/repos/{owner}/{repo}/contents/{enc_path}"
@@ -104,8 +108,8 @@ async def read_github_file(path: str, ref: str = "main") -> str:
         logger.warning("read_github_file decode failed: %s %s", path, e)
         return _scrub(f"Could not decode file content: {e}")
 
-    if len(raw) > _MAX_FILE_READ:
-        raw = raw[:_MAX_FILE_READ] + f"\n… truncated ({_MAX_FILE_READ} chars)"
+    if len(raw) > limit:
+        raw = raw[:limit] + f"\n… truncated ({limit} chars)"
     return _scrub(raw)
 
 

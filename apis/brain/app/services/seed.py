@@ -56,7 +56,7 @@ async def ingest_docs(
     db: AsyncSession,
     repo_root: str,
     organization_id: str = "paperwork-labs",
-    skip_embedding: bool = True,
+    skip_embedding: bool = False,
 ) -> int:
     """Ingest all venture docs as seed episodes.
 
@@ -64,8 +64,7 @@ async def ingest_docs(
         db: Database session
         repo_root: Root directory of the paperwork repo
         organization_id: Organization to seed docs into
-        skip_embedding: Skip embedding generation for cost efficiency (default True).
-                        Embeddings can be generated later via backfill.
+        skip_embedding: Skip embedding generation (default False — embeddings enabled).
 
     Returns:
         Count of episodes created.

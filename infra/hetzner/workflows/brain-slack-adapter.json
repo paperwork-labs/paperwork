@@ -131,7 +131,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const brainResponse = $input.first().json;\nconst data = brainResponse.data || brainResponse;\nconst response = data.response || 'Brain returned no response.';\nconst persona = data.persona || 'brain';\n\nconst text = response.length > 3900\n  ? response.substring(0, 3900) + '\\n\\n_(truncated)_'\n  : response;\n\nreturn [{\n  json: {\n    channel: $('Filter Events').first().json.channel,\n    thread_ts: $('Filter Events').first().json.thread_ts,\n    text: text,\n    username: persona.charAt(0).toUpperCase() + persona.slice(1),\n    icon_emoji: ':brain:'\n  }\n}];"
+        "jsCode": "const brainResponse = $input.first().json;\nconst data = brainResponse.data || brainResponse;\n\nif (data.is_duplicate || data.persona === 'system') {\n  return [];\n}\n\nconst response = data.response || 'Brain returned no response.';\nconst persona = data.persona || 'brain';\n\nif (!response.trim()) {\n  return [];\n}\n\nconst text = response.length > 3900\n  ? response.substring(0, 3900) + '\\n\\n_(truncated)_'\n  : response;\n\nreturn [{\n  json: {\n    channel: $('Filter Events').first().json.channel,\n    thread_ts: $('Filter Events').first().json.thread_ts,\n    text: text,\n    username: persona.charAt(0).toUpperCase() + persona.slice(1),\n    icon_emoji: ':brain:'\n  }\n}];"
       },
       "id": "format_reply",
       "name": "Format Reply",
