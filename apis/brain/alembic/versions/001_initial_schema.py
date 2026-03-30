@@ -190,7 +190,7 @@ def upgrade() -> None:
 
     op.execute("""
     CREATE TABLE IF NOT EXISTS brain_user_vault (
-        id SERIAL PRIMARY KEY,
+        id BIGSERIAL PRIMARY KEY,
         user_id TEXT NOT NULL,
         organization_id TEXT NOT NULL,
         name TEXT NOT NULL,
@@ -198,10 +198,16 @@ def upgrade() -> None:
         iv TEXT NOT NULL,
         auth_tag TEXT NOT NULL,
         service TEXT,
+        description TEXT,
+        expires_at TIMESTAMPTZ,
+        last_rotated_at TIMESTAMPTZ,
         created_at TIMESTAMPTZ DEFAULT NOW(),
-        updated_at TIMESTAMPTZ DEFAULT NOW(),
         UNIQUE (user_id, organization_id, name)
     )
+    """)
+    op.execute("""
+    CREATE INDEX IF NOT EXISTS idx_brain_user_vault_user_org
+    ON brain_user_vault (user_id, organization_id)
     """)
 
     op.execute("""
