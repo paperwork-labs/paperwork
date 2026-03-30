@@ -52,7 +52,10 @@ ssh "$HOST" 'set -e
 N8N_KEY=$(grep "^N8N_API_KEY=" /opt/paperwork-ops/.env | cut -d= -f2-)
 API="http://localhost:5678/api/v1"
 
-existing=$(curl -s "$API/workflows?limit=250" -H "X-N8N-API-KEY: $N8N_KEY")
+existing=$(curl -sfS "$API/workflows?limit=250" -H "X-N8N-API-KEY: $N8N_KEY") || {
+  echo "Error: Failed to list existing workflows from n8n API" >&2
+  exit 1
+}
 
 for f in /tmp/paperwork-workflows/*.json; do
   name=$(python3 -c "import json; print(json.load(open(\"$f\"))[\"name\"])" 2>/dev/null || echo "")
@@ -70,10 +73,11 @@ for key in [\"tags\", \"meta\", \"pinData\"]:
 json.dump(wf, sys.stdout)
 ")
 
-  wf_id=$(echo "$existing" | python3 -c "
-import json, sys
+  wf_id=$(echo "$existing" | NAME="$name" python3 -c "
+import json, os, sys
 data = json.load(sys.stdin).get(\"data\", [])
-matches = [w[\"id\"] for w in data if w[\"name\"] == \"$name\"]
+target = os.environ.get(\"NAME\", \"\")
+matches = [w[\"id\"] for w in data if w.get(\"name\") == target]
 print(matches[0] if matches else \"\")
 " 2>/dev/null || echo "")
 
@@ -118,6 +122,7 @@ json.dump(keep, sys.stdout)
     fi
   fi
 done
+rm -rf /tmp/paperwork-workflows
 '
 
 echo "[3/4] Verifying workflows..."
@@ -132,6 +137,9 @@ if [[ "$ACTIVE" -lt "$TOTAL" ]]; then
   INACTIVE_LIST=$(ssh "$HOST" 'N8N_KEY=$(grep "^N8N_API_KEY=" /opt/paperwork-ops/.env | cut -d= -f2-); curl -s "http://localhost:5678/api/v1/workflows?active=false&limit=250" -H "X-N8N-API-KEY: $N8N_KEY" | python3 -c "import json,sys; [print(w[\"name\"]) for w in json.load(sys.stdin).get(\"data\",[])]"' || echo "unknown")
   echo "WARNING: $ACTIVE/$TOTAL workflows active. Inactive: $INACTIVE_LIST" >&2
   slack_notify ":warning: *n8n deploy*: $ACTIVE/$TOTAL active. Inactive: $INACTIVE_LIST. n8n: $N8N_STATUS"
+  if [[ "${CI:-}" == "true" || -n "${GITHUB_ACTIONS:-}" ]]; then
+    exit 1
+  fi
 else
   echo "Deploy complete. $ACTIVE/$TOTAL workflows active. n8n: $N8N_STATUS"
   slack_notify ":white_check_mark: *n8n deploy complete*

@@ -1206,6 +1206,131 @@ These run in parallel with all phases. Some have hard deadlines that block downs
 
 ---
 
+## Phase 12: Brain Thin-Wrapper Conversion (Parallel Ops)
+
+Migrate remaining persona-specific n8n workflows from fat graphs (GitHub fetch + multi-node LLM + formatting) to **thin wrappers**: webhook or schedule → HTTP to Brain `POST /brain/process` with the correct persona (and channel context), then post the result to Slack or the next hop. Same pattern as P11.5 (Slack adapter); Brain owns routing, memory, and tools.
+
+See [BRAIN_ARCHITECTURE.md](BRAIN_ARCHITECTURE.md) and Phase 11-alpha (P11.1–P11.5).
+
+<details>
+<summary>P12.1 CPA Tax Review n8n → Brain thin wrapper</summary>
+
+- **Task ID**: P12.1
+- **Owner**: Founder 1
+- **Branch**: `feat/brain-thin-wrapper-cpa-tax-review`
+- **Files/Specs**: `infra/hetzner/workflows/` (CPA tax review workflow), `apis/brain/` (`/brain/process` with `cpa` persona). Webhook or manual trigger → Brain → Slack or designated output.
+- **Acceptance Criteria**: End-to-end run uses Brain only for LLM/persona logic; n8n does not embed duplicate persona prompts or long OpenAI chains.
+- **Depends On**: P11.2, P11.5
+- **Status**: NOT STARTED
+
+</details>
+
+<details>
+<summary>P12.2 Growth Content Writer n8n → Brain thin wrapper</summary>
+
+- **Task ID**: P12.2
+- **Owner**: Founder 1
+- **Branch**: `feat/brain-thin-wrapper-growth-writer`
+- **Files/Specs**: `infra/hetzner/workflows/` (growth content workflow), Brain `/brain/process` with `growth` persona (or routed equivalent per `.cursor/rules/growth.mdc`).
+- **Acceptance Criteria**: Content generation requests go through Brain; output parity acceptable vs legacy workflow (spot-check 3 runs).
+- **Depends On**: P11.2, P11.5
+- **Status**: NOT STARTED
+
+</details>
+
+<details>
+<summary>P12.3 Partnership Outreach Drafter n8n → Brain thin wrapper</summary>
+
+- **Task ID**: P12.3
+- **Owner**: Founder 1
+- **Branch**: `feat/brain-thin-wrapper-partnerships`
+- **Files/Specs**: `infra/hetzner/workflows/` (partnership outreach drafter), Brain `/brain/process` with `partnerships` persona.
+- **Acceptance Criteria**: Drafts produced via Brain; no standalone long GPT chain in n8n for the same persona job.
+- **Depends On**: P11.2, P11.5
+- **Status**: NOT STARTED
+
+</details>
+
+<details>
+<summary>P12.4 QA Security Scan n8n → Brain thin wrapper</summary>
+
+- **Task ID**: P12.4
+- **Owner**: Founder 1
+- **Branch**: `feat/brain-thin-wrapper-qa-security`
+- **Files/Specs**: `infra/hetzner/workflows/` (QA security scan), Brain `/brain/process` with `qa` persona.
+- **Acceptance Criteria**: Scan trigger invokes Brain; findings formatted and delivered through the same downstream channel as before (e.g. Slack).
+- **Depends On**: P11.2, P11.5
+- **Status**: NOT STARTED
+
+</details>
+
+<details>
+<summary>P12.5 Social Content Generator n8n → Brain thin wrapper</summary>
+
+- **Task ID**: P12.5
+- **Owner**: Founder 1
+- **Branch**: `feat/brain-thin-wrapper-social`
+- **Files/Specs**: `infra/hetzner/workflows/` (social content generator), Brain `/brain/process` with `social` persona (product/channel context in payload as needed).
+- **Acceptance Criteria**: Generated posts route through Brain; scheduling or Postiz handoff unchanged at the n8n edge if applicable.
+- **Depends On**: P11.2, P11.5
+- **Status**: NOT STARTED
+
+</details>
+
+<details>
+<summary>P12.6 Sprint Kickoff + Sprint Close n8n → Brain thin wrappers (or archive)</summary>
+
+- **Task ID**: P12.6
+- **Owner**: Founder 1
+- **Branch**: `feat/brain-thin-wrapper-sprint` or `chore/archive-sprint-workflows`
+- **Files/Specs**: `infra/hetzner/workflows/` (sprint kickoff, sprint close). Either thin-wrap to Brain with `strategy` or `ea` persona as appropriate, or **archive** both workflows if sprint cadence is inactive (document decision in KNOWLEDGE.md).
+- **Acceptance Criteria**: No orphaned cron firing fat graphs; either Brain-backed thin flows or archived JSON under `infra/hetzner/workflows/archive/` with deploy script updated.
+- **Depends On**: P11.2, P11.5
+- **Status**: NOT STARTED
+
+</details>
+
+<details>
+<summary>P12.7 Weekly Strategy Check-in n8n → Brain thin wrapper</summary>
+
+- **Task ID**: P12.7
+- **Owner**: Founder 1
+- **Branch**: `feat/brain-thin-wrapper-strategy-checkin`
+- **Files/Specs**: `infra/hetzner/workflows/` (weekly strategy check-in), Brain `/brain/process` with `strategy` persona.
+- **Acceptance Criteria**: Scheduled run posts via Brain; venture context (TASKS, KNOWLEDGE) pulled by Brain/tools, not duplicated in n8n nodes.
+- **Depends On**: P11.2, P11.5
+- **Status**: NOT STARTED
+
+</details>
+
+<details>
+<summary>P12.8 Validate Brain Daily/Weekly trigger output parity vs legacy EA workflows</summary>
+
+- **Task ID**: P12.8
+- **Owner**: Founder 1
+- **Branch**: N/A (validation)
+- **Files/Specs**: Brain cron or n8n thin triggers for daily briefing + weekly plan; compare to archived or feature-flagged legacy EA daily/weekly n8n outputs (structure, length, channel targets).
+- **Acceptance Criteria**: Documented parity checklist passed (or explicit deltas accepted and logged in KNOWLEDGE.md). No silent regressions on Slack + GDrive targets if those remain in scope.
+- **Depends On**: P11.4, P11.5; Brain-backed or thin-n8n daily briefing + weekly plan triggers deployed (EA replacement path)
+- **Status**: NOT STARTED
+
+</details>
+
+<details>
+<summary>P12.9 Archive converted fat workflows to infra/hetzner/workflows/archive/</summary>
+
+- **Task ID**: P12.9
+- **Owner**: Founder 1
+- **Branch**: `chore/archive-fat-n8n-workflows`
+- **Files/Specs**: `infra/hetzner/workflows/archive/`, `scripts/deploy-n8n-workflows.sh`, `.github/workflows/deploy-n8n.yaml` if workflow list is enumerated there.
+- **Acceptance Criteria**: Each superseded fat workflow JSON moved to archive; active deploy set only includes thin wrappers + still-needed non-Brain workflows; README or comment in archive folder notes replacement task ID (P12.x).
+- **Depends On**: P12.1–P12.8 (per-workflow, as each conversion completes)
+- **Status**: NOT STARTED
+
+</details>
+
+---
+
 ## Phase Timeline Summary
 
 **Only two hard deadlines**: IRS MeF ATS testing (October 2026) and tax season start (January 2027). Everything else ships as fast as agents can build it. Phase 9 (Distill) runs parallel with Phases 5-6, not sequentially. Phase 11 (Brain) runs parallel with everything — no blockers.

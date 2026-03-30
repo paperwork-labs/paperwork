@@ -51,11 +51,12 @@ services:
       EXECUTIONS_MODE: queue
       QUEUE_BULL_REDIS_HOST: redis
       QUEUE_BULL_REDIS_PORT: 6379
-      QUEUE_BULL_REDIS_PASSWORD: ${REDIS_PASSWORD:-changeme}
+      QUEUE_BULL_REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
       GITHUB_TOKEN: ${GITHUB_PAT:-}
       SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
       SLACK_BOT_USER_ID: ${SLACK_BOT_USER_ID:-}
       SLACK_ALERTS_WEBHOOK_URL: ${SLACK_ALERTS_WEBHOOK_URL:-}
+      SLACK_ALERTS_CHANNEL_ID: ${SLACK_ALERTS_CHANNEL_ID:-C0ALVM4PAE7}
       N8N_API_KEY: ${N8N_API_KEY:-}
       VAULT_URL: ${VAULT_URL:-https://paperworklabs.com}
       SECRETS_API_KEY: ${SECRETS_API_KEY:-}
@@ -63,6 +64,8 @@ services:
       BRAIN_API_SECRET: ${BRAIN_API_SECRET:-}
       BRAIN_WEBHOOK_SECRET: ${BRAIN_WEBHOOK_SECRET:-}
       NODE_FUNCTION_ALLOW_BUILTIN: child_process
+      # Required: Code nodes access SLACK_BOT_TOKEN, N8N_API_KEY for health checks.
+      # Instance is admin-only (no user-authored workflows). Review before changing.
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
       GENERIC_TIMEZONE: America/Los_Angeles
     volumes:
@@ -88,7 +91,7 @@ services:
       EXECUTIONS_MODE: queue
       QUEUE_BULL_REDIS_HOST: redis
       QUEUE_BULL_REDIS_PORT: 6379
-      QUEUE_BULL_REDIS_PASSWORD: ${REDIS_PASSWORD:-changeme}
+      QUEUE_BULL_REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
       GITHUB_TOKEN: ${GITHUB_PAT:-}
       SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
       SLACK_BOT_USER_ID: ${SLACK_BOT_USER_ID:-}

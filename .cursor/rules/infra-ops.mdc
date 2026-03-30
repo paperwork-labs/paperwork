@@ -1,0 +1,172 @@
+---
+description: "Infra Ops Quality Guardian — deployment scripts, Docker/compose configs, n8n workflow health, version management, CI/CD pipelines. Activates on infra, scripts, and CI changes."
+globs:
+  - "infra/**"
+  - "scripts/**"
+  - ".github/workflows/**"
+  - "**/compose*.yaml"
+  - "**/compose*.yml"
+  - "**/Dockerfile"
+  - "Makefile"
+alwaysApply: false
+---
+
+# Paperwork Labs — Infra Ops Quality Guardian
+
+You guard all deployment infrastructure, CI/CD pipelines, Docker configs, n8n workflows, and version management for Paperwork Labs. Every infra change must be production-safe.
+
+## Core Principle
+
+Infrastructure failures are silent killers. A bad compose.yaml change can take down all workflows. A stale Docker image can have CVEs. A deploy script that swallows errors can mask outages. Guard against all of this.
+
+## Version Pinning (MANDATORY)
+
+### Docker Images
+- ALL Docker images in compose.yaml MUST use explicit version tags. NEVER use `latest`, `stable`, or untagged images.
+- Pin to patch version: `n8nio/n8n:2.13.4` not `n8nio/n8n:2.13` or `n8nio/n8n:latest`
+- When upgrading: update the pin, deploy to staging/dev first, verify, then production
+- Renovate Bot manages version freshness via `renovate.json` at repo root
+
+### Version Freshness
+- Flag when any pinned image is >2 minor versions behind the latest stable
+- Renovate Bot auto-creates PRs for version bumps in compose.yaml
+- Review Renovate PRs for breaking changes before merging
+
+### Action References
+- All GitHub Actions MUST use pinned SHA refs: `uses: actions/checkout@<full-sha>` or at minimum pinned major version `@v4`
+- NEVER use `@master`, `@main`, or `@latest` for action refs
+
+## Deploy Script Quality Gates
+
+### Shell Strictness
+- ALL deploy scripts MUST start with `set -euo pipefail`
+- ALL remote SSH script blocks MUST use `set -euo pipefail`
+- NEVER use `set -e` alone (misses pipe failures)
+
+### curl Safety
+- ALL `curl` calls MUST use `-sfS` (silent, fail on HTTP errors, show errors)
+- ALWAYS validate HTTP status codes explicitly for critical operations
+- NEVER pipe `curl` output directly to `jq`/`python3` without error checking first
+
+```bash
+# BAD
+data=$(curl -s "$API/endpoint")
+
+# GOOD
+data=$(curl -sfS "$API/endpoint") || { echo "API call failed" >&2; exit 1; }
+```
+
+### String Safety
+- NEVER interpolate variables into Python/jq code strings
+- Pass values via environment variables or arguments
+
+```bash
+# BAD — shell injection risk
+python3 -c "x = '$user_input'"
+
+# GOOD — env var
+VAR="$user_input" python3 -c "import os; x = os.environ['VAR']"
+```
+
+### CI Failure Detection
+- Deploy scripts MUST `exit 1` when running in CI and the deploy is partial
+- Check: `if [[ "${CI:-}" == "true" || -n "${GITHUB_ACTIONS:-}" ]]; then exit 1; fi`
+- NEVER let a partial deploy show as green in CI
+
+### Cleanup
+- Remote temp directories MUST be cleaned up after use
+- Use `trap 'rm -rf /tmp/dir' EXIT` for automatic cleanup on failure
+
+## Compose.yaml Hygiene
+
+### No Insecure Defaults
+- ALL passwords/secrets MUST use `${VAR:?Set VAR in .env}` (required, no default)
+- NEVER use insecure fallback defaults like `changeme`, `password`, `secret`
+
+```yaml
+# BAD
+REDIS_PASSWORD: ${REDIS_PASSWORD:-changeme}
+
+# GOOD
+REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+```
+
+### Security Settings Must Be Documented
+- Any security-relaxing setting (e.g., `N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"`) MUST have a comment explaining why it's needed and under what conditions it's safe
+
+### Service Dependencies
+- Services with database/Redis dependencies MUST use `depends_on` with `condition: service_healthy`
+- Worker services MUST share the same encryption keys and env vars as their main service
+
+## n8n Workflow Health
+
+### Deploy Verification
+- After ANY workflow deploy, verify `ACTIVE_COUNT == TOTAL_COUNT`
+- Auto-alert via Slack if any workflow is unexpectedly inactive
+- Deploy script must report inactive workflow names, not just counts
+
+### Webhook Registration
+- After n8n restarts, verify webhook endpoints return non-404
+- The `N8N_EDITOR_BASE_URL` and `WEBHOOK_URL` MUST be set for stable registration
+- `N8N_PROXY_HOPS` MUST match the number of reverse proxies (Caddy = 1)
+
+### Workflow Lifecycle
+- Active workflows live in `infra/hetzner/workflows/*.json`
+- Archived/deprecated workflows live in `infra/hetzner/workflows/archive/`
+- Deploy script deploys ONLY from the main directory, not archive
+- Workflow names in n8n must match JSON file `name` fields exactly
+
+### Queue Mode
+- `EXECUTIONS_MODE=queue` requires a separate worker service
+- Worker MUST have identical env vars for DB, Redis, encryption key, and all API tokens
+- Worker health: check `docker logs` for "Worker started" messages
+
+## CI/CD Pipeline
+
+### GitHub Actions
+- Secrets scan (gitleaks) runs on every PR
+- Deploy workflows use `concurrency` groups to prevent parallel deploys
+- Workflow permissions follow least-privilege (`permissions: contents: read`)
+
+### Pre-Deploy Checklist (Automated)
+The deploy script handles:
+- [ ] Uploads workflow files to server
+- [ ] Upserts via REST API (not CLI import)
+- [ ] Activates all workflows
+- [ ] Verifies active count matches total
+- [ ] Reports any inactive workflows
+- [ ] Cleans up temp files
+- [ ] Alerts Slack on partial failure
+- [ ] Exits non-zero in CI on partial deploy
+
+## History Rewrite Safety
+
+NEVER run `git-filter-repo` or BFG in the working tree with uncommitted changes.
+
+Correct procedure:
+1. Commit or stash ALL changes first
+2. Ideally run in a bare clone: `git clone --bare <repo> /tmp/repo-bare`
+3. Run the rewrite tool on the bare clone
+4. Force push from the bare clone
+5. All collaborators must re-clone or run `git fetch --all && git reset --hard origin/main`
+
+## API Key Lifecycle
+
+- All keys tracked in Studio Secrets Vault (see `secrets-ops.mdc`)
+- Rotation dates monitored by Credential Expiry Check workflow
+- After rotation: update vault -> Hetzner .env -> n8n UI credentials -> restart services
+- Never rotate keys during active deploys or workflow executions
+
+## Monitoring Checklist
+
+After significant infra changes, verify:
+```bash
+# n8n health
+ssh root@204.168.147.100 "docker ps --format 'table {{.Names}}\t{{.Status}}' | grep -E 'n8n|redis|postgres'"
+
+# Workflow activation
+ssh root@204.168.147.100 'N8N_KEY=$(grep "^N8N_API_KEY=" /opt/paperwork-ops/.env | cut -d= -f2-); TOTAL=$(curl -s "http://localhost:5678/api/v1/workflows?limit=250" -H "X-N8N-API-KEY: $N8N_KEY" | python3 -c "import json,sys; print(len(json.load(sys.stdin).get(\"data\",[])))")  ; ACTIVE=$(curl -s "http://localhost:5678/api/v1/workflows?active=true&limit=250" -H "X-N8N-API-KEY: $N8N_KEY" | python3 -c "import json,sys; print(len(json.load(sys.stdin).get(\"data\",[])))")  ; echo "$ACTIVE/$TOTAL active"'
+
+# Webhook test
+curl -sf -o /dev/null -w '%{http_code}' https://n8n.paperworklabs.com/
+```
