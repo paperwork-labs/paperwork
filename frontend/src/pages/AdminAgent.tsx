@@ -8,13 +8,14 @@ import { CAPABILITY_GROUPS } from "./AdminAgentCapabilities"
 
 import {
   AgentChatPanel,
-  AgentHealthPanel,
   AgentSessionList,
   type AgentAction,
   type ChatMessage,
-  type HealthData,
-  type HealthSignal,
 } from "@/components/agent"
+import { AUTONOMY_LEVELS } from "@/components/agent/types"
+import { HealthGrid } from "@/components/shared/HealthGrid"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -36,7 +37,27 @@ import {
   usePatchAgentSettings,
 } from "@/hooks/useAgent"
 import useAdminHealth from "@/hooks/useAdminHealth"
-import type { AdminHealthResponse } from "@/types/adminHealth"
+import type {
+  AdminHealthResponse,
+  CoverageDimension,
+  StageQualityDimension,
+  JobsDimension,
+  AuditDimension,
+  RegimeDimension,
+  FundamentalsDimension,
+  PortfolioSyncDimension,
+  IbkrGatewayDimension,
+} from "@/types/adminHealth"
+
+type DimensionValue =
+  | CoverageDimension
+  | StageQualityDimension
+  | JobsDimension
+  | AuditDimension
+  | RegimeDimension
+  | FundamentalsDimension
+  | PortfolioSyncDimension
+  | IbkrGatewayDimension
 
 function newMessageId(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -58,27 +79,42 @@ function getAxiosErrorMessage(err: unknown): string {
   return "Something went wrong."
 }
 
-function dimensionToSignal(status: string): HealthSignal {
-  const map: Record<string, HealthSignal> = {
-    green: "ok",
-    ok: "ok",
-    yellow: "warn",
-    warning: "warn",
-  }
-  return map[status] ?? "error"
-}
-
-function adminHealthToAgentHealth(
-  health: AdminHealthResponse | null
-): HealthData | undefined {
-  if (!health?.dimensions) return undefined
-  const d = health.dimensions
-  return {
-    coverage: dimensionToSignal(d.coverage.status),
-    stage: dimensionToSignal(d.stage_quality.status),
-    jobs: dimensionToSignal(d.jobs.status),
-    audit: dimensionToSignal(d.audit.status),
-    regime: dimensionToSignal(d.regime.status),
+function getDimensionHint(key: string, dim: DimensionValue): string | null {
+  const { status } = dim
+  if (status === 'green' || status === 'ok') return null
+  switch (key) {
+    case 'coverage': {
+      const d = dim as CoverageDimension
+      return `${d.stale_daily ?? 0} stale symbol(s) — agent retries hourly`
+    }
+    case 'stage_quality': {
+      const d = dim as StageQualityDimension
+      return `${d.invalid_count ?? 0} invalid, ${d.monotonicity_issues ?? 0} monotonicity`
+    }
+    case 'audit':
+      return 'Fill below threshold'
+    case 'jobs': {
+      const d = dim as JobsDimension
+      return `${d.error_count ?? 0} failures (${((d.success_rate ?? 1) * 100).toFixed(0)}% success)`
+    }
+    case 'regime': {
+      const d = dim as RegimeDimension
+      return d.age_hours > 24 ? 'Regime stale — recomputed at close' : null
+    }
+    case 'fundamentals': {
+      const d = dim as FundamentalsDimension
+      return status === 'warning' ? `Fill at ${d.fundamentals_fill_pct?.toFixed(0) ?? '?'}%` : 'Data incomplete'
+    }
+    case 'portfolio_sync': {
+      const d = dim as PortfolioSyncDimension
+      return d.stale_accounts > 0 ? `${d.stale_accounts} stale account(s)` : null
+    }
+    case 'ibkr_gateway': {
+      const d = dim as IbkrGatewayDimension
+      return d.note || 'Gateway status unknown'
+    }
+    default:
+      return null
   }
 }
 
@@ -223,7 +259,7 @@ const CapabilitiesSidebar: React.FC<CapabilitiesSidebarProps> = ({ onClose }) =>
 
 const AdminAgent: React.FC = () => {
   const queryClient = useQueryClient()
-  const { health } = useAdminHealth()
+  const { health, loading: healthLoading } = useAdminHealth()
   const settingsQuery = useAgentSettings()
   const sessionsQuery = useAgentSessions()
   const statsQuery = useAgentStats()
@@ -242,11 +278,6 @@ const AdminAgent: React.FC = () => {
   const [settingsError, setSettingsError] = React.useState<string | null>(null)
   const [approveError, setApproveError] = React.useState<string | null>(null)
   const [showCapabilities, setShowCapabilities] = React.useState(false)
-
-  const healthData = React.useMemo(
-    () => adminHealthToAgentHealth(health),
-    [health]
-  )
 
   const autonomyLabel = autonomyApiToLabel(
     settingsQuery.data?.autonomy_level ?? "safe"
@@ -567,11 +598,62 @@ const AdminAgent: React.FC = () => {
             </div>
           ) : (
             <>
-              <AgentHealthPanel
-                health={healthData}
-                autonomyLevel={autonomyLabel}
-                onAutonomyChange={handleAutonomyChange}
-              />
+              <Card size="sm" className="gap-4">
+                <CardHeader className="pb-0">
+                  <CardTitle>Health</CardTitle>
+                  <CardDescription>
+                    Live signals across intelligence and operations.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4">
+                  <HealthGrid
+                    dimensions={health?.dimensions ?? null}
+                    loading={healthLoading}
+                    getHint={getDimensionHint}
+                    compact
+                  />
+
+                  <div className="border-t border-border pt-4">
+                    <p
+                      id="autonomy-heading"
+                      className="mb-2 text-sm font-medium text-foreground"
+                    >
+                      Autonomy
+                    </p>
+                    <Tabs
+                      value={autonomyLabel}
+                      onValueChange={handleAutonomyChange}
+                      className="w-full"
+                      aria-labelledby="autonomy-heading"
+                    >
+                      <TabsList
+                        variant="default"
+                        className="grid w-full grid-cols-3"
+                        aria-label="Autonomy level"
+                      >
+                        {AUTONOMY_LEVELS.map((level) => (
+                          <TabsTrigger
+                            key={level}
+                            value={level}
+                            className="text-xs sm:text-sm"
+                          >
+                            {level}
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                      <TabsContent value="Safe" className="mt-2 text-xs text-muted-foreground">
+                        <p>Low-risk automation only; approvals for anything sensitive.</p>
+                      </TabsContent>
+                      <TabsContent value="Full" className="mt-2 text-xs text-muted-foreground">
+                        <p>Agent may act within policy without asking, where allowed.</p>
+                      </TabsContent>
+                      <TabsContent value="Ask" className="mt-2 text-xs text-muted-foreground">
+                        <p>Confirm each substantive step before execution.</p>
+                      </TabsContent>
+                    </Tabs>
+                  </div>
+                </CardContent>
+              </Card>
               <AgentSessionList
                 sessions={sessionsQuery.data ?? []}
                 selectedSessionId={selectedSessionId}

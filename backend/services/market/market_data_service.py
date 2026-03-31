@@ -136,17 +136,17 @@ class MarketDataService:
         return self._redis_async
 
     def is_backfill_5m_enabled(self) -> bool:
-        """Check admin toggle stored in Redis; default to enabled on errors."""
+        """Check admin toggle stored in Redis; default to DISABLED until admin enables."""
         try:
             raw = self._sync_redis.get("coverage:backfill_5m_enabled")
             if raw is None:
-                return True
+                return False  # Default OFF — admin must explicitly enable
             if isinstance(raw, (bytes, bytearray)):
                 raw = raw.decode()
             return str(raw).strip().lower() not in ("0", "false", "off", "disabled")
         except Exception:
-            # Fail open if Redis unavailable so daily flows aren't blocked
-            return True
+            # Default OFF on errors — 5m backfill is optional, daily flows not blocked
+            return False
 
     async def is_backfill_5m_enabled_async(self) -> bool:
         """Async variant for FastAPI async routes (non-blocking Redis)."""
@@ -154,12 +154,12 @@ class MarketDataService:
             r = await self._get_redis()
             raw = await r.get("coverage:backfill_5m_enabled")
             if raw is None:
-                return True
+                return False  # Default OFF — admin must explicitly enable
             if isinstance(raw, (bytes, bytearray)):
                 raw = raw.decode()
             return str(raw).strip().lower() not in ("0", "false", "off", "disabled")
         except Exception:
-            return True
+            return False  # Default OFF on errors too
 
     def benchmark_health(
         self,

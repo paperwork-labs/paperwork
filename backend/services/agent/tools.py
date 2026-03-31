@@ -791,6 +791,28 @@ AGENT_TOOLS: List[Dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "calculate_support_resistance",
+            "description": "Calculate support and resistance levels for a symbol using pivot points, swing highs/lows, and volume-weighted price clusters. Returns key price levels for entry/exit planning, price targets, and stop-loss placement.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "symbol": {
+                        "type": "string",
+                        "description": "Stock symbol (e.g. CAT, AAPL)",
+                    },
+                    "lookback_days": {
+                        "type": "integer",
+                        "description": "Days of history to analyze (default 60)",
+                        "default": 60,
+                    },
+                },
+                "required": ["symbol"],
+            },
+        },
+    },
 ]
 
 
@@ -819,6 +841,8 @@ INLINE_ONLY_AGENT_TOOLS: FrozenSet[str] = frozenset({
     "run_backtest",
     "list_strategy_templates",
     "create_strategy",
+    # Technical Analysis tools
+    "calculate_support_resistance",
 })
 
 TOOL_TO_CELERY_TASK: Dict[str, str] = {

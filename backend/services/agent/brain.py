@@ -643,6 +643,13 @@ class AgentBrain:
                 args.get("overrides", {}),
             )
 
+        # Technical Analysis tools
+        if tool_name == "calculate_support_resistance":
+            return await self._tool_calculate_support_resistance(
+                args.get("symbol", ""),
+                args.get("lookback_days", 60),
+            )
+
         return {"error": f"Unknown safe tool: {tool_name}"}
     
     async def _dispatch_celery_task(
@@ -2196,6 +2203,129 @@ class AgentBrain:
         except Exception as e:
             logger.error("Failed to create strategy: %s", e)
             self.db.rollback()
+            return {"error": str(e)}
+
+    async def _tool_calculate_support_resistance(
+        self,
+        symbol: str,
+        lookback_days: int = 60,
+    ) -> Dict[str, Any]:
+        """Calculate support and resistance levels for a symbol.
+        
+        Uses multiple methods:
+        - Classic pivot points (high/low/close)
+        - Swing highs/lows detection
+        - Volume-weighted price clusters
+        """
+        from backend.models.market_data import PriceData
+        from datetime import datetime, timedelta
+        from collections import defaultdict
+
+        try:
+            sym = symbol.upper().strip()
+            if not sym:
+                return {"error": "Symbol is required"}
+
+            # Validate lookback_days (clamp to reasonable range)
+            lookback = max(10, min(365, lookback_days))
+            if lookback != lookback_days:
+                logger.info(
+                    "Clamped lookback_days from %d to %d for %s",
+                    lookback_days, lookback, sym
+                )
+
+            cutoff = datetime.utcnow() - timedelta(days=lookback)
+            bars = (
+                self.db.query(PriceData)
+                .filter(
+                    PriceData.symbol == sym,
+                    PriceData.interval == "1d",
+                    PriceData.date >= cutoff,
+                )
+                .order_by(PriceData.date.asc())
+                .all()
+            )
+
+            if len(bars) < 10:
+                return {"error": f"Insufficient price data for {sym} (need at least 10 bars)"}
+
+            # Extract OHLCV (PriceData uses _price suffix)
+            highs = [float(b.high_price) for b in bars]
+            lows = [float(b.low_price) for b in bars]
+            closes = [float(b.close_price) for b in bars]
+            volumes = [float(b.volume or 0) for b in bars]
+
+            latest_close = closes[-1]
+            latest_high = highs[-1]
+            latest_low = lows[-1]
+
+            # Classic Pivot Points (using most recent bar)
+            pivot = (latest_high + latest_low + latest_close) / 3
+            r1 = 2 * pivot - latest_low
+            s1 = 2 * pivot - latest_high
+            r2 = pivot + (latest_high - latest_low)
+            s2 = pivot - (latest_high - latest_low)
+
+            # Swing highs/lows (local maxima/minima with 2-bar lookback)
+            swing_highs = []
+            swing_lows = []
+            for i in range(2, len(highs) - 2):
+                if highs[i] >= max(highs[i - 2 : i]) and highs[i] >= max(highs[i + 1 : i + 3]):
+                    swing_highs.append(highs[i])
+                if lows[i] <= min(lows[i - 2 : i]) and lows[i] <= min(lows[i + 1 : i + 3]):
+                    swing_lows.append(lows[i])
+
+            # Find nearest resistance levels (swing highs above current price)
+            resistance_levels = sorted([h for h in swing_highs if h > latest_close])[:3]
+            
+            # Find nearest support levels (swing lows below current price)
+            support_levels = sorted([l for l in swing_lows if l < latest_close], reverse=True)[:3]
+
+            # Volume-weighted price clusters (group prices into buckets)
+            price_range = max(highs) - min(lows)
+            bucket_size = price_range / 20 if price_range > 0 else 1
+            vwap_clusters: Dict[int, float] = defaultdict(float)
+            for i, close in enumerate(closes):
+                bucket = int((close - min(lows)) / bucket_size) if bucket_size > 0 else 0
+                vwap_clusters[bucket] += volumes[i]
+
+            # Find high-volume clusters
+            sorted_clusters = sorted(vwap_clusters.items(), key=lambda x: x[1], reverse=True)[:5]
+            volume_clusters = [min(lows) + (b * bucket_size) + bucket_size / 2 for b, _ in sorted_clusters]
+
+            # Key statistics
+            period_high = max(highs)
+            period_low = min(lows)
+            avg_volume = sum(volumes) / len(volumes) if volumes else 0
+
+            return {
+                "symbol": sym,
+                "current_price": round(latest_close, 2),
+                "lookback_days": lookback_days,
+                "bars_analyzed": len(bars),
+                "pivot_points": {
+                    "pivot": round(pivot, 2),
+                    "r1": round(r1, 2),
+                    "r2": round(r2, 2),
+                    "s1": round(s1, 2),
+                    "s2": round(s2, 2),
+                },
+                "immediate_resistance": [round(r, 2) for r in resistance_levels[:2]] or [round(r1, 2)],
+                "immediate_support": [round(s, 2) for s in support_levels[:2]] or [round(s1, 2)],
+                "major_resistance": round(resistance_levels[0], 2) if resistance_levels else round(period_high, 2),
+                "major_support": round(support_levels[0], 2) if support_levels else round(period_low, 2),
+                "period_high": round(period_high, 2),
+                "period_low": round(period_low, 2),
+                "volume_clusters": [round(v, 2) for v in volume_clusters[:3]],
+                "avg_volume": int(avg_volume),
+                "analysis_tip": (
+                    f"Key levels: Support at {round(support_levels[0] if support_levels else s1, 2)}, "
+                    f"Resistance at {round(resistance_levels[0] if resistance_levels else r1, 2)}. "
+                    f"Consider entries near support with stops below {round(period_low, 2)}."
+                ),
+            }
+        except Exception as e:
+            logger.error("Failed to calculate support/resistance for %s: %s", symbol, e)
             return {"error": str(e)}
 
     # ==================== CONVERSATION PERSISTENCE ====================

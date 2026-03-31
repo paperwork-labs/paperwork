@@ -16,6 +16,7 @@ import CoverageHealthStrip from '../components/coverage/CoverageHealthStrip';
 import AdminDomainCards from '../components/admin/AdminDomainCards';
 import AdminRunbook from '../components/admin/AdminRunbook';
 import AdminOperatorActions from '../components/admin/AdminOperatorActions';
+import { HealthGrid } from '../components/shared/HealthGrid';
 import { marketDataApi } from '../services/api';
 import api from '../services/api';
 import { REGIME_HEX } from '../constants/chart';
@@ -27,6 +28,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
 const TASK_LABELS: Record<string, string> = {
@@ -304,6 +307,10 @@ const SystemStatus: React.FC = () => {
   const [autoFixStatus, setAutoFixStatus] = useState<AutoFixStatusResponse | null>(null);
   const [autoFixLoading, setAutoFixLoading] = useState(false);
 
+  // 5m backfill toggle state
+  const [backfill5mEnabled, setBackfill5mEnabled] = useState<boolean | null>(null);
+  const [backfill5mLoading, setBackfill5mLoading] = useState(false);
+
   const compositeStatus = health?.composite_status ?? 'red';
   const StatusIcon = STATUS_ICON[compositeStatus] ?? XCircle;
   const statusIconColor =
@@ -426,6 +433,33 @@ const SystemStatus: React.FC = () => {
   const redDimCount = health
     ? Object.values(health.dimensions).filter((d) => d.status === 'red' || d.status === 'error').length
     : 0;
+
+  // Fetch 5m backfill toggle state on mount
+  useEffect(() => {
+    const fetch5mToggle = async () => {
+      try {
+        const { data } = await api.get('/market-data/admin/backfill/5m/toggle');
+        setBackfill5mEnabled(data.backfill_5m_enabled);
+      } catch {
+        // Leave as null if fetch fails (admin-only endpoint)
+      }
+    };
+    void fetch5mToggle();
+  }, []);
+
+  const handle5mToggle = async (checked: boolean) => {
+    setBackfill5mLoading(true);
+    try {
+      await api.post('/market-data/admin/backfill/5m/toggle', { enabled: checked });
+      setBackfill5mEnabled(checked);
+      toast.success(`5m candle backfill ${checked ? 'enabled' : 'disabled'}`);
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } }; message?: string };
+      toast.error(e?.response?.data?.detail || e?.message || 'Failed to update toggle');
+    } finally {
+      setBackfill5mLoading(false);
+    }
+  };
 
   return (
     <div className="mx-auto flex max-w-[960px] flex-col gap-6">
@@ -599,9 +633,28 @@ const SystemStatus: React.FC = () => {
       {dailyFillSeries.length > 0 && (
         <Card>
           <CardContent className="pt-6">
-            <p className="mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              Data Coverage — Last 60 Trading Days
-            </p>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                Data Coverage — Last 60 Trading Days
+              </p>
+              {backfill5mEnabled !== null && (
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="backfill-5m"
+                    checked={backfill5mEnabled}
+                    onCheckedChange={(checked) => void handle5mToggle(checked)}
+                    disabled={backfill5mLoading}
+                    className="scale-75"
+                  />
+                  <Label
+                    htmlFor="backfill-5m"
+                    className="cursor-pointer text-xs text-muted-foreground"
+                  >
+                    5m Candles
+                  </Label>
+                </div>
+              )}
+            </div>
             <CoverageHealthStrip
               dailyFillSeries={dailyFillSeries}
               snapshotFillSeries={snapshotFillSeries}
@@ -629,88 +682,12 @@ const SystemStatus: React.FC = () => {
             <p className="mb-3 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               Health Dimensions
             </p>
-            {loading ? (
-              <div className="flex flex-col gap-2">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Skeleton key={i} className="h-8 w-full rounded-md" />
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col gap-1.5">
-                {health &&
-                  Object.entries(health.dimensions)
-                    .filter(([, dim]) => !dim.advisory)
-                    .map(([key, dim]) => {
-                      const status = dim.status;
-                      const hint = getDimensionHint(key, dim);
-                      const isPass = status === 'green' || status === 'ok';
-                      const isWarn = status === 'yellow' || status === 'warning';
-                      return (
-                        <div key={key} className="rounded-lg bg-muted/50 px-3 py-2">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={cn(
-                                  'size-[7px] shrink-0 rounded-full',
-                                  STATUS_DOT[status] || 'bg-muted-foreground/50',
-                                )}
-                              />
-                              <span className="text-sm font-medium capitalize text-foreground">
-                                {key.replace(/_/g, ' ')}
-                              </span>
-                            </div>
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                'font-normal',
-                                isPass
-                                  ? 'border-emerald-500/40 text-emerald-700 dark:text-emerald-300'
-                                  : isWarn
-                                    ? 'border-amber-500/40 text-amber-700 dark:text-amber-300'
-                                    : 'border-destructive/40 text-destructive',
-                              )}
-                            >
-                              {status.toUpperCase()}
-                            </Badge>
-                          </div>
-                          {hint && <p className="mt-1 ml-4 text-[10px] text-muted-foreground">{hint}</p>}
-                        </div>
-                      );
-                    })}
-                {health &&
-                  Object.entries(health.dimensions).some(([, dim]) => dim.advisory) && (
-                    <>
-                      <p className="mt-2 text-[10px] font-medium tracking-wider text-muted-foreground/70 uppercase">
-                        Broker (advisory)
-                      </p>
-                      {Object.entries(health.dimensions)
-                        .filter(([, dim]) => dim.advisory)
-                        .map(([key, dim]) => {
-                          const hint = getDimensionHint(key, dim);
-                          return (
-                            <div key={key} className="rounded-lg bg-muted/30 px-3 py-2 opacity-60">
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2">
-                                  <span
-                                    className={cn(
-                                      'size-[7px] shrink-0 rounded-full',
-                                      STATUS_DOT[dim.status] || 'bg-muted-foreground/50',
-                                    )}
-                                  />
-                                  <span className="text-sm font-medium capitalize text-foreground">
-                                    {key.replace(/_/g, ' ')}
-                                  </span>
-                                </div>
-                                <span className="text-[10px] text-muted-foreground">{dim.status.toUpperCase()}</span>
-                              </div>
-                              {hint && <p className="mt-1 ml-4 text-[10px] text-muted-foreground">{hint}</p>}
-                            </div>
-                          );
-                        })}
-                    </>
-                  )}
-              </div>
-            )}
+            <HealthGrid
+              dimensions={health?.dimensions ?? null}
+              loading={loading}
+              getHint={getDimensionHint}
+              compact
+            />
           </CardContent>
         </Card>
       </div>

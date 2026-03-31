@@ -193,7 +193,8 @@ export function useAgentChat() {
     mutationFn: async (request: AgentChatRequest) => {
       const res: AxiosResponse<AgentChatResult> = await api.post(
         "/admin/agent/chat",
-        request
+        request,
+        { timeout: 180000 } // 3 minutes for multi-step agent chat
       )
       return res.data
     },
