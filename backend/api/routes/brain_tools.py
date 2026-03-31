@@ -505,3 +505,16 @@ async def tools_run_task(
     except Exception as e:
         logger.warning("run-task failed for %s: %s", body.task_id, e)
         raise HTTPException(status_code=500, detail="Failed to dispatch task") from e
+
+
+# ========================= APPROVAL MANAGEMENT =========================
+
+
+@router.get("/pending-approvals")
+async def tools_pending_approvals(
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """List orders currently awaiting approval with timeout info."""
+    uid = _brain_user_id()
+    pending = ApprovalService.list_pending(db, uid)
+    return {"count": len(pending), "orders": pending}

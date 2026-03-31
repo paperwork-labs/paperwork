@@ -8,6 +8,8 @@ from typing import Any, Optional
 
 from sqlalchemy.orm import Session
 
+from datetime import datetime, timedelta, timezone
+
 from backend.config import settings
 from backend.models.order import Order, OrderStatus
 from backend.models.user import User, UserRole
@@ -59,6 +61,9 @@ def _approval_mode() -> ApprovalMode:
             settings.TRADE_APPROVAL_MODE,
         )
         return ApprovalMode.ALL
+
+
+APPROVAL_TIMEOUT_MINUTES = 30
 
 
 class ApprovalService:
@@ -198,6 +203,87 @@ class ApprovalService:
             "order_id": order_id,
             "reason": reason,
         }
+
+    @staticmethod
+    def expire_stale_approvals(db: Session) -> list[dict]:
+        """Auto-reject orders stuck in PENDING_APPROVAL beyond timeout."""
+        from sqlalchemy import update
+
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=APPROVAL_TIMEOUT_MINUTES)
+
+        # Atomic conditional update - only affects rows still in PENDING_APPROVAL
+        stmt = (
+            update(Order)
+            .where(
+                Order.status == OrderStatus.PENDING_APPROVAL.value,
+                Order.updated_at < cutoff,
+            )
+            .values(
+                status=OrderStatus.REJECTED.value,
+                error_message=f"Auto-rejected: approval timeout ({APPROVAL_TIMEOUT_MINUTES}m)",
+            )
+            .returning(Order.id, Order.symbol, Order.side, Order.quantity)
+        )
+        result = db.execute(stmt)
+        expired = [
+            {
+                "order_id": row.id,
+                "symbol": row.symbol,
+                "side": row.side,
+                "quantity": float(row.quantity or 0),
+                "waited_minutes": APPROVAL_TIMEOUT_MINUTES,
+            }
+            for row in result
+        ]
+
+        if expired:
+            db.commit()
+            brain_webhook.notify_sync(
+                "approval_expired",
+                {"count": len(expired), "orders": expired},
+            )
+            logger.info("Expired %d stale approval(s)", len(expired))
+
+        return expired
+
+    @staticmethod
+    def list_pending(db: Session, user_id: int) -> list[dict]:
+        """List orders currently pending approval."""
+        orders = (
+            db.query(Order)
+            .filter(
+                Order.user_id == user_id,
+                Order.status == OrderStatus.PENDING_APPROVAL.value,
+            )
+            .order_by(Order.created_at.desc())
+            .all()
+        )
+        return [
+            {
+                "order_id": o.id,
+                "symbol": o.symbol,
+                "side": o.side,
+                "quantity": float(o.quantity or 0),
+                "order_type": o.order_type,
+                "estimated_value": _estimated_order_value_usd(o),
+                "created_at": o.created_at.isoformat() if o.created_at else None,
+                "minutes_pending": (
+                    (
+                        datetime.now(timezone.utc)
+                        - (
+                            o.updated_at.replace(tzinfo=timezone.utc)
+                            if o.updated_at.tzinfo is None
+                            else o.updated_at.astimezone(timezone.utc)
+                        )
+                    ).total_seconds()
+                    / 60
+                    if o.updated_at
+                    else None
+                ),
+                "timeout_minutes": APPROVAL_TIMEOUT_MINUTES,
+            }
+            for o in orders
+        ]
 
 
 approval_service = ApprovalService()

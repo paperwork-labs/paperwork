@@ -137,6 +137,17 @@ CATALOG: List[JobTemplate] = [
         default_tz="America/New_York",
         timeout_s=660,
     ),
+    JobTemplate(
+        id="sweep-stale-approvals",
+        display_name="Sweep Stale Trade Approvals",
+        group="portfolio",
+        task="backend.tasks.portfolio.orders.sweep_stale_approvals",
+        description="Auto-reject orders stuck in PENDING_APPROVAL beyond timeout",
+        default_cron="*/5 * * * *",
+        default_tz="UTC",
+        timeout_s=30,
+        queue="orders",
+    ),
     # ── Maintenance ───────────────────────────────────────────────
     JobTemplate(
         id="admin_retention_enforce",

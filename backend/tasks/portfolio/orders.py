@@ -162,3 +162,24 @@ def monitor_open_orders_task(self) -> dict:
         raise self.retry(exc=exc, countdown=2 ** self.request.retries)
     finally:
         db.close()
+
+
+@celery_app.task(
+    name="backend.tasks.portfolio.orders.sweep_stale_approvals",
+    bind=True,
+    time_limit=30,
+    soft_time_limit=25,
+    max_retries=1,
+)
+def sweep_stale_approvals(self) -> dict:
+    """Auto-reject orders stuck in PENDING_APPROVAL beyond timeout."""
+    from backend.services.execution.approval_service import ApprovalService
+    db = SessionLocal()
+    try:
+        expired = ApprovalService.expire_stale_approvals(db)
+        return {"expired_count": len(expired), "orders": expired}
+    except Exception as exc:
+        logger.exception("sweep_stale_approvals raised")
+        raise self.retry(exc=exc, countdown=10)
+    finally:
+        db.close()

@@ -159,6 +159,9 @@ class BrainWebhookClient:
     async def approval_required(self, order_data: Dict[str, Any], user_id: int) -> bool:
         return await self.notify("approval_required", order_data, user_id)
 
+    async def approval_expired(self, data: Dict[str, Any], user_id: Optional[int] = None) -> bool:
+        return await self.notify("approval_expired", data, user_id)
+
 
 # Singleton instance
 brain_webhook = BrainWebhookClient()
