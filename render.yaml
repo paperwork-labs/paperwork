@@ -94,9 +94,11 @@ services:
     plan: starter
     ipAllowList: []
 
+  # Deploy policy: all services auto-deploy on commit to main (branch protection gates CI).
   # Cron jobs are managed dynamically via the Render API.
   # The Admin Schedules UI (DB + Render sync) is the source of truth.
   # Default schedules are seeded from backend/tasks/job_catalog.py on deploy.
+  # Cron jobs also auto-deploy on commit to stay in sync with backend code.
 
 databases:
   - name: axiomfolio-db

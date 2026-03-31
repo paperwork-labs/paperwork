@@ -455,8 +455,15 @@ async def agent_chat(
                 detail="Conversation session not found or has expired",
             )
 
-    result = await brain.chat(request.message)
-    
+    try:
+        result = await brain.chat(request.message)
+    except Exception as e:
+        logger.exception("Agent chat failed: %s", e)
+        raise HTTPException(
+            status_code=502,
+            detail=f"Agent processing error: {type(e).__name__}",
+        )
+
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
 

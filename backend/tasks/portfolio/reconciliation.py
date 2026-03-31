@@ -269,7 +269,7 @@ async def _fetch_tastytrade_positions_async(
             )
             return None
 
-       raw = await client.get_current_positions(target_account_number)
+        raw = await client.get_current_positions(target_account_number)
     except Exception as e:
         logger.warning(
             "TastyTrade position fetch failed for account %s: %s",

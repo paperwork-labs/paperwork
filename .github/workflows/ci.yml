@@ -24,10 +24,14 @@ jobs:
         run: |
           cp infra/env.test.example infra/env.test
 
+      - name: Start test stack (postgres_test, redis_test)
+        run: make test-up
+
+      - name: Python syntax check
+        run: make test-syntax
+
       - name: Run backend tests (isolated postgres_test)
-        run: |
-          make test-up
-          make test
+        run: make test
 
       - name: Tear down test stack
         if: always()

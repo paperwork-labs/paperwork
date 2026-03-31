@@ -1,5 +1,5 @@
 .PHONY: up up-all down down-reset ps logs build health-check warm ladle-up ladle-down ladle-logs ladle-build \
-	test-up test test-frontend test-all test-down \
+	test-up test-syntax test test-frontend test-all test-down \
 	backend-shell frontend-shell task-run \
 	migrate-create migrate-up migrate-down migrate-stamp-head \
 	frontend-install frontend-lint frontend-typecheck frontend-test frontend-check \
@@ -63,6 +63,10 @@ ladle-build:
 
 test-up:
 	$(COMPOSE_TEST) up -d postgres_test redis_test
+
+# Compile all backend Python files (same image as pytest) — catches SyntaxError/IndentationError early.
+test-syntax:
+	$(COMPOSE_TEST) run --rm backend_test bash -lc "find backend -name '*.py' -exec python -m py_compile {} +"
 
 test:
 	@# Always use a fresh isolated test DB volume to prevent migration drift.

@@ -402,7 +402,15 @@ class AgentBrain:
             session_id=self.session_id,
         )
         self.db.add(action)
-        self.db.flush()
+        try:
+            self.db.flush()
+        except Exception as db_err:
+            logger.warning("DB flush failed in _execute_tool for %s: %s", tool_name, db_err)
+            try:
+                self.db.rollback()
+            except Exception:
+                pass
+            return {"error": f"Database error recording action: {type(db_err).__name__}"}, None
 
         async def _run_inline_safe_tool() -> Tuple[Dict[str, Any], AgentAction]:
             result = await self._execute_safe_tool(tool_name, tool_args)
@@ -411,7 +419,14 @@ class AgentBrain:
             action.executed_at = datetime.utcnow()
             action.completed_at = datetime.utcnow()
             action.auto_approved = True
-            self.db.commit()
+            try:
+                self.db.commit()
+            except Exception as db_err:
+                logger.warning("DB commit failed in _execute_tool for %s: %s", tool_name, db_err)
+                try:
+                    self.db.rollback()
+                except Exception:
+                    pass
             return result, action
 
         if risk == RiskLevel.SAFE:
@@ -430,11 +445,25 @@ class AgentBrain:
                 action.error = result["error"]
                 action.status = "failed"
                 action.completed_at = datetime.utcnow()
-            self.db.commit()
+            try:
+                self.db.commit()
+            except Exception as db_err:
+                logger.warning("DB commit failed in _execute_tool (celery) for %s: %s", tool_name, db_err)
+                try:
+                    self.db.rollback()
+                except Exception:
+                    pass
             return result, action
         
         action.status = "pending_approval"
-        self.db.commit()
+        try:
+            self.db.commit()
+        except Exception as db_err:
+            logger.warning("DB commit failed in _execute_tool (approval) for %s: %s", tool_name, db_err)
+            try:
+                self.db.rollback()
+            except Exception:
+                pass
         
         return {
             "status": "pending_approval",
@@ -2260,12 +2289,15 @@ class AgentBrain:
                     except json.JSONDecodeError:
                         tool_args = {}
                     
-                    # Execute tool
-                    result, action = await self._execute_tool(
-                        tool_name, tool_args, message.get("content") or ""
-                    )
+                    try:
+                        result, action = await self._execute_tool(
+                            tool_name, tool_args, message.get("content") or ""
+                        )
+                    except Exception as tool_err:
+                        logger.warning("Tool execution failed for %s: %s", tool_name, tool_err)
+                        result = {"error": f"Tool execution failed: {type(tool_err).__name__}: {tool_err}"}
+                        action = None
                     
-                    # Add tool result to conversation
                     self._conversation.append({
                         "role": "tool",
                         "tool_call_id": tool_call["id"],
