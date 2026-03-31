@@ -376,8 +376,19 @@ def evaluate_exits_task() -> dict:
         for order_id, exit_tier in pending_exit_order_submits:
             _auto_submit_exit_order(order_id, exit_tier)
         
-        # Log summary
+        # Notify Brain of exit alerts
         if exit_recommendations:
+            from backend.services.brain.webhook_client import brain_webhook
+            brain_webhook.notify_sync(
+                "exit_alert",
+                {
+                    "count": len(exit_recommendations),
+                    "signals_created": signals_created,
+                    "orders_created": orders_created,
+                    "recommendations": exit_recommendations,
+                },
+            )
+
             logger.info(
                 "Exit evaluation complete: %d positions, %d exit recommendations, %d signals, %d orders",
                 evaluated, len(exit_recommendations), signals_created, orders_created,

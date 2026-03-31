@@ -108,6 +108,21 @@ def check_regime_alerts() -> dict:
                     alert.message,
                 )
 
+            regime_shifts = [a for a in alerts if a.alert_type == "regime_shift"]
+            if regime_shifts:
+                from backend.services.brain.webhook_client import brain_webhook
+                for shift in regime_shifts:
+                    brain_webhook.notify_sync(
+                        "regime_change",
+                        {
+                            "alert_type": shift.alert_type,
+                            "severity": shift.severity,
+                            "message": shift.message,
+                            "current_value": shift.current_value,
+                            "threshold": shift.threshold,
+                        },
+                    )
+
         return {
             "checked_at": datetime.utcnow().isoformat(),
             "alerts": [

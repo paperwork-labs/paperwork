@@ -150,6 +150,12 @@ class BrainWebhookClient:
     async def scan_alert(self, scan_data: Dict[str, Any], user_id: Optional[int] = None) -> bool:
         return await self.notify("scan_alert", scan_data, user_id)
 
+    async def regime_change(self, regime_data: Dict[str, Any], user_id: Optional[int] = None) -> bool:
+        return await self.notify("regime_change", regime_data, user_id)
+
+    async def exit_alert(self, exit_data: Dict[str, Any], user_id: Optional[int] = None) -> bool:
+        return await self.notify("exit_alert", exit_data, user_id)
+
     async def approval_required(self, order_data: Dict[str, Any], user_id: int) -> bool:
         return await self.notify("approval_required", order_data, user_id)
 

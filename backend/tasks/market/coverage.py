@@ -63,6 +63,10 @@ def _run_scan_overlay() -> dict:
             rank = bisect.bisect_left(atrx_vals, val)
             return (rank / atrx_count) * 100
 
+        _ALERT_TIERS = {"Breakout Elite", "Breakout Standard"}
+        previous_tiers = {snap.symbol: snap.scan_tier for snap in snapshots}
+        new_candidates = []
+
         updated = 0
         for snap in snapshots:
             try:
@@ -87,6 +91,15 @@ def _run_scan_overlay() -> dict:
                     scan_tier=tier,
                     regime=regime_state,
                 )
+                prev = previous_tiers.get(snap.symbol)
+                if tier in _ALERT_TIERS and prev not in _ALERT_TIERS:
+                    new_candidates.append({
+                        "symbol": snap.symbol,
+                        "scan_tier": tier,
+                        "action_label": label,
+                        "stage": scan_input.stage_label,
+                        "rs_mansfield": float(snap.rs_mansfield_pct) if snap.rs_mansfield_pct is not None else None,
+                    })
                 snap.scan_tier = tier
                 snap.action_label = label
                 updated += 1
@@ -97,7 +110,19 @@ def _run_scan_overlay() -> dict:
                 continue
 
         session.commit()
-        return {"status": "ok", "updated": updated, "total": len(snapshots)}
+
+        if new_candidates:
+            from backend.services.brain.webhook_client import brain_webhook
+            brain_webhook.notify_sync(
+                "scan_alert",
+                {
+                    "regime_state": regime_state,
+                    "new_candidates": new_candidates,
+                    "count": len(new_candidates),
+                },
+            )
+
+        return {"status": "ok", "updated": updated, "total": len(snapshots), "new_alerts": len(new_candidates)}
     except Exception:
         session.rollback()
         raise

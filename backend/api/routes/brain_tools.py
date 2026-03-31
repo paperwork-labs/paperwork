@@ -397,3 +397,111 @@ async def tools_reject_trade(
     if result.get("error"):
         raise HTTPException(status_code=400, detail=result["error"])
     return result
+
+
+# ========================= SCHEDULE MANAGEMENT =========================
+
+
+class RunTaskBody(BaseModel):
+    task_id: str = Field(..., min_length=1, description="Catalog task ID, e.g. admin_coverage_backfill")
+
+
+@router.get("/schedules")
+async def tools_list_schedules(
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """List all scheduled tasks from the job catalog with last run status."""
+    from backend.tasks.job_catalog import CATALOG
+    from backend.models.market_data import JobRun
+
+    labels = [j.job_run_label for j in CATALOG if j.job_run_label]
+    latest_runs: Dict[str, JobRun] = {}
+    if labels:
+        try:
+            subq = (
+                db.query(
+                    JobRun.task_name,
+                    func.max(JobRun.started_at).label("max_started"),
+                )
+                .filter(JobRun.task_name.in_(labels))
+                .group_by(JobRun.task_name)
+                .subquery()
+            )
+            runs = (
+                db.query(JobRun)
+                .join(
+                    subq,
+                    (JobRun.task_name == subq.c.task_name)
+                    & (JobRun.started_at == subq.c.max_started),
+                )
+                .all()
+            )
+            latest_runs = {r.task_name: r for r in runs}
+        except Exception:
+            logger.exception(
+                "Failed to batch-fetch latest JobRun rows for schedules (labels=%s)",
+                labels,
+            )
+
+    schedules = []
+    for job in CATALOG:
+        entry: Dict[str, Any] = {
+            "id": job.id,
+            "display_name": job.display_name,
+            "group": job.group,
+            "task": job.task,
+            "cron": job.default_cron,
+            "timezone": job.default_tz,
+        }
+        if job.job_run_label:
+            try:
+                last = latest_runs.get(job.job_run_label)
+                if last:
+                    entry["last_run"] = {
+                        "status": last.status,
+                        "started_at": last.started_at.isoformat() if last.started_at else None,
+                        "finished_at": last.finished_at.isoformat() if last.finished_at else None,
+                    }
+            except Exception:
+                logger.exception(
+                    "Failed to fetch last JobRun for job id=%s label=%s",
+                    job.id,
+                    getattr(job, "job_run_label", None),
+                )
+        schedules.append(entry)
+
+    return {"schedules": schedules, "count": len(schedules), "scheduler": "celery_beat"}
+
+
+@router.post("/run-task")
+async def tools_run_task(
+    body: RunTaskBody,
+) -> Dict[str, Any]:
+    """Trigger a catalog task to run immediately via Celery."""
+    from backend.tasks.job_catalog import CATALOG
+    from backend.tasks.celery_app import celery_app
+
+    catalog_map = {j.id: j for j in CATALOG}
+    job = catalog_map.get(body.task_id)
+    if not job:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Unknown task_id: {body.task_id}",
+        )
+
+    try:
+        result = celery_app.send_task(
+            job.task,
+            kwargs=job.kwargs or {},
+            args=job.args or [],
+            queue=job.queue or "celery",
+        )
+        return {
+            "status": "dispatched",
+            "task_id": result.id,
+            "task": job.task,
+            "display_name": job.display_name,
+        }
+    except Exception as e:
+        logger.warning("run-task failed for %s: %s", body.task_id, e)
+        raise HTTPException(status_code=500, detail="Failed to dispatch task") from e

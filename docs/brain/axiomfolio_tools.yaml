@@ -40,6 +40,15 @@ tools:
     path: /api/v1/tools/scan
     tier: 0
     timeout_seconds: 15
+    parameters:
+      - name: scan_tier
+        type: string
+        required: false
+        description: "Filter by scan tier, e.g. Breakout Elite"
+      - name: limit
+        type: integer
+        required: false
+        description: "Max results (1-500, default 50)"
     
   - name: get_risk_status
     description: "Get circuit breaker status and risk metrics"
@@ -66,6 +75,17 @@ tools:
         type: number
         required: true
         description: "Number of shares (supports fractional)"
+      - name: order_type
+        type: string
+        enum: [market, limit, stop, stop_limit]
+        required: false
+        description: "Order type (default: market)"
+      - name: limit_price
+        type: number
+        required: false
+      - name: stop_price
+        type: number
+        required: false
     
   - name: execute_trade
     description: "Execute an approved trade order"
@@ -103,3 +123,50 @@ tools:
         type: string
         required: false
         description: "Reason for rejection"
+
+  - name: list_schedules
+    description: "List all scheduled tasks from the job catalog with last run status"
+    method: GET
+    path: /api/v1/tools/schedules
+    tier: 0
+    timeout_seconds: 5
+
+  - name: run_task
+    description: "Trigger a catalog task to run immediately via Celery"
+    method: POST
+    path: /api/v1/tools/run-task
+    tier: 2
+    timeout_seconds: 10
+    parameters:
+      - name: task_id
+        type: string
+        required: true
+        description: "Catalog task ID, e.g. admin_coverage_backfill"
+
+webhook_events:
+  url: ${BRAIN_WEBHOOK_URL}/api/v1/webhooks/axiomfolio
+  auth:
+    type: hmac_sha256
+    header: X-Webhook-Signature
+    env_var: BRAIN_WEBHOOK_SECRET
+  events:
+    - name: trade_executed
+      description: "Order filled by broker"
+    - name: position_closed
+      description: "Position fully closed"
+    - name: stop_triggered
+      description: "Stop loss triggered"
+    - name: risk_gate_activated
+      description: "Circuit breaker or risk limit hit"
+    - name: scan_alert
+      description: "New Breakout Elite/Standard candidates detected"
+    - name: regime_change
+      description: "Market regime shifted (e.g. R2 to R3)"
+    - name: exit_alert
+      description: "Exit cascade triggered for held positions"
+    - name: approval_required
+      description: "Trade requires owner approval"
+    - name: daily_digest
+      description: "Daily intelligence digest generated"
+    - name: weekly_brief
+      description: "Weekly strategy brief generated"
