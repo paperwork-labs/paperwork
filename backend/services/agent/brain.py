@@ -385,90 +385,114 @@ class AgentBrain:
     ) -> Tuple[Dict[str, Any], Optional[AgentAction]]:
         """
         Execute a tool call and return the result.
+
+        Resilient design: Audit trail (AgentAction) failures never block tool
+        execution. Users get their results even if the audit record fails to write.
         
         Returns:
             Tuple of (result_dict, AgentAction or None)
         """
         risk = classify_action_risk(tool_name)
         auto_exec = can_auto_execute(tool_name, settings.AGENT_AUTONOMY_LEVEL)
-        
-        action = AgentAction(
-            action_type=tool_name,
-            action_name=self._get_action_display_name(tool_name),
-            payload=tool_args,
-            risk_level=risk.value,
-            status="pending",
-            reasoning=reasoning,
-            session_id=self.session_id,
-        )
-        self.db.add(action)
+
+        # Try to create audit record, but don't block on failure
+        action: Optional[AgentAction] = None
+        audit_ok = False
         try:
+            action = AgentAction(
+                action_type=tool_name,
+                action_name=self._get_action_display_name(tool_name),
+                payload=tool_args,
+                risk_level=risk.value,
+                status="pending",
+                reasoning=reasoning,
+                session_id=self.session_id,
+            )
+            self.db.add(action)
             self.db.flush()
+            audit_ok = True
         except Exception as db_err:
-            logger.warning("DB flush failed in _execute_tool for %s: %s", tool_name, db_err)
+            logger.warning(
+                "Audit record failed for tool %s (proceeding anyway): %s",
+                tool_name, db_err, exc_info=True
+            )
             try:
                 self.db.rollback()
             except Exception:
                 pass
-            return {"error": f"Database error recording action: {type(db_err).__name__}"}, None
+            action = None
 
-        async def _run_inline_safe_tool() -> Tuple[Dict[str, Any], AgentAction]:
-            result = await self._execute_safe_tool(tool_name, tool_args)
-            action.status = "completed"
-            action.result = result
-            action.executed_at = datetime.utcnow()
-            action.completed_at = datetime.utcnow()
-            action.auto_approved = True
+        def _finalize_action(result: Dict[str, Any], status: str) -> None:
+            """Update and commit the action record if it exists."""
+            if action is None:
+                return
             try:
+                action.status = status
+                action.result = result
+                action.executed_at = datetime.utcnow()
+                action.completed_at = datetime.utcnow()
+                action.auto_approved = True
                 self.db.commit()
             except Exception as db_err:
-                logger.warning("DB commit failed in _execute_tool for %s: %s", tool_name, db_err)
+                logger.warning(
+                    "Failed to finalize audit record for %s: %s",
+                    tool_name, db_err
+                )
                 try:
                     self.db.rollback()
                 except Exception:
                     pass
+
+        # SAFE or INLINE_ONLY tools: execute inline
+        if risk == RiskLevel.SAFE or tool_name in INLINE_ONLY_AGENT_TOOLS:
+            result = await self._execute_safe_tool(tool_name, tool_args)
+            _finalize_action(result, "completed")
             return result, action
 
-        if risk == RiskLevel.SAFE:
-            return await _run_inline_safe_tool()
-
-        if tool_name in INLINE_ONLY_AGENT_TOOLS:
-            return await _run_inline_safe_tool()
-
+        # MODERATE tools with auto_exec: dispatch to Celery
         if auto_exec:
             result = await self._dispatch_celery_task(tool_name, tool_args)
-            action.status = "executing" if result.get("task_id") else "failed"
-            action.task_id = result.get("task_id")
-            action.executed_at = datetime.utcnow()
-            action.auto_approved = True
-            if result.get("error"):
-                action.error = result["error"]
-                action.status = "failed"
-                action.completed_at = datetime.utcnow()
+            if action:
+                action.task_id = result.get("task_id")
+                if result.get("error"):
+                    action.error = result["error"]
+                    _finalize_action(result, "failed")
+                else:
+                    action.status = "executing"
+                    action.executed_at = datetime.utcnow()
+                    action.auto_approved = True
+                    try:
+                        self.db.commit()
+                    except Exception as db_err:
+                        logger.warning(
+                            "Failed to update audit record for celery task %s: %s",
+                            tool_name, db_err
+                        )
+                        try:
+                            self.db.rollback()
+                        except Exception:
+                            pass
+            return result, action
+
+        # RISKY/CRITICAL tools: require approval
+        if action:
+            action.status = "pending_approval"
             try:
                 self.db.commit()
             except Exception as db_err:
-                logger.warning("DB commit failed in _execute_tool (celery) for %s: %s", tool_name, db_err)
+                logger.warning(
+                    "Failed to set pending_approval status for %s: %s",
+                    tool_name, db_err
+                )
                 try:
                     self.db.rollback()
                 except Exception:
                     pass
-            return result, action
-        
-        action.status = "pending_approval"
-        try:
-            self.db.commit()
-        except Exception as db_err:
-            logger.warning("DB commit failed in _execute_tool (approval) for %s: %s", tool_name, db_err)
-            try:
-                self.db.rollback()
-            except Exception:
-                pass
-        
+
         return {
             "status": "pending_approval",
             "message": f"Action '{tool_name}' requires human approval (risk: {risk.value})",
-            "action_id": action.id,
+            "action_id": action.id if action else None,
         }, action
     
     async def _execute_safe_tool(

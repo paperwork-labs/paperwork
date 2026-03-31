@@ -9,7 +9,7 @@ Supports approval workflow for risky actions.
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, JSON, Boolean, Float
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, JSON, Boolean, Float, func
 from sqlalchemy.orm import relationship
 
 from . import Base
@@ -31,7 +31,7 @@ class AgentAction(Base):
     risk_level = Column(String(20), nullable=False, index=True)  # safe, moderate, risky, critical
     
     # Status tracking
-    status = Column(String(20), nullable=False, default="pending", index=True)
+    status = Column(String(20), nullable=False, default="pending", server_default="pending", index=True)
     # pending -> approved/rejected -> executing -> completed/failed
     
     # LLM reasoning
@@ -45,7 +45,7 @@ class AgentAction(Base):
     error = Column(Text, nullable=True)
     
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, server_default=func.now(), nullable=False)
     approved_at = Column(DateTime, nullable=True)
     executed_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
