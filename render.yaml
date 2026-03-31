@@ -73,7 +73,7 @@ services:
           type: keyvalue
           name: axiomfolio-redis
           property: connectionString
-    dockerCommand: celery -A backend.tasks.celery_app worker -Q celery,account_sync,orders --loglevel=info
+    dockerCommand: celery -A backend.tasks.celery_app worker --beat -Q celery,account_sync,orders --loglevel=info
 
   - type: web
     name: axiomfolio-frontend

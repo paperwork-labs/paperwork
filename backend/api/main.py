@@ -313,11 +313,42 @@ async def startup_event():
 @app.get("/health")
 async def health_check():
     """Health check endpoint for load balancers and monitoring."""
+    from backend.database import SessionLocal
+    from sqlalchemy import text
+
+    db_ok = False
+    db_error = None
+    db_tables = 0
+    alembic_version = None
+
+    try:
+        db = SessionLocal()
+        result = db.execute(text("SELECT count(*) FROM information_schema.tables WHERE table_schema='public'"))
+        db_tables = result.scalar()
+
+        try:
+            ver = db.execute(text("SELECT version_num FROM alembic_version LIMIT 1"))
+            row = ver.fetchone()
+            alembic_version = row[0] if row else "no-row"
+        except Exception:
+            alembic_version = "no-table"
+
+        db_ok = True
+        db.close()
+    except Exception as e:
+        db_error = str(e)[:200]
+
     return {
-        "status": "healthy",
+        "status": "healthy" if db_ok else "degraded",
         "version": "2.0.0",
         "timestamp": datetime.now().isoformat(),
         "api": "AxiomFolio V1",
+        "db": {
+            "connected": db_ok,
+            "tables": db_tables,
+            "alembic_version": alembic_version,
+            "error": db_error,
+        },
     }
 
 
