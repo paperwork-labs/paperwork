@@ -1,6 +1,6 @@
 /// <reference types="vitest" />
 import tailwindcss from '@tailwindcss/vite'
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
 // https://vitejs.dev/config/
@@ -26,10 +26,21 @@ export default defineConfig({
     chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
-        manualChunks: {
-          react: ['react', 'react-dom', 'react-router-dom'],
-          recharts: ['recharts'],
-          vendor: ['axios', 'lodash', 'numeral', 'socket.io-client'],
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (id.includes('node_modules/react-router-dom')) return 'react'
+          if (id.includes('node_modules/react-dom')) return 'react'
+          if (id.includes('node_modules/react/')) return 'react'
+          if (id.includes('node_modules/recharts')) return 'recharts'
+          if (
+            id.includes('node_modules/axios') ||
+            id.includes('node_modules/lodash') ||
+            id.includes('node_modules/numeral') ||
+            id.includes('node_modules/socket.io-client')
+          ) {
+            return 'vendor'
+          }
+          return undefined
         },
       },
     },
@@ -39,7 +50,6 @@ export default defineConfig({
       '@': '/src',
     },
   },
-  // @ts-expect-error - Vitest extends Vite config at runtime.
   test: {
     // jsdom provides spec-compliant localStorage; happy-dom + Vitest 4 + some Node versions
     // left localStorage.getItem as non-function (breaks ColorModeProvider and most tests).
