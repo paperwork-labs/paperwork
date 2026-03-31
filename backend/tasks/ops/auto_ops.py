@@ -101,6 +101,7 @@ REMEDIATION_MAP = {
     "audit": [
         ("backend.tasks.market.coverage.daily_bootstrap", {"history_days": 5, "history_batch_size": 25}),
         ("backend.tasks.market.history.record_daily", {}),
+        ("backend.tasks.market.maintenance.audit_quality", {}),
     ],
     "regime": [
         ("backend.tasks.market.regime.compute_daily", {}),
@@ -216,8 +217,10 @@ def _rule_based_remediation(health: dict) -> dict:
             continue
 
         if dim_name == "regime" and not _is_market_adjacent_hours():
-            skipped.append({"dimension": dim_name, "reason": "outside_market_hours"})
-            continue
+            age_hours = float(dim_data.get("age_hours", 0) or 0)
+            if age_hours < 72:
+                skipped.append({"dimension": dim_name, "reason": "outside_market_hours"})
+                continue
 
         tasks_to_dispatch = REMEDIATION_MAP.get(dim_name, [])
         if not tasks_to_dispatch:

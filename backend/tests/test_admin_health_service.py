@@ -285,7 +285,7 @@ def test_portfolio_sync_ok_when_no_enabled_accounts():
 
 def test_portfolio_sync_green_when_all_accounts_fresh():
     svc = _mock_service()
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     a1 = MagicMock()
     a1.last_successful_sync = now - timedelta(hours=1)
     a1.account_number = "U111"
@@ -303,7 +303,7 @@ def test_portfolio_sync_green_when_all_accounts_fresh():
 
 def test_portfolio_sync_red_when_some_accounts_stale():
     svc = _mock_service()
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     fresh = MagicMock()
     fresh.last_successful_sync = now - timedelta(hours=1)
     fresh.account_number = "FRESH1"

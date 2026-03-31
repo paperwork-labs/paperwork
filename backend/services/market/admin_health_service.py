@@ -394,7 +394,7 @@ class AdminHealthService:
         try:
             from backend.models import BrokerAccount
 
-            cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+            cutoff = datetime.utcnow() - timedelta(hours=24)
             accounts = db.query(BrokerAccount).filter(
                 BrokerAccount.is_enabled.is_(True)
             ).all()

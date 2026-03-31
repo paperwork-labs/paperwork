@@ -465,7 +465,8 @@ async def agent_chat(
         )
 
     if "error" in result:
-        raise HTTPException(status_code=500, detail=result["error"])
+        logger.warning("Agent chat returned error: %s", result["error"])
+        raise HTTPException(status_code=502, detail="Agent is temporarily unavailable")
 
     # New chat (no client session) or brain ended on a different session id: persist
     # a row so /agent/sessions and the session sidebar include this conversation.

@@ -64,9 +64,10 @@ ladle-build:
 test-up:
 	$(COMPOSE_TEST) up -d postgres_test redis_test
 
-# Compile all backend Python files (same image as pytest) — catches SyntaxError/IndentationError early.
+# Check all backend Python files for syntax errors (SyntaxError/IndentationError).
+# Uses ast.parse() to avoid writing .pyc/__pycache__ (fails in Docker as non-root).
 test-syntax:
-	$(COMPOSE_TEST) run --rm backend_test bash -lc "find backend -name '*.py' -exec python -m py_compile {} +"
+	$(COMPOSE_TEST) run --rm backend_test python scripts/check_syntax.py
 
 test:
 	@# Always use a fresh isolated test DB volume to prevent migration drift.

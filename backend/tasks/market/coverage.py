@@ -338,6 +338,14 @@ def daily_bootstrap(
     _append("admin_coverage_refresh", res10)
 
     try:
+        from backend.tasks.market.maintenance import audit_quality as _audit_quality
+        res10b = _audit_quality()
+    except Exception as exc:
+        logger.warning("Audit quality refresh failed (non-fatal): %s", exc)
+        res10b = {"status": "error", "error": str(exc)}
+    _append("admin_market_data_audit", res10b)
+
+    try:
         from backend.tasks.intelligence.tasks import generate_daily_digest_task
 
         res11 = generate_daily_digest_task(deliver_brain=True)

@@ -260,6 +260,18 @@ AGENT_TOOLS: List[Dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "fill_missing_fundamentals",
+            "description": "Fill missing fundamental data (market cap, sector, industry) for tracked symbols.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
     # ==================== HOLISTIC CHAT TOOLS ====================
     {
         "type": "function",
@@ -786,6 +798,7 @@ TOOL_TO_CELERY_TASK: Dict[str, str] = {
     "recover_stale_jobs": "backend.tasks.market.maintenance.recover_jobs",
     "bootstrap_coverage": "backend.tasks.market.coverage.daily_bootstrap",
     "refresh_index_constituents": "backend.tasks.market.backfill.constituents",
+    "fill_missing_fundamentals": "backend.tasks.market.fundamentals.fill_missing",
 }
 
 

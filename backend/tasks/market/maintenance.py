@@ -34,7 +34,7 @@ def prune_old_bars(max_days_5m: int = 90) -> dict:
         from backend.services.notifications.alerts import alert_service
 
         effective_days = int(max_days_5m or settings.RETENTION_MAX_DAYS_5M)
-        cutoff = datetime.now(timezone.utc) - timedelta(days=effective_days)
+        cutoff = datetime.utcnow() - timedelta(days=effective_days)
         deleted = (
             session.query(PriceData)
             .filter(PriceData.interval == "5m", PriceData.date < cutoff)

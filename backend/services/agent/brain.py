@@ -2295,7 +2295,7 @@ class AgentBrain:
                         )
                     except Exception as tool_err:
                         logger.warning("Tool execution failed for %s: %s", tool_name, tool_err)
-                        result = {"error": f"Tool execution failed: {type(tool_err).__name__}: {tool_err}"}
+                        result = {"error": "Tool execution failed", "type": type(tool_err).__name__}
                         action = None
                     
                     self._conversation.append({
