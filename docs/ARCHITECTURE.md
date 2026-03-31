@@ -4,6 +4,10 @@
 
 - [At a glance](#at-a-glance)
 - [Three Pillars](#three-pillars)
+- [Brain Integration](#brain-integration)
+  - [HTTP tool endpoints](#http-tool-endpoints)
+  - [Outbound webhooks](#outbound-webhooks)
+  - [Internal agent vs Paperwork Brain](#internal-agent-vs-paperwork-brain)
 - [System Overview](#system-overview)
 - [Data Model Inventory](#data-model-inventory)
 - [Backend Module Structure](#backend-module-structure)
@@ -15,8 +19,6 @@
 - [Broker Data Strategy](#broker-data-strategy)
 - [Production Infrastructure](#production-infrastructure)
 - [Real-Time Trading Architecture](#real-time-trading-architecture)
-- [Brain Integration](#brain-integration)
-  - [AxiomFolio Agent vs Paperwork Brain](#axiomfolio-agent-vs-paperwork-brain)
 - [Known Gaps](#known-gaps)
 
 ---
@@ -26,7 +28,7 @@
 | Layer | Stack | Where to read more |
 |-------|-------|--------------------|
 | **Backend** | FastAPI, Celery, PostgreSQL, Redis | This doc; [PRODUCTION.md](PRODUCTION.md) for deploy |
-| **Frontend** | React, Chakra v3, Vite, React Query, Recharts, TradingView | [FRONTEND_UI.md](FRONTEND_UI.md) |
+| **Frontend** | React, shadcn/ui, Tailwind CSS, Vite, React Query, Recharts, TradingView | [FRONTEND_UI.md](FRONTEND_UI.md) |
 | **Brokers** | IBKR (FlexQuery + Gateway), TastyTrade, Schwab | [CONNECTIONS.md](CONNECTIONS.md) (setup/OAuth); [BROKERS.md](BROKERS.md) (sync impl) |
 | **Domain pillars** | Portfolio, Market data | [PORTFOLIO.md](PORTFOLIO.md), [MARKET_DATA.md](MARKET_DATA.md) |
 
@@ -67,11 +69,74 @@ flowchart LR
 - **Intelligence (brain)**: Market data pipeline -> indicators (Weinstein stage, RS Mansfield, TD Sequential, RSI, ATR, etc.) -> MarketSnapshot -> MarketSnapshotHistory (immutable daily ledger). Rule engine evaluates condition trees against snapshot + position context.
 - **Strategy (execution)**: Strategy definition -> Rule evaluator -> signals -> Order engine -> Risk gate -> Broker router (paper or live) -> Reconciler.
 
+## Brain Integration
+
+**Paperwork Brain** is the external AI assistant/orchestrator. It calls AxiomFolio over HTTP as a tool provider at **`/api/v1/tools/*`**. The Brain integration standard defines **12 HTTP tool endpoints**; the route table lists the exact paths (including separate POSTs for approve and reject). Typical flows: read portfolio and market state, run scans, preview and execute trades with approvals, list pending approvals, and inspect or dispatch catalog tasks.
+
+```mermaid
+flowchart LR
+    PB[Paperwork Brain]
+    API[AxiomFolio API]
+    PB -->|"HTTP /api/v1/tools/*"| API
+    API -->|"Webhook POST (HMAC-SHA256)"| PB
+```
+
+### HTTP tool endpoints
+
+Brain calls AxiomFolio under `/api/v1/tools/*` (`backend/api/routes/brain_tools.py`; manifest `docs/brain/axiomfolio_tools.yaml`). The contract includes read, trade, and ops helpers:
+
+| Path | Method | Purpose |
+|------|--------|---------|
+| `/api/v1/tools/portfolio` | GET | Portfolio summary |
+| `/api/v1/tools/regime` | GET | Market regime (R1–R5) |
+| `/api/v1/tools/stage/{symbol}` | GET | Stage Analysis for a symbol |
+| `/api/v1/tools/scan` | GET | Run scans |
+| `/api/v1/tools/risk` | GET | Risk / circuit breaker status |
+| `/api/v1/tools/preview-trade` | POST | Create preview order |
+| `/api/v1/tools/execute-trade` | POST | Execute order |
+| `/api/v1/tools/approve-trade`, `/api/v1/tools/reject-trade` | POST | Approve or reject a pending trade |
+| `/api/v1/tools/pending-approvals` | GET | List orders awaiting approval |
+| `/api/v1/tools/schedules` | GET | List Celery Beat schedules (catalog-backed) |
+| `/api/v1/tools/run-task` | POST | Dispatch a catalog task by id |
+
+All **twelve** HTTP paths above are implemented in `brain_tools.py` (approve and reject are two separate paths).
+
+**Authentication**: `X-Brain-Api-Key` header, compared with timing-safe equality against `BRAIN_API_KEY`. Portfolio and order views use `BRAIN_TOOLS_USER_ID` as the acting user.
+
+### Outbound webhooks
+
+AxiomFolio notifies Brain with **HMAC-SHA256–signed** HTTP POSTs: JSON body signed with `BRAIN_WEBHOOK_SECRET`, sent as `X-Webhook-Signature: sha256=<hex>`. The request URL is `{BRAIN_WEBHOOK_URL}/api/v1/webhooks/axiomfolio` (see `backend/services/brain/webhook_client.py`).
+
+**Event types** (contract Brain can subscribe to): `trade_executed`, `position_closed`, `stop_triggered`, `risk_gate_activated`, `scan_alert`, `regime_change`, `exit_alert`, `approval_required`, `approval_expired`, `daily_digest`, `weekly_brief`. Additional operational or test events may appear from `NotificationService` and related callers.
+
+### Internal agent vs Paperwork Brain
+
+The **internal agent** (`AgentBrain` / **AxiomBrain** in `backend/services/agent/brain.py`) is **not** the same surface as Brain HTTP tools. It is the in-app domain intelligence layer: health remediation (auto-ops), admin chat, and a large set of internal tools in `backend/services/agent/tools.py` (DB, market insight, schedules, codebase read, backtests, etc.). Those tools are invoked as Python callables inside the API/worker, not exposed on `/api/v1/tools/*`.
+
+Paperwork Brain consumes AxiomFolio as one product skill via the 12 curated HTTP tools in the table above (MCP registration in Paperwork’s `apis/brain/app/mcp_server.py`, proxy in `apis/brain/app/tools/axiomfolio.py`).
+
+### User roles (Brain / trading context)
+
+| Role | Permissions |
+|------|-------------|
+| `owner` | Full access, approve/execute trades |
+| `analyst` | Read access, propose trades (needs approval) |
+| `viewer` | Read-only |
+
+### Approval workflow (high level)
+
+1. Brain calls `POST /api/v1/tools/preview-trade`.
+2. If approval is required → order status `PENDING_APPROVAL`.
+3. AxiomFolio webhooks Brain: `approval_required`.
+4. User approves or rejects via Brain → `approve-trade` / `reject-trade`.
+5. Brain calls `execute-trade` → broker path through `OrderManager` / risk gate.
+6. AxiomFolio webhooks Brain: `trade_executed` (and related events as applicable).
+
 ## System Overview
 
 - **Backend**: FastAPI, Celery workers for sync and market data jobs.
 - **Data**: PostgreSQL (state), Redis (cache/queue).
-- **Frontend**: React SPA (Chakra v3, React Query, Recharts, lightweight-charts v5, TradingView widget).
+- **Frontend**: React SPA (shadcn/ui, Tailwind CSS, React Query, Recharts, lightweight-charts v5, TradingView widget).
 - **Brokers**: IBKR (FlexQuery XML + TWS Gateway), TastyTrade (SDK), Schwab (OAuth 2.0 + PKCE via `api.schwabapi.com`).
 
 ## Data Model Inventory
@@ -123,7 +188,7 @@ Row counts below are illustrative; run DB queries for current state.
 | `/api/v1/market-data/intelligence` | `market/intelligence.py` | Intelligence briefs |
 | `/api/v1/strategies` | `strategies.py` | Strategy management |
 | `/api/v1/risk` | `risk.py` | Circuit breaker status + reset |
-| `/api/v1/tools/*` | `brain_tools.py` | Brain tool endpoints (API key auth) |
+| `/api/v1/tools/*` | `brain_tools.py` | Brain HTTP tools (`X-Brain-Api-Key`); 12 endpoints |
 | `/api/v1/webhooks/tradingview` | `webhooks/tradingview.py` | TradingView alert webhook |
 | `/api/v1/admin` | `admin.py` | Admin operations |
 | `/api/v1/admin/agent` | `admin/agent.py` | Agent management |
@@ -202,7 +267,7 @@ Row counts below are illustrative; run DB queries for current state.
 ### Broker Sync Pipeline
 
 ```
-Trigger (manual/cron)
+Trigger (manual or Celery Beat–scheduled)
   -> Celery sync_account_task
     -> BrokerSyncService.sync_account_async()
       -> IBKRSyncService / TastyTradeSyncService / SchwabSyncService
@@ -250,8 +315,8 @@ Activity endpoint (/activity)
 
 ## Scheduling
 
-- **Source of truth**: Celery Beat loads periodic tasks from `backend/tasks/job_catalog.py`. Rows in `cron_schedule` mirror that catalog for admin UI and history; the beat schedule is the runtime driver.
-- **Render cron jobs**: Retired. They added cost (three extra Docker builds) without meaningful resilience beyond Beat + workers; all recurring work now runs on the Celery worker via Beat.
+- **Source of truth**: All recurring jobs are defined in the job catalog (`backend/tasks/job_catalog.py`). In production on Render, Beat is embedded in the worker process (`--beat` flag). Legacy Render cron jobs are suspended but the sync code (`render_sync_service.py`) remains for potential non-Beat deployments.
+- **Runtime**: Celery Beat loads periodic tasks from the catalog. Rows in `cron_schedule` mirror that catalog for admin UI and history; Beat is the runtime driver.
 - **Catalog scope**: Twenty scheduled tasks across six areas: **portfolio**, **market_data**, **strategy**, **intelligence**, **maintenance**, and **auto-ops** (health remediation every 15 minutes; registered in the catalog alongside other maintenance entries).
 - **`JobTemplate` fields** (each catalog row): `id`, `display_name`, `group`, Celery `task`, `default_cron`, `default_tz`, optional `job_run_label` (for `JobRun` history lookup), plus timeouts, queues, and payload defaults.
 - **Admin UI**: Admin → Schedules for CRUD on stored schedules.
@@ -406,80 +471,6 @@ flowchart LR
 | 3 | 5% | Kill switch - all trading halted |
 
 Resets at 4 AM ET (configurable via `trading_day_timezone`, `trading_day_reset_hour`).
-
----
-
-## Brain Integration
-
-AxiomFolio exposes itself as a tool provider for the Paperwork Brain orchestrator.
-
-### Tool Endpoints
-
-| Endpoint | Method | Tier | Description |
-|----------|--------|------|-------------|
-| `/api/v1/tools/portfolio` | GET | 0 | Portfolio summary |
-| `/api/v1/tools/regime` | GET | 0 | Market regime R1-R5 |
-| `/api/v1/tools/stage/{symbol}` | GET | 0 | Stage Analysis |
-| `/api/v1/tools/scan` | GET | 0 | Run scans |
-| `/api/v1/tools/risk` | GET | 0 | Circuit breaker status |
-| `/api/v1/tools/preview-trade` | POST | 2 | Create PREVIEW order |
-| `/api/v1/tools/execute-trade` | POST | 3 | Execute order |
-| `/api/v1/tools/approve-trade` | POST | 3 | Approve pending |
-| `/api/v1/tools/reject-trade` | POST | 3 | Reject pending |
-
-Authentication: `X-Brain-Api-Key` header (compared via `secrets.compare_digest`).
-
-### Webhook Events
-
-AxiomFolio → Brain via POST to `{BRAIN_WEBHOOK_URL}/webhooks/axiomfolio`:
-
-| Event | Trigger |
-|-------|---------|
-| `trade_executed` | Order filled |
-| `position_closed` | Position fully closed |
-| `stop_triggered` | Stop loss hit |
-| `risk_gate_activated` | Circuit breaker tripped |
-| `approval_required` | Tier 3 trade needs approval |
-
-### User Roles
-
-| Role | Permissions |
-|------|-------------|
-| `owner` | Full access, approve/execute trades |
-| `analyst` | Read access, propose trades (needs approval) |
-| `viewer` | Read-only |
-
-### Approval Workflow
-
-```
-1. Brain calls POST /tools/preview-trade
-2. If approval required → status = PENDING_APPROVAL
-3. AxiomFolio webhooks Brain: approval_required
-4. Brain posts to Slack with [Approve] [Reject]
-5. User clicks → Brain calls approve-trade or reject-trade
-6. Brain calls execute-trade → broker execution
-7. AxiomFolio webhooks Brain: trade_executed
-```
-
-### AxiomFolio Agent vs Paperwork Brain
-
-Two distinct "brains" exist in the ecosystem:
-
-| | AxiomFolio AgentBrain | Paperwork Brain |
-|---|---|---|
-| Role | Domain intelligence — health remediation, interactive chat, market analysis | Orchestrator — routes user intent to the right product/skill |
-| Location | `backend/services/agent/brain.py` | `paperwork/apis/brain/app/mcp_server.py` |
-| Tools | 55 internal tools (DB queries, Celery dispatch, market analysis) | 9 AxiomFolio HTTP tools + tools from other products |
-| Protocol | Direct Python method calls | HTTP API (`/api/v1/tools/*`) via MCP |
-| Autonomy | Rule-based + LLM with risk taxonomy (SAFE/MODERATE/RISKY/CRITICAL) | User-driven with approval workflows |
-
-The AgentBrain handles three responsibilities:
-
-- **Health remediation** (`analyze_and_act`): Called by auto-ops every 15 min to assess system health and dispatch fixes
-- **Interactive chat** (`chat`): Powers the Agent Chat panel in the admin dashboard
-- **Tool execution**: 55 tools spanning market insight, schedule management, codebase exploration, and strategy research
-
-Paperwork Brain consumes AxiomFolio as one of several "skills" via HTTP. The 9 exposed tools (`brain_tools.py`) are a curated subset: portfolio summary, regime status, scan results, and trading actions. See `docs/brain/axiomfolio_tools.yaml` for the manifest.
 
 ---
 

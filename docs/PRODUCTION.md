@@ -12,7 +12,7 @@
 - [Cloudflare Tunnel (Local Dev OAuth)](#cloudflare-tunnel-local-dev-oauth)
 - [Request Path](#request-path-production)
 - [Database migration](#database-migration-rename--preserve-data)
-- [Scheduling](#scheduling-cron-no-always-on-beat)
+- [Scheduling](#scheduling-celery-beat)
 - [Admin access bootstrap](#admin-access-bootstrap)
 - [Backups](#backups)
 - [Scaling](#scaling)
@@ -26,7 +26,7 @@
 |------|-------|
 | **Domains** | Frontend: `https://axiomfolio.com`; API: `https://api.axiomfolio.com` |
 | **Provider** | Render (API, worker, frontend, Postgres, Redis); DNS/TLS via Cloudflare |
-| **Key env** | `DATABASE_URL`, `REDIS_URL`, `ENCRYPTION_KEY`, `CORS_ORIGINS`, `RENDER_API_KEY` (for cron sync) |
+| **Key env** | `DATABASE_URL`, `REDIS_URL`, `ENCRYPTION_KEY`, `CORS_ORIGINS`; optional Brain integration: `BRAIN_API_KEY`, `BRAIN_WEBHOOK_URL`, `BRAIN_WEBHOOK_SECRET`. Legacy (retained): `RENDER_API_KEY`, `RENDER_OWNER_ID` (for Render cron sync, if ever re-enabled) |
 
 ---
 
@@ -34,12 +34,12 @@
 - Provider-agnostic deployment (Render + Fly supported)
 - Immutable Docker images
 - Release-time DB migrations (no auto-migrate on app startup)
-- Cost-aware scheduling (cron jobs instead of always-on beat)
+- Celery Beat scheduling (embedded in worker, catalog-driven from `job_catalog.py`)
 
 ## Core Services
 - API (FastAPI web service)
 - Worker (Celery)
-- Cron runner (scheduled task enqueuer)
+- Celery Beat (embedded in worker, `--beat`; see `render.yaml` `dockerCommand`)
 - Postgres (managed)
 - Redis (managed)
 
@@ -60,12 +60,11 @@ Credential vault:
 - `IBKR_FLEX_TOKEN`, `IBKR_FLEX_QUERY_ID`, `TASTYTRADE_CLIENT_SECRET`, `TASTYTRADE_REFRESH_TOKEN`
 - These are dev-only global fallbacks for seed accounts. In production, all broker credentials are per-user and stored encrypted in the `account_credentials` table via the credential vault.
 
-Brain integration (required for Paperwork):
-- `BRAIN_API_KEY` (shared secret for `X-Brain-Api-Key` header on `/api/v1/tools/*`)
-- `BRAIN_WEBHOOK_URL` (Paperwork Brain base URL for outbound webhooks)
-- `BRAIN_WEBHOOK_SECRET` (HMAC-SHA256 signing key for webhook payloads)
-
 Optional:
+- `BRAIN_API_KEY` (authenticates Brain → AxiomFolio tool API; header `X-Brain-Api-Key`)
+- `BRAIN_WEBHOOK_URL` (base URL for outbound webhooks to Brain)
+- `BRAIN_WEBHOOK_SECRET` (HMAC signing secret shared with Brain for webhook payloads)
+- `RENDER_API_KEY`, `RENDER_OWNER_ID` (legacy — Render cron schedule sync via `render_sync_service.py`; only if re-enabling platform crons)
 - `RATE_LIMIT_STORAGE_URL` (Redis-backed limiter)
 - `NEW_RELIC_LICENSE_KEY`
 - `ADMIN_SEED_ENABLED` (one-time admin bootstrap)
@@ -129,10 +128,12 @@ Render subdomains remain enabled as fallbacks: `axiomfolio-api.onrender.com`.
 | Service | Type | Plan | Purpose |
 |---------|------|------|---------|
 | `axiomfolio-api` | Web (Docker) | Standard (1 CPU / 2 GB) | FastAPI backend |
-| `axiomfolio-worker` | Worker (Docker) | Standard | Celery worker |
+| `axiomfolio-worker` | Worker (Docker) | Standard | Celery worker + embedded Beat (`--beat`) |
 | `axiomfolio-frontend` | Static | Free | React SPA |
 | `axiomfolio-db` | PostgreSQL | Basic 1 GB | Primary database |
 | `axiomfolio-redis` | Key-Value | Starter | Cache + Celery broker |
+
+**Legacy Render Cron Jobs (suspended):** Do not run these alongside embedded Beat — they would duplicate work. The following provider cron jobs are **SUSPENDED**: `admin_coverage_backfill`, `admin_retention_enforce`, `ibkr-daily-flex-sync`. The `axiomfolio-worker` service runs Celery with **`--beat` embedded**; periodic schedules are driven from `job_catalog.py` (and DB-backed schedule rows where the app uses them).
 
 ### Cloudflare Tunnel (Local Dev OAuth)
 
@@ -209,22 +210,38 @@ If you are renaming the database (e.g., `old_db` → `axiomfolio`), migrate data
 5. Point `DATABASE_URL` and related env vars at the new DB and run migrations via CI.
 
 ## Scheduling (Celery Beat)
+Production uses **Celery Beat embedded in the worker** (`--beat` in `render.yaml`). Tasks and default crons are defined in `backend/tasks/job_catalog.py`.
 
-All task scheduling is driven by `backend/tasks/job_catalog.py` via Celery Beat. Legacy Render cron jobs have been suspended.
+Representative Celery targets (see catalog for full list):
 
-The Render worker runs with `--beat` embedded:
-```
-celery -A backend.tasks.celery_app worker --beat -Q celery,account_sync,orders --loglevel=info
-```
+- `backend.tasks.account_sync.sync_all_ibkr_accounts`
+- `backend.tasks.market.coverage.daily_bootstrap` (`admin_coverage_backfill`)
+- `backend.tasks.market.maintenance.prune_old_bars` (`admin_retention_enforce`)
 
-The full catalog of 20 scheduled tasks is defined in `job_catalog.py` as `JobTemplate` entries. Each template specifies a 5-field cron expression, timezone, timeout, and optional queue. `_build_beat_schedule()` in `celery_app.py` converts these into Celery `crontab` entries at startup.
+**Default cron** values below are from `backend/tasks/job_catalog.py` (`JobTemplate.id`, `display_name`, `group`, `default_cron`, `default_tz`). Production may override via DB-backed schedules; Beat is the runtime driver.
 
-Key task groups:
-- **portfolio** — IBKR/Schwab daily sync, stale sync recovery, order monitoring, fill reconciliation
-- **market_data** — coverage pipeline, regime alerts, data quality audit, constituents refresh, intraday bars
-- **strategy** — entry rule evaluation, exit cascade evaluation
-- **intelligence** — daily digest, weekly brief, monthly review
-- **maintenance** — data retention, stale job recovery, auto-ops health checks
+| Job ID | Display name | Group | Default cron | TZ |
+|--------|--------------|-------|--------------|-----|
+| `ibkr-daily-flex-sync` | IBKR Daily Sync | portfolio | `15 2 * * *` | UTC |
+| `schwab-daily-sync` | Schwab Daily Sync | portfolio | `30 2 * * *` | UTC |
+| `recover-stale-syncs` | Recover Stale Syncs | portfolio | `*/5 * * * *` | UTC |
+| `admin_coverage_backfill` | Nightly Coverage Pipeline | market_data | `0 1 * * *` | UTC |
+| `check_regime_alerts` | Regime Alert Monitor | market_data | `*/5 9-16 * * 1-5` | America/New_York |
+| `monitor-open-orders` | Monitor Open Orders | portfolio | `* * * * *` | UTC |
+| `ibkr-gateway-watchdog` | IBKR Gateway Watchdog | portfolio | `*/5 * * * *` | UTC |
+| `reconcile-order-fills` | Reconcile Order Fills | portfolio | `*/10 * * * *` | UTC |
+| `evaluate-strategy-entries` | Evaluate Strategy Entry Rules | strategy | `0 2 * * 1-5` | America/New_York |
+| `evaluate-exit-cascade` | Evaluate Exit Cascade | strategy | `30 2 * * 1-5` | America/New_York |
+| `admin_retention_enforce` | Data Retention Cleanup | maintenance | `30 4 * * *` | UTC |
+| `admin_recover_stale_job_runs` | Recover Stale Job Runs | maintenance | `0 */6 * * *` | UTC |
+| `generate_daily_digest` | Daily Intelligence Digest | intelligence | `30 1 * * 1-5` | America/New_York |
+| `generate_weekly_brief` | Weekly Strategy Brief | intelligence | `0 7 * * 1` | America/New_York |
+| `generate_monthly_review` | Monthly Review | intelligence | `0 8 1 * *` | America/New_York |
+| `audit_quality_refresh` | Audit Quality Refresh | market_data | `0 */2 * * *` | UTC |
+| `constituents_refresh` | Index Constituents Refresh | market_data | `30 0 * * *` | UTC |
+| `tracked_cache_refresh` | Tracked Universe Cache Rebuild | market_data | `45 0 * * *` | UTC |
+| `intraday_5m_backfill` | 5-Minute Candle Backfill | market_data | `30 13-21 * * 1-5` | UTC |
+| `auto_ops_health_check` | Auto-Ops Health Remediation | maintenance | `*/15 * * * *` | UTC |
 
 To see all schedules: query the internal agent tool `list_schedules`, or the Admin Schedules UI at `/settings/admin/schedules`.
 To trigger a task immediately: use `run_task_now` with a catalog `task_id`.
@@ -232,12 +249,17 @@ To trigger a task immediately: use `run_task_now` with a catalog `task_id`.
 ### Execution flow (production)
 ![Production execution flow](assets/production_execution_flow.png)
 
-### System flow (cron → queue → workers → DB)
+### System flow (Beat → queue → workers → DB)
 ![Production system flow](assets/production_system_flow.png)
 
+### Example tick (UTC)
+1. Celery Beat publishes a periodic task when the cron fires.
+2. Worker consumes the task from Redis.
+3. Task runs in the worker process; data updates land in Postgres; status is recorded in JobRun.
+
 ### Dev vs prod behavior
-- **Production:** Celery Beat runs embedded in the worker process (`--beat` flag). Schedules are compiled from `job_catalog.py` at startup. Legacy Render cron jobs are suspended.
-- **Development:** Beat runs as a separate `celery_beat` container in Docker Compose. Use "Run Now" in Admin > Schedules or the agent `run_task_now` tool to trigger tasks manually.
+- **Production:** Beat in the worker enqueues tasks from the catalog (and DB-backed schedule rows where used). Legacy Render Cron Jobs (`admin_coverage_backfill`, `admin_retention_enforce`, `ibkr-daily-flex-sync`) are **suspended** (see Render Services table). Optional: `RENDER_API_KEY` and `RENDER_OWNER_ID` only if you re-enable Render cron sync (`render_sync_service.py`).
+- **Development:** Same catalog and DB-backed schedules as production; Render sync is a no-op locally. Use "Run Now" in Admin > Schedules to trigger tasks manually.
 
 ## Admin access bootstrap
 To create the first admin user in production:

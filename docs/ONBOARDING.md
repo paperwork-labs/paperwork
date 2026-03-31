@@ -2,11 +2,13 @@
 
 This repo is a Docker-first monorepo.
 
-- Backend: FastAPI + SQLAlchemy + Alembic
-- Frontend: React + Vite + Chakra UI
-- State: Postgres + Redis
+- **Backend:** FastAPI + SQLAlchemy + Alembic + Celery (workers + **Celery Beat** for schedules)
+- **Frontend:** React 19 + TypeScript 5 + Vite + **shadcn/ui** (Radix primitives) + **Tailwind CSS** + TanStack React Query v5 + Recharts + lightweight-charts v5
+- **State:** PostgreSQL + Redis
 
 **Use the [Makefile](../Makefile) at repo root** for dev and test commands (see [README.md](README.md)#makefile-quick-reference). After quick start, see [ARCHITECTURE.md](ARCHITECTURE.md) and [README.md](README.md) for the full doc index.
+
+UI styling lives in Tailwind utilities, shared components under `frontend/src/components/ui/`, and global CSS variables — not a Chakra-style token file.
 
 ## Golden rules
 
@@ -31,9 +33,9 @@ Prerequisites
 Quick start (dev stack)
 -----------------------
 From repo root (prefer Makefile):
-- `make up` — start dev stack (or `./run.sh start`)
+- `make up` — start full dev stack (backend, frontend, Postgres, Redis, Celery worker, Celery Beat, and all profile services by default) (or `./run.sh start`)
 - `make ps` — container status (or `./run.sh status`)
-- `make logs` — tail backend, worker, frontend logs (or `./run.sh logs`)
+- `make logs` — tail backend, Celery worker, **Celery Beat**, frontend, and Ladle logs (or `./run.sh logs`)
 
 Local dev (frontend on host, backend on host)
 ---------------------------------------------
@@ -52,7 +54,7 @@ Run tests (safe, isolated DB)
 From repo root, use the **Makefile** (see [README.md](README.md)#makefile-quick-reference):
 
 - **Backend only:** `make test` (isolated test DB; never touches dev DB)
-- **Frontend only:** `make test-frontend` (lint + type-check + test)
+- **Frontend only:** `make test-frontend` (install + lint + type-check + tests; same as `make frontend-check`)
 - **Both:** `make test-all`
 
 Equivalent: `./run.sh test` for backend. Notes: uses `infra/compose.test.yaml` with `postgres_test` and an isolated volume; `infra/env.test` is untracked (if missing, `./run.sh test` copies from `infra/env.test.example`).
@@ -60,6 +62,7 @@ Equivalent: `./run.sh test` for backend. Notes: uses `infra/compose.test.yaml` w
 Migrations (dev DB only)
 ------------------------
 From repo root (Makefile):
+
 - Apply: `make migrate-up` (or `./run.sh migrate`)
 - Create: `make migrate-create MSG="add new table"` (or `./run.sh makemigration "add new table"`)
 - Downgrade: `make migrate-down REV=-1` (or `./run.sh downgrade -1`)
@@ -74,5 +77,4 @@ CI (GitHub Actions)
 PR automation
 -------------
 See `docs/PR_AUTOMATION.md`.
-
 

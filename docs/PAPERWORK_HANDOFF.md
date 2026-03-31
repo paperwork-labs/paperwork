@@ -1,7 +1,7 @@
 # Paperwork Brain Integration Handoff
 
-**Date**: 2026-03-27
-**AxiomFolio PR**: #236 (Phase 6 - Brain Integration Foundation)
+**Date**: 2026-03-31 (updated from 2026-03-27)
+**AxiomFolio PRs**: #236 (Foundation), #255 (HMAC), #259 (Scheduling), #260-#262 (Integration Sprint)
 **Paperwork Branch**: `feat/phase-11-alpha-complete`
 
 ---
@@ -16,7 +16,7 @@ AxiomFolio has two intelligence layers:
 
 1. **Internal AgentBrain** (`backend/services/agent/brain.py`) — 55 tools for health remediation, interactive chat, and market analysis. Runs inside the AxiomFolio process. NOT exposed to Brain.
 
-2. **Brain HTTP Tools** (`backend/api/routes/brain_tools.py`) — 9 curated endpoints that Paperwork Brain calls via MCP. These are the tools listed below.
+2. **Brain HTTP Tools** (`backend/api/routes/brain_tools.py`) — 12 curated endpoints that Paperwork Brain calls via MCP. These are the tools listed below.
 
 The internal agent and Brain tools are completely independent codepaths. Adding a tool to one does NOT automatically register it in the other.
 
@@ -35,6 +35,9 @@ The internal agent and Brain tools are completely independent codepaths. Adding 
 | `/api/v1/tools/execute-trade` | POST | 3 | Execute approved order |
 | `/api/v1/tools/approve-trade` | POST | 3 | Approve pending order |
 | `/api/v1/tools/reject-trade` | POST | 3 | Reject pending order |
+| `/api/v1/tools/pending-approvals` | GET | 0 | List pending approvals with timeout |
+| `/api/v1/tools/schedules` | GET | 0 | List all scheduled tasks |
+| `/api/v1/tools/run-task` | POST | 2 | Trigger catalog task immediately |
 
 ### Authentication
 
@@ -69,8 +72,13 @@ AxiomFolio sends POST to `{BRAIN_WEBHOOK_URL}/api/v1/webhooks/axiomfolio`:
 | `position_closed` | Position fully closed |
 | `stop_triggered` | Stop loss hit |
 | `risk_gate_activated` | Circuit breaker tripped |
-| `scan_alert` | Scan finds candidates |
+| `scan_alert` | New Breakout Elite/Standard candidates detected |
+| `regime_change` | Market regime shifted (e.g. R2 to R3) |
+| `exit_alert` | Exit cascade triggered for held positions |
 | `approval_required` | Tier 3 trade needs approval |
+| `approval_expired` | Approval timed out (auto-rejected after 30 min) |
+| `daily_digest` | Daily intelligence digest generated |
+| `weekly_brief` | Weekly strategy brief generated |
 
 Payload (JSON body, signed with HMAC-SHA256):
 ```json
