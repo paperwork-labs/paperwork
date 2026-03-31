@@ -799,6 +799,7 @@ INLINE_ONLY_AGENT_TOOLS: FrozenSet[str] = frozenset({
     "read_file",
     "list_files",
     "list_schedules",
+    "run_task_now",
     "get_stage_distribution",
     "get_sector_strength",
     "get_top_scans",
