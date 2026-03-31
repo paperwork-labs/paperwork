@@ -1,6 +1,13 @@
+import logging
+from datetime import datetime
+
 from celery import Celery
+from celery.schedules import crontab
 from kombu import Queue
+
 from backend.config import settings
+
+logger = logging.getLogger(__name__)
 
 celery_app = Celery(
     "axiomfolio",
@@ -51,6 +58,54 @@ celery_app.conf.task_routes = {
     "backend.tasks.portfolio.orders.*": {"queue": "orders"},
 }
 
+def _build_beat_schedule():
+    """Generate beat_schedule from the job catalog.
+
+    Each JobTemplate's 5-field cron expression is converted to a
+    celery.schedules.crontab.  This replaces the old 3-entry hardcoded dict
+    and eliminates the need for Render cron jobs.
+    """
+    from backend.tasks.job_catalog import CATALOG
+
+    schedule = {}
+    for job in CATALOG:
+        parts = job.default_cron.strip().split()
+        if len(parts) == 6:
+            minute, hour, dom, month, dow = parts[1], parts[2], parts[3], parts[4], parts[5]
+        elif len(parts) == 5:
+            minute, hour, dom, month, dow = parts
+        else:
+            logger.warning("Skipping catalog entry %s: invalid cron %r", job.id, job.default_cron)
+            continue
+
+        nowfun = None
+        if job.default_tz and job.default_tz != "UTC":
+            from zoneinfo import ZoneInfo
+            from functools import partial
+            _zi = ZoneInfo(job.default_tz)
+            nowfun = partial(datetime.now, _zi)
+
+        entry = {
+            "task": job.task,
+            "schedule": crontab(
+                minute=minute, hour=hour,
+                day_of_week=dow, day_of_month=dom,
+                month_of_year=month,
+                nowfun=nowfun,
+            ),
+        }
+        if job.kwargs:
+            entry["kwargs"] = job.kwargs
+        if job.args:
+            entry["args"] = job.args
+        if job.queue:
+            entry["options"] = {"queue": job.queue}
+
+        schedule[job.id] = entry
+
+    return schedule
+
+
 celery_app.conf.update(
     worker_max_tasks_per_child=1000,
     worker_prefetch_multiplier=1,
@@ -63,18 +118,5 @@ celery_app.conf.update(
     result_expires=3600,
     timezone="UTC",
     enable_utc=True,
-    beat_schedule={
-        "auto-ops-health-check": {
-            "task": "backend.tasks.auto_ops_tasks.auto_remediate_health",
-            "schedule": 900.0,
-        },
-        "monitor-open-orders": {
-            "task": "backend.tasks.portfolio.orders.monitor_open_orders_task",
-            "schedule": 60.0,  # every minute
-        },
-        "ibkr-watchdog": {
-            "task": "backend.tasks.ibkr_watchdog.ping_ibkr_connection",
-            "schedule": 300.0,  # every 5 min
-        },
-    },
+    beat_schedule=_build_beat_schedule(),
 )

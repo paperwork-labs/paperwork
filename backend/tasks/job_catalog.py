@@ -13,6 +13,7 @@ class JobTemplate:
     description: str
     default_cron: str  # standard 5-field cron
     default_tz: str  # e.g., UTC
+    job_run_label: Optional[str] = None  # @task_run() label for JobRun lookup
     args: List[Any] | None = None
     kwargs: Dict[str, Any] | None = None
     singleflight: bool = True
@@ -70,6 +71,7 @@ CATALOG: List[JobTemplate] = [
         description="Full nightly chain: constituents, tracked, daily bars, indicators, snapshot history, regime, coverage",
         default_cron="0 1 * * *",
         default_tz="UTC",
+        job_run_label="admin_coverage_backfill",
         kwargs={"history_days": 20, "history_batch_size": 25},
     ),
     JobTemplate(
@@ -80,6 +82,7 @@ CATALOG: List[JobTemplate] = [
         description="VIX spike and regime-shift checks using latest MarketRegime row; schedule every 5 min during RTH",
         default_cron="*/5 9-16 * * 1-5",
         default_tz="America/New_York",
+        job_run_label="check_regime_alerts",
         timeout_s=60,
     ),
     # ── Orders ─────────────────────────────────────────────────────
@@ -143,6 +146,7 @@ CATALOG: List[JobTemplate] = [
         description="Purge 5-minute bars older than the configured retention window",
         default_cron="30 4 * * *",
         default_tz="UTC",
+        job_run_label="admin_retention_enforce",
         kwargs={"max_days_5m": 90},
     ),
     JobTemplate(
@@ -153,6 +157,7 @@ CATALOG: List[JobTemplate] = [
         description="Mark job runs stuck in RUNNING (e.g. cron timeout, worker restart) as cancelled so jobs list and health go green",
         default_cron="0 */6 * * *",
         default_tz="UTC",
+        job_run_label="admin_recover_stale_job_runs",
         kwargs={"stale_minutes": 120},
     ),
 
@@ -166,6 +171,7 @@ CATALOG: List[JobTemplate] = [
         description="Generate daily intelligence brief after nightly pipeline — regime, transitions, breadth, exit alerts",
         default_cron="30 1 * * 1-5",
         default_tz="America/New_York",
+        job_run_label="intelligence_daily_digest",
     ),
     JobTemplate(
         id="generate_weekly_brief",
@@ -175,6 +181,7 @@ CATALOG: List[JobTemplate] = [
         description="Generate weekly strategy brief — regime trend, top picks, sector rotation, portfolio review",
         default_cron="0 7 * * 1",
         default_tz="America/New_York",
+        job_run_label="intelligence_weekly_brief",
     ),
     JobTemplate(
         id="generate_monthly_review",
@@ -184,6 +191,53 @@ CATALOG: List[JobTemplate] = [
         description="Generate monthly performance review — regime transitions, performance attribution",
         default_cron="0 8 1 * *",
         default_tz="America/New_York",
+        job_run_label="intelligence_monthly_review",
+    ),
+
+    # ── Coverage & Quality ─────────────────────────────────────────
+    JobTemplate(
+        id="audit_quality_refresh",
+        display_name="Audit Quality Refresh",
+        group="market_data",
+        task="backend.tasks.market.maintenance.audit_quality",
+        description="Audit market data coverage and snapshot history consistency; writes market_audit:last Redis key",
+        default_cron="0 */2 * * *",
+        default_tz="UTC",
+        job_run_label="admin_market_data_audit",
+        timeout_s=360,
+    ),
+    JobTemplate(
+        id="constituents_refresh",
+        display_name="Index Constituents Refresh",
+        group="market_data",
+        task="backend.tasks.market.backfill.constituents",
+        description="Refresh S&P 500, NASDAQ-100, Russell 2000 constituent lists from FMP",
+        default_cron="30 0 * * *",
+        default_tz="UTC",
+        job_run_label="market_indices_constituents_refresh",
+        timeout_s=300,
+    ),
+    JobTemplate(
+        id="tracked_cache_refresh",
+        display_name="Tracked Universe Cache Rebuild",
+        group="market_data",
+        task="backend.tasks.market.backfill.tracked_cache",
+        description="Rebuild tracked symbol cache in Redis from DB (indices + holdings)",
+        default_cron="45 0 * * *",
+        default_tz="UTC",
+        job_run_label="market_universe_tracked_refresh",
+        timeout_s=120,
+    ),
+    JobTemplate(
+        id="intraday_5m_backfill",
+        display_name="5-Minute Candle Backfill",
+        group="market_data",
+        task="backend.tasks.market.intraday.bars_5m_last_n_days",
+        description="Backfill 5-minute candles for tracked universe during market hours",
+        default_cron="30 13-21 * * 1-5",
+        default_tz="UTC",
+        job_run_label="admin_backfill_5m",
+        timeout_s=1800,
     ),
 
     # ── Auto-Ops ────────────────────────────────────────────────────
@@ -195,6 +249,7 @@ CATALOG: List[JobTemplate] = [
         description="Check admin health dimensions every 15 min and dispatch remediation tasks for any that are red/yellow",
         default_cron="*/15 * * * *",
         default_tz="UTC",
+        job_run_label="auto_ops_health_check",
         timeout_s=90,
     ),
 ]

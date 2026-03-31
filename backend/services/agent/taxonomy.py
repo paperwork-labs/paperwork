@@ -36,9 +36,13 @@ ACTION_RISK_MAP: Dict[str, RiskLevel] = {
     "get_constituents": RiskLevel.SAFE,
     "get_regime": RiskLevel.SAFE,
     "describe_tables": RiskLevel.SAFE,
+    # SAFE: Schedule management (read-only)
+    "list_schedules": RiskLevel.SAFE,
     # MODERATE: Codebase exploration (read-only, but can expose internals to the LLM / Redis history)
     "read_file": RiskLevel.MODERATE,
     "list_files": RiskLevel.MODERATE,
+    # MODERATE: Schedule management (triggers tasks)
+    "run_task_now": RiskLevel.MODERATE,
 
     # MODERATE: Standard remediation tasks
     "backfill_stale_daily": RiskLevel.MODERATE,

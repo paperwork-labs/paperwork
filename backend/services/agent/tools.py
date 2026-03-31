@@ -717,6 +717,36 @@ AGENT_TOOLS: List[Dict[str, Any]] = [
             },
         },
     },
+    # ==================== SCHEDULE MANAGEMENT TOOLS ====================
+    {
+        "type": "function",
+        "function": {
+            "name": "list_schedules",
+            "description": "List all scheduled tasks from the job catalog with their cron schedules, groups, and last run status.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_task_now",
+            "description": "Trigger a catalog task to run immediately. Use the catalog task ID (e.g. 'admin_coverage_backfill', 'auto_ops_health_check').",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "description": "The catalog task ID to run (use list_schedules to see available IDs)",
+                    },
+                },
+                "required": ["task_id"],
+            },
+        },
+    },
     # ==================== CODEBASE EXPLORATION TOOLS ====================
     {
         "type": "function",
@@ -768,6 +798,7 @@ AGENT_TOOLS: List[Dict[str, Any]] = [
 INLINE_ONLY_AGENT_TOOLS: FrozenSet[str] = frozenset({
     "read_file",
     "list_files",
+    "list_schedules",
     "get_stage_distribution",
     "get_sector_strength",
     "get_top_scans",

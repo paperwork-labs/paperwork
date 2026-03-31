@@ -38,6 +38,7 @@ import {
   timeAgo,
 } from '../../utils/portfolio';
 import { StatCardSkeleton } from '../../components/shared/Skeleton';
+import { CircuitBreakerBanner } from '../../components/shared/CircuitBreakerBanner';
 import type { AccountData } from '../../hooks/useAccountFilter';
 import type { EnrichedPosition } from '../../types/portfolio';
 import { SECTOR_PALETTE } from '../../constants/chart';
@@ -196,6 +197,8 @@ const PortfolioOverview: React.FC = () => {
               </AlertDescription>
             </Alert>
           )}
+
+          <CircuitBreakerBanner />
 
           {(overview.isPending || positionsQuery.isPending) && (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">

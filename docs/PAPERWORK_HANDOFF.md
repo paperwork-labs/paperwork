@@ -8,6 +8,20 @@
 
 ## What AxiomFolio Has Built
 
+---
+
+### Internal Agent vs Brain Tools
+
+AxiomFolio has two intelligence layers:
+
+1. **Internal AgentBrain** (`backend/services/agent/brain.py`) — 55 tools for health remediation, interactive chat, and market analysis. Runs inside the AxiomFolio process. NOT exposed to Brain.
+
+2. **Brain HTTP Tools** (`backend/api/routes/brain_tools.py`) — 9 curated endpoints that Paperwork Brain calls via MCP. These are the tools listed below.
+
+The internal agent and Brain tools are completely independent codepaths. Adding a tool to one does NOT automatically register it in the other.
+
+---
+
 ### Tool Endpoints (Ready for Brain to Call)
 
 | Endpoint | Method | Tier | Description |
@@ -226,6 +240,35 @@ curl -H "X-Brain-Api-Key: af_brain_dev_key_change_in_prod" \
 Analyst-proposed trades always require owner approval regardless of `TRADE_APPROVAL_MODE`.
 
 Note: `approve-trade` and `reject-trade` endpoints bind to `BRAIN_TOOLS_USER_ID` server-side. Brain does not pass user IDs — the service identity is the approver/rejector.
+
+---
+
+## Job Cadence
+
+All scheduling is driven by Celery Beat from `backend/tasks/job_catalog.py`. Render cron jobs have been retired.
+
+| Job | Cron (UTC unless noted) | Group |
+|-----|------------------------|-------|
+| Nightly Coverage Pipeline | 0 1 * * * | market_data |
+| Index Constituents Refresh | 30 0 * * * | market_data |
+| Tracked Universe Cache Rebuild | 45 0 * * * | market_data |
+| Audit Quality Refresh | 0 */2 * * * | market_data |
+| 5-Minute Candle Backfill | 30 13-21 * * 1-5 | market_data |
+| Regime Alert Monitor | */5 9-16 * * 1-5 (ET) | market_data |
+| IBKR Daily Sync | 15 2 * * * | portfolio |
+| Schwab Daily Sync | 30 2 * * * | portfolio |
+| Recover Stale Syncs | */5 * * * * | portfolio |
+| Monitor Open Orders | * * * * * | portfolio |
+| IBKR Gateway Watchdog | */5 * * * * | portfolio |
+| Reconcile Order Fills | */10 * * * * | portfolio |
+| Evaluate Strategy Entry Rules | 0 2 * * 1-5 (ET) | strategy |
+| Evaluate Exit Cascade | 30 2 * * 1-5 (ET) | strategy |
+| Daily Intelligence Digest | 30 1 * * 1-5 (ET) | intelligence |
+| Weekly Strategy Brief | 0 7 * * 1 (ET) | intelligence |
+| Monthly Review | 0 8 1 * * (ET) | intelligence |
+| Data Retention Cleanup | 30 4 * * * | maintenance |
+| Recover Stale Job Runs | 0 */6 * * * | maintenance |
+| Auto-Ops Health Remediation | */15 * * * * | maintenance |
 
 ---
 

@@ -534,6 +534,13 @@ class AgentBrain:
         if tool_name == "list_files":
             return await self._tool_list_files(args.get("path", ""))
 
+        # Schedule management tools
+        if tool_name == "list_schedules":
+            return await self._tool_list_schedules()
+
+        if tool_name == "run_task_now":
+            return await self._tool_run_task_now(args.get("task_id", ""))
+
         # Market insight tools
         if tool_name == "get_stage_distribution":
             return await self._tool_get_stage_distribution()
@@ -1101,6 +1108,73 @@ class AgentBrain:
             logger.error("Failed to describe tables: %s", e)
             return {"error": str(e)}
     
+    # ==================== SCHEDULE MANAGEMENT TOOLS ====================
+
+    async def _tool_list_schedules(self) -> Dict[str, Any]:
+        """List all scheduled tasks from the job catalog with last run status."""
+        from backend.tasks.job_catalog import CATALOG
+        from backend.models.market_data import JobRun
+
+        schedules = []
+        for job in CATALOG:
+            entry: Dict[str, Any] = {
+                "id": job.id,
+                "display_name": job.display_name,
+                "group": job.group,
+                "task": job.task,
+                "cron": job.default_cron,
+                "timezone": job.default_tz,
+            }
+            if job.job_run_label:
+                try:
+                    last = (
+                        self.db.query(JobRun)
+                        .filter(JobRun.task_name == job.job_run_label)
+                        .order_by(JobRun.started_at.desc())
+                        .first()
+                    )
+                    if last:
+                        entry["last_run"] = {
+                            "status": last.status,
+                            "started_at": last.started_at.isoformat() if last.started_at else None,
+                            "finished_at": last.finished_at.isoformat() if last.finished_at else None,
+                        }
+                except Exception:
+                    pass
+            schedules.append(entry)
+
+        return {"schedules": schedules, "count": len(schedules), "scheduler": "celery_beat"}
+
+    async def _tool_run_task_now(self, task_id: str) -> Dict[str, Any]:
+        """Trigger a catalog task to run immediately via Celery."""
+        from backend.tasks.job_catalog import CATALOG
+        from backend.tasks.celery_app import celery_app
+
+        catalog_map = {j.id: j for j in CATALOG}
+        job = catalog_map.get(task_id)
+        if not job:
+            return {
+                "error": f"Unknown task_id: {task_id}",
+                "available": sorted(catalog_map.keys()),
+            }
+
+        try:
+            result = celery_app.send_task(
+                job.task,
+                kwargs=job.kwargs or {},
+                args=job.args or [],
+                queue=job.queue or "celery",
+            )
+            return {
+                "status": "dispatched",
+                "task_id": result.id,
+                "task": job.task,
+                "display_name": job.display_name,
+            }
+        except Exception as e:
+            logger.warning("run_task_now failed for %s: %s", task_id, e)
+            return {"error": "Failed to dispatch task", "type": type(e).__name__}
+
     # ==================== CODEBASE EXPLORATION TOOLS ====================
     
     async def _tool_read_file(

@@ -142,7 +142,7 @@ class Settings(BaseSettings):
     # Render API (schedule sync — production only)
     RENDER_API_KEY: Optional[str] = None
     RENDER_OWNER_ID: Optional[str] = None
-    RENDER_SYNC_ON_STARTUP: bool = True
+    RENDER_SYNC_ON_STARTUP: bool = False
     RENDER_REPO_URL: str = "https://github.com/sankalp404/axiomfolio.git"
 
     # Admin seeding (development convenience)

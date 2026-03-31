@@ -93,7 +93,7 @@ class AdminHealthService:
         coverage = self._build_coverage_dimension(db)
         stage = self._build_stage_dimension(db)
         jobs = self._build_jobs_dimension(db)
-        audit = self._build_audit_dimension()
+        audit = self._build_audit_dimension(db)
         regime = self._build_regime_dimension(db)
         fundamentals = self._build_fundamentals_dimension(db)
         portfolio_sync = self._build_portfolio_sync_dimension(db)
@@ -292,37 +292,100 @@ class AdminHealthService:
             logger.exception("regime dimension failed: %s", exc)
             return {"status": "red", "error": str(exc)}
 
-    def _build_audit_dimension(self) -> Dict[str, Any]:
-        try:
-            raw = self._svc.redis_client.get("market_audit:last")
-            payload = (
-                json.loads(raw.decode() if isinstance(raw, (bytes, bytearray)) else raw)
-                if raw
-                else None
+    _AUDIT_CACHE_KEY = "market_audit:computed"
+    _AUDIT_CACHE_TTL = 300  # 5 minutes
+
+    def compute_audit_metrics(self, db: Session) -> Dict[str, Any]:
+        """Canonical audit computation — single source of truth.
+
+        Queries DB directly with analysis_type='technical_snapshot' filter
+        (matching the /coverage/sanity endpoint). Results cached in Redis
+        for 5 min. Called by _build_audit_dimension and by the audit_quality
+        Celery task (cache-warmer).
+        """
+        from backend.models.market_data import PriceData, MarketSnapshotHistory
+        from backend.services.market.universe import tracked_symbols_with_source
+
+        tracked_list, _ = tracked_symbols_with_source(
+            db, redis_client=self._svc.redis_client
+        )
+        tracked_set = {str(s).upper() for s in (tracked_list or []) if s}
+        tracked_total = len(tracked_set)
+
+        latest_daily_dt = (
+            db.query(func.max(PriceData.date))
+            .filter(PriceData.interval == "1d")
+            .scalar()
+        )
+        daily_count = 0
+        if latest_daily_dt and tracked_set:
+            daily_count = (
+                db.query(func.count(distinct(PriceData.symbol)))
+                .filter(
+                    PriceData.interval == "1d",
+                    PriceData.symbol.in_(tracked_set),
+                    func.date(PriceData.date) == func.date(latest_daily_dt),
+                )
+                .scalar()
+            ) or 0
+
+        latest_hist_dt = (
+            db.query(func.max(MarketSnapshotHistory.as_of_date))
+            .filter(MarketSnapshotHistory.analysis_type == "technical_snapshot")
+            .scalar()
+        )
+        hist_count = 0
+        missing_sample: List[str] = []
+        if latest_hist_dt and tracked_set:
+            hist_syms = (
+                db.query(MarketSnapshotHistory.symbol)
+                .filter(
+                    MarketSnapshotHistory.analysis_type == "technical_snapshot",
+                    MarketSnapshotHistory.symbol.in_(tracked_set),
+                    func.date(MarketSnapshotHistory.as_of_date) == func.date(latest_hist_dt),
+                )
+                .distinct()
+                .all()
             )
-            if payload is None:
-                return {"status": "red", "error": "no audit data in cache"}
+            hist_set = {s[0].upper() for s in hist_syms if s and s[0]}
+            hist_count = len(hist_set)
+            missing_sample = sorted(list(tracked_set - hist_set))[:20]
 
-            tracked_total = int(payload.get("tracked_total") or 0)
+        daily_fill = round((int(daily_count) / tracked_total) * 100.0, 1) if tracked_total else 0.0
+        snapshot_fill = round((hist_count / tracked_total) * 100.0, 1) if tracked_total else 0.0
 
-            # The audit cache stores symbol counts, not percentages.
-            # Compute fill % from count / tracked_total.
-            daily_fill_pct_raw = payload.get("latest_daily_fill_pct")
-            snapshot_fill_pct_raw = payload.get("latest_snapshot_history_fill_pct")
+        payload = {
+            "tracked_total": tracked_total,
+            "latest_daily_date": latest_daily_dt.isoformat() if hasattr(latest_daily_dt, "isoformat") else str(latest_daily_dt) if latest_daily_dt else None,
+            "latest_daily_symbol_count": int(daily_count),
+            "daily_fill_pct": daily_fill,
+            "latest_snapshot_history_date": latest_hist_dt.isoformat() if hasattr(latest_hist_dt, "isoformat") else str(latest_hist_dt) if latest_hist_dt else None,
+            "latest_snapshot_history_symbol_count": hist_count,
+            "snapshot_fill_pct": snapshot_fill,
+            "missing_snapshot_history_sample": missing_sample,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
 
-            if daily_fill_pct_raw is not None:
-                daily_fill = float(daily_fill_pct_raw)
-            elif tracked_total > 0:
-                daily_fill = float(payload.get("latest_daily_symbol_count") or 0) / tracked_total * 100
+        try:
+            self._svc.redis_client.set(
+                self._AUDIT_CACHE_KEY, json.dumps(payload), ex=self._AUDIT_CACHE_TTL
+            )
+        except Exception as e:
+            logger.warning("audit cache write failed: %s", e)
+
+        return payload
+
+    def _build_audit_dimension(self, db: Session) -> Dict[str, Any]:
+        try:
+            raw = self._svc.redis_client.get(self._AUDIT_CACHE_KEY)
+            if raw:
+                payload = json.loads(raw.decode() if isinstance(raw, (bytes, bytearray)) else raw)
             else:
-                daily_fill = 0.0
+                payload = self.compute_audit_metrics(db)
 
-            if snapshot_fill_pct_raw is not None:
-                snapshot_fill = float(snapshot_fill_pct_raw)
-            elif tracked_total > 0:
-                snapshot_fill = float(payload.get("latest_snapshot_history_symbol_count") or 0) / tracked_total * 100
-            else:
-                snapshot_fill = 0.0
+            daily_fill = float(payload.get("daily_fill_pct", 0))
+            snapshot_fill = float(payload.get("snapshot_fill_pct", 0))
+
             ok = (
                 daily_fill >= HEALTH_THRESHOLDS["audit_daily_fill_pct_min"]
                 and snapshot_fill >= HEALTH_THRESHOLDS["audit_snapshot_fill_pct_min"]

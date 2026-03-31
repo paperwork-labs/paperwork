@@ -199,3 +199,8 @@ These were flagged, investigated, and closed:
 | D24 | Scan overlay field-name bugs | Fixed wrong column names |
 | D26 | compute_daily_regime missing commit | Added session.commit() after persist_regime() |
 | D27 | Intelligence tasks not registered | Added to celery_app.py include list |
+| D28 | Circuit breaker banner on every page | Moved to PortfolioOverview only — no auto-trading yet, global placement was disorienting and added API polling overhead on every route |
+| D29 | Snapshot history 0% on dashboard | audit_quality task queried MarketSnapshotHistory without analysis_type filter; API endpoint used it. Unified to single-path DB query in AdminHealthService.compute_audit_metrics() with 5-min Redis cache. audit_quality is now a cache-warmer only |
+| D30 | Render cron jobs retired | All scheduling via Celery Beat from job_catalog.py. Render crons added cost (3 Docker builds) with no resilience benefit. RENDER_SYNC_ON_STARTUP=false |
+| D31 | Auto-ops backoff used 2**n exponentiation | Replaced with explicit BACKOFF_SEQUENCE tuple (15m, 30m, 60m, 2h). No overflow risk, no off-by-one, trivially auditable |
+| D32 | run_task_now bypassed approval | Was in INLINE_ONLY_AGENT_TOOLS (safe-tool path). Removed — now routes through MODERATE approval flow like other side-effect tools |

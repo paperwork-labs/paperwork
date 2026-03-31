@@ -195,19 +195,23 @@ def test_audit_green():
     svc = _mock_service()
     svc._svc.redis_client.get.return_value = json.dumps({
         "tracked_total": 500,
-        "latest_daily_fill_pct": 98.0,
-        "latest_snapshot_history_fill_pct": 95.0,
+        "daily_fill_pct": 98.0,
+        "snapshot_fill_pct": 95.0,
         "missing_snapshot_history_sample": [],
     })
-    dim = svc._build_audit_dimension()
+    db = MagicMock()
+    dim = svc._build_audit_dimension(db)
     assert dim["status"] == "green"
     assert dim["daily_fill_pct"] == 98.0
 
 
-def test_audit_red_when_no_cache():
+def test_audit_red_when_db_fails():
+    """When cache is empty and DB computation raises, audit returns red with error."""
     svc = _mock_service()
     svc._svc.redis_client.get.return_value = None
-    dim = svc._build_audit_dimension()
+    db = MagicMock()
+    svc.compute_audit_metrics = MagicMock(side_effect=Exception("DB unavailable"))
+    dim = svc._build_audit_dimension(db)
     assert dim["status"] == "red"
     assert "error" in dim
 

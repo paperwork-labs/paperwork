@@ -16,6 +16,7 @@
 - [Production Infrastructure](#production-infrastructure)
 - [Real-Time Trading Architecture](#real-time-trading-architecture)
 - [Brain Integration](#brain-integration)
+  - [AxiomFolio Agent vs Paperwork Brain](#axiomfolio-agent-vs-paperwork-brain)
 - [Known Gaps](#known-gaps)
 
 ---
@@ -96,9 +97,9 @@ Row counts below are illustrative; run DB queries for current state.
 | `position_categories` | `PositionCategory` | 240 | Position-to-category mapping |
 | `portfolio_snapshots` | `PortfolioSnapshot` | 3 | Daily portfolio snapshots |
 | `price_data` | `PriceData` | 36806 | OHLCV bars (~34 symbols, ~1255 bars each) |
-| `market_snapshot` | `MarketSnapshot` | 0 | **GAP**: Indicators never computed |
-| `market_snapshot_history` | `MarketSnapshotHistory` | 0 | **GAP**: History never backfilled |
-| `cron_schedule` | `CronSchedule` | 11 | Job schedules |
+| `market_snapshot` | `MarketSnapshot` | varies | Latest indicators per symbol; populated by the nightly coverage pipeline (and related jobs). Row counts change with universe size. |
+| `market_snapshot_history` | `MarketSnapshotHistory` | varies | Immutable daily ledger; populated when the pipeline records history after indicator computation. |
+| `cron_schedule` | `CronSchedule` | ~20 | Job schedules seeded from `job_catalog.py` (aligned with Celery Beat) |
 
 ## Backend Module Structure
 
@@ -249,10 +250,12 @@ Activity endpoint (/activity)
 
 ## Scheduling
 
-- **Source of truth**: `cron_schedule` table, auto-seeded from `backend/tasks/job_catalog.py`.
-- **Admin CRUD**: Admin -> Schedules page.
-- **Render sync**: "Sync to Render" creates/updates/deletes Render Cron Jobs.
-- **Execution**: Render Cron -> task HTTP trigger -> Celery -> worker.
+- **Source of truth**: Celery Beat loads periodic tasks from `backend/tasks/job_catalog.py`. Rows in `cron_schedule` mirror that catalog for admin UI and history; the beat schedule is the runtime driver.
+- **Render cron jobs**: Retired. They added cost (three extra Docker builds) without meaningful resilience beyond Beat + workers; all recurring work now runs on the Celery worker via Beat.
+- **Catalog scope**: Twenty scheduled tasks across six areas: **portfolio**, **market_data**, **strategy**, **intelligence**, **maintenance**, and **auto-ops** (health remediation every 15 minutes; registered in the catalog alongside other maintenance entries).
+- **`JobTemplate` fields** (each catalog row): `id`, `display_name`, `group`, Celery `task`, `default_cron`, `default_tz`, optional `job_run_label` (for `JobRun` history lookup), plus timeouts, queues, and payload defaults.
+- **Admin UI**: Admin → Schedules for CRUD on stored schedules.
+- **Agent**: Schedule inspection and ad-hoc dispatch use `list_schedules` and `run_task_now` in `backend/services/agent/tools.py`.
 
 ## Broker Data Strategy
 
@@ -457,6 +460,26 @@ AxiomFolio → Brain via POST to `{BRAIN_WEBHOOK_URL}/webhooks/axiomfolio`:
 6. Brain calls execute-trade → broker execution
 7. AxiomFolio webhooks Brain: trade_executed
 ```
+
+### AxiomFolio Agent vs Paperwork Brain
+
+Two distinct "brains" exist in the ecosystem:
+
+| | AxiomFolio AgentBrain | Paperwork Brain |
+|---|---|---|
+| Role | Domain intelligence — health remediation, interactive chat, market analysis | Orchestrator — routes user intent to the right product/skill |
+| Location | `backend/services/agent/brain.py` | `paperwork/apis/brain/app/mcp_server.py` |
+| Tools | 55 internal tools (DB queries, Celery dispatch, market analysis) | 9 AxiomFolio HTTP tools + tools from other products |
+| Protocol | Direct Python method calls | HTTP API (`/api/v1/tools/*`) via MCP |
+| Autonomy | Rule-based + LLM with risk taxonomy (SAFE/MODERATE/RISKY/CRITICAL) | User-driven with approval workflows |
+
+The AgentBrain handles three responsibilities:
+
+- **Health remediation** (`analyze_and_act`): Called by auto-ops every 15 min to assess system health and dispatch fixes
+- **Interactive chat** (`chat`): Powers the Agent Chat panel in the admin dashboard
+- **Tool execution**: 55 tools spanning market insight, schedule management, codebase exploration, and strategy research
+
+Paperwork Brain consumes AxiomFolio as one of several "skills" via HTTP. The 9 exposed tools (`brain_tools.py`) are a curated subset: portfolio summary, regime status, scan results, and trading actions. See `docs/brain/axiomfolio_tools.yaml` for the manifest.
 
 ---
 

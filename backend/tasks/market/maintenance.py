@@ -4,18 +4,15 @@ Market data retention, job-run recovery, and quality audit tasks.
 
 from __future__ import annotations
 
-import json
 import logging
 from datetime import datetime, timedelta, timezone
 from celery import shared_task
-from sqlalchemy import func
 
 from backend.config import settings
 from backend.database import SessionLocal
 from backend.models import PriceData
-from backend.models.market_data import JobRun, MarketSnapshotHistory
-from backend.services.market.market_data_service import market_data_service
-from backend.tasks.utils.task_utils import _get_tracked_symbols_safe, task_run
+from backend.models.market_data import JobRun
+from backend.tasks.utils.task_utils import task_run
 
 logger = logging.getLogger(__name__)
 
@@ -115,71 +112,16 @@ def recover_jobs(stale_minutes: int = STALE_JOB_RUN_MINUTES) -> dict:
 )
 @task_run("admin_market_data_audit")
 def audit_quality(sample_limit: int = 25) -> dict:
-    """Audit market data coverage and snapshot history consistency."""
+    """Cache-warmer: calls AdminHealthService.compute_audit_metrics() to
+    refresh the canonical audit cache. The service owns the computation
+    (including the analysis_type='technical_snapshot' filter) and writes
+    the result to Redis with a 5-min TTL.
+    """
+    from backend.services.market.admin_health_service import AdminHealthService
+
     session = SessionLocal()
     try:
-        tracked = _get_tracked_symbols_safe(session)
-        tracked_set = set(tracked)
-        latest_daily_date = (
-            session.query(func.max(PriceData.date))
-            .filter(PriceData.interval == "1d")
-            .scalar()
-        )
-        daily_symbols = set()
-        if latest_daily_date:
-            daily_rows = (
-                session.query(PriceData.symbol)
-                .filter(
-                    PriceData.interval == "1d",
-                    PriceData.date == latest_daily_date,
-                )
-                .distinct()
-                .all()
-            )
-            daily_symbols = {str(s[0]).upper() for s in daily_rows if s and s[0]}
-        missing_latest_daily = sorted(tracked_set - daily_symbols)
-
-        latest_history_date = (
-            session.query(func.max(MarketSnapshotHistory.as_of_date)).scalar()
-        )
-        history_symbols = set()
-        if latest_history_date:
-            history_rows = (
-                session.query(MarketSnapshotHistory.symbol)
-                .filter(MarketSnapshotHistory.as_of_date == latest_history_date)
-                .distinct()
-                .all()
-            )
-            history_symbols = {str(s[0]).upper() for s in history_rows if s and s[0]}
-        missing_history = sorted(tracked_set - history_symbols)
-
-        payload = {
-            "schema_version": 1,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
-            "tracked_total": len(tracked_set),
-            "latest_daily_date": latest_daily_date.isoformat()
-            if hasattr(latest_daily_date, "isoformat")
-            else str(latest_daily_date)
-            if latest_daily_date
-            else None,
-            "latest_daily_symbol_count": len(daily_symbols),
-            "missing_latest_daily_count": len(missing_latest_daily),
-            "missing_latest_daily_sample": missing_latest_daily[:sample_limit],
-            "latest_snapshot_history_date": latest_history_date.isoformat()
-            if hasattr(latest_history_date, "isoformat")
-            else str(latest_history_date)
-            if latest_history_date
-            else None,
-            "latest_snapshot_history_symbol_count": len(history_symbols),
-            "missing_snapshot_history_count": len(missing_history),
-            "missing_snapshot_history_sample": missing_history[:sample_limit],
-        }
-        try:
-            market_data_service.redis_client.set(
-                "market_audit:last", json.dumps(payload), ex=86400
-            )
-        except Exception as e:
-            logger.warning("redis_audit_cache failed: %s", e)
-        return payload
+        svc = AdminHealthService()
+        return svc.compute_audit_metrics(session)
     finally:
         session.close()

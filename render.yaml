@@ -95,10 +95,10 @@ services:
     ipAllowList: []
 
   # Deploy policy: all services auto-deploy on commit to main (branch protection gates CI).
-  # Cron jobs are managed dynamically via the Render API.
-  # The Admin Schedules UI (DB + Render sync) is the source of truth.
-  # Default schedules are seeded from backend/tasks/job_catalog.py on deploy.
-  # Cron jobs also auto-deploy on commit to stay in sync with backend code.
+  # All scheduling is via Celery Beat (beat_schedule in celery_app.py).
+  # Render cron jobs have been retired — they added cost (3 extra Docker builds)
+  # and provided zero additional resilience (they just called .delay() to the worker).
+  # Default schedules are seeded from backend/tasks/job_catalog.py.
 
 databases:
   - name: axiomfolio-db

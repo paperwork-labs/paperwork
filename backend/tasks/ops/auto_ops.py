@@ -9,9 +9,10 @@ Architecture:
 - Approval Queue: AgentAction model tracks pending approvals
 
 Guardrails:
-- Redis cooldown (30 min per dimension) prevents remediation loops.
-- Max-retry counter (3 attempts) escalates to a warning instead of retrying.
-- Regime compute only fires during market-adjacent hours (06:00-22:00 ET).
+- Exponential backoff cooldown per dimension (15m → 30m → 60m → 120m cap).
+- Never gives up — keeps retrying with increasing intervals.
+- Regime compute only fires during market-adjacent hours (06:00-22:00 ET),
+  unless regime is >72h stale.
 """
 
 from __future__ import annotations
@@ -30,8 +31,7 @@ from backend.tasks.utils.task_utils import task_run
 
 logger = logging.getLogger(__name__)
 
-COOLDOWN_SECONDS = 1800  # 30 minutes
-MAX_RETRIES_BEFORE_ESCALATE = 3
+BACKOFF_SEQUENCE = (900, 1800, 3600, 7200)  # 15m, 30m, 60m, 2h cap
 REDIS_PREFIX = "auto_ops"
 
 
@@ -52,17 +52,18 @@ def _is_on_cooldown(dimension: str) -> bool:
     return r.exists(_cooldown_key(dimension)) > 0
 
 
-def _set_cooldown(dimension: str) -> None:
+def _set_cooldown(dimension: str, retry_count: int = 0) -> None:
+    """Set backoff cooldown from explicit sequence: 15m, 30m, 60m, 2h (cap)."""
+    idx = min(retry_count, len(BACKOFF_SEQUENCE) - 1)
     r = _redis()
-    r.setex(_cooldown_key(dimension), COOLDOWN_SECONDS, "1")
+    r.setex(_cooldown_key(dimension), BACKOFF_SEQUENCE[idx], "1")
 
 
 def _increment_retries(dimension: str) -> int:
-    """Increment retry counter. Returns new count. Counter auto-expires after 6 hours."""
+    """Increment retry counter. Returns new count. Never expires — clears on green."""
     r = _redis()
     key = _retry_key(dimension)
     count = r.incr(key)
-    r.expire(key, 21600)
     return count
 
 
@@ -185,7 +186,6 @@ def _rule_based_remediation(health: dict) -> dict:
 
     actions_taken = []
     skipped = []
-    escalated = []
 
     for dim_name, dim_data in dimensions.items():
         status = dim_data.get("status", "unknown")
@@ -203,18 +203,6 @@ def _rule_based_remediation(health: dict) -> dict:
             continue
 
         retry_count = _get_retries(dim_name)
-        if retry_count >= MAX_RETRIES_BEFORE_ESCALATE:
-            escalated.append({
-                "dimension": dim_name,
-                "status": status,
-                "retries": retry_count,
-            })
-            logger.warning(
-                "auto-ops: dimension %s has been %s for %d consecutive checks, escalating",
-                dim_name, status, retry_count,
-            )
-            _set_cooldown(dim_name)
-            continue
 
         if dim_name == "regime" and not _is_market_adjacent_hours():
             age_hours = float(dim_data.get("age_hours", 0) or 0)
@@ -244,8 +232,9 @@ def _rule_based_remediation(health: dict) -> dict:
                     task_name, dim_name, exc,
                 )
 
+        retry_count = _get_retries(dim_name)
+        _set_cooldown(dim_name, retry_count=retry_count)
         _increment_retries(dim_name)
-        _set_cooldown(dim_name)
         actions_taken.append({
             "dimension": dim_name,
             "status": status,
@@ -257,11 +246,9 @@ def _rule_based_remediation(health: dict) -> dict:
         "composite_status": composite,
         "actions_taken": len(actions_taken),
         "skipped": len(skipped),
-        "escalated": len(escalated),
         "details": {
             "actions": actions_taken,
             "skipped": skipped,
-            "escalated": escalated,
         },
     }
 
@@ -269,8 +256,6 @@ def _rule_based_remediation(health: dict) -> dict:
         logger.info("auto-ops: remediated %d dimensions: %s",
                      len(actions_taken),
                      [a["dimension"] for a in actions_taken])
-    elif escalated:
-        logger.warning("auto-ops: %d dimensions escalated, 0 remediated", len(escalated))
     else:
         logger.info("auto-ops: all dimensions green or on cooldown")
 
