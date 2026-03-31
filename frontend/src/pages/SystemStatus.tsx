@@ -604,6 +604,26 @@ const SystemStatus: React.FC = () => {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Pipeline Status</p>
             <div className="flex flex-wrap items-center gap-2">
+              {backfill5mEnabled !== null && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="backfill-5m-header"
+                      checked={backfill5mEnabled}
+                      onCheckedChange={(checked) => void handle5mToggle(checked)}
+                      disabled={backfill5mLoading}
+                      className="scale-75"
+                    />
+                    <Label
+                      htmlFor="backfill-5m-header"
+                      className="cursor-pointer text-xs text-muted-foreground"
+                    >
+                      5m Candles
+                    </Label>
+                  </div>
+                  <div className="h-4 w-px bg-border" />
+                </>
+              )}
               <span className="text-xs text-muted-foreground">Data valid from</span>
               <Input
                 type="date"
@@ -633,28 +653,9 @@ const SystemStatus: React.FC = () => {
       {dailyFillSeries.length > 0 && (
         <Card>
           <CardContent className="pt-6">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                Data Coverage — Last 60 Trading Days
-              </p>
-              {backfill5mEnabled !== null && (
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="backfill-5m"
-                    checked={backfill5mEnabled}
-                    onCheckedChange={(checked) => void handle5mToggle(checked)}
-                    disabled={backfill5mLoading}
-                    className="scale-75"
-                  />
-                  <Label
-                    htmlFor="backfill-5m"
-                    className="cursor-pointer text-xs text-muted-foreground"
-                  >
-                    5m Candles
-                  </Label>
-                </div>
-              )}
-            </div>
+            <p className="mb-3 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              Data Coverage — Last 60 Trading Days
+            </p>
             <CoverageHealthStrip
               dailyFillSeries={dailyFillSeries}
               snapshotFillSeries={snapshotFillSeries}

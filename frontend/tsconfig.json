@@ -14,17 +14,15 @@
     "noEmit": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "ignoreDeprecations": "6.0",
     "resolveJsonModule": true,
     "types": [
       "vite/client",
       "vitest",
       "vitest/globals"
     ],
-    "baseUrl": ".",
     "paths": {
       "@/*": [
-        "src/*"
+        "./src/*"
       ]
     }
   },

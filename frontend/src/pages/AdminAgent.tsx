@@ -1,20 +1,18 @@
 import * as React from "react"
-import axios from "axios"
 import { useQueryClient } from "@tanstack/react-query"
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { ChevronRight, Info, RefreshCw, X } from "lucide-react"
+import axios from "axios"
 
-import api from "@/services/api"
 import { CAPABILITY_GROUPS } from "./AdminAgentCapabilities"
 
 import {
   AgentChatPanel,
   AgentSessionList,
-  type AgentAction,
-  type ChatMessage,
 } from "@/components/agent"
 import { AUTONOMY_LEVELS } from "@/components/agent/types"
-import { HealthGrid } from "@/components/shared/HealthGrid"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useChatContext } from "@/components/chat/ChatProvider"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -25,20 +23,17 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { Skeleton } from "@/components/ui/skeleton"
-import StatCard from "@/components/admin/StatCard"
+import { cn } from "@/lib/utils"
 import {
   autonomyApiToLabel,
   autonomyLabelToApi,
-  useAgentChat,
   useAgentSessions,
   useAgentSettings,
   useAgentStats,
-  useApproveAgentAction,
   usePatchAgentSettings,
 } from "@/hooks/useAgent"
 import useAdminHealth from "@/hooks/useAdminHealth"
 import type {
-  AdminHealthResponse,
   CoverageDimension,
   StageQualityDimension,
   JobsDimension,
@@ -59,13 +54,6 @@ type DimensionValue =
   | PortfolioSyncDimension
   | IbkrGatewayDimension
 
-function newMessageId(): string {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return crypto.randomUUID()
-  }
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
-}
-
 function getAxiosErrorMessage(err: unknown): string {
   if (axios.isAxiosError(err)) {
     const data = err.response?.data as { detail?: unknown } | undefined
@@ -81,78 +69,98 @@ function getAxiosErrorMessage(err: unknown): string {
 
 function getDimensionHint(key: string, dim: DimensionValue): string | null {
   const { status } = dim
-  if (status === 'green' || status === 'ok') return null
+  if (status === "green" || status === "ok") return null
   switch (key) {
-    case 'coverage': {
+    case "coverage": {
       const d = dim as CoverageDimension
-      return `${d.stale_daily ?? 0} stale symbol(s) — agent retries hourly`
+      return `${d.stale_daily ?? 0} stale symbol(s)`
     }
-    case 'stage_quality': {
+    case "stage_quality": {
       const d = dim as StageQualityDimension
-      return `${d.invalid_count ?? 0} invalid, ${d.monotonicity_issues ?? 0} monotonicity`
+      return `${d.invalid_count ?? 0} invalid`
     }
-    case 'audit':
-      return 'Fill below threshold'
-    case 'jobs': {
+    case "audit":
+      return "Fill below threshold"
+    case "jobs": {
       const d = dim as JobsDimension
-      return `${d.error_count ?? 0} failures (${((d.success_rate ?? 1) * 100).toFixed(0)}% success)`
+      return `${d.error_count ?? 0} failures`
     }
-    case 'regime': {
+    case "regime": {
       const d = dim as RegimeDimension
-      return d.age_hours > 24 ? 'Regime stale — recomputed at close' : null
+      return d.age_hours > 24 ? "Regime stale" : null
     }
-    case 'fundamentals': {
+    case "fundamentals": {
       const d = dim as FundamentalsDimension
-      return status === 'warning' ? `Fill at ${d.fundamentals_fill_pct?.toFixed(0) ?? '?'}%` : 'Data incomplete'
+      return status === "warning"
+        ? `Fill at ${d.fundamentals_fill_pct?.toFixed(0) ?? "?"}%`
+        : "Data incomplete"
     }
-    case 'portfolio_sync': {
+    case "portfolio_sync": {
       const d = dim as PortfolioSyncDimension
-      return d.stale_accounts > 0 ? `${d.stale_accounts} stale account(s)` : null
+      return d.stale_accounts > 0 ? `${d.stale_accounts} stale` : null
     }
-    case 'ibkr_gateway': {
+    case "ibkr_gateway": {
       const d = dim as IbkrGatewayDimension
-      return d.note || 'Gateway status unknown'
+      return d.note || "Status unknown"
     }
     default:
       return null
   }
 }
 
-/** Run response action payloads are a subset of persisted AgentAction rows. */
-function normalizeRunAction(raw: Record<string, unknown>): AgentAction {
-  const id = Number(raw.id)
-  const created =
-    typeof raw.created_at === "string" && raw.created_at
-      ? raw.created_at
-      : new Date().toISOString()
-  return {
-    id: Number.isFinite(id) ? id : 0,
-    action_type: String(raw.action_type ?? ""),
-    action_name: String(raw.action_name ?? raw.action_type ?? "Action"),
-    payload: null,
-    risk_level: String(raw.risk_level ?? "moderate"),
-    status: String(raw.status ?? "pending_approval"),
-    reasoning: typeof raw.reasoning === "string" ? raw.reasoning : null,
-    context_summary: null,
-    task_id: typeof raw.task_id === "string" ? raw.task_id : null,
-    result: null,
-    error: null,
-    created_at: created,
-    approved_at: null,
-    executed_at: null,
-    completed_at: null,
-    auto_approved: Boolean(raw.auto_approved),
-    session_id: typeof raw.session_id === "string" ? raw.session_id : null,
-    confidence_score:
-      typeof raw.confidence_score === "number" ? raw.confidence_score : null,
-  }
+function formatDimKey(key: string): string {
+  return key
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function HealthChip({
+  name,
+  status,
+  hint,
+}: {
+  name: string
+  status: string
+  hint: string | null
+}) {
+  const isPass = status === "green" || status === "ok"
+  const isWarn = status === "yellow" || status === "warning"
+
+  return (
+    <div
+      className={cn(
+        "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors",
+        isPass && "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+        isWarn && "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+        !isPass &&
+          !isWarn &&
+          "bg-destructive/10 text-destructive",
+      )}
+      role="listitem"
+      title={hint ?? undefined}
+    >
+      <span
+        className={cn(
+          "size-1.5 rounded-full",
+          isPass && "bg-emerald-500",
+          isWarn && "bg-amber-500",
+          !isPass && !isWarn && "bg-destructive",
+        )}
+      />
+      <span>{formatDimKey(name)}</span>
+    </div>
+  )
 }
 
 interface CapabilitiesSidebarProps {
   onClose: () => void
+  onCapabilityClick?: (toolName: string) => void
 }
 
-const CapabilitiesSidebar: React.FC<CapabilitiesSidebarProps> = ({ onClose }) => {
+const CapabilitiesSidebar: React.FC<CapabilitiesSidebarProps> = ({
+  onClose,
+  onCapabilityClick,
+}) => {
   const [openGroups, setOpenGroups] = React.useState<Set<string>>(new Set())
 
   const toggleGroup = (title: string) => {
@@ -169,14 +177,16 @@ const CapabilitiesSidebar: React.FC<CapabilitiesSidebarProps> = ({ onClose }) =>
 
   const totalCapabilities = CAPABILITY_GROUPS.reduce(
     (sum, g) => sum + g.capabilities.length,
-    0
+    0,
   )
 
   return (
     <div className="flex h-full w-72 flex-col border-l border-border bg-card">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Capabilities</h3>
+          <h3 className="text-sm font-semibold text-foreground">
+            Capabilities
+          </h3>
           <p className="text-xs text-muted-foreground">
             {totalCapabilities} tools available
           </p>
@@ -208,9 +218,10 @@ const CapabilitiesSidebar: React.FC<CapabilitiesSidebarProps> = ({ onClose }) =>
                     className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left transition-colors hover:bg-muted/50"
                   >
                     <ChevronRight
-                      className={`size-4 shrink-0 text-muted-foreground transition-transform ${
-                        isOpen ? "rotate-90" : ""
-                      }`}
+                      className={cn(
+                        "size-4 shrink-0 text-muted-foreground transition-transform",
+                        isOpen && "rotate-90",
+                      )}
                     />
                     <Icon className="size-4 shrink-0 text-primary" />
                     <span className="flex-1 text-sm font-medium text-foreground">
@@ -224,26 +235,32 @@ const CapabilitiesSidebar: React.FC<CapabilitiesSidebarProps> = ({ onClose }) =>
                 <CollapsibleContent>
                   <ul className="ml-6 space-y-1 pb-2 pl-2">
                     {group.capabilities.map((cap) => (
-                      <li
-                        key={cap.name}
-                        className="rounded-md px-2 py-1.5 text-xs"
-                      >
-                        <div className="flex items-start gap-1.5">
-                          <Badge
-                            variant={cap.risk === "safe" ? "secondary" : "outline"}
-                            className="mt-0.5 shrink-0 text-[9px] capitalize"
-                          >
-                            {cap.risk}
-                          </Badge>
-                          <div className="min-w-0">
-                            <code className="text-[11px] font-medium text-primary">
-                              {cap.name}
-                            </code>
-                            <p className="text-[11px] leading-tight text-muted-foreground">
-                              {cap.description}
-                            </p>
+                      <li key={cap.name}>
+                        <button
+                          type="button"
+                          className="w-full cursor-pointer rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          onClick={() => onCapabilityClick?.(cap.name)}
+                          aria-label={`Run ${cap.name}: ${cap.description}`}
+                        >
+                          <div className="flex items-start gap-1.5">
+                            <Badge
+                              variant={
+                                cap.risk === "safe" ? "secondary" : "outline"
+                              }
+                              className="mt-0.5 shrink-0 text-[9px] capitalize"
+                            >
+                              {cap.risk}
+                            </Badge>
+                            <div className="min-w-0">
+                              <code className="text-[11px] font-medium text-primary">
+                                {cap.name}
+                              </code>
+                              <p className="text-[11px] leading-tight text-muted-foreground">
+                                {cap.description}
+                              </p>
+                            </div>
                           </div>
-                        </div>
+                        </button>
                       </li>
                     ))}
                   </ul>
@@ -259,35 +276,26 @@ const CapabilitiesSidebar: React.FC<CapabilitiesSidebarProps> = ({ onClose }) =>
 
 const AdminAgent: React.FC = () => {
   const queryClient = useQueryClient()
+  const chat = useChatContext()
   const { health, loading: healthLoading } = useAdminHealth()
   const settingsQuery = useAgentSettings()
   const sessionsQuery = useAgentSessions()
   const statsQuery = useAgentStats()
-  const chatMutation = useAgentChat()
-  const approveMutation = useApproveAgentAction()
   const patchSettings = usePatchAgentSettings()
+  const prefersReducedMotion = useReducedMotion()
 
-  const [messages, setMessages] = React.useState<ChatMessage[]>([])
-  const [currentSessionId, setCurrentSessionId] = React.useState<string | null>(null)
-  const [selectedSessionId, setSelectedSessionId] = React.useState<
-    string | undefined
-  >()
-  const [approvingActionId, setApprovingActionId] = React.useState<
-    number | null
-  >(null)
   const [settingsError, setSettingsError] = React.useState<string | null>(null)
   const [approveError, setApproveError] = React.useState<string | null>(null)
   const [showCapabilities, setShowCapabilities] = React.useState(false)
+  const [refreshing, setRefreshing] = React.useState(false)
 
   const autonomyLabel = autonomyApiToLabel(
-    settingsQuery.data?.autonomy_level ?? "safe"
+    settingsQuery.data?.autonomy_level ?? "safe",
   )
 
   const showSidebarSkeleton =
     (settingsQuery.isPending && !settingsQuery.data) ||
     (sessionsQuery.isPending && !sessionsQuery.data)
-
-  const [refreshing, setRefreshing] = React.useState(false)
 
   const handleRefresh = React.useCallback(async () => {
     setRefreshing(true)
@@ -310,163 +318,79 @@ const AdminAgent: React.FC = () => {
         },
       })
     },
-    [patchSettings, settingsQuery.data?.autonomy_level]
-  )
-
-  const handleSendMessage = React.useCallback(
-    async (message: string) => {
-      const userMsg: ChatMessage = {
-        id: newMessageId(),
-        role: "user",
-        content: message,
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, userMsg])
-
-      try {
-        const data = await chatMutation.mutateAsync({
-          message,
-          session_id: currentSessionId,
-        })
-        
-        // Track session for conversation continuity
-        if (data.session_id) {
-          setCurrentSessionId(data.session_id)
-        }
-        
-        const actions = (data.actions ?? []).map((a) =>
-          normalizeRunAction(a as Record<string, unknown>)
-        )
-        
-        const responseText =
-          (data.response && data.response.trim()) || "No response."
-
-        const agentMsg: ChatMessage = {
-          id: newMessageId(),
-          role: "agent",
-          content: responseText,
-          actions: actions.length > 0 ? actions : undefined,
-          timestamp: new Date(),
-        }
-        setMessages((prev) => [...prev, agentMsg])
-      } catch (err) {
-        if (axios.isAxiosError(err) && err.response?.status === 404) {
-          setCurrentSessionId(null)
-        }
-        const agentErr: ChatMessage = {
-          id: newMessageId(),
-          role: "agent",
-          content: `Chat failed.\n\n${getAxiosErrorMessage(err)}`,
-          timestamp: new Date(),
-        }
-        setMessages((prev) => [...prev, agentErr])
-      }
-    },
-    [chatMutation, currentSessionId]
-  )
-  
-  const handleNewChat = React.useCallback(() => {
-    setMessages([])
-    setCurrentSessionId(null)
-    setSelectedSessionId(undefined)
-  }, [])
-
-  const handleSelectSession = React.useCallback(
-    async (sessionId: string) => {
-      const previousSessionId = currentSessionId
-      setSelectedSessionId(sessionId)
-      setCurrentSessionId(sessionId)
-      try {
-        const res = await api.get<{
-          session_id: string
-          messages: Array<{ role: string; content: string }>
-          found: boolean
-        }>(`/admin/agent/sessions/${sessionId}/messages`)
-
-        if (res.data.found && res.data.messages.length > 0) {
-          const loadedMessages: ChatMessage[] = res.data.messages
-            .filter((m) => m.role === "user" || m.role === "assistant")
-            .map((m: { role: string; content: string }, i: number) => ({
-              id: `${sessionId}-${i}`,
-              role: m.role === "assistant" ? "agent" : "user",
-              content: m.content,
-              timestamp: new Date(),
-            }))
-          setMessages(loadedMessages)
-        } else if (!res.data.found) {
-          const expiredMsg: ChatMessage = {
-            id: newMessageId(),
-            role: "agent",
-            content:
-              "This conversation history is no longer available. " +
-              "The session record exists, but the messages were not preserved. " +
-              "You can start a new conversation using the **New Chat** button.",
-            timestamp: new Date(),
-          }
-          setMessages([expiredMsg])
-        } else {
-          setMessages([])
-        }
-      } catch (err) {
-        setCurrentSessionId(previousSessionId)
-        setSelectedSessionId(previousSessionId ?? undefined)
-        const errMsg: ChatMessage = {
-          id: newMessageId(),
-          role: "agent",
-          content: `Could not load session: ${getAxiosErrorMessage(err)}`,
-          timestamp: new Date(),
-        }
-        setMessages((prev) => [...prev, errMsg])
-      }
-    },
-    [currentSessionId]
+    [patchSettings, settingsQuery.data?.autonomy_level],
   )
 
   const handleApproveAction = React.useCallback(
-    async (actionId: number, approved: boolean) => {
+    async (id: number, approved: boolean) => {
       setApproveError(null)
-      setApprovingActionId(actionId)
       try {
-        const res = await approveMutation.mutateAsync({
-          id: actionId,
-          approved,
-        })
-        const updated = res.data
-        setMessages((prev) =>
-          prev.map((m) => {
-            if (!m.actions?.some((a) => a.id === actionId)) return m
-            return {
-              ...m,
-              actions: m.actions.map((a) =>
-                a.id === actionId ? { ...a, ...updated } : a
-              ),
-            }
-          })
-        )
+        await chat.approveAction(id, approved)
       } catch (err) {
         setApproveError(getAxiosErrorMessage(err))
-      } finally {
-        setApprovingActionId(null)
       }
     },
-    [approveMutation]
+    [chat],
+  )
+
+  const handleCapabilityClick = React.useCallback(
+    (toolName: string) => {
+      void chat.sendMessage(`Run ${toolName}`)
+      setShowCapabilities(false)
+    },
+    [chat],
   )
 
   const stats = statsQuery.data
   const statsError =
     statsQuery.isError && getAxiosErrorMessage(statsQuery.error)
 
+  const healthEntries = React.useMemo(() => {
+    if (!health?.dimensions) return []
+    return Object.entries(health.dimensions) as [
+      string,
+      DimensionValue,
+    ][]
+  }, [health?.dimensions])
+
   return (
-    <div className="flex flex-col gap-6 p-0">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+    <div className="flex flex-col gap-4 p-0">
+      {/* Compact header: title + inline stats + action buttons */}
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-xl font-semibold tracking-tight text-foreground">
             Agent Dashboard
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            LLM-powered auto-ops agent for intelligent system monitoring and
-            remediation.
-          </p>
+          {statsQuery.isPending && !stats ? (
+            <div className="flex items-center gap-1.5">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-5 w-16 rounded-full" />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Badge
+                variant={stats?.pending_approval ? "default" : "secondary"}
+                className="text-xs"
+              >
+                Pending: {stats?.pending_approval ?? 0}
+              </Badge>
+              <Badge variant="secondary" className="text-xs">
+                Total: {stats?.total_actions ?? 0}
+              </Badge>
+              <Badge variant="secondary" className="text-xs">
+                Rate:{" "}
+                {stats?.auto_approved_rate != null
+                  ? `${stats.auto_approved_rate.toFixed(0)}%`
+                  : "—"}
+              </Badge>
+              {(stats?.failed ?? 0) > 0 && (
+                <Badge variant="destructive" className="text-xs">
+                  Failed: {stats?.failed}
+                </Badge>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex shrink-0 gap-2">
           <Button
@@ -484,15 +408,13 @@ const AdminAgent: React.FC = () => {
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => {
-              void handleRefresh()
-            }}
+            onClick={() => void handleRefresh()}
             disabled={refreshing}
             aria-busy={refreshing}
             aria-label="Reload agent data and health"
           >
             <RefreshCw
-              className={`mr-2 size-4 ${refreshing ? "animate-spin" : ""}`}
+              className={cn("mr-2 size-4", refreshing && "animate-spin")}
               aria-hidden
             />
             Reload
@@ -500,164 +422,145 @@ const AdminAgent: React.FC = () => {
         </div>
       </header>
 
+      {/* Error alerts */}
       {(settingsQuery.isError ||
         sessionsQuery.isError ||
         statsQuery.isError) && (
         <Alert variant="destructive" role="alert">
           <AlertTitle>Could not load agent data</AlertTitle>
           <AlertDescription className="space-y-1">
-            {settingsQuery.isError ? (
+            {settingsQuery.isError && (
               <p>Settings: {getAxiosErrorMessage(settingsQuery.error)}</p>
-            ) : null}
-            {sessionsQuery.isError ? (
+            )}
+            {sessionsQuery.isError && (
               <p>Sessions: {getAxiosErrorMessage(sessionsQuery.error)}</p>
-            ) : null}
-            {statsQuery.isError ? (
+            )}
+            {statsQuery.isError && (
               <p>Stats: {getAxiosErrorMessage(statsQuery.error)}</p>
-            ) : null}
+            )}
           </AlertDescription>
         </Alert>
       )}
 
-      {settingsError ? (
+      {settingsError && (
         <Alert variant="destructive" role="alert">
           <AlertTitle>Could not update autonomy</AlertTitle>
           <AlertDescription>{settingsError}</AlertDescription>
         </Alert>
-      ) : null}
+      )}
 
-      {approveError ? (
+      {approveError && (
         <Alert variant="destructive" role="alert">
           <AlertTitle>Could not update action</AlertTitle>
           <AlertDescription>{approveError}</AlertDescription>
         </Alert>
-      ) : null}
+      )}
 
-      <section
-        aria-label="Agent statistics"
-        className="flex flex-wrap gap-4"
-      >
-        {statsQuery.isPending && !statsQuery.data ? (
-          <>
-            <Skeleton className="h-[5.5rem] min-w-[140px] flex-1 rounded-lg" />
-            <Skeleton className="h-[5.5rem] min-w-[140px] flex-1 rounded-lg" />
-            <Skeleton className="h-[5.5rem] min-w-[140px] flex-1 rounded-lg" />
-            <Skeleton className="h-[5.5rem] min-w-[140px] flex-1 rounded-lg" />
-          </>
-        ) : (
-          <>
-            <StatCard
-              label="Pending Approval"
-              value={stats?.pending_approval ?? "—"}
-              helpText="Actions requiring review"
-              color={stats?.pending_approval ? "status.warning" : undefined}
-              variant="full"
-            />
-            <StatCard
-              label="Total Actions"
-              value={stats?.total_actions ?? "—"}
-              helpText="All time"
-              variant="full"
-            />
-            <StatCard
-              label="Auto-Approved Rate"
-              value={
-                stats?.auto_approved_rate != null
-                  ? `${stats.auto_approved_rate.toFixed(1)}%`
-                  : "—"
-              }
-              helpText="Safe/moderate actions"
-              variant="full"
-            />
-            <StatCard
-              label="Failed Actions"
-              value={stats?.failed ?? "—"}
-              helpText="Execution errors"
-              color={stats?.failed ? "status.danger" : undefined}
-              variant="full"
-            />
-          </>
-        )}
-      </section>
-
-      {statsError && statsQuery.data ? (
+      {statsError && stats && (
         <p className="text-sm text-destructive" role="status">
           Stats refresh failed: {statsError}
         </p>
-      ) : null}
+      )}
 
+      {/* Horizontal health chips */}
+      <div
+        className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
+        role="list"
+        aria-label="Health dimensions"
+      >
+        {healthLoading ? (
+          <>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton
+                key={i}
+                className="h-7 w-24 shrink-0 rounded-full"
+              />
+            ))}
+          </>
+        ) : (
+          healthEntries.map(([key, dim]) => (
+            <HealthChip
+              key={key}
+              name={key}
+              status={dim.status}
+              hint={getDimensionHint(key, dim)}
+            />
+          ))
+        )}
+      </div>
+
+      {/* Main content: sidebar + chat + capabilities */}
       <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch">
         <aside
-          className="flex w-full shrink-0 flex-col gap-4 lg:max-w-sm"
-          aria-label="Agent health and sessions"
+          className="flex w-full shrink-0 flex-col gap-4 lg:max-w-xs"
+          aria-label="Agent settings and sessions"
         >
           {showSidebarSkeleton ? (
             <div className="flex flex-col gap-4">
-              <Skeleton className="h-72 w-full rounded-xl" />
+              <Skeleton className="h-48 w-full rounded-xl" />
               <Skeleton className="h-56 w-full rounded-xl" />
             </div>
           ) : (
             <>
               <Card size="sm" className="gap-4">
                 <CardHeader className="pb-0">
-                  <CardTitle>Health</CardTitle>
-                  <CardDescription>
-                    Live signals across intelligence and operations.
-                  </CardDescription>
+                  <CardTitle className="text-sm">Autonomy</CardTitle>
                 </CardHeader>
-                <CardContent className="flex flex-col gap-4">
-                  <HealthGrid
-                    dimensions={health?.dimensions ?? null}
-                    loading={healthLoading}
-                    getHint={getDimensionHint}
-                    compact
-                  />
-
-                  <div className="border-t border-border pt-4">
-                    <p
-                      id="autonomy-heading"
-                      className="mb-2 text-sm font-medium text-foreground"
+                <CardContent>
+                  <Tabs
+                    value={autonomyLabel}
+                    onValueChange={handleAutonomyChange}
+                    className="w-full"
+                    aria-label="Autonomy level"
+                  >
+                    <TabsList
+                      variant="default"
+                      className="grid w-full grid-cols-3"
+                      aria-label="Autonomy level"
                     >
-                      Autonomy
-                    </p>
-                    <Tabs
-                      value={autonomyLabel}
-                      onValueChange={handleAutonomyChange}
-                      className="w-full"
-                      aria-labelledby="autonomy-heading"
+                      {AUTONOMY_LEVELS.map((level) => (
+                        <TabsTrigger
+                          key={level}
+                          value={level}
+                          className="text-xs sm:text-sm"
+                        >
+                          {level}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                    <TabsContent
+                      value="Safe"
+                      className="mt-2 text-xs text-muted-foreground"
                     >
-                      <TabsList
-                        variant="default"
-                        className="grid w-full grid-cols-3"
-                        aria-label="Autonomy level"
-                      >
-                        {AUTONOMY_LEVELS.map((level) => (
-                          <TabsTrigger
-                            key={level}
-                            value={level}
-                            className="text-xs sm:text-sm"
-                          >
-                            {level}
-                          </TabsTrigger>
-                        ))}
-                      </TabsList>
-                      <TabsContent value="Safe" className="mt-2 text-xs text-muted-foreground">
-                        <p>Low-risk automation only; approvals for anything sensitive.</p>
-                      </TabsContent>
-                      <TabsContent value="Full" className="mt-2 text-xs text-muted-foreground">
-                        <p>Agent may act within policy without asking, where allowed.</p>
-                      </TabsContent>
-                      <TabsContent value="Ask" className="mt-2 text-xs text-muted-foreground">
-                        <p>Confirm each substantive step before execution.</p>
-                      </TabsContent>
-                    </Tabs>
-                  </div>
+                      <p>
+                        Low-risk automation only; approvals for anything
+                        sensitive.
+                      </p>
+                    </TabsContent>
+                    <TabsContent
+                      value="Full"
+                      className="mt-2 text-xs text-muted-foreground"
+                    >
+                      <p>
+                        Agent may act within policy without asking, where
+                        allowed.
+                      </p>
+                    </TabsContent>
+                    <TabsContent
+                      value="Ask"
+                      className="mt-2 text-xs text-muted-foreground"
+                    >
+                      <p>
+                        Confirm each substantive step before execution.
+                      </p>
+                    </TabsContent>
+                  </Tabs>
                 </CardContent>
               </Card>
               <AgentSessionList
                 sessions={sessionsQuery.data ?? []}
-                selectedSessionId={selectedSessionId}
-                onSelectSession={handleSelectSession}
+                selectedSessionId={chat.selectedSessionId}
+                onSelectSession={(id) => void chat.selectSession(id)}
               />
             </>
           )}
@@ -673,18 +576,18 @@ const AdminAgent: React.FC = () => {
               className="text-lg font-semibold text-foreground"
             >
               Conversation
-              {currentSessionId && (
+              {chat.currentSessionId && (
                 <span className="ml-2 text-sm font-normal text-muted-foreground">
-                  (Session: {currentSessionId})
+                  (Session: {chat.currentSessionId})
                 </span>
               )}
             </h2>
-            {messages.length > 0 && (
+            {chat.messages.length > 0 && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleNewChat}
-                disabled={chatMutation.isPending}
+                onClick={chat.newChat}
+                disabled={chat.isLoading}
               >
                 New Chat
               </Button>
@@ -692,20 +595,39 @@ const AdminAgent: React.FC = () => {
           </div>
           <AgentChatPanel
             className="min-h-0 flex-1"
-            messages={messages}
-            onSendMessage={(msg) => {
-              void handleSendMessage(msg)
-            }}
-            isLoading={chatMutation.isPending}
-            onApproveAction={(id, approved) => {
+            messages={chat.messages}
+            onSendMessage={(msg) => void chat.sendMessage(msg)}
+            isLoading={chat.isLoading}
+            onApproveAction={(id, approved) =>
               void handleApproveAction(id, approved)
-            }}
-            approvingActionId={approvingActionId}
+            }
+            approvingActionId={chat.approvingActionId}
           />
         </section>
-        {showCapabilities && (
-          <CapabilitiesSidebar onClose={() => setShowCapabilities(false)} />
-        )}
+
+        <AnimatePresence>
+          {showCapabilities && (
+            <motion.div
+              initial={
+                prefersReducedMotion
+                  ? { opacity: 0, x: 0 }
+                  : { opacity: 0, x: 20 }
+              }
+              animate={{ opacity: 1, x: 0 }}
+              exit={
+                prefersReducedMotion
+                  ? { opacity: 0, x: 0 }
+                  : { opacity: 0, x: 20 }
+              }
+              transition={{ duration: 0.2, ease: "easeOut" }}
+            >
+              <CapabilitiesSidebar
+                onClose={() => setShowCapabilities(false)}
+                onCapabilityClick={handleCapabilityClick}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )

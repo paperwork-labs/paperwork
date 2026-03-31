@@ -360,20 +360,30 @@ class MarketDataService:
         raw = str(stage_label or "").strip().upper()
         if not raw:
             return None
+        if raw in ("1A", "1B"):
+            return raw
         if "2A" in raw:
             return "2A"
+        if "2B(RS-)" in raw:
+            return "2B(RS-)"
         if "2B" in raw:
             return "2B"
         if "2C" in raw:
             return "2C"
         if raw in {"2", "STAGE 2"}:
             return "2A"
+        if raw in ("3A", "3B"):
+            return raw
+        if raw in ("4A", "4B", "4C"):
+            return raw
         if raw in {"1", "STAGE 1"} or raw.endswith(" 1"):
             return "1"
         if raw in {"3", "STAGE 3"} or raw.endswith(" 3"):
             return "3"
         if raw in {"4", "STAGE 4"} or raw.endswith(" 4"):
             return "4"
+        if raw == "UNKNOWN":
+            return "UNKNOWN"
         return None
 
     def _derive_stage_run_fields(
@@ -385,7 +395,7 @@ class MarketDataService:
     ) -> Dict[str, Any]:
         """Compute per-symbol stage run metadata from stage-label history + current stage."""
         current_norm = self._normalize_stage_label(current_stage_label)
-        if current_norm is None:
+        if current_norm is None or current_norm == "UNKNOWN":
             return {
                 "current_stage_days": None,
                 "previous_stage_label": None,
@@ -396,7 +406,7 @@ class MarketDataService:
         for lbl in (prior_stage_labels or []):
             n = self._normalize_stage_label(lbl)
             # Ignore unknown/empty history labels so they do not erase stage runs.
-            if n is not None:
+            if n is not None and n != "UNKNOWN":
                 normalized_prior.append(n)
         has_normalized_prior = len(normalized_prior) > 0
         seq = normalized_prior + [current_norm]
@@ -440,7 +450,7 @@ class MarketDataService:
                     out["previous_stage_days"] = getattr(
                         latest_history_row, "previous_stage_days", None
                     )
-            elif latest_stage_norm and latest_stage_norm != current_norm:
+            elif latest_stage_norm and latest_stage_norm != "UNKNOWN" and latest_stage_norm != current_norm:
                 out["previous_stage_label"] = (
                     out.get("previous_stage_label") or latest_stage_norm
                 )
@@ -450,14 +460,14 @@ class MarketDataService:
                     )
                 if not out.get("current_stage_days"):
                     out["current_stage_days"] = 1
-            elif latest_stage_norm is None and has_normalized_prior:
+            elif latest_stage_norm in (None, "UNKNOWN") and has_normalized_prior:
                 # Latest history row is UNKNOWN but we have known prior labels.
                 # The run-length from normalized_prior + current is already correct
                 # (UNKNOWN gaps are filtered out). Trust the computed `out` as-is;
                 # it already reflects the proper previous_stage from the known
                 # sequence and current_stage_days = 1 for a fresh stage entry.
                 pass
-            elif latest_stage_norm is None and not has_normalized_prior:
+            elif latest_stage_norm in (None, "UNKNOWN") and not has_normalized_prior:
                 # Some historical rows may carry UNKNOWN stage labels while still
                 # maintaining monotonic run lengths. Preserve that continuity
                 # instead of collapsing current_stage_days to 1.
@@ -2385,7 +2395,13 @@ class MarketDataService:
         return snapshot
 
     # ---------------------- Stage quality + repair ----------------------
-    _VALID_STAGE_LABELS = {"1", "2A", "2B", "2C", "3", "4", "UNKNOWN"}
+    _VALID_STAGE_LABELS = {
+        "1", "1A", "1B",
+        "2A", "2B", "2B(RS-)", "2C",
+        "3", "3A", "3B",
+        "4", "4A", "4B", "4C",
+        "UNKNOWN",
+    }
 
     @staticmethod
     def _as_naive_utc(ts: datetime | None) -> datetime | None:

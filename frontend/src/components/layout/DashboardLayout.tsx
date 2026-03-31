@@ -30,6 +30,8 @@ import AppDivider from '../ui/AppDivider';
 import AppLogo from '../ui/AppLogo';
 import useAdminHealth from '../../hooks/useAdminHealth';
 import { CompactAccountSelector as AccountSelector } from '../shared/CompactAccountSelector';
+import { ChatProvider } from '@/components/chat/ChatProvider';
+import { ChatBubble } from '@/components/chat/ChatBubble';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -586,9 +588,12 @@ const DashboardLayout: React.FC = () => {
             </div>
           </header>
 
-          <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4">
-            <Outlet />
-          </main>
+          <ChatProvider>
+            <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4">
+              <Outlet />
+            </main>
+            {isAdmin && <ChatBubble />}
+          </ChatProvider>
         </div>
 
         <UiDialog

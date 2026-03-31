@@ -426,7 +426,6 @@ class AdminHealthService:
                     MarketSnapshot.analysis_type == "technical_snapshot",
                     MarketSnapshot.symbol.in_(universe),
                     MarketSnapshot.sector.isnot(None),
-                    MarketSnapshot.pe_ttm.isnot(None),
                 )
                 .scalar()
             )

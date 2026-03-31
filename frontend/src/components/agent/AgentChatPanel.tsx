@@ -1,4 +1,5 @@
 import * as React from "react"
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { Loader2, SendHorizontal, Zap } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -41,6 +42,7 @@ export function AgentChatPanel({
 }: AgentChatPanelProps) {
   const [draft, setDraft] = React.useState("")
   const endRef = React.useRef<HTMLDivElement>(null)
+  const prefersReducedMotion = useReducedMotion()
 
   React.useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
@@ -99,14 +101,26 @@ export function AgentChatPanel({
             </div>
           </div>
         )}
-        {messages.map((m) => (
-          <AgentMessage
-            key={m.id}
-            message={m}
-            onApproveAction={onApproveAction}
-            approvingActionId={approvingActionId}
-          />
-        ))}
+        <AnimatePresence initial={false}>
+          {messages.map((m) => (
+            <motion.div
+              key={m.id}
+              initial={
+                prefersReducedMotion
+                  ? { opacity: 1, y: 0 }
+                  : { opacity: 0, y: 8 }
+              }
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+            >
+              <AgentMessage
+                message={m}
+                onApproveAction={onApproveAction}
+                approvingActionId={approvingActionId}
+              />
+            </motion.div>
+          ))}
+        </AnimatePresence>
         {!isLoading && messages.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 border-t border-dashed border-border/50 pt-3 mt-2">
             <Zap className="size-3.5 text-muted-foreground" />
