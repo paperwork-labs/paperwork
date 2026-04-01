@@ -797,10 +797,13 @@ class AgentBrain:
         
         if broker in ("ibkr", "all"):
             try:
-                from backend.services.clients.ibkr_client import IBKRClient
-                client = IBKRClient.get_instance()
+                # Use module singleton (same as AdminHealthService), not a non-existent get_instance().
+                from backend.services.clients.ibkr_client import ibkr_client
+
+                health = getattr(ibkr_client, "connection_health", {}) or {}
                 results["ibkr"] = {
-                    "connected": client.is_connected() if client else False,
+                    "connected": ibkr_client.is_connected(),
+                    "health_status": health.get("status", "unknown"),
                 }
             except Exception as e:
                 results["ibkr"] = {"error": str(e)}

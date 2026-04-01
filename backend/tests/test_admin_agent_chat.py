@@ -65,3 +65,22 @@ async def test_execute_tool_read_file_moderate_runs_inline_not_celery(
     assert action.status == "completed"
     assert result.get("path") == "tests/fixtures/agent_read_file_sample.txt"
     assert "line1" in (result.get("content") or "")
+
+
+@pytest.mark.asyncio
+async def test_tool_check_broker_uses_singleton_not_missing_get_instance(
+    db_session,
+) -> None:
+    """check_broker_connection must not call IBKRClient.get_instance() (undefined)."""
+    from backend.services.agent.brain import AgentBrain
+
+    if db_session is None:
+        pytest.skip("requires database")
+
+    brain = AgentBrain(db=db_session)
+    out = await brain._tool_check_broker("ibkr")
+    assert "ibkr" in out
+    ibkr = out["ibkr"]
+    assert "connected" in ibkr, ibkr
+    assert isinstance(ibkr["connected"], bool)
+    assert "health_status" in ibkr
