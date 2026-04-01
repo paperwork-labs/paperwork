@@ -43,7 +43,7 @@ See `delegation.mdc` for detailed patterns.
 ## Quality Gates for Subagent Work
 
 When a subagent produces output:
-1. Verify financial calculations match Stage_Analysis_v4.docx
+1. Verify financial calculations match Stage_Analysis.docx
 2. Check that semantic tokens are used (no raw hex)
 3. Confirm error handling follows conventions (no silent except)
 4. Validate imports are absolute and sorted correctly

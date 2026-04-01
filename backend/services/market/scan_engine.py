@@ -79,20 +79,21 @@ def classify_long_tier(inp: ScanInput, regime: str) -> Optional[str]:
     Speculative: 1A/1B/2A, weaker metrics but still long-eligible
     """
     stage = inp.stage_label
-    rs = _safe(inp.rs_mansfield)
     dist_n = _safe(inp.ema10_dist_n)
     atre_p = _safe(inp.atre_150_pctile)
     range52 = _safe(inp.range_pos_52w)
 
     accessible = REGIME_LONG_ACCESS.get(regime, [])
 
-    # Breakout Elite — highest conviction
-    if TIER_BREAKOUT_ELITE in accessible:
+    # Breakout Elite — highest conviction (RS required; None is unassigned)
+    if TIER_BREAKOUT_ELITE in accessible and inp.rs_mansfield is not None:
+        rs = inp.rs_mansfield
         if stage in ("2A", "2B") and rs > 0 and dist_n <= 2.0 and atre_p >= 70 and range52 >= 60:
             return TIER_BREAKOUT_ELITE
 
-    # Breakout Standard
-    if TIER_BREAKOUT_STANDARD in accessible:
+    # Breakout Standard (RS required; None is unassigned)
+    if TIER_BREAKOUT_STANDARD in accessible and inp.rs_mansfield is not None:
+        rs = inp.rs_mansfield
         if stage in ("2A", "2B", "2C") and rs > -5 and dist_n <= 3.0 and range52 >= 40:
             return TIER_BREAKOUT_STANDARD
 
@@ -116,19 +117,20 @@ def classify_short_tier(inp: ScanInput, regime: str) -> Optional[str]:
     Breakdown Standard: 3B/4A/4B/4C, RS < 5, wider tolerance
     """
     stage = inp.stage_label
-    rs = _safe(inp.rs_mansfield)
     dist_n = _safe(inp.ema10_dist_n)
     range52 = _safe(inp.range_pos_52w)
 
     accessible = REGIME_SHORT_ACCESS.get(regime, [])
 
-    # Breakdown Elite — highest conviction shorts
-    if TIER_BREAKDOWN_ELITE in accessible:
+    # Breakdown Elite — highest conviction shorts (RS required; None is unassigned)
+    if TIER_BREAKDOWN_ELITE in accessible and inp.rs_mansfield is not None:
+        rs = inp.rs_mansfield
         if stage in ("4A", "4B") and rs < 0 and dist_n >= -2.0 and range52 <= 30:
             return TIER_BREAKDOWN_ELITE
 
     # Breakdown Standard
     if TIER_BREAKDOWN_STANDARD in accessible:
+        rs = _safe(inp.rs_mansfield)
         if stage in ("3B", "4A", "4B", "4C") and rs < 5:
             return TIER_BREAKDOWN_STANDARD
 

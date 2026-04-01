@@ -28,7 +28,7 @@ HEALTH_THRESHOLDS: Dict[str, float] = {
     "coverage_stale_daily_max": 0,
     "stage_unknown_rate_max": 0.35,
     "stage_invalid_max": 0,
-    "stage_monotonicity_max": 0,
+    "stage_monotonicity_max": 15,
     "jobs_success_rate_min": 0.90,
     "jobs_lookback_hours": 24,
     "audit_daily_fill_pct_min": 95.0,

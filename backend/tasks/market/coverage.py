@@ -1,7 +1,7 @@
 """
 Nightly coverage bootstrap, scan overlay, exit cascade hooks, and coverage health.
 
-The Stage Analysis v4 nightly computation steps 0–10 (regime inputs through
+The Stage Analysis spec nightly computation steps 0–10 (regime inputs through
 persist) run inside ``recompute_universe`` / ``indicator_engine``;
 this module orchestrates data refresh, that recompute, market regime persistence,
 scan overlay, history archive, and downstream evaluation tasks.
@@ -245,7 +245,7 @@ def _summarize_bootstrap_step(step: str, payload: Optional[dict]) -> str:
         )
     if step == "admin_indicators_recompute_universe":
         return (
-            f"Recomputed {data.get('processed', data.get('symbols', 0))} / "
+            f"Recomputed {data.get('processed_ok', data.get('symbols', 0))} / "
             f"{data.get('symbols', 0)}"
         )
     if step == "admin_snapshots_history_backfill":
@@ -285,7 +285,7 @@ def daily_bootstrap(
     """Backfill DAILY coverage for the tracked universe (no 5m).
 
     Orchestration order: constituents, tracked cache, daily bars, full snapshot
-    pipeline (v4 steps 0–10 via indicator recompute), market regime row, scan
+    pipeline (Stage Analysis spec steps 0–10 via indicator recompute), market regime row, scan
     overlay, snapshot history, exit cascade, strategies, coverage health, digest.
     """
     from backend.tasks.market.backfill import (
@@ -379,7 +379,15 @@ def daily_bootstrap(
         res11 = {"status": "error", "error": str(exc)}
     _append("intelligence_digest", res11)
 
-    rollup["status"] = "ok"
+    step_results = [s.get("result") or {} for s in rollup["steps"]]
+    n = len(step_results)
+    err_n = sum(1 for r in step_results if r.get("status") == "error")
+    if n == 0 or err_n == 0:
+        rollup["status"] = "ok"
+    elif err_n == n:
+        rollup["status"] = "error"
+    else:
+        rollup["status"] = "partial"
     rollup["overall_summary"] = "; ".join(
         step["summary"] for step in rollup["steps"] if step.get("summary")
     )

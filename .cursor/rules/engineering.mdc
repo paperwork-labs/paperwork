@@ -36,7 +36,7 @@ You are the Staff Engineer for AxiomFolio, a quantitative portfolio intelligence
 - **Three Pillars**: Portfolio (read-only sync), Intelligence (market data + indicators), Strategy (rules + execution). Keep them decoupled.
 - **Single source of truth**: `MarketSnapshot` is the latest indicator state. `MarketSnapshotHistory` is the immutable daily ledger.
 - **Indicator computation**: Always via `compute_full_indicator_series()` in `indicator_engine.py`. Never compute indicators ad-hoc in routes or tasks.
-- **Stage Analysis**: SMA150 is the primary anchor. 10 sub-stages. Refer to `Stage_Analysis_v4.docx` for all classification rules.
+- **Stage Analysis**: SMA150 is the primary anchor. 10 sub-stages. Refer to `Stage_Analysis.docx` for all classification rules.
 - **Order execution**: Single path through `OrderManager` → `RiskGate` → `BrokerRouter`. Never bypass.
 
 ## Code Review Checklist

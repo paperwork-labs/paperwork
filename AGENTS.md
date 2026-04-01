@@ -63,7 +63,7 @@ Context-specific AI rules activate based on which files you're editing:
 | [KNOWLEDGE.md](docs/KNOWLEDGE.md) | Decision log with rationale | Before making architectural changes |
 | [TASKS.md](docs/TASKS.md) | Current sprint plan with acceptance criteria | Before starting work |
 | [PRD.md](docs/PRD.md) | Product requirements, vision, competitive positioning | Understanding the "why" |
-| [Stage_Analysis_v4.docx](Stage_Analysis_v4.docx) | Complete Stage Analysis trading system specification | Any indicator/stage/regime work |
+| [Stage_Analysis.docx](Stage_Analysis.docx) | Complete Stage Analysis trading system specification | Any indicator/stage/regime work |
 | [ONBOARDING.md](docs/ONBOARDING.md) | Quick start, Docker, dev workflow | First time in repo |
 
 ## Key Files

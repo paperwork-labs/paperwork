@@ -16,7 +16,7 @@ from backend.tasks.utils.task_utils import task_run
 
 logger = logging.getLogger(__name__)
 
-STALE_JOB_RUN_MINUTES = 120
+STALE_JOB_RUN_MINUTES = 45
 
 
 @shared_task(

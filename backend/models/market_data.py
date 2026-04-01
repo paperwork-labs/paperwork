@@ -6,6 +6,7 @@ Minimal, production-focused models for price history and indicator snapshots.
 """
 
 from sqlalchemy import (
+    BigInteger,
     Column,
     Integer,
     String,
@@ -43,7 +44,7 @@ class PriceData(Base):
     low_price = Column(Float)
     close_price = Column(Float, nullable=False)
     adjusted_close = Column(Float)
-    volume = Column(Integer)
+    volume = Column(BigInteger)
 
     # Calculated fields
     true_range = Column(Float)
@@ -75,7 +76,7 @@ class MarketSnapshot(Base):
     __tablename__ = "market_snapshot"
 
     id = Column(Integer, primary_key=True, index=True)
-    symbol = Column(String(10), nullable=False, index=True)
+    symbol = Column(String(20), nullable=False, index=True)
     # Display name (e.g., company name)
     name = Column(String(200))
     analysis_type = Column(
@@ -192,9 +193,9 @@ class MarketSnapshot(Base):
     trend_up_count = Column(Integer)
     trend_down_count = Column(Integer)
 
-    # Stage analysis (v4 — Oliver Kell / Weinstein refined, SMA150 anchor)
+    # Stage analysis (Oliver Kell / Weinstein refined, SMA150 anchor)
     stage_label = Column(String(10))  # 1A, 1B, 2A, 2B, 2C, 3A, 3B, 4A, 4B, 4C
-    stage_4h = Column(String(10), nullable=True)  # 4H timeframe stage (v4 labels)
+    stage_4h = Column(String(10), nullable=True)  # 4H timeframe stage (spec labels)
     stage_confirmed = Column(Boolean, nullable=True)  # True if daily and 4H agree
     stage_label_5d_ago = Column(String(10))
     current_stage_days = Column(Integer)
@@ -203,7 +204,7 @@ class MarketSnapshot(Base):
     stage_slope_pct = Column(Float)
     stage_dist_pct = Column(Float)
 
-    # v4 Stage Analysis fields
+    # Stage Analysis fields
     ext_pct = Column(Float)  # (Close - SMA150) / SMA150 * 100
     sma150_slope = Column(Float)  # (SMA150_today - SMA150_20d_ago) / SMA150_20d_ago * 100
     sma50_slope = Column(Float)  # (SMA50_today - SMA50_10d_ago) / SMA50_10d_ago * 100
@@ -263,7 +264,7 @@ class MarketSnapshotHistory(Base):
     __tablename__ = "market_snapshot_history"
 
     id = Column(Integer, primary_key=True, index=True)
-    symbol = Column(String(10), nullable=False, index=True)
+    symbol = Column(String(20), nullable=False, index=True)
     analysis_type = Column(String(50), nullable=False)
     as_of_date = Column(DateTime, nullable=False, index=True)
     analysis_timestamp = Column(DateTime(timezone=True), server_default=func.now())
@@ -334,7 +335,7 @@ class MarketSnapshotHistory(Base):
     previous_stage_label = Column(String(10))
     previous_stage_days = Column(Integer)
 
-    # v4 Stage Analysis fields
+    # Stage Analysis fields
     ext_pct = Column(Float)
     sma150_slope = Column(Float)
     sma50_slope = Column(Float)
@@ -407,7 +408,7 @@ class MarketRegime(Base):
 
     The Regime Engine is the outermost gate — all downstream modules
     (stage classification, scan overlay, position sizing, exit cascade)
-    inherit the current Regime state. See Stage_Analysis_v4.docx Section 10.
+    inherit the current Regime state. See Stage_Analysis.docx Section 10.
 
     Table name: market_regime
     """

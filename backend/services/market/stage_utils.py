@@ -21,7 +21,13 @@ def compute_stage_run_lengths(
     prev_len: int | None = None
 
     for raw in stage_labels:
-        label = raw if isinstance(raw, str) and raw.strip() else None
+        label = (
+            raw
+            if isinstance(raw, str)
+            and raw.strip()
+            and raw.strip().upper() != "UNKNOWN"
+            else None
+        )
         if label is None:
             current_label = None
             current_len = 0

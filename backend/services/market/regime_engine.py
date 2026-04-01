@@ -8,6 +8,7 @@ Regime is computed BEFORE all other pipeline steps (Step 0 of nightly pipeline).
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Optional
@@ -62,6 +63,20 @@ class RegimeResult:
 
 def score_vix(vix: float) -> float:
     """VIX spot → 1 (low fear) to 5 (extreme fear)."""
+    if vix is None or (isinstance(vix, float) and math.isnan(vix)):
+        logger.warning(
+            "Regime scoring: %s received invalid input %s, using neutral score",
+            "score_vix",
+            vix,
+        )
+        return 3.0
+    if vix <= 0:
+        logger.warning(
+            "Regime scoring: %s received invalid input %s, using neutral score",
+            "score_vix",
+            vix,
+        )
+        return 3.0
     if vix <= 13:
         return 1.0
     elif vix <= 16:
@@ -79,6 +94,13 @@ def score_vix3m_vix(ratio: float) -> float:
 
     Ratio > 1.0 = contango (normal); ratio < 1.0 = backwardation (stress).
     """
+    if ratio is None or (isinstance(ratio, float) and math.isnan(ratio)):
+        logger.warning(
+            "Regime scoring: %s received invalid input %s, using neutral score",
+            "score_vix3m_vix",
+            ratio,
+        )
+        return 3.0
     if ratio >= 1.10:
         return 1.0
     elif ratio >= 1.03:
@@ -96,6 +118,13 @@ def score_vvix_vix(ratio: float) -> float:
 
     High ratio = vol-of-vol is outsized relative to VIX, uncertainty about direction.
     """
+    if ratio is None or (isinstance(ratio, float) and math.isnan(ratio)):
+        logger.warning(
+            "Regime scoring: %s received invalid input %s, using neutral score",
+            "score_vvix_vix",
+            ratio,
+        )
+        return 3.0
     if ratio <= 4.0:
         return 1.0
     elif ratio <= 5.5:
@@ -110,6 +139,13 @@ def score_vvix_vix(ratio: float) -> float:
 
 def score_nh_nl(nh_nl: int) -> float:
     """New Highs minus New Lows (S&P 500) → 1 (bullish) to 5 (bearish)."""
+    if nh_nl is None or (isinstance(nh_nl, float) and math.isnan(nh_nl)):
+        logger.warning(
+            "Regime scoring: %s received invalid input %s, using neutral score",
+            "score_nh_nl",
+            nh_nl,
+        )
+        return 3.0
     if nh_nl >= 100:
         return 1.0
     elif nh_nl >= 30:
@@ -124,6 +160,13 @@ def score_nh_nl(nh_nl: int) -> float:
 
 def score_pct_above_200d(pct: float) -> float:
     """% of S&P 500 stocks above 200D MA → 1 (healthy) to 5 (broken)."""
+    if pct is None or (isinstance(pct, float) and math.isnan(pct)):
+        logger.warning(
+            "Regime scoring: %s received invalid input %s, using neutral score",
+            "score_pct_above_200d",
+            pct,
+        )
+        return 3.0
     if pct >= 70:
         return 1.0
     elif pct >= 55:
@@ -138,6 +181,13 @@ def score_pct_above_200d(pct: float) -> float:
 
 def score_pct_above_50d(pct: float) -> float:
     """% of S&P 500 stocks above 50D MA → 1 (healthy) to 5 (broken)."""
+    if pct is None or (isinstance(pct, float) and math.isnan(pct)):
+        logger.warning(
+            "Regime scoring: %s received invalid input %s, using neutral score",
+            "score_pct_above_50d",
+            pct,
+        )
+        return 3.0
     if pct >= 75:
         return 1.0
     elif pct >= 60:
@@ -151,9 +201,9 @@ def score_pct_above_50d(pct: float) -> float:
 
 
 def compute_composite(scores: list[float]) -> float:
-    """Average of 6 scores, rounded to nearest 0.5."""
-    avg = np.mean(scores)
-    return round(avg * 2) / 2
+    """Average of 6 scores, rounded to nearest 0.5 (half-up, not round-half-to-even)."""
+    avg = float(np.mean(scores))
+    return math.floor(avg * 2 + 0.5) / 2
 
 
 def composite_to_regime(composite: float) -> str:

@@ -56,7 +56,7 @@ const GLOSSARY: GlossaryEntry[] = [
   { term: 'SMA (Simple Moving Average)', definition: 'Arithmetic mean of price over N periods. Key SMAs: 21, 50, 100, 150 (primary stage anchor), 200.', formula: 'SMA(n) = (P₁ + P₂ + … + Pₙ) / n' },
   { term: 'EMA (Exponential Moving Average)', definition: 'Weighted average giving more weight to recent prices. Key EMAs: 10 (short-term trend), 21, 200.', formula: 'EMA = Price × k + EMA(prev) × (1 - k), where k = 2/(n+1)' },
   { term: 'RSI (Relative Strength Index)', definition: 'Momentum oscillator (0–100) using Wilder smoothing. Above 70 = overbought, below 30 = oversold.', formula: 'RS = Wilder Avg Gain / Wilder Avg Loss; RSI = 100 - 100/(1+RS)' },
-  { term: 'ATR (Average True Range)', definition: 'Volatility measure — average range of price movement. ATR%14 normalizes across price levels.', formula: 'TR = max(H-L, |H-PrevC|, |L-PrevC|); ATR = SMA(TR, 14)' },
+  { term: 'ATR (Average True Range)', definition: 'Volatility measure — average range of price movement. ATR%14 normalizes across price levels.', formula: "TR = max(H-L, |H-PrevC|, |L-PrevC|); ATR uses Wilder's smoothing: seed with SMA of first 14 TRs, then ATR = (prev_ATR x 13 + TR) / 14" },
   { term: 'ATRP (ATR Percentage)', definition: 'ATR as a % of current price. A $10 stock with ATR $0.50 and a $500 stock with ATR $25 both have ATRP 5%.', formula: 'ATRP = (ATR / Price) × 100' },
   { term: 'Extension % (Ext%)', definition: 'How far price has moved from SMA150 — the primary distance metric in Stage Analysis.', formula: 'Ext% = (Close - SMA150) / SMA150 × 100' },
   { term: 'ATRE (ATR Extensions)', definition: 'Price distance from key MAs measured in ATRs. ATRE_150 > 6.0 triggers the 2C override.', formula: 'ATRE_150 = (Close - SMA150) / ATR14' },
@@ -66,8 +66,14 @@ const GLOSSARY: GlossaryEntry[] = [
   { term: 'Mansfield RS', definition: "Stock's performance vs SPY over trailing year. Positive = outperforming the market.", formula: 'RS = Close/SPY_Close; Mansfield = (RS/SMA252(RS) - 1) × 100' },
   { term: 'Market Regime', definition: 'Market-wide risk state (R1–R5) from 6 macro inputs. Gates all downstream decisions.', formula: 'Composite = avg(6 scores); R1 ≤1.75, R2 ≤2.50, R3 ≤3.50, R4 ≤4.50, R5 >4.50' },
   { term: 'MACD', definition: 'Trend-following momentum indicator from two EMAs. Signal crossovers indicate momentum shifts.', formula: 'MACD = EMA(12) - EMA(26); Signal = EMA(9) of MACD' },
-  { term: 'ADX / DI', definition: 'Trend strength (ADX > 25 = strong trend). +DI vs -DI shows direction.', formula: 'DX = |+DI - -DI|/(+DI + -DI) × 100; ADX = SMA(DX, 14)' },
-  { term: 'TD Sequential', definition: 'DeMark exhaustion counter. 9-count setup suggests potential reversal.', formula: 'Buy: 9 consecutive closes below close 4 bars ago' },
+  { term: 'ADX / DI', definition: 'Trend strength (ADX > 25 = strong trend). +DI vs -DI shows direction.', formula: "DX = |+DI - -DI|/(+DI + -DI) × 100; ADX uses Wilder's smoothing: seed with SMA of first 14 DX values, then ADX = (prev_ADX x 13 + DX) / 14" },
+  { term: 'Bollinger Bands', definition: 'Upper and lower bands at 2 population standard deviations from SMA(20). Squeeze (bands inside Keltner) indicates low volatility.', formula: 'Upper = SMA20 + 2*std(Close,20,ddof=0); Lower = SMA20 - 2*std' },
+  { term: 'Keltner Channels', definition: 'Volatility envelope using EMA and ATR. Used with Bollinger Bands to detect TTM Squeeze.', formula: 'Upper = EMA20 + 1.5*ATR10; Lower = EMA20 - 1.5*ATR10' },
+  { term: 'TTM Squeeze', definition: 'When Bollinger Bands contract inside Keltner Channels, volatility is compressed. Momentum direction on release signals the breakout direction.', formula: 'Squeeze On = BB_lower > KC_lower AND BB_upper < KC_upper' },
+  { term: 'Stochastic RSI', definition: 'Applies stochastic formula to RSI values. More sensitive than raw RSI for identifying overbought/oversold conditions.', formula: 'StochRSI = (RSI - min(RSI,14)) / (max(RSI,14) - min(RSI,14))' },
+  { term: 'MA Bucket', definition: 'Classification of moving average alignment: LEADING (EMA10 > SMA21 > SMA50 > SMA150), LAGGING (reverse), or NEUTRAL (mixed).', formula: null },
+  { term: 'Performance Windows', definition: 'Percentage returns calculated over 1d, 3d, 5d, 20d, 60d, 120d, and 252d windows, plus MTD, QTD, and YTD.', formula: 'Perf = (Close / Close_N_bars_ago - 1) x 100' },
+  { term: 'TD Sequential', definition: 'DeMark exhaustion counter. 9-count setup suggests potential reversal. Counter resets to 0 after reaching a 9-count setup.', formula: 'Buy: 9 consecutive closes below close 4 bars ago' },
 ];
 
 type DeepDive = {
@@ -328,7 +334,7 @@ const DEEP_DIVES: DeepDive[] = [
           <div className="flex flex-col gap-1">
             <p className="text-sm"><strong>T1 — Stop Loss:</strong> Hard stop at 2× ATR below entry.</p>
             <p className="text-sm"><strong>T2 — Trailing Stop:</strong> Stage-based trail (1.5× ATR for 2A/2B, 2.0× for 2C, 1.0× for 3A+).</p>
-            <p className="text-sm"><strong>T3 — Stage Deterioration:</strong> 2B/2C→3A = reduce 50%. Any→4x = full exit.</p>
+            <p className="text-sm"><strong>T3 — Stage Deterioration:</strong> 2B/2C→3A = reduce 50%. Reaching Stage 3B = full exit (late distribution). Any→4x = full exit.</p>
             <p className="text-sm"><strong>T4 — Time-Based:</strong> 45+ days with &lt;5% gain = reduce. 90+ days negative = exit.</p>
             <p className="text-sm"><strong>T5 — Profit Target:</strong> Ext% &gt;25% = reduce 25%. Ext% &gt;40% = reduce 50%.</p>
           </div>
@@ -352,7 +358,7 @@ const DEEP_DIVES: DeepDive[] = [
             <p className="text-sm"><strong>S1 — Stage Improvement:</strong> Cover when stage improves to 1A/1B/2A/2B.</p>
             <p className="text-sm"><strong>S2 — Regime Improvement:</strong> Cover when regime improves to R1/R2.</p>
             <p className="text-sm"><strong>S3 — Vol Spike Cover:</strong> Ext% &lt; -25% = partial cover (reversal risk).</p>
-            <p className="text-sm"><strong>S4 — Profit Target:</strong> +20% P&amp;L = reduce 50%. +35% = full cover.</p>
+            <p className="text-sm"><strong>S4 — Profit Target:</strong> Short P&amp;L above +35% triggers full cover; above +20% (and ≤35%) triggers reduce 50%.</p>
           </div>
         ),
       },
@@ -404,6 +410,49 @@ const DEEP_DIVES: DeepDive[] = [
         heading: 'Pipeline steps',
         body: codeBlock(
           'Step 0:  REGIME — Load 6 macro inputs → composite → R1–R5 (runs FIRST)\nStep 1:  Compute MAs + ATRs\nStep 2:  Derive Ext%, ATRE, EMA10 Dist_N, slopes, ranges, Vol Ratio\nStep 3:  Classify 10 sub-stages (priority order)\nStep 4:  Post-classify: ATRE override, RS modifier, 2C override\nStep 5:  Scan: regime-gated tier assignment\nStep 6:  Patterns: 7 pattern triggers\nStep 7:  R/R: target/stop (regime-adjusted multipliers)\nStep 8:  Size: regime-adjusted full position × Stage Cap\nStep 9:  Exits: 9-tier cascade for open positions\nStep 10: Store all fields to MarketSnapshot + History',
+        ),
+      },
+    ],
+  },
+  {
+    title: 'Action Labels (Signal Classification)',
+    sections: [
+      {
+        heading: 'Overview',
+        body: (
+          <p className="text-sm">
+            Each snapshot gets an <strong>action label</strong> after regime-gated scan tier assignment. Labels summarize how the system reads stage + tier + regime together. Breakdown tiers map to <strong>SHORT</strong> (separate from the long-oriented labels below).
+          </p>
+        ),
+      },
+      {
+        heading: 'Long-oriented labels',
+        body: (
+          <div className="flex flex-col gap-2">
+            <p className="text-sm">
+              <strong>BUY</strong> — Assigned when the stock is in <strong>Breakout Elite</strong>, or in <strong>Breakout Standard</strong> while regime is <strong>R1 or R2</strong> (strong/extended bull). Highest conviction new-long signal from the scan overlay.
+            </p>
+            <p className="text-sm">
+              <strong>WATCH</strong> — <strong>Breakout Standard</strong> in <strong>R3+</strong> (chop or worse): setup exists but regime caps aggression. Also <strong>Early Base</strong>, <strong>Speculative</strong>, and Stage <strong>1A/1B</strong>. If there is <strong>no scan tier</strong> but stage is <strong>2A/2B</strong>, label is WATCH in <strong>R1/R2</strong> (building or holding context without a tier match).
+            </p>
+            <p className="text-sm">
+              <strong>HOLD</strong> — Stage <strong>2C</strong> (extended advance: maintain with tighter risk). If stage is <strong>2A/2B</strong> with <strong>no tier</strong>, label is HOLD in <strong>R3 or R4</strong> (chop / bear rally: do not add; protect positions).
+            </p>
+            <p className="text-sm">
+              <strong>REDUCE</strong> — Stage <strong>3A or 3B</strong> when not captured by a short tier: distribution / late advance — trim or exit longs per playbook.
+            </p>
+            <p className="text-sm">
+              <strong>AVOID</strong> — Stage <strong>4A/4B/4C</strong> (decline), or any unmatched fallback: not a long candidate.
+            </p>
+          </div>
+        ),
+      },
+      {
+        heading: 'Evaluation order',
+        body: (
+          <p className="text-sm">
+            The backend evaluates <strong>short tiers first</strong>, then long tiers (Elite → Standard → Early Base → Speculative), then <strong>stage-only</strong> rules if no tier applies. Regime gates which tiers exist at all; the label refines the message once tier and stage are known. Implementation: <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">derive_action_label</code> in <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">scan_engine.py</code>.
+          </p>
         ),
       },
     ],

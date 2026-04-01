@@ -2615,6 +2615,17 @@ class MarketDataService:
                 norm = self._normalize_stage_label(getattr(row, "stage_label", None))
                 if norm is None:
                     continue
+                if norm == "UNKNOWN":
+                    cur_stage = None
+                    cur_days = 0
+                    prev_stage = None
+                    prev_days = None
+                    row.current_stage_days = None
+                    row.previous_stage_label = None
+                    row.previous_stage_days = None
+                    touched_rows += 1
+                    updated_for_symbol = True
+                    continue
                 if cur_stage == norm:
                     cur_days += 1
                 else:
@@ -2658,9 +2669,10 @@ class MarketDataService:
                     if candidate is None:
                         # Fallback: latest known-stage row in window.
                         for row in reversed(rows):
-                            if self._normalize_stage_label(
+                            row_norm = self._normalize_stage_label(
                                 getattr(row, "stage_label", None)
-                            ) is not None:
+                            )
+                            if row_norm is not None and row_norm != "UNKNOWN":
                                 candidate = row
                                 break
                     if candidate is not None:

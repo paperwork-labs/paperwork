@@ -75,6 +75,17 @@ CATALOG: List[JobTemplate] = [
         kwargs={"history_days": 20, "history_batch_size": 25},
     ),
     JobTemplate(
+        id="fundamentals_fill",
+        display_name="Market Snapshots Fundamentals Fill",
+        group="market_data",
+        task="backend.tasks.market.fundamentals.fill_missing",
+        description="Backfill missing fundamentals on MarketSnapshot rows after nightly indicator recompute",
+        default_cron="15 3 * * *",
+        default_tz="UTC",
+        job_run_label="market_snapshots_fundamentals_fill",
+        timeout_s=3600,
+    ),
+    JobTemplate(
         id="check_regime_alerts",
         display_name="Regime Alert Monitor",
         group="market_data",

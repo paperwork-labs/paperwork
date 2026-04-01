@@ -264,15 +264,16 @@ const MarketTracked: React.FC = () => {
           { label: '2C', value: '2C' },
           { label: '3', value: '3' },
           { label: '4', value: '4' },
-          { label: 'UNKNOWN', value: 'UNKNOWN' },
+          { label: 'New', value: 'UNKNOWN' },
         ],
         render: (v, r) => {
           const cur = stageScore(v);
           const prev = stageScore(r.previous_stage_label);
           const changed = prev != null && cur != null && cur !== prev;
+          const displayStage = v === 'UNKNOWN' ? 'New' : v;
           return (
             <div className="flex items-center gap-1">
-              <StageBadge stage={v || '?'} />
+              <StageBadge stage={displayStage || '?'} />
               {changed && (
                 <span className={cn('text-xs', semanticTextColorClass(cur! > prev! ? 'green.400' : 'red.400'))}>
                   {cur! > prev! ? '▲' : '▼'}
@@ -306,13 +307,16 @@ const MarketTracked: React.FC = () => {
           { label: '2C', value: '2C' },
           { label: '3', value: '3' },
           { label: '4', value: '4' },
-          { label: 'UNKNOWN', value: 'UNKNOWN' },
+          { label: 'New', value: 'UNKNOWN' },
         ],
-        render: (v) => (
-          <Badge variant="secondary" className="font-normal">
-            {String(v || 'UNKNOWN')}
-          </Badge>
-        ),
+        render: (v) => {
+          const display = v === 'UNKNOWN' ? 'New' : v ? String(v) : '—';
+          return (
+            <Badge variant="secondary" className="font-normal">
+              {display}
+            </Badge>
+          );
+        },
       },
       {
         key: 'previous_stage_days',

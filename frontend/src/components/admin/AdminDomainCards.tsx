@@ -33,7 +33,7 @@ const DimBadge: React.FC<{ status: string }> = ({ status }) => (
 const AdminDomainCards: React.FC<Props> = ({ health }) => {
   const { timezone } = useUserPreferences();
   if (!health) return null;
-  const { coverage, stage_quality, jobs, audit, regime } = health.dimensions;
+  const { coverage, stage_quality, jobs, audit, regime, fundamentals } = health.dimensions;
 
   return (
     <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -130,6 +130,26 @@ const AdminDomainCards: React.FC<Props> = ({ health }) => {
           </p>
         </div>
       </Card>
+
+      {fundamentals && (
+        <Card className="gap-0 py-0 shadow-xs ring-1 ring-border">
+          <div className="flex flex-col gap-1 p-3">
+            <div className="mb-1 flex items-center justify-between">
+              <span className="text-sm font-semibold">Fundamentals</span>
+              <DimBadge status={fundamentals.status} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Fill rate:{' '}
+              {typeof fundamentals.fundamentals_fill_pct === 'number'
+                ? `${fundamentals.fundamentals_fill_pct.toFixed(1)}%`
+                : '—'}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Filled: {fundamentals.filled_count ?? 0} / {fundamentals.tracked_total ?? 0}
+            </p>
+          </div>
+        </Card>
+      )}
 
       <Card className="gap-0 py-0 shadow-xs ring-1 ring-border">
         <div className="flex flex-col gap-1 p-3">

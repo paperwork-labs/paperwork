@@ -103,25 +103,55 @@ def compute_core_indicators(data_oldest_first: pd.DataFrame) -> Dict[str, Any]:
         if not hist.empty and not pd.isna(hist.iloc[-1]):
             out["macd_histogram"] = float(hist.iloc[-1])
 
-    # DI/ADX (14-period)
+    # DI/ADX (14-period, Wilder's smoothing)
     if set(["High", "Low", "Close"]).issubset(data_oldest_first.columns):
         try:
             period = 14
             up_move = data_oldest_first["High"].diff()
             down_move = -data_oldest_first["Low"].diff()
-            plus_dm = np.where((up_move > down_move) & (up_move > 0), up_move, 0.0)
-            minus_dm = np.where((down_move > up_move) & (down_move > 0), down_move, 0.0)
+            plus_dm_s = pd.Series(
+                np.where((up_move > down_move) & (up_move > 0), up_move, 0.0),
+                index=data_oldest_first.index,
+            )
+            minus_dm_s = pd.Series(
+                np.where((down_move > up_move) & (down_move > 0), down_move, 0.0),
+                index=data_oldest_first.index,
+            )
             tr1 = data_oldest_first["High"] - data_oldest_first["Low"]
             tr2 = (data_oldest_first["High"] - data_oldest_first["Close"].shift()).abs()
             tr3 = (data_oldest_first["Low"] - data_oldest_first["Close"].shift()).abs()
             tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
-            atr = tr.rolling(window=period).mean()
-            plus_di = 100 * pd.Series(plus_dm).rolling(window=period).sum() / atr
-            minus_di = 100 * pd.Series(minus_dm).rolling(window=period).sum() / atr
+
+            def _ws(s: pd.Series, p: int) -> pd.Series:
+                r = pd.Series(np.nan, index=s.index)
+                fv = s.first_valid_index()
+                if fv is None:
+                    return r
+                si = s.index.get_loc(fv)
+                se = si + p
+                if se > len(s):
+                    return r
+                r.iloc[se - 1] = s.iloc[si:se].sum()
+                for k in range(se, len(s)):
+                    r.iloc[k] = r.iloc[k - 1] - r.iloc[k - 1] / p + s.iloc[k]
+                return r
+
+            s_tr = _ws(tr, period)
+            s_pdm = _ws(plus_dm_s, period)
+            s_mdm = _ws(minus_dm_s, period)
+            plus_di = (100 * s_pdm / s_tr).replace([np.inf, -np.inf], np.nan)
+            minus_di = (100 * s_mdm / s_tr).replace([np.inf, -np.inf], np.nan)
             dx = (100 * (plus_di - minus_di).abs() / (plus_di + minus_di)).replace(
                 [np.inf, -np.inf], np.nan
             )
-            adx = dx.rolling(window=period).mean()
+            dx_v = dx.dropna()
+            adx = pd.Series(np.nan, index=dx.index)
+            if len(dx_v) >= period:
+                al = dx.index.get_loc(dx_v.index[period - 1])
+                adx.iloc[al] = dx_v.iloc[:period].mean()
+                for k in range(al + 1, len(dx)):
+                    if not np.isnan(dx.iloc[k]) and not np.isnan(adx.iloc[k - 1]):
+                        adx.iloc[k] = (adx.iloc[k - 1] * (period - 1) + dx.iloc[k]) / period
             if not plus_di.empty and not pd.isna(plus_di.iloc[-1]):
                 out["plus_di"] = float(plus_di.iloc[-1])
             if not minus_di.empty and not pd.isna(minus_di.iloc[-1]):
@@ -209,8 +239,12 @@ def _compute_td_sequential_series(
         else:
             buy_count = 0
             sell_count = 0
-        td_buy[i] = buy_count
-        td_sell[i] = sell_count
+        td_buy[i] = min(buy_count, 9)
+        td_sell[i] = min(sell_count, 9)
+        if buy_count >= 9:
+            buy_count = 0
+        if sell_count >= 9:
+            sell_count = 0
     return td_buy, td_sell, td_buy >= 9, td_sell >= 9
 
 
@@ -294,13 +328,40 @@ def compute_full_indicator_series(
         tr2 = (high - close.shift()).abs()
         tr3 = (low - close.shift()).abs()
         tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
-        atr_di = tr.rolling(window=period).mean()
-        plus_di = 100 * plus_dm.rolling(window=period).sum() / atr_di
-        minus_di = 100 * minus_dm.rolling(window=period).sum() / atr_di
+
+        def _wilder_smooth(series: pd.Series, p: int) -> pd.Series:
+            result = pd.Series(np.nan, index=series.index)
+            fv = series.first_valid_index()
+            if fv is None:
+                return result
+            s = series.index.get_loc(fv)
+            se = s + p
+            if se > len(series):
+                return result
+            result.iloc[se - 1] = series.iloc[s:se].sum()
+            for j in range(se, len(series)):
+                result.iloc[j] = result.iloc[j - 1] - result.iloc[j - 1] / p + series.iloc[j]
+            return result
+
+        smooth_tr = _wilder_smooth(tr, period)
+        smooth_plus_dm = _wilder_smooth(plus_dm, period)
+        smooth_minus_dm = _wilder_smooth(minus_dm, period)
+
+        plus_di = (100 * smooth_plus_dm / smooth_tr).replace([np.inf, -np.inf], np.nan)
+        minus_di = (100 * smooth_minus_dm / smooth_tr).replace([np.inf, -np.inf], np.nan)
         dx = (100 * (plus_di - minus_di).abs() / (plus_di + minus_di)).replace(
             [np.inf, -np.inf], np.nan
         )
-        adx = dx.rolling(window=period).mean()
+
+        adx = pd.Series(np.nan, index=dx.index)
+        dx_valid = dx.dropna()
+        if len(dx_valid) >= period:
+            adx_start = dx_valid.index[period - 1]
+            adx_loc = dx.index.get_loc(adx_start)
+            adx.iloc[adx_loc] = dx_valid.iloc[:period].mean()
+            for j in range(adx_loc + 1, len(dx)):
+                if not np.isnan(dx.iloc[j]) and not np.isnan(adx.iloc[j - 1]):
+                    adx.iloc[j] = (adx.iloc[j - 1] * (period - 1) + dx.iloc[j]) / period
         out["plus_di"] = plus_di
         out["minus_di"] = minus_di
         out["adx"] = adx
@@ -312,7 +373,7 @@ def compute_full_indicator_series(
     # ── 3. New indicators ──
 
     sma_20 = close.rolling(20).mean()
-    std_20 = close.rolling(20).std()
+    std_20 = close.rolling(20).std(ddof=0)
     out["bollinger_upper"] = sma_20 + 2 * std_20
     out["bollinger_lower"] = sma_20 - 2 * std_20
     out["bollinger_width"] = (out["bollinger_upper"] - out["bollinger_lower"]).replace(
@@ -345,8 +406,8 @@ def compute_full_indicator_series(
         [np.inf, -np.inf], np.nan
     )
 
-    out["high_52w"] = close.rolling(252).max()
-    out["low_52w"] = close.rolling(252).min()
+    out["high_52w"] = high.rolling(252).max() if has_hlc else close.rolling(252).max()
+    out["low_52w"] = low.rolling(252).min() if has_hlc else close.rolling(252).min()
 
     out["volume_avg_20d"] = volume.rolling(20).mean()
 
@@ -574,19 +635,33 @@ def calculate_rsi_series(closes: pd.Series, period: int = 14) -> Optional[pd.Ser
 
         rs = avg_gain / avg_loss
         rsi = 100 - (100 / (1 + rs))
-        return rsi.replace([np.inf, -np.inf], np.nan)
+        rsi = rsi.replace([np.inf, -np.inf], np.nan)
+        rsi[avg_loss == 0] = 100.0
+        return rsi
     except Exception as e:
         logger.warning("RSI(%d) calculation failed: %s", period, e)
         return None
 
 
 def calculate_atr_series(df: pd.DataFrame, period: int = 14) -> Optional[pd.Series]:
+    """Wilder's ATR: seed with SMA of first *period* TRs, then recursive smoothing."""
     try:
         high_low = df["High"] - df["Low"]
         high_close = (df["High"] - df["Close"].shift()).abs()
         low_close = (df["Low"] - df["Close"].shift()).abs()
         tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
-        atr = tr.rolling(window=period).mean()
+
+        atr = pd.Series(np.nan, index=tr.index)
+        first_valid = tr.first_valid_index()
+        if first_valid is None:
+            return atr
+        start = tr.index.get_loc(first_valid)
+        seed_end = start + period
+        if seed_end > len(tr):
+            return atr
+        atr.iloc[seed_end - 1] = tr.iloc[start:seed_end].mean()
+        for i in range(seed_end, len(tr)):
+            atr.iloc[i] = (atr.iloc[i - 1] * (period - 1) + tr.iloc[i]) / period
         return atr
     except Exception as e:
         logger.warning("ATR(%d) calculation failed: %s", period, e)
@@ -679,7 +754,7 @@ def classify_stage_for_timeframe(
     not in this function.
 
     Priority order (first match wins): 4C→4B→4A→1A→1B→2A→2B→2C→3A→3B.
-    See Stage_Analysis_v4.docx Section 4 for full rules.
+    See Stage_Analysis.docx Section 4 for full rules.
     """
     if sma150_slope is None or sma50_slope is None:
         return prev_stage if prev_stage is not None else "UNKNOWN"
@@ -790,7 +865,7 @@ def classify_stage_series(
 
     above = close > sma150
     below = ~above
-    has_data = sma150.notna() & sma150_slope.notna() & ext_pct.notna()
+    has_data = sma150.notna() & sma150_slope.notna() & ext_pct.notna() & sma50_slope.notna()
 
     slope_strongly_down = sma150_slope < -SLOPE_T
     slope_flat = sma150_slope.abs() <= SLOPE_T
@@ -845,7 +920,7 @@ def compute_weinstein_stage_from_daily(
 ) -> Dict[str, Any]:
     """Compute Stage Analysis (spec) from daily OHLCV (both newest->first).
 
-    Uses SMA150 as primary anchor per Stage_Analysis_v4.docx.
+    Uses SMA150 as primary anchor per Stage_Analysis.docx.
     Returns latest bar's stage + supporting metrics.
     """
     unknown: Dict[str, Any] = {
@@ -872,7 +947,7 @@ def compute_weinstein_stage_from_daily(
     sym = daily_sym_newest_first.iloc[::-1]  # oldest→newest
     bm = daily_bm_newest_first.iloc[::-1]
 
-    if len(sym) < 155:
+    if len(sym) < 175:
         return dict(unknown)
 
     close = sym["Close"]
@@ -918,12 +993,12 @@ def compute_weinstein_stage_from_daily(
     vr = last_val(vol_ratio_s)
     rm = last_val(rs_mansfield)
 
-    if c is None or s150 is None or sl150 is None or ep is None:
+    if c is None or s150 is None or sl150 is None or ep is None or sl50 is None:
         return dict(unknown)
 
     stage_label = classify_stage_scalar(
         c, s150, s50 or 0, s21 or 0, e10 or 0,
-        sl150, sl50 or 0, ep, at150 or 0, vr or 0,
+        sl150, sl50, ep, at150 or 0, vr or 0,
     )
 
     # ATRE override

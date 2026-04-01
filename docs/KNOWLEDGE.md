@@ -19,12 +19,20 @@ Architectural decisions with rationale. Grouped by domain, newest first within e
 
 | ID | Date | Decision |
 |----|------|----------|
-| D1 | 2026-03-23 | **SMA150 replaces 30-week SMA** as primary stage anchor (per Stage_Analysis_v4.docx) |
+| D1 | 2026-03-23 | **SMA150 replaces 30-week SMA** as primary stage anchor (per Stage_Analysis.docx) |
 | D2 | 2026-03-23 | **Regime Engine is mandatory hard gate** — R1-R5 gates all sizing, scan access, exits |
 | D3 | 2026-03-23 | **10 sub-stages** (1A/1B, 2A/2B/2C, 3A/3B, 4A/4B/4C) replace simplified labels |
-| D9 | 2026-03-23 | **Stage_Analysis_v4.docx is canonical spec** — all implementation must match |
+| D9 | 2026-03-23 | **Stage_Analysis.docx is canonical spec** — all implementation must match |
 | D10 | 2026-03-23 | **SMA150 slope uses 20-day lookback**, thresholds ±0.35% |
 | D11 | 2026-03-23 | **EMA10 Distance normalized by ATR** (`EMA10_Dist_N = EMA10_Dist% / ATR%14`) |
+| D46 | 2026-03-31 | **ATR/ADX use Wilder's smoothing** — SMA seed for first N bars, then recursive `(prev * (N-1) + curr) / N`. Not simple rolling mean. |
+| D47 | 2026-03-31 | **52-week High/Low from H/L columns** — not Close. Fallback to Close only if H/L missing. |
+| D48 | 2026-03-31 | **Bollinger Bands use population std** (ddof=0) — not sample std (ddof=1). |
+| D49 | 2026-03-31 | **TD Sequential caps at 9** — counter resets to 0 after completing a 9-count setup. |
+| D50 | 2026-03-31 | **Bar guard = 175** — minimum bars needed for reliable stage classification (SMA150 + 20-bar slope + 5-bar warmup). |
+| D51 | 2026-03-31 | **UNKNOWN stage treated as null** — `compute_stage_run_lengths` and `repair_stage_history_window` skip UNKNOWN labels. Displayed as "New" in UI. |
+| D52 | 2026-03-31 | **Regime rounding uses half-up** — `math.floor(avg * 2 + 0.5) / 2` not Python's banker's `round()`. |
+| D53 | 2026-03-31 | **RiskGate.check mandatory on submit path** — not just preview. Rejected orders logged with reason. |
 
 ### Execution & Orders
 
@@ -144,6 +152,40 @@ All task references must match `@shared_task(name="...")` exactly. Found 4 criti
 
 ---
 
+## 10-Year Backfill Runbook
+
+### Why 10 Years
+
+- SMA150 + SMA200 need ~200 trading days of warmup; 5 years would give only ~3.5 years of usable stage history
+- 10 years (2516 trading days) provides ~8 years of fully warmed-up data for backtesting
+- RS Mansfield (252-day MA) needs 1 year of warmup — 10 years gives 9 years of RS data
+- FMP historical data cost is flat (no per-year charge)
+
+### Steps
+
+1. **Increase `SNAPSHOT_DAILY_BARS_LIMIT`** in `backend/config.py` from 400 to 2600 (10 years + buffer)
+2. **Run full backfill**: Use "Backfill Daily Coverage (Tracked)" from Operator Actions — covers all tracked symbols
+3. **Recompute indicators**: "Recompute Indicators (Market Snapshot)" — recalculates all indicators with full 10-year series
+4. **Verify**: Check Admin Health Dashboard — stage_quality should show <5% unknown rate, fundamentals should show >90% fill
+5. **Russell 2000**: Add via "Sync Index Constituents" then run coverage backfill — this adds ~2000 symbols and will take longer
+
+### Russell 2000 Coverage
+
+- Index constituents sync supports `russell_2000` via FMP
+- In prod, enable by adding to the tracked index list
+- Backfill will take ~30-60 min for 2000 symbols at 10 years each
+- FMP rate limits may require batching — the pipeline handles this with built-in retry/backoff
+
+### Data Quality Checklist (Post-Backfill)
+
+- [ ] Stage Quality: unknown_rate < 5%
+- [ ] Fundamentals: fill_pct > 90%
+- [ ] Daily coverage: > 98%
+- [ ] RS Mansfield: non-null for all symbols with > 252 bars
+- [ ] No UNKNOWN stages for symbols with > 175 bars of data
+
+---
+
 ## Resolved Issues
 
 | ID | Issue | Resolution |
@@ -163,3 +205,17 @@ All task references must match `@shared_task(name="...")` exactly. Found 4 criti
 | R13 | Render cron jobs retired | All scheduling via Celery Beat from job_catalog.py (D44) |
 | R14 | Auto-ops backoff used 2^n exponentiation | Replaced with explicit BACKOFF_SEQUENCE tuple (15m, 30m, 60m, 2h) |
 | R15 | run_task_now bypassed Celery dispatch | Added to INLINE_ONLY_AGENT_TOOLS — routes through _execute_safe_tool (D45) |
+| R16 | ATR/ADX used SMA instead of Wilder's | Replaced with Wilder's exponential smoothing in indicator_engine.py (D46) |
+| R17 | 52-week H/L used Close instead of High/Low | Fixed to use High/Low columns with Close fallback (D47) |
+| R18 | Bollinger Bands used sample std (ddof=1) | Changed to population std (ddof=0) (D48) |
+| R19 | TD Sequential could exceed 9-count | Capped at 9 with counter reset (D49) |
+| R20 | UNKNOWN stage propagated through history | Skip UNKNOWN in run-length computation, display as "New" in UI (D51) |
+| R21 | Regime rounding used banker's | Switched to half-up rounding (D52) |
+| R22 | Exit cascade T2/T7 trailing stop structural bug | Fixed comparison to `current_price < hwm - trail_distance` |
+| R23 | S4 short exit 35% tier unreachable | Reordered conditions: check 35% before 20% |
+| R24 | OrderManager.submit skipped RiskGate | Added RiskGate.check before broker place_order (D53) |
+| R25 | fundamentals_fill not scheduled | Added to job_catalog.py with daily 3:15 UTC cron |
+| R26 | symbol String(10) truncation risk | Widened to String(20) via Alembic migration |
+| R27 | PriceData.volume Integer overflow | Changed to BigInteger via Alembic migration |
+| R28 | Zombie job runs stuck for 2h+ | Reduced STALE_JOB_RUN_MINUTES from 120 to 45 |
+| R29 | scan_engine coerced None RS to 0 | Now skips Elite tiers when rs_mansfield is None |

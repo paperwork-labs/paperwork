@@ -203,7 +203,15 @@ class OrderManager:
         # PRE-TRADE VALIDATION (Circuit Breaker + Risk Checks)
         # ========================================
         is_exit = order.side.lower() == "sell" and order.position_id is not None
-        portfolio_equity = self._get_portfolio_equity(db, user_id) or 100_000
+        raw_equity = self._get_portfolio_equity(db, user_id)
+        portfolio_equity = raw_equity
+        if portfolio_equity is None:
+            logger.warning(
+                "Portfolio equity unavailable for user %s; using $100,000 fallback for order %s pre-trade checks",
+                user_id,
+                order_id,
+            )
+            portfolio_equity = 100_000.0
 
         validator = PreTradeValidator(db, user_id=user_id)
         validation = validator.validate(order, portfolio_equity, is_exit=is_exit)
@@ -260,6 +268,31 @@ class OrderManager:
             limit_price=order.limit_price,
             stop_price=order.stop_price,
         )
+
+        price = self.risk_gate.estimate_price(
+            db, req.symbol, req.limit_price, req.stop_price
+        )
+        risk_budget = (
+            portfolio_equity * 0.01 if portfolio_equity and portfolio_equity > 0 else None
+        )
+        try:
+            self.risk_gate.check(
+                req,
+                price,
+                db,
+                portfolio_equity=portfolio_equity,
+                risk_budget=risk_budget,
+            )
+        except RiskViolation as e:
+            order.status = OrderStatus.REJECTED.value
+            order.error_message = f"Risk gate rejected: {e}"
+            db.commit()
+            db.refresh(order)
+            logger.warning("Order %s rejected by risk gate: %s", order_id, e)
+            return {
+                **_order_to_dict(order),
+                "risk_gate": {"allowed": False, "reason": str(e)},
+            }
 
         executor = broker_router.get(order.broker_type or "ibkr")
         result: OrderResult = await executor.place_order(req)

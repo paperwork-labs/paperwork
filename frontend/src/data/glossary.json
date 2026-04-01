@@ -22,7 +22,7 @@
       "term": "ATR (Average True Range)",
       "short": "Volatility measure",
       "definition": "Volatility measure — average range of price movement. ATR%14 normalizes across price levels.",
-      "formula": "TR = max(H-L, |H-PrevC|, |L-PrevC|); ATR = SMA(TR, 14)"
+      "formula": "TR = max(H-L, |H-PrevC|, |L-PrevC|); ATR uses Wilder's smoothing: seed with SMA of first 14 TRs, then ATR = (prev_ATR x 13 + TR) / 14"
     },
     "atrp": {
       "term": "ATRP (ATR Percentage)",
@@ -40,12 +40,48 @@
       "term": "ADX / DI",
       "short": "Trend strength indicator",
       "definition": "Trend strength (ADX > 25 = strong trend). +DI vs -DI shows direction.",
-      "formula": "DX = |+DI - -DI|/(+DI + -DI) × 100; ADX = SMA(DX, 14)"
+      "formula": "DX = |+DI - -DI|/(+DI + -DI) × 100; ADX uses Wilder's smoothing: seed with SMA of first 14 DX values, then ADX = (prev_ADX x 13 + DX) / 14"
+    },
+    "bollinger": {
+      "term": "Bollinger Bands",
+      "short": "Volatility bands around SMA20",
+      "definition": "Upper and lower bands at 2 population standard deviations from SMA(20). Squeeze (bands inside Keltner) indicates low volatility.",
+      "formula": "Upper = SMA20 + 2*std(Close,20,ddof=0); Lower = SMA20 - 2*std"
+    },
+    "keltner": {
+      "term": "Keltner Channels",
+      "short": "EMA20 +/- 1.5x ATR10",
+      "definition": "Volatility envelope using EMA and ATR. Used with Bollinger Bands to detect TTM Squeeze.",
+      "formula": "Upper = EMA20 + 1.5*ATR10; Lower = EMA20 - 1.5*ATR10"
+    },
+    "ttm_squeeze": {
+      "term": "TTM Squeeze",
+      "short": "Low volatility breakout signal",
+      "definition": "When Bollinger Bands contract inside Keltner Channels, volatility is compressed. Momentum direction on release signals the breakout direction.",
+      "formula": "Squeeze On = BB_lower > KC_lower AND BB_upper < KC_upper"
+    },
+    "stoch_rsi": {
+      "term": "Stochastic RSI",
+      "short": "RSI oscillator (0-1)",
+      "definition": "Applies stochastic formula to RSI values. More sensitive than raw RSI for identifying overbought/oversold conditions.",
+      "formula": "StochRSI = (RSI - min(RSI,14)) / (max(RSI,14) - min(RSI,14))"
+    },
+    "ma_bucket": {
+      "term": "MA Bucket",
+      "short": "Moving average alignment",
+      "definition": "Classification of moving average alignment: LEADING (EMA10 > SMA21 > SMA50 > SMA150), LAGGING (reverse), or NEUTRAL (mixed).",
+      "formula": null
+    },
+    "perf_windows": {
+      "term": "Performance Windows",
+      "short": "Returns over multiple horizons",
+      "definition": "Percentage returns calculated over 1d, 3d, 5d, 20d, 60d, 120d, and 252d windows, plus MTD, QTD, and YTD.",
+      "formula": "Perf = (Close / Close_N_bars_ago - 1) x 100"
     },
     "td_sequential": {
       "term": "TD Sequential",
       "short": "DeMark exhaustion counter",
-      "definition": "DeMark exhaustion counter. 9-count setup suggests potential reversal.",
+      "definition": "DeMark exhaustion counter. 9-count setup suggests potential reversal. Counter resets to 0 after reaching a 9-count setup.",
       "formula": "Buy: 9 consecutive closes below close 4 bars ago"
     }
   },
@@ -215,7 +251,7 @@
     "3b": {
       "term": "Stage 3B",
       "short": "Distribution",
-      "definition": "Price losing SMA150, slope negative. Exit longs, potential short setup.",
+      "definition": "Price above SMA150, remaining after 2A-2C and 3A classification. Catch-all for above-anchor stocks not in confirmed advance.",
       "color": "#D97706"
     },
     "4a": {

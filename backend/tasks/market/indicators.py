@@ -10,6 +10,7 @@ from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import func
 
+from backend.config import settings
 from backend.database import SessionLocal
 from backend.models import Position, PriceData
 from backend.models.market_data import JobRun, MarketSnapshot, MarketSnapshotHistory
@@ -202,7 +203,7 @@ def recompute_universe(batch_size: int = 50) -> dict:
                 )
                 .filter(PriceData.symbol == benchmark_symbol, PriceData.interval == "1d")
                 .order_by(PriceData.date.desc())
-                .limit(400)
+                .limit(int(getattr(settings, "SNAPSHOT_DAILY_BARS_LIMIT", 400)))
                 .all()
             )
             if spy_rows:

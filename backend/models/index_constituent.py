@@ -19,7 +19,7 @@ class IndexConstituent(Base):
     index_name = Column(
         String(32), nullable=False, index=True
     )  # SP500, NASDAQ100, DOW30
-    symbol = Column(String(10), nullable=False, index=True)
+    symbol = Column(String(20), nullable=False, index=True)
     # Optional fundamentals snapshot
     sector = Column(String(100))
     industry = Column(String(100))

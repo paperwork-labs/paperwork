@@ -12,9 +12,9 @@ globs:
 
 # Quant Analyst
 
-You are the Quant Analyst for AxiomFolio. All financial calculations must be precise and match the Stage Analysis v4 specification (see `Stage_Analysis_v4.docx` at repo root).
+You are the Quant Analyst for AxiomFolio. All financial calculations must be precise and match the Stage Analysis spec (see `Stage_Analysis.docx` at repo root).
 
-## Stage Analysis v4 — Core Rules
+## Stage Analysis spec — Core Rules
 
 - **Primary anchor**: SMA150 (daily), NOT 30-week SMA
 - **10 sub-stages**: 1A, 1B, 2A, 2B, 2C, 3A, 3B, 4A, 4B, 4C

@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+from typing import Callable, Optional
 
 from backend.services.market.regime_engine import (
     REGIME_R1,
@@ -63,6 +63,8 @@ class PositionContext:
     previous_regime_state: Optional[str]
     days_held: int
     pnl_pct: float  # unrealized P&L %
+    # Peak trade price since entry (longs: highest close/high). None = use entry_price fallback in T2/T7.
+    high_water_price: Optional[float] = None
 
 
 @dataclass
@@ -139,10 +141,15 @@ def _tier2_trailing_stop(ctx: PositionContext) -> ExitSignal:
     multiplier = max(0.5, base_mult + regime_adj + vol_adj)
 
     trail_distance = multiplier * ctx.atr_14
-    if ctx.pnl_pct > 0 and ctx.current_price < (ctx.entry_price * (1 + ctx.pnl_pct / 100) - trail_distance):
+    if ctx.pnl_pct <= 0:
+        return ExitSignal("T2", ExitAction.HOLD, "Trail not hit", 0)
+    # Trail from high water mark, not a tautology on current_price.
+    # TODO: Populate high_water_price from position peak tracking; entry-only fallback ignores give-back from higher peaks.
+    hwm = ctx.high_water_price if ctx.high_water_price is not None else ctx.entry_price
+    if ctx.current_price < (hwm - trail_distance):
         return ExitSignal(
             "T2", ExitAction.EXIT,
-            f"Trailing stop ({multiplier:.2f}× ATR, stage={ctx.stage_label}, regime={ctx.regime_state})",
+            f"Trailing stop ({multiplier:.2f}× ATR, stage={ctx.stage_label}, regime={ctx.regime_state}, hwm={hwm:.2f})",
             9
         )
     return ExitSignal("T2", ExitAction.HOLD, "Trail not hit", 0)
@@ -195,13 +202,19 @@ def _tier5_profit_target(ctx: PositionContext) -> ExitSignal:
 
 # ── Long Exit Tiers 6–9 (Regime-Conditional) ──
 
-def _tier6_regime_transition(ctx: PositionContext) -> ExitSignal:
+def _tier6_regime_transition(ctx: PositionContext) -> Optional[ExitSignal]:
     """T6: Regime worsening exits.
 
     R1/R2 → R4/R5: exit all longs
     R1/R2 → R3: reduce 25%
     """
-    prev = ctx.previous_regime_state or ctx.regime_state
+    if ctx.previous_regime_state is None:
+        logger.warning(
+            "T6 regime transition skipped for %s: previous_regime_state is unknown",
+            ctx.symbol,
+        )
+        return None
+    prev = ctx.previous_regime_state
     curr = ctx.regime_state
 
     if prev in (REGIME_R1, REGIME_R2) and curr in (REGIME_R4, REGIME_R5):
@@ -229,8 +242,15 @@ def _tier7_regime_trail(ctx: PositionContext) -> ExitSignal:
 
     if multiplier is not None and ctx.pnl_pct > 0:
         trail = multiplier * ctx.atr_14
-        if ctx.current_price < ctx.entry_price + (ctx.entry_price * ctx.pnl_pct / 100) - trail:
-            return ExitSignal("T7", ExitAction.EXIT, f"Regime trail hit ({multiplier}× ATR in {ctx.regime_state})", 8)
+        # Same high-water trailing pattern as T2 (not entry+pnl expressed as a function of current only).
+        hwm = ctx.high_water_price if ctx.high_water_price is not None else ctx.entry_price
+        if ctx.current_price < (hwm - trail):
+            return ExitSignal(
+                "T7",
+                ExitAction.EXIT,
+                f"Regime trail hit ({multiplier}× ATR in {ctx.regime_state}, hwm={hwm:.2f})",
+                8,
+            )
     return ExitSignal("T7", ExitAction.HOLD, "Regime trail ok", 0)
 
 
@@ -279,16 +299,18 @@ def _short_s3_vol_spike(ctx: PositionContext) -> ExitSignal:
 
 def _short_s4_target(ctx: PositionContext) -> ExitSignal:
     """S4: Profit target for shorts — cover at predefined gain."""
-    if ctx.pnl_pct > 20:
-        return ExitSignal("S4", ExitAction.REDUCE_50, f"Short P&L {ctx.pnl_pct:.1f}% — take partial", 5)
     if ctx.pnl_pct > 35:
         return ExitSignal("S4", ExitAction.EXIT, f"Short P&L {ctx.pnl_pct:.1f}% — full cover", 7)
+    if ctx.pnl_pct > 20:
+        return ExitSignal("S4", ExitAction.REDUCE_50, f"Short P&L {ctx.pnl_pct:.1f}% — take partial", 5)
     return ExitSignal("S4", ExitAction.HOLD, "Target not reached", 0)
 
 
 # ── Cascade evaluation ──
 
-LONG_TIERS = [
+ExitTierFn = Callable[[PositionContext], Optional[ExitSignal]]
+
+LONG_TIERS: list[ExitTierFn] = [
     _tier1_stop_loss,
     _tier2_trailing_stop,
     _tier3_stage_deterioration,
@@ -300,7 +322,7 @@ LONG_TIERS = [
     _tier9_r5_full_exit,
 ]
 
-SHORT_TIERS = [
+SHORT_TIERS: list[ExitTierFn] = [
     _short_s1_stage_improvement,
     _short_s2_regime_improvement,
     _short_s3_vol_spike,
@@ -318,6 +340,8 @@ def evaluate_exit_cascade(ctx: PositionContext) -> CascadeResult:
     tiers = LONG_TIERS if ctx.side == "LONG" else SHORT_TIERS
     for tier_fn in tiers:
         signal = tier_fn(ctx)
+        if signal is None:
+            continue
         if signal.action != ExitAction.HOLD:
             result.add(signal)
 

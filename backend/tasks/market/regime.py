@@ -8,11 +8,35 @@ import logging
 from datetime import date as date_type
 
 from celery import shared_task
+from sqlalchemy import func
 
 from backend.database import SessionLocal
+from backend.models.market_data import PriceData
 from backend.tasks.utils.task_utils import task_run
 
 logger = logging.getLogger(__name__)
+
+
+def _regime_as_of_date(session) -> date_type:
+    """Use latest daily bar date in DB so regime rows align with market data, not calendar today."""
+    spy_dt = (
+        session.query(func.max(PriceData.date))
+        .filter(PriceData.symbol == "SPY", PriceData.interval == "1d")
+        .scalar()
+    )
+    if spy_dt is not None:
+        return spy_dt.date() if hasattr(spy_dt, "date") else spy_dt
+    latest_dt = (
+        session.query(func.max(PriceData.date))
+        .filter(PriceData.interval == "1d")
+        .scalar()
+    )
+    if latest_dt is not None:
+        return latest_dt.date() if hasattr(latest_dt, "date") else latest_dt
+    logger.warning(
+        "Regime as_of: no 1d PriceData in DB; using calendar today (may misalign vs snapshots)"
+    )
+    return date_type.today()
 
 
 @shared_task(
@@ -33,8 +57,8 @@ def compute_daily() -> dict:
         from backend.services.market.regime_inputs import gather_regime_inputs
 
         inputs = gather_regime_inputs(session)
-        today = date_type.today()
-        result = compute_regime(inputs, as_of=today)
+        as_of = _regime_as_of_date(session)
+        result = compute_regime(inputs, as_of=as_of)
         row = persist_regime(session, result)
         session.commit()
 
@@ -117,8 +141,8 @@ def vix_alert(
                 from backend.services.market.regime_inputs import gather_regime_inputs
 
                 inputs = gather_regime_inputs(session)
-                today = date_type.today()
-                regime_result = compute_regime(inputs, as_of=today)
+                as_of = _regime_as_of_date(session)
+                regime_result = compute_regime(inputs, as_of=as_of)
                 persist_regime(session, regime_result)
                 session.commit()
 

@@ -1,7 +1,7 @@
 """Pre-trade risk gate — validates orders before they reach any broker.
 
 Includes Stage Analysis spec position sizing (ATR-based with Regime Multiplier x Stage Cap).
-See Stage_Analysis_v4.docx Section 9.
+See Stage_Analysis.docx Section 9.
 """
 
 from __future__ import annotations

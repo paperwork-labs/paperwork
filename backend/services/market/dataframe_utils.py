@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import logging
 from typing import Sequence
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 def ensure_newest_first(df: pd.DataFrame) -> pd.DataFrame:
@@ -33,6 +36,7 @@ def price_data_rows_to_dataframe(
     if not rows:
         return pd.DataFrame(columns=["Open", "High", "Low", "Close", "Volume"])
 
+    warned_missing: set[str] = set()
     out_rows = []
     for r in rows:
         if isinstance(r, (tuple, list)):
@@ -45,6 +49,14 @@ def price_data_rows_to_dataframe(
             close_p = getattr(r, "close_price")
             volume = getattr(r, "volume")
         close_val = float(close_p or 0)
+        for col_name, raw in (("Open", open_p), ("High", high_p), ("Low", low_p)):
+            if raw is None and col_name not in warned_missing:
+                logger.warning(
+                    "PriceData rows missing %s column, filling with Close — "
+                    "ATR/range metrics may be inaccurate",
+                    col_name,
+                )
+                warned_missing.add(col_name)
         out_rows.append(
             {
                 "date": date,

@@ -47,7 +47,7 @@ You are the UX Lead for AxiomFolio. You enforce the design system, ensure access
 - TradingView widget for main charts (Workspace)
 - Recharts for dashboard visualizations (treemaps, bar charts, sparklines)
 - Stage background coloring: Subtle tints matching stage colors from `chart.ts`
-- Regime banner: Color-coded R1–R5 with hex from Stage_Analysis_v4.docx (R1=#22C55E, R2=#86EFAC, R3=#EAB308, R4=#F97316, R5=#DC2626)
+- Regime banner: Color-coded R1–R5 with hex from Stage_Analysis.docx (R1=#22C55E, R2=#86EFAC, R3=#EAB308, R4=#F97316, R5=#DC2626)
 
 ## Before Delivering UI Code
 
