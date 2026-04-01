@@ -85,6 +85,15 @@ const AdminDomainCards: React.FC<Props> = ({ health }) => {
           </p>
           <p className="text-xs text-muted-foreground">Stale daily: {coverage.stale_daily ?? 0}</p>
           <p className="text-xs text-muted-foreground">Tracked: {coverage.tracked_count ?? 0}</p>
+          {coverage.indices && Object.keys(coverage.indices).length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+              {Object.entries(coverage.indices).map(([idx, count]) => (
+                <span key={idx} className="text-xs text-muted-foreground">
+                  {idx}: <span className="font-medium text-foreground">{count}</span>
+                </span>
+              ))}
+            </div>
+          )}
           {coverage.expected_date && (
             <p className="text-xs text-muted-foreground">Latest date: {coverage.expected_date}</p>
           )}

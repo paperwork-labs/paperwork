@@ -17,6 +17,7 @@ export interface CoverageDimension extends BaseDimension {
   tracked_count: number;
   expected_date: string | null;
   summary: string;
+  indices?: Record<string, number>;
 }
 
 export interface StageQualityDimension extends BaseDimension {

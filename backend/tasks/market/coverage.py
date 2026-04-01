@@ -280,7 +280,9 @@ def _summarize_bootstrap_step(step: str, payload: Optional[dict]) -> str:
 )
 @task_run("admin_coverage_backfill", lock_key=lambda: "admin_coverage_backfill")
 def daily_bootstrap(
-    history_days: Optional[int] = None, history_batch_size: int = 25
+    history_days: Optional[int] = None,
+    history_batch_size: int = 25,
+    backfill_days: int = 200,
 ) -> dict:
     """Backfill DAILY coverage for the tracked universe (no 5m).
 
@@ -296,6 +298,11 @@ def daily_bootstrap(
     from backend.tasks.market.history import snapshot_last_n_days
     from backend.tasks.market.indicators import recompute_universe
     from backend.tasks.market.regime import compute_daily
+
+    try:
+        _backfill_days = max(1, min(int(backfill_days), 3000))
+    except (TypeError, ValueError):
+        _backfill_days = 200
 
     rollup: Dict[str, Any] = {"steps": []}
 
@@ -314,7 +321,7 @@ def daily_bootstrap(
     res2 = tracked_cache()
     _append("market_universe_tracked_refresh", res2)
 
-    res3 = daily_bars(days=200)
+    res3 = daily_bars(days=_backfill_days)
     _append("admin_backfill_daily", res3)
 
     res4 = recompute_universe(batch_size=50)

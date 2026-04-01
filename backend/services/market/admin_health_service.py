@@ -175,6 +175,7 @@ class AdminHealthService:
                 "tracked_count": int(status_info.get("tracked_count") or 0),
                 "expected_date": status_info.get("daily_expected_date"),
                 "summary": status_info.get("summary", ""),
+                "indices": snapshot.get("indices", {}),
             }
         except Exception as exc:
             logger.exception("coverage dimension failed: %s", exc)

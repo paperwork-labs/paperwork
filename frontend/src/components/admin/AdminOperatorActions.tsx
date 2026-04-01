@@ -163,6 +163,10 @@ const AdminOperatorActions: React.FC<Props> = ({
           method: 'POST',
           endpoint: '/market-data/admin/regime/compute',
         },
+        refresh_constituents: {
+          method: 'POST',
+          endpoint: '/market-data/indices/constituents/refresh',
+        },
       };
       const task = taskEndpoints[taskName];
       if (!task) throw new Error(`Unsupported task: ${taskName}`);
@@ -494,6 +498,15 @@ const AdminOperatorActions: React.FC<Props> = ({
               </div>
               <p className="mt-2 text-xs text-muted-foreground">Maintenance</p>
               <div className="flex flex-wrap gap-2">
+                <Button
+                  size="xs"
+                  variant="outline"
+                  onClick={() =>
+                    void runNamedTask('refresh_constituents', 'Index constituents refresh queued')
+                  }
+                >
+                  Refresh Index Constituents
+                </Button>
                 <Button
                   size="xs"
                   variant="outline"

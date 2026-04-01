@@ -110,7 +110,7 @@ TASK_ACTIONS: List[Dict[str, Any]] = [
         "task_name": "market_indices_constituents_refresh",
         "method": "POST",
         "endpoint": "/market-data/indices/constituents/refresh",
-        "description": "Refresh SP500 / NASDAQ100 / DOW30 constituents.",
+        "description": "Refresh SP500 / NASDAQ100 / DOW30 / RUSSELL2000 constituents.",
         "status_task": "market_indices_constituents_refresh",
     },
     {

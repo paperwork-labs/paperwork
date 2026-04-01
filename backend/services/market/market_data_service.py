@@ -50,6 +50,12 @@ from backend.services.market.snapshot_service import MarketSnapshotService
 from backend.services.market.coverage_service import CoverageService
 from backend.services.market.coverage_utils import compute_coverage_status
 from backend.services.market.stage_utils import compute_stage_run_lengths
+from backend.services.market.fundamentals_service import FundamentalsService, needs_fundamentals
+from backend.services.market.stage_quality_service import (
+    StageQualityService,
+    normalize_stage_label,
+    VALID_STAGE_LABELS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +107,8 @@ class MarketDataService:
         self.providers = MarketDataProviderService(self)
         self.snapshots = MarketSnapshotService(self)
         self.coverage = CoverageService(self)
+        self.fundamentals = FundamentalsService(self)
+        self.stage_quality = StageQualityService()
 
         if settings.FMP_API_KEY:
             logger.info("FMP API configured")
@@ -357,34 +365,7 @@ class MarketDataService:
 
     @staticmethod
     def _normalize_stage_label(stage_label: Any) -> Optional[str]:
-        raw = str(stage_label or "").strip().upper()
-        if not raw:
-            return None
-        if raw in ("1A", "1B"):
-            return raw
-        if "2A" in raw:
-            return "2A"
-        if "2B(RS-)" in raw:
-            return "2B(RS-)"
-        if "2B" in raw:
-            return "2B"
-        if "2C" in raw:
-            return "2C"
-        if raw in {"2", "STAGE 2"}:
-            return "2A"
-        if raw in ("3A", "3B"):
-            return raw
-        if raw in ("4A", "4B", "4C"):
-            return raw
-        if raw in {"1", "STAGE 1"} or raw.endswith(" 1"):
-            return "1"
-        if raw in {"3", "STAGE 3"} or raw.endswith(" 3"):
-            return "3"
-        if raw in {"4", "STAGE 4"} or raw.endswith(" 4"):
-            return "4"
-        if raw == "UNKNOWN":
-            return "UNKNOWN"
-        return None
+        return normalize_stage_label(stage_label)
 
     def _derive_stage_run_fields(
         self,
@@ -492,22 +473,7 @@ class MarketDataService:
 
     @staticmethod
     def _needs_fundamentals(snapshot: Dict[str, Any]) -> bool:
-        if any(snapshot.get(f) is None for f in FUNDAMENTAL_FIELDS):
-            return True
-        ts = snapshot.get("analysis_timestamp")
-        if ts is not None:
-            if isinstance(ts, str):
-                try:
-                    ts = datetime.fromisoformat(ts)
-                except Exception:
-                    return False
-            try:
-                age = datetime.utcnow() - ts.replace(tzinfo=None)
-                if age > timedelta(days=7):
-                    return True
-            except Exception as e:
-                logger.warning("timestamp_age_check failed: %s", e)
-        return False
+        return needs_fundamentals(snapshot)
 
 
     # ---------------------- Provider selection ----------------------
@@ -693,250 +659,10 @@ class MarketDataService:
         return None
 
     def get_fundamentals_info(self, symbol: str) -> Dict[str, Any]:
-        """Return fundamentals for a symbol using multi-provider cascade.
+        """Delegate to FundamentalsService (multi-provider cascade)."""
+        return self.fundamentals.get_fundamentals_info(symbol)
 
-        Provider order: FMP -> Finnhub -> Twelve Data -> Alpha Vantage -> yfinance.
-        Each subsequent provider only fills fields still missing after the previous one.
-        Returns keys: name, sector, industry, sub_industry, market_cap, eps_ttm, revenue_ttm, etc.
-        """
-        from backend.services.market.rate_limiter import provider_rate_limiter
 
-        info: Dict[str, Any] = {}
-
-        def _decimal_to_pct(value: Any) -> Optional[float]:
-            try:
-                return float(value) * 100.0 if value is not None else None
-            except Exception:
-                return None
-
-        def set_if_missing(key: str, value: Any) -> None:
-            if info.get(key) is None and value is not None:
-                info[key] = value
-
-        def call_fmp_first_available(
-            candidate_names: list[str], *, apikey: str, symbol: str
-        ) -> Any:
-            last_exc: Exception | None = None
-            for fn_name in candidate_names:
-                fn = getattr(fmpsdk, fn_name, None)
-                if not callable(fn):
-                    continue
-                try:
-                    provider_rate_limiter.acquire_sync("fmp")
-                    return self._call_blocking_with_retries_sync(fn, apikey=apikey, symbol=symbol)
-                except Exception as exc:
-                    last_exc = exc
-                    continue
-            if last_exc is not None:
-                raise last_exc
-            return None
-
-        # --- Provider 1: FMP ---
-        try:
-            if settings.FMP_API_KEY:
-                provider_rate_limiter.acquire_sync("fmp")
-                prof = self._call_blocking_with_retries_sync(
-                    fmpsdk.company_profile, apikey=settings.FMP_API_KEY, symbol=symbol,
-                )
-                if prof and len(prof) > 0 and isinstance(prof[0], dict):
-                    d = prof[0]
-                    info = {
-                        "name": d.get("companyName") or d.get("company_name") or d.get("symbol"),
-                        "sector": d.get("sector"),
-                        "industry": d.get("industry"),
-                        "sub_industry": d.get("subIndustry") or d.get("sub_industry"),
-                        "market_cap": d.get("mktCap"),
-                    }
-                    if d.get("beta") is not None:
-                        info["beta"] = d.get("beta")
-                try:
-                    provider_rate_limiter.acquire_sync("fmp")
-                    metrics = self._call_blocking_with_retries_sync(
-                        fmpsdk.key_metrics_ttm, apikey=settings.FMP_API_KEY, symbol=symbol,
-                    )
-                    if metrics and isinstance(metrics[0], dict):
-                        m = metrics[0]
-                        set_if_missing("pe_ttm", m.get("peRatioTTM") or m.get("peRatio"))
-                        set_if_missing("peg_ttm", m.get("pegRatioTTM") or m.get("pegRatio"))
-                        set_if_missing("dividend_yield", _decimal_to_pct(m.get("dividendYieldTTM") or m.get("dividendYield")))
-                        set_if_missing("roe", _decimal_to_pct(m.get("roeTTM") or m.get("roe")))
-                        set_if_missing("beta", m.get("beta"))
-                        set_if_missing("eps_ttm", m.get("netIncomePerShareTTM") or m.get("epsTTM"))
-                        set_if_missing("revenue_ttm", m.get("revenuePerShareTTM"))
-                except Exception as exc:
-                    logger.warning("FMP key metrics failed for %s: %s", symbol, exc)
-                try:
-                    ratios = call_fmp_first_available(
-                        ["financial_ratios_ttm", "ratios_ttm", "financial_ratios"],
-                        apikey=settings.FMP_API_KEY, symbol=symbol,
-                    )
-                    if ratios and isinstance(ratios[0], dict):
-                        r = ratios[0]
-                        set_if_missing("pe_ttm", r.get("priceEarningsRatioTTM") or r.get("priceEarningsRatio"))
-                        set_if_missing("peg_ttm", r.get("pegRatioTTM") or r.get("pegRatio"))
-                        set_if_missing("roe", _decimal_to_pct(r.get("returnOnEquityTTM") or r.get("returnOnEquity")))
-                        set_if_missing("dividend_yield", _decimal_to_pct(r.get("dividendYieldTTM") or r.get("dividendYield")))
-                except Exception as exc:
-                    logger.warning("FMP ratios failed for %s: %s", symbol, exc)
-                try:
-                    provider_rate_limiter.acquire_sync("fmp")
-                    growth = self._call_blocking_with_retries_sync(
-                        fmpsdk.financial_growth, apikey=settings.FMP_API_KEY, symbol=symbol,
-                    )
-                    if growth and isinstance(growth[0], dict):
-                        g = growth[0]
-                        set_if_missing("eps_growth_yoy", _decimal_to_pct(g.get("epsGrowth") or g.get("epsgrowth")))
-                        set_if_missing("eps_growth_qoq", _decimal_to_pct(g.get("epsGrowthQuarterly") or g.get("epsGrowthQoQ")))
-                        set_if_missing("revenue_growth_yoy", _decimal_to_pct(g.get("revenueGrowth") or g.get("revenuegrowth")))
-                        set_if_missing("revenue_growth_qoq", _decimal_to_pct(g.get("revenueGrowthQuarterly") or g.get("revenueGrowthQoQ")))
-                except Exception as exc:
-                    logger.warning("FMP financial growth failed for %s: %s", symbol, exc)
-        except Exception as exc:
-            logger.warning("FMP fundamentals failed for %s: %s", symbol, exc)
-
-        # --- Provider 2: Finnhub ---
-        if self.finnhub_client and self._needs_fundamentals(info):
-            try:
-                provider_rate_limiter.acquire_sync("finnhub")
-                prof2 = self.finnhub_client.company_profile2(symbol=symbol)
-                if isinstance(prof2, dict) and prof2.get("name"):
-                    set_if_missing("name", prof2.get("name"))
-                    set_if_missing("sector", prof2.get("finnhubIndustry"))
-                    set_if_missing("industry", prof2.get("finnhubIndustry"))
-                    set_if_missing("market_cap", prof2.get("marketCapitalization"))
-            except Exception as exc:
-                logger.debug("Finnhub profile failed for %s: %s", symbol, exc)
-            try:
-                provider_rate_limiter.acquire_sync("finnhub")
-                basics = self.finnhub_client.company_basic_financials(symbol=symbol, metric="all")
-                if isinstance(basics, dict):
-                    m = basics.get("metric", {})
-                    set_if_missing("pe_ttm", m.get("peTTM"))
-                    set_if_missing("beta", m.get("beta"))
-                    set_if_missing("roe", _decimal_to_pct(m.get("roeTTM")))
-                    set_if_missing("dividend_yield", _decimal_to_pct(m.get("dividendYieldIndicatedAnnual")))
-                    set_if_missing("eps_ttm", m.get("epsTTM"))
-                    set_if_missing("revenue_ttm", m.get("revenueTTM"))
-                    set_if_missing("peg_ttm", m.get("pegAnnual"))
-                    set_if_missing("high_52w_price", m.get("52WeekHigh"))
-                    set_if_missing("low_52w_price", m.get("52WeekLow"))
-            except Exception as exc:
-                logger.debug("Finnhub basic financials failed for %s: %s", symbol, exc)
-
-        # --- Provider 3: Alpha Vantage ---
-        if settings.ALPHA_VANTAGE_API_KEY and self._needs_fundamentals(info):
-            try:
-                import requests as _requests
-                provider_rate_limiter.acquire_sync("alphavantage")
-                url = (
-                    f"https://www.alphavantage.co/query?function=OVERVIEW"
-                    f"&symbol={symbol}&apikey={settings.ALPHA_VANTAGE_API_KEY}"
-                )
-                resp = _requests.get(url, timeout=10)
-                if resp.ok:
-                    av = resp.json()
-                    if av.get("Symbol"):
-                        set_if_missing("name", av.get("Name"))
-                        set_if_missing("sector", av.get("Sector"))
-                        set_if_missing("industry", av.get("Industry"))
-                        try:
-                            set_if_missing("market_cap", float(av["MarketCapitalization"]))
-                        except (ValueError, KeyError, TypeError):
-                            pass
-                        try:
-                            set_if_missing("pe_ttm", float(av["TrailingPE"]))
-                        except (ValueError, KeyError, TypeError):
-                            pass
-                        try:
-                            set_if_missing("peg_ttm", float(av["PEGRatio"]))
-                        except (ValueError, KeyError, TypeError):
-                            pass
-                        try:
-                            set_if_missing("eps_ttm", float(av["EPS"]))
-                        except (ValueError, KeyError, TypeError):
-                            pass
-                        try:
-                            set_if_missing("revenue_ttm", float(av["RevenueTTM"]))
-                        except (ValueError, KeyError, TypeError):
-                            pass
-                        try:
-                            set_if_missing("beta", float(av["Beta"]))
-                        except (ValueError, KeyError, TypeError):
-                            pass
-                        try:
-                            set_if_missing("roe", _decimal_to_pct(float(av["ReturnOnEquityTTM"])))
-                        except (ValueError, KeyError, TypeError):
-                            pass
-                        try:
-                            set_if_missing("dividend_yield", _decimal_to_pct(float(av["DividendYield"])))
-                        except (ValueError, KeyError, TypeError):
-                            pass
-                        try:
-                            set_if_missing("eps_growth_yoy", _decimal_to_pct(float(av["QuarterlyEarningsGrowthYOY"])))
-                        except (ValueError, KeyError, TypeError):
-                            pass
-                        try:
-                            set_if_missing("revenue_growth_yoy", _decimal_to_pct(float(av["QuarterlyRevenueGrowthYOY"])))
-                        except (ValueError, KeyError, TypeError):
-                            pass
-                        set_if_missing("analyst_rating", av.get("AnalystRating") or av.get("AnalystTargetPrice"))
-            except Exception as exc:
-                logger.debug("Alpha Vantage overview failed for %s: %s", symbol, exc)
-
-        # --- Provider 4: yfinance (last resort) ---
-        needs_core = any(info.get(k) is None for k in FUNDAMENTAL_FIELDS[:5])
-        needs_full = self._needs_fundamentals(info)
-        if needs_full or needs_core:
-            try:
-                provider_rate_limiter.acquire_sync("yfinance")
-                y = self._call_blocking_with_retries_sync(lambda: yf.Ticker(symbol).info)
-                if y:
-                    if not info:
-                        info = {
-                            "name": y.get("shortName") or y.get("longName") or y.get("symbol"),
-                            "sector": y.get("sector"),
-                            "industry": y.get("industry"),
-                            "sub_industry": y.get("subIndustry") or y.get("industry") or None,
-                            "market_cap": y.get("marketCap"),
-                        }
-                    set_if_missing("name", y.get("shortName") or y.get("longName"))
-                    set_if_missing("sector", y.get("sector"))
-                    set_if_missing("industry", y.get("industry"))
-                    set_if_missing("sub_industry", y.get("subIndustry") or y.get("industry"))
-                    set_if_missing("market_cap", y.get("marketCap"))
-                    set_if_missing("beta", y.get("beta"))
-                    set_if_missing("pe_ttm", y.get("trailingPE") or y.get("forwardPE"))
-                    set_if_missing("peg_ttm", y.get("pegRatio"))
-                    set_if_missing("roe", _decimal_to_pct(y.get("returnOnEquity")))
-                    set_if_missing("dividend_yield", _decimal_to_pct(y.get("dividendYield")))
-                    set_if_missing("eps_growth_yoy", _decimal_to_pct(y.get("earningsGrowth")))
-                    set_if_missing("eps_growth_qoq", _decimal_to_pct(y.get("earningsQuarterlyGrowth")))
-                    set_if_missing("revenue_growth_yoy", _decimal_to_pct(y.get("revenueGrowth")))
-                    set_if_missing("revenue_growth_qoq", _decimal_to_pct(y.get("revenueQuarterlyGrowth")))
-                    set_if_missing("eps_ttm", y.get("trailingEps"))
-                    set_if_missing("revenue_ttm", y.get("totalRevenue"))
-                    set_if_missing("analyst_rating", y.get("recommendationKey"))
-                    earnings = y.get("earningsDate")
-                    if isinstance(earnings, (list, tuple)) and earnings:
-                        set_if_missing("next_earnings", earnings[0])
-                    set_if_missing("last_earnings", y.get("lastEarningsDate"))
-            except Exception:
-                if not info:
-                    info = {}
-
-        # --- ETF sector/industry override ---
-        from backend.services.market.constants import ETF_SECTOR_INDUSTRY
-        upper_sym = symbol.upper()
-        if upper_sym in ETF_SECTOR_INDUSTRY:
-            etf_sector, etf_industry = ETF_SECTOR_INDUSTRY[upper_sym]
-            info["sector"] = etf_sector
-            info["industry"] = etf_industry
-            if not info.get("sub_industry"):
-                info["sub_industry"] = etf_industry
-
-        return info
-
-    @staticmethod
     def _period_to_start_date(period: str) -> datetime:
         """Convert period string to a start date for DB queries."""
         now = datetime.utcnow()
@@ -1204,12 +930,20 @@ class MarketDataService:
         idx = index_name.upper()
         ep = self.index_endpoints.get(idx, {}).get("fmp")
         symbols: List[str] = []
-        # FMP
+        # FMP via fmpsdk
         if settings.FMP_API_KEY and ep:
             try:
                 fn = getattr(fmpsdk, ep, None)
-                data = fn(apikey=settings.FMP_API_KEY) if callable(fn) else []
-            except Exception:
+                if callable(fn):
+                    data = fn(apikey=settings.FMP_API_KEY)
+                else:
+                    # fmpsdk lacks this function — try direct HTTP call
+                    import requests as _req
+                    url = f"https://financialmodelingprep.com/api/v3/{ep}?apikey={settings.FMP_API_KEY}"
+                    resp = _req.get(url, timeout=30)
+                    data = resp.json() if resp.status_code == 200 else []
+            except Exception as exc:
+                logger.warning("Index %s: FMP constituent fetch failed: %s", idx, exc)
                 data = []
             if isinstance(data, list):
                 symbols = [str(d.get("symbol", "")).strip().upper().replace('.', '-') for d in data if d.get("symbol")]
@@ -2244,7 +1978,7 @@ class MarketDataService:
         from backend.models.market_data import MarketSnapshotHistory
 
         idx_counts: Dict[str, int] = {}
-        for idx in ("SP500", "NASDAQ100", "DOW30"):
+        for idx in ("SP500", "NASDAQ100", "DOW30", "RUSSELL2000"):
             idx_counts[idx] = (
                 db.query(IndexConstituent)
                 .filter(IndexConstituent.index_name == idx, IndexConstituent.is_active.is_(True))
@@ -2395,28 +2129,7 @@ class MarketDataService:
         return snapshot
 
     # ---------------------- Stage quality + repair ----------------------
-    _VALID_STAGE_LABELS = {
-        "1", "1A", "1B",
-        "2A", "2B", "2B(RS-)", "2C",
-        "3", "3A", "3B",
-        "4", "4A", "4B", "4C",
-        "UNKNOWN",
-    }
-
-    @staticmethod
-    def _as_naive_utc(ts: datetime | None) -> datetime | None:
-        if ts is None:
-            return None
-        try:
-            if ts.tzinfo is not None:
-                return ts.astimezone(timezone.utc).replace(tzinfo=None)
-        except Exception:
-            # Best effort: fall back to stripping tzinfo below if conversion fails.
-            pass
-        try:
-            return ts.replace(tzinfo=None)
-        except Exception:
-            return ts
+    _VALID_STAGE_LABELS = VALID_STAGE_LABELS
 
     def stage_quality_summary(
         self,
@@ -2424,152 +2137,9 @@ class MarketDataService:
         *,
         lookback_days: int = 120,
     ) -> Dict[str, Any]:
-        lookback_days = max(7, min(int(lookback_days), 3650))
-        cutoff = datetime.utcnow() - timedelta(days=lookback_days)
+        """Delegate to StageQualityService."""
+        return self.stage_quality.stage_quality_summary(db, lookback_days=lookback_days)
 
-        rows = (
-            db.query(
-                MarketSnapshot.symbol,
-                MarketSnapshot.stage_label,
-                MarketSnapshot.current_stage_days,
-                MarketSnapshot.previous_stage_label,
-                MarketSnapshot.previous_stage_days,
-                MarketSnapshot.as_of_timestamp,
-            )
-            .filter(MarketSnapshot.analysis_type == "technical_snapshot")
-            .all()
-        )
-
-        total = len(rows)
-        stage_counter: Counter[str] = Counter()
-        invalid_stage_count = 0
-        unknown_count = 0
-        invalid_current_days_count = 0
-        invalid_previous_link_count = 0
-        stale_stage_count = 0
-
-        for _, stage_label, current_days, prev_label, prev_days, as_of_ts in rows:
-            stage_raw = str(stage_label or "").strip().upper()
-            if stage_raw in self._VALID_STAGE_LABELS:
-                stage_counter[stage_raw] += 1
-            else:
-                invalid_stage_count += 1
-
-            if stage_raw == "UNKNOWN":
-                unknown_count += 1
-            if stage_raw and stage_raw != "UNKNOWN":
-                try:
-                    d = int(current_days) if current_days is not None else 0
-                except Exception:
-                    d = 0
-                if d < 1:
-                    invalid_current_days_count += 1
-
-            has_prev_label = bool(str(prev_label or "").strip())
-            has_prev_days = prev_days is not None
-            if has_prev_label != has_prev_days:
-                invalid_previous_link_count += 1
-
-            as_of_naive = self._as_naive_utc(as_of_ts)
-            if as_of_naive is None or as_of_naive < cutoff:
-                stale_stage_count += 1
-
-        # Recent monotonicity check on history rows.
-        recent_rows = (
-            db.query(
-                MarketSnapshotHistory.symbol,
-                MarketSnapshotHistory.as_of_date,
-                MarketSnapshotHistory.stage_label,
-                MarketSnapshotHistory.current_stage_days,
-            )
-            .filter(
-                MarketSnapshotHistory.analysis_type == "technical_snapshot",
-                MarketSnapshotHistory.as_of_date >= cutoff,
-            )
-            .order_by(
-                MarketSnapshotHistory.symbol.asc(),
-                MarketSnapshotHistory.as_of_date.asc(),
-            )
-            .all()
-        )
-
-        # Monotonicity validation: cal_gap==1 enforces strict consecutive-day rules.
-        # Gaps >1 calendar day are assumed to be weekends/holidays (non-trading); we
-        # relax strict +1 enforcement but still require forward progression. Multi-day
-        # market closures (e.g. long holidays) may be misclassified; a trading-calendar
-        # library would improve accuracy if needed.
-        monotonicity_issues = 0
-        by_symbol: Dict[str, List[tuple[datetime, Any, Any]]] = {}
-        for symbol, as_of_date, stage_label, current_days in recent_rows:
-            by_symbol.setdefault(str(symbol or "").upper(), []).append(
-                (as_of_date, stage_label, current_days)
-            )
-
-        for series in by_symbol.values():
-            prev_norm: Optional[str] = None
-            prev_days: Optional[int] = None
-            prev_dt: Optional[datetime] = None
-            for dt, stage_label, current_days in series:
-                norm = self._normalize_stage_label(stage_label)
-                if norm is None:
-                    continue
-                try:
-                    cur_days = int(current_days) if current_days is not None else 0
-                except Exception:
-                    cur_days = 0
-                if cur_days < 1:
-                    monotonicity_issues += 1
-                elif prev_norm is not None and prev_days is not None and prev_dt is not None:
-                    cal_gap = (dt - prev_dt).days if dt and prev_dt else 0
-                    if cal_gap == 1:
-                        if norm == prev_norm and cur_days != prev_days + 1:
-                            monotonicity_issues += 1
-                        if norm != prev_norm and cur_days != 1:
-                            monotonicity_issues += 1
-                    else:
-                        # Gaps >1 calendar day are treated as non-trading-day gaps
-                        # (weekends/holidays). We still require forward progression
-                        # within the same stage but avoid strict +1 enforcement.
-                        if norm == prev_norm and cur_days <= prev_days:
-                            monotonicity_issues += 1
-                        if norm != prev_norm and cur_days < 1:
-                            monotonicity_issues += 1
-                prev_norm = norm
-                prev_days = cur_days if cur_days >= 1 else None
-                prev_dt = dt
-
-        known_count = total - unknown_count - invalid_stage_count
-        unknown_rate = (unknown_count / total) if total else 0.0
-        known_rate = (known_count / total) if total else 0.0
-
-        warning = (
-            invalid_stage_count > 0
-            or invalid_current_days_count > 0
-            or invalid_previous_link_count > 0
-            or monotonicity_issues > 0
-            or unknown_rate > 0.35
-        )
-        status = "warning" if warning else "ok"
-
-        return {
-            "status": status,
-            "window_days": lookback_days,
-            "total_symbols": total,
-            "known_count": known_count,
-            "unknown_count": unknown_count,
-            "known_rate": round(known_rate, 4),
-            "unknown_rate": round(unknown_rate, 4),
-            "invalid_stage_count": invalid_stage_count,
-            "invalid_current_days_count": invalid_current_days_count,
-            "invalid_previous_link_count": invalid_previous_link_count,
-            "monotonicity_issues": monotonicity_issues,
-            "stale_stage_count": stale_stage_count,
-            "stage_counts": {
-                k: int(stage_counter.get(k, 0))
-                for k in sorted(self._VALID_STAGE_LABELS)
-            },
-            "checked_at": datetime.utcnow().isoformat(),
-        }
 
     def repair_stage_history_window(
         self,
@@ -2578,120 +2148,8 @@ class MarketDataService:
         days: int = 120,
         symbol: str | None = None,
     ) -> Dict[str, Any]:
-        days = max(7, min(int(days), 3650))
-        target_symbol = (symbol or "").strip().upper() or None
-
-        query = db.query(MarketSnapshotHistory.symbol).filter(
-            MarketSnapshotHistory.analysis_type == "technical_snapshot"
-        )
-        if target_symbol:
-            query = query.filter(MarketSnapshotHistory.symbol == target_symbol)
-        symbols = [s for (s,) in query.distinct().order_by(MarketSnapshotHistory.symbol.asc()).all()]
-
-        touched_rows = 0
-        touched_symbols = 0
-        for idx, sym in enumerate(symbols, 1):
-            rows = (
-                db.query(MarketSnapshotHistory)
-                .filter(
-                    MarketSnapshotHistory.analysis_type == "technical_snapshot",
-                    MarketSnapshotHistory.symbol == sym,
-                )
-                .order_by(MarketSnapshotHistory.as_of_date.desc())
-                .limit(days)
-                .all()
-            )
-            if not rows:
-                continue
-            rows = list(reversed(rows))
-
-            cur_stage: Optional[str] = None
-            cur_days = 0
-            prev_stage: Optional[str] = None
-            prev_days: Optional[int] = None
-            updated_for_symbol = False
-
-            for row in rows:
-                norm = self._normalize_stage_label(getattr(row, "stage_label", None))
-                if norm is None:
-                    continue
-                if norm == "UNKNOWN":
-                    cur_stage = None
-                    cur_days = 0
-                    prev_stage = None
-                    prev_days = None
-                    row.current_stage_days = None
-                    row.previous_stage_label = None
-                    row.previous_stage_days = None
-                    touched_rows += 1
-                    updated_for_symbol = True
-                    continue
-                if cur_stage == norm:
-                    cur_days += 1
-                else:
-                    prev_stage = cur_stage
-                    prev_days = cur_days if cur_stage is not None else None
-                    cur_stage = norm
-                    cur_days = 1
-                row.current_stage_days = cur_days
-                row.previous_stage_label = prev_stage
-                row.previous_stage_days = prev_days
-                touched_rows += 1
-                updated_for_symbol = True
-
-            if updated_for_symbol:
-                touched_symbols += 1
-                snap = (
-                    db.query(MarketSnapshot)
-                    .filter(
-                        MarketSnapshot.analysis_type == "technical_snapshot",
-                        MarketSnapshot.symbol == sym,
-                    )
-                    .first()
-                )
-                if snap is not None:
-                    # Sync snapshot run metadata from a history row that best
-                    # matches the snapshot stage label. This avoids poisoning
-                    # known snapshot stages with UNKNOWN-run metadata from the
-                    # newest history row.
-                    target_norm = self._normalize_stage_label(
-                        getattr(snap, "stage_label", None)
-                    )
-                    candidate = None
-                    if target_norm is not None:
-                        for row in reversed(rows):
-                            row_norm = self._normalize_stage_label(
-                                getattr(row, "stage_label", None)
-                            )
-                            if row_norm == target_norm:
-                                candidate = row
-                                break
-                    if candidate is None:
-                        # Fallback: latest known-stage row in window.
-                        for row in reversed(rows):
-                            row_norm = self._normalize_stage_label(
-                                getattr(row, "stage_label", None)
-                            )
-                            if row_norm is not None and row_norm != "UNKNOWN":
-                                candidate = row
-                                break
-                    if candidate is not None:
-                        snap.current_stage_days = getattr(candidate, "current_stage_days", None)
-                        snap.previous_stage_label = getattr(candidate, "previous_stage_label", None)
-                        snap.previous_stage_days = getattr(candidate, "previous_stage_days", None)
-
-            if idx % 50 == 0:
-                db.commit()
-
-        db.commit()
-        return {
-            "window_days": days,
-            "target_symbol": target_symbol,
-            "total_symbols": len(symbols),
-            "touched_symbols": touched_symbols,
-            "touched_rows": touched_rows,
-            "updated_at": datetime.utcnow().isoformat(),
-        }
+        """Delegate to StageQualityService."""
+        return self.stage_quality.repair_stage_history_window(db, days=days, symbol=symbol)
 
     def get_historical_dividends(self, symbol: str) -> List[Dict]:
         """Fetch historical dividend payments from FMP for a given symbol."""
