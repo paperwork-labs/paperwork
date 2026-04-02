@@ -13,7 +13,7 @@ class MarketTrackedPlan(Base):
     symbol = Column(String(20), nullable=False, index=True)
     entry_price = Column(Float, nullable=True)
     exit_price = Column(Float, nullable=True)
-    updated_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    updated_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     __table_args__ = (

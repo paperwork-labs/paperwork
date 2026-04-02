@@ -223,7 +223,7 @@ class PositionHistory(Base):
     position_id = Column(
         Integer, ForeignKey("positions.id"), nullable=False, index=True
     )
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Snapshot date
     snapshot_date = Column(DateTime, nullable=False, index=True)

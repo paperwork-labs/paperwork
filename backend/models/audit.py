@@ -93,7 +93,7 @@ class AuditLog(Base):
     correlation_id = Column(String(100), index=True)  # Groups related events
 
     # Actor information
-    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), index=True)
     session_id = Column(String(100))
     ip_address = Column(String(45))  # IPv4 or IPv6
     user_agent = Column(Text)
@@ -163,7 +163,7 @@ class DataChangeLog(Base):
     changed_fields = Column(JSON)  # List of changed field names
 
     # Context
-    changed_by = Column(Integer, ForeignKey("users.id"))
+    changed_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
     change_reason = Column(Text)
 
     # Timestamps
@@ -203,7 +203,7 @@ class SecurityEvent(Base):
     # Response
     action_taken = Column(Text)  # What was done
     requires_investigation = Column(Boolean, default=False)
-    investigated_by = Column(Integer, ForeignKey("users.id"))
+    investigated_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
     investigation_notes = Column(Text)
 
     # Resolution

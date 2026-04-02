@@ -42,7 +42,7 @@ class StrategyBacktest(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     strategy_id = Column(Integer, ForeignKey("strategies.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Configuration
     status = Column(

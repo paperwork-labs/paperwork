@@ -73,7 +73,7 @@ class Notification(Base):
 
     # Primary identification
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Notification details
     type = Column(SQLEnum(NotificationType), nullable=False, index=True)
@@ -179,7 +179,7 @@ class NotificationPreference(Base):
     __tablename__ = "notification_preferences"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Preferences by type and channel
     notification_type = Column(SQLEnum(NotificationType), nullable=False)

@@ -26,7 +26,7 @@ class UserInvite(Base):
         default=UserRole.VIEWER,
     )
     token = Column(String(64), unique=True, nullable=False, index=True)
-    created_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     expires_at = Column(TIMESTAMP(timezone=True), nullable=False)
     accepted_at = Column(TIMESTAMP(timezone=True))

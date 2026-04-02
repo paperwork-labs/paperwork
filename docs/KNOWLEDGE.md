@@ -95,6 +95,11 @@ Architectural decisions with rationale. Grouped by domain, newest first within e
 |----|------|----------|
 | D40 | 2026-03-27 | **Redis Streams for real-time events** — price:feed:alpaca, signals:evaluated, signals:output |
 | D41 | 2026-03-27 | **Async Redis in async contexts** — redis.asyncio for FastAPI routes and services |
+| D54 | 2026-04-02 | **iShares IWM ETF fallback for Russell 2000** — FMP/Finnhub lack R2K endpoint; parse CSV holdings from iShares; never cache empty constituent lists |
+| D55 | 2026-04-02 | **HISTORY_TARGET_YEARS = 10** — one-time deep backfill, then delta-only nightly pipeline; 400-bar window sufficient for all rolling indicators |
+| D56 | 2026-04-02 | **Agent chat tool_choice = auto** — first turn no longer forces tool call; out-of-scope guard in SYSTEM_PROMPT |
+| D57 | 2026-04-02 | **User FK cascade policy** — CASCADE for user-owned data, SET NULL for audit/tracking columns; Alembic migration for 20+ FKs |
+| D58 | 2026-04-02 | **Curated ETFs for multi-asset exposure** — IBIT, BITO, GLD, SLV, UNG, TLT, IEF, HYG, ARKK added to CURATED_MARKET_SYMBOLS |
 
 ---
 

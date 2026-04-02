@@ -119,8 +119,8 @@ class Signal(Base):
     last_evaluated_at = Column(DateTime)  # Last performance evaluation
 
     # User/System Tracking
-    created_by_user_id = Column(Integer, ForeignKey("users.id"))  # Manual signals
-    modified_by_user_id = Column(Integer, ForeignKey("users.id"))  # Who last modified
+    created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))  # Manual signals
+    modified_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))  # Who last modified
     processing_node = Column(String(50))  # Which server processed this
 
     # Audit Context

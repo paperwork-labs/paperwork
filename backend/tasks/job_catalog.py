@@ -274,4 +274,17 @@ CATALOG: List[JobTemplate] = [
         job_run_label="auto_ops_health_check",
         timeout_s=90,
     ),
+
+    # ── Deep Backfill ────────────────────────────────────────────────
+    JobTemplate(
+        id="full_historical_backfill",
+        display_name="Full Historical Backfill",
+        group="market",
+        task="backend.tasks.market.backfill.full_historical",
+        description="One-time deep backfill for HISTORY_TARGET_YEARS of daily bars, indicators, and snapshot history",
+        default_cron="0 3 * * 0",
+        default_tz="UTC",
+        job_run_label="admin_backfill_since_date",
+        timeout_s=14400,
+    ),
 ]

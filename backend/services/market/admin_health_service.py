@@ -166,6 +166,24 @@ class AdminHealthService:
                 daily_pct >= HEALTH_THRESHOLDS["coverage_daily_pct_min"]
                 and stale_daily <= HEALTH_THRESHOLDS["coverage_stale_daily_max"]
             )
+
+            indices = snapshot.get("indices", {})
+            constituent_issues: List[str] = []
+            tracked_indices = ["SP500", "NASDAQ100", "DOW30", "RUSSELL2000"]
+            for idx_name in tracked_indices:
+                idx_value = indices.get(idx_name)
+                if isinstance(idx_value, dict):
+                    count = int(idx_value.get("count") or 0)
+                elif isinstance(idx_value, (int, float)):
+                    count = int(idx_value)
+                else:
+                    count = 0
+                if count == 0:
+                    constituent_issues.append(idx_name)
+
+            if constituent_issues:
+                ok = False
+
             return {
                 "status": _dim_status(ok),
                 "daily_pct": daily_pct,
@@ -175,7 +193,8 @@ class AdminHealthService:
                 "tracked_count": int(status_info.get("tracked_count") or 0),
                 "expected_date": status_info.get("daily_expected_date"),
                 "summary": status_info.get("summary", ""),
-                "indices": snapshot.get("indices", {}),
+                "indices": indices,
+                "constituent_issues": constituent_issues,
             }
         except Exception as exc:
             logger.exception("coverage dimension failed: %s", exc)
@@ -391,12 +410,34 @@ class AdminHealthService:
                 daily_fill >= HEALTH_THRESHOLDS["audit_daily_fill_pct_min"]
                 and snapshot_fill >= HEALTH_THRESHOLDS["audit_snapshot_fill_pct_min"]
             )
+
+            history_depth_years: Optional[float] = None
+            try:
+                from backend.models.market_data import MarketSnapshotHistory as _MSH
+
+                earliest = (
+                    db.query(func.min(_MSH.as_of_date))
+                    .filter(_MSH.analysis_type == "technical_snapshot")
+                    .scalar()
+                )
+                if earliest:
+                    if hasattr(earliest, "date"):
+                        earliest_date = earliest.date() if callable(earliest.date) else earliest.date
+                    else:
+                        earliest_date = earliest
+                    from datetime import date as _date
+                    delta = _date.today() - earliest_date
+                    history_depth_years = round(delta.days / 365.25, 1)
+            except Exception:
+                pass
+
             return {
                 "status": _dim_status(ok),
                 "tracked_total": payload.get("tracked_total"),
                 "daily_fill_pct": round(daily_fill, 1),
                 "snapshot_fill_pct": round(snapshot_fill, 1),
                 "missing_sample": payload.get("missing_snapshot_history_sample", [])[:5],
+                "history_depth_years": history_depth_years,
             }
         except Exception as exc:
             logger.exception("audit dimension failed: %s", exc)

@@ -56,5 +56,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/localStorage-polyfill.ts', './src/test/setup.ts'],
     clearMocks: true,
+    // React 19's scheduler fires setImmediate callbacks after jsdom teardown in threads pool,
+    // causing "window is not defined" uncaught exceptions. Forks pool isolates each worker.
+    pool: 'forks',
   },
 })

@@ -36,7 +36,7 @@ class PortfolioHistory(Base):
     __tablename__ = "portfolio_history"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     account_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("broker_accounts.id"), nullable=True, index=True
     )
@@ -70,7 +70,7 @@ class Category(Base):
     __tablename__ = "categories"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     name = Column(String(100), nullable=False)
     description = Column(Text)
     color = Column(String(10))  # Hex color code

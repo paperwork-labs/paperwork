@@ -51,7 +51,7 @@ class AgentAction(Base):
     completed_at = Column(DateTime, nullable=True)
     
     # Approval tracking
-    approved_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    approved_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     approved_by = relationship("User", foreign_keys=[approved_by_id])
     auto_approved = Column(Boolean, default=False)
     

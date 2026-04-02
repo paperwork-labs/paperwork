@@ -374,16 +374,27 @@ def daily_since(since_date: str = "2021-01-01", batch_size: int = 25) -> dict:
 
 
 @shared_task(
-    soft_time_limit=_DEFAULT_SOFT,
-    time_limit=_DEFAULT_HARD,
+    soft_time_limit=10800,
+    time_limit=14400,
 )
 @task_run("admin_backfill_since_date", lock_key=lambda since_date, **_: f"admin_backfill_since_date:{since_date}")
 def full_historical(
-    since_date: str = "2021-01-01",
+    since_date: Optional[str] = None,
     daily_batch_size: int = 25,
     history_batch_size: int = 50,
 ) -> dict:
-    """Deep backfill pipeline since a given date (daily, indicators, history, coverage)."""
+    """Deep backfill pipeline since a given date (daily, indicators, history, coverage).
+
+    Defaults to HISTORY_TARGET_YEARS (10yr) when since_date is not provided.
+    This is a one-time operation; the nightly pipeline handles daily deltas.
+    """
+    from backend.config import settings as _settings
+
+    if not since_date:
+        from datetime import date, timedelta
+        since_date = (
+            date.today() - timedelta(days=_settings.HISTORY_TARGET_YEARS * 365)
+        ).isoformat()
     from backend.tasks.market.history import snapshot_last_n_days
     from backend.tasks.market.indicators import recompute_universe
 

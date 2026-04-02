@@ -813,6 +813,23 @@ AGENT_TOOLS: List[Dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "deep_backfill",
+            "description": "Run a deep historical backfill for all tracked symbols. Fetches daily bars, recomputes indicators, and writes snapshot history back to `since_date` (defaults to HISTORY_TARGET_YEARS, ~10 years). This is a one-time operation; the nightly pipeline handles daily deltas afterward. Long-running task (may take 1-4 hours).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "since_date": {
+                        "type": "string",
+                        "description": "Start date in YYYY-MM-DD format. Defaults to 10 years ago if omitted.",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
 ]
 
 
@@ -855,6 +872,7 @@ TOOL_TO_CELERY_TASK: Dict[str, str] = {
     "bootstrap_coverage": "backend.tasks.market.coverage.daily_bootstrap",
     "refresh_index_constituents": "backend.tasks.market.backfill.constituents",
     "fill_missing_fundamentals": "backend.tasks.market.fundamentals.fill_missing",
+    "deep_backfill": "backend.tasks.market.backfill.full_historical",
 }
 
 

@@ -251,8 +251,20 @@ async def delete_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    db.delete(user)
-    db.commit()
+    try:
+        db.delete(user)
+        db.commit()
+    except Exception as exc:
+        from sqlalchemy.exc import IntegrityError
+        if isinstance(exc, IntegrityError):
+            db.rollback()
+            logger.warning("delete_user failed for user_id=%d: %s", user_id, exc)
+            raise HTTPException(
+                status_code=409,
+                detail="Cannot delete user: related records exist. Deactivate the account instead.",
+            )
+        db.rollback()
+        raise
     return {
         "message": "User deleted successfully",
         "deleted": True,

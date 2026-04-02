@@ -54,6 +54,7 @@ ACTION_RISK_MAP: Dict[str, RiskLevel] = {
     "bootstrap_coverage": RiskLevel.MODERATE,
     "refresh_index_constituents": RiskLevel.MODERATE,
     "fill_missing_fundamentals": RiskLevel.MODERATE,
+    "deep_backfill": RiskLevel.MODERATE,
     
     # RISKY: May affect data integrity or require significant compute
     "backfill_full_history": RiskLevel.RISKY,

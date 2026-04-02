@@ -130,7 +130,14 @@ def test_response_includes_task_runs_and_thresholds():
 def test_coverage_green_when_above_threshold():
     svc = _mock_service()
     db = MagicMock()
-    svc._svc.coverage.coverage_snapshot.return_value = {}
+    svc._svc.coverage.coverage_snapshot.return_value = {
+        "indices": {
+            "SP500": 503,
+            "NASDAQ100": 101,
+            "DOW30": 30,
+            "RUSSELL2000": 1980,
+        },
+    }
     with patch(
         "backend.services.market.coverage_utils.compute_coverage_status",
         return_value={
@@ -146,6 +153,7 @@ def test_coverage_green_when_above_threshold():
         dim = svc._build_coverage_dimension(db)
     assert dim["status"] == "green"
     assert dim["daily_pct"] == 98.0
+    assert dim["constituent_issues"] == []
 
 
 def test_coverage_red_when_stale():
@@ -158,6 +166,26 @@ def test_coverage_red_when_stale():
     ):
         dim = svc._build_coverage_dimension(db)
     assert dim["status"] == "red"
+
+
+def test_coverage_red_when_index_has_zero_constituents():
+    svc = _mock_service()
+    db = MagicMock()
+    svc._svc.coverage.coverage_snapshot.return_value = {
+        "indices": {
+            "SP500": 503,
+            "NASDAQ100": 101,
+            "DOW30": 30,
+            "RUSSELL2000": 0,
+        },
+    }
+    with patch(
+        "backend.services.market.coverage_utils.compute_coverage_status",
+        return_value={"daily_pct": 98.0, "stale_daily": 0, "m5_pct": 90.0, "stale_m5": 0, "tracked_count": 500},
+    ):
+        dim = svc._build_coverage_dimension(db)
+    assert dim["status"] == "red"
+    assert "RUSSELL2000" in dim["constituent_issues"]
 
 
 def test_stage_green():

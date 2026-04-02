@@ -911,10 +911,85 @@ class MarketDataService:
 
     # ---------------------- Index Constituents ----------------------
 
-    async def get_index_constituents(self, index_name: str) -> List[str]:
-        """Return constituents for supported indices (SP500, NASDAQ100, DOW30).
+    _IWM_HOLDINGS_URL = (
+        "https://www.ishares.com/us/products/239710/"
+        "ishares-russell-2000-etf/1467271812596.ajax"
+        "?fileType=csv&fileName=IWM_holdings&dataType=fund"
+    )
 
-        Strategy: Redis cache → FMP → Wikipedia fallback. Normalized to UPPER and '.'→'-'.
+    @staticmethod
+    def _parse_ishares_csv(text: str) -> List[str]:
+        """Parse iShares ETF holdings CSV and extract ticker symbols.
+
+        iShares CSVs have metadata header rows before the actual data table.
+        The data section starts after a row containing 'Ticker' as a column header.
+        """
+        import csv
+        import io
+        import re
+
+        lines = text.strip().splitlines()
+        header_idx: Optional[int] = None
+        ticker_col: Optional[int] = None
+        for i, line in enumerate(lines):
+            lower = line.lower()
+            if "ticker" in lower:
+                reader = csv.reader(io.StringIO(line))
+                cols = next(reader, [])
+                for j, col in enumerate(cols):
+                    if col.strip().lower() == "ticker":
+                        header_idx = i
+                        ticker_col = j
+                        break
+                if header_idx is not None:
+                    break
+
+        if header_idx is None or ticker_col is None:
+            return []
+
+        symbols: List[str] = []
+        for line in lines[header_idx + 1:]:
+            if not line.strip():
+                continue
+            reader = csv.reader(io.StringIO(line))
+            cols = next(reader, [])
+            if ticker_col >= len(cols):
+                continue
+            raw = cols[ticker_col].strip().upper()
+            if not raw or raw in ("-", "CASH", "N/A", "NA", "--"):
+                continue
+            if not re.match(r"^[A-Z]{1,5}$", raw):
+                continue
+            symbols.append(raw)
+        return symbols
+
+    async def _fetch_iwm_holdings(self) -> List[str]:
+        """Fetch Russell 2000 constituents from iShares IWM ETF holdings CSV."""
+        import aiohttp
+
+        try:
+            async with aiohttp.ClientSession() as http:
+                async with http.get(
+                    self._IWM_HOLDINGS_URL,
+                    timeout=aiohttp.ClientTimeout(total=60),
+                    headers={"User-Agent": "Mozilla/5.0 AxiomFolio/1.0"},
+                ) as resp:
+                    if resp.status != 200:
+                        logger.warning(
+                            "iShares IWM fetch returned HTTP %d", resp.status
+                        )
+                        return []
+                    text = await resp.text()
+            return self._parse_ishares_csv(text)
+        except Exception as exc:
+            logger.warning("iShares IWM holdings fetch failed: %s", exc)
+            return []
+
+    async def get_index_constituents(self, index_name: str) -> List[str]:
+        """Return constituents for supported indices (SP500, NASDAQ100, DOW30, RUSSELL2000).
+
+        Strategy: Redis cache → FMP → Finnhub → Wikipedia/iShares fallback.
+        Normalized to UPPER and '.'→'-'.
         """
         cache_key = f"index_constituents:{index_name}"
         # Redis cache
@@ -994,10 +1069,13 @@ class MarketDataService:
                             symbols = [str(s).upper().replace('.', '-') for s in t["Symbol"].dropna().tolist()]
                             break
                 elif idx == "RUSSELL2000":
-                    # Russell 2000 is too large for Wikipedia table. If FMP/Finnhub fail,
-                    # we can try the iShares IWM ETF holdings page or skip.
-                    # For now, log warning - primary source should be FMP.
-                    logger.warning("Index RUSSELL2000: No Wikipedia fallback available - use FMP API")
+                    symbols = await self._fetch_iwm_holdings()
+                    if symbols:
+                        provider_used = "ishares_iwm"
+                        logger.info(
+                            "Index RUSSELL2000: fetched %d constituents from iShares IWM ETF",
+                            len(symbols),
+                        )
             except Exception as exc:
                 logger.warning("Index %s: Wikipedia fallback failed: %s", idx, exc)
                 symbols = []
@@ -1007,8 +1085,11 @@ class MarketDataService:
             logger.info("Index %s: fetched %d constituents from Wikipedia fallback", idx, len(symbols))
         elif provider_used == "none":
             logger.error("Index %s: ALL constituent providers failed (FMP, Finnhub, Wikipedia)", idx)
-        # Normalize and cache
+        # Normalize and cache (never cache empty lists — avoids 24h lockout)
         out = sorted(list({s for s in symbols if s and len(s) <= 5}))
+        if not out:
+            logger.warning("Index %s: 0 constituents after normalization — skipping cache", idx)
+            return out
         try:
             await r.setex(cache_key, 24 * 3600, json.dumps({"symbols": out}))
             # Store lightweight meta for observability

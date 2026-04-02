@@ -162,8 +162,8 @@ class Strategy(Base):
     )  # Last strategy health evaluation
 
     # User/System Tracking
-    created_by_user_id = Column(Integer, ForeignKey("users.id"))  # Strategy creator
-    modified_by_user_id = Column(Integer, ForeignKey("users.id"))  # Last modifier
+    created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))  # Strategy creator
+    modified_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))  # Last modifier
     execution_node = Column(String(50))  # Which server runs this strategy
 
     # Audit Context
@@ -351,7 +351,7 @@ class BacktestRun(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     strategy_id = Column(Integer, ForeignKey("strategies.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
     # Backtest Configuration
     name = Column(String(200), nullable=False)

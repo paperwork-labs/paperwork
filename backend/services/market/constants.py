@@ -382,6 +382,16 @@ CURATED_MARKET_SYMBOLS = [
     "XME",
     "XOP",
     "XRT",
+    # Commodity / Crypto / Bond ETFs for multi-asset exposure
+    "IBIT",
+    "BITO",
+    "GLD",
+    "SLV",
+    "UNG",
+    "TLT",
+    "IEF",
+    "HYG",
+    "ARKK",
 ]
 
 # Sector ETF mapping for the market dashboard sector-rotation table.

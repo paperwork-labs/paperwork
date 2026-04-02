@@ -147,6 +147,16 @@ SYSTEM_PROMPT = """You are AxiomFolio's AI assistant. You help the admin with qu
 - ALWAYS use tools to get data — never guess or make up information
 - For codebase questions, use `list_files` then `read_file` to find and read relevant code
 - For database questions, use `describe_tables` before `query_database`
+
+## Out of Scope
+
+These operations are NOT available through this chat — direct users to the appropriate UI:
+- User account management (create/delete/modify users)
+- Broker credential setup or OAuth flows
+- Direct database writes (INSERT/UPDATE/DELETE)
+- Order placement or trade execution
+- Alembic migrations or schema changes
+If asked about these, explain that they require the admin UI or direct access.
 - Be concise and helpful
 
 Current time: {current_time}
@@ -260,22 +270,60 @@ class AgentBrain:
         health_data: Dict[str, Any],
         context: Optional[str],
     ) -> str:
-        """Build the initial user message with health data."""
+        """Build the initial user message with full health dimension details."""
         parts = [
             "Current system health status:",
             f"Composite: {health_data.get('composite_status', 'unknown')}",
             "",
             "Dimension details:",
         ]
-        
+
         for dim_name, dim_data in health_data.get("dimensions", {}).items():
+            if not isinstance(dim_data, dict):
+                continue
             status = dim_data.get("status", "unknown")
-            message = dim_data.get("message", "")
-            parts.append(f"- {dim_name}: {status} - {message}")
-        
+            parts.append(f"  [{dim_name}] status={status}")
+
+            if dim_name == "coverage":
+                parts.append(f"    daily_pct={dim_data.get('daily_pct')}%  stale_daily={dim_data.get('stale_daily')}")
+                parts.append(f"    tracked_count={dim_data.get('tracked_count')}")
+                issues = dim_data.get("constituent_issues", [])
+                if issues:
+                    parts.append(f"    CONSTITUENT ALERT: {', '.join(issues)} have 0 constituents")
+                indices = dim_data.get("indices", {})
+                if indices:
+                    idx_parts = []
+                    for k, v in indices.items():
+                        if isinstance(v, dict):
+                            count = v.get("count")
+                        else:
+                            count = v
+                        idx_parts.append(f"{k}={'?' if count is None else count}")
+                    parts.append(f"    indices: {', '.join(idx_parts)}")
+            elif dim_name == "stage_quality":
+                parts.append(f"    unknown_rate={dim_data.get('unknown_rate')}  invalid={dim_data.get('invalid_count')}  monotonicity={dim_data.get('monotonicity_issues')}")
+            elif dim_name == "audit":
+                parts.append(f"    daily_fill={dim_data.get('daily_fill_pct')}%  snapshot_fill={dim_data.get('snapshot_fill_pct')}%")
+                depth = dim_data.get("history_depth_years")
+                if depth is not None:
+                    parts.append(f"    history_depth={depth} years")
+                missing = dim_data.get("missing_sample", [])
+                if missing:
+                    parts.append(f"    missing_sample: {', '.join(missing[:10])}")
+            elif dim_name == "fundamentals":
+                parts.append(f"    fill_pct={dim_data.get('fundamentals_fill_pct')}%  filled={dim_data.get('filled_count')}/{dim_data.get('tracked_total')}")
+            elif dim_name == "regime":
+                parts.append(f"    state={dim_data.get('regime_state')}  score={dim_data.get('composite_score')}  age={dim_data.get('age_hours')}h")
+            elif dim_name == "jobs":
+                parts.append(f"    success_rate={dim_data.get('success_rate')}  errors={dim_data.get('error_count')}/{dim_data.get('total')}")
+            else:
+                message = dim_data.get("message", "")
+                if message:
+                    parts.append(f"    {message}")
+
         if context:
             parts.extend(["", "Additional context:", context])
-        
+
         parts.extend([
             "",
             "Analyze the situation and take appropriate actions.",
@@ -2466,9 +2514,9 @@ class AgentBrain:
         for iteration in range(max_iterations):
             last_msg = self._conversation[-1] if self._conversation else {}
             last_role = last_msg.get("role")
-            # Match analyze_and_act: force a tool on first LLM call of this turn.
+            # Match analyze_and_act: use automatic tool selection on first LLM call of this turn.
             if iteration == 0:
-                tool_choice = "required"
+                tool_choice = "auto"
             elif iteration == max_iterations - 1 and last_role == "tool":
                 # Avoid exhausting the loop with endless tool calls without a summary.
                 tool_choice = "none"

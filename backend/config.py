@@ -203,6 +203,9 @@ class Settings(BaseSettings):
     # - ~52-week RS computations on weekly resample
     SNAPSHOT_DAILY_BARS_LIMIT: int = 400
 
+    # Deep backfill target (years). One-time operation; nightly pipeline is delta-only.
+    HISTORY_TARGET_YEARS: int = 10
+
     # Weinstein Stage thresholds (percent units)
     # - slope thresholds are % change of 30W SMA vs 5 weeks ago
     # - distance thresholds are % from 30W SMA
