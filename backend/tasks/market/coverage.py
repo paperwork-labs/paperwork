@@ -315,16 +315,32 @@ def daily_bootstrap(
             }
         )
 
-    res1 = constituents()
+    try:
+        res1 = constituents()
+    except Exception as exc:
+        logger.warning("daily_bootstrap: constituents failed (non-fatal): %s", exc)
+        res1 = {"status": "error", "error": str(exc)}
     _append("market_indices_constituents_refresh", res1)
 
-    res2 = tracked_cache()
+    try:
+        res2 = tracked_cache()
+    except Exception as exc:
+        logger.warning("daily_bootstrap: tracked_cache failed (non-fatal): %s", exc)
+        res2 = {"status": "error", "error": str(exc)}
     _append("market_universe_tracked_refresh", res2)
 
-    res3 = daily_bars(days=_backfill_days)
+    try:
+        res3 = daily_bars(days=_backfill_days)
+    except Exception as exc:
+        logger.warning("daily_bootstrap: daily_bars failed (non-fatal): %s", exc)
+        res3 = {"status": "error", "error": str(exc)}
     _append("admin_backfill_daily", res3)
 
-    res4 = recompute_universe(batch_size=50)
+    try:
+        res4 = recompute_universe(batch_size=50)
+    except Exception as exc:
+        logger.warning("daily_bootstrap: recompute_universe failed (non-fatal): %s", exc)
+        res4 = {"status": "error", "error": str(exc)}
     _append("admin_indicators_recompute_universe", res4)
 
     try:

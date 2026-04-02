@@ -129,6 +129,7 @@ def test_response_includes_task_runs_and_thresholds():
 
 def test_coverage_green_when_above_threshold():
     svc = _mock_service()
+    svc._check_provider_keys = MagicMock(return_value={"fmp": "ok", "finnhub": "ok"})
     db = MagicMock()
     svc._svc.coverage.coverage_snapshot.return_value = {
         "indices": {
@@ -158,6 +159,7 @@ def test_coverage_green_when_above_threshold():
 
 def test_coverage_red_when_stale():
     svc = _mock_service()
+    svc._check_provider_keys = MagicMock(return_value={"fmp": "ok", "finnhub": "ok"})
     db = MagicMock()
     svc._svc.coverage.coverage_snapshot.return_value = {}
     with patch(
@@ -170,6 +172,7 @@ def test_coverage_red_when_stale():
 
 def test_coverage_red_when_index_has_zero_constituents():
     svc = _mock_service()
+    svc._check_provider_keys = MagicMock(return_value={"fmp": "ok", "finnhub": "ok"})
     db = MagicMock()
     svc._svc.coverage.coverage_snapshot.return_value = {
         "indices": {

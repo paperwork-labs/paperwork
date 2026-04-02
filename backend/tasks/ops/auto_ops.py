@@ -142,6 +142,28 @@ def _run_llm_agent_sync(health: dict) -> dict:
     return loop.run_until_complete(_run_llm_agent(health))
 
 
+_HEALTH_ALERT_COOLDOWN_KEY = f"{REDIS_PREFIX}:health_alert_cooldown"
+_HEALTH_ALERT_COOLDOWN_S = 900  # 15 min
+
+
+def _fire_health_alert(health: dict) -> None:
+    """Send a Brain webhook when composite health is RED (with cooldown)."""
+    r = _redis()
+    if r and r.exists(_HEALTH_ALERT_COOLDOWN_KEY):
+        return
+    try:
+        from backend.services.brain.webhook_client import brain_webhook
+        brain_webhook.notify_sync("health_alert", {
+            "composite_status": health.get("composite_status"),
+            "composite_reason": health.get("composite_reason"),
+            "checked_at": health.get("checked_at"),
+        })
+        if r:
+            r.setex(_HEALTH_ALERT_COOLDOWN_KEY, _HEALTH_ALERT_COOLDOWN_S, "1")
+    except Exception as exc:
+        logger.warning("auto-ops: health alert webhook failed: %s", exc)
+
+
 @shared_task(
     name="backend.tasks.auto_ops_tasks.auto_remediate_health",
     soft_time_limit=120,
@@ -159,12 +181,16 @@ def auto_remediate_health() -> dict:
     session = SessionLocal()
     try:
         health_svc = AdminHealthService()
+        health_svc.refresh_provider_probe()
         health = health_svc.get_composite_health(session)
     finally:
         session.close()
 
     composite = health.get("composite_status", "unknown")
-    
+
+    if composite == "red":
+        _fire_health_alert(health)
+
     if settings.OPENAI_API_KEY:
         logger.info("auto-ops: using LLM agent (composite=%s)", composite)
         try:

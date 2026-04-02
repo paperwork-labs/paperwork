@@ -958,10 +958,23 @@ class MarketDataService:
             raw = cols[ticker_col].strip().upper()
             if not raw or raw in ("-", "CASH", "N/A", "NA", "--"):
                 continue
-            if not re.match(r"^[A-Z]{1,5}$", raw):
+            symbol = raw.replace(".", "-")
+            if not re.match(r"^[A-Z]{1,5}(?:-[A-Z]{1,2})?$", symbol):
                 continue
-            symbols.append(raw)
+            symbols.append(symbol)
         return symbols
+
+    @staticmethod
+    async def _get_last_good_constituents(r, idx: str) -> List[str]:
+        """Return last-known-good constituent list from Redis, or empty list."""
+        try:
+            raw = await r.get(f"index_constituents:{idx}:last_good")
+            if raw:
+                data = json.loads(raw)
+                return data.get("symbols", [])
+        except Exception:
+            pass
+        return []
 
     async def _fetch_iwm_holdings(self) -> List[str]:
         """Fetch Russell 2000 constituents from iShares IWM ETF holdings CSV."""
@@ -1089,9 +1102,13 @@ class MarketDataService:
         out = sorted(list({s for s in symbols if s and len(s) <= 5}))
         if not out:
             logger.warning("Index %s: 0 constituents after normalization — skipping cache", idx)
-            return out
+            last_good = await self._get_last_good_constituents(r, idx)
+            if last_good:
+                logger.warning("Index %s: returning %d last-known-good constituents", idx, len(last_good))
+            return last_good or out
         try:
             await r.setex(cache_key, 24 * 3600, json.dumps({"symbols": out}))
+            await r.set(f"index_constituents:{idx}:last_good", json.dumps({"symbols": out}))
             # Store lightweight meta for observability
             meta_key = f"{cache_key}:meta"
             await r.setex(
@@ -1673,6 +1690,7 @@ class MarketDataService:
             df_iter = df.iterrows()
 
         rows: list[dict[str, Any]] = []
+        prev_close: Optional[float] = None
         for ts, row in df_iter:
             try:
                 pd_date = (
@@ -1701,6 +1719,18 @@ class MarketDataService:
                 else close_val
             )
             vol_val = int(row.get("Volume") or 0) if "Volume" in row else 0
+
+            if close_val <= 0:
+                logger.warning("persist_price_bars: %s %s close=%.4f (<=0)", symbol, pd_date, close_val)
+            elif interval == "1d" and prev_close and prev_close > 0:
+                pct_chg = abs(close_val - prev_close) / prev_close
+                if pct_chg > 0.50:
+                    logger.warning(
+                        "persist_price_bars: %s %s %.1f%% daily move (%.2f->%.2f)",
+                        symbol, pd_date, pct_chg * 100, prev_close, close_val,
+                    )
+            prev_close = close_val
+
             rows.append(
                 {
                     "symbol": symbol,

@@ -18,6 +18,8 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import distinct, func
 from sqlalchemy.orm import Session
 
+from backend.config import settings
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -195,6 +197,7 @@ class AdminHealthService:
                 "summary": status_info.get("summary", ""),
                 "indices": indices,
                 "constituent_issues": constituent_issues,
+                "providers": self._check_provider_keys(),
             }
         except Exception as exc:
             logger.exception("coverage dimension failed: %s", exc)
@@ -586,3 +589,67 @@ class AdminHealthService:
         except Exception as exc:
             logger.exception("task runs load failed: %s", exc)
         return out
+
+    # ------------------------------------------------------------------
+    # Provider key health probe
+    # ------------------------------------------------------------------
+
+    _PROVIDER_PROBE_CACHE_KEY = "health:provider_keys"
+    _PROVIDER_PROBE_TTL = 1800  # 30 min
+
+    def _check_provider_keys(self) -> Dict[str, str]:
+        """Return cached provider key health status.
+
+        The probe is populated by auto_remediate_health (Celery) which runs
+        every 15 min.  On the API request path we only read the cache —
+        never make outbound HTTP calls that could block the event loop.
+        """
+        r = self._svc.redis_client
+        try:
+            cached = r.get(self._PROVIDER_PROBE_CACHE_KEY)
+            if cached:
+                return json.loads(cached if isinstance(cached, str) else cached.decode())
+        except Exception:
+            pass
+        return {"fmp": "unchecked", "finnhub": "unchecked"}
+
+    def refresh_provider_probe(self) -> Dict[str, str]:
+        """Actually probe provider APIs and cache the result.
+
+        Called from sync Celery context (auto_ops), NOT from the API path.
+        """
+        r = self._svc.redis_client
+        result: Dict[str, str] = {}
+
+        if getattr(settings, "FMP_API_KEY", None):
+            try:
+                import httpx
+                resp = httpx.get(
+                    f"https://financialmodelingprep.com/api/v3/quote-short/SPY?apikey={settings.FMP_API_KEY}",
+                    timeout=10,
+                )
+                result["fmp"] = "ok" if resp.status_code == 200 else f"http_{resp.status_code}"
+            except Exception as exc:
+                result["fmp"] = f"error: {exc}"
+        else:
+            result["fmp"] = "not_configured"
+
+        if getattr(settings, "FINNHUB_API_KEY", None):
+            try:
+                import httpx
+                resp = httpx.get(
+                    f"https://finnhub.io/api/v1/quote?symbol=SPY&token={settings.FINNHUB_API_KEY}",
+                    timeout=10,
+                )
+                result["finnhub"] = "ok" if resp.status_code == 200 else f"http_{resp.status_code}"
+            except Exception as exc:
+                result["finnhub"] = f"error: {exc}"
+        else:
+            result["finnhub"] = "not_configured"
+
+        try:
+            r.setex(self._PROVIDER_PROBE_CACHE_KEY, self._PROVIDER_PROBE_TTL, json.dumps(result))
+        except Exception:
+            pass
+
+        return result

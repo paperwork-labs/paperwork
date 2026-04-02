@@ -11,8 +11,6 @@ from backend.api.dependencies import get_admin_user
 from backend.models.market_data import CronSchedule
 from backend.tasks.job_catalog import CATALOG
 
-pytestmark = pytest.mark.no_db
-
 client = TestClient(app, raise_server_exceptions=False)
 
 
@@ -180,7 +178,7 @@ def test_list_schedules_returns_db_mode(db_session):
     def override_db():
         yield db_session
 
-    app.dependency_overrides[get_admin_user] = lambda: MagicMock()
+    app.dependency_overrides[get_admin_user] = lambda: _mock_admin_user()
     app.dependency_overrides[get_db] = override_db
     try:
         resp = client.get("/api/v1/admin/schedules")
@@ -202,7 +200,7 @@ def test_create_schedule_validates_cron(db_session):
     def override_db():
         yield db_session
 
-    app.dependency_overrides[get_admin_user] = lambda: MagicMock()
+    app.dependency_overrides[get_admin_user] = lambda: _mock_admin_user()
     app.dependency_overrides[get_db] = override_db
     try:
         resp = client.post("/api/v1/admin/schedules", json={
@@ -217,6 +215,15 @@ def test_create_schedule_validates_cron(db_session):
         app.dependency_overrides.pop(get_db, None)
 
 
+def _mock_admin_user():
+    """Return a mock user with string attributes for audit trail serialization."""
+    m = MagicMock()
+    m.email = "test@ci.local"
+    m.username = "ci_tester"
+    m.id = 1
+    return m
+
+
 def test_create_and_delete_schedule(db_session):
     if db_session is None:
         pytest.skip("No test DB")
@@ -226,7 +233,7 @@ def test_create_and_delete_schedule(db_session):
     def override_db():
         yield db_session
 
-    app.dependency_overrides[get_admin_user] = lambda: MagicMock()
+    app.dependency_overrides[get_admin_user] = lambda: _mock_admin_user()
     app.dependency_overrides[get_db] = override_db
     try:
         with patch("backend.api.routes.admin.scheduler.render_sync_service") as mock_sync:
@@ -270,7 +277,7 @@ def test_pause_and_resume_schedule(db_session):
     def override_db():
         yield db_session
 
-    app.dependency_overrides[get_admin_user] = lambda: MagicMock()
+    app.dependency_overrides[get_admin_user] = lambda: _mock_admin_user()
     app.dependency_overrides[get_db] = override_db
     try:
         with patch("backend.api.routes.admin.scheduler.render_sync_service") as mock_sync:
@@ -300,7 +307,7 @@ def test_sync_endpoint(db_session):
     def override_db():
         yield db_session
 
-    app.dependency_overrides[get_admin_user] = lambda: MagicMock()
+    app.dependency_overrides[get_admin_user] = lambda: _mock_admin_user()
     app.dependency_overrides[get_db] = override_db
     try:
         with patch("backend.api.routes.admin.scheduler.render_sync_service") as mock_sync:
@@ -315,7 +322,7 @@ def test_sync_endpoint(db_session):
 
 
 def test_catalog_endpoint():
-    app.dependency_overrides[get_admin_user] = lambda: MagicMock()
+    app.dependency_overrides[get_admin_user] = lambda: _mock_admin_user()
     try:
         resp = client.get("/api/v1/admin/tasks/catalog")
         assert resp.status_code == 200
@@ -342,7 +349,7 @@ def test_audit_trail_on_create_and_delete(db_session):
     def override_db():
         yield db_session
 
-    app.dependency_overrides[get_admin_user] = lambda: MagicMock(email="audit@test.local", username="audit")
+    app.dependency_overrides[get_admin_user] = lambda: _mock_admin_user()
     app.dependency_overrides[get_db] = override_db
     try:
         with patch("backend.api.routes.admin.scheduler.render_sync_service") as mock_sync:
@@ -390,7 +397,7 @@ def test_history_endpoint(db_session):
     def override_db():
         yield db_session
 
-    app.dependency_overrides[get_admin_user] = lambda: MagicMock()
+    app.dependency_overrides[get_admin_user] = lambda: _mock_admin_user()
     app.dependency_overrides[get_db] = override_db
     try:
         resp = client.get("/api/v1/admin/schedules/history")
@@ -413,22 +420,19 @@ def test_auto_seed_on_empty_table(db_session):
         pytest.skip("No test DB")
 
     from backend.database import get_db
-    import backend.api.routes.admin.scheduler as mod
-
-    mod._seeded = False
 
     def override_db():
         yield db_session
 
-    app.dependency_overrides[get_admin_user] = lambda: MagicMock()
+    app.dependency_overrides[get_admin_user] = lambda: _mock_admin_user()
     app.dependency_overrides[get_db] = override_db
     try:
         assert db_session.query(CronSchedule).count() == 0
-        resp = client.get("/api/v1/admin/schedules")
+        with patch("backend.api.routes.admin.scheduler._seeded", False):
+            resp = client.get("/api/v1/admin/schedules")
         assert resp.status_code == 200
         schedules = resp.json()["schedules"]
         assert len(schedules) >= len(CATALOG)
     finally:
-        mod._seeded = False
         app.dependency_overrides.pop(get_admin_user, None)
         app.dependency_overrides.pop(get_db, None)
