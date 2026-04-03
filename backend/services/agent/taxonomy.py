@@ -26,6 +26,7 @@ ACTION_RISK_MAP: Dict[str, RiskLevel] = {
     "browse_url": RiskLevel.SAFE,
     "send_alert": RiskLevel.SAFE,
     "list_jobs": RiskLevel.SAFE,
+    "list_users": RiskLevel.SAFE,
     "check_broker_connection": RiskLevel.SAFE,
     # SAFE: Holistic chat tools (read-only)
     "get_portfolio_summary": RiskLevel.SAFE,
@@ -43,6 +44,7 @@ ACTION_RISK_MAP: Dict[str, RiskLevel] = {
     "list_files": RiskLevel.MODERATE,
     # MODERATE: Schedule management (triggers tasks)
     "run_task_now": RiskLevel.MODERATE,
+    "cancel_job": RiskLevel.SAFE,
 
     # MODERATE: Standard remediation tasks
     "backfill_stale_daily": RiskLevel.MODERATE,

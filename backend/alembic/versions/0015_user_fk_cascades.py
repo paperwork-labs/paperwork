@@ -7,6 +7,9 @@ Part A: Create 7 tables that exist in ORM models but were missed from
 Part B: Add ON DELETE CASCADE/SET NULL to all user foreign keys.
         Policy: CASCADE for user-owned data, SET NULL for audit/tracking.
 
+Lock safety: Sets lock_timeout=10s so the migration fails fast if the
+             worker holds locks, instead of hanging until Render kills us.
+
 Revision ID: 0015
 Revises: 0014
 Create Date: 2026-04-02
@@ -76,6 +79,14 @@ def _fk_name(table: str, column: str) -> str:
     return f"fk_{table}_{column}_users"
 
 
+def _table_exists(conn, name: str) -> bool:
+    result = conn.execute(text(
+        "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
+        "WHERE table_schema = 'public' AND table_name = :t)"
+    ), {"t": name})
+    return result.scalar()
+
+
 def _find_existing_fk(conn, table: str, column: str) -> str | None:
     result = conn.execute(text("""
         SELECT tc.constraint_name
@@ -127,8 +138,8 @@ def _create_tables() -> None:
     audit_level = postgresql.ENUM(*_AUDIT_LEVEL_VALS, name="auditlevel", create_type=False)
     audit_status = postgresql.ENUM(*_AUDIT_STATUS_VALS, name="auditstatus", create_type=False)
 
-    # -- alerts --
-    op.create_table(
+    if not _table_exists(conn, "alerts"):
+        op.create_table(
         "alerts",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
         sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
@@ -152,9 +163,9 @@ def _create_tables() -> None:
         sa.Column("custom_message", sa.Text()),
     )
 
-    # -- alert_conditions --
-    op.create_table(
-        "alert_conditions",
+    if not _table_exists(conn, "alert_conditions"):
+        op.create_table(
+            "alert_conditions",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
         sa.Column("alert_id", sa.Integer(), sa.ForeignKey("alerts.id", ondelete="CASCADE"), nullable=False),
         sa.Column("condition_type", sa.String(50), nullable=False),
@@ -171,38 +182,38 @@ def _create_tables() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
     )
 
-    # -- notifications --
-    op.create_table(
-        "notifications",
-        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True),
-        sa.Column("type", notif_type, nullable=False, index=True),
-        sa.Column("channel", notif_channel, nullable=False),
-        sa.Column("priority", priority_enum, nullable=False, server_default=sa.text("'normal'")),
-        sa.Column("title", sa.String(200), nullable=False),
-        sa.Column("message", sa.Text(), nullable=False),
-        sa.Column("formatted_message", sa.Text()),
-        sa.Column("status", notif_status, nullable=False, server_default=sa.text("'pending'")),
-        sa.Column("source_type", sa.String(50)),
-        sa.Column("source_id", sa.String(100)),
-        sa.Column("reference_data", sa.JSON()),
-        sa.Column("sent_at", sa.DateTime()),
-        sa.Column("delivered_at", sa.DateTime()),
-        sa.Column("error_message", sa.Text()),
-        sa.Column("retry_count", sa.Integer(), server_default=sa.text("0")),
-        sa.Column("max_retries", sa.Integer(), server_default=sa.text("3")),
-        sa.Column("scheduled_for", sa.DateTime()),
-        sa.Column("expires_at", sa.DateTime()),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now()),
-    )
-    op.create_index("idx_notifications_user_status", "notifications", ["user_id", "status"])
-    op.create_index("idx_notifications_channel", "notifications", ["channel"])
-    op.create_index("idx_notifications_scheduled", "notifications", ["scheduled_for"])
+    if not _table_exists(conn, "notifications"):
+        op.create_table(
+            "notifications",
+            sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+            sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True),
+            sa.Column("type", notif_type, nullable=False, index=True),
+            sa.Column("channel", notif_channel, nullable=False),
+            sa.Column("priority", priority_enum, nullable=False, server_default=sa.text("'normal'")),
+            sa.Column("title", sa.String(200), nullable=False),
+            sa.Column("message", sa.Text(), nullable=False),
+            sa.Column("formatted_message", sa.Text()),
+            sa.Column("status", notif_status, nullable=False, server_default=sa.text("'pending'")),
+            sa.Column("source_type", sa.String(50)),
+            sa.Column("source_id", sa.String(100)),
+            sa.Column("reference_data", sa.JSON()),
+            sa.Column("sent_at", sa.DateTime()),
+            sa.Column("delivered_at", sa.DateTime()),
+            sa.Column("error_message", sa.Text()),
+            sa.Column("retry_count", sa.Integer(), server_default=sa.text("0")),
+            sa.Column("max_retries", sa.Integer(), server_default=sa.text("3")),
+            sa.Column("scheduled_for", sa.DateTime()),
+            sa.Column("expires_at", sa.DateTime()),
+            sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
+            sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now()),
+        )
+        op.create_index("idx_notifications_user_status", "notifications", ["user_id", "status"])
+        op.create_index("idx_notifications_channel", "notifications", ["channel"])
+        op.create_index("idx_notifications_scheduled", "notifications", ["scheduled_for"])
 
-    # -- notification_preferences --
-    op.create_table(
-        "notification_preferences",
+    if not _table_exists(conn, "notification_preferences"):
+        op.create_table(
+            "notification_preferences",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
         sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True),
         sa.Column("notification_type", notif_type, nullable=False),
@@ -215,12 +226,12 @@ def _create_tables() -> None:
         sa.Column("quiet_hours_timezone", sa.String(50), server_default=sa.text("'UTC'")),
         sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now()),
-    )
-    op.create_index("idx_preferences_user_type", "notification_preferences", ["user_id", "notification_type"])
+        )
+        op.create_index("idx_preferences_user_type", "notification_preferences", ["user_id", "notification_type"])
 
-    # -- audit_logs --
-    op.create_table(
-        "audit_logs",
+    if not _table_exists(conn, "audit_logs"):
+        op.create_table(
+            "audit_logs",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
         sa.Column("event_type", audit_event, nullable=False, index=True),
         sa.Column("event_id", sa.String(100)),
@@ -241,14 +252,14 @@ def _create_tables() -> None:
         sa.Column("duration_ms", sa.Integer()),
         sa.Column("occurred_at", sa.DateTime(), server_default=sa.func.now(), nullable=False, index=True),
         sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
-    )
-    op.create_index("idx_audit_user_date", "audit_logs", ["user_id", "occurred_at"])
-    op.create_index("idx_audit_event_date", "audit_logs", ["event_type", "occurred_at"])
-    op.create_index("idx_audit_resource", "audit_logs", ["resource_type", "resource_id"])
+        )
+        op.create_index("idx_audit_user_date", "audit_logs", ["user_id", "occurred_at"])
+        op.create_index("idx_audit_event_date", "audit_logs", ["event_type", "occurred_at"])
+        op.create_index("idx_audit_resource", "audit_logs", ["resource_type", "resource_id"])
 
-    # -- data_change_logs --
-    op.create_table(
-        "data_change_logs",
+    if not _table_exists(conn, "data_change_logs"):
+        op.create_table(
+            "data_change_logs",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
         sa.Column("audit_log_id", sa.Integer(), sa.ForeignKey("audit_logs.id"), index=True),
         sa.Column("table_name", sa.String(100), nullable=False, index=True),
@@ -260,13 +271,13 @@ def _create_tables() -> None:
         sa.Column("changed_by", sa.Integer(), sa.ForeignKey("users.id", ondelete="SET NULL")),
         sa.Column("change_reason", sa.Text()),
         sa.Column("changed_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
-    )
-    op.create_index("idx_changes_table_record", "data_change_logs", ["table_name", "record_id"])
-    op.create_index("idx_changes_date", "data_change_logs", ["changed_at"])
+        )
+        op.create_index("idx_changes_table_record", "data_change_logs", ["table_name", "record_id"])
+        op.create_index("idx_changes_date", "data_change_logs", ["changed_at"])
 
-    # -- security_events --
-    op.create_table(
-        "security_events",
+    if not _table_exists(conn, "security_events"):
+        op.create_table(
+            "security_events",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
         sa.Column("audit_log_id", sa.Integer(), sa.ForeignKey("audit_logs.id"), index=True),
         sa.Column("event_category", sa.String(50), nullable=False),
@@ -280,10 +291,10 @@ def _create_tables() -> None:
         sa.Column("resolved_at", sa.DateTime()),
         sa.Column("resolution_notes", sa.Text()),
         sa.Column("detected_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
-    )
-    op.create_index("idx_security_category", "security_events", ["event_category"])
-    op.create_index("idx_security_severity", "security_events", ["severity"])
-    op.create_index("idx_security_unresolved", "security_events", ["resolved_at"])
+        )
+        op.create_index("idx_security_category", "security_events", ["event_category"])
+        op.create_index("idx_security_severity", "security_events", ["severity"])
+        op.create_index("idx_security_unresolved", "security_events", ["resolved_at"])
 
 
 def _drop_tables() -> None:
@@ -304,6 +315,9 @@ def _drop_tables() -> None:
 def _apply_fk_cascades() -> None:
     conn = op.get_bind()
     for table, column, on_delete, make_nullable in _FK_CHANGES:
+        if not _table_exists(conn, table):
+            continue
+
         existing = _find_existing_fk(conn, table, column)
         if existing:
             op.drop_constraint(existing, table, type_="foreignkey")
@@ -320,6 +334,8 @@ def _apply_fk_cascades() -> None:
 def _revert_fk_cascades() -> None:
     conn = op.get_bind()
     for table, column, _on_delete, make_nullable in reversed(_FK_CHANGES):
+        if not _table_exists(conn, table):
+            continue
         existing = _find_existing_fk(conn, table, column)
         if existing:
             op.drop_constraint(existing, table, type_="foreignkey")
@@ -336,6 +352,9 @@ def _revert_fk_cascades() -> None:
 # ── Entry points ──────────────────────────────────────────────────────
 
 def upgrade() -> None:
+    conn = op.get_bind()
+    conn.execute(text("SET lock_timeout = '10s'"))
+    conn.execute(text("SET statement_timeout = '120s'"))
     _create_tables()
     _apply_fk_cascades()
 

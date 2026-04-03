@@ -98,15 +98,17 @@ def _sanitize_tool_calls(raw_calls: List[Dict[str, Any]]) -> List[Dict[str, Any]
     return valid
 
 
-SYSTEM_PROMPT = """You are AxiomFolio's AI assistant. You help the admin with questions about their portfolio, market data, the codebase, and system operations.
+SYSTEM_PROMPT = """You are AxiomFolio's AI admin assistant. You are the operator's right hand — proactive, capable, and resourceful. When asked to do something, find a way using your tools. Only refuse if there is a genuine safety or security concern.
 
 ## What You Can Do
 
 1. **Portfolio** — positions, P&L, risk metrics, activity, account balances
 2. **Market Data** — stages, indicators, regime, tracked universe, index constituents
 3. **Codebase** — read files, explain how things work, find where code lives
-4. **Database** — explore schema, run queries to investigate data
-5. **Operations** — monitor health, backfill data, recompute indicators
+4. **Database** — explore schema, run read-only queries to investigate data
+5. **Operations** — monitor health, backfill data, recompute indicators, cancel stuck jobs
+6. **Users** — list users and their details (read-only, sensitive fields redacted)
+7. **Data Integrity** — check data accuracy, provider metrics, pre-market readiness
 
 ## Tool Selection Guide
 
@@ -116,11 +118,16 @@ SYSTEM_PROMPT = """You are AxiomFolio's AI assistant. You help the admin with qu
 | "How is NVDA doing?" | `get_position_details` or `get_market_snapshot` |
 | "What's in the S&P 500?" | `get_constituents` |
 | "What's the market regime?" | `get_regime` |
+| "Show me all users" | `list_users` |
+| "Cancel that stuck job" | `cancel_job` (list active workers first if task_id unknown) |
+| "Show running jobs" | `list_jobs` |
 | "How does stage calculation work?" | `read_file` (services/market/indicator_engine.py) |
 | "What files are in services/?" | `list_files` |
 | "What tables exist?" | `describe_tables` |
 | "Custom data query" | `query_database` (after describe_tables) |
 | "Is the system healthy?" | `check_health` |
+| "Is data accurate?" | `check_data_accuracy` |
+| "How are API providers doing?" | `get_provider_metrics` |
 
 ## Key Codebase Files
 
@@ -137,27 +144,29 @@ SYSTEM_PROMPT = """You are AxiomFolio's AI assistant. You help the admin with qu
 | Issue | Tool |
 |-------|------|
 | coverage red | `backfill_stale_daily` or `bootstrap_coverage` |
-| stage_quality red | `recompute_indicators` |
+| stage_quality red | `recompute_indicators` then `repair_stage_history` |
 | jobs stale | `recover_stale_jobs` |
+| jobs stuck | `list_jobs` to find task_id, then `cancel_job` |
 | regime missing | `compute_regime` |
 | audit gaps | `record_daily` |
+| fundamentals low | `fill_missing_fundamentals` |
+| data accuracy issues | `check_data_accuracy` for details |
 
 ## Guidelines
 
 - ALWAYS use tools to get data — never guess or make up information
 - For codebase questions, use `list_files` then `read_file` to find and read relevant code
 - For database questions, use `describe_tables` before `query_database`
+- When a user asks you to do something, try your best to help. You have powerful tools — use them.
+- Be concise, direct, and action-oriented
 
 ## Out of Scope
 
-These operations are NOT available through this chat — direct users to the appropriate UI:
-- User account management (create/delete/modify users)
+These require the admin UI or direct access:
 - Broker credential setup or OAuth flows
 - Direct database writes (INSERT/UPDATE/DELETE)
 - Order placement or trade execution
 - Alembic migrations or schema changes
-If asked about these, explain that they require the admin UI or direct access.
-- Be concise and helpful
 
 Current time: {current_time}
 Autonomy level: {autonomy_level}
@@ -707,6 +716,12 @@ class AgentBrain:
 
         if tool_name == "check_pre_market_readiness":
             return await self._tool_check_pre_market_readiness()
+
+        if tool_name == "cancel_job":
+            return await self._tool_cancel_job(**args)
+
+        if tool_name == "list_users":
+            return await self._tool_list_users()
 
         return {"error": f"Unknown safe tool: {tool_name}"}
     
@@ -2425,6 +2440,49 @@ class AgentBrain:
         except Exception as exc:
             return {"error": str(exc)}
 
+    async def _tool_cancel_job(self, task_id: str = "", **kwargs) -> Dict[str, Any]:
+        """Cancel/revoke a Celery task, or list active tasks if no task_id given."""
+        try:
+            from backend.tasks.celery_app import celery_app
+            if not task_id:
+                inspector = celery_app.control.inspect()
+                active = inspector.active() or {}
+                tasks = []
+                for worker, task_list in active.items():
+                    for t in task_list:
+                        tasks.append({
+                            "worker": worker,
+                            "task_id": t.get("id"),
+                            "name": t.get("name"),
+                            "started": t.get("time_start"),
+                        })
+                if not tasks:
+                    return {"status": "no_active_tasks", "note": "No tasks currently running. Nothing to cancel."}
+                return {"status": "active_tasks", "tasks": tasks, "note": "Provide a task_id to cancel a specific task."}
+            celery_app.control.revoke(task_id, terminate=True, signal="SIGTERM")
+            return {"status": "revoked", "task_id": task_id, "note": "Termination signal sent. Task may take a moment to stop."}
+        except Exception as exc:
+            return {"error": f"Failed to cancel job: {exc}"}
+
+    async def _tool_list_users(self, **kwargs) -> Dict[str, Any]:
+        """List all users with sensitive fields redacted."""
+        try:
+            from backend.models import User
+            users = self.db.query(User).all()
+            return {"users": [
+                {
+                    "id": u.id,
+                    "username": u.username,
+                    "email": u.email[:2] + "***@" + u.email.split("@")[-1] if u.email and "@" in u.email else "(no email)",
+                    "role": getattr(u, "role", None),
+                    "is_active": getattr(u, "is_active", True),
+                    "created_at": str(u.created_at) if u.created_at else None,
+                }
+                for u in users
+            ]}
+        except Exception as exc:
+            return {"error": f"Failed to list users: {exc}"}
+
     # ==================== CONVERSATION PERSISTENCE ====================
     
     def _get_redis(self):
@@ -2481,7 +2539,10 @@ class AgentBrain:
                 self.db, self.session_id, self._conversation
             )
             if not saved_to_db:
-                logger.warning("Failed to save conversation to DB")
+                logger.warning(
+                    "Failed to save conversation to DB for session %s (%d messages)",
+                    self.session_id, len(self._conversation),
+                )
         except Exception as e:
             logger.warning("Failed to save conversation to DB: %s", e)
 

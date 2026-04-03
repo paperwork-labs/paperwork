@@ -218,6 +218,7 @@ async def startup_event():
                 alembic_ini_path = os.path.join(backend_dir, "alembic.ini")
                 cfg = _AlembicConfig(alembic_ini_path)
                 cfg.set_main_option("script_location", os.path.join(backend_dir, "alembic"))
+                logger.info("Starting Alembic migration (lock_timeout=10s, statement_timeout=120s)...")
                 _alembic_command.upgrade(cfg, "head")
                 logger.info("✅ Alembic migrations applied (upgrade head)")
             else:

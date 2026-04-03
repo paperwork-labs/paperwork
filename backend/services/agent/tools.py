@@ -873,6 +873,36 @@ AGENT_TOOLS: List[Dict[str, Any]] = [
             "parameters": {"type": "object", "properties": {}, "required": []},
         },
     },
+    # ==================== ADMIN TOOLS ====================
+    {
+        "type": "function",
+        "function": {
+            "name": "cancel_job",
+            "description": "Cancel a running or pending Celery task by its task_id. Use when the user wants to stop a running or stuck job.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "description": "The Celery task ID to revoke/cancel",
+                    },
+                },
+                "required": ["task_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_users",
+            "description": "List all users with their basic info (id, username, email, role, active status, created date). Sensitive fields like password hashes are excluded.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
 ]
 
 
@@ -907,6 +937,9 @@ INLINE_ONLY_AGENT_TOOLS: FrozenSet[str] = frozenset({
     "check_data_accuracy",
     "get_provider_metrics",
     "check_pre_market_readiness",
+    # Admin tools
+    "cancel_job",
+    "list_users",
 })
 
 TOOL_TO_CELERY_TASK: Dict[str, str] = {

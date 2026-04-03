@@ -26,6 +26,8 @@ function getAxiosErrorMessage(err: unknown): string {
   return "Something went wrong."
 }
 
+const AGENT_SESSION_STORAGE_KEY = "agent_session_id"
+
 function normalizeRunAction(raw: Record<string, unknown>): AgentAction {
   const id = Number(raw.id)
   const created =
@@ -89,7 +91,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const [messages, setMessages] = React.useState<ChatMessage[]>([])
   const [currentSessionId, setCurrentSessionId] = React.useState<string | null>(
-    null,
+    () => {
+      try {
+        return sessionStorage.getItem(AGENT_SESSION_STORAGE_KEY)
+      } catch {
+        return null
+      }
+    },
   )
   const [selectedSessionId, setSelectedSessionId] = React.useState<
     string | undefined
@@ -100,6 +108,18 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = React.useState(false)
 
   const isOnAgentPage = location.pathname.startsWith("/settings/admin/agent")
+
+  React.useEffect(() => {
+    try {
+      if (currentSessionId) {
+        sessionStorage.setItem(AGENT_SESSION_STORAGE_KEY, currentSessionId)
+      } else {
+        sessionStorage.removeItem(AGENT_SESSION_STORAGE_KEY)
+      }
+    } catch {
+      // ignore quota / private mode
+    }
+  }, [currentSessionId])
 
   React.useEffect(() => {
     if (isOnAgentPage && isOpen) {
@@ -199,6 +219,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const newChat = React.useCallback(() => {
     setMessages([])
+    try {
+      sessionStorage.removeItem(AGENT_SESSION_STORAGE_KEY)
+    } catch {
+      // ignore
+    }
     setCurrentSessionId(null)
     setSelectedSessionId(undefined)
   }, [])

@@ -7,6 +7,7 @@ Messages were previously stored in Redis with a TTL, but are now
 persisted to PostgreSQL for indefinite retention.
 """
 
+import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -112,4 +113,7 @@ def save_conversation_to_db(
         return True
     except Exception:
         db.rollback()
+        logging.getLogger(__name__).exception(
+            "save_conversation_to_db failed for session %s", session_id,
+        )
         return False
