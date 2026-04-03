@@ -46,7 +46,7 @@ class FundamentalsService:
     def get_fundamentals_info(self, symbol: str) -> Dict[str, Any]:
         """Return fundamentals for *symbol* using multi-provider cascade.
 
-        Provider order: FMP -> Finnhub -> Alpha Vantage -> yfinance.
+        Provider order: FMP -> Finnhub -> yfinance -> Alpha Vantage.
         Each subsequent provider only fills fields still missing.
         """
         from backend.services.market.rate_limiter import provider_rate_limiter
@@ -176,7 +176,48 @@ class FundamentalsService:
             except Exception as exc:
                 logger.debug("Finnhub basic financials failed for %s: %s", symbol, exc)
 
-        # --- Provider 3: Alpha Vantage ---
+        # --- Provider 3: yfinance ---
+        needs_core = any(info.get(k) is None for k in FUNDAMENTAL_FIELDS[:5])
+        needs_full = needs_fundamentals(info)
+        if needs_full or needs_core:
+            try:
+                provider_rate_limiter.acquire_sync("yfinance")
+                y = self._service._call_blocking_with_retries_sync(lambda: yf.Ticker(symbol).info)
+                if y:
+                    if not info:
+                        info = {
+                            "name": y.get("shortName") or y.get("longName") or y.get("symbol"),
+                            "sector": y.get("sector"),
+                            "industry": y.get("industry"),
+                            "sub_industry": y.get("subIndustry") or y.get("industry") or None,
+                            "market_cap": y.get("marketCap"),
+                        }
+                    set_if_missing("name", y.get("shortName") or y.get("longName"))
+                    set_if_missing("sector", y.get("sector"))
+                    set_if_missing("industry", y.get("industry"))
+                    set_if_missing("sub_industry", y.get("subIndustry") or y.get("industry"))
+                    set_if_missing("market_cap", y.get("marketCap"))
+                    set_if_missing("beta", y.get("beta"))
+                    set_if_missing("pe_ttm", y.get("trailingPE") or y.get("forwardPE"))
+                    set_if_missing("peg_ttm", y.get("pegRatio"))
+                    set_if_missing("roe", _decimal_to_pct(y.get("returnOnEquity")))
+                    set_if_missing("dividend_yield", _decimal_to_pct(y.get("dividendYield")))
+                    set_if_missing("eps_growth_yoy", _decimal_to_pct(y.get("earningsGrowth")))
+                    set_if_missing("eps_growth_qoq", _decimal_to_pct(y.get("earningsQuarterlyGrowth")))
+                    set_if_missing("revenue_growth_yoy", _decimal_to_pct(y.get("revenueGrowth")))
+                    set_if_missing("revenue_growth_qoq", _decimal_to_pct(y.get("revenueQuarterlyGrowth")))
+                    set_if_missing("eps_ttm", y.get("trailingEps"))
+                    set_if_missing("revenue_ttm", y.get("totalRevenue"))
+                    set_if_missing("analyst_rating", y.get("recommendationKey"))
+                    earnings = y.get("earningsDate")
+                    if isinstance(earnings, (list, tuple)) and earnings:
+                        set_if_missing("next_earnings", earnings[0])
+                    set_if_missing("last_earnings", y.get("lastEarningsDate"))
+            except Exception:
+                if not info:
+                    info = {}
+
+        # --- Provider 4: Alpha Vantage (last resort) ---
         if settings.ALPHA_VANTAGE_API_KEY and needs_fundamentals(info):
             try:
                 import requests as _requests
@@ -235,47 +276,6 @@ class FundamentalsService:
                         set_if_missing("analyst_rating", av.get("AnalystRating") or av.get("AnalystTargetPrice"))
             except Exception as exc:
                 logger.debug("Alpha Vantage overview failed for %s: %s", symbol, exc)
-
-        # --- Provider 4: yfinance (last resort) ---
-        needs_core = any(info.get(k) is None for k in FUNDAMENTAL_FIELDS[:5])
-        needs_full = needs_fundamentals(info)
-        if needs_full or needs_core:
-            try:
-                provider_rate_limiter.acquire_sync("yfinance")
-                y = self._service._call_blocking_with_retries_sync(lambda: yf.Ticker(symbol).info)
-                if y:
-                    if not info:
-                        info = {
-                            "name": y.get("shortName") or y.get("longName") or y.get("symbol"),
-                            "sector": y.get("sector"),
-                            "industry": y.get("industry"),
-                            "sub_industry": y.get("subIndustry") or y.get("industry") or None,
-                            "market_cap": y.get("marketCap"),
-                        }
-                    set_if_missing("name", y.get("shortName") or y.get("longName"))
-                    set_if_missing("sector", y.get("sector"))
-                    set_if_missing("industry", y.get("industry"))
-                    set_if_missing("sub_industry", y.get("subIndustry") or y.get("industry"))
-                    set_if_missing("market_cap", y.get("marketCap"))
-                    set_if_missing("beta", y.get("beta"))
-                    set_if_missing("pe_ttm", y.get("trailingPE") or y.get("forwardPE"))
-                    set_if_missing("peg_ttm", y.get("pegRatio"))
-                    set_if_missing("roe", _decimal_to_pct(y.get("returnOnEquity")))
-                    set_if_missing("dividend_yield", _decimal_to_pct(y.get("dividendYield")))
-                    set_if_missing("eps_growth_yoy", _decimal_to_pct(y.get("earningsGrowth")))
-                    set_if_missing("eps_growth_qoq", _decimal_to_pct(y.get("earningsQuarterlyGrowth")))
-                    set_if_missing("revenue_growth_yoy", _decimal_to_pct(y.get("revenueGrowth")))
-                    set_if_missing("revenue_growth_qoq", _decimal_to_pct(y.get("revenueQuarterlyGrowth")))
-                    set_if_missing("eps_ttm", y.get("trailingEps"))
-                    set_if_missing("revenue_ttm", y.get("totalRevenue"))
-                    set_if_missing("analyst_rating", y.get("recommendationKey"))
-                    earnings = y.get("earningsDate")
-                    if isinstance(earnings, (list, tuple)) and earnings:
-                        set_if_missing("next_earnings", earnings[0])
-                    set_if_missing("last_earnings", y.get("lastEarningsDate"))
-            except Exception:
-                if not info:
-                    info = {}
 
         # --- ETF sector/industry override ---
         upper_sym = symbol.upper()

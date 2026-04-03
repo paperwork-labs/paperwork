@@ -111,6 +111,9 @@ migrate-down:
 	$(COMPOSE_DEV) exec backend alembic -c backend/alembic.ini downgrade "$(REV)"
 
 migrate-stamp-head:
+	@echo "WARNING: stamp-head marks the DB as current WITHOUT running migrations."
+	@echo "This is destructive and should only be used during initial provisioning."
+	@printf "Type 'CONFIRM' to proceed: "; read confirm; [ "$$confirm" = "CONFIRM" ] || { echo "Aborted."; exit 1; }
 	$(COMPOSE_DEV) exec backend alembic -c backend/alembic.ini stamp head
 
 frontend-install:

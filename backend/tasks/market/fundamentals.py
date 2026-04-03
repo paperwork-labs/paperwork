@@ -109,7 +109,11 @@ def enrich_index(
     soft_time_limit=_DEFAULT_SOFT,
     time_limit=_DEFAULT_HARD,
 )
-@task_run("market_snapshots_fundamentals_fill")
+@task_run(
+    "market_snapshots_fundamentals_fill",
+    lock_key=lambda **_: "fundamentals_fill",
+    lock_ttl_seconds=_DEFAULT_HARD + 300,
+)
 def fill_missing(limit_per_run: int = 500) -> dict:
     """Fill missing fundamental/display data on MarketSnapshot rows (tracked table)."""
     _set_task_status("market_snapshots_fundamentals_fill", "running")

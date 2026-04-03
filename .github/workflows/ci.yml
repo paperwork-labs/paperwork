@@ -33,6 +33,25 @@ jobs:
       - name: Run backend tests (isolated postgres_test)
         run: make test
 
+      - name: Migration chain integrity
+        run: |
+          docker compose --project-name axiomfolio_test --env-file infra/env.test \
+            -f infra/compose.test.yaml run --rm --no-deps backend_test \
+            python -c "
+          from alembic.config import Config
+          from alembic.script import ScriptDirectory
+          import os, sys
+          cfg = Config(os.path.join('backend', 'alembic.ini'))
+          cfg.set_main_option('script_location', os.path.join('backend', 'alembic'))
+          script = ScriptDirectory.from_config(cfg)
+          heads = script.get_heads()
+          if len(heads) != 1:
+              print(f'ERROR: Expected 1 migration head, found {len(heads)}: {heads}')
+              sys.exit(1)
+          revs = list(script.walk_revisions())
+          print(f'OK: {len(revs)} migrations, single head: {heads[0]}')
+          "
+
       - name: Tear down test stack
         if: always()
         run: |

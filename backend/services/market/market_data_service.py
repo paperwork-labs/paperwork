@@ -52,6 +52,7 @@ from backend.services.market.coverage_service import CoverageService
 from backend.services.market.coverage_utils import compute_coverage_status
 from backend.services.market.stage_utils import compute_stage_run_lengths
 from backend.services.market.fundamentals_service import FundamentalsService, needs_fundamentals
+from backend.services.market.rate_limiter import provider_rate_limiter
 from backend.services.market.stage_quality_service import (
     StageQualityService,
     normalize_stage_label,
@@ -62,6 +63,8 @@ logger = logging.getLogger(__name__)
 
 _TICKER_RE = re.compile(r"^[A-Z]{1,5}(?:-[A-Z]{1,2})?$")
 _WIKI_UA = "AxiomFolio/1.0 (https://github.com/sankalp404/axiomfolio)"
+
+L2_FRESHNESS_MAX_DAYS = 4  # 3-day weekends + timezone slack
 
 
 class APIProvider(Enum):
@@ -485,21 +488,20 @@ class MarketDataService:
         """Return provider order based on MARKET_PROVIDER_POLICY and availability.
 
         data_type: "historical_data" | "real_time_quote" | "company_info"
-        paid policy: [FMP, yfinance]
-        free policy: [FMP?] + yfinance + [Twelve Data?] + finnhub
+        paid policy: [FMP, yfinance, TwelveData]
+        free policy: [FMP?] + yfinance + [TwelveData?] + finnhub
         """
         policy = str(getattr(settings, "MARKET_PROVIDER_POLICY", "paid")).lower()
         has_fmp = bool(settings.FMP_API_KEY)
         has_td = bool(settings.TWELVE_DATA_API_KEY)
         if data_type == "historical_data":
             if policy == "paid":
-                # Prefer FMP; in paid mode use Twelve Data before yfinance to avoid CF issues
                 if has_fmp and has_td:
-                    return [APIProvider.FMP, APIProvider.TWELVE_DATA, APIProvider.YFINANCE]
+                    return [APIProvider.FMP, APIProvider.YFINANCE, APIProvider.TWELVE_DATA]
                 if has_fmp:
                     return [APIProvider.FMP, APIProvider.YFINANCE]
                 if has_td:
-                    return [APIProvider.TWELVE_DATA, APIProvider.YFINANCE]
+                    return [APIProvider.YFINANCE, APIProvider.TWELVE_DATA]
                 return [APIProvider.YFINANCE]
             order: List[APIProvider] = []
             if has_fmp:
@@ -517,7 +519,22 @@ class MarketDataService:
 
     def _is_provider_available(self, provider: APIProvider) -> bool:
         if provider == APIProvider.FMP:
-            return bool(settings.FMP_API_KEY)
+            if not settings.FMP_API_KEY:
+                return False
+            try:
+                probe = self._sync_redis.get("health:provider_keys")
+                if probe:
+                    data = json.loads(probe)
+                    fmp_probe = data.get("fmp")
+                    if isinstance(fmp_probe, str):
+                        if fmp_probe.strip().lower().startswith("error"):
+                            return False
+                    elif isinstance(fmp_probe, dict):
+                        if str(fmp_probe.get("status", "")).strip().lower() == "error":
+                            return False
+            except Exception:
+                pass
+            return True
         if provider == APIProvider.TWELVE_DATA:
             return self.twelve_data_client is not None
         if provider == APIProvider.FINNHUB:
@@ -744,14 +761,21 @@ class MarketDataService:
                 min_bars = self._min_bars_for_period(period)
                 if db_df is not None and len(db_df) >= max(min_bars, 1):
                     db_df = ensure_newest_first(db_df)
-                    if max_bars and interval == "1d":
-                        db_df = db_df.head(max_bars)
-                    ttl = 300 if interval in ("1m", "5m") else 3600
-                    await r.setex(cache_key, ttl, db_df.to_json(orient="index"))
-                    logger.info("L2 DB hit for %s (%s/%s): %d bars", symbol, period, interval, len(db_df))
-                    if return_provider:
-                        return db_df, "db"
-                    return db_df
+                    latest_date = db_df.index.max()
+                    if latest_date is not None:
+                        days_stale = (pd.Timestamp.utcnow().normalize() - pd.Timestamp(latest_date).normalize()).days
+                        if days_stale > L2_FRESHNESS_MAX_DAYS:
+                            logger.debug("L2 stale for %s: latest bar %s (%dd old), falling through to L3",
+                                         symbol, latest_date, days_stale)
+                        else:
+                            if max_bars and interval == "1d":
+                                db_df = db_df.head(max_bars)
+                            ttl = 300 if interval in ("1m", "5m") else 3600
+                            await r.setex(cache_key, ttl, db_df.to_json(orient="index"))
+                            logger.info("L2 DB hit for %s (%s/%s): %d bars", symbol, period, interval, len(db_df))
+                            if return_provider:
+                                return db_df, "db"
+                            return db_df
                 else:
                     logger.debug("L2 DB miss for %s (%s/%s): got %d bars, need %d",
                                  symbol, period, interval, len(db_df) if db_df is not None else 0, min_bars)
@@ -763,6 +787,9 @@ class MarketDataService:
         for provider in self._provider_priority("historical_data"):
             if not self._is_provider_available(provider):
                 continue
+            await provider_rate_limiter.acquire(
+                "twelvedata" if provider == APIProvider.TWELVE_DATA else provider.value
+            )
             provider_used = provider.value
             # Provider-specific symbol aliases for index proxies that may require
             # caret-prefixed tickers on some APIs (e.g., Yahoo index symbols).
@@ -894,7 +921,16 @@ class MarketDataService:
     ) -> Optional[pd.DataFrame]:
         if interval != "1d":
             return None
-        raw = fmpsdk.historical_price_full(apikey=settings.FMP_API_KEY, symbol=symbol)
+        from_date = None
+        if period not in ("max", "10y", "5y"):
+            from datetime import date as _date
+            days_map = {"5d": 10, "1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 730, "3y": 1095}
+            delta = days_map.get(period, 365)
+            from_date = (_date.today() - timedelta(days=delta)).isoformat()
+        raw = fmpsdk.historical_price_full(
+            apikey=settings.FMP_API_KEY, symbol=symbol,
+            from_date=from_date,
+        )
         # FMP can return either {"symbol": ..., "historical": [...]} or an error dict.
         if isinstance(raw, dict):
             if raw.get("Error Message") or raw.get("error") or raw.get("message"):
@@ -1044,25 +1080,6 @@ class MarketDataService:
         provider_used = "fmp" if symbols else None
         if symbols:
             logger.info("Index %s: fetched %d constituents from FMP", idx, len(symbols))
-
-        # Finnhub fallback
-        if not symbols:
-            fh_symbol = self.index_endpoints.get(idx, {}).get("finnhub")
-            if self.finnhub_client and fh_symbol:
-                try:
-                    fh_data = self.finnhub_client.indices_const(symbol=fh_symbol)
-                    if isinstance(fh_data, dict) and fh_data.get("constituents"):
-                        symbols = [
-                            str(s).strip().upper().replace('.', '-')
-                            for s in fh_data["constituents"] if s
-                        ]
-                        if symbols:
-                            provider_used = "finnhub"
-                            logger.info("Index %s: fetched %d constituents from Finnhub", idx, len(symbols))
-                    else:
-                        logger.warning("Index %s: Finnhub returned empty/unexpected: %s", idx, str(fh_data)[:200])
-                except Exception as exc:
-                    logger.warning("Index %s: Finnhub constituents failed: %s", idx, exc)
 
         # Wikipedia fallback
         if not symbols:

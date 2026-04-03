@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
+from sqlalchemy.orm import Session
+
 
 class MarketDataProviderService:
     """Provider access facade for MarketDataService."""
@@ -20,6 +22,7 @@ class MarketDataProviderService:
         interval: str = "1d",
         max_bars: int | None = None,
         return_provider: bool = False,
+        db: Optional[Session] = None,
     ):
         return await self._service.get_historical_data(
             symbol,
@@ -27,6 +30,7 @@ class MarketDataProviderService:
             interval=interval,
             max_bars=max_bars,
             return_provider=return_provider,
+            db=db,
         )
 
     def get_fundamentals_info(self, symbol: str) -> Dict[str, Any]:

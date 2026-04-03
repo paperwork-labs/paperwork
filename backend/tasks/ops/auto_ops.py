@@ -110,7 +110,7 @@ REMEDIATION_MAP = {
         ("backend.tasks.market.regime.compute_daily", {}),
     ],
     "fundamentals": [
-        ("backend.tasks.market.fundamentals.fill_missing", {"limit_per_run": 1500}),
+        ("backend.tasks.market.fundamentals.fill_missing", {"limit_per_run": 500}),
     ],
     "portfolio_sync": [
         ("backend.tasks.account_sync.sync_all_ibkr_accounts", {}),
@@ -217,7 +217,10 @@ def _rule_based_remediation(health: dict) -> dict:
 
     for dim_name, dim_data in dimensions.items():
         status = dim_data.get("status", "unknown")
-        if status in ("green", "ok", "warning", "yellow"):
+        if status in ("green", "ok"):
+            _clear_retries(dim_name)
+            continue
+        if status in ("warning", "yellow") and dim_name not in ("fundamentals", "coverage"):
             _clear_retries(dim_name)
             continue
 

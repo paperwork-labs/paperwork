@@ -586,14 +586,19 @@ async def fetch_daily_for_symbols(
 
     async def _one(sym: str) -> dict:
         async with sem:
-            df, provider = await market_data_service.providers.get_historical_data(
-                symbol=sym.upper(),
-                period=period,
-                interval="1d",
-                max_bars=max_bars,
-                return_provider=True,
-            )
-            return {"symbol": sym.upper(), "df": df, "provider": provider}
+            db = SessionLocal()
+            try:
+                df, provider = await market_data_service.providers.get_historical_data(
+                    symbol=sym.upper(),
+                    period=period,
+                    interval="1d",
+                    max_bars=max_bars,
+                    return_provider=True,
+                    db=db,
+                )
+                return {"symbol": sym.upper(), "df": df, "provider": provider}
+            finally:
+                db.close()
 
     tasks_coro = [_one(s) for s in sorted({str(s).upper() for s in (symbols or []) if s})]
     for coro in asyncio.as_completed(tasks_coro):

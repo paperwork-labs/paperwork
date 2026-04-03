@@ -223,7 +223,8 @@ async def startup_event():
             else:
                 logger.info("Alembic migrations skipped (AUTO_MIGRATE_ON_STARTUP=false)")
         except Exception as mig_e:
-            logger.warning("Alembic migration failed: %s", mig_e, exc_info=True)
+            logger.error("Alembic migration FAILED -- refusing to start with stale schema: %s", mig_e, exc_info=True)
+            raise SystemExit(1)
 
         # Seed schedules from catalog and sync to Render (runs on every startup)
         try:
