@@ -193,6 +193,11 @@ class Settings(BaseSettings):
     # How many *trading days* to render in the UI histogram (frontend reads this from /market-data/coverage meta).
     COVERAGE_FILL_TRADING_DAYS_WINDOW: int = 50
 
+    # Provider daily API call budgets (conservative limits for enforced providers)
+    PROVIDER_DAILY_BUDGET_FMP: int = 250
+    PROVIDER_DAILY_BUDGET_TWELVEDATA: int = 800
+    PROVIDER_DAILY_BUDGET_YFINANCE: int = 10000  # yfinance is free, high limit
+
     # Retention defaults for intraday data
     RETENTION_MAX_DAYS_5M: int = 90
     # Alert when retention deletes exceed this count in a run.

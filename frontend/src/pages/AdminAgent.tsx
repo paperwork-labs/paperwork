@@ -42,6 +42,7 @@ import type {
   FundamentalsDimension,
   PortfolioSyncDimension,
   IbkrGatewayDimension,
+  ProviderUsage,
 } from "@/types/adminHealth"
 
 type DimensionValue =
@@ -488,6 +489,24 @@ const AdminAgent: React.FC = () => {
           ))
         )}
       </div>
+
+      {health?.provider_metrics && health.provider_metrics.providers && Object.keys(health.provider_metrics.providers).length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground">Providers:</span>
+          {health.provider_metrics.providers && Object.entries(health.provider_metrics.providers).map(([name, data]) => {
+            const usage = data as ProviderUsage
+            const color = usage.pct > 90 ? 'bg-destructive/10 text-destructive' : usage.pct > 70 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
+            return (
+              <Badge key={name} variant="outline" className={cn('text-xs', color)}>
+                {name} {usage.pct}%
+              </Badge>
+            )
+          })}
+          <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700">
+            L2 {health.provider_metrics.l2_hit_rate ?? 0}%
+          </Badge>
+        </div>
+      )}
 
       {/* Main content: sidebar + chat + capabilities */}
       <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch">

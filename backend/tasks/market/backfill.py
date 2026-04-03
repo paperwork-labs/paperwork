@@ -84,7 +84,12 @@ def tracked_cache() -> dict:
                             market_data_service.get_index_constituents(idx)
                         )
                         index_to_symbols[idx].update({s.upper() for s in cons if s})
-                    except Exception:
+                    except Exception as e:
+                        logger.warning(
+                            "tracked_cache: get_index_constituents failed for %s: %s",
+                            idx,
+                            e,
+                        )
                         continue
                 seed_syms: set[str] = set().union(*index_to_symbols.values())
                 if seed_syms:

@@ -105,6 +105,16 @@ const MOCK_HEALTH: AdminHealthResponse = {
       is_stale: true,
       note: 'IBKR client not available',
     },
+    data_accuracy: {
+      status: 'green' as const,
+      category: 'market' as const,
+      mismatch_count: 0,
+      bars_checked: 250,
+      bars_matched: 250,
+      match_rate: 100,
+      missing_in_db: 0,
+      sample_size: 54,
+    },
   },
   task_runs: {},
   thresholds: {
@@ -152,6 +162,9 @@ describe('AdminDomainCards', () => {
     expect(screen.getByText('Stage Quality')).toBeTruthy();
     expect(screen.getAllByText(/Jobs/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Market Audit')).toBeTruthy();
+    // Data Accuracy card
+    expect(screen.getByText('Data Accuracy')).toBeInTheDocument();
+    expect(screen.getByText(/Match rate:/)).toBeInTheDocument();
   });
 
   it('shows job success rate', () => {
@@ -236,6 +249,7 @@ describe('AdminRunbook', () => {
       dimensions: {
         ...MOCK_HEALTH.dimensions,
         jobs: { ...MOCK_HEALTH.dimensions.jobs, status: 'green' },
+        ibkr_gateway: { ...MOCK_HEALTH.dimensions.ibkr_gateway, status: 'green' },
       },
     };
     renderWithProviders(<AdminRunbook health={greenHealth} />);
@@ -247,7 +261,7 @@ describe('AdminRunbook', () => {
   it('shows remediation steps for RED dimensions', async () => {
     const user = userEvent.setup();
     renderWithProviders(<AdminRunbook health={MOCK_HEALTH} />);
-    const header = screen.getByText(/Runbook.*1 issue/);
+    const header = screen.getByText(/Runbook.*2 issues/);
     expect(header).toBeTruthy();
     await user.click(header);
     expect(screen.getByText(/One or more background jobs have failed/)).toBeTruthy();
@@ -276,7 +290,7 @@ describe('AdminRunbook', () => {
       },
     };
     renderWithProviders(<AdminRunbook health={stageRedHealth} />);
-    const header = screen.getByText(/Runbook.*1 issue/);
+    const header = screen.getByText(/Runbook.*2 issues/);
     await user.click(header);
     expect(screen.getByText(/Repair Stage History/)).toBeTruthy();
     expect(screen.getByText(/day-counter gaps/)).toBeTruthy();
@@ -298,7 +312,7 @@ describe('AdminRunbook', () => {
       },
     };
     renderWithProviders(<AdminRunbook health={auditRedHealth} />);
-    const header = screen.getByText(/Runbook.*1 issue/);
+    const header = screen.getByText(/Runbook.*2 issues/);
     await user.click(header);
     expect(screen.getByText(/Daily fill: 80\.0%/)).toBeTruthy();
     expect(screen.getByText(/Snapshot fill: 70\.0%/)).toBeTruthy();

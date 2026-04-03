@@ -551,6 +551,10 @@ export const marketDataApi = {
     return api.post(`/market-data/admin/intelligence/generate?brief_type=${type}`);
   },
 
+  getPreMarketReadiness: async () => {
+    return makeOptimizedRequest(() => api.get('/market-data/admin/pre-market-readiness'));
+  },
+
   // Auto-fix endpoints for agent-powered remediation
   startAutoFix: async () => {
     return api.post('/market-data/admin/auto-fix');

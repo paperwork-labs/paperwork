@@ -287,6 +287,18 @@ CATALOG: List[JobTemplate] = [
         job_run_label="admin_backfill_since_date",
         timeout_s=14400,
     ),
+    # ── OHLCV Reconciliation ──────────────────────────────────────────
+    JobTemplate(
+        id="ohlcv_reconciliation",
+        display_name="OHLCV Spot-Check Reconciliation",
+        group="market_data",
+        task="backend.tasks.market.reconciliation.spot_check",
+        description="Weekly OHLCV spot-check reconciliation",
+        default_cron="30 5 * * 0",
+        default_tz="UTC",
+        job_run_label="ohlcv_reconciliation",
+        timeout_s=720,
+    ),
     # ── Stage History Repair ──────────────────────────────────────────
     JobTemplate(
         id="repair_stage_history",

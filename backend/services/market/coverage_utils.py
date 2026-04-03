@@ -4,6 +4,41 @@ from typing import Any, Dict
 from datetime import datetime
 
 
+def _expected_latest_trading_day():
+    """Return the most recent completed NYSE trading session date string.
+
+    Uses exchange_calendars if available, falls back to simple weekday logic.
+    """
+    try:
+        import exchange_calendars as xcals
+        import pandas as pd
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        nyse = xcals.get_calendar("XNYS")
+        today = pd.Timestamp.now(tz="UTC").normalize()
+        et_now = datetime.now(ZoneInfo("America/New_York"))
+        schedule = nyse.sessions_in_range(today - pd.Timedelta(days=10), today)
+        if et_now.hour < 16:
+            closed = schedule[schedule < today]
+        else:
+            closed = schedule[schedule <= today]
+        if len(closed) > 0:
+            return closed[-1].strftime("%Y-%m-%d")
+    except Exception:
+        pass
+    # Fallback: simple weekday logic
+    from datetime import date, timedelta
+    d = date.today()
+    if d.weekday() == 0:
+        d -= timedelta(days=3)
+    elif d.weekday() == 6:
+        d -= timedelta(days=2)
+    else:
+        d -= timedelta(days=1)
+    return d.isoformat()
+
+
 def compute_coverage_status(snapshot: Dict[str, Any]) -> Dict[str, Any]:
     """Derive human-readable coverage state + KPI percentages from a raw snapshot."""
     total_symbols = int(snapshot.get("symbols") or 0)

@@ -64,7 +64,50 @@ logger = logging.getLogger(__name__)
 _TICKER_RE = re.compile(r"^[A-Z]{1,5}(?:-[A-Z]{1,2})?$")
 _WIKI_UA = "AxiomFolio/1.0 (https://github.com/sankalp404/axiomfolio)"
 
-L2_FRESHNESS_MAX_DAYS = 4  # 3-day weekends + timezone slack
+L2_FRESHNESS_MAX_DAYS = 4  # static fallback; prefer _is_l2_fresh()
+
+
+def _last_n_trading_sessions(n: int = 2) -> list:
+    """Return the last N completed NYSE trading sessions using exchange_calendars.
+
+    Falls back to empty list if the library is unavailable.
+    """
+    try:
+        import exchange_calendars as xcals
+
+        nyse = xcals.get_calendar("XNYS")
+        today = pd.Timestamp.now(tz="UTC").normalize()
+        schedule = nyse.sessions_in_range(today - pd.Timedelta(days=15), today)
+        from zoneinfo import ZoneInfo
+
+        et_now = datetime.now(ZoneInfo("America/New_York"))
+        if et_now.hour < 16:
+            closed = schedule[schedule < today]
+        else:
+            closed = schedule[schedule <= today]
+        return list(closed[-n:])
+    except Exception:
+        return []
+
+
+def _is_l2_fresh(latest_bar_date) -> bool:
+    """Check if the latest bar is from a recent completed trading session.
+
+    Uses exchange_calendars for NYSE schedule awareness (holidays, early closes).
+    Falls back to static L2_FRESHNESS_MAX_DAYS if calendar is unavailable.
+    """
+    if latest_bar_date is None:
+        return False
+    try:
+        bar_ts = pd.Timestamp(latest_bar_date).normalize()
+        sessions = _last_n_trading_sessions(2)
+        if sessions:
+            oldest_acceptable = pd.Timestamp(sessions[0]).normalize()
+            return bar_ts >= oldest_acceptable
+    except Exception:
+        pass
+    days_stale = (pd.Timestamp.utcnow().normalize() - pd.Timestamp(latest_bar_date).normalize()).days
+    return days_stale <= L2_FRESHNESS_MAX_DAYS
 
 
 class APIProvider(Enum):
@@ -747,6 +790,12 @@ class MarketDataService:
         if cached:
             try:
                 df_cached = pd.read_json(cached, orient="index")
+                try:
+                    _date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                    await r.hincrby(f"provider:calls:{_date_key}", "l1_hit", 1)
+                    await r.expire(f"provider:calls:{_date_key}", 86400 * 30)
+                except Exception:
+                    pass
                 if return_provider:
                     return df_cached, None
                 return df_cached
@@ -763,15 +812,20 @@ class MarketDataService:
                     db_df = ensure_newest_first(db_df)
                     latest_date = db_df.index.max()
                     if latest_date is not None:
-                        days_stale = (pd.Timestamp.utcnow().normalize() - pd.Timestamp(latest_date).normalize()).days
-                        if days_stale > L2_FRESHNESS_MAX_DAYS:
-                            logger.debug("L2 stale for %s: latest bar %s (%dd old), falling through to L3",
-                                         symbol, latest_date, days_stale)
+                        if not _is_l2_fresh(latest_date):
+                            logger.debug("L2 stale for %s: latest bar %s, falling through to L3",
+                                         symbol, latest_date)
                         else:
                             if max_bars and interval == "1d":
                                 db_df = db_df.head(max_bars)
                             ttl = 300 if interval in ("1m", "5m") else 3600
                             await r.setex(cache_key, ttl, db_df.to_json(orient="index"))
+                            try:
+                                _date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                                await r.hincrby(f"provider:calls:{_date_key}", "l2_hit", 1)
+                                await r.expire(f"provider:calls:{_date_key}", 86400 * 30)
+                            except Exception:
+                                pass
                             logger.info("L2 DB hit for %s (%s/%s): %d bars", symbol, period, interval, len(db_df))
                             if return_provider:
                                 return db_df, "db"
@@ -787,6 +841,22 @@ class MarketDataService:
         for provider in self._provider_priority("historical_data"):
             if not self._is_provider_available(provider):
                 continue
+            # Daily budget check
+            try:
+                _date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                _counter_name = "twelvedata" if provider == APIProvider.TWELVE_DATA else provider.value
+                _current = int(await r.hget(f"provider:calls:{_date_key}", _counter_name) or 0)
+                _budgets = {
+                    "fmp": settings.PROVIDER_DAILY_BUDGET_FMP,
+                    "twelvedata": settings.PROVIDER_DAILY_BUDGET_TWELVEDATA,
+                    "yfinance": settings.PROVIDER_DAILY_BUDGET_YFINANCE,
+                }
+                _limit = _budgets.get(_counter_name, 10000)
+                if _current >= _limit:
+                    logger.warning("Provider %s over daily budget (%d/%d), skipping", _counter_name, _current, _limit)
+                    continue
+            except Exception:
+                pass
             await provider_rate_limiter.acquire(
                 "twelvedata" if provider == APIProvider.TWELVE_DATA else provider.value
             )
@@ -816,6 +886,13 @@ class MarketDataService:
                         df = df.head(max_bars)
                     ttl = 300 if interval in ("1m", "5m") else 3600
                     await r.setex(cache_key, ttl, df.to_json(orient="index"))
+                    try:
+                        _date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                        _counter_name = "twelvedata" if provider == APIProvider.TWELVE_DATA else provider.value
+                        await r.hincrby(f"provider:calls:{_date_key}", _counter_name, 1)
+                        await r.expire(f"provider:calls:{_date_key}", 86400 * 30)
+                    except Exception:
+                        pass
                     try:
                         db_session = SessionLocal()
                         self.persist_price_bars(db_session, symbol, df, interval=interval, data_source=provider_used or "provider")
@@ -1754,7 +1831,8 @@ class MarketDataService:
             vol_val = int(row.get("Volume") or 0) if "Volume" in row else 0
 
             if close_val <= 0:
-                logger.warning("persist_price_bars: %s %s close=%.4f (<=0)", symbol, pd_date, close_val)
+                logger.warning("persist_price_bars: SKIPPING %s %s close=%.4f (<=0)", symbol, pd_date, close_val)
+                continue
             elif interval == "1d" and prev_close and prev_close > 0:
                 pct_chg = abs(close_val - prev_close) / prev_close
                 if pct_chg > 0.50:
@@ -1762,6 +1840,10 @@ class MarketDataService:
                         "persist_price_bars: %s %s %.1f%% daily move (%.2f->%.2f)",
                         symbol, pd_date, pct_chg * 100, prev_close, close_val,
                     )
+            if high_val < low_val:
+                logger.warning("persist_price_bars: FIXING %s %s high=%.4f < low=%.4f — swapping",
+                               symbol, pd_date, high_val, low_val)
+                high_val, low_val = low_val, high_val
             prev_close = close_val
 
             rows.append(
@@ -1780,6 +1862,20 @@ class MarketDataService:
                     "is_synthetic_ohlc": is_synthetic_ohlc,
                 }
             )
+
+        # Detect unchanged close for 3+ consecutive trading days (possible stale quote)
+        if len(rows) >= 3 and interval == "1d":
+            consecutive_same = 1
+            for i in range(1, len(rows)):
+                if rows[i]["close_price"] == rows[i - 1]["close_price"]:
+                    consecutive_same += 1
+                    if consecutive_same >= 3:
+                        logger.warning(
+                            "persist_price_bars: %s has %d consecutive identical closes at %.4f ending %s",
+                            symbol, consecutive_same, rows[i]["close_price"], rows[i]["date"],
+                        )
+                else:
+                    consecutive_same = 1
 
         if not rows:
             return 0

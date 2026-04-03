@@ -76,6 +76,8 @@ def task_run(task_name: str, *, lock_key: Optional[Callable[..., Optional[str]]]
                     except Exception as e:
                         logger.warning("task_run store nonfatal job error failed for %s: %s", task_name, e)
                 job.status = "ok"
+                if isinstance(result, dict) and result.get("status") == "error":
+                    job.status = "error"
                 job.finished_at = datetime.now(timezone.utc)
                 duration = _job_duration_seconds(job)
                 if counters is not None:
@@ -84,11 +86,11 @@ def task_run(task_name: str, *, lock_key: Optional[Callable[..., Optional[str]]]
                     job.counters = counters
                 session.commit()
                 try:
-                    _publish_status(task_name, "ok", {"id": job.id, "payload": result})
+                    _publish_status(task_name, job.status, {"id": job.id, "payload": result})
                 except Exception as e:
                     logger.warning("task_run publish status ok failed for %s: %s", task_name, e)
                 _emit_alerts(
-                    event="success",
+                    event="success" if job.status == "ok" else "failure",
                     task_name=task_name,
                     job=job,
                     hooks=hooks,

@@ -44,6 +44,9 @@ const DIMENSION_ACTIONS: Record<string, ActionDef[]> = {
   fundamentals: [
     { label: 'Fill Missing Fundamentals', endpoint: '/market-data/admin/fundamentals/fill-missing', successMsg: 'Fundamentals fill queued' },
   ],
+  data_accuracy: [
+    { label: 'Run Reconciliation', endpoint: '/market-data/admin/reconciliation/spot-check', successMsg: 'Reconciliation queued' },
+  ],
 };
 
 interface RunbookEntry {
@@ -158,6 +161,17 @@ const RUNBOOK: Record<string, RunbookEntry> = {
       { label: 'Tracked', value: String(dim.tracked_total ?? '—'), ok: true },
     ],
   },
+  data_accuracy: {
+    what: 'OHLCV data accuracy check found mismatches between stored prices and reference data (yfinance).',
+    steps: [
+      'Review the mismatched symbols in the Data Accuracy card above.',
+      'For close price divergences, re-backfill the affected symbols.',
+      'For missing bars, run a stale-only backfill.',
+      'Run the reconciliation again to verify fixes.',
+    ],
+    threshold: (t) =>
+      `Max mismatches: ${t.data_accuracy_mismatch_max ?? 5}, max age: ${t.data_accuracy_max_age_days ?? 10} days`,
+  },
 };
 
 function metricBadgeClass(ok: boolean): string {
@@ -219,6 +233,10 @@ const AdminRunbook: React.FC<Props> = ({ health, onRefreshHealth }) => {
   const redDims = Object.entries(dims).filter(
     ([, dim]) => dim.status === 'red' || dim.status === 'error',
   );
+  const yellowDims = Object.entries(dims).filter(
+    ([, dim]) => dim.status === 'yellow' || dim.status === 'warning',
+  );
+  const issueCount = redDims.length + yellowDims.length;
 
   const handleActionDone = () => {
     setTimeout(() => void onRefreshHealth?.(), 1500);
@@ -235,7 +253,7 @@ const AdminRunbook: React.FC<Props> = ({ health, onRefreshHealth }) => {
         >
           <span className="text-sm font-semibold">
             Runbook / On-Call Guide{' '}
-            {redDims.length > 0 ? `(${redDims.length} issue${redDims.length > 1 ? 's' : ''})` : ''}
+            {issueCount > 0 ? `(${issueCount} issue${issueCount > 1 ? 's' : ''})` : ''}
           </span>
           <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
             {expanded ? (
@@ -254,64 +272,121 @@ const AdminRunbook: React.FC<Props> = ({ health, onRefreshHealth }) => {
 
         <Collapsible.Content>
           <div className="mt-2">
-            {redDims.length === 0 ? (
+            {issueCount === 0 ? (
               <p className="text-xs text-[rgb(var(--status-success)/1)]">All systems healthy — no action needed.</p>
             ) : (
-              redDims.map(([key, dimData]) => {
-                const entry = RUNBOOK[key];
-                if (!entry) return null;
+              <>
+                {redDims.map(([key, dimData]) => {
+                  const entry = RUNBOOK[key];
+                  if (!entry) return null;
 
-                const dim = dimData as unknown as Record<string, unknown>;
-                let steps: string[];
-                try {
-                  steps = entry.contextualSteps ? entry.contextualSteps(dim) : entry.steps;
-                } catch {
-                  steps = entry.steps;
-                }
+                  const dim = dimData as unknown as Record<string, unknown>;
+                  let steps: string[];
+                  try {
+                    steps = entry.contextualSteps ? entry.contextualSteps(dim) : entry.steps;
+                  } catch {
+                    steps = entry.steps;
+                  }
 
-                const metrics = entry.metricSummary ? entry.metricSummary(dim) : null;
+                  const metrics = entry.metricSummary ? entry.metricSummary(dim) : null;
 
-                return (
-                  <div
-                    key={key}
-                    className="mt-2 rounded-md border border-border bg-card p-2"
-                  >
-                    <p className="mb-1 text-sm font-semibold text-[rgb(var(--status-danger)/1)]">
-                      {key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-                    </p>
-                    <p className="mb-1 text-xs text-foreground">
-                      <strong>What:</strong> {entry.what}
-                    </p>
-                    <p className="mb-1 text-xs text-foreground">
-                      <strong>Fix:</strong>
-                    </p>
-                    <ol className="mb-1 list-decimal pl-4 text-xs text-foreground">
-                      {steps.map((step, idx) => (
-                        <li key={idx} className="mb-0.5">
-                          {step}
-                        </li>
-                      ))}
-                    </ol>
-                    <RunbookActions dimKey={key} onDone={handleActionDone} />
-                    {metrics && (
-                      <div className="mb-1 mt-2 flex flex-wrap gap-3">
-                        {metrics.map((m) => (
-                          <Badge
-                            key={m.label}
-                            variant="outline"
-                            className={cn('text-xs font-medium', metricBadgeClass(m.ok))}
-                          >
-                            {m.label}: {m.value}
-                          </Badge>
+                  return (
+                    <div
+                      key={key}
+                      className="mt-2 rounded-md border border-border bg-card p-2"
+                    >
+                      <p className="mb-1 text-sm font-semibold text-[rgb(var(--status-danger)/1)]">
+                        {key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                      </p>
+                      <p className="mb-1 text-xs text-foreground">
+                        <strong>What:</strong> {entry.what}
+                      </p>
+                      <p className="mb-1 text-xs text-foreground">
+                        <strong>Fix:</strong>
+                      </p>
+                      <ol className="mb-1 list-decimal pl-4 text-xs text-foreground">
+                        {steps.map((step, idx) => (
+                          <li key={idx} className="mb-0.5">
+                            {step}
+                          </li>
                         ))}
-                      </div>
-                    )}
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      <strong>Threshold:</strong> {entry.threshold(health.thresholds)}
-                    </p>
-                  </div>
-                );
-              })
+                      </ol>
+                      <RunbookActions dimKey={key} onDone={handleActionDone} />
+                      {metrics && (
+                        <div className="mb-1 mt-2 flex flex-wrap gap-3">
+                          {metrics.map((m) => (
+                            <Badge
+                              key={m.label}
+                              variant="outline"
+                              className={cn('text-xs font-medium', metricBadgeClass(m.ok))}
+                            >
+                              {m.label}: {m.value}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        <strong>Threshold:</strong> {entry.threshold(health.thresholds)}
+                      </p>
+                    </div>
+                  );
+                })}
+                {yellowDims.map(([key, dimData]) => {
+                  const entry = RUNBOOK[key];
+                  if (!entry) return null;
+
+                  const dim = dimData as unknown as Record<string, unknown>;
+                  let steps: string[];
+                  try {
+                    steps = entry.contextualSteps ? entry.contextualSteps(dim) : entry.steps;
+                  } catch {
+                    steps = entry.steps;
+                  }
+
+                  const metrics = entry.metricSummary ? entry.metricSummary(dim) : null;
+
+                  return (
+                    <div
+                      key={key}
+                      className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-2"
+                    >
+                      <p className="mb-1 text-sm font-semibold text-amber-600 dark:text-amber-400">
+                        {key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                      </p>
+                      <p className="mb-1 text-xs text-foreground">
+                        <strong>What:</strong> {entry.what}
+                      </p>
+                      <p className="mb-1 text-xs text-foreground">
+                        <strong>Fix:</strong>
+                      </p>
+                      <ol className="mb-1 list-decimal pl-4 text-xs text-foreground/80">
+                        {steps.map((step, idx) => (
+                          <li key={idx} className="mb-0.5">
+                            {step}
+                          </li>
+                        ))}
+                      </ol>
+                      <RunbookActions dimKey={key} onDone={handleActionDone} />
+                      {metrics && (
+                        <div className="mb-1 mt-2 flex flex-wrap gap-3">
+                          {metrics.map((m) => (
+                            <Badge
+                              key={m.label}
+                              variant="outline"
+                              className={cn('text-xs font-medium', metricBadgeClass(m.ok))}
+                            >
+                              {m.label}: {m.value}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        <strong>Threshold:</strong> {entry.threshold(health.thresholds)}
+                      </p>
+                    </div>
+                  );
+                })}
+              </>
             )}
           </div>
         </Collapsible.Content>

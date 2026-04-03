@@ -698,6 +698,16 @@ class AgentBrain:
                 args.get("lookback_days", 60),
             )
 
+        # Data Integrity tools
+        if tool_name == "check_data_accuracy":
+            return await self._tool_check_data_accuracy()
+
+        if tool_name == "get_provider_metrics":
+            return await self._tool_get_provider_metrics()
+
+        if tool_name == "check_pre_market_readiness":
+            return await self._tool_check_pre_market_readiness()
+
         return {"error": f"Unknown safe tool: {tool_name}"}
     
     async def _dispatch_celery_task(
@@ -2378,6 +2388,42 @@ class AgentBrain:
         except Exception as e:
             logger.error("Failed to calculate support/resistance for %s: %s", symbol, e)
             return {"error": str(e)}
+
+    # ==================== DATA INTEGRITY TOOLS ====================
+
+    async def _tool_check_data_accuracy(self, **kwargs) -> Dict[str, Any]:
+        import json
+        from backend.services.market.market_data_service import market_data_service
+        try:
+            r = market_data_service.redis_client
+            raw = r.get("ohlcv:reconciliation:last")
+            if not raw:
+                return {"status": "no_data", "message": "Reconciliation has not run yet"}
+            return json.loads(raw.decode() if isinstance(raw, (bytes, bytearray)) else raw)
+        except Exception as exc:
+            return {"error": str(exc)}
+
+    async def _tool_get_provider_metrics(self, **kwargs) -> Dict[str, Any]:
+        from backend.services.market.admin_health_service import AdminHealthService
+        try:
+            svc = AdminHealthService()
+            return svc._build_provider_metrics()
+        except Exception as exc:
+            return {"error": str(exc)}
+
+    async def _tool_check_pre_market_readiness(self, **kwargs) -> Dict[str, Any]:
+        import json
+        from backend.services.market.market_data_service import market_data_service
+        try:
+            r = market_data_service.redis_client
+            cached = r.get("health:pre_market_readiness")
+            if cached:
+                return json.loads(cached.decode() if isinstance(cached, (bytes, bytearray)) else cached)
+            from backend.services.market.admin_health_service import AdminHealthService
+            svc = AdminHealthService()
+            return svc.check_pre_market_readiness(self.db)
+        except Exception as exc:
+            return {"error": str(exc)}
 
     # ==================== CONVERSATION PERSISTENCE ====================
     

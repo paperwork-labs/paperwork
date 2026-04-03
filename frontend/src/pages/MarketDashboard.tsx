@@ -37,6 +37,7 @@ import BubbleChart from '../components/charts/BubbleChart';
 import api from '../services/api';
 import { formatDate } from '../utils/format';
 import { useUserPreferences } from '../hooks/useUserPreferences';
+import useAdminHealth from '../hooks/useAdminHealth';
 
 const TopDownView = React.lazy(() => import('../components/market/TopDownView'));
 const BottomUpView = React.lazy(() => import('../components/market/BottomUpView'));
@@ -768,6 +769,7 @@ const MarketDashboard: React.FC = () => {
   const portfolioQuery = usePortfolioSymbols();
   const portfolioSymbols = portfolioQuery.data ?? {};
   const { collapsed, toggle } = useSectionCollapse();
+  const { health: healthData } = useAdminHealth();
 
   const [activeView, setActiveView] = React.useState<DashboardView>(() => {
     try {
@@ -1024,6 +1026,11 @@ const MarketDashboard: React.FC = () => {
                 >
                   {snapshotAge != null ? `${snapshotAge}m ago` : ''}
                 </span>
+                {healthData?.dimensions?.data_accuracy && healthData.dimensions.data_accuracy.mismatch_count > 0 && (
+                  <Badge variant="outline" className="h-5 text-[10px] bg-amber-500/15 text-amber-800 dark:text-amber-200">
+                    {healthData.dimensions.data_accuracy.mismatch_count} data warnings
+                  </Badge>
+                )}
                 <Button
                   type="button"
                   size="icon-xs"

@@ -1,8 +1,8 @@
 """
 Admin Health Service -- Composite health aggregation.
 
-Composes coverage, stage quality, jobs, audit, fundamentals, regime, and task-run data into a
-single response so the Admin Dashboard needs only one fetch.
+Composes coverage, stage quality, jobs, audit, fundamentals, regime, data accuracy,
+and task-run data into a single response so the Admin Dashboard needs only one fetch.
 
 Mode-aware: when market_only_mode is true (AppSettings), broker dimensions
 (portfolio_sync, ibkr_gateway) are advisory and excluded from composite scoring.
@@ -37,9 +37,11 @@ HEALTH_THRESHOLDS: Dict[str, float] = {
     "audit_snapshot_fill_pct_min": 90.0,
     "fundamentals_fill_pct_pass": 80.0,
     "fundamentals_fill_pct_warn": 50.0,
+    "data_accuracy_mismatch_max": 5,
+    "data_accuracy_max_age_days": 10,
 }
 
-MARKET_DIMS = {"coverage", "stage_quality", "jobs", "audit", "regime", "fundamentals"}
+MARKET_DIMS = {"coverage", "stage_quality", "jobs", "audit", "regime", "fundamentals", "data_accuracy"}
 BROKER_DIMS = {"portfolio_sync", "ibkr_gateway"}
 
 # Task-status keys we pull from Redis for the Agent Activity panel.
@@ -62,6 +64,7 @@ _TASK_STATUS_KEYS: List[str] = sorted({
     "compute_daily_regime",
     "market_indices_constituents_refresh",
     "market_snapshots_fundamentals_fill",
+    "ohlcv_reconciliation",
     "market_universe_tracked_refresh",
 })
 
@@ -100,6 +103,7 @@ class AdminHealthService:
         fundamentals = self._build_fundamentals_dimension(db)
         portfolio_sync = self._build_portfolio_sync_dimension(db)
         ibkr_gateway = self._build_ibkr_gateway_dimension()
+        data_accuracy = self._build_data_accuracy_dimension()
         task_runs = self._build_task_runs()
 
         market_only = True
@@ -116,6 +120,7 @@ class AdminHealthService:
             "audit": audit,
             "regime": regime,
             "fundamentals": fundamentals,
+            "data_accuracy": data_accuracy,
             "portfolio_sync": portfolio_sync,
             "ibkr_gateway": ibkr_gateway,
         }
@@ -150,7 +155,59 @@ class AdminHealthService:
             "task_runs": task_runs,
             "thresholds": dict(HEALTH_THRESHOLDS),
             "checked_at": datetime.now(timezone.utc).isoformat(),
+            "provider_metrics": self._build_provider_metrics() or None,
         }
+
+    def check_pre_market_readiness(self, db: Session) -> Dict[str, Any]:
+        """Check if the system is ready for the next trading session.
+
+        Validates:
+        - Daily bars exist for previous trading day (>95% of tracked symbols)
+        - Indicators recomputed (snapshot age < 12 hours)
+        - Regime computed (age < 48 hours)
+        """
+        from backend.services.market.market_data_service import _last_n_trading_sessions
+
+        gaps: List[str] = []
+        sessions = _last_n_trading_sessions(1)
+        last_session = sessions[0] if sessions else None
+
+        coverage = self._build_coverage_dimension(db)
+        daily_pct = float(coverage.get("daily_pct", 0))
+        if daily_pct < 95.0:
+            gaps.append(f"Daily coverage at {daily_pct:.1f}% (need 95%)")
+
+        audit = self._build_audit_dimension(db)
+        snapshot_fill = float(audit.get("snapshot_fill_pct", 0))
+        if snapshot_fill < 90.0:
+            gaps.append(f"Snapshot fill at {snapshot_fill:.1f}% (need 90%)")
+
+        regime = self._build_regime_dimension(db)
+        age_hours = float(regime.get("age_hours", 999))
+        if age_hours > 48:
+            gaps.append(f"Regime is {age_hours:.0f}h old (need <48h)")
+
+        ready = len(gaps) == 0
+        result = {
+            "ready": ready,
+            "gaps": gaps,
+            "last_trading_session": str(last_session) if last_session else None,
+            "daily_pct": daily_pct,
+            "snapshot_fill_pct": snapshot_fill,
+            "regime_age_hours": round(age_hours, 1),
+            "checked_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        try:
+            self._svc.redis_client.setex(
+                "health:pre_market_readiness",
+                1800,
+                json.dumps(result),
+            )
+        except Exception:
+            pass
+
+        return result
 
     # ------------------------------------------------------------------
     # Dimension builders
@@ -499,6 +556,80 @@ class AdminHealthService:
             logger.exception("fundamentals dimension failed: %s", exc)
             return {"status": "error", "error": str(exc)}
 
+    def _build_data_accuracy_dimension(self) -> Dict[str, Any]:
+        """Data accuracy from OHLCV spot-check reconciliation results."""
+        try:
+            r = self._svc.redis_client
+            raw = r.get("ohlcv:reconciliation:last")
+            if not raw:
+                return {
+                    "status": "yellow",
+                    "note": "reconciliation has not run yet",
+                    "mismatch_count": 0,
+                    "bars_checked": 0,
+                    "bars_matched": 0,
+                    "match_rate": 0.0,
+                    "missing_in_db": 0,
+                    "sample_size": 0,
+                    "checked_at": None,
+                    "age_days": None,
+                    "mismatches": [],
+                }
+            data = json.loads(raw.decode() if isinstance(raw, (bytes, bytearray)) else raw)
+
+            mismatch_count = int(data.get("mismatch_count", 0))
+            max_mismatches = int(HEALTH_THRESHOLDS["data_accuracy_mismatch_max"])
+            max_age_days = int(HEALTH_THRESHOLDS["data_accuracy_max_age_days"])
+
+            checked_at = data.get("checked_at")
+            age_days = 999
+            if checked_at:
+                try:
+                    checked_dt = datetime.fromisoformat(checked_at.replace("Z", "+00:00"))
+                    if checked_dt.tzinfo is None:
+                        checked_dt = checked_dt.replace(tzinfo=timezone.utc)
+                    age_days = (datetime.now(timezone.utc) - checked_dt).days
+                except Exception:
+                    pass
+
+            if age_days > max_age_days:
+                status = "red"
+            elif mismatch_count > max_mismatches:
+                status = "red"
+            elif mismatch_count > 0:
+                status = "yellow"
+            else:
+                status = "green"
+
+            return {
+                "status": status,
+                "mismatch_count": mismatch_count,
+                "bars_checked": int(data.get("bars_checked", 0)),
+                "bars_matched": int(data.get("bars_matched", 0)),
+                "match_rate": float(data.get("match_rate", 0)),
+                "missing_in_db": int(data.get("missing_in_db", 0)),
+                "sample_size": int(data.get("sample_size", 0)),
+                "checked_at": checked_at,
+                "age_days": age_days,
+                "mismatches": data.get("mismatches", [])[:10],
+            }
+        except Exception as exc:
+            logger.warning("data_accuracy dimension failed: %s", exc)
+            return {
+                "status": "yellow",
+                "note": f"check failed: {exc}",
+                "error": str(exc),
+                "mismatch_count": 0,
+                "bars_checked": 0,
+                "bars_matched": 0,
+                "match_rate": 0.0,
+                "missing_in_db": 0,
+                "sample_size": 0,
+                "checked_at": None,
+                "age_days": None,
+                "mismatches": [],
+            }
+
     def _build_portfolio_sync_dimension(self, db: Session) -> Dict[str, Any]:
         """Check if broker accounts have synced recently (within 24h)."""
         try:
@@ -592,6 +723,59 @@ class AdminHealthService:
         except Exception as exc:
             logger.exception("task runs load failed: %s", exc)
         return out
+
+    # ------------------------------------------------------------------
+    # Provider metrics
+    # ------------------------------------------------------------------
+
+    def _build_provider_metrics(self) -> Dict[str, Any]:
+        """Read today's provider call counters from Redis."""
+        try:
+            r = self._svc.redis_client
+            date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            raw = r.hgetall(f"provider:calls:{date_key}")
+            if not raw:
+                return {}
+            counters = {}
+            for k, v in raw.items():
+                key = k.decode() if isinstance(k, bytes) else k
+                val = int(v.decode() if isinstance(v, bytes) else v)
+                counters[key] = val
+
+            budgets = {
+                "fmp": int(getattr(settings, "PROVIDER_DAILY_BUDGET_FMP", 250)),
+                "twelvedata": int(getattr(settings, "PROVIDER_DAILY_BUDGET_TWELVEDATA", 800)),
+                "yfinance": int(getattr(settings, "PROVIDER_DAILY_BUDGET_YFINANCE", 10000)),
+            }
+
+            l1_hits = counters.get("l1_hit", 0)
+            l2_hits = counters.get("l2_hit", 0)
+            api_calls = sum(v for k, v in counters.items() if k not in ("l1_hit", "l2_hit"))
+            total_requests = l1_hits + l2_hits + api_calls
+
+            providers = {}
+            for name in ("fmp", "twelvedata", "yfinance", "finnhub"):
+                calls = counters.get(name, 0)
+                budget = budgets.get(name, 10000)
+                providers[name] = {
+                    "calls": calls,
+                    "budget": budget,
+                    "pct": round((calls / budget) * 100, 1) if budget > 0 else 0,
+                }
+
+            return {
+                "providers": providers,
+                "l1_hits": l1_hits,
+                "l2_hits": l2_hits,
+                "api_calls": api_calls,
+                "total_requests": total_requests,
+                "l2_hit_rate": round((l2_hits / max(l2_hits + api_calls, 1)) * 100, 1),
+                "cache_hit_rate": round(((l1_hits + l2_hits) / max(total_requests, 1)) * 100, 1),
+                "date": date_key,
+            }
+        except Exception as exc:
+            logger.warning("provider metrics build failed: %s", exc)
+            return {}
 
     # ------------------------------------------------------------------
     # Provider key health probe

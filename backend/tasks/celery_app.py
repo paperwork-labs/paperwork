@@ -24,6 +24,7 @@ celery_app = Celery(
         "backend.tasks.market.intraday",
         "backend.tasks.market.iv",
         "backend.tasks.market.maintenance",
+        "backend.tasks.market.reconciliation",
         "backend.tasks.market.regime",
         "backend.tasks.market.regime_alerts",
         # Portfolio

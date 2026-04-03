@@ -106,6 +106,16 @@ async def admin_composite_health(
     return svc.get_composite_health(db)
 
 
+@router.get("/pre-market-readiness")
+async def get_pre_market_readiness(
+    _admin: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Check system readiness for next trading session."""
+    svc = AdminHealthService()
+    return svc.check_pre_market_readiness(db)
+
+
 @router.get("/coverage/sanity")
 async def admin_sanity_coverage(
     _admin: User = Depends(get_admin_user),
@@ -482,6 +492,17 @@ async def admin_fill_missing_fundamentals(
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
     return enqueue_task(fill_missing)
+
+
+@router.post("/reconciliation/spot-check")
+async def admin_reconciliation_spot_check(
+    _admin: User = Depends(get_admin_user),
+) -> Dict[str, Any]:
+    """Trigger OHLCV spot-check reconciliation."""
+    from backend.tasks.celery_app import celery_app
+
+    result = celery_app.send_task("backend.tasks.market.reconciliation.spot_check")
+    return {"task_id": result.id, "message": "Reconciliation queued"}
 
 
 # ── Job management ──

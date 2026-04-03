@@ -33,7 +33,7 @@ const DimBadge: React.FC<{ status: string }> = ({ status }) => (
 const AdminDomainCards: React.FC<Props> = ({ health }) => {
   const { timezone } = useUserPreferences();
   if (!health) return null;
-  const { coverage, stage_quality, jobs, audit, regime, fundamentals } = health.dimensions;
+  const { coverage, stage_quality, jobs, audit, regime, fundamentals, data_accuracy } = health.dimensions;
 
   return (
     <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -160,6 +160,46 @@ const AdminDomainCards: React.FC<Props> = ({ health }) => {
         </Card>
       )}
 
+      {data_accuracy && (
+        <Card className="gap-0 py-0 shadow-xs ring-1 ring-border">
+          <div className="flex flex-col gap-1 p-3">
+            <div className="mb-1 flex items-center justify-between">
+              <span className="text-sm font-semibold">Data Accuracy</span>
+              <DimBadge status={data_accuracy.status} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Match rate:{' '}
+              {typeof data_accuracy.match_rate === 'number'
+                ? `${data_accuracy.match_rate.toFixed(1)}%`
+                : '—'}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Checked: {data_accuracy.bars_checked ?? 0} bars across {data_accuracy.sample_size ?? 0} symbols
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Mismatches: {data_accuracy.mismatch_count ?? 0} · Missing: {data_accuracy.missing_in_db ?? 0}
+            </p>
+            {data_accuracy.checked_at && (
+              <p className="text-xs text-muted-foreground">
+                Last check: {data_accuracy.age_days != null ? `${data_accuracy.age_days}d ago` : data_accuracy.checked_at}
+              </p>
+            )}
+            {data_accuracy.note && (
+              <p className="text-xs text-amber-600">{data_accuracy.note}</p>
+            )}
+            {data_accuracy.mismatches && data_accuracy.mismatches.length > 0 && (
+              <div className="mt-1 space-y-0.5">
+                {data_accuracy.mismatches.slice(0, 5).map((m, i) => (
+                  <p key={i} className="text-xs text-destructive">
+                    {m.symbol} {m.date}: {m.type === 'missing_in_db' ? 'missing' : `${m.pct_diff}% diff`}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
       <Card className="gap-0 py-0 shadow-xs ring-1 ring-border">
         <div className="flex flex-col gap-1 p-3">
           <div className="mb-1 flex items-center justify-between">
@@ -183,6 +223,39 @@ const AdminDomainCards: React.FC<Props> = ({ health }) => {
           </p>
         </div>
       </Card>
+
+      {health.provider_metrics?.providers && Object.keys(health.provider_metrics.providers).length > 0 && (
+        <Card className="gap-0 py-0 shadow-xs ring-1 ring-border lg:col-span-2">
+          <div className="flex flex-col gap-1 p-3">
+            <div className="mb-1 flex items-center justify-between">
+              <span className="text-sm font-semibold">Provider Usage (Today)</span>
+              <Badge variant="outline" className="text-xs">
+                L2 Hit Rate: {health.provider_metrics.l2_hit_rate ?? 0}%
+              </Badge>
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              {health.provider_metrics.providers && Object.entries(health.provider_metrics.providers).map(([name, data]) => {
+                const usage = data as { calls: number; budget: number; pct: number };
+                return (
+                  <div key={name} className="text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">{name}</span>:{' '}
+                    {usage.calls}/{usage.budget}{' '}
+                    <span className={cn(
+                      usage.pct > 90 ? 'text-destructive' : usage.pct > 70 ? 'text-amber-600' : 'text-emerald-600'
+                    )}>
+                      ({usage.pct}%)
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Cache: {health.provider_metrics.l1_hits ?? 0} L1 + {health.provider_metrics.l2_hits ?? 0} L2 ={' '}
+              {health.provider_metrics.cache_hit_rate ?? 0}% hit rate
+            </p>
+          </div>
+        </Card>
+      )}
     </div>
   );
 };

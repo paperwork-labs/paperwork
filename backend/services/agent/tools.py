@@ -848,6 +848,31 @@ AGENT_TOOLS: List[Dict[str, Any]] = [
             },
         },
     },
+    # ==================== DATA INTEGRITY TOOLS ====================
+    {
+        "type": "function",
+        "function": {
+            "name": "check_data_accuracy",
+            "description": "Check OHLCV data accuracy from the latest spot-check reconciliation. Returns mismatch count, match rate, and flagged symbols.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_provider_metrics",
+            "description": "Get today's API provider usage metrics: calls per provider, budget utilization, L2 cache hit rate.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "check_pre_market_readiness",
+            "description": "Check if the system is ready for the next trading session. Validates daily bars coverage, indicator freshness, and regime age.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
 ]
 
 
@@ -878,6 +903,10 @@ INLINE_ONLY_AGENT_TOOLS: FrozenSet[str] = frozenset({
     "create_strategy",
     # Technical Analysis tools
     "calculate_support_resistance",
+    # Data Integrity tools
+    "check_data_accuracy",
+    "get_provider_metrics",
+    "check_pre_market_readiness",
 })
 
 TOOL_TO_CELERY_TASK: Dict[str, str] = {

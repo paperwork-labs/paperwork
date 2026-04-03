@@ -445,6 +445,10 @@ const SystemStatus: React.FC = () => {
     ? Object.values(health.dimensions).filter((d) => d.status === 'red' || d.status === 'error').length
     : 0;
 
+  const yellowDimCount = health
+    ? Object.values(health.dimensions).filter((d) => d.status === 'yellow' || d.status === 'warning').length
+    : 0;
+
   // Fetch 5m backfill toggle state on mount
   useEffect(() => {
     const fetch5mToggle = async () => {
@@ -704,7 +708,7 @@ const SystemStatus: React.FC = () => {
         </Card>
       </div>
 
-      {redDimCount > 0 && <AdminRunbook health={health} onRefreshHealth={handleRefreshWithPolling} />}
+      {(redDimCount > 0 || yellowDimCount > 0) && <AdminRunbook health={health} onRefreshHealth={handleRefreshWithPolling} />}
 
       <div>
         <p className="mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">Detailed Diagnostics</p>

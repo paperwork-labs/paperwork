@@ -86,6 +86,54 @@ export interface IbkrGatewayDimension extends BaseDimension {
   note?: string;
 }
 
+export interface DataAccuracyDimension extends BaseDimension {
+  mismatch_count: number;
+  bars_checked: number;
+  bars_matched: number;
+  match_rate: number;
+  missing_in_db: number;
+  sample_size: number;
+  checked_at?: string;
+  age_days?: number;
+  mismatches?: Array<{
+    symbol: string;
+    date: string;
+    type: string;
+    ref_close?: number;
+    db_close?: number;
+    pct_diff?: number;
+    data_source?: string;
+  }>;
+  note?: string;
+}
+
+export interface ProviderUsage {
+  calls: number;
+  budget: number;
+  pct: number;
+}
+
+export interface ProviderMetrics {
+  providers: Record<string, ProviderUsage>;
+  l1_hits: number;
+  l2_hits: number;
+  api_calls: number;
+  total_requests: number;
+  l2_hit_rate: number;
+  cache_hit_rate: number;
+  date: string;
+}
+
+export interface PreMarketReadiness {
+  ready: boolean;
+  gaps: string[];
+  last_trading_session?: string;
+  daily_pct: number;
+  snapshot_fill_pct: number;
+  regime_age_hours: number;
+  checked_at: string;
+}
+
 export interface TaskRunEntry {
   task: string;
   status: string;
@@ -107,10 +155,12 @@ export interface AdminHealthResponse {
     fundamentals: FundamentalsDimension;
     portfolio_sync: PortfolioSyncDimension;
     ibkr_gateway: IbkrGatewayDimension;
+    data_accuracy: DataAccuracyDimension;
   };
   task_runs: Record<string, TaskRunEntry | null>;
   thresholds: Record<string, number>;
   checked_at: string;
+  provider_metrics?: ProviderMetrics;
 }
 
 /** Auto-fix API types */

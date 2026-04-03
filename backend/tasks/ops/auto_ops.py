@@ -10,7 +10,8 @@ Architecture:
 
 Guardrails:
 - Exponential backoff cooldown per dimension (15m → 30m → 60m → 120m cap).
-- Never gives up — keeps retrying with increasing intervals.
+- Retries up to 6 times per dimension. After 6 failures, escalates via Brain
+  webhook alert and pauses remediation until the dimension returns to green.
 - Regime compute only fires during market-adjacent hours (06:00-22:00 ET),
   unless regime is >72h stale.
 """
@@ -112,6 +113,9 @@ REMEDIATION_MAP = {
     "fundamentals": [
         ("backend.tasks.market.fundamentals.fill_missing", {"limit_per_run": 500}),
     ],
+    "ibkr_gateway": [
+        ("backend.tasks.ibkr_watchdog.ping_ibkr_connection", {}),
+    ],
     "portfolio_sync": [
         ("backend.tasks.account_sync.sync_all_ibkr_accounts", {}),
         ("backend.tasks.account_sync.sync_all_schwab_accounts", {}),
@@ -184,6 +188,16 @@ def auto_remediate_health() -> dict:
         health_svc = AdminHealthService()
         health_svc.refresh_provider_probe()
         health = health_svc.get_composite_health(session)
+        # Pre-market readiness check (weekday mornings 7:00-9:29 ET)
+        try:
+            from zoneinfo import ZoneInfo
+            et_now = datetime.now(ZoneInfo("America/New_York"))
+            if et_now.weekday() < 5 and 7 <= et_now.hour < 10 and et_now.hour * 60 + et_now.minute < 570:
+                readiness = health_svc.check_pre_market_readiness(session)
+                if not readiness.get("ready"):
+                    logger.warning("auto-ops: pre-market NOT ready: %s", readiness.get("gaps"))
+        except Exception as exc:
+            logger.warning("auto-ops: pre-market readiness check failed: %s", exc)
     finally:
         session.close()
 
@@ -220,7 +234,7 @@ def _rule_based_remediation(health: dict) -> dict:
         if status in ("green", "ok"):
             _clear_retries(dim_name)
             continue
-        if status in ("warning", "yellow") and dim_name not in ("fundamentals", "coverage"):
+        if status in ("warning", "yellow") and dim_name not in ("fundamentals", "coverage", "stage_quality"):
             _clear_retries(dim_name)
             continue
 
@@ -234,6 +248,18 @@ def _rule_based_remediation(health: dict) -> dict:
             continue
 
         retry_count = _get_retries(dim_name)
+
+        if retry_count >= 6:
+            skipped.append({"dimension": dim_name, "reason": "max_retries_exceeded"})
+            try:
+                _fire_health_alert({
+                    "composite_status": "red",
+                    "composite_reason": f"Escalation: {dim_name} failed {retry_count} consecutive remediation attempts",
+                    "checked_at": datetime.now(timezone.utc).isoformat(),
+                })
+            except Exception:
+                pass
+            continue
 
         if dim_name == "regime" and not _is_market_adjacent_hours():
             age_hours = float(dim_data.get("age_hours", 0) or 0)

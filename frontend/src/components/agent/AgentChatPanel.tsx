@@ -21,6 +21,9 @@ const QUICK_ACTIONS: QuickAction[] = [
   { label: "Trade Ideas", prompt: "Show me the top Breakout Elite scan picks" },
   { label: "Exit Review", prompt: "Any positions I should review for exits?" },
   { label: "Regime Status", prompt: "What's the current regime and recent history?" },
+  { label: "Data Accuracy", prompt: "Check the latest OHLCV data accuracy reconciliation results" },
+  { label: "Provider Status", prompt: "Show me today's provider API usage and cache hit rates" },
+  { label: "Pre-Market Ready", prompt: "Is the system ready for the next trading session?" },
 ]
 
 export interface AgentChatPanelProps {
