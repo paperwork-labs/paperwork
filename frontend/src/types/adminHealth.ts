@@ -52,6 +52,8 @@ export interface AuditDimension extends BaseDimension {
   daily_fill_pct: number;
   snapshot_fill_pct: number;
   missing_sample: string[];
+  history_depth_years?: number | null;
+  earliest_date?: string | null;
 }
 
 export interface RegimeDimension extends BaseDimension {

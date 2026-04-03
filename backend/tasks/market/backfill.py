@@ -234,6 +234,23 @@ def constituents(index: str | None = None) -> dict:
             except Exception as e:
                 results[idx] = {"error": str(e)}
                 continue
+            if not symbols:
+                active_count = (
+                    session.query(IndexConstituent)
+                    .filter(IndexConstituent.index_name == idx, IndexConstituent.is_active.is_(True))
+                    .count()
+                )
+                logger.warning(
+                    "constituents: %s returned 0 symbols — skipping deactivation (%d active rows preserved)",
+                    idx, active_count,
+                )
+                results[idx] = {
+                    "fetched": 0,
+                    "skipped": True,
+                    "reason": "0 symbols returned; not deactivating existing rows",
+                    "existing_active": active_count,
+                }
+                continue
             provider_used = "unknown"
             fallback_used = None
             try:

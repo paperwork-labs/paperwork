@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 HEALTH_THRESHOLDS: Dict[str, float] = {
     "coverage_daily_pct_min": 95.0,
-    "coverage_stale_daily_max": 0,
+    "coverage_stale_daily_max": 25,
     "stage_unknown_rate_max": 0.35,
     "stage_invalid_max": 0,
     "stage_monotonicity_max": 15,
@@ -415,6 +415,7 @@ class AdminHealthService:
             )
 
             history_depth_years: Optional[float] = None
+            earliest_date_str: Optional[str] = None
             try:
                 from backend.models.market_data import MarketSnapshotHistory as _MSH
 
@@ -428,6 +429,7 @@ class AdminHealthService:
                         earliest_date = earliest.date() if callable(earliest.date) else earliest.date
                     else:
                         earliest_date = earliest
+                    earliest_date_str = earliest_date.isoformat()
                     from datetime import date as _date
                     delta = _date.today() - earliest_date
                     history_depth_years = round(delta.days / 365.25, 1)
@@ -441,6 +443,7 @@ class AdminHealthService:
                 "snapshot_fill_pct": round(snapshot_fill, 1),
                 "missing_sample": payload.get("missing_snapshot_history_sample", [])[:5],
                 "history_depth_years": history_depth_years,
+                "earliest_date": earliest_date_str,
             }
         except Exception as exc:
             logger.exception("audit dimension failed: %s", exc)

@@ -116,6 +116,7 @@ def fill_missing(limit_per_run: int = 500) -> dict:
     session = SessionLocal()
     try:
         from backend.models.market_data import MarketSnapshot as _MS
+        from sqlalchemy import case
 
         missing_conditions = []
         for k in FUNDAMENTAL_FIELDS:
@@ -130,7 +131,10 @@ def fill_missing(limit_per_run: int = 500) -> dict:
                 _MS.analysis_type == "technical_snapshot",
                 or_(*missing_conditions),
             )
-            .order_by(_MS.analysis_timestamp.desc())
+            .order_by(
+                case((_MS.sector.is_(None), 0), else_=1),
+                _MS.analysis_timestamp.desc(),
+            )
             .limit(limit_per_run)
             .all()
         )

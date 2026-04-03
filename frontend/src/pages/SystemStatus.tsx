@@ -342,6 +342,16 @@ const SystemStatus: React.FC = () => {
     return () => clearInterval(interval);
   }, [pollingUntil, refresh]);
 
+  const sinceDateInitialized = React.useRef(false);
+  useEffect(() => {
+    if (sinceDateInitialized.current) return;
+    const earliest = health?.dimensions?.audit?.earliest_date;
+    if (earliest && typeof earliest === 'string') {
+      setSinceDate(earliest);
+      sinceDateInitialized.current = true;
+    }
+  }, [health?.dimensions?.audit?.earliest_date]);
+
   const handleAutoFix = useCallback(async () => {
     setAutoFixLoading(true);
     try {

@@ -110,7 +110,7 @@ REMEDIATION_MAP = {
         ("backend.tasks.market.regime.compute_daily", {}),
     ],
     "fundamentals": [
-        ("backend.tasks.market.fundamentals.fill_missing", {}),
+        ("backend.tasks.market.fundamentals.fill_missing", {"limit_per_run": 1500}),
     ],
     "portfolio_sync": [
         ("backend.tasks.account_sync.sync_all_ibkr_accounts", {}),

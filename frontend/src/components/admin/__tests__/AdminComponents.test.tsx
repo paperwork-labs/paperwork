@@ -109,7 +109,7 @@ const MOCK_HEALTH: AdminHealthResponse = {
   task_runs: {},
   thresholds: {
     coverage_daily_pct_min: 95,
-    coverage_stale_daily_max: 0,
+    coverage_stale_daily_max: 25,
     stage_unknown_rate_max: 0.35,
     stage_invalid_max: 0,
     stage_monotonicity_max: 0,

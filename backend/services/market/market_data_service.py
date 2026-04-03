@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 import finnhub
 import fmpsdk
 import pandas as pd
+import re
 import redis
 import redis.asyncio as aioredis
 import yfinance as yf
@@ -58,6 +59,9 @@ from backend.services.market.stage_quality_service import (
 )
 
 logger = logging.getLogger(__name__)
+
+_TICKER_RE = re.compile(r"^[A-Z]{1,5}(?:-[A-Z]{1,2})?$")
+_WIKI_UA = "AxiomFolio/1.0 (https://github.com/sankalp404/axiomfolio)"
 
 
 class APIProvider(Enum):
@@ -1035,6 +1039,8 @@ class MarketDataService:
                 data = []
             if isinstance(data, list):
                 symbols = [str(d.get("symbol", "")).strip().upper().replace('.', '-') for d in data if d.get("symbol")]
+            elif data:
+                logger.warning("Index %s: FMP returned non-list response: %s", idx, str(data)[:200])
         provider_used = "fmp" if symbols else None
         if symbols:
             logger.info("Index %s: fetched %d constituents from FMP", idx, len(symbols))
@@ -1053,21 +1059,24 @@ class MarketDataService:
                         if symbols:
                             provider_used = "finnhub"
                             logger.info("Index %s: fetched %d constituents from Finnhub", idx, len(symbols))
+                    else:
+                        logger.warning("Index %s: Finnhub returned empty/unexpected: %s", idx, str(fh_data)[:200])
                 except Exception as exc:
                     logger.warning("Index %s: Finnhub constituents failed: %s", idx, exc)
 
         # Wikipedia fallback
         if not symbols:
             import pandas as _pd
+            _wiki_kwargs = {"storage_options": {"User-Agent": _WIKI_UA}}
             try:
                 if idx == "SP500":
-                    tables = _pd.read_html("https://en.wikipedia.org/wiki/List_of_S%26P_500_companies")
+                    tables = _pd.read_html("https://en.wikipedia.org/wiki/List_of_S%26P_500_companies", **_wiki_kwargs)
                     if tables:
                         df = tables[0]
                         if "Symbol" in df.columns:
                             symbols = [str(s).upper().replace('.', '-') for s in df["Symbol"].dropna().tolist()]
                 elif idx == "NASDAQ100":
-                    tables = _pd.read_html("https://en.wikipedia.org/wiki/Nasdaq-100")
+                    tables = _pd.read_html("https://en.wikipedia.org/wiki/Nasdaq-100", **_wiki_kwargs)
                     for t in tables:
                         for col in ["Ticker", "Symbol", "Company", "Stock Symbol"]:
                             if col in t.columns:
@@ -1076,7 +1085,7 @@ class MarketDataService:
                         if symbols:
                             break
                 elif idx == "DOW30":
-                    tables = _pd.read_html("https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average")
+                    tables = _pd.read_html("https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average", **_wiki_kwargs)
                     for t in tables:
                         if "Symbol" in t.columns and len(t) <= 40:
                             symbols = [str(s).upper().replace('.', '-') for s in t["Symbol"].dropna().tolist()]
@@ -1099,7 +1108,14 @@ class MarketDataService:
         elif provider_used == "none":
             logger.error("Index %s: ALL constituent providers failed (FMP, Finnhub, Wikipedia)", idx)
         # Normalize and cache (never cache empty lists — avoids 24h lockout)
-        out = sorted(list({s for s in symbols if s and len(s) <= 5}))
+        normalized = []
+        for s in symbols:
+            if not s:
+                continue
+            t = s.upper().replace(".", "-")
+            if _TICKER_RE.match(t):
+                normalized.append(t)
+        out = sorted(set(normalized))
         if not out:
             logger.warning("Index %s: 0 constituents after normalization — skipping cache", idx)
             last_good = await self._get_last_good_constituents(r, idx)
