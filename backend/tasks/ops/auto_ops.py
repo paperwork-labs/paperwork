@@ -96,6 +96,7 @@ REMEDIATION_MAP = {
     ],
     "stage_quality": [
         ("backend.tasks.market.indicators.recompute_universe", {"batch_size": 50}),
+        ("backend.tasks.market.indicators.repair_stage_history", {"days": 120}),
     ],
     "jobs": [
         ("backend.tasks.market.maintenance.recover_jobs", {"stale_minutes": 120}),

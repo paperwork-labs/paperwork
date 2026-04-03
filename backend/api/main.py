@@ -178,18 +178,18 @@ def _auto_warm_if_stale():
                     age_minutes, stale_threshold,
                 )
         else:
-            logger.info("Auto-warm: empty DB (cold start). Queuing 5-year deep backfill.")
+            logger.info("Auto-warm: empty DB (cold start). Queuing %d-year deep backfill.", settings.HISTORY_TARGET_YEARS)
 
         if needs_warm:
             from backend.tasks.celery_app import celery_app
             if latest_ts is None:
                 from datetime import date, timedelta
-                five_years_ago = (date.today() - timedelta(days=5*365)).isoformat()
+                history_start = (date.today() - timedelta(days=settings.HISTORY_TARGET_YEARS * 365)).isoformat()
                 result = celery_app.send_task(
                     "backend.tasks.market.backfill.full_historical",
-                    kwargs={"since_date": five_years_ago},
+                    kwargs={"since_date": history_start},
                 )
-                logger.info("Auto-warm: deep backfill queued (since=%s, task_id=%s)", five_years_ago, result.id)
+                logger.info("Auto-warm: deep backfill queued (since=%s, task_id=%s)", history_start, result.id)
             else:
                 result = celery_app.send_task(
                     "backend.tasks.market.coverage.daily_bootstrap",

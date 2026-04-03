@@ -20,6 +20,7 @@ import { HealthGrid } from '../components/shared/HealthGrid';
 import { marketDataApi } from '../services/api';
 import api from '../services/api';
 import { REGIME_HEX } from '../constants/chart';
+import { defaultHistoryStart } from '../constants/market';
 import { formatDate, formatRelativeTime } from '../utils/format';
 import type { AdminHealthResponse, AutoFixStatusResponse, AutoFixTask } from '../types/adminHealth';
 import { Badge } from '@/components/ui/badge';
@@ -299,7 +300,7 @@ const SystemStatus: React.FC = () => {
   const { snapshot, hero: coverageHero } = useCoverageSnapshot({ fillTradingDaysWindow: 60 });
   const { timezone } = useUserPreferences();
   const [sanityData, setSanityData] = useState<Record<string, unknown> | null>(null);
-  const [sinceDate, setSinceDate] = useState('2021-01-01');
+  const [sinceDate, setSinceDate] = useState(defaultHistoryStart());
   const [sinceDateSaving, setSinceDateSaving] = useState(false);
   const [pollingUntil, setPollingUntil] = useState<number | null>(null);
 

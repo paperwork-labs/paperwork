@@ -319,8 +319,12 @@ def constituents(index: str | None = None) -> dict:
     time_limit=_DEFAULT_HARD,
 )
 @task_run("admin_backfill_daily_since_date")
-def daily_since(since_date: str = "2021-01-01", batch_size: int = 25) -> dict:
+def daily_since(since_date: str = "", batch_size: int = 25) -> dict:
     """Deep backfill of daily bars since a given date for the tracked universe."""
+    if not since_date:
+        from backend.config import settings as _cfg
+        from datetime import date, timedelta
+        since_date = (date.today() - timedelta(days=_cfg.HISTORY_TARGET_YEARS * 365)).isoformat()
     _set_task_status("admin_backfill_daily_since_date", "running", {"since_date": since_date})
     session = SessionLocal()
     try:

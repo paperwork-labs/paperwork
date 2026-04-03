@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import api from '../../services/api';
+import { defaultHistoryStart } from '../../constants/market';
 
 interface ActionState {
   refreshingCoverage: boolean;
@@ -41,7 +42,7 @@ const AdminOperatorActions: React.FC<Props> = ({
   const [snapshotHistoryPeriod, setSnapshotHistoryPeriod] = React.useState<
     '6mo' | '1y' | '2y' | '5y' | 'max'
   >('1y');
-  const [sinceDate, setSinceDate] = React.useState('2021-01-01');
+  const [sinceDate, setSinceDate] = React.useState(defaultHistoryStart());
   const [, setSinceDateTouched] = React.useState(false);
   const [backfillingDailyPeriod, setBackfillingDailyPeriod] = React.useState(false);
   const [backfillingSnapshotHistory, setBackfillingSnapshotHistory] = React.useState(false);

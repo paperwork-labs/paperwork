@@ -465,3 +465,29 @@ def stage_changes() -> dict:
         return {"status": "error", "error": str(exc)}
     finally:
         session.close()
+
+
+@shared_task(
+    soft_time_limit=_DEFAULT_SOFT,
+    time_limit=_DEFAULT_HARD,
+)
+@task_run("admin_repair_stage_history")
+def repair_stage_history(days: int = 120) -> dict:
+    """Walk MarketSnapshotHistory and repair current_stage_days monotonicity.
+
+    The ``days`` parameter is the number of most recent snapshot history rows
+    per symbol to inspect (trading days, not calendar days).  120 rows covers
+    roughly 6 months of trading history.
+    """
+    _set_task_status("admin_repair_stage_history", "running", {"days": days})
+    session = SessionLocal()
+    try:
+        svc = market_data_service
+        result = svc.repair_stage_history_window(session, days=days)
+        _set_task_status("admin_repair_stage_history", "ok", result)
+        return result
+    except Exception as exc:
+        _set_task_status("admin_repair_stage_history", "error", {"error": str(exc)})
+        return {"status": "error", "error": str(exc)}
+    finally:
+        session.close()

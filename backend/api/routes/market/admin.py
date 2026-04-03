@@ -55,6 +55,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
+def _default_history_start() -> str:
+    """Derive the default since_date from HISTORY_TARGET_YEARS."""
+    from datetime import date, timedelta
+    return (date.today() - timedelta(days=settings.HISTORY_TARGET_YEARS * 365)).isoformat()
+
+
 # ── Pydantic models for auto-fix ──
 
 class AutoFixPlanItem(BaseModel):
@@ -189,25 +195,27 @@ async def admin_backfill_snapshot_history_last_n_days(
 
 @router.post("/backfill/daily/since-date")
 async def admin_backfill_daily_since_date(
-    since_date: str = Query("2021-01-01", description="YYYY-MM-DD"),
+    since_date: Optional[str] = Query(None, description="YYYY-MM-DD; omit for HISTORY_TARGET_YEARS"),
     batch_size: int = Query(25, ge=1, le=200),
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
     """Deep daily OHLCV backfill since a given date for the tracked universe."""
-    return enqueue_task(daily_since, since_date, batch_size)
+    effective_since = since_date or _default_history_start()
+    return enqueue_task(daily_since, effective_since, batch_size)
 
 
 @router.post("/backfill/since-date")
 async def admin_backfill_since_date(
-    since_date: str = Query("2021-01-01", description="YYYY-MM-DD"),
+    since_date: Optional[str] = Query(None, description="YYYY-MM-DD; omit for HISTORY_TARGET_YEARS"),
     daily_batch_size: int = Query(25, ge=1, le=200),
     history_batch_size: int = Query(50, ge=1, le=200),
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
     """Backfill daily bars + indicators + snapshot history since a given date."""
+    effective_since = since_date or _default_history_start()
     return enqueue_task(
         full_historical,
-        since_date,
+        effective_since,
         daily_batch_size=daily_batch_size,
         history_batch_size=history_batch_size,
     )

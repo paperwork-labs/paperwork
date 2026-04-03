@@ -155,6 +155,24 @@ AGENT_TOOLS: List[Dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "repair_stage_history",
+            "description": "Walk MarketSnapshotHistory and repair current_stage_days monotonicity violations. The days parameter controls how many recent snapshot rows per symbol to repair (trading days, not calendar days).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "days": {
+                        "type": "integer",
+                        "description": "Number of most recent snapshot history rows per symbol to repair (default 120, roughly 6 months of trading days)",
+                        "default": 120,
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "record_daily",
             "description": "Record today's market snapshot history for all symbols.",
             "parameters": {
@@ -865,6 +883,7 @@ INLINE_ONLY_AGENT_TOOLS: FrozenSet[str] = frozenset({
 TOOL_TO_CELERY_TASK: Dict[str, str] = {
     "backfill_stale_daily": "backend.tasks.market.backfill.stale_daily",
     "recompute_indicators": "backend.tasks.market.indicators.recompute_universe",
+    "repair_stage_history": "backend.tasks.market.indicators.repair_stage_history",
     "record_daily": "backend.tasks.market.history.record_daily",
     "compute_regime": "backend.tasks.market.regime.compute_daily",
     "monitor_coverage": "backend.tasks.market.coverage.health_check",

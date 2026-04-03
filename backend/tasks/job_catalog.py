@@ -287,4 +287,16 @@ CATALOG: List[JobTemplate] = [
         job_run_label="admin_backfill_since_date",
         timeout_s=14400,
     ),
+    # ── Stage History Repair ──────────────────────────────────────────
+    JobTemplate(
+        id="repair_stage_history",
+        display_name="Repair Stage History Monotonicity",
+        group="maintenance",
+        task="backend.tasks.market.indicators.repair_stage_history",
+        description="Walk MarketSnapshotHistory and fix current_stage_days monotonicity violations",
+        default_cron="0 4 * * 0",
+        default_tz="UTC",
+        job_run_label="admin_repair_stage_history",
+        timeout_s=3600,
+    ),
 ]
