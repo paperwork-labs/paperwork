@@ -727,7 +727,7 @@ class MarketDataService:
         return self.fundamentals.get_fundamentals_info(symbol)
 
 
-    def _period_to_start_date(period: str) -> datetime:
+    def _period_to_start_date(self, period: str) -> datetime:
         """Convert period string to a start date for DB queries."""
         now = datetime.utcnow()
         mapping = {
