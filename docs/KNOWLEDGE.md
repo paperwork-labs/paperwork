@@ -33,6 +33,8 @@ Architectural decisions with rationale. Grouped by domain, newest first within e
 | D51 | 2026-03-31 | **UNKNOWN stage treated as null** — `compute_stage_run_lengths` and `repair_stage_history_window` skip UNKNOWN labels. Displayed as "New" in UI. |
 | D52 | 2026-03-31 | **Regime rounding uses half-up** — `math.floor(avg * 2 + 0.5) / 2` not Python's banker's `round()`. |
 | D53 | 2026-03-31 | **RiskGate.check mandatory on submit path** — not just preview. Rejected orders logged with reason. |
+| D54 | 2026-04-04 | **FMP rate limits env-configurable** — RATE_LIMIT_FMP_CPM, PROVIDER_DAILY_BUDGET_FMP, MARKET_BACKFILL_CONCURRENCY_PAID. Tier switching is a Render env var change, not a code deploy. |
+| D55 | 2026-04-04 | **Deep backfill bypasses L2 DB cache** — `daily_since` sets `skip_l2=True` so `get_historical_data` always reaches L3 external APIs. Prevents partial-history short-circuit when DB already has fresh bars. |
 
 ### Execution & Orders
 
@@ -224,3 +226,5 @@ All task references must match `@shared_task(name="...")` exactly. Found 4 criti
 | R27 | PriceData.volume Integer overflow | Changed to BigInteger via Alembic migration |
 | R28 | Zombie job runs stuck for 2h+ | Reduced STALE_JOB_RUN_MINUTES from 120 to 45 |
 | R29 | scan_engine coerced None RS to 0 | Now skips Elite tiers when rs_mansfield is None |
+| R30 | FMP capped at 250 calls/day on paid plans | Raised PROVIDER_DAILY_BUDGET_FMP to 100000 and RATE_LIMIT_FMP_CPM to 700 (env-configurable) |
+| R31 | deep backfill short-circuited at L2 DB cache | Added skip_l2 param to fetch_daily_for_symbols; daily_since always bypasses L2 |

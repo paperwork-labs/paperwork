@@ -114,6 +114,37 @@ Paid mode operations
   - Compute chart metrics for an index: scheduled via Celery (`chart-metrics-sp500`) or call task `compute_chart_metrics_index`
   - Compute chart metrics for the universe: scheduled via Celery 
 
+### FMP Tier Configuration
+
+Three env vars control FMP throughput. Change them in Render (or `infra/env.dev` locally) when switching plans:
+
+| Env Var | Free (250/day) | Starter ($22/mo) | Premium ($59/mo) | Ultimate |
+|---------|---------------|------------------|-------------------|----------|
+| `PROVIDER_DAILY_BUDGET_FMP` | `200` | `100000` | `100000` | `100000` |
+| `RATE_LIMIT_FMP_CPM` | `250` | `280` | `700` | `2800` |
+| `MARKET_BACKFILL_CONCURRENCY_PAID` | `10` | `25` | `50` | `50` |
+
+**Switching to a lower tier (e.g. Premium → Starter):**
+
+1. Change the three env vars in Render Dashboard → API service and Worker service
+2. Deploy both services (env var changes require restart)
+3. All data already ingested stays in the DB -- historical depth is preserved
+4. Daily maintenance (`stale_daily`) only needs ~50-100 calls/day, trivial at any paid tier
+5. No code changes needed
+
+**Switching to Free tier:**
+
+1. Set `PROVIDER_DAILY_BUDGET_FMP=200` (conservative vs 250 limit)
+2. Set `RATE_LIMIT_FMP_CPM=250` (irrelevant at daily cap, but keeps it safe)
+3. yfinance becomes the effective primary for daily maintenance; FMP reserved for ~200 high-priority symbols
+
+**Deep historical backfill:**
+
+- Trigger via: `POST /api/v1/market-data/admin/backfill/since-date?since_date=1990-01-01`
+- `daily_since` bypasses the L2 DB cache (`skip_l2=True`) so every symbol hits the external API
+- Premium plan: ~2500 symbols at 700/min ≈ 20 min fetch + 60 min persist + 60 min indicators/snapshots
+- The `full_historical` task has 3h soft / 4h hard time limits
+
 Notes on retention
 ------------------
 - Default OHLCV backfill keeps ~270 recent daily bars to support SMA(200) and 252d windows quickly.
