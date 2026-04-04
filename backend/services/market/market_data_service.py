@@ -117,6 +117,10 @@ class APIProvider(Enum):
     YFINANCE = "yfinance"
 
 
+_cb_failures: Dict[str, int] = {}
+_cb_open_until: Dict[str, float] = {}
+
+
 class MarketDataService:
     """Market data facade with a clean, policy-driven provider strategy.
 
@@ -525,6 +529,34 @@ class MarketDataService:
     def _needs_fundamentals(snapshot: Dict[str, Any]) -> bool:
         return needs_fundamentals(snapshot)
 
+    # ---------------------- Circuit breaker ----------------------
+    _CB_THRESHOLD = 5
+    _CB_COOLDOWN_S = 600  # 10 minutes
+
+    def _cb_is_open(self, provider: APIProvider) -> bool:
+        key = provider.value
+        deadline = _cb_open_until.get(key, 0.0)
+        if time.monotonic() < deadline:
+            return True
+        if deadline:
+            _cb_failures.pop(key, None)
+            _cb_open_until.pop(key, None)
+        return False
+
+    def _cb_record_failure(self, provider: APIProvider) -> None:
+        key = provider.value
+        _cb_failures[key] = _cb_failures.get(key, 0) + 1
+        if _cb_failures[key] >= self._CB_THRESHOLD:
+            _cb_open_until[key] = time.monotonic() + self._CB_COOLDOWN_S
+            logger.warning(
+                "Circuit breaker OPEN for %s after %d consecutive failures (cooldown %ds)",
+                key, _cb_failures[key], self._CB_COOLDOWN_S,
+            )
+
+    def _cb_record_success(self, provider: APIProvider) -> None:
+        key = provider.value
+        _cb_failures.pop(key, None)
+        _cb_open_until.pop(key, None)
 
     # ---------------------- Provider selection ----------------------
     def _provider_priority(self, data_type: str) -> List[APIProvider]:
@@ -561,6 +593,8 @@ class MarketDataService:
         return [APIProvider.YFINANCE]
 
     def _is_provider_available(self, provider: APIProvider) -> bool:
+        if self._cb_is_open(provider):
+            return False
         if provider == APIProvider.FMP:
             if not settings.FMP_API_KEY:
                 return False
@@ -570,7 +604,10 @@ class MarketDataService:
                     data = json.loads(probe)
                     fmp_probe = data.get("fmp")
                     if isinstance(fmp_probe, str):
-                        if fmp_probe.strip().lower().startswith("error"):
+                        lower = fmp_probe.strip().lower()
+                        if lower.startswith("error"):
+                            return False
+                        if lower.startswith("http_") and lower != "http_200":
                             return False
                     elif isinstance(fmp_probe, dict):
                         if str(fmp_probe.get("status", "")).strip().lower() == "error":
@@ -643,8 +680,10 @@ class MarketDataService:
                 last_exc = exc
                 status = self._extract_http_status(exc)
                 # Backoff for rate limits and transient upstream errors; otherwise keep it short.
-                is_rate_limited = status == 429 or "Too Many" in str(exc)
+                is_rate_limited = status == 429 or "too many" in str(exc).lower()
                 is_transient = status in (429, 500, 502, 503, 504) or is_rate_limited
+                if is_rate_limited and i == 0:
+                    n = min(n, 2)
                 if i >= n - 1:
                     break
                 base = 0.8 if is_transient else 0.2
@@ -678,8 +717,10 @@ class MarketDataService:
             except Exception as exc:  # noqa: BLE001
                 last_exc = exc
                 status = self._extract_http_status(exc)
-                is_rate_limited = status == 429 or "Too Many" in str(exc)
+                is_rate_limited = status == 429 or "too many" in str(exc).lower()
                 is_transient = status in (429, 500, 502, 503, 504) or is_rate_limited
+                if is_rate_limited and i == 0:
+                    n = min(n, 2)
                 if i >= n - 1:
                     break
                 base = 0.8 if is_transient else 0.2
@@ -716,9 +757,11 @@ class MarketDataService:
                     )
                     price = float(hist["Close"].iloc[-1]) if not hist.empty else None
                 if price is not None:
+                    self._cb_record_success(provider)
                     await r.setex(cache_key, 60, str(price))
                     return float(price)
             except Exception:
+                self._cb_record_failure(provider)
                 continue
         return None
 
@@ -882,6 +925,7 @@ class MarketDataService:
                 else:
                     df = None
                 if df is not None and not df.empty:
+                    self._cb_record_success(provider)
                     if max_bars and interval == "1d":
                         df = df.head(max_bars)
                     ttl = 300 if interval in ("1m", "5m") else 3600
@@ -903,6 +947,7 @@ class MarketDataService:
                         return df, provider_used
                     return df
             except Exception as exc:
+                self._cb_record_failure(provider)
                 logger.warning("Provider %s failed for %s (%s/%s): %s", provider.value, symbol, period, interval, exc)
                 continue
         return (None, provider_used) if return_provider else None
