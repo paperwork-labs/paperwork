@@ -367,6 +367,7 @@ def daily_since(since_date: str = "", batch_size: int = 25) -> dict:
                     period="max",
                     max_bars=None,
                     concurrency=concurrency,
+                    skip_l2=True,
                 )
             )
         finally:

@@ -581,14 +581,20 @@ async def fetch_daily_for_symbols(
     period: str,
     max_bars: Optional[int],
     concurrency: int,
+    skip_l2: bool = False,
 ) -> List[dict]:
-    """Concurrent provider fetch of daily OHLCV for many symbols (used by backfill tasks)."""
+    """Concurrent provider fetch of daily OHLCV for many symbols (used by backfill tasks).
+
+    When *skip_l2* is True the DB cache layer is bypassed so every symbol
+    hits the external API (L3).  Use this for deep historical backfills where
+    the DB may already have partial data but you need full-depth history.
+    """
     sem = asyncio.Semaphore(max(1, int(concurrency)))
     out: List[dict] = []
 
     async def _one(sym: str) -> dict:
         async with sem:
-            db = SessionLocal()
+            db = None if skip_l2 else SessionLocal()
             try:
                 df, provider = await market_data_service.providers.get_historical_data(
                     symbol=sym.upper(),
@@ -600,7 +606,8 @@ async def fetch_daily_for_symbols(
                 )
                 return {"symbol": sym.upper(), "df": df, "provider": provider}
             finally:
-                db.close()
+                if db is not None:
+                    db.close()
 
     tasks_coro = [_one(s) for s in sorted({str(s).upper() for s in (symbols or []) if s})]
     for coro in asyncio.as_completed(tasks_coro):
@@ -617,6 +624,7 @@ async def _fetch_daily_for_symbols(
     period: str,
     max_bars: Optional[int],
     concurrency: int,
+    skip_l2: bool = False,
 ) -> List[dict]:
     """Underscore alias for :func:`fetch_daily_for_symbols`."""
     return await fetch_daily_for_symbols(
@@ -624,5 +632,6 @@ async def _fetch_daily_for_symbols(
         period=period,
         max_bars=max_bars,
         concurrency=concurrency,
+        skip_l2=skip_l2,
     )
 
