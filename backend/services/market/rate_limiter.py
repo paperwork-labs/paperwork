@@ -61,24 +61,26 @@ class TokenBucketLimiter:
 class ProviderRateLimiter:
     """Registry of per-provider rate limiters.
 
-    Default limits (calls/minute) tuned for free/starter tiers:
-        FMP Starter:    250 (conservative vs 300 limit)
-        Finnhub Free:    50
-        Twelve Data:      7
-        Alpha Vantage:    4
-        yfinance:        30 (unofficial, be polite)
+    Defaults read from settings (env-configurable).  Falls back to
+    conservative values if settings are unavailable at import time.
     """
 
-    DEFAULT_LIMITS: Dict[str, int] = {
-        "fmp": 250,
-        "finnhub": 50,
-        "twelvedata": 7,
-        "alphavantage": 4,
-        "yfinance": 30,
-    }
+    @staticmethod
+    def _default_limits() -> Dict[str, int]:
+        try:
+            from backend.config import settings as _s
+            return {
+                "fmp": int(getattr(_s, "RATE_LIMIT_FMP_CPM", 700)),
+                "finnhub": 50,
+                "twelvedata": int(getattr(_s, "RATE_LIMIT_TWELVEDATA_CPM", 7)),
+                "alphavantage": 4,
+                "yfinance": int(getattr(_s, "RATE_LIMIT_YFINANCE_CPM", 30)),
+            }
+        except Exception:
+            return {"fmp": 700, "finnhub": 50, "twelvedata": 7, "alphavantage": 4, "yfinance": 30}
 
     def __init__(self, overrides: Optional[Dict[str, int]] = None) -> None:
-        limits = {**self.DEFAULT_LIMITS, **(overrides or {})}
+        limits = {**self._default_limits(), **(overrides or {})}
         self._limiters: Dict[str, TokenBucketLimiter] = {
             name: TokenBucketLimiter(cpm)
             for name, cpm in limits.items()

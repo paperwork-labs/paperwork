@@ -175,7 +175,7 @@ class Settings(BaseSettings):
     # Daily backfill throughput controls (safe defaults; override via env in infra/env.dev)
     # - paid: higher concurrency (FMP is the primary provider)
     # - free: lower concurrency (avoid hammering free-tier sources)
-    MARKET_BACKFILL_CONCURRENCY_PAID: int = 25
+    MARKET_BACKFILL_CONCURRENCY_PAID: int = 50
     MARKET_BACKFILL_CONCURRENCY_FREE: int = 5
     MARKET_BACKFILL_CONCURRENCY_MAX: int = 100
     # Provider retry/backoff (applies to transient provider failures like 429/5xx)
@@ -193,10 +193,18 @@ class Settings(BaseSettings):
     # How many *trading days* to render in the UI histogram (frontend reads this from /market-data/coverage meta).
     COVERAGE_FILL_TRADING_DAYS_WINDOW: int = 50
 
-    # Provider daily API call budgets (conservative limits for enforced providers)
-    PROVIDER_DAILY_BUDGET_FMP: int = 250
+    # Provider daily API call budgets.
+    # Free tier: 250/day.  Paid plans (Starter/Premium/Ultimate): no daily cap,
+    # so set high to effectively disable.  Override via env for tier changes.
+    PROVIDER_DAILY_BUDGET_FMP: int = 100000
     PROVIDER_DAILY_BUDGET_TWELVEDATA: int = 800
     PROVIDER_DAILY_BUDGET_YFINANCE: int = 10000  # yfinance is free, high limit
+
+    # Per-minute rate limits (calls/min) for provider token bucket.
+    # Free: N/A (daily-gated).  Starter: 300.  Premium: 750.  Ultimate: 3000.
+    RATE_LIMIT_FMP_CPM: int = 700
+    RATE_LIMIT_TWELVEDATA_CPM: int = 7
+    RATE_LIMIT_YFINANCE_CPM: int = 30
 
     # Retention defaults for intraday data
     RETENTION_MAX_DAYS_5M: int = 90
