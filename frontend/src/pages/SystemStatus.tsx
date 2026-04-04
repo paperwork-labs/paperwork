@@ -681,20 +681,20 @@ const SystemStatus: React.FC = () => {
         </Card>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardContent className="pt-6">
+      <div className="grid gap-4 lg:grid-cols-2 items-stretch">
+        <Card className="flex flex-col">
+          <CardContent className="pt-6 flex-1 flex flex-col min-h-0">
             <p className="mb-3 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               Agent Activity
             </p>
-            <div className="max-h-[280px] overflow-y-auto">
+            <div className="flex-1 min-h-0 overflow-y-auto">
               <AgentActivity taskRuns={health?.task_runs} />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="pt-6">
+        <Card className="flex flex-col">
+          <CardContent className="pt-6 flex-1">
             <p className="mb-3 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               Health Dimensions
             </p>
