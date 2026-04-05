@@ -340,14 +340,32 @@ def constituents(index: str | None = None) -> dict:
     soft_time_limit=_DEFAULT_SOFT,
     time_limit=_DEFAULT_HARD,
 )
-@task_run("admin_backfill_daily_since_date")
-def daily_since(since_date: str = "", batch_size: int = 25) -> dict:
-    """Deep backfill of daily bars since a given date for the tracked universe."""
+@task_run(
+    "admin_backfill_daily_since_date",
+    lock_key=lambda since_date="", batch_size=25, index=None: f"daily_since:{(index or 'all').upper()}",
+)
+def daily_since(since_date: str = "", batch_size: int = 25, index: Optional[str] = None) -> dict:
+    """Deep backfill of daily bars since a given date.
+
+    Args:
+        since_date: YYYY-MM-DD start date (defaults to HISTORY_TARGET_YEARS ago).
+        batch_size: Unused legacy param kept for API compat.
+        index: Optional index filter — DOW30, NASDAQ100, SP500, RUSSELL2000.
+               When provided, only backfills that index's active constituents.
+    """
     if not since_date:
         from backend.config import settings as _cfg
         from datetime import date, timedelta
         since_date = (date.today() - timedelta(days=_cfg.HISTORY_TARGET_YEARS * 365)).isoformat()
-    _set_task_status("admin_backfill_daily_since_date", "running", {"since_date": since_date})
+
+    _VALID_INDICES = {"DOW30", "NASDAQ100", "SP500", "RUSSELL2000"}
+    idx_upper = index.upper() if index else None
+    if idx_upper and idx_upper not in _VALID_INDICES:
+        raise ValueError(f"Unknown index: {index!r}. Valid: {', '.join(sorted(_VALID_INDICES))}")
+
+    _set_task_status("admin_backfill_daily_since_date", "running", {
+        "since_date": since_date, "index": idx_upper,
+    })
     session = SessionLocal()
     try:
         import pandas as pd
@@ -357,9 +375,21 @@ def daily_since(since_date: str = "", batch_size: int = 25) -> dict:
             raise ValueError(f"Invalid since_date: {since_date!r}")
         since_dt = since_dt.tz_convert(None).normalize()
 
+        if idx_upper:
+            symbols = sorted({
+                ic.symbol for ic in session.query(IndexConstituent)
+                .filter(
+                    IndexConstituent.index_name == idx_upper,
+                    IndexConstituent.is_active.is_(True),
+                ).all()
+            })
+            if not symbols:
+                raise ValueError(f"No active constituents for index {idx_upper}")
+        else:
+            symbols = _get_tracked_symbols_safe(session)
+
         loop = setup_event_loop()
         try:
-            symbols = _get_tracked_symbols_safe(session)
             concurrency = _daily_backfill_concurrency()
             fetched = loop.run_until_complete(
                 _fetch_daily_for_symbols(
@@ -382,6 +412,7 @@ def daily_since(since_date: str = "", batch_size: int = 25) -> dict:
         res = {
             "status": "ok" if persist["errors"] == 0 else "error",
             "since_date": since_date,
+            "index": idx_upper,
             "symbols": len(symbols),
             "processed_symbols": persist["processed_ok"],
             "bars_attempted_total": persist["bars_attempted_total"],

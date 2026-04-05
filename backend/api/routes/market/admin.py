@@ -207,11 +207,15 @@ async def admin_backfill_snapshot_history_last_n_days(
 async def admin_backfill_daily_since_date(
     since_date: Optional[str] = Query(None, description="YYYY-MM-DD; omit for HISTORY_TARGET_YEARS"),
     batch_size: int = Query(25, ge=1, le=200),
+    index: Optional[str] = Query(None, description="DOW30, NASDAQ100, SP500, or RUSSELL2000"),
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
-    """Deep daily OHLCV backfill since a given date for the tracked universe."""
+    """Deep daily OHLCV backfill since a given date.
+
+    When *index* is provided, only that index's active constituents are backfilled.
+    """
     effective_since = since_date or _default_history_start()
-    return enqueue_task(daily_since, effective_since, batch_size)
+    return enqueue_task(daily_since, effective_since, batch_size, index=index)
 
 
 @router.post("/backfill/since-date")

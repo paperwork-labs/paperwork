@@ -1043,12 +1043,14 @@ class MarketDataService:
     ) -> Optional[pd.DataFrame]:
         if interval != "1d":
             return None
-        from_date = None
-        if period not in ("max", "10y", "5y"):
-            from datetime import date as _date
-            days_map = {"5d": 10, "1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 730, "3y": 1095}
-            delta = days_map.get(period, 365)
-            from_date = (_date.today() - timedelta(days=delta)).isoformat()
+        from datetime import date as _date
+        days_map = {
+            "5d": 10, "1mo": 30, "3mo": 90, "6mo": 180,
+            "1y": 365, "2y": 730, "3y": 1095,
+            "5y": 1850, "10y": 3700, "max": 36500,
+        }
+        delta = days_map.get(period, 365)
+        from_date = (_date.today() - timedelta(days=delta)).isoformat()
         raw = fmpsdk.historical_price_full(
             apikey=settings.FMP_API_KEY, symbol=symbol,
             from_date=from_date,
