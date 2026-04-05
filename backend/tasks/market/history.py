@@ -153,8 +153,8 @@ def snapshot_for_date(as_of_date: str, batch_size: int = 50) -> dict:
 
 
 @shared_task(
-    soft_time_limit=_DEFAULT_SOFT,
-    time_limit=_DEFAULT_HARD,
+    soft_time_limit=14400,
+    time_limit=16200,
 )
 @task_run("admin_snapshots_history_backfill")
 def snapshot_last_n_days(

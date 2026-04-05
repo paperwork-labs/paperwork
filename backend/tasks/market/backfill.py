@@ -565,8 +565,8 @@ def stale_daily() -> dict:
 
 
 @shared_task(
-    soft_time_limit=10800,
-    time_limit=14400,
+    soft_time_limit=18000,
+    time_limit=21600,
 )
 @task_run(
     "admin_recompute_since_date",
