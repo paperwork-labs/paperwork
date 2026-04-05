@@ -187,7 +187,7 @@ def snapshot_last_n_days(
             session.query(PriceData.date)
             .filter(PriceData.symbol == calendar_symbol, PriceData.interval == "1d")
             .order_by(PriceData.date.desc())
-            .limit(6000 if since_dt is not None else max(1, int(days)))
+            .limit(12000 if since_dt is not None else max(1, int(days)))
             .all()
         )
         as_of_dates = [r[0] for r in cal_dates if r and r[0] is not None and (since_dt is None or r[0] >= since_dt)]
@@ -215,7 +215,7 @@ def snapshot_last_n_days(
                     session.query(PriceData.date)
                     .filter(PriceData.symbol == calendar_symbol, PriceData.interval == "1d")
                     .order_by(PriceData.date.desc())
-                    .limit(6000 if since_dt is not None else max(1, int(days)))
+                    .limit(12000 if since_dt is not None else max(1, int(days)))
                     .all()
                 )
                 as_of_dates = [r[0] for r in cal_dates if r and r[0] is not None and (since_dt is None or r[0] >= since_dt)]
@@ -234,7 +234,7 @@ def snapshot_last_n_days(
                     session.query(PriceData.date)
                     .filter(PriceData.symbol == calendar_symbol, PriceData.interval == "1d")
                     .order_by(PriceData.date.desc())
-                    .limit(6000 if since_dt is not None else max(1, int(days)))
+                    .limit(12000 if since_dt is not None else max(1, int(days)))
                     .all()
                 )
                 as_of_dates = [r[0] for r in cal_dates if r and r[0] is not None and (since_dt is None or r[0] >= since_dt)]
