@@ -199,6 +199,7 @@ class Settings(BaseSettings):
     PROVIDER_DAILY_BUDGET_FMP: int = 3000
     PROVIDER_DAILY_BUDGET_TWELVEDATA: int = 800
     PROVIDER_DAILY_BUDGET_YFINANCE: int = 10000  # yfinance is free, high limit
+    ALLOW_DEEP_BACKFILL: bool = False
 
     # Per-minute rate limits (calls/min) for provider token bucket.
     # Free: N/A (daily-gated).  Starter: 300.  Premium: 750.  Ultimate: 3000.

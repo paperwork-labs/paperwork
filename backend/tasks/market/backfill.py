@@ -353,6 +353,11 @@ def daily_since(since_date: str = "", batch_size: int = 25, index: Optional[str]
         index: Optional index filter — DOW30, NASDAQ100, SP500, RUSSELL2000.
                When provided, only backfills that index's active constituents.
     """
+    from backend.config import settings as _cfg
+    if not _cfg.ALLOW_DEEP_BACKFILL:
+        logger.warning("daily_since blocked: ALLOW_DEEP_BACKFILL=False")
+        return {"status": "blocked", "reason": "ALLOW_DEEP_BACKFILL is disabled"}
+
     if not since_date:
         from backend.config import settings as _cfg
         from datetime import date, timedelta
@@ -447,6 +452,10 @@ def full_historical(
     This is a one-time operation; the nightly pipeline handles daily deltas.
     """
     from backend.config import settings as _settings
+
+    if not _settings.ALLOW_DEEP_BACKFILL:
+        logger.warning("full_historical blocked: ALLOW_DEEP_BACKFILL=False")
+        return {"status": "blocked", "reason": "ALLOW_DEEP_BACKFILL is disabled"}
 
     if not since_date:
         from datetime import date, timedelta
