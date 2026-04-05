@@ -40,6 +40,7 @@ from backend.tasks.market.backfill import (
     daily_bars,
     daily_since,
     full_historical,
+    safe_recompute,
     stale_daily,
 )
 from backend.tasks.market.coverage import daily_bootstrap, health_check
@@ -341,6 +342,26 @@ async def post_backfill_5m(
 
 # ── Indicators and snapshots ──
 
+@router.post("/recompute/since-date")
+async def admin_recompute_since_date(
+    since_date: Optional[str] = Query(None, description="YYYY-MM-DD; omit for HISTORY_TARGET_YEARS"),
+    batch_size: int = Query(50, ge=10, le=200),
+    history_batch_size: int = Query(25, ge=1, le=200),
+    _admin: User = Depends(get_admin_user),
+) -> Dict[str, Any]:
+    """Recompute indicators + rebuild snapshot history from existing DB data.
+
+    Safe operation — never fetches from external market data providers.
+    """
+    effective_since = since_date or _default_history_start()
+    return enqueue_task(
+        safe_recompute,
+        since_date=effective_since,
+        batch_size=batch_size,
+        history_batch_size=history_batch_size,
+    )
+
+
 @router.post("/indicators/recompute-universe")
 async def post_recompute_universe(
     batch_size: int = Query(50, ge=10, le=200),
@@ -585,6 +606,16 @@ async def admin_run_task(
 
 
 # ── Intelligence admin ──
+
+@router.post("/backtest/system-validation")
+async def admin_system_backtest_validation(
+    _admin: User = Depends(get_admin_user),
+) -> Dict[str, Any]:
+    """Run Stage Analysis backtest across all regime periods (1999-2026)."""
+    from backend.tasks.strategy.system_validation import validate_stage_analysis
+
+    return enqueue_task(validate_stage_analysis)
+
 
 @router.post("/intelligence/generate")
 def trigger_brief_generation(

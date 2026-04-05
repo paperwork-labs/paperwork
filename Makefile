@@ -4,7 +4,8 @@
 	migrate-create migrate-up migrate-down migrate-stamp-head \
 	frontend-install frontend-lint frontend-typecheck frontend-test frontend-check \
 	ib-up ib-down ib-logs ib-verify \
-	tunnel-up tunnel-down tunnel-logs tunnel-on tunnel-off
+	tunnel-up tunnel-down tunnel-logs tunnel-on tunnel-off \
+	backup-db
 
 DOCKER ?= docker
 PROJECT ?= axiomfolio
@@ -165,6 +166,9 @@ tunnel-down:
 
 tunnel-logs:
 	$(COMPOSE_DEV_TUNNEL) logs --tail=200 -f cloudflared
+
+backup-db:
+	./scripts/backup_db.sh
 
 tunnel-on: tunnel-up
 	@echo "✓ api-dev.axiomfolio.com → local backend:8000. Verify: make tunnel-logs"

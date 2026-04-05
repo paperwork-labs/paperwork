@@ -13,7 +13,6 @@ const Invite: React.FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = React.useState<string | null>(null);
   const [role, setRole] = React.useState<string | null>(null);
-  const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [fullName, setFullName] = React.useState('');
   const [loading, setLoading] = React.useState(false);
@@ -34,11 +33,12 @@ const Invite: React.FC = () => {
   }, [token]);
 
   const passwordTooShort = password.length > 0 && password.length < 8;
+  const nameMissing = fullName.trim().length === 0;
 
   const accept = async () => {
     if (!token) return;
-    if (!username.trim() || !password) {
-      toast.error('Username and password are required');
+    if (nameMissing) {
+      toast.error('Full name is required');
       return;
     }
     if (password.length < 8) {
@@ -49,9 +49,8 @@ const Invite: React.FC = () => {
     try {
       await authApi.acceptInvite({
         token,
-        username: username.trim(),
         password,
-        full_name: fullName.trim() || undefined,
+        full_name: fullName.trim(),
       });
       toast.success('Invite accepted. You can now log in.');
       navigate('/login');
@@ -74,23 +73,13 @@ const Invite: React.FC = () => {
         </CardHeader>
         <CardContent className="flex flex-col gap-3 px-6 pb-6">
           <div className="grid gap-2">
-            <Label htmlFor="invite-full-name">Full name (optional)</Label>
+            <Label htmlFor="invite-full-name">Full name</Label>
             <Input
               id="invite-full-name"
-              placeholder="Full name (optional)"
+              placeholder="Full name"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               autoComplete="name"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="invite-username">Username</Label>
-            <Input
-              id="invite-username"
-              placeholder="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
             />
           </div>
           <div className="grid gap-2">
@@ -113,10 +102,10 @@ const Invite: React.FC = () => {
           <Button
             type="button"
             onClick={accept}
-            disabled={loading || !username.trim() || password.length < 8}
+            disabled={loading || nameMissing || password.length < 8}
             aria-describedby="invite-password-hint"
           >
-            {loading ? 'Creating account…' : 'Create account'}
+            {loading ? 'Creating account...' : 'Create account'}
           </Button>
         </CardContent>
       </Card>

@@ -430,6 +430,24 @@ const SystemStatus: React.FC = () => {
   const handleSinceDateUpdate = async () => {
     setSinceDateSaving(true);
     try {
+      await api.post(`/market-data/admin/recompute/since-date?since_date=${encodeURIComponent(sinceDate)}`);
+      toast.success(`Recompute queued from ${sinceDate} (no API re-download).`);
+      setTimeout(() => void refresh(), 2000);
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } }; message?: string };
+      toast.error(e?.response?.data?.detail || e?.message || 'Failed to queue recompute');
+    } finally {
+      setSinceDateSaving(false);
+    }
+  };
+
+  const handleDeepBackfill = async () => {
+    const confirmed = window.confirm(
+      `Deep Backfill will download OHLCV data from the API starting ${sinceDate}.\n\nThis uses FMP bandwidth. Only do this if you need new symbols or deeper history.\n\nContinue?`,
+    );
+    if (!confirmed) return;
+    setSinceDateSaving(true);
+    try {
       await api.post(`/market-data/admin/backfill/since-date?since_date=${encodeURIComponent(sinceDate)}`);
       toast.success(`Deep backfill queued from ${sinceDate}. This may take a while.`);
       setTimeout(() => void refresh(), 2000);
@@ -639,7 +657,7 @@ const SystemStatus: React.FC = () => {
                   <div className="h-4 w-px bg-border" />
                 </>
               )}
-              <span className="text-xs text-muted-foreground">Data valid from</span>
+              <span className="text-xs text-muted-foreground">Snapshot history from</span>
               <Input
                 type="date"
                 value={sinceDate}
@@ -653,7 +671,17 @@ const SystemStatus: React.FC = () => {
                 onClick={() => void handleSinceDateUpdate()}
                 disabled={sinceDateSaving}
               >
-                {sinceDateSaving ? 'Queuing...' : 'Update'}
+                {sinceDateSaving ? 'Queuing...' : 'Recompute'}
+              </Button>
+              <Button
+                type="button"
+                size="xs"
+                variant="ghost"
+                className="text-muted-foreground"
+                onClick={() => void handleDeepBackfill()}
+                disabled={sinceDateSaving}
+              >
+                Deep Backfill (API)
               </Button>
             </div>
           </div>

@@ -110,9 +110,8 @@ class ChangePasswordRequest(BaseModel):
 
 class InviteAcceptRequest(BaseModel):
     token: str
-    username: str
     password: str
-    full_name: Optional[str] = None
+    full_name: str = Field(..., min_length=1, strip_whitespace=True)
 
 
 # ---------------------------------------------------------------------------
@@ -771,16 +770,18 @@ async def accept_invite(
         raise HTTPException(status_code=410, detail="Invite expired")
 
     normalized_invite_email = invite.email.strip().lower()
-    existing_user = (
-        db.query(User)
-        .filter((User.username == payload.username) | (User.email == normalized_invite_email))
-        .first()
-    )
-    if existing_user:
+
+    existing_email = db.query(User).filter(User.email == normalized_invite_email).first()
+    if existing_email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username or email already registered",
+            detail="Email already registered",
         )
+
+    username = normalized_invite_email.split("@")[0]
+    existing_username = db.query(User).filter(User.username == username).first()
+    if existing_username:
+        username = f"{username}_{uuid.uuid4().hex[:6]}"
 
     if not payload.password or len(payload.password) < 8:
         raise HTTPException(
@@ -789,10 +790,10 @@ async def accept_invite(
         )
 
     db_user = User(
-        username=payload.username,
+        username=username,
         email=normalized_invite_email,
         password_hash=get_password_hash(payload.password),
-        full_name=payload.full_name,
+        full_name=payload.full_name.strip(),
         role=invite.role if isinstance(invite.role, UserRole) else UserRole.VIEWER,
         is_active=True,
         is_verified=True,

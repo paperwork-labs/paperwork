@@ -41,6 +41,7 @@ const Invite = React.lazy(() => import('./pages/Invite'));
 const SettingsUsers = React.lazy(() => import('./pages/SettingsUsers'));
 const AdminAgent = React.lazy(() => import('./pages/AdminAgent'));
 const Terminal = React.lazy(() => import('./pages/Terminal'));
+const Scanner = React.lazy(() => import('./pages/Scanner'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -82,6 +83,7 @@ function App() {
                         <Route path="market/tracked" element={<MarketTracked />} />
                         <Route path="market/education" element={<MarketEducation />} />
                         <Route path="market/intelligence" element={<MarketIntelligence />} />
+                        <Route path="market/scanner" element={<Scanner />} />
                         <Route path="terminal" element={<Terminal />} />
 
                         {/* Legacy strategy URLs → /market/strategies* */}

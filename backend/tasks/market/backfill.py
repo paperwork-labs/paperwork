@@ -562,3 +562,56 @@ def stale_daily() -> dict:
         return res
     finally:
         session.close()
+
+
+@shared_task(
+    soft_time_limit=10800,
+    time_limit=14400,
+)
+@task_run(
+    "admin_recompute_since_date",
+    lock_key=lambda since_date=None, **_: "admin_recompute_since_date",
+)
+def safe_recompute(
+    since_date: Optional[str] = None,
+    batch_size: int = 50,
+    history_batch_size: int = 25,
+) -> dict:
+    """Recompute indicators + rebuild snapshot history from existing DB data.
+
+    This avoids the bulk daily-bar download step of full_historical.
+    Note: recompute_universe may fetch a small number of benchmark (SPY) bars
+    if they are stale — this is a negligible API cost compared to a full backfill.
+    """
+    from backend.tasks.market.history import snapshot_last_n_days
+    from backend.tasks.market.indicators import recompute_universe
+
+    _set_task_status("admin_recompute_since_date", "running")
+
+    rollup: dict = {"steps": [], "since_date": since_date}
+
+    def _append(name: str, result: dict) -> None:
+        rollup["steps"].append({"name": name, "result": result})
+
+    res1 = recompute_universe(batch_size=int(batch_size))
+    _append("recompute_indicators", res1)
+
+    try:
+        res2 = snapshot_last_n_days(
+            days=3000,
+            since_date=since_date,
+            batch_size=int(history_batch_size),
+        )
+    except Exception as exc:
+        res2 = {"status": "error", "error": str(exc)}
+    _append("snapshot_history_rebuild", res2)
+
+    from backend.tasks.market.coverage import health_check
+
+    res3 = health_check()
+    _append("coverage_refresh", res3)
+
+    statuses = [s.get("result", {}).get("status") for s in rollup["steps"]]
+    rollup["status"] = "ok" if all(s in (None, "ok") for s in statuses) else "error"
+    _set_task_status("admin_recompute_since_date", rollup["status"], rollup)
+    return rollup

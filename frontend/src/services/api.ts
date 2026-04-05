@@ -738,7 +738,7 @@ export const authApi = {
   inviteInfo: async (token: string) => {
     return makeOptimizedRequest(() => api.get(`/auth/invite/${token}`));
   },
-  acceptInvite: async (payload: { token: string; username: string; password: string; full_name?: string }) => {
+  acceptInvite: async (payload: { token: string; password: string; full_name: string }) => {
     return makeOptimizedRequest(() => api.post('/auth/invite/accept', payload));
   },
 };

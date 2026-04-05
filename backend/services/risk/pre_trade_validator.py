@@ -102,6 +102,9 @@ class PreTradeValidator:
             self._check_order_rate_limit(order),
         ]
 
+        if not is_exit:
+            checks.append(self._check_portfolio_heat(order, portfolio_equity))
+
         # Wash sale check only for sells
         if order.side.lower() == "sell":
             checks.append(self._check_wash_sale_risk(order))
@@ -305,6 +308,90 @@ class PreTradeValidator:
             )
 
         return ValidationCheck(name="wash_sale_risk", passed=True)
+
+    MAX_PORTFOLIO_HEAT_PCT = 0.06  # 6% max concurrent risk
+
+    def _check_portfolio_heat(
+        self, order: Order, portfolio_equity: float
+    ) -> ValidationCheck:
+        """Block new entries if aggregate open risk exceeds 6% of equity.
+
+        Portfolio heat = sum of (|position_value| × ATR%14 × stop_multiplier) for
+        all open positions (long and short). This represents the total dollar
+        amount at risk if every position hits its stop simultaneously.
+        """
+        if portfolio_equity <= 0:
+            return ValidationCheck(name="portfolio_heat", passed=True)
+
+        query = self.db.query(Position).filter(Position.quantity != 0)
+        if self.user_id:
+            query = query.filter(Position.user_id == self.user_id)
+        positions = query.all()
+
+        if not positions:
+            return ValidationCheck(name="portfolio_heat", passed=True)
+
+        pos_symbols = [pos.symbol for pos in positions if pos.symbol]
+        all_symbols = list(set(pos_symbols + [order.symbol]))
+
+        from sqlalchemy import func as sa_func
+        latest_ids = (
+            self.db.query(sa_func.max(MarketSnapshot.id).label("id"))
+            .filter(
+                MarketSnapshot.analysis_type == "technical_snapshot",
+                MarketSnapshot.symbol.in_(all_symbols),
+            )
+            .group_by(MarketSnapshot.symbol)
+            .subquery()
+        )
+        snap_rows = (
+            self.db.query(MarketSnapshot)
+            .join(latest_ids, MarketSnapshot.id == latest_ids.c.id)
+            .all()
+        )
+        atrp_map: dict[str, float] = {}
+        for s in snap_rows:
+            atrp_map[s.symbol] = float(s.atrp_14) if s.atrp_14 else 3.0
+
+        stop_mult = 2.0
+        total_risk = 0.0
+
+        for pos in positions:
+            mv = abs(float(pos.market_value or 0))
+            if mv <= 0:
+                continue
+            atrp = atrp_map.get(pos.symbol, 3.0)
+            total_risk += mv * (atrp / 100.0) * stop_mult
+
+        new_price = self._get_price(order.symbol)
+        if new_price > 0:
+            new_atrp = atrp_map.get(order.symbol, 3.0)
+            total_risk += (order.quantity * new_price) * (new_atrp / 100.0) * stop_mult
+
+        heat_pct = total_risk / portfolio_equity
+
+        if heat_pct > self.MAX_PORTFOLIO_HEAT_PCT:
+            return ValidationCheck(
+                name="portfolio_heat",
+                passed=False,
+                reason=(
+                    f"Portfolio heat {heat_pct:.1%} would exceed "
+                    f"{self.MAX_PORTFOLIO_HEAT_PCT:.0%} cap "
+                    f"(${total_risk:,.0f} at risk / ${portfolio_equity:,.0f} equity)"
+                ),
+            )
+
+        if heat_pct > self.MAX_PORTFOLIO_HEAT_PCT * 0.8:
+            return ValidationCheck(
+                name="portfolio_heat",
+                passed=True,
+                reason=(
+                    f"WARNING: Portfolio heat at {heat_pct:.1%} — "
+                    f"approaching {self.MAX_PORTFOLIO_HEAT_PCT:.0%} cap"
+                ),
+            )
+
+        return ValidationCheck(name="portfolio_heat", passed=True)
 
     def _get_position_value(self, symbol: str) -> float:
         """Get current position value for a symbol (scoped by user)."""
