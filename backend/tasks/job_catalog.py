@@ -23,6 +23,7 @@ class JobTemplate:
     backoff_s: int = 0
     maintenance_windows: List[Dict[str, str]] | None = None
     queue: Optional[str] = None
+    enabled: bool = True
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -286,6 +287,7 @@ CATALOG: List[JobTemplate] = [
         default_tz="UTC",
         job_run_label="admin_backfill_since_date",
         timeout_s=14400,
+        enabled=False,
     ),
     # ── OHLCV Reconciliation ──────────────────────────────────────────
     JobTemplate(

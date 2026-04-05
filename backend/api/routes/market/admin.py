@@ -209,12 +209,22 @@ async def admin_backfill_daily_since_date(
     since_date: Optional[str] = Query(None, description="YYYY-MM-DD; omit for HISTORY_TARGET_YEARS"),
     batch_size: int = Query(25, ge=1, le=200),
     index: Optional[str] = Query(None, description="DOW30, NASDAQ100, SP500, or RUSSELL2000"),
+    confirm_bandwidth: bool = Query(False, description="Must be true to confirm FMP bandwidth spend"),
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
     """Deep daily OHLCV backfill since a given date.
 
+    WARNING: Downloads full history from FMP (bypasses DB cache). Consumes
+    significant API bandwidth. Set confirm_bandwidth=true to proceed.
+
     When *index* is provided, only that index's active constituents are backfilled.
     """
+    if not confirm_bandwidth:
+        raise HTTPException(
+            status_code=400,
+            detail="This endpoint downloads full OHLCV from FMP and consumes significant bandwidth. "
+                   "Pass confirm_bandwidth=true to proceed.",
+        )
     effective_since = since_date or _default_history_start()
     return enqueue_task(daily_since, effective_since, batch_size, index=index)
 
@@ -224,9 +234,20 @@ async def admin_backfill_since_date(
     since_date: Optional[str] = Query(None, description="YYYY-MM-DD; omit for HISTORY_TARGET_YEARS"),
     daily_batch_size: int = Query(25, ge=1, le=200),
     history_batch_size: int = Query(50, ge=1, le=200),
+    confirm_bandwidth: bool = Query(False, description="Must be true to confirm FMP bandwidth spend"),
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
-    """Backfill daily bars + indicators + snapshot history since a given date."""
+    """Backfill daily bars + indicators + snapshot history since a given date.
+
+    WARNING: Downloads full history from FMP (bypasses DB cache). Consumes
+    significant API bandwidth. Set confirm_bandwidth=true to proceed.
+    """
+    if not confirm_bandwidth:
+        raise HTTPException(
+            status_code=400,
+            detail="This endpoint downloads full OHLCV from FMP and consumes significant bandwidth. "
+                   "Pass confirm_bandwidth=true to proceed.",
+        )
     effective_since = since_date or _default_history_start()
     return enqueue_task(
         full_historical,

@@ -448,7 +448,7 @@ const SystemStatus: React.FC = () => {
     if (!confirmed) return;
     setSinceDateSaving(true);
     try {
-      await api.post(`/market-data/admin/backfill/since-date?since_date=${encodeURIComponent(sinceDate)}`);
+      await api.post(`/market-data/admin/backfill/since-date?since_date=${encodeURIComponent(sinceDate)}&confirm_bandwidth=true`);
       toast.success(`Deep backfill queued from ${sinceDate}. This may take a while.`);
       setTimeout(() => void refresh(), 2000);
     } catch (err: unknown) {

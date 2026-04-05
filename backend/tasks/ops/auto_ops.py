@@ -93,7 +93,6 @@ REMEDIATION_MAP = {
     "coverage": [
         ("backend.tasks.market.backfill.constituents", {}),
         ("backend.tasks.market.coverage.health_check", {}),
-        ("backend.tasks.market.backfill.stale_daily", {}),
     ],
     "stage_quality": [
         ("backend.tasks.market.indicators.recompute_universe", {"batch_size": 50}),
@@ -103,7 +102,6 @@ REMEDIATION_MAP = {
         ("backend.tasks.market.maintenance.recover_jobs", {"stale_minutes": 120}),
     ],
     "audit": [
-        ("backend.tasks.market.coverage.daily_bootstrap", {"history_days": 5, "history_batch_size": 25}),
         ("backend.tasks.market.history.record_daily", {}),
         ("backend.tasks.market.maintenance.audit_quality", {}),
     ],

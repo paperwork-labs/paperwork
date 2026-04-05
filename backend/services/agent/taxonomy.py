@@ -47,17 +47,17 @@ ACTION_RISK_MAP: Dict[str, RiskLevel] = {
     "cancel_job": RiskLevel.SAFE,
 
     # MODERATE: Standard remediation tasks
-    "backfill_stale_daily": RiskLevel.MODERATE,
+    "backfill_stale_daily": RiskLevel.RISKY,
     "recompute_indicators": RiskLevel.MODERATE,
     "repair_stage_history": RiskLevel.MODERATE,
     "record_daily": RiskLevel.MODERATE,
     "compute_regime": RiskLevel.MODERATE,
     "monitor_coverage": RiskLevel.MODERATE,
     "recover_stale_jobs": RiskLevel.MODERATE,
-    "bootstrap_coverage": RiskLevel.MODERATE,
+    "bootstrap_coverage": RiskLevel.RISKY,
     "refresh_index_constituents": RiskLevel.MODERATE,
     "fill_missing_fundamentals": RiskLevel.MODERATE,
-    "deep_backfill": RiskLevel.MODERATE,
+    "deep_backfill": RiskLevel.CRITICAL,
     
     # RISKY: May affect data integrity or require significant compute
     "backfill_full_history": RiskLevel.RISKY,

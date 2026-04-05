@@ -196,7 +196,7 @@ class Settings(BaseSettings):
     # Provider daily API call budgets.
     # Free tier: 250/day.  Paid plans (Starter/Premium/Ultimate): no daily cap,
     # so set high to effectively disable.  Override via env for tier changes.
-    PROVIDER_DAILY_BUDGET_FMP: int = 100000
+    PROVIDER_DAILY_BUDGET_FMP: int = 3000
     PROVIDER_DAILY_BUDGET_TWELVEDATA: int = 800
     PROVIDER_DAILY_BUDGET_YFINANCE: int = 10000  # yfinance is free, high limit
 

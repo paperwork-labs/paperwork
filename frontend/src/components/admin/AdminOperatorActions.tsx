@@ -263,7 +263,7 @@ const AdminOperatorActions: React.FC<Props> = ({
   const backfillDailySinceDate = async () => {
     try {
       await api.post(
-        `/market-data/admin/backfill/daily/since-date?since_date=${encodeURIComponent(sinceDate)}&batch_size=25`,
+        `/market-data/admin/backfill/daily/since-date?since_date=${encodeURIComponent(sinceDate)}&batch_size=25&confirm_bandwidth=true`,
       );
       toast.success(`Queued daily backfill since ${sinceDate}`);
       void refreshHealth();
@@ -288,7 +288,7 @@ const AdminOperatorActions: React.FC<Props> = ({
     if (backfillingSinceDate) return;
     setBackfillingSinceDate(true);
     try {
-      await api.post(`/market-data/admin/backfill/since-date?since_date=${encodeURIComponent(sinceDate)}`);
+      await api.post(`/market-data/admin/backfill/since-date?since_date=${encodeURIComponent(sinceDate)}&confirm_bandwidth=true`);
       toast.success(`Backfill since ${sinceDate} queued (daily → indicators → snapshot history)`);
       delayedRefresh();
       void refreshHealth();

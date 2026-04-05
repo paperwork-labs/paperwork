@@ -70,6 +70,9 @@ def _build_beat_schedule():
 
     schedule = {}
     for job in CATALOG:
+        if not job.enabled:
+            logger.info("Skipping disabled catalog entry: %s", job.id)
+            continue
         parts = job.default_cron.strip().split()
         if len(parts) == 6:
             minute, hour, dom, month, dow = parts[1], parts[2], parts[3], parts[4], parts[5]
