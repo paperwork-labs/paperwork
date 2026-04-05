@@ -866,3 +866,25 @@ def record_daily(symbols: Optional[List[str]] = None) -> dict:
         return res
     finally:
         session.close()
+
+
+@shared_task(
+    soft_time_limit=3600,
+    time_limit=4200,
+)
+@task_run("admin_repair_stage_history")
+def repair_stage_history_async(days: int = 3650, symbol: Optional[str] = None) -> dict:
+    """Async Celery wrapper around StageQualityService.repair_stage_history_window."""
+    session = SessionLocal()
+    try:
+        from backend.services.market.stage_quality_service import StageQualityService
+        svc = StageQualityService()
+        result = svc.repair_stage_history_window(session, days=days, symbol=symbol)
+        session.commit()
+        return result
+    except Exception as exc:
+        logger.exception("repair_stage_history_async failed: %s", exc)
+        session.rollback()
+        return {"status": "error", "error": str(exc)}
+    finally:
+        session.close()

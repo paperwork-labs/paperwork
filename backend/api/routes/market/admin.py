@@ -512,6 +512,18 @@ async def admin_repair_stage_history(
     return svc.repair_stage_history_window(db, days=days, symbol=symbol)
 
 
+@router.post("/stage/repair-async")
+async def admin_repair_stage_history_async(
+    days: int = Query(3650, ge=7, le=3650),
+    symbol: Optional[str] = Query(None),
+    _admin: User = Depends(get_admin_user),
+) -> Dict[str, Any]:
+    """Queue async stage repair — use for large day windows that timeout synchronously."""
+    from backend.tasks.market.history import repair_stage_history_async
+
+    return enqueue_task(repair_stage_history_async, days=days, symbol=symbol)
+
+
 @router.post("/fundamentals/fill-missing")
 async def admin_fill_missing_fundamentals(
     _admin: User = Depends(get_admin_user),
