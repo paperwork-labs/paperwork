@@ -105,7 +105,7 @@ def _is_l2_fresh(latest_bar_date) -> bool:
             oldest_acceptable = pd.Timestamp(sessions[0]).normalize()
             return bar_ts >= oldest_acceptable
     except Exception:
-        pass
+        logger.debug("Trading session check failed for L2 freshness, falling back to day count")
     days_stale = (pd.Timestamp.utcnow().normalize() - pd.Timestamp(latest_bar_date).normalize()).days
     return days_stale <= L2_FRESHNESS_MAX_DAYS
 
@@ -196,6 +196,28 @@ class MarketDataService:
                 raise RuntimeError("REDIS_URL is not configured")
             self._redis_async = aioredis.from_url(url)
         return self._redis_async
+
+    async def _record_provider_call(self, provider: str, n: int = 1) -> None:
+        """Increment the daily provider call counter in Redis (async)."""
+        try:
+            r = await self._get_redis()
+            date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            hash_key = f"provider:calls:{date_key}"
+            await r.hincrby(hash_key, provider, n)
+            await r.expire(hash_key, 86400 * 30)
+        except Exception:
+            logger.debug("Failed to record provider call for %s", provider)
+
+    def _record_provider_call_sync(self, provider: str, n: int = 1) -> None:
+        """Increment the daily provider call counter in Redis (sync)."""
+        try:
+            r = self._sync_redis
+            date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            hash_key = f"provider:calls:{date_key}"
+            r.hincrby(hash_key, provider, n)
+            r.expire(hash_key, 86400 * 30)
+        except Exception:
+            logger.debug("Failed to record provider call (sync) for %s", provider)
 
     def is_backfill_5m_enabled(self) -> bool:
         """Check admin toggle stored in Redis; default to DISABLED until admin enables."""
@@ -613,7 +635,7 @@ class MarketDataService:
                         if str(fmp_probe.get("status", "")).strip().lower() == "error":
                             return False
             except Exception:
-                pass
+                logger.debug("FMP provider availability check failed, assuming available")
             return True
         if provider == APIProvider.TWELVE_DATA:
             return self.twelve_data_client is not None
@@ -838,7 +860,7 @@ class MarketDataService:
                     await r.hincrby(f"provider:calls:{_date_key}", "l1_hit", 1)
                     await r.expire(f"provider:calls:{_date_key}", 86400 * 30)
                 except Exception:
-                    pass
+                    logger.debug("Redis L1 hit counter increment failed")
                 if return_provider:
                     return df_cached, None
                 return df_cached
@@ -868,7 +890,7 @@ class MarketDataService:
                                 await r.hincrby(f"provider:calls:{_date_key}", "l2_hit", 1)
                                 await r.expire(f"provider:calls:{_date_key}", 86400 * 30)
                             except Exception:
-                                pass
+                                logger.debug("Redis L2 hit counter increment failed")
                             logger.info("L2 DB hit for %s (%s/%s): %d bars", symbol, period, interval, len(db_df))
                             if return_provider:
                                 return db_df, "db"
@@ -889,17 +911,19 @@ class MarketDataService:
                 _date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
                 _counter_name = "twelvedata" if provider == APIProvider.TWELVE_DATA else provider.value
                 _current = int(await r.hget(f"provider:calls:{_date_key}", _counter_name) or 0)
+                _policy = settings.provider_policy
                 _budgets = {
-                    "fmp": settings.PROVIDER_DAILY_BUDGET_FMP,
-                    "twelvedata": settings.PROVIDER_DAILY_BUDGET_TWELVEDATA,
-                    "yfinance": settings.PROVIDER_DAILY_BUDGET_YFINANCE,
+                    "fmp": _policy.fmp_daily_budget,
+                    "twelvedata": _policy.twelvedata_daily_budget,
+                    "yfinance": _policy.yfinance_daily_budget,
                 }
                 _limit = _budgets.get(_counter_name, 10000)
                 if _current >= _limit:
                     logger.warning("Provider %s over daily budget (%d/%d), skipping", _counter_name, _current, _limit)
                     continue
-            except Exception:
-                pass
+            except Exception as _budget_exc:
+                logger.warning("Budget check failed for provider (Redis error), treating as over-budget: %s", _budget_exc)
+                continue
             await provider_rate_limiter.acquire(
                 "twelvedata" if provider == APIProvider.TWELVE_DATA else provider.value
             )
@@ -936,7 +960,7 @@ class MarketDataService:
                         await r.hincrby(f"provider:calls:{_date_key}", _counter_name, 1)
                         await r.expire(f"provider:calls:{_date_key}", 86400 * 30)
                     except Exception:
-                        pass
+                        logger.debug("Redis provider call counter increment failed")
                     try:
                         db_session = SessionLocal()
                         self.persist_price_bars(db_session, symbol, df, interval=interval, data_source=provider_used or "provider")
@@ -1137,7 +1161,7 @@ class MarketDataService:
                 data = json.loads(raw)
                 return data.get("symbols", [])
         except Exception:
-            pass
+            logger.debug("Failed to read last-known-good constituents for %s", idx)
         return []
 
     async def _fetch_iwm_holdings(self) -> List[str]:
@@ -1184,26 +1208,41 @@ class MarketDataService:
         symbols: List[str] = []
         # FMP via fmpsdk
         if settings.FMP_API_KEY and ep:
+            fmp_budget_ok = False
             try:
-                fn = getattr(fmpsdk, ep, None)
-                if callable(fn):
-                    data = fn(apikey=settings.FMP_API_KEY)
+                _r_sync = self._sync_redis
+                _date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                _current = int(_r_sync.hget(f"provider:calls:{_date_key}", "fmp") or 0)
+                _budget = settings.provider_policy.fmp_daily_budget
+                if _current < _budget:
+                    fmp_budget_ok = True
                 else:
-                    # fmpsdk lacks this function — try direct HTTP call
-                    import requests as _req
-                    url = f"https://financialmodelingprep.com/api/v3/{ep}?apikey={settings.FMP_API_KEY}"
-                    resp = _req.get(url, timeout=30)
-                    data = resp.json() if resp.status_code == 200 else []
-            except Exception as exc:
-                logger.warning("Index %s: FMP constituent fetch failed: %s", idx, exc)
-                data = []
-            if isinstance(data, list):
-                symbols = [str(d.get("symbol", "")).strip().upper().replace('.', '-') for d in data if d.get("symbol")]
-            elif data:
-                logger.warning("Index %s: FMP returned non-list response: %s", idx, str(data)[:200])
+                    logger.warning("get_index_constituents: FMP over daily budget (%d/%d), skipping", _current, _budget)
+            except Exception as _budget_exc:
+                logger.warning("get_index_constituents: budget check failed (Redis error), skipping FMP: %s", _budget_exc)
+
+            if fmp_budget_ok:
+                try:
+                    await provider_rate_limiter.acquire("fmp")
+                    fn = getattr(fmpsdk, ep, None)
+                    if callable(fn):
+                        data = fn(apikey=settings.FMP_API_KEY)
+                    else:
+                        import requests as _req
+                        url = f"https://financialmodelingprep.com/api/v3/{ep}?apikey={settings.FMP_API_KEY}"
+                        resp = _req.get(url, timeout=30)
+                        data = resp.json() if resp.status_code == 200 else []
+                except Exception as exc:
+                    logger.warning("Index %s: FMP constituent fetch failed: %s", idx, exc)
+                    data = []
+                if isinstance(data, list):
+                    symbols = [str(d.get("symbol", "")).strip().upper().replace('.', '-') for d in data if d.get("symbol")]
+                elif data:
+                    logger.warning("Index %s: FMP returned non-list response: %s", idx, str(data)[:200])
         provider_used = "fmp" if symbols else None
         if symbols:
             logger.info("Index %s: fetched %d constituents from FMP", idx, len(symbols))
+            await self._record_provider_call("fmp")
 
         # Wikipedia fallback
         if not symbols:

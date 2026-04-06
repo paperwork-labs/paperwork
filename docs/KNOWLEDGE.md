@@ -33,8 +33,13 @@ Architectural decisions with rationale. Grouped by domain, newest first within e
 | D51 | 2026-03-31 | **UNKNOWN stage treated as null** — `compute_stage_run_lengths` and `repair_stage_history_window` skip UNKNOWN labels. Displayed as "New" in UI. |
 | D52 | 2026-03-31 | **Regime rounding uses half-up** — `math.floor(avg * 2 + 0.5) / 2` not Python's banker's `round()`. |
 | D53 | 2026-03-31 | **RiskGate.check mandatory on submit path** — not just preview. Rejected orders logged with reason. |
-| D54 | 2026-04-04 | **FMP rate limits env-configurable** — RATE_LIMIT_FMP_CPM, PROVIDER_DAILY_BUDGET_FMP, MARKET_BACKFILL_CONCURRENCY_PAID. Tier switching is a Render env var change, not a code deploy. |
+| D54 | 2026-04-04 | **FMP rate limits via ProviderPolicy** — single `MARKET_PROVIDER_POLICY` env var selects tier (free/starter/paid/unlimited). Legacy per-var config (`RATE_LIMIT_FMP_CPM`, `PROVIDER_DAILY_BUDGET_FMP`) deprecated. |
 | D55 | 2026-04-04 | **Deep backfill bypasses L2 DB cache** — `daily_since` sets `skip_l2=True` so `get_historical_data` always reaches L3 external APIs. Prevents partial-history short-circuit when DB already has fresh bars. |
+| D59 | 2026-04-05 | **VolatilityService extracted** — VIX/VVIX/VIX3M logic moved from inline route handler to `backend/services/market/volatility_service.py`. Route is now a thin wrapper. |
+| D60 | 2026-04-05 | **Dashboard universe filter** — `GET /dashboard?universe=all\|etf\|holdings` filters tracked symbols server-side before all aggregations. Cache key includes universe. |
+| D61 | 2026-04-05 | **Server-side table endpoint** — `GET /snapshots/table` with sort/page/filter replaces client-side 5000-row fetch for the scanner/table views. |
+| D62 | 2026-04-05 | **Frontend dedup hooks** — `useVolatility()` and `useRegime()` share React Query cache across TopDownView/RegimeBanner/MarketDashboard. |
+| D63 | 2026-04-05 | **Budget check fail-closed** — if Redis is unreachable during FMP daily budget check, the provider is skipped (fail-closed) instead of allowing unlimited calls. |
 
 ### Execution & Orders
 
@@ -97,11 +102,11 @@ Architectural decisions with rationale. Grouped by domain, newest first within e
 |----|------|----------|
 | D40 | 2026-03-27 | **Redis Streams for real-time events** — price:feed:alpaca, signals:evaluated, signals:output |
 | D41 | 2026-03-27 | **Async Redis in async contexts** — redis.asyncio for FastAPI routes and services |
-| D54 | 2026-04-02 | **iShares IWM ETF fallback for Russell 2000** — FMP/Finnhub lack R2K endpoint; parse CSV holdings from iShares; never cache empty constituent lists |
-| D55 | 2026-04-02 | **HISTORY_TARGET_YEARS = 10** — one-time deep backfill, then delta-only nightly pipeline; 400-bar window sufficient for all rolling indicators |
-| D56 | 2026-04-02 | **Agent chat tool_choice = auto** — first turn no longer forces tool call; out-of-scope guard in SYSTEM_PROMPT |
-| D57 | 2026-04-02 | **User FK cascade policy** — CASCADE for user-owned data, SET NULL for audit/tracking columns; Alembic migration for 20+ FKs |
-| D58 | 2026-04-02 | **Curated ETFs for multi-asset exposure** — IBIT, BITO, GLD, SLV, UNG, TLT, IEF, HYG, ARKK added to CURATED_MARKET_SYMBOLS |
+| D64 | 2026-04-02 | **iShares IWM ETF fallback for Russell 2000** — FMP/Finnhub lack R2K endpoint; parse CSV holdings from iShares; never cache empty constituent lists |
+| D65 | 2026-04-02 | **HISTORY_TARGET_YEARS = 10** — one-time deep backfill, then delta-only nightly pipeline; 400-bar window sufficient for all rolling indicators |
+| D66 | 2026-04-02 | **Agent chat tool_choice = auto** — first turn no longer forces tool call; out-of-scope guard in SYSTEM_PROMPT |
+| D67 | 2026-04-02 | **User FK cascade policy** — CASCADE for user-owned data, SET NULL for audit/tracking columns; Alembic migration for 20+ FKs |
+| D68 | 2026-04-02 | **Curated ETFs for multi-asset exposure** — IBIT, BITO, GLD, SLV, UNG, TLT, IEF, HYG, ARKK added to CURATED_MARKET_SYMBOLS |
 
 ---
 
@@ -226,5 +231,5 @@ All task references must match `@shared_task(name="...")` exactly. Found 4 criti
 | R27 | PriceData.volume Integer overflow | Changed to BigInteger via Alembic migration |
 | R28 | Zombie job runs stuck for 2h+ | Reduced STALE_JOB_RUN_MINUTES from 120 to 45 |
 | R29 | scan_engine coerced None RS to 0 | Now skips Elite tiers when rs_mansfield is None |
-| R30 | FMP capped at 250 calls/day on paid plans | Raised PROVIDER_DAILY_BUDGET_FMP to 100000 and RATE_LIMIT_FMP_CPM to 700 (env-configurable) |
+| R30 | FMP capped at 250 calls/day on paid plans | Replaced per-var config with ProviderPolicy tiers; paid tier allows 100,000/day at 700 CPM (D54) |
 | R31 | deep backfill short-circuited at L2 DB cache | Added skip_l2 param to fetch_daily_for_symbols; daily_since always bypasses L2 |

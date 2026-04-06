@@ -175,12 +175,25 @@ api.interceptors.response.use(
       }
     }
 
-    const orig = originalRequest as typeof originalRequest & { _noRetry?: boolean; _retry?: boolean };
+    const orig = originalRequest as typeof originalRequest & { _noRetry?: boolean; _retry?: boolean; _retryCount?: number };
     if ((error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK') && originalRequest && !orig._noRetry) {
       if (!orig._retry) {
         orig._retry = true;
         await new Promise(resolve => setTimeout(resolve, 1000));
         return api(originalRequest);
+      }
+    }
+
+    if (error.response && [502, 503, 504].includes(error.response.status) && originalRequest) {
+      const method = (originalRequest.method || 'get').toLowerCase();
+      const isIdempotent = ['get', 'head', 'options'].includes(method);
+      if (isIdempotent && !orig._noRetry) {
+        const retryCount = orig._retryCount || 0;
+        if (retryCount < 3) {
+          orig._retryCount = retryCount + 1;
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+          return api(originalRequest);
+        }
       }
     }
 

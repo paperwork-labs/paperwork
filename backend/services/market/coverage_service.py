@@ -107,8 +107,7 @@ class CoverageService:
         try:
             snapshot.setdefault("meta", {})["backfill_5m_enabled"] = backfill_5m_enabled
         except Exception:
-            # Any failure here should fall back to the previously computed/cached snapshot.
-            pass
+            logger.debug("Failed to set backfill_5m_enabled in coverage meta")
 
         # Attach benchmark (SPY) health for UI diagnostics.
         try:

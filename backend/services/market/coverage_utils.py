@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 
 def _expected_latest_trading_day():
@@ -26,7 +29,7 @@ def _expected_latest_trading_day():
         if len(closed) > 0:
             return closed[-1].strftime("%Y-%m-%d")
     except Exception:
-        pass
+        logger.debug("Trading calendar lookup failed, using weekday fallback")
     # Fallback: simple weekday logic
     from datetime import date, timedelta
     d = date.today()

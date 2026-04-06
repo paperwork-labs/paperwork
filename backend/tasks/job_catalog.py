@@ -171,6 +171,7 @@ CATALOG: List[JobTemplate] = [
         default_tz="UTC",
         job_run_label="admin_retention_enforce",
         kwargs={"max_days_5m": 90},
+        timeout_s=720,
     ),
     JobTemplate(
         id="admin_recover_stale_job_runs",
@@ -182,6 +183,7 @@ CATALOG: List[JobTemplate] = [
         default_tz="UTC",
         job_run_label="admin_recover_stale_job_runs",
         kwargs={"stale_minutes": 120},
+        timeout_s=180,
     ),
 
     # ── Intelligence Briefs ──
@@ -273,7 +275,7 @@ CATALOG: List[JobTemplate] = [
         default_cron="*/15 * * * *",
         default_tz="UTC",
         job_run_label="auto_ops_health_check",
-        timeout_s=90,
+        timeout_s=180,
     ),
 
     # ── Deep Backfill ────────────────────────────────────────────────

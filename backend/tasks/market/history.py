@@ -872,7 +872,7 @@ def record_daily(symbols: Optional[List[str]] = None) -> dict:
     soft_time_limit=3600,
     time_limit=4200,
 )
-@task_run("admin_repair_stage_history")
+@task_run("admin_repair_stage_history_async")
 def repair_stage_history_async(days: int = 3650, symbol: Optional[str] = None) -> dict:
     """Async Celery wrapper around StageQualityService.repair_stage_history_window."""
     session = SessionLocal()

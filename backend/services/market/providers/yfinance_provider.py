@@ -130,5 +130,9 @@ class YFinanceProvider(MarketDataProvider):
         return True
 
     def rate_limit(self) -> Optional[int]:
-        """yfinance has informal rate limits (~2000/hour)."""
-        return 30  # Conservative: 30 requests/minute
+        """yfinance rate limit derived from ProviderPolicy."""
+        try:
+            from backend.config import settings
+            return settings.provider_policy.yfinance_cpm
+        except Exception:
+            return 30

@@ -69,12 +69,13 @@ class ProviderRateLimiter:
     def _default_limits() -> Dict[str, int]:
         try:
             from backend.config import settings as _s
+            policy = _s.provider_policy
             return {
-                "fmp": int(getattr(_s, "RATE_LIMIT_FMP_CPM", 700)),
+                "fmp": policy.fmp_cpm,
                 "finnhub": 50,
-                "twelvedata": int(getattr(_s, "RATE_LIMIT_TWELVEDATA_CPM", 7)),
+                "twelvedata": policy.twelvedata_cpm,
                 "alphavantage": 4,
-                "yfinance": int(getattr(_s, "RATE_LIMIT_YFINANCE_CPM", 30)),
+                "yfinance": policy.yfinance_cpm,
             }
         except Exception:
             return {"fmp": 700, "finnhub": 50, "twelvedata": 7, "alphavantage": 4, "yfinance": 30}

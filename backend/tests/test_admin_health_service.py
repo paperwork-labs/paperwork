@@ -249,9 +249,16 @@ def test_audit_red_when_db_fails():
 
 def test_task_runs_loads_from_redis():
     svc = _mock_service()
-    svc._svc.redis_client.get.side_effect = lambda k: (
-        json.dumps({"ts": "2025-01-01T00:00:00"}) if "admin_coverage_refresh" in k else None
-    )
+    from backend.services.market.admin_health_service import _TASK_STATUS_KEYS
+
+    def _mock_mget(keys):
+        return [
+            json.dumps({"ts": "2025-01-01T00:00:00"})
+            if "admin_coverage_refresh" in k else None
+            for k in keys
+        ]
+
+    svc._svc.redis_client.mget.side_effect = _mock_mget
     runs = svc._build_task_runs()
     assert runs.get("admin_coverage_refresh") is not None
     assert runs["admin_coverage_refresh"]["ts"] == "2025-01-01T00:00:00"

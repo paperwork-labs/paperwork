@@ -53,6 +53,8 @@ engine = create_engine(
     echo=os.getenv("DEBUG", "false").lower() == "true",
     pool_pre_ping=True,
     pool_recycle=300,
+    pool_size=10,
+    max_overflow=20,
 )
 
 # Raw factory kept private; SessionLocal wrapper enforces test safety in pytest

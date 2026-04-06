@@ -305,58 +305,67 @@ def daily_bootstrap(
         _backfill_days = 200
 
     rollup: Dict[str, Any] = {"steps": []}
+    import time as _time
 
-    def _append(step_name: str, result: dict) -> None:
+    def _append(step_name: str, result: dict, duration_s: float = 0.0) -> None:
         rollup["steps"].append(
             {
                 "name": step_name,
                 "summary": _summarize_bootstrap_step(step_name, result),
                 "result": result,
+                "duration_s": round(duration_s, 2),
             }
         )
 
+    _t0 = _time.monotonic()
     try:
         res1 = constituents()
     except Exception as exc:
         logger.warning("daily_bootstrap: constituents failed (non-fatal): %s", exc)
         res1 = {"status": "error", "error": str(exc)}
-    _append("market_indices_constituents_refresh", res1)
+    _append("market_indices_constituents_refresh", res1, _time.monotonic() - _t0)
 
+    _t0 = _time.monotonic()
     try:
         res2 = tracked_cache()
     except Exception as exc:
         logger.warning("daily_bootstrap: tracked_cache failed (non-fatal): %s", exc)
         res2 = {"status": "error", "error": str(exc)}
-    _append("market_universe_tracked_refresh", res2)
+    _append("market_universe_tracked_refresh", res2, _time.monotonic() - _t0)
 
+    _t0 = _time.monotonic()
     try:
         res3 = daily_bars(days=_backfill_days)
     except Exception as exc:
         logger.warning("daily_bootstrap: daily_bars failed (non-fatal): %s", exc)
         res3 = {"status": "error", "error": str(exc)}
-    _append("admin_backfill_daily", res3)
+    _append("admin_backfill_daily", res3, _time.monotonic() - _t0)
 
+    _t0 = _time.monotonic()
     try:
         res4 = recompute_universe(batch_size=50)
     except Exception as exc:
         logger.warning("daily_bootstrap: recompute_universe failed (non-fatal): %s", exc)
         res4 = {"status": "error", "error": str(exc)}
-    _append("admin_indicators_recompute_universe", res4)
+    _append("admin_indicators_recompute_universe", res4, _time.monotonic() - _t0)
 
+    _t0 = _time.monotonic()
     try:
         res5 = compute_daily()
     except Exception as exc:
         logger.warning("Regime computation failed (non-fatal): %s", exc)
         res5 = {"status": "error", "error": str(exc)}
-    _append("compute_daily_regime", res5)
+    _append("compute_daily_regime", res5, _time.monotonic() - _t0)
 
+    _t0 = _time.monotonic()
     try:
         res6 = _run_scan_overlay()
     except Exception as exc:
         logger.warning("Scan overlay failed (non-fatal): %s", exc)
         res6 = {"status": "error", "error": str(exc)}
-    _append("scan_overlay", res6)
+    _append("scan_overlay", res6, _time.monotonic() - _t0)
 
+    _t0 = _time.monotonic()
     try:
         resolved_days = _resolve_history_days(history_days)
         res7 = snapshot_last_n_days(
@@ -364,15 +373,17 @@ def daily_bootstrap(
         )
     except Exception as exc:
         res7 = {"status": "error", "error": str(exc)}
-    _append("admin_snapshots_history_backfill", res7)
+    _append("admin_snapshots_history_backfill", res7, _time.monotonic() - _t0)
 
+    _t0 = _time.monotonic()
     try:
         res8 = _evaluate_exit_cascade_all()
     except Exception as exc:
         logger.warning("Exit cascade evaluation failed (non-fatal): %s", exc)
         res8 = {"status": "error", "error": str(exc)}
-    _append("exit_cascade_evaluation", res8)
+    _append("exit_cascade_evaluation", res8, _time.monotonic() - _t0)
 
+    _t0 = _time.monotonic()
     try:
         from backend.tasks.strategy.tasks import evaluate_strategies_task
 
@@ -380,19 +391,22 @@ def daily_bootstrap(
     except Exception as exc:
         logger.warning("Strategy evaluation failed (non-fatal): %s", exc)
         res9 = {"status": "error", "error": str(exc)}
-    _append("strategy_evaluation", res9)
+    _append("strategy_evaluation", res9, _time.monotonic() - _t0)
 
+    _t0 = _time.monotonic()
     res10 = health_check()
-    _append("admin_coverage_refresh", res10)
+    _append("admin_coverage_refresh", res10, _time.monotonic() - _t0)
 
+    _t0 = _time.monotonic()
     try:
         from backend.tasks.market.maintenance import audit_quality as _audit_quality
         res10b = _audit_quality()
     except Exception as exc:
         logger.warning("Audit quality refresh failed (non-fatal): %s", exc)
         res10b = {"status": "error", "error": str(exc)}
-    _append("admin_market_data_audit", res10b)
+    _append("admin_market_data_audit", res10b, _time.monotonic() - _t0)
 
+    _t0 = _time.monotonic()
     try:
         from backend.tasks.intelligence.tasks import generate_daily_digest_task
 
@@ -400,7 +414,7 @@ def daily_bootstrap(
     except Exception as exc:
         logger.warning("Daily digest generation failed (non-fatal): %s", exc)
         res11 = {"status": "error", "error": str(exc)}
-    _append("intelligence_digest", res11)
+    _append("intelligence_digest", res11, _time.monotonic() - _t0)
 
     step_results = [s.get("result") or {} for s in rollup["steps"]]
     n = len(step_results)

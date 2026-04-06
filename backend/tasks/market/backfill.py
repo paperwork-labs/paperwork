@@ -57,8 +57,8 @@ def symbol(symbol: str) -> dict:
 
 
 @shared_task(
-    soft_time_limit=_DEFAULT_SOFT,
-    time_limit=_DEFAULT_HARD,
+    soft_time_limit=150,
+    time_limit=180,
 )
 @task_run("market_universe_tracked_refresh")
 def tracked_cache() -> dict:
@@ -197,8 +197,8 @@ def daily_bars(days: int = 200) -> dict:
 
 
 @shared_task(
-    soft_time_limit=_DEFAULT_SOFT,
-    time_limit=_DEFAULT_HARD,
+    soft_time_limit=360,
+    time_limit=420,
 )
 @task_run("market_indices_constituents_refresh")
 def constituents(index: str | None = None) -> dict:
@@ -354,9 +354,9 @@ def daily_since(since_date: str = "", batch_size: int = 25, index: Optional[str]
                When provided, only backfills that index's active constituents.
     """
     from backend.config import settings as _cfg
-    if not _cfg.ALLOW_DEEP_BACKFILL:
-        logger.warning("daily_since blocked: ALLOW_DEEP_BACKFILL=False")
-        return {"status": "blocked", "reason": "ALLOW_DEEP_BACKFILL is disabled"}
+    if not _cfg.ALLOW_DEEP_BACKFILL or not _cfg.provider_policy.deep_backfill_allowed:
+        logger.warning("daily_since blocked: ALLOW_DEEP_BACKFILL=False or policy disallows")
+        return {"status": "blocked", "reason": "ALLOW_DEEP_BACKFILL is disabled or policy disallows deep backfill"}
 
     if not since_date:
         from backend.config import settings as _cfg
@@ -453,9 +453,9 @@ def full_historical(
     """
     from backend.config import settings as _settings
 
-    if not _settings.ALLOW_DEEP_BACKFILL:
-        logger.warning("full_historical blocked: ALLOW_DEEP_BACKFILL=False")
-        return {"status": "blocked", "reason": "ALLOW_DEEP_BACKFILL is disabled"}
+    if not _settings.ALLOW_DEEP_BACKFILL or not _settings.provider_policy.deep_backfill_allowed:
+        logger.warning("full_historical blocked: ALLOW_DEEP_BACKFILL=False or policy disallows")
+        return {"status": "blocked", "reason": "ALLOW_DEEP_BACKFILL is disabled or policy disallows deep backfill"}
 
     if not since_date:
         from datetime import date, timedelta

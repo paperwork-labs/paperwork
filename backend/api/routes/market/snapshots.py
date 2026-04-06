@@ -26,6 +26,146 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/snapshots", tags=["snapshots"])
 
 
+@router.get("/heatmap")
+async def get_snapshot_heatmap(
+    symbols: str = Query(..., description="Comma-separated symbols"),
+    days: int = Query(90, ge=1, le=365),
+    user: User | None = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Batch heatmap endpoint — returns stage history grid for multiple symbols in one query."""
+    symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
+    if not symbol_list:
+        return {"grid": {}, "dates": []}
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    rows = (
+        db.query(
+            MarketSnapshotHistory.symbol,
+            MarketSnapshotHistory.as_of_date,
+            MarketSnapshotHistory.stage_label,
+        )
+        .filter(
+            MarketSnapshotHistory.symbol.in_(symbol_list),
+            MarketSnapshotHistory.analysis_type == "technical_snapshot",
+            MarketSnapshotHistory.as_of_date >= cutoff,
+        )
+        .order_by(MarketSnapshotHistory.as_of_date.asc())
+        .all()
+    )
+    grid: Dict[str, Dict[str, str | None]] = {}
+    dates_set: set[str] = set()
+    for sym, dt, stage in rows:
+        d = dt.strftime("%Y-%m-%d") if hasattr(dt, "strftime") else str(dt)
+        dates_set.add(d)
+        grid.setdefault(sym, {})[d] = stage
+    return {"grid": grid, "dates": sorted(dates_set)}
+
+
+@router.get("/table")
+async def get_snapshot_table(
+    sort_by: str = Query("symbol", description="Sort column"),
+    sort_dir: str = Query("asc", description="asc or desc"),
+    filter_stage: Optional[str] = Query(
+        None, description="Filter by stage prefix e.g. '2A'"
+    ),
+    search: Optional[str] = Query(None, description="Symbol search substring"),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    user: User | None = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Server-side paginated, sorted, filtered snapshot table."""
+    svc = MarketDataService()
+    tracked = tracked_symbols(db, redis_client=svc.redis_client)
+    if not tracked:
+        return {"rows": [], "total": 0}
+
+    base_query = (
+        db.query(MarketSnapshot)
+        .filter(
+            MarketSnapshot.analysis_type == "technical_snapshot",
+            MarketSnapshot.symbol.in_(tracked),
+        )
+        .order_by(
+            MarketSnapshot.symbol.asc(), MarketSnapshot.analysis_timestamp.desc()
+        )
+    )
+
+    bind = getattr(db, "bind", None)
+    dialect_name = getattr(getattr(bind, "dialect", None), "name", "")
+    if dialect_name == "postgresql" and hasattr(base_query, "distinct"):
+        all_rows = base_query.distinct(MarketSnapshot.symbol).all()
+    else:
+        raw_rows = base_query.all()
+        all_rows = []
+        seen_symbols: set[str] = set()
+        for row in raw_rows:
+            sym = str(getattr(row, "symbol", "")).upper()
+            if not sym or sym in seen_symbols:
+                continue
+            seen_symbols.add(sym)
+            all_rows.append(row)
+
+    if search:
+        search_upper = search.upper()
+        all_rows = [
+            r for r in all_rows if search_upper in (r.symbol or "").upper()
+        ]
+
+    if filter_stage:
+        stage_upper = filter_stage.upper()
+        all_rows = [
+            r
+            for r in all_rows
+            if (getattr(r, "current_stage", "") or "")
+            .upper()
+            .startswith(stage_upper)
+        ]
+
+    allowed_sort = {
+        "symbol",
+        "current_stage",
+        "price",
+        "perf_20d",
+        "rs_mansfield",
+        "analysis_timestamp",
+    }
+    effective_sort = sort_by if sort_by in allowed_sort else "symbol"
+    reverse = sort_dir.lower() == "desc"
+
+    def _sort_key(r: MarketSnapshot) -> tuple:
+        v = getattr(r, effective_sort, None)
+        if v is None:
+            return (1, 0.0)
+        if effective_sort in ("price", "perf_20d", "rs_mansfield"):
+            try:
+                return (0, float(v))
+            except (TypeError, ValueError):
+                return (1, 0.0)
+        if effective_sort == "analysis_timestamp" and hasattr(v, "timestamp"):
+            return (0, float(v.timestamp()))
+        if effective_sort == "symbol":
+            return (0, str(v).upper())
+        return (0, str(v))
+
+    all_rows.sort(key=_sort_key, reverse=reverse)
+
+    total = len(all_rows)
+    page = all_rows[offset : offset + limit]
+
+    preferred = snapshot_preferred_columns("list")
+    rows_out: list[Dict[str, Any]] = []
+    for r in page:
+        d: Dict[str, Any] = {}
+        for col in preferred:
+            val = getattr(r, col, None)
+            if val is not None:
+                d[col] = val
+        rows_out.append(d)
+
+    return {"rows": rows_out, "total": total}
+
+
 @router.get("/{symbol}")
 async def get_snapshot(
     symbol: str,

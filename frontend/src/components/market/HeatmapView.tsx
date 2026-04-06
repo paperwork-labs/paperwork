@@ -60,7 +60,7 @@ const HeatmapView: React.FC<HeatmapViewProps> = ({ snapshots }) => {
         etfSymbols.map(async (sym) => {
           try {
             const resp = await marketDataApi.getSnapshotHistory(sym, timeRange);
-            const rows = resp?.data?.rows ?? resp?.rows ?? [];
+            const rows = resp?.data?.history ?? resp?.history ?? [];
             results[sym] = rows;
           } catch {
             results[sym] = [];

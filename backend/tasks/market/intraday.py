@@ -75,8 +75,8 @@ def bars_5m_symbols(symbols: List[str], n_days: int = 5) -> dict:
 
 
 @shared_task(
-    soft_time_limit=_DEFAULT_SOFT,
-    time_limit=_DEFAULT_HARD,
+    soft_time_limit=1800,
+    time_limit=2100,
 )
 @task_run("admin_backfill_5m")
 def bars_5m_last_n_days(n_days: int = 5, batch_size: int = 50) -> dict:

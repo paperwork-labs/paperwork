@@ -447,18 +447,10 @@ def _get_tracked_universe_from_db(session: Session) -> Set[str]:
 
 
 def _daily_backfill_concurrency() -> int:
-    """Effective daily backfill concurrency from settings and provider policy (paid vs free)."""
-    policy = str(getattr(settings, "MARKET_PROVIDER_POLICY", "paid")).lower()
-    paid = policy == "paid"
+    """Effective daily backfill concurrency from ProviderPolicy."""
+    policy = settings.provider_policy
     max_conc = int(getattr(settings, "MARKET_BACKFILL_CONCURRENCY_MAX", 100))
-    conc_default = int(
-        getattr(
-            settings,
-            "MARKET_BACKFILL_CONCURRENCY_PAID" if paid else "MARKET_BACKFILL_CONCURRENCY_FREE",
-            25 if paid else 5,
-        )
-    )
-    return max(1, min(max_conc, conc_default))
+    return max(1, min(max_conc, policy.backfill_concurrency))
 
 
 def _persist_daily_fetch_results(
@@ -475,6 +467,7 @@ def _persist_daily_fetch_results(
     for task result payloads. Rolls back the session per-symbol on persist failure.
     """
     import pandas as pd
+    from sqlalchemy import func
 
     updated_total = 0
     up_to_date_total = 0
@@ -485,6 +478,17 @@ def _persist_daily_fetch_results(
     errors = 0
     error_samples: List[dict] = []
     provider_usage: Dict[str, int] = {}
+
+    last_dates: Dict[str, Any] = {}
+    if use_delta_after and fetched:
+        all_syms = [item.get("symbol") for item in fetched if item.get("symbol") and item.get("symbol") != "?"]
+        if all_syms:
+            last_dates = dict(
+                session.query(PriceData.symbol, func.max(PriceData.date))
+                .filter(PriceData.symbol.in_(all_syms), PriceData.interval == "1d")
+                .group_by(PriceData.symbol)
+                .all()
+            )
 
     for item in fetched or []:
         sym = item.get("symbol")
@@ -525,13 +529,7 @@ def _persist_daily_fetch_results(
             bars_attempted_total += int(len(df2))
             last_date = None
             if use_delta_after:
-                last_date = (
-                    session.query(PriceData.date)
-                    .filter(PriceData.symbol == sym, PriceData.interval == "1d")
-                    .order_by(PriceData.date.desc())
-                    .limit(1)
-                    .scalar()
-                )
+                last_date = last_dates.get(sym)
 
             inserted = market_data_service.persist_price_bars(
                 session,

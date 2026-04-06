@@ -14,12 +14,10 @@ class MarketSnapshotService:
         db,
         symbol: str,
         *,
-        limit_bars: int = 300,
         as_of_dt=None,
         skip_fundamentals: bool = False,
         benchmark_df=None,
     ) -> Dict[str, Any]:
-        _ = limit_bars
         return self._service.compute_snapshot_from_db(
             db, symbol, as_of_dt=as_of_dt, skip_fundamentals=skip_fundamentals,
             benchmark_df=benchmark_df,

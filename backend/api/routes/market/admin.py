@@ -396,12 +396,7 @@ async def admin_record_history(
     symbols: List[str] | None = Query(None),
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
-    try:
-        res = record_daily(symbols)
-        return res
-    except Exception as e:
-        logger.error(f"admin record history error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    return enqueue_task(record_daily, symbols=symbols)
 
 
 @router.post("/snapshots/discord-digest")

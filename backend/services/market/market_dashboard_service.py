@@ -6,10 +6,12 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 from backend.models.index_constituent import IndexConstituent
 from backend.models.market_data import MarketSnapshot, MarketSnapshotHistory
 from backend.models.market_tracked_plan import MarketTrackedPlan
+from backend.models import Position
 from backend.services.market.constants import (
     SECTOR_ETF_DISPLAY_NAMES,
     SECTOR_ETF_PROXY_SYMBOLS,
@@ -57,12 +59,26 @@ class _SummaryRow:
 class MarketDashboardService:
     """Build read-only market dashboard summaries from tracked snapshots."""
 
-    def _fetch_rows(self, db: Session) -> tuple[list[str], list[_SummaryRow], dict[str, MarketTrackedPlan], datetime | None]:
+    def _fetch_rows(self, db: Session, *, universe: str = "all") -> tuple[list[str], list[_SummaryRow], dict[str, MarketTrackedPlan], datetime | None]:
         def _coalesce(primary, secondary):
             return primary if primary is not None else secondary
 
         svc = MarketDataService()
         tracked = tracked_symbols(db, redis_client=svc.redis_client)
+        if not tracked:
+            return [], [], {}, None
+
+        if universe == "etf":
+            etf_set = set(SECTOR_ETF_SYMBOLS_ORDER)
+            tracked = [s for s in tracked if s in etf_set]
+        elif universe == "holdings":
+            held = {
+                str(s).upper()
+                for (s,) in db.query(Position.symbol).distinct()
+                if s
+            }
+            tracked = [s for s in tracked if s in held]
+
         if not tracked:
             return [], [], {}, None
 
@@ -72,8 +88,8 @@ class MarketDashboardService:
                 MarketSnapshot.analysis_type == "technical_snapshot",
                 MarketSnapshot.symbol.in_(tracked),
             )
-            # Keep newest row first per symbol, then dedupe in Python.
-            .order_by(MarketSnapshot.symbol.asc(), MarketSnapshot.analysis_timestamp.desc())
+            .distinct(MarketSnapshot.symbol)
+            .order_by(MarketSnapshot.symbol, MarketSnapshot.analysis_timestamp.desc())
             .all()
         )
 
@@ -463,8 +479,8 @@ class MarketDashboardService:
             }
         return out
 
-    def build_dashboard(self, db: Session) -> dict[str, Any]:
-        tracked, rows, plan_map, latest_snapshot_ts = self._fetch_rows(db)
+    def build_dashboard(self, db: Session, *, universe: str = "all") -> dict[str, Any]:
+        tracked, rows, plan_map, latest_snapshot_ts = self._fetch_rows(db, universe=universe)
         tracked_count = len(tracked)
         snapshot_count = len(rows)
 

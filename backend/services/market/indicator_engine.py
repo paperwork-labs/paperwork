@@ -6,8 +6,6 @@ from typing import Dict, Any, Optional, List
 import numpy as np
 import pandas as pd
 
-from backend.config import settings
-
 logger = logging.getLogger(__name__)
 
 
@@ -37,130 +35,6 @@ def extract_latest_values(indicator_df: pd.DataFrame) -> Dict[str, Any]:
             val = series.loc[last_valid_idx]
             if pd.notna(val):
                 out[col] = float(val) if isinstance(val, (int, float, np.number)) else val
-    return out
-
-
-def compute_core_indicators(data_oldest_first: pd.DataFrame) -> Dict[str, Any]:
-    """Compute core technical indicators using pandas/numpy only.
-
-    DEPRECATED: Use compute_full_indicator_series() + extract_latest_values() instead.
-    This function duplicates ADX computation and is being phased out.
-
-    Input must be oldest->newest DataFrame with columns: Close (required), High/Low (optional for ATR/ADX).
-    """
-    out: Dict[str, Any] = {}
-    closes = data_oldest_first["Close"]
-
-    # SMAs
-    # Keep canonical names aligned with our snapshot schema: sma_5, sma_14, sma_21, sma_50, sma_100, sma_150, sma_200.
-    # We also keep sma_8 (non-canonical) for MA-bucket logic and backwards compatibility in raw_analysis.
-    for n in [5, 8, 10, 14, 21, 50, 100, 150, 200]:
-        if len(closes) >= n:
-            sma = closes.rolling(n).mean()
-            if not sma.empty and not pd.isna(sma.iloc[-1]):
-                out[f"sma_{n}"] = float(sma.iloc[-1])
-
-    # EMAs (10 + pine parity 8/21/200)
-    for n in [10, 8, 21, 200]:
-        if len(closes) >= n:
-            ema = closes.ewm(span=n, adjust=False).mean()
-            if not ema.empty and not pd.isna(ema.iloc[-1]):
-                key = "ema_10" if n == 10 else f"ema_{n}"
-                out[key] = float(ema.iloc[-1])
-
-    # RSI(14)
-    if len(closes) >= 14:
-        rsi = calculate_rsi_series(closes, 14)
-        if rsi is not None and not pd.isna(rsi.iloc[-1]):
-            out["rsi"] = float(rsi.iloc[-1])
-
-    # ATR(14, 30)
-    if (
-        set(["High", "Low", "Close"]).issubset(data_oldest_first.columns)
-        and len(data_oldest_first) >= 14
-    ):
-        atr14 = calculate_atr_series(data_oldest_first, 14)
-        if atr14 is not None and not pd.isna(atr14.iloc[-1]):
-            out["atr_14"] = float(atr14.iloc[-1])
-            # Backwards-compat key (will be removed when old schema fields are dropped)
-            out["atr"] = float(atr14.iloc[-1])
-        if len(data_oldest_first) >= 30:
-            atr30 = calculate_atr_series(data_oldest_first, 30)
-            if atr30 is not None and not pd.isna(atr30.iloc[-1]):
-                out["atr_30"] = float(atr30.iloc[-1])
-
-    # MACD (12,26,9)
-    if len(closes) >= 26:
-        ema12 = closes.ewm(span=12, adjust=False).mean()
-        ema26 = closes.ewm(span=26, adjust=False).mean()
-        macd_line = ema12 - ema26
-        signal = macd_line.ewm(span=9, adjust=False).mean()
-        hist = macd_line - signal
-        if not macd_line.empty and not pd.isna(macd_line.iloc[-1]):
-            out["macd"] = float(macd_line.iloc[-1])
-        if not signal.empty and not pd.isna(signal.iloc[-1]):
-            out["macd_signal"] = float(signal.iloc[-1])
-        if not hist.empty and not pd.isna(hist.iloc[-1]):
-            out["macd_histogram"] = float(hist.iloc[-1])
-
-    # DI/ADX (14-period, Wilder's smoothing)
-    if set(["High", "Low", "Close"]).issubset(data_oldest_first.columns):
-        try:
-            period = 14
-            up_move = data_oldest_first["High"].diff()
-            down_move = -data_oldest_first["Low"].diff()
-            plus_dm_s = pd.Series(
-                np.where((up_move > down_move) & (up_move > 0), up_move, 0.0),
-                index=data_oldest_first.index,
-            )
-            minus_dm_s = pd.Series(
-                np.where((down_move > up_move) & (down_move > 0), down_move, 0.0),
-                index=data_oldest_first.index,
-            )
-            tr1 = data_oldest_first["High"] - data_oldest_first["Low"]
-            tr2 = (data_oldest_first["High"] - data_oldest_first["Close"].shift()).abs()
-            tr3 = (data_oldest_first["Low"] - data_oldest_first["Close"].shift()).abs()
-            tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
-
-            def _ws(s: pd.Series, p: int) -> pd.Series:
-                r = pd.Series(np.nan, index=s.index)
-                fv = s.first_valid_index()
-                if fv is None:
-                    return r
-                si = s.index.get_loc(fv)
-                se = si + p
-                if se > len(s):
-                    return r
-                r.iloc[se - 1] = s.iloc[si:se].sum()
-                for k in range(se, len(s)):
-                    r.iloc[k] = r.iloc[k - 1] - r.iloc[k - 1] / p + s.iloc[k]
-                return r
-
-            s_tr = _ws(tr, period)
-            s_pdm = _ws(plus_dm_s, period)
-            s_mdm = _ws(minus_dm_s, period)
-            plus_di = (100 * s_pdm / s_tr).replace([np.inf, -np.inf], np.nan)
-            minus_di = (100 * s_mdm / s_tr).replace([np.inf, -np.inf], np.nan)
-            dx = (100 * (plus_di - minus_di).abs() / (plus_di + minus_di)).replace(
-                [np.inf, -np.inf], np.nan
-            )
-            dx_v = dx.dropna()
-            adx = pd.Series(np.nan, index=dx.index)
-            if len(dx_v) >= period:
-                al = dx.index.get_loc(dx_v.index[period - 1])
-                adx.iloc[al] = dx_v.iloc[:period].mean()
-                for k in range(al + 1, len(dx)):
-                    if not np.isnan(dx.iloc[k]) and not np.isnan(adx.iloc[k - 1]):
-                        adx.iloc[k] = (adx.iloc[k - 1] * (period - 1) + dx.iloc[k]) / period
-            if not plus_di.empty and not pd.isna(plus_di.iloc[-1]):
-                out["plus_di"] = float(plus_di.iloc[-1])
-            if not minus_di.empty and not pd.isna(minus_di.iloc[-1]):
-                out["minus_di"] = float(minus_di.iloc[-1])
-            if not adx.empty and not pd.isna(adx.iloc[-1]):
-                out["adx"] = float(adx.iloc[-1])
-        except Exception as e:
-            logger.warning("ADX computation failed: %s", e)
-
     return out
 
 

@@ -191,7 +191,6 @@ SNAPSHOT_HISTORY_PREFERRED_COLUMNS = [
     "macd",
     "macd_signal",
 ]
-"""Market service constants and curated symbol sets."""
 
 POPULAR_STOCKS = [
     # Tech Giants
@@ -385,7 +384,6 @@ CURATED_MARKET_SYMBOLS = [
     # Commodity / Crypto / Bond ETFs for multi-asset exposure
     "IBIT",
     "BITO",
-    "GLD",
     "SLV",
     "UNG",
     "TLT",

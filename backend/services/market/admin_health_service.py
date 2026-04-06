@@ -111,7 +111,7 @@ class AdminHealthService:
             app_settings = get_or_create_app_settings(db)
             market_only = bool(app_settings.market_only_mode)
         except Exception:
-            pass
+            logger.debug("Failed to read app_settings for market_only_mode")
 
         dims: Dict[str, Any] = {
             "coverage": coverage,
@@ -205,7 +205,7 @@ class AdminHealthService:
                 json.dumps(result),
             )
         except Exception:
-            pass
+            logger.debug("Failed to cache pre-market readiness result")
 
         return result
 
@@ -491,7 +491,7 @@ class AdminHealthService:
                     delta = _date.today() - earliest_date
                     history_depth_years = round(delta.days / 365.25, 1)
             except Exception:
-                pass
+                logger.debug("Failed to compute history depth years")
 
             return {
                 "status": _dim_status(ok),
@@ -590,7 +590,7 @@ class AdminHealthService:
                         checked_dt = checked_dt.replace(tzinfo=timezone.utc)
                     age_days = (datetime.now(timezone.utc) - checked_dt).days
                 except Exception:
-                    pass
+                    logger.debug("Failed to parse checked_at timestamp for age calculation")
 
             if age_days > max_age_days:
                 status = "red"
@@ -689,7 +689,7 @@ class AdminHealthService:
                         last_ping_dt = last_ping_dt.replace(tzinfo=timezone.utc)
                     is_stale = (datetime.now(timezone.utc) - last_ping_dt) > timedelta(minutes=10)
                 except Exception:
-                    pass
+                    logger.debug("Failed to parse last_ping timestamp for staleness check")
             
             if status == "connected" and not is_stale:
                 dim_status = "green"
@@ -712,13 +712,13 @@ class AdminHealthService:
         out: Dict[str, Any] = {}
         try:
             r = self._svc.redis_client
-            for task_name in _TASK_STATUS_KEYS:
+            keys = [f"taskstatus:{tn}:last" for tn in _TASK_STATUS_KEYS]
+            values = r.mget(keys)
+            for task_name, raw in zip(_TASK_STATUS_KEYS, values):
                 try:
-                    key = f"taskstatus:{task_name}:last"
-                    raw = r.get(key)
                     out[task_name] = json.loads(raw) if raw else None
                 except Exception as e:
-                    logger.warning("failed to load task status for %s: %s", task_name, e)
+                    logger.warning("failed to parse task status for %s: %s", task_name, e)
                     out[task_name] = None
         except Exception as exc:
             logger.exception("task runs load failed: %s", exc)
@@ -743,9 +743,9 @@ class AdminHealthService:
                 counters[key] = val
 
             budgets = {
-                "fmp": int(getattr(settings, "PROVIDER_DAILY_BUDGET_FMP", 250)),
-                "twelvedata": int(getattr(settings, "PROVIDER_DAILY_BUDGET_TWELVEDATA", 800)),
-                "yfinance": int(getattr(settings, "PROVIDER_DAILY_BUDGET_YFINANCE", 10000)),
+                "fmp": settings.provider_policy.fmp_daily_budget,
+                "twelvedata": settings.provider_policy.twelvedata_daily_budget,
+                "yfinance": settings.provider_policy.yfinance_daily_budget,
             }
 
             l1_hits = counters.get("l1_hit", 0)
@@ -763,7 +763,7 @@ class AdminHealthService:
                     "pct": round((calls / budget) * 100, 1) if budget > 0 else 0,
                 }
 
-            return {
+            result = {
                 "providers": providers,
                 "l1_hits": l1_hits,
                 "l2_hits": l2_hits,
@@ -772,7 +772,23 @@ class AdminHealthService:
                 "l2_hit_rate": round((l2_hits / max(l2_hits + api_calls, 1)) * 100, 1),
                 "cache_hit_rate": round(((l1_hits + l2_hits) / max(total_requests, 1)) * 100, 1),
                 "date": date_key,
+                "policy_tier": settings.MARKET_PROVIDER_POLICY,
             }
+
+            fmp_7d_total = 0
+            from datetime import timedelta
+            for i in range(7):
+                day = (datetime.now(timezone.utc) - timedelta(days=i)).strftime("%Y-%m-%d")
+                redis_key = f"provider:calls:{day}"
+                try:
+                    day_val = r.hget(redis_key, "fmp")
+                    if day_val:
+                        fmp_7d_total += int(day_val.decode() if isinstance(day_val, bytes) else day_val)
+                except Exception as exc:
+                    logger.debug("failed to read provider metrics for day=%s key=%s: %s", day, redis_key, exc)
+            result["fmp_7d_total"] = fmp_7d_total
+
+            return result
         except Exception as exc:
             logger.warning("provider metrics build failed: %s", exc)
             return {}
@@ -797,7 +813,7 @@ class AdminHealthService:
             if cached:
                 return json.loads(cached if isinstance(cached, str) else cached.decode())
         except Exception:
-            pass
+            logger.debug("Failed to read provider probe cache")
         return {"fmp": "unchecked", "finnhub": "unchecked"}
 
     def refresh_provider_probe(self) -> Dict[str, str]:
@@ -837,6 +853,6 @@ class AdminHealthService:
         try:
             r.setex(self._PROVIDER_PROBE_CACHE_KEY, self._PROVIDER_PROBE_TTL, json.dumps(result))
         except Exception:
-            pass
+            logger.debug("Failed to cache provider probe result")
 
         return result

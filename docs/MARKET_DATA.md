@@ -116,27 +116,34 @@ Paid mode operations
 
 ### FMP Tier Configuration
 
-Three env vars control FMP throughput. Change them in Render (or `infra/env.dev` locally) when switching plans:
+Throughput is controlled by a **single env var**: `MARKET_PROVIDER_POLICY` (default `paid`).  
+All per-provider budgets, rate limits, and concurrency derive from the selected tier via `ProviderPolicy` in `backend/config.py`.
 
-| Env Var | Free (250/day) | Starter ($22/mo) | Premium ($59/mo) | Ultimate |
-|---------|---------------|------------------|-------------------|----------|
-| `PROVIDER_DAILY_BUDGET_FMP` | `200` | `100000` | `100000` | `100000` |
-| `RATE_LIMIT_FMP_CPM` | `250` | `280` | `700` | `2800` |
-| `MARKET_BACKFILL_CONCURRENCY_PAID` | `10` | `25` | `50` | `50` |
+| Setting | `free` | `starter` ($22/mo) | `paid` ($59/mo) | `unlimited` |
+|---------|--------|---------------------|-----------------|-------------|
+| FMP daily budget | 200 | 3,000 | 100,000 | 999,999 |
+| FMP calls/min | 250 | 280 | 700 | 2,800 |
+| TwelveData daily | 100 | 800 | 800 | 800 |
+| yfinance daily | 5,000 | 10,000 | 10,000 | 10,000 |
+| Backfill concurrency | 5 | 25 | 50 | 100 |
+| Deep backfill allowed | No | No | No | Yes |
+| Full historical cron | No | No | No | Yes |
+| Auto-ops backfill | No | No | No | Yes |
 
-**Switching to a lower tier (e.g. Premium → Starter):**
+> **Legacy env vars** (`PROVIDER_DAILY_BUDGET_FMP`, `RATE_LIMIT_FMP_CPM`, `MARKET_BACKFILL_CONCURRENCY_PAID`) are deprecated. They are ignored when `MARKET_PROVIDER_POLICY` is set. See `infra/env.dev.example` for migration notes.
 
-1. Change the three env vars in Render Dashboard → API service and Worker service
-2. Deploy both services (env var changes require restart)
-3. All data already ingested stays in the DB -- historical depth is preserved
-4. Daily maintenance (`stale_daily`) only needs ~50-100 calls/day, trivial at any paid tier
+**Switching tiers:**
+
+1. Change `MARKET_PROVIDER_POLICY` in Render Dashboard (API + Worker services) or `infra/env.dev` locally
+2. Deploy both services (env var change requires restart)
+3. All ingested data stays in the DB — historical depth is preserved
+4. Daily maintenance (`stale_daily`) needs ~50-100 calls/day, trivial at any paid tier
 5. No code changes needed
 
 **Switching to Free tier:**
 
-1. Set `PROVIDER_DAILY_BUDGET_FMP=200` (conservative vs 250 limit)
-2. Set `RATE_LIMIT_FMP_CPM=250` (irrelevant at daily cap, but keeps it safe)
-3. yfinance becomes the effective primary for daily maintenance; FMP reserved for ~200 high-priority symbols
+1. Set `MARKET_PROVIDER_POLICY=free` in Render (or `infra/env.dev` locally)
+2. yfinance becomes the effective primary for daily maintenance; FMP reserved for high-priority symbols within the 200/day budget
 
 **Deep historical backfill:**
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import fmpsdk
@@ -73,9 +73,11 @@ class FundamentalsService:
                     continue
                 try:
                     provider_rate_limiter.acquire_sync("fmp")
-                    return self._service._call_blocking_with_retries_sync(
+                    result = self._service._call_blocking_with_retries_sync(
                         fn, apikey=apikey, symbol=symbol
                     )
+                    self._service._record_provider_call_sync("fmp")
+                    return result
                 except Exception as exc:
                     last_exc = exc
                     continue
@@ -84,12 +86,25 @@ class FundamentalsService:
             return None
 
         # --- Provider 1: FMP ---
+        fmp_budget_ok = False
         try:
-            if settings.FMP_API_KEY:
+            _r = self._service._sync_redis
+            _dk = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            _cur = int(_r.hget(f"provider:calls:{_dk}", "fmp") or 0)
+            if _cur < settings.provider_policy.fmp_daily_budget:
+                fmp_budget_ok = True
+            else:
+                logger.warning("fundamentals: FMP over daily budget (%d/%d) for %s", _cur, settings.provider_policy.fmp_daily_budget, symbol)
+        except Exception as _be:
+            logger.warning("fundamentals: budget check failed for %s, skipping FMP: %s", symbol, _be)
+
+        try:
+            if settings.FMP_API_KEY and fmp_budget_ok:
                 provider_rate_limiter.acquire_sync("fmp")
                 prof = self._service._call_blocking_with_retries_sync(
                     fmpsdk.company_profile, apikey=settings.FMP_API_KEY, symbol=symbol,
                 )
+                self._service._record_provider_call_sync("fmp")
                 if prof and len(prof) > 0 and isinstance(prof[0], dict):
                     d = prof[0]
                     info = {
@@ -106,6 +121,7 @@ class FundamentalsService:
                     metrics = self._service._call_blocking_with_retries_sync(
                         fmpsdk.key_metrics_ttm, apikey=settings.FMP_API_KEY, symbol=symbol,
                     )
+                    self._service._record_provider_call_sync("fmp")
                     if metrics and isinstance(metrics[0], dict):
                         m = metrics[0]
                         set_if_missing("pe_ttm", m.get("peRatioTTM") or m.get("peRatio"))
@@ -135,6 +151,7 @@ class FundamentalsService:
                     growth = self._service._call_blocking_with_retries_sync(
                         fmpsdk.financial_growth, apikey=settings.FMP_API_KEY, symbol=symbol,
                     )
+                    self._service._record_provider_call_sync("fmp")
                     if growth and isinstance(growth[0], dict):
                         g = growth[0]
                         set_if_missing("eps_growth_yoy", _decimal_to_pct(g.get("epsGrowth") or g.get("epsgrowth")))

@@ -1,6 +1,34 @@
 import os
+from dataclasses import dataclass
 from typing import Optional
 from pydantic_settings import BaseSettings
+
+
+@dataclass(frozen=True)
+class ProviderPolicy:
+    """Tier-specific configuration for external data providers.
+
+    All budget/rate/concurrency values derive from the selected tier.
+    Change tier by setting MARKET_PROVIDER_POLICY env var (free/starter/paid/unlimited).
+    """
+    fmp_daily_budget: int
+    fmp_cpm: int
+    twelvedata_daily_budget: int
+    twelvedata_cpm: int
+    yfinance_daily_budget: int
+    yfinance_cpm: int
+    backfill_concurrency: int
+    deep_backfill_allowed: bool
+    full_historical_cron: bool
+    auto_ops_backfill: bool
+
+
+PROVIDER_POLICIES: dict[str, ProviderPolicy] = {
+    "free":      ProviderPolicy(200,    250,  100, 7,  5000,  30,   5, False, False, False),
+    "starter":   ProviderPolicy(3000,   280,  800, 7, 10000,  30,  25, False, False, False),
+    "paid":      ProviderPolicy(100000, 700,  800, 7, 10000,  30,  50, False, False, False),
+    "unlimited": ProviderPolicy(999999, 2800, 800, 7, 10000,  30, 100, True,  True,  True),
+}
 
 
 class Settings(BaseSettings):
@@ -239,6 +267,15 @@ class Settings(BaseSettings):
         "extra": "ignore",  # Ignore extra fields from env / optional env_file
     }
 
+    @property
+    def provider_policy(self) -> ProviderPolicy:
+        """Return the ProviderPolicy for the current MARKET_PROVIDER_POLICY tier."""
+        policy_name = str(self.MARKET_PROVIDER_POLICY or "").strip().lower()
+        return PROVIDER_POLICIES.get(
+            policy_name,
+            PROVIDER_POLICIES["paid"],
+        )
+
 
 # Global settings instance
 settings = Settings()
@@ -282,28 +319,14 @@ def validate_production_settings() -> None:
             f"Global broker credentials must NOT be set in production "
             f"(use per-user encrypted credentials instead): {', '.join(leaked)}"
         )
+    if settings.ALLOW_DEEP_BACKFILL:
+        raise RuntimeError(
+            "ALLOW_DEEP_BACKFILL must be False in production. "
+            "Deep backfills risk exhausting FMP bandwidth (48.5/50 GB)."
+        )
 
 
 # Keep settings as provided; rely on .env and docker-compose. No band-aid normalization here.
-
-# Market Data Configuration
-MARKET_DATA_PROVIDERS = {"primary": "yfinance", "fallback": "alpha_vantage"}
-
-# Technical Indicators Configuration
-INDICATORS_CONFIG = {
-    "sma_periods": [10, 20, 50, 200],
-    "ema_periods": [12, 26],
-    "rsi_period": 14,
-    "bollinger_period": 20,
-    "bollinger_std": 2,
-}
-
-# Portfolio Configuration
-PORTFOLIO_CONFIG = {
-    "default_currency": "USD",
-    "risk_free_rate": 0.02,  # 2% risk-free rate
-    "benchmark_symbol": "SPY",
-}
 
 # Logging Configuration
 LOGGING_CONFIG = {

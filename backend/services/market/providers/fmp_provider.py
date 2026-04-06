@@ -156,5 +156,9 @@ class FMPProvider(MarketDataProvider):
         return True
 
     def rate_limit(self) -> Optional[int]:
-        """FMP free tier: 250 calls/day = ~4/minute sustained."""
-        return 4
+        """FMP rate limit (calls/min) derived from ProviderPolicy."""
+        try:
+            from backend.config import settings
+            return settings.provider_policy.fmp_cpm
+        except Exception:
+            return 700

@@ -256,7 +256,7 @@ def _rule_based_remediation(health: dict) -> dict:
                     "checked_at": datetime.now(timezone.utc).isoformat(),
                 })
             except Exception:
-                pass
+                logger.warning("Failed to fire escalation alert for %s", dim_name)
             continue
 
         if dim_name == "regime" and not _is_market_adjacent_hours():
