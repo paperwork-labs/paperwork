@@ -25,4 +25,4 @@ USER app
 EXPOSE 8000
 
 # Default command (can be overridden in docker-compose)
-CMD ["uvicorn", "backend.api.main:app", "--host", "0.0.0.0", "--port", "8000"] 
+CMD ["uvicorn", "backend.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--timeout-keep-alive", "30"]

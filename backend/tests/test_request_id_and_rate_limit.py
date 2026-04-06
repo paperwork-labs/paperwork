@@ -11,9 +11,12 @@ def _build_client(rate_limit: str = "2/minute") -> TestClient:
     os.environ["AUTO_MIGRATE_ON_STARTUP"] = "false"
 
     import backend.config as config
+    import backend.api.rate_limit as rate_limit
     import backend.api.main as main
 
     importlib.reload(config)
+    # Limiter reads settings at import time; recreate it before main rebinds app.state.
+    importlib.reload(rate_limit)
     importlib.reload(main)
 
     return TestClient(main.app, raise_server_exceptions=False)

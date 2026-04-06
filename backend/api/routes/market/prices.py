@@ -7,7 +7,7 @@ Endpoints for current prices, historical data, and indicator series.
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Any
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -16,45 +16,85 @@ from backend.database import get_db
 from backend.models.user import User
 from backend.models.market_data import MarketSnapshot, MarketSnapshotHistory, PriceData
 from backend.services.market.market_data_service import MarketDataService
-from backend.api.dependencies import get_optional_user
+from backend.api.dependencies import get_market_data_viewer
+from backend.api.schemas.market import CurrentPriceResponse, PriceHistoryResponse
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/prices", tags=["prices"])
 
 
-@router.get("/{symbol}")
+def _history_data_source(raw: Optional[str]) -> str:
+    """Normalize internal history layer/provider tags for API consumers."""
+    if raw == "redis_cache":
+        return "redis_cache"
+    if raw == "db":
+        return "db_fallback"
+    if raw == "fmp":
+        return "provider_fmp"
+    if raw == "yfinance":
+        return "provider_yfinance"
+    if raw == "twelvedata":
+        return "provider_twelvedata"
+    if raw:
+        return f"provider_{raw}"
+    return "unknown"
+
+
+@router.get(
+    "/{symbol}",
+    response_model=CurrentPriceResponse,
+    response_model_exclude_unset=True,
+)
 async def get_current_price(
     symbol: str,
-    user: User | None = Depends(get_optional_user),
+    _viewer: User = Depends(get_market_data_viewer),
 ) -> Dict[str, Any]:
     """Get current price for a symbol."""
     try:
         market_service = MarketDataService()
-        price = await market_service.get_current_price(symbol)
+        sym = symbol.strip().upper()
+        fresh = await market_service.get_current_price_with_freshness(sym)
+        if fresh is None:
+            return {
+                "symbol": sym,
+                "current_price": None,
+                "price": None,
+                "timestamp": datetime.now().isoformat(),
+            }
+        p = fresh["price"]
         return {
-            "symbol": symbol,
-            "current_price": price,
+            "symbol": sym,
+            "current_price": p,
+            "price": p,
+            "source": fresh["source"],
+            "as_of": fresh["as_of"],
+            "age_seconds": fresh["age_seconds"],
             "timestamp": datetime.now().isoformat(),
         }
     except Exception as e:
-        logger.error(f"Price error for {symbol}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("get_current_price failed for %s: %s", symbol, e)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/{symbol}/history")
+@router.get("/{symbol}/history", response_model=PriceHistoryResponse)
 async def get_history(
     symbol: str,
     period: str = Query("1y", description="e.g., 1mo, 3mo, 6mo, 1y, 2y, 5y"),
     interval: str = Query("1d", description="1d, 4h, 1h, 5m"),
-    user: User | None = Depends(get_optional_user),
+    _viewer: User = Depends(get_market_data_viewer),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Daily/intraday OHLCV series for the symbol."""
     try:
         svc = MarketDataService()
-        df = await svc.get_historical_data(
-            symbol=symbol.upper(), period=period, interval=interval, max_bars=None, db=db
+        df, raw_src = await svc.get_historical_data(
+            symbol=symbol.upper(),
+            period=period,
+            interval=interval,
+            max_bars=None,
+            db=db,
+            return_provider=True,
         )
         if df is None or df.empty:
             raise HTTPException(status_code=404, detail="No historical data")
@@ -83,12 +123,18 @@ async def get_history(
                 "close": float(row.get(c, None) or row.get("close_price", 0) or 0),
                 "volume": float(row.get(v, 0) or 0),
             })
-        return {"symbol": symbol.upper(), "period": period, "interval": interval, "bars": out}
+        return {
+            "symbol": symbol.upper(),
+            "period": period,
+            "interval": interval,
+            "data_source": _history_data_source(raw_src),
+            "bars": out,
+        }
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"History error for {symbol}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("get_history failed for %s: %s", symbol, e)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{symbol}/indicators")
@@ -97,7 +143,7 @@ async def get_indicator_series(
     indicators: str | None = None,
     period: str = "1y",
     limit: int = Query(5000, ge=1, le=5000, description="Max history rows returned"),
-    user: User | None = Depends(get_optional_user),
+    _viewer: User = Depends(get_market_data_viewer),
     db: Session = Depends(get_db),
 ):
     """Read pre-computed indicator series from MarketSnapshotHistory."""

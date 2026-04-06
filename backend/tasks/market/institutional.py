@@ -5,7 +5,7 @@ SEC 13F institutional holdings ingestion tasks.
 from __future__ import annotations
 
 import logging
-from datetime import date as date_type
+from datetime import datetime, timezone
 
 from celery import shared_task
 
@@ -59,7 +59,7 @@ def sync_13f(days_back: int = 90, max_filings: int = 50) -> dict:
                     name = result.get("institution_name") or filing.get(
                         "title", "Unknown"
                     )
-                    filing_date = date_type.today()
+                    filing_date = datetime.now(timezone.utc).date()
                     period_date = filing_date
 
                     inserted = persist_13f_holdings(

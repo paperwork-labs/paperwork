@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 import threading
 import time
 from typing import Dict, Optional
@@ -25,14 +26,22 @@ class TokenBucketLimiter:
     """
 
     def __init__(self, calls_per_minute: int, *, burst: Optional[int] = None) -> None:
-        self.rate = calls_per_minute / 60.0  # tokens per second
-        self.max_tokens = burst if burst is not None else max(1, calls_per_minute // 10)
-        self._tokens = float(self.max_tokens)
+        if calls_per_minute <= 0:
+            # No rate cap: pass-through (avoids rate=0 -> ZeroDivisionError in wait_time)
+            self.rate = float("inf")
+            self.max_tokens = float("inf")
+            self._tokens = float("inf")
+        else:
+            self.rate = calls_per_minute / 60.0  # tokens per second
+            self.max_tokens = burst if burst is not None else max(1, calls_per_minute // 10)
+            self._tokens = float(self.max_tokens)
         self._last_refill = time.monotonic()
         self._lock = asyncio.Lock()
         self._sync_lock = threading.Lock()
 
     def _refill(self) -> None:
+        if math.isinf(self.rate):
+            return
         now = time.monotonic()
         elapsed = now - self._last_refill
         self._tokens = min(self.max_tokens, self._tokens + elapsed * self.rate)
@@ -40,6 +49,8 @@ class TokenBucketLimiter:
 
     async def acquire(self) -> None:
         """Wait until a token is available, then consume one."""
+        if math.isinf(self.rate):
+            return
         while True:
             async with self._lock:
                 self._refill()
@@ -54,6 +65,8 @@ class TokenBucketLimiter:
 
         Thread-safe via threading.Lock for concurrent Celery workers.
         """
+        if math.isinf(self.rate):
+            return
         while True:
             with self._sync_lock:
                 self._refill()

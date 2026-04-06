@@ -29,6 +29,7 @@ Frontend structure, theming, and Ladle. For route-to-page mapping see [ARCHITECT
 - **Tailwind CSS v4** (`@tailwindcss/vite`): utility styling and layout; design tokens live in `frontend/src/index.css` as CSS variables.
 - **shadcn-style wrappers**: composed components under `frontend/src/components/ui/` (Button, Card, Dialog, …) built from Radix + `class-variance-authority` + `tailwind-merge`.
 - **Ladle**: lightweight component explorer (Storybook alternative).
+- **Framer Motion** (`framer-motion` v12.38.0): animations in `frontend/src/pages/AdminAgent.tsx`, `frontend/src/components/agent/AgentChatPanel.tsx`, `frontend/src/components/chat/ChatPanel.tsx`, and `frontend/src/components/chat/ChatBubble.tsx`.
 
 ## UI stack in this repo
 

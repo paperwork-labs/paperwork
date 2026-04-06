@@ -3,7 +3,7 @@ AxiomFolio V1 - Clean Admin Routes
 System administration endpoints.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import Dict, Any, Optional
 import logging
@@ -17,6 +17,7 @@ from backend.database import get_db
 from backend.models.user import User, UserRole
 from backend.models.user_invite import UserInvite
 from backend.api.dependencies import get_admin_user
+from backend.api.rate_limit import limiter
 from backend.models.market_data import MarketRegime, MarketSnapshot, JobRun
 
 logger = logging.getLogger(__name__)
@@ -130,7 +131,9 @@ async def list_user_invites(
 
 
 @router.post("/users/invite")
+@limiter.limit("10/minute")
 async def invite_user(
+    request: Request,
     payload: InviteUserRequest,
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
@@ -224,7 +227,9 @@ def _user_admin_payload(user: User) -> Dict[str, Any]:
 
 
 @router.post("/users/{user_id}/approve")
+@limiter.limit("10/minute")
 async def approve_user(
+    request: Request,
     user_id: int,
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),

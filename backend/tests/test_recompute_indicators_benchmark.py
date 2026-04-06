@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from backend.services.market.market_data_service import market_data_service
 from backend.tasks.market import indicators as market_indicators_tasks
 
@@ -28,5 +30,16 @@ def test_recompute_indicators_warns_when_benchmark_missing(db_session, monkeypat
     res = market_indicators_tasks.recompute_universe(batch_size=1)
     assert res["benchmark"]["ok"] is False
     assert res["benchmark"]["daily_bars"] < res["benchmark"]["required_bars"]
+    assert res["benchmark"]["spy_session_lag_stale"] is True
+    assert res["benchmark"]["spy_freshness_refresh_attempted"] is True
     assert res.get("warnings")
+
+
+def test_spy_daily_bars_stale_vs_ref_trading_day_window():
+    ref = datetime(2026, 2, 2, tzinfo=timezone.utc).date()  # Monday
+    recent_fri = datetime(2026, 1, 30, 12, 0, tzinfo=timezone.utc)
+    assert market_indicators_tasks._spy_daily_bars_stale_vs_ref(recent_fri, ref) is False
+    old_wed = datetime(2026, 1, 21, 12, 0, tzinfo=timezone.utc)
+    assert market_indicators_tasks._spy_daily_bars_stale_vs_ref(old_wed, ref) is True
+    assert market_indicators_tasks._spy_daily_bars_stale_vs_ref(None, ref) is True
 

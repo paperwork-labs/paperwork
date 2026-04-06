@@ -11,6 +11,10 @@ from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 
 from backend.database import SessionLocal
+from backend.services.market.fmp_5m_tier_gate import (
+    fmp_5m_intraday_backfill_blocked_tier,
+    log_skip_intraday_5m_backfill,
+)
 from backend.services.market.market_data_service import market_data_service
 from backend.tasks.utils.task_utils import (
     _get_tracked_universe_from_db,
@@ -32,6 +36,17 @@ _DEFAULT_HARD = 3600
 @task_run("admin_backfill_5m_symbols")
 def bars_5m_symbols(symbols: List[str], n_days: int = 5) -> dict:
     """Delta backfill last N days of 5m bars for a provided symbol list."""
+    blocked_tier = fmp_5m_intraday_backfill_blocked_tier()
+    if blocked_tier is not None:
+        log_skip_intraday_5m_backfill(blocked_tier)
+        return {
+            "status": "skipped",
+            "reason": "tier_insufficient",
+            "symbols": len(symbols or []),
+            "processed": 0,
+            "errors": 0,
+            "provider_usage": {},
+        }
     if not market_data_service.coverage.is_backfill_5m_enabled():
         return {
             "status": "skipped",
@@ -106,6 +121,17 @@ def bars_5m_symbols(symbols: List[str], n_days: int = 5) -> dict:
 @task_run("admin_backfill_5m")
 def bars_5m_last_n_days(n_days: int = 5, batch_size: int = 50) -> dict:
     """Backfill last N days of 5m bars for tracked universe in batches."""
+    blocked_tier = fmp_5m_intraday_backfill_blocked_tier()
+    if blocked_tier is not None:
+        log_skip_intraday_5m_backfill(blocked_tier)
+        return {
+            "status": "skipped",
+            "reason": "tier_insufficient",
+            "symbols": 0,
+            "processed": 0,
+            "errors": 0,
+            "provider_usage": {},
+        }
     if not market_data_service.coverage.is_backfill_5m_enabled():
         return {
             "status": "skipped",

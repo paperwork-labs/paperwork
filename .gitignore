@@ -200,3 +200,5 @@ cache/
 # Git backup
 .git_backup/ 
 *.pdf
+*.tar.gz
+*.sql.gz

@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from celery import shared_task
+from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import or_
 
 from backend.database import SessionLocal
@@ -76,6 +77,8 @@ def enrich_index(
                             if prov.get(k) is not None:
                                 snap = snap or {}
                                 snap[k] = prov.get(k)
+                except SoftTimeLimitExceeded:
+                    raise
                 except Exception as e:
                     logger.warning("Provider fundamentals fetch failed for %s: %s", sym, e)
             if not snap:
@@ -205,6 +208,8 @@ def refresh_stale(stale_days: int = 7, limit_per_run: int = 500) -> dict:
                 continue
             try:
                 funda = market_data_service.providers.get_fundamentals_info(sym)
+            except SoftTimeLimitExceeded:
+                raise
             except Exception as e:
                 logger.warning("Fundamentals refresh failed for %s: %s", sym, e)
                 continue

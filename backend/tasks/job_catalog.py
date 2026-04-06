@@ -97,6 +97,17 @@ CATALOG: List[JobTemplate] = [
         job_run_label="check_regime_alerts",
         timeout_s=60,
     ),
+    JobTemplate(
+        id="sync_earnings_calendar",
+        display_name="Earnings Calendar Sync",
+        group="market_data",
+        task="backend.tasks.market.earnings.sync_earnings_calendar",
+        description="Sync upcoming earnings dates and estimates for tracked symbols (FMP premium + yfinance fallback)",
+        default_cron="30 3 * * *",
+        default_tz="UTC",
+        job_run_label="sync_earnings_calendar",
+        timeout_s=660,
+    ),
     # ── Orders ─────────────────────────────────────────────────────
     JobTemplate(
         id="monitor-open-orders",

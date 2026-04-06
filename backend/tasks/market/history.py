@@ -3,15 +3,15 @@ Snapshot history recording and backfill tasks.
 """
 
 import logging
+import time
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 import numpy as np
 import pandas as pd
-from celery import shared_task
+from celery import current_task, shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import func
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from backend.database import SessionLocal
 from backend.models import PriceData
@@ -25,10 +25,24 @@ from backend.services.market.indicator_engine import (
     compute_weinstein_stage_series_from_daily,
 )
 from backend.services.market.market_data_service import market_data_service
+from backend.services.market.snapshot_history_writer import (
+    build_snapshot_history_pg_upsert_stmt,
+    upsert_snapshot_history_row,
+)
 from backend.services.market.stage_utils import compute_stage_run_lengths
 from backend.tasks.utils.task_utils import _get_tracked_symbols_safe, _set_task_status, task_run
 
 logger = logging.getLogger(__name__)
+
+
+def _celery_task_id_short() -> str:
+    try:
+        req = getattr(current_task, "request", None)
+        tid = getattr(req, "id", None) if req else None
+        return str(tid)[:8] if tid else "?"
+    except Exception:
+        return "?"
+
 
 _DEFAULT_SOFT = 3500
 _DEFAULT_HARD = 3600
@@ -75,65 +89,24 @@ def snapshot_for_date(as_of_date: str, batch_size: int = 50) -> dict:
                     with session.begin_nested():
                         processed_ok += 1
 
-                        # Upsert into history keyed by (symbol, type, as_of_date)
-                        existing = (
-                            session.query(MarketSnapshotHistory)
-                            .filter(
-                                MarketSnapshotHistory.symbol == sym,
-                                MarketSnapshotHistory.analysis_type == "technical_snapshot",
-                                MarketSnapshotHistory.as_of_date == as_of_dt,
-                            )
-                            .first()
+                        upsert_snapshot_history_row(
+                            session,
+                            sym,
+                            as_of_dt,
+                            snap,
+                            analysis_type="technical_snapshot",
                         )
-                        if existing:
-                            existing.current_price = snap.get("current_price")
-                            existing.rsi = snap.get("rsi")
-                            existing.atr_value = snap.get("atr_value")
-                            existing.sma_50 = snap.get("sma_50")
-                            existing.macd = snap.get("macd")
-                            existing.macd_signal = snap.get("macd_signal")
-                            for k, v in (snap or {}).items():
-                                if hasattr(existing, k):
-                                    setattr(existing, k, v)
-                        else:
-                            _reserved = {
-                                "id",
-                                "symbol",
-                                "analysis_type",
-                                "as_of_date",
-                                "analysis_timestamp",
-                                "current_price",
-                                "rsi",
-                                "atr_value",
-                                "sma_50",
-                                "macd",
-                                "macd_signal",
-                            }
-                            session.add(
-                                MarketSnapshotHistory(
-                                    symbol=sym,
-                                    analysis_type="technical_snapshot",
-                                    as_of_date=as_of_dt,
-                                    current_price=snap.get("current_price"),
-                                    rsi=snap.get("rsi"),
-                                    atr_value=snap.get("atr_value"),
-                                    sma_50=snap.get("sma_50"),
-                                    macd=snap.get("macd"),
-                                    macd_signal=snap.get("macd_signal"),
-                                    **{
-                                        k: v
-                                        for k, v in (snap or {}).items()
-                                        if k not in _reserved and hasattr(MarketSnapshotHistory, k)
-                                    },
-                                )
-                            )
                         upserted += 1
+                except SoftTimeLimitExceeded:
+                    raise
                 except Exception as exc:
                     errors += 1
                     if len(error_samples) < 25:
                         error_samples.append({"symbol": sym, "error": str(exc)})
             try:
                 session.commit()
+            except SoftTimeLimitExceeded:
+                raise
             except Exception as exc:
                 logger.warning(
                     "snapshot_for_date batch commit failed for chunk starting %s: %s",
@@ -570,30 +543,8 @@ def snapshot_last_n_days(
                                 exc_info=True,
                             )
 
-                        stmt = pg_insert(MarketSnapshotHistory).values(payload_rows)
-                        stmt = stmt.on_conflict_do_update(
-                            constraint="uq_symbol_type_asof",
-                            set_={
-                                "current_price": stmt.excluded.current_price,
-                                "rsi": stmt.excluded.rsi,
-                                "atr_value": stmt.excluded.atr_value,
-                                "sma_50": stmt.excluded.sma_50,
-                                "macd": stmt.excluded.macd,
-                                "macd_signal": stmt.excluded.macd_signal,
-                                # Wide columns: update everything we provided (excluding identity cols).
-                                **{
-                                    c.name: getattr(stmt.excluded, c.name)
-                                    for c in MarketSnapshotHistory.__table__.columns
-                                    if c.name
-                                    not in {
-                                        "id",
-                                        "symbol",
-                                        "analysis_type",
-                                        "as_of_date",
-                                        "analysis_timestamp",
-                                    }
-                                },
-                            },
+                        stmt = build_snapshot_history_pg_upsert_stmt(
+                            payload_rows, conflict_update="wide"
                         )
                         session.execute(stmt)
                         session.commit()
@@ -630,6 +581,8 @@ def snapshot_last_n_days(
             )
             try:
                 session.commit()
+            except SoftTimeLimitExceeded:
+                raise
             except Exception as ce:
                 logger.warning(
                     "snapshot_last_n_days partial commit after soft limit failed: %s",
@@ -743,6 +696,8 @@ def snapshot_for_symbol(
             if spy_rows:
                 spy_df = price_data_rows_to_dataframe(spy_rows, ascending=True)
                 spy_df.index = pd.to_datetime(spy_df.index, utc=True, errors="coerce").tz_convert(None).normalize()
+        except SoftTimeLimitExceeded:
+            raise
         except Exception as e:
             logger.warning("spy_benchmark_fetch failed for %s: %s", symbol, e)
 
@@ -774,18 +729,14 @@ def snapshot_for_symbol(
                 batch_rows.append(r)
 
             try:
-                stmt = pg_insert(MarketSnapshotHistory.__table__).values(batch_rows)
-                stmt = stmt.on_conflict_do_update(
-                    constraint="uq_symbol_type_asof",
-                    set_={
-                        k: stmt.excluded[k]
-                        for k in batch_rows[0].keys()
-                        if k not in ("symbol", "analysis_type", "as_of_date")
-                    },
+                stmt = build_snapshot_history_pg_upsert_stmt(
+                    batch_rows, conflict_update="partial"
                 )
                 session.execute(stmt)
                 session.commit()
                 written += len(batch_rows)
+            except SoftTimeLimitExceeded:
+                raise
             except Exception as e:
                 session.rollback()
                 errors += len(batch_rows)
@@ -802,6 +753,8 @@ def snapshot_for_symbol(
             "written_rows": written,
             "errors": errors,
         }
+    except SoftTimeLimitExceeded:
+        raise
     except Exception as exc:
         return {"status": "error", "symbol": symbol, "error": str(exc)}
     finally:
@@ -816,15 +769,20 @@ def snapshot_for_symbol(
 def record_daily(symbols: Optional[List[str]] = None) -> dict:
     """Persist immutable daily snapshots to MarketSnapshotHistory from latest MarketSnapshot."""
     _set_task_status("admin_snapshots_history_record", "running")
+    task_id = _celery_task_id_short()
+    t0 = time.monotonic()
+    logger.info("[%s] record_daily started", task_id)
     session = SessionLocal()
     try:
         if not symbols:
             symbols = _get_tracked_symbols_safe(session)
+        sym_list = sorted(set(s.upper() for s in symbols))
+        total = len(sym_list)
         written = 0
         skipped_no_snapshot = 0
         errors = 0
         error_samples: List[dict] = []
-        for sym in sorted(set(s.upper() for s in symbols)):
+        for n, sym in enumerate(sym_list, 1):
             try:
                 row = (
                     session.query(MarketSnapshot)
@@ -845,6 +803,8 @@ def record_daily(symbols: Optional[List[str]] = None) -> dict:
                 as_of_dt = None
                 try:
                     as_of_dt = getattr(row, "as_of_timestamp", None) if row is not None else None
+                except SoftTimeLimitExceeded:
+                    raise
                 except Exception:
                     as_of_dt = None
                 if as_of_dt is None:
@@ -858,64 +818,30 @@ def record_daily(symbols: Optional[List[str]] = None) -> dict:
                 as_of_date = as_of_dt or datetime.now(timezone.utc).replace(
                     hour=0, minute=0, second=0, microsecond=0
                 )
-                existing = (
-                    session.query(MarketSnapshotHistory)
-                    .filter(
-                        MarketSnapshotHistory.symbol == sym,
-                        MarketSnapshotHistory.analysis_type == "technical_snapshot",
-                        MarketSnapshotHistory.as_of_date == as_of_date,
-                    )
-                    .first()
+                upsert_snapshot_history_row(
+                    session,
+                    sym,
+                    as_of_date,
+                    snapshot,
+                    analysis_type="technical_snapshot",
                 )
-                if existing:
-                    existing.current_price = snapshot.get("current_price")
-                    existing.rsi = snapshot.get("rsi")
-                    existing.atr_value = snapshot.get("atr_value")
-                    existing.sma_50 = snapshot.get("sma_50")
-                    existing.macd = snapshot.get("macd")
-                    existing.macd_signal = snapshot.get("macd_signal")
-                    for k, v in (snapshot or {}).items():
-                        if hasattr(existing, k):
-                            setattr(existing, k, v)
-                else:
-                    _reserved = {
-                        "id",
-                        "symbol",
-                        "analysis_type",
-                        "as_of_date",
-                        "analysis_timestamp",
-                        "current_price",
-                        "rsi",
-                        "atr_value",
-                        "sma_50",
-                        "macd",
-                        "macd_signal",
-                    }
-                    new_row = MarketSnapshotHistory(
-                        symbol=sym,
-                        analysis_type="technical_snapshot",
-                        as_of_date=as_of_date,
-                        current_price=snapshot.get("current_price"),
-                        rsi=snapshot.get("rsi"),
-                        atr_value=snapshot.get("atr_value"),
-                        sma_50=snapshot.get("sma_50"),
-                        macd=snapshot.get("macd"),
-                        macd_signal=snapshot.get("macd_signal"),
-                        **{
-                            k: v
-                            for k, v in (snapshot or {}).items()
-                            if k not in _reserved and hasattr(MarketSnapshotHistory, k)
-                        },
-                    )
-                    session.add(new_row)
                 session.commit()
                 written += 1
+            except SoftTimeLimitExceeded:
+                raise
             except Exception as e:
                 session.rollback()
                 errors += 1
                 if len(error_samples) < 25:
                     error_samples.append({"symbol": sym, "error": str(e)})
-                logger.warning("record_daily failed for %s: %s", sym, e)
+                logger.warning(
+                    "[%s] record_daily failed for %s (%d/%d): %s",
+                    task_id,
+                    sym,
+                    n,
+                    total,
+                    e,
+                )
         res = {
             "status": "ok",
             "symbols": len(symbols),
@@ -924,6 +850,16 @@ def record_daily(symbols: Optional[List[str]] = None) -> dict:
             "errors": errors,
             "error_samples": error_samples,
         }
+        elapsed = time.monotonic() - t0
+        logger.info(
+            "[%s] record_daily completed in %.1fs (symbols=%d written=%d skipped=%d errors=%d)",
+            task_id,
+            elapsed,
+            total,
+            written,
+            skipped_no_snapshot,
+            errors,
+        )
         _set_task_status("admin_snapshots_history_record", "ok", res)
         return res
     finally:

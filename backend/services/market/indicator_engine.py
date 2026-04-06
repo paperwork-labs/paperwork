@@ -444,7 +444,7 @@ def calculate_performance_windows(
     close = data_newest_first["Close"]
 
     def pct(n: int) -> Optional[float]:
-        if len(close) > n and close.iloc[0] and close.iloc[n]:
+        if len(close) > n and pd.notna(close.iloc[0]) and close.iloc[0] != 0 and pd.notna(close.iloc[n]) and close.iloc[n] != 0:
             try:
                 return float((close.iloc[0] / close.iloc[n] - 1.0) * 100.0)
             except Exception as e:
@@ -483,7 +483,7 @@ def calculate_performance_windows(
             ("perf_ytd", ystart),
         ]:
             ref = nearest_close_on_or_after(dt)
-            if ref and close.iloc[0]:
+            if ref and pd.notna(close.iloc[0]) and close.iloc[0] != 0:
                 out[key] = float((close.iloc[0] / ref - 1.0) * 100.0)
     except Exception as e:
         logger.warning("Calendar performance window calculation failed: %s", e)
@@ -523,7 +523,8 @@ def calculate_rsi_series(closes: pd.Series, period: int = 14) -> Optional[pd.Ser
         rs = avg_gain / avg_loss
         rsi = 100 - (100 / (1 + rs))
         rsi = rsi.replace([np.inf, -np.inf], np.nan)
-        rsi[avg_loss == 0] = 100.0
+        rsi[(avg_gain == 0) & (avg_loss == 0)] = 50.0
+        rsi[(avg_gain > 0) & (avg_loss == 0)] = 100.0
         return rsi
     except Exception as e:
         logger.warning("RSI(%d) calculation failed: %s", period, e)
@@ -628,6 +629,8 @@ def compute_td_sequential_counts(closes: List[float]) -> Dict[str, Optional[int]
         return {"td_buy_setup": None, "td_sell_setup": None}
     buy_setup = 0
     sell_setup = 0
+    last_buy = 0
+    last_sell = 0
     # Iterate oldest->newest for stability
     for i in range(len(closes) - 1, -1, -1):
         j = i + 4
@@ -642,9 +645,15 @@ def compute_td_sequential_counts(closes: List[float]) -> Dict[str, Optional[int]
         else:
             buy_setup = 0
             sell_setup = 0
+        last_buy = min(buy_setup, 9)
+        last_sell = min(sell_setup, 9)
+        if buy_setup >= 9:
+            buy_setup = 0
+        if sell_setup >= 9:
+            sell_setup = 0
     return {
-        "td_buy_setup": int(buy_setup) if buy_setup > 0 else None,
-        "td_sell_setup": int(sell_setup) if sell_setup > 0 else None,
+        "td_buy_setup": last_buy if last_buy > 0 else None,
+        "td_sell_setup": last_sell if last_sell > 0 else None,
     }
 
 
@@ -677,12 +686,12 @@ def compute_gap_counts(
         if hi[i] < lo[i + 1] and (1.0 - hi[i] / lo[i + 1]) >= pct:
             down_gaps.append((lo[i + 1], hi[i], i))
 
-    # determine filled status scanning forward (towards older bars)
+    # determine filled status scanning forward in time (toward newer bars)
     def count_unfilled(gaps, direction: str) -> int:
         count = 0
         for top, bottom, start in gaps:
             filled = False
-            for j in range(start + 1, len(lo)):
+            for j in range(start - 1, -1, -1):
                 if direction == "up":
                     if lo[j] <= bottom:
                         filled = True

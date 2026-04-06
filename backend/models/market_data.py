@@ -8,7 +8,9 @@ Minimal, production-focused models for price history and indicator snapshots.
 from sqlalchemy import (
     BigInteger,
     Column,
+    Date,
     Integer,
+    Numeric,
     String,
     Float,
     DateTime,
@@ -518,5 +520,33 @@ class CronScheduleAudit(Base):
 
     __table_args__ = (
         Index("idx_audit_schedule_time", "schedule_id", "timestamp"),
+    )
+
+
+class EarningsCalendarEvent(Base):
+    """Upcoming and recent earnings dates with EPS/revenue estimates and actuals.
+
+    Populated from FMP (premium) with yfinance fallback for tracked symbols.
+    Table name: earnings_calendar
+    """
+
+    __tablename__ = "earnings_calendar"
+
+    id = Column(Integer, primary_key=True)
+    symbol = Column(String(20), nullable=False, index=True)
+    report_date = Column(Date, nullable=False)
+    fiscal_period = Column(String(20))
+    estimate_eps = Column(Numeric)
+    actual_eps = Column(Numeric)
+    estimate_revenue = Column(Numeric)
+    actual_revenue = Column(Numeric)
+    time_of_day = Column(String(10))  # "bmo", "amc", "unknown"
+    source = Column(String(20))  # "fmp", "yfinance"
+    fetched_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("symbol", "report_date", "fiscal_period", name="uq_earnings_sym_date_period"),
+        Index("idx_earnings_report_date", "report_date"),
+        Index("idx_earnings_symbol_date", "symbol", "report_date"),
     )
 

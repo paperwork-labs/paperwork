@@ -5,6 +5,7 @@ from collections import Counter
 import json
 import logging
 import random
+import threading
 import time
 from datetime import datetime
 from datetime import timedelta
@@ -40,6 +41,7 @@ from backend.services.market.indicator_engine import (
     compute_weinstein_stage_from_daily,
 )
 from backend.services.market.universe import tracked_symbols_with_source
+from backend.services.market.snapshot_history_writer import upsert_snapshot_history_row
 from backend.services.market.constants import FUNDAMENTAL_FIELDS
 from backend.services.market.dataframe_utils import (
     ensure_newest_first,
@@ -86,7 +88,8 @@ def _last_n_trading_sessions(n: int = 2) -> list:
         else:
             closed = schedule[schedule <= today]
         return list(closed[-n:])
-    except Exception:
+    except Exception as e:
+        logger.warning("_last_n_trading_sessions failed, using empty session list: %s", e)
         return []
 
 
@@ -119,6 +122,7 @@ class APIProvider(Enum):
 
 _cb_failures: Dict[str, int] = {}
 _cb_open_until: Dict[str, float] = {}
+_cb_lock = threading.Lock()
 
 
 class MarketDataService:
@@ -154,7 +158,8 @@ class MarketDataService:
             from twelvedata import TDClient  # lazy import
             if settings.TWELVE_DATA_API_KEY:
                 self.twelve_data_client = TDClient(apikey=settings.TWELVE_DATA_API_KEY)
-        except Exception:
+        except Exception as e:
+            logger.warning("Twelve Data client init failed, Twelve Data disabled: %s", e)
             self.twelve_data_client = None
 
         # Facade services for clearer responsibilities
@@ -228,8 +233,10 @@ class MarketDataService:
             if isinstance(raw, (bytes, bytearray)):
                 raw = raw.decode()
             return str(raw).strip().lower() not in ("0", "false", "off", "disabled")
-        except Exception:
-            # Default OFF on errors — 5m backfill is optional, daily flows not blocked
+        except Exception as e:
+            logger.warning(
+                "is_backfill_5m_enabled Redis read failed, defaulting OFF: %s", e
+            )
             return False
 
     async def is_backfill_5m_enabled_async(self) -> bool:
@@ -242,8 +249,11 @@ class MarketDataService:
             if isinstance(raw, (bytes, bytearray)):
                 raw = raw.decode()
             return str(raw).strip().lower() not in ("0", "false", "off", "disabled")
-        except Exception:
-            return False  # Default OFF on errors too
+        except Exception as e:
+            logger.warning(
+                "is_backfill_5m_enabled_async Redis read failed, defaulting OFF: %s", e
+            )
+            return False
 
     def benchmark_health(
         self,
@@ -271,7 +281,12 @@ class MarketDataService:
         if latest_daily_dt and latest_dt:
             try:
                 stale = latest_dt.date() < latest_daily_dt.date()
-            except Exception:
+            except Exception as e:
+                logger.warning(
+                    "benchmark_health stale date compare failed for %s: %s",
+                    benchmark_symbol,
+                    e,
+                )
                 stale = False
         return {
             "symbol": benchmark_symbol,
@@ -305,7 +320,8 @@ class MarketDataService:
                 if hasattr(df_newest.index[0], "to_pydatetime")
                 else df_newest.index[0]
             )
-        except Exception:
+        except Exception as e:
+            logger.warning("snapshot as_of_ts from dataframe index failed: %s", e)
             as_of_ts = None
         # Use canonical indicator pipeline (not deprecated compute_core_indicators)
         indicator_series = compute_full_indicator_series(df_oldest)
@@ -353,7 +369,8 @@ class MarketDataService:
                 if hi <= lo:
                     return None
                 return float((price - lo) / (hi - lo) * 100.0)
-            except Exception:
+            except Exception as e:
+                logger.debug("range_pos(%s) computation failed: %s", window, e)
                 return None
 
         def atrx(ma_val: Optional[float]) -> Optional[float]:
@@ -361,7 +378,8 @@ class MarketDataService:
                 if ma_val is None or atr_14 is None or atr_14 == 0:
                     return None
                 return float((price - float(ma_val)) / float(atr_14))
-            except Exception:
+            except Exception as e:
+                logger.debug("atrx computation failed: %s", e)
                 return None
 
         snapshot: Dict[str, Any] = {
@@ -491,7 +509,11 @@ class MarketDataService:
             latest_days_raw = getattr(latest_history_row, "current_stage_days", None)
             try:
                 latest_days = int(latest_days_raw) if latest_days_raw is not None else None
-            except Exception:
+            except Exception as e:
+                logger.warning(
+                    "derive_stage_run_fields: invalid current_stage_days on history row: %s",
+                    e,
+                )
                 latest_days = None
 
             if latest_stage_norm == current_norm:
@@ -557,28 +579,31 @@ class MarketDataService:
 
     def _cb_is_open(self, provider: APIProvider) -> bool:
         key = provider.value
-        deadline = _cb_open_until.get(key, 0.0)
-        if time.monotonic() < deadline:
-            return True
-        if deadline:
-            _cb_failures.pop(key, None)
-            _cb_open_until.pop(key, None)
+        with _cb_lock:
+            deadline = _cb_open_until.get(key, 0.0)
+            if time.monotonic() < deadline:
+                return True
+            if deadline:
+                _cb_failures.pop(key, None)
+                _cb_open_until.pop(key, None)
         return False
 
     def _cb_record_failure(self, provider: APIProvider) -> None:
         key = provider.value
-        _cb_failures[key] = _cb_failures.get(key, 0) + 1
-        if _cb_failures[key] >= self._CB_THRESHOLD:
-            _cb_open_until[key] = time.monotonic() + self._CB_COOLDOWN_S
-            logger.warning(
-                "Circuit breaker OPEN for %s after %d consecutive failures (cooldown %ds)",
-                key, _cb_failures[key], self._CB_COOLDOWN_S,
-            )
+        with _cb_lock:
+            _cb_failures[key] = _cb_failures.get(key, 0) + 1
+            if _cb_failures[key] >= self._CB_THRESHOLD:
+                _cb_open_until[key] = time.monotonic() + self._CB_COOLDOWN_S
+                logger.warning(
+                    "Circuit breaker OPEN for %s after %d consecutive failures (cooldown %ds)",
+                    key, _cb_failures[key], self._CB_COOLDOWN_S,
+                )
 
     def _cb_record_success(self, provider: APIProvider) -> None:
         key = provider.value
-        _cb_failures.pop(key, None)
-        _cb_open_until.pop(key, None)
+        with _cb_lock:
+            _cb_failures.pop(key, None)
+            _cb_open_until.pop(key, None)
 
     # ---------------------- Provider selection ----------------------
     def _provider_priority(self, data_type: str) -> List[APIProvider]:
@@ -663,7 +688,8 @@ class MarketDataService:
                 code = getattr(exc, attr, None)
                 if isinstance(code, int):
                     return code
-            except Exception:
+            except Exception as e:
+                logger.debug("http_status getattr %s failed: %s", attr, e)
                 continue
         # Last resort: parse digits from message
         try:
@@ -753,39 +779,164 @@ class MarketDataService:
             raise last_exc
         raise RuntimeError("provider call failed without exception")
 
-    async def get_current_price(self, symbol: str) -> Optional[float]:
-        """Get current price for a symbol with provider policy and 60s Redis cache."""
-        cache_key = f"price:{symbol}"
-        r = await self._get_redis()
-        cached = await r.get(cache_key)
+    async def _get_current_price_detail(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """Resolve live quote with source and freshness (60s Redis cache, then providers, then DB)."""
+        sym_key = symbol.strip().upper()
+        cache_key = f"price:{sym_key}"
+        cached = None
+        r: Optional[Any] = None
+        try:
+            r = await self._get_redis()
+            cached = await r.get(cache_key)
+        except Exception as e:
+            logger.warning(
+                "Redis unavailable for price cache read for %s, falling through to providers: %s",
+                sym_key,
+                e,
+            )
         if cached:
             try:
-                return float(cached)
+                price = float(cached)
+                as_of = datetime.now(timezone.utc)
+                ttl_remain = -1
+                if r is not None:
+                    try:
+                        ttl_remain = int(await r.ttl(cache_key))
+                    except Exception as ttl_exc:
+                        logger.debug("price cache ttl read failed for %s: %s", sym_key, ttl_exc)
+                if ttl_remain >= 0:
+                    age_seconds = max(0, 60 - ttl_remain)
+                else:
+                    age_seconds = 0
+                return {
+                    "price": price,
+                    "source": "redis_cache",
+                    "as_of": as_of,
+                    "age_seconds": age_seconds,
+                }
             except Exception as e:
-                logger.warning("cached_price_parse failed for %s: %s", symbol, e)
+                logger.warning("cached_price_parse failed for %s: %s", sym_key, e)
         for provider in self._provider_priority("real_time_quote"):
             if not self._is_provider_available(provider):
                 continue
             try:
                 price = None
                 if provider == APIProvider.FMP:
+                    try:
+                        r_budget = await self._get_redis()
+                        _date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                        _current = int(
+                            await r_budget.hget(f"provider:calls:{_date_key}", "fmp") or 0
+                        )
+                        _limit = settings.provider_policy.fmp_daily_budget
+                        if _current >= _limit:
+                            logger.warning(
+                                "Provider fmp over daily budget (%d/%d), skipping quote for %s",
+                                _current,
+                                _limit,
+                                sym_key,
+                            )
+                            continue
+                    except Exception as _budget_exc:
+                        logger.warning(
+                            "Redis unavailable for budget check, allowing FMP quote for %s: %s",
+                            sym_key,
+                            _budget_exc,
+                        )
+                    await provider_rate_limiter.acquire("fmp")
                     q = await self._call_blocking_with_retries(
-                        fmpsdk.quote, apikey=settings.FMP_API_KEY, symbol=symbol
+                        fmpsdk.quote, apikey=settings.FMP_API_KEY, symbol=sym_key
                     )
                     price = q and len(q) > 0 and q[0].get("price")
                 elif provider == APIProvider.YFINANCE:
                     hist = await self._call_blocking_with_retries(
-                        lambda: yf.Ticker(symbol).history(period="1d", interval="1m")
+                        lambda: yf.Ticker(sym_key).history(period="1d", interval="1m")
                     )
                     price = float(hist["Close"].iloc[-1]) if not hist.empty else None
                 if price is not None:
                     self._cb_record_success(provider)
-                    await r.setex(cache_key, 60, str(price))
-                    return float(price)
-            except Exception:
+                    if provider == APIProvider.FMP:
+                        await self._record_provider_call("fmp")
+                    try:
+                        r_w = await self._get_redis()
+                        await r_w.setex(cache_key, 60, str(price))
+                    except Exception as e:
+                        logger.warning(
+                            "Redis unavailable for price cache write for %s: %s", sym_key, e
+                        )
+                    as_of = datetime.now(timezone.utc)
+                    if provider == APIProvider.FMP:
+                        src = "provider_fmp"
+                    elif provider == APIProvider.YFINANCE:
+                        src = "provider_yfinance"
+                    else:
+                        src = f"provider_{provider.value}"
+                    return {
+                        "price": float(price),
+                        "source": src,
+                        "as_of": as_of,
+                        "age_seconds": 0,
+                    }
+            except Exception as exc:
+                logger.warning(
+                    "get_current_price provider %s failed for %s: %s",
+                    provider.value,
+                    sym_key,
+                    exc,
+                )
                 self._cb_record_failure(provider)
                 continue
+        db = SessionLocal()
+        try:
+            row = (
+                db.query(PriceData)
+                .filter(PriceData.symbol == sym_key, PriceData.interval == "1d")
+                .order_by(PriceData.date.desc())
+                .first()
+            )
+            if row is not None and row.close_price is not None:
+                bar_ts = row.date
+                if bar_ts is None:
+                    return None
+                if bar_ts.tzinfo is None:
+                    as_of = bar_ts.replace(tzinfo=timezone.utc)
+                else:
+                    as_of = bar_ts.astimezone(timezone.utc)
+                now = datetime.now(timezone.utc)
+                age_seconds = max(0, int((now - as_of).total_seconds()))
+                return {
+                    "price": float(row.close_price),
+                    "source": "db_fallback",
+                    "as_of": as_of,
+                    "age_seconds": age_seconds,
+                }
+        except Exception as db_exc:
+            logger.warning("get_current_price db_fallback failed for %s: %s", sym_key, db_exc)
+        finally:
+            db.close()
         return None
+
+    async def get_current_price(self, symbol: str) -> Optional[float]:
+        """Get current price for a symbol with provider policy and 60s Redis cache."""
+        detail = await self._get_current_price_detail(symbol)
+        return float(detail["price"]) if detail else None
+
+    async def get_current_price_with_freshness(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """Same as live quote path as `get_current_price`, with API-oriented freshness fields."""
+        detail = await self._get_current_price_detail(symbol)
+        if not detail:
+            return None
+        as_of = detail["as_of"]
+        if as_of.tzinfo is None:
+            as_of = as_of.replace(tzinfo=timezone.utc)
+        as_of_utc = as_of.astimezone(timezone.utc)
+        as_of_str = as_of_utc.isoformat().replace("+00:00", "Z")
+        return {
+            "price": detail["price"],
+            "source": detail["source"],
+            "as_of": as_of_str,
+            "age_seconds": int(detail["age_seconds"]),
+        }
 
     def get_fundamentals_info(self, symbol: str) -> Dict[str, Any]:
         """Delegate to FundamentalsService (multi-provider cascade)."""
@@ -851,8 +1002,17 @@ class MarketDataService:
         - Cache TTL: 300s for intraday; 3600s for daily+
         """
         cache_key = f"historical:{symbol}:{period}:{interval}"
-        r = await self._get_redis()
-        cached = await r.get(cache_key)
+        r = None
+        cached = None
+        try:
+            r = await self._get_redis()
+            cached = await r.get(cache_key)
+        except Exception as e:
+            logger.warning(
+                "Redis unavailable for historical cache read for %s, falling through to L2/L3: %s",
+                symbol,
+                e,
+            )
         if cached:
             try:
                 df_cached = pd.read_json(cached, orient="index")
@@ -863,7 +1023,7 @@ class MarketDataService:
                 except Exception:
                     logger.debug("Redis L1 hit counter increment failed")
                 if return_provider:
-                    return df_cached, None
+                    return df_cached, "redis_cache"
                 return df_cached
             except Exception as e:
                 logger.warning("cached_dataframe_parse failed for %s: %s", symbol, e)
@@ -885,13 +1045,21 @@ class MarketDataService:
                             if max_bars and interval == "1d":
                                 db_df = db_df.head(max_bars)
                             ttl = 300 if interval in ("1m", "5m") else 3600
-                            await r.setex(cache_key, ttl, db_df.to_json(orient="index"))
                             try:
-                                _date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-                                await r.hincrby(f"provider:calls:{_date_key}", "l2_hit", 1)
-                                await r.expire(f"provider:calls:{_date_key}", 86400 * 30)
-                            except Exception:
-                                logger.debug("Redis L2 hit counter increment failed")
+                                rw = r if r is not None else await self._get_redis()
+                                await rw.setex(cache_key, ttl, db_df.to_json(orient="index"))
+                                try:
+                                    _date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                                    await rw.hincrby(f"provider:calls:{_date_key}", "l2_hit", 1)
+                                    await rw.expire(f"provider:calls:{_date_key}", 86400 * 30)
+                                except Exception:
+                                    logger.debug("Redis L2 hit counter increment failed")
+                            except Exception as l2_cache_exc:
+                                logger.warning(
+                                    "Redis L2 cache write failed for %s (non-blocking): %s",
+                                    symbol,
+                                    l2_cache_exc,
+                                )
                             logger.info("L2 DB hit for %s (%s/%s): %d bars", symbol, period, interval, len(db_df))
                             if return_provider:
                                 return db_df, "db"
@@ -908,9 +1076,9 @@ class MarketDataService:
             if not self._is_provider_available(provider):
                 continue
             # Daily budget check
+            _counter_name = "twelvedata" if provider == APIProvider.TWELVE_DATA else provider.value
             try:
                 _date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-                _counter_name = "twelvedata" if provider == APIProvider.TWELVE_DATA else provider.value
                 _current = int(await r.hget(f"provider:calls:{_date_key}", _counter_name) or 0)
                 _policy = settings.provider_policy
                 _budgets = {
@@ -923,8 +1091,11 @@ class MarketDataService:
                     logger.warning("Provider %s over daily budget (%d/%d), skipping", _counter_name, _current, _limit)
                     continue
             except Exception as _budget_exc:
-                logger.warning("Budget check failed for provider (Redis error), treating as over-budget: %s", _budget_exc)
-                continue
+                logger.warning(
+                    "Redis unavailable for budget check, allowing provider call for %s: %s",
+                    _counter_name,
+                    _budget_exc,
+                )
             await provider_rate_limiter.acquire(
                 "twelvedata" if provider == APIProvider.TWELVE_DATA else provider.value
             )
@@ -954,20 +1125,31 @@ class MarketDataService:
                     if max_bars and interval == "1d":
                         df = df.head(max_bars)
                     ttl = 300 if interval in ("1m", "5m") else 3600
-                    await r.setex(cache_key, ttl, df.to_json(orient="index"))
                     try:
-                        _date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-                        _counter_name = "twelvedata" if provider == APIProvider.TWELVE_DATA else provider.value
-                        await r.hincrby(f"provider:calls:{_date_key}", _counter_name, 1)
-                        await r.expire(f"provider:calls:{_date_key}", 86400 * 30)
-                    except Exception:
-                        logger.debug("Redis provider call counter increment failed")
+                        rw = r if r is not None else await self._get_redis()
+                        await rw.setex(cache_key, ttl, df.to_json(orient="index"))
+                        try:
+                            _date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                            _counter_name = "twelvedata" if provider == APIProvider.TWELVE_DATA else provider.value
+                            await rw.hincrby(f"provider:calls:{_date_key}", _counter_name, 1)
+                            await rw.expire(f"provider:calls:{_date_key}", 86400 * 30)
+                        except Exception:
+                            logger.debug("Redis provider call counter increment failed")
+                    except Exception as l3_cache_exc:
+                        logger.warning(
+                            "Redis L3 cache write for %s failed (non-blocking): %s",
+                            symbol,
+                            l3_cache_exc,
+                        )
+                    db_session = None
                     try:
                         db_session = SessionLocal()
                         self.persist_price_bars(db_session, symbol, df, interval=interval, data_source=provider_used or "provider")
-                        db_session.close()
                     except Exception as persist_exc:
                         logger.warning("Write-through persist_price_bars for %s failed (non-blocking): %s", symbol, persist_exc)
+                    finally:
+                        if db_session is not None:
+                            db_session.close()
                     if return_provider:
                         return df, provider_used
                     return df
@@ -1098,6 +1280,32 @@ class MarketDataService:
         df.columns = ["Open", "High", "Low", "Close", "Volume"][: len(df.columns)]
         return df.sort_index(ascending=False)
 
+    def _fetch_fmp_historical_dividends_sync(self, symbol: str) -> List[Dict]:
+        """Single FMP stock_dividend HTTP fetch; raises on transport or error payloads."""
+        import requests
+
+        url = (
+            "https://financialmodelingprep.com/api/v3/historical-price-full/stock_dividend/"
+            f"{symbol}?apikey={settings.FMP_API_KEY}"
+        )
+        resp = requests.get(url, timeout=15)
+        if resp.status_code != 200:
+            raise RuntimeError(f"FMP dividend HTTP {resp.status_code}")
+        data = resp.json()
+        if isinstance(data, dict) and (
+            data.get("Error Message") or data.get("error") or data.get("message")
+        ):
+            msg = data.get("Error Message") or data.get("error") or data.get("message")
+            raise RuntimeError(f"FMP dividend error: {msg}")
+        if not isinstance(data, dict):
+            raise RuntimeError("FMP dividend unexpected payload type")
+        historical = data.get("historical")
+        if historical is None:
+            return []
+        if not isinstance(historical, list):
+            raise RuntimeError("FMP dividend historical is not a list")
+        return historical
+
     # ---------------------- Index Constituents ----------------------
 
     _IWM_HOLDINGS_URL = (
@@ -1220,7 +1428,11 @@ class MarketDataService:
                 else:
                     logger.warning("get_index_constituents: FMP over daily budget (%d/%d), skipping", _current, _budget)
             except Exception as _budget_exc:
-                logger.warning("get_index_constituents: budget check failed (Redis error), skipping FMP: %s", _budget_exc)
+                logger.warning(
+                    "Redis unavailable for FMP budget check, allowing FMP for index constituents: %s",
+                    _budget_exc,
+                )
+                fmp_budget_ok = True
 
             if fmp_budget_ok:
                 try:
@@ -1324,7 +1536,8 @@ class MarketDataService:
         for idx in idxs:
             try:
                 result[idx] = await self.get_index_constituents(idx)
-            except Exception:
+            except Exception as e:
+                logger.warning("get_all_tradeable_symbols failed for index %s: %s", idx, e)
                 result[idx] = []
         return result
 
@@ -1583,7 +1796,10 @@ class MarketDataService:
                                 snapshot_as_of_dt = _dt.fromisoformat(s.replace("Z", "+00:00"))
                             else:
                                 snapshot_as_of_dt = _dt.fromisoformat(s)
-                        except Exception:
+                        except Exception as e:
+                            logger.debug(
+                                "snapshot_as_of_dt parse failed for %s: %s", symbol, e
+                            )
                             snapshot_as_of_dt = None
 
                     hist_q = (
@@ -1734,7 +1950,8 @@ class MarketDataService:
 
         Architecture:
         - `market_snapshot`: fast "latest view" per (symbol, analysis_type)
-        - `market_snapshot_history`: immutable daily ledger keyed by (symbol, analysis_type, as_of_date)
+        - `market_snapshot_history`: immutable daily ledger keyed by (symbol, analysis_type, as_of_date);
+          writes go through ``snapshot_history_writer.upsert_snapshot_history_row`` (shared with Celery history tasks).
         """
         if not snapshot:
             raise ValueError("empty snapshot")
@@ -1745,7 +1962,6 @@ class MarketDataService:
         # - MarketSnapshot.as_of_timestamp (timestamptz)
         # - MarketSnapshotHistory.as_of_date (timestamp without tz, midnight)
         from backend.models import PriceData
-        from backend.models.market_data import MarketSnapshotHistory
         from datetime import timezone, time as _time
 
         as_of_ts: datetime | None = None
@@ -1761,7 +1977,10 @@ class MarketDataService:
                 else:
                     dt = datetime.fromisoformat(s)
                     as_of_ts = dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
-        except Exception:
+        except Exception as e:
+            logger.warning(
+                "persist_snapshot as_of_timestamp parse failed for %s: %s", symbol, e
+            )
             as_of_ts = None
         if as_of_ts is None:
             try:
@@ -1774,7 +1993,12 @@ class MarketDataService:
                 )
                 if isinstance(as_of_ts, datetime) and as_of_ts.tzinfo is None:
                     as_of_ts = as_of_ts.replace(tzinfo=timezone.utc)
-            except Exception:
+            except Exception as e:
+                logger.warning(
+                    "persist_snapshot DB fallback as_of_timestamp failed for %s: %s",
+                    symbol,
+                    e,
+                )
                 as_of_ts = None
 
         # Ensure raw snapshot stays JSON-serializable.
@@ -1818,45 +2042,13 @@ class MarketDataService:
         # Append to immutable daily ledger (idempotent upsert by unique constraint).
         if as_of_ts is not None:
             as_of_date = datetime.combine(as_of_ts.date(), _time.min)
-            existing = (
-                db.query(MarketSnapshotHistory)
-                .filter(
-                    MarketSnapshotHistory.symbol == symbol,
-                    MarketSnapshotHistory.analysis_type == analysis_type,
-                    MarketSnapshotHistory.as_of_date == as_of_date,
-                )
-                .first()
+            upsert_snapshot_history_row(
+                db,
+                symbol,
+                as_of_date,
+                snapshot_json,
+                analysis_type=analysis_type,
             )
-            if existing:
-                existing.analysis_timestamp = datetime.now(timezone.utc)
-                # Headline fields
-                existing.current_price = snapshot_json.get("current_price")
-                existing.rsi = snapshot_json.get("rsi")
-                existing.atr_value = snapshot_json.get("atr_value")
-                existing.sma_50 = snapshot_json.get("sma_50")
-                existing.macd = snapshot_json.get("macd")
-                existing.macd_signal = snapshot_json.get("macd_signal")
-                # Wide fields (best-effort: set only if model has the attr)
-                for k, v in snapshot_json.items():
-                    if hasattr(existing, k):
-                        setattr(existing, k, v)
-            else:
-                hist = MarketSnapshotHistory(
-                    symbol=symbol,
-                    analysis_type=analysis_type,
-                    as_of_date=as_of_date,
-                    analysis_timestamp=datetime.now(timezone.utc),
-                    current_price=snapshot_json.get("current_price"),
-                    rsi=snapshot_json.get("rsi"),
-                    atr_value=snapshot_json.get("atr_value"),
-                    sma_50=snapshot_json.get("sma_50"),
-                    macd=snapshot_json.get("macd"),
-                    macd_signal=snapshot_json.get("macd_signal"),
-                )
-                for k, v in snapshot_json.items():
-                    if hasattr(hist, k):
-                        setattr(hist, k, v)
-                db.add(hist)
         db.flush()
         if auto_commit:
             db.commit()
@@ -1874,6 +2066,7 @@ class MarketDataService:
         is_adjusted: bool = True,
         is_synthetic_ohlc: bool = False,
         delta_after: Optional[datetime] = None,
+        auto_commit: bool = True,
     ) -> int:
         """Persist OHLCV bars into `price_data` with ON CONFLICT DO NOTHING.
 
@@ -1893,7 +2086,12 @@ class MarketDataService:
         # Build rows in chronological order for clarity (and stable delta filtering).
         try:
             df_iter = df.sort_index(ascending=True).iterrows()
-        except Exception:
+        except Exception as e:
+            logger.warning(
+                "persist_price_bars sort_index failed for %s, using raw iterrows: %s",
+                symbol,
+                e,
+            )
             df_iter = df.iterrows()
 
         rows: list[dict[str, Any]] = []
@@ -1905,7 +2103,12 @@ class MarketDataService:
                     if hasattr(ts, "timestamp")
                     else ts
                 )
-            except Exception:
+            except Exception as e:
+                logger.debug(
+                    "persist_price_bars row timestamp normalize failed for %s: %s",
+                    symbol,
+                    e,
+                )
                 pd_date = ts
             if delta_after and pd_date <= delta_after:
                 continue
@@ -1990,7 +2193,8 @@ class MarketDataService:
             ),
         )
         db.execute(stmt)
-        db.commit()
+        if auto_commit:
+            db.commit()
         return len(rows)
 
     async def backfill_daily_bars(
@@ -2013,7 +2217,10 @@ class MarketDataService:
                 .limit(1)
                 .scalar()
             )
-        except Exception:
+        except Exception as e:
+            logger.warning(
+                "backfill_daily_bars last_date query failed for %s: %s", symbol, e
+            )
             last_date = None
         df, provider_used = await self.get_historical_data(
             symbol=symbol.upper(),
@@ -2130,7 +2337,10 @@ class MarketDataService:
         bm_df = await self.get_historical_data(benchmark, period="1y", interval="1d")
         try:
             return compute_weinstein_stage_from_daily(sym_df, bm_df)
-        except Exception:
+        except Exception as e:
+            logger.warning(
+                "get_weinstein_stage failed for %s vs %s: %s", symbol, benchmark, e
+            )
             return {"stage": "UNKNOWN"}
 
     async def get_technical_analysis(self, symbol: str) -> Dict[str, Any]:
@@ -2165,7 +2375,8 @@ class MarketDataService:
         def _to_float(value):
             try:
                 return float(value) if value is not None else None
-            except Exception:
+            except Exception as e:
+                logger.debug("get_tracked_details _to_float failed: %s", e)
                 return None
 
         for row in rows:
@@ -2460,12 +2671,14 @@ class MarketDataService:
         # Daily fill series (date -> % of symbols with OHLCV on that date)
         try:
             snapshot["daily"]["fill_by_date"] = _fill_by_date("1d", days=None)
-        except Exception:
+        except Exception as e:
+            logger.warning("coverage_snapshot fill_by_date failed: %s", e)
             snapshot["daily"]["fill_by_date"] = []
         # Snapshot fill series (technical snapshots) for same period
         try:
             snapshot["daily"]["snapshot_fill_by_date"] = _snapshot_fill_by_date(days=None)
-        except Exception:
+        except Exception as e:
+            logger.warning("coverage_snapshot snapshot_fill_by_date failed: %s", e)
             snapshot["daily"]["snapshot_fill_by_date"] = []
         snapshot["status"] = compute_coverage_status(snapshot)
         return snapshot
@@ -2498,13 +2711,31 @@ class MarketDataService:
         if not settings.FMP_API_KEY:
             return []
         try:
-            url = f"https://financialmodelingprep.com/api/v3/historical-price-full/stock_dividend/{symbol}?apikey={settings.FMP_API_KEY}"
-            import requests
-            resp = requests.get(url, timeout=15)
-            if resp.status_code != 200:
-                return []
-            data = resp.json()
-            return data.get("historical", [])
+            try:
+                _r_sync = self._sync_redis
+                _date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                _current = int(_r_sync.hget(f"provider:calls:{_date_key}", "fmp") or 0)
+                _budget = settings.provider_policy.fmp_daily_budget
+                if _current >= _budget:
+                    logger.warning(
+                        "get_historical_dividends: FMP over daily budget (%d/%d), skipping %s",
+                        _current,
+                        _budget,
+                        symbol,
+                    )
+                    return []
+            except Exception as _budget_exc:
+                logger.warning(
+                    "Redis unavailable for FMP budget check, allowing dividend fetch for %s: %s",
+                    symbol,
+                    _budget_exc,
+                )
+            provider_rate_limiter.acquire_sync("fmp")
+            historical = self._call_blocking_with_retries_sync(
+                self._fetch_fmp_historical_dividends_sync, symbol
+            )
+            self._record_provider_call_sync("fmp")
+            return historical
         except Exception as e:
             logger.warning("FMP dividend fetch failed for %s: %s", symbol, e)
             return []

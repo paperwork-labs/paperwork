@@ -1,7 +1,18 @@
 from fastapi.testclient import TestClient
 
 from backend.api.main import app
-from backend.api.dependencies import get_optional_user
+from backend.api.dependencies import get_market_data_viewer
+from backend.models.user import UserRole
+
+
+def _viewer_override():
+    class _DummyUser:
+        id = 1
+        role = UserRole.OWNER
+        is_active = True
+        email = "viewer@example.com"
+
+    return _DummyUser()
 
 
 def test_technical_snapshots_endpoint_returns_rows(monkeypatch):
@@ -10,8 +21,7 @@ def test_technical_snapshots_endpoint_returns_rows(monkeypatch):
     from backend.models.market_data import MarketSnapshot
     from backend.models.market_tracked_plan import MarketTrackedPlan
 
-    # Avoid auth requirements
-    app.dependency_overrides[get_optional_user] = lambda: None
+    app.dependency_overrides[get_market_data_viewer] = _viewer_override
 
     # Stub DB session + tracked universe + query chain (join + window subquery path)
     class _FakeSnapshotQuery:
@@ -61,7 +71,7 @@ def test_technical_snapshots_endpoint_returns_rows(monkeypatch):
         assert data["rows"][0]["symbol"] == "AAA"
     finally:
         app.dependency_overrides.pop(get_db, None)
-        app.dependency_overrides.pop(get_optional_user, None)
+        app.dependency_overrides.pop(get_market_data_viewer, None)
 
 
 def test_technical_snapshots_endpoint_picks_latest_row_per_symbol(monkeypatch):
@@ -72,7 +82,7 @@ def test_technical_snapshots_endpoint_picks_latest_row_per_symbol(monkeypatch):
     from backend.models.market_data import MarketSnapshot
     from backend.models.market_tracked_plan import MarketTrackedPlan
 
-    app.dependency_overrides[get_optional_user] = lambda: None
+    app.dependency_overrides[get_market_data_viewer] = _viewer_override
 
     now = datetime.now(timezone.utc)
 
@@ -131,7 +141,7 @@ def test_technical_snapshots_endpoint_picks_latest_row_per_symbol(monkeypatch):
         assert row_by_symbol["BBB"]["current_price"] == 30.0
     finally:
         app.dependency_overrides.pop(get_db, None)
-        app.dependency_overrides.pop(get_optional_user, None)
+        app.dependency_overrides.pop(get_market_data_viewer, None)
 
 
 def test_snapshot_history_batch_returns_histories_per_symbol():
@@ -140,7 +150,7 @@ def test_snapshot_history_batch_returns_histories_per_symbol():
     from backend.database import get_db
     from backend.models.market_data import MarketSnapshotHistory
 
-    app.dependency_overrides[get_optional_user] = lambda: None
+    app.dependency_overrides[get_market_data_viewer] = _viewer_override
 
     d1 = date(2024, 1, 2)
     d2 = date(2024, 1, 3)
@@ -195,6 +205,5 @@ def test_snapshot_history_batch_returns_histories_per_symbol():
         assert data["histories"]["BBB"][0]["stage_label"] == "3A"
     finally:
         app.dependency_overrides.pop(get_db, None)
-        app.dependency_overrides.pop(get_optional_user, None)
-
+        app.dependency_overrides.pop(get_market_data_viewer, None)
 

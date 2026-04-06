@@ -3,10 +3,12 @@ Indicator recompute, stage metadata, and related maintenance tasks.
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import List, Set
+import time
+from datetime import date, datetime, timedelta, timezone
+from typing import List, Optional, Set
 
-from celery import shared_task
+import pandas as pd
+from celery import current_task, shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import func
 
@@ -29,7 +31,45 @@ from backend.services.market.backfill_params import daily_backfill_params
 
 logger = logging.getLogger(__name__)
 
+
+def _celery_task_id_short() -> str:
+    try:
+        req = getattr(current_task, "request", None)
+        tid = getattr(req, "id", None) if req else None
+        return str(tid)[:8] if tid else "?"
+    except Exception:
+        return "?"
+
+
 _DEFAULT_SOFT = 3500
+
+
+def _spy_daily_bars_stale_vs_ref(
+    latest: Optional[datetime],
+    ref_date: date,
+    *,
+    max_trailing_sessions: int = 2,
+) -> bool:
+    """True if the latest SPY 1d bar is missing or more than *max_trailing_sessions* sessions behind *ref_date*."""
+    if latest is None:
+        return True
+    if isinstance(latest, datetime):
+        latest_d = latest.date()
+    elif isinstance(latest, date):
+        latest_d = latest
+    else:
+        latest_d = pd.Timestamp(latest).date()
+    if latest_d > ref_date:
+        return False
+    sessions_after = pd.bdate_range(
+        start=pd.Timestamp(latest_d) + pd.offsets.BDay(1),
+        end=pd.Timestamp(ref_date),
+        inclusive="both",
+    )
+    return len(sessions_after) > max_trailing_sessions
+
+
+_DEFAULT_BENCHMARK_SYMBOL = "SPY"
 _DEFAULT_HARD = 3600
 
 
@@ -107,6 +147,9 @@ def position_metadata() -> dict:
 def recompute_universe(batch_size: int = 50) -> dict:
     """Recompute indicators for the tracked universe from local DB (orchestrator only)."""
     _set_task_status("admin_indicators_recompute_universe", "running")
+    task_id = _celery_task_id_short()
+    t0 = time.monotonic()
+    logger.info("[%s] recompute_universe started (batch_size=%d)", task_id, batch_size)
     session = SessionLocal()
     try:
         stale_cutoff = datetime.now(timezone.utc) - timedelta(hours=2)
@@ -126,6 +169,8 @@ def recompute_universe(batch_size: int = 50) -> dict:
                 j.finished_at = j.started_at + timedelta(seconds=3600)
             if stuck:
                 session.commit()
+        except SoftTimeLimitExceeded:
+            raise
         except Exception as e:
             logger.warning(
                 "Failed to mark stale admin_indicators_recompute_universe JobRun rows: %s",
@@ -134,13 +179,69 @@ def recompute_universe(batch_size: int = 50) -> dict:
             )
             session.rollback()
 
+        warnings: List[str] = []
+
+        ref_date = datetime.now(timezone.utc).date()
+        spy_latest_pre = (
+            session.query(func.max(PriceData.date))
+            .filter(
+                PriceData.symbol == _DEFAULT_BENCHMARK_SYMBOL,
+                PriceData.interval == "1d",
+            )
+            .scalar()
+        )
+        spy_freshness_refresh_attempted = False
+        spy_freshness_refresh_persist_errors = 0
+        if _spy_daily_bars_stale_vs_ref(spy_latest_pre, ref_date):
+            spy_freshness_refresh_attempted = True
+            logger.warning(
+                "SPY benchmark daily data is stale or missing (latest=%s, ref_date=%s); attempting refresh",
+                spy_latest_pre,
+                ref_date,
+            )
+            loop = setup_event_loop()
+            try:
+                params = daily_backfill_params(days=30)
+                fetched = loop.run_until_complete(
+                    _fetch_daily_for_symbols(
+                        symbols=[_DEFAULT_BENCHMARK_SYMBOL],
+                        period=params.period,
+                        max_bars=params.max_bars,
+                        concurrency=1,
+                    )
+                )
+                persist_early = _persist_daily_fetch_results(
+                    session=session,
+                    fetched=fetched,
+                    since_dt=None,
+                    use_delta_after=True,
+                )
+                spy_freshness_refresh_persist_errors = int(persist_early.get("errors") or 0)
+                if spy_freshness_refresh_persist_errors:
+                    logger.error(
+                        "SPY benchmark refresh persist reported %s error(s): %s",
+                        spy_freshness_refresh_persist_errors,
+                        persist_early.get("error_samples"),
+                    )
+            except SoftTimeLimitExceeded:
+                raise
+            except Exception as e:
+                logger.error(
+                    "SPY benchmark refresh failed; RS/Stage may be inaccurate: %s",
+                    e,
+                    exc_info=True,
+                )
+            finally:
+                loop.close()
+
         ordered = _get_tracked_symbols_safe(session)
+        total_syms = len(ordered)
+        logger.info("[%s] recompute_universe universe symbols=%d", task_id, total_syms)
 
         processed_ok = 0
         skipped_no_data = 0
         errors = 0
         error_samples: List[dict] = []
-        warnings: List[str] = []
 
         latest_daily_dt = (
             session.query(func.max(PriceData.date))
@@ -195,6 +296,18 @@ def recompute_universe(batch_size: int = 50) -> dict:
                 f"lags latest daily {latest_daily_dt.date()}; RS may be stale."
             )
 
+        spy_latest_for_compute = (
+            session.query(func.max(PriceData.date))
+            .filter(PriceData.symbol == benchmark_symbol, PriceData.interval == "1d")
+            .scalar()
+        )
+        spy_session_lag_stale = _spy_daily_bars_stale_vs_ref(spy_latest_for_compute, ref_date)
+        if spy_session_lag_stale:
+            warnings.append(
+                f"Benchmark {benchmark_symbol} daily data is stale or missing (latest={spy_latest_for_compute}); "
+                "Mansfield RS and Weinstein stages may be UNKNOWN or inaccurate."
+            )
+
         spy_df = None
         try:
             spy_rows = (
@@ -213,6 +326,8 @@ def recompute_universe(batch_size: int = 50) -> dict:
             )
             if spy_rows:
                 spy_df = price_data_rows_to_dataframe(spy_rows, ascending=False)
+        except SoftTimeLimitExceeded:
+            raise
         except Exception as e:
             logger.warning("spy_benchmark_fetch failed for %s: %s", benchmark_symbol, e)
 
@@ -226,6 +341,8 @@ def recompute_universe(batch_size: int = 50) -> dict:
                     MarketSnapshot.analysis_timestamp >= fresh_cutoff,
                 )
             }
+        except SoftTimeLimitExceeded:
+            raise
         except Exception as e:
             logger.warning("fresh_snapshot_query failed: %s", e)
         skipped_fresh = 0
@@ -233,7 +350,8 @@ def recompute_universe(batch_size: int = 50) -> dict:
         try:
             for i in range(0, len(ordered), max(1, batch_size)):
                 chunk = ordered[i : i + batch_size]
-                for sym in chunk:
+                for j, sym in enumerate(chunk):
+                    idx = i + j + 1
                     if sym in fresh_syms:
                         skipped_fresh += 1
                         continue
@@ -261,13 +379,27 @@ def recompute_universe(batch_size: int = 50) -> dict:
                         errors += 1
                         if len(error_samples) < 25:
                             error_samples.append({"symbol": sym, "error": str(exc)})
+                        logger.warning(
+                            "[%s] recompute_universe failed for %s (%d/%d): %s",
+                            task_id,
+                            sym,
+                            idx,
+                            total_syms,
+                            exc,
+                            exc_info=True,
+                        )
                 try:
                     session.commit()
                 except SoftTimeLimitExceeded:
                     raise
                 except Exception as e:
+                    batch_end = min(i + len(chunk), total_syms)
                     logger.warning(
-                        "recompute_universe batch commit failed: %s",
+                        "[%s] recompute_universe batch commit failed (%d-%d/%d): %s",
+                        task_id,
+                        i + 1,
+                        batch_end,
+                        total_syms,
                         e,
                         exc_info=True,
                     )
@@ -277,7 +409,8 @@ def recompute_universe(batch_size: int = 50) -> dict:
                 session.commit()
             except Exception as e:
                 logger.warning(
-                    "recompute_universe partial commit after soft time limit failed: %s",
+                    "[%s] recompute_universe partial commit after soft time limit failed: %s",
+                    task_id,
                     e,
                     exc_info=True,
                 )
@@ -301,6 +434,9 @@ def recompute_universe(batch_size: int = 50) -> dict:
                 "fetched": benchmark_fetched,
                 "errors": benchmark_errors,
                 "ok": benchmark_count >= required_bars,
+                "spy_session_lag_stale": spy_session_lag_stale,
+                "spy_freshness_refresh_attempted": spy_freshness_refresh_attempted,
+                "spy_freshness_refresh_persist_errors": spy_freshness_refresh_persist_errors,
             },
         }
         if warnings:
@@ -309,6 +445,17 @@ def recompute_universe(batch_size: int = 50) -> dict:
             res["error"] = "Sample errors:\n" + "\n".join(
                 f"- {e.get('symbol')}: {e.get('error')}" for e in error_samples
             )
+        elapsed = time.monotonic() - t0
+        logger.info(
+            "[%s] recompute_universe completed in %.1fs (symbols=%d ok=%d skipped_nd=%d skipped_fresh=%d errors=%d)",
+            task_id,
+            elapsed,
+            total_syms,
+            processed_ok,
+            skipped_no_data,
+            skipped_fresh,
+            errors,
+        )
         _set_task_status("admin_indicators_recompute_universe", "ok", res)
         return res
     finally:
@@ -386,6 +533,8 @@ def stage_durations() -> dict:
         res = {"status": "ok", "symbols": processed, "rows_updated": updated_rows}
         _set_task_status("admin_backfill_stage_durations", "ok", res)
         return res
+    except SoftTimeLimitExceeded:
+        raise
     except Exception as exc:
         session.rollback()
         res = {"status": "error", "error": str(exc)}
@@ -415,41 +564,61 @@ def stage_changes() -> dict:
             return {"status": "ok", "alerts_created": 0, "reason": "no_positions"}
 
         today = datetime.now(timezone.utc).date()
-        yesterday = today - timedelta(days=1)
+        recent_dates = (
+            session.query(MarketSnapshotHistory.as_of_date)
+            .filter(
+                MarketSnapshotHistory.as_of_date <= today,
+                MarketSnapshotHistory.analysis_type == "technical_snapshot",
+            )
+            .distinct()
+            .order_by(MarketSnapshotHistory.as_of_date.desc())
+            .limit(2)
+            .all()
+        )
+        if len(recent_dates) < 2:
+            return {
+                "status": "ok",
+                "alerts_created": 0,
+                "reason": "insufficient_snapshot_dates",
+                "symbols_checked": len(symbols),
+            }
 
-        today_rows = (
+        current_date = recent_dates[0][0]
+        previous_date = recent_dates[1][0]
+
+        current_rows = (
             session.query(
                 MarketSnapshotHistory.symbol, MarketSnapshotHistory.stage_label
             )
             .filter(
                 MarketSnapshotHistory.symbol.in_(symbols),
                 MarketSnapshotHistory.analysis_type == "technical_snapshot",
-                MarketSnapshotHistory.as_of_date == today,
+                MarketSnapshotHistory.as_of_date == current_date,
             )
             .all()
         )
-        yesterday_rows = (
+        previous_rows = (
             session.query(
                 MarketSnapshotHistory.symbol, MarketSnapshotHistory.stage_label
             )
             .filter(
                 MarketSnapshotHistory.symbol.in_(symbols),
                 MarketSnapshotHistory.analysis_type == "technical_snapshot",
-                MarketSnapshotHistory.as_of_date == yesterday,
+                MarketSnapshotHistory.as_of_date == previous_date,
             )
             .all()
         )
 
-        today_map = {r[0]: r[1] for r in today_rows}
-        yesterday_map = {r[0]: r[1] for r in yesterday_rows}
+        current_map = {r[0]: r[1] for r in current_rows}
+        previous_map = {r[0]: r[1] for r in previous_rows}
 
         changes = []
         for sym in symbols:
-            t_stage = today_map.get(sym)
-            y_stage = yesterday_map.get(sym)
-            if t_stage and y_stage and t_stage != y_stage:
+            cur_stage = current_map.get(sym)
+            prev_stage = previous_map.get(sym)
+            if cur_stage and prev_stage and cur_stage != prev_stage:
                 changes.append(
-                    {"symbol": sym, "from_stage": y_stage, "to_stage": t_stage}
+                    {"symbol": sym, "from_stage": prev_stage, "to_stage": cur_stage}
                 )
 
         if changes:
@@ -463,10 +632,15 @@ def stage_changes() -> dict:
                 alert_service.send_alert(
                     "portfolio_stage_change",
                     title="Portfolio Stage Changes",
-                    description=f"{len(changes)} held symbol(s) changed stage today.",
+                    description=(
+                        f"{len(changes)} held symbol(s) changed stage between "
+                        f"{previous_date.isoformat()} and {current_date.isoformat()}."
+                    ),
                     fields=fields,
                     severity="warning",
                 )
+            except SoftTimeLimitExceeded:
+                raise
             except Exception as e:
                 logger.warning("stage_change_ops_alert failed: %s", e)
 
@@ -476,6 +650,8 @@ def stage_changes() -> dict:
             "changes": changes,
             "alerts_created": len(changes),
         }
+    except SoftTimeLimitExceeded:
+        raise
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
     finally:

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { Link as RouterLink } from 'react-router-dom';
 import {
@@ -37,8 +38,9 @@ import BubbleChart from '../components/charts/BubbleChart';
 import { formatDate } from '../utils/format';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import useAdminHealth from '../hooks/useAdminHealth';
-import { useVolatility } from '../hooks/useVolatility';
+import { useVolatility, type VolatilityDashboardData } from '../hooks/useVolatility';
 import { useMarketSnapshots } from '../hooks/useMarketSnapshots';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 const TopDownView = React.lazy(() => import('../components/market/TopDownView'));
 const BottomUpView = React.lazy(() => import('../components/market/BottomUpView'));
@@ -572,16 +574,6 @@ const RRGChart: React.FC<{ sectors: RRGSector[] }> = ({ sectors }) => {
 
 /* ===== Volatility Regime ===== */
 
-type VolData = {
-  vix: number | null;
-  vvix: number | null;
-  vix3m: number | null;
-  term_structure_ratio: number | null;
-  vol_of_vol_ratio: number | null;
-  regime: string;
-  signal: string;
-};
-
 const REGIME_COLORS: Record<string, { className: string; label: string }> = {
   calm:     { className: 'border-transparent bg-[rgb(var(--status-success)/0.12)] text-[rgb(var(--status-success)/1)]', label: 'Calm' },
   elevated: { className: 'border-transparent bg-amber-500/15 text-amber-800 dark:text-amber-200', label: 'Elevated' },
@@ -634,7 +626,7 @@ const GaugeBar: React.FC<{
   );
 };
 
-const VolatilityRegime: React.FC<{ data: VolData | null }> = ({ data }) => {
+const VolatilityRegime: React.FC<{ data: VolatilityDashboardData | null }> = ({ data }) => {
   if (!data || data.regime === 'unknown') return null;
   const rc = REGIME_COLORS[data.regime] || REGIME_COLORS.unknown;
 
@@ -762,9 +754,17 @@ const UNIVERSE_FILTER_KEY = 'axiomfolio:market-dashboard:universe-filter';
 
 const MarketDashboard: React.FC = () => {
   const { timezone } = useUserPreferences();
-  const [payload, setPayload] = React.useState<DashboardPayload | null>(null);
-  const [loading, setLoading] = React.useState<boolean>(true);
-  const [error, setError] = React.useState<string | null>(null);
+  const {
+    data: payload,
+    isLoading: loading,
+    error,
+    refetch,
+  } = useQuery<DashboardPayload>({
+    queryKey: ['market-dashboard'],
+    queryFn: async () => (await marketDataApi.getDashboard()) as DashboardPayload,
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+  });
   const [chartSymbol, setChartSymbol] = React.useState<string | null>(null);
   const openChart = React.useCallback((sym: string) => setChartSymbol(sym), []);
   const portfolioQuery = usePortfolioSymbols();
@@ -814,24 +814,8 @@ const MarketDashboard: React.FC = () => {
   }, [universeFilter, portfolioSymbols, constituentSet]);
 
   const volatilityQuery = useVolatility();
-  const volData = (volatilityQuery.data as VolData | null) ?? null;
+  const volData = volatilityQuery.data ?? null;
   const { data: trackedRows = [] } = useMarketSnapshots();
-
-  const fetchDashboard = React.useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await marketDataApi.getDashboard();
-      setPayload((res as DashboardPayload) || null);
-      setError(null);
-    } catch (e: any) {
-      setPayload(null);
-      setError(e?.message || 'Failed to load market dashboard');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  React.useEffect(() => { void fetchDashboard(); }, [fetchDashboard]);
 
   const filteredTrackedRows = React.useMemo(
     () => trackedRows.filter((r) => symbolFilter(r?.symbol)),
@@ -867,8 +851,9 @@ const MarketDashboard: React.FC = () => {
 
   /* --- ZONE 1c: filteredSections (consolidate all sf() calls) --- */
   const filteredSections = React.useMemo(() => {
-    const sf = <T extends { symbol?: string }>(arr: T[]) =>
-      arr.filter((r) => symbolFilter(r.symbol || ''));
+    function sf<T extends { symbol?: string }>(arr: T[]): T[] {
+      return arr.filter((r) => symbolFilter(r.symbol || ''));
+    }
     const sfMatrix = (m: Record<string, any[]> | undefined | null) =>
       m ? Object.fromEntries(Object.entries(m).map(([k, arr]) => [k, sf(arr)])) : undefined;
 
@@ -913,7 +898,7 @@ const MarketDashboard: React.FC = () => {
     return (
       <Page>
         <h1 className="mb-2 font-heading text-2xl font-semibold tracking-tight">Market Dashboard</h1>
-        <p className="text-sm text-destructive">{error}</p>
+        <p className="text-sm text-destructive">{error?.message || 'Failed to load market dashboard'}</p>
       </Page>
     );
   }
@@ -1025,7 +1010,7 @@ const MarketDashboard: React.FC = () => {
                   size="icon-xs"
                   variant="ghost"
                   aria-label="Refresh dashboard"
-                  onClick={() => { void fetchDashboard(); }}
+                  onClick={() => { void refetch(); }}
                 >
                   <RefreshCw className="size-3.5" />
                 </Button>
@@ -1039,17 +1024,80 @@ const MarketDashboard: React.FC = () => {
 
         {/* Non-overview views */}
         {activeView !== 'overview' && (
-          <React.Suspense fallback={(
-            <div className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-              Loading view...
-            </div>
-          )}>
-            {activeView === 'top-down' && <TopDownView snapshots={trackedRows} dashboardPayload={payload} />}
-            {activeView === 'bottom-up' && <BottomUpView snapshots={filteredTrackedRows} />}
-            {activeView === 'sectors' && <SectorView snapshots={trackedRows} dashboardPayload={payload} />}
-            {activeView === 'heatmap' && <HeatmapView snapshots={trackedRows} />}
-          </React.Suspense>
+          <ErrorBoundary
+            fallback={(
+              <div className="p-4 text-sm text-muted-foreground">
+                Something went wrong loading this view. Try refreshing the page.
+              </div>
+            )}
+            onError={(error, info) => {
+              console.error('ErrorBoundary [market-dashboard-view]:', error, info);
+            }}
+          >
+            <React.Suspense fallback={(
+              <div className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+                Loading view...
+              </div>
+            )}>
+              {activeView === 'top-down' && (
+                <ErrorBoundary
+                  fallback={(
+                    <div className="p-4 text-sm text-muted-foreground">
+                      Something went wrong in this section. Try refreshing the page.
+                    </div>
+                  )}
+                  onError={(error, info) => {
+                    console.error('ErrorBoundary [market-dashboard-top-down]:', error, info);
+                  }}
+                >
+                  <TopDownView snapshots={trackedRows} dashboardPayload={payload} />
+                </ErrorBoundary>
+              )}
+              {activeView === 'bottom-up' && (
+                <ErrorBoundary
+                  fallback={(
+                    <div className="p-4 text-sm text-muted-foreground">
+                      Something went wrong in this section. Try refreshing the page.
+                    </div>
+                  )}
+                  onError={(error, info) => {
+                    console.error('ErrorBoundary [market-dashboard-bottom-up]:', error, info);
+                  }}
+                >
+                  <BottomUpView snapshots={filteredTrackedRows} />
+                </ErrorBoundary>
+              )}
+              {activeView === 'sectors' && (
+                <ErrorBoundary
+                  fallback={(
+                    <div className="p-4 text-sm text-muted-foreground">
+                      Something went wrong in this section. Try refreshing the page.
+                    </div>
+                  )}
+                  onError={(error, info) => {
+                    console.error('ErrorBoundary [market-dashboard-sectors]:', error, info);
+                  }}
+                >
+                  <SectorView snapshots={trackedRows} dashboardPayload={payload} />
+                </ErrorBoundary>
+              )}
+              {activeView === 'heatmap' && (
+                <ErrorBoundary
+                  fallback={(
+                    <div className="p-4 text-sm text-muted-foreground">
+                      Something went wrong in this section. Try refreshing the page.
+                    </div>
+                  )}
+                  onError={(error, info) => {
+                    console.error('ErrorBoundary [market-dashboard-heatmap]:', error, info);
+                  }}
+                >
+                  <HeatmapView snapshots={trackedRows} />
+                </ErrorBoundary>
+              )}
+            </React.Suspense>
+          </ErrorBoundary>
         )}
 
         {/* Overview mode — existing content */}

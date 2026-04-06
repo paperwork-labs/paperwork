@@ -11,10 +11,11 @@ import logging.config
 from datetime import datetime, timezone
 import uuid
 
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from slowapi.util import get_remote_address
+
+from backend.api.rate_limit import limiter
 
 # Route imports - organized by domain
 from backend.api.routes import (
@@ -108,12 +109,7 @@ def custom_openapi():
 
 app.openapi = custom_openapi
 
-# Rate limiting (default limit applies to all routes)
-limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=[settings.RATE_LIMIT_DEFAULT],
-    storage_uri=settings.RATE_LIMIT_STORAGE_URL or None,
-)
+# Rate limiting (default limit applies to all routes; see settings.RATE_LIMIT_DEFAULT)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
@@ -231,55 +227,73 @@ async def startup_event():
             logger.error("Alembic migration FAILED -- refusing to start with stale schema: %s", mig_e, exc_info=True)
             raise SystemExit(1)
 
-        # Seed schedules from catalog and sync to Render (runs on every startup)
-        try:
-            from backend.scripts.seed_schedules import seed
-            from backend.database import SessionLocal
-            _db = SessionLocal()
-            try:
-                seed_result = seed(_db)
-                logger.info("✅ Schedule seed: %s", seed_result)
-            finally:
-                _db.close()
-        except Exception as seed_e:
-            logger.warning("Schedule seed skipped/failed: %s", seed_e)
-        logger.info("Scheduling: Celery Beat drives all schedules from job_catalog (Render crons retired)")
+        # Guard non-migration startup side-effects with a Postgres advisory lock
+        # so that multi-worker deployments (--workers 2) don't race on seeding.
+        # Alembic handles its own DDL lock above; this protects seed + admin creation.
+        from sqlalchemy import text as _sa_text
 
-        # Initialize services
-        logger.info("🚀 AxiomFolio V1 API starting up...")
-        # Seed admin user if explicitly enabled
+        _startup_conn = engine.connect()
+        _got_startup_lock = False
         try:
-            if settings.ADMIN_SEED_ENABLED:
-                admin_user = getattr(settings, "ADMIN_USERNAME", None)
-                admin_email = getattr(settings, "ADMIN_EMAIL", None)
-                admin_password = getattr(settings, "ADMIN_PASSWORD", None)
-                if admin_user and admin_email and admin_password:
-                    db = SessionLocal()
-                    existing = (
-                        db.query(User)
-                        .filter((User.username == admin_user) | (User.email == admin_email))
-                        .first()
-                    )
-                    if not existing:
-                        u = User(
-                            username=admin_user,
-                            email=admin_email,
-                            password_hash=get_password_hash(admin_password),
-                            role=UserRole.OWNER,
-                            is_active=True,
-                            is_verified=True,
-                            is_approved=True,
-                        )
-                        db.add(u)
-                        db.commit()
-                        logger.info(f"👑 Seeded admin user '{admin_user}'")
-                    db.close()
-                else:
-                    logger.info("Admin seeding skipped (ADMIN_* not set)")
+            _got_startup_lock = _startup_conn.execute(
+                _sa_text("SELECT pg_try_advisory_lock(42)")
+            ).scalar()
+
+            if _got_startup_lock:
+                # Seed schedules from catalog
+                try:
+                    from backend.scripts.seed_schedules import seed
+                    _db = SessionLocal()
+                    try:
+                        seed_result = seed(_db)
+                        logger.info("Schedule seed: %s", seed_result)
+                    finally:
+                        _db.close()
+                except Exception as seed_e:
+                    logger.warning("Schedule seed skipped/failed: %s", seed_e)
+
+                # Seed admin user if explicitly enabled
+                try:
+                    if settings.ADMIN_SEED_ENABLED:
+                        admin_user = getattr(settings, "ADMIN_USERNAME", None)
+                        admin_email = getattr(settings, "ADMIN_EMAIL", None)
+                        admin_password = getattr(settings, "ADMIN_PASSWORD", None)
+                        if admin_user and admin_email and admin_password:
+                            db = SessionLocal()
+                            existing = (
+                                db.query(User)
+                                .filter((User.username == admin_user) | (User.email == admin_email))
+                                .first()
+                            )
+                            if not existing:
+                                u = User(
+                                    username=admin_user,
+                                    email=admin_email,
+                                    password_hash=get_password_hash(admin_password),
+                                    role=UserRole.OWNER,
+                                    is_active=True,
+                                    is_verified=True,
+                                    is_approved=True,
+                                )
+                                db.add(u)
+                                db.commit()
+                                logger.info("Seeded admin user '%s'", admin_user)
+                            db.close()
+                        else:
+                            logger.info("Admin seeding skipped (ADMIN_* not set)")
+                    else:
+                        logger.info("Admin seeding disabled (ADMIN_SEED_ENABLED=false)")
+                except Exception as se:
+                    logger.warning("Admin seeding skipped/failed: %s", se)
             else:
-                logger.info("Admin seeding disabled (ADMIN_SEED_ENABLED=false)")
-        except Exception as se:
-            logger.warning(f"Admin seeding skipped/failed: {se}")
+                logger.info("Startup lock held by another worker -- skipping seed/admin")
+        finally:
+            if _got_startup_lock:
+                _startup_conn.execute(_sa_text("SELECT pg_advisory_unlock(42)"))
+            _startup_conn.close()
+
+        logger.info("Scheduling: Celery Beat drives all schedules from job_catalog")
+        logger.info("AxiomFolio V1 API starting up...")
         # Optional price bootstrap temporarily disabled until MarketDataService is stabilized
         # Seed default user and broker accounts from .env for dev convenience
         try:

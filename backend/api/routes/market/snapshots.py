@@ -9,7 +9,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func, nullslast, select
 from sqlalchemy.orm import Session
 
@@ -19,7 +19,9 @@ from backend.models.market_data import MarketSnapshot, MarketSnapshotHistory
 from backend.models.market_tracked_plan import MarketTrackedPlan
 from backend.services.market.market_data_service import MarketDataService
 from backend.services.market.universe import tracked_symbols
-from backend.api.dependencies import get_optional_user
+from backend.api.dependencies import get_market_data_viewer
+from backend.api.rate_limit import limiter
+from backend.api.schemas.market import SnapshotSingleResponse, SnapshotsListResponse
 from ._shared import snapshot_preferred_columns
 
 logger = logging.getLogger(__name__)
@@ -47,7 +49,7 @@ def _latest_technical_snapshot_subq(tracked: list[str]):
 async def get_snapshot_heatmap(
     symbols: str = Query(..., description="Comma-separated symbols"),
     days: int = Query(90, ge=1, le=365),
-    user: User | None = Depends(get_optional_user),
+    _viewer: User = Depends(get_market_data_viewer),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Batch heatmap endpoint — returns stage history grid for multiple symbols in one query."""
@@ -88,7 +90,7 @@ async def get_snapshot_table(
     search: Optional[str] = Query(None, description="Symbol search substring"),
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    user: User | None = Depends(get_optional_user),
+    _viewer: User = Depends(get_market_data_viewer),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Server-side paginated, sorted, filtered snapshot table."""
@@ -158,7 +160,7 @@ async def get_snapshot_table(
 async def get_snapshot_history_batch(
     symbols: str = Query(..., description="Comma-separated symbols"),
     days: int = Query(90, ge=1, le=365),
-    user: User | None = Depends(get_optional_user),
+    _viewer: User = Depends(get_market_data_viewer),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Batch fetch snapshot history for multiple symbols (used by HeatmapView)."""
@@ -200,10 +202,10 @@ async def get_snapshot_history_batch(
     return {"histories": histories, "counts": counts}
 
 
-@router.get("/{symbol}")
+@router.get("/{symbol}", response_model=SnapshotSingleResponse)
 async def get_snapshot(
     symbol: str,
-    user: User | None = Depends(get_optional_user),
+    _viewer: User = Depends(get_market_data_viewer),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Return latest technical snapshot for a symbol from MarketSnapshot."""
@@ -227,10 +229,16 @@ async def get_snapshot(
     return {"symbol": symbol.upper(), "snapshot": payload}
 
 
-@router.get("")
+@router.get(
+    "",
+    response_model=SnapshotsListResponse,
+    response_model_exclude_unset=True,
+)
+@limiter.limit("60/minute")
 async def get_snapshots(
+    request: Request,
     limit: int = Query(2000, ge=1, le=5000),
-    user: User | None = Depends(get_optional_user),
+    _viewer: User = Depends(get_market_data_viewer),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Return latest technical snapshots for the tracked universe from MarketSnapshot."""
@@ -276,7 +284,7 @@ async def get_snapshots(
 async def get_snapshot_history(
     symbol: str,
     days: int = Query(90, ge=1, le=365),
-    user: User | None = Depends(get_optional_user),
+    _viewer: User = Depends(get_market_data_viewer),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Get historical snapshots for a symbol."""

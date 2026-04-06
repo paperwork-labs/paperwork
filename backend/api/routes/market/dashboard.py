@@ -10,14 +10,16 @@ import json
 import logging
 from typing import Dict, Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
+from backend.api.rate_limit import limiter
 from backend.database import get_db
 from backend.models.user import User
 from backend.services.market.market_data_service import market_data_service
 from backend.services.market.market_dashboard_service import MarketDashboardService
 from backend.api.dependencies import get_market_data_viewer
+from backend.api.schemas.market import MarketDashboardResponse
 from backend.config import settings
 
 logger = logging.getLogger(__name__)
@@ -25,17 +27,26 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["dashboard"])
 
 
-@router.get("/dashboard")
+@router.get(
+    "/dashboard",
+    response_model=MarketDashboardResponse,
+    response_model_exclude_unset=True,
+)
+@limiter.limit("30/minute")
 def get_market_dashboard(
+    request: Request,
     db: Session = Depends(get_db),
-    _viewer: User = Depends(get_market_data_viewer),
+    viewer: User = Depends(get_market_data_viewer),
     universe: str = "all",
 ) -> Dict[str, Any]:
     """Reader-friendly market dashboard summary for momentum workflows."""
     if universe not in ("all", "etf", "holdings"):
         universe = "all"
-    try:
+    if universe in ("holdings",) and viewer:
+        cache_key = f"dashboard:{universe}:{viewer.id}"
+    else:
         cache_key = f"dashboard:{universe}"
+    try:
         try:
             cached = market_data_service.redis_client.get(cache_key)
             if cached:
@@ -47,12 +58,12 @@ def get_market_dashboard(
         try:
             serialized = json.dumps(result, default=str)
             market_data_service.redis_client.setex(cache_key, 60, serialized)
-        except Exception:
-            logger.debug("Failed to cache dashboard result")
+        except Exception as e:
+            logger.warning("Failed to cache dashboard result: %s", e)
         return result
     except Exception as e:
-        logger.error("market dashboard error: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("get_market_dashboard failed: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/volatility-dashboard")

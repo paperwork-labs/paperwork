@@ -170,6 +170,11 @@ tunnel-logs:
 backup-db:
 	./scripts/backup_db.sh
 
+restore-db:
+	@echo "Usage: make restore-db BACKUP=~/axiomfolio-backups/axiomfolio_YYYYMMDD_HHMMSS.sql.gz"
+	@test -n "$(BACKUP)" || (echo "ERROR: Set BACKUP=<path>"; exit 1)
+	./scripts/restore_db.sh "$(BACKUP)"
+
 tunnel-on: tunnel-up
 	@echo "✓ api-dev.axiomfolio.com → local backend:8000. Verify: make tunnel-logs"
 

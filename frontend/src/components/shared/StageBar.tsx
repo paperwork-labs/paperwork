@@ -5,10 +5,8 @@ import { STAGE_BAR_FILL, STAGE_SOLID_BADGE, STAGE_SUBTLE_BADGE } from '@/lib/sta
 import { cn } from '@/lib/utils';
 import { STAGE_COLORS } from '../../constants/chart';
 
-/** Display order: 10 sub-stages, then legacy rollup labels (1–4) for older snapshot data. */
 const STAGES = [
   '1A', '1B', '2A', '2B', '2B(RS-)', '2C', '3A', '3B', '4A', '4B', '4C',
-  '1', '2', '3', '4',
 ] as const;
 
 export interface StageBarProps {

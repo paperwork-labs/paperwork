@@ -18,11 +18,12 @@ from typing import Any, Dict, List, Optional
 from zoneinfo import ZoneInfo
 
 from croniter import croniter
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from backend.api.dependencies import get_admin_user
+from backend.api.rate_limit import limiter
 from backend.database import get_db
 from backend.models.market_data import CronSchedule, CronScheduleAudit, JobRun
 from backend.models.user import User
@@ -185,7 +186,9 @@ async def list_schedules(
 
 
 @router.post("/schedules")
+@limiter.limit("10/minute")
 async def create_schedule(
+    request: Request,
     payload: ScheduleCreate,
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
@@ -308,7 +311,9 @@ async def delete_schedule(
 
 
 @router.post("/schedules/{schedule_id}/pause")
+@limiter.limit("10/minute")
 async def pause_schedule(
+    request: Request,
     schedule_id: str,
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
@@ -327,7 +332,9 @@ async def pause_schedule(
 
 
 @router.post("/schedules/{schedule_id}/resume")
+@limiter.limit("10/minute")
 async def resume_schedule(
+    request: Request,
     schedule_id: str,
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
@@ -346,7 +353,9 @@ async def resume_schedule(
 
 
 @router.post("/schedules/sync")
+@limiter.limit("10/minute")
 async def sync_schedules(
+    request: Request,
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
@@ -355,7 +364,9 @@ async def sync_schedules(
 
 
 @router.post("/schedules/run-now")
+@limiter.limit("10/minute")
 async def run_now(
+    request: Request,
     task: str = Query(..., description="dotted task path"),
     admin_user: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:

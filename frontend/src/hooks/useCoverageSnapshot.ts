@@ -8,13 +8,14 @@ import {
   CoverageAction,
   CoverageHeroMeta,
   CoverageKpi,
+  CoverageSnapshot,
   CoverageSparkline,
   deriveSparklineSeries,
   formatCoverageHero,
 } from '../utils/coverage';
 
 interface UseCoverageSnapshotResult {
-  snapshot: any | null;
+  snapshot: CoverageSnapshot | null;
   loading: boolean;
   refresh: () => Promise<void>;
   sparkline: CoverageSparkline;
@@ -35,7 +36,7 @@ const useCoverageSnapshot = (opts?: CoverageSnapshotOptions): UseCoverageSnapsho
   const fillW = opts?.fillTradingDaysWindow ?? null;
   const fillL = opts?.fillLookbackDays ?? null;
 
-  const { data: snapshot = null, isPending: loading, refetch } = useQuery({
+  const { data: snapshot = null, isPending: loading, refetch } = useQuery<CoverageSnapshot | null>({
     queryKey: ['market-data', 'coverage', fillW, fillL],
     queryFn: async () => {
       const params: Record<string, number> = {};
@@ -49,7 +50,7 @@ const useCoverageSnapshot = (opts?: CoverageSnapshotOptions): UseCoverageSnapsho
         '/market-data/coverage',
         Object.keys(params).length ? { params } : undefined,
       );
-      return response.data || null;
+      return (response.data as CoverageSnapshot | null) || null;
     },
     staleTime: 60_000,
   });

@@ -4,15 +4,17 @@ Daily bar backfill, index constituents, and tracked-universe cache tasks.
 
 import json
 import logging
+import time
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from celery import shared_task
+from celery import current_task, shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 
 from backend.database import SessionLocal
 from backend.models import IndexConstituent
 from backend.services.market.backfill_params import daily_backfill_params
+from backend.services.market.universe import TRACKED_ALL_UPDATED_AT_KEY
 from backend.services.market.market_data_service import market_data_service
 from backend.tasks.utils.task_utils import (
     _daily_backfill_concurrency,
@@ -26,6 +28,16 @@ from backend.tasks.utils.task_utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _celery_task_id_short() -> str:
+    try:
+        req = getattr(current_task, "request", None)
+        tid = getattr(req, "id", None) if req else None
+        return str(tid)[:8] if tid else "?"
+    except Exception:
+        return "?"
+
 
 _DEFAULT_SOFT = 3500
 _DEFAULT_HARD = 3600
@@ -58,8 +70,8 @@ def symbol(symbol: str) -> dict:
 
 
 @shared_task(
-    soft_time_limit=120,
-    time_limit=180,
+    soft_time_limit=110,
+    time_limit=120,
 )
 @task_run("market_universe_tracked_refresh")
 def tracked_cache() -> dict:
@@ -85,6 +97,8 @@ def tracked_cache() -> dict:
                             market_data_service.get_index_constituents(idx)
                         )
                         index_to_symbols[idx].update({s.upper() for s in cons if s})
+                    except SoftTimeLimitExceeded:
+                        raise
                     except Exception as e:
                         logger.warning(
                             "tracked_cache: get_index_constituents failed for %s: %s",
@@ -103,12 +117,18 @@ def tracked_cache() -> dict:
                             )
                     session.commit()
                     current = sorted(seed_syms)
+            except SoftTimeLimitExceeded:
+                raise
             except Exception as e:
                 logger.warning("index_seed_from_providers failed: %s", e)
             finally:
                 if loop:
                     loop.close()
-        prev_raw = redis.get("tracked:all")
+        prev_raw = None
+        try:
+            prev_raw = redis.get("tracked:all")
+        except Exception as e:
+            logger.warning("tracked_cache: Redis get tracked:all failed: %s", e)
         prev = []
         if prev_raw:
             try:
@@ -121,8 +141,12 @@ def tracked_cache() -> dict:
                 prev = []
         prev_set = set(s.upper() for s in prev)
         additions = [s for s in current if s not in prev_set]
-        redis.set("tracked:all", json.dumps(current))
-        redis.setex("tracked:new", 24 * 3600, json.dumps(additions))
+        try:
+            redis.set("tracked:all", json.dumps(current))
+            redis.set(TRACKED_ALL_UPDATED_AT_KEY, str(time.time()))
+            redis.setex("tracked:new", 24 * 3600, json.dumps(additions))
+        except Exception as e:
+            logger.warning("tracked_cache: Redis write failed: %s", e)
         res = {"status": "ok", "tracked_all": len(current), "new": len(additions)}
         _set_task_status("market_universe_tracked_refresh", "ok", res)
         return res
@@ -206,8 +230,8 @@ def daily_bars(days: int = 200) -> dict:
 
 
 @shared_task(
-    soft_time_limit=300,
-    time_limit=360,
+    soft_time_limit=280,
+    time_limit=300,
 )
 @task_run("market_indices_constituents_refresh")
 def constituents(index: str | None = None) -> dict:
@@ -245,6 +269,8 @@ def constituents(index: str | None = None) -> dict:
                 symbols = set(
                     loop.run_until_complete(market_data_service.get_index_constituents(idx))
                 )
+            except SoftTimeLimitExceeded:
+                raise
             except Exception as e:
                 results[idx] = {"error": str(e)}
                 continue
@@ -273,6 +299,8 @@ def constituents(index: str | None = None) -> dict:
                     meta = json.loads(meta_raw)
                     provider_used = meta.get("provider_used", provider_used)
                     fallback_used = meta.get("fallback_used", False)
+            except SoftTimeLimitExceeded:
+                raise
             except Exception as e:
                 logger.warning("redis_meta_read failed for %s: %s", idx, e)
             existing_rows = (
@@ -333,6 +361,8 @@ def constituents(index: str | None = None) -> dict:
                     fields={w.split(":")[0]: w for w in warnings},
                     severity="warning",
                 )
+            except SoftTimeLimitExceeded:
+                raise
             except Exception as e:
                 logger.warning("ops_alert for constituents health check failed: %s", e)
             logger.warning("Index constituents health check: %s", "; ".join(warnings))
@@ -368,9 +398,12 @@ def daily_since(since_date: str = "", batch_size: int = 25, index: Optional[str]
         return {"status": "blocked", "reason": "ALLOW_DEEP_BACKFILL is disabled or policy disallows deep backfill"}
 
     if not since_date:
-        from backend.config import settings as _cfg
-        from datetime import date, timedelta
-        since_date = (date.today() - timedelta(days=_cfg.HISTORY_TARGET_YEARS * 365)).isoformat()
+        from datetime import timedelta
+
+        since_date = (
+            datetime.now(timezone.utc).date()
+            - timedelta(days=_cfg.HISTORY_TARGET_YEARS * 365)
+        ).isoformat()
 
     _VALID_INDICES = {"DOW30", "NASDAQ100", "SP500", "RUSSELL2000"}
     idx_upper = index.upper() if index else None
@@ -382,6 +415,9 @@ def daily_since(since_date: str = "", batch_size: int = 25, index: Optional[str]
     })
     session = SessionLocal()
     try:
+        task_id = _celery_task_id_short()
+        t0 = time.monotonic()
+
         import pandas as pd
 
         since_dt = pd.to_datetime(since_date, utc=True, errors="coerce")
@@ -402,6 +438,15 @@ def daily_since(since_date: str = "", batch_size: int = 25, index: Optional[str]
         else:
             symbols = _get_tracked_symbols_safe(session)
 
+        logger.info(
+            "[%s] daily_since started since=%s index=%s symbols=%d",
+            task_id,
+            since_date,
+            idx_upper or "all",
+            len(symbols),
+        )
+
+        max_bars = 7500  # cap at ~30 years of daily bars
         loop = setup_event_loop()
         try:
             concurrency = _daily_backfill_concurrency()
@@ -409,13 +454,31 @@ def daily_since(since_date: str = "", batch_size: int = 25, index: Optional[str]
                 _fetch_daily_for_symbols(
                     symbols=symbols,
                     period="max",
-                    max_bars=None,
+                    max_bars=max_bars,
                     concurrency=concurrency,
                     skip_l2=True,
                 )
             )
         finally:
             loop.close()
+
+        n_fetch = len(fetched or [])
+        for k, item in enumerate(fetched or [], 1):
+            sym = item.get("symbol") or "?"
+            prov = item.get("provider") or "unknown"
+            df = item.get("df")
+            bars = 0
+            if df is not None and not getattr(df, "empty", True):
+                bars = int(len(df))
+            logger.debug(
+                "[%s] daily_since fetched %s (%d/%d) provider=%s bars=%d",
+                task_id,
+                sym,
+                k,
+                n_fetch,
+                prov,
+                bars,
+            )
 
         persist = _persist_daily_fetch_results(
             session=session,
@@ -439,6 +502,16 @@ def daily_since(since_date: str = "", batch_size: int = 25, index: Optional[str]
             "admin_backfill_daily_since_date",
             "ok" if persist["errors"] == 0 else "error",
             res,
+        )
+        elapsed = time.monotonic() - t0
+        logger.info(
+            "[%s] daily_since completed in %.1fs (symbols=%d processed=%d errors=%d bars_inserted=%d)",
+            task_id,
+            elapsed,
+            len(symbols),
+            int(persist.get("processed_ok") or 0),
+            int(persist.get("errors") or 0),
+            int(persist.get("bars_inserted_total") or 0),
         )
         return res
     finally:
@@ -467,9 +540,11 @@ def full_historical(
         return {"status": "blocked", "reason": "ALLOW_DEEP_BACKFILL is disabled or policy disallows deep backfill"}
 
     if not since_date:
-        from datetime import date, timedelta
+        from datetime import timedelta
+
         since_date = (
-            date.today() - timedelta(days=_settings.HISTORY_TARGET_YEARS * 365)
+            datetime.now(timezone.utc).date()
+            - timedelta(days=_settings.HISTORY_TARGET_YEARS * 365)
         ).isoformat()
     from backend.tasks.market.history import snapshot_last_n_days
     from backend.tasks.market.indicators import recompute_universe
@@ -503,6 +578,11 @@ def full_historical(
     _set_task_status("admin_backfill_since_date", "running", {"since_date": since_date})
 
     res1 = daily_since(since_date=since_date, batch_size=int(daily_batch_size))
+    if res1.get("status") == "skipped":
+        logger.warning(
+            "daily_since was skipped (locked by another task), data may not be refreshed"
+        )
+        rollup["daily_since_skipped"] = True
     _append("admin_backfill_daily_since_date", res1)
 
     res2 = recompute_universe(batch_size=50)
@@ -512,6 +592,8 @@ def full_historical(
         res3 = snapshot_last_n_days(
             days=3000, since_date=since_date, batch_size=int(history_batch_size)
         )
+    except SoftTimeLimitExceeded:
+        raise
     except Exception as exc:
         res3 = {"status": "error", "error": str(exc)}
     _append("admin_snapshots_history_backfill", res3)
@@ -521,8 +603,18 @@ def full_historical(
     res4 = health_check()
     _append("admin_coverage_refresh", res4)
 
-    statuses = [step.get("result", {}).get("status") for step in rollup["steps"]]
-    rollup["status"] = "ok" if all(s in (None, "ok") for s in statuses) else "error"
+    def _rollup_step_ok(step: dict) -> bool:
+        res = step.get("result") or {}
+        st = res.get("status")
+        if st in (None, "ok"):
+            return True
+        if st == "skipped" and step.get("name") == "admin_backfill_daily_since_date":
+            return True
+        return False
+
+    rollup["status"] = (
+        "ok" if all(_rollup_step_ok(s) for s in rollup["steps"]) else "error"
+    )
     rollup["overall_summary"] = "; ".join(
         step["summary"] for step in rollup["steps"] if step.get("summary")
     )
@@ -621,6 +713,8 @@ def safe_recompute(
             since_date=since_date,
             batch_size=int(history_batch_size),
         )
+    except SoftTimeLimitExceeded:
+        raise
     except Exception as exc:
         res2 = {"status": "error", "error": str(exc)}
     _append("snapshot_history_rebuild", res2)

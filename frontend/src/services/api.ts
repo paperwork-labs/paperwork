@@ -29,10 +29,15 @@ class RequestQueue {
   private queue: Array<() => Promise<any>> = [];
   private processing = false;
   private maxConcurrent = 6; // Optimize for backend connection limits
+  private maxQueueSize = 100;
   private activeRequests = 0;
 
   async add<T>(requestFn: () => Promise<T>): Promise<T> {
     return new Promise((resolve, reject) => {
+      if (this.queue.length >= this.maxQueueSize) {
+        reject(new Error('Request queue is full'));
+        return;
+      }
       this.queue.push(async () => {
         try {
           this.activeRequests++;
@@ -84,6 +89,25 @@ const api = axios.create({
 
 // Coalesce concurrent identical GETs (same resolved URI + Authorization) to one network call.
 const inflightGetRequests = new Map<string, Promise<unknown>>();
+
+/** Deep-clone GET response data for deduped consumers; falls back to shallow copy if clone fails. */
+export function cloneDedupedGetResponse<T>(response: AxiosResponse<T>): AxiosResponse<T> {
+  try {
+    const raw = response.data;
+    const data =
+      typeof structuredClone === 'function'
+        ? structuredClone(raw)
+        : raw === undefined
+          ? raw
+          : (JSON.parse(JSON.stringify(raw)) as T);
+    return {
+      ...response,
+      data,
+    };
+  } catch {
+    return { ...response };
+  }
+}
 const baseHttpAdapter = api.defaults.adapter;
 if (typeof baseHttpAdapter === 'function') {
   api.defaults.adapter = (config: InternalAxiosRequestConfig) => {
@@ -108,7 +132,9 @@ if (typeof baseHttpAdapter === 'function') {
     const key = `${uri}::${auth}`;
     const existing = inflightGetRequests.get(key);
     if (existing) {
-      return existing as ReturnType<AxiosAdapter>;
+      return (existing as Promise<AxiosResponse>).then((response) =>
+        cloneDedupedGetResponse(response),
+      ) as ReturnType<AxiosAdapter>;
     }
     const promise = baseHttpAdapter(c).finally(() => {
       inflightGetRequests.delete(key);

@@ -8,34 +8,14 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
-import { useMarketSnapshots } from '../hooks/useMarketSnapshots';
+import { useMarketSnapshots, type MarketSnapshotRow } from '../hooks/useMarketSnapshots';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-
-interface SnapshotRow {
-  symbol: string;
-  name?: string;
-  stage_label?: string;
-  scan_tier?: string;
-  action_label?: string;
-  rs_mansfield_pct?: number;
-  vol_ratio?: number;
-  current_price?: number;
-  perf_5d?: number;
-  perf_20d?: number;
-  perf_60d?: number;
-  sma150_slope?: number;
-  atrp_14?: number;
-  sector?: string;
-  regime_state?: string;
-  ext_pct?: number;
-  rsi?: number;
-  current_stage_days?: number;
-}
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 const STAGE_FILTERS = [
   { label: 'All', value: '' },
@@ -61,6 +41,41 @@ const STAGE_COLORS: Record<string, string> = {
 type SortKey = 'rs_mansfield_pct' | 'vol_ratio' | 'perf_20d' | 'atrp_14' | 'current_stage_days' | 'symbol';
 type SortDir = 'asc' | 'desc';
 
+interface SortHeaderProps {
+  label: string;
+  field: SortKey;
+  className?: string;
+  sortKey: SortKey;
+  sortDir: SortDir;
+  onToggleSort: (key: SortKey) => void;
+}
+
+const SortHeader: React.FC<SortHeaderProps> = ({
+  label,
+  field,
+  className,
+  sortKey,
+  sortDir,
+  onToggleSort,
+}) => {
+  const active = sortKey === field;
+  const Icon = active ? (sortDir === 'desc' ? ArrowDown : ArrowUp) : ArrowUpDown;
+  return (
+    <button
+      type="button"
+      className={cn(
+        'flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors',
+        active && 'text-foreground',
+        className,
+      )}
+      onClick={() => onToggleSort(field)}
+    >
+      {label}
+      <Icon className="size-3" />
+    </button>
+  );
+};
+
 const fmt = (v: number | undefined, decimals = 1): string =>
   v != null ? v.toFixed(decimals) : '—';
 
@@ -77,8 +92,8 @@ const Scanner: React.FC = () => {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [volConfirmOnly, setVolConfirmOnly] = useState(false);
 
-  const { data, isPending } = useMarketSnapshots();
-  const rows = (data ?? []) as SnapshotRow[];
+  const { data, isPending, isError, error } = useMarketSnapshots();
+  const rows: MarketSnapshotRow[] = data ?? [];
 
   const toggleSort = useCallback(
     (key: SortKey) => {
@@ -125,28 +140,14 @@ const Scanner: React.FC = () => {
     return out;
   }, [rows, stageFilter, volConfirmOnly, search, sortKey, sortDir]);
 
-  const SortHeader: React.FC<{ label: string; field: SortKey; className?: string }> = ({
-    label,
-    field,
-    className,
-  }) => {
-    const active = sortKey === field;
-    const Icon = active ? (sortDir === 'desc' ? ArrowDown : ArrowUp) : ArrowUpDown;
+  if (isError) {
     return (
-      <button
-        type="button"
-        className={cn(
-          'flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors',
-          active && 'text-foreground',
-          className,
-        )}
-        onClick={() => toggleSort(field)}
-      >
-        {label}
-        <Icon className="size-3" />
-      </button>
+      <div className="p-6 text-center text-destructive">
+        Failed to load scanner data.{' '}
+        {error instanceof Error ? error.message : String(error)}
+      </div>
     );
-  };
+  }
 
   return (
     <div className="mx-auto flex max-w-[1100px] flex-col gap-5">
@@ -215,23 +216,64 @@ const Scanner: React.FC = () => {
             <thead>
               <tr className="border-b border-border">
                 <th className="px-3 py-2.5 text-left">
-                  <SortHeader label="Symbol" field="symbol" />
+                  <SortHeader
+                    label="Symbol"
+                    field="symbol"
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onToggleSort={toggleSort}
+                  />
                 </th>
                 <th className="px-3 py-2.5 text-left">Stage</th>
                 <th className="px-3 py-2.5 text-right">
-                  <SortHeader label="RS Mansfield" field="rs_mansfield_pct" className="justify-end" />
+                  <SortHeader
+                    label="RS Mansfield"
+                    field="rs_mansfield_pct"
+                    className="justify-end"
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onToggleSort={toggleSort}
+                  />
                 </th>
                 <th className="px-3 py-2.5 text-right">
-                  <SortHeader label="Vol Ratio" field="vol_ratio" className="justify-end" />
+                  <SortHeader
+                    label="Vol Ratio"
+                    field="vol_ratio"
+                    className="justify-end"
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onToggleSort={toggleSort}
+                  />
                 </th>
                 <th className="px-3 py-2.5 text-right">
-                  <SortHeader label="20d %" field="perf_20d" className="justify-end" />
+                  <SortHeader
+                    label="20d %"
+                    field="perf_20d"
+                    className="justify-end"
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onToggleSort={toggleSort}
+                  />
                 </th>
                 <th className="px-3 py-2.5 text-right">
-                  <SortHeader label="ATR%" field="atrp_14" className="justify-end" />
+                  <SortHeader
+                    label="ATR%"
+                    field="atrp_14"
+                    className="justify-end"
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onToggleSort={toggleSort}
+                  />
                 </th>
                 <th className="px-3 py-2.5 text-right">
-                  <SortHeader label="Days" field="current_stage_days" className="justify-end" />
+                  <SortHeader
+                    label="Days"
+                    field="current_stage_days"
+                    className="justify-end"
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onToggleSort={toggleSort}
+                  />
                 </th>
                 <th className="px-3 py-2.5 text-right">Price</th>
                 <th className="px-3 py-2.5 text-left">Sector</th>
@@ -239,85 +281,98 @@ const Scanner: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {isPending
-                ? Array.from({ length: 12 }).map((_, i) => (
-                    <tr key={i} className="border-b border-border/50">
-                      {Array.from({ length: 10 }).map((_, j) => (
-                        <td key={j} className="px-3 py-2">
-                          <Skeleton className="h-4 w-full" />
-                        </td>
-                      ))}
-                    </tr>
-                  ))
-                : filtered.map((row) => (
-                    <tr
-                      key={row.symbol}
-                      className="border-b border-border/50 transition-colors hover:bg-muted/60"
-                    >
-                      <td className="px-3 py-2">
-                        <div>
-                          <span className="font-medium text-foreground">{row.symbol}</span>
-                          {row.name && (
-                            <span className="ml-1.5 text-muted-foreground truncate max-w-[120px] inline-block align-bottom">
-                              {row.name}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2">
-                        {row.stage_label ? (
-                          <Badge
-                            className={cn(
-                              'border-0 text-white text-[10px] px-1.5 py-0',
-                              STAGE_COLORS[row.stage_label] || 'bg-slate-500',
+              <ErrorBoundary
+                fallback={(
+                  <tr>
+                    <td colSpan={10} className="px-3 py-4 text-center text-sm text-muted-foreground">
+                      Something went wrong in this section. Try refreshing the page.
+                    </td>
+                  </tr>
+                )}
+                onError={(error, info) => {
+                  console.error('ErrorBoundary [scanner-table]:', error, info);
+                }}
+              >
+                {isPending
+                  ? Array.from({ length: 12 }).map((_, i) => (
+                      <tr key={i} className="border-b border-border/50">
+                        {Array.from({ length: 10 }).map((_, j) => (
+                          <td key={j} className="px-3 py-2">
+                            <Skeleton className="h-4 w-full" />
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  : filtered.map((row) => (
+                      <tr
+                        key={row.symbol}
+                        className="border-b border-border/50 transition-colors hover:bg-muted/60"
+                      >
+                        <td className="px-3 py-2">
+                          <div>
+                            <span className="font-medium text-foreground">{row.symbol}</span>
+                            {row.name && (
+                              <span className="ml-1.5 text-muted-foreground truncate max-w-[120px] inline-block align-bottom">
+                                {row.name}
+                              </span>
                             )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          {row.stage_label ? (
+                            <Badge
+                              className={cn(
+                                'border-0 text-white text-[10px] px-1.5 py-0',
+                                STAGE_COLORS[row.stage_label] || 'bg-slate-500',
+                              )}
+                            >
+                              {row.stage_label}
+                            </Badge>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono">
+                          {pctCell(row.rs_mansfield_pct)}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono">
+                          <span
+                            className={
+                              (row.vol_ratio ?? 0) >= 1.0
+                                ? 'text-emerald-500'
+                                : 'text-muted-foreground'
+                            }
                           >
-                            {row.stage_label}
-                          </Badge>
-                        ) : (
-                          '—'
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono">
-                        {pctCell(row.rs_mansfield_pct)}
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono">
-                        <span
-                          className={
-                            (row.vol_ratio ?? 0) >= 1.0
-                              ? 'text-emerald-500'
-                              : 'text-muted-foreground'
-                          }
-                        >
-                          {fmt(row.vol_ratio)}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono">
-                        {pctCell(row.perf_20d)}
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono text-muted-foreground">
-                        {fmt(row.atrp_14)}
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono text-muted-foreground">
-                        {row.current_stage_days ?? '—'}
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono text-foreground">
-                        ${fmt(row.current_price, 2)}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground truncate max-w-[100px]">
-                        {row.sector || '—'}
-                      </td>
-                      <td className="px-3 py-2">
-                        {row.scan_tier ? (
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                            {row.scan_tier}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                            {fmt(row.vol_ratio)}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono">
+                          {pctCell(row.perf_20d)}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono text-muted-foreground">
+                          {fmt(row.atrp_14)}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono text-muted-foreground">
+                          {row.current_stage_days ?? '—'}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono text-foreground">
+                          ${fmt(row.current_price, 2)}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground truncate max-w-[100px]">
+                          {row.sector || '—'}
+                        </td>
+                        <td className="px-3 py-2">
+                          {row.scan_tier ? (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                              {row.scan_tier}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+              </ErrorBoundary>
             </tbody>
           </table>
           {!isPending && filtered.length === 0 && (

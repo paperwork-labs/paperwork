@@ -19,12 +19,13 @@ import logging
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy import desc, distinct, func
 from sqlalchemy.orm import Session
 
 from backend.api.dependencies import get_db, get_admin_user
+from backend.api.rate_limit import limiter
 from backend.models import User
 from backend.models.agent_action import AgentAction
 
@@ -299,9 +300,11 @@ def get_agent_action(
 
 
 @router.post("/actions/{action_id}/approve", response_model=AgentActionResponse)
+@limiter.limit("10/minute")
 async def approve_action(
+    request: Request,
     action_id: int,
-    request: ApprovalRequest,
+    approval: ApprovalRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_admin_user),
 ):
@@ -319,7 +322,7 @@ async def approve_action(
     action.approved_at = datetime.now(timezone.utc)
     action.approved_by_id = current_user.id
     
-    if request.approved:
+    if approval.approved:
         action.status = "approved"
         from backend.services.agent.brain import AgentBrain
         from backend.services.agent.tools import INLINE_ONLY_AGENT_TOOLS, TOOL_TO_CELERY_TASK
@@ -353,8 +356,8 @@ async def approve_action(
                 action.completed_at = datetime.now(timezone.utc)
     else:
         action.status = "rejected"
-        if request.reason:
-            action.error = f"Rejected: {request.reason}"
+        if approval.reason:
+            action.error = f"Rejected: {approval.reason}"
     
     db.commit()
     db.refresh(action)
@@ -362,7 +365,9 @@ async def approve_action(
 
 
 @router.post("/run", response_model=AgentRunResponse)
+@limiter.limit("10/minute")
 async def trigger_agent_run(
+    request: Request,
     context: Optional[str] = Query(None, description="Additional context for the agent"),
     db: Session = Depends(get_db),
     _admin: User = Depends(get_admin_user),
@@ -420,8 +425,10 @@ class ChatResponse(BaseModel):
 
 
 @router.post("/chat", response_model=ChatResponse)
+@limiter.limit("10/minute")
 async def agent_chat(
-    request: ChatRequest,
+    request: Request,
+    chat_body: ChatRequest,
     db: Session = Depends(get_db),
     _admin: User = Depends(get_admin_user),
 ):
@@ -442,8 +449,8 @@ async def agent_chat(
     
     brain = AgentBrain(db=db)
 
-    if request.session_id:
-        load_outcome = brain._load_conversation(request.session_id)
+    if chat_body.session_id:
+        load_outcome = brain._load_conversation(chat_body.session_id)
         if load_outcome == "unavailable":
             raise HTTPException(
                 status_code=503,
@@ -456,7 +463,7 @@ async def agent_chat(
             )
 
     try:
-        result = await brain.chat(request.message)
+        result = await brain.chat(chat_body.message)
     except Exception as e:
         logger.exception("Agent chat failed: %s", e)
         raise HTTPException(

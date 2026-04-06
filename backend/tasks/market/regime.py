@@ -5,7 +5,7 @@ Market regime computation (R1–R5) and intraday VIX spike monitoring.
 from __future__ import annotations
 
 import logging
-from datetime import date as date_type
+from datetime import date as date_type, datetime, timezone
 
 from celery import shared_task
 from sqlalchemy import func
@@ -36,7 +36,7 @@ def _regime_as_of_date(session) -> date_type:
     logger.warning(
         "Regime as_of: no 1d PriceData in DB; using calendar today (may misalign vs snapshots)"
     )
-    return date_type.today()
+    return datetime.now(timezone.utc).date()
 
 
 @shared_task(

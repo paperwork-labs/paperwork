@@ -1,3 +1,4 @@
+import logging
 import os
 from dataclasses import dataclass
 from typing import Optional
@@ -29,6 +30,10 @@ PROVIDER_POLICIES: dict[str, ProviderPolicy] = {
     "paid":      ProviderPolicy(100000, 700,  800, 7, 10000,  30,  50, False, False, False),
     "unlimited": ProviderPolicy(999999, 2800, 800, 7, 10000,  30, 100, True,  True,  True),
 }
+
+logger = logging.getLogger(__name__)
+# Dedupe unrecognized MARKET_PROVIDER_POLICY warnings (property may be read often).
+_unrecognized_market_provider_policy_logged: set[str] = set()
 
 
 class Settings(BaseSettings):
@@ -271,10 +276,20 @@ class Settings(BaseSettings):
     def provider_policy(self) -> ProviderPolicy:
         """Return the ProviderPolicy for the current MARKET_PROVIDER_POLICY tier."""
         policy_name = str(self.MARKET_PROVIDER_POLICY or "").strip().lower()
-        return PROVIDER_POLICIES.get(
-            policy_name,
-            PROVIDER_POLICIES["paid"],
-        )
+        policy = PROVIDER_POLICIES.get(policy_name)
+        if policy is not None:
+            return policy
+        if policy_name not in _unrecognized_market_provider_policy_logged:
+            _unrecognized_market_provider_policy_logged.add(policy_name)
+            logger.warning(
+                "Unrecognized MARKET_PROVIDER_POLICY=%r (normalized=%r); "
+                "falling back to tier %r. Valid tiers: %s",
+                self.MARKET_PROVIDER_POLICY,
+                policy_name,
+                "paid",
+                ", ".join(sorted(PROVIDER_POLICIES.keys())),
+            )
+        return PROVIDER_POLICIES["paid"]
 
 
 # Global settings instance
@@ -323,6 +338,28 @@ def validate_production_settings() -> None:
         raise RuntimeError(
             "ALLOW_DEEP_BACKFILL must be False in production. "
             "Deep backfills risk exhausting FMP bandwidth (48.5/50 GB)."
+        )
+    if not settings.ENCRYPTION_KEY or not str(settings.ENCRYPTION_KEY).strip():
+        logger.warning(
+            "ENCRYPTION_KEY is unset or empty in production; "
+            "per-credential encryption may be unavailable or insecure."
+        )
+    if settings.ADMIN_SEED_ENABLED:
+        logger.warning(
+            "ADMIN_SEED_ENABLED is True in production; "
+            "disable admin seeding for real deployments."
+        )
+    cors_origins = settings.CORS_ORIGINS or ""
+    cors_lower = cors_origins.lower()
+    if "localhost" in cors_lower or "127.0.0.1" in cors_lower:
+        logger.warning(
+            "CORS_ORIGINS includes localhost or 127.0.0.1 in production; "
+            "remove dev origins from the deployed CORS allowlist."
+        )
+    if not settings.OAUTH_STATE_SECRET or not str(settings.OAUTH_STATE_SECRET).strip():
+        logger.warning(
+            "OAUTH_STATE_SECRET is unset or empty in production; "
+            "OAuth CSRF/state signing should use a strong secret."
         )
 
 

@@ -17,6 +17,7 @@ celery_app = Celery(
         # Market data (Celery names: backend.tasks.market.<module>.<task>)
         "backend.tasks.market.backfill",
         "backend.tasks.market.coverage",
+        "backend.tasks.market.earnings",
         "backend.tasks.market.fundamentals",
         "backend.tasks.market.history",
         "backend.tasks.market.indicators",

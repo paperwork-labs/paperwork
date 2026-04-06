@@ -28,7 +28,7 @@
 | Layer | Stack | Where to read more |
 |-------|-------|--------------------|
 | **Backend** | FastAPI, Celery, PostgreSQL, Redis | This doc; [PRODUCTION.md](PRODUCTION.md) for deploy |
-| **Frontend** | React 19, Radix UI primitives, Tailwind CSS, Vite, TanStack Query, Recharts, lightweight-charts, TradingView | [FRONTEND_UI.md](FRONTEND_UI.md) |
+| **Frontend** | React 19, Radix UI primitives, Tailwind CSS, Vite, TanStack Query, Recharts, lightweight-charts, TradingView, framer-motion | [FRONTEND_UI.md](FRONTEND_UI.md) |
 | **Brokers** | IBKR (FlexQuery + Gateway), TastyTrade, Schwab | [CONNECTIONS.md](CONNECTIONS.md) (setup/OAuth); [BROKERS.md](BROKERS.md) (sync impl) |
 | **Domain pillars** | Portfolio, Market data | [PORTFOLIO.md](PORTFOLIO.md), [MARKET_DATA.md](MARKET_DATA.md) |
 

@@ -1,17 +1,26 @@
 def test_snapshot_last_n_days_writes_rows(db_session, monkeypatch):
     """Smoke test: snapshot_last_n_days writes ledger rows for last N SPY trading days."""
+    import time
     from datetime import datetime
 
     import backend.tasks.market.history as history_tasks
+    from backend.services.market.universe import TRACKED_ALL_UPDATED_AT_KEY
 
     monkeypatch.setattr(history_tasks, "SessionLocal", lambda: db_session)
     monkeypatch.setattr(history_tasks, "_set_task_status", lambda *args, **kwargs: None)
 
     # Stable tracked universe (history uses market_data_service from this module)
+    def _redis_get(key):
+        if key == "tracked:all":
+            return b'["AAA"]'
+        if key == TRACKED_ALL_UPDATED_AT_KEY:
+            return str(time.time()).encode()
+        return None
+
     monkeypatch.setattr(
         history_tasks.market_data_service.redis_client,
         "get",
-        lambda key: b'["AAA"]' if key == "tracked:all" else None,
+        _redis_get,
     )
 
     from backend.models.market_data import PriceData, MarketSnapshotHistory

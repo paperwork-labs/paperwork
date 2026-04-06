@@ -5,8 +5,7 @@ Implied volatility snapshot and IV rank maintenance tasks.
 from __future__ import annotations
 
 import logging
-from datetime import date as date_type
-from datetime import timedelta as td
+from datetime import datetime, timedelta as td, timezone
 
 from celery import shared_task
 
@@ -47,7 +46,7 @@ def compute_rank(lookback_days: int = 252) -> dict:
     try:
         from backend.models.historical_iv import HistoricalIV
 
-        today = date_type.today()
+        today = datetime.now(timezone.utc).date()
         cutoff = today - td(days=lookback_days)
         updated = 0
 

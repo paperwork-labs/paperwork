@@ -65,6 +65,75 @@ export interface CoverageHeroMeta {
   sla?: { daily_pct?: number; m5_expectation?: string };
 }
 
+/** API payload from GET /market-data/coverage (fields the UI reads). */
+export interface CoverageStatusInfo {
+  label?: string | null;
+  summary?: string | null;
+  stale_daily?: number | string | null;
+  stale_m5?: number | string | null;
+  daily_pct?: number | string | null;
+  m5_pct?: number | string | null;
+  daily_expected_date?: string | null;
+  thresholds?: Record<string, unknown>;
+}
+
+export interface CoverageFillByDateRow {
+  date: string;
+  symbol_count?: number;
+  pct_of_universe?: number;
+  /** Alternate names used by some UI mappings */
+  daily_filled?: number;
+  daily_pct?: number;
+  snapshot_filled?: number;
+  snapshot_pct?: number;
+}
+
+export interface CoverageIntervalSection {
+  count?: number | null;
+  daily_count?: number | null;
+  freshness?: Record<string, number>;
+  fill_by_date?: CoverageFillByDateRow[];
+  snapshot_fill_by_date?: CoverageFillByDateRow[];
+}
+
+export interface CoverageMeta {
+  sparkline?: CoverageSparkline | null;
+  kpis?: CoverageKpi[] | null;
+  actions?: CoverageAction[] | null;
+  updated_at?: string | null;
+  snapshot_age_seconds?: number | null;
+  source?: string | null;
+  history?: CoverageHistoryEntry[] | null;
+  sla?: CoverageHeroMeta['sla'];
+  backfill_5m_enabled?: boolean;
+  fill_lookback_days?: number;
+  fill_trading_days_window?: number;
+  benchmark?: {
+    symbol?: string;
+    latest_daily_date?: string | null;
+    daily_bars?: number;
+    required_bars?: number;
+    ok?: boolean;
+  };
+  education?: unknown;
+  visibility?: unknown;
+  exposed_to_all?: boolean;
+}
+
+export interface CoverageSnapshot {
+  generated_at?: string | null;
+  symbols?: number | string | null;
+  tracked_count?: number | string | null;
+  tracked_sample?: string[];
+  indices?: Record<string, number | { count?: number }>;
+  status?: CoverageStatusInfo | null;
+  daily?: CoverageIntervalSection | null;
+  m5?: CoverageIntervalSection | null;
+  history?: CoverageHistoryEntry[] | null;
+  meta?: CoverageMeta | null;
+  schema_version?: number;
+}
+
 const emptySparkline: CoverageSparkline = {
   daily_pct: [],
   m5_pct: [],
@@ -134,8 +203,8 @@ export const deriveSparklineSeries = (
 
 export const buildCoverageKpis = (
   metaKpis?: CoverageKpi[] | null,
-  snapshot?: any,
-  status?: any,
+  snapshot?: CoverageSnapshot | null,
+  status?: CoverageStatusInfo | null,
 ): CoverageKpi[] => {
   if (Array.isArray(metaKpis) && metaKpis.length > 0) {
     return metaKpis;
@@ -221,7 +290,11 @@ const formatRelativeAge = (seconds?: number | null): string => {
   return `${days.toFixed(1)}d ago`;
 };
 
-export const formatCoverageHero = (snapshot?: any, staleThresholdSeconds = 1800, timezone?: string): CoverageHeroMeta => {
+export const formatCoverageHero = (
+  snapshot?: CoverageSnapshot | null,
+  staleThresholdSeconds = 1800,
+  timezone?: string,
+): CoverageHeroMeta => {
   const status = snapshot?.status || {};
   const label = (status.label || 'unknown').toString().toUpperCase();
   const staleDaily = Number(status.stale_daily ?? 0);

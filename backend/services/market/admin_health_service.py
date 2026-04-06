@@ -44,6 +44,9 @@ HEALTH_THRESHOLDS: Dict[str, float] = {
 MARKET_DIMS = {"coverage", "stage_quality", "jobs", "audit", "regime", "fundamentals", "data_accuracy"}
 BROKER_DIMS = {"portfolio_sync", "ibkr_gateway"}
 
+_COMPOSITE_HEALTH_CACHE_KEY = "admin:composite_health"
+_COMPOSITE_HEALTH_TTL_S = 60
+
 # Task-status keys we pull from Redis for the Agent Activity panel.
 _TASK_STATUS_KEYS: List[str] = sorted({
     "admin_backfill_5m",
@@ -93,6 +96,26 @@ class AdminHealthService:
     # ------------------------------------------------------------------
 
     def get_composite_health(self, db: Session) -> Dict[str, Any]:
+        r = self._svc.redis_client
+        try:
+            raw = r.get(_COMPOSITE_HEALTH_CACHE_KEY)
+            if raw:
+                return json.loads(raw.decode() if isinstance(raw, (bytes, bytearray)) else raw)
+        except Exception as e:
+            logger.warning("composite health cache read failed: %s", e)
+
+        payload = self._compute_composite_health(db)
+        try:
+            r.setex(
+                _COMPOSITE_HEALTH_CACHE_KEY,
+                _COMPOSITE_HEALTH_TTL_S,
+                json.dumps(payload),
+            )
+        except Exception as e:
+            logger.warning("composite health cache write failed: %s", e)
+        return payload
+
+    def _compute_composite_health(self, db: Session) -> Dict[str, Any]:
         from backend.services.core.app_settings_service import get_or_create_app_settings
 
         coverage = self._build_coverage_dimension(db)
@@ -125,11 +148,9 @@ class AdminHealthService:
             "ibkr_gateway": ibkr_gateway,
         }
 
-        # Tag each dimension with its category for the frontend
         for name in dims:
             dims[name]["category"] = "market" if name in MARKET_DIMS else "broker"
 
-        # Broker dimensions are advisory in market-only mode
         if market_only:
             for name in BROKER_DIMS:
                 dims[name]["advisory"] = True
@@ -290,18 +311,24 @@ class AdminHealthService:
 
             lookback = int(HEALTH_THRESHOLDS["jobs_lookback_hours"])
             since = datetime.now(timezone.utc) - timedelta(hours=lookback)
-            recent_q = db.query(JobRun).filter(JobRun.started_at >= since)
+            base = db.query(JobRun).filter(JobRun.started_at >= since)
 
-            total = recent_q.count()
-            ok_count = recent_q.filter(JobRun.status == "ok").count()
-            error_count = recent_q.filter(JobRun.status == "error").count()
-            running_count = recent_q.filter(JobRun.status == "running").count()
-            cancelled_count = recent_q.filter(JobRun.status == "cancelled").count()
+            status_rows = (
+                base.with_entities(JobRun.status, func.count())
+                .group_by(JobRun.status)
+                .all()
+            )
+            by_status = {row[0]: int(row[1]) for row in status_rows if row[0] is not None}
+            total = sum(by_status.values())
+            ok_count = by_status.get("ok", 0)
+            error_count = by_status.get("error", 0)
+            running_count = by_status.get("running", 0)
+            cancelled_count = by_status.get("cancelled", 0)
             completed = ok_count + error_count + cancelled_count
             success_rate = (ok_count / completed) if completed else 0.0
 
             latest_failed = (
-                recent_q.filter(JobRun.status == "error")
+                base.filter(JobRun.status == "error")
                 .order_by(JobRun.started_at.desc())
                 .first()
             )

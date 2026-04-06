@@ -16,7 +16,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, distinct
 from pydantic import BaseModel
@@ -34,6 +34,7 @@ from backend.services.market.universe import tracked_symbols_async
 from backend.services.market.admin_health_service import AdminHealthService
 from backend.services.brain.webhook_client import brain_webhook
 from backend.api.dependencies import get_admin_user
+from backend.api.rate_limit import limiter
 from backend.api.routes.utils import serialize_job_runs
 from backend.config import settings
 from backend.tasks.market.backfill import (
@@ -201,7 +202,9 @@ async def admin_sanity_coverage(
 # ── Backfill endpoints ──
 
 @router.post("/backfill/snapshots/history")
+@limiter.limit("10/minute")
 async def admin_backfill_snapshot_history_last_n_days(
+    request: Request,
     days: int = Query(200, ge=1, le=3000),
     since_date: str | None = Query(None, description="Optional YYYY-MM-DD"),
     _admin: User = Depends(get_admin_user),
@@ -211,7 +214,9 @@ async def admin_backfill_snapshot_history_last_n_days(
 
 
 @router.post("/backfill/daily/since-date")
+@limiter.limit("10/minute")
 async def admin_backfill_daily_since_date(
+    request: Request,
     since_date: Optional[str] = Query(None, description="YYYY-MM-DD; omit for HISTORY_TARGET_YEARS"),
     batch_size: int = Query(25, ge=1, le=200),
     index: Optional[str] = Query(None, description="DOW30, NASDAQ100, SP500, or RUSSELL2000"),
@@ -236,7 +241,9 @@ async def admin_backfill_daily_since_date(
 
 
 @router.post("/backfill/since-date")
+@limiter.limit("10/minute")
 async def admin_backfill_since_date(
+    request: Request,
     since_date: Optional[str] = Query(None, description="YYYY-MM-DD; omit for HISTORY_TARGET_YEARS"),
     daily_batch_size: int = Query(25, ge=1, le=200),
     history_batch_size: int = Query(50, ge=1, le=200),
@@ -264,7 +271,9 @@ async def admin_backfill_since_date(
 
 
 @router.post("/backfill/daily")
+@limiter.limit("10/minute")
 async def admin_backfill_daily_last_bars(
+    request: Request,
     days: int = Query(200, ge=30, le=3000),
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
@@ -281,7 +290,9 @@ async def get_backfill_5m_toggle(
 
 
 @router.post("/backfill/5m/toggle")
+@limiter.limit("10/minute")
 async def set_backfill_5m_toggle(
+    request: Request,
     enabled: bool = Body(..., embed=True),
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
@@ -296,7 +307,9 @@ async def set_backfill_5m_toggle(
 
 
 @router.post("/backfill/coverage/stale")
+@limiter.limit("10/minute")
 async def backfill_stale_daily(
+    request: Request,
     _admin: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
@@ -316,11 +329,14 @@ async def backfill_stale_daily(
         enq = enqueue_task(stale_daily)
         return {**enq, "stale_candidates": stale_candidates}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("backfill_stale_daily failed: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/backfill/coverage/refresh")
+@limiter.limit("10/minute")
 async def admin_refresh_coverage(
+    request: Request,
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
     """Trigger the coverage health monitor to refresh Redis cache."""
@@ -328,7 +344,9 @@ async def admin_refresh_coverage(
 
 
 @router.post("/backfill/coverage")
+@limiter.limit("10/minute")
 async def admin_backfill_daily_tracked(
+    request: Request,
     history_days: int | None = Query(None, ge=1, le=300),
     history_batch_size: int = Query(25, ge=1, le=200),
     _admin: User = Depends(get_admin_user),
@@ -359,7 +377,9 @@ async def admin_backfill_daily_tracked_preview(
 
 
 @router.post("/backfill/5m")
+@limiter.limit("10/minute")
 async def post_backfill_5m(
+    request: Request,
     n_days: int = Query(5, ge=1, le=60),
     batch_size: int = Query(50, ge=10, le=200),
     _admin: User = Depends(get_admin_user),
@@ -370,7 +390,9 @@ async def post_backfill_5m(
 # ── Indicators and snapshots ──
 
 @router.post("/recompute/since-date")
+@limiter.limit("10/minute")
 async def admin_recompute_since_date(
+    request: Request,
     since_date: Optional[str] = Query(None, description="YYYY-MM-DD; omit for HISTORY_TARGET_YEARS"),
     batch_size: int = Query(50, ge=10, le=200),
     history_batch_size: int = Query(25, ge=1, le=200),
@@ -390,7 +412,9 @@ async def admin_recompute_since_date(
 
 
 @router.post("/indicators/recompute-universe")
+@limiter.limit("10/minute")
 async def post_recompute_universe(
+    request: Request,
     batch_size: int = Query(50, ge=10, le=200),
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
@@ -398,7 +422,9 @@ async def post_recompute_universe(
 
 
 @router.post("/snapshots/history/record")
+@limiter.limit("10/minute")
 async def admin_record_history(
+    request: Request,
     symbols: List[str] | None = Query(None),
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
@@ -406,7 +432,9 @@ async def admin_record_history(
 
 
 @router.post("/snapshots/discord-digest")
+@limiter.limit("10/minute")
 async def admin_send_snapshot_digest_to_discord(
+    request: Request,
     channel_id: str | None = Query(None),
     limit: int = Query(12, ge=1, le=25),
     _admin: User = Depends(get_admin_user),
@@ -511,12 +539,14 @@ async def get_db_history(
             })
         return {"symbol": symbol.upper(), "interval": interval, "bars": bars}
     except Exception as e:
-        logger.error(f"db history error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("get_db_history failed: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/retention/enforce")
+@limiter.limit("10/minute")
 async def post_retention_enforce(
+    request: Request,
     max_days_5m: int = Query(90, ge=7, le=365),
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
@@ -524,7 +554,9 @@ async def post_retention_enforce(
 
 
 @router.post("/stage/repair")
+@limiter.limit("10/minute")
 async def admin_repair_stage_history(
+    request: Request,
     days: int = Query(120, ge=7, le=3650),
     symbol: Optional[str] = Query(None),
     _admin: User = Depends(get_admin_user),
@@ -535,7 +567,9 @@ async def admin_repair_stage_history(
 
 
 @router.post("/stage/repair-async")
+@limiter.limit("10/minute")
 async def admin_repair_stage_history_async(
+    request: Request,
     days: int = Query(3650, ge=7, le=3650),
     symbol: Optional[str] = Query(None),
     _admin: User = Depends(get_admin_user),
@@ -547,14 +581,18 @@ async def admin_repair_stage_history_async(
 
 
 @router.post("/fundamentals/fill-missing")
+@limiter.limit("10/minute")
 async def admin_fill_missing_fundamentals(
+    request: Request,
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
     return enqueue_task(fill_missing)
 
 
 @router.post("/reconciliation/spot-check")
+@limiter.limit("10/minute")
 async def admin_reconciliation_spot_check(
+    request: Request,
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
     """Trigger OHLCV spot-check reconciliation."""
@@ -591,7 +629,9 @@ async def admin_get_jobs(
 
 
 @router.post("/jobs/recover-stale")
+@limiter.limit("10/minute")
 async def admin_recover_stale_jobs(
+    request: Request,
     stale_minutes: int = Query(120, ge=30, le=10080),
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
@@ -602,7 +642,9 @@ async def admin_recover_stale_jobs(
 # ── Regime admin ──
 
 @router.post("/regime/compute")
+@limiter.limit("10/minute")
 async def admin_compute_regime(
+    request: Request,
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
     """Manually trigger daily regime computation."""
@@ -623,7 +665,9 @@ async def admin_list_tasks(
 
 
 @router.post("/tasks/run")
+@limiter.limit("10/minute")
 async def admin_run_task(
+    request: Request,
     task_name: str = Query(...),
     symbols: List[str] | None = Query(None),
     n_days: int | None = Query(None),
@@ -642,7 +686,9 @@ async def admin_run_task(
 # ── Intelligence admin ──
 
 @router.post("/backtest/system-validation")
+@limiter.limit("10/minute")
 async def admin_system_backtest_validation(
+    request: Request,
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
     """Run Stage Analysis backtest across all regime periods (1999-2026)."""
@@ -652,7 +698,9 @@ async def admin_system_backtest_validation(
 
 
 @router.post("/intelligence/generate")
+@limiter.limit("10/minute")
 def trigger_brief_generation(
+    request: Request,
     brief_type: str = Query("daily", description="daily, weekly, or monthly"),
     _admin: User = Depends(get_admin_user),
 ):
@@ -723,7 +771,9 @@ _AUTOFIX_REDIS_TTL_S = int(timedelta(hours=2).total_seconds())
 
 
 @router.post("/auto-fix", response_model=AutoFixResponse)
+@limiter.limit("10/minute")
 async def start_auto_fix(
+    request: Request,
     _admin: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ) -> AutoFixResponse:

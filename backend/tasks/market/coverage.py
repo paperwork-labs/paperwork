@@ -104,6 +104,8 @@ def _run_scan_overlay() -> dict:
                 snap.scan_tier = tier
                 snap.action_label = label
                 updated += 1
+            except SoftTimeLimitExceeded:
+                raise
             except Exception as e:
                 logger.warning(
                     "Scan overlay failed for %s: %s", getattr(snap, "symbol", "?"), e
@@ -213,6 +215,8 @@ def _evaluate_exit_cascade_all() -> dict:
                         result.final_tier,
                         result.final_reason,
                     )
+            except SoftTimeLimitExceeded:
+                raise
             except Exception:
                 logger.warning(
                     "Exit cascade failed for position %s", pos.symbol, exc_info=True

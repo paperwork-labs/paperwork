@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import {
   AlertTriangle,
   CheckCircle,
+  ChevronRight,
   Clock,
   Loader2,
   RefreshCw,
@@ -11,6 +12,7 @@ import {
 import toast from 'react-hot-toast';
 import useAdminHealth from '../hooks/useAdminHealth';
 import useCoverageSnapshot from '../hooks/useCoverageSnapshot';
+import type { CoverageFillByDateRow } from '../utils/coverage';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import CoverageHealthStrip from '../components/coverage/CoverageHealthStrip';
 import AdminDomainCards from '../components/admin/AdminDomainCards';
@@ -26,12 +28,18 @@ import type { AdminHealthResponse, AutoFixStatusResponse, AutoFixTask } from '..
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 const TASK_LABELS: Record<string, string> = {
   // Legacy taskstatus / JobRun names (still used by Redis publishers today)
@@ -311,6 +319,7 @@ const SystemStatus: React.FC = () => {
   // 5m backfill toggle state
   const [backfill5mEnabled, setBackfill5mEnabled] = useState<boolean | null>(null);
   const [backfill5mLoading, setBackfill5mLoading] = useState(false);
+  const [operatorExpanded, setOperatorExpanded] = useState(false);
 
   const compositeStatus = health?.composite_status ?? 'red';
   const StatusIcon = STATUS_ICON[compositeStatus] ?? XCircle;
@@ -413,19 +422,19 @@ const SystemStatus: React.FC = () => {
     await refresh();
   };
 
-  const dailyFillSeries = (snapshot?.fill_by_date || []).map((r: any) => ({
+  const dailyFillSeries = (snapshot?.daily?.fill_by_date || []).map((r: CoverageFillByDateRow) => ({
     date: r.date,
     symbol_count: r.daily_filled || r.symbol_count || 0,
     pct_of_universe: r.daily_pct || r.pct_of_universe || 0,
   }));
 
-  const snapshotFillSeries = (snapshot?.snapshot_fill_by_date || []).map((r: any) => ({
+  const snapshotFillSeries = (snapshot?.daily?.snapshot_fill_by_date || []).map((r: CoverageFillByDateRow) => ({
     date: r.date,
     symbol_count: r.snapshot_filled || r.symbol_count || 0,
     pct_of_universe: r.snapshot_pct || r.pct_of_universe || 0,
   }));
 
-  const totalSymbols = coverageHero.totalSymbols || snapshot?.symbols || 0;
+  const totalSymbols = coverageHero.totalSymbols || Number(snapshot?.symbols) || 0;
 
   const handleSinceDateUpdate = async () => {
     setSinceDateSaving(true);
@@ -740,20 +749,61 @@ const SystemStatus: React.FC = () => {
 
       <div>
         <p className="mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">Detailed Diagnostics</p>
-        <AdminDomainCards health={health} />
+        <ErrorBoundary
+          fallback={(
+            <div className="p-4 text-sm text-muted-foreground">
+              Something went wrong in this section. Try refreshing the page.
+            </div>
+          )}
+          onError={(error, info) => {
+            console.error('ErrorBoundary [system-status-domain-cards]:', error, info);
+          }}
+        >
+          <AdminDomainCards health={health} />
+        </ErrorBoundary>
       </div>
 
       <div className="h-px w-full bg-border" role="separator" />
 
-      <div>
-        <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Operator Actions</p>
-        <AdminOperatorActions
-          refreshCoverage={handleRefreshWithPolling}
-          refreshHealth={handleRefreshWithPolling}
-          sanityData={sanityData}
-          setSanityData={setSanityData}
-        />
-      </div>
+      <Collapsible open={operatorExpanded} onOpenChange={setOperatorExpanded}>
+        <CollapsibleTrigger
+          type="button"
+          id="system-status-operator-actions-trigger"
+          className={cn(
+            'flex w-full cursor-pointer select-none items-center gap-2 rounded-md py-1 text-left outline-none',
+            'text-xs font-semibold tracking-wider text-muted-foreground uppercase',
+            'hover:text-foreground',
+            'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+          )}
+          aria-expanded={operatorExpanded}
+          aria-controls="system-status-operator-actions-panel"
+        >
+          <ChevronRight
+            className={cn('size-4 shrink-0 text-muted-foreground transition-transform', operatorExpanded && 'rotate-90')}
+            aria-hidden
+          />
+          Operator Actions
+        </CollapsibleTrigger>
+        <CollapsibleContent id="system-status-operator-actions-panel" className="mt-2">
+          <ErrorBoundary
+            fallback={(
+              <div className="p-4 text-sm text-muted-foreground">
+                Something went wrong in this section. Try refreshing the page.
+              </div>
+            )}
+            onError={(error, info) => {
+              console.error('ErrorBoundary [system-status-operator-actions]:', error, info);
+            }}
+          >
+            <AdminOperatorActions
+              refreshCoverage={handleRefreshWithPolling}
+              refreshHealth={handleRefreshWithPolling}
+              sanityData={sanityData}
+              setSanityData={setSanityData}
+            />
+          </ErrorBoundary>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 };

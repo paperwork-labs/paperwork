@@ -46,8 +46,8 @@ async def get_coverage(
         meta["actions"] = coverage_actions(meta.get("backfill_5m_enabled"))
         return snapshot
     except Exception as e:
-        logger.error(f"coverage error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("get_coverage failed: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{symbol}")
@@ -79,5 +79,5 @@ async def get_symbol_coverage(
             "last_5m": last_m5.isoformat() if last_m5 else None,
         }
     except Exception as e:
-        logger.error(f"symbol coverage error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("get_symbol_coverage failed for %s: %s", symbol, e)
+        raise HTTPException(status_code=500, detail="Internal server error")

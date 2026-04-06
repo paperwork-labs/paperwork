@@ -13,7 +13,7 @@ Hard invariants for the market data pipeline. Violating any of these will break 
 
 ## Red Lines — NEVER Do These
 
-1. **Never bypass FMP daily budget check.** Every FMP call must go through `_record_provider_call` and the Redis budget counter. If Redis is unreachable, fail-closed (skip the provider).
+1. **Never bypass FMP daily budget check when Redis is healthy.** Every FMP call must go through `_record_provider_call` and the Redis budget counter when Redis is available. If Redis is unreachable during the **read** of budget counters, fail-open with a warning (allow the call) so Redis is not a single point of failure for live/provider data.
 2. **Never set `ALLOW_DEEP_BACKFILL=true` in production.** Deep backfills burn bandwidth. The `validate_production_settings()` check in `config.py` enforces this.
 3. **Never call FMP without rate limiting.** Every FMP HTTP call must be preceded by `provider_rate_limiter.acquire("fmp")`.
 4. **Never load large datasets client-side.** Aggregation, filtering, sorting, and pagination belong on the server. Use `/snapshots/table` and `/snapshots/heatmap` endpoints instead of shipping 5000 rows to the browser.

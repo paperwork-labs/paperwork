@@ -1,13 +1,23 @@
 def test_coverage_snapshot_uses_snapshot_history(db_session, monkeypatch):
     """Regression: snapshot_fill_by_date should come from MarketSnapshotHistory (ledger), not MarketSnapshot (latest-only)."""
+    import time
     from datetime import datetime, timezone
 
-    from backend.services.market.market_data_service import MarketDataService
     from backend.models.market_data import MarketSnapshotHistory
+    from backend.services.market.market_data_service import MarketDataService
+    from backend.services.market.universe import TRACKED_ALL_UPDATED_AT_KEY
 
     # Ensure coverage_snapshot sees a stable universe
     svc = MarketDataService()
-    monkeypatch.setattr(svc.redis_client, "get", lambda key: b'["AAA","BBB"]' if key == "tracked:all" else None)
+
+    def _redis_get(key):
+        if key == "tracked:all":
+            return b'["AAA","BBB"]'
+        if key == TRACKED_ALL_UPDATED_AT_KEY:
+            return str(time.time()).encode()
+        return None
+
+    monkeypatch.setattr(svc.redis_client, "get", _redis_get)
 
     # Insert history for two dates
     d1 = datetime(2026, 1, 8, tzinfo=timezone.utc).replace(tzinfo=None)

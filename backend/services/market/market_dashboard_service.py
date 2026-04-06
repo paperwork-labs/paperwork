@@ -1,14 +1,14 @@
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any
+from datetime import datetime, timedelta, timezone
+from typing import Any, Callable, TypeVar
 
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
-from sqlalchemy import select
 
-from backend.models.index_constituent import IndexConstituent
 from backend.models.market_data import MarketSnapshot, MarketSnapshotHistory
 from backend.models.market_tracked_plan import MarketTrackedPlan
 from backend.models import Position
@@ -19,6 +19,10 @@ from backend.services.market.constants import (
 )
 from backend.services.market.market_data_service import MarketDataService
 from backend.services.market.universe import tracked_symbols
+
+logger = logging.getLogger(__name__)
+
+_T = TypeVar("_T")
 
 
 @dataclass
@@ -58,6 +62,14 @@ class _SummaryRow:
 
 class MarketDashboardService:
     """Build read-only market dashboard summaries from tracked snapshots."""
+
+    @staticmethod
+    def _safe_section(section: str, fn: Callable[[], _T], default: _T) -> _T:
+        try:
+            return fn()
+        except Exception as e:
+            logger.warning("market dashboard section %s failed: %s", section, e)
+            return default
 
     def _fetch_rows(self, db: Session, *, universe: str = "all") -> tuple[list[str], list[_SummaryRow], dict[str, MarketTrackedPlan], datetime | None]:
         def _coalesce(primary, secondary):
@@ -262,53 +274,56 @@ class MarketDashboardService:
         ]
 
     def _build_breadth_series(self, db: Session, tracked: list[str]) -> list[dict[str, Any]]:
-        from datetime import timedelta
-
         if not tracked:
             return []
 
         cutoff = datetime.now(timezone.utc) - timedelta(days=120)
-        history = (
-            db.query(
+        cutoff_date = cutoff.date()
+        stmt = (
+            select(
                 MarketSnapshotHistory.as_of_date,
-                MarketSnapshotHistory.symbol,
-                MarketSnapshotHistory.current_price,
-                MarketSnapshotHistory.sma_50,
-                MarketSnapshotHistory.sma_200,
+                func.count()
+                .filter(
+                    and_(
+                        MarketSnapshotHistory.sma_50.isnot(None),
+                        MarketSnapshotHistory.current_price > MarketSnapshotHistory.sma_50,
+                    )
+                )
+                .label("above_50"),
+                func.count()
+                .filter(
+                    and_(
+                        MarketSnapshotHistory.sma_200.isnot(None),
+                        MarketSnapshotHistory.current_price > MarketSnapshotHistory.sma_200,
+                    )
+                )
+                .label("above_200"),
+                func.count().label("total"),
             )
-            .filter(
+            .where(
                 MarketSnapshotHistory.analysis_type == "technical_snapshot",
                 MarketSnapshotHistory.symbol.in_(tracked),
-                MarketSnapshotHistory.as_of_date >= cutoff.date(),
+                MarketSnapshotHistory.as_of_date >= cutoff_date,
             )
+            .group_by(MarketSnapshotHistory.as_of_date)
             .order_by(MarketSnapshotHistory.as_of_date.asc())
-            .all()
         )
-
-        from collections import defaultdict as _dd
-        by_date: dict[str, list[tuple]] = _dd(list)
-        for row in history:
-            dt_str = str(row.as_of_date)
-            by_date[dt_str].append((row.current_price, row.sma_50, row.sma_200))
-
-        series = []
-        for dt_str in sorted(by_date.keys()):
-            entries = by_date[dt_str]
-            total = len(entries)
-            above_50 = sum(
-                1 for p, s50, _ in entries
-                if isinstance(p, (int, float)) and isinstance(s50, (int, float)) and p > s50
+        rows = db.execute(stmt).all()
+        series: list[dict[str, Any]] = []
+        for row in rows:
+            as_of = row[0]
+            above_50 = int(row[1] or 0)
+            above_200 = int(row[2] or 0)
+            total = int(row[3] or 0)
+            dt_str = str(as_of)
+            series.append(
+                {
+                    "date": dt_str,
+                    "above_sma50_pct": round(above_50 / total * 100, 1) if total else 0,
+                    "above_sma200_pct": round(above_200 / total * 100, 1) if total else 0,
+                    "total": total,
+                }
             )
-            above_200 = sum(
-                1 for p, _, s200 in entries
-                if isinstance(p, (int, float)) and isinstance(s200, (int, float)) and p > s200
-            )
-            series.append({
-                "date": dt_str,
-                "above_sma50_pct": round(above_50 / total * 100, 1) if total else 0,
-                "above_sma200_pct": round(above_200 / total * 100, 1) if total else 0,
-                "total": total,
-            })
         return series
 
     def _build_rrg_sectors(self, rows: list[_SummaryRow]) -> list[dict[str, Any]]:
@@ -334,7 +349,6 @@ class MarketDashboardService:
         return result
 
     def _build_upcoming_earnings(self, rows: list[_SummaryRow]) -> list[dict[str, Any]]:
-        from datetime import timedelta
         now = datetime.now(timezone.utc)
         horizon = now + timedelta(days=7)
         result = []
@@ -486,10 +500,6 @@ class MarketDashboardService:
         return out
 
     def build_dashboard(self, db: Session, *, universe: str = "all") -> dict[str, Any]:
-        tracked, rows, plan_map, latest_snapshot_ts = self._fetch_rows(db, universe=universe)
-        tracked_count = len(tracked)
-        snapshot_count = len(rows)
-
         empty_payload: dict[str, Any] = {
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "latest_snapshot_at": None,
@@ -519,275 +529,364 @@ class MarketDashboardService:
             "gap_leaders": [],
             "constituent_symbols": [],
         }
+        try:
+            tracked, rows, plan_map, latest_snapshot_ts = self._fetch_rows(db, universe=universe)
+        except Exception as e:
+            logger.warning("market dashboard fetch failed: %s", e)
+            return empty_payload
+
+        tracked_count = len(tracked)
+        snapshot_count = len(rows)
         if tracked_count == 0:
             return empty_payload
 
-        stage_counts: dict[str, int] = defaultdict(int)
-        up_1d = 0
-        down_1d = 0
-        flat_1d = 0
-        above_50 = 0
-        above_200 = 0
+        stage_norm_default = {"1": 0, "2A": 0, "2B": 0, "2C": 0, "3": 0, "4": 0}
 
-        for r in rows:
-            stage_counts[r.stage_label] += 1
-            if self._is_num(r.perf_1d):
-                p1 = float(r.perf_1d or 0.0)
-                if p1 > 0:
-                    up_1d += 1
-                elif p1 < 0:
-                    down_1d += 1
-                else:
-                    flat_1d += 1
-            if self._is_num(r.current_price) and self._is_num(r.sma_50) and float(r.current_price or 0.0) > float(r.sma_50 or 0.0):
-                above_50 += 1
-            if self._is_num(r.current_price) and self._is_num(r.sma_200) and float(r.current_price or 0.0) > float(r.sma_200 or 0.0):
-                above_200 += 1
-
-        scored = sorted(
-            [(self._momentum_score(r), r) for r in rows if self._is_num(r.perf_20d) and self._is_num(r.rs_mansfield_pct)],
-            key=lambda x: x[0],
-            reverse=True,
-        )
-        leaders = [self._to_item(r, include_score=True, score=s) for s, r in scored[:12]]
-
-        stage2_labels = {"2", "2A", "2B", "2C"}
-        breakout_rows = [
-            r
-            for r in rows
-            if r.stage_label in stage2_labels
-            and self._is_pos(r.perf_5d)
-            and self._is_pos(r.rs_mansfield_pct)
-            and self._is_num(r.current_price)
-            and self._is_num(r.sma_50)
-            and float(r.current_price or 0.0) > float(r.sma_50 or 0.0)
-        ]
-        pullback_rows = [
-            r
-            for r in rows
-            if r.stage_label in stage2_labels
-            and self._is_num(r.perf_5d)
-            and -4.0 <= float(r.perf_5d or 0.0) <= 2.0
-            and self._is_pos(r.rs_mansfield_pct)
-            and self._is_num(r.current_price)
-            and self._is_num(r.sma_50)
-            and float(r.current_price or 0.0) > float(r.sma_50 or 0.0)
-        ]
-        # Rank setup lists before truncation so dashboard cards show best candidates,
-        # not whichever symbols happen to appear first in source ordering.
-        breakout_rows = sorted(
-            breakout_rows,
-            key=self._momentum_score,
-            reverse=True,
-        )
-        pullback_rows = sorted(
-            pullback_rows,
-            key=self._momentum_score,
-            reverse=True,
-        )
-        rs_leaders = sorted(
-            [r for r in rows if self._is_num(r.rs_mansfield_pct)],
-            key=lambda x: float(x.rs_mansfield_pct or 0.0),
-            reverse=True,
-        )
-
-        by_sector: dict[str, list[_SummaryRow]] = defaultdict(list)
-        for r in rows:
-            sec = (r.sector or "").strip() or "Unknown"
-            by_sector[sec].append(r)
-        sector_momentum = []
-        for sec, sec_rows in by_sector.items():
-            perfs = [float(x.perf_20d) for x in sec_rows if self._is_num(x.perf_20d)]
-            rs_vals = [float(x.rs_mansfield_pct) for x in sec_rows if self._is_num(x.rs_mansfield_pct)]
-            if not perfs and not rs_vals:
-                continue
-            sector_momentum.append(
-                {
-                    "sector": sec,
-                    "count": len(sec_rows),
-                    "avg_perf_20d": round(sum(perfs) / len(perfs), 2) if perfs else None,
-                    "avg_rs_mansfield_pct": round(sum(rs_vals) / len(rs_vals), 2) if rs_vals else None,
-                }
-            )
-        sector_momentum = sorted(
-            sector_momentum,
-            key=lambda x: float(x.get("avg_perf_20d") or -9999.0),
-            reverse=True,
-        )[:10]
-
-        def _aq_urgency(r: _SummaryRow) -> float:
-            score = 0.0
-            if r.previous_stage_label and r.previous_stage_label != r.stage_label:
-                score += 10.0
-            if self._is_num(r.perf_1d):
-                score += abs(float(r.perf_1d or 0.0))
-            if self._is_num(r.rs_mansfield_pct):
-                score += abs(float(r.rs_mansfield_pct or 0.0)) * 0.5
-            return score
-
-        aq_candidates = [
-            r for r in rows
-            if (r.previous_stage_label and r.previous_stage_label != r.stage_label)
-            or (self._is_num(r.perf_1d) and abs(float(r.perf_1d or 0.0)) >= 3.0)
-            or (self._is_num(r.rs_mansfield_pct) and abs(float(r.rs_mansfield_pct or 0.0)) >= 6.0)
-        ]
-        aq_candidates.sort(key=_aq_urgency, reverse=True)
-        action_queue = [self._to_item(r) for r in aq_candidates[:30]]
-
-        stage_counts_normalized = {
-            "1": 0,
-            "2A": 0,
-            "2B": 0,
-            "2C": 0,
-            "3": 0,
-            "4": 0,
-        }
-        for r in rows:
-            key = self._normalize_stage_label(r.stage_label)
-            if key:
-                stage_counts_normalized[key] += 1
-
-        entering_stage_2a = [
-            {
-                "symbol": r.symbol,
-                "previous_stage_label": r.previous_stage_label,
-                "stage_label": r.stage_label,
-                "current_stage_days": r.current_stage_days,
-                "perf_1d": r.perf_1d,
-            }
-            for r in rows
-            if self._normalize_stage_label(r.stage_label) == "2A"
-            and self._normalize_stage_label(r.previous_stage_label) != "2A"
-        ]
-
-        entering_stage_3 = [
-            {
-                "symbol": r.symbol,
-                "previous_stage_label": r.previous_stage_label,
-                "stage_label": r.stage_label,
-                "current_stage_days": r.current_stage_days,
-                "perf_1d": r.perf_1d,
-            }
-            for r in rows
-            if self._normalize_stage_label(r.stage_label) == "3"
-            and self._normalize_stage_label(r.previous_stage_label) != "3"
-        ]
-
-        entering_stage_4 = [
-            {
-                "symbol": r.symbol,
-                "previous_stage_label": r.previous_stage_label,
-                "stage_label": r.stage_label,
-                "current_stage_days": r.current_stage_days,
-                "perf_1d": r.perf_1d,
-            }
-            for r in rows
-            if self._normalize_stage_label(r.stage_label) == "4"
-            and self._normalize_stage_label(r.previous_stage_label) != "4"
-        ]
-
-        proximity_rows = []
-        for r in rows:
-            plan = plan_map.get(r.symbol)
-            entry = getattr(plan, "entry_price", None) if plan else None
-            exit_ = getattr(plan, "exit_price", None) if plan else None
-            proximity_rows.append((r, entry, exit_))
-
-        entry_proximity_top = sorted(
-            [
-                {
-                    "symbol": r.symbol,
-                    "current_price": r.current_price,
-                    "entry_price": entry,
-                    "distance_pct": self._abs_percent_distance(r.current_price, entry),
-                    "distance_atr": self._abs_atr_distance(r, entry),
-                    "sector": r.sector,
-                    "stage_label": r.stage_label,
-                    "current_stage_days": r.current_stage_days,
-                }
-                for (r, entry, _exit) in proximity_rows
-                if self._abs_percent_distance(r.current_price, entry) is not None
-            ],
-            key=lambda x: float(x["distance_pct"] or 999999.0),
-        )[:10]
-
-        exit_proximity_top = sorted(
-            [
-                {
-                    "symbol": r.symbol,
-                    "current_price": r.current_price,
-                    "exit_price": exit_,
-                    "distance_pct": self._abs_percent_distance(r.current_price, exit_),
-                    "distance_atr": self._abs_atr_distance(r, exit_),
-                    "sector": r.sector,
-                    "stage_label": r.stage_label,
-                    "current_stage_days": r.current_stage_days,
-                }
-                for (r, _entry, exit_) in proximity_rows
-                if self._abs_percent_distance(r.current_price, exit_) is not None
-            ],
-            key=lambda x: float(x["distance_pct"] or 999999.0),
-        )[:10]
-
-        row_by_symbol = {r.symbol: r for r in rows}
-        sector_etf_table: list[dict[str, Any]] = []
-        for configured_symbol in SECTOR_ETF_SYMBOLS_ORDER:
-            candidate_symbols = SECTOR_ETF_PROXY_SYMBOLS.get(
-                configured_symbol,
-                [configured_symbol],
-            )
-            row = next((row_by_symbol.get(candidate) for candidate in candidate_symbols if row_by_symbol.get(candidate)), None)
-            sector_etf_table.append(
+        def empty_sector_etf_table() -> list[dict[str, Any]]:
+            return [
                 {
                     "symbol": configured_symbol,
                     "sector_name": SECTOR_ETF_DISPLAY_NAMES.get(configured_symbol, configured_symbol),
-                    "change_1d": row.perf_1d if row else None,
-                    "change_5d": row.perf_5d if row else None,
-                    "change_20d": row.perf_20d if row else None,
-                    "rs_mansfield_pct": row.rs_mansfield_pct if row else None,
-                    "atrx_sma_50": row.atrx_sma_50 if row else None,
-                    "stage_label": row.stage_label if row else None,
-                    "days_in_stage": row.current_stage_days if row else None,
+                    "change_1d": None,
+                    "change_5d": None,
+                    "change_20d": None,
+                    "rs_mansfield_pct": None,
+                    "atrx_sma_50": None,
+                    "stage_label": None,
+                    "days_in_stage": None,
                 }
-            )
+                for configured_symbol in SECTOR_ETF_SYMBOLS_ORDER
+            ]
 
-        matrix = self._build_metric_rankings(rows)
+        def regime_stats() -> tuple[dict[str, int], int, int, int, int, int]:
+            stage_counts: dict[str, int] = defaultdict(int)
+            up_1d = 0
+            down_1d = 0
+            flat_1d = 0
+            above_50 = 0
+            above_200 = 0
+            for r in rows:
+                stage_counts[r.stage_label] += 1
+                if self._is_num(r.perf_1d):
+                    p1 = float(r.perf_1d or 0.0)
+                    if p1 > 0:
+                        up_1d += 1
+                    elif p1 < 0:
+                        down_1d += 1
+                    else:
+                        flat_1d += 1
+                if self._is_num(r.current_price) and self._is_num(r.sma_50) and float(r.current_price or 0.0) > float(r.sma_50 or 0.0):
+                    above_50 += 1
+                if self._is_num(r.current_price) and self._is_num(r.sma_200) and float(r.current_price or 0.0) > float(r.sma_200 or 0.0):
+                    above_200 += 1
+            return stage_counts, up_1d, down_1d, flat_1d, above_50, above_200
 
-        range_histogram = self._build_range_histogram(rows)
-        breadth_series = self._build_breadth_series(db, tracked)
-        rrg_sectors = self._build_rrg_sectors(rows)
-        upcoming_earnings = self._build_upcoming_earnings(rows)
-        fundamental_leaders = self._build_fundamental_leaders(rows)
-        rsi_divergences = self._build_rsi_divergences(rows)
-        td_signals = self._build_td_signals(rows)
-        gap_leaders = self._build_gap_leaders(rows)
-
-        constituent_syms = sorted({
-            str(sym).upper()
-            for (sym,) in db.query(IndexConstituent.symbol)
-            .filter(IndexConstituent.is_active.is_(True))
-            .distinct()
-        })
-
-        md_svc = MarketDataService()
-        coverage = md_svc.coverage.build_coverage_response(
-            db,
-            fill_trading_days_window=50,
-            fill_lookback_days=120,
+        stage_counts, up_1d, down_1d, flat_1d, above_50, above_200 = self._safe_section(
+            "regime_stats",
+            regime_stats,
+            (defaultdict(int), 0, 0, 0, 0, 0),
         )
+
+        def leaders_and_setups() -> tuple[list[dict[str, Any]], list[_SummaryRow], list[_SummaryRow], list[_SummaryRow]]:
+            scored = sorted(
+                [(self._momentum_score(r), r) for r in rows if self._is_num(r.perf_20d) and self._is_num(r.rs_mansfield_pct)],
+                key=lambda x: x[0],
+                reverse=True,
+            )
+            leaders_local = [self._to_item(r, include_score=True, score=s) for s, r in scored[:12]]
+            stage2_labels = {"2", "2A", "2B", "2C"}
+            breakout = [
+                r
+                for r in rows
+                if r.stage_label in stage2_labels
+                and self._is_pos(r.perf_5d)
+                and self._is_pos(r.rs_mansfield_pct)
+                and self._is_num(r.current_price)
+                and self._is_num(r.sma_50)
+                and float(r.current_price or 0.0) > float(r.sma_50 or 0.0)
+            ]
+            pullback = [
+                r
+                for r in rows
+                if r.stage_label in stage2_labels
+                and self._is_num(r.perf_5d)
+                and -4.0 <= float(r.perf_5d or 0.0) <= 2.0
+                and self._is_pos(r.rs_mansfield_pct)
+                and self._is_num(r.current_price)
+                and self._is_num(r.sma_50)
+                and float(r.current_price or 0.0) > float(r.sma_50 or 0.0)
+            ]
+            breakout = sorted(breakout, key=self._momentum_score, reverse=True)
+            pullback = sorted(pullback, key=self._momentum_score, reverse=True)
+            rs_lead = sorted(
+                [r for r in rows if self._is_num(r.rs_mansfield_pct)],
+                key=lambda x: float(x.rs_mansfield_pct or 0.0),
+                reverse=True,
+            )
+            return leaders_local, breakout, pullback, rs_lead
+
+        leaders, breakout_rows, pullback_rows, rs_leaders = self._safe_section(
+            "leaders_and_setups",
+            leaders_and_setups,
+            ([], [], [], []),
+        )
+
+        def sector_momentum_section() -> list[dict[str, Any]]:
+            by_sector: dict[str, list[_SummaryRow]] = defaultdict(list)
+            for r in rows:
+                sec = (r.sector or "").strip() or "Unknown"
+                by_sector[sec].append(r)
+            sector_momentum_local: list[dict[str, Any]] = []
+            for sec, sec_rows in by_sector.items():
+                perfs = [float(x.perf_20d) for x in sec_rows if self._is_num(x.perf_20d)]
+                rs_vals = [float(x.rs_mansfield_pct) for x in sec_rows if self._is_num(x.rs_mansfield_pct)]
+                if not perfs and not rs_vals:
+                    continue
+                sector_momentum_local.append(
+                    {
+                        "sector": sec,
+                        "count": len(sec_rows),
+                        "avg_perf_20d": round(sum(perfs) / len(perfs), 2) if perfs else None,
+                        "avg_rs_mansfield_pct": round(sum(rs_vals) / len(rs_vals), 2) if rs_vals else None,
+                    }
+                )
+            return sorted(
+                sector_momentum_local,
+                key=lambda x: float(x.get("avg_perf_20d") or -9999.0),
+                reverse=True,
+            )[:10]
+
+        sector_momentum = self._safe_section("sector_momentum", sector_momentum_section, [])
+
+        def action_queue_section() -> list[dict[str, Any]]:
+            def _aq_urgency(r: _SummaryRow) -> float:
+                score = 0.0
+                if r.previous_stage_label and r.previous_stage_label != r.stage_label:
+                    score += 10.0
+                if self._is_num(r.perf_1d):
+                    score += abs(float(r.perf_1d or 0.0))
+                if self._is_num(r.rs_mansfield_pct):
+                    score += abs(float(r.rs_mansfield_pct or 0.0)) * 0.5
+                return score
+
+            aq_candidates = [
+                r for r in rows
+                if (r.previous_stage_label and r.previous_stage_label != r.stage_label)
+                or (self._is_num(r.perf_1d) and abs(float(r.perf_1d or 0.0)) >= 3.0)
+                or (self._is_num(r.rs_mansfield_pct) and abs(float(r.rs_mansfield_pct or 0.0)) >= 6.0)
+            ]
+            aq_candidates.sort(key=_aq_urgency, reverse=True)
+            return [self._to_item(r) for r in aq_candidates[:30]]
+
+        action_queue = self._safe_section("action_queue", action_queue_section, [])
+
+        def stage_transitions_section() -> tuple[dict[str, int], list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+            stage_counts_normalized = {
+                "1": 0,
+                "2A": 0,
+                "2B": 0,
+                "2C": 0,
+                "3": 0,
+                "4": 0,
+            }
+            for r in rows:
+                key = self._normalize_stage_label(r.stage_label)
+                if key:
+                    stage_counts_normalized[key] += 1
+            entering_2a = [
+                {
+                    "symbol": r.symbol,
+                    "previous_stage_label": r.previous_stage_label,
+                    "stage_label": r.stage_label,
+                    "current_stage_days": r.current_stage_days,
+                    "perf_1d": r.perf_1d,
+                }
+                for r in rows
+                if self._normalize_stage_label(r.stage_label) == "2A"
+                and self._normalize_stage_label(r.previous_stage_label) != "2A"
+            ]
+            entering_3 = [
+                {
+                    "symbol": r.symbol,
+                    "previous_stage_label": r.previous_stage_label,
+                    "stage_label": r.stage_label,
+                    "current_stage_days": r.current_stage_days,
+                    "perf_1d": r.perf_1d,
+                }
+                for r in rows
+                if self._normalize_stage_label(r.stage_label) == "3"
+                and self._normalize_stage_label(r.previous_stage_label) != "3"
+            ]
+            entering_4 = [
+                {
+                    "symbol": r.symbol,
+                    "previous_stage_label": r.previous_stage_label,
+                    "stage_label": r.stage_label,
+                    "current_stage_days": r.current_stage_days,
+                    "perf_1d": r.perf_1d,
+                }
+                for r in rows
+                if self._normalize_stage_label(r.stage_label) == "4"
+                and self._normalize_stage_label(r.previous_stage_label) != "4"
+            ]
+            return stage_counts_normalized, entering_2a, entering_3, entering_4
+
+        stage_counts_normalized, entering_stage_2a, entering_stage_3, entering_stage_4 = self._safe_section(
+            "stage_transitions",
+            stage_transitions_section,
+            (dict(stage_norm_default), [], [], []),
+        )
+
+        def proximity_section() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+            proximity_rows = []
+            for r in rows:
+                plan = plan_map.get(r.symbol)
+                entry = getattr(plan, "entry_price", None) if plan else None
+                exit_ = getattr(plan, "exit_price", None) if plan else None
+                proximity_rows.append((r, entry, exit_))
+            entry_top = sorted(
+                [
+                    {
+                        "symbol": r.symbol,
+                        "current_price": r.current_price,
+                        "entry_price": entry,
+                        "distance_pct": self._abs_percent_distance(r.current_price, entry),
+                        "distance_atr": self._abs_atr_distance(r, entry),
+                        "sector": r.sector,
+                        "stage_label": r.stage_label,
+                        "current_stage_days": r.current_stage_days,
+                    }
+                    for (r, entry, _exit) in proximity_rows
+                    if self._abs_percent_distance(r.current_price, entry) is not None
+                ],
+                key=lambda x: float(x["distance_pct"] or 999999.0),
+            )[:10]
+            exit_top = sorted(
+                [
+                    {
+                        "symbol": r.symbol,
+                        "current_price": r.current_price,
+                        "exit_price": exit_,
+                        "distance_pct": self._abs_percent_distance(r.current_price, exit_),
+                        "distance_atr": self._abs_atr_distance(r, exit_),
+                        "sector": r.sector,
+                        "stage_label": r.stage_label,
+                        "current_stage_days": r.current_stage_days,
+                    }
+                    for (r, _entry, exit_) in proximity_rows
+                    if self._abs_percent_distance(r.current_price, exit_) is not None
+                ],
+                key=lambda x: float(x["distance_pct"] or 999999.0),
+            )[:10]
+            return entry_top, exit_top
+
+        entry_proximity_top, exit_proximity_top = self._safe_section(
+            "proximity",
+            proximity_section,
+            ([], []),
+        )
+
+        def sector_etf_section() -> list[dict[str, Any]]:
+            row_by_symbol = {r.symbol: r for r in rows}
+            sector_etf_table_local: list[dict[str, Any]] = []
+            for configured_symbol in SECTOR_ETF_SYMBOLS_ORDER:
+                candidate_symbols = SECTOR_ETF_PROXY_SYMBOLS.get(
+                    configured_symbol,
+                    [configured_symbol],
+                )
+                row = next((row_by_symbol.get(candidate) for candidate in candidate_symbols if row_by_symbol.get(candidate)), None)
+                sector_etf_table_local.append(
+                    {
+                        "symbol": configured_symbol,
+                        "sector_name": SECTOR_ETF_DISPLAY_NAMES.get(configured_symbol, configured_symbol),
+                        "change_1d": row.perf_1d if row else None,
+                        "change_5d": row.perf_5d if row else None,
+                        "change_20d": row.perf_20d if row else None,
+                        "rs_mansfield_pct": row.rs_mansfield_pct if row else None,
+                        "atrx_sma_50": row.atrx_sma_50 if row else None,
+                        "stage_label": row.stage_label if row else None,
+                        "days_in_stage": row.current_stage_days if row else None,
+                    }
+                )
+            return sector_etf_table_local
+
+        sector_etf_table = self._safe_section("sector_etf_table", sector_etf_section, empty_sector_etf_table())
+
+        matrix = self._safe_section(
+            "metric_rankings",
+            lambda: self._build_metric_rankings(rows),
+            {},
+        )
+        range_histogram = self._safe_section(
+            "range_histogram",
+            lambda: self._build_range_histogram(rows),
+            [],
+        )
+        breadth_series = self._safe_section(
+            "breadth_series",
+            lambda: self._build_breadth_series(db, tracked),
+            [],
+        )
+        rrg_sectors = self._safe_section(
+            "rrg_sectors",
+            lambda: self._build_rrg_sectors(rows),
+            [],
+        )
+        upcoming_earnings = self._safe_section(
+            "upcoming_earnings",
+            lambda: self._build_upcoming_earnings(rows),
+            [],
+        )
+        fundamental_leaders = self._safe_section(
+            "fundamental_leaders",
+            lambda: self._build_fundamental_leaders(rows),
+            [],
+        )
+        rsi_divergences = self._safe_section(
+            "rsi_divergences",
+            lambda: self._build_rsi_divergences(rows),
+            {"bearish": [], "bullish": []},
+        )
+        td_signals = self._safe_section(
+            "td_signals",
+            lambda: self._build_td_signals(rows),
+            [],
+        )
+        gap_leaders = self._safe_section(
+            "gap_leaders",
+            lambda: self._build_gap_leaders(rows),
+            [],
+        )
+
+        constituent_syms = sorted(str(s).upper() for s in tracked)
+
+        coverage_raw = self._safe_section(
+            "coverage",
+            lambda: MarketDataService().coverage.build_coverage_response(
+                db,
+                fill_trading_days_window=50,
+                fill_lookback_days=120,
+            ),
+            None,
+        )
+        coverage_out: dict[str, Any] | None
+        if coverage_raw is None:
+            coverage_out = None
+        else:
+            coverage_out = {
+                "status": coverage_raw.get("status"),
+                "daily_pct": (((coverage_raw.get("daily") or {}).get("coverage") or {}).get("pct")),
+                "m5_pct": (((coverage_raw.get("m5") or {}).get("coverage") or {}).get("pct")),
+                "daily_stale": (((coverage_raw.get("daily") or {}).get("coverage") or {}).get("stale_count")),
+                "m5_stale": (((coverage_raw.get("m5") or {}).get("coverage") or {}).get("stale_count")),
+            }
 
         return {
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "latest_snapshot_at": latest_snapshot_ts.isoformat() if latest_snapshot_ts else None,
             "tracked_count": tracked_count,
             "snapshot_count": snapshot_count,
-            "coverage": {
-                "status": coverage.get("status"),
-                "daily_pct": (((coverage.get("daily") or {}).get("coverage") or {}).get("pct")),
-                "m5_pct": (((coverage.get("m5") or {}).get("coverage") or {}).get("pct")),
-                "daily_stale": (((coverage.get("daily") or {}).get("coverage") or {}).get("stale_count")),
-                "m5_stale": (((coverage.get("m5") or {}).get("coverage") or {}).get("stale_count")),
-            },
+            "coverage": coverage_out,
             "regime": {
                 "up_1d_count": up_1d,
                 "down_1d_count": down_1d,

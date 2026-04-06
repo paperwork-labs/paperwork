@@ -5,15 +5,16 @@ import type { AdminHealthResponse } from '../types/adminHealth';
 interface UseAdminHealthResult {
   health: AdminHealthResponse | null;
   loading: boolean;
+  isError: boolean;
   refresh: () => Promise<void>;
 }
 
 const useAdminHealth = (): UseAdminHealthResult => {
   const queryClient = useQueryClient();
-  const { data, isPending } = useQuery<AdminHealthResponse>({
+  const { data, isPending, isError } = useQuery<AdminHealthResponse | null>({
     queryKey: ['admin-health'],
     queryFn: async () => {
-      const res = await api.get('/market-data/admin/health');
+      const res = await api.get<AdminHealthResponse>('/market-data/admin/health');
       return res?.data ?? null;
     },
     staleTime: 1000 * 60 * 2,
@@ -24,7 +25,7 @@ const useAdminHealth = (): UseAdminHealthResult => {
     await queryClient.invalidateQueries({ queryKey: ['admin-health'] });
   };
 
-  return { health: data ?? null, loading: isPending, refresh };
+  return { health: data ?? null, loading: isPending, isError, refresh };
 };
 
 export default useAdminHealth;

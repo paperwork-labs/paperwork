@@ -67,7 +67,10 @@ def check_regime_alerts() -> dict:
                 raw_open = r.get(f"{prefix}:vix_open")
                 if raw_open is not None:
                     vix_open = float(raw_open)
-                alerts_sent = set(r.smembers(f"{prefix}:alerts_sent") or [])
+                raw = r.smembers(f"{prefix}:alerts_sent") or []
+                alerts_sent = {
+                    v.decode() if isinstance(v, bytes) else v for v in raw
+                }
             except Exception as e:
                 logger.warning("Failed to load regime monitor state from Redis: %s", e)
         monitor.restore_day_state(vix_open, alerts_sent)

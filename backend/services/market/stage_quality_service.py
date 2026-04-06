@@ -5,6 +5,7 @@ from collections import Counter
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 
 from backend.models import MarketSnapshot
@@ -57,21 +58,6 @@ def normalize_stage_label(stage_label: Any) -> Optional[str]:
     return None
 
 
-def _as_naive_utc(ts: datetime | None) -> datetime | None:
-    if ts is None:
-        return None
-    try:
-        if ts.tzinfo is not None:
-            return ts.astimezone(timezone.utc).replace(tzinfo=None)
-    except Exception as e:
-        logger.warning("_as_naive_utc astimezone failed for ts=%r: %s", ts, e)
-    try:
-        return ts.replace(tzinfo=None)
-    except Exception as e:
-        logger.warning("_as_naive_utc replace(tzinfo=None) failed for ts=%r: %s", ts, e)
-        return ts
-
-
 class StageQualityService:
     """Stage quality auditing and history repair.
 
@@ -87,54 +73,62 @@ class StageQualityService:
         lookback_days = max(7, min(int(lookback_days), 3650))
         cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days)
 
-        rows = (
-            db.query(
-                MarketSnapshot.symbol,
-                MarketSnapshot.stage_label,
-                MarketSnapshot.current_stage_days,
-                MarketSnapshot.previous_stage_label,
-                MarketSnapshot.previous_stage_days,
-                MarketSnapshot.as_of_timestamp,
-            )
-            .filter(MarketSnapshot.analysis_type == "technical_snapshot")
-            .all()
-        )
+        MS = MarketSnapshot
+        snap_type = MS.analysis_type == "technical_snapshot"
+        lab = func.upper(func.trim(func.coalesce(MS.stage_label, "")))
+        prev_trim = func.trim(func.coalesce(MS.previous_stage_label, ""))
 
-        total = len(rows)
+        total = int(db.query(func.count()).filter(snap_type).scalar() or 0)
+
         stage_counter: Counter[str] = Counter()
         invalid_stage_count = 0
         unknown_count = 0
-        invalid_current_days_count = 0
-        invalid_previous_link_count = 0
-        stale_stage_count = 0
-
-        for _, stage_label, current_days, prev_label, prev_days, as_of_ts in rows:
-            stage_raw = str(stage_label or "").strip().upper()
+        for label_val, cnt in (
+            db.query(lab, func.count()).filter(snap_type).group_by(lab).all()
+        ):
+            stage_raw = str(label_val or "").strip().upper()
+            n = int(cnt)
             if stage_raw in VALID_STAGE_LABELS:
-                stage_counter[stage_raw] += 1
+                stage_counter[stage_raw] += n
             else:
-                invalid_stage_count += 1
-
+                invalid_stage_count += n
             if stage_raw == "UNKNOWN":
-                unknown_count += 1
-            if stage_raw and stage_raw != "UNKNOWN":
-                try:
-                    d = int(current_days) if current_days is not None else 0
-                except Exception:
-                    d = 0
-                if d < 1:
-                    invalid_current_days_count += 1
+                unknown_count += n
 
-            has_prev_label = bool(str(prev_label or "").strip())
-            has_prev_days = prev_days is not None
-            if has_prev_label != has_prev_days:
-                invalid_previous_link_count += 1
+        invalid_current_days_count = int(
+            db.query(func.count())
+            .filter(
+                snap_type,
+                lab != "",
+                lab != "UNKNOWN",
+                or_(MS.current_stage_days.is_(None), MS.current_stage_days < 1),
+            )
+            .scalar()
+            or 0
+        )
 
-            as_of_naive = _as_naive_utc(as_of_ts)
-            if as_of_naive is None:
-                stale_stage_count += 1
-            elif as_of_naive.replace(tzinfo=timezone.utc) < cutoff:
-                stale_stage_count += 1
+        invalid_previous_link_count = int(
+            db.query(func.count())
+            .filter(
+                snap_type,
+                or_(
+                    and_(prev_trim != "", MS.previous_stage_days.is_(None)),
+                    and_(prev_trim == "", MS.previous_stage_days.isnot(None)),
+                ),
+            )
+            .scalar()
+            or 0
+        )
+
+        stale_stage_count = int(
+            db.query(func.count())
+            .filter(
+                snap_type,
+                or_(MS.as_of_timestamp.is_(None), MS.as_of_timestamp < cutoff),
+            )
+            .scalar()
+            or 0
+        )
 
         recent_rows = (
             db.query(

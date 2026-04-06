@@ -1,4 +1,5 @@
 import json
+import time
 import pytest
 from types import SimpleNamespace
 from datetime import datetime, timedelta, timezone
@@ -9,7 +10,8 @@ from backend.api.dependencies import get_admin_user
 from backend.database import get_db
 from backend.models.user import UserRole
 from backend.models.market_data import PriceData
-from backend.services.market.market_data_service import market_data_service, MarketDataService
+from backend.services.market.market_data_service import MarketDataService, market_data_service
+from backend.services.market.universe import TRACKED_ALL_UPDATED_AT_KEY
 
 
 @pytest.fixture(autouse=True)
@@ -38,6 +40,7 @@ def test_backfill_stale_daily_returns_full_stale_candidates(monkeypatch, db_sess
         # Create a tracked universe where one symbol is missing from DB entirely.
         tracked = ["FRESH", "STALE", "MISSING"]
         market_data_service.redis_client.set("tracked:all", json.dumps(tracked))
+        market_data_service.redis_client.set(TRACKED_ALL_UPDATED_AT_KEY, str(time.time()))
 
         # Insert bars for FRESH (recent) and STALE (old). MISSING has no bars.
         db_session.query(PriceData).delete()
@@ -95,6 +98,7 @@ def test_backfill_stale_daily_returns_full_stale_candidates(monkeypatch, db_sess
         app.dependency_overrides.pop(get_db, None)
         try:
             market_data_service.redis_client.delete("tracked:all")
+            market_data_service.redis_client.delete(TRACKED_ALL_UPDATED_AT_KEY)
         except Exception:
             pass
 
@@ -105,6 +109,7 @@ def test_coverage_snapshot_counts_missing_in_none_bucket(db_session):
 
     tracked = ["FRESH2", "MISSING2"]
     market_data_service.redis_client.set("tracked:all", json.dumps(tracked))
+    market_data_service.redis_client.set(TRACKED_ALL_UPDATED_AT_KEY, str(time.time()))
     try:
         db_session.query(PriceData).delete()
         now = datetime.now(timezone.utc)
@@ -135,6 +140,7 @@ def test_coverage_snapshot_counts_missing_in_none_bucket(db_session):
     finally:
         try:
             market_data_service.redis_client.delete("tracked:all")
+            market_data_service.redis_client.delete(TRACKED_ALL_UPDATED_AT_KEY)
         except Exception:
             pass
 
