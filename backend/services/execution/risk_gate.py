@@ -2,6 +2,11 @@
 
 Includes Stage Analysis spec position sizing (ATR-based with Regime Multiplier x Stage Cap).
 See Stage_Analysis.docx Section 9.
+
+DANGER ZONE: This file affects capital protection. See .cursor/rules/protected-regions.mdc
+Related docs: docs/TRADING_PRINCIPLES.md, Stage_Analysis.docx Section 9
+Related rules: portfolio-manager.mdc, risk-manager.mdc
+IRON LAW: Single execution path - OrderManager → RiskGate → BrokerRouter. Never bypass.
 """
 
 from __future__ import annotations

@@ -6,10 +6,31 @@ Welcome, agent. This is a quantitative portfolio intelligence platform built for
 
 | Layer | Stack |
 |-------|-------|
-| Backend | Python 3.11, FastAPI, Celery, PostgreSQL 16, Redis, SQLAlchemy 2.0, Alembic |
-| Frontend | React 19, TypeScript 5, Vite, Chakra UI v3, React Query, Recharts, lightweight-charts |
+| Backend | Python 3.11, FastAPI, Celery, PostgreSQL 18, Redis, SQLAlchemy 2.0, Alembic |
+| Frontend | React 19, TypeScript 5, Vite, Radix UI, Tailwind CSS, React Query, Recharts, lightweight-charts |
 | Infra | Docker Compose (dev), Render (prod), Cloudflare (DNS/CDN), GitHub Actions (CI) |
 | Brokers | IBKR (FlexQuery + Gateway), TastyTrade (SDK), Schwab (OAuth) |
+
+## IRON LAWS (Never Violate)
+
+| Rule | Enforcement |
+|------|-------------|
+| Monetary values use `Decimal`, never `float` | Code review |
+| All indicator computation via `compute_full_indicator_series()` | `indicator_engine.py` |
+| Single execution path: OrderManager → RiskGate → BrokerRouter | Never bypass |
+| DB sessions passed as parameters | Never create sessions inside services |
+| Celery `time_limit` must match `job_catalog.py` `timeout_s` | Task decorator |
+| Lock TTL must be >= task `hard_time_limit` | `task_utils.py` |
+| SMA150 is the primary stage anchor | `stage_classifier.py` |
+
+## DANGER ZONES (Ask Before Modifying)
+
+- `backend/services/execution/risk_gate.py` — Capital protection
+- `backend/services/execution/order_manager.py` — Order execution
+- `backend/api/routes/auth.py` — Authentication
+- `backend/services/market/indicator_engine.py` — Core calculations
+- `backend/services/market/stage_classifier.py` — Stage Analysis
+- `backend/alembic/versions/*.py` — Migrations
 
 ## Three Pillars
 
@@ -50,7 +71,7 @@ Context-specific AI rules activate based on which files you're editing:
 | Risk Manager | `risk-manager.mdc` | `risk*`, `circuit*` | Capital protection |
 | Swing Trader | `swing-trader.mdc` | `scan*`, `stage*` | SEPA entries |
 | Systematic Trader | `systematic-trader.mdc` | `backtest*` | System validation |
-| UX Lead | `ux-lead.mdc` | `*.tsx`, `*.css` | Chakra v3, design system, accessibility, charts |
+| UX Lead | `ux-lead.mdc` | `*.tsx`, `*.css` | Radix UI, Tailwind, design system, accessibility, charts |
 | Ops Engineer | `ops-engineer.mdc` | `tasks/*`, `celery*`, `compose*`, `Makefile` | Pipelines, Celery, Docker, monitoring |
 | Git Workflow | `git-workflow.mdc` | Always | Branch naming, commits, PR standards |
 | Token Management | `token-management.mdc` | Always | Delegation rules, chat lifecycle, decision logging |
@@ -72,13 +93,13 @@ Context-specific AI rules activate based on which files you're editing:
 |------|------|-------|
 | Indicator engine | `backend/services/market/indicator_engine.py` | All indicator computation — stages, RS, TD Sequential, ATR |
 | Regime engine | `backend/services/market/regime_engine.py` | Market Regime R1–R5 (when built) |
-| Stage classifier | Within indicator_engine.py | SMA150 anchor, 10 sub-stages |
+| Stage classifier | `backend/services/market/stage_classifier.py` | SMA150 anchor, 10 sub-stages |
 | IBKR sync pipeline | `backend/services/portfolio/ibkr/pipeline.py` | Orchestrates FlexQuery sync |
 | Order manager | `backend/services/execution/order_manager.py` | Single execution path |
 | Risk gate | `backend/services/execution/risk_gate.py` | Position sizing, limits |
 | Job catalog | `backend/tasks/job_catalog.py` | All scheduled tasks with metadata |
 | Market dashboard | `frontend/src/pages/MarketDashboard.tsx` | Main market view |
-| Theme | `frontend/src/theme/system.ts` | Chakra v3 design tokens |
+| Theme | `frontend/src/styles/` | Tailwind config, design tokens |
 | Chart constants | `frontend/src/constants/chart.ts` | Stage colors, heat scales |
 
 ## Development Commands

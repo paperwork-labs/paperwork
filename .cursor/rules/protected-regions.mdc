@@ -1,0 +1,54 @@
+---
+description: Files requiring explicit approval before modification - capital protection, auth, core calculations
+alwaysApply: true
+---
+
+# Protected Regions - Ask Before Modifying
+
+## DANGER ZONES
+
+These files affect capital, security, or system integrity. **Get explicit approval before modifying.**
+
+### Capital Protection (Risk of Financial Loss)
+- `backend/services/execution/risk_gate.py` — Position sizing, max order value, stage caps
+- `backend/services/execution/order_manager.py` — Order execution path, broker routing
+- `backend/services/execution/exit_cascade.py` — Stop loss, trailing stops
+- `backend/services/risk/circuit_breaker.py` — Drawdown protection, kill switch
+
+### Authentication/Authorization (Security)
+- `backend/api/routes/auth.py` — Login, tokens, password reset
+- `backend/api/security.py` — JWT encoding/decoding
+- `backend/api/dependencies.py` — Auth dependencies, role checks
+
+### Core Financial Calculations (Data Integrity)
+- `backend/services/market/indicator_engine.py` — RSI, ATR, MACD, ADX, Stage Analysis
+- `backend/services/market/stage_classifier.py` — Weinstein stage classification (10 sub-stages)
+- `backend/services/market/regime_engine.py` — Market Regime R1-R5
+
+### Configuration (System Stability)
+- `backend/config.py` — Environment variables, feature flags
+- `backend/alembic/versions/*.py` — Database migrations
+- `backend/tasks/job_catalog.py` — Celery schedules, timeouts
+
+## Before Modifying Any DANGER ZONE File
+
+1. **State the specific change** and why it's needed
+2. **Wait for explicit approval** from the user
+3. **Run full test suite** after change: `make test-all`
+4. **Verify no regressions** in related functionality
+
+## Allowed Without Approval
+
+- Read any file
+- Run tests, type-check, lint
+- Edit non-DANGER-ZONE files
+- Add logging (but not remove existing logs)
+- Fix obvious typos in comments/docs
+
+## Red Lines (NEVER Do)
+
+- Remove or weaken risk checks without explicit request
+- Change position sizing math without verification
+- Modify auth without security review
+- Delete migrations or change migration history
+- Remove existing tests without replacement
