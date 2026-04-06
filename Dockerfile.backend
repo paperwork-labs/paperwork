@@ -25,4 +25,6 @@ USER app
 EXPOSE 8000
 
 # Default command (can be overridden in docker-compose)
-CMD ["uvicorn", "backend.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--timeout-keep-alive", "30"]
+# Single worker: Render standard plan has 2GB RAM; each worker loads the full app
+# (~1GB with SQLAlchemy + models + startup hooks). Two workers causes OOM kills.
+CMD ["uvicorn", "backend.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--timeout-keep-alive", "30"]
