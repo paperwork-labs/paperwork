@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
 import time
 from typing import Dict, Optional
 
@@ -29,6 +30,7 @@ class TokenBucketLimiter:
         self._tokens = float(self.max_tokens)
         self._last_refill = time.monotonic()
         self._lock = asyncio.Lock()
+        self._sync_lock = threading.Lock()
 
     def _refill(self) -> None:
         now = time.monotonic()
@@ -48,13 +50,17 @@ class TokenBucketLimiter:
             await asyncio.sleep(min(wait_time, 2.0))
 
     def acquire_sync(self) -> None:
-        """Blocking variant for sync code paths (Celery tasks)."""
+        """Blocking variant for sync code paths (Celery tasks).
+
+        Thread-safe via threading.Lock for concurrent Celery workers.
+        """
         while True:
-            self._refill()
-            if self._tokens >= 1.0:
-                self._tokens -= 1.0
-                return
-            wait_time = (1.0 - self._tokens) / self.rate
+            with self._sync_lock:
+                self._refill()
+                if self._tokens >= 1.0:
+                    self._tokens -= 1.0
+                    return
+                wait_time = (1.0 - self._tokens) / self.rate
             time.sleep(min(wait_time, 2.0))
 
 
@@ -77,7 +83,8 @@ class ProviderRateLimiter:
                 "alphavantage": 4,
                 "yfinance": policy.yfinance_cpm,
             }
-        except Exception:
+        except Exception as e:
+            logger.warning("Failed to load provider rate limits: %s", e)
             return {"fmp": 700, "finnhub": 50, "twelvedata": 7, "alphavantage": 4, "yfinance": 30}
 
     def __init__(self, overrides: Optional[Dict[str, int]] = None) -> None:

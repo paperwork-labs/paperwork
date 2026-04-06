@@ -112,7 +112,7 @@ const StageCycleDiagram: React.FC = () => (
       <text x="500" y="15" textAnchor="middle" fontSize="11" fontWeight="600" fill="#D69E2E">2C</text>
       <text x="610" y="40" textAnchor="middle" fontSize="11" fontWeight="600" fill="#DD6B20">3A</text>
       <text x="680" y="65" textAnchor="middle" fontSize="11" fontWeight="600" fill="#C05621">3B</text>
-      <text x="760" y="105" textAnchor="middle" fontSize="11" fontWeight="600" fill="#E53E3E">4A</text>
+      <text x="760" y="105" textAnchor="middle" fontSize="11" fontWeight="600" fill="#E53E3E">4C</text>
     </svg>
   </div>
 );
@@ -333,9 +333,9 @@ const DEEP_DIVES: DeepDive[] = [
         body: (
           <div className="flex flex-col gap-1">
             <p className="text-sm"><strong>T1 — Stop Loss:</strong> Hard stop at 2× ATR below entry.</p>
-            <p className="text-sm"><strong>T2 — Trailing Stop:</strong> Stage-based trail (1.5× ATR for 2A/2B, 2.0× for 2C, 1.0× for 3A+).</p>
+            <p className="text-sm"><strong>T2 — Trailing Stop:</strong> Stage-based trail (1.5× ATR for 2A/2B, 2.0× for 2C, 1.0× for 3A+). The effective ATR multiplier is tightened or widened by regime (e.g. R3/R4/R5 pull it down) and by volatility (ATRP-based adjustments).</p>
             <p className="text-sm"><strong>T3 — Stage Deterioration:</strong> 2B/2C→3A = reduce 50%. Reaching Stage 3B = full exit (late distribution). Any→4x = full exit.</p>
-            <p className="text-sm"><strong>T4 — Time-Based:</strong> 45+ days with &lt;5% gain = reduce. 90+ days negative = exit.</p>
+            <p className="text-sm"><strong>T4 — Time-Based:</strong> Uses <strong>days held</strong> in the position (since open), not time in the current stage: 45+ days held with &lt;5% gain = reduce; 90+ days held and negative = exit.</p>
             <p className="text-sm"><strong>T5 — Profit Target:</strong> Ext% &gt;25% = reduce 25%. Ext% &gt;40% = reduce 50%.</p>
           </div>
         ),
@@ -372,9 +372,9 @@ const DEEP_DIVES: DeepDive[] = [
         body: (
           <div className="flex flex-col gap-2">
             {codeBlock(
-              'Full Position ($) = [Risk Budget / (ATR%14 × Stop Multiplier)] × Regime Multiplier\n\nThen apply Stage Cap:\n  Capped Position = Full Position × Stage_Cap[stage][regime]',
+              'Risk budget ($) = account_equity × risk_per_trade_pct\nATR_14 = 14-period ATR in dollars per share (not a %)\n\nShares sized to risk (conceptual, before regime/stage caps):\n  shares ≈ risk_budget / (ATR_14 × stop_multiplier)\n\nBackend (risk_gate.compute_position_size) is equivalent: it uses ATR%14\nwhere (ATR%14 / 100) = ATR_14 / price, so:\n  Full Position ($) = [risk_budget / ((ATR%14 / 100) × stop_multiplier)] × regime_multiplier\n\nThen apply Stage Cap:\n  Capped Position = Full Position × Stage_Cap[stage][regime]\n  shares = floor(capped_position_dollars / price)',
             )}
-            <p className="text-sm">The formula scales position size inversely to volatility (ATR%) and adjusts for market conditions (regime multiplier). A volatile stock gets a smaller position. A bearish regime shrinks all positions.</p>
+            <p className="text-sm">Risk per share at the stop is proportional to <strong>ATR in dollars</strong> times the stop multiplier; the implementation divides by ATR% (i.e. ATR/price) and multiplies by price in the same step. Regime and stage caps then shrink the dollar allocation before converting to whole shares.</p>
           </div>
         ),
       },
@@ -409,7 +409,7 @@ const DEEP_DIVES: DeepDive[] = [
       {
         heading: 'Pipeline steps',
         body: codeBlock(
-          'Step 0:  REGIME — Load 6 macro inputs → composite → R1–R5 (runs FIRST)\nStep 1:  Compute MAs + ATRs\nStep 2:  Derive Ext%, ATRE, EMA10 Dist_N, slopes, ranges, Vol Ratio\nStep 3:  Classify 10 sub-stages (priority order)\nStep 4:  Post-classify: ATRE override, RS modifier, 2C override\nStep 5:  Scan: regime-gated tier assignment\nStep 6:  Patterns: 7 pattern triggers\nStep 7:  R/R: target/stop (regime-adjusted multipliers)\nStep 8:  Size: regime-adjusted full position × Stage Cap\nStep 9:  Exits: 9-tier cascade for open positions\nStep 10: Store all fields to MarketSnapshot + History',
+          'Step 0:  REGIME — Load 6 macro inputs → composite → R1–R5 (runs FIRST)\nStep 1:  Compute MAs + ATRs\nStep 2:  Derive Ext%, ATRE, EMA10 Dist_N, slopes, ranges, Vol Ratio\nStep 3:  Classify 10 sub-stages (priority order)\nStep 4:  Post-classify: ATRE override (2A/2B with ATRE_150 > 6 → 2C extended; not a separate pipeline step), RS modifier\nStep 5:  Scan: regime-gated tier assignment\nStep 6:  Patterns: 7 pattern triggers\nStep 7:  R/R: target/stop (regime-adjusted multipliers)\nStep 8:  Size: regime-adjusted full position × Stage Cap\nStep 9:  Exits: 9-tier cascade for open positions\nStep 10: Store all fields to MarketSnapshot + History',
         ),
       },
     ],
@@ -554,7 +554,7 @@ const MarketEducation: React.FC = () => {
 
       <div className="mt-8 border-t border-border pt-4">
         <p className="text-xs text-muted-foreground italic">
-          Reflects the same calculations as the backend. Source: backend/services/market/indicator_engine.py
+          Reflects the same calculations as the backend. Stage classification: backend/services/market/stage_classifier.py; indicators: backend/services/market/indicator_engine.py
         </p>
       </div>
     </Page>

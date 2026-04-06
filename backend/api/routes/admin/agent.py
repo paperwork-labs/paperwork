@@ -16,7 +16,7 @@ that key (UTF-8 string: full | safe | ask) or fall back to
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -316,7 +316,7 @@ async def approve_action(
             detail=f"Action is not pending approval (status: {action.status})"
         )
     
-    action.approved_at = datetime.utcnow()
+    action.approved_at = datetime.now(timezone.utc)
     action.approved_by_id = current_user.id
     
     if request.approved:
@@ -331,8 +331,8 @@ async def approve_action(
             result = await brain._execute_safe_tool(action.action_type, payload)
             action.status = "completed"
             action.result = result
-            action.executed_at = datetime.utcnow()
-            action.completed_at = datetime.utcnow()
+            action.executed_at = datetime.now(timezone.utc)
+            action.completed_at = datetime.now(timezone.utc)
         else:
             task_path = TOOL_TO_CELERY_TASK.get(action.action_type)
             if task_path:
@@ -342,15 +342,15 @@ async def approve_action(
                     )
                     action.task_id = celery_result.id
                     action.status = "executing"
-                    action.executed_at = datetime.utcnow()
+                    action.executed_at = datetime.now(timezone.utc)
                 except Exception as e:
                     action.error = str(e)
                     action.status = "failed"
-                    action.completed_at = datetime.utcnow()
+                    action.completed_at = datetime.now(timezone.utc)
             else:
                 action.error = f"No Celery task mapped for action type: {action.action_type}"
                 action.status = "failed"
-                action.completed_at = datetime.utcnow()
+                action.completed_at = datetime.now(timezone.utc)
     else:
         action.status = "rejected"
         if request.reason:
@@ -476,7 +476,7 @@ async def agent_chat(
             AgentAction.action_type == "session_start",
         ).first()
         if not existing:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             session_action = AgentAction(
                 action_type="session_start",
                 action_name="Chat session started",

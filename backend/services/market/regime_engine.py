@@ -11,7 +11,7 @@ import logging
 import math
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 from sqlalchemy.orm import Session
@@ -137,7 +137,7 @@ def score_vvix_vix(ratio: float) -> float:
         return 5.0
 
 
-def score_nh_nl(nh_nl: int) -> float:
+def score_nh_nl(nh_nl: Optional[Union[int, float]]) -> float:
     """New Highs minus New Lows (S&P 500) → 1 (bullish) to 5 (bearish)."""
     if nh_nl is None or (isinstance(nh_nl, float) and math.isnan(nh_nl)):
         logger.warning(
@@ -263,7 +263,10 @@ def compute_regime(inputs: RegimeInputs, as_of: date) -> RegimeResult:
 
 
 def persist_regime(db: Session, result: RegimeResult) -> MarketRegime:
-    """Upsert a MarketRegime row for the given date."""
+    """Upsert a MarketRegime row for the given date.
+
+    Caller owns the transaction — this function does not commit.
+    """
     from sqlalchemy import select
 
     dt = datetime.combine(result.as_of_date, datetime.min.time())

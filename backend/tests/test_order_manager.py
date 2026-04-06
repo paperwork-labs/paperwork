@@ -79,9 +79,20 @@ class TestPriceEstimation:
         db = _make_mock_db(snapshot_price=175.50)
         assert self.gate.estimate_price(db, "AAPL", None, None) == 175.50
 
-    def test_returns_zero_when_no_data(self):
+    def test_raises_when_no_price_available(self):
+        """Conservative fail-safe: reject order if price cannot be determined."""
         db = _make_mock_db(snapshot_price=None)
-        assert self.gate.estimate_price(db, "AAPL", None, None) == 0
+        with pytest.raises(RiskViolation, match="No price available"):
+            self.gate.estimate_price(db, "AAPL", None, None)
+
+    def test_raises_when_price_parse_fails(self):
+        """Conservative fail-safe: reject order if price cannot be parsed."""
+        snap_chain = MagicMock()
+        snap_chain.filter.return_value.order_by.return_value.first.return_value = ("invalid_price",)
+        db = MagicMock()
+        db.query.return_value = snap_chain
+        with pytest.raises(RiskViolation, match="Cannot parse price"):
+            self.gate.estimate_price(db, "AAPL", None, None)
 
 
 class TestOrderManagerPreview:

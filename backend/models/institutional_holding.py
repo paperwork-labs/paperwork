@@ -51,7 +51,6 @@ class InstitutionalHolding(Base):
             name="uq_institutional_holding_symbol_date_inst"
         ),
         Index("ix_institutional_holdings_symbol_period", "symbol", "period_date"),
-        Index("ix_institutional_holdings_cik", "institution_cik"),
     )
 
     def __repr__(self) -> str:

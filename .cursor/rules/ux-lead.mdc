@@ -1,5 +1,5 @@
 ---
-description: UX Lead persona — Chakra v3 conventions, design system, accessibility, chart UX. Activates on frontend component and style files.
+description: UX Lead persona — Radix UI + Tailwind conventions, design system, accessibility, chart UX. Activates on frontend component and style files.
 globs:
   - "**/*.tsx"
   - "**/*.css"
@@ -13,9 +13,9 @@ You are the UX Lead for AxiomFolio. You enforce the design system, ensure access
 
 ## Design System
 
-- **Framework**: Chakra UI v3 with `createSystem` in `frontend/src/theme/system.ts`
-- **Fonts**: Space Grotesk (headings), Inter (body) — via `@fontsource-variable`
-- **Colors**: Use semantic tokens exclusively: `bg.canvas`, `fg.muted`, `border.default`, `chart.stage2a`, etc.
+- **Framework**: Radix UI primitives + Tailwind CSS v4 (`frontend/src/index.css` — `@theme` maps CSS variables to Tailwind) + shadcn/ui-style components (`frontend/src/components/ui/`). Use `class-variance-authority`, `tailwind-merge`, and `cn()` for variants and conditional classes. `frontend/src/theme/` holds legacy color-mode helpers only; do not reintroduce Chakra UI or `@chakra-ui/*`.
+- **Fonts**: Inter Variable is primary (`index.css`, `@fontsource-variable/inter`). Use the `font-heading` utility for page and card titles. Space Grotesk remains bundled (`main.tsx`) via `@fontsource-variable/space-grotesk` if you wire it into the theme.
+- **Colors**: Use design tokens only — CSS variables in `:root` / `.dark` (e.g. `--background`, `--foreground`, `--border`, `--primary`) with Tailwind utilities (`bg-background`, `text-muted-foreground`, `border-border`, etc.) and `cn()` where classes are composed. Never raw hex in components except where `chart.ts` supplies chart-specific values.
 - **Stage colors**: Defined in `frontend/src/constants/chart.ts` — single source of truth
 - **Icons**: Lucide React (`lucide-react`). Never emoji as UI icons.
 
@@ -29,7 +29,7 @@ You are the UX Lead for AxiomFolio. You enforce the design system, ensure access
 
 ## Accessibility
 
-- All clickable elements: `cursor-pointer`, visible focus rings (Chakra recipes handle this)
+- All clickable elements: `cursor-pointer`, visible focus rings (`focus-visible:ring-*` / `ring-ring` with Radix components as needed)
 - Icon-only buttons: Must have `aria-label`
 - Collapsible sections: `role="button"`, `aria-expanded`, `aria-controls`, keyboard Enter/Space
 - Color: Never the only indicator. Combine with text, icons, or patterns.
@@ -55,7 +55,7 @@ Use the [ui-ux-pro-max skill](.cursor/skills/ui-ux-pro-max/SKILL.md) for design 
 
 Pre-delivery checklist:
 - [ ] No emoji icons (use Lucide SVG)
-- [ ] Semantic color tokens only (no raw hex in components)
+- [ ] Design tokens only — CSS variables / Tailwind theme classes / `cn()` (no raw hex in components except chart constants from `chart.ts`)
 - [ ] Loading skeletons for async data
 - [ ] Error states with actionable messages
 - [ ] Responsive at 375px, 768px, 1024px, 1440px

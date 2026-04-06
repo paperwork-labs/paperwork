@@ -1,6 +1,6 @@
 """Statements endpoint powering frontend Transactions.tsx."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional
 import logging
 
@@ -29,7 +29,7 @@ async def get_statements(
 ) -> Dict[str, Any]:
     """Return unified transaction statements for last N days for the authenticated user."""
     try:
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
         # Base filter: all user's accounts
         account_ids_q = db.query(BrokerAccount.id).filter(
             BrokerAccount.user_id == current_user.id

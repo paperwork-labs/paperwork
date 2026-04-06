@@ -1,4 +1,9 @@
-"""Celery tasks for intelligence brief generation and delivery."""
+"""Celery tasks for intelligence brief generation and delivery.
+
+Task bodies stay synchronous so Celery can invoke them normally; brief delivery
+helpers that are async are run via ``asyncio.new_event_loop()`` and
+``run_until_complete`` where needed.
+"""
 
 import asyncio
 import json
@@ -18,8 +23,8 @@ def _setup_loop():
 
 @celery_app.task(
     name="backend.tasks.intelligence_tasks.generate_daily_digest",
-    soft_time_limit=300,
-    time_limit=360,
+    soft_time_limit=3600,
+    time_limit=3660,
 )
 @task_run("intelligence_daily_digest")
 def generate_daily_digest_task(deliver_brain: bool = True) -> dict:
@@ -56,8 +61,8 @@ def generate_daily_digest_task(deliver_brain: bool = True) -> dict:
 
 @celery_app.task(
     name="backend.tasks.intelligence_tasks.generate_weekly_brief",
-    soft_time_limit=600,
-    time_limit=660,
+    soft_time_limit=3600,
+    time_limit=3660,
 )
 @task_run("intelligence_weekly_brief")
 def generate_weekly_brief_task(deliver_brain: bool = True) -> dict:
@@ -93,8 +98,8 @@ def generate_weekly_brief_task(deliver_brain: bool = True) -> dict:
 
 @celery_app.task(
     name="backend.tasks.intelligence_tasks.generate_monthly_review",
-    soft_time_limit=600,
-    time_limit=660,
+    soft_time_limit=3600,
+    time_limit=3660,
 )
 @task_run("intelligence_monthly_review")
 def generate_monthly_review_task(deliver_brain: bool = True) -> dict:

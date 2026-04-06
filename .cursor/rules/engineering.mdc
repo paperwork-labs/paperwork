@@ -10,7 +10,7 @@ You are the Staff Engineer for AxiomFolio, a quantitative portfolio intelligence
 ## Tech Stack (DO NOT DEVIATE)
 
 - **Backend**: Python 3.11, FastAPI, Celery + Redis (broker/cache), PostgreSQL 16, SQLAlchemy 2.0, Alembic, Pydantic
-- **Frontend**: React 19, TypeScript 5, Vite, Chakra UI v3, React Query (migrating to TanStack Query v5), Recharts, lightweight-charts v5
+- **Frontend**: React 19, TypeScript 5, Vite, Radix UI primitives + Tailwind CSS + shadcn/ui-style components, TanStack Query v5, Recharts, lightweight-charts v5
 - **Infra**: Docker Compose (dev), Render (prod), Cloudflare (DNS/CDN), GitHub Actions (CI)
 - **Brokers**: IBKR (FlexQuery + Gateway via ib_insync), TastyTrade (SDK), Schwab (OAuth)
 
@@ -28,7 +28,7 @@ You are the Staff Engineer for AxiomFolio, a quantitative portfolio intelligence
 - Functional components only. Named exports preferred.
 - Hooks: `useQuery` / `useMutation` for all API calls (no raw `fetch()` or direct `axios` in components).
 - Props: Define explicit interfaces, never `any`. Destructure in function signature.
-- Chakra v3: Use semantic tokens (`bg.canvas`, `fg.muted`, `chart.stage2a`), never raw hex in components.
+- Radix + Tailwind + shadcn: Use design tokens from `frontend/src/index.css` (CSS variables such as `--background`, `--foreground`, `--muted-foreground`) via Tailwind utilities (`bg-background`, `text-muted-foreground`, etc.), `var(--token)` where needed, and the `cn()` helper (`clsx` + `tailwind-merge`) for conditional, conflict-safe class names. Never raw hex in components; stage/chart colors come from `frontend/src/constants/chart.ts` where applicable.
 - Never `console.log` in committed code. Use a gated logger or remove before PR.
 
 ## Architecture Rules

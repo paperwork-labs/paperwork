@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import {
   ArrowDown,
   ArrowUp,
@@ -9,7 +8,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
-import api from '../services/api';
+import { useMarketSnapshots } from '../hooks/useMarketSnapshots';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -78,15 +77,8 @@ const Scanner: React.FC = () => {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [volConfirmOnly, setVolConfirmOnly] = useState(false);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['scanner-snapshots'],
-    queryFn: async () => {
-      const { data } = await api.get('/market-data/snapshots?limit=5000');
-      return (data?.rows ?? []) as SnapshotRow[];
-    },
-    staleTime: 120_000,
-    refetchInterval: 300_000,
-  });
+  const { data, isPending } = useMarketSnapshots();
+  const rows = (data ?? []) as SnapshotRow[];
 
   const toggleSort = useCallback(
     (key: SortKey) => {
@@ -101,20 +93,19 @@ const Scanner: React.FC = () => {
   );
 
   const filtered = useMemo(() => {
-    if (!data) return [];
-    let rows = data;
+    let out = rows;
 
     if (stageFilter) {
-      rows = rows.filter((r) => r.stage_label === stageFilter);
+      out = out.filter((r) => r.stage_label === stageFilter);
     }
 
     if (volConfirmOnly) {
-      rows = rows.filter((r) => (r.vol_ratio ?? 0) >= 1.0);
+      out = out.filter((r) => (r.vol_ratio ?? 0) >= 1.0);
     }
 
     if (search) {
       const q = search.toUpperCase();
-      rows = rows.filter(
+      out = out.filter(
         (r) =>
           r.symbol?.toUpperCase().includes(q) ||
           r.name?.toUpperCase().includes(q) ||
@@ -122,7 +113,7 @@ const Scanner: React.FC = () => {
       );
     }
 
-    rows = [...rows].sort((a, b) => {
+    out = [...out].sort((a, b) => {
       const av = a[sortKey] ?? -Infinity;
       const bv = b[sortKey] ?? -Infinity;
       if (typeof av === 'string' && typeof bv === 'string') {
@@ -131,8 +122,8 @@ const Scanner: React.FC = () => {
       return sortDir === 'asc' ? Number(av) - Number(bv) : Number(bv) - Number(av);
     });
 
-    return rows;
-  }, [data, stageFilter, volConfirmOnly, search, sortKey, sortDir]);
+    return out;
+  }, [rows, stageFilter, volConfirmOnly, search, sortKey, sortDir]);
 
   const SortHeader: React.FC<{ label: string; field: SortKey; className?: string }> = ({
     label,
@@ -248,7 +239,7 @@ const Scanner: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {isLoading
+              {isPending
                 ? Array.from({ length: 12 }).map((_, i) => (
                     <tr key={i} className="border-b border-border/50">
                       {Array.from({ length: 10 }).map((_, j) => (
@@ -329,7 +320,7 @@ const Scanner: React.FC = () => {
                   ))}
             </tbody>
           </table>
-          {!isLoading && filtered.length === 0 && (
+          {!isPending && filtered.length === 0 && (
             <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
               No candidates match the current filters.
             </div>

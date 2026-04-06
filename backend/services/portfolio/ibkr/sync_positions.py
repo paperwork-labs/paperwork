@@ -4,7 +4,7 @@ import asyncio
 import json
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Dict
 
@@ -162,7 +162,7 @@ async def sync_instruments(
                         existing.expiration_date = inst_data["expiry_date"]
                     if inst_data.get("multiplier"):
                         existing.multiplier = inst_data["multiplier"]
-                    existing.last_updated = datetime.utcnow()
+                    existing.last_updated = datetime.now(timezone.utc)
                     updated_count += 1
                 else:
                     instrument = Instrument(
@@ -179,7 +179,7 @@ async def sync_instruments(
                         is_tradeable=inst_data.get("is_tradeable", True),
                         is_active=inst_data.get("is_active", True),
                         data_source=inst_data.get("data_source", "ibkr_flexquery_enhanced"),
-                        last_updated=datetime.utcnow(),
+                        last_updated=datetime.now(timezone.utc),
                     )
                     db.add(instrument)
                     synced_count += 1
@@ -415,7 +415,7 @@ async def sync_positions_from_tax_lots(
                 market_value=Decimal(str(data["total_value"])),
                 unrealized_pnl=Decimal(str(unrealized_pnl)),
                 unrealized_pnl_pct=Decimal(str(unrealized_pnl_pct)),
-                position_updated_at=datetime.utcnow(),
+                position_updated_at=datetime.now(timezone.utc),
             ))
             synced_count += 1
 
@@ -471,7 +471,7 @@ async def sync_positions_from_open_positions(
                     market_value=mkt_val,
                     unrealized_pnl=pnl,
                     unrealized_pnl_pct=pnl_pct,
-                    position_updated_at=datetime.utcnow(),
+                    position_updated_at=datetime.now(timezone.utc),
                 ))
                 synced_count += 1
             except Exception as e:
@@ -710,7 +710,7 @@ async def refresh_prices(db: Session, broker_account: BrokerAccount) -> Dict:
 async def create_portfolio_snapshot(db: Session, broker_account: BrokerAccount) -> Dict:
     """Create daily portfolio snapshot for tracking."""
     try:
-        today = datetime.utcnow().date()
+        today = datetime.now(timezone.utc).date()
         existing = (
             db.query(PortfolioSnapshot)
             .filter(
@@ -742,7 +742,7 @@ async def create_portfolio_snapshot(db: Session, broker_account: BrokerAccount) 
 
         snapshot = PortfolioSnapshot(
             account_id=broker_account.id,
-            snapshot_date=datetime.utcnow(),
+            snapshot_date=datetime.now(timezone.utc),
             total_value=total_value,
             total_cash=0,
             total_equity_value=total_value,

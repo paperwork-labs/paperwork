@@ -43,7 +43,7 @@ Pipeline overview and scheduling: [ARCHITECTURE.md](ARCHITECTURE.md#data-pipelin
 ## Environment configuration (dev)
 
 - **Run dev via Makefile only**: `make up` (or `./run.sh start`) uses `docker compose --env-file infra/env.dev ...` and injects `infra/env.dev` into backend/celery containers.
-- **Source of truth**: put all dev secrets (FMP/Finnhub keys, Discord webhooks, etc.) into **`infra/env.dev`** (gitignored).
+- **Source of truth**: put all dev secrets (FMP/Finnhub keys, Brain webhook URL/secret, etc.) into **`infra/env.dev`** (gitignored).
 - **Do not rely on root `.env`**: backend settings no longer implicitly load a repo-root `.env`. If you truly need an env file outside Docker, set `QM_ENV_FILE=/path/to/file`.
 - **Frontend safety**: the `frontend` and `ladle` containers do **not** receive `infra/env.dev` (to avoid leaking secrets). Only `VITE_*` variables explicitly passed in compose are available to the browser build.
 
@@ -91,15 +91,13 @@ Responsibilities by layer
 - Nightly delta backfill safety for portfolio symbols (last-200)
 - Nightly recompute indicators for full universe (from local `price_data`)
 - Nightly history recording (`market_snapshot_history`)
-- Hourly coverage-health snapshot (`admin_coverage_refresh`) caches freshness buckets + stale symbol lists in Redis so Admin → Coverage can render SLAs instantly and alert on drift.
+- Coverage-health snapshot (`admin_coverage_refresh` / `health_check`) caches freshness buckets + stale symbol lists in Redis so Admin coverage views can render SLAs quickly and alert on drift (runs after nightly bootstrap and on demand).
 
-### Schedule Management (DB + Render API)
+### Schedule Management (DB + Celery Beat)
 
-Schedules are stored in the `cron_schedule` PostgreSQL table as the single source of truth. Default schedules are defined in `backend/tasks/job_catalog.py` and seeded into the DB on deploy. The Admin > Schedules UI provides full CRUD (create, edit cron, pause, resume, delete).
+Schedules are stored in the `cron_schedule` PostgreSQL table for admin UI, history, and overrides. **Runtime scheduling** is driven by **Celery Beat**, which builds `beat_schedule` from `backend/tasks/job_catalog.py` (`backend/tasks/celery_app.py`). Default rows are seeded from the same catalog on deploy (`seed_schedules`). The Admin > Schedules UI provides CRUD (create, edit cron, pause, resume, delete) on the DB mirror.
 
-In production, a Render API sync layer mirrors enabled DB rows to Render cron-job services. On each deploy, the pre-deploy command runs: `seed_schedules` (insert new catalog entries) then `sync_render_crons` (create/update/delete Render cron jobs to match DB state). Changes made in the UI are synced to Render immediately.
-
-Required env vars for Render sync: `RENDER_API_KEY` and `RENDER_OWNER_ID` (set in Render Dashboard on the API service). When these are not set (local dev), the sync is a no-op.
+Legacy **Render cron sync** (`render_sync_service.py`, `sync_render_crons`) exists for optional platform cron deployments but is **not** the primary driver when Beat runs in the worker (`--beat`). See D44 in [KNOWLEDGE.md](KNOWLEDGE.md).
 
 Paid mode operations
 --------------------
@@ -188,7 +186,7 @@ Notes on retention
 6) Scheduling
    - Celery Beat triggers:
      - nightly guided daily backfill → `admin_coverage_backfill`
-     - hourly coverage cache refresh → `admin_coverage_refresh`
+     - coverage cache refresh → `admin_coverage_refresh` (end of `daily_bootstrap`, or on-demand from Admin)
      - nightly 5m backfill → `backend.tasks.market.intraday.bars_5m_last_n_days` (job id `admin_backfill_5m`)
      - retention enforcement (5m) → `backend.tasks.market.maintenance.prune_old_bars` (job id `admin_retention_enforce`)
 
@@ -200,7 +198,7 @@ Notes on retention
 ## Admin Area (RBAC: admin)
 - Dashboard: freshness KPIs, last task statuses, quick actions (tracked update, backfills, recompute, record history, coverage monitor)
 - Jobs: view recent `job_run` rows with durations, counters, errors, and drill-in modal for params/counters/logs
-- Schedules: full CRUD via DB-backed API with Render API sync. Inline cron editing, pause/resume, delete, run-now, and Sync to Render button. Default jobs seeded from `job_catalog.py`.
+- Schedules: full CRUD via DB-backed API (mirror of catalog + edits). Inline cron editing, pause/resume, delete, run-now. Default jobs seeded from `job_catalog.py`. Beat consumes the catalog at worker startup; keep catalog and DB aligned after deploy seeds.
 - Coverage: daily and 5m coverage summary, stale (>48h) lists, missing 5m table, education/hints, one-click schedule for coverage monitor
 - Tracked: view `tracked:all` and `tracked:new` (Redis), optional columns (price, ATR, stage, market cap, sector), quick actions to refresh/update/backfill (admin-only for any mutations)
 
@@ -213,7 +211,7 @@ Notes on retention
 - `POST /api/v1/market-data/admin/retention/enforce?max_days_5m=90` (admin)
 - `GET /api/v1/market-data/admin/jobs` (admin)
 - `GET /api/v1/market-data/admin/tasks` and `POST /api/v1/market-data/admin/tasks/run` (limited set; admin)
-- `GET /api/v1/admin/schedules` / `POST|PUT|DELETE /admin/schedules/{id}` / `POST /admin/schedules/{id}/pause|resume` / `POST /admin/schedules/sync|run-now` / `GET /admin/schedules/preview` -- DB-backed schedule CRUD with Render API sync
+- `GET /api/v1/admin/schedules` / `POST|PUT|DELETE /admin/schedules/{id}` / `POST /admin/schedules/{id}/pause|resume` / `POST /admin/schedules/sync|run-now` / `GET /admin/schedules/preview` — DB-backed schedule CRUD (Celery Beat is the live scheduler; see D44)
 
 ## Coverage & Freshness (SLA)
 
@@ -245,33 +243,30 @@ Troubleshooting:
 
 ## Schedule Architecture
 
-- Schedules are stored in the `cron_schedule` PostgreSQL table (single source of truth).
-- Default schedule definitions live in `backend/tasks/job_catalog.py` (`CATALOG` list) and are seeded into the DB on deploy via `backend/scripts/seed_schedules.py`.
+- **Celery Beat** builds the live periodic schedule from `backend/tasks/job_catalog.py` (`CATALOG`); see `backend/tasks/celery_app.py`.
+- The `cron_schedule` PostgreSQL table stores the **admin-editable mirror** (seeded on deploy, CRUD in UI) for visibility, run-now, and optional legacy Render sync metadata.
+- Default definitions live in `job_catalog.py` and are seeded via `backend/scripts/seed_schedules.py`.
 - The Admin Schedules UI provides full CRUD: create, inline-edit cron expressions, pause/resume, delete, and "Run Now".
-- In production, `backend/services/render_sync_service.py` mirrors enabled DB rows to Render cron-job services via the Render REST API.
-- Pre-deploy command chain: `alembic upgrade head` -> `seed_schedules` -> `sync_render_crons`.
-- Each `CronSchedule` row tracks `render_service_id`, `render_synced_at`, and `render_sync_error` for observability.
-- Pausing a schedule sets `enabled=False` in DB and suspends the Render cron service. Resuming reverses this.
+- Optional **Render cron sync** (`backend/services/render_sync_service.py`) may still mirror DB rows to Render cron services when enabled; primary production path is Beat in the worker (D44).
+- Pre-deploy often runs `seed_schedules` after migrations; `sync_render_crons` is only relevant if platform crons are in use.
 
 ### Scheduler Alerts & Prometheus Hooks
 
-- `hooks.discord_webhook` accepts either a full webhook URL or an alias (`system_status`, `signals`, `portfolio`, `morning_brew`, `playground`). Multiple targets can be supplied via comma-delimited values.
+- Per-job hooks can target **Brain** (and other channels supported by `NotificationService` / task_run metadata). Prefer Brain webhook delivery for operational alerts (D33).
 - Event types emitted by `task_run`:
   - `failure` (default) when task raises.
   - `slow` when runtime exceeds `metadata.safety.timeout_s`.
   - `success` when runs complete (opt-in by including `"success"` in `alert_on`).
-- Discord alerts render embeds with job id, duration, queue, counters, and any error snippet to the configured channels.
 - `hooks.prometheus_endpoint` can point to a Pushgateway-compatible URL. Each run writes `axiomfolio_task_duration_seconds{task="...",event="...",queue="..."} <value>` so Grafana/Prometheus alerting rules can detect spikes.
-- If no per-job hook is configured, failures still emit to the global `DISCORD_WEBHOOK_SYSTEM_STATUS` endpoint (when set) so regressions cannot go unnoticed.
-- Admin Schedules UI surfaces these fields under Alerts & Observability, allowing operators to wire Discord aliases, comma-separated channel lists, Prometheus endpoints, and opt-in events (slow/success) directly in the DB-backed schedule editor.
+- Admin Schedules UI surfaces hook fields under Alerts & Observability (targets, Prometheus endpoint, opt-in events).
 
 ## Coverage Health Monitor
 
-- Celery task `admin_coverage_refresh` runs hourly (Admin schedule) and caches:
+- Celery task `admin_coverage_refresh` (`health_check`) runs after nightly bootstrap and on demand (e.g. Admin "Refresh coverage now"); it caches:
   - `generated_at`, total tracked symbols, index member counts
   - Daily + 5m coverage counts, freshness buckets, stale lists (first 50 symbols per bucket)
   - Status summary (`ok` / `degraded`) plus tracked symbols
-- Redis key `coverage:health:last` feeds Admin Dashboard/Coverage quick actions and SLA banners, enabling Discord/alert hooks to detect drift without hitting Postgres every refresh.
+- Redis key `coverage:health:last` feeds Admin Dashboard/Coverage quick actions and SLA banners, enabling Brain/alert hooks to detect drift without hitting Postgres every refresh.
 
 ### Manual refresh / UI behavior
 
@@ -313,10 +308,10 @@ Troubleshooting:
 
 ### Schedule Visibility
 
-- **All environments**: Schedules are stored in the `cron_schedule` DB table. The Admin > Schedules page provides full CRUD.
-- **Production**: DB rows are synced to Render cron-job services via the Render API. The "Sync to Render" button triggers a manual sync; deploys sync automatically.
-- **Local / Dev**: Render sync is a no-op (no `RENDER_API_KEY`). Use "Run Now" to trigger tasks via Celery.
-- Default schedules (10 jobs including `admin_market_data_audit` → `backend.tasks.market.maintenance.audit_quality` at 02:45 UTC) are seeded from `job_catalog.py`.
+- **All environments**: Schedule definitions originate in `job_catalog.py`; rows in `cron_schedule` mirror them for the Admin > Schedules UI.
+- **Production**: **Celery Beat** in the worker executes periodic tasks from the catalog. Optional Render cron sync applies only if that integration is enabled (D44).
+- **Local / Dev**: Use Admin > Schedules "Run Now" or `make task-run` to dispatch work; Beat runs when the worker is up with beat enabled.
+- Catalog includes jobs such as `audit_quality_refresh` → `backend.tasks.market.maintenance.audit_quality` (see `job_catalog.py` for current crons).
 
 ### Advanced: index-only vs tracked-universe
 

@@ -18,7 +18,7 @@ import json
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Callable, Dict, Optional
 
@@ -216,7 +216,7 @@ class PipelineOrchestrator:
 
     def run_full_pipeline(self, run_id: str) -> PipelineRun:
         """Execute the full nightly pipeline."""
-        run = PipelineRun(run_id=run_id, started_at=datetime.utcnow())
+        run = PipelineRun(run_id=run_id, started_at=datetime.now(timezone.utc))
         _persist_run(run)
 
         logger.info("Starting nightly pipeline run %s", run_id)
@@ -236,7 +236,7 @@ class PipelineOrchestrator:
                 failed = True
                 logger.error("Pipeline step %s failed: %s", step.value, result.error)
 
-        run.completed_at = datetime.utcnow()
+        run.completed_at = datetime.now(timezone.utc)
         run.status = "failed" if failed else "completed"
         _persist_run(run)
 
@@ -252,7 +252,7 @@ class PipelineOrchestrator:
 
     def _execute_step(self, step: PipelineStep) -> StepResult:
         """Execute a single pipeline step with tracking."""
-        result = StepResult(step=step, status=StepStatus.RUNNING, started_at=datetime.utcnow())
+        result = StepResult(step=step, status=StepStatus.RUNNING, started_at=datetime.now(timezone.utc))
 
         handler = self.step_handlers.get(step)
         if not handler:
@@ -269,7 +269,7 @@ class PipelineOrchestrator:
             result.error = str(e)
             logger.exception("Step %s failed", step.value)
         finally:
-            result.completed_at = datetime.utcnow()
+            result.completed_at = datetime.now(timezone.utc)
             if result.started_at:
                 result.duration_ms = int(
                     (result.completed_at - result.started_at).total_seconds() * 1000
@@ -338,7 +338,7 @@ class PipelineOrchestrator:
 @shared_task(name="pipeline.nightly", time_limit=3600, soft_time_limit=3500)
 def run_nightly_pipeline() -> dict:
     """Celery task for nightly pipeline."""
-    run_id = f"nightly-{datetime.utcnow().strftime('%Y%m%d')}-{uuid.uuid4().hex[:8]}"
+    run_id = f"nightly-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{uuid.uuid4().hex[:8]}"
 
     orchestrator = PipelineOrchestrator()
     result = orchestrator.run_full_pipeline(run_id)

@@ -95,12 +95,16 @@ curl -s localhost:8000/api/v1/market-data/admin/health | jq '.stage_quality'
 
 ### Normal Nightly Pipeline
 
-Celery Beat handles the nightly pipeline automatically:
+Celery Beat runs catalog job **`admin_coverage_backfill`**, which dispatches **`backend.tasks.market.coverage.daily_bootstrap`**. That single orchestration performs the full chain (see rollup `steps` in JobRun), including roughly:
 
-1. `admin_coverage_backfill` — refresh constituents, update tracked, backfill stale bars
-2. `admin_recompute_universe` — recompute all indicators from local OHLCV
-3. `admin_record_daily` — write daily history ledger
-4. `admin_coverage_refresh` — update coverage health cache
+1. Index constituents refresh and tracked-universe cache rebuild  
+2. Daily OHLCV backfill for the tracked universe  
+3. **`recompute_universe`** (JobRun label `admin_indicators_recompute_universe`) — indicators from local bars  
+4. Daily regime computation, scan overlay, **`snapshot_last_n_days`** history (`admin_snapshots_history_backfill`), exit cascade, strategy evaluation  
+5. **`health_check`** (task name / label `admin_coverage_refresh`) — Redis coverage snapshot  
+6. Market audit quality + intelligence digest  
+
+There are **no** separate catalog entries named `admin_recompute_universe` or `admin_record_daily`; those are steps inside `daily_bootstrap` unless you add explicit catalog jobs.
 
 ### Monitoring
 

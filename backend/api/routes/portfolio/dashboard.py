@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, or_
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
 import logging
 
@@ -60,7 +60,7 @@ async def get_dashboard(
         total_value += options_value
 
         # dividends last X days
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
         divs = (
             db.query(Dividend)
             .filter(
@@ -127,7 +127,7 @@ async def get_dashboard(
                 "user_id": user.id,
                 "summary": summary,
                 "positions": positions,
-                "generated_at": datetime.utcnow().isoformat(),
+                "generated_at": datetime.now(timezone.utc).isoformat(),
                 "total_value": total_value,
                 "total_unrealized_pnl": summary["unrealized_pnl"],
                 "total_unrealized_pnl_pct": (
@@ -143,7 +143,7 @@ async def get_dashboard(
                 "top_performers": top_performers,
                 "top_losers": top_losers,
                 "holdings_count": len(positions),
-                "last_updated": datetime.utcnow().isoformat(),
+                "last_updated": datetime.now(timezone.utc).isoformat(),
                 "brokerages": ["IBKR", "TASTYTRADE"],
             },
         }
@@ -191,7 +191,7 @@ async def get_performance_history(
                 "data": {
                     "series": [],
                     "period": period,
-                    "generated_at": datetime.utcnow().isoformat(),
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
                 },
             }
 
@@ -206,7 +206,7 @@ async def get_performance_history(
         )
 
         delta = _parse_period(period)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         if period and period.strip().lower() == "ytd":
             query = query.filter(func.extract("year", PortfolioSnapshot.snapshot_date) == now.year)
         elif delta:
@@ -224,7 +224,7 @@ async def get_performance_history(
             "data": {
                 "series": series,
                 "period": period,
-                "generated_at": datetime.utcnow().isoformat(),
+                "generated_at": datetime.now(timezone.utc).isoformat(),
             },
         }
     except HTTPException:
@@ -323,7 +323,7 @@ async def get_margin_health(
                     "maintenance_margin_req": None,
                     "margin_warning": False,
                     "margin_critical": False,
-                    "generated_at": datetime.utcnow().isoformat(),
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
                 },
             }
 
@@ -348,7 +348,7 @@ async def get_margin_health(
                     "maintenance_margin_req": None,
                     "margin_warning": False,
                     "margin_critical": False,
-                    "generated_at": datetime.utcnow().isoformat(),
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
                 },
             }
 
@@ -370,7 +370,7 @@ async def get_margin_health(
                 "maintenance_margin_req": round(maintenance_margin_req, 2),
                 "margin_warning": margin_warning,
                 "margin_critical": margin_critical,
-                "generated_at": datetime.utcnow().isoformat(),
+                "generated_at": datetime.now(timezone.utc).isoformat(),
             },
         }
     except HTTPException:
@@ -406,7 +406,7 @@ async def get_pnl_summary(
                     "total_dividends": 0,
                     "total_fees": 0,
                     "total_return": 0,
-                    "generated_at": datetime.utcnow().isoformat(),
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
                 },
             }
 
@@ -483,7 +483,7 @@ async def get_pnl_summary(
                 "total_dividends": round(total_dividends, 2),
                 "total_fees": round(total_fees, 2),
                 "total_return": round(total_return, 2),
-                "generated_at": datetime.utcnow().isoformat(),
+                "generated_at": datetime.now(timezone.utc).isoformat(),
             },
         }
     except HTTPException:
@@ -524,7 +524,7 @@ async def get_margin_interest(
 
         delta = _parse_period(period)
         if delta:
-            since = datetime.utcnow().date() - delta
+            since = datetime.now(timezone.utc).date() - delta
             query = query.filter(MarginInterest.to_date >= since)
 
         rows = query.limit(200).all()
@@ -565,7 +565,7 @@ async def get_dividend_summary(
         if not acct_ids:
             return {"status": "success", "data": {}}
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         one_year_ago = now - timedelta(days=365)
 
         divs = (
@@ -667,8 +667,8 @@ async def get_live_summary(
                 if gw_data and gw_data.get("net_liquidation"):
                     summary = gw_data
                     is_live = True
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Live summary: IB Gateway fetch failed, using DB fallback: %s", e)
 
         if not is_live:
             acct_ids = [a.id for a in db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user.id, BrokerAccount.is_enabled == True).all()]
@@ -719,7 +719,7 @@ async def get_twr(
     try:
         days = 365
         if period == "ytd":
-            days = (datetime.utcnow() - datetime(datetime.utcnow().year, 1, 1)).days
+            days = (datetime.now(timezone.utc) - datetime(datetime.now(timezone.utc).year, 1, 1)).days
         elif period == "all":
             days = 3650
         result = portfolio_analytics_service.compute_twr(db, user_id=user.id, period_days=days)

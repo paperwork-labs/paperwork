@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -50,7 +50,7 @@ def test_fetch_rows_dedupes_to_latest_snapshot_per_symbol(monkeypatch):
     monkeypatch.setattr(mds_module, "MarketDataService", _FakeMDS)
     monkeypatch.setattr(mds_module, "tracked_symbols", lambda *args, **kwargs: ["AAPL", "MSFT"])
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     rows = [
         SimpleNamespace(
             symbol="AAPL",

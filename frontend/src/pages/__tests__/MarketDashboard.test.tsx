@@ -20,6 +20,7 @@ vi.mock('../../services/api', async () => {
   return {
     default: { get: vi.fn().mockResolvedValue({ data: {} }) },
     marketDataApi: {
+      getSnapshots: vi.fn().mockResolvedValue({ rows: [] }),
       getCurrentRegime: vi.fn().mockResolvedValue(regimeRow),
       getHistory: vi.fn().mockResolvedValue({
         bars: [

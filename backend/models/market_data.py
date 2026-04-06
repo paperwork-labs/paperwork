@@ -194,7 +194,7 @@ class MarketSnapshot(Base):
     trend_down_count = Column(Integer)
 
     # Stage analysis (Oliver Kell / Weinstein refined, SMA150 anchor)
-    stage_label = Column(String(10))  # 1A, 1B, 2A, 2B, 2C, 3A, 3B, 4A, 4B, 4C
+    stage_label = Column(String(10), index=True)  # 1A, 1B, 2A, 2B, 2C, 3A, 3B, 4A, 4B, 4C
     stage_4h = Column(String(10), nullable=True)  # 4H timeframe stage (spec labels)
     stage_confirmed = Column(Boolean, nullable=True)  # True if daily and 4H agree
     stage_label_5d_ago = Column(String(10))
@@ -327,7 +327,7 @@ class MarketSnapshotHistory(Base):
     atrx_sma_150 = Column(Float)
 
     rs_mansfield_pct = Column(Float)
-    stage_label = Column(String(10))  # 1A, 1B, 2A, 2B, 2C, 3A, 3B, 4A, 4B, 4C
+    stage_label = Column(String(10), index=True)  # 1A, 1B, 2A, 2B, 2C, 3A, 3B, 4A, 4B, 4C
     stage_4h = Column(String(10), nullable=True)
     stage_confirmed = Column(Boolean, nullable=True)
     stage_label_5d_ago = Column(String(10))
@@ -444,10 +444,7 @@ class MarketRegime(Base):
     regime_multiplier = Column(Float)  # Position sizing multiplier
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    __table_args__ = (
-        Index("idx_regime_date", "as_of_date"),
-    )
+    # as_of_date is unique=True, index=True — no separate idx_regime_date needed
 
 
 class JobRun(Base):

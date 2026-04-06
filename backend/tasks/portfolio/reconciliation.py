@@ -428,7 +428,7 @@ def monitor_portfolio_drawdown(
         current_value = sum(float(p.market_value or 0) for p in positions)
         
         # Get peak value from recent snapshots (last 90 days)
-        ninety_days_ago = datetime.utcnow() - timedelta(days=90)
+        ninety_days_ago = datetime.now(timezone.utc) - timedelta(days=90)
         peak_snapshot = (
             db.query(PortfolioSnapshot)
             .filter(PortfolioSnapshot.snapshot_date >= ninety_days_ago)

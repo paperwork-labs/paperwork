@@ -13,7 +13,7 @@ Administrative endpoints for market data operations:
 
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
@@ -134,7 +134,10 @@ async def admin_sanity_coverage(
         .filter(PriceData.interval == "1d")
         .scalar()
     )
-    latest_daily_date = latest_daily_dt.date().isoformat() if latest_daily_dt else None
+    latest_daily_date = None
+    if latest_daily_dt:
+        d0 = latest_daily_dt.date() if hasattr(latest_daily_dt, "date") else latest_daily_dt
+        latest_daily_date = d0.isoformat() if hasattr(d0, "isoformat") else str(d0)
     daily_count = 0
     if latest_daily_dt and tracked_set:
         daily_count = (
@@ -153,7 +156,10 @@ async def admin_sanity_coverage(
         .filter(MarketSnapshotHistory.analysis_type == "technical_snapshot")
         .scalar()
     )
-    latest_hist_date = latest_hist_dt.date().isoformat() if latest_hist_dt else None
+    latest_hist_date = None
+    if latest_hist_dt:
+        h0 = latest_hist_dt.date() if hasattr(latest_hist_dt, "date") else latest_hist_dt
+        latest_hist_date = h0.isoformat() if hasattr(h0, "isoformat") else str(h0)
     hist_count = 0
     missing_sample: list[str] = []
     if latest_hist_dt and tracked_set:
@@ -304,7 +310,7 @@ async def backfill_stale_daily(
             tracked = sorted({str(s).upper() for (s,) in db.query(PriceData.symbol).distinct().all() if s})
 
         _, stale_full = svc.coverage.compute_interval_coverage_for_symbols(
-            db, symbols=tracked, interval="1d", now_utc=datetime.utcnow(), return_full_stale=True,
+            db, symbols=tracked, interval="1d", now_utc=datetime.now(timezone.utc), return_full_stale=True,
         )
         stale_candidates = len(stale_full or [])
         enq = enqueue_task(stale_daily)
@@ -343,7 +349,7 @@ async def admin_backfill_daily_tracked_preview(
     from backend.tasks.utils.task_utils import _resolve_history_days
 
     resolved_days = _resolve_history_days(history_days)
-    end_date = datetime.utcnow().date()
+    end_date = datetime.now(timezone.utc).date()
     start_date = end_date - timedelta(days=resolved_days)
     return {
         "requested_history_days": history_days,
@@ -454,7 +460,7 @@ async def admin_send_snapshot_digest_to_discord(
             rs_fmt = "-"
         top_lines.append(f"- {sym}: RS {rs_fmt} - Stage {stage}")
 
-    now = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    now = datetime.now(timezone.utc).replace(microsecond=0).isoformat() + "Z"
     lines = [f"AxiomFolio - MarketSnapshot digest ({now})", f"Universe: {have}/{total} symbols"]
     if stage_counts_sorted:
         lines.append("Stage distribution:")
@@ -744,7 +750,7 @@ async def start_auto_fix(
         "job_id": job_id,
         "status": "running",
         "plan": [item.model_dump() for item in plan],
-        "started_at": datetime.utcnow().isoformat(),
+        "started_at": datetime.now(timezone.utc).isoformat(),
         "completed_count": 0,
         "total_count": len(plan),
         "current_task": plan[0].task if plan else None,
@@ -773,7 +779,7 @@ async def _execute_autofix_plan(job_id: str, plan: List[AutoFixPlanItem], r) -> 
             result = celery_app.send_task(celery_task)
             item.task_id = result.id
             item.status = "running"
-            item.started_at = datetime.utcnow().isoformat()
+            item.started_at = datetime.now(timezone.utc).isoformat()
 
     key = _get_autofix_redis_key(job_id)
     raw = await r.get(key)
@@ -820,7 +826,7 @@ async def get_auto_fix_status(
                 if result.successful():
                     item.status = "done"
                     if not item.finished_at:
-                        item.finished_at = datetime.utcnow().isoformat()
+                        item.finished_at = datetime.now(timezone.utc).isoformat()
                     completed_count += 1
                 else:
                     item.status = "failed"
@@ -852,7 +858,7 @@ async def get_auto_fix_status(
     data["completed_count"] = completed_count
     data["current_task"] = current_task
     if overall_status in ("completed", "failed"):
-        data["finished_at"] = datetime.utcnow().isoformat()
+        data["finished_at"] = datetime.now(timezone.utc).isoformat()
 
     await r.setex(key, _AUTOFIX_REDIS_TTL_S, json.dumps(data))
 

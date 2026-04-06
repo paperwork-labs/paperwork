@@ -3,7 +3,7 @@ Fundamentals enrichment tasks (index constituents + MarketSnapshot fields).
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from celery import shared_task
@@ -187,7 +187,7 @@ def refresh_stale(stale_days: int = 7, limit_per_run: int = 500) -> dict:
     try:
         from backend.models.market_data import MarketSnapshot as _MS
 
-        cutoff = datetime.utcnow() - timedelta(days=stale_days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=stale_days)
         rows = (
             session.query(_MS)
             .filter(
@@ -218,7 +218,7 @@ def refresh_stale(stale_days: int = 7, limit_per_run: int = 500) -> dict:
                         setattr(r, k, new_val)
                         changed = True
             if changed:
-                r.analysis_timestamp = datetime.utcnow()
+                r.analysis_timestamp = datetime.now(timezone.utc)
                 updated += 1
         if updated:
             session.commit()

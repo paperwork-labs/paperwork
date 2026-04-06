@@ -2,6 +2,8 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { marketDataApi } from '../../services/api';
 import { REGIME_HEX } from '../../constants/chart';
+import { useRegime } from '../../hooks/useRegime';
+import { useVolatility } from '../../hooks/useVolatility';
 import { useChartColors } from '../../hooks/useChartColors';
 import StatCard from '../shared/StatCard';
 import {
@@ -45,18 +47,19 @@ function stageEtfBadgeClass(stage: string | undefined | null): string {
   return 'border-border bg-muted text-muted-foreground';
 }
 
+type VolDashboardFields = {
+  vix?: number | null;
+  vix3m?: number | null;
+  vvix?: number | null;
+  term_structure_ratio?: number | null;
+  vol_of_vol_ratio?: number | null;
+};
+
 const TopDownView: React.FC<TopDownViewProps> = ({ snapshots, dashboardPayload }) => {
   const cc = useChartColors();
 
-  const { data: regimeData } = useQuery<RegimeData | null>({
-    queryKey: ['regime-current'],
-    queryFn: async (): Promise<RegimeData | null> => {
-      const row = await marketDataApi.getCurrentRegime();
-      return (row as RegimeData | null) ?? null;
-    },
-    staleTime: 2 * 60_000,
-    refetchInterval: 5 * 60_000,
-  });
+  const { data: regimeRaw } = useRegime();
+  const regimeData = (regimeRaw ?? null) as RegimeData | null;
 
   const { data: regimeHistory } = useQuery({
     queryKey: ['regime-history-90'],
@@ -67,14 +70,8 @@ const TopDownView: React.FC<TopDownViewProps> = ({ snapshots, dashboardPayload }
     staleTime: 5 * 60_000,
   });
 
-  const { data: volData } = useQuery({
-    queryKey: ['vol-dashboard'],
-    queryFn: async () => {
-      const resp = await marketDataApi.getVolatilityDashboard();
-      return resp?.data ?? resp ?? null;
-    },
-    staleTime: 2 * 60_000,
-  });
+  const { data: volRaw } = useVolatility();
+  const volData = volRaw as VolDashboardFields | null | undefined;
 
   const snapshotMap = React.useMemo(() => {
     const m = new Map<string, any>();

@@ -83,9 +83,10 @@ Architectural decisions with rationale. Grouped by domain, newest first within e
 | D34 | 2026-03-27 | **Three-tier user roles** — owner/analyst/viewer replacing admin/user/readonly |
 | D35 | 2026-03-27 | **Trade approval workflow** — Tier 3 actions require owner approval, ApprovalService tracks state |
 | D43 | 2026-03-30 | **HMAC-SHA256 webhook signing** — body signing replaces plain secret; approve/reject bind to service identity |
-| D46 | 2026-03-31 | **Webhook events wired** — scan_alert (new Breakout Elite/Standard), regime_change (R-state shift), exit_alert (cascade non-HOLD) emit to Brain |
-| D47 | 2026-03-31 | **HTTP schedule tools** — `GET /tools/schedules` + `POST /tools/run-task` exposed to Brain (total Brain HTTP tools: 12) |
-| D48 | 2026-03-31 | **Approval timeout** — stale PENDING_APPROVAL orders auto-rejected after 30 min; `sweep_stale_approvals` task every 5 min; `approval_expired` webhook |
+| D69 | 2026-03-31 | **HTTP schedule tools** — `GET /tools/schedules` + `POST /tools/run-task` exposed to Brain (total Brain HTTP tools: 12) |
+| D70 | 2026-04-06 | **Brain API key / webhook concentrated risk** — `BRAIN_API_KEY` and Brain webhook URL are a single M2M lane for outbound alerts. If the key is compromised or Brain is unavailable, **all** alerting on that path stops until rotated or restored. Mitigation: treat key like a production secret (rotation, least privilege), monitor delivery failures, and consider a **fallback alert channel** for critical ops signals. |
+| D71 | 2026-03-31 | **Webhook events wired** — scan_alert (new Breakout Elite/Standard), regime_change (R-state shift), exit_alert (cascade non-HOLD) emit to Brain |
+| D72 | 2026-03-31 | **Approval timeout** — stale PENDING_APPROVAL orders auto-rejected after 30 min; `sweep_stale_approvals` task every 5 min; `approval_expired` webhook |
 
 ### Risk & Execution
 
@@ -112,17 +113,17 @@ Architectural decisions with rationale. Grouped by domain, newest first within e
 
 ## Decision Details
 
-### D44–D48 — Paperwork Integration Sprint (2026-03-31)
+### D44–D45, D69, D71–D72 — Paperwork Integration Sprint (2026-03-31)
 
 **Celery Beat (D44)**: All scheduling driven by `backend/tasks/job_catalog.py` via Celery Beat. 20 catalog entries with cron, timezone, timeout. Render worker runs `celery ... worker --beat`. Three legacy Render cron jobs (`admin_coverage_backfill`, `admin_retention_enforce`, `ibkr-daily-flex-sync`) suspended. `render_sync_service.py` remains for optional non-Beat / Render-cron deployments.
 
 **run_task_now routing (D45)**: `run_task_now` is MODERATE risk but implemented inline in `_tool_run_task_now`. Without `INLINE_ONLY_AGENT_TOOLS` membership, it falls to `_dispatch_celery_task` which has no mapping. Fix: add to INLINE_ONLY.
 
-**Webhook events (D46)**: Three events wired to Celery tasks: `scan_alert` from `_run_scan_overlay` (compares previous vs new tier), `regime_change` from `check_regime_alerts` (regime_shift type), `exit_alert` from `evaluate_exits_task` (non-HOLD recommendations). All use `brain_webhook.notify_sync()`.
+**HTTP schedule tools (D69)**: `GET /api/v1/tools/schedules` lists all catalog tasks with last run status. `POST /api/v1/tools/run-task` dispatches any catalog task immediately by ID. Total Brain HTTP tools: 12.
 
-**HTTP schedule tools (D47)**: `GET /api/v1/tools/schedules` lists all catalog tasks with last run status. `POST /api/v1/tools/run-task` dispatches any catalog task immediately by ID. Total Brain HTTP tools: 12.
+**Webhook events (D71)**: Three events wired to Celery tasks: `scan_alert` from `_run_scan_overlay` (compares previous vs new tier), `regime_change` from `check_regime_alerts` (regime_shift type), `exit_alert` from `evaluate_exits_task` (non-HOLD recommendations). All use `brain_webhook.notify_sync()`.
 
-**Approval timeout (D48)**: Orders in PENDING_APPROVAL beyond `APPROVAL_TIMEOUT_MINUTES` (default 30) are auto-rejected by `sweep_stale_approvals` task (every 5 min). Fires `approval_expired` webhook. `GET /api/v1/tools/pending-approvals` lets Brain poll pending orders.
+**Approval timeout (D72)**: Orders in PENDING_APPROVAL beyond `APPROVAL_TIMEOUT_MINUTES` (default 30) are auto-rejected by `sweep_stale_approvals` task (every 5 min). Fires `approval_expired` webhook. `GET /api/v1/tools/pending-approvals` lets Brain poll pending orders.
 
 ### D43 — HMAC-SHA256 Webhook Signing (2026-03-30)
 
@@ -136,7 +137,7 @@ Alternatives: Plain shared secret (rejected — no payload integrity), OAuth/JWT
 
 **Circuit Breaker (D36)**: Three daily loss tiers (2%, 3%, 5%) with progressive restrictions. Kill switch at 5% halts all trading.
 
-**Brain Integration (D32, D33, D35)**: AxiomFolio exposes `/api/v1/tools/*` endpoints for Brain orchestrator. API key in header, webhooks for events. Discord service deleted — Brain handles Slack routing. Total Brain HTTP tools: 12.
+**Brain Integration (D32, D33, D35)**: AxiomFolio exposes `/api/v1/tools/*` endpoints for Brain orchestrator. API key in header, webhooks for events. Outbound alerts route through the **Brain webhook** (D33), not Discord. Total Brain HTTP tools: 12.
 
 **User Roles (D34)**: Migrated from `admin/user/readonly` to `owner/analyst/viewer`. Analyst can propose trades but requires owner approval.
 

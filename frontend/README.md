@@ -15,9 +15,9 @@ npm run type-check   # TypeScript check
 
 | Category | Library |
 |----------|---------|
-| UI Framework | React 19, Chakra UI v3, Framer Motion |
+| UI Framework | React 19, Radix UI, Tailwind CSS, shadcn/ui-style components, Framer Motion |
 | Build | Vite 5, TypeScript 5.9 |
-| Data Fetching | React Query v3 (TanStack) |
+| Data Fetching | TanStack Query v5 |
 | Routing | React Router v7 |
 | Charts | Recharts v3, lightweight-charts v5 |
 | Forms | React Hook Form |
@@ -34,7 +34,7 @@ src/
   services/     # API client (api.ts), service hooks
   hooks/        # Custom React hooks
   context/      # React context providers (Auth, Account)
-  theme/        # Chakra UI system theme, color mode, semantic tokens
+  theme/        # Color mode and legacy theme helpers (Tailwind + CSS variables are primary)
   types/        # TypeScript type definitions
   utils/        # Utility functions
   test/         # Test setup (Vitest)

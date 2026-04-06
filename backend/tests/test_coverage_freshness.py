@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi.testclient import TestClient
 import pytest
 
@@ -27,7 +27,7 @@ def allow_market_data_viewer():
 def _seed_prices(db):
     db.query(PriceData).delete()
     db.query(MarketSnapshot).delete()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     rows = [
         # fresh <24h
         PriceData(

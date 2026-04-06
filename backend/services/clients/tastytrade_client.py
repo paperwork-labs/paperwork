@@ -6,7 +6,7 @@ All SDK methods are async; this client exposes an async-first API.
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Any
 
 try:
@@ -388,8 +388,8 @@ class TastyTradeClient:
             account = self._find_account(account_number)
             if not account:
                 return []
-            start = datetime.utcnow() - timedelta(days=days)
-            end = datetime.utcnow()
+            start = datetime.now(timezone.utc) - timedelta(days=days)
+            end = datetime.now(timezone.utc)
             txns = await account.get_history(
                 self.session, start_date=start.date(), end_date=end.date()
             )
@@ -443,8 +443,8 @@ class TastyTradeClient:
             account = self._find_account(account_number)
             if not account:
                 return []
-            start = datetime.utcnow() - timedelta(days=days)
-            end = datetime.utcnow()
+            start = datetime.now(timezone.utc) - timedelta(days=days)
+            end = datetime.now(timezone.utc)
             txns = await account.get_history(
                 self.session, start_date=start.date(), end_date=end.date()
             )
@@ -466,8 +466,8 @@ class TastyTradeClient:
             account = self._find_account(account_number)
             if not account:
                 return []
-            start = datetime.utcnow() - timedelta(days=days)
-            end = datetime.utcnow()
+            start = datetime.now(timezone.utc) - timedelta(days=days)
+            end = datetime.now(timezone.utc)
             txns = await account.get_history(
                 self.session, start_date=start.date(), end_date=end.date()
             )

@@ -20,6 +20,8 @@ from typing import Any, Dict, Optional
 import numpy as np
 import pandas as pd
 
+from backend.services.market.atr_series import calculate_atr_series
+
 logger = logging.getLogger(__name__)
 
 
@@ -57,9 +59,9 @@ def classify_stage_for_timeframe(
     to ``(price - sma150) / sma150 * 100`` when omitted. If slopes are missing,
     returns *prev_stage* when set, else ``"UNKNOWN"``.
 
-    ATRE (2A/2B→2C) and Mansfield RS (2B→2B(RS-)) post-steps are applied in
-    :func:`classify_stage_series` and :func:`compute_weinstein_stage_from_daily`,
-    not in this function.
+    ATRE override (2A/2B→2C when ATRE_150 > 6) and Mansfield RS (2B→2B(RS-))
+    post-steps are applied in :func:`classify_stage_series` and
+    :func:`compute_weinstein_stage_from_daily`, not in this function.
 
     Priority order (first match wins): 4C→4B→4A→1A→1B→2A→2B→2C→3A→3B.
     See Stage_Analysis.docx Section 4 for full rules.
@@ -111,7 +113,8 @@ def classify_stage_for_timeframe(
     # 3A: Early distribution — above SMA150 but slope weakening
     if above and not slope_up:
         return "3A"
-    # 3B: Late distribution — catch-all for remaining above SMA150 bars
+    # 3B is effectively unreachable: all above-SMA150 + slope_up bars are captured by 2B/2C.
+    # Retained as a safety net for defensive completeness.
     if above:
         return "3B"
     # 4A fallback: remaining below SMA150 bars get base/accumulation classification
@@ -133,7 +136,8 @@ def classify_stage_scalar(
     """Classify a single bar into one of 10 Stage Analysis spec sub-stages.
 
     Delegates to :func:`classify_stage_for_timeframe`. *atre_150* is accepted for
-    API compatibility; ATRE override is applied in callers after this returns.
+    API compatibility; the ATRE override (2A/2B→2C when ATRE_150 > 6) is applied
+    in callers after this returns.
     """
     _ = atre_150
     return classify_stage_for_timeframe(
@@ -165,7 +169,7 @@ def classify_stage_series(
     """Vectorized Stage Analysis spec stage classification for full time series.
 
     Priority order (first match wins): 4C→4B→4A→1A→1B→2A→2B→2C→3A→3B.
-    Post-classification: ATRE override (2A/2B + ATRE_150 > 6 → 2C),
+    Post-classification: ATRE override (2A/2B + ATRE_150 > 6 → 2C; not regime-based),
     RS modifier (2B + RS < 0 → "2B(RS-)").
     """
     SLOPE_T = 0.35
@@ -199,7 +203,8 @@ def classify_stage_series(
     assign(above & slope_up & (ext_pct <= 15), "2B")
     assign(above & slope_up & (ext_pct > 15), "2C")
     assign(above & ~slope_up, "3A")
-    # 3B: Late distribution — above SMA150 but flat/negative slope (catch-all for above)
+    # 3B is effectively unreachable: all above-SMA150 + slope_up bars are captured by 2B/2C.
+    # Retained as a safety net for defensive completeness.
     assign(above, "3B")
     # 4A fallback: remaining below SMA150 bars get base/accumulation classification
     assign(below, "4A")
@@ -211,7 +216,7 @@ def classify_stage_series(
     )
     stage[breakout] = "2A"
 
-    # Post-classification: ATRE override — 2A/2B with ATRE_150 > 6 → promote to 2C
+    # Post-classification: ATRE override — 2A/2B with ATRE_150 > 6 → 2C (not regime-based)
     atre_override = (stage.isin(["2A", "2B"])) & (atre_150 > 6.0)
     stage[atre_override] = "2C"
 
@@ -271,7 +276,6 @@ def compute_weinstein_stage_from_daily(
     sma50_slope_s = ((sma50 - sma50.shift(10)) / sma50.shift(10) * 100).replace([np.inf, -np.inf], np.nan)
     vol_ratio_s = (volume / vol_avg).replace([np.inf, -np.inf], np.nan)
 
-    from backend.services.market.indicator_engine import calculate_atr_series  # lazy to avoid circular import
     atr14 = calculate_atr_series(sym, 14) if {"High", "Low", "Close"}.issubset(sym.columns) else pd.Series(np.nan, index=sym.index)
     atre_150 = ((close - sma150) / atr14).replace([np.inf, -np.inf], np.nan) if atr14 is not None else pd.Series(np.nan, index=sym.index)
     ema10_dist_pct_s = ((close - ema10) / ema10 * 100).replace([np.inf, -np.inf], np.nan)
@@ -308,7 +312,7 @@ def compute_weinstein_stage_from_daily(
         sl150, sl50, ep, at150 or 0, vr or 0,
     )
 
-    # ATRE override
+    # ATRE override: 2A/2B → 2C when price > 6× ATR14 above SMA150 (not regime-based)
     if stage_label in ("2A", "2B") and at150 is not None and at150 > 6.0:
         stage_label = "2C"
     # RS modifier
@@ -368,7 +372,6 @@ def compute_weinstein_stage_series_from_daily(
     sma50_slope = ((sma50 - sma50.shift(10)) / sma50.shift(10) * 100).replace([np.inf, -np.inf], np.nan)
     vol_ratio = (volume / vol_avg).replace([np.inf, -np.inf], np.nan)
 
-    from backend.services.market.indicator_engine import calculate_atr_series  # lazy to avoid circular import
     atr14 = calculate_atr_series(sym, 14) if {"High", "Low", "Close"}.issubset(sym.columns) else pd.Series(np.nan, index=sym.index)
     if atr14 is None:
         atr14 = pd.Series(np.nan, index=sym.index)

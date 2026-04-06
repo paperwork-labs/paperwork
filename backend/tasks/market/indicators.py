@@ -3,7 +3,7 @@ Indicator recompute, stage metadata, and related maintenance tasks.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Set
 
 from celery import shared_task
@@ -103,13 +103,13 @@ def position_metadata() -> dict:
     soft_time_limit=3600,
     time_limit=3700,
 )
-@task_run("admin_indicators_recompute_universe")
+@task_run("admin_indicators_recompute_universe", lock_key=lambda **_: "recompute_universe")
 def recompute_universe(batch_size: int = 50) -> dict:
     """Recompute indicators for the tracked universe from local DB (orchestrator only)."""
     _set_task_status("admin_indicators_recompute_universe", "running")
     session = SessionLocal()
     try:
-        stale_cutoff = datetime.utcnow() - timedelta(hours=2)
+        stale_cutoff = datetime.now(timezone.utc) - timedelta(hours=2)
         try:
             stuck = (
                 session.query(JobRun)
@@ -126,7 +126,12 @@ def recompute_universe(batch_size: int = 50) -> dict:
                 j.finished_at = j.started_at + timedelta(seconds=3600)
             if stuck:
                 session.commit()
-        except Exception:
+        except Exception as e:
+            logger.warning(
+                "Failed to mark stale admin_indicators_recompute_universe JobRun rows: %s",
+                e,
+                exc_info=True,
+            )
             session.rollback()
 
         ordered = _get_tracked_symbols_safe(session)
@@ -211,7 +216,7 @@ def recompute_universe(batch_size: int = 50) -> dict:
         except Exception as e:
             logger.warning("spy_benchmark_fetch failed for %s: %s", benchmark_symbol, e)
 
-        fresh_cutoff = datetime.utcnow() - timedelta(hours=4)
+        fresh_cutoff = datetime.now(timezone.utc) - timedelta(hours=4)
         fresh_syms: Set[str] = set()
         try:
             fresh_syms = {
@@ -260,12 +265,22 @@ def recompute_universe(batch_size: int = 50) -> dict:
                     session.commit()
                 except SoftTimeLimitExceeded:
                     raise
-                except Exception:
+                except Exception as e:
+                    logger.warning(
+                        "recompute_universe batch commit failed: %s",
+                        e,
+                        exc_info=True,
+                    )
                     session.rollback()
         except SoftTimeLimitExceeded:
             try:
                 session.commit()
-            except Exception:
+            except Exception as e:
+                logger.warning(
+                    "recompute_universe partial commit after soft time limit failed: %s",
+                    e,
+                    exc_info=True,
+                )
                 session.rollback()
             warnings.append(
                 f"Task hit soft time limit after processing {processed_ok} of {len(ordered)} symbols. "
@@ -399,7 +414,7 @@ def stage_changes() -> dict:
         if not symbols:
             return {"status": "ok", "alerts_created": 0, "reason": "no_positions"}
 
-        today = datetime.utcnow().date()
+        today = datetime.now(timezone.utc).date()
         yesterday = today - timedelta(days=1)
 
         today_rows = (

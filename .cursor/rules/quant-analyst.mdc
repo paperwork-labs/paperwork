@@ -22,7 +22,7 @@ You are the Quant Analyst for AxiomFolio. All financial calculations must be pre
 - **Extension %**: `(Close - SMA150) / SMA150 * 100`
 - **SMA150 slope**: `(SMA150_today - SMA150_20d_ago) / SMA150_20d_ago * 100`, thresholds ±0.35%
 - **SMA50 slope**: `(SMA50_today - SMA50_10d_ago) / SMA50_10d_ago * 100`, same thresholds
-- **ATRE override**: ATRE_150 > 6.0 on 2A/2B → promote to 2C (one-directional)
+- **ATRE override (2C from extension in ATR terms)**: When a stock is classified **2A or 2B** and **ATRE_150 > 6.0** (price is more than **6× ATR14** above the **SMA150**), reclassify to **2C**. This is **only** the ATRE-based promotion — **not** regime-based relabeling and **not** a separate “2C override” tied to market regime.
 - **Breakout (1B→2A)**: Close > SMA150 AND Vol Ratio > 1.5 AND EMA10 > SMA21 > SMA50
 - **RS modifier**: 2B + RS < 0 → flag as "2B(RS−)"
 - **EMA10 Distance normalized**: `EMA10_Dist_N = EMA10_Dist% / ATR%14`
@@ -49,7 +49,7 @@ Step 0: REGIME — load 6 inputs → composite → R1–R5
 Step 1: Compute MAs + ATRs
 Step 2: Derive Ext%, ATRE, EMA10 Dist_N, slopes, ranges, Vol Ratio
 Step 3: Classify 10 sub-stages (priority order)
-Step 4: Post-classify: ATRE override, RS modifier, 2C override in R4
+Step 4: Post-classify: ATRE override (2A/2B → 2C when ATRE_150 > 6; not regime-based), RS modifier
 Step 5: Scan: regime-gated tier assignment
 Step 6: Patterns: 7 triggers
 Step 7: R/R: target/stop (regime-adjusted)

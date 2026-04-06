@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Dict
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +28,8 @@ def _expected_latest_trading_day():
             closed = schedule[schedule <= today]
         if len(closed) > 0:
             return closed[-1].strftime("%Y-%m-%d")
-    except Exception:
-        logger.debug("Trading calendar lookup failed, using weekday fallback")
+    except Exception as e:
+        logger.warning("trading calendar lookup failed, using weekday fallback: %s", e)
     # Fallback: simple weekday logic
     from datetime import date, timedelta
     d = date.today()
@@ -94,7 +94,8 @@ def compute_coverage_status(snapshot: Dict[str, Any]) -> Dict[str, Any]:
             # symbol_count is distinct symbols with a 1d bar on that date
             sc = int(newest.get("symbol_count") or 0)
             missing_latest = max(0, int(total_symbols) - sc) if total_symbols else 0
-    except Exception:
+    except Exception as e:
+        logger.warning("compute_coverage_status fill_by_date parse failed: %s", e)
         expected_daily_date = None
         expected_daily_pct = None
         missing_latest = None
@@ -119,7 +120,7 @@ def compute_coverage_status(snapshot: Dict[str, Any]) -> Dict[str, Any]:
                 from datetime import timedelta, time as _time
 
                 ny = ZoneInfo("America/New_York")
-                now_ny = datetime.utcnow().replace(tzinfo=ZoneInfo("UTC")).astimezone(ny)
+                now_ny = datetime.now(timezone.utc).astimezone(ny)
                 is_weekend = now_ny.weekday() >= 5
                 open_t = _time(hour=9, minute=30)
                 close_t = _time(hour=16, minute=0)
@@ -131,7 +132,12 @@ def compute_coverage_status(snapshot: Dict[str, Any]) -> Dict[str, Any]:
                     summary = f"{hint}. Daily coverage is green (latest bar {expected_daily_date})."
                 else:
                     summary = f"Daily coverage is green (latest bar {expected_daily_date})."
-            except Exception:
+            except Exception as e:
+                logger.warning(
+                    "compute_coverage_status market-hours hint failed for date=%s: %s",
+                    expected_daily_date,
+                    e,
+                )
                 summary = f"Daily coverage is green (latest bar {expected_daily_date})."
     elif total_symbols > 0 and daily_pct < 90:
         label = "degraded"

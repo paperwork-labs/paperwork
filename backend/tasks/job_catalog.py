@@ -107,6 +107,7 @@ CATALOG: List[JobTemplate] = [
         default_cron="* * * * *",
         default_tz="UTC",
         queue="orders",
+        timeout_s=180,
     ),
     JobTemplate(
         id="ibkr-gateway-watchdog",
@@ -117,6 +118,7 @@ CATALOG: List[JobTemplate] = [
         default_cron="*/5 * * * *",
         default_tz="UTC",
         queue="orders",
+        timeout_s=60,
     ),
     JobTemplate(
         id="reconcile-order-fills",
@@ -127,6 +129,7 @@ CATALOG: List[JobTemplate] = [
         default_cron="*/10 * * * *",
         default_tz="UTC",
         queue="orders",
+        timeout_s=360,
     ),
     # ── Strategy ────────────────────────────────────────────────────
     JobTemplate(
@@ -316,3 +319,6 @@ CATALOG: List[JobTemplate] = [
         timeout_s=3600,
     ),
 ]
+
+# Alias for callers that expect JOB_CATALOG (e.g. task_run singleflight lookup).
+JOB_CATALOG: List[JobTemplate] = CATALOG

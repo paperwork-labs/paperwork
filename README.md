@@ -4,7 +4,7 @@ AxiomFolio
 Monorepo for the AxiomFolio trading platform.
 
 - Backend: FastAPI + SQLAlchemy + Alembic (Docker)
-- Frontend: React + Vite + Chakra UI (Docker)
+- Frontend: React + Vite + Radix UI + Tailwind CSS + shadcn/ui-style components (Docker)
 - DB: Postgres + Redis
 
 Quick Start

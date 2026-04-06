@@ -1,7 +1,7 @@
 import json
 import pytest
 from types import SimpleNamespace
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi.testclient import TestClient
 
 from backend.api.main import app
@@ -41,7 +41,7 @@ def test_backfill_stale_daily_returns_full_stale_candidates(monkeypatch, db_sess
 
         # Insert bars for FRESH (recent) and STALE (old). MISSING has no bars.
         db_session.query(PriceData).delete()
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         db_session.add(
             PriceData(
                 symbol="FRESH",
@@ -107,7 +107,7 @@ def test_coverage_snapshot_counts_missing_in_none_bucket(db_session):
     market_data_service.redis_client.set("tracked:all", json.dumps(tracked))
     try:
         db_session.query(PriceData).delete()
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         db_session.add(
             PriceData(
                 symbol="FRESH2",

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -49,7 +49,7 @@ def _mock_snapshot(symbol, stage="2A", prev="1", perf_1d=1.0, perf_5d=2.0, perf_
     defaults = dict(
         symbol=symbol,
         analysis_type="technical_snapshot",
-        analysis_timestamp=datetime.utcnow(),
+        analysis_timestamp=datetime.now(timezone.utc),
         stage_label=stage,
         previous_stage_label=prev,
         current_stage_days=5,
@@ -80,7 +80,7 @@ def _mock_snapshot(symbol, stage="2A", prev="1", perf_1d=1.0, perf_5d=2.0, perf_
         td_perfect_sell=None,
         gaps_unfilled_up=0,
         gaps_unfilled_down=0,
-        as_of_date=datetime.utcnow().date(),
+        as_of_date=datetime.now(timezone.utc).date(),
     )
     defaults.update(kw)
     return SimpleNamespace(**defaults)
@@ -247,8 +247,8 @@ def test_fundamental_leaders(monkeypatch):
 
 def test_upcoming_earnings(monkeypatch):
     from datetime import timedelta
-    near = datetime.utcnow() + timedelta(days=3)
-    far = datetime.utcnow() + timedelta(days=30)
+    near = datetime.now(timezone.utc) + timedelta(days=3)
+    far = datetime.now(timezone.utc) + timedelta(days=30)
     rows = [
         _mock_snapshot("SOON", next_earnings=near),
         _mock_snapshot("LATER", next_earnings=far),

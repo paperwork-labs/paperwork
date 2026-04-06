@@ -165,6 +165,9 @@ def _tier3_stage_deterioration(ctx: PositionContext) -> ExitSignal:
     prev = ctx.previous_stage_label or ""
     curr = ctx.stage_label
 
+    # SMA150 exit chain: when stage_classifier moves a position to 4x (below declining SMA150),
+    # T3 (stage exit) triggers a full position exit. This is the systematic enforcement of
+    # "never hold below a declining 150-day moving average."
     if curr.startswith("4"):
         return ExitSignal("T3", ExitAction.EXIT, f"Stage dropped to {curr} (decline phase)", 9)
     if prev in ("2B", "2C") and curr == "3A":

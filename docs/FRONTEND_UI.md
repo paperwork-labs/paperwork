@@ -1,13 +1,13 @@
-# Frontend UI (Chakra v3 + Ladle)
+# Frontend UI (Radix + Tailwind + Ladle)
 
-Frontend theming, components, and Ladle. For route-to-page mapping see [ARCHITECTURE.md](ARCHITECTURE.md#frontend-pages).
+Frontend structure, theming, and Ladle. For route-to-page mapping see [ARCHITECTURE.md](ARCHITECTURE.md#frontend-pages).
 
 ---
 
 ## Table of contents
 
 - [What we're using](#what-were-using)
-- [Chakra v3 architecture](#chakra-v3-architecture-in-this-repo)
+- [UI stack in this repo](#ui-stack-in-this-repo)
 - [Portfolio component map](#portfolio-component-map)
 - [Skeleton loading](#skeleton-loading)
 - [Pagination pattern](#pagination-pattern)
@@ -25,36 +25,38 @@ Frontend theming, components, and Ladle. For route-to-page mapping see [ARCHITEC
 ## What we're using
 
 - **React + Vite**: `frontend/`
-- **Chakra UI v3**: design system + primitives via a single `system` configuration.
+- **Radix UI** (`@radix-ui/react-*`): accessible primitives (dialog, popover, tabs, tooltip, etc.).
+- **Tailwind CSS v4** (`@tailwindcss/vite`): utility styling and layout; design tokens live in `frontend/src/index.css` as CSS variables.
+- **shadcn-style wrappers**: composed components under `frontend/src/components/ui/` (Button, Card, Dialog, …) built from Radix + `class-variance-authority` + `tailwind-merge`.
 - **Ladle**: lightweight component explorer (Storybook alternative).
 
-## Chakra v3 architecture in this repo
+## UI stack in this repo
 
-#### 1) Single source of truth: `system`
-The canonical Chakra v3 system lives in:
-- `frontend/src/theme/system.ts`
+#### 1) Single source of truth: `index.css`
 
-It defines:
-- **Tokens**: core brand palette, typography, radii.
-- **Semantic tokens**: `bg.*`, `fg.*`, `border.*` for consistent light/dark theming.
-- **Recipes**: base styles for `button`, `input`, etc.
+Semantic colors and chart tokens are defined as CSS custom properties on `:root` and `.dark` in:
 
-The app mounts Chakra like this:
-- `frontend/src/App.tsx` → `<ChakraProvider value={system}>`
+- `frontend/src/index.css`
 
-#### 2) App-level primitives
+Examples: `--bg-canvas`, `--fg-muted`, `--border-subtle`, `--chart-success`, `--status-danger`. Tailwind maps shadcn-style tokens (`--primary`, `--card`, …) in the same file via `@theme inline`.
 
-We build "app primitives" on top of Chakra v3 components so pages stay consistent:
-- `frontend/src/components/ui/AppCard.tsx`
-- `frontend/src/components/ui/Page.tsx`
-- `frontend/src/components/ui/FormField.tsx`
-- `frontend/src/components/ui/Pagination.tsx`
+Legacy `frontend/src/theme/system.ts` is a **stub** (Chakra was removed from the app root); extend the Tailwind/CSS layer instead.
 
-Pages should prefer **semantic tokens** like `bg.card`, `border.subtle`, `fg.muted` instead of hardcoded colors.
+#### 2) App shell
+
+- `frontend/src/App.tsx` wraps the tree with **`ColorModeProvider`** (`frontend/src/theme/colorMode.tsx`) and TanStack Query — no Chakra `Provider`.
+
+#### 3) App-level primitives
+
+Shared building blocks:
+
+- `frontend/src/components/ui/AppCard.tsx`, `Page.tsx`, `PageHeader.tsx`, `FormField.tsx`, `Pagination.tsx`, `button.tsx`, `card.tsx`, `dialog.tsx`, etc.
+
+Prefer **semantic CSS variables** (e.g. `rgb(var(--bg-panel) / 1)`, `text-muted-foreground`, `border-border`) over raw hex in new code.
 
 ### Portfolio component map
 
-- **Pages**: PortfolioOverview, PortfolioHoldings, PortfolioOptions, PortfolioTransactions, PortfolioCategories, PortfolioWorkspace (under `frontend/src/pages/portfolio/`).
+- **Pages**: PortfolioOverview, PortfolioHoldings, PortfolioOptions, PortfolioTransactions, PortfolioCategories, PortfolioWorkspace, PortfolioOrders (`frontend/src/pages/portfolio/`).
 - **Shared** (`frontend/src/components/shared/`): StatCard, StageBar, StageBadge, PnlText, Skeleton (StatCardSkeleton, TableSkeleton, ChartSkeleton).
 - **UI**: AccountFilterWrapper, SortableTable (with debounced filter inputs), Pagination.
 - **Utils**: `frontend/src/utils/portfolio.ts` – buildAccountsFromBroker, toStartEnd, timeAgo, stageCountsFromPositions, sectorAllocationFromPositions, topMoversFromPositions.
@@ -114,6 +116,7 @@ useEffect(() => setPage(1), [dateRange, category, selected]);
 ### Ladle (component explorer)
 
 #### Run Ladle locally
+
 From the repo root (Docker):
 
 ```bash
@@ -129,11 +132,15 @@ make ladle-build
 ```
 
 #### Ladle provider setup
-Ladle uses the same Chakra v3 system provider as the app:
+
+Ladle wraps stories with the same **`ColorModeProvider`** as the app:
+
 - `frontend/.ladle/components.tsx`
 
 #### Ladle story inventory
+
 Stories live under `frontend/src/stories/`:
+
 - **Brand.stories.tsx** — brand/logo
 - **Components.stories.tsx** — shared components
 - **LoadingStates.stories.tsx** — skeletons, spinners
@@ -155,7 +162,7 @@ The app uses several charting approaches depending on the use case:
 | **Sparkline** | `Sparkline` (`components/charts/Sparkline.tsx`) | Mini bar charts for quick price visualization in popovers and table cells |
 | **SymbolChartWithMarkers** | `SymbolChartWithMarkers` (`components/charts/SymbolChartWithMarkers.tsx`) | Lightweight-charts based candle charts with trade markers |
 
-Recharts components use theme-aware colors via the `useChartColors()` hook in `MarketDashboard.tsx`, which resolves `chart.*` semantic tokens at runtime.
+Recharts components use theme-aware colors via hooks that read `--chart-*` / semantic CSS variables (see `useChartColors` patterns in dashboard code).
 
 ### Symbol Interaction Pattern
 
@@ -165,27 +172,21 @@ Symbols throughout the Market Dashboard follow a hover + click interaction model
 - **Click**: Opens a right-edge slide-out panel with a full `TradingViewChart` for the symbol. The panel covers ~50vw on desktop / 90vw on mobile and can be closed via X button, click-away, or Escape.
 - **No page navigation**: Symbol clicks stay on the dashboard — there is no redirect to `/market/tracked`.
 
-The pattern is implemented via **ChartContext** + **SymbolLink** + **ChartSlidePanel**: `ChartContext` provides the `openChart` callback to nested `SymbolLink` instances without prop drilling; `SymbolLink` renders a `PopoverRoot` for hover (sparkline); `ChartSlidePanel` renders a `DialogRoot` for the slide-out TradingView chart. Used across Market Dashboard and Portfolio (Holdings, etc.).
+The pattern is implemented via **ChartContext** + **SymbolLink** + **ChartSlidePanel**: `ChartContext` provides the `openChart` callback to nested `SymbolLink` instances without prop drilling; `SymbolLink` uses a Radix `Popover` for hover (sparkline); `ChartSlidePanel` uses a Radix `Dialog` for the slide-out TradingView chart. Used across Market Dashboard and Portfolio (Holdings, etc.).
 
 ### Chart Semantic Tokens
 
-The `system.ts` theme defines `chart.*` semantic tokens for consistent chart styling across light and dark modes:
+`index.css` defines `--chart-*` RGB triples (and shadcn `--chart-1`…`--chart-5`) for consistent chart styling across light and dark modes. Use these via Tailwind (`text-chart-1`, etc.) or `rgb(var(--chart-success) / 1)` where appropriate.
 
-| Token | Light | Dark | Usage |
-|-------|-------|------|-------|
-| `chart.danger` | `#DC2626` | `#F87171` | Histogram low-range bins, bearish indicators |
-| `chart.success` | `#16A34A` | `#4ADE80` | Histogram high-range bins, bullish indicators |
-| `chart.neutral` | `#3B82F6` | `#60A5FA` | Mid-range histogram bins |
-| `chart.warning` | `#D97706` | `#FBBF24` | RRG "Weakening" quadrant |
-| `chart.area1` | `#16A34A` | `#34D399` | Breadth chart 50DMA area fill |
-| `chart.area2` | `#2563EB` | `#60A5FA` | Breadth chart 200DMA area fill |
-| `chart.grid` | `rgba(15,23,42,0.08)` | `rgba(255,255,255,0.08)` | Grid lines |
-| `chart.axis` | `rgba(15,23,42,0.4)` | `rgba(255,255,255,0.45)` | Axis labels |
-| `chart.refLine` | `rgba(15,23,42,0.2)` | `rgba(255,255,255,0.2)` | Reference/zero lines |
+| Token (examples) | Usage |
+|------------------|--------|
+| `--chart-danger`, `--chart-success`, `--chart-neutral`, `--chart-warning` | Series and regime-style accents |
+| `--chart-area1`, `--chart-area2` | Area fills (e.g. breadth) |
+| `--chart-grid`, `--chart-axis`, `--chart-refLine` | Grid and axes |
 
 ### Dashboard Components
 
-Reusable sub-components within `MarketDashboard.tsx`:
+Reusable sub-components within `MarketDashboard.tsx` (representative list):
 
 | Component | Description |
 |-----------|-------------|
@@ -202,12 +203,12 @@ Reusable sub-components within `MarketDashboard.tsx`:
 | `SparklinePopoverContent` | Popover body that lazy-fetches and displays a mini sparkline |
 
 ### Keeping UI libraries current
+
 - Frontend dependencies live in `frontend/package.json`.
-- Chakra is pinned to v3 (`@chakra-ui/react`).
 - Upgrades: update versions, then validate from **repo root** using the [Makefile](../Makefile) (see [docs/README.md](README.md)#makefile-quick-reference):
   - `make frontend-check` (lint + type-check + test), or `make test-frontend`
   - `make ladle-build`
-  - If you need a full production build, run it inside the frontend container (e.g. with dev stack up: `docker compose ... exec frontend npm run build`).
+  - For a full production build, run it inside the frontend container (e.g. with dev stack up: `docker compose ... exec frontend npm run build`).
 
 ### Troubleshooting
 

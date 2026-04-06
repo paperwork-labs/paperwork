@@ -17,6 +17,7 @@ vi.mock('../../services/api', async () => {
   return {
     default: { get: vi.fn().mockResolvedValue({ data: {} }) },
     marketDataApi: {
+      getSnapshots: vi.fn().mockResolvedValue({ rows: [] }),
       getCurrentRegime: vi.fn().mockResolvedValue(regimeRow),
       getSnapshot: vi.fn().mockResolvedValue({ data: { stage_label: '2A' } }),
       getVolatilityDashboard: vi.fn().mockResolvedValue({}),

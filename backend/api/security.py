@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 import uuid
 import jwt
@@ -14,7 +14,7 @@ def get_secret_key() -> str:
 
 def create_access_token(claims: Dict[str, Any], expires: Optional[timedelta] = None) -> str:
     payload = dict(claims)
-    exp = datetime.utcnow() + (expires or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
+    exp = datetime.now(timezone.utc) + (expires or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
     payload["exp"] = exp
     payload["type"] = "access"
     return jwt.encode(payload, get_secret_key(), algorithm=JWT_ALGORITHM)
@@ -22,7 +22,7 @@ def create_access_token(claims: Dict[str, Any], expires: Optional[timedelta] = N
 
 def create_refresh_token(claims: Dict[str, Any], family: Optional[str] = None) -> str:
     payload = dict(claims)
-    payload["exp"] = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    payload["exp"] = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     payload["type"] = "refresh"
     payload["family"] = family or str(uuid.uuid4())
     payload["jti"] = str(uuid.uuid4())

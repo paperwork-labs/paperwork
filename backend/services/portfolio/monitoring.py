@@ -6,7 +6,7 @@ Tracks portfolio health metrics including drawdown monitoring and alerts.
 """
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
 from sqlalchemy.orm import Session
@@ -187,5 +187,5 @@ def get_portfolio_health_metrics(db: Session) -> Dict:
         "max_concentration_pct": max_concentration,
         "largest_position": largest_position,
         "positions_over_10pct": list(concentration.keys()),
-        "as_of": datetime.utcnow().isoformat(),
+        "as_of": datetime.now(timezone.utc).isoformat(),
     }

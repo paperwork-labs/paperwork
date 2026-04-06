@@ -80,6 +80,12 @@ class PriceFeedService:
         self._reconnect_delay = self.INITIAL_RECONNECT_DELAY
         self._last_heartbeat: Optional[datetime] = None
         self._callbacks: List[Callable[[BarData], None]] = []
+        self._background_tasks: Set[asyncio.Task] = set()
+
+    def _spawn_background(self, coro) -> None:
+        task = asyncio.create_task(coro)
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
 
     async def _get_redis(self) -> aioredis.Redis:
         """Get async Redis connection (lazy initialization)."""
@@ -103,10 +109,10 @@ class PriceFeedService:
         self._running = True
         self._subscribed_symbols = set(s.upper() for s in symbols)
 
-        # Start background tasks
-        asyncio.create_task(self._connection_loop())
-        asyncio.create_task(self._processing_loop())
-        asyncio.create_task(self._heartbeat_loop())
+        # Start background tasks (retain refs so tasks are not GC'd mid-flight)
+        self._spawn_background(self._connection_loop())
+        self._spawn_background(self._processing_loop())
+        self._spawn_background(self._heartbeat_loop())
 
         logger.info(
             "PriceFeedService started for %d symbols",

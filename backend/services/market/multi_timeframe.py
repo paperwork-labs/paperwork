@@ -167,7 +167,7 @@ class MultiTimeframeEngine:
             snapshot.stage_1w = result.stages["1W"].stage
         snapshot.mtf_alignment = result.alignment_score
 
-        self.db.commit()
+        # Caller controls commit scope
         logger.info(
             "Updated MTF for %s: alignment=%d, trend=%s",
             symbol,

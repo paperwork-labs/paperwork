@@ -4,10 +4,11 @@ Daily bar backfill, index constituents, and tracked-universe cache tasks.
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from celery import shared_task
+from celery.exceptions import SoftTimeLimitExceeded
 
 from backend.database import SessionLocal
 from backend.models import IndexConstituent
@@ -57,7 +58,7 @@ def symbol(symbol: str) -> dict:
 
 
 @shared_task(
-    soft_time_limit=150,
+    soft_time_limit=120,
     time_limit=180,
 )
 @task_run("market_universe_tracked_refresh")
@@ -112,7 +113,11 @@ def tracked_cache() -> dict:
         if prev_raw:
             try:
                 prev = json.loads(prev_raw)
-            except Exception:
+            except Exception as e:
+                logger.warning(
+                    "tracked:all JSON parse failed, treating as empty: %s",
+                    e,
+                )
                 prev = []
         prev_set = set(s.upper() for s in prev)
         additions = [s for s in current if s not in prev_set]
@@ -182,23 +187,27 @@ def symbols(symbols: List[str], days: int = 200) -> dict:
 @task_run("admin_backfill_daily")
 def daily_bars(days: int = 200) -> dict:
     """Delta backfill last N trading days (approx) of daily bars for the tracked universe."""
-    _set_task_status("admin_backfill_daily", "running", {"days": int(days)})
-    session = SessionLocal()
     try:
-        universe = _get_tracked_universe_from_db(session)
-        tracked_total = len(universe)
-    finally:
-        session.close()
+        _set_task_status("admin_backfill_daily", "running", {"days": int(days)})
+        session = SessionLocal()
+        try:
+            universe = _get_tracked_universe_from_db(session)
+            tracked_total = len(universe)
+        finally:
+            session.close()
 
-    result = symbols(list(universe), days=days)
-    result["tracked_total"] = tracked_total
-    _set_task_status("admin_backfill_daily", "ok", result)
-    return result
+        result = symbols(list(universe), days=days)
+        result["tracked_total"] = tracked_total
+        _set_task_status("admin_backfill_daily", "ok", result)
+        return result
+    except SoftTimeLimitExceeded:
+        logger.warning("Task %s hit soft time limit", "admin_backfill_daily")
+        raise
 
 
 @shared_task(
-    soft_time_limit=360,
-    time_limit=420,
+    soft_time_limit=300,
+    time_limit=360,
 )
 @task_run("market_indices_constituents_refresh")
 def constituents(index: str | None = None) -> dict:
@@ -213,7 +222,7 @@ def constituents(index: str | None = None) -> dict:
     results = {}
     session = SessionLocal()
     try:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         from backend.config import settings as _settings
 
         preflight = {
@@ -440,7 +449,7 @@ def daily_since(since_date: str = "", batch_size: int = 25, index: Optional[str]
     soft_time_limit=10800,
     time_limit=14400,
 )
-@task_run("admin_backfill_since_date", lock_key=lambda since_date, **_: f"admin_backfill_since_date:{since_date}")
+@task_run("admin_backfill_since_date", lock_key=lambda since_date, **_: f"admin_backfill_since_date:{since_date}", lock_ttl_seconds=14700)
 def full_historical(
     since_date: Optional[str] = None,
     daily_batch_size: int = 25,
@@ -536,7 +545,7 @@ def stale_daily() -> dict:
             session,
             symbols=tracked,
             interval="1d",
-            now_utc=datetime.utcnow(),
+            now_utc=datetime.now(timezone.utc),
             return_full_stale=True,
         )
         stale_symbols = stale_full or []
@@ -580,6 +589,7 @@ def stale_daily() -> dict:
 @task_run(
     "admin_recompute_since_date",
     lock_key=lambda since_date=None, **_: "admin_recompute_since_date",
+    lock_ttl_seconds=21900,
 )
 def safe_recompute(
     since_date: Optional[str] = None,

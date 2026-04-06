@@ -6,7 +6,7 @@ Provides comprehensive portfolio analysis, performance metrics, and insights.
 
 import logging
 import math
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 from sqlalchemy.orm import Session
@@ -443,7 +443,7 @@ class PortfolioAnalyticsService:
         ]
         if not acct_ids:
             return {"twr": 0, "period_days": period_days, "data_points": 0}
-        cutoff = datetime.utcnow() - timedelta(days=period_days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=period_days)
         snapshots = (
             db.query(PortfolioSnapshot)
             .filter(PortfolioSnapshot.account_id.in_(acct_ids), PortfolioSnapshot.snapshot_date >= cutoff.date())

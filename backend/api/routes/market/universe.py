@@ -38,6 +38,7 @@ async def get_index_constituents(
     index: str = Query("SP500", description="SP500, NASDAQ100, DOW30, RUSSELL2000"),
     active_only: bool = Query(True),
     db: Session = Depends(get_db),
+    _viewer: User = Depends(get_market_data_viewer),
 ) -> Dict[str, Any]:
     index = index.upper()
     if index not in {"SP500", "NASDAQ100", "DOW30", "RUSSELL2000"}:

@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from backend.config import settings
 from backend.database import SessionLocal
+from backend.tasks.job_catalog import JOB_CATALOG
 from backend.models import JobRun, PriceData
 from backend.services.market.market_data_service import market_data_service
 from backend.services.notifications.alerts import alert_service
@@ -21,31 +22,53 @@ from backend.tasks.utils.schedule_metadata import HookConfig, ScheduleMetadata
 logger = logging.getLogger(__name__)
 
 
-def task_run(task_name: str, *, lock_key: Optional[Callable[..., Optional[str]]] = None, lock_ttl_seconds: int = 1800):
-    """
-    Decorator to standardize task execution:
+def _catalog_singleflight_lock_key(task_name: str) -> Optional[str]:
+    """If *task_name* matches a catalog row with ``singleflight=True``, return *task_name* for Redis lock."""
+    for job in JOB_CATALOG:
+        if job.job_run_label == task_name:
+            if job.singleflight:
+                return task_name
+            return None
+    return None
+
+
+def task_run(task_name: str, *, lock_key: Optional[Callable[..., Optional[str]]] = None, lock_ttl_seconds: int = 3900):
+    """Decorator to standardize task execution.
+
+    Features:
     - Optional Redis lock to prevent duplicate work (by computed key)
     - Write JobRun row with status running/ok/error and counters from returned dict
     - Publish last-run status into Redis key: taskstatus:{task_name}:last
+
+    IRON LAW: lock_ttl_seconds must be >= task hard_time_limit (job_catalog timeout_s).
+    Default is 3900s (65 min) which covers standard 3600s tasks. For longer tasks
+    (e.g., full_historical_backfill at 14400s), explicitly set lock_ttl_seconds.
     """
 
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            # Optional redis lock
+            # Optional redis lock (explicit lock_key, or catalog singleflight default)
             lock_id: Optional[str] = None
-            if lock_key is not None:
-                try:
-                    key = lock_key(*args, **kwargs)
-                    if key:
-                        r = market_data_service.redis_client
-                        # SETNX + expiry
-                        acquired = r.set(name=f"lock:{task_name}:{key}", value="1", nx=True, ex=lock_ttl_seconds)
-                        if not acquired:
-                            return {"status": "skipped", "reason": "locked", "lock_key": key}
-                        lock_id = key
-                except Exception as e:
-                    logger.warning("task_run redis lock failed for %s: %s", task_name, e)
+            try:
+                resolved_key: Optional[str] = None
+                if lock_key is not None:
+                    resolved_key = lock_key(*args, **kwargs)
+                else:
+                    resolved_key = _catalog_singleflight_lock_key(task_name)
+                if resolved_key:
+                    r = market_data_service.redis_client
+                    acquired = r.set(
+                        name=f"lock:{task_name}:{resolved_key}",
+                        value="1",
+                        nx=True,
+                        ex=lock_ttl_seconds,
+                    )
+                    if not acquired:
+                        return {"status": "skipped", "reason": "locked", "lock_key": resolved_key}
+                    lock_id = resolved_key
+            except Exception as e:
+                logger.warning("task_run redis lock failed for %s: %s", task_name, e)
             session = SessionLocal()
             job = JobRun(
                 task_name=task_name,

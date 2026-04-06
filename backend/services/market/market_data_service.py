@@ -106,7 +106,7 @@ def _is_l2_fresh(latest_bar_date) -> bool:
             return bar_ts >= oldest_acceptable
     except Exception:
         logger.debug("Trading session check failed for L2 freshness, falling back to day count")
-    days_stale = (pd.Timestamp.utcnow().normalize() - pd.Timestamp(latest_bar_date).normalize()).days
+    days_stale = (pd.Timestamp.now("UTC").normalize() - pd.Timestamp(latest_bar_date).normalize()).days
     return days_stale <= L2_FRESHNESS_MAX_DAYS
 
 
@@ -794,7 +794,7 @@ class MarketDataService:
 
     def _period_to_start_date(self, period: str) -> datetime:
         """Convert period string to a start date for DB queries."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         mapping = {
             "1d": timedelta(days=5),
             "5d": timedelta(days=10),
@@ -810,7 +810,8 @@ class MarketDataService:
             "ytd": timedelta(days=370),
         }
         delta = mapping.get(period, timedelta(days=370))
-        return now - delta
+        # PriceData.date is stored as naive UTC; SQLAlchemy compare expects naive bound.
+        return (now - delta).replace(tzinfo=None)
 
     @staticmethod
     def _min_bars_for_period(period: str) -> int:
@@ -1017,7 +1018,7 @@ class MarketDataService:
         try:
             if isinstance(period, str) and period.endswith("d"):
                 days = int(period[:-1])
-                cutoff = pd.Timestamp.utcnow() - pd.Timedelta(days=days)
+                cutoff = pd.Timestamp.now("UTC") - pd.Timedelta(days=days)
                 df = df[df.index >= cutoff]
         except Exception as e:
             logger.warning("period_filter failed for %s: %s", symbol, e)
@@ -1358,7 +1359,7 @@ class MarketDataService:
 
         Returns raw_analysis if available; otherwise rebuilds a dict from mapped columns.
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         row = (
             db.query(MarketSnapshot)
             .filter(
@@ -1371,12 +1372,17 @@ class MarketDataService:
         if not row:
             return {}
         exp = row.expiry_timestamp
+        exp_utc: datetime | None = None
         try:
-            if exp is not None and getattr(exp, 'tzinfo', None) is not None:
-                exp = exp.replace(tzinfo=None)
+            if exp is not None:
+                exp_utc = (
+                    exp.replace(tzinfo=timezone.utc)
+                    if exp.tzinfo is None
+                    else exp.astimezone(timezone.utc)
+                )
         except Exception as e:
-            logger.warning("expiry_tz_strip failed for %s: %s", symbol, e)
-        if exp and exp < now:
+            logger.warning("expiry_tz_normalize failed for %s: %s", symbol, e)
+        if exp_utc is not None and exp_utc < now:
             return {}
         try:
             if isinstance(row.raw_analysis, dict) and row.raw_analysis:
@@ -1631,7 +1637,12 @@ class MarketDataService:
                 prev_stale = False
                 if prev_ts is not None:
                     try:
-                        age = datetime.utcnow() - prev_ts.replace(tzinfo=None)
+                        prev_utc = (
+                            prev_ts.replace(tzinfo=timezone.utc)
+                            if prev_ts.tzinfo is None
+                            else prev_ts.astimezone(timezone.utc)
+                        )
+                        age = datetime.now(timezone.utc) - prev_utc
                         prev_stale = age > timedelta(days=7)
                     except Exception as e:
                         logger.warning("prev_timestamp_age_check failed for %s: %s", symbol, e)
@@ -1727,7 +1738,7 @@ class MarketDataService:
         """
         if not snapshot:
             raise ValueError("empty snapshot")
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         expiry = now + pd.Timedelta(hours=ttl_hours)
 
         # Normalize as-of timestamp:
@@ -1787,7 +1798,7 @@ class MarketDataService:
                 expiry_timestamp=expiry,
                 raw_analysis=snapshot_json,
             )
-            row.analysis_timestamp = datetime.utcnow()
+            row.analysis_timestamp = datetime.now(timezone.utc)
             for k, v in snapshot.items():
                 if hasattr(row, k):
                     setattr(row, k, v)
@@ -1795,7 +1806,7 @@ class MarketDataService:
                 row.as_of_timestamp = as_of_ts
             db.add(row)
         else:
-            row.analysis_timestamp = datetime.utcnow()
+            row.analysis_timestamp = datetime.now(timezone.utc)
             row.expiry_timestamp = expiry
             row.raw_analysis = snapshot_json
             for k, v in snapshot.items():
@@ -1817,7 +1828,7 @@ class MarketDataService:
                 .first()
             )
             if existing:
-                existing.analysis_timestamp = datetime.utcnow()
+                existing.analysis_timestamp = datetime.now(timezone.utc)
                 # Headline fields
                 existing.current_price = snapshot_json.get("current_price")
                 existing.rsi = snapshot_json.get("rsi")
@@ -1834,7 +1845,7 @@ class MarketDataService:
                     symbol=symbol,
                     analysis_type=analysis_type,
                     as_of_date=as_of_date,
-                    analysis_timestamp=datetime.utcnow(),
+                    analysis_timestamp=datetime.now(timezone.utc),
                     current_price=snapshot_json.get("current_price"),
                     rsi=snapshot_json.get("rsi"),
                     atr_value=snapshot_json.get("atr_value"),
@@ -2018,8 +2029,8 @@ class MarketDataService:
                 "inserted": 0,
                 "provider": provider_used,
             }
-        # Trim to bounded size for downstream compute
-        df = df.tail(max_bars) if max_bars else df
+        # Trim to bounded size for downstream compute (data is newest-first)
+        df = df.head(max_bars) if max_bars else df
         inserted = self.persist_price_bars(
             db,
             symbol.upper(),
@@ -2220,7 +2231,7 @@ class MarketDataService:
         - Includes missing symbols (no bars) in the `none` bucket.
         - Returns a sampled `stale` list for UI, but can also return the full stale symbol list.
         """
-        now = now_utc or datetime.utcnow()
+        now = now_utc or datetime.now(timezone.utc)
         safe_symbols = sorted({str(s).upper() for s in (symbols or []) if s})
         sym_set = set(safe_symbols)
         if stale_sample_limit is None:
@@ -2242,7 +2253,12 @@ class MarketDataService:
         def _bucketize(ts: datetime | None) -> str:
             if not ts:
                 return "none"
-            age = now - ts
+            ts_utc = (
+                ts.replace(tzinfo=timezone.utc)
+                if ts.tzinfo is None
+                else ts.astimezone(timezone.utc)
+            )
+            age = now - ts_utc
             if age <= timedelta(hours=24):
                 return "<=24h"
             if age <= timedelta(hours=48):
@@ -2300,7 +2316,7 @@ class MarketDataService:
         fill_lookback_days: int | None = None,
     ) -> Dict[str, Any]:
         """Compute coverage freshness, stale lists, and tracked stats for instrumentation/UI."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         from backend.models.market_data import MarketSnapshotHistory
 
         idx_counts: Dict[str, int] = {}
@@ -2345,7 +2361,7 @@ class MarketDataService:
                     else getattr(settings, "COVERAGE_FILL_LOOKBACK_DAYS", 90)
                 )
             )
-            start_dt = now - timedelta(days=lookback)
+            start_dt = (now - timedelta(days=lookback)).replace(tzinfo=None)
             rows = (
                 db.query(
                     func.date(PriceData.date).label("d"),
@@ -2387,7 +2403,7 @@ class MarketDataService:
                     else getattr(settings, "COVERAGE_FILL_LOOKBACK_DAYS", 90)
                 )
             )
-            start_dt = now - timedelta(days=lookback)
+            start_dt = (now - timedelta(days=lookback)).replace(tzinfo=None)
             snap_dt = MarketSnapshotHistory.as_of_date
             rows = (
                 db.query(

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from decimal import Decimal
 from typing import Dict, Any, List
 
@@ -402,7 +402,7 @@ class SchwabSyncService:
             net_amount = amount - commission
             txn_type = SCHWAB_TYPE_MAP.get(action, TransactionType.OTHER)
             txn_date_str = t.get("date") or t.get("transactionDate")
-            txn_date = _parse_date(txn_date_str) if txn_date_str else datetime.utcnow()
+            txn_date = _parse_date(txn_date_str) if txn_date_str else datetime.now(timezone.utc)
             sub_account = t.get("sub_account", "")
             activity_type = t.get("activity_type", "")
 
@@ -547,7 +547,7 @@ class SchwabSyncService:
         new_bal = AccountBalance(
             user_id=account.user_id,
             broker_account_id=account.id,
-            balance_date=datetime.utcnow(),
+            balance_date=datetime.now(timezone.utc),
             cash_balance=bal.get("cash_balance"),
             net_liquidation=bal.get("net_liquidating_value"),
             buying_power=bal.get("equity_buying_power"),
@@ -571,4 +571,4 @@ def _parse_date(val: Any) -> datetime:
     try:
         return datetime.fromisoformat(str(val).replace("Z", "+00:00"))
     except (ValueError, TypeError):
-        return datetime.utcnow()
+        return datetime.now(timezone.utc)

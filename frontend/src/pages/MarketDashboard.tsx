@@ -34,10 +34,11 @@ import {
   ComposedChart, Area,
 } from 'recharts';
 import BubbleChart from '../components/charts/BubbleChart';
-import api from '../services/api';
 import { formatDate } from '../utils/format';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import useAdminHealth from '../hooks/useAdminHealth';
+import { useVolatility } from '../hooks/useVolatility';
+import { useMarketSnapshots } from '../hooks/useMarketSnapshots';
 
 const TopDownView = React.lazy(() => import('../components/market/TopDownView'));
 const BottomUpView = React.lazy(() => import('../components/market/BottomUpView'));
@@ -812,8 +813,9 @@ const MarketDashboard: React.FC = () => {
     return true;
   }, [universeFilter, portfolioSymbols, constituentSet]);
 
-  const [volData, setVolData] = React.useState<VolData | null>(null);
-  const [trackedRows, setTrackedRows] = React.useState<any[]>([]);
+  const volatilityQuery = useVolatility();
+  const volData = (volatilityQuery.data as VolData | null) ?? null;
+  const { data: trackedRows = [] } = useMarketSnapshots();
 
   const fetchDashboard = React.useCallback(async () => {
     setLoading(true);
@@ -830,19 +832,6 @@ const MarketDashboard: React.FC = () => {
   }, []);
 
   React.useEffect(() => { void fetchDashboard(); }, [fetchDashboard]);
-
-  React.useEffect(() => {
-    marketDataApi.getVolatilityDashboard().then((d: any) => setVolData(d)).catch(() => {});
-  }, []);
-
-  React.useEffect(() => {
-    api.get('/market-data/snapshots?limit=5000')
-      .then((r: any) => {
-        const rows = r?.data?.rows;
-        if (Array.isArray(rows)) setTrackedRows(rows);
-      })
-      .catch(() => {});
-  }, []);
 
   const filteredTrackedRows = React.useMemo(
     () => trackedRows.filter((r) => symbolFilter(r?.symbol)),

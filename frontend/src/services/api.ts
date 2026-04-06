@@ -1,15 +1,23 @@
 /// <reference types="vite/client" />
-import axios, { AxiosResponse, AxiosError } from 'axios';
+import axios, {
+  AxiosResponse,
+  AxiosError,
+  type AxiosAdapter,
+  type InternalAxiosRequestConfig,
+} from 'axios';
 
 import { normalizeRegimeCurrentBody } from './regimeCurrentNormalize';
 
 declare module 'axios' {
   interface AxiosRequestConfig<D = any> {
     _noRetry?: boolean;
+    /** When true, skip GET request coalescing (same URL + auth may run in parallel). */
+    _noDedupe?: boolean;
   }
 
   interface InternalAxiosRequestConfig<D = any> {
     _noRetry?: boolean;
+    _noDedupe?: boolean;
   }
 }
 
@@ -73,6 +81,42 @@ const api = axios.create({
   // Connection optimization
   maxRedirects: 3,
 });
+
+// Coalesce concurrent identical GETs (same resolved URI + Authorization) to one network call.
+const inflightGetRequests = new Map<string, Promise<unknown>>();
+const baseHttpAdapter = api.defaults.adapter;
+if (typeof baseHttpAdapter === 'function') {
+  api.defaults.adapter = (config: InternalAxiosRequestConfig) => {
+    const c = config as InternalAxiosRequestConfig & { _noDedupe?: boolean };
+    const method = (c.method || 'get').toLowerCase();
+    if (method !== 'get' || c._noDedupe) {
+      return baseHttpAdapter(c);
+    }
+    let uri: string;
+    try {
+      uri = axios.getUri(c);
+    } catch {
+      const base = c.baseURL ?? '';
+      const path = c.url ?? '';
+      uri = `${base}${path}`;
+    }
+    const auth = String(
+      c.headers?.get?.('Authorization') ??
+        (c.headers as Record<string, string | undefined>)?.Authorization ??
+        '',
+    );
+    const key = `${uri}::${auth}`;
+    const existing = inflightGetRequests.get(key);
+    if (existing) {
+      return existing as ReturnType<AxiosAdapter>;
+    }
+    const promise = baseHttpAdapter(c).finally(() => {
+      inflightGetRequests.delete(key);
+    });
+    inflightGetRequests.set(key, promise);
+    return promise;
+  };
+}
 
 api.interceptors.request.use(
   (config) => {
@@ -184,7 +228,7 @@ api.interceptors.response.use(
       }
     }
 
-    if (error.response && [502, 503, 504].includes(error.response.status) && originalRequest) {
+    if (error.response && [500, 502, 503, 504].includes(error.response.status) && originalRequest) {
       const method = (originalRequest.method || 'get').toLowerCase();
       const isIdempotent = ['get', 'head', 'options'].includes(method);
       if (isIdempotent && !orig._noRetry) {
@@ -548,6 +592,15 @@ export const marketDataApi = {
   },
   getSnapshotHistory: async (symbol: string, days: number = 200) => {
     return makeOptimizedRequest(() => api.get(`/market-data/snapshots/${encodeURIComponent(symbol)}/history?days=${days}`));
+  },
+  getSnapshotHistoryBatch: async (symbolsCsv: string, days: number = 90) => {
+    const params = new URLSearchParams({
+      symbols: symbolsCsv,
+      days: String(days),
+    });
+    return makeOptimizedRequest(() =>
+      api.get(`/market-data/snapshots/history/batch?${params.toString()}`),
+    );
   },
   getLatestBrief: async (type: string = 'daily') => {
     return makeOptimizedRequest(() => api.get(`/market-data/intelligence/latest?brief_type=${type}`));

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import redis
@@ -57,7 +57,7 @@ def check_regime_alerts() -> dict:
     db = SessionLocal()
     try:
         monitor = RegimeMonitor(db)
-        day_key = datetime.utcnow().date().isoformat()
+        day_key = datetime.now(timezone.utc).date().isoformat()
         r = _regime_redis()
         prefix = f"regime_monitor:day:{day_key}"
         vix_open: Optional[float] = None
@@ -122,7 +122,7 @@ def check_regime_alerts() -> dict:
                     )
 
         return {
-            "checked_at": datetime.utcnow().isoformat(),
+            "checked_at": datetime.now(timezone.utc).isoformat(),
             "alerts": [
                 {
                     "type": a.alert_type,

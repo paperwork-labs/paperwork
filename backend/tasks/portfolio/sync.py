@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from celery import shared_task
 
@@ -25,7 +25,7 @@ def _extract_count(result: dict, key: str) -> int | None:
     return None
 
 
-SYNC_LOCK_TTL_SECONDS = 900  # 15 minutes - matches soft_time_limit
+SYNC_LOCK_TTL_SECONDS = 1020  # Must exceed time_limit (960s)
 
 
 @shared_task(name="backend.tasks.account_sync.sync_account_task", soft_time_limit=900, time_limit=960)
@@ -51,7 +51,7 @@ def sync_account_task(account_id: int, sync_type: str = "comprehensive") -> dict
     
     session = SessionLocal()
     sync_record = None
-    started_at = datetime.utcnow()
+    started_at = datetime.now(timezone.utc)
     try:
         account = session.query(BrokerAccount).filter(BrokerAccount.id == account_id).first()
         if not account:
@@ -84,7 +84,7 @@ def sync_account_task(account_id: int, sync_type: str = "comprehensive") -> dict
         finally:
             loop.close()
 
-        completed_at = datetime.utcnow()
+        completed_at = datetime.now(timezone.utc)
         duration_seconds = int((completed_at - started_at).total_seconds())
 
         is_error = isinstance(result, dict) and result.get("status") == "error"
@@ -131,13 +131,18 @@ def sync_account_task(account_id: int, sync_type: str = "comprehensive") -> dict
         if sync_record:
             try:
                 sync_record.status = SyncStatus.ERROR
-                sync_record.completed_at = datetime.utcnow()
+                sync_record.completed_at = datetime.now(timezone.utc)
                 sync_record.duration_seconds = int(
                     (sync_record.completed_at - started_at).total_seconds()
                 )
                 sync_record.error_message = str(e)[:500]
                 session.commit()
-            except Exception:
+            except Exception as persist_err:
+                logger.warning(
+                    "Failed to persist sync error state for account %s: %s",
+                    account_id,
+                    persist_err,
+                )
                 session.rollback()
 
         # Also reset the BrokerAccount status so it's not stuck RUNNING
@@ -148,7 +153,12 @@ def sync_account_task(account_id: int, sync_type: str = "comprehensive") -> dict
                 acct.sync_status = SyncStatus.ERROR
                 acct.sync_error_message = str(e)[:500]
                 session.commit()
-        except Exception:
+        except Exception as reset_err:
+            logger.warning(
+                "Failed to reset BrokerAccount sync status after error for account %s: %s",
+                account_id,
+                reset_err,
+            )
             session.rollback()
 
         return {"status": "error", "error": str(e)}
@@ -236,7 +246,7 @@ def recover_stale_syncs() -> dict:
     """
     session = SessionLocal()
     try:
-        cutoff = datetime.utcnow() - timedelta(minutes=STALE_SYNC_THRESHOLD_MINUTES)
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=STALE_SYNC_THRESHOLD_MINUTES)
         stale_accounts = (
             session.query(BrokerAccount)
             .filter(
@@ -270,7 +280,7 @@ def recover_stale_syncs() -> dict:
             )
             for sr in stale_syncs:
                 sr.status = SyncStatus.ERROR
-                sr.completed_at = datetime.utcnow()
+                sr.completed_at = datetime.now(timezone.utc)
                 sr.duration_seconds = int((sr.completed_at - sr.started_at).total_seconds())
                 sr.error_message = "Timed out — auto-recovered by recover_stale_syncs"
 

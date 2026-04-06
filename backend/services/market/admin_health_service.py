@@ -110,8 +110,8 @@ class AdminHealthService:
         try:
             app_settings = get_or_create_app_settings(db)
             market_only = bool(app_settings.market_only_mode)
-        except Exception:
-            logger.debug("Failed to read app_settings for market_only_mode")
+        except Exception as e:
+            logger.warning("Failed to read app_settings for market_only_mode: %s", e)
 
         dims: Dict[str, Any] = {
             "coverage": coverage,
@@ -204,8 +204,8 @@ class AdminHealthService:
                 1800,
                 json.dumps(result),
             )
-        except Exception:
-            logger.debug("Failed to cache pre-market readiness result")
+        except Exception as e:
+            logger.warning("Failed to cache pre-market readiness result: %s", e)
 
         return result
 
@@ -635,7 +635,7 @@ class AdminHealthService:
         try:
             from backend.models import BrokerAccount
 
-            cutoff = datetime.utcnow() - timedelta(hours=24)
+            cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
             accounts = db.query(BrokerAccount).filter(
                 BrokerAccount.is_enabled.is_(True)
             ).all()

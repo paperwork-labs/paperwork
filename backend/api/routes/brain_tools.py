@@ -8,7 +8,7 @@ Portfolio and orders use settings.BRAIN_TOOLS_USER_ID (default 1).
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -121,7 +121,7 @@ async def tools_portfolio(
 
     return {
         "user_id": uid,
-        "as_of": datetime.utcnow().isoformat(),
+        "as_of": datetime.now(timezone.utc).isoformat(),
         "summary": {
             "total_market_value": total_equity_mv,
             "total_cost_basis": total_cost,

@@ -6,7 +6,7 @@ Endpoints for current prices, historical data, and indicator series.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -96,25 +96,28 @@ async def get_indicator_series(
     symbol: str,
     indicators: str | None = None,
     period: str = "1y",
+    limit: int = Query(5000, ge=1, le=5000, description="Max history rows returned"),
     user: User | None = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ):
     """Read pre-computed indicator series from MarketSnapshotHistory."""
+    sym = symbol.strip().upper()
     period_days = {
         "1mo": 35, "3mo": 100, "6mo": 200, "1y": 370,
         "2y": 740, "3y": 1100, "5y": 1850, "max": 36500,
     }
     days = period_days.get(period, 370)
-    start_date = datetime.utcnow() - timedelta(days=days)
+    start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
     rows = (
         db.query(MarketSnapshotHistory)
         .filter(
-            MarketSnapshotHistory.symbol == symbol,
+            MarketSnapshotHistory.symbol == sym,
             MarketSnapshotHistory.analysis_type == "technical_snapshot",
             MarketSnapshotHistory.as_of_date >= start_date,
         )
         .order_by(MarketSnapshotHistory.as_of_date.asc())
+        .limit(limit)
         .all()
     )
 
@@ -159,7 +162,7 @@ async def get_indicator_series(
     if len(rows) < expected_rows * 0.8 and expected_rows > 0:
         bar_count = (
             db.query(PriceData)
-            .filter(PriceData.symbol == symbol, PriceData.interval == "1d", PriceData.date >= start_date)
+            .filter(PriceData.symbol == sym, PriceData.interval == "1d", PriceData.date >= start_date)
             .count()
         )
         if bar_count >= expected_rows * 0.7:
@@ -167,7 +170,7 @@ async def get_indicator_series(
                 from backend.tasks.market.history import snapshot_for_symbol
 
                 snapshot_for_symbol.delay(
-                    symbol=symbol, start_date=start_date.strftime("%Y-%m-%d")
+                    symbol=sym, start_date=start_date.strftime("%Y-%m-%d")
                 )
                 backfill_requested = True
             except Exception:
@@ -177,13 +180,13 @@ async def get_indicator_series(
 
     if dates and rows:
         latest_hist_date = rows[-1].as_of_date
-        today = datetime.utcnow().date()
+        today = datetime.now(timezone.utc).date()
         if hasattr(latest_hist_date, "date"):
             latest_hist_date = latest_hist_date.date()
         if latest_hist_date < today:
             snapshot = (
                 db.query(MarketSnapshot)
-                .filter(MarketSnapshot.symbol == symbol, MarketSnapshot.analysis_type == "technical_snapshot")
+                .filter(MarketSnapshot.symbol == sym, MarketSnapshot.analysis_type == "technical_snapshot")
                 .order_by(MarketSnapshot.analysis_timestamp.desc())
                 .first()
             )
@@ -196,7 +199,7 @@ async def get_indicator_series(
                     series[col].append(val)
 
     return {
-        "symbol": symbol,
+        "symbol": sym,
         "rows": len(dates),
         "backfill_requested": backfill_requested,
         "price_data_pending": price_data_pending,

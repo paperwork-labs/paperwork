@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import List, Dict, Any, Optional
 import logging
 
@@ -90,7 +90,8 @@ async def get_unified_options_portfolio(
                 if not exp:
                     return 0
                 return (exp - date.today()).days
-            except Exception:
+            except Exception as e:
+                logger.warning("days_to_expiry calculation failed: %s", e)
                 return 0
 
         positions: List[Dict[str, Any]] = []
@@ -109,14 +110,22 @@ async def get_unified_options_portfolio(
                     mv = float(abs(p.total_cost))
                     if cur_price == 0:
                         cur_price = mv / (abs_qty * mult)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(
+                    "Options position market value / price derivation failed (position id=%s): %s",
+                    getattr(p, "id", None),
+                    e,
+                )
             u_pnl = float(p.unrealized_pnl or 0)
             if u_pnl == 0 and total_cost:
                 try:
                     u_pnl = mv - abs(total_cost)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(
+                        "Options unrealized PnL fallback failed (position id=%s): %s",
+                        getattr(p, "id", None),
+                        e,
+                    )
             avg_cost = abs(total_cost) / (abs_qty * mult) if qty else 0.0
             sym_value = p.symbol or ""
             if not sym_value:
@@ -124,7 +133,12 @@ async def get_unified_options_portfolio(
                     # Compose a readable OCC-like label if symbol missing
                     exp = p.expiry_date.isoformat() if p.expiry_date else ""
                     sym_value = f"{p.underlying_symbol or ''} {str(p.option_type or '').upper()} ${float(p.strike_price or 0)} {exp}"
-                except Exception:
+                except Exception as e:
+                    logger.warning(
+                        "Could not compose OCC-like symbol for option id=%s: %s",
+                        getattr(p, "id", None),
+                        e,
+                    )
                     sym_value = p.underlying_symbol or "UNKNOWN"
             pos: Dict[str, Any] = {
                 "id": p.id,
@@ -157,7 +171,7 @@ async def get_unified_options_portfolio(
                 "realized_pnl": float(p.realized_pnl) if p.realized_pnl is not None else None,
                 "commission": float(p.commission) if p.commission is not None else None,
                 "last_updated": (
-                    p.updated_at or p.last_updated or datetime.utcnow()
+                    p.updated_at or p.last_updated or datetime.now(timezone.utc)
                 ).isoformat(),
             }
             positions.append(pos)
@@ -442,11 +456,18 @@ async def gateway_connect(
             managed = ib.managedAccounts() or [] if ok else []
             ib.disconnect()
             return ok, host, port, cid, managed
-        except Exception:
+        except Exception as e:
+            logger.warning(
+                "IBKR gateway connectivity probe failed (host=%s port=%s client_id=%s): %s",
+                host,
+                port,
+                cid,
+                e,
+            )
             try:
                 ib.disconnect()
             except Exception:
-                pass
+                pass  # Best-effort cleanup; connection may not exist
             return False, host, port, cid, []
 
     try:

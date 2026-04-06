@@ -10,7 +10,7 @@ from any supported broker, while keeping the core models broker-neutral.
 import logging
 import asyncio
 from typing import Dict
-from datetime import datetime
+from datetime import datetime, timezone
 
 from backend.database import SessionLocal
 from backend.models import BrokerAccount
@@ -142,7 +142,7 @@ class BrokerSyncService:
             )
 
             # Update sync status
-            broker_account.last_successful_sync = datetime.utcnow()
+            broker_account.last_successful_sync = datetime.now(timezone.utc)
             from backend.models.broker_account import SyncStatus
 
             broker_account.sync_status = SyncStatus.SUCCESS
@@ -227,7 +227,7 @@ class BrokerSyncService:
 
             result = await maybe_coro if inspect.isawaitable(maybe_coro) else maybe_coro
 
-            broker_account.last_successful_sync = datetime.utcnow()
+            broker_account.last_successful_sync = datetime.now(timezone.utc)
             from backend.models.broker_account import SyncStatus
 
             broker_account.sync_status = SyncStatus.SUCCESS

@@ -1,7 +1,7 @@
 import asyncio
 import pandas as pd
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 import pytest
@@ -16,7 +16,7 @@ from backend.services.market.market_data_service import (
 
 
 def _make_df(days: int = 5) -> pd.DataFrame:
-    now = datetime.utcnow().replace(microsecond=0)
+    now = datetime.now(timezone.utc).replace(microsecond=0)
     dates = [now - timedelta(days=i) for i in range(days)][::-1]
     df = pd.DataFrame(
         [{"Open": 1.0, "High": 1.0, "Low": 1.0, "Close": 1.0, "Volume": 1} for _ in dates],

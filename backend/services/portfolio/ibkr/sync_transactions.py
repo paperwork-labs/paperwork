@@ -2,7 +2,7 @@
 
 import logging
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from statistics import median
 from typing import Dict
@@ -75,7 +75,7 @@ async def sync_trades(
                 total_value=Decimal(str(td.get("total_value", 0))),
                 commission=Decimal(str(td.get("commission", 0))),
                 fees=Decimal(str(td.get("fees", 0))),
-                execution_time=td.get("execution_time") or datetime.utcnow(),
+                execution_time=td.get("execution_time") or datetime.now(timezone.utc),
                 order_time=td.get("order_time"),
                 execution_id=exec_id,
                 order_id=str(td.get("order_id") or "") or None,
@@ -168,7 +168,7 @@ async def sync_cash_transactions(
                             tx_data.get("transaction_date")
                             or tx_data.get("settlement_date")
                             or tx_data.get("report_date")
-                            or datetime.utcnow().date()
+                            or datetime.now(timezone.utc).date()
                         )
                         pay_date = (
                             tx_data.get("settlement_date")
@@ -268,8 +268,8 @@ async def sync_cash_transactions(
         try:
             db.add(TransactionSyncStatus(
                 account_id=broker_account.id,
-                last_sync_date=datetime.utcnow(),
-                last_successful_sync=datetime.utcnow(),
+                last_sync_date=datetime.now(timezone.utc),
+                last_successful_sync=datetime.now(timezone.utc),
                 sync_status="completed",
                 total_transactions=synced_count,
                 total_dividends=dividend_count,

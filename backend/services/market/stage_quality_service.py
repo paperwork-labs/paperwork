@@ -63,11 +63,12 @@ def _as_naive_utc(ts: datetime | None) -> datetime | None:
     try:
         if ts.tzinfo is not None:
             return ts.astimezone(timezone.utc).replace(tzinfo=None)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("_as_naive_utc astimezone failed for ts=%r: %s", ts, e)
     try:
         return ts.replace(tzinfo=None)
-    except Exception:
+    except Exception as e:
+        logger.warning("_as_naive_utc replace(tzinfo=None) failed for ts=%r: %s", ts, e)
         return ts
 
 
@@ -84,7 +85,7 @@ class StageQualityService:
         lookback_days: int = 120,
     ) -> Dict[str, Any]:
         lookback_days = max(7, min(int(lookback_days), 3650))
-        cutoff = datetime.utcnow() - timedelta(days=lookback_days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days)
 
         rows = (
             db.query(
@@ -130,7 +131,9 @@ class StageQualityService:
                 invalid_previous_link_count += 1
 
             as_of_naive = _as_naive_utc(as_of_ts)
-            if as_of_naive is None or as_of_naive < cutoff:
+            if as_of_naive is None:
+                stale_stage_count += 1
+            elif as_of_naive.replace(tzinfo=timezone.utc) < cutoff:
                 stale_stage_count += 1
 
         recent_rows = (
@@ -218,7 +221,7 @@ class StageQualityService:
                 k: int(stage_counter.get(k, 0))
                 for k in sorted(VALID_STAGE_LABELS)
             },
-            "checked_at": datetime.utcnow().isoformat(),
+            "checked_at": datetime.now(timezone.utc).isoformat(),
         }
 
     def repair_stage_history_window(
@@ -335,5 +338,5 @@ class StageQualityService:
             "total_symbols": len(symbols),
             "touched_symbols": touched_symbols,
             "touched_rows": touched_rows,
-            "updated_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
         }

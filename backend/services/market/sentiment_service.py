@@ -287,43 +287,50 @@ class SentimentService:
             return None
     
     async def _fetch_finnhub(self, symbol: str) -> Optional[Dict[str, Any]]:
-        """Fetch news sentiment from Finnhub API."""
+        """Fetch company news sentiment from Finnhub (``/news-sentiment``, not company-news)."""
         api_key = getattr(settings, "FINNHUB_API_KEY", None)
         if not api_key:
             return None
-        
+
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
-                # Get news for past 7 days
-                from_date = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
-                to_date = datetime.now().strftime("%Y-%m-%d")
-                
                 resp = await client.get(
-                    "https://finnhub.io/api/v1/company-news",
-                    params={
-                        "symbol": symbol,
-                        "from": from_date,
-                        "to": to_date,
-                        "token": api_key,
-                    },
+                    "https://finnhub.io/api/v1/news-sentiment",
+                    params={"symbol": symbol, "token": api_key},
                 )
-                
+
                 if resp.status_code != 200:
                     return None
-                
-                articles = resp.json()
-                
-                if not articles:
+
+                data = resp.json()
+                if not isinstance(data, dict):
                     return None
-                
-                # Finnhub doesn't include sentiment in company-news,
-                # would need to use news-sentiment endpoint
-                # For now, return neutral with article count
-                return {
-                    "score": 0.0,
-                    "articles": len(articles),
-                }
-                
+
+                buzz = data.get("buzz") if isinstance(data.get("buzz"), dict) else {}
+                articles = int(buzz.get("articlesInLastWeek") or 0)
+
+                score: float
+                raw = data.get("companyNewsScore")
+                if raw is not None:
+                    score = float(raw)
+                else:
+                    sent = data.get("sentiment")
+                    if isinstance(sent, dict):
+                        bull = float(sent.get("bullishPercent") or 0.0)
+                        bear = float(sent.get("bearishPercent") or 0.0)
+                        total = bull + bear
+                        score = (bull - bear) / total if total > 0 else 0.0
+                    else:
+                        return None
+
+                score = max(-1.0, min(1.0, score))
+
+                if articles == 0 and raw is None:
+                    # No buzz volume and no explicit score — treat as no signal
+                    return None
+
+                return {"score": score, "articles": articles}
+
         except Exception as e:
             logger.debug("Finnhub API error for %s: %s", symbol, e)
             return None

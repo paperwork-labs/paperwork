@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -267,7 +267,7 @@ class MarketDashboardService:
         if not tracked:
             return []
 
-        cutoff = datetime.utcnow() - timedelta(days=120)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=120)
         history = (
             db.query(
                 MarketSnapshotHistory.as_of_date,
@@ -335,13 +335,19 @@ class MarketDashboardService:
 
     def _build_upcoming_earnings(self, rows: list[_SummaryRow]) -> list[dict[str, Any]]:
         from datetime import timedelta
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         horizon = now + timedelta(days=7)
         result = []
         for r in rows:
             if not isinstance(r.next_earnings, datetime):
                 continue
-            if now <= r.next_earnings <= horizon:
+            ne = r.next_earnings
+            ne_utc = (
+                ne.replace(tzinfo=timezone.utc)
+                if ne.tzinfo is None
+                else ne.astimezone(timezone.utc)
+            )
+            if now <= ne_utc <= horizon:
                 result.append({
                     "symbol": r.symbol,
                     "next_earnings": r.next_earnings.isoformat(),
@@ -485,7 +491,7 @@ class MarketDashboardService:
         snapshot_count = len(rows)
 
         empty_payload: dict[str, Any] = {
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "latest_snapshot_at": None,
             "tracked_count": 0,
             "snapshot_count": 0,
@@ -771,7 +777,7 @@ class MarketDashboardService:
         )
 
         return {
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "latest_snapshot_at": latest_snapshot_ts.isoformat() if latest_snapshot_ts else None,
             "tracked_count": tracked_count,
             "snapshot_count": snapshot_count,

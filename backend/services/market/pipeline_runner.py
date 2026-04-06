@@ -7,6 +7,7 @@ Used by the nightly pipeline and auto-remediation tasks.
 """
 
 import logging
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
@@ -147,8 +148,21 @@ class PipelineRunner:
 
             logger.info("Pipeline [%s]: Starting stage '%s'", self.name, stage_name)
 
+            timeout_s = stage["timeout"]
             try:
-                result = stage["func"](*stage["args"], **stage["kwargs"])
+                # NOTE: shutdown(wait=False, cancel_futures=True) prevents the
+                # executor from blocking, but the underlying OS thread may keep
+                # running after a timeout.  Python threads cannot be killed.
+                # Hard cancellation relies on Celery's soft_time_limit at the
+                # task level, or cooperative checks inside each stage function.
+                executor = ThreadPoolExecutor(max_workers=1)
+                try:
+                    future = executor.submit(
+                        stage["func"], *stage["args"], **stage["kwargs"]
+                    )
+                    result = future.result(timeout=timeout_s)
+                finally:
+                    executor.shutdown(wait=False, cancel_futures=True)
 
                 # Extract record count if returned
                 records = 0
@@ -173,6 +187,31 @@ class PipelineRunner:
                     "Pipeline [%s]: Stage '%s' completed in %.1fs",
                     self.name, stage_name, stage_result.duration_s
                 )
+
+            except FuturesTimeoutError:
+                err_msg = (
+                    f"Stage '{stage_name}' exceeded timeout of {timeout_s}s"
+                )
+                logger.error(
+                    "Pipeline [%s]: %s",
+                    self.name,
+                    err_msg,
+                )
+                stage_result = StageResult(
+                    stage=stage_name,
+                    success=False,
+                    duration_s=time.time() - stage_start,
+                    error=err_msg,
+                )
+                results.append(stage_result)
+
+                if self._progress_callback:
+                    self._progress_callback(stage_name, "failed")
+
+                if not stage["continue_on_error"]:
+                    overall_success = False
+                    overall_error = err_msg
+                    break
 
             except Exception as e:
                 logger.exception("Pipeline [%s]: Stage '%s' failed", self.name, stage_name)

@@ -1,7 +1,7 @@
 """Strategy CRUD, composable rule evaluation, backtest, and template routes."""
 
 from __future__ import annotations
-from datetime import date
+from datetime import date, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -572,7 +572,7 @@ def run_backtest(
     import time
     from datetime import datetime
 
-    started_at = datetime.utcnow()
+    started_at = datetime.now(timezone.utc)
     start_time = time.perf_counter()
 
     engine = BacktestEngine()
@@ -626,7 +626,7 @@ def run_backtest(
             "max_loss": result.metrics.max_loss,
         },
         started_at=started_at,
-        completed_at=datetime.utcnow(),
+        completed_at=datetime.now(timezone.utc),
     )
     db.add(backtest_run)
     db.commit()

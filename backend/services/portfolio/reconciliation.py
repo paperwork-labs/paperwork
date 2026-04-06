@@ -5,7 +5,7 @@ and generates discrepancy alerts.
 """
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
 from typing import Optional
@@ -76,7 +76,7 @@ class ReconciliationService:
             return []
 
         discrepancies = []
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         # Check internal positions against broker
         for symbol, internal_pos in internal_positions.items():

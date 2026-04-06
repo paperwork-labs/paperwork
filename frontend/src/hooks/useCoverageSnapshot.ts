@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import { useUserPreferences } from './useUserPreferences';
 import {
@@ -31,34 +32,31 @@ const defaultSparkline = deriveSparklineSeries();
 
 const useCoverageSnapshot = (opts?: CoverageSnapshotOptions): UseCoverageSnapshotResult => {
   const { timezone } = useUserPreferences();
-  const [snapshot, setSnapshot] = useState<any | null>(null);
-  const [loading, setLoading] = useState(false);
+  const fillW = opts?.fillTradingDaysWindow ?? null;
+  const fillL = opts?.fillLookbackDays ?? null;
 
-  const fetchSnapshot = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params: any = {};
+  const { data: snapshot = null, isPending: loading, refetch } = useQuery({
+    queryKey: ['market-data', 'coverage', fillW, fillL],
+    queryFn: async () => {
+      const params: Record<string, number> = {};
       if (typeof opts?.fillTradingDaysWindow === 'number') {
         params.fill_trading_days_window = opts.fillTradingDaysWindow;
       }
       if (typeof opts?.fillLookbackDays === 'number') {
         params.fill_lookback_days = opts.fillLookbackDays;
       }
-      const response = await api.get('/market-data/coverage', Object.keys(params).length ? { params } : undefined);
-      setSnapshot(response.data || null);
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error('Failed to load coverage snapshot', error);
-      }
-      setSnapshot(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [opts?.fillTradingDaysWindow, opts?.fillLookbackDays]);
+      const response = await api.get(
+        '/market-data/coverage',
+        Object.keys(params).length ? { params } : undefined,
+      );
+      return response.data || null;
+    },
+    staleTime: 60_000,
+  });
 
-  useEffect(() => {
-    fetchSnapshot();
-  }, [fetchSnapshot]);
+  const refresh = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
 
   const sparkline = useMemo(
     () =>
@@ -81,7 +79,7 @@ const useCoverageSnapshot = (opts?: CoverageSnapshotOptions): UseCoverageSnapsho
   return {
     snapshot,
     loading,
-    refresh: fetchSnapshot,
+    refresh,
     sparkline: sparkline || defaultSparkline,
     kpis,
     actions,
@@ -90,4 +88,3 @@ const useCoverageSnapshot = (opts?: CoverageSnapshotOptions): UseCoverageSnapsho
 };
 
 export default useCoverageSnapshot;
-

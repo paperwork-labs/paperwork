@@ -7,7 +7,7 @@ Uses OAuth tokens from the aggregator callback flow. Returns empty results when 
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import aiohttp
@@ -326,7 +326,7 @@ class SchwabClient:
 
         # Schwab API typically limits transactions to 60 days
         effective_days = min(days, 60)
-        end = datetime.utcnow()
+        end = datetime.now(timezone.utc)
         start = end - timedelta(days=effective_days)
         params = {
             "startDate": start.strftime("%Y-%m-%dT%H:%M:%S.000Z"),

@@ -7,7 +7,7 @@ from backend.models.broker_account import BrokerType, AccountType, AccountStatus
 from backend.models.trade import Trade
 from backend.models.transaction import Transaction, TransactionType
 from backend.models.options import Option
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 
 
 @pytest.fixture
@@ -113,7 +113,7 @@ def test_transaction_unique_external_and_execution(db, broker_account):
         amount=1.0,
         net_amount=1.0,
         currency="USD",
-        transaction_date=datetime.utcnow(),
+        transaction_date=datetime.now(timezone.utc),
     )
     db.add(tx1)
     db.commit()
@@ -127,7 +127,7 @@ def test_transaction_unique_external_and_execution(db, broker_account):
         amount=1.0,
         net_amount=1.0,
         currency="USD",
-        transaction_date=datetime.utcnow(),
+        transaction_date=datetime.now(timezone.utc),
     )
     nested = db.begin_nested()
     db.add(tx2)
@@ -144,7 +144,7 @@ def test_transaction_unique_external_and_execution(db, broker_account):
         amount=1.0,
         net_amount=1.0,
         currency="USD",
-        transaction_date=datetime.utcnow(),
+        transaction_date=datetime.now(timezone.utc),
     )
     db.add(tx3)
     db.commit()
@@ -158,7 +158,7 @@ def test_transaction_unique_external_and_execution(db, broker_account):
         amount=1.0,
         net_amount=1.0,
         currency="USD",
-        transaction_date=datetime.utcnow(),
+        transaction_date=datetime.now(timezone.utc),
     )
     nested = db.begin_nested()
     db.add(tx4)

@@ -12,10 +12,11 @@ from __future__ import annotations
 import bisect
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from celery import shared_task
+from celery.exceptions import SoftTimeLimitExceeded
 
 from backend.database import SessionLocal
 from backend.models import Position
@@ -320,6 +321,9 @@ def daily_bootstrap(
     _t0 = _time.monotonic()
     try:
         res1 = constituents()
+    except SoftTimeLimitExceeded:
+        logger.warning("Task %s hit soft time limit", "admin_coverage_backfill")
+        raise
     except Exception as exc:
         logger.warning("daily_bootstrap: constituents failed (non-fatal): %s", exc)
         res1 = {"status": "error", "error": str(exc)}
@@ -328,6 +332,9 @@ def daily_bootstrap(
     _t0 = _time.monotonic()
     try:
         res2 = tracked_cache()
+    except SoftTimeLimitExceeded:
+        logger.warning("Task %s hit soft time limit", "admin_coverage_backfill")
+        raise
     except Exception as exc:
         logger.warning("daily_bootstrap: tracked_cache failed (non-fatal): %s", exc)
         res2 = {"status": "error", "error": str(exc)}
@@ -336,6 +343,9 @@ def daily_bootstrap(
     _t0 = _time.monotonic()
     try:
         res3 = daily_bars(days=_backfill_days)
+    except SoftTimeLimitExceeded:
+        logger.warning("Task %s hit soft time limit", "admin_coverage_backfill")
+        raise
     except Exception as exc:
         logger.warning("daily_bootstrap: daily_bars failed (non-fatal): %s", exc)
         res3 = {"status": "error", "error": str(exc)}
@@ -344,6 +354,9 @@ def daily_bootstrap(
     _t0 = _time.monotonic()
     try:
         res4 = recompute_universe(batch_size=50)
+    except SoftTimeLimitExceeded:
+        logger.warning("Task %s hit soft time limit", "admin_coverage_backfill")
+        raise
     except Exception as exc:
         logger.warning("daily_bootstrap: recompute_universe failed (non-fatal): %s", exc)
         res4 = {"status": "error", "error": str(exc)}
@@ -352,6 +365,9 @@ def daily_bootstrap(
     _t0 = _time.monotonic()
     try:
         res5 = compute_daily()
+    except SoftTimeLimitExceeded:
+        logger.warning("Task %s hit soft time limit", "admin_coverage_backfill")
+        raise
     except Exception as exc:
         logger.warning("Regime computation failed (non-fatal): %s", exc)
         res5 = {"status": "error", "error": str(exc)}
@@ -360,6 +376,9 @@ def daily_bootstrap(
     _t0 = _time.monotonic()
     try:
         res6 = _run_scan_overlay()
+    except SoftTimeLimitExceeded:
+        logger.warning("Task %s hit soft time limit", "admin_coverage_backfill")
+        raise
     except Exception as exc:
         logger.warning("Scan overlay failed (non-fatal): %s", exc)
         res6 = {"status": "error", "error": str(exc)}
@@ -371,6 +390,9 @@ def daily_bootstrap(
         res7 = snapshot_last_n_days(
             days=int(resolved_days), batch_size=int(history_batch_size)
         )
+    except SoftTimeLimitExceeded:
+        logger.warning("Task %s hit soft time limit", "admin_coverage_backfill")
+        raise
     except Exception as exc:
         res7 = {"status": "error", "error": str(exc)}
     _append("admin_snapshots_history_backfill", res7, _time.monotonic() - _t0)
@@ -378,6 +400,9 @@ def daily_bootstrap(
     _t0 = _time.monotonic()
     try:
         res8 = _evaluate_exit_cascade_all()
+    except SoftTimeLimitExceeded:
+        logger.warning("Task %s hit soft time limit", "admin_coverage_backfill")
+        raise
     except Exception as exc:
         logger.warning("Exit cascade evaluation failed (non-fatal): %s", exc)
         res8 = {"status": "error", "error": str(exc)}
@@ -388,6 +413,9 @@ def daily_bootstrap(
         from backend.tasks.strategy.tasks import evaluate_strategies_task
 
         res9 = evaluate_strategies_task()
+    except SoftTimeLimitExceeded:
+        logger.warning("Task %s hit soft time limit", "admin_coverage_backfill")
+        raise
     except Exception as exc:
         logger.warning("Strategy evaluation failed (non-fatal): %s", exc)
         res9 = {"status": "error", "error": str(exc)}
@@ -401,6 +429,9 @@ def daily_bootstrap(
     try:
         from backend.tasks.market.maintenance import audit_quality as _audit_quality
         res10b = _audit_quality()
+    except SoftTimeLimitExceeded:
+        logger.warning("Task %s hit soft time limit", "admin_coverage_backfill")
+        raise
     except Exception as exc:
         logger.warning("Audit quality refresh failed (non-fatal): %s", exc)
         res10b = {"status": "error", "error": str(exc)}
@@ -411,6 +442,9 @@ def daily_bootstrap(
         from backend.tasks.intelligence.tasks import generate_daily_digest_task
 
         res11 = generate_daily_digest_task(deliver_brain=True)
+    except SoftTimeLimitExceeded:
+        logger.warning("Task %s hit soft time limit", "admin_coverage_backfill")
+        raise
     except Exception as exc:
         logger.warning("Daily digest generation failed (non-fatal): %s", exc)
         res11 = {"status": "error", "error": str(exc)}
@@ -454,7 +488,7 @@ def health_check() -> dict:
         payload = {
             "schema_version": 1,
             "snapshot": snapshot,
-            "updated_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
             "status": status_info,
         }
         redis_client = market_data_service.redis_client

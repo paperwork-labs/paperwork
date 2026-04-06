@@ -4,7 +4,7 @@ Uses IB Gateway for real-time data when connected; falls back to DB when offline
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, List
 import logging
 
@@ -320,7 +320,7 @@ async def get_live_portfolio(
         return {
             "accounts": accounts,
             "portfolio_summary": summary,
-            "last_updated": datetime.utcnow().isoformat(),
+            "last_updated": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
         logger.error(f"❌ Live portfolio error for user {current_user.id}: {e}")

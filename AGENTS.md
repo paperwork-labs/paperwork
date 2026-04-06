@@ -6,8 +6,8 @@ Welcome, agent. This is a quantitative portfolio intelligence platform built for
 
 | Layer | Stack |
 |-------|-------|
-| Backend | Python 3.11, FastAPI, Celery, PostgreSQL 18, Redis, SQLAlchemy 2.0, Alembic |
-| Frontend | React 19, TypeScript 5, Vite, Radix UI, Tailwind CSS, React Query, Recharts, lightweight-charts |
+| Backend | Python 3.11, FastAPI, Celery, PostgreSQL 18 (dev Docker; test compose uses 16-alpine), Redis, SQLAlchemy 2.0, Alembic |
+| Frontend | React 19, TypeScript 5, Vite, Radix UI, Tailwind CSS, shadcn/ui-style components, TanStack Query, Recharts, lightweight-charts |
 | Infra | Docker Compose (dev), Render (prod), Cloudflare (DNS/CDN), GitHub Actions (CI) |
 | Brokers | IBKR (FlexQuery + Gateway), TastyTrade (SDK), Schwab (OAuth) |
 
@@ -25,12 +25,38 @@ Welcome, agent. This is a quantitative portfolio intelligence platform built for
 
 ## DANGER ZONES (Ask Before Modifying)
 
-- `backend/services/execution/risk_gate.py` — Capital protection
-- `backend/services/execution/order_manager.py` — Order execution
-- `backend/api/routes/auth.py` — Authentication
-- `backend/services/market/indicator_engine.py` — Core calculations
-- `backend/services/market/stage_classifier.py` — Stage Analysis
-- `backend/alembic/versions/*.py` — Migrations
+These paths match `.cursor/rules/protected-regions.mdc`. Get explicit approval before editing.
+
+### Capital protection (financial loss)
+
+- `backend/services/execution/risk_gate.py` — Position sizing, max order value, stage caps
+- `backend/services/execution/order_manager.py` — Order execution path, broker routing
+- `backend/services/execution/exit_cascade.py` — Stop loss, trailing stops
+- `backend/services/risk/circuit_breaker.py` — Drawdown protection, kill switch
+
+### Authentication / authorization
+
+- `backend/api/routes/auth.py` — Login, tokens, password reset
+- `backend/api/security.py` — JWT encoding/decoding
+- `backend/api/dependencies.py` — Auth dependencies, role checks
+
+### Core financial calculations (data integrity)
+
+- `backend/services/market/indicator_engine.py` — RSI, ATR, MACD, ADX, Stage Analysis
+- `backend/services/market/stage_classifier.py` — Weinstein stage classification (10 sub-stages)
+- `backend/services/market/regime_engine.py` — Market Regime R1–R5
+
+### Configuration (system stability)
+
+- `backend/config.py` — Environment variables, feature flags
+- `backend/alembic/versions/*.py` — Database migrations
+- `backend/tasks/job_catalog.py` — Celery schedules, timeouts
+
+### Dependency manifests (supply chain / reproducible builds)
+
+- `pyproject.toml` and lock files — Python dependencies
+- `frontend/package.json` and lock files — Frontend dependencies  
+  Use the same approval bar as other danger zones for major upgrades or security-sensitive dependency changes.
 
 ## Three Pillars
 

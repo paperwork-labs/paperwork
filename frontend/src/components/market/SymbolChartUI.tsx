@@ -4,6 +4,7 @@
  * Optimized: memoized components, stable callbacks, lazy-loaded chart.
  */
 import React, { useCallback, useMemo, memo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import { Loader2, X } from 'lucide-react';
@@ -18,55 +19,23 @@ export const PortfolioSymbolsContext = React.createContext<Record<string, any> |
 
 export const ChartContext = React.createContext<(symbol: string) => void>(() => {});
 
-const sparklineCache = new Map<string, number[]>();
-const sparklineInflight = new Map<string, Promise<number[]>>();
-
-function fetchSparkline(symbol: string): Promise<number[]> {
-  if (sparklineCache.has(symbol)) return Promise.resolve(sparklineCache.get(symbol)!);
-  const existing = sparklineInflight.get(symbol);
-  if (existing) return existing;
-  const p = (async () => {
-    try {
-      const res = await marketDataApi.getHistory(symbol, '1mo', '1d');
-      const bars: any[] = (res as any)?.bars || (res as any)?.data || [];
-      const closes = bars.map((b: any) => b.close).filter((v: any) => typeof v === 'number');
-      sparklineCache.set(symbol, closes);
-      return closes;
-    } catch {
-      sparklineCache.set(symbol, []);
-      return [] as number[];
-    } finally {
-      sparklineInflight.delete(symbol);
-    }
-  })();
-  sparklineInflight.set(symbol, p);
-  return p;
-}
-
 const SVG_W = 140;
 const SVG_H = 32;
 
 const SparklinePopoverContentInner: React.FC<{ symbol: string }> = ({ symbol }) => {
-  const [values, setValues] = React.useState<number[] | null>(sparklineCache.get(symbol) ?? null);
-  const [loading, setLoading] = React.useState(!sparklineCache.has(symbol));
-
-  React.useEffect(() => {
-    if (sparklineCache.has(symbol)) {
-      setValues(sparklineCache.get(symbol)!);
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    fetchSparkline(symbol).then((closes) => {
-      if (!cancelled) {
-        setValues(closes);
-        setLoading(false);
+  const { data: values = null, isPending: loading } = useQuery({
+    queryKey: ['sparkline-closes', symbol, '1mo', '1d'],
+    queryFn: async (): Promise<number[]> => {
+      try {
+        const res = await marketDataApi.getHistory(symbol, '1mo', '1d');
+        const bars: any[] = (res as any)?.bars || (res as any)?.data || [];
+        return bars.map((b: any) => b.close).filter((v: any) => typeof v === 'number');
+      } catch {
+        return [];
       }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [symbol]);
+    },
+    staleTime: 10 * 60_000,
+  });
 
   const last = values?.length ? values[values.length - 1] : null;
   const prev = values && values.length > 1 ? values[values.length - 2] : null;

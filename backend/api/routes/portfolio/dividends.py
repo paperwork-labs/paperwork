@@ -2,7 +2,7 @@
 Returns dividends for the authenticated user over the given number of days.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any
 import logging
 
@@ -33,7 +33,7 @@ async def get_dividends(
     The frontend calls `/portfolio/dividends?days=365` so we support that query param.
     """
     try:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         base = (
             db.query(Dividend)

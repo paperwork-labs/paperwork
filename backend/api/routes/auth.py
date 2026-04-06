@@ -250,7 +250,8 @@ def _verify_oauth_state(state: Optional[str], max_age: int = 600) -> bool:
         if _time.time() - int(ts) > max_age:
             return False
         return True
-    except Exception:
+    except Exception as e:
+        logger.warning("OAuth state verification failed: %s", e)
         return False
 
 
@@ -511,8 +512,8 @@ async def apple_callback(
             name = user_data.get("name", {})
             first_name = name.get("firstName", "")
             last_name = name.get("lastName", "")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to parse Apple user_json for name fields: %s", e)
 
     user = (
         db.query(User)

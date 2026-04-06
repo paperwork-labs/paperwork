@@ -53,20 +53,22 @@ const HeatmapView: React.FC<HeatmapViewProps> = ({ snapshots }) => {
   }, [snapshots]);
 
   const queries = useQuery({
-    queryKey: ['heatmap-history', etfSymbols.join(','), timeRange],
+    queryKey: ['heatmap-history-batch', etfSymbols.join(','), timeRange],
     queryFn: async () => {
       const results: Record<string, any[]> = {};
-      await Promise.all(
-        etfSymbols.map(async (sym) => {
-          try {
-            const resp = await marketDataApi.getSnapshotHistory(sym, timeRange);
-            const rows = resp?.data?.history ?? resp?.history ?? [];
-            results[sym] = rows;
-          } catch {
-            results[sym] = [];
-          }
-        })
-      );
+      try {
+        const resp = await marketDataApi.getSnapshotHistoryBatch(etfSymbols.join(','), timeRange);
+        const raw = resp as Record<string, any> | undefined;
+        const bySym = raw?.data?.histories ?? raw?.histories ?? {};
+        for (const sym of etfSymbols) {
+          const rows = bySym[sym] ?? [];
+          results[sym] = Array.isArray(rows) ? rows : [];
+        }
+      } catch {
+        for (const sym of etfSymbols) {
+          results[sym] = [];
+        }
+      }
       return results;
     },
     staleTime: 10 * 60_000,

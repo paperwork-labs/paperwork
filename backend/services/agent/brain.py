@@ -487,8 +487,12 @@ class AgentBrain:
             )
             try:
                 self.db.rollback()
-            except Exception:
-                pass
+            except Exception as rb_err:
+                logger.warning(
+                    "Rollback after audit record failure for %s failed: %s",
+                    tool_name,
+                    rb_err,
+                )
             action = None
 
         def _finalize_action(result: Dict[str, Any], status: str) -> None:
@@ -498,8 +502,8 @@ class AgentBrain:
             try:
                 action.status = status
                 action.result = result
-                action.executed_at = datetime.utcnow()
-                action.completed_at = datetime.utcnow()
+                action.executed_at = datetime.now(timezone.utc)
+                action.completed_at = datetime.now(timezone.utc)
                 action.auto_approved = True
                 self.db.commit()
             except Exception as db_err:
@@ -509,8 +513,12 @@ class AgentBrain:
                 )
                 try:
                     self.db.rollback()
-                except Exception:
-                    pass
+                except Exception as rb_err:
+                    logger.warning(
+                        "Rollback after finalize audit failure for %s failed: %s",
+                        tool_name,
+                        rb_err,
+                    )
 
         # SAFE or INLINE_ONLY tools: execute inline
         if risk == RiskLevel.SAFE or tool_name in INLINE_ONLY_AGENT_TOOLS:
@@ -528,7 +536,7 @@ class AgentBrain:
                     _finalize_action(result, "failed")
                 else:
                     action.status = "executing"
-                    action.executed_at = datetime.utcnow()
+                    action.executed_at = datetime.now(timezone.utc)
                     action.auto_approved = True
                     try:
                         self.db.commit()
@@ -539,8 +547,12 @@ class AgentBrain:
                         )
                         try:
                             self.db.rollback()
-                        except Exception:
-                            pass
+                        except Exception as rb_err:
+                            logger.warning(
+                                "Rollback after celery audit update failure for %s failed: %s",
+                                tool_name,
+                                rb_err,
+                            )
             return result, action
 
         # RISKY/CRITICAL tools: require approval
@@ -555,8 +567,12 @@ class AgentBrain:
                 )
                 try:
                     self.db.rollback()
-                except Exception:
-                    pass
+                except Exception as rb_err:
+                    logger.warning(
+                        "Rollback after pending_approval commit failure for %s failed: %s",
+                        tool_name,
+                        rb_err,
+                    )
 
         return {
             "status": "pending_approval",
@@ -1258,8 +1274,12 @@ class AgentBrain:
                             "started_at": last.started_at.isoformat() if last.started_at else None,
                             "finished_at": last.finished_at.isoformat() if last.finished_at else None,
                         }
-                except Exception:
-                    pass
+                except Exception as hist_err:
+                    logger.warning(
+                        "Failed to load last JobRun for schedule %s: %s",
+                        getattr(job, "job_run_label", job.id),
+                        hist_err,
+                    )
             schedules.append(entry)
 
         return {"schedules": schedules, "count": len(schedules), "scheduler": "celery_beat"}
@@ -2322,7 +2342,7 @@ class AgentBrain:
                     lookback_days, lookback, sym
                 )
 
-            cutoff = datetime.utcnow() - timedelta(days=lookback)
+            cutoff = datetime.now(timezone.utc) - timedelta(days=lookback)
             bars = (
                 self.db.query(PriceData)
                 .filter(
@@ -2502,7 +2522,11 @@ class AgentBrain:
         try:
             from backend.services.market.market_data_service import market_data_service
             return market_data_service.redis_client
-        except Exception:
+        except Exception as redis_err:
+            logger.warning(
+                "Could not obtain Redis client from market_data_service: %s",
+                redis_err,
+            )
             return None
     
     def _trim_conversation_for_persistence(self) -> None:

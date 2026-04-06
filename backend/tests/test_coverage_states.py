@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import json
 import pytest
 from sqlalchemy.exc import OperationalError
@@ -37,7 +37,7 @@ def test_coverage_endpoint_buckets(monkeypatch, db_session):
         app.dependency_overrides[get_db] = _override_db
         # Clean and insert two symbols: one fresh, one stale
         db_session.query(PriceData).delete()
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         rows = [
             PriceData(symbol="TESTF", date=now - timedelta(hours=2), open_price=1, high_price=1, low_price=1, close_price=1, adjusted_close=1, volume=100, interval="1d", is_adjusted=True, data_source="test"),
             PriceData(symbol="TESTS", date=now - timedelta(days=3), open_price=1, high_price=1, low_price=1, close_price=1, adjusted_close=1, volume=100, interval="1d", is_adjusted=True, data_source="test"),

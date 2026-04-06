@@ -6,10 +6,11 @@ Endpoints for market snapshots (current state and history).
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func, nullslast, select
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
@@ -26,6 +27,22 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/snapshots", tags=["snapshots"])
 
 
+def _latest_technical_snapshot_subq(tracked: list[str]):
+    """One row per symbol: latest technical_snapshot by analysis_timestamp (SQL window)."""
+    ranked = func.row_number().over(
+        partition_by=MarketSnapshot.symbol,
+        order_by=MarketSnapshot.analysis_timestamp.desc(),
+    ).label("rn")
+    return (
+        select(MarketSnapshot.id, ranked)
+        .where(
+            MarketSnapshot.analysis_type == "technical_snapshot",
+            MarketSnapshot.symbol.in_(tracked),
+        )
+        .subquery()
+    )
+
+
 @router.get("/heatmap")
 async def get_snapshot_heatmap(
     symbols: str = Query(..., description="Comma-separated symbols"),
@@ -37,7 +54,7 @@ async def get_snapshot_heatmap(
     symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
     if not symbol_list:
         return {"grid": {}, "dates": []}
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).replace(tzinfo=None)
     rows = (
         db.query(
             MarketSnapshotHistory.symbol,
@@ -80,47 +97,19 @@ async def get_snapshot_table(
     if not tracked:
         return {"rows": [], "total": 0}
 
-    base_query = (
+    subq = _latest_technical_snapshot_subq(tracked)
+    q = (
         db.query(MarketSnapshot)
-        .filter(
-            MarketSnapshot.analysis_type == "technical_snapshot",
-            MarketSnapshot.symbol.in_(tracked),
-        )
-        .order_by(
-            MarketSnapshot.symbol.asc(), MarketSnapshot.analysis_timestamp.desc()
-        )
+        .join(subq, MarketSnapshot.id == subq.c.id)
+        .filter(subq.c.rn == 1)
     )
 
-    bind = getattr(db, "bind", None)
-    dialect_name = getattr(getattr(bind, "dialect", None), "name", "")
-    if dialect_name == "postgresql" and hasattr(base_query, "distinct"):
-        all_rows = base_query.distinct(MarketSnapshot.symbol).all()
-    else:
-        raw_rows = base_query.all()
-        all_rows = []
-        seen_symbols: set[str] = set()
-        for row in raw_rows:
-            sym = str(getattr(row, "symbol", "")).upper()
-            if not sym or sym in seen_symbols:
-                continue
-            seen_symbols.add(sym)
-            all_rows.append(row)
-
     if search:
-        search_upper = search.upper()
-        all_rows = [
-            r for r in all_rows if search_upper in (r.symbol or "").upper()
-        ]
+        q = q.filter(MarketSnapshot.symbol.ilike(f"%{search.strip().upper()}%"))
 
     if filter_stage:
         stage_upper = filter_stage.upper()
-        all_rows = [
-            r
-            for r in all_rows
-            if (getattr(r, "current_stage", "") or "")
-            .upper()
-            .startswith(stage_upper)
-        ]
+        q = q.filter(func.upper(MarketSnapshot.stage_label).like(f"{stage_upper}%"))
 
     allowed_sort = {
         "symbol",
@@ -133,25 +122,24 @@ async def get_snapshot_table(
     effective_sort = sort_by if sort_by in allowed_sort else "symbol"
     reverse = sort_dir.lower() == "desc"
 
-    def _sort_key(r: MarketSnapshot) -> tuple:
-        v = getattr(r, effective_sort, None)
-        if v is None:
-            return (1, 0.0)
-        if effective_sort in ("price", "perf_20d", "rs_mansfield"):
-            try:
-                return (0, float(v))
-            except (TypeError, ValueError):
-                return (1, 0.0)
-        if effective_sort == "analysis_timestamp" and hasattr(v, "timestamp"):
-            return (0, float(v.timestamp()))
-        if effective_sort == "symbol":
-            return (0, str(v).upper())
-        return (0, str(v))
+    sort_col_map = {
+        "symbol": MarketSnapshot.symbol,
+        "current_stage": MarketSnapshot.stage_label,
+        "price": MarketSnapshot.current_price,
+        "perf_20d": MarketSnapshot.perf_20d,
+        "rs_mansfield": MarketSnapshot.rs_mansfield_pct,
+        "analysis_timestamp": MarketSnapshot.analysis_timestamp,
+    }
+    sort_col = sort_col_map[effective_sort]
+    primary = (
+        nullslast(sort_col.desc())
+        if reverse
+        else nullslast(sort_col.asc())
+    )
+    q_ordered = q.order_by(primary, MarketSnapshot.symbol.asc())
 
-    all_rows.sort(key=_sort_key, reverse=reverse)
-
-    total = len(all_rows)
-    page = all_rows[offset : offset + limit]
+    total = q.count()
+    page = q_ordered.offset(offset).limit(limit).all()
 
     preferred = snapshot_preferred_columns("list")
     rows_out: list[Dict[str, Any]] = []
@@ -164,6 +152,52 @@ async def get_snapshot_table(
         rows_out.append(d)
 
     return {"rows": rows_out, "total": total}
+
+
+@router.get("/history/batch")
+async def get_snapshot_history_batch(
+    symbols: str = Query(..., description="Comma-separated symbols"),
+    days: int = Query(90, ge=1, le=365),
+    user: User | None = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Batch fetch snapshot history for multiple symbols (used by HeatmapView)."""
+    symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
+    if len(symbol_list) > 50:
+        raise HTTPException(status_code=400, detail="Max 50 symbols per batch")
+    if not symbol_list:
+        return {"histories": {}, "counts": {}}
+
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).replace(tzinfo=None)
+    rows = (
+        db.query(MarketSnapshotHistory)
+        .filter(
+            MarketSnapshotHistory.symbol.in_(symbol_list),
+            MarketSnapshotHistory.analysis_type == "technical_snapshot",
+            MarketSnapshotHistory.as_of_date >= cutoff,
+        )
+        .order_by(
+            MarketSnapshotHistory.symbol.asc(),
+            MarketSnapshotHistory.as_of_date.desc(),
+        )
+        .all()
+    )
+
+    preferred = snapshot_preferred_columns("history")
+    histories: Dict[str, list[Dict[str, Any]]] = {s: [] for s in symbol_list}
+    for r in rows:
+        sym = getattr(r, "symbol", None)
+        if sym is None or sym not in histories:
+            continue
+        payload: Dict[str, Any] = {}
+        for col in preferred:
+            val = getattr(r, col, None)
+            if val is not None:
+                payload[col] = val
+        histories[sym].append(payload)
+
+    counts = {s: len(histories[s]) for s in symbol_list}
+    return {"histories": histories, "counts": counts}
 
 
 @router.get("/{symbol}")
@@ -205,32 +239,15 @@ async def get_snapshots(
     if not tracked:
         return {"count": 0, "rows": []}
 
-    base_query = (
+    subq = _latest_technical_snapshot_subq(tracked)
+    rows = (
         db.query(MarketSnapshot)
-        .filter(
-            MarketSnapshot.analysis_type == "technical_snapshot",
-            MarketSnapshot.symbol.in_(tracked),
-        )
-        .order_by(MarketSnapshot.symbol.asc(), MarketSnapshot.analysis_timestamp.desc())
+        .join(subq, MarketSnapshot.id == subq.c.id)
+        .filter(subq.c.rn == 1)
+        .order_by(MarketSnapshot.symbol.asc())
+        .limit(limit)
+        .all()
     )
-
-    bind = getattr(db, "bind", None)
-    dialect_name = getattr(getattr(bind, "dialect", None), "name", "")
-    if dialect_name == "postgresql" and hasattr(base_query, "distinct"):
-        rows = base_query.distinct(MarketSnapshot.symbol).limit(limit).all()
-    else:
-        raw_rows = base_query.all()
-        latest_rows: list[MarketSnapshot] = []
-        seen_symbols: set[str] = set()
-        for row in raw_rows:
-            sym = str(getattr(row, "symbol", "")).upper()
-            if not sym or sym in seen_symbols:
-                continue
-            seen_symbols.add(sym)
-            latest_rows.append(row)
-            if len(latest_rows) >= limit:
-                break
-        rows = latest_rows
 
     preferred = snapshot_preferred_columns("list")
     col_names = list(getattr(MarketSnapshot, "__table__").columns.keys())
@@ -263,7 +280,7 @@ async def get_snapshot_history(
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Get historical snapshots for a symbol."""
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).replace(tzinfo=None)
 
     rows = (
         db.query(MarketSnapshotHistory)

@@ -5,7 +5,7 @@ from backend.api.main import app
 from backend.tests.auth_test_utils import approve_user_for_login_tests
 from backend.models.market_data import MarketSnapshot
 from backend.models.index_constituent import IndexConstituent
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 def _register_and_login_admin(client: TestClient, db_session) -> str:
@@ -49,7 +49,7 @@ async def test_admin_snapshot_digest_sends_via_brain(monkeypatch, db_session):
         db_session.add(IndexConstituent(index_name="SP500", symbol="BBB", is_active=True))
         db_session.commit()
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         db_session.add(
             MarketSnapshot(
                 symbol="AAA",

@@ -28,7 +28,7 @@
 | Layer | Stack | Where to read more |
 |-------|-------|--------------------|
 | **Backend** | FastAPI, Celery, PostgreSQL, Redis | This doc; [PRODUCTION.md](PRODUCTION.md) for deploy |
-| **Frontend** | React, shadcn/ui, Tailwind CSS, Vite, React Query, Recharts, TradingView | [FRONTEND_UI.md](FRONTEND_UI.md) |
+| **Frontend** | React 19, Radix UI primitives, Tailwind CSS, Vite, TanStack Query, Recharts, lightweight-charts, TradingView | [FRONTEND_UI.md](FRONTEND_UI.md) |
 | **Brokers** | IBKR (FlexQuery + Gateway), TastyTrade, Schwab | [CONNECTIONS.md](CONNECTIONS.md) (setup/OAuth); [BROKERS.md](BROKERS.md) (sync impl) |
 | **Domain pillars** | Portfolio, Market data | [PORTFOLIO.md](PORTFOLIO.md), [MARKET_DATA.md](MARKET_DATA.md) |
 
@@ -136,7 +136,7 @@ Paperwork Brain consumes AxiomFolio as one product skill via the 12 curated HTTP
 
 - **Backend**: FastAPI, Celery workers for sync and market data jobs.
 - **Data**: PostgreSQL (state), Redis (cache/queue).
-- **Frontend**: React SPA (shadcn/ui, Tailwind CSS, React Query, Recharts, lightweight-charts v5, TradingView widget).
+- **Frontend**: React SPA (Radix UI + Tailwind CSS, TanStack Query, Recharts, lightweight-charts v5, TradingView widget).
 - **Brokers**: IBKR (FlexQuery XML + TWS Gateway), TastyTrade (SDK), Schwab (OAuth 2.0 + PKCE via `api.schwabapi.com`).
 
 ## Data Model Inventory
@@ -170,29 +170,35 @@ Row counts below are illustrative; run DB queries for current state.
 
 ### API Routes (`backend/api/routes/`)
 
-| Prefix | File | Purpose |
-|--------|------|---------|
+Routers are mounted from `backend/api/main.py`. Portfolio routes sit under `portfolio/`; market data is split across `market/*.py` and mounted at `/api/v1/market-data`.
+
+| Prefix | Module | Purpose |
+|--------|--------|---------|
 | `/api/v1/auth` | `auth.py` | Login, register, me, Google/Apple OAuth |
-| `/api/v1/accounts` | `account_management.py` | Add/sync/delete broker accounts |
-| `/api/v1/portfolio` | `portfolio.py` | General portfolio endpoints |
-| `/api/v1/portfolio/live` | `portfolio_live.py` | Live portfolio data |
-| `/api/v1/portfolio/stocks` | `portfolio_stocks.py` | Stock positions |
-| `/api/v1/portfolio/options` | `portfolio_options.py` | Options + IB Gateway |
-| `/api/v1/portfolio/statements` | `portfolio_statements.py` | Statements |
-| `/api/v1/portfolio/dividends` | `portfolio_dividends.py` | Dividends |
-| `/api/v1/portfolio/dashboard` | `portfolio_dashboard.py` | Dashboard aggregations |
-| `/api/v1/portfolio/categories` | `portfolio_categories.py` | Category CRUD + reorder |
+| `/api/v1/accounts` | `settings/account.py` | Add/sync/delete broker accounts |
+| `/api/v1/portfolio` | `portfolio/core.py`, `live.py`, `dashboard.py`, `stocks.py`, `statements.py`, `dividends.py`, `categories.py` | Holdings, live, dashboard, statements, dividends, categories |
+| `/api/v1/portfolio/options` | `portfolio/options.py` | Options + IB Gateway |
 | `/api/v1/portfolio` (activity) | `activity.py` | Activity feed (UNION ALL) |
-| `/api/v1/market-data` | `market_data.py` | Market data + technicals + volatility dashboard |
-| `/api/v1/market-data/regime` | `market/regime.py` | Current regime, history |
-| `/api/v1/market-data/intelligence` | `market/intelligence.py` | Intelligence briefs |
+| `/api/v1/portfolio/orders` | `portfolio/orders.py` | Order preview/submit/cancel (OrderManager path) |
+| `/api/v1/risk` | `risk.py` | Circuit breaker status + admin reset |
+| `/api/v1/execution` | `execution.py` | Execution quality / slippage stats |
 | `/api/v1/strategies` | `strategies.py` | Strategy management |
-| `/api/v1/risk` | `risk.py` | Circuit breaker status + reset |
+| `/api/v1/app-settings` | `settings/app.py` | App-level flags (market-only mode, etc.) |
+| `/api/v1/watchlist` | `watchlist.py` | Watchlist CRUD |
+| `/api/v1/market-data` | `market/__init__.py` (includes below) | Market data, snapshots, admin ops |
+| `/api/v1/market-data/admin` | `market/admin.py` | Health, backfills, jobs, indicators, history |
+| `/api/v1/market-data/dashboard` | `market/dashboard.py` | Market dashboard + volatility aggregates |
+| `/api/v1/market-data/prices` | `market/prices.py` | Prices and historical series |
+| `/api/v1/market-data/snapshots` | `market/snapshots.py` | Snapshot CRUD, table/heatmap helpers |
+| `/api/v1/market-data/coverage` | `market/coverage.py` | Coverage health |
+| `/api/v1/market-data/regime` | `market/regime.py` | Regime state and history |
+| `/api/v1/market-data/intelligence` | `market/intelligence.py` | Intelligence briefs |
+| `/api/v1/market-data` (universe) | `market/universe.py` | Index constituents, tracked universe, symbol refresh |
 | `/api/v1/tools/*` | `brain_tools.py` | Brain HTTP tools (`X-Brain-Api-Key`); 12 endpoints |
-| `/api/v1/webhooks/tradingview` | `webhooks/tradingview.py` | TradingView alert webhook |
-| `/api/v1/admin` | `admin.py` | Admin operations |
-| `/api/v1/admin/agent` | `admin/agent.py` | Agent management |
-| `/api/v1/admin/schedules` | `admin_scheduler.py` | Cron schedule CRUD |
+| `/api/v1/webhooks` | `webhooks/tradingview.py` | TradingView alert webhook |
+| `/api/v1/admin` | `admin/management.py` | User invites, admin user ops |
+| `/api/v1/admin` | `admin/scheduler.py` | Cron schedule CRUD + run-now |
+| `/api/v1/admin` | `admin/agent.py` | In-app agent admin |
 | `/api/v1/aggregator` | `aggregator.py` | OAuth callbacks, aggregation |
 
 ### Services (`backend/services/`)
@@ -234,33 +240,51 @@ Row counts below are illustrative; run DB queries for current state.
 
 ### Celery Tasks (`backend/tasks/`)
 
-| Task (Celery path) | Schedule | Purpose |
-|------|----------|---------|
-| `backend.tasks.account_sync.sync_account_task` | Manual/on-add | Sync single broker account |
-| `backend.tasks.account_sync.sync_all_ibkr_accounts` | Planned daily | Sync all IBKR accounts |
-| `backend.tasks.market.indicators.recompute_universe` | 03:35 UTC | Compute indicators for all tracked symbols |
-| `backend.tasks.market.history.record_daily` | Part of coverage pipeline | Persist daily snapshot history |
-| `backend.tasks.market.coverage.daily_bootstrap` | 01:00 UTC | Full coverage pipeline |
-| `backend.tasks.market.coverage.health_check` | Hourly | Coverage health check |
+Beat loads **`backend/tasks/job_catalog.py`** (`CATALOG`) into `celery_app` `beat_schedule` (`backend/tasks/celery_app.py`). Example entries (see catalog for the full list):
+
+| Catalog `id` | Celery task | Default schedule | Purpose |
+|------|-------------|------------------|---------|
+| `admin_coverage_backfill` | `backend.tasks.market.coverage.daily_bootstrap` | `0 1 * * *` UTC | Nightly chain: constituents, tracked cache, daily bars, `recompute_universe`, regime, scan overlay, snapshot history, exit/strategy eval, `health_check` (coverage cache), audit, digest |
+| `ibkr-daily-flex-sync` | `backend.tasks.account_sync.sync_all_ibkr_accounts` | `15 2 * * *` UTC | IBKR FlexQuery sync |
+| `fundamentals_fill` | `backend.tasks.market.fundamentals.fill_missing` | `15 3 * * *` UTC | Fill missing fundamentals on snapshots |
+| `auto_ops_health_check` | `backend.tasks.auto_ops_tasks.auto_remediate_health` | `*/15 * * * *` UTC | Auto-ops remediation loop |
+
+`recompute_universe`, snapshot history (`snapshot_last_n_days`), and `health_check` run **inside** `daily_bootstrap` as tracked steps (JobRun labels such as `admin_indicators_recompute_universe`, `admin_snapshots_history_backfill`, `admin_coverage_refresh`); they are not separate catalog jobs unless added explicitly.
 
 ## Frontend Pages
+
+Defined in `frontend/src/App.tsx` (lazy-loaded page components under `frontend/src/pages/`).
 
 | Route | Component | Purpose |
 |-------|-----------|---------|
 | `/` | `MarketDashboard` | Market overview with indicators |
+| `/market/dashboard` | `MarketDashboard` | Same dashboard (alias path) |
 | `/market/tracked` | `MarketTracked` | Tracked symbol management |
-| `/market/coverage` | `MarketCoverage` | Data coverage status |
 | `/market/education` | `MarketEducation` | Indicator glossary + deep-dives |
+| `/market/intelligence` | `MarketIntelligence` | Intelligence briefs |
+| `/market/scanner` | `Scanner` | Scanner / table views |
+| `/terminal` | `Terminal` | Terminal view |
 | `/portfolio` | `PortfolioOverview` | Dashboard with P&L, allocation |
 | `/portfolio/holdings` | `PortfolioHoldings` | Position list with market data |
 | `/portfolio/options` | `PortfolioOptions` | Options + IB Gateway chain |
 | `/portfolio/transactions` | `PortfolioTransactions` | Activity feed |
 | `/portfolio/categories` | `PortfolioCategories` | Category management (dnd-kit) |
 | `/portfolio/tax` | `PortfolioTaxCenter` | Tax lot analysis |
+| `/portfolio/orders` | `PortfolioOrders` | Orders |
 | `/portfolio/workspace` | `PortfolioWorkspace` | Charts workspace |
-| `/strategies` | `Strategies` | Strategy list |
+| `/market/strategies` | `Strategies` | Strategy list |
+| `/market/strategies/manage` | `StrategiesManager` | Strategy management |
+| `/market/strategies/:strategyId` | `StrategyDetail` | Strategy detail |
+| `/strategies`, `/strategies/:id` | Navigate to `/market/strategies` | Legacy redirects |
+| `/settings/profile` | `SettingsProfile` | Profile |
+| `/settings/preferences` | `SettingsPreferences` | Preferences |
+| `/settings/notifications` | `SettingsNotifications` | Notifications |
 | `/settings/connections` | `SettingsConnections` | Broker + data connections |
-| `/settings/admin/dashboard` | `AdminDashboard` | Admin operations |
+| `/settings/admin/system` | `SystemStatus` | System status, health, operator actions |
+| `/settings/admin/users` | `SettingsUsers` | User admin |
+| `/settings/admin/agent` | `AdminAgent` | Agent admin |
+| `/onboarding` | `Onboarding` | Onboarding |
+| `/login`, `/register`, `/auth/callback`, `/invite/:token` | Auth pages | Authentication flows |
 
 ## Data Pipelines
 

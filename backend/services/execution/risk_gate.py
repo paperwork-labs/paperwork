@@ -181,7 +181,11 @@ class RiskGate:
         price_estimate: float,
         risk_budget: float,
     ) -> Optional[str]:
-        """Enforce Stage Analysis spec position sizing as a soft cap. Returns warning or None."""
+        """Enforce Stage Analysis spec position sizing as a hard cap.
+
+        Raises RiskViolation if requested quantity exceeds stage cap.
+        Returns None if sizing is within limits.
+        """
         from backend.services.market.regime_engine import get_current_regime
 
         snap = (
@@ -216,12 +220,12 @@ class RiskGate:
 
         if req.quantity > result.shares:
             logger.warning(
-                "Position sizing cap: %s requested %d shares, max is %d "
+                "Position sizing cap BLOCKED: %s requested %d shares, max is %d "
                 "(stage=%s, regime=%s, cap=%.0f%%)",
                 req.symbol, req.quantity, result.shares,
                 snap.stage_label, regime_state, result.stage_cap * 100,
             )
-            return (
+            raise RiskViolation(
                 f"Position sizing: requested {req.quantity} shares exceeds "
                 f"max of {result.shares} "
                 f"(stage {snap.stage_label}, regime {regime_state}, "
@@ -237,6 +241,11 @@ class RiskGate:
         limit_price: Optional[float],
         stop_price: Optional[float],
     ) -> float:
+        """Estimate order price for risk checks.
+
+        Raises RiskViolation if no valid price can be determined — conservative
+        fail-safe to prevent understated risk checks when price is unknown.
+        """
         price = limit_price or stop_price or 0.0
         if not price:
             snap = (
@@ -249,5 +258,13 @@ class RiskGate:
                 try:
                     price = float(snap[0])
                 except (TypeError, ValueError):
-                    pass
+                    raise RiskViolation(
+                        f"Cannot parse price for {symbol} from snapshot — "
+                        f"order rejected (conservative fail-safe)"
+                    )
+            else:
+                raise RiskViolation(
+                    f"No price available for {symbol} — "
+                    f"order rejected (conservative fail-safe)"
+                )
         return price

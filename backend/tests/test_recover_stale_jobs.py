@@ -1,13 +1,13 @@
 """Tests for recover_jobs_impl: only stale RUNNING jobs are cancelled."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 from backend.models.market_data import JobRun
 
 
 def test_only_stale_running_jobs_are_cancelled(db_session):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     stale = JobRun(task_name="task_a", status="running", started_at=now - timedelta(hours=3))
     fresh = JobRun(task_name="task_b", status="running", started_at=now - timedelta(minutes=30))
     done = JobRun(task_name="task_c", status="ok", started_at=now - timedelta(hours=5), finished_at=now)

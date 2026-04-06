@@ -5,7 +5,7 @@ Monitors VIX for intraday spikes and generates regime shift alerts.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
@@ -62,7 +62,7 @@ class RegimeMonitor:
         Returns list of alerts triggered (may be empty).
         """
         alerts: List[RegimeAlert] = []
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         # Check absolute level
         if current_vix >= self.VIX_ABSOLUTE_CRITICAL:
@@ -150,7 +150,7 @@ class RegimeMonitor:
         current, previous = regimes[0], regimes[1]
 
         if current.regime_state != previous.regime_state:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             severity = "warning"
 
             # Critical if shift is 2+ levels or to R5

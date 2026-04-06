@@ -27,76 +27,10 @@ def sync_gateway() -> dict:
     Requires IB Gateway connection. Fetches ATM IV for positions and stores
     in HistoricalIV table for IV rank calculation.
     """
-    session = SessionLocal()
-    try:
-        from backend.models.historical_iv import HistoricalIV
-        from backend.models.position import Position
-
-        today = date_type.today()
-        processed = 0
-        errors = 0
-
-        positions = session.query(Position).filter(Position.status == "open").all()
-
-        symbols = list({p.symbol for p in positions if p.symbol})
-        if not symbols:
-            return {"status": "no_positions", "processed": 0}
-
-        try:
-            from backend.services.clients.ibkr_client import ibkr_client
-
-            if not ibkr_client.is_connected():
-                return {"status": "gateway_not_connected", "processed": 0}
-        except Exception as e:
-            logger.warning("IBKR client not available: %s", e)
-            return {"status": "gateway_unavailable", "error": str(e)}
-
-        for symbol in symbols:
-            try:
-                iv_data = {
-                    "iv_30d": None,
-                    "hv_20d": None,
-                }
-
-                if iv_data.get("iv_30d") is not None:
-                    existing = (
-                        session.query(HistoricalIV)
-                        .filter(
-                            HistoricalIV.symbol == symbol,
-                            HistoricalIV.date == today,
-                        )
-                        .first()
-                    )
-
-                    if existing:
-                        existing.iv_30d = iv_data["iv_30d"]
-                        existing.hv_20d = iv_data.get("hv_20d")
-                    else:
-                        session.add(
-                            HistoricalIV(
-                                symbol=symbol,
-                                date=today,
-                                iv_30d=iv_data["iv_30d"],
-                                hv_20d=iv_data.get("hv_20d"),
-                            )
-                        )
-                    processed += 1
-            except Exception as e:
-                logger.warning("Failed to snapshot IV for %s: %s", symbol, e)
-                errors += 1
-
-        session.commit()
-        return {
-            "status": "ok",
-            "symbols_checked": len(symbols),
-            "processed": processed,
-            "errors": errors,
-        }
-    except Exception:
-        logger.exception("sync_gateway failed")
-        raise
-    finally:
-        session.close()
+    logger.info(
+        "snapshot_iv_from_gateway (sync_gateway): IV gateway sync not yet implemented; skipping work"
+    )
+    return {"status": "noop", "reason": "IV gateway sync not yet implemented"}
 
 
 @shared_task(

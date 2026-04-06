@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 from backend.config import settings
@@ -92,7 +92,8 @@ class CoverageService:
                         updated_at = cached.get("updated_at")
                         if snapshot is not None and cached.get("status"):
                             snapshot.setdefault("status", cached["status"])
-            except Exception:
+            except Exception as e:
+                logger.warning("Failed to read or parse coverage health cache from Redis: %s", e)
                 snapshot = None
 
         if snapshot is None:
@@ -131,11 +132,16 @@ class CoverageService:
                 try:
                     payload = json.loads(entry.decode() if isinstance(entry, (bytes, bytearray)) else entry)
                     history_entries.append(payload)
-                except Exception:
+                except Exception as entry_err:
+                    logger.warning(
+                        "Skipping invalid coverage history Redis entry: %s",
+                        entry_err,
+                    )
                     continue
             if history_entries:
                 history_entries = list(reversed(history_entries))
-        except Exception:
+        except Exception as e:
+            logger.warning("Failed to load coverage history from Redis: %s", e)
             history_entries = []
 
         if not history_entries and updated_at:
@@ -203,7 +209,8 @@ class CoverageService:
             try:
                 v = float(val or 0)
                 return max(0.0, min(100.0, v))
-            except Exception:
+            except Exception as e:
+                logger.warning("Could not clamp coverage pct value %r: %s", val, e)
                 return 0.0
 
         status_info["daily_pct"] = _clamp_pct(status_info.get("daily_pct"))
@@ -230,8 +237,16 @@ class CoverageService:
         age_seconds = None
         if updated_at:
             try:
-                age_seconds = (datetime.utcnow() - datetime.fromisoformat(updated_at)).total_seconds()
-            except Exception:
+                parsed = datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=timezone.utc)
+                age_seconds = (datetime.now(timezone.utc) - parsed).total_seconds()
+            except Exception as e:
+                logger.warning(
+                    "coverage snapshot_age parse failed for updated_at=%r: %s",
+                    updated_at,
+                    e,
+                )
                 age_seconds = None
 
         meta = snapshot.setdefault("meta", {})

@@ -1,7 +1,6 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { marketDataApi } from '../../services/api';
 import { REGIME_HEX } from '../../constants/chart';
+import { useRegime } from '../../hooks/useRegime';
 import { cn } from '@/lib/utils';
 
 export interface RegimeData {
@@ -28,15 +27,7 @@ const REGIME_LABELS: Record<string, string> = {
 };
 
 const RegimeBanner: React.FC = () => {
-  const { data, isPending, isError, error } = useQuery<RegimeData | null>({
-    queryKey: ['regime-current'],
-    queryFn: async (): Promise<RegimeData | null> => {
-      const row = await marketDataApi.getCurrentRegime();
-      return (row as RegimeData | null) ?? null;
-    },
-    refetchInterval: 5 * 60 * 1000,
-    staleTime: 2 * 60 * 1000,
-  });
+  const { data, isPending, isError, error } = useRegime();
 
   if (isPending) {
     return (
@@ -64,7 +55,7 @@ const RegimeBanner: React.FC = () => {
     );
   }
 
-  if (data == null) {
+  if (data == null || typeof data !== 'object') {
     return (
       <div className="mb-3 rounded-lg border border-border bg-card p-3">
         <p className="text-xs text-muted-foreground">
@@ -75,8 +66,9 @@ const RegimeBanner: React.FC = () => {
     );
   }
 
-  const color = REGIME_HEX[data.regime_state] || '#718096';
-  const label = REGIME_LABELS[data.regime_state] || data.regime_state;
+  const row = data as unknown as RegimeData;
+  const color = REGIME_HEX[row.regime_state] || '#718096';
+  const label = REGIME_LABELS[row.regime_state] || row.regime_state;
 
   return (
     <div
@@ -91,7 +83,7 @@ const RegimeBanner: React.FC = () => {
               style={{ backgroundColor: color }}
               aria-hidden
             />
-            <span className="text-base font-bold">{data.regime_state}</span>
+            <span className="text-base font-bold">{row.regime_state}</span>
             <span
               className={cn(
                 'inline-flex h-5 shrink-0 items-center rounded-full border px-2 py-0 text-xs font-medium',
@@ -108,52 +100,52 @@ const RegimeBanner: React.FC = () => {
           <p className="text-sm text-muted-foreground">
             Composite:{' '}
             <span className="font-semibold text-foreground">
-              {data.composite_score?.toFixed(1)}
+              {row.composite_score?.toFixed(1)}
             </span>
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
-          {data.vix_spot != null && (
+          {row.vix_spot != null && (
             <div className="flex flex-col items-center gap-0">
               <span className="text-[10px] text-muted-foreground">VIX</span>
-              <span className="text-xs font-semibold">{data.vix_spot.toFixed(1)}</span>
+              <span className="text-xs font-semibold">{row.vix_spot.toFixed(1)}</span>
             </div>
           )}
-          {data.vix3m_vix_ratio != null && (
+          {row.vix3m_vix_ratio != null && (
             <div className="flex flex-col items-center gap-0">
               <span className="text-[10px] text-muted-foreground">VIX3M/VIX</span>
-              <span className="text-xs font-semibold">{data.vix3m_vix_ratio.toFixed(2)}</span>
+              <span className="text-xs font-semibold">{row.vix3m_vix_ratio.toFixed(2)}</span>
             </div>
           )}
-          {data.nh_nl != null && (
+          {row.nh_nl != null && (
             <div className="flex flex-col items-center gap-0">
               <span className="text-[10px] text-muted-foreground">NH−NL</span>
-              <span className="text-xs font-semibold">{data.nh_nl}</span>
+              <span className="text-xs font-semibold">{row.nh_nl}</span>
             </div>
           )}
-          {data.pct_above_200d != null && (
+          {row.pct_above_200d != null && (
             <div className="flex flex-col items-center gap-0">
               <span className="text-[10px] text-muted-foreground">&gt;200D</span>
-              <span className="text-xs font-semibold">{data.pct_above_200d.toFixed(0)}%</span>
+              <span className="text-xs font-semibold">{row.pct_above_200d.toFixed(0)}%</span>
             </div>
           )}
-          {data.pct_above_50d != null && (
+          {row.pct_above_50d != null && (
             <div className="flex flex-col items-center gap-0">
               <span className="text-[10px] text-muted-foreground">&gt;50D</span>
-              <span className="text-xs font-semibold">{data.pct_above_50d.toFixed(0)}%</span>
+              <span className="text-xs font-semibold">{row.pct_above_50d.toFixed(0)}%</span>
             </div>
           )}
-          {data.regime_multiplier != null && (
+          {row.regime_multiplier != null && (
             <div className="flex flex-col items-center gap-0">
               <span className="text-[10px] text-muted-foreground">Size Mult</span>
-              <span className="text-xs font-semibold">{data.regime_multiplier.toFixed(2)}×</span>
+              <span className="text-xs font-semibold">{row.regime_multiplier.toFixed(2)}×</span>
             </div>
           )}
-          {data.max_equity_exposure_pct != null && (
+          {row.max_equity_exposure_pct != null && (
             <div className="flex flex-col items-center gap-0">
               <span className="text-[10px] text-muted-foreground">Max Eq</span>
-              <span className="text-xs font-semibold">{data.max_equity_exposure_pct.toFixed(0)}%</span>
+              <span className="text-xs font-semibold">{row.max_equity_exposure_pct.toFixed(0)}%</span>
             </div>
           )}
         </div>

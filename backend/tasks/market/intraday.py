@@ -8,6 +8,7 @@ import logging
 from typing import Dict, List
 
 from celery import shared_task
+from celery.exceptions import SoftTimeLimitExceeded
 
 from backend.database import SessionLocal
 from backend.services.market.market_data_service import market_data_service
@@ -47,20 +48,44 @@ def bars_5m_symbols(symbols: List[str], n_days: int = 5) -> dict:
         processed = 0
         errors = 0
         provider_usage: Dict[str, int] = {}
-        for sym in [s.upper() for s in symbols or []]:
-            try:
-                res = loop.run_until_complete(
-                    market_data_service.backfill_intraday_5m(
-                        session, sym, lookback_days=n_days
+        try:
+            for sym in [s.upper() for s in symbols or []]:
+                try:
+                    res = loop.run_until_complete(
+                        market_data_service.backfill_intraday_5m(
+                            session, sym, lookback_days=n_days
+                        )
                     )
+                    if (res or {}).get("status") != "empty":
+                        processed += 1
+                    _increment_provider_usage(provider_usage, res)
+                except SoftTimeLimitExceeded:
+                    raise
+                except Exception as e:
+                    errors += 1
+                    session.rollback()
+                    logger.warning("5m backfill failed for %s: %s", sym, e)
+        except SoftTimeLimitExceeded:
+            logger.warning(
+                "bars_5m_symbols hit soft time limit after processing %d symbols",
+                processed,
+            )
+            try:
+                session.commit()
+            except Exception as ce:
+                logger.warning(
+                    "bars_5m_symbols partial commit after soft limit failed: %s",
+                    ce,
+                    exc_info=True,
                 )
-                if (res or {}).get("status") != "empty":
-                    processed += 1
-                _increment_provider_usage(provider_usage, res)
-            except Exception as e:
-                errors += 1
                 session.rollback()
-                logger.warning("5m backfill failed for %s: %s", sym, e)
+            return {
+                "status": "partial",
+                "symbols": len(symbols or []),
+                "processed": processed,
+                "errors": errors,
+                "provider_usage": provider_usage,
+            }
         return {
             "status": "ok",
             "symbols": len(symbols or []),
@@ -75,8 +100,8 @@ def bars_5m_symbols(symbols: List[str], n_days: int = 5) -> dict:
 
 
 @shared_task(
-    soft_time_limit=1800,
-    time_limit=2100,
+    soft_time_limit=1740,
+    time_limit=1800,
 )
 @task_run("admin_backfill_5m")
 def bars_5m_last_n_days(n_days: int = 5, batch_size: int = 50) -> dict:
@@ -99,22 +124,46 @@ def bars_5m_last_n_days(n_days: int = 5, batch_size: int = 50) -> dict:
         errors = 0
         loop = _setup_event_loop()
         provider_usage: Dict[str, int] = {}
-        for i in range(0, total, max(1, batch_size)):
-            chunk = syms[i : i + batch_size]
-            for sym in chunk:
-                try:
-                    res = loop.run_until_complete(
-                        market_data_service.backfill_intraday_5m(
-                            session, sym, lookback_days=n_days
+        try:
+            for i in range(0, total, max(1, batch_size)):
+                chunk = syms[i : i + batch_size]
+                for sym in chunk:
+                    try:
+                        res = loop.run_until_complete(
+                            market_data_service.backfill_intraday_5m(
+                                session, sym, lookback_days=n_days
+                            )
                         )
-                    )
-                    if (res or {}).get("status") != "empty":
-                        done += 1
-                    _increment_provider_usage(provider_usage, res)
-                except Exception as e:
-                    errors += 1
-                    session.rollback()
-                    logger.warning("5m backfill failed for %s: %s", sym, e)
+                        if (res or {}).get("status") != "empty":
+                            done += 1
+                        _increment_provider_usage(provider_usage, res)
+                    except SoftTimeLimitExceeded:
+                        raise
+                    except Exception as e:
+                        errors += 1
+                        session.rollback()
+                        logger.warning("5m backfill failed for %s: %s", sym, e)
+        except SoftTimeLimitExceeded:
+            logger.warning(
+                "bars_5m_last_n_days hit soft time limit after processing %d symbols",
+                done,
+            )
+            try:
+                session.commit()
+            except Exception as ce:
+                logger.warning(
+                    "bars_5m_last_n_days partial commit after soft limit failed: %s",
+                    ce,
+                    exc_info=True,
+                )
+                session.rollback()
+            return {
+                "status": "partial",
+                "symbols": total,
+                "processed": done,
+                "errors": errors,
+                "provider_usage": provider_usage,
+            }
         return {
             "status": "ok",
             "symbols": total,

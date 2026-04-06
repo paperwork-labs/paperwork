@@ -1,5 +1,5 @@
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from backend.services.market.market_data_service import market_data_service
 from backend.services.market import market_data_service as mds_module
@@ -27,7 +27,7 @@ def _make_df(dates: list[datetime], close: float = 100.0) -> pd.DataFrame:
 
 def test_persist_price_bars_delta_only(db_session):
     sym = "TEST"
-    now = datetime.utcnow().replace(microsecond=0)
+    now = datetime.now(timezone.utc).replace(microsecond=0)
     yesterday = now - timedelta(days=1)
     df = _make_df([yesterday, now], close=50.0)
 
@@ -68,7 +68,7 @@ def test_compute_snapshot_from_db_uses_existing_fundamentals(db_session, monkeyp
         lambda *a, **kw: {},
     )
     # Seed 120 days of prices to enable indicator computation
-    start = datetime.utcnow().replace(microsecond=0) - timedelta(days=130)
+    start = datetime.now(timezone.utc).replace(microsecond=0) - timedelta(days=130)
     dates = [start + timedelta(days=i) for i in range(120)]
     df = _make_df(dates, close=100.0)
     market_data_service.persist_price_bars(
@@ -78,7 +78,7 @@ def test_compute_snapshot_from_db_uses_existing_fundamentals(db_session, monkeyp
     prev = MarketSnapshot(
         symbol=sym,
         analysis_type="technical_snapshot",
-        expiry_timestamp=datetime.utcnow() + timedelta(hours=12),
+        expiry_timestamp=datetime.now(timezone.utc) + timedelta(hours=12),
         sector="Technology",
         industry="Software",
         market_cap=123456789.0,
@@ -97,7 +97,7 @@ def test_compute_snapshot_from_db_uses_existing_fundamentals(db_session, monkeyp
 def test_compute_snapshot_from_db_populates_v2_indicators(db_session, monkeypatch):
     sym = "TESTV2"
     bm = "SPY"
-    now = datetime.utcnow().replace(microsecond=0)
+    now = datetime.now(timezone.utc).replace(microsecond=0)
     start = now - timedelta(days=160)
     dates = [start + timedelta(days=i) for i in range(160)]
 
@@ -141,7 +141,7 @@ def test_compute_snapshot_from_db_populates_v2_indicators(db_session, monkeypatc
 def test_compute_snapshot_from_db_advances_stage_days_from_latest_history(db_session, monkeypatch):
     sym = "TESTSTAGE"
     bm = "SPY"
-    now = datetime.utcnow().replace(microsecond=0)
+    now = datetime.now(timezone.utc).replace(microsecond=0)
     start = now - timedelta(days=120)
     dates = [start + timedelta(days=i) for i in range(120)]
     df = _make_df(dates, close=100.0)
@@ -182,7 +182,7 @@ def test_compute_snapshot_from_db_advances_stage_days_from_latest_history(db_ses
 def test_compute_snapshot_from_db_sets_previous_stage_on_transition(db_session, monkeypatch):
     sym = "TESTTRANS"
     bm = "SPY"
-    now = datetime.utcnow().replace(microsecond=0)
+    now = datetime.now(timezone.utc).replace(microsecond=0)
     start = now - timedelta(days=120)
     dates = [start + timedelta(days=i) for i in range(120)]
     df = _make_df(dates, close=120.0)
@@ -231,7 +231,7 @@ def test_compute_snapshot_from_db_sets_previous_stage_on_transition(db_session, 
 def test_compute_snapshot_from_db_derives_previous_stage_from_history_labels(db_session, monkeypatch):
     sym = "THISTRUN"
     bm = "SPY"
-    now = datetime.utcnow().replace(microsecond=0)
+    now = datetime.now(timezone.utc).replace(microsecond=0)
     start = now - timedelta(days=140)
     dates = [start + timedelta(days=i) for i in range(140)]
     df = _make_df(dates, close=90.0)
@@ -280,7 +280,7 @@ def test_compute_snapshot_from_db_preserves_run_length_when_history_stage_is_unk
 ):
     sym = "TUNKNOWN"
     bm = "SPY"
-    now = datetime.utcnow().replace(microsecond=0)
+    now = datetime.now(timezone.utc).replace(microsecond=0)
     start = now - timedelta(days=140)
     dates = [start + timedelta(days=i) for i in range(140)]
     df = _make_df(dates, close=95.0)

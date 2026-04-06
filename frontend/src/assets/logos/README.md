@@ -111,7 +111,7 @@ Research-validated, WCAG AA accessible palette used across AxiomFolio.
 
 ### Light Theme
 
-| Chakra token | Hex | Role |
+| Design token (legacy name) | Hex | Role |
 |---|---|---|
 | `bg.canvas` | `#F8FAFC` | Page background |
 | `bg.panel` | `#FFFFFF` | Card/panel surface |
@@ -126,7 +126,7 @@ Research-validated, WCAG AA accessible palette used across AxiomFolio.
 
 ### Dark Theme
 
-| Chakra token | Hex | Role |
+| Design token (legacy name) | Hex | Role |
 |---|---|---|
 | `bg.canvas` | `#0F172A` | Page background |
 | `bg.panel` | `#1E293B` | Card/panel surface |
@@ -139,7 +139,7 @@ Research-validated, WCAG AA accessible palette used across AxiomFolio.
 | `status.warning` | `#F59E0B` | Caution / amber accent |
 | `status.danger` | `#F87171` | Error / losses |
 
-### Brand Scale (Chakra tokens)
+### Brand scale (maps to app theme / primary palette)
 
 | Token | Hex | Note |
 |---|---|---|

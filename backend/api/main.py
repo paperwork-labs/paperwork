@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
 import logging.config
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -169,7 +169,7 @@ def _auto_warm_if_stale():
 
         if latest_ts:
             from datetime import timedelta
-            age_minutes = (datetime.utcnow() - latest_ts).total_seconds() / 60
+            age_minutes = (datetime.now(timezone.utc) - latest_ts).total_seconds() / 60
             if age_minutes < stale_threshold:
                 logger.info(
                     "Auto-warm: data is fresh (%.0f min old, threshold=%d min). Skipping.",

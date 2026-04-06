@@ -21,7 +21,7 @@ This folder contains onboarding, architecture, domain pillars (connections, port
 | [ENCRYPTION_KEY_ROTATION.md](ENCRYPTION_KEY_ROTATION.md) | Rotate Fernet key (invalidates credentials) | Rotating encryption key |
 | [MODELS.md](MODELS.md) | Data models (Position, Trade, Option, etc.) | Understanding DB/API shapes |
 | [TESTS.md](TESTS.md) | Test strategy, DB isolation, how to run | Writing or running tests |
-| [FRONTEND_UI.md](FRONTEND_UI.md) | Frontend UI patterns (currently documents Chakra UI v3; being migrated to shadcn/ui + Tailwind), Ladle, component map | Frontend layout/components |
+| [FRONTEND_UI.md](FRONTEND_UI.md) | Frontend UI patterns (Radix UI + Tailwind + shadcn/ui-style components), Ladle, component map | Frontend layout/components |
 | [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) | Palette, typography, shared visual language | UI consistency and tokens |
 | [ROUTES.md](ROUTES.md) | Route and API surface reference | Navigating backend/frontend routes |
 | [TRADING_PRINCIPLES.md](TRADING_PRINCIPLES.md) | Non-negotiable trading principles | Strategy, risk, and discipline context |

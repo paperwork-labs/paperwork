@@ -1,7 +1,7 @@
 """Tests for account management: sync-history, PATCH, 409, credentials."""
 
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi.testclient import TestClient
 
 try:
@@ -99,7 +99,7 @@ def test_sync_history_returns_only_owned(client, db_session, auth_user, broker_a
             account_id=broker_account.id,
             sync_type="comprehensive",
             status=SyncStatus.SUCCESS,
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
         )
         db_session.add(sync)
         db_session.commit()

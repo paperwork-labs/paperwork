@@ -22,10 +22,19 @@ def needs_fundamentals(snapshot: Dict[str, Any]) -> bool:
         if isinstance(ts, str):
             try:
                 ts = datetime.fromisoformat(ts)
-            except Exception:
+            except Exception as e:
+                logger.warning(
+                    "needs_fundamentals: could not parse analysis_timestamp string: %s",
+                    e,
+                )
                 return False
         try:
-            age = datetime.utcnow() - ts.replace(tzinfo=None)
+            ts_utc = (
+                ts.replace(tzinfo=timezone.utc)
+                if ts.tzinfo is None
+                else ts.astimezone(timezone.utc)
+            )
+            age = datetime.now(timezone.utc) - ts_utc
             if age > timedelta(days=7):
                 return True
         except Exception as e:
@@ -56,7 +65,12 @@ class FundamentalsService:
         def _decimal_to_pct(value: Any) -> Optional[float]:
             try:
                 return float(value) * 100.0 if value is not None else None
-            except Exception:
+            except Exception as e:
+                logger.warning(
+                    "get_fundamentals_info: could not convert value to percent (%r): %s",
+                    value,
+                    e,
+                )
                 return None
 
         def set_if_missing(key: str, value: Any) -> None:
@@ -230,7 +244,8 @@ class FundamentalsService:
                     if isinstance(earnings, (list, tuple)) and earnings:
                         set_if_missing("next_earnings", earnings[0])
                     set_if_missing("last_earnings", y.get("lastEarningsDate"))
-            except Exception:
+            except Exception as e:
+                logger.warning("fundamentals fetch failed for %s: %s", symbol, e)
                 if not info:
                     info = {}
 

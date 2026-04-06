@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import redis
@@ -65,7 +65,7 @@ class ScheduleMetadata(BaseModel):
     audit: Dict[str, Any] = Field(default_factory=dict)
 
     def touch_audit(self, actor: str, *, is_create: bool = False) -> None:
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         audit = dict(self.audit or {})
         if is_create or "created_at" not in audit:
             audit["created_at"] = now

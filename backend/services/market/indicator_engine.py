@@ -17,6 +17,8 @@ from typing import Dict, Any, Optional, List
 import numpy as np
 import pandas as pd
 
+from backend.services.market.atr_series import calculate_atr_series
+
 logger = logging.getLogger(__name__)
 
 
@@ -528,31 +530,6 @@ def calculate_rsi_series(closes: pd.Series, period: int = 14) -> Optional[pd.Ser
         return None
 
 
-def calculate_atr_series(df: pd.DataFrame, period: int = 14) -> Optional[pd.Series]:
-    """Wilder's ATR: seed with SMA of first *period* TRs, then recursive smoothing."""
-    try:
-        high_low = df["High"] - df["Low"]
-        high_close = (df["High"] - df["Close"].shift()).abs()
-        low_close = (df["Low"] - df["Close"].shift()).abs()
-        tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
-
-        atr = pd.Series(np.nan, index=tr.index)
-        first_valid = tr.first_valid_index()
-        if first_valid is None:
-            return atr
-        start = tr.index.get_loc(first_valid)
-        seed_end = start + period
-        if seed_end > len(tr):
-            return atr
-        atr.iloc[seed_end - 1] = tr.iloc[start:seed_end].mean()
-        for i in range(seed_end, len(tr)):
-            atr.iloc[i] = (atr.iloc[i - 1] * (period - 1) + tr.iloc[i]) / period
-        return atr
-    except Exception as e:
-        logger.warning("ATR(%d) calculation failed: %s", period, e)
-        return None
-
-
 # ----------------------------
 # Higher-level analyses
 # ----------------------------
@@ -603,7 +580,9 @@ def compute_atr_matrix_metrics(
 
 # ---------------------------------------------------------------------------
 # Stage classification — canonical implementations live in stage_classifier.py.
-# Re-exported here for backward compatibility.
+# Re-exported here for backward compatibility. Many call sites still import these
+# names from indicator_engine; see backend/services/market/__init__.py for the
+# preferred package-level re-export path once imports are migrated.
 # ---------------------------------------------------------------------------
 from backend.services.market.stage_classifier import (  # noqa: E402, F401
     weekly_from_daily,
