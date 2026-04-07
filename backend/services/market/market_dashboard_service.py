@@ -17,7 +17,7 @@ from backend.services.market.constants import (
     SECTOR_ETF_PROXY_SYMBOLS,
     SECTOR_ETF_SYMBOLS_ORDER,
 )
-from backend.services.market.market_data_service import MarketDataService
+from backend.services.market.market_data_service import coverage_analytics, infra
 from backend.services.market.universe import tracked_symbols
 
 logger = logging.getLogger(__name__)
@@ -75,8 +75,7 @@ class MarketDashboardService:
         def _coalesce(primary, secondary):
             return primary if primary is not None else secondary
 
-        svc = MarketDataService()
-        tracked = tracked_symbols(db, redis_client=svc.redis_client)
+        tracked = tracked_symbols(db, redis_client=infra.redis_client)
         if not tracked:
             return [], [], {}, None
 
@@ -862,7 +861,7 @@ class MarketDashboardService:
 
         coverage_raw = self._safe_section(
             "coverage",
-            lambda: MarketDataService().coverage.build_coverage_response(
+            lambda: coverage_analytics.build_coverage_response(
                 db,
                 fill_trading_days_window=50,
                 fill_lookback_days=120,

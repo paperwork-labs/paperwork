@@ -10,7 +10,7 @@ from backend.api.dependencies import get_admin_user
 from backend.database import get_db
 from backend.models.user import UserRole
 from backend.models.market_data import PriceData
-from backend.services.market.market_data_service import MarketDataService, market_data_service
+from backend.services.market.market_data_service import coverage_analytics, infra
 from backend.services.market.universe import TRACKED_ALL_UPDATED_AT_KEY
 
 
@@ -39,8 +39,8 @@ def test_backfill_stale_daily_returns_full_stale_candidates(monkeypatch, db_sess
     try:
         # Create a tracked universe where one symbol is missing from DB entirely.
         tracked = ["FRESH", "STALE", "MISSING"]
-        market_data_service.redis_client.set("tracked:all", json.dumps(tracked))
-        market_data_service.redis_client.set(TRACKED_ALL_UPDATED_AT_KEY, str(time.time()))
+        infra.redis_client.set("tracked:all", json.dumps(tracked))
+        infra.redis_client.set(TRACKED_ALL_UPDATED_AT_KEY, str(time.time()))
 
         # Insert bars for FRESH (recent) and STALE (old). MISSING has no bars.
         db_session.query(PriceData).delete()
@@ -97,8 +97,8 @@ def test_backfill_stale_daily_returns_full_stale_candidates(monkeypatch, db_sess
     finally:
         app.dependency_overrides.pop(get_db, None)
         try:
-            market_data_service.redis_client.delete("tracked:all")
-            market_data_service.redis_client.delete(TRACKED_ALL_UPDATED_AT_KEY)
+            infra.redis_client.delete("tracked:all")
+            infra.redis_client.delete(TRACKED_ALL_UPDATED_AT_KEY)
         except Exception:
             pass
 
@@ -108,8 +108,8 @@ def test_coverage_snapshot_counts_missing_in_none_bucket(db_session):
         pytest.skip("DB session unavailable")
 
     tracked = ["FRESH2", "MISSING2"]
-    market_data_service.redis_client.set("tracked:all", json.dumps(tracked))
-    market_data_service.redis_client.set(TRACKED_ALL_UPDATED_AT_KEY, str(time.time()))
+    infra.redis_client.set("tracked:all", json.dumps(tracked))
+    infra.redis_client.set(TRACKED_ALL_UPDATED_AT_KEY, str(time.time()))
     try:
         db_session.query(PriceData).delete()
         now = datetime.now(timezone.utc)
@@ -130,8 +130,7 @@ def test_coverage_snapshot_counts_missing_in_none_bucket(db_session):
         )
         db_session.commit()
 
-        svc = MarketDataService()
-        snap = svc.coverage_snapshot(db_session)
+        snap = coverage_analytics.coverage_snapshot(db_session)
         daily = snap.get("daily") or {}
         buckets = (daily.get("freshness") or {})
         assert sum(int(v) for v in buckets.values()) == 2
@@ -139,8 +138,8 @@ def test_coverage_snapshot_counts_missing_in_none_bucket(db_session):
         assert int(daily.get("missing") or 0) == 1
     finally:
         try:
-            market_data_service.redis_client.delete("tracked:all")
-            market_data_service.redis_client.delete(TRACKED_ALL_UPDATED_AT_KEY)
+            infra.redis_client.delete("tracked:all")
+            infra.redis_client.delete(TRACKED_ALL_UPDATED_AT_KEY)
         except Exception:
             pass
 

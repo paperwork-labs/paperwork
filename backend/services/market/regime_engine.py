@@ -12,8 +12,6 @@ import math
 from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Optional, Union
-
-import numpy as np
 from sqlalchemy.orm import Session
 
 from backend.models.market_data import MarketRegime
@@ -57,177 +55,204 @@ class RegimeResult:
     cash_floor_pct: float
     max_equity_exposure_pct: float
     regime_multiplier: float
+    weights_used: list[float]
 
 
-# ── Scoring functions (1–5 per Stage Analysis spec thresholds) ──
+# ── Scoring functions (1–5 per non-overlapping boundaries) ──
+# Boundary rule: on-boundary = more bearish score.
+
+def _safe_input(func_name: str, value, *, allow_negative: bool = False) -> Optional[float]:
+    """Return None if value is invalid (None/NaN/non-positive), else float."""
+    if value is None or (isinstance(value, float) and math.isnan(value)):
+        logger.warning(
+            "Regime scoring: %s received invalid input %s, using neutral score",
+            func_name, value,
+        )
+        return None
+    val = float(value)
+    if not allow_negative and val <= 0:
+        logger.warning(
+            "Regime scoring: %s received invalid input %s, using neutral score",
+            func_name, value,
+        )
+        return None
+    return val
+
 
 def score_vix(vix: float) -> float:
-    """VIX spot → 1 (low fear) to 5 (extreme fear)."""
-    if vix is None or (isinstance(vix, float) and math.isnan(vix)):
-        logger.warning(
-            "Regime scoring: %s received invalid input %s, using neutral score",
-            "score_vix",
-            vix,
-        )
+    """VIX spot → 1 (low fear) to 5 (extreme fear).
+
+    Boundaries: <17 / 17–20 / 20–27 / 27–35 / ≥35
+    """
+    val = _safe_input("score_vix", vix)
+    if val is None:
         return 3.0
-    if vix <= 0:
-        logger.warning(
-            "Regime scoring: %s received invalid input %s, using neutral score",
-            "score_vix",
-            vix,
-        )
-        return 3.0
-    if vix <= 13:
+    if val < 17:
         return 1.0
-    elif vix <= 16:
+    if val < 20:
         return 2.0
-    elif vix <= 22:
+    if val < 27:
         return 3.0
-    elif vix <= 30:
+    if val < 35:
         return 4.0
-    else:
-        return 5.0
+    return 5.0
 
 
 def score_vix3m_vix(ratio: float) -> float:
     """VIX3M/VIX ratio → 1 (contango, calm) to 5 (backwardation, panic).
 
-    Ratio > 1.0 = contango (normal); ratio < 1.0 = backwardation (stress).
+    Boundaries: >1.10 / (1.05,1.10] / (1.00,1.05] / (0.90,1.00] / ≤0.90
     """
     if ratio is None or (isinstance(ratio, float) and math.isnan(ratio)):
         logger.warning(
             "Regime scoring: %s received invalid input %s, using neutral score",
-            "score_vix3m_vix",
-            ratio,
+            "score_vix3m_vix", ratio,
         )
         return 3.0
-    if ratio >= 1.10:
+    if ratio > 1.10:
         return 1.0
-    elif ratio >= 1.03:
+    if ratio > 1.05:
         return 2.0
-    elif ratio >= 0.97:
+    if ratio > 1.00:
         return 3.0
-    elif ratio >= 0.90:
+    if ratio > 0.90:
         return 4.0
-    else:
-        return 5.0
+    return 5.0
 
 
 def score_vvix_vix(ratio: float) -> float:
     """VVIX/VIX ratio → 1 (stable vol) to 5 (unstable vol).
 
-    High ratio = vol-of-vol is outsized relative to VIX, uncertainty about direction.
+    Non-monotonic scoring: both extremes (< 2.5 or ≥ 7.0) are bearish.
+    Boundaries: ≥7.0→5 / (5.5,7.0)→1 / (4.5,5.5]→2 / (3.5,4.5]→3 / (2.5,3.5]→4 / ≤2.5→5
     """
     if ratio is None or (isinstance(ratio, float) and math.isnan(ratio)):
         logger.warning(
             "Regime scoring: %s received invalid input %s, using neutral score",
-            "score_vvix_vix",
-            ratio,
+            "score_vvix_vix", ratio,
         )
         return 3.0
-    if ratio <= 4.0:
-        return 1.0
-    elif ratio <= 5.5:
-        return 2.0
-    elif ratio <= 7.0:
-        return 3.0
-    elif ratio <= 9.0:
-        return 4.0
-    else:
+    if ratio >= 7.0:
         return 5.0
+    if ratio <= 2.5:
+        return 5.0
+    if ratio > 5.5:
+        return 1.0
+    if ratio > 4.5:
+        return 2.0
+    if ratio > 3.5:
+        return 3.0
+    return 4.0
 
 
 def score_nh_nl(nh_nl: Optional[Union[int, float]]) -> float:
-    """New Highs minus New Lows (S&P 500) → 1 (bullish) to 5 (bearish)."""
+    """New Highs minus New Lows (S&P 500) → 1 (bullish) to 5 (bearish).
+
+    Boundaries: >100 / (20,100] / (-50,20] / (-150,-50] / ≤-150
+    """
     if nh_nl is None or (isinstance(nh_nl, float) and math.isnan(nh_nl)):
         logger.warning(
             "Regime scoring: %s received invalid input %s, using neutral score",
-            "score_nh_nl",
-            nh_nl,
+            "score_nh_nl", nh_nl,
         )
         return 3.0
-    if nh_nl >= 100:
+    if nh_nl > 100:
         return 1.0
-    elif nh_nl >= 30:
+    if nh_nl > 20:
         return 2.0
-    elif nh_nl >= -30:
+    if nh_nl > -50:
         return 3.0
-    elif nh_nl >= -100:
+    if nh_nl > -150:
         return 4.0
-    else:
-        return 5.0
+    return 5.0
 
 
 def score_pct_above_200d(pct: float) -> float:
-    """% of S&P 500 stocks above 200D MA → 1 (healthy) to 5 (broken)."""
+    """% of S&P 500 stocks above 200D MA → 1 (healthy) to 5 (broken).
+
+    Boundaries: >65 / (55,65] / (45,55] / (30,45] / ≤30
+    """
     if pct is None or (isinstance(pct, float) and math.isnan(pct)):
         logger.warning(
             "Regime scoring: %s received invalid input %s, using neutral score",
-            "score_pct_above_200d",
-            pct,
+            "score_pct_above_200d", pct,
         )
         return 3.0
-    if pct >= 70:
+    if pct > 65:
         return 1.0
-    elif pct >= 55:
+    if pct > 55:
         return 2.0
-    elif pct >= 40:
+    if pct > 45:
         return 3.0
-    elif pct >= 25:
+    if pct > 30:
         return 4.0
-    else:
-        return 5.0
+    return 5.0
 
 
 def score_pct_above_50d(pct: float) -> float:
-    """% of S&P 500 stocks above 50D MA → 1 (healthy) to 5 (broken)."""
+    """% of S&P 500 stocks above 50D MA → 1 (healthy) to 5 (broken).
+
+    Boundaries: >65 / (50,65] / (35,50] / (15,35] / ≤15
+    """
     if pct is None or (isinstance(pct, float) and math.isnan(pct)):
         logger.warning(
             "Regime scoring: %s received invalid input %s, using neutral score",
-            "score_pct_above_50d",
-            pct,
+            "score_pct_above_50d", pct,
         )
         return 3.0
-    if pct >= 75:
+    if pct > 65:
         return 1.0
-    elif pct >= 60:
+    if pct > 50:
         return 2.0
-    elif pct >= 40:
+    if pct > 35:
         return 3.0
-    elif pct >= 25:
+    if pct > 15:
         return 4.0
-    else:
-        return 5.0
+    return 5.0
+
+
+# ── Weighted composite ──
+
+WEIGHTS = [1.00, 1.25, 0.75, 1.00, 1.00, 0.75]
+WEIGHT_SUM = 5.75
 
 
 def compute_composite(scores: list[float]) -> float:
-    """Average of 6 scores, rounded to nearest 0.5 (half-up, not round-half-to-even)."""
-    avg = float(np.mean(scores))
-    return math.floor(avg * 2 + 0.5) / 2
+    """Weighted average of 6 scores, rounded to nearest 0.25.
+
+    Formula: sum(score_i * weight_i) / 5.75, then snap to 0.25 grid.
+    Weights: VIX=1.0, VIX3M/VIX=1.25, VVIX/VIX=0.75, NH-NL=1.0, %200D=1.0, %50D=0.75
+    """
+    weighted = sum(s * w for s, w in zip(scores, WEIGHTS))
+    avg = weighted / WEIGHT_SUM
+    return round(avg * 4) / 4
 
 
 def composite_to_regime(composite: float) -> str:
-    """Map composite score to regime state."""
-    if composite <= 1.75:
+    """Map composite score to regime state.
+
+    On-boundary values (2.50, 3.50, 4.50) are assigned to the more
+    defensive (higher-numbered) regime.
+    """
+    if composite < 2.0:
         return REGIME_R1
-    elif composite <= 2.50:
+    if composite < 2.5:
         return REGIME_R2
-    elif composite <= 3.50:
+    if composite < 3.5:
         return REGIME_R3
-    elif composite <= 4.50:
+    if composite < 4.5:
         return REGIME_R4
-    else:
-        return REGIME_R5
+    return REGIME_R5
 
 
 # ── Regime portfolio rules ──
 
 REGIME_RULES = {
-    REGIME_R1: {"cash_floor": 5.0, "max_equity": 100.0, "multiplier": 1.0},
-    REGIME_R2: {"cash_floor": 10.0, "max_equity": 90.0, "multiplier": 0.75},
-    REGIME_R3: {"cash_floor": 25.0, "max_equity": 75.0, "multiplier": 0.5},
-    REGIME_R4: {"cash_floor": 40.0, "max_equity": 60.0, "multiplier": 0.4},
-    REGIME_R5: {"cash_floor": 60.0, "max_equity": 40.0, "multiplier": 0.25},
+    REGIME_R1: {"cash_floor": 5.0, "max_equity": 90.0, "multiplier": 1.0},
+    REGIME_R2: {"cash_floor": 15.0, "max_equity": 75.0, "multiplier": 0.75},
+    REGIME_R3: {"cash_floor": 35.0, "max_equity": 50.0, "multiplier": 0.5},
+    REGIME_R4: {"cash_floor": 50.0, "max_equity": 30.0, "multiplier": 0.4},
+    REGIME_R5: {"cash_floor": 70.0, "max_equity": 10.0, "multiplier": 0.0},
 }
 
 
@@ -259,6 +284,7 @@ def compute_regime(inputs: RegimeInputs, as_of: date) -> RegimeResult:
         cash_floor_pct=rules["cash_floor"],
         max_equity_exposure_pct=rules["max_equity"],
         regime_multiplier=rules["multiplier"],
+        weights_used=list(WEIGHTS),
     )
 
 
@@ -294,6 +320,7 @@ def persist_regime(db: Session, result: RegimeResult) -> MarketRegime:
     row.cash_floor_pct = result.cash_floor_pct
     row.max_equity_exposure_pct = result.max_equity_exposure_pct
     row.regime_multiplier = result.regime_multiplier
+    row.weights_used = result.weights_used
 
     db.flush()
     logger.info(

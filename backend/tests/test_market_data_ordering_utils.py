@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from backend.services.market.dataframe_utils import ensure_newest_first, ensure_oldest_first
-from backend.services.market.market_data_service import MarketDataService
+from backend.services.market.market_data_service import snapshot_builder
 
 pytestmark = pytest.mark.no_db
 
@@ -42,8 +42,7 @@ def test_snapshot_from_dataframe_uses_newest_bar_for_current_fields():
         index=pd.to_datetime(["2026-02-10", "2026-02-11"]),
     )
 
-    svc = MarketDataService()
-    snap = svc._snapshot_from_dataframe(df)
+    snap = snapshot_builder._snapshot_from_dataframe(df)
 
     assert snap["current_price"] == 110.0
     assert str(snap.get("as_of_timestamp", "")).startswith("2026-02-11")

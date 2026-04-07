@@ -1069,10 +1069,9 @@ class AgentBrain:
             return {"error": "Symbol is required"}
         
         try:
-            from backend.services.market.market_data_service import MarketDataService
-            
-            svc = MarketDataService()
-            snapshot = svc.get_snapshot_from_store(self.db, symbol.upper())
+            from backend.services.market.market_data_service import snapshot_builder
+
+            snapshot = snapshot_builder.get_snapshot_from_store(self.db, symbol.upper())
             
             if not snapshot:
                 return {"error": f"No snapshot found for {symbol.upper()}"}
@@ -2440,9 +2439,9 @@ class AgentBrain:
 
     async def _tool_check_data_accuracy(self, **kwargs) -> Dict[str, Any]:
         import json
-        from backend.services.market.market_data_service import market_data_service
+        from backend.services.market.market_data_service import infra
         try:
-            r = market_data_service.redis_client
+            r = infra.redis_client
             raw = r.get("ohlcv:reconciliation:last")
             if not raw:
                 return {"status": "no_data", "message": "Reconciliation has not run yet"}
@@ -2460,9 +2459,9 @@ class AgentBrain:
 
     async def _tool_check_pre_market_readiness(self, **kwargs) -> Dict[str, Any]:
         import json
-        from backend.services.market.market_data_service import market_data_service
+        from backend.services.market.market_data_service import infra
         try:
-            r = market_data_service.redis_client
+            r = infra.redis_client
             cached = r.get("health:pre_market_readiness")
             if cached:
                 return json.loads(cached.decode() if isinstance(cached, (bytes, bytearray)) else cached)
@@ -2520,11 +2519,11 @@ class AgentBrain:
     def _get_redis(self):
         """Get Redis client from market data service."""
         try:
-            from backend.services.market.market_data_service import market_data_service
-            return market_data_service.redis_client
+            from backend.services.market.market_data_service import infra
+            return infra.redis_client
         except Exception as redis_err:
             logger.warning(
-                "Could not obtain Redis client from market_data_service: %s",
+                "Could not obtain Redis client from market infra: %s",
                 redis_err,
             )
             return None

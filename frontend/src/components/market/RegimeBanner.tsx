@@ -1,22 +1,11 @@
 import React from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { REGIME_HEX } from '../../constants/chart';
 import { useRegime } from '../../hooks/useRegime';
+import type { RegimeData } from '../../types/market';
 import { cn } from '@/lib/utils';
 
-export interface RegimeData {
-  regime_state: string;
-  composite_score: number;
-  as_of_date: string;
-  vix_spot: number | null;
-  vix3m_vix_ratio: number | null;
-  vvix_vix_ratio: number | null;
-  nh_nl: number | null;
-  pct_above_200d: number | null;
-  pct_above_50d: number | null;
-  cash_floor_pct: number | null;
-  max_equity_exposure_pct: number | null;
-  regime_multiplier: number | null;
-}
+export type { RegimeData };
 
 const REGIME_LABELS: Record<string, string> = {
   R1: 'Bull',
@@ -26,8 +15,39 @@ const REGIME_LABELS: Record<string, string> = {
   R5: 'Bear',
 };
 
+const SCORE_LABELS: { key: keyof RegimeData; label: string }[] = [
+  { key: 'score_vix', label: 'VIX' },
+  { key: 'score_vix3m_vix', label: 'VIX3M/VIX' },
+  { key: 'score_vvix_vix', label: 'VVIX/VIX' },
+  { key: 'score_nh_nl', label: 'NH−NL' },
+  { key: 'score_above_200d', label: '>200D' },
+  { key: 'score_above_50d', label: '>50D' },
+];
+
+function ScoreChip({ label, value, max = 5 }: { label: string; value: number | null; max?: number }) {
+  if (value == null) return null;
+  const pct = Math.min(100, Math.max(0, (value / max) * 100));
+  const color =
+    value <= 1.5 ? 'bg-emerald-500' :
+    value <= 2.5 ? 'bg-amber-400' :
+    value <= 3.5 ? 'bg-orange-500' :
+    'bg-red-500';
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[10px] text-muted-foreground">{label}</span>
+        <span className="text-[10px] font-semibold tabular-nums">{value.toFixed(1)}</span>
+      </div>
+      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+        <div className={cn('h-full rounded-full transition-all', color)} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
 const RegimeBanner: React.FC = () => {
   const { data, isPending, isError, error } = useRegime();
+  const [expanded, setExpanded] = React.useState(false);
 
   if (isPending) {
     return (
@@ -69,6 +89,7 @@ const RegimeBanner: React.FC = () => {
   const row = data as unknown as RegimeData;
   const color = REGIME_HEX[row.regime_state] || '#718096';
   const label = REGIME_LABELS[row.regime_state] || row.regime_state;
+  const hasScores = SCORE_LABELS.some(({ key }) => (row[key] as number | null) != null);
 
   return (
     <div
@@ -148,8 +169,44 @@ const RegimeBanner: React.FC = () => {
               <span className="text-xs font-semibold">{row.max_equity_exposure_pct.toFixed(0)}%</span>
             </div>
           )}
+          {hasScores && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="ml-1 flex items-center gap-0.5 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
+              aria-expanded={expanded}
+              aria-label={expanded ? 'Collapse score details' : 'Expand score details'}
+            >
+              Details
+              {expanded ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+            </button>
+          )}
         </div>
       </div>
+
+      {expanded && hasScores && (
+        <div className="mt-3 border-t border-border pt-3" role="region" aria-label="Regime component scores">
+          <div className="flex flex-wrap items-start gap-5">
+            <div className="flex flex-wrap gap-4">
+              {SCORE_LABELS.map(({ key, label: scoreLabel }) => (
+                <ScoreChip key={key} label={scoreLabel} value={row[key] as number | null} />
+              ))}
+            </div>
+            {row.weights_used && row.weights_used.length > 0 && (
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] text-muted-foreground">Weights</span>
+                <div className="flex flex-wrap gap-1">
+                  {SCORE_LABELS.map(({ label: wLabel }, i) => (
+                    <span key={i} className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                      {wLabel}: {row.weights_used?.[i]?.toFixed(1) ?? '—'}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

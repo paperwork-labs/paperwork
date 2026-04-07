@@ -79,6 +79,29 @@ SNAPSHOT_PREFERRED_COLUMNS = [
     "rsi",
     "macd",
     "macd_signal",
+    # Stage Analysis state
+    "ext_pct",
+    "sma150_slope",
+    "sma50_slope",
+    "ema10_dist_pct",
+    "ema10_dist_n",
+    "vol_ratio",
+    "scan_tier",
+    "action_label",
+    "regime_state",
+    "pass_count",
+    "atre_promoted",
+    "action_override",
+    "manual_review",
+    # Quad Engine
+    "quad_quarterly",
+    "quad_monthly",
+    "quad_divergence_flag",
+    "quad_depth",
+    # Scan / Sizing enrichment
+    "forward_rr",
+    "correlation_flag",
+    "sector_confirmation",
 ]
 
 SNAPSHOTS_PREFERRED_COLUMNS = [
@@ -137,6 +160,29 @@ SNAPSHOTS_PREFERRED_COLUMNS = [
     "perf_1d",
     "perf_5d",
     "perf_20d",
+    # Stage Analysis state
+    "ext_pct",
+    "sma150_slope",
+    "sma50_slope",
+    "ema10_dist_pct",
+    "ema10_dist_n",
+    "vol_ratio",
+    "scan_tier",
+    "action_label",
+    "regime_state",
+    "pass_count",
+    "atre_promoted",
+    "action_override",
+    "manual_review",
+    # Quad Engine
+    "quad_quarterly",
+    "quad_monthly",
+    "quad_divergence_flag",
+    "quad_depth",
+    # Scan / Sizing enrichment
+    "forward_rr",
+    "correlation_flag",
+    "sector_confirmation",
 ]
 
 SNAPSHOT_HISTORY_PREFERRED_COLUMNS = [
@@ -190,6 +236,29 @@ SNAPSHOT_HISTORY_PREFERRED_COLUMNS = [
     "rsi",
     "macd",
     "macd_signal",
+    # Stage Analysis state
+    "ext_pct",
+    "sma150_slope",
+    "sma50_slope",
+    "ema10_dist_pct",
+    "ema10_dist_n",
+    "vol_ratio",
+    "scan_tier",
+    "action_label",
+    "regime_state",
+    "pass_count",
+    "atre_promoted",
+    "action_override",
+    "manual_review",
+    # Quad Engine
+    "quad_quarterly",
+    "quad_monthly",
+    "quad_divergence_flag",
+    "quad_depth",
+    # Scan / Sizing enrichment
+    "forward_rr",
+    "correlation_flag",
+    "sector_confirmation",
 ]
 
 POPULAR_STOCKS = [

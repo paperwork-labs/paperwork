@@ -5,6 +5,7 @@ import { renderWithProviders } from '../../test/render';
 import MarketTracked from '../MarketTracked';
 
 const apiGet = vi.fn().mockResolvedValue({ data: { rows: [] } });
+const mockGetSnapshotTable = vi.fn().mockResolvedValue({ rows: [], total: 0 });
 
 vi.mock('../../hooks/useUserPreferences', () => ({
   useUserPreferences: () => ({
@@ -30,36 +31,41 @@ vi.mock('../../services/api', () => {
     default: {
       get: (...args: any[]) => apiGet(...args),
     },
+    marketDataApi: {
+      getSnapshotTable: (...args: any[]) => mockGetSnapshotTable(...args),
+    },
   };
 });
 
 describe('MarketTracked snapshot table', () => {
-  beforeEach(() => apiGet.mockClear());
+  beforeEach(() => {
+    apiGet.mockClear();
+    mockGetSnapshotTable.mockClear();
+  });
 
   it('loads and renders Level 1–4 columns', async () => {
-    apiGet.mockResolvedValueOnce({
-      data: {
-        rows: [
-          {
-            symbol: 'AAA',
-            analysis_timestamp: '2026-01-09T00:00:00Z',
-            as_of_timestamp: '2026-01-09T00:00:00Z',
-            current_price: 10,
-            market_cap: 1_000_000_000,
-            stage_label: '2B',
-            current_stage_days: 7,
-            previous_stage_label: '2A',
-            previous_stage_days: 12,
-            rs_mansfield_pct: 12.3,
-            sma_50: 9.5,
-            ema_8: 9.9,
-            atr_14: 0.8,
-            atrp_14: 8.0,
-            atrx_sma_50: 0.7,
-            range_pos_52w: 55.2,
-          },
-        ],
-      },
+    mockGetSnapshotTable.mockResolvedValueOnce({
+      rows: [
+        {
+          symbol: 'AAA',
+          analysis_timestamp: '2026-01-09T00:00:00Z',
+          as_of_timestamp: '2026-01-09T00:00:00Z',
+          current_price: 10,
+          market_cap: 1_000_000_000,
+          stage_label: '2B',
+          current_stage_days: 7,
+          previous_stage_label: '2A',
+          previous_stage_days: 12,
+          rs_mansfield_pct: 12.3,
+          sma_50: 9.5,
+          ema_8: 9.9,
+          atr_14: 0.8,
+          atrp_14: 8.0,
+          atrx_sma_50: 0.7,
+          range_pos_52w: 55.2,
+        },
+      ],
+      total: 1,
     });
 
     renderWithProviders(<MarketTracked />, { route: '/market/tracked' });

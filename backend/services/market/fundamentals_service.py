@@ -45,12 +45,13 @@ def needs_fundamentals(snapshot: Dict[str, Any]) -> bool:
 class FundamentalsService:
     """Multi-provider fundamentals fetch.
 
-    Accepts a reference to the parent ``MarketDataService`` for API clients
-    and retry infrastructure.
+    Accepts ``MarketInfra`` for Redis/API clients and ``ProviderRouter``
+    for retry infrastructure.
     """
 
-    def __init__(self, service) -> None:
-        self._service = service
+    def __init__(self, infra, provider_router) -> None:
+        self._infra = infra
+        self._provider = provider_router
 
     def get_fundamentals_info(self, symbol: str) -> Dict[str, Any]:
         """Return fundamentals for *symbol* using multi-provider cascade.
@@ -87,10 +88,10 @@ class FundamentalsService:
                     continue
                 try:
                     provider_rate_limiter.acquire_sync("fmp")
-                    result = self._service._call_blocking_with_retries_sync(
+                    result = self._provider._call_blocking_with_retries_sync(
                         fn, apikey=apikey, symbol=symbol
                     )
-                    self._service._record_provider_call_sync("fmp")
+                    self._infra._record_provider_call_sync("fmp")
                     return result
                 except Exception as exc:
                     last_exc = exc
@@ -102,7 +103,7 @@ class FundamentalsService:
         # --- Provider 1: FMP ---
         fmp_budget_ok = False
         try:
-            _r = self._service._sync_redis
+            _r = self._infra._sync_redis
             _dk = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             _cur = int(_r.hget(f"provider:calls:{_dk}", "fmp") or 0)
             if _cur < settings.provider_policy.fmp_daily_budget:
@@ -115,10 +116,10 @@ class FundamentalsService:
         try:
             if settings.FMP_API_KEY and fmp_budget_ok:
                 provider_rate_limiter.acquire_sync("fmp")
-                prof = self._service._call_blocking_with_retries_sync(
+                prof = self._provider._call_blocking_with_retries_sync(
                     fmpsdk.company_profile, apikey=settings.FMP_API_KEY, symbol=symbol,
                 )
-                self._service._record_provider_call_sync("fmp")
+                self._infra._record_provider_call_sync("fmp")
                 if prof and len(prof) > 0 and isinstance(prof[0], dict):
                     d = prof[0]
                     info = {
@@ -132,10 +133,10 @@ class FundamentalsService:
                         info["beta"] = d.get("beta")
                 try:
                     provider_rate_limiter.acquire_sync("fmp")
-                    metrics = self._service._call_blocking_with_retries_sync(
+                    metrics = self._provider._call_blocking_with_retries_sync(
                         fmpsdk.key_metrics_ttm, apikey=settings.FMP_API_KEY, symbol=symbol,
                     )
-                    self._service._record_provider_call_sync("fmp")
+                    self._infra._record_provider_call_sync("fmp")
                     if metrics and isinstance(metrics[0], dict):
                         m = metrics[0]
                         set_if_missing("pe_ttm", m.get("peRatioTTM") or m.get("peRatio"))
@@ -162,10 +163,10 @@ class FundamentalsService:
                     logger.warning("FMP ratios failed for %s: %s", symbol, exc)
                 try:
                     provider_rate_limiter.acquire_sync("fmp")
-                    growth = self._service._call_blocking_with_retries_sync(
+                    growth = self._provider._call_blocking_with_retries_sync(
                         fmpsdk.financial_growth, apikey=settings.FMP_API_KEY, symbol=symbol,
                     )
-                    self._service._record_provider_call_sync("fmp")
+                    self._infra._record_provider_call_sync("fmp")
                     if growth and isinstance(growth[0], dict):
                         g = growth[0]
                         set_if_missing("eps_growth_yoy", _decimal_to_pct(g.get("epsGrowth") or g.get("epsgrowth")))
@@ -178,7 +179,7 @@ class FundamentalsService:
             logger.warning("FMP fundamentals failed for %s: %s", symbol, exc)
 
         # --- Provider 2: Finnhub ---
-        finnhub_client = self._service.finnhub_client
+        finnhub_client = self._infra.finnhub_client
         if finnhub_client and needs_fundamentals(info):
             try:
                 provider_rate_limiter.acquire_sync("finnhub")
@@ -213,7 +214,7 @@ class FundamentalsService:
         if needs_full or needs_core:
             try:
                 provider_rate_limiter.acquire_sync("yfinance")
-                y = self._service._call_blocking_with_retries_sync(lambda: yf.Ticker(symbol).info)
+                y = self._provider._call_blocking_with_retries_sync(lambda: yf.Ticker(symbol).info)
                 if y:
                     if not info:
                         info = {

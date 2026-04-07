@@ -13,12 +13,14 @@ import { isPlatformAdminRole } from '../utils/userRole';
 import { ETF_SYMBOL_SET } from '../constants/etf';
 import { usePortfolioSymbols } from '../hooks/usePortfolioSymbols';
 import { useUserPreferences } from '../hooks/useUserPreferences';
+import { useSnapshotTable } from '../hooks/useSnapshotTable';
 import api from '../services/api';
 import { formatDateTime, formatMoney } from '../utils/format';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Page, PageHeader } from '@/components/ui/Page';
+import Pagination from '@/components/ui/Pagination';
 import { cn } from '@/lib/utils';
 import { semanticTextColorClass } from '@/lib/semantic-text-color';
 
@@ -122,9 +124,6 @@ const MarketTracked: React.FC = () => {
   const { timezone, currency } = useUserPreferences();
   const { user } = useAuth();
   const canEditPlan = isPlatformAdminRole(user?.role) || user?.role === 'analyst';
-  const [rows, setRows] = React.useState<any[]>([]);
-  const [trackedCount, setTrackedCount] = React.useState<number>(0);
-  const [loading, setLoading] = React.useState<boolean>(false);
   const [chartSymbol, setChartSymbol] = React.useState<string | null>(null);
   const openChart = React.useCallback((sym: string) => setChartSymbol(sym), []);
   const [showHoldings, setShowHoldings] = React.useState(false);
@@ -132,23 +131,35 @@ const MarketTracked: React.FC = () => {
   const portfolioQuery = usePortfolioSymbols();
   const portfolioSymbols = portfolioQuery.data ?? {};
 
-  const load = async () => {
-    if (loading) return;
-    setLoading(true);
-    try {
-      const r = await api.get('/market-data/snapshots?limit=5000');
-      const data = (r as any)?.data;
-      const out = data?.rows;
-      setRows(Array.isArray(out) ? out : []);
-      setTrackedCount(typeof data?.tracked_count === 'number' ? data.tracked_count : 0);
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to load tracked snapshot table');
-      setRows([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-  React.useEffect(() => { void load(); }, []);
+  const [sortBy, setSortBy] = React.useState('symbol');
+  const [sortDir, setSortDir] = React.useState<'asc' | 'desc'>('asc');
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(100);
+
+  const offset = (page - 1) * pageSize;
+
+  const tableParams = React.useMemo(() => ({
+    sort_by: sortBy,
+    sort_dir: sortDir,
+    offset,
+    limit: pageSize,
+    include_plan: true,
+  }), [sortBy, sortDir, offset, pageSize]);
+
+  const { data: tableData, isPending: loading } = useSnapshotTable(tableParams);
+  const rows = tableData?.rows ?? [];
+  const total = tableData?.total ?? 0;
+
+  const handleSortChange = React.useCallback((key: string, dir: 'asc' | 'desc') => {
+    setSortBy(key);
+    setSortDir(dir);
+    setPage(1);
+  }, []);
+
+  const handlePageSizeChange = React.useCallback((size: number) => {
+    setPageSize(size);
+    setPage(1);
+  }, []);
 
   const updateTrackedPlan = React.useCallback(async (
     symbol: string,
@@ -156,12 +167,6 @@ const MarketTracked: React.FC = () => {
   ) => {
     try {
       await api.patch(`/market-data/tracked-plan/${encodeURIComponent(symbol)}`, patch);
-      setRows((prev) =>
-        prev.map((row) => {
-          if (String(row?.symbol || '').toUpperCase() !== symbol.toUpperCase()) return row;
-          return { ...row, ...patch };
-        })
-      );
     } catch (err: any) {
       toast.error(err?.message || 'Failed to update tracked plan');
       throw err;
@@ -637,7 +642,7 @@ const MarketTracked: React.FC = () => {
                   ETFs Only
                 </Button>
                 <Badge variant="secondary" className="h-6 shrink-0">
-                  {tableRows.length} rows
+                  {total} rows
                 </Badge>
               </div>
             }
@@ -648,22 +653,13 @@ const MarketTracked: React.FC = () => {
             }
           />
 
-          {!loading && trackedCount > 0 && rows.length < trackedCount ? (
-            <div className="mb-2 rounded-md border border-border bg-muted/50 px-3 py-2">
-              <p className="text-xs text-muted-foreground">
-                Showing {rows.length} of {trackedCount} tracked symbols with computed indicators.
-                {rows.length < trackedCount * 0.9 ? ' Run "Recompute Indicators (Market Snapshot)" from Operator Actions to update all tracked symbols.' : ''}
-              </p>
-            </div>
-          ) : null}
-
           <div className="w-full overflow-hidden rounded-xl border border-border bg-card shadow-xs ring-1 ring-foreground/10">
             <SortableTable
               key={`${location.search || 'tracked-default'}-${etfOnly ? 'etf' : 'all'}`}
               data={tableRows}
               columns={columns}
-              defaultSortBy="symbol"
-              defaultSortOrder="asc"
+              defaultSortBy={sortBy}
+              defaultSortOrder={sortDir}
               size={compact ? 'sm' : 'md'}
               rowClassName={compact ? 'py-1 text-xs' : 'py-2 text-sm'}
               maxHeight="70vh"
@@ -672,6 +668,9 @@ const MarketTracked: React.FC = () => {
               initialFilters={deepLinkFilters}
               initialFiltersOpen={!etfOnlyDeepLink}
               emptyMessage={loading ? 'Loading…' : 'No tracked symbols yet.'}
+              serverSorted
+              onSortChange={handleSortChange}
+              serverTotal={total}
               endToolbar={
                 <Button
                   type="button"
@@ -686,6 +685,19 @@ const MarketTracked: React.FC = () => {
               }
             />
           </div>
+
+          {total > 0 && (
+            <div className="mt-3">
+              <Pagination
+                page={page}
+                pageSize={pageSize}
+                total={total}
+                pageSizeOptions={[50, 100, 200]}
+                onPageChange={setPage}
+                onPageSizeChange={handlePageSizeChange}
+              />
+            </div>
+          )}
         </Page>
         <ChartSlidePanel symbol={chartSymbol} onClose={() => setChartSymbol(null)} />
         {tradeTarget && (

@@ -88,18 +88,12 @@ def _mock_snapshot(symbol, stage="2A", prev="1", perf_1d=1.0, perf_5d=2.0, perf_
 
 def test_sector_etf_table_has_enhanced_fields(monkeypatch):
     """sector_etf_table entries should include change_5d, change_20d, rs_mansfield_pct."""
-    class _FakeMDS:
-        def __init__(self):
-            self.redis_client = None
-
     class _FakeCoverage:
         def build_coverage_response(self, *a, **kw):
             return {"status": "ok", "daily": {"coverage": {"pct": 99}}, "m5": {"coverage": {"pct": 95}}}
 
-    monkeypatch.setattr(mds_module, "MarketDataService", lambda: SimpleNamespace(
-        redis_client=None,
-        coverage=_FakeCoverage(),
-    ))
+    monkeypatch.setattr(mds_module, "infra", SimpleNamespace(redis_client=None))
+    monkeypatch.setattr(mds_module, "coverage_analytics", _FakeCoverage())
 
     tracked = list(SECTOR_ETF_SYMBOLS_ORDER[:3]) + ["AAPL"]
     monkeypatch.setattr(mds_module, "tracked_symbols", lambda *a, **kw: tracked)
@@ -127,10 +121,8 @@ def test_entering_stage_3_and_4_populated(monkeypatch):
         def build_coverage_response(self, *a, **kw):
             return {"status": "ok", "daily": {"coverage": {"pct": 99}}, "m5": {"coverage": {"pct": 95}}}
 
-    monkeypatch.setattr(mds_module, "MarketDataService", lambda: SimpleNamespace(
-        redis_client=None,
-        coverage=_FakeCoverage(),
-    ))
+    monkeypatch.setattr(mds_module, "infra", SimpleNamespace(redis_client=None))
+    monkeypatch.setattr(mds_module, "coverage_analytics", _FakeCoverage())
     monkeypatch.setattr(mds_module, "tracked_symbols", lambda *a, **kw: ["AAA", "BBB", "CCC"])
 
     rows = [
@@ -156,10 +148,8 @@ def _dashboard_helper(monkeypatch, rows, tracked=None):
         def build_coverage_response(self, *a, **kw):
             return {"status": "ok", "daily": {"coverage": {"pct": 99}}, "m5": {"coverage": {"pct": 95}}}
 
-    monkeypatch.setattr(mds_module, "MarketDataService", lambda: SimpleNamespace(
-        redis_client=None,
-        coverage=_FakeCoverage(),
-    ))
+    monkeypatch.setattr(mds_module, "infra", SimpleNamespace(redis_client=None))
+    monkeypatch.setattr(mds_module, "coverage_analytics", _FakeCoverage())
     syms = tracked or [r.symbol for r in rows]
     monkeypatch.setattr(mds_module, "tracked_symbols", lambda *a, **kw: syms)
     db = _FakeDB(rows)

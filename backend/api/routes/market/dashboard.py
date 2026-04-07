@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from backend.api.rate_limit import limiter
 from backend.database import get_db
 from backend.models.user import User
-from backend.services.market.market_data_service import market_data_service
+from backend.services.market.market_data_service import infra
 from backend.services.market.market_dashboard_service import MarketDashboardService
 from backend.api.dependencies import get_market_data_viewer
 from backend.api.schemas.market import MarketDashboardResponse
@@ -48,7 +48,7 @@ def get_market_dashboard(
         cache_key = f"dashboard:{universe}"
     try:
         try:
-            cached = market_data_service.redis_client.get(cache_key)
+            cached = infra.redis_client.get(cache_key)
             if cached:
                 return json.loads(cached)
         except Exception:
@@ -57,7 +57,7 @@ def get_market_dashboard(
         result = dashboard.build_dashboard(db, universe=universe)
         try:
             serialized = json.dumps(result, default=str)
-            market_data_service.redis_client.setex(cache_key, 60, serialized)
+            infra.redis_client.setex(cache_key, 60, serialized)
         except Exception as e:
             logger.warning("Failed to cache dashboard result: %s", e)
         return result
@@ -74,7 +74,7 @@ async def get_volatility_dashboard(
     from backend.services.market.volatility_service import VolatilityService
 
     vol_svc = VolatilityService(
-        redis_client=market_data_service.redis_client,
+        redis_client=infra.redis_client,
         fmp_api_key=getattr(settings, "FMP_API_KEY", None),
     )
     return await vol_svc.get_dashboard()

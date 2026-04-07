@@ -217,6 +217,23 @@ class MarketSnapshot(Base):
     action_label = Column(String(10))  # BUY, HOLD, WATCH, REDUCE, SHORT, AVOID
     regime_state = Column(String(10))  # R1, R2, R3, R4, R5 (denormalized from MarketRegime)
 
+    # Stage Analysis state (stateful across consecutive snapshots)
+    pass_count = Column(Integer, nullable=True)
+    atre_promoted = Column(Boolean, nullable=True)
+    action_override = Column(String(10), nullable=True)
+    manual_review = Column(Boolean, nullable=True)
+
+    # Quad Engine (Hedgeye GIP Quad Model)
+    quad_quarterly = Column(String(10), nullable=True)
+    quad_monthly = Column(String(10), nullable=True)
+    quad_divergence_flag = Column(Boolean, nullable=True)
+    quad_depth = Column(String(10), nullable=True)
+
+    # Scan / Sizing enrichment
+    forward_rr = Column(Float, nullable=True)
+    correlation_flag = Column(Boolean, nullable=True)
+    sector_confirmation = Column(String(20), nullable=True)
+
     # Corporate events
     next_earnings = Column(DateTime)
     last_earnings = Column(DateTime)
@@ -348,6 +365,23 @@ class MarketSnapshotHistory(Base):
     action_label = Column(String(10))
     regime_state = Column(String(10))
 
+    # Stage Analysis state (stateful across consecutive snapshots)
+    pass_count = Column(Integer, nullable=True)
+    atre_promoted = Column(Boolean, nullable=True)
+    action_override = Column(String(10), nullable=True)
+    manual_review = Column(Boolean, nullable=True)
+
+    # Quad Engine (Hedgeye GIP Quad Model)
+    quad_quarterly = Column(String(10), nullable=True)
+    quad_monthly = Column(String(10), nullable=True)
+    quad_divergence_flag = Column(Boolean, nullable=True)
+    quad_depth = Column(String(10), nullable=True)
+
+    # Scan / Sizing enrichment
+    forward_rr = Column(Float, nullable=True)
+    correlation_flag = Column(Boolean, nullable=True)
+    sector_confirmation = Column(String(20), nullable=True)
+
     last_earnings = Column(DateTime)
     next_earnings = Column(DateTime)
     pe_ttm = Column(Float)
@@ -437,8 +471,9 @@ class MarketRegime(Base):
     score_above_50d = Column(Float)
 
     # Composite and regime
-    composite_score = Column(Float)  # Average of 6 scores, rounded to 0.5
+    composite_score = Column(Float)  # Weighted average of 6 scores, rounded to 0.25
     regime_state = Column(String(10), nullable=False)  # R1, R2, R3, R4, R5
+    weights_used = Column(JSON, nullable=True)  # Audit trail: [1.0, 1.25, 0.75, 1.0, 1.0, 0.75]
 
     # Portfolio rules derived from regime
     cash_floor_pct = Column(Float)  # Minimum cash %
@@ -549,4 +584,37 @@ class EarningsCalendarEvent(Base):
         Index("idx_earnings_report_date", "report_date"),
         Index("idx_earnings_symbol_date", "symbol", "report_date"),
     )
+
+
+class MarketQuad(Base):
+    """Hedgeye GIP Quad Model state — quarterly/monthly macro classification.
+
+    Table name: market_quad
+    """
+
+    __tablename__ = "market_quad"
+
+    id = Column(Integer, primary_key=True, index=True)
+    as_of_date = Column(DateTime, nullable=False, unique=True, index=True)
+
+    quarterly_quad = Column(String(10), nullable=False)  # Q1, Q2, Q3, Q4
+    monthly_quad = Column(String(10), nullable=False)
+    quarterly_depth = Column(String(10))  # Deep, Shallow
+    monthly_depth = Column(String(10))
+    operative_quad = Column(String(10), nullable=False)
+    divergence_flag = Column(Boolean, default=False)
+    divergence_months = Column(Integer, default=0)
+
+    # Inputs for audit trail
+    gdp_yoy_quarterly = Column(Float)
+    cpi_yoy_quarterly = Column(Float)
+    gdp_first_diff_quarterly = Column(Float)
+    cpi_first_diff_quarterly = Column(Float)
+    gdp_yoy_monthly = Column(Float)
+    cpi_yoy_monthly = Column(Float)
+    gdp_first_diff_monthly = Column(Float)
+    cpi_first_diff_monthly = Column(Float)
+
+    source = Column(String(20))  # "hedgeye", "bea_bls_fallback"
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 

@@ -24,83 +24,83 @@ vi.mock('../../hooks/usePortfolioSymbols', () => ({
 }));
 
 vi.mock('../../services/api', () => {
+  const mockRows = [
+    {
+      symbol: 'NVDA',
+      current_price: 100,
+      perf_1d: 2,
+      perf_5d: 4,
+      perf_20d: 10,
+      sector: 'Technology',
+      stage_label: '2A',
+      previous_stage_label: '1',
+      rs_mansfield_pct: 5,
+      range_pos_52w: 75,
+      sma_50: 90,
+      sma_200: 80,
+      ema_21: 95,
+      ema_8: 102,
+      sma_21: 96,
+    },
+    {
+      symbol: 'MSFT',
+      current_price: 90,
+      perf_1d: 1,
+      perf_5d: 2,
+      perf_20d: 7,
+      sector: 'Technology',
+      stage_label: '2B',
+      previous_stage_label: '2A',
+      rs_mansfield_pct: 4,
+      range_pos_52w: 60,
+      sma_50: 85,
+      sma_200: 84,
+      ema_21: 86,
+      ema_8: 91,
+      sma_21: 87,
+    },
+    {
+      symbol: 'XOM',
+      current_price: 80,
+      perf_1d: -1,
+      perf_5d: -2,
+      perf_20d: -5,
+      sector: 'Energy',
+      stage_label: '4',
+      previous_stage_label: '3',
+      rs_mansfield_pct: -3,
+      range_pos_52w: 15,
+      sma_50: 90,
+      sma_200: 95,
+      ema_21: 85,
+      ema_8: 84,
+      sma_21: 88,
+    },
+    {
+      symbol: 'SPY',
+      current_price: 500,
+      perf_1d: 0.8,
+      perf_5d: 1.2,
+      perf_20d: 3.5,
+      sector: 'ETF',
+      stage_label: '2A',
+      previous_stage_label: '2A',
+      rs_mansfield_pct: 1,
+      range_pos_52w: 85,
+      sma_50: 495,
+      sma_200: 460,
+      ema_21: 497,
+      ema_8: 501,
+      sma_21: 498,
+    },
+  ];
   return {
     default: {
-      get: vi.fn().mockResolvedValue({
-        data: {
-          rows: [
-            {
-              symbol: 'NVDA',
-              current_price: 100,
-              perf_1d: 2,
-              perf_5d: 4,
-              perf_20d: 10,
-              sector: 'Technology',
-              stage_label: '2A',
-              previous_stage_label: '1',
-              rs_mansfield_pct: 5,
-              range_pos_52w: 75,
-              sma_50: 90,
-              sma_200: 80,
-              ema_21: 95,
-              ema_8: 102,
-              sma_21: 96,
-            },
-            {
-              symbol: 'MSFT',
-              current_price: 90,
-              perf_1d: 1,
-              perf_5d: 2,
-              perf_20d: 7,
-              sector: 'Technology',
-              stage_label: '2B',
-              previous_stage_label: '2A',
-              rs_mansfield_pct: 4,
-              range_pos_52w: 60,
-              sma_50: 85,
-              sma_200: 84,
-              ema_21: 86,
-              ema_8: 91,
-              sma_21: 87,
-            },
-            {
-              symbol: 'XOM',
-              current_price: 80,
-              perf_1d: -1,
-              perf_5d: -2,
-              perf_20d: -5,
-              sector: 'Energy',
-              stage_label: '4',
-              previous_stage_label: '3',
-              rs_mansfield_pct: -3,
-              range_pos_52w: 15,
-              sma_50: 90,
-              sma_200: 95,
-              ema_21: 85,
-              ema_8: 84,
-              sma_21: 88,
-            },
-            {
-              symbol: 'SPY',
-              current_price: 500,
-              perf_1d: 0.8,
-              perf_5d: 1.2,
-              perf_20d: 3.5,
-              sector: 'ETF',
-              stage_label: '2A',
-              previous_stage_label: '2A',
-              rs_mansfield_pct: 1,
-              range_pos_52w: 85,
-              sma_50: 495,
-              sma_200: 460,
-              ema_21: 497,
-              ema_8: 501,
-              sma_21: 498,
-            },
-          ],
-        },
-      }),
+      get: vi.fn().mockResolvedValue({ data: {} }),
       patch: vi.fn().mockResolvedValue({ data: {} }),
+    },
+    marketDataApi: {
+      getSnapshotTable: vi.fn().mockResolvedValue({ rows: mockRows, total: mockRows.length }),
     },
   };
 });
@@ -125,7 +125,9 @@ describe('MarketTracked deep-link filters', () => {
   it('applies ETF deep-link filter from query params', async () => {
     renderWithProviders(<MarketTracked />, { route: '/market/tracked?asset=etf' });
     expect(await screen.findByText(/Market Tracked/i)).toBeInTheDocument();
-    expect(await screen.findByText('1 of 1')).toBeInTheDocument();
+    expect(await screen.findByText('SPY')).toBeInTheDocument();
+    expect(screen.queryByText('XOM')).toBeNull();
+    expect(screen.queryByText('NVDA')).toBeNull();
   });
 
   it('applies breakout preset deep-link', async () => {

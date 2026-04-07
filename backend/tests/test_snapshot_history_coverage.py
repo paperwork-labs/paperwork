@@ -4,12 +4,10 @@ def test_coverage_snapshot_uses_snapshot_history(db_session, monkeypatch):
     from datetime import datetime, timezone
 
     from backend.models.market_data import MarketSnapshotHistory
-    from backend.services.market.market_data_service import MarketDataService
+    from backend.services.market.market_data_service import coverage_analytics, infra
     from backend.services.market.universe import TRACKED_ALL_UPDATED_AT_KEY
 
     # Ensure coverage_snapshot sees a stable universe
-    svc = MarketDataService()
-
     def _redis_get(key):
         if key == "tracked:all":
             return b'["AAA","BBB"]'
@@ -17,7 +15,7 @@ def test_coverage_snapshot_uses_snapshot_history(db_session, monkeypatch):
             return str(time.time()).encode()
         return None
 
-    monkeypatch.setattr(svc.redis_client, "get", _redis_get)
+    monkeypatch.setattr(infra.redis_client, "get", _redis_get)
 
     # Insert history for two dates
     d1 = datetime(2026, 1, 8, tzinfo=timezone.utc).replace(tzinfo=None)
@@ -40,7 +38,7 @@ def test_coverage_snapshot_uses_snapshot_history(db_session, monkeypatch):
     )
     db_session.commit()
 
-    snap = svc.coverage_snapshot(db_session)
+    snap = coverage_analytics.coverage_snapshot(db_session)
     series = (snap.get("daily") or {}).get("snapshot_fill_by_date") or []
     dates = {row.get("date") for row in series}
 

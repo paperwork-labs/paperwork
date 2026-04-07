@@ -17,7 +17,11 @@ from backend.database import SessionLocal
 from backend.models import Position, PriceData
 from backend.models.market_data import JobRun, MarketSnapshot, MarketSnapshotHistory
 from backend.services.market.dataframe_utils import price_data_rows_to_dataframe
-from backend.services.market.market_data_service import market_data_service
+from backend.services.market.market_data_service import (
+    coverage_analytics,
+    snapshot_builder,
+    stage_quality,
+)
 from backend.services.market.stage_utils import compute_stage_run_lengths
 from backend.tasks.utils.task_utils import (
     _fetch_daily_for_symbols,
@@ -248,7 +252,7 @@ def recompute_universe(batch_size: int = 50) -> dict:
             .filter(PriceData.interval == "1d")
             .scalar()
         )
-        bench = market_data_service.coverage.benchmark_health(
+        bench = coverage_analytics.benchmark_health(
             session, benchmark_symbol="SPY", latest_daily_dt=latest_daily_dt
         )
         benchmark_symbol = str(bench.get("symbol") or "SPY")
@@ -280,7 +284,7 @@ def recompute_universe(batch_size: int = 50) -> dict:
             )
             benchmark_fetched = True
             benchmark_errors = int(persist.get("errors") or 0)
-            bench = market_data_service.coverage.benchmark_health(
+            bench = coverage_analytics.benchmark_health(
                 session, benchmark_symbol=benchmark_symbol, latest_daily_dt=latest_daily_dt
             )
             benchmark_count = int(bench.get("daily_bars") or 0)
@@ -356,7 +360,7 @@ def recompute_universe(batch_size: int = 50) -> dict:
                         skipped_fresh += 1
                         continue
                     try:
-                        snap = market_data_service.snapshots.compute_snapshot_from_db(
+                        snap = snapshot_builder.compute_snapshot_from_db(
                             session,
                             sym,
                             skip_fundamentals=True,
@@ -365,7 +369,7 @@ def recompute_universe(batch_size: int = 50) -> dict:
                         if not snap:
                             skipped_no_data += 1
                             continue
-                        market_data_service.snapshots.persist_snapshot(
+                        snapshot_builder.persist_snapshot(
                             session,
                             sym,
                             snap,
@@ -673,8 +677,7 @@ def repair_stage_history(days: int = 120) -> dict:
     _set_task_status("admin_repair_stage_history", "running", {"days": days})
     session = SessionLocal()
     try:
-        svc = market_data_service
-        result = svc.repair_stage_history_window(session, days=days)
+        result = stage_quality.repair_stage_history_window(session, days=days)
         _set_task_status("admin_repair_stage_history", "ok", result)
         return result
     except Exception as exc:

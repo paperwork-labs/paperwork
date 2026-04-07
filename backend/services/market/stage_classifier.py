@@ -1,12 +1,9 @@
 """Weinstein Stage Analysis classifier — 10 sub-stages via SMA150 anchor.
 
-Extracted from indicator_engine.py to keep stage classification logic
-separate from indicator computation. See Stage_Analysis.docx for the
-full specification.
-
 Functions:
     classify_stage_for_timeframe  — scalar single-bar classification
     classify_stage_scalar         — scalar with ATRE placeholder
+    classify_stage_full           — scalar with full state management
     classify_stage_series         — vectorized full-series classification
     compute_weinstein_stage_from_daily  — daily OHLCV → latest stage dict
     compute_weinstein_stage_series_from_daily — daily OHLCV → stage series DF
@@ -15,6 +12,7 @@ Functions:
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 import numpy as np
@@ -23,6 +21,18 @@ import pandas as pd
 from backend.services.market.atr_series import calculate_atr_series
 
 logger = logging.getLogger(__name__)
+
+SLOPE_T = 0.35  # ±0.35% slope threshold
+
+
+@dataclass
+class StageResult:
+    """Full stage classification output with state tracking."""
+    stage_label: str
+    atre_promoted: bool = False
+    pass_count: int = 0
+    action_override: Optional[str] = None
+    manual_review: bool = False
 
 
 def weekly_from_daily(df_daily_newest_first: pd.DataFrame) -> pd.DataFrame:
@@ -53,18 +63,15 @@ def classify_stage_for_timeframe(
     ext_pct: Optional[float] = None,
     vol_ratio: float = 0.0,
 ) -> str:
-    """Classify stage for any timeframe using core Stage Analysis spec rules (SMA150 anchor).
+    """Classify stage for any timeframe using Stage Analysis rules (SMA150 anchor).
 
-    Requires *sma150_slope* and *sma50_slope* for classification. *ext_pct* defaults
-    to ``(price - sma150) / sma150 * 100`` when omitted. If slopes are missing,
-    returns *prev_stage* when set, else ``"UNKNOWN"``.
+    Ext% bands: 4C(≤-30) 4B(-30,-15] 4A(-15,-5] 1A/3A(-5,0] 2A[0,8] 2B(8,20] 2C(>20)
+    Boundary rule: on-boundary = more conservative assignment.
 
-    ATRE override (2A/2B→2C when ATRE_150 > 6) and Mansfield RS (2B→2B(RS-))
-    post-steps are applied in :func:`classify_stage_series` and
-    :func:`compute_weinstein_stage_from_daily`, not in this function.
+    ATRE override (promote 2A/2B → 2C when ATRE_150 > 6) and RS modifier are
+    applied in post-classification steps, not in this function.
 
-    Priority order (first match wins): 4C→4B→4A→1A→1B→2A→2B→2C→3A→3B.
-    See Stage_Analysis.docx Section 4 for full rules.
+    Priority order (first match wins): 4C→4B→4A→1A→1B→2A→2B→2C→3A→3B→fallback.
     """
     if sma150_slope is None or sma50_slope is None:
         return prev_stage if prev_stage is not None else "UNKNOWN"
@@ -73,52 +80,82 @@ def classify_stage_for_timeframe(
             return prev_stage if prev_stage is not None else "UNKNOWN"
         ext_pct = (price - sma150) / sma150 * 100.0
 
-    SLOPE_T = 0.35  # ±0.35% slope threshold
     above = price > sma150
     below = not above
 
     slope_strongly_down = sma150_slope < -SLOPE_T
-    slope_down_or_flat = sma150_slope <= 0
     slope_flat = abs(sma150_slope) <= SLOPE_T
     slope_up = sma150_slope > SLOPE_T
-    slope_positive = sma150_slope > 0
+    slope_non_negative = sma150_slope >= 0
+    slope_gently_positive = 0 < sma150_slope <= SLOPE_T
 
-    # 4C: Deep decline — far below SMA150, slope strongly negative
-    if below and slope_strongly_down and ext_pct < -15:
+    # ── Stage 4: Decline ──
+
+    # 4C: Capitulation — far below SMA150, steep decline
+    if below and slope_strongly_down and ext_pct <= -30:
         return "4C"
-    # 4B: Active decline — below SMA150, slope strongly negative
-    if below and slope_strongly_down:
+
+    # 4B: Accelerating decline — below SMA150, steep, SMA50 confirms
+    if below and slope_strongly_down and -30 < ext_pct <= -15 and sma50 < sma150:
         return "4B"
-    # 4A: Early decline — below SMA150, slope non-positive, SMA50 declining
-    if below and slope_down_or_flat and sma50_slope < 0:
-        return "4A"
-    # 1A: Early base — near SMA150, slope flat/stabilizing, still non-positive
-    if abs(ext_pct) < 5 and slope_flat and sma150_slope <= 0:
+
+    # 4A: Early decline — below SMA150, slope declining or flat with SMA50 weakening
+    if below and (slope_strongly_down or (slope_flat and sma50_slope < -SLOPE_T)):
+        if -15 < ext_pct <= -5:
+            return "4A"
+
+    # ── Stage 1: Base ──
+
+    # 1A: Deep base — flat SMA150, SMA50 ≤ SMA150 disambiguates from 3A
+    if slope_flat and sma50 <= sma150 and -5 < ext_pct <= 0:
         return "1A"
-    # 1B: Late base / breakout watch — near SMA150, slope flat or gently positive
-    if abs(ext_pct) < 5 and (slope_flat or (slope_positive and not slope_up)):
-        # Breakout override: 1B→2A when volume confirms and MAs are stacked
-        if above and vol_ratio > 1.5 and ema10 > sma21 > sma50:
-            return "2A"
+
+    # 1B: Late base / coiling — flat SMA150, approaching breakout
+    if slope_flat and -5 < ext_pct <= 0 and price > sma21 and ema10 > sma21:
         return "1B"
-    # 2A: Early advance — above SMA150, slope positive, low extension
-    if above and slope_positive and ext_pct <= 5:
+
+    # ── Stage 2: Advance ──
+
+    # 2A: Early advance — EMA stack required, ext 0-8%
+    if above and slope_non_negative and 0 <= ext_pct <= 8 and ema10 > sma21 > sma50:
         return "2A"
-    # 2B: Confirmed advance — above SMA150, slope strongly up, moderate extension
-    if above and slope_up and ext_pct <= 15:
+
+    # 2B: Confirmed advance — strong slope, SMA50 confirms
+    if above and slope_up and 8 < ext_pct <= 20 and sma50 > sma150 and sma50_slope > SLOPE_T:
         return "2B"
-    # 2C: Extended advance — above SMA150, slope strongly up, high extension
-    if above and slope_up and ext_pct > 15:
+
+    # 2C: Extended advance — high extension
+    if above and slope_up and ext_pct > 20:
         return "2C"
-    # 3A: Early distribution — above SMA150 but slope weakening
-    if above and not slope_up:
+
+    # ── Stage 3: Distribution ──
+
+    # 3A: Early distribution — SMA50 > SMA150 disambiguates from 1A
+    if slope_gently_positive and -5 < ext_pct <= 0 and sma50 > sma150 and sma50_slope < SLOPE_T:
         return "3A"
-    # 3B is effectively unreachable: all above-SMA150 + slope_up bars are captured by 2B/2C.
-    # Retained as a safety net for defensive completeness.
-    if above:
+
+    # 3B: Late distribution — deteriorating structure
+    if slope_flat and price < sma50 and sma50_slope < 0 and ema10 < sma21 < sma50:
         return "3B"
-    # 4A fallback: remaining below SMA150 bars get base/accumulation classification
-    return "4A"
+
+    # Fallback: no rule matched — assigned 3A, caller should set manual_review
+    return "3A"
+
+
+def _is_genuine_3a(
+    sma150_slope: float,
+    sma50_slope: float,
+    ext_pct: float,
+    sma50: float,
+    sma150: float,
+) -> bool:
+    """Check if 3A conditions genuinely match (vs fallback)."""
+    return (
+        0 < sma150_slope <= SLOPE_T
+        and -5 < ext_pct <= 0
+        and sma50 > sma150
+        and sma50_slope < SLOPE_T
+    )
 
 
 def classify_stage_scalar(
@@ -133,11 +170,11 @@ def classify_stage_scalar(
     atre_150: float,
     vol_ratio: float,
 ) -> str:
-    """Classify a single bar into one of 10 Stage Analysis spec sub-stages.
+    """Classify a single bar into one of 10 sub-stages.
 
-    Delegates to :func:`classify_stage_for_timeframe`. *atre_150* is accepted for
-    API compatibility; the ATRE override (2A/2B→2C when ATRE_150 > 6) is applied
-    in callers after this returns.
+    Delegates to :func:`classify_stage_for_timeframe`. The ATRE override
+    (promote 2A/2B → 2C when ATRE_150 > 6) is applied in callers via
+    :func:`classify_stage_full`.
     """
     _ = atre_150
     return classify_stage_for_timeframe(
@@ -150,6 +187,77 @@ def classify_stage_scalar(
         sma50_slope=sma50_slope,
         ext_pct=ext_pct,
         vol_ratio=vol_ratio,
+    )
+
+
+def classify_stage_full(
+    close: float,
+    sma150: float,
+    sma50: float,
+    sma21: float,
+    ema10: float,
+    sma150_slope: float,
+    sma50_slope: float,
+    ext_pct: float,
+    atre_150: float,
+    vol_ratio: float,
+    rs_mansfield: Optional[float] = None,
+    *,
+    regime_state: str = "R1",
+    prior_stage: str = "UNKNOWN",
+    prior_atre_promoted: bool = False,
+    prior_pass_count: int = 0,
+) -> StageResult:
+    """Full classification with state management.
+
+    Applies: ATRE sticky (hysteresis 6.0 promote / 4.0 clear), pass_count,
+    action_override (2C+R4 → action "3A"), RS modifier, manual_review fallback.
+    """
+    # Step 1: Determine ATRE promoted state (hysteresis)
+    atre_promoted = prior_atre_promoted
+    if not atre_promoted and atre_150 is not None and atre_150 > 6.0:
+        atre_promoted = True
+    elif atre_promoted and atre_150 is not None and atre_150 < 4.0:
+        atre_promoted = False
+
+    # Step 2: Classify raw stage (without ATRE override)
+    stage = classify_stage_scalar(
+        close, sma150, sma50, sma21, ema10,
+        sma150_slope, sma50_slope, ext_pct, atre_150, vol_ratio,
+    )
+
+    # Step 3: ATRE override post-check (2A/2B → 2C when promoted)
+    if stage in ("2A", "2B") and atre_promoted:
+        stage = "2C"
+
+    # Step 4: RS modifier
+    if stage == "2B" and rs_mansfield is not None and rs_mansfield < 0:
+        stage = "2B(RS-)"
+
+    # Step 5: pass_count tracking
+    pass_count = prior_pass_count
+    is_stage_4 = prior_stage.startswith("4") if prior_stage else False
+    if is_stage_4:
+        pass_count = 0
+    if stage == "2B" and prior_stage != "2B" and not prior_stage.startswith("2B"):
+        pass_count += 1
+
+    # Step 6: action_override (2C in R4 → act as 3A)
+    action_override: Optional[str] = None
+    if stage == "2C" and regime_state == "R4":
+        action_override = "3A"
+
+    # Step 7: manual_review if fallback
+    manual_review = False
+    if stage == "3A" and not _is_genuine_3a(sma150_slope, sma50_slope, ext_pct, sma50, sma150):
+        manual_review = True
+
+    return StageResult(
+        stage_label=stage,
+        atre_promoted=atre_promoted,
+        pass_count=pass_count,
+        action_override=action_override,
+        manual_review=manual_review,
     )
 
 
@@ -166,13 +274,11 @@ def classify_stage_series(
     vol_ratio: pd.Series,
     rs_mansfield: pd.Series,
 ) -> pd.Series:
-    """Vectorized Stage Analysis spec stage classification for full time series.
+    """Vectorized stage classification for full time series.
 
-    Priority order (first match wins): 4C→4B→4A→1A→1B→2A→2B→2C→3A→3B.
-    Post-classification: ATRE override (2A/2B + ATRE_150 > 6 → 2C; not regime-based),
-    RS modifier (2B + RS < 0 → "2B(RS-)").
+    Priority order (first match wins): 4C→4B→4A→1A→1B→2A→2B→2C→3A→3B→fallback.
+    Post-classification: ATRE override, RS modifier.
     """
-    SLOPE_T = 0.35
     stage = pd.Series("UNKNOWN", index=close.index, dtype="object")
 
     above = close > sma150
@@ -182,8 +288,8 @@ def classify_stage_series(
     slope_strongly_down = sma150_slope < -SLOPE_T
     slope_flat = sma150_slope.abs() <= SLOPE_T
     slope_up = sma150_slope > SLOPE_T
-    slope_positive = sma150_slope > 0
-    slope_down_or_flat = sma150_slope <= 0
+    slope_non_negative = sma150_slope >= 0
+    slope_gently_positive = (sma150_slope > 0) & (sma150_slope <= SLOPE_T)
 
     assigned = pd.Series(False, index=close.index)
 
@@ -193,34 +299,69 @@ def classify_stage_series(
         stage[hit] = label
         assigned = assigned | hit
 
-    # Priority order: 4C→4B→4A→1A→1B→2A→2B→2C→3A→3B→remaining below
-    assign(below & slope_strongly_down & (ext_pct < -15), "4C")
-    assign(below & slope_strongly_down, "4B")
-    assign(below & slope_down_or_flat & (sma50_slope < 0), "4A")
-    assign((ext_pct.abs() < 5) & slope_flat & (sma150_slope <= 0), "1A")
-    assign((ext_pct.abs() < 5) & (slope_flat | (slope_positive & ~slope_up)), "1B")
-    assign(above & slope_positive & (ext_pct <= 5), "2A")
-    assign(above & slope_up & (ext_pct <= 15), "2B")
-    assign(above & slope_up & (ext_pct > 15), "2C")
-    assign(above & ~slope_up, "3A")
-    # 3B is effectively unreachable: all above-SMA150 + slope_up bars are captured by 2B/2C.
-    # Retained as a safety net for defensive completeness.
-    assign(above, "3B")
-    # 4A fallback: remaining below SMA150 bars get base/accumulation classification
-    assign(below, "4A")
+    # 4C: Capitulation
+    assign(below & slope_strongly_down & (ext_pct <= -30), "4C")
 
-    # Post-classification: Breakout override — 1B with volume + stacked MAs → promote to 2A
+    # 4B: Accelerating decline (SMA50 < SMA150)
+    assign(below & slope_strongly_down & (ext_pct > -30) & (ext_pct <= -15) & (sma50 < sma150), "4B")
+
+    # 4A: Early decline
+    assign(
+        below
+        & (slope_strongly_down | (slope_flat & (sma50_slope < -SLOPE_T)))
+        & (ext_pct > -15) & (ext_pct <= -5),
+        "4A",
+    )
+
+    # 1A: Deep base (SMA50 ≤ SMA150)
+    assign(slope_flat & (sma50 <= sma150) & (ext_pct > -5) & (ext_pct <= 0), "1A")
+
+    # 1B: Late base (flat slope, near SMA150)
+    assign(
+        slope_flat & (ext_pct > -5) & (ext_pct <= 0) & (close > sma21) & (ema10 > sma21),
+        "1B",
+    )
+
+    # 2A: Early advance (EMA stack required)
+    assign(above & slope_non_negative & (ext_pct >= 0) & (ext_pct <= 8) & (ema10 > sma21) & (sma21 > sma50), "2A")
+
+    # 2B: Confirmed advance (strong slope, SMA50 confirms)
+    assign(
+        above & slope_up & (ext_pct > 8) & (ext_pct <= 20) & (sma50 > sma150) & (sma50_slope > SLOPE_T),
+        "2B",
+    )
+
+    # 2C: Extended advance
+    assign(above & slope_up & (ext_pct > 20), "2C")
+
+    # 3A: Early distribution (SMA50 > SMA150 disambiguates)
+    assign(
+        slope_gently_positive & (ext_pct > -5) & (ext_pct <= 0) & (sma50 > sma150) & (sma50_slope < SLOPE_T),
+        "3A",
+    )
+
+    # 3B: Late distribution
+    assign(
+        slope_flat & (close < sma50) & (sma50_slope < 0) & (ema10 < sma21) & (sma21 < sma50),
+        "3B",
+    )
+
+    # Fallback: unassigned bars with data → 3A
+    fallback = has_data & ~assigned
+    stage[fallback] = "3A"
+
+    # Post-classification: Breakout override — 1B with volume + stacked MAs → 2A
     breakout = (
         (stage == "1B") & above
         & (vol_ratio > 1.5) & (ema10 > sma21) & (sma21 > sma50)
     )
     stage[breakout] = "2A"
 
-    # Post-classification: ATRE override — 2A/2B with ATRE_150 > 6 → 2C (not regime-based)
+    # Post-classification: ATRE override — 2A/2B with ATRE_150 > 6 → 2C
     atre_override = (stage.isin(["2A", "2B"])) & (atre_150 > 6.0)
     stage[atre_override] = "2C"
 
-    # Post-classification: RS modifier — 2B with RS < 0 → flag
+    # Post-classification: RS modifier
     rs_flag = (stage == "2B") & (rs_mansfield < 0)
     stage[rs_flag] = "2B(RS-)"
 
@@ -230,11 +371,17 @@ def classify_stage_series(
 def compute_weinstein_stage_from_daily(
     daily_sym_newest_first: pd.DataFrame,
     daily_bm_newest_first: pd.DataFrame,
+    *,
+    regime_state: str = "R1",
+    prior_stage: str = "UNKNOWN",
+    prior_atre_promoted: bool = False,
+    prior_pass_count: int = 0,
 ) -> Dict[str, Any]:
-    """Compute Stage Analysis (spec) from daily OHLCV (both newest->first).
+    """Compute Stage Analysis from daily OHLCV (both newest->first).
 
-    Uses SMA150 as primary anchor per Stage_Analysis.docx.
-    Returns latest bar's stage + supporting metrics.
+    Uses SMA150 as primary anchor. Returns latest bar's stage + supporting
+    metrics + state fields (atre_promoted, pass_count, action_override,
+    manual_review).
     """
     unknown: Dict[str, Any] = {
         "stage": "UNKNOWN",
@@ -248,6 +395,10 @@ def compute_weinstein_stage_from_daily(
         "ema10_dist_n": None,
         "vol_ratio": None,
         "rs_mansfield_pct": None,
+        "atre_promoted": prior_atre_promoted,
+        "pass_count": prior_pass_count,
+        "action_override": None,
+        "manual_review": False,
     }
     if (
         daily_sym_newest_first is None
@@ -307,21 +458,19 @@ def compute_weinstein_stage_from_daily(
     if c is None or s150 is None or sl150 is None or ep is None or sl50 is None:
         return dict(unknown)
 
-    stage_label = classify_stage_scalar(
+    result = classify_stage_full(
         c, s150, s50 or 0, s21 or 0, e10 or 0,
         sl150, sl50, ep, at150 or 0, vr or 0,
+        rm,
+        regime_state=regime_state,
+        prior_stage=prior_stage,
+        prior_atre_promoted=prior_atre_promoted,
+        prior_pass_count=prior_pass_count,
     )
 
-    # ATRE override: 2A/2B → 2C when price > 6× ATR14 above SMA150 (not regime-based)
-    if stage_label in ("2A", "2B") and at150 is not None and at150 > 6.0:
-        stage_label = "2C"
-    # RS modifier
-    if stage_label == "2B" and rm is not None and rm < 0:
-        stage_label = "2B(RS-)"
-
     return {
-        "stage": f"STAGE_{stage_label}",
-        "stage_label": stage_label,
+        "stage": f"STAGE_{result.stage_label}",
+        "stage_label": result.stage_label,
         "price": c,
         "sma150": s150,
         "stage_slope_pct": sl150,
@@ -333,6 +482,10 @@ def compute_weinstein_stage_from_daily(
         "ema10_dist_n": last_val(ema10_dist_n_s),
         "vol_ratio": vr,
         "rs_mansfield_pct": rm,
+        "atre_promoted": result.atre_promoted,
+        "pass_count": result.pass_count,
+        "action_override": result.action_override,
+        "manual_review": result.manual_review,
     }
 
 
@@ -340,9 +493,9 @@ def compute_weinstein_stage_series_from_daily(
     daily_sym_newest_first: pd.DataFrame,
     daily_bm_newest_first: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Compute daily stage/RS series (Stage Analysis spec) using SMA150 as primary anchor.
+    """Compute daily stage/RS series using SMA150 as primary anchor.
 
-    Output columns (daily resolution — no weekly forward-fill):
+    Output columns (daily resolution):
     - stage_label: 1A|1B|2A|2B|2B(RS-)|2C|3A|3B|4A|4B|4C|UNKNOWN
     - ext_pct, sma150_slope, sma50_slope, ema10_dist_pct, ema10_dist_n
     - vol_ratio, rs_mansfield_pct, stage_slope_pct, stage_dist_pct

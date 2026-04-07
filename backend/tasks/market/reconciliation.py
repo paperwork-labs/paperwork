@@ -161,9 +161,9 @@ def run_reconciliation(db: Session) -> Dict[str, Any]:
     }
 
     try:
-        from backend.services.market.market_data_service import market_data_service
+        from backend.services.market.market_data_service import infra
 
-        r = market_data_service.redis_client
+        r = infra.redis_client
         r.setex(REDIS_KEY, REDIS_TTL, json.dumps(result))
     except Exception as exc:
         logger.warning("reconciliation redis cache failed: %s", exc)

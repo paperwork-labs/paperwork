@@ -195,9 +195,8 @@ class SchwabSyncService:
 
     async def _refresh_prices(self, account: BrokerAccount, session: Session) -> Dict:
         """Fetch current prices concurrently and update position market data."""
-        from backend.services.market.market_data_service import MarketDataService
+        from backend.services.market.market_data_service import quote
 
-        market = MarketDataService()
         positions = (
             session.query(Position)
             .filter(
@@ -212,7 +211,7 @@ class SchwabSyncService:
             return {"prices_refreshed": 0}
 
         results = await asyncio.gather(
-            *(market.get_current_price(sym) for sym in symbols),
+            *(quote.get_current_price(sym) for sym in symbols),
             return_exceptions=True,
         )
         price_map = {}

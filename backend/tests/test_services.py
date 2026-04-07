@@ -22,12 +22,15 @@ class TestMarketDataService:
     async def test_market_data_service_import(self):
         """Test market data service can be imported."""
         try:
-            from backend.services.market.market_data_service import market_data_service
+            from backend.services.market.market_data_service import (
+                provider_router,
+                quote,
+                snapshot_builder,
+            )
 
-            assert market_data_service is not None
-            assert hasattr(market_data_service, "get_current_price")
-            assert hasattr(market_data_service, "get_historical_data")
-            assert hasattr(market_data_service, "get_technical_analysis")
+            assert quote is not None and hasattr(quote, "get_current_price")
+            assert provider_router is not None and hasattr(provider_router, "get_historical_data")
+            assert snapshot_builder is not None and hasattr(snapshot_builder, "get_technical_analysis")
 
             logger.info("✅ Market Data Service import test passed")
 
@@ -38,10 +41,10 @@ class TestMarketDataService:
     async def test_current_price_retrieval(self):
         """Test current price retrieval."""
         try:
-            from backend.services.market.market_data_service import market_data_service
+            from backend.services.market.market_data_service import quote
 
             test_symbol = "AAPL"
-            price = await market_data_service.get_current_price(test_symbol)
+            price = await quote.get_current_price(test_symbol)
 
             if price and price > 0:
                 assert isinstance(price, (int, float))
@@ -59,10 +62,10 @@ class TestMarketDataService:
     async def test_historical_data_retrieval(self):
         """Test historical data retrieval."""
         try:
-            from backend.services.market.market_data_service import market_data_service
+            from backend.services.market.market_data_service import provider_router
 
             test_symbol = "AAPL"
-            data = await market_data_service.get_historical_data(
+            data = await provider_router.get_historical_data(
                 test_symbol, period="1mo"
             )
 
@@ -91,11 +94,11 @@ class TestIndexConstituentsService:
     async def test_index_service_import(self):
         """Test index service can be imported."""
         try:
-            from backend.services.market.market_data_service import market_data_service
+            from backend.services.market.market_data_service import index_universe
 
-            assert market_data_service is not None
-            assert hasattr(market_data_service, "get_index_constituents")
-            assert hasattr(market_data_service, "get_all_tradeable_symbols")
+            assert index_universe is not None
+            assert hasattr(index_universe, "get_index_constituents")
+            assert hasattr(index_universe, "get_all_tradeable_symbols")
 
             logger.info("✅ Index Constituents Service import test passed")
 
@@ -106,9 +109,9 @@ class TestIndexConstituentsService:
     async def test_dow30_constituents(self):
         """Test getting Dow 30 constituents."""
         try:
-            from backend.services.market.market_data_service import market_data_service
+            from backend.services.market.market_data_service import index_universe
 
-            dow30_symbols = await market_data_service.get_index_constituents("DOW30")
+            dow30_symbols = await index_universe.get_index_constituents("DOW30")
 
             if dow30_symbols and len(dow30_symbols) > 10:
                 assert isinstance(dow30_symbols, list)
@@ -129,9 +132,9 @@ class TestIndexConstituentsService:
     async def test_atr_universe_generation(self):
         """Test ATR universe generation."""
         try:
-            from backend.services.market.market_data_service import market_data_service
+            from backend.services.market.market_data_service import index_universe
 
-            data = await market_data_service.get_all_tradeable_symbols(["SP500","NASDAQ100"])  # example
+            data = await index_universe.get_all_tradeable_symbols(["SP500","NASDAQ100"])  # example
             universe = sorted({s for lst in data.values() for s in lst})
 
             if universe and len(universe) > 50:
@@ -192,10 +195,10 @@ class TestServiceIntegration:
     async def test_market_data_to_indicator_integration(self):
         """Test market data to indicator engine integration."""
         try:
-            from backend.services.market.market_data_service import market_data_service
+            from backend.services.market.market_data_service import quote
 
             test_symbol = "AAPL"
-            price = await market_data_service.get_current_price(test_symbol)
+            price = await quote.get_current_price(test_symbol)
 
             if price and price > 0:
                 logger.info(f"✅ Market data integration: {test_symbol}=${price:.2f}")

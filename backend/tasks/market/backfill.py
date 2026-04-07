@@ -15,7 +15,12 @@ from backend.database import SessionLocal
 from backend.models import IndexConstituent
 from backend.services.market.backfill_params import daily_backfill_params
 from backend.services.market.universe import TRACKED_ALL_UPDATED_AT_KEY
-from backend.services.market.market_data_service import market_data_service
+from backend.services.market.market_data_service import (
+    coverage_analytics,
+    index_universe,
+    infra,
+    snapshot_builder,
+)
 from backend.tasks.utils.task_utils import (
     _daily_backfill_concurrency,
     _fetch_daily_for_symbols,
@@ -57,9 +62,9 @@ def symbol(symbol: str) -> dict:
     session = SessionLocal()
     try:
         symbols([sym])
-        snap = market_data_service.snapshots.compute_snapshot_from_db(session, sym)
+        snap = snapshot_builder.compute_snapshot_from_db(session, sym)
         if snap:
-            market_data_service.snapshots.persist_snapshot(session, sym, snap)
+            snapshot_builder.persist_snapshot(session, sym, snap)
             res = {"status": "ok", "symbol": sym, "recomputed": True}
         else:
             res = {"status": "ok", "symbol": sym, "recomputed": False}
@@ -79,7 +84,7 @@ def tracked_cache() -> dict:
     _set_task_status("market_universe_tracked_refresh", "running")
     session = SessionLocal()
     try:
-        redis = market_data_service.redis_client
+        redis = infra.redis_client
         current = sorted(_get_tracked_universe_from_db(session))
         if not current:
             loop = None
@@ -94,7 +99,7 @@ def tracked_cache() -> dict:
                 for idx in ["SP500", "NASDAQ100", "DOW30", "RUSSELL2000"]:
                     try:
                         cons = loop.run_until_complete(
-                            market_data_service.get_index_constituents(idx)
+                            index_universe.get_index_constituents(idx)
                         )
                         index_to_symbols[idx].update({s.upper() for s in cons if s})
                     except SoftTimeLimitExceeded:
@@ -267,7 +272,7 @@ def constituents(index: str | None = None) -> dict:
         for idx in indices_to_refresh:
             try:
                 symbols = set(
-                    loop.run_until_complete(market_data_service.get_index_constituents(idx))
+                    loop.run_until_complete(index_universe.get_index_constituents(idx))
                 )
             except SoftTimeLimitExceeded:
                 raise
@@ -294,7 +299,7 @@ def constituents(index: str | None = None) -> dict:
             provider_used = "unknown"
             fallback_used = None
             try:
-                meta_raw = market_data_service.redis_client.get(f"index_constituents:{idx}:meta")
+                meta_raw = infra.redis_client.get(f"index_constituents:{idx}:meta")
                 if meta_raw:
                     meta = json.loads(meta_raw)
                     provider_used = meta.get("provider_used", provider_used)
@@ -633,7 +638,7 @@ def stale_daily() -> dict:
     session = SessionLocal()
     try:
         tracked = _get_tracked_symbols_safe(session)
-        section, stale_full = market_data_service.coverage.compute_interval_coverage_for_symbols(
+        section, stale_full = coverage_analytics._compute_interval_coverage_for_symbols(
             session,
             symbols=tracked,
             interval="1d",

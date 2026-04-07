@@ -65,8 +65,22 @@ export default function Pagination({
   const safePage = clamp(page, 1, totalPages);
   const items = buildPageItems(safePage, totalPages);
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowLeft' && safePage > 1) {
+      e.preventDefault();
+      onPageChange(safePage - 1);
+    } else if (e.key === 'ArrowRight' && safePage < totalPages) {
+      e.preventDefault();
+      onPageChange(safePage + 1);
+    }
+  };
+
   return (
-    <div className="flex w-full flex-wrap items-center justify-between gap-3">
+    <nav
+      aria-label={`Pagination, page ${safePage} of ${totalPages}`}
+      className="flex w-full flex-wrap items-center justify-between gap-3"
+      onKeyDown={handleKeyDown}
+    >
       <p className="text-xs text-muted-foreground">{rangeLabel(safePage, pageSize, total || 0)}</p>
 
       <div className="flex flex-wrap items-center justify-end gap-2">
@@ -81,7 +95,7 @@ export default function Pagination({
           <ChevronLeft className="size-4" />
         </Button>
 
-        <div className="flex flex-wrap items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1" role="list" aria-label="Page numbers">
           {items.map((it, idx) =>
             it === "ellipsis" ? (
               <span
@@ -99,6 +113,8 @@ export default function Pagination({
                 variant={it === safePage ? "default" : "outline"}
                 className="min-w-9 px-2"
                 onClick={() => onPageChange(it)}
+                aria-label={`Page ${it} of ${totalPages}`}
+                aria-current={it === safePage ? "page" : undefined}
               >
                 {it}
               </Button>
@@ -147,6 +163,6 @@ export default function Pagination({
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
       </div>
-    </div>
+    </nav>
   );
 }

@@ -48,6 +48,7 @@ async def get_current_regime(
             "score_nh_nl": regime.score_nh_nl,
             "score_above_200d": regime.score_above_200d,
             "score_above_50d": regime.score_above_50d,
+            "weights_used": regime.weights_used,
             "cash_floor_pct": regime.cash_floor_pct,
             "max_equity_exposure_pct": regime.max_equity_exposure_pct,
             "regime_multiplier": regime.regime_multiplier,

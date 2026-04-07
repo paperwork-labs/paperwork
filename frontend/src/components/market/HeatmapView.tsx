@@ -48,6 +48,7 @@ const HeatmapView: React.FC<HeatmapViewProps> = ({ snapshots }) => {
   const [timeRange, setTimeRange] = React.useState<number>(100);
 
   const etfSymbols = React.useMemo(() => {
+    if (snapshots.length === 0) return SECTOR_ETFS;
     const available = new Set(snapshots.map((s: any) => s.symbol?.toUpperCase()));
     return SECTOR_ETFS.filter(s => available.has(s));
   }, [snapshots]);

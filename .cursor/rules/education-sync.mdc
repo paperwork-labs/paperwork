@@ -1,0 +1,28 @@
+# Education Content Sync
+
+## Activation
+
+Activates when editing:
+- backend/services/market/regime_engine.py
+- backend/services/market/stage_classifier.py
+- backend/services/market/scan_engine.py
+- backend/services/market/quad_engine.py
+- backend/services/execution/exit_cascade.py
+- backend/services/execution/risk_gate.py
+- frontend/src/pages/MarketEducation.tsx
+- frontend/src/data/glossary.json
+- frontend/src/components/education/StageChartExample.tsx
+- docs/STAGE_ANALYSIS_SPEC.md
+
+## When Editing Backend Engine Files
+
+If you change ANY threshold, formula, classification rule, scoring boundary, or behavioral logic:
+1. Check if the education files reflect this change
+2. Update education content in the same PR
+3. glossary.json is the single source for tooltip text — update it, not inline copies
+
+## When Editing Education Files
+
+1. Read the actual backend source before writing any threshold or rule
+2. Never invent or assume values — verify from code
+3. Cross-check MarketEducation.tsx, glossary.json, and StageChartExample.tsx for consistency

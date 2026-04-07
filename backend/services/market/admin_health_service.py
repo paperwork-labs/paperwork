@@ -19,6 +19,7 @@ from sqlalchemy import distinct, func
 from sqlalchemy.orm import Session
 
 from backend.config import settings
+from backend.services.market.market_data_service import coverage_analytics, infra, stage_quality
 
 logger = logging.getLogger(__name__)
 
@@ -87,16 +88,12 @@ def _composite_dimension_ok(status: Optional[str]) -> bool:
 class AdminHealthService:
     """Aggregates all health dimensions into one response."""
 
-    def __init__(self) -> None:
-        from backend.services.market.market_data_service import market_data_service
-        self._svc = market_data_service
-
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
     def get_composite_health(self, db: Session) -> Dict[str, Any]:
-        r = self._svc.redis_client
+        r = infra.redis_client
         try:
             raw = r.get(_COMPOSITE_HEALTH_CACHE_KEY)
             if raw:
@@ -220,7 +217,7 @@ class AdminHealthService:
         }
 
         try:
-            self._svc.redis_client.setex(
+            infra.redis_client.setex(
                 "health:pre_market_readiness",
                 1800,
                 json.dumps(result),
@@ -238,7 +235,7 @@ class AdminHealthService:
         try:
             from backend.services.market.coverage_utils import compute_coverage_status
 
-            snapshot = self._svc.coverage.coverage_snapshot(db)
+            snapshot = coverage_analytics.coverage_snapshot(db)
             status_info = compute_coverage_status(snapshot)
             daily_pct = float(status_info.get("daily_pct") or 0)
             stale_daily = int(status_info.get("stale_daily") or 0)
@@ -283,7 +280,7 @@ class AdminHealthService:
 
     def _build_stage_dimension(self, db: Session) -> Dict[str, Any]:
         try:
-            data = self._svc.stage_quality_summary(db, lookback_days=120)
+            data = stage_quality.stage_quality_summary(db, lookback_days=120)
             unknown_rate = float(data.get("unknown_rate") or 0)
             invalid_count = int(data.get("invalid_stage_count") or 0)
             monotonicity = int(data.get("monotonicity_issues") or 0)
@@ -414,7 +411,7 @@ class AdminHealthService:
         from backend.services.market.universe import tracked_symbols_with_source
 
         tracked_list, _ = tracked_symbols_with_source(
-            db, redis_client=self._svc.redis_client
+            db, redis_client=infra.redis_client
         )
         tracked_set = {str(s).upper() for s in (tracked_list or []) if s}
         tracked_total = len(tracked_set)
@@ -474,7 +471,7 @@ class AdminHealthService:
         }
 
         try:
-            self._svc.redis_client.set(
+            infra.redis_client.set(
                 self._AUDIT_CACHE_KEY, json.dumps(payload), ex=self._AUDIT_CACHE_TTL
             )
         except Exception as e:
@@ -484,7 +481,7 @@ class AdminHealthService:
 
     def _build_audit_dimension(self, db: Session) -> Dict[str, Any]:
         try:
-            raw = self._svc.redis_client.get(self._AUDIT_CACHE_KEY)
+            raw = infra.redis_client.get(self._AUDIT_CACHE_KEY)
             if raw:
                 payload = json.loads(raw.decode() if isinstance(raw, (bytes, bytearray)) else raw)
             else:
@@ -539,7 +536,7 @@ class AdminHealthService:
             from backend.services.market.universe import tracked_symbols_with_source
 
             tracked_list, _ = tracked_symbols_with_source(
-                db, redis_client=self._svc.redis_client
+                db, redis_client=infra.redis_client
             )
             universe = sorted({str(s).upper() for s in (tracked_list or []) if s})
             total = len(universe)
@@ -586,7 +583,7 @@ class AdminHealthService:
     def _build_data_accuracy_dimension(self) -> Dict[str, Any]:
         """Data accuracy from OHLCV spot-check reconciliation results."""
         try:
-            r = self._svc.redis_client
+            r = infra.redis_client
             raw = r.get("ohlcv:reconciliation:last")
             if not raw:
                 return {
@@ -738,7 +735,7 @@ class AdminHealthService:
     def _build_task_runs(self) -> Dict[str, Any]:
         out: Dict[str, Any] = {}
         try:
-            r = self._svc.redis_client
+            r = infra.redis_client
             keys = [f"taskstatus:{tn}:last" for tn in _TASK_STATUS_KEYS]
             values = r.mget(keys)
             for task_name, raw in zip(_TASK_STATUS_KEYS, values):
@@ -758,7 +755,7 @@ class AdminHealthService:
     def _build_provider_metrics(self) -> Dict[str, Any]:
         """Read today's provider call counters from Redis."""
         try:
-            r = self._svc.redis_client
+            r = infra.redis_client
             date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             raw = r.hgetall(f"provider:calls:{date_key}")
             if not raw:
@@ -834,7 +831,7 @@ class AdminHealthService:
         every 15 min.  On the API request path we only read the cache —
         never make outbound HTTP calls that could block the event loop.
         """
-        r = self._svc.redis_client
+        r = infra.redis_client
         try:
             cached = r.get(self._PROVIDER_PROBE_CACHE_KEY)
             if cached:
@@ -848,7 +845,7 @@ class AdminHealthService:
 
         Called from sync Celery context (auto_ops), NOT from the API path.
         """
-        r = self._svc.redis_client
+        r = infra.redis_client
         result: Dict[str, str] = {}
 
         if getattr(settings, "FMP_API_KEY", None):

@@ -13,7 +13,7 @@ from sqlalchemy import or_
 from backend.database import SessionLocal
 from backend.models import IndexConstituent
 from backend.services.market.constants import FUNDAMENTAL_FIELDS
-from backend.services.market.market_data_service import market_data_service
+from backend.services.market.market_data_service import quote, snapshot_builder
 from backend.tasks.utils.task_utils import (
     _set_task_status,
     setup_event_loop,
@@ -56,9 +56,9 @@ def enrich_index(
             sym = (r.symbol or "").upper()
             if not sym:
                 continue
-            snap = market_data_service.get_snapshot_from_store(session, sym)
+            snap = snapshot_builder.get_snapshot_from_store(session, sym)
             if not snap:
-                snap = market_data_service.snapshots.compute_snapshot_from_db(session, sym)
+                snap = snapshot_builder.compute_snapshot_from_db(session, sym)
             if not snap or (
                 snap.get("sector") is None
                 and snap.get("industry") is None
@@ -68,7 +68,7 @@ def enrich_index(
                     loop = setup_event_loop()
                     try:
                         prov = loop.run_until_complete(
-                            market_data_service.snapshots.compute_snapshot_from_providers(sym)
+                            snapshot_builder.compute_snapshot_from_providers(sym)
                         )
                     finally:
                         loop.close()
@@ -150,10 +150,10 @@ def fill_missing(limit_per_run: int = 500) -> dict:
             sym = (r.symbol or "").upper()
             if not sym:
                 continue
-            snap = market_data_service.snapshots.compute_snapshot_from_db(session, sym)
+            snap = snapshot_builder.compute_snapshot_from_db(session, sym)
             needs_funda = not snap or any(snap.get(k) is None for k in FUNDAMENTAL_FIELDS)
             if needs_funda:
-                funda = market_data_service.providers.get_fundamentals_info(sym)
+                funda = quote.get_fundamentals_info(sym)
                 if funda:
                     snap = snap or {}
                     for k in FUNDAMENTAL_FIELDS:
@@ -167,7 +167,7 @@ def fill_missing(limit_per_run: int = 500) -> dict:
                 if hasattr(_MS, k)
             )
             if has_new:
-                market_data_service.snapshots.persist_snapshot(
+                snapshot_builder.persist_snapshot(
                     session, sym, {**(r.raw_analysis or {}), **snap}
                 )
                 updated += 1
@@ -207,7 +207,7 @@ def refresh_stale(stale_days: int = 7, limit_per_run: int = 500) -> dict:
             if not sym:
                 continue
             try:
-                funda = market_data_service.providers.get_fundamentals_info(sym)
+                funda = quote.get_fundamentals_info(sym)
             except SoftTimeLimitExceeded:
                 raise
             except Exception as e:

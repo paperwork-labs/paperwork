@@ -64,7 +64,7 @@ const GLOSSARY: GlossaryEntry[] = [
   { term: 'SMA150 Slope', definition: 'Rate of change of the primary anchor over 20 days. Thresholds: > +0.35% = rising, < -0.35% = falling.', formula: '(SMA150_today - SMA150_20d_ago) / SMA150_20d_ago × 100' },
   { term: 'Volume Ratio', definition: 'Current volume relative to 20-day average. Values > 1.5 confirm breakouts.', formula: 'Vol Ratio = Volume / Volume_Avg_20d' },
   { term: 'Mansfield RS', definition: "Stock's performance vs SPY over trailing year. Positive = outperforming the market.", formula: 'RS = Close/SPY_Close; Mansfield = (RS/SMA252(RS) - 1) × 100' },
-  { term: 'Market Regime', definition: 'Market-wide risk state (R1–R5) from 6 macro inputs. Gates all downstream decisions.', formula: 'Composite = avg(6 scores); R1 ≤1.75, R2 ≤2.50, R3 ≤3.50, R4 ≤4.50, R5 >4.50' },
+  { term: 'Market Regime', definition: 'Market-wide risk state (R1–R5) from 6 weighted macro inputs. Each input scored 1–5, composite is the weighted average. Weights are configurable.', formula: 'Composite = weighted_avg(6 scores); R1 ≤1.75, R2 ≤2.50, R3 ≤3.50, R4 ≤4.50, R5 >4.50' },
   { term: 'MACD', definition: 'Trend-following momentum indicator from two EMAs. Signal crossovers indicate momentum shifts.', formula: 'MACD = EMA(12) - EMA(26); Signal = EMA(9) of MACD' },
   { term: 'ADX / DI', definition: 'Trend strength (ADX > 25 = strong trend). +DI vs -DI shows direction.', formula: "DX = |+DI - -DI|/(+DI + -DI) × 100; ADX uses Wilder's smoothing: seed with SMA of first 14 DX values, then ADX = (prev_ADX x 13 + DX) / 14" },
   { term: 'Bollinger Bands', definition: 'Upper and lower bands at 2 population standard deviations from SMA(20). Squeeze (bands inside Keltner) indicates low volatility.', formula: 'Upper = SMA20 + 2*std(Close,20,ddof=0); Lower = SMA20 - 2*std' },
@@ -74,6 +74,16 @@ const GLOSSARY: GlossaryEntry[] = [
   { term: 'MA Bucket', definition: 'Classification of moving average alignment: LEADING (EMA10 > SMA21 > SMA50 > SMA150), LAGGING (reverse), or NEUTRAL (mixed).', formula: null },
   { term: 'Performance Windows', definition: 'Percentage returns calculated over 1d, 3d, 5d, 20d, 60d, 120d, and 252d windows, plus MTD, QTD, and YTD.', formula: 'Perf = (Close / Close_N_bars_ago - 1) x 100' },
   { term: 'TD Sequential', definition: 'DeMark exhaustion counter. 9-count setup suggests potential reversal. Counter resets to 0 after reaching a 9-count setup.', formula: 'Buy: 9 consecutive closes below close 4 bars ago' },
+  { term: 'Quad (Hedgeye GIP Model)', definition: 'Macro regime from the Growth-Inflation-Policy framework. Quarterly and monthly timeframes produce independent quadrant readings.', formula: 'Quad 1: Growth↑ Inflation↓ | Quad 2: Growth↑ Inflation↑ | Quad 3: Growth↓ Inflation↑ | Quad 4: Growth↓ Inflation↓' },
+  { term: 'Operative Quad', definition: 'The actionable quad signal that resolves quarterly and monthly readings into a single state. When quarterly and monthly agree, operative equals both. When they diverge, the operative quad reflects the monthly (shorter-term) reading.', formula: null },
+  { term: 'Divergence Flag', definition: 'Set to true when quarterly and monthly quad readings differ. Signals mixed macro conditions where quarterly trend and monthly trend disagree.', formula: null },
+  { term: 'Forward R:R', definition: 'Forward reward-to-risk ratio estimated from current price, target exit, and ATR-based stop. Higher values indicate more favorable risk/reward setups.', formula: 'Forward R:R = (Target - Price) / (Price - Stop), where Stop = Price - ATR × multiplier' },
+  { term: 'Correlation Flag', definition: "Indicates whether a stock\u2019s recent returns are highly correlated with its sector ETF. Set when correlation exceeds a threshold, suggesting the stock is moving with its sector rather than on individual merit.", formula: null },
+  { term: 'Sector Confirmation', definition: "True when the stock\u2019s sector ETF is also in a constructive stage (Stage 2). Adds conviction to individual stock setups \u2014 sector tailwinds improve breakout reliability.", formula: null },
+  { term: 'Pass Count', definition: 'Number of scan filter passes a stock qualifies for. Higher pass counts indicate stocks that meet more criteria simultaneously, suggesting higher overall quality.', formula: null },
+  { term: 'ATRE Promoted', definition: 'Flag set when a 2A or 2B stock is reclassified to 2C (extended advance) because its ATR-normalized extension from SMA150 exceeds the promotion threshold (ATRE_150 > 6.0).', formula: null },
+  { term: 'Scan Tier', definition: 'Classification assigned by the scan overlay: Breakout Elite, Breakout Standard, Early Base, Speculative (long), or Breakdown Elite/Standard (short). Determines regime-gated trade eligibility.', formula: null },
+  { term: 'Action Label', definition: 'Summary signal for each snapshot: BUY, WATCH, HOLD, REDUCE, AVOID, or SHORT. Derived from scan tier + stage + regime state. Tells you what the system recommends.', formula: null },
 ];
 
 type DeepDive = {
@@ -253,6 +263,16 @@ const DEEP_DIVES: DeepDive[] = [
             <p className="text-sm">4. <strong>NH−NL</strong> — S&amp;P 500 new 52-week highs minus lows. Positive = healthy breadth</p>
             <p className="text-sm">5. <strong>% above 200D</strong> — market breadth. &gt;70% = healthy, &lt;25% = broken</p>
             <p className="text-sm">6. <strong>% above 50D</strong> — shorter-term breadth. &gt;75% = strong, &lt;25% = weak</p>
+          </div>
+        ),
+      },
+      {
+        heading: 'Scoring and Weights',
+        body: (
+          <div className="flex flex-col gap-2">
+            <p className="text-sm">Each input is scored 1–5 using predefined breakpoints. The composite score is the <strong>weighted average</strong> of these 6 individual scores.</p>
+            <p className="text-sm">The weight vector determines how much each input contributes. The default weights are equal (1.0 for each), but the engine accepts a custom weight array to emphasize certain inputs. For example, during extreme volatility episodes, VIX-related weights could be increased.</p>
+            <p className="text-sm">Individual scores are available in the dashboard under the Regime banner's <strong>Details</strong> panel, along with the weight vector in use. This transparency lets you see exactly which inputs are driving the current regime state.</p>
           </div>
         ),
       },
@@ -453,6 +473,94 @@ const DEEP_DIVES: DeepDive[] = [
           <p className="text-sm">
             The backend evaluates <strong>short tiers first</strong>, then long tiers (Elite → Standard → Early Base → Speculative), then <strong>stage-only</strong> rules if no tier applies. Regime gates which tiers exist at all; the label refines the message once tier and stage are known. Implementation: <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">derive_action_label</code> in <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">scan_engine.py</code>.
           </p>
+        ),
+      },
+    ],
+  },
+  {
+    title: 'Quad Model (Growth-Inflation-Policy)',
+    sections: [
+      {
+        heading: 'Overview',
+        body: (
+          <p className="text-sm">The Quad Model classifies the macro environment into one of four quadrants based on the rate of change of growth and inflation. It provides a cross-asset allocation framework that complements the regime engine.</p>
+        ),
+      },
+      {
+        heading: 'Four Quadrants',
+        body: (
+          <div className="flex flex-col gap-1">
+            <p className="text-sm"><strong>Quad 1</strong> (Growth accelerating, Inflation decelerating) — Risk-on: equities, high-yield, growth stocks. The best macro environment for the system.</p>
+            <p className="text-sm"><strong>Quad 2</strong> (Growth accelerating, Inflation accelerating) — Commodities, TIPS, cyclicals. Still risk-on but with inflation hedges.</p>
+            <p className="text-sm"><strong>Quad 3</strong> (Growth decelerating, Inflation accelerating) — Stagflation: cash, gold, short equities. The most hostile environment.</p>
+            <p className="text-sm"><strong>Quad 4</strong> (Growth decelerating, Inflation decelerating) — Treasuries, utilities, deflation plays. Defensive positioning.</p>
+          </div>
+        ),
+      },
+      {
+        heading: 'Quarterly vs Monthly',
+        body: (
+          <div className="flex flex-col gap-2">
+            <p className="text-sm">The model runs at two timeframes: <strong>quarterly</strong> (structural trend) and <strong>monthly</strong> (tactical shifts). The <strong>operative quad</strong> resolves both into a single actionable signal.</p>
+            <p className="text-sm">When quarterly and monthly agree, conviction is highest. When they diverge, the system flags a <strong>divergence</strong> — a transition period where the monthly signal is leading the quarterly into a new quadrant.</p>
+          </div>
+        ),
+      },
+      {
+        heading: 'Depth Measure',
+        body: (
+          <p className="text-sm">Depth quantifies how far into a quadrant the economy has progressed. Higher depth means stronger conviction in the current quad reading. Shallow depth near quadrant boundaries suggests the environment may shift soon.</p>
+        ),
+      },
+    ],
+  },
+  {
+    title: 'Forward Reward-to-Risk (R:R)',
+    sections: [
+      {
+        heading: 'What it is',
+        body: (
+          <p className="text-sm">Forward R:R estimates the expected reward relative to risk for a potential entry, using the system's ATR-based stop and a target exit derived from stage analysis.</p>
+        ),
+      },
+      {
+        heading: 'Interpretation',
+        body: (
+          <div className="flex flex-col gap-1">
+            <p className="text-sm"><strong>&gt; 3.0</strong> — Excellent risk/reward. Candidate for full position sizing.</p>
+            <p className="text-sm"><strong>2.0–3.0</strong> — Good. Standard position size.</p>
+            <p className="text-sm"><strong>1.0–2.0</strong> — Marginal. Reduced position or wait for pullback.</p>
+            <p className="text-sm"><strong>&lt; 1.0</strong> — Unfavorable. Risk exceeds potential reward at current price.</p>
+          </div>
+        ),
+      },
+    ],
+  },
+  {
+    title: 'Scan Enrichment (Correlation & Sector Confirmation)',
+    sections: [
+      {
+        heading: 'Correlation Flag',
+        body: (
+          <p className="text-sm">Measures the trailing correlation between a stock's returns and its sector ETF. When correlation is high, the stock is moving in lockstep with its sector rather than on individual merit. This is informational: high correlation means sector risk is a bigger factor.</p>
+        ),
+      },
+      {
+        heading: 'Sector Confirmation',
+        body: (
+          <p className="text-sm">True when the stock's sector ETF is also in a constructive stage (Stage 2A, 2B, or 2C). Breakouts in stocks with sector confirmation tend to be more reliable because the sector tailwind supports the move. The scan overlay checks this to add conviction to tier assignment.</p>
+        ),
+      },
+      {
+        heading: 'Pass Count',
+        body: (
+          <p className="text-sm">The scan runs multiple filter passes with progressively tighter criteria. Pass count records how many passes each stock qualifies for. A stock with pass count 3 is higher quality than one with pass count 1. This is used alongside scan tier for ranking within a tier.</p>
+        ),
+      },
+      {
+        heading: 'ATRE Promoted',
+        body: (
+          <p className="text-sm">When a stock in Stage 2A or 2B has ATR-normalized extension from SMA150 (ATRE_150) above 6.0, the classifier promotes it to Stage 2C. This is a <strong>post-classification override</strong> that catches extended advances where the trend is strong but the stock is far from its anchor. ATRE-promoted stocks get tighter trailing stops to protect the gains.</p>
         ),
       },
     ],

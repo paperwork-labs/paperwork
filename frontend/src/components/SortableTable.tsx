@@ -120,6 +120,12 @@ interface SortableTableProps<T = any> {
   endToolbar?: React.ReactNode;
   /** Extra classes merged onto each body row (e.g. density hints); cell padding still comes from `size` */
   rowClassName?: string;
+  /** When true, data is pre-sorted by the server and client-side sorting is skipped. */
+  serverSorted?: boolean;
+  /** Called when the user clicks a sort header in server-sorted mode. */
+  onSortChange?: (key: string, dir: 'asc' | 'desc') => void;
+  /** Total row count from server (shown in toolbar instead of local count when provided). */
+  serverTotal?: number;
 }
 
 function SortableTable<T = any>({
@@ -140,6 +146,9 @@ function SortableTable<T = any>({
   onRowClick,
   endToolbar,
   rowClassName,
+  serverSorted = false,
+  onSortChange,
+  serverTotal,
 }: SortableTableProps<T>) {
   const { tableDensity } = useUserPreferences();
   const size: 'sm' | 'md' | 'lg' = sizeProp ?? (tableDensity === 'compact' ? 'sm' : 'md');
@@ -169,11 +178,18 @@ function SortableTable<T = any>({
     const column = columns.find((col) => col.key === columnKey);
     if (!column?.sortable) return;
 
+    const nextOrder = sortBy === columnKey ? (sortOrder === 'asc' ? 'desc' : 'asc') : 'desc';
+    const nextKey = columnKey;
+
+    if (serverSorted && onSortChange) {
+      onSortChange(nextKey, nextOrder);
+    }
+
     if (sortBy === columnKey) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+      setSortOrder(nextOrder);
     } else {
-      setSortBy(columnKey);
-      setSortOrder('desc');
+      setSortBy(nextKey);
+      setSortOrder(nextOrder);
     }
   };
 
@@ -454,6 +470,7 @@ function SortableTable<T = any>({
   }, [data, filters, filtersEnabled, columns, columnMeta]);
 
   const sortedData = useMemo(() => {
+    if (serverSorted) return filteredData;
     if (!sortBy || !filteredData.length) return filteredData;
 
     const column = columns.find((col) => col.key === sortBy);
@@ -514,7 +531,7 @@ function SortableTable<T = any>({
             <div className="flex flex-wrap items-center gap-2">
               {endToolbar}
               <span className="text-xs text-muted-foreground">
-                {sortedData.length} of {data.length}
+                {sortedData.length} of {serverTotal != null ? serverTotal : data.length}
               </span>
             </div>
           </div>

@@ -24,7 +24,7 @@ from backend.services.market.indicator_engine import (
     compute_full_indicator_series,
     compute_weinstein_stage_series_from_daily,
 )
-from backend.services.market.market_data_service import market_data_service
+from backend.services.market.market_data_service import snapshot_builder
 from backend.services.market.snapshot_history_writer import (
     build_snapshot_history_pg_upsert_stmt,
     upsert_snapshot_history_row,
@@ -80,7 +80,7 @@ def snapshot_for_date(as_of_date: str, batch_size: int = 50) -> dict:
             chunk = ordered[i : i + batch_size]
             for sym in chunk:
                 try:
-                    snap = market_data_service.snapshots.compute_snapshot_from_db(
+                    snap = snapshot_builder.compute_snapshot_from_db(
                         session, sym, as_of_dt=as_of_dt
                     )
                     if not snap:
@@ -796,7 +796,7 @@ def record_daily(symbols: Optional[List[str]] = None) -> dict:
                 if row and isinstance(row.raw_analysis, dict):
                     snapshot = dict(row.raw_analysis)
                 else:
-                    snapshot = market_data_service.snapshots.compute_snapshot_from_db(session, sym)
+                    snapshot = snapshot_builder.compute_snapshot_from_db(session, sym)
                     if not snapshot:
                         skipped_no_snapshot += 1
                         continue

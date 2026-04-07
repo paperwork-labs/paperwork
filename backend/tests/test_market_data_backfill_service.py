@@ -1,8 +1,8 @@
 import pandas as pd
 from datetime import datetime, timedelta, timezone
 
-from backend.services.market.market_data_service import market_data_service
-from backend.services.market import market_data_service as mds_module
+from backend.services.market.market_data_service import price_bars, quote, snapshot_builder
+from backend.services.market import snapshot_builder as sb_module
 from backend.models import PriceData, MarketSnapshot
 from backend.models.market_data import MarketSnapshotHistory
 
@@ -32,7 +32,7 @@ def test_persist_price_bars_delta_only(db_session):
     df = _make_df([yesterday, now], close=50.0)
 
     # First insert yesterday
-    inserted_1 = market_data_service.persist_price_bars(
+    inserted_1 = price_bars.persist_price_bars(
         db_session, sym, df.iloc[:1], interval="1d", data_source="unit_test", is_adjusted=True
     )
     assert inserted_1 == 1
@@ -45,7 +45,7 @@ def test_persist_price_bars_delta_only(db_session):
         .scalar()
     )
     assert last_date is not None
-    inserted_2 = market_data_service.persist_price_bars(
+    inserted_2 = price_bars.persist_price_bars(
         db_session,
         sym,
         df,
@@ -63,7 +63,7 @@ def test_persist_price_bars_delta_only(db_session):
 def test_compute_snapshot_from_db_uses_existing_fundamentals(db_session, monkeypatch):
     sym = "TESTF"
     monkeypatch.setattr(
-        market_data_service,
+        quote,
         "get_fundamentals_info",
         lambda *a, **kw: {},
     )
@@ -71,7 +71,7 @@ def test_compute_snapshot_from_db_uses_existing_fundamentals(db_session, monkeyp
     start = datetime.now(timezone.utc).replace(microsecond=0) - timedelta(days=130)
     dates = [start + timedelta(days=i) for i in range(120)]
     df = _make_df(dates, close=100.0)
-    market_data_service.persist_price_bars(
+    price_bars.persist_price_bars(
         db_session, sym, df, interval="1d", data_source="unit_test", is_adjusted=True
     )
     # Seed a previous snapshot with fundamentals
@@ -87,7 +87,7 @@ def test_compute_snapshot_from_db_uses_existing_fundamentals(db_session, monkeyp
     db_session.add(prev)
     db_session.commit()
 
-    snap = market_data_service.compute_snapshot_from_db(db_session, sym)
+    snap = snapshot_builder.compute_snapshot_from_db(db_session, sym)
     assert snap
     assert snap.get("sector") == "Technology"
     assert snap.get("industry") == "Software"
@@ -110,19 +110,19 @@ def test_compute_snapshot_from_db_populates_v2_indicators(db_session, monkeypatc
     df.index = pd.DatetimeIndex(dates)
     df_newest_first = df.iloc[::-1].copy()
 
-    market_data_service.persist_price_bars(
+    price_bars.persist_price_bars(
         db_session, sym, df_newest_first, interval="1d", data_source="unit_test", is_adjusted=True
     )
-    market_data_service.persist_price_bars(
+    price_bars.persist_price_bars(
         db_session, bm, df_newest_first, interval="1d", data_source="unit_test", is_adjusted=True
     )
 
     monkeypatch.setattr(
-        market_data_service, "get_fundamentals_info",
+        quote, "get_fundamentals_info",
         lambda *a, **kw: {"sector": "Test", "industry": "Test"},
     )
 
-    snap = market_data_service.compute_snapshot_from_db(db_session, sym)
+    snap = snapshot_builder.compute_snapshot_from_db(db_session, sym)
     assert snap
     # Canonical MAs
     assert isinstance(snap.get("sma_14"), float)
@@ -147,10 +147,10 @@ def test_compute_snapshot_from_db_advances_stage_days_from_latest_history(db_ses
     df = _make_df(dates, close=100.0)
     df_newest_first = df.iloc[::-1].copy()
 
-    market_data_service.persist_price_bars(
+    price_bars.persist_price_bars(
         db_session, sym, df_newest_first, interval="1d", data_source="unit_test", is_adjusted=True
     )
-    market_data_service.persist_price_bars(
+    price_bars.persist_price_bars(
         db_session, bm, df_newest_first, interval="1d", data_source="unit_test", is_adjusted=True
     )
 
@@ -167,12 +167,12 @@ def test_compute_snapshot_from_db_advances_stage_days_from_latest_history(db_ses
     db_session.commit()
 
     monkeypatch.setattr(
-        mds_module,
+        sb_module,
         "compute_weinstein_stage_from_daily",
         lambda *_args, **_kwargs: {"stage_label": "2A", "stage_slope_pct": 1.0, "stage_dist_pct": 2.0, "rs_mansfield_pct": 0.5},
     )
 
-    snap = market_data_service.compute_snapshot_from_db(db_session, sym)
+    snap = snapshot_builder.compute_snapshot_from_db(db_session, sym)
     assert snap.get("stage_label") == "2A"
     assert snap.get("current_stage_days") == 6
     assert snap.get("previous_stage_label") == "1"
@@ -188,10 +188,10 @@ def test_compute_snapshot_from_db_sets_previous_stage_on_transition(db_session, 
     df = _make_df(dates, close=120.0)
     df_newest_first = df.iloc[::-1].copy()
 
-    market_data_service.persist_price_bars(
+    price_bars.persist_price_bars(
         db_session, sym, df_newest_first, interval="1d", data_source="unit_test", is_adjusted=True
     )
-    market_data_service.persist_price_bars(
+    price_bars.persist_price_bars(
         db_session, bm, df_newest_first, interval="1d", data_source="unit_test", is_adjusted=True
     )
 
@@ -212,16 +212,16 @@ def test_compute_snapshot_from_db_sets_previous_stage_on_transition(db_session, 
     db_session.commit()
 
     monkeypatch.setattr(
-        market_data_service, "get_fundamentals_info",
+        quote, "get_fundamentals_info",
         lambda *a, **kw: {"sector": "Test", "industry": "Test"},
     )
     monkeypatch.setattr(
-        mds_module,
+        sb_module,
         "compute_weinstein_stage_from_daily",
         lambda *_args, **_kwargs: {"stage_label": "3", "stage_slope_pct": -1.0, "stage_dist_pct": -2.0, "rs_mansfield_pct": -0.5},
     )
 
-    snap = market_data_service.compute_snapshot_from_db(db_session, sym)
+    snap = snapshot_builder.compute_snapshot_from_db(db_session, sym)
     assert snap.get("stage_label") == "3"
     assert snap.get("current_stage_days") == 1
     assert snap.get("previous_stage_label") == "2A"
@@ -237,10 +237,10 @@ def test_compute_snapshot_from_db_derives_previous_stage_from_history_labels(db_
     df = _make_df(dates, close=90.0)
     df_newest_first = df.iloc[::-1].copy()
 
-    market_data_service.persist_price_bars(
+    price_bars.persist_price_bars(
         db_session, sym, df_newest_first, interval="1d", data_source="unit_test", is_adjusted=True
     )
-    market_data_service.persist_price_bars(
+    price_bars.persist_price_bars(
         db_session, bm, df_newest_first, interval="1d", data_source="unit_test", is_adjusted=True
     )
 
@@ -259,16 +259,16 @@ def test_compute_snapshot_from_db_derives_previous_stage_from_history_labels(db_
     db_session.commit()
 
     monkeypatch.setattr(
-        market_data_service, "get_fundamentals_info",
+        quote, "get_fundamentals_info",
         lambda *a, **kw: {"sector": "Test", "industry": "Test"},
     )
     monkeypatch.setattr(
-        mds_module,
+        sb_module,
         "compute_weinstein_stage_from_daily",
         lambda *_args, **_kwargs: {"stage_label": "2A", "stage_slope_pct": 1.1, "stage_dist_pct": 0.9, "rs_mansfield_pct": 0.4},
     )
 
-    snap = market_data_service.compute_snapshot_from_db(db_session, sym)
+    snap = snapshot_builder.compute_snapshot_from_db(db_session, sym)
     assert snap.get("stage_label") == "2A"
     assert snap.get("current_stage_days") == 3
     assert snap.get("previous_stage_label") == "1"
@@ -286,10 +286,10 @@ def test_compute_snapshot_from_db_preserves_run_length_when_history_stage_is_unk
     df = _make_df(dates, close=95.0)
     df_newest_first = df.iloc[::-1].copy()
 
-    market_data_service.persist_price_bars(
+    price_bars.persist_price_bars(
         db_session, sym, df_newest_first, interval="1d", data_source="unit_test", is_adjusted=True
     )
-    market_data_service.persist_price_bars(
+    price_bars.persist_price_bars(
         db_session, bm, df_newest_first, interval="1d", data_source="unit_test", is_adjusted=True
     )
 
@@ -306,7 +306,7 @@ def test_compute_snapshot_from_db_preserves_run_length_when_history_stage_is_unk
     db_session.commit()
 
     monkeypatch.setattr(
-        mds_module,
+        sb_module,
         "compute_weinstein_stage_from_daily",
         lambda *_args, **_kwargs: {
             "stage_label": "2A",
@@ -316,12 +316,12 @@ def test_compute_snapshot_from_db_preserves_run_length_when_history_stage_is_unk
         },
     )
     monkeypatch.setattr(
-        market_data_service,
+        quote,
         "get_fundamentals_info",
         lambda *a, **kw: {},
     )
 
-    snap = market_data_service.compute_snapshot_from_db(db_session, sym)
+    snap = snapshot_builder.compute_snapshot_from_db(db_session, sym)
     assert snap.get("stage_label") == "2A"
     assert snap.get("current_stage_days") == 47
     assert snap.get("previous_stage_label") == "1"
@@ -335,7 +335,7 @@ def test_derive_stage_run_fields_transition_from_unknown_history_uses_latest_row
         previous_stage_label = "2A"
         previous_stage_days = 4
 
-    out = market_data_service._derive_stage_run_fields(
+    out = snapshot_builder._derive_stage_run_fields(
         current_stage_label="2B",
         prior_stage_labels=["UNKNOWN", None, ""],
         latest_history_row=_Row(),
@@ -352,7 +352,7 @@ def test_derive_stage_run_fields_sparse_history_same_stage_advances_days():
         previous_stage_label = "1"
         previous_stage_days = 3
 
-    out = market_data_service._derive_stage_run_fields(
+    out = snapshot_builder._derive_stage_run_fields(
         current_stage_label="2A",
         prior_stage_labels=[],
         latest_history_row=_Row(),
@@ -373,7 +373,7 @@ def test_derive_stage_run_fields_unknown_latest_with_known_priors_trusts_compute
         previous_stage_label = "3"
         previous_stage_days = 20
 
-    out = market_data_service._derive_stage_run_fields(
+    out = snapshot_builder._derive_stage_run_fields(
         current_stage_label="2A",
         prior_stage_labels=["1", "1", "1", "2A", "2A", "UNKNOWN"],
         latest_history_row=_Row(),
@@ -398,7 +398,7 @@ def test_derive_stage_run_fields_unknown_latest_with_known_priors_new_stage():
         previous_stage_label = "1"
         previous_stage_days = 10
 
-    out = market_data_service._derive_stage_run_fields(
+    out = snapshot_builder._derive_stage_run_fields(
         current_stage_label="3",
         prior_stage_labels=["1", "2A", "2A", "UNKNOWN"],
         latest_history_row=_Row(),

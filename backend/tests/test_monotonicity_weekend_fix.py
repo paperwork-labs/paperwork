@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from backend.api.main import app
 from backend.api.dependencies import get_admin_user
 from backend.models.market_data import MarketSnapshot, MarketSnapshotHistory
+from backend.services.market.market_data_service import stage_quality
 
 
 client = TestClient(app, raise_server_exceptions=False)
@@ -35,8 +36,6 @@ def _recent_monday(min_days_ago: int = 7) -> date:
 
 def test_monotonicity_skips_weekend_gaps(db_session):
     """Friday→Monday gap should NOT count as a monotonicity violation."""
-    from backend.services.market.market_data_service import MarketDataService
-
     now = datetime.now(timezone.utc)
     snap = MarketSnapshot(
         symbol="AAA",
@@ -58,15 +57,12 @@ def test_monotonicity_skips_weekend_gaps(db_session):
     db_session.add(_make_history_row("AAA", tuesday, "2A", 7))
     db_session.commit()
 
-    svc = MarketDataService()
-    result = svc.stage_quality_summary(db_session, lookback_days=30)
+    result = stage_quality.stage_quality_summary(db_session, lookback_days=30)
     assert result["monotonicity_issues"] == 0
 
 
 def test_monotonicity_catches_real_violations(db_session):
     """Consecutive trading days with wrong counter should still be caught."""
-    from backend.services.market.market_data_service import MarketDataService
-
     now = datetime.now(timezone.utc)
     snap = MarketSnapshot(
         symbol="BBB",
@@ -85,15 +81,12 @@ def test_monotonicity_catches_real_violations(db_session):
     db_session.add(_make_history_row("BBB", tue, "2A", 5))  # Should be 6, not 5
     db_session.commit()
 
-    svc = MarketDataService()
-    result = svc.stage_quality_summary(db_session, lookback_days=30)
+    result = stage_quality.stage_quality_summary(db_session, lookback_days=30)
     assert result["monotonicity_issues"] >= 1
 
 
 def test_monotonicity_stage_transition_over_weekend(db_session):
     """Stage transition over a weekend should not flag a violation."""
-    from backend.services.market.market_data_service import MarketDataService
-
     now = datetime.now(timezone.utc)
     snap = MarketSnapshot(
         symbol="CCC",
@@ -112,8 +105,7 @@ def test_monotonicity_stage_transition_over_weekend(db_session):
     db_session.add(_make_history_row("CCC", monday, "2B", 1))  # New stage, reset to 1
     db_session.commit()
 
-    svc = MarketDataService()
-    result = svc.stage_quality_summary(db_session, lookback_days=30)
+    result = stage_quality.stage_quality_summary(db_session, lookback_days=30)
     assert result["monotonicity_issues"] == 0
 
 

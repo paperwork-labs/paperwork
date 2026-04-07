@@ -632,9 +632,7 @@ async def sync_option_positions(
 
 async def refresh_prices(db: Session, broker_account: BrokerAccount) -> Dict:
     """Refresh current prices for positions and tax lots."""
-    from backend.services.market.market_data_service import MarketDataService
-
-    market_service = MarketDataService()
+    from backend.services.market.market_data_service import quote
 
     positions = db.query(Position).filter(Position.account_id == broker_account.id).all()
     positions = [p for p in positions if p.quantity != 0 and p.symbol]
@@ -642,7 +640,7 @@ async def refresh_prices(db: Session, broker_account: BrokerAccount) -> Dict:
         return {"updated_positions": 0, "updated_tax_lots": 0, "symbols": []}
 
     unique_symbols = sorted({p.symbol for p in positions if p.symbol})
-    price_tasks = [market_service.get_current_price(sym) for sym in unique_symbols]
+    price_tasks = [quote.get_current_price(sym) for sym in unique_symbols]
     prices = await asyncio.gather(*price_tasks, return_exceptions=True)
 
     symbol_to_price = {}

@@ -21,7 +21,7 @@ from celery.exceptions import SoftTimeLimitExceeded
 from backend.database import SessionLocal
 from backend.models import Position
 from backend.models.market_data import MarketSnapshot
-from backend.services.market.market_data_service import market_data_service
+from backend.services.market.market_data_service import coverage_analytics, infra
 from backend.tasks.utils.task_utils import _resolve_history_days, task_run
 
 logger = logging.getLogger(__name__)
@@ -480,10 +480,10 @@ def health_check() -> dict:
 
     session = SessionLocal()
     try:
-        snapshot = market_data_service.coverage.coverage_snapshot(session)
+        snapshot = coverage_analytics.coverage_snapshot(session)
         try:
             snapshot.setdefault("meta", {})["backfill_5m_enabled"] = (
-                market_data_service.coverage.is_backfill_5m_enabled()
+                infra.is_backfill_5m_enabled()
             )
         except Exception as e:
             logger.warning("backfill_5m_toggle_read failed: %s", e)
@@ -495,7 +495,7 @@ def health_check() -> dict:
             "updated_at": datetime.now(timezone.utc).isoformat(),
             "status": status_info,
         }
-        redis_client = market_data_service.redis_client
+        redis_client = infra.redis_client
         history_entry = {
             "ts": payload["updated_at"],
             "daily_pct": status_info.get("daily_pct"),

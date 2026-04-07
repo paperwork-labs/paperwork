@@ -1,4 +1,4 @@
-"""Exit Cascade Engine (v4 Section 8)
+"""Exit Cascade Engine
 
 9-tier independently-firing exit system for long positions:
   Tiers 1–5: Base exits (always active)

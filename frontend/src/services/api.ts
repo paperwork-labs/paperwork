@@ -647,6 +647,60 @@ export const marketDataApi = {
     return makeOptimizedRequest(() => api.get('/market-data/admin/pre-market-readiness'));
   },
 
+  getSnapshotTable: async (params: {
+    sort_by?: string;
+    sort_dir?: string;
+    filter_stage?: string;
+    search?: string;
+    sectors?: string;
+    scan_tiers?: string;
+    regime_state?: string;
+    rs_min?: number;
+    rs_max?: number;
+    offset?: number;
+    limit?: number;
+    include_plan?: boolean;
+  } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.sort_by) qs.set('sort_by', params.sort_by);
+    if (params.sort_dir) qs.set('sort_dir', params.sort_dir);
+    if (params.filter_stage) qs.set('filter_stage', params.filter_stage);
+    if (params.search) qs.set('search', params.search);
+    if (params.sectors) qs.set('sectors', params.sectors);
+    if (params.scan_tiers) qs.set('scan_tiers', params.scan_tiers);
+    if (params.regime_state) qs.set('regime_state', params.regime_state);
+    if (params.rs_min != null) qs.set('rs_min', String(params.rs_min));
+    if (params.rs_max != null) qs.set('rs_max', String(params.rs_max));
+    if (params.offset != null) qs.set('offset', String(params.offset));
+    if (params.limit != null) qs.set('limit', String(params.limit));
+    if (params.include_plan) qs.set('include_plan', 'true');
+    const q = qs.toString();
+    return makeOptimizedRequest(() => api.get(`/market-data/snapshots/table${q ? `?${q}` : ''}`));
+  },
+
+  getSnapshotAggregates: async (params: {
+    filter_stage?: string;
+    sectors?: string;
+    scan_tiers?: string;
+    regime_state?: string;
+  } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.filter_stage) qs.set('filter_stage', params.filter_stage);
+    if (params.sectors) qs.set('sectors', params.sectors);
+    if (params.scan_tiers) qs.set('scan_tiers', params.scan_tiers);
+    if (params.regime_state) qs.set('regime_state', params.regime_state);
+    const q = qs.toString();
+    return makeOptimizedRequest(() => api.get(`/market-data/snapshots/aggregates${q ? `?${q}` : ''}`));
+  },
+
+  getQuadCurrent: async () => {
+    return makeOptimizedRequest(() => api.get('/market-data/quad/current'));
+  },
+
+  getQuadHistory: async (days: number = 90) => {
+    return makeOptimizedRequest(() => api.get(`/market-data/quad/history?days=${days}`));
+  },
+
   // Auto-fix endpoints for agent-powered remediation
   startAutoFix: async () => {
     return api.post('/market-data/admin/auto-fix');

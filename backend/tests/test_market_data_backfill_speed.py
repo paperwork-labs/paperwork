@@ -7,11 +7,11 @@ from unittest.mock import patch
 import pytest
 
 from backend.services.market.market_data_service import (
-    MarketDataService,
-    market_data_service,
     APIProvider,
     _cb_failures,
     _cb_open_until,
+    price_bars,
+    provider_router,
 )
 
 
@@ -27,7 +27,6 @@ def _make_df(days: int = 5) -> pd.DataFrame:
 
 @pytest.mark.asyncio
 async def test_call_blocking_with_retries_backoff_on_429(monkeypatch):
-    svc = MarketDataService()
     sleeps: list[float] = []
 
     async def fake_sleep(delay: float):
@@ -46,7 +45,7 @@ async def test_call_blocking_with_retries_backoff_on_429(monkeypatch):
             raise RateLimitExc("429")
         return "ok"
 
-    out = await svc._call_blocking_with_retries(flaky, attempts=5, max_delay_seconds=1.0)
+    out = await provider_router._call_blocking_with_retries(flaky, attempts=5, max_delay_seconds=1.0)
     assert out == "ok"
     assert calls["n"] == 2
     assert len(sleeps) == 1
@@ -64,56 +63,48 @@ class TestCircuitBreaker:
         _cb_open_until.clear()
 
     def test_cb_closed_by_default(self):
-        svc = MarketDataService()
-        assert not svc._cb_is_open(APIProvider.FMP)
+        assert not provider_router._cb_is_open(APIProvider.FMP)
 
     def test_cb_opens_after_threshold(self):
-        svc = MarketDataService()
         for _ in range(5):
-            svc._cb_record_failure(APIProvider.FMP)
-        assert svc._cb_is_open(APIProvider.FMP)
+            provider_router._cb_record_failure(APIProvider.FMP)
+        assert provider_router._cb_is_open(APIProvider.FMP)
 
     def test_cb_stays_closed_below_threshold(self):
-        svc = MarketDataService()
         for _ in range(4):
-            svc._cb_record_failure(APIProvider.FMP)
-        assert not svc._cb_is_open(APIProvider.FMP)
+            provider_router._cb_record_failure(APIProvider.FMP)
+        assert not provider_router._cb_is_open(APIProvider.FMP)
 
     def test_cb_resets_on_success(self):
-        svc = MarketDataService()
         for _ in range(4):
-            svc._cb_record_failure(APIProvider.FMP)
-        svc._cb_record_success(APIProvider.FMP)
-        assert not svc._cb_is_open(APIProvider.FMP)
+            provider_router._cb_record_failure(APIProvider.FMP)
+        provider_router._cb_record_success(APIProvider.FMP)
+        assert not provider_router._cb_is_open(APIProvider.FMP)
         assert "fmp" not in _cb_failures
 
     def test_cb_expires_after_cooldown(self):
-        svc = MarketDataService()
         for _ in range(5):
-            svc._cb_record_failure(APIProvider.FMP)
-        assert svc._cb_is_open(APIProvider.FMP)
+            provider_router._cb_record_failure(APIProvider.FMP)
+        assert provider_router._cb_is_open(APIProvider.FMP)
         _cb_open_until["fmp"] = time.monotonic() - 1
-        assert not svc._cb_is_open(APIProvider.FMP)
+        assert not provider_router._cb_is_open(APIProvider.FMP)
 
     def test_cb_shared_across_instances(self):
-        svc1 = MarketDataService()
-        svc2 = MarketDataService()
         for _ in range(5):
-            svc1._cb_record_failure(APIProvider.FMP)
-        assert svc2._cb_is_open(APIProvider.FMP)
+            provider_router._cb_record_failure(APIProvider.FMP)
+        assert provider_router._cb_is_open(APIProvider.FMP)
 
     def test_cb_independent_per_provider(self):
-        svc = MarketDataService()
         for _ in range(5):
-            svc._cb_record_failure(APIProvider.FMP)
-        assert svc._cb_is_open(APIProvider.FMP)
-        assert not svc._cb_is_open(APIProvider.YFINANCE)
+            provider_router._cb_record_failure(APIProvider.FMP)
+        assert provider_router._cb_is_open(APIProvider.FMP)
+        assert not provider_router._cb_is_open(APIProvider.YFINANCE)
 
 
 def test_persist_price_bars_bulk_upsert_still_delta_only(db_session):
     sym = "BULKTEST"
     df = _make_df(days=3)
-    inserted_1 = market_data_service.persist_price_bars(
+    inserted_1 = price_bars.persist_price_bars(
         db_session, sym, df.iloc[:1], interval="1d", data_source="unit_test", is_adjusted=True
     )
     assert inserted_1 == 1
@@ -127,7 +118,7 @@ def test_persist_price_bars_bulk_upsert_still_delta_only(db_session):
         .scalar()
     )
     assert last_date is not None
-    inserted_2 = market_data_service.persist_price_bars(
+    inserted_2 = price_bars.persist_price_bars(
         db_session, sym, df, interval="1d", data_source="unit_test", is_adjusted=True, delta_after=last_date
     )
     assert inserted_2 == 2

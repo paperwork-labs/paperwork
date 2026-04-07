@@ -1,7 +1,8 @@
-"""Scan Overlay Engine (v4 Section 7)
+"""Scan Overlay Engine
 
 Assigns stocks to scan tiers based on 6 filters per tier.
 Tiers are regime-gated: R1 sees all tiers, R5 sees only short tiers.
+Quad sector filter restricts scans to SCAN sectors per the Quad × Regime matrix.
 
 4 long tiers (Breakout Elite/Standard, Early Base, Speculative) + 2 short tiers (Breakdown Elite/Standard).
 """
@@ -9,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Sequence
 
 from backend.services.market.regime_engine import (
     REGIME_R1,
@@ -18,6 +19,7 @@ from backend.services.market.regime_engine import (
     REGIME_R4,
     REGIME_R5,
 )
+from backend.services.market.quad_engine import get_sector_action
 
 logger = logging.getLogger(__name__)
 
@@ -64,13 +66,31 @@ class ScanInput:
     range_pos_52w: Optional[float]  # Range position in 52-week range (0-100)
     ext_pct: Optional[float]
     atrp_14: Optional[float]
+    sector: Optional[str] = None
+    sub_industry: Optional[str] = None
+    pass_count: int = 0
+    current_price: Optional[float] = None
+    atr_30: Optional[float] = None
 
 
 def _safe(val: Optional[float], default: float = 0.0) -> float:
     return val if val is not None else default
 
 
-def classify_long_tier(inp: ScanInput, regime: str) -> Optional[str]:
+def _is_sector_scannable(sector: Optional[str], quad: str, regime: str) -> bool:
+    """Check if a sector is scannable in the current Quad × Regime."""
+    if sector is None:
+        return True  # unknown sector: allow through, let other filters decide
+    action = get_sector_action(sector, quad, regime)
+    return action == "SCAN"
+
+
+def classify_long_tier(
+    inp: ScanInput,
+    regime: str,
+    *,
+    quad: str = "Q1",
+) -> Optional[str]:
     """Assign a stock to the best matching long tier, or None if no match.
 
     Breakout Elite (highest conviction): 2A/2B stage, RS > 0, tight EMA10, top ATRE percentile, high range
@@ -84,6 +104,14 @@ def classify_long_tier(inp: ScanInput, regime: str) -> Optional[str]:
     range52 = _safe(inp.range_pos_52w)
 
     accessible = REGIME_LONG_ACCESS.get(regime, [])
+
+    # Quad sector filter: AVOID sectors are excluded from all long scans
+    if not _is_sector_scannable(inp.sector, quad, regime):
+        return None
+
+    # Second-pass 2B prohibition in R3-R5
+    if stage == "2B" and inp.pass_count >= 2 and regime in (REGIME_R3, REGIME_R4, REGIME_R5):
+        return None
 
     # Breakout Elite — highest conviction (RS required; None is unassigned)
     if TIER_BREAKOUT_ELITE in accessible and inp.rs_mansfield is not None:
@@ -137,9 +165,14 @@ def classify_short_tier(inp: ScanInput, regime: str) -> Optional[str]:
     return None
 
 
-def classify_scan_tier(inp: ScanInput, regime: str) -> Optional[str]:
+def classify_scan_tier(
+    inp: ScanInput,
+    regime: str,
+    *,
+    quad: str = "Q1",
+) -> Optional[str]:
     """Assign a stock to the best matching tier (long or short)."""
-    long_tier = classify_long_tier(inp, regime)
+    long_tier = classify_long_tier(inp, regime, quad=quad)
     if long_tier:
         return long_tier
     return classify_short_tier(inp, regime)
@@ -174,3 +207,90 @@ def derive_action_label(stage_label: str, scan_tier: Optional[str], regime: str)
         return "WATCH"
 
     return "AVOID"
+
+
+# ── Forward R/R (Spec Section 9.2) ──
+
+def compute_forward_rr(
+    close: float,
+    atr_30: float,
+    stop: Optional[float] = None,
+    regime: str = "R1",
+) -> Optional[float]:
+    """Compute forward risk/reward ratio.
+
+    Target = Close + (multiplier × ATR30).
+    R1-R2: multiplier = 3.0; R3-R5: multiplier = 2.5.
+    Stop defaults to Close - (1.5 × ATR30) if not provided.
+    """
+    if close <= 0 or atr_30 <= 0:
+        return None
+
+    mult = 3.0 if regime in (REGIME_R1, REGIME_R2) else 2.5
+    target = close + mult * atr_30
+
+    if stop is None:
+        stop = close - 1.5 * atr_30
+
+    risk = close - stop
+    if risk <= 0:
+        return None
+
+    return (target - close) / risk
+
+
+# ── Correlation Constraint (Spec Section 11.5) ──
+
+def check_correlation_constraint(
+    positions: Sequence[dict],
+    candidate_sub_industry: Optional[str],
+    max_same_sub_industry: int = 3,
+) -> bool:
+    """Check if adding a position violates the correlation constraint.
+
+    Max 3 positions in the same GICS sub-industry.
+    Returns True if the candidate passes (can be added), False if blocked.
+    """
+    if candidate_sub_industry is None:
+        return True
+
+    count = sum(
+        1 for p in positions
+        if p.get("sub_industry") == candidate_sub_industry
+    )
+    return count < max_same_sub_industry
+
+
+# ── Sector Confirmation (Spec Section 9.4) ──
+
+def compute_sector_confirmation(
+    sector_etf_stage: str,
+) -> str:
+    """Determine sector confirmation based on sector ETF stage.
+
+    - Stage 2 (any sub-stage): CONFIRMING
+    - Stage 1: NEUTRAL
+    - Stage 3 or 4: DENYING
+    """
+    if sector_etf_stage.startswith("2"):
+        return "CONFIRMING"
+    if sector_etf_stage.startswith("1"):
+        return "NEUTRAL"
+    if sector_etf_stage.startswith("3") or sector_etf_stage.startswith("4"):
+        return "DENYING"
+    return "NEUTRAL"
+
+
+def compute_sector_divergence_pct(
+    sector_confirmations: dict[str, str],
+) -> float:
+    """Compute what % of SCAN sectors are DENYING the Quad.
+
+    When >= 50%, this is an early warning of a Quad transition.
+    Returns 0.0–100.0.
+    """
+    if not sector_confirmations:
+        return 0.0
+    total = len(sector_confirmations)
+    denying = sum(1 for v in sector_confirmations.values() if v == "DENYING")
+    return (denying / total) * 100.0

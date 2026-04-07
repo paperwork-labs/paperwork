@@ -27,7 +27,7 @@ from celery import shared_task
 
 from backend.config import settings
 from backend.database import SessionLocal
-from backend.services.market.market_data_service import market_data_service
+from backend.services.market.market_data_service import infra
 from backend.tasks.utils.task_utils import task_run
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ REDIS_PREFIX = "auto_ops"
 
 
 def _redis():
-    return market_data_service.redis_client
+    return infra.redis_client
 
 
 def _cooldown_key(dimension: str) -> str:

@@ -4,10 +4,15 @@ import StageBadge from '../shared/StageBadge';
 import StageBar from '../shared/StageBar';
 import { SymbolLink } from './SymbolChartUI';
 import { ACTION_COLORS } from '../../constants/chart';
+import { useSnapshotTable } from '../../hooks/useSnapshotTable';
+import { useSnapshotAggregates } from '../../hooks/useSnapshotAggregates';
+import { useDebounce } from '../../hooks/useDebounce';
 import { cn } from '@/lib/utils';
 import { heatTextClass, semanticTextColorClass } from '@/lib/semantic-text-color';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import Pagination from '@/components/ui/Pagination';
 
 const DATA_CELL = 'font-mono text-xs tracking-tight';
 
@@ -19,7 +24,10 @@ const fmtPct = (v: unknown): string => {
 type SortKey = 'symbol' | 'stage_label' | 'action_label' | 'perf_1d' | 'perf_5d' | 'perf_20d' | 'perf_252d' | 'rsi' | 'ext_pct' | 'atrp_14' | 'rs_mansfield_pct' | 'ema10_dist_n' | 'sma150_slope' | 'scan_tier';
 
 interface BottomUpViewProps {
-  snapshots: any[];
+  filters?: {
+    sectors?: string;
+    regime_state?: string;
+  };
 }
 
 function colorToBadgeClass(active: boolean, palette: string): string {
@@ -65,12 +73,60 @@ function colorToBadgeClass(active: boolean, palette: string): string {
   }
 }
 
-const BottomUpView: React.FC<BottomUpViewProps> = ({ snapshots }) => {
+const PAGE_SIZE = 100;
+
+const BottomUpView: React.FC<BottomUpViewProps> = ({ filters }) => {
   const [search, setSearch] = React.useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [sortKey, setSortKey] = React.useState<SortKey>('scan_tier');
   const [sortDir, setSortDir] = React.useState<'asc' | 'desc'>('asc');
   const [stageFilter, setStageFilter] = React.useState<string | null>(null);
   const [actionFilter, setActionFilter] = React.useState<string | null>(null);
+  const [page, setPage] = React.useState(1);
+
+  const offset = (page - 1) * PAGE_SIZE;
+
+  const tableParams = React.useMemo(() => ({
+    sort_by: sortKey,
+    sort_dir: sortDir,
+    filter_stage: stageFilter || undefined,
+    search: debouncedSearch || undefined,
+    sectors: filters?.sectors,
+    regime_state: filters?.regime_state,
+    offset,
+    limit: PAGE_SIZE,
+  }), [sortKey, sortDir, stageFilter, debouncedSearch, filters?.sectors, filters?.regime_state, offset]);
+
+  const { data: tableData, isPending } = useSnapshotTable(tableParams);
+  const rows = tableData?.rows ?? [];
+  const total = tableData?.total ?? 0;
+
+  const { data: aggregates } = useSnapshotAggregates({
+    filter_stage: stageFilter || undefined,
+    sectors: filters?.sectors,
+    regime_state: filters?.regime_state,
+  });
+
+  const stageCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    (aggregates?.stage_distribution ?? []).forEach((d) => {
+      if (d.stage) counts[d.stage] = d.count;
+    });
+    return counts;
+  }, [aggregates?.stage_distribution]);
+
+  const actionCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    (aggregates?.action_distribution ?? []).forEach((d) => {
+      if (d.action) counts[d.action] = d.count;
+    });
+    return counts;
+  }, [aggregates?.action_distribution]);
+
+  const filteredRows = React.useMemo(() => {
+    if (!actionFilter) return rows;
+    return rows.filter((r: any) => (r.action_label || r.scan_action || 'WATCH') === actionFilter);
+  }, [rows, actionFilter]);
 
   const handleSort = React.useCallback((key: SortKey) => {
     if (sortKey === key) {
@@ -79,53 +135,8 @@ const BottomUpView: React.FC<BottomUpViewProps> = ({ snapshots }) => {
       setSortKey(key);
       setSortDir(key === 'symbol' ? 'asc' : 'desc');
     }
+    setPage(1);
   }, [sortKey]);
-
-  const stageCounts = React.useMemo(() => {
-    const counts: Record<string, number> = {};
-    snapshots.forEach((s: any) => {
-      const stage = s.stage_label;
-      if (stage) counts[stage] = (counts[stage] || 0) + 1;
-    });
-    return counts;
-  }, [snapshots]);
-
-  const actionCounts = React.useMemo(() => {
-    const counts: Record<string, number> = {};
-    snapshots.forEach((s: any) => {
-      const action = s.action_label || s.scan_action || 'WATCH';
-      counts[action] = (counts[action] || 0) + 1;
-    });
-    return counts;
-  }, [snapshots]);
-
-  const filteredRows = React.useMemo(() => {
-    let rows = [...snapshots];
-    if (search) {
-      const q = search.toUpperCase();
-      rows = rows.filter((r: any) =>
-        r.symbol?.toUpperCase().includes(q) ||
-        r.sector?.toUpperCase().includes(q) ||
-        r.name?.toUpperCase().includes(q)
-      );
-    }
-    if (stageFilter) {
-      rows = rows.filter((r: any) => r.stage_label === stageFilter);
-    }
-    if (actionFilter) {
-      rows = rows.filter((r: any) => (r.action_label || r.scan_action || 'WATCH') === actionFilter);
-    }
-    rows.sort((a: any, b: any) => {
-      const av = a[sortKey];
-      const bv = b[sortKey];
-      if (av == null && bv == null) return 0;
-      if (av == null) return 1;
-      if (bv == null) return -1;
-      const cmp = typeof av === 'string' ? av.localeCompare(bv) : av - bv;
-      return sortDir === 'asc' ? cmp : -cmp;
-    });
-    return rows;
-  }, [snapshots, search, sortKey, sortDir, stageFilter, actionFilter]);
 
   const SortHeader: React.FC<{ k: SortKey; label: string; align?: 'left' | 'right' }> = ({ k, label, align = 'left' }) => (
     <th
@@ -149,9 +160,9 @@ const BottomUpView: React.FC<BottomUpViewProps> = ({ snapshots }) => {
       <div className="rounded-lg border border-border bg-card p-4">
         <div className="mb-2 flex items-center justify-between">
           <p className="text-sm font-semibold">Stage Distribution</p>
-          <p className="text-xs text-muted-foreground">{snapshots.length} symbols</p>
+          <p className="text-xs text-muted-foreground">{aggregates?.total ?? 0} symbols</p>
         </div>
-        <StageBar counts={stageCounts} onClick={(stage: string) => setStageFilter(prev => prev === stage ? null : stage)} activeStage={stageFilter} />
+        <StageBar counts={stageCounts} onClick={(stage: string) => { setStageFilter(prev => prev === stage ? null : stage); setPage(1); }} activeStage={stageFilter} />
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -160,7 +171,7 @@ const BottomUpView: React.FC<BottomUpViewProps> = ({ snapshots }) => {
             key={action}
             variant="outline"
             className={colorToBadgeClass(actionFilter === action, ACTION_COLORS[action] || 'gray')}
-            onClick={() => setActionFilter(prev => prev === action ? null : action)}
+            onClick={() => { setActionFilter(prev => prev === action ? null : action); setPage(1); }}
           >
             {action}: {count}
           </Badge>
@@ -169,7 +180,7 @@ const BottomUpView: React.FC<BottomUpViewProps> = ({ snapshots }) => {
           <Badge
             variant="outline"
             className="cursor-pointer border-border transition-colors hover:bg-muted"
-            onClick={() => { setStageFilter(null); setActionFilter(null); }}
+            onClick={() => { setStageFilter(null); setActionFilter(null); setPage(1); }}
           >
             Clear Filters
           </Badge>
@@ -183,10 +194,10 @@ const BottomUpView: React.FC<BottomUpViewProps> = ({ snapshots }) => {
             className="h-8 pl-8 text-sm"
             placeholder="Search symbol, sector, or name..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           />
         </div>
-        <span className="shrink-0 text-xs text-muted-foreground">{filteredRows.length} results</span>
+        <span className="shrink-0 text-xs text-muted-foreground">{total} results</span>
       </div>
 
       <div className="overflow-hidden rounded-lg border border-border bg-card">
@@ -212,7 +223,15 @@ const BottomUpView: React.FC<BottomUpViewProps> = ({ snapshots }) => {
               </tr>
             </thead>
             <tbody>
-              {filteredRows.slice(0, 500).map((row: any) => {
+              {isPending
+                ? Array.from({ length: 10 }).map((_, i) => (
+                    <tr key={i} className="border-b border-border/80">
+                      {Array.from({ length: 15 }).map((_, j) => (
+                        <td key={j} className="px-2 py-2"><Skeleton className="h-4 w-full" /></td>
+                      ))}
+                    </tr>
+                  ))
+                : filteredRows.map((row: any) => {
                 const action = row.action_label || row.scan_action || '';
                 return (
                   <tr
@@ -256,6 +275,17 @@ const BottomUpView: React.FC<BottomUpViewProps> = ({ snapshots }) => {
           </table>
         </div>
       </div>
+
+      {total > 0 && (
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={total}
+          pageSizeOptions={[50, 100, 200]}
+          onPageChange={setPage}
+          onPageSizeChange={() => {}}
+        />
+      )}
     </div>
   );
 };

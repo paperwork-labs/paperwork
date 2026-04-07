@@ -15,7 +15,7 @@ from backend.services.market.fmp_5m_tier_gate import (
     fmp_5m_intraday_backfill_blocked_tier,
     log_skip_intraday_5m_backfill,
 )
-from backend.services.market.market_data_service import market_data_service
+from backend.services.market.market_data_service import infra, price_bars, provider_router
 from backend.tasks.utils.task_utils import (
     _get_tracked_universe_from_db,
     _increment_provider_usage,
@@ -47,7 +47,7 @@ def bars_5m_symbols(symbols: List[str], n_days: int = 5) -> dict:
             "errors": 0,
             "provider_usage": {},
         }
-    if not market_data_service.coverage.is_backfill_5m_enabled():
+    if not infra.is_backfill_5m_enabled():
         return {
             "status": "skipped",
             "reason": "5m backfill disabled by admin toggle",
@@ -67,8 +67,11 @@ def bars_5m_symbols(symbols: List[str], n_days: int = 5) -> dict:
             for sym in [s.upper() for s in symbols or []]:
                 try:
                     res = loop.run_until_complete(
-                        market_data_service.backfill_intraday_5m(
-                            session, sym, lookback_days=n_days
+                        price_bars.backfill_intraday_5m(
+                            session,
+                            sym,
+                            lookback_days=n_days,
+                            provider=provider_router,
                         )
                     )
                     if (res or {}).get("status") != "empty":
@@ -132,7 +135,7 @@ def bars_5m_last_n_days(n_days: int = 5, batch_size: int = 50) -> dict:
             "errors": 0,
             "provider_usage": {},
         }
-    if not market_data_service.coverage.is_backfill_5m_enabled():
+    if not infra.is_backfill_5m_enabled():
         return {
             "status": "skipped",
             "reason": "5m backfill disabled by admin toggle",
@@ -156,8 +159,11 @@ def bars_5m_last_n_days(n_days: int = 5, batch_size: int = 50) -> dict:
                 for sym in chunk:
                     try:
                         res = loop.run_until_complete(
-                            market_data_service.backfill_intraday_5m(
-                                session, sym, lookback_days=n_days
+                            price_bars.backfill_intraday_5m(
+                                session,
+                                sym,
+                                lookback_days=n_days,
+                                provider=provider_router,
                             )
                         )
                         if (res or {}).get("status") != "empty":

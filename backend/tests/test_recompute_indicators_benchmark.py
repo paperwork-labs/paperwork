@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from backend.services.market.market_data_service import market_data_service
+from backend.services.market.market_data_service import infra
 from backend.tasks.market import indicators as market_indicators_tasks
 
 
@@ -9,8 +9,14 @@ def test_recompute_indicators_warns_when_benchmark_missing(db_session, monkeypat
         def get(self, _key):
             return None
 
-    # Avoid Redis + background status updates during the test.
-    market_data_service._redis_sync = DummyRedis()
+        def set(self, *_args, **_kwargs):
+            return True
+
+        def delete(self, *_args, **_kwargs):
+            return 1
+
+    # Avoid Redis + background status updates during the test (task_run / _publish_status).
+    monkeypatch.setattr(infra, "_redis_sync", DummyRedis())
     monkeypatch.setattr(market_indicators_tasks, "SessionLocal", lambda: db_session)
     monkeypatch.setattr(market_indicators_tasks, "_set_task_status", lambda *args, **kwargs: None)
     monkeypatch.setattr(market_indicators_tasks, "_get_tracked_symbols_safe", lambda _session: ["AAA"])

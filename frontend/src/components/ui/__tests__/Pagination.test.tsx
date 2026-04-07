@@ -20,7 +20,7 @@ describe('Pagination', () => {
     );
 
     expect(screen.getByText('1–25 of 4585')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '2' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Page 2 of/ }));
     expect(onPageChange).toHaveBeenCalledWith(2);
   });
 
@@ -38,10 +38,9 @@ describe('Pagination', () => {
       />,
     );
 
-    expect(screen.getAllByRole('button', { name: '1' }).length).toBeGreaterThan(0);
-    // Some Chakra primitives may duplicate accessible nodes; presence is what matters.
-    expect(screen.getAllByRole('button', { name: '184' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('button', { name: '50' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: /^Page 1 of/ }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: /^Page 184 of/ }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: /^Page 50 of/ }).length).toBeGreaterThan(0);
   });
 });
 

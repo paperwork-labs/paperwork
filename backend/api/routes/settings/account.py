@@ -627,11 +627,9 @@ async def refresh_prices(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
-    from backend.services.market.market_data_service import MarketDataService
+    from backend.services.market.market_data_service import quote
 
     try:
-        market_service = MarketDataService()
-
         if account_id is not None:
             owned = (
                 db.query(BrokerAccount)
@@ -661,7 +659,7 @@ async def refresh_prices(
         # Fetch prices concurrently
         import asyncio as _asyncio
 
-        price_tasks = [market_service.get_current_price(sym) for sym in unique_symbols]
+        price_tasks = [quote.get_current_price(sym) for sym in unique_symbols]
         prices = await _asyncio.gather(*price_tasks, return_exceptions=True)
         symbol_to_price = {}
         for sym, price in zip(unique_symbols, prices):

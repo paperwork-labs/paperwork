@@ -14,10 +14,10 @@ def test_backfill_last_bars_counts_empty_as_error(db_session, monkeypatch):
         lambda _session: {"AAA", "BBB"},
     )
 
-    # Avoid real DB writes for price bars
-    from backend.services.market.market_data_service import market_data_service
+    # Avoid real DB writes for price bars (task_utils uses price_bars singleton).
+    from backend.services.market.market_data_service import price_bars, provider_router
 
-    monkeypatch.setattr(market_data_service, "persist_price_bars", lambda *args, **kwargs: 1)
+    monkeypatch.setattr(price_bars, "persist_price_bars", lambda *args, **kwargs: 1)
 
     async def fake_get_historical_data(symbol: str, *args, **kwargs):
         # AAA succeeds, BBB looks like an "empty response"
@@ -33,7 +33,7 @@ def test_backfill_last_bars_counts_empty_as_error(db_session, monkeypatch):
         return (None, provider)
 
     monkeypatch.setattr(
-        market_data_service.providers,
+        provider_router,
         "get_historical_data",
         fake_get_historical_data,
     )
@@ -82,14 +82,15 @@ def test_record_daily_history_defaults_to_tracked_universe(db_session, monkeypat
 @pytest.mark.no_db
 def test_fmp_error_dict_raises(monkeypatch):
     """Ensure FMP error payloads raise so retry/backoff can kick in."""
-    from backend.services.market import market_data_service as mds_mod
+    from backend.services.market import provider_router as pr_mod
 
     def fake_historical_price_full(*args, **kwargs):
         return {"Error Message": "Rate Limit Exceeded"}
 
-    monkeypatch.setattr(mds_mod.fmpsdk, "historical_price_full", fake_historical_price_full)
-    svc = mds_mod.MarketDataService()
+    monkeypatch.setattr(pr_mod.fmpsdk, "historical_price_full", fake_historical_price_full)
+    from backend.services.market.market_data_service import provider_router
+
     with pytest.raises(RuntimeError):
-        svc._get_historical_fmp_sync("AAA", "1y", "1d")
+        provider_router._get_historical_fmp_sync("AAA", "1y", "1d")
 
 

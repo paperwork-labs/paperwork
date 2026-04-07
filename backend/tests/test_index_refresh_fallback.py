@@ -8,7 +8,7 @@ from backend.tasks.market import backfill as market_backfill_tasks
 @pytest.mark.destructive
 def test_refresh_index_constituents_records_counters(monkeypatch, db_session):
     # Monkeypatch service to return a small set deterministically
-    from backend.services.market.market_data_service import market_data_service
+    from backend.services.market.market_data_service import index_universe
 
     async def fake_get_index_constituents(name: str):
         if name == "SP500":
@@ -19,7 +19,7 @@ def test_refresh_index_constituents_records_counters(monkeypatch, db_session):
             return ["AAPL"]
         return []
 
-    monkeypatch.setattr(market_data_service, "get_index_constituents", fake_get_index_constituents)
+    monkeypatch.setattr(index_universe, "get_index_constituents", fake_get_index_constituents)
 
     # Route SessionLocal inside task to our test session
     monkeypatch.setattr(market_backfill_tasks, "SessionLocal", lambda: db_session)

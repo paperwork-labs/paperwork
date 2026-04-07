@@ -17,11 +17,9 @@ def test_snapshot_last_n_days_writes_rows(db_session, monkeypatch):
             return str(time.time()).encode()
         return None
 
-    monkeypatch.setattr(
-        history_tasks.market_data_service.redis_client,
-        "get",
-        _redis_get,
-    )
+    import backend.tasks.utils.task_utils as tu
+
+    monkeypatch.setattr(tu.infra, "_redis_sync", type("_R", (), {"get": staticmethod(_redis_get)})())
 
     from backend.models.market_data import PriceData, MarketSnapshotHistory
 

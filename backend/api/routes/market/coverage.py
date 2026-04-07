@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models.user import User
 from backend.models.market_data import PriceData
-from backend.services.market.market_data_service import MarketDataService
+from backend.services.market.market_data_service import coverage_analytics
 from backend.api.dependencies import get_market_data_viewer
 from ._shared import visibility_scope, coverage_education, coverage_actions
 
@@ -32,8 +32,7 @@ async def get_coverage(
 ) -> Dict[str, Any]:
     """Return coverage summary across intervals with last bar timestamps and freshness buckets."""
     try:
-        svc = MarketDataService()
-        snapshot = svc.coverage.build_coverage_response(
+        snapshot = coverage_analytics.build_coverage_response(
             db,
             fill_trading_days_window=fill_trading_days_window,
             fill_lookback_days=fill_lookback_days,

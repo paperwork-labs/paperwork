@@ -400,6 +400,7 @@ def compute_full_indicator_series(
             "ext_pct", "sma150_slope", "sma50_slope",
             "ema10_dist_pct", "ema10_dist_n", "vol_ratio",
             "rs_mansfield_pct",
+            "atre_promoted", "pass_count", "action_override", "manual_review",
         ]
         for col in stage_analysis_cols:
             if col in stage_df.columns:
@@ -589,7 +590,9 @@ from backend.services.market.stage_classifier import (  # noqa: E402, F401
     weekly_from_daily,
     classify_stage_for_timeframe,
     classify_stage_scalar,
+    classify_stage_full,
     classify_stage_series,
+    StageResult,
     compute_weinstein_stage_from_daily,
     compute_weinstein_stage_series_from_daily,
 )

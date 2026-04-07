@@ -4,6 +4,8 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 import json
 
+import pytest
+
 from backend.models import BrokerAccount
 from backend.services.market.admin_health_service import (
     AdminHealthService,
@@ -11,15 +13,45 @@ from backend.services.market.admin_health_service import (
     _dim_status,
 )
 
+_active_admin_health_patchers: list = []
+
+
+@pytest.fixture(autouse=True)
+def _stop_admin_health_patches():
+    yield
+    for p in reversed(_active_admin_health_patchers):
+        try:
+            p.stop()
+        except RuntimeError:
+            pass
+    _active_admin_health_patchers.clear()
+
 
 def _mock_service():
-    """Return an AdminHealthService whose internal dependencies are mocked."""
-    with patch(
-        "backend.services.market.admin_health_service.AdminHealthService.__init__",
-        lambda self: None,
-    ):
-        svc = AdminHealthService()
-    svc._svc = MagicMock()
+    """Return an AdminHealthService whose infra/coverage_analytics/stage_quality are mocked."""
+    mock_redis = MagicMock()
+    mock_infra = MagicMock()
+    mock_infra.redis_client = mock_redis
+    mock_coverage_analytics = MagicMock()
+    mock_stage_quality = MagicMock()
+    patchers = [
+        patch("backend.services.market.admin_health_service.infra", mock_infra),
+        patch("backend.services.market.admin_health_service.coverage_analytics", mock_coverage_analytics),
+        patch("backend.services.market.admin_health_service.stage_quality", mock_stage_quality),
+        patch(
+            "backend.services.market.admin_health_service.AdminHealthService.__init__",
+            lambda self: None,
+        ),
+    ]
+    for p in patchers:
+        p.start()
+        _active_admin_health_patchers.append(p)
+    svc = AdminHealthService()
+    shim = MagicMock()
+    shim.redis_client = mock_redis
+    shim.coverage_analytics = mock_coverage_analytics
+    shim.stage_quality_summary = mock_stage_quality.stage_quality_summary
+    svc._svc = shim
     return svc
 
 
@@ -131,7 +163,7 @@ def test_coverage_green_when_above_threshold():
     svc = _mock_service()
     svc._check_provider_keys = MagicMock(return_value={"fmp": "ok", "finnhub": "ok"})
     db = MagicMock()
-    svc._svc.coverage.coverage_snapshot.return_value = {
+    svc._svc.coverage_analytics.coverage_snapshot.return_value = {
         "indices": {
             "SP500": 503,
             "NASDAQ100": 101,
@@ -161,7 +193,7 @@ def test_coverage_red_when_stale():
     svc = _mock_service()
     svc._check_provider_keys = MagicMock(return_value={"fmp": "ok", "finnhub": "ok"})
     db = MagicMock()
-    svc._svc.coverage.coverage_snapshot.return_value = {}
+    svc._svc.coverage_analytics.coverage_snapshot.return_value = {}
     with patch(
         "backend.services.market.coverage_utils.compute_coverage_status",
         return_value={"daily_pct": 50.0, "stale_daily": 5, "m5_pct": 0, "stale_m5": 0, "tracked_count": 500},
@@ -174,7 +206,7 @@ def test_coverage_red_when_index_has_zero_constituents():
     svc = _mock_service()
     svc._check_provider_keys = MagicMock(return_value={"fmp": "ok", "finnhub": "ok"})
     db = MagicMock()
-    svc._svc.coverage.coverage_snapshot.return_value = {
+    svc._svc.coverage_analytics.coverage_snapshot.return_value = {
         "indices": {
             "SP500": 503,
             "NASDAQ100": 101,

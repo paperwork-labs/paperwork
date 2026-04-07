@@ -22,8 +22,9 @@ _REGIME_STATE_TTL_S = 172800  # 48h — covers holiday gaps
 
 def _regime_redis() -> Optional[redis.Redis]:
     try:
-        from backend.services.market.market_data_service import market_data_service
-        return market_data_service.redis_client
+        from backend.services.market.market_data_service import infra
+
+        return infra.redis_client
     except Exception as e:
         logger.warning("Regime alerts Redis client failed: %s", e)
         return None

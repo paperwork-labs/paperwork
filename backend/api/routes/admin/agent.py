@@ -97,9 +97,9 @@ REDIS_KEY_AUTONOMY_LEVEL = "agent:settings:autonomy_level"
 def _get_autonomy_level() -> str:
     """Get autonomy level from Redis, falling back to config default."""
     from backend.config import settings
-    from backend.services.market.market_data_service import market_data_service
+    from backend.services.market.market_data_service import infra
 
-    redis = market_data_service.redis_client
+    redis = infra.redis_client
     if redis:
         try:
             raw = redis.get(REDIS_KEY_AUTONOMY_LEVEL)
@@ -114,9 +114,9 @@ def _get_autonomy_level() -> str:
 
 def _set_autonomy_level(level: str) -> None:
     """Persist autonomy level to Redis for cross-worker consistency."""
-    from backend.services.market.market_data_service import market_data_service
+    from backend.services.market.market_data_service import infra
 
-    redis = market_data_service.redis_client
+    redis = infra.redis_client
     if redis:
         redis.set(REDIS_KEY_AUTONOMY_LEVEL, level)
 
@@ -243,11 +243,11 @@ def get_session_messages(
 
     Returns the full message history for resuming a past conversation.
     """
-    from backend.services.market.market_data_service import market_data_service
+    from backend.services.market.market_data_service import infra
     from backend.models.agent_message import load_conversation_from_db
     import json
 
-    redis = market_data_service.redis_client
+    redis = infra.redis_client
     if redis:
         try:
             redis_key = f"agent:conversation:{session_id}"

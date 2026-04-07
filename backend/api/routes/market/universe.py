@@ -17,7 +17,7 @@ from backend.database import get_db
 from backend.models.user import User
 from backend.models.index_constituent import IndexConstituent
 from backend.models.market_tracked_plan import MarketTrackedPlan
-from backend.services.market.market_data_service import market_data_service
+from backend.services.market.market_data_service import infra, snapshot_builder
 from backend.api.dependencies import get_market_data_viewer, get_admin_user
 from backend.tasks.market.backfill import constituents, tracked_cache
 from backend.tasks.market import backfill as market_backfill_tasks
@@ -63,14 +63,14 @@ async def get_tracked(
     db: Session = Depends(get_db),
     _viewer: User = Depends(get_market_data_viewer),
 ) -> Dict[str, Any]:
-    r = market_data_service.redis_client
+    r = infra.redis_client
 
     all_raw = r.get("tracked:all")
     new_raw = r.get("tracked:new")
     all_symbols = sorted(json.loads(all_raw) if all_raw else [])
     new_symbols = json.loads(new_raw) if new_raw else []
 
-    details = market_data_service.get_tracked_details(db, all_symbols) if include_details else {}
+    details = snapshot_builder.get_tracked_details(db, all_symbols) if include_details else {}
 
     from backend.api.dependencies import market_exposed_to_all
     meta = {

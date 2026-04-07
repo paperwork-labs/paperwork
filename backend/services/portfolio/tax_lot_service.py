@@ -15,7 +15,7 @@ from backend.models.broker_account import BrokerAccount
 from backend.database import SessionLocal
 
 # Service imports
-from backend.services.market.market_data_service import MarketDataService
+from backend.services.market.market_data_service import quote
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,6 @@ class TaxLotService:
 
     def __init__(self, db_session: Optional[SessionLocal] = None):
         self.db = db_session or SessionLocal()
-        self.market_service = MarketDataService()
 
     def _parse_acquisition_date(self, value: Optional[str]) -> Optional[datetime]:
         if not value:
@@ -264,7 +263,7 @@ class TaxLotService:
         average_cost = total_cost_basis / total_shares if total_shares > 0 else 0
 
         # Get current price for unrealized calculations
-        current_price = await self.market_service.get_current_price(symbol)
+        current_price = await quote.get_current_price(symbol)
 
         lot_details = []
         for lot in tax_lots:
@@ -504,7 +503,7 @@ class TaxLotService:
 
             for symbol in symbols_to_update:
                 try:
-                    current_price = await self.market_service.get_current_price(symbol)
+                    current_price = await quote.get_current_price(symbol)
                     if current_price:
                         symbol_lots = [lot for lot in tax_lots if lot.symbol == symbol]
                         for lot in symbol_lots:

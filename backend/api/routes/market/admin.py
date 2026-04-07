@@ -29,7 +29,12 @@ from backend.models.market_data import (
     PriceData,
     JobRun,
 )
-from backend.services.market.market_data_service import MarketDataService
+from backend.services.market.market_data_service import (
+    coverage_analytics,
+    infra,
+    price_bars,
+    stage_quality,
+)
 from backend.services.market.universe import tracked_symbols_async
 from backend.services.market.admin_health_service import AdminHealthService
 from backend.services.brain.webhook_client import brain_webhook
@@ -124,8 +129,7 @@ async def admin_sanity_coverage(
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Quick DB sanity checks for coverage (no Redis cache dependence)."""
-    svc = MarketDataService()
-    r = await svc._get_redis()
+    r = await infra._get_redis()
     tracked = await tracked_symbols_async(db, redis_async=r)
     tracked_set = set(tracked)
     tracked_total = len(tracked_set)
@@ -180,7 +184,7 @@ async def admin_sanity_coverage(
             missing_sample = sorted(list(tracked_set - hist_set))[:20]
 
     pct = round((hist_count / tracked_total) * 100.0, 1) if tracked_total else 0.0
-    bench = svc.coverage.benchmark_health(db)
+    bench = coverage_analytics.benchmark_health(db)
     return {
         "tracked_total": tracked_total,
         "latest_daily_date": latest_daily_date,
@@ -285,8 +289,7 @@ async def admin_backfill_daily_last_bars(
 async def get_backfill_5m_toggle(
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
-    svc = MarketDataService()
-    return {"backfill_5m_enabled": await svc.is_backfill_5m_enabled_async()}
+    return {"backfill_5m_enabled": await infra.is_backfill_5m_enabled_async()}
 
 
 @router.post("/backfill/5m/toggle")
@@ -296,9 +299,8 @@ async def set_backfill_5m_toggle(
     enabled: bool = Body(..., embed=True),
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
-    svc = MarketDataService()
     try:
-        r = await svc._get_redis()
+        r = await infra._get_redis()
         await r.set("coverage:backfill_5m_enabled", "true" if enabled else "false")
         return {"backfill_5m_enabled": enabled}
     except Exception as e:
@@ -314,15 +316,14 @@ async def backfill_stale_daily(
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Backfill daily bars for symbols currently marked stale (>48h) in coverage."""
-    svc = MarketDataService()
     try:
-        r = await svc._get_redis()
+        r = await infra._get_redis()
         tracked = await tracked_symbols_async(db, redis_async=r)
         tracked = sorted({str(s).upper() for s in (tracked or []) if s})
         if not tracked:
             tracked = sorted({str(s).upper() for (s,) in db.query(PriceData.symbol).distinct().all() if s})
 
-        _, stale_full = svc.coverage.compute_interval_coverage_for_symbols(
+        _, stale_full = coverage_analytics._compute_interval_coverage_for_symbols(
             db, symbols=tracked, interval="1d", now_utc=datetime.now(timezone.utc), return_full_stale=True,
         )
         stale_candidates = len(stale_full or [])
@@ -446,8 +447,7 @@ async def admin_send_snapshot_digest_to_discord(
     # channel_id retained for API compatibility; Brain routes the payload server-side.
     _ = channel_id
 
-    svc = MarketDataService()
-    tracked = await tracked_symbols_async(db, redis_async=await svc._get_redis())
+    tracked = await tracked_symbols_async(db, redis_async=await infra._get_redis())
     if not tracked:
         raise HTTPException(status_code=400, detail="No tracked symbols available")
 
@@ -523,10 +523,9 @@ async def get_db_history(
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Return OHLCV bars for a symbol from price_data."""
-    svc = MarketDataService()
     try:
         parse = lambda s: datetime.fromisoformat(s) if s else None
-        df = svc.get_db_history(db, symbol=symbol.upper(), interval=interval, start=parse(start), end=parse(end), limit=limit)
+        df = price_bars.get_db_history(db, symbol=symbol.upper(), interval=interval, start=parse(start), end=parse(end), limit=limit)
         bars = []
         for ts, row in df.iterrows():
             bars.append({
@@ -562,8 +561,7 @@ async def admin_repair_stage_history(
     _admin: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
-    svc = MarketDataService()
-    return svc.repair_stage_history_window(db, days=days, symbol=symbol)
+    return stage_quality.repair_stage_history_window(db, days=days, symbol=symbol)
 
 
 @router.post("/stage/repair-async")
@@ -793,8 +791,7 @@ async def start_auto_fix(
         return AutoFixResponse(status="ok", message="Red dimensions detected but no remediation actions available")
 
     job_id = str(uuid.uuid4())[:8]
-    mds = MarketDataService()
-    r = await mds._get_redis()
+    r = await infra._get_redis()
 
     job_data = {
         "job_id": job_id,
@@ -850,8 +847,7 @@ async def get_auto_fix_status(
     from celery.result import AsyncResult
     from backend.tasks.celery_app import celery_app
 
-    mds = MarketDataService()
-    r = await mds._get_redis()
+    r = await infra._get_redis()
     key = _get_autofix_redis_key(job_id)
     raw = await r.get(key)
 

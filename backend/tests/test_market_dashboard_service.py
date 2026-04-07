@@ -43,11 +43,7 @@ class _FakeDB:
 
 
 def test_fetch_rows_dedupes_to_latest_snapshot_per_symbol(monkeypatch):
-    class _FakeMDS:
-        def __init__(self):
-            self.redis_client = None
-
-    monkeypatch.setattr(mds_module, "MarketDataService", _FakeMDS)
+    monkeypatch.setattr(mds_module, "infra", SimpleNamespace(redis_client=None))
     monkeypatch.setattr(mds_module, "tracked_symbols", lambda *args, **kwargs: ["AAPL", "MSFT"])
 
     now = datetime.now(timezone.utc)
@@ -123,12 +119,8 @@ def test_build_dashboard_sorts_leaders_and_pullbacks_by_momentum_score(monkeypat
                 "m5": {"coverage": {"pct": 71.0, "stale_count": 5}},
             }
 
-    class _FakeMDS:
-        def __init__(self):
-            self.redis_client = None
-            self.coverage = _Coverage()
-
-    monkeypatch.setattr(mds_module, "MarketDataService", _FakeMDS)
+    monkeypatch.setattr(mds_module, "infra", SimpleNamespace(redis_client=None))
+    monkeypatch.setattr(mds_module, "coverage_analytics", _Coverage())
 
     rows = [
         _SummaryRow(
@@ -198,12 +190,8 @@ def test_build_dashboard_sector_etfs_use_configured_list_and_order(monkeypatch):
                 "m5": {"coverage": {"pct": 100.0, "stale_count": 0}},
             }
 
-    class _FakeMDS:
-        def __init__(self):
-            self.redis_client = None
-            self.coverage = _Coverage()
-
-    monkeypatch.setattr(mds_module, "MarketDataService", _FakeMDS)
+    monkeypatch.setattr(mds_module, "infra", SimpleNamespace(redis_client=None))
+    monkeypatch.setattr(mds_module, "coverage_analytics", _Coverage())
 
     rows = [
         _SummaryRow(symbol="XLE", stage_label="2A", current_stage_days=12, perf_1d=1.2, sector="Energy"),
@@ -238,12 +226,8 @@ def test_build_dashboard_entering_stage_2a_is_not_truncated(monkeypatch):
                 "m5": {"coverage": {"pct": 100.0, "stale_count": 0}},
             }
 
-    class _FakeMDS:
-        def __init__(self):
-            self.redis_client = None
-            self.coverage = _Coverage()
-
-    monkeypatch.setattr(mds_module, "MarketDataService", _FakeMDS)
+    monkeypatch.setattr(mds_module, "infra", SimpleNamespace(redis_client=None))
+    monkeypatch.setattr(mds_module, "coverage_analytics", _Coverage())
 
     rows = [
         _SummaryRow(

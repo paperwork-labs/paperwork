@@ -39,13 +39,31 @@ import { formatDate } from '../utils/format';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import useAdminHealth from '../hooks/useAdminHealth';
 import { useVolatility, type VolatilityDashboardData } from '../hooks/useVolatility';
-import { useMarketSnapshots } from '../hooks/useMarketSnapshots';
+import { useSnapshotAggregates } from '../hooks/useSnapshotAggregates';
+import { useSnapshotTable as useSnapshotTableHook } from '../hooks/useSnapshotTable';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import QuadStatusBar from '../components/market/QuadStatusBar';
 
 const TopDownView = React.lazy(() => import('../components/market/TopDownView'));
 const BottomUpView = React.lazy(() => import('../components/market/BottomUpView'));
 const SectorView = React.lazy(() => import('../components/market/SectorView'));
 const HeatmapView = React.lazy(() => import('../components/market/HeatmapView'));
+
+function LazyBubbleChart({ onSymbolClick, collapsed }: { onSymbolClick: (sym: string) => void; collapsed: boolean }) {
+  const { data } = useSnapshotTableHook({ sort_by: 'rs_mansfield_pct', sort_dir: 'desc', limit: 200, offset: 0 });
+  const rows = data?.rows ?? [];
+  if (rows.length === 0) return <p className="py-4 text-center text-sm text-muted-foreground">No data for scatter chart.</p>;
+  return (
+    <BubbleChart
+      data={rows}
+      defaultX="perf_1d"
+      defaultY="rs_mansfield_pct"
+      defaultColor="stage_label"
+      defaultSize="market_cap"
+      onSymbolClick={onSymbolClick}
+    />
+  );
+}
 
 type DashboardView = 'overview' | 'top-down' | 'bottom-up' | 'sectors' | 'heatmap';
 
@@ -815,39 +833,32 @@ const MarketDashboard: React.FC = () => {
 
   const volatilityQuery = useVolatility();
   const volData = volatilityQuery.data ?? null;
-  const { data: trackedRows = [] } = useMarketSnapshots();
-
-  const filteredTrackedRows = React.useMemo(
-    () => trackedRows.filter((r) => symbolFilter(r?.symbol)),
-    [trackedRows, symbolFilter],
-  );
+  const { data: aggregates } = useSnapshotAggregates();
 
   /* --- ZONE 1b: effectiveStats (must be before early returns) --- */
   const effectiveStats = React.useMemo(() => {
     const regime = payload?.regime || {};
-    if (universeFilter === 'all' && constituentSet.size === 0) {
-      const sc = payload?.snapshot_count || 0;
-      const a50 = regime.above_sma50_count || 0;
-      const a200 = regime.above_sma200_count || 0;
-      const up = regime.up_1d_count || 0;
-      const dn = regime.down_1d_count || 0;
-      const flat = (regime.flat_1d_count as number) || 0;
-      return { count: sc, above50: a50, above200: a200, upCount: up, downCount: dn, flatCount: flat, stageCounts: regime.stage_counts_normalized || {} };
-    }
-    const rows = filteredTrackedRows;
-    const n = rows.length;
+    const sc = payload?.snapshot_count || aggregates?.total || 0;
+    const a50 = regime.above_sma50_count || 0;
+    const a200 = regime.above_sma200_count || 0;
+    const up = regime.up_1d_count || 0;
+    const dn = regime.down_1d_count || 0;
+    const flat = (regime.flat_1d_count as number) || 0;
+    const serverStageCounts = regime.stage_counts_normalized || {};
+    const aggStageCounts: Record<string, number> = {};
+    (aggregates?.stage_distribution ?? []).forEach((d) => {
+      if (d.stage) aggStageCounts[d.stage] = d.count;
+    });
     return {
-      count: n,
-      above50: rows.filter((r: any) => r.sma_50 && r.current_price > r.sma_50).length,
-      above200: rows.filter((r: any) => r.sma_200 && r.current_price > r.sma_200).length,
-      upCount: rows.filter((r: any) => (r.change_1d ?? r.perf_1d ?? 0) > 0).length,
-      downCount: rows.filter((r: any) => (r.change_1d ?? r.perf_1d ?? 0) < 0).length,
-      flatCount: rows.filter((r: any) => (r.change_1d ?? r.perf_1d ?? 0) === 0).length,
-      stageCounts: rows.reduce((acc: Record<string, number>, r: any) => {
-        const s = r.stage_label; if (s) acc[s] = (acc[s] || 0) + 1; return acc;
-      }, {} as Record<string, number>),
+      count: sc,
+      above50: a50,
+      above200: a200,
+      upCount: up,
+      downCount: dn,
+      flatCount: flat,
+      stageCounts: Object.keys(serverStageCounts).length > 0 ? serverStageCounts : aggStageCounts,
     };
-  }, [universeFilter, constituentSet.size, filteredTrackedRows, payload]);
+  }, [payload, aggregates]);
 
   /* --- ZONE 1c: filteredSections (consolidate all sf() calls) --- */
   const filteredSections = React.useMemo(() => {
@@ -1051,7 +1062,7 @@ const MarketDashboard: React.FC = () => {
                     console.error('ErrorBoundary [market-dashboard-top-down]:', error, info);
                   }}
                 >
-                  <TopDownView snapshots={trackedRows} dashboardPayload={payload} />
+                  <TopDownView snapshots={[]} dashboardPayload={payload} />
                 </ErrorBoundary>
               )}
               {activeView === 'bottom-up' && (
@@ -1065,7 +1076,7 @@ const MarketDashboard: React.FC = () => {
                     console.error('ErrorBoundary [market-dashboard-bottom-up]:', error, info);
                   }}
                 >
-                  <BottomUpView snapshots={filteredTrackedRows} />
+                  <BottomUpView />
                 </ErrorBoundary>
               )}
               {activeView === 'sectors' && (
@@ -1079,7 +1090,7 @@ const MarketDashboard: React.FC = () => {
                     console.error('ErrorBoundary [market-dashboard-sectors]:', error, info);
                   }}
                 >
-                  <SectorView snapshots={trackedRows} dashboardPayload={payload} />
+                  <SectorView snapshots={[]} dashboardPayload={payload} />
                 </ErrorBoundary>
               )}
               {activeView === 'heatmap' && (
@@ -1093,7 +1104,7 @@ const MarketDashboard: React.FC = () => {
                     console.error('ErrorBoundary [market-dashboard-heatmap]:', error, info);
                   }}
                 >
-                  <HeatmapView snapshots={trackedRows} />
+                  <HeatmapView snapshots={[]} />
                 </ErrorBoundary>
               )}
             </React.Suspense>
@@ -1105,6 +1116,9 @@ const MarketDashboard: React.FC = () => {
         <>
         {/* Regime Banner — always visible in overview */}
         <RegimeBanner />
+
+        {/* Quad Status Bar */}
+        <QuadStatusBar />
 
         {/* Section 1: Market Pulse */}
         {vis.pulse && (
@@ -1282,21 +1296,14 @@ const MarketDashboard: React.FC = () => {
         )}
 
         {/* Scatter/Bubble Chart */}
-        {vis.scatter && filteredTrackedRows.length > 0 && (
+        {vis.scatter && (
           <div>
-            <SectionHeading title="Universe Scatter" sectionKey="scatter" isCollapsed={collapsed.has('scatter')} onToggle={() => toggle('scatter')} count={filteredTrackedRows.length} />
+            <SectionHeading title="Universe Scatter" sectionKey="scatter" isCollapsed={collapsed.has('scatter')} onToggle={() => toggle('scatter')} />
             <Collapsible.Root open={!collapsed.has('scatter')}>
               <Collapsible.Content>
             <Card className="gap-0 py-4 shadow-xs ring-1 ring-foreground/10">
               <CardContent className="px-4">
-              <BubbleChart
-                data={filteredTrackedRows}
-                defaultX="perf_1d"
-                defaultY="rs_mansfield_pct"
-                defaultColor="stage_label"
-                defaultSize="market_cap"
-                onSymbolClick={openChart}
-              />
+              <LazyBubbleChart onSymbolClick={openChart} collapsed={collapsed.has('scatter')} />
               </CardContent>
             </Card>
               </Collapsible.Content>

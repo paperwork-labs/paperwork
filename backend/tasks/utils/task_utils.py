@@ -15,7 +15,7 @@ from backend.config import settings
 from backend.database import SessionLocal
 from backend.tasks.job_catalog import JOB_CATALOG
 from backend.models import JobRun, PriceData
-from backend.services.market.market_data_service import market_data_service
+from backend.services.market.market_data_service import infra, price_bars, provider_router
 from backend.services.notifications.alerts import alert_service
 from backend.tasks.utils.schedule_metadata import HookConfig, ScheduleMetadata
 
@@ -57,7 +57,7 @@ def task_run(task_name: str, *, lock_key: Optional[Callable[..., Optional[str]]]
                 else:
                     resolved_key = _catalog_singleflight_lock_key(task_name)
                 if resolved_key:
-                    r = market_data_service.redis_client
+                    r = infra.redis_client
                     acquired = r.set(
                         name=f"lock:{task_name}:{resolved_key}",
                         value="1",
@@ -155,7 +155,7 @@ def task_run(task_name: str, *, lock_key: Optional[Callable[..., Optional[str]]]
                 session.close()
                 if lock_id is not None:
                     try:
-                        market_data_service.redis_client.delete(f"lock:{task_name}:{lock_id}")
+                        infra.redis_client.delete(f"lock:{task_name}:{lock_id}")
                     except Exception as e:
                         logger.warning("task_run redis lock release failed for %s: %s", task_name, e)
 
@@ -165,7 +165,7 @@ def task_run(task_name: str, *, lock_key: Optional[Callable[..., Optional[str]]]
 
 
 def _publish_status(task: str, status: str, payload: dict | None = None) -> None:
-    r = market_data_service.redis_client
+    r = infra.redis_client
     r.set(
         f"taskstatus:{task}:last",
         json.dumps({"task": task, "status": status, "ts": datetime.now(timezone.utc).isoformat(), "payload": payload or {}}),
@@ -392,7 +392,7 @@ def get_tracked_symbols_safe(session: Session) -> List[str]:
     """
     from backend.services.market.universe import tracked_symbols, tracked_symbols_from_db
     
-    symbols = tracked_symbols(session, redis_client=market_data_service.redis_client)
+    symbols = tracked_symbols(session, redis_client=infra.redis_client)
     symbols = sorted({str(s).upper() for s in (symbols or []) if s})
     if not symbols:
         symbols = sorted({s.upper() for s in tracked_symbols_from_db(session)})
@@ -554,7 +554,7 @@ def _persist_daily_fetch_results(
             if use_delta_after:
                 last_date = last_dates.get(sym)
 
-            inserted = market_data_service.persist_price_bars(
+            inserted = price_bars.persist_price_bars(
                 session,
                 sym,
                 df2,
@@ -617,7 +617,7 @@ async def fetch_daily_for_symbols(
         async with sem:
             db = None if skip_l2 else SessionLocal()
             try:
-                df, provider = await market_data_service.providers.get_historical_data(
+                df, provider = await provider_router.get_historical_data(
                     symbol=sym.upper(),
                     period=period,
                     interval="1d",

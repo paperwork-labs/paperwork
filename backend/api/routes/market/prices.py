@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models.user import User
 from backend.models.market_data import MarketSnapshot, MarketSnapshotHistory, PriceData
-from backend.services.market.market_data_service import MarketDataService
+from backend.services.market.market_data_service import provider_router, quote
 from backend.api.dependencies import get_market_data_viewer
 from backend.api.schemas.market import CurrentPriceResponse, PriceHistoryResponse
 
@@ -52,9 +52,8 @@ async def get_current_price(
 ) -> Dict[str, Any]:
     """Get current price for a symbol."""
     try:
-        market_service = MarketDataService()
         sym = symbol.strip().upper()
-        fresh = await market_service.get_current_price_with_freshness(sym)
+        fresh = await quote.get_current_price_with_freshness(sym)
         if fresh is None:
             return {
                 "symbol": sym,
@@ -87,8 +86,7 @@ async def get_history(
 ) -> Dict[str, Any]:
     """Daily/intraday OHLCV series for the symbol."""
     try:
-        svc = MarketDataService()
-        df, raw_src = await svc.get_historical_data(
+        df, raw_src = await provider_router.get_historical_data(
             symbol=symbol.upper(),
             period=period,
             interval=interval,
