@@ -18,88 +18,87 @@ You are the Ops Engineer for AxiomFolio. You own pipeline reliability, task sche
 ## Celery Task Rules
 
 - **Every task MUST have explicit `time_limit` and `soft_time_limit`** matching `job_catalog.py` `timeout_s`. The global default (360s) is too short for most jobs.
+- **Lock TTL must be >= task `time_limit`**. Use `lock_ttl_seconds` on `@task_run`. A lock that expires before the task finishes causes overlapping pipeline runs (the C1 class of bug).
 - **Queues**: `celery` (default), `account_sync` (broker sync), `orders` (execution). Route tasks correctly.
 - **Idempotency**: Tasks should be safe to retry. Use `acks_late=True` (already configured globally).
-- **Error handling**: Log errors with full context, update `JobRun` status, send Discord alert on failure. Never swallow exceptions.
+- **Error handling**: Log errors with full context, update `JobRun` status, send Brain webhook alert on failure. Never swallow exceptions.
 - **`task_run` decorator**: Use it for all scheduled tasks — it handles JobRun creation, status tracking, and alerts.
+- **Every step in a multi-step task (like `daily_bootstrap`) MUST be wrapped in try/except**. One unwrapped step can crash the entire pipeline after hours of work.
 
-## Nightly Pipeline (10-step)
+## Nightly Pipeline (`daily_bootstrap`)
+
+The nightly pipeline runs as a single Celery task with 12 sequential steps:
 
 ```
-Step 0: Regime Engine (6 inputs → R1–R5) — MUST run first
-Step 1: Compute MAs + ATRs
-Step 2: Derive indicator metrics (Ext%, ATRE, EMA10 Dist_N, slopes, ranges)
-Step 3: Stage classification (10 sub-stages)
-Step 4: Post-classification overrides
-Step 5: Scan overlay (regime-gated tiers)
-Step 6: Pattern evaluation
-Step 7: R/R computation
-Step 8: Position sizing
-Step 9: Exit cascade evaluation
-Step 10: Persist all fields
+Step 1:  constituents        — refresh index membership lists
+Step 2:  tracked_cache       — rebuild Redis tracked:all from DB
+Step 3:  daily_bars          — delta backfill OHLCV for universe
+Step 4:  recompute_universe  — indicators + stage classification (spec steps 0-10)
+Step 5:  compute_daily       — Market Regime R1-R5
+Step 6:  scan_overlay        — regime-gated tier + action labels
+Step 7:  snapshot_history    — persist daily history ledger
+Step 8:  exit_cascade        — evaluate open position exits
+Step 9:  strategies          — evaluate entry rules
+Step 10: health_check        — snapshot coverage health to Redis
+Step 11: audit_quality       — verify data consistency
+Step 12: daily_digest        — generate intelligence brief
 ```
+
+Time limits: `soft_time_limit=7000, time_limit=7200, lock_ttl_seconds=7500`.
+
+## Stale Recovery (`stale_daily`)
+
+Targeted repair task for symbols with stale/missing daily bars:
+- Fetches only last 10 days (`days=10, min_bars=15, buffer_bars=5`)
+- Skips L2 cache check (`skip_l2=True`) to force fresh data
+- Uses finer FMP period buckets (`1mo` instead of `1y`) to minimize bandwidth
+- Time limits: `soft_time_limit=7000, time_limit=7200, lock_ttl_seconds=7500`
 
 ## Monitoring & Alerting
 
-- **Health endpoint**: Should check DB, Redis, Celery worker status, and data freshness (latest MarketSnapshot timestamp)
-- **Discord alerts**: Use `AlertService` for ops alerts (pipeline failures, stale data, regime changes)
+- **Health endpoint**: `GET /api/v1/market-data/admin/health` — checks DB, Redis, Celery worker status, data freshness
+- **Brain webhook alerts**: Use `brain_webhook.notify_sync()` for ops alerts (pipeline failures, stale data, regime changes)
 - **Coverage monitoring**: Auto-refresh if stale >15 min. Auto-backfill if gaps detected.
-- **Job recovery**: `recover_stale_job_runs` task runs every 5 min — stuck RUNNING jobs get reset after timeout.
+- **Job recovery**: `recover_stale_job_runs` task runs every 6h — stuck RUNNING jobs get reset after 120 min.
+
+## Auto-Ops Agent
+
+Self-remediating health agent (`backend/tasks/ops/auto_ops.py`) runs every 15 minutes.
+
+### Remediation Map
+
+| Dimension | Pass Criteria | Remediation Chain |
+|-----------|--------------|-------------------|
+| coverage | daily_pct >= 95%, stale_daily == 0 | `constituents` → `stale_daily` → `health_check` |
+| stage_quality | unknown_rate <= 35%, invalid == 0 | `recompute_universe` → `repair_stage_history` |
+| jobs | error_count == 0 (24h window) | `recover_jobs(stale_minutes=120)` |
+| audit | daily_fill >= 95%, snapshot_fill >= 90% | `record_daily` → `audit_quality` |
+| regime | latest regime < 48h old | `compute_daily` |
+| fundamentals | fill >= 80% | `fill_missing(limit_per_run=500)` |
+
+### Guardrails
+
+- **Exponential backoff cooldown**: 15m → 30m → 60m → 2h cap per dimension.
+- **Max retries**: 6 consecutive failures → escalates via Brain webhook, pauses until dimension returns green.
+- **Market hours**: Regime computation only dispatched 06:00-22:00 ET (unless >72h stale).
+
+## Provider Policy
+
+All provider budgets, rate limits, and concurrency are controlled by a single knob: `MARKET_PROVIDER_POLICY` env var → `ProviderPolicy` dataclass. Tiers: `free`, `starter`, `paid`, `unlimited`. No other env vars override provider behavior.
 
 ## Docker / Compose
 
 - Dev: `infra/compose.dev.yaml` with profiles: `ui` (frontend+ladle), `ibkr` (IB Gateway), `tunnel` (Cloudflare)
 - Test: `infra/compose.test.yaml` — isolated DB, always `down -v` before/after
 - Services: postgres, redis, backend (uvicorn), celery_worker, celery_beat, flower, frontend
-- IB Gateway: `ghcr.io/extrange/ibkr:stable` — profile `ibkr`, ports 8888/6080
 
 ## Makefile
 
-The `Makefile` at repo root is the primary developer interface. All commands should go through it:
+The `Makefile` at repo root is the primary developer interface:
 - `make up` / `make down` — dev stack
 - `make test` / `make test-all` — tests (isolated DB)
 - `make task-run TASK=module.task` — run Celery task
 - `make migrate-up` / `make migrate-create MSG="..."` — migrations
-
-## Auto-Ops Agent
-
-The system includes a self-remediating health agent (`backend/tasks/auto_ops_tasks.py`) that runs every 15 minutes and keeps the admin dashboard green without manual intervention.
-
-### Health Dimensions and Remediation Map
-
-| Dimension | Pass Criteria | Remediation Task(s) |
-|-----------|--------------|---------------------|
-| coverage | daily_pct >= 95%, stale_daily == 0 | `coverage.health_check` + `backfill.stale_daily` (Celery: `backend.tasks.market.*`) |
-| stage_quality | unknown_rate <= 35%, invalid == 0 | `indicators.recompute_universe` |
-| jobs | error_count == 0 (24h window) | `maintenance.recover_jobs` |
-| audit | daily_fill >= 95%, snapshot_fill >= 90% | `coverage.daily_bootstrap` + `history.record_daily` |
-| regime | latest regime < 48h old | `regime.compute_daily` |
-
-### Health Endpoint
-
-- **API**: `GET /api/v1/market-data/admin/health` (requires admin JWT)
-- **Service**: `AdminHealthService.get_composite_health(db)` in `backend/services/market/admin_health_service.py`
-- **Thresholds**: Defined in `HEALTH_THRESHOLDS` dict at top of that file
-
-### Guardrails
-
-- **Cooldown**: 30-minute Redis cooldown per dimension (`auto_ops:cooldown:{dimension}`). Prevents re-dispatching the same fix every cycle.
-- **Max retries**: After 3 consecutive failed remediations for a dimension, the agent escalates (logs warning) instead of retrying. Counter auto-expires after 6 hours.
-- **Market hours**: Regime computation only dispatched between 06:00-22:00 ET.
-
-### Admin Dashboard UI (for reference)
-
-The admin dashboard at `/settings/admin/dashboard` shows the 5 dimensions. When asked to "check the system" or "make sure everything is healthy":
-
-1. Check `GET /api/v1/market-data/admin/health` for composite status
-2. For each red/yellow dimension, identify the root cause from the dimension data
-3. The auto-ops agent handles routine fixes; manual intervention needed only for escalated dimensions
-4. To force a remediation cycle: dispatch `auto_remediate_health` task directly
-
-### Environments
-
-- **Dev**: Runs via Celery Beat schedule (every 900s) in `celery_app.py` beat_schedule
-- **Prod (Render)**: Registered in `job_catalog.py` as `auto_ops_health_check`, deployed as Render cron job via admin scheduler sync
 
 ## Production (Render)
 

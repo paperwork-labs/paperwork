@@ -45,8 +45,13 @@ def daily_backfill_params(
     buf = max(0, int(buffer_bars))
     max_bars = max(int(min_bars), d + buf)
 
-    # Coarse calendar range approximation. Keep backwards-compat: 200d -> "1y" and 270 bars.
-    if max_bars <= 270:
+    if max_bars <= 45:
+        period = "1mo"
+    elif max_bars <= 130:
+        period = "3mo"
+    elif max_bars <= 210:
+        period = "6mo"
+    elif max_bars <= 270:
         period = "1y"
     elif max_bars <= 540:
         period = "2y"

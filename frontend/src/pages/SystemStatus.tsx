@@ -365,7 +365,7 @@ const SystemStatus: React.FC = () => {
     setAutoFixLoading(true);
     try {
       const { data } = await marketDataApi.startAutoFix();
-      if (data.status === 'healthy') {
+      if (data.status === 'ok') {
         toast.success('All systems operational — nothing to fix!');
         setAutoFixLoading(false);
         return;
@@ -373,7 +373,7 @@ const SystemStatus: React.FC = () => {
       setAutoFixJobId(data.job_id);
       setAutoFixStatus({
         job_id: data.job_id,
-        overall_status: 'running',
+        status: 'running',
         completed_count: 0,
         total_count: data.plan.length,
         current_task: data.plan[0]?.label || null,
@@ -395,12 +395,12 @@ const SystemStatus: React.FC = () => {
         const { data } = await marketDataApi.getAutoFixStatus(autoFixJobId);
         setAutoFixStatus(data);
 
-        if (data.overall_status === 'completed') {
+        if (data.status === 'completed') {
           toast.success('Agent finished fixing all issues!');
           setAutoFixJobId(null);
           setAutoFixLoading(false);
           void refresh();
-        } else if (data.overall_status === 'failed') {
+        } else if (data.status === 'failed') {
           const failedTask = data.plan.find((t: AutoFixTask) => t.status === 'failed');
           toast.error(`Agent fix failed: ${failedTask?.label || 'Unknown task'}`);
           setAutoFixJobId(null);

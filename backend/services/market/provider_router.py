@@ -345,6 +345,7 @@ class ProviderRouter:
         max_bars: Optional[int] = 270,
         return_provider: bool = False,
         db: Optional[Session] = None,
+        skip_write_through: bool = False,
     ) -> Optional[pd.DataFrame] | tuple[Optional[pd.DataFrame], Optional[str]]:
         """Get OHLCV (newest->first index) with provider policy.
 
@@ -429,25 +430,26 @@ class ProviderRouter:
             if not self._is_provider_available(provider):
                 continue
             _counter_name = "twelvedata" if provider == APIProvider.TWELVE_DATA else provider.value
-            try:
-                _date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-                _current = int(await r.hget(f"provider:calls:{_date_key}", _counter_name) or 0)
-                _policy = settings.provider_policy
-                _budgets = {
-                    "fmp": _policy.fmp_daily_budget,
-                    "twelvedata": _policy.twelvedata_daily_budget,
-                    "yfinance": _policy.yfinance_daily_budget,
-                }
-                _limit = _budgets.get(_counter_name, 10000)
-                if _current >= _limit:
-                    logger.warning("Provider %s over daily budget (%d/%d), skipping", _counter_name, _current, _limit)
-                    continue
-            except Exception as _budget_exc:
-                logger.warning(
-                    "Redis unavailable for budget check, allowing provider call for %s: %s",
-                    _counter_name,
-                    _budget_exc,
-                )
+            if r is not None:
+                try:
+                    _date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                    _current = int(await r.hget(f"provider:calls:{_date_key}", _counter_name) or 0)
+                    _policy = settings.provider_policy
+                    _budgets = {
+                        "fmp": _policy.fmp_daily_budget,
+                        "twelvedata": _policy.twelvedata_daily_budget,
+                        "yfinance": _policy.yfinance_daily_budget,
+                    }
+                    _limit = _budgets.get(_counter_name, 10000)
+                    if _current >= _limit:
+                        logger.warning("Provider %s over daily budget (%d/%d), skipping", _counter_name, _current, _limit)
+                        continue
+                except Exception as _budget_exc:
+                    logger.warning(
+                        "Redis unavailable for budget check, allowing provider call for %s: %s",
+                        _counter_name,
+                        _budget_exc,
+                    )
             await provider_rate_limiter.acquire(
                 "twelvedata" if provider == APIProvider.TWELVE_DATA else provider.value
             )
@@ -490,15 +492,22 @@ class ProviderRouter:
                             symbol,
                             l3_cache_exc,
                         )
-                    db_session = None
-                    try:
-                        db_session = SessionLocal()
-                        self._pbw.persist_price_bars(db_session, symbol, df, interval=interval, data_source=provider_used or "provider")
-                    except Exception as persist_exc:
-                        logger.warning("Write-through persist_price_bars for %s failed (non-blocking): %s", symbol, persist_exc)
-                    finally:
-                        if db_session is not None:
-                            db_session.close()
+                    if not skip_write_through:
+                        def _persist_in_thread():
+                            _session = SessionLocal()
+                            try:
+                                self._pbw.persist_price_bars(
+                                    _session, symbol, df,
+                                    interval=interval,
+                                    data_source=provider_used or "provider",
+                                )
+                            finally:
+                                _session.close()
+
+                        try:
+                            await asyncio.to_thread(_persist_in_thread)
+                        except Exception as persist_exc:
+                            logger.warning("Write-through persist_price_bars for %s failed (non-blocking): %s", symbol, persist_exc)
                     if return_provider:
                         return df, provider_used
                     return df
@@ -590,7 +599,7 @@ class ProviderRouter:
         return out.sort_index(ascending=False)
 
     def _get_historical_fmp_sync(
-        self, symbol: str, period: str, interval: str
+        self, symbol: str, period: str, interval: str, to_date: Optional[str] = None,
     ) -> Optional[pd.DataFrame]:
         if interval != "1d":
             return None
@@ -602,10 +611,14 @@ class ProviderRouter:
         }
         delta = days_map.get(period, 365)
         from_date = (_date.today() - timedelta(days=delta)).isoformat()
-        raw = fmpsdk.historical_price_full(
-            apikey=settings.FMP_API_KEY, symbol=symbol,
-            from_date=from_date,
-        )
+        fmp_kwargs: Dict[str, Any] = {
+            "apikey": settings.FMP_API_KEY,
+            "symbol": symbol,
+            "from_date": from_date,
+        }
+        if to_date:
+            fmp_kwargs["to_date"] = to_date
+        raw = fmpsdk.historical_price_full(**fmp_kwargs)
         if isinstance(raw, dict):
             if raw.get("Error Message") or raw.get("error") or raw.get("message"):
                 msg = raw.get("Error Message") or raw.get("error") or raw.get("message")

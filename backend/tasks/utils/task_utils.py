@@ -624,6 +624,7 @@ async def fetch_daily_for_symbols(
                     max_bars=max_bars,
                     return_provider=True,
                     db=db,
+                    skip_write_through=True,
                 )
                 return {"symbol": sym.upper(), "df": df, "provider": provider}
             finally:

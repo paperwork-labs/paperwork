@@ -236,6 +236,28 @@ CATALOG: List[JobTemplate] = [
 
     # ── Coverage & Quality ─────────────────────────────────────────
     JobTemplate(
+        id="coverage_health_check",
+        display_name="Coverage Health Refresh",
+        group="market_data",
+        task="backend.tasks.market.coverage.health_check",
+        description="Snapshot coverage health into Redis for Admin UI stale counts and health dimension",
+        default_cron="0 * * * *",
+        default_tz="UTC",
+        job_run_label="admin_coverage_refresh",
+        timeout_s=180,
+    ),
+    JobTemplate(
+        id="stale_daily_backfill",
+        display_name="Stale Coverage Repair",
+        group="market_data",
+        task="backend.tasks.market.backfill.stale_daily",
+        description="Backfill daily bars for stale/missing symbols detected by coverage analytics",
+        default_cron="30 * * * *",
+        default_tz="UTC",
+        job_run_label="admin_coverage_backfill_stale",
+        timeout_s=7200,
+    ),
+    JobTemplate(
         id="audit_quality_refresh",
         display_name="Audit Quality Refresh",
         group="market_data",

@@ -820,10 +820,16 @@ async def _execute_autofix_plan(job_id: str, plan: List[AutoFixPlanItem], r) -> 
         "recover_stale_jobs": "backend.tasks.market.maintenance.recover_jobs",
     }
 
+    task_kwargs = {
+        "recover_stale_jobs": {"stale_minutes": 120},
+        "recompute_indicators": {"batch_size": 50},
+    }
+
     for item in plan:
         celery_task = task_map.get(item.task)
         if celery_task:
-            result = celery_app.send_task(celery_task)
+            kwargs = task_kwargs.get(item.task, {})
+            result = celery_app.send_task(celery_task, kwargs=kwargs)
             item.task_id = result.id
             item.status = "running"
             item.started_at = datetime.now(timezone.utc).isoformat()

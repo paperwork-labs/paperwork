@@ -185,7 +185,7 @@ export interface AutoFixResponse {
 
 export interface AutoFixStatusResponse {
   job_id: string;
-  overall_status: 'pending' | 'running' | 'completed' | 'failed';
+  status: 'pending' | 'running' | 'completed' | 'failed';
   completed_count: number;
   total_count: number;
   current_task: string | null;

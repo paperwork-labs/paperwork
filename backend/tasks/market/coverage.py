@@ -26,9 +26,6 @@ from backend.tasks.utils.task_utils import _resolve_history_days, task_run
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_SOFT = 3500
-_DEFAULT_HARD = 3600
-
 
 def _run_scan_overlay() -> dict:
     """Run scan overlay engine: assign scan_tier + action_label to all snapshots."""
@@ -283,7 +280,7 @@ def _summarize_bootstrap_step(step: str, payload: Optional[dict]) -> str:
     soft_time_limit=7000,
     time_limit=7200,
 )
-@task_run("admin_coverage_backfill", lock_key=lambda: "admin_coverage_backfill")
+@task_run("admin_coverage_backfill", lock_key=lambda: "admin_coverage_backfill", lock_ttl_seconds=7500)
 def daily_bootstrap(
     history_days: Optional[int] = None,
     history_batch_size: int = 25,
@@ -426,7 +423,14 @@ def daily_bootstrap(
     _append("strategy_evaluation", res9, _time.monotonic() - _t0)
 
     _t0 = _time.monotonic()
-    res10 = health_check()
+    try:
+        res10 = health_check()
+    except SoftTimeLimitExceeded:
+        logger.warning("Task %s hit soft time limit", "admin_coverage_backfill")
+        raise
+    except Exception as exc:
+        logger.warning("daily_bootstrap: health_check failed (non-fatal): %s", exc)
+        res10 = {"status": "error", "error": str(exc)}
     _append("admin_coverage_refresh", res10, _time.monotonic() - _t0)
 
     _t0 = _time.monotonic()

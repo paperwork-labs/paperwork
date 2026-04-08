@@ -44,19 +44,24 @@ You are the Quant Analyst for AxiomFolio. All financial calculations must be pre
 
 ## Nightly Pipeline (spec Section 14.1)
 
+The indicator engine (`compute_full_indicator_series`) implements Steps 1-4 internally.
+The nightly pipeline (`daily_bootstrap`) orchestrates the full sequence:
+
 ```
-Step 0: REGIME — load 6 inputs → composite → R1–R5
-Step 1: Compute MAs + ATRs
-Step 2: Derive Ext%, ATRE, EMA10 Dist_N, slopes, ranges, Vol Ratio
-Step 3: Classify 10 sub-stages (priority order)
-Step 4: Post-classify: ATRE override (2A/2B → 2C when ATRE_150 > 6; not regime-based), RS modifier
-Step 5: Scan: regime-gated tier assignment
-Step 6: Patterns: 7 triggers
-Step 7: R/R: target/stop (regime-adjusted)
-Step 8: Size: regime-adjusted full position × Stage Cap
-Step 9: Exits: 9-tier cascade for open positions
-Step 10: Store all fields
+Step 1-4: recompute_universe — MAs, ATRs, metrics, stage classification, overrides
+Step 5:   compute_daily      — REGIME: load 6 inputs → composite → R1-R5
+Step 6:   scan_overlay       — regime-gated tier assignment
+Step 7:   exit_cascade       — 9-tier cascade for open positions
+Step 8:   strategy_eval      — regime-adjusted entry rules
+Step 9:   health_check       — coverage snapshot
+Step 10:  audit_quality      — data consistency
+Step 11:  daily_digest       — intelligence brief
 ```
+
+Note: Regime (Step 5) runs AFTER indicators (Steps 1-4) in `daily_bootstrap` because
+regime inputs (VIX, breadth) are fetched independently, while indicators need fresh bars
+first. The spec's logical ordering (regime first) is about data dependencies at the
+_individual symbol_ level; the pipeline ordering is about operational dependencies.
 
 ## Position Sizing (spec Section 9)
 

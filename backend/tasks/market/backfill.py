@@ -164,20 +164,32 @@ def tracked_cache() -> dict:
     time_limit=_DEFAULT_HARD,
 )
 @task_run("admin_backfill_daily_symbols")
-def symbols(symbols: List[str], days: int = 200) -> dict:
+def symbols(
+    symbols: List[str],
+    days: int = 200,
+    min_bars: Optional[int] = None,
+    buffer_bars: Optional[int] = None,
+    skip_l2: bool = False,
+) -> dict:
     """Delta backfill daily bars for a provided symbol list."""
     session = SessionLocal()
     try:
         loop = setup_event_loop()
         try:
             concurrency = _daily_backfill_concurrency()
-            params = daily_backfill_params(days=days)
+            params_kw: dict = {"days": days}
+            if min_bars is not None:
+                params_kw["min_bars"] = min_bars
+            if buffer_bars is not None:
+                params_kw["buffer_bars"] = buffer_bars
+            params = daily_backfill_params(**params_kw)
             fetched = loop.run_until_complete(
                 _fetch_daily_for_symbols(
                     symbols=[s.upper() for s in (symbols or []) if s],
                     period=params.period,
                     max_bars=params.max_bars,
                     concurrency=concurrency,
+                    skip_l2=skip_l2,
                 )
             )
         finally:
@@ -628,10 +640,10 @@ def full_historical(
 
 
 @shared_task(
-    soft_time_limit=_DEFAULT_SOFT,
-    time_limit=_DEFAULT_HARD,
+    soft_time_limit=7000,
+    time_limit=7200,
 )
-@task_run("admin_coverage_backfill_stale", lock_key=lambda: "admin_coverage_backfill_stale")
+@task_run("admin_coverage_backfill_stale", lock_key=lambda: "admin_coverage_backfill_stale", lock_ttl_seconds=7500)
 def stale_daily() -> dict:
     """Backfill daily bars for stale/missing symbols in the tracked universe."""
     _set_task_status("admin_coverage_backfill_stale", "running")
@@ -662,7 +674,7 @@ def stale_daily() -> dict:
             _set_task_status("admin_coverage_backfill_stale", "ok", res)
             return res
 
-        backfill_res = symbols(stale_symbols)
+        backfill_res = symbols(stale_symbols, days=10, min_bars=15, buffer_bars=5, skip_l2=True)
         from backend.tasks.market.coverage import health_check
 
         monitor_res = health_check()
