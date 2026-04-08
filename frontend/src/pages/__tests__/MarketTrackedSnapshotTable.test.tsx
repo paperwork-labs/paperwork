@@ -33,6 +33,13 @@ vi.mock('../../services/api', () => {
     },
     marketDataApi: {
       getSnapshotTable: (...args: any[]) => mockGetSnapshotTable(...args),
+      getSnapshotAggregates: vi.fn().mockResolvedValue({
+        total: 0,
+        stage_distribution: [],
+        sector_summary: [],
+        scan_tier_distribution: [],
+        action_distribution: [],
+      }),
     },
   };
 });
@@ -43,7 +50,7 @@ describe('MarketTracked snapshot table', () => {
     mockGetSnapshotTable.mockClear();
   });
 
-  it('loads and renders Level 1–4 columns', async () => {
+  it('loads and renders default overview-profile columns', async () => {
     mockGetSnapshotTable.mockResolvedValueOnce({
       rows: [
         {
@@ -73,18 +80,11 @@ describe('MarketTracked snapshot table', () => {
     expect(await screen.findByText(/Market Tracked/i)).toBeTruthy();
     expect(await screen.findByText('AAA')).toBeTruthy();
 
-    // Spot-check representative Level 1–4 headers
-    expect(await screen.findByText('Stage')).toBeTruthy();
+    // Columns visible in the default "Overview" profile:
+    // symbol, name, current_price, stage_label, current_stage_days,
+    // perf_1d, rs_mansfield_pct, sector, scan_tier, action_label
+    expect((await screen.findAllByText('Stage')).length).toBeGreaterThanOrEqual(1);
     expect(await screen.findByText('Time in Stage')).toBeTruthy();
-    expect(await screen.findByText('Previous Stage')).toBeTruthy();
-    expect(await screen.findByText('Time in Previous Stage')).toBeTruthy();
     expect(await screen.findByText('RS (Mansfield)')).toBeTruthy();
-    expect(await screen.findByText('SMA 50')).toBeTruthy();
-    expect(await screen.findByText('EMA 8')).toBeTruthy();
-    expect(await screen.findByText('ATR 14')).toBeTruthy();
-    expect(await screen.findByText('(P−SMA50)/ATR')).toBeTruthy();
-    expect(await screen.findByText('Range 52w%')).toBeTruthy();
   });
 });
-
-

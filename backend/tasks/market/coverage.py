@@ -280,8 +280,8 @@ def _summarize_bootstrap_step(step: str, payload: Optional[dict]) -> str:
 
 
 @shared_task(
-    soft_time_limit=_DEFAULT_SOFT,
-    time_limit=_DEFAULT_HARD,
+    soft_time_limit=7000,
+    time_limit=7200,
 )
 @task_run("admin_coverage_backfill", lock_key=lambda: "admin_coverage_backfill")
 def daily_bootstrap(

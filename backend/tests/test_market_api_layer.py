@@ -541,3 +541,183 @@ def test_deprecated_snapshots_rejects_over_200():
         assert resp.status_code == 422
     finally:
         app.dependency_overrides.pop(get_market_data_viewer, None)
+
+
+# ---------- Phase 1: action_labels / preset / index_name filter tests ----------
+
+
+def test_snapshot_table_accepts_action_labels_filter(monkeypatch):
+    from backend.api.routes.market import snapshots as routes
+
+    app.dependency_overrides[get_market_data_viewer] = _viewer_override
+    row = _make_snapshot(symbol="AAPL", action_label="BUY")
+    monkeypatch.setattr(routes, "tracked_symbols", lambda _db, redis_client=None: ["AAPL"])
+    app.dependency_overrides[get_db] = lambda: _FakeTableDB([row])
+    try:
+        client = TestClient(app, raise_server_exceptions=False)
+        resp = client.get("/api/v1/market-data/snapshots/table?action_labels=BUY,WATCH")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] >= 0
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_market_data_viewer, None)
+
+
+def test_snapshot_table_accepts_preset_filter(monkeypatch):
+    from backend.api.routes.market import snapshots as routes
+
+    app.dependency_overrides[get_market_data_viewer] = _viewer_override
+    row = _make_snapshot(symbol="NVDA", stage_label="2A", rs_mansfield_pct=8.0)
+    monkeypatch.setattr(routes, "tracked_symbols", lambda _db, redis_client=None: ["NVDA"])
+    app.dependency_overrides[get_db] = lambda: _FakeTableDB([row])
+    try:
+        client = TestClient(app, raise_server_exceptions=False)
+        for preset_name in ["pullback_buy_zone", "ma_alignment", "large_cap_leaders", "squeeze_setup"]:
+            resp = client.get(f"/api/v1/market-data/snapshots/table?preset={preset_name}")
+            assert resp.status_code == 200, f"preset={preset_name} failed: {resp.status_code}"
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_market_data_viewer, None)
+
+
+def test_snapshot_table_ignores_unknown_preset(monkeypatch):
+    from backend.api.routes.market import snapshots as routes
+
+    app.dependency_overrides[get_market_data_viewer] = _viewer_override
+    row = _make_snapshot()
+    monkeypatch.setattr(routes, "tracked_symbols", lambda _db, redis_client=None: ["AAPL"])
+    app.dependency_overrides[get_db] = lambda: _FakeTableDB([row])
+    try:
+        client = TestClient(app, raise_server_exceptions=False)
+        resp = client.get("/api/v1/market-data/snapshots/table?preset=nonexistent_preset")
+        assert resp.status_code == 200
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_market_data_viewer, None)
+
+
+def test_snapshot_table_accepts_index_name_filter(monkeypatch):
+    from backend.api.routes.market import snapshots as routes
+
+    app.dependency_overrides[get_market_data_viewer] = _viewer_override
+    row = _make_snapshot(symbol="AAPL")
+    monkeypatch.setattr(routes, "tracked_symbols", lambda _db, redis_client=None: ["AAPL"])
+    app.dependency_overrides[get_db] = lambda: _FakeTableDB([row])
+    try:
+        client = TestClient(app, raise_server_exceptions=False)
+        resp = client.get("/api/v1/market-data/snapshots/table?index_name=SP500")
+        assert resp.status_code == 200
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_market_data_viewer, None)
+
+
+def test_snapshot_aggregates_accepts_action_labels(monkeypatch):
+    from backend.api.routes.market import snapshots as routes
+
+    app.dependency_overrides[get_market_data_viewer] = _viewer_override
+    rows = [_make_snapshot(symbol="AAPL")]
+    agg_data = [
+        _FakeGroupByResult([("2B", 1)]),
+        _FakeGroupByResult([("Technology", 1, 5.0, 0.01)]),
+        _FakeGroupByResult([("Breakout Standard", 1)]),
+        _FakeGroupByResult([("BUY", 1)]),
+    ]
+    monkeypatch.setattr(routes, "tracked_symbols", lambda _db, redis_client=None: ["AAPL"])
+    db = _FakeAggDB(rows, agg_data)
+    app.dependency_overrides[get_db] = lambda: db
+    try:
+        client = TestClient(app, raise_server_exceptions=False)
+        resp = client.get("/api/v1/market-data/snapshots/aggregates?action_labels=BUY")
+        assert resp.status_code == 200
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_market_data_viewer, None)
+
+
+def test_snapshot_aggregates_accepts_preset_and_index(monkeypatch):
+    from backend.api.routes.market import snapshots as routes
+
+    app.dependency_overrides[get_market_data_viewer] = _viewer_override
+    rows = [_make_snapshot(symbol="AAPL")]
+    agg_data = [
+        _FakeGroupByResult([("2B", 1)]),
+        _FakeGroupByResult([("Technology", 1, 5.0, 0.01)]),
+        _FakeGroupByResult([("Breakout Standard", 1)]),
+        _FakeGroupByResult([("BUY", 1)]),
+    ]
+    monkeypatch.setattr(routes, "tracked_symbols", lambda _db, redis_client=None: ["AAPL"])
+    db = _FakeAggDB(rows, agg_data)
+    app.dependency_overrides[get_db] = lambda: db
+    try:
+        client = TestClient(app, raise_server_exceptions=False)
+        resp = client.get(
+            "/api/v1/market-data/snapshots/aggregates?preset=large_cap_leaders&index_name=SP500"
+        )
+        assert resp.status_code == 200
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_market_data_viewer, None)
+
+
+def test_preset_filters_registry_has_expected_keys():
+    from backend.api.routes.market.snapshots import PRESET_FILTERS
+
+    expected = {"pullback_buy_zone", "ma_alignment", "large_cap_leaders", "squeeze_setup"}
+    assert set(PRESET_FILTERS.keys()) == expected
+    for key, fn in PRESET_FILTERS.items():
+        assert callable(fn), f"PRESET_FILTERS[{key!r}] is not callable"
+
+
+# ---------- Intelligence offset pagination test ----------
+
+
+def test_intelligence_briefs_accepts_offset():
+    """GET /intelligence/briefs accepts offset query param for pagination."""
+    from backend.models.market_data import JobRun
+
+    app.dependency_overrides[get_market_data_viewer] = _viewer_override
+
+    class _FakeBriefQuery:
+        def filter(self, *_a, **_k):
+            return self
+
+        def order_by(self, *_a, **_k):
+            return self
+
+        def offset(self, n):
+            assert n >= 0
+            return self
+
+        def limit(self, _n):
+            return self
+
+        def all(self):
+            return []
+
+    class _FakeBriefDB:
+        def query(self, model):
+            return _FakeBriefQuery()
+
+    app.dependency_overrides[get_db] = lambda: _FakeBriefDB()
+    try:
+        client = TestClient(app, raise_server_exceptions=False)
+        resp = client.get("/api/v1/market-data/intelligence/briefs?offset=20&limit=10")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "briefs" in data
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_market_data_viewer, None)
+
+
+def test_intelligence_briefs_rejects_negative_offset():
+    """GET /intelligence/briefs rejects negative offset."""
+    app.dependency_overrides[get_market_data_viewer] = _viewer_override
+    try:
+        client = TestClient(app, raise_server_exceptions=False)
+        resp = client.get("/api/v1/market-data/intelligence/briefs?offset=-1")
+        assert resp.status_code == 422
+    finally:
+        app.dependency_overrides.pop(get_market_data_viewer, None)

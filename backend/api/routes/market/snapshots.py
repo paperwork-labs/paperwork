@@ -7,7 +7,7 @@ Endpoints for market snapshots (current state and history).
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, List, Optional
+from typing import Callable, Dict, Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy import case, func, nullslast, select
@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models.user import User
 from backend.models.market_data import MarketSnapshot, MarketSnapshotHistory
+from backend.models.index_constituent import IndexConstituent
 from backend.models.market_tracked_plan import MarketTrackedPlan
 from backend.services.market.market_data_service import infra
 from backend.services.market.universe import tracked_symbols
@@ -56,6 +57,30 @@ _SORT_COL_MAP = {
     "rsi": MarketSnapshot.rsi,
 }
 
+PRESET_FILTERS: Dict[str, Callable] = {
+    "pullback_buy_zone": lambda q: q.filter(
+        MarketSnapshot.stage_label.like("2%"),
+        MarketSnapshot.rs_mansfield_pct > 0,
+        MarketSnapshot.current_price > MarketSnapshot.sma_50,
+        MarketSnapshot.perf_5d.between(-4, 2),
+    ),
+    "ma_alignment": lambda q: q.filter(
+        MarketSnapshot.current_price > MarketSnapshot.sma_50,
+        MarketSnapshot.sma_50 > MarketSnapshot.sma_200,
+        MarketSnapshot.ema_8 > MarketSnapshot.ema_21,
+        MarketSnapshot.sma_21 > MarketSnapshot.sma_50,
+    ),
+    "large_cap_leaders": lambda q: q.filter(
+        MarketSnapshot.market_cap > 50_000_000_000,
+        MarketSnapshot.stage_label.like("2%"),
+        MarketSnapshot.rs_mansfield_pct > 0,
+    ),
+    "squeeze_setup": lambda q: q.filter(
+        MarketSnapshot.range_pos_20d > 80,
+        MarketSnapshot.atrp_14 > 3,
+    ),
+}
+
 
 def _latest_technical_snapshot_subq(tracked: list[str]):
     """One row per symbol: latest technical_snapshot by analysis_timestamp (SQL window)."""
@@ -74,8 +99,13 @@ def _latest_technical_snapshot_subq(tracked: list[str]):
 
 
 def _apply_filters(q, *, search, filter_stage, sectors, scan_tiers,
-                    regime_state, rs_min, rs_max, universe_filter, db):
+                    regime_state, rs_min, rs_max, action_labels, preset,
+                    index_name, symbols, universe_filter, db):
     """Apply query filters to a MarketSnapshot query. Returns filtered query."""
+    if symbols:
+        sym_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
+        if sym_list:
+            q = q.filter(MarketSnapshot.symbol.in_(sym_list))
     if search:
         q = q.filter(MarketSnapshot.symbol.ilike(f"%{search.strip().upper()}%"))
     if filter_stage:
@@ -95,13 +125,29 @@ def _apply_filters(q, *, search, filter_stage, sectors, scan_tiers,
         q = q.filter(MarketSnapshot.rs_mansfield_pct >= rs_min)
     if rs_max is not None:
         q = q.filter(MarketSnapshot.rs_mansfield_pct <= rs_max)
+    if action_labels:
+        label_list = [l.strip().upper() for l in action_labels.split(",") if l.strip()]
+        if label_list:
+            q = q.filter(MarketSnapshot.action_label.in_(label_list))
+    if preset and preset in PRESET_FILTERS:
+        q = PRESET_FILTERS[preset](q)
+    if index_name:
+        idx_sub = (
+            select(IndexConstituent.symbol)
+            .where(
+                IndexConstituent.index_name == index_name,
+                IndexConstituent.is_active.is_(True),
+            )
+            .scalar_subquery()
+        )
+        q = q.filter(MarketSnapshot.symbol.in_(idx_sub))
     return q
 
 
 @router.get("/heatmap")
 async def get_snapshot_heatmap(
     symbols: str = Query(..., description="Comma-separated symbols"),
-    days: int = Query(90, ge=1, le=365),
+    days: int = Query(90, ge=1, le=1095),
     _viewer: User = Depends(get_market_data_viewer),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
@@ -146,6 +192,18 @@ async def get_snapshot_table(
     regime_state: Optional[str] = Query(None, description="Filter by regime state (R1-R5)"),
     rs_min: Optional[float] = Query(None, description="Min RS Mansfield %"),
     rs_max: Optional[float] = Query(None, description="Max RS Mansfield %"),
+    action_labels: Optional[str] = Query(
+        None, description="Comma-separated action labels (BUY,WATCH,HOLD,SHORT,REDUCE,AVOID)"
+    ),
+    preset: Optional[str] = Query(
+        None, description="Named preset filter (pullback_buy_zone, ma_alignment, large_cap_leaders, squeeze_setup)"
+    ),
+    index_name: Optional[str] = Query(
+        None, description="Filter by index membership (SP500, NASDAQ100, DOW30, RUSSELL2000)"
+    ),
+    symbols: Optional[str] = Query(
+        None, description="Comma-separated symbols to include (overrides pagination scope)"
+    ),
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     include_plan: bool = Query(False, description="Join MarketTrackedPlan entry/exit prices"),
@@ -167,7 +225,9 @@ async def get_snapshot_table(
     q = _apply_filters(
         q, search=search, filter_stage=filter_stage, sectors=sectors,
         scan_tiers=scan_tiers, regime_state=regime_state,
-        rs_min=rs_min, rs_max=rs_max, universe_filter=None, db=db,
+        rs_min=rs_min, rs_max=rs_max, action_labels=action_labels,
+        preset=preset, index_name=index_name, symbols=symbols,
+        universe_filter=None, db=db,
     )
 
     effective_sort = sort_by if sort_by in _SORT_COL_MAP else "symbol"
@@ -210,6 +270,18 @@ async def get_snapshot_aggregates(
     sectors: Optional[str] = Query(None, description="Comma-separated sector filter"),
     scan_tiers: Optional[str] = Query(None, description="Comma-separated scan tier filter"),
     regime_state: Optional[str] = Query(None, description="Filter by regime state"),
+    action_labels: Optional[str] = Query(
+        None, description="Comma-separated action labels (BUY,WATCH,HOLD,SHORT,REDUCE,AVOID)"
+    ),
+    preset: Optional[str] = Query(
+        None, description="Named preset filter"
+    ),
+    index_name: Optional[str] = Query(
+        None, description="Filter by index membership (SP500, NASDAQ100, DOW30, RUSSELL2000)"
+    ),
+    symbols: Optional[str] = Query(
+        None, description="Comma-separated symbols to include"
+    ),
     _viewer: User = Depends(get_market_data_viewer),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
@@ -236,7 +308,9 @@ async def get_snapshot_aggregates(
     base = _apply_filters(
         base, search=None, filter_stage=filter_stage, sectors=sectors,
         scan_tiers=scan_tiers, regime_state=regime_state,
-        rs_min=None, rs_max=None, universe_filter=None, db=db,
+        rs_min=None, rs_max=None, action_labels=action_labels,
+        preset=preset, index_name=index_name, symbols=symbols,
+        universe_filter=None, db=db,
     )
 
     total = base.count()
@@ -300,7 +374,7 @@ async def get_snapshot_aggregates(
 @router.get("/history/batch")
 async def get_snapshot_history_batch(
     symbols: str = Query(..., description="Comma-separated symbols"),
-    days: int = Query(90, ge=1, le=365),
+    days: int = Query(90, ge=1, le=1095),
     _viewer: User = Depends(get_market_data_viewer),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
@@ -430,7 +504,7 @@ async def get_snapshots(
 @router.get("/{symbol}/history")
 async def get_snapshot_history(
     symbol: str,
-    days: int = Query(90, ge=1, le=365),
+    days: int = Query(90, ge=1, le=1095),
     _viewer: User = Depends(get_market_data_viewer),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:

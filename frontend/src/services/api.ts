@@ -631,9 +631,10 @@ export const marketDataApi = {
   getLatestBrief: async (type: string = 'daily') => {
     return makeOptimizedRequest(() => api.get(`/market-data/intelligence/latest?brief_type=${type}`));
   },
-  listBriefs: async (type?: string, limit: number = 20) => {
+  listBriefs: async (type?: string, limit: number = 20, offset: number = 0) => {
     const params = new URLSearchParams({ limit: String(limit) });
     if (type) params.set('brief_type', type);
+    if (offset > 0) params.set('offset', String(offset));
     return makeOptimizedRequest(() => api.get(`/market-data/intelligence/briefs?${params}`));
   },
   getBrief: async (id: number) => {
@@ -657,6 +658,10 @@ export const marketDataApi = {
     regime_state?: string;
     rs_min?: number;
     rs_max?: number;
+    action_labels?: string;
+    preset?: string;
+    index_name?: string;
+    symbols?: string;
     offset?: number;
     limit?: number;
     include_plan?: boolean;
@@ -671,6 +676,10 @@ export const marketDataApi = {
     if (params.regime_state) qs.set('regime_state', params.regime_state);
     if (params.rs_min != null) qs.set('rs_min', String(params.rs_min));
     if (params.rs_max != null) qs.set('rs_max', String(params.rs_max));
+    if (params.action_labels) qs.set('action_labels', params.action_labels);
+    if (params.preset) qs.set('preset', params.preset);
+    if (params.index_name) qs.set('index_name', params.index_name);
+    if (params.symbols) qs.set('symbols', params.symbols);
     if (params.offset != null) qs.set('offset', String(params.offset));
     if (params.limit != null) qs.set('limit', String(params.limit));
     if (params.include_plan) qs.set('include_plan', 'true');
@@ -683,12 +692,20 @@ export const marketDataApi = {
     sectors?: string;
     scan_tiers?: string;
     regime_state?: string;
+    action_labels?: string;
+    preset?: string;
+    index_name?: string;
+    symbols?: string;
   } = {}) => {
     const qs = new URLSearchParams();
     if (params.filter_stage) qs.set('filter_stage', params.filter_stage);
     if (params.sectors) qs.set('sectors', params.sectors);
     if (params.scan_tiers) qs.set('scan_tiers', params.scan_tiers);
     if (params.regime_state) qs.set('regime_state', params.regime_state);
+    if (params.action_labels) qs.set('action_labels', params.action_labels);
+    if (params.preset) qs.set('preset', params.preset);
+    if (params.index_name) qs.set('index_name', params.index_name);
+    if (params.symbols) qs.set('symbols', params.symbols);
     const q = qs.toString();
     return makeOptimizedRequest(() => api.get(`/market-data/snapshots/aggregates${q ? `?${q}` : ''}`));
   },

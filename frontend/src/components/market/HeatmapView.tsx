@@ -12,10 +12,10 @@ const SECTOR_ETFS = [
 ];
 
 const TIME_RANGES = [
-  { label: '50d', days: 50 },
-  { label: '100d', days: 100 },
   { label: '200d', days: 200 },
   { label: '1Y', days: 365 },
+  { label: '2Y', days: 730 },
+  { label: '3Y', days: 1095 },
 ] as const;
 
 const EMPTY_STAGE_COLOR_LIGHT = '#CBD5E1';
@@ -45,7 +45,7 @@ interface HeatmapViewProps {
 const HeatmapView: React.FC<HeatmapViewProps> = ({ snapshots }) => {
   const { colorMode } = useColorMode();
   const isDark = colorMode === 'dark';
-  const [timeRange, setTimeRange] = React.useState<number>(100);
+  const [timeRange, setTimeRange] = React.useState<number>(730);
 
   const etfSymbols = React.useMemo(() => {
     if (snapshots.length === 0) return SECTOR_ETFS;

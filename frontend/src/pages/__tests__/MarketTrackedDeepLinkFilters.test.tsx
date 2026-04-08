@@ -1,6 +1,6 @@
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, screen } from '@/test/testing-library';
+import { cleanup, screen, waitFor } from '@/test/testing-library';
 
 import { renderWithProviders } from '../../test/render';
 import MarketTracked from '../MarketTracked';
@@ -22,6 +22,8 @@ vi.mock('../../context/AuthContext', () => ({
 vi.mock('../../hooks/usePortfolioSymbols', () => ({
   usePortfolioSymbols: () => ({ data: {}, isLoading: false }),
 }));
+
+const mockGetSnapshotTable = vi.fn();
 
 vi.mock('../../services/api', () => {
   const mockRows = [
@@ -100,57 +102,91 @@ vi.mock('../../services/api', () => {
       patch: vi.fn().mockResolvedValue({ data: {} }),
     },
     marketDataApi: {
-      getSnapshotTable: vi.fn().mockResolvedValue({ rows: mockRows, total: mockRows.length }),
+      getSnapshotTable: (...args: any[]) => mockGetSnapshotTable(...args),
+      getSnapshotAggregates: vi.fn().mockResolvedValue({
+        total: 4,
+        stage_distribution: [],
+        sector_summary: [],
+        scan_tier_distribution: [],
+        action_distribution: [],
+      }),
     },
   };
 });
 
 describe('MarketTracked deep-link filters', () => {
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    mockGetSnapshotTable.mockReset();
+  });
 
-  it('applies symbol deep-link filters from query params', async () => {
+  function setupMock(rows = [{ symbol: 'AAA', current_price: 10, stage_label: '2A' }]) {
+    mockGetSnapshotTable.mockResolvedValue({ rows, total: rows.length });
+  }
+
+  it('applies symbol deep-link via server-side symbols param', async () => {
+    setupMock();
     renderWithProviders(<MarketTracked />, { route: '/market/tracked?symbols=NVDA,MSFT' });
     expect(await screen.findByText(/Market Tracked/i)).toBeInTheDocument();
-    // SortableTable filter header shows filtered count.
-    expect(await screen.findByText('2 of 4')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockGetSnapshotTable).toHaveBeenCalledWith(
+        expect.objectContaining({ symbols: 'NVDA,MSFT' }),
+      );
+    });
   });
 
-  it('applies preset deep-link filters from query params', async () => {
-    renderWithProviders(<MarketTracked />, { route: '/market/tracked?preset=momentum' });
+  it('applies action_labels deep-link from query params', async () => {
+    setupMock();
+    renderWithProviders(<MarketTracked />, { route: '/market/tracked?action_labels=BUY' });
     expect(await screen.findByText(/Market Tracked/i)).toBeInTheDocument();
-    // At least one row should remain under momentum rules in this fixture.
-    expect(await screen.findByText('3 of 4')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockGetSnapshotTable).toHaveBeenCalledWith(
+        expect.objectContaining({ action_labels: 'BUY' }),
+      );
+    });
   });
 
-  it('applies ETF deep-link filter from query params', async () => {
-    renderWithProviders(<MarketTracked />, { route: '/market/tracked?asset=etf' });
+  it('applies preset deep-link for pullback_buy_zone', async () => {
+    setupMock();
+    renderWithProviders(<MarketTracked />, { route: '/market/tracked?preset=pullback_buy_zone' });
     expect(await screen.findByText(/Market Tracked/i)).toBeInTheDocument();
-    expect(await screen.findByText('SPY')).toBeInTheDocument();
-    expect(screen.queryByText('XOM')).toBeNull();
-    expect(screen.queryByText('NVDA')).toBeNull();
+    await waitFor(() => {
+      expect(mockGetSnapshotTable).toHaveBeenCalledWith(
+        expect.objectContaining({ preset: 'pullback_buy_zone' }),
+      );
+    });
   });
 
-  it('applies breakout preset deep-link', async () => {
-    renderWithProviders(<MarketTracked />, { route: '/market/tracked?preset=breakout' });
+  it('applies index_name deep-link for SP500', async () => {
+    setupMock();
+    renderWithProviders(<MarketTracked />, { route: '/market/tracked?index_name=SP500' });
     expect(await screen.findByText(/Market Tracked/i)).toBeInTheDocument();
-    // NVDA (2A, perf_5d=4>0, rs=5>0, price 100>sma50 90) and
-    // MSFT (2B, perf_5d=2>0, rs=4>0, price 90>sma50 85) and
-    // SPY (2A, perf_5d=1.2>0, rs=1>0, price 500>sma50 495)
-    // qualify. XOM (Stage 4) does not.
-    expect(await screen.findByText('3 of 4')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockGetSnapshotTable).toHaveBeenCalledWith(
+        expect.objectContaining({ index_name: 'SP500' }),
+      );
+    });
   });
 
-  it('applies decline preset deep-link', async () => {
-    renderWithProviders(<MarketTracked />, { route: '/market/tracked?preset=decline' });
+  it('applies filter_stage deep-link', async () => {
+    setupMock();
+    renderWithProviders(<MarketTracked />, { route: '/market/tracked?filter_stage=2A' });
     expect(await screen.findByText(/Market Tracked/i)).toBeInTheDocument();
-    // XOM: Stage 4, price 80 < sma50 90, price 80 < sma200 95
-    expect(await screen.findByText('1 of 4')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockGetSnapshotTable).toHaveBeenCalledWith(
+        expect.objectContaining({ filter_stage: '2A' }),
+      );
+    });
   });
 
-  it('applies rs_leaders preset deep-link', async () => {
-    renderWithProviders(<MarketTracked />, { route: '/market/tracked?preset=rs_leaders' });
+  it('applies scan mode with default scan_tiers', async () => {
+    setupMock();
+    renderWithProviders(<MarketTracked />, { route: '/market/tracked?mode=scan' });
     expect(await screen.findByText(/Market Tracked/i)).toBeInTheDocument();
-    // NVDA (rs=5>3, price 100 > sma200 80) and MSFT (rs=4>3, price 90 > sma200 84)
-    expect(await screen.findByText('2 of 4')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockGetSnapshotTable).toHaveBeenCalledWith(
+        expect.objectContaining({ scan_tiers: expect.any(String) }),
+      );
+    });
   });
 });

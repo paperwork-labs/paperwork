@@ -32,6 +32,7 @@ def _brief_summary(meta: dict) -> dict:
 def list_intelligence_briefs(
     brief_type: Optional[str] = Query(None, description="daily, weekly, or monthly"),
     limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0, description="Number of briefs to skip for pagination"),
     db: Session = Depends(get_db),
     _viewer: User = Depends(get_market_data_viewer),
 ):
@@ -39,7 +40,7 @@ def list_intelligence_briefs(
     q = db.query(JobRun).filter(JobRun.task_name.like("intelligence_%_brief"))
     if brief_type:
         q = q.filter(JobRun.task_name == f"intelligence_{brief_type}_brief")
-    rows = q.order_by(JobRun.finished_at.desc().nullslast()).limit(limit).all()
+    rows = q.order_by(JobRun.finished_at.desc().nullslast()).offset(offset).limit(limit).all()
     return {
         "briefs": [
             {

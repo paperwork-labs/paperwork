@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { BacktestResult, BacktestMetrics, BacktestTrade } from '../../types/strategy';
+import { SymbolLink } from '@/components/market/SymbolChartUI';
 import { useChartColors } from '../../hooks/useChartColors';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
 import { formatMoney, formatDate } from '../../utils/format';
@@ -174,7 +175,7 @@ export default function BacktestResults({ result }: { result: BacktestResult }) 
                   {trades.map((trade, idx) => (
                     <tr key={`${trade.symbol}-${trade.date}-${idx}`} className="border-b border-border/80 last:border-0">
                       <td className="px-4 py-2">{formatDate(trade.date, timezone)}</td>
-                      <td className="px-4 py-2 font-mono font-semibold">{trade.symbol}</td>
+                      <td className="px-4 py-2 font-mono font-semibold"><SymbolLink symbol={trade.symbol} showHeldBadge={false} /></td>
                       <td className="px-4 py-2">
                         <Badge
                           variant="outline"

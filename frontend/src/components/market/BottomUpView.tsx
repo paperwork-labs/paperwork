@@ -90,12 +90,13 @@ const BottomUpView: React.FC<BottomUpViewProps> = ({ filters }) => {
     sort_by: sortKey,
     sort_dir: sortDir,
     filter_stage: stageFilter || undefined,
+    action_labels: actionFilter || undefined,
     search: debouncedSearch || undefined,
     sectors: filters?.sectors,
     regime_state: filters?.regime_state,
     offset,
     limit: PAGE_SIZE,
-  }), [sortKey, sortDir, stageFilter, debouncedSearch, filters?.sectors, filters?.regime_state, offset]);
+  }), [sortKey, sortDir, stageFilter, actionFilter, debouncedSearch, filters?.sectors, filters?.regime_state, offset]);
 
   const { data: tableData, isPending } = useSnapshotTable(tableParams);
   const rows = tableData?.rows ?? [];
@@ -103,6 +104,7 @@ const BottomUpView: React.FC<BottomUpViewProps> = ({ filters }) => {
 
   const { data: aggregates } = useSnapshotAggregates({
     filter_stage: stageFilter || undefined,
+    action_labels: actionFilter || undefined,
     sectors: filters?.sectors,
     regime_state: filters?.regime_state,
   });
@@ -122,11 +124,6 @@ const BottomUpView: React.FC<BottomUpViewProps> = ({ filters }) => {
     });
     return counts;
   }, [aggregates?.action_distribution]);
-
-  const filteredRows = React.useMemo(() => {
-    if (!actionFilter) return rows;
-    return rows.filter((r: any) => (r.action_label || r.scan_action || 'WATCH') === actionFilter);
-  }, [rows, actionFilter]);
 
   const handleSort = React.useCallback((key: SortKey) => {
     if (sortKey === key) {
@@ -231,7 +228,7 @@ const BottomUpView: React.FC<BottomUpViewProps> = ({ filters }) => {
                       ))}
                     </tr>
                   ))
-                : filteredRows.map((row: any) => {
+                : rows.map((row: any) => {
                 const action = row.action_label || row.scan_action || '';
                 return (
                   <tr

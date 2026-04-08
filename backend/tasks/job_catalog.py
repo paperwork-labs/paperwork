@@ -73,7 +73,8 @@ CATALOG: List[JobTemplate] = [
         default_cron="0 1 * * *",
         default_tz="UTC",
         job_run_label="admin_coverage_backfill",
-        kwargs={"history_days": 20, "history_batch_size": 25},
+        kwargs={"history_days": 20, "history_batch_size": 25, "backfill_days": 10},
+        timeout_s=7200,
     ),
     JobTemplate(
         id="fundamentals_fill",

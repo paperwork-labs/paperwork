@@ -98,7 +98,6 @@ function buildMarketItems() {
   const items: Item[] = [
     { label: 'Dashboard', icon: Home, path: '/' },
     { label: 'Tracked', icon: List, path: '/market/tracked' },
-    { label: 'Scanner', icon: ScanLine, path: '/market/scanner' },
     { label: 'Strategies', icon: Target, path: '/market/strategies' },
     { label: 'Intelligence', icon: Brain, path: '/market/intelligence' },
     { label: 'Education', icon: BookOpen, path: '/market/education' },

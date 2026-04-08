@@ -100,6 +100,10 @@ export interface SnapshotTableParams {
   regime_state?: string;
   rs_min?: number;
   rs_max?: number;
+  action_labels?: string;
+  preset?: string;
+  index_name?: string;
+  symbols?: string;
   offset?: number;
   limit?: number;
   include_plan?: boolean;
@@ -119,6 +123,10 @@ export interface SnapshotAggregateParams {
   sectors?: string;
   scan_tiers?: string;
   regime_state?: string;
+  action_labels?: string;
+  preset?: string;
+  index_name?: string;
+  symbols?: string;
 }
 
 export interface StageDistributionEntry {

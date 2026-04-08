@@ -203,7 +203,9 @@ class CoverageAnalytics:
                     else getattr(settings, "COVERAGE_FILL_LOOKBACK_DAYS", 90)
                 )
             )
-            start_dt = (now - timedelta(days=lookback)).replace(tzinfo=None)
+            start_dt = (now - timedelta(days=lookback)).replace(
+                hour=0, minute=0, second=0, microsecond=0, tzinfo=None,
+            )
             rows = (
                 db.query(
                     func.date(PriceData.date).label("d"),
@@ -245,7 +247,9 @@ class CoverageAnalytics:
                     else getattr(settings, "COVERAGE_FILL_LOOKBACK_DAYS", 90)
                 )
             )
-            start_dt = (now - timedelta(days=lookback)).replace(tzinfo=None)
+            start_dt = (now - timedelta(days=lookback)).replace(
+                hour=0, minute=0, second=0, microsecond=0, tzinfo=None,
+            )
             snap_dt = MarketSnapshotHistory.as_of_date
             rows = (
                 db.query(
