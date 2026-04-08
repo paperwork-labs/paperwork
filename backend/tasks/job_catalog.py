@@ -315,6 +315,30 @@ CATALOG: List[JobTemplate] = [
         timeout_s=180,
     ),
 
+    # ── Bulk EOD ─────────────────────────────────────────────────────
+    JobTemplate(
+        id="bulk_daily_fill",
+        display_name="Bulk EOD Daily Fill",
+        group="market_data",
+        task="backend.tasks.market.bulk_eod.bulk_daily_fill",
+        description="Fetch all US EOD bars for a single date via FMP bulk endpoint and persist for tracked universe",
+        default_cron="0 1 * * 2-6",
+        default_tz="America/New_York",
+        job_run_label="admin_bulk_daily_fill",
+        timeout_s=360,
+    ),
+    JobTemplate(
+        id="bulk_stale_recovery",
+        display_name="Bulk Stale Coverage Recovery",
+        group="market_data",
+        task="backend.tasks.market.bulk_eod.bulk_stale_recovery",
+        description="Find recent trading dates with incomplete coverage and bulk-fill them (1 API call per date vs 2300 per-symbol calls)",
+        default_cron="30 1 * * 2-6",
+        default_tz="America/New_York",
+        job_run_label="admin_bulk_stale_recovery",
+        timeout_s=2100,
+    ),
+
     # ── Deep Backfill ────────────────────────────────────────────────
     JobTemplate(
         id="full_historical_backfill",

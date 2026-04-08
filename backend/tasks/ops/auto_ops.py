@@ -92,7 +92,7 @@ def _is_market_adjacent_hours() -> bool:
 REMEDIATION_MAP = {
     "coverage": [
         ("backend.tasks.market.backfill.constituents", {}),
-        ("backend.tasks.market.backfill.stale_daily", {}),
+        ("backend.tasks.market.bulk_eod.bulk_stale_recovery", {}),
         ("backend.tasks.market.coverage.health_check", {}),
     ],
     "stage_quality": [

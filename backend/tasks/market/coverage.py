@@ -241,6 +241,12 @@ def _summarize_bootstrap_step(step: str, payload: Optional[dict]) -> str:
     if step == "market_universe_tracked_refresh":
         return f"{data.get('tracked_all', 0)} tracked ({data.get('new', 0)} new)"
     if step == "admin_backfill_daily":
+        if data.get("api_calls") is not None:
+            return (
+                f"Bulk EOD: {data.get('persisted', 0)} bars for "
+                f"{data.get('matched_tracked', 0)}/{data.get('tracked_total', 0)} "
+                f"tracked ({data.get('api_calls', 0)} API call{'s' if data.get('api_calls', 0) != 1 else ''})"
+            )
         return (
             f"Inserted {data.get('bars_inserted_total', 0)} bars across "
             f"{data.get('tracked_total', 0)} tracked"
@@ -297,6 +303,7 @@ def daily_bootstrap(
         daily_bars,
         tracked_cache,
     )
+    from backend.tasks.market.bulk_eod import bulk_daily_fill
     from backend.tasks.market.history import snapshot_last_n_days
     from backend.tasks.market.indicators import recompute_universe
     from backend.tasks.market.regime import compute_daily
@@ -343,13 +350,40 @@ def daily_bootstrap(
 
     _t0 = _time.monotonic()
     try:
-        res3 = daily_bars(days=_backfill_days)
+        res3 = bulk_daily_fill()
+        if res3.get("status") in ("skipped", "error"):
+            logger.info(
+                "daily_bootstrap: bulk_daily_fill unavailable (%s), falling back to daily_bars",
+                res3.get("reason") or res3.get("error"),
+            )
+            res3 = daily_bars(days=_backfill_days)
+        else:
+            new_sym_count = (res2 or {}).get("new", 0)
+            if new_sym_count:
+                logger.info(
+                    "daily_bootstrap: %d new symbols detected — running daily_bars for deep history",
+                    new_sym_count,
+                )
+                try:
+                    res3_deep = daily_bars(days=_backfill_days)
+                    res3["deep_backfill"] = res3_deep
+                except SoftTimeLimitExceeded:
+                    raise
+                except Exception as exc_deep:
+                    logger.warning("daily_bootstrap: daily_bars deep pass failed (non-fatal): %s", exc_deep)
+                    res3["deep_backfill"] = {"status": "error", "error": str(exc_deep)}
     except SoftTimeLimitExceeded:
         logger.warning("Task %s hit soft time limit", "admin_coverage_backfill")
         raise
     except Exception as exc:
-        logger.warning("daily_bootstrap: daily_bars failed (non-fatal): %s", exc)
-        res3 = {"status": "error", "error": str(exc)}
+        logger.warning("daily_bootstrap: bulk_daily_fill failed, falling back to daily_bars: %s", exc)
+        try:
+            res3 = daily_bars(days=_backfill_days)
+        except SoftTimeLimitExceeded:
+            raise
+        except Exception as exc2:
+            logger.warning("daily_bootstrap: daily_bars fallback also failed: %s", exc2)
+            res3 = {"status": "error", "error": str(exc2)}
     _append("admin_backfill_daily", res3, _time.monotonic() - _t0)
 
     _t0 = _time.monotonic()
