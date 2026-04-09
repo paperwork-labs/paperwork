@@ -35,11 +35,16 @@ _FMP_BULK_EOD_URL = "https://financialmodelingprep.com/stable/eod-bulk"
 _FMP_BULK_TIMEOUT_S = 60
 
 
+class BulkEndpointUnavailable(RuntimeError):
+    """Raised when the FMP bulk EOD endpoint returns 402 (plan too low)."""
+
+
 def _fetch_bulk_eod_for_date(date_str: str) -> List[Dict[str, Any]]:
     """Fetch bulk EOD bars from FMP for a single date.
 
     Returns a list of dicts with keys: symbol, date, open, high, low, close,
     adjClose, volume, etc.  Raises on HTTP or parse errors.
+    Raises BulkEndpointUnavailable on 402 so callers can fall back.
     """
     api_key = settings.FMP_API_KEY
     if not api_key:
@@ -52,6 +57,10 @@ def _fetch_bulk_eod_for_date(date_str: str) -> List[Dict[str, Any]]:
         params={"date": date_str, "apikey": api_key},
         timeout=_FMP_BULK_TIMEOUT_S,
     )
+    if resp.status_code == 402:
+        raise BulkEndpointUnavailable(
+            "FMP bulk EOD endpoint requires a paid plan (got 402)"
+        )
     resp.raise_for_status()
     data = resp.json()
 
@@ -274,7 +283,18 @@ def bulk_daily_fill(date: Optional[str] = None) -> dict:
         if not tracked_set:
             return {"status": "error", "error": "No tracked symbols"}
 
-        raw_bars = _fetch_bulk_eod_for_date(date)
+        try:
+            raw_bars = _fetch_bulk_eod_for_date(date)
+        except BulkEndpointUnavailable:
+            logger.warning("Bulk EOD requires paid FMP plan (got 402)")
+            return {
+                "status": "error",
+                "error": "FMP bulk EOD requires a paid plan. "
+                         "Set MARKET_PROVIDER_POLICY=paid and use a paid FMP_API_KEY.",
+                "date": date,
+                "tracked_total": len(tracked_set),
+            }
+
         rows = _validate_and_build_rows(raw_bars, tracked_set)
         persisted = _persist_bulk_rows(session, rows)
 

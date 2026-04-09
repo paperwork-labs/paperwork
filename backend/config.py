@@ -131,6 +131,9 @@ class Settings(BaseSettings):
     AUTO_WARM_ON_STARTUP: bool = False
     AUTO_WARM_STALE_MINUTES: int = 120
 
+    # Pipeline DAG orchestrator (replaces monolithic daily_bootstrap)
+    PIPELINE_DAG_ENABLED: bool = True
+
     # Risk management
     MAX_SINGLE_POSITION_PCT: float = 0.15
 

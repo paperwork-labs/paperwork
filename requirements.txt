@@ -52,6 +52,7 @@ newrelic==12.1.0
 pytest==9.0.2
 pytest-asyncio==1.3.0
 pytest-timeout==2.4.0
+fakeredis==2.26.2
 
 # Auth deps
 passlib[bcrypt]==1.7.4

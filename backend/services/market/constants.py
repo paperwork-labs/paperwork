@@ -459,6 +459,21 @@ CURATED_MARKET_SYMBOLS = [
     "IEF",
     "HYG",
     "ARKK",
+    # Broad market / core benchmark ETFs
+    "QQQ",
+    "VTI",
+    "VOO",
+    "RSP",
+    "SPLG",
+    # International equity ETFs
+    "VXUS",
+    "VEA",
+    "VWO",
+    # Fixed income ETFs
+    "AGG",
+    "BND",
+    "LQD",
+    "TIP",
 ]
 
 # Sector ETF mapping for the market dashboard sector-rotation table.

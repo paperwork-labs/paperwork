@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, asdict
 from typing import Any, Dict, List, Optional
 
+from backend.config import settings as _settings
+
 
 @dataclass(frozen=True)
 class JobTemplate:
@@ -153,6 +155,7 @@ CATALOG: List[JobTemplate] = [
         default_cron="0 2 * * 1-5",
         default_tz="America/New_York",
         timeout_s=660,
+        enabled=not _settings.PIPELINE_DAG_ENABLED,
     ),
     JobTemplate(
         id="evaluate-exit-cascade",
@@ -212,6 +215,7 @@ CATALOG: List[JobTemplate] = [
         default_cron="30 1 * * 1-5",
         default_tz="America/New_York",
         job_run_label="intelligence_daily_digest",
+        enabled=not _settings.PIPELINE_DAG_ENABLED,
     ),
     JobTemplate(
         id="generate_weekly_brief",
@@ -278,6 +282,7 @@ CATALOG: List[JobTemplate] = [
         default_tz="UTC",
         job_run_label="market_indices_constituents_refresh",
         timeout_s=300,
+        enabled=not _settings.PIPELINE_DAG_ENABLED,
     ),
     JobTemplate(
         id="tracked_cache_refresh",
@@ -289,6 +294,7 @@ CATALOG: List[JobTemplate] = [
         default_tz="UTC",
         job_run_label="market_universe_tracked_refresh",
         timeout_s=120,
+        enabled=not _settings.PIPELINE_DAG_ENABLED,
     ),
     JobTemplate(
         id="intraday_5m_backfill",
@@ -326,6 +332,7 @@ CATALOG: List[JobTemplate] = [
         default_tz="America/New_York",
         job_run_label="admin_bulk_daily_fill",
         timeout_s=360,
+        enabled=not _settings.PIPELINE_DAG_ENABLED,
     ),
     JobTemplate(
         id="bulk_stale_recovery",

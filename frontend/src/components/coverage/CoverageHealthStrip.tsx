@@ -20,10 +20,16 @@ const normDateKey = (d: unknown) => {
   return s.length >= 10 ? s.slice(0, 10) : s;
 };
 
-const colorForPct = (pct: number) => {
+const dailyColor = (pct: number) => {
   const t = Math.max(0, Math.min(1, pct / 100));
   const hue = 120 * t;
   return `hsl(${hue}, 70%, 45%)`;
+};
+
+const snapshotColor = (pct: number) => {
+  if (pct >= 95) return 'hsl(160, 60%, 40%)';
+  if (pct >= 50) return 'hsl(35, 80%, 50%)';
+  return 'hsl(0, 70%, 50%)';
 };
 
 const CoverageHealthStrip: React.FC<Props> = ({
@@ -50,80 +56,110 @@ const CoverageHealthStrip: React.FC<Props> = ({
       new Map(
         (snapshotFillSeries || []).map((r) => [
           normDateKey(r.date),
-          Number(r.pct_of_universe || 0),
+          {
+            pct: Number(r.pct_of_universe || 0),
+            count: Number(r.symbol_count || 0),
+          },
         ]),
       ),
     [snapshotFillSeries],
   );
 
+  const [hoverIdx, setHoverIdx] = React.useState<number | null>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
   if (!bars.length || !totalSymbols) return null;
 
-  const latest = bars[bars.length - 1];
-  const latestPct = latest ? Number(latest.pct_of_universe || 0) : 0;
+  const latestDailyPct = bars[bars.length - 1]
+    ? Number(bars[bars.length - 1].pct_of_universe || 0)
+    : 0;
+  const latestSnapEntry = bars[bars.length - 1]
+    ? snapshotPctByDate.get(bars[bars.length - 1].date)
+    : undefined;
+  const latestSnapPct = latestSnapEntry?.pct ?? 0;
 
-  const sparkWidth = 80;
-  const sparkHeight = 20;
-  const sparkPath = bars
-    .map((p, i) => {
-      const x = (i / Math.max(bars.length - 1, 1)) * sparkWidth;
-      const y = sparkHeight - (Math.min(Number(p.pct_of_universe || 0), 100) / 100) * sparkHeight;
-      return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(' ');
+  const hoverBar = hoverIdx != null ? bars[hoverIdx] : null;
+  const hoverSnap = hoverBar ? snapshotPctByDate.get(hoverBar.date) : null;
 
   return (
-    <div className="mt-2">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="overflow-x-auto overflow-y-hidden rounded-md border border-border bg-card px-1 py-1">
-            <div className="flex h-[22px] w-full items-end gap-px">
-              {bars.map((r) => {
-                const pct = Number(r.pct_of_universe || 0);
-                const h = Math.max(2, Math.round((pct / 100) * 14));
-                const snapPct = snapshotPctByDate.get(r.date);
-                const snapOk = typeof snapPct === 'number' && snapPct >= 95;
-                const snapNone = typeof snapPct !== 'number';
-                const dotClass = snapNone
-                  ? 'bg-muted-foreground/60 opacity-50'
-                  : snapOk
-                    ? 'bg-emerald-500'
-                    : (snapPct || 0) >= 50
-                      ? 'bg-amber-500'
-                      : 'bg-destructive';
-                return (
-                  <div
-                    key={r.date}
-                    className="flex min-w-[4px] flex-1 flex-col items-center justify-end"
-                    title={`${r.date}: ${r.symbol_count}/${totalSymbols} (${Math.round(pct * 10) / 10}%) | snap: ${snapNone ? '—' : `${Math.round((snapPct || 0) * 10) / 10}%`}`}
-                  >
-                    <div className="w-full rounded-sm" style={{ height: `${h}px`, backgroundColor: colorForPct(pct) }} />
-                    <div className={cn('mt-px size-1 rounded-full', dotClass)} />
-                  </div>
-                );
-              })}
-            </div>
+    <div className="space-y-1">
+      {/* Dual-row strip */}
+      <div
+        ref={containerRef}
+        className="overflow-x-auto overflow-y-hidden rounded-md border border-border bg-card"
+        onMouseLeave={() => setHoverIdx(null)}
+      >
+        {/* Daily row */}
+        <div className="flex items-center gap-0 px-1 pt-1">
+          <span className="mr-1.5 w-[52px] shrink-0 text-right text-[9px] text-muted-foreground">
+            Daily
+          </span>
+          <div className="flex flex-1 gap-px">
+            {bars.map((r, i) => {
+              const pct = Number(r.pct_of_universe || 0);
+              return (
+                <div
+                  key={r.date}
+                  className={cn(
+                    'h-3 min-w-[6px] flex-1 rounded-[2px] transition-opacity',
+                    hoverIdx != null && hoverIdx !== i && 'opacity-40',
+                  )}
+                  style={{ backgroundColor: dailyColor(pct) }}
+                  onMouseEnter={() => setHoverIdx(i)}
+                />
+              );
+            })}
           </div>
+          <span className="ml-1.5 w-[38px] shrink-0 text-right text-[10px] font-medium tabular-nums text-foreground">
+            {Math.round(latestDailyPct * 10) / 10}%
+          </span>
         </div>
-
-        <div className="flex shrink-0 items-center gap-2">
-          <svg
-            width={sparkWidth}
-            height={sparkHeight}
-            viewBox={`0 0 ${sparkWidth} ${sparkHeight}`}
-            className="text-muted-foreground"
-            aria-hidden
-          >
-            <path d={sparkPath} fill="none" stroke="currentColor" strokeWidth="1.2" />
-          </svg>
-          <span className="whitespace-nowrap text-xs font-semibold text-foreground">
-            {Math.round(latestPct * 10) / 10}%
+        {/* Snapshot row */}
+        <div className="flex items-center gap-0 px-1 pb-1">
+          <span className="mr-1.5 w-[52px] shrink-0 text-right text-[9px] text-muted-foreground">
+            Snapshot
+          </span>
+          <div className="flex flex-1 gap-px">
+            {bars.map((r, i) => {
+              const snap = snapshotPctByDate.get(r.date);
+              const hasSn = snap != null;
+              const snapPct = snap?.pct ?? 0;
+              return (
+                <div
+                  key={r.date}
+                  className={cn(
+                    'h-3 min-w-[6px] flex-1 rounded-[2px] transition-opacity',
+                    !hasSn && 'bg-muted/40',
+                    hoverIdx != null && hoverIdx !== i && 'opacity-40',
+                  )}
+                  style={hasSn ? { backgroundColor: snapshotColor(snapPct) } : undefined}
+                  onMouseEnter={() => setHoverIdx(i)}
+                />
+              );
+            })}
+          </div>
+          <span className="ml-1.5 w-[38px] shrink-0 text-right text-[10px] font-medium tabular-nums text-foreground">
+            {Math.round(latestSnapPct * 10) / 10}%
           </span>
         </div>
       </div>
-      <p className="mt-1 text-xs text-muted-foreground">
-        Coverage strip (last {windowDays} trading days). Cell color = daily fill %. Dot = snapshot coverage (green {'\u2265'}
-        95%, orange {'\u2265'}50%, red {'<'}50%, gray = none). Hover for detail.
-      </p>
+
+      {/* Hover detail line */}
+      {hoverBar && (
+        <div className="flex items-center gap-3 px-1 text-[10px] text-muted-foreground">
+          <span className="font-medium text-foreground">{hoverBar.date}</span>
+          <span>
+            Daily: {hoverBar.symbol_count.toLocaleString()}/{totalSymbols.toLocaleString()} ({Math.round(hoverBar.pct_of_universe * 10) / 10}%)
+          </span>
+          {hoverSnap ? (
+            <span>
+              Snapshot: {hoverSnap.count.toLocaleString()}/{totalSymbols.toLocaleString()} ({Math.round(hoverSnap.pct * 10) / 10}%)
+            </span>
+          ) : (
+            <span className="italic">No snapshot data</span>
+          )}
+        </div>
+      )}
     </div>
   );
 };

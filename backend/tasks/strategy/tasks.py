@@ -5,6 +5,7 @@ import os
 from datetime import datetime, timezone
 
 from backend.tasks.celery_app import celery_app
+from backend.tasks.utils.task_utils import task_run
 from backend.database import SessionLocal
 from backend.models.strategy import Strategy, StrategyStatus, StrategyRun, RunStatus, ExecutionMode
 from backend.models.market_data import MarketSnapshot
@@ -53,6 +54,7 @@ def _parse_group(data: dict) -> ConditionGroup:
 
 
 @celery_app.task(name="backend.tasks.strategy_tasks.evaluate_strategies_task", soft_time_limit=600, time_limit=660)
+@task_run("strategy_evaluation")
 def evaluate_strategies_task() -> dict:
     """Find all active strategies, run RuleEvaluator against latest snapshot data."""
     db = SessionLocal()

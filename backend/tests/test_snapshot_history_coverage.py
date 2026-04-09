@@ -17,9 +17,11 @@ def test_coverage_snapshot_uses_snapshot_history(db_session, monkeypatch):
 
     monkeypatch.setattr(infra.redis_client, "get", _redis_get)
 
-    # Insert history for two dates
-    d1 = datetime(2026, 1, 8, tzinfo=timezone.utc).replace(tzinfo=None)
-    d2 = datetime(2026, 1, 9, tzinfo=timezone.utc).replace(tzinfo=None)
+    # Use recent dates so they always fall inside the lookback window
+    from datetime import timedelta
+    today = datetime.now(timezone.utc).replace(tzinfo=None)
+    d1 = (today - timedelta(days=2)).replace(hour=0, minute=0, second=0, microsecond=0)
+    d2 = (today - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     db_session.add(
         MarketSnapshotHistory(
             symbol="AAA",
@@ -42,7 +44,9 @@ def test_coverage_snapshot_uses_snapshot_history(db_session, monkeypatch):
     series = (snap.get("daily") or {}).get("snapshot_fill_by_date") or []
     dates = {row.get("date") for row in series}
 
-    assert "2026-01-08" in dates
-    assert "2026-01-09" in dates
+    d1_str = d1.strftime("%Y-%m-%d")
+    d2_str = d2.strftime("%Y-%m-%d")
+    assert d1_str in dates
+    assert d2_str in dates
 
 

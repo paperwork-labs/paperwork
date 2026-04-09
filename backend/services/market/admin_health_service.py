@@ -261,6 +261,13 @@ class AdminHealthService:
             if constituent_issues:
                 ok = False
 
+            curated_etf_count = 0
+            try:
+                from backend.services.market.constants import CURATED_MARKET_SYMBOLS
+                curated_etf_count = len(CURATED_MARKET_SYMBOLS)
+            except Exception:
+                logger.debug("Failed to read CURATED_MARKET_SYMBOLS for ETF count")
+
             return {
                 "status": _dim_status(ok),
                 "daily_pct": daily_pct,
@@ -273,6 +280,7 @@ class AdminHealthService:
                 "indices": indices,
                 "constituent_issues": constituent_issues,
                 "providers": self._check_provider_keys(),
+                "curated_etf_count": curated_etf_count,
             }
         except Exception as exc:
             logger.exception("coverage dimension failed: %s", exc)
@@ -458,6 +466,33 @@ class AdminHealthService:
         daily_fill = round((int(daily_count) / tracked_total) * 100.0, 1) if tracked_total else 0.0
         snapshot_fill = round((hist_count / tracked_total) * 100.0, 1) if tracked_total else 0.0
 
+        history_depth_years: Optional[float] = None
+        earliest_date_str: Optional[str] = None
+        ohlcv_earliest_str: Optional[str] = None
+        ohlcv_symbol_count: Optional[int] = None
+        try:
+            earliest = (
+                db.query(func.min(MarketSnapshotHistory.as_of_date))
+                .filter(MarketSnapshotHistory.analysis_type == "technical_snapshot")
+                .scalar()
+            )
+            if earliest:
+                if hasattr(earliest, "date"):
+                    earliest_date = earliest.date() if callable(earliest.date) else earliest.date
+                else:
+                    earliest_date = earliest
+                earliest_date_str = earliest_date.isoformat()
+                from datetime import date as _date
+                delta = _date.today() - earliest_date
+                history_depth_years = round(delta.days / 365.25, 1)
+
+            ohlcv_min = db.query(func.min(PriceData.date)).filter(PriceData.interval == "1d").scalar()
+            if ohlcv_min:
+                ohlcv_earliest_str = (ohlcv_min.date() if callable(getattr(ohlcv_min, "date", None)) else ohlcv_min).isoformat()
+            ohlcv_symbol_count = db.query(func.count(func.distinct(PriceData.symbol))).filter(PriceData.interval == "1d").scalar()
+        except Exception:
+            logger.debug("Failed to compute history depth / OHLCV depth in audit metrics")
+
         payload = {
             "tracked_total": tracked_total,
             "latest_daily_date": latest_daily_dt.isoformat() if hasattr(latest_daily_dt, "isoformat") else str(latest_daily_dt) if latest_daily_dt else None,
@@ -467,6 +502,10 @@ class AdminHealthService:
             "latest_snapshot_history_symbol_count": hist_count,
             "snapshot_fill_pct": snapshot_fill,
             "missing_snapshot_history_sample": missing_sample,
+            "history_depth_years": history_depth_years,
+            "earliest_date": earliest_date_str,
+            "ohlcv_earliest_date": ohlcv_earliest_str,
+            "ohlcv_symbol_count": ohlcv_symbol_count,
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -495,36 +534,16 @@ class AdminHealthService:
                 and snapshot_fill >= HEALTH_THRESHOLDS["audit_snapshot_fill_pct_min"]
             )
 
-            history_depth_years: Optional[float] = None
-            earliest_date_str: Optional[str] = None
-            try:
-                from backend.models.market_data import MarketSnapshotHistory as _MSH
-
-                earliest = (
-                    db.query(func.min(_MSH.as_of_date))
-                    .filter(_MSH.analysis_type == "technical_snapshot")
-                    .scalar()
-                )
-                if earliest:
-                    if hasattr(earliest, "date"):
-                        earliest_date = earliest.date() if callable(earliest.date) else earliest.date
-                    else:
-                        earliest_date = earliest
-                    earliest_date_str = earliest_date.isoformat()
-                    from datetime import date as _date
-                    delta = _date.today() - earliest_date
-                    history_depth_years = round(delta.days / 365.25, 1)
-            except Exception:
-                logger.debug("Failed to compute history depth years")
-
             return {
                 "status": _dim_status(ok),
                 "tracked_total": payload.get("tracked_total"),
                 "daily_fill_pct": round(daily_fill, 1),
                 "snapshot_fill_pct": round(snapshot_fill, 1),
                 "missing_sample": payload.get("missing_snapshot_history_sample", [])[:5],
-                "history_depth_years": history_depth_years,
-                "earliest_date": earliest_date_str,
+                "history_depth_years": payload.get("history_depth_years"),
+                "earliest_date": payload.get("earliest_date"),
+                "ohlcv_earliest_date": payload.get("ohlcv_earliest_date"),
+                "ohlcv_symbol_count": payload.get("ohlcv_symbol_count"),
             }
         except Exception as exc:
             logger.exception("audit dimension failed: %s", exc)
@@ -852,7 +871,7 @@ class AdminHealthService:
             try:
                 import httpx
                 resp = httpx.get(
-                    f"https://financialmodelingprep.com/api/v3/quote-short/SPY?apikey={settings.FMP_API_KEY}",
+                    f"https://financialmodelingprep.com/stable/quote?symbol=SPY&apikey={settings.FMP_API_KEY}",
                     timeout=10,
                 )
                 result["fmp"] = "ok" if resp.status_code == 200 else f"http_{resp.status_code}"

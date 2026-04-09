@@ -233,3 +233,92 @@ redis-cli HSET "provider:calls:$(date -u +%Y-%m-%d)" fmp 999999
 2. Set `MARKET_PROVIDER_POLICY=free` temporarily to cap at 200/day
 3. Once bandwidth resets, switch back to appropriate tier
 4. All historical data remains — no re-backfill needed
+
+---
+
+## Deep Indicator Recompute (Snapshot History Gap Fill)
+
+When new symbols are added to the tracked universe but lack historical indicator
+data (OHLCV exists but `market_snapshot_history` rows are missing), run a deep
+recompute. This is a **local CPU task** — no API calls to FMP/Finnhub.
+
+### When to Use
+
+- Coverage strip shows < 100% snapshot fill on older days
+- New symbols were added to index constituents but historical indicators were
+  never back-computed
+
+### Procedure
+
+#### Local Dev
+
+```bash
+# 1. Clear any stale lock from a prior run
+docker exec backend python -c "
+import redis, os
+r = redis.from_url(os.environ.get('REDIS_URL', 'redis://redis:6379/0'))
+r.delete('lock:admin_recompute_since_date:admin_recompute_since_date')
+print('Lock cleared')
+"
+
+# 2. Dispatch the recompute task
+docker exec backend python -c "
+from backend.tasks.market.backfill import safe_recompute
+result = safe_recompute.delay(since_date='1993-01-01')
+print(f'Task ID: {result.id}')
+"
+
+# 3. Monitor progress (runs 30–90 min depending on symbol count)
+docker logs -f celery-worker 2>&1 | grep -E 'recompute|snapshot_last_n'
+```
+
+#### Production (Render)
+
+Option A — via Admin UI:
+1. Navigate to System Status > Operator Actions > Advanced > Backfill
+2. Set "Since date" to `1993-01-01`
+3. Click "Backfill Full Flow (since date)"
+
+Option B — via Render Shell:
+```bash
+# SSH into the backend service on Render
+render shell --service backend
+
+python -c "
+from backend.tasks.market.backfill import safe_recompute
+result = safe_recompute.delay(since_date='1993-01-01')
+print(f'Task ID: {result.id}')
+"
+```
+
+Option C — via API:
+```bash
+curl -X POST "https://api.axiomfolio.com/api/v1/market-data/admin/backfill/since-date?since_date=1993-01-01&confirm_bandwidth=true" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### What It Does
+
+1. `recompute_universe()` — recomputes all indicators for 2,500+ symbols
+2. `snapshot_last_n_days(since_date=...)` — builds `market_snapshot_history`
+   rows from the recomputed indicators for every trading day since the date
+3. `health_check()` — refreshes coverage metrics
+
+### Duration
+
+- Local: 30–90 minutes (depends on CPU and DB performance)
+- Production: 15–45 minutes (Render has faster I/O)
+
+### Verification
+
+After completion, check the coverage strip on System Status. All days should
+show 100% snapshot fill. Or query directly:
+
+```sql
+SELECT as_of_date, COUNT(DISTINCT symbol)
+FROM market_snapshot_history
+WHERE analysis_type = 'technical_snapshot'
+GROUP BY as_of_date
+ORDER BY as_of_date
+LIMIT 10;
+```

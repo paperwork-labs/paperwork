@@ -18,6 +18,7 @@ export interface CoverageDimension extends BaseDimension {
   expected_date: string | null;
   summary: string;
   indices?: Record<string, number>;
+  curated_etf_count?: number;
 }
 
 export interface StageQualityDimension extends BaseDimension {
@@ -54,6 +55,8 @@ export interface AuditDimension extends BaseDimension {
   missing_sample: string[];
   history_depth_years?: number | null;
   earliest_date?: string | null;
+  ohlcv_earliest_date?: string | null;
+  ohlcv_symbol_count?: number | null;
 }
 
 export interface RegimeDimension extends BaseDimension {
@@ -163,16 +166,15 @@ export interface AdminHealthResponse {
   provider_metrics?: ProviderMetrics;
 }
 
-/** Auto-fix API types */
+/** Auto-fix API types — aligned with backend AutoFixPlanItem */
 export interface AutoFixTask {
-  task_name: string;
-  label: string;
+  task: string;
   reason: string;
-  priority: number;
   task_id?: string;
   status?: 'pending' | 'running' | 'completed' | 'failed';
   started_at?: string | null;
   finished_at?: string | null;
+  duration_seconds?: number | null;
   error?: string | null;
 }
 

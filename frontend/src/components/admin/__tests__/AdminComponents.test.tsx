@@ -195,7 +195,7 @@ describe('CoverageHealthStrip', () => {
     { date: '2026-01-08', symbol_count: 500, pct_of_universe: 100.0 },
   ];
 
-  it('renders heatmap cells with title attributes', () => {
+  it('renders daily and snapshot heatmap rows', () => {
     const { container } = renderWithProviders(
       <CoverageHealthStrip
         dailyFillSeries={FILL_ROWS}
@@ -204,20 +204,10 @@ describe('CoverageHealthStrip', () => {
         totalSymbols={500}
       />,
     );
-    expect(container.querySelectorAll('[title]').length).toBeGreaterThanOrEqual(3);
-  });
-
-  it('renders inline sparkline SVG', () => {
-    const { container } = renderWithProviders(
-      <CoverageHealthStrip
-        dailyFillSeries={FILL_ROWS}
-        snapshotFillSeries={SNAPSHOT_ROWS}
-        windowDays={50}
-        totalSymbols={500}
-      />,
-    );
-    expect(container.querySelector('svg')).toBeTruthy();
-    expect(container.querySelector('path')).toBeTruthy();
+    expect(screen.getByText('Daily')).toBeTruthy();
+    expect(screen.getByText('Snapshot')).toBeTruthy();
+    const cells = container.querySelectorAll('[style*="background"]');
+    expect(cells.length).toBeGreaterThanOrEqual(3);
   });
 
   it('shows latest fill percentage', () => {
@@ -233,10 +223,10 @@ describe('CoverageHealthStrip', () => {
   });
 
   it('returns null with empty data', () => {
-    const { container } = renderWithProviders(
+    renderWithProviders(
       <CoverageHealthStrip dailyFillSeries={[]} windowDays={50} totalSymbols={0} />,
     );
-    expect(container.querySelector('svg')).toBeNull();
+    expect(screen.queryByText('Daily')).toBeNull();
   });
 });
 

@@ -725,6 +725,47 @@ export const marketDataApi = {
   getAutoFixStatus: async (jobId: string) => {
     return makeOptimizedRequest(() => api.get(`/market-data/admin/auto-fix/${jobId}/status`));
   },
+  getBackfill5mToggle: async () => {
+    return makeOptimizedRequest(() => api.get('/market-data/admin/backfill/5m/toggle'));
+  },
+  setBackfill5mToggle: async (enabled: boolean) => {
+    return makeOptimizedRequest(() => api.post('/market-data/admin/backfill/5m/toggle', { enabled }));
+  },
+};
+
+// Pipeline DAG endpoints
+export const pipelineApi = {
+  getDAG: async () => {
+    return makeOptimizedRequest(() => api.get('/pipeline/dag'));
+  },
+  getRuns: async (limit: number = 20) => {
+    return makeOptimizedRequest(() => api.get(`/pipeline/runs?limit=${limit}`));
+  },
+  getRun: async (runId: string) => {
+    return makeOptimizedRequest(() => api.get(`/pipeline/runs/${encodeURIComponent(runId)}`));
+  },
+  retryStep: async (runId: string, step: string) => {
+    return makeOptimizedRequest(() =>
+      api.post(`/pipeline/runs/${encodeURIComponent(runId)}/steps/${encodeURIComponent(step)}/retry`)
+    );
+  },
+  trigger: async () => {
+    return makeOptimizedRequest(() => api.post('/pipeline/trigger'));
+  },
+  getAmbient: async () => {
+    return makeOptimizedRequest(() => api.get('/pipeline/ambient'));
+  },
+  getActiveTasks: async () => {
+    return makeOptimizedRequest(() => api.get('/pipeline/active-tasks'));
+  },
+  stopAll: async () => {
+    return makeOptimizedRequest(() => api.post('/pipeline/stop-all'));
+  },
+  revokeTask: async (taskName: string) => {
+    return makeOptimizedRequest(() =>
+      api.post(`/pipeline/tasks/revoke?task_name=${encodeURIComponent(taskName)}`)
+    );
+  },
 };
 
 // Unified Activity endpoints

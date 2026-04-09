@@ -27,6 +27,7 @@ from backend.tasks.utils.task_utils import _resolve_history_days, task_run
 logger = logging.getLogger(__name__)
 
 
+@task_run("scan_overlay")
 def _run_scan_overlay() -> dict:
     """Run scan overlay engine: assign scan_tier + action_label to all snapshots."""
     session = SessionLocal()
@@ -130,6 +131,7 @@ def _run_scan_overlay() -> dict:
         session.close()
 
 
+@task_run("exit_cascade_evaluation")
 def _evaluate_exit_cascade_all() -> dict:
     """Evaluate exit cascade for all open positions. Logs warnings, does not auto-sell."""
     session = SessionLocal()
@@ -291,13 +293,43 @@ def daily_bootstrap(
     history_days: Optional[int] = None,
     history_batch_size: int = 25,
     backfill_days: int = 200,
+    *,
+    pipeline_run_id: Optional[str] = None,
 ) -> dict:
     """Backfill DAILY coverage for the tracked universe (no 5m).
 
-    Orchestration order: constituents, tracked cache, daily bars, full snapshot
-    pipeline (Stage Analysis spec steps 0–10 via indicator recompute), market regime row, scan
-    overlay, snapshot history, exit cascade, strategies, coverage health, digest.
+    When ``PIPELINE_DAG_ENABLED`` is True (default), delegates to the DAG
+    orchestrator which tracks per-step state in Redis, supports resume from
+    failure, and enables individual step retry from the admin UI.
+
+    The legacy sequential path is preserved as a fallback.
     """
+    import uuid as _uuid
+
+    from backend.config import settings as _settings
+
+    if _settings.PIPELINE_DAG_ENABLED:
+        # TODO: DAG mode doesn't yet deep-backfill OHLCV for newly added
+        # symbols (the legacy path used tracked_cache().new + backfill_days).
+        # Add a conditional deep-backfill step when new symbols are detected.
+        from backend.services.pipeline.orchestrator import run_pipeline
+
+        run_id = pipeline_run_id or f"nightly-{_uuid.uuid4().hex[:12]}"
+        _triggered_by = "admin" if pipeline_run_id else "celery_beat"
+        _hist_days = history_days if history_days is not None else 20
+        params = {
+            "snapshot_history": {
+                "days": int(_hist_days),
+                "batch_size": int(history_batch_size),
+            },
+        }
+        return run_pipeline(
+            run_id,
+            params=params,
+            triggered_by=_triggered_by,
+        )
+
+    # -- Legacy sequential fallback (PIPELINE_DAG_ENABLED=False) -----------
     from backend.tasks.market.backfill import (
         constituents,
         daily_bars,
@@ -561,3 +593,18 @@ def health_check() -> dict:
         }
     finally:
         session.close()
+
+
+@shared_task(
+    soft_time_limit=3600,
+    time_limit=3660,
+)
+def retry_pipeline_step(run_id: str, step: str) -> dict:
+    """Retry a single pipeline step on a Celery worker (dispatched from admin UI)."""
+    from backend.services.pipeline.orchestrator import run_pipeline
+
+    return run_pipeline(
+        run_id,
+        steps=[step],
+        triggered_by="admin_retry",
+    )
