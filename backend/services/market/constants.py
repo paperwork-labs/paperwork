@@ -444,6 +444,7 @@ CURATED_MARKET_SYMBOLS = [
     "XLI",
     "XLK",
     "XLP",
+    "XLRE",
     "XLU",
     "XLV",
     "XLY",

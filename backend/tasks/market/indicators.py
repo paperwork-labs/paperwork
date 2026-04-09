@@ -149,7 +149,11 @@ def position_metadata() -> dict:
 )
 @task_run("admin_indicators_recompute_universe", lock_key=lambda **_: "recompute_universe")
 def recompute_universe(batch_size: int = 50, force: bool = False) -> dict:
-    """Recompute indicators for the tracked universe from local DB (orchestrator only)."""
+    """Recompute indicators for the tracked universe from local DB (orchestrator only).
+
+    When *force* is True the 4-hour freshness check is bypassed so every
+    symbol is recomputed regardless of when it was last updated.
+    """
     _set_task_status("admin_indicators_recompute_universe", "running")
     task_id = _celery_task_id_short()
     t0 = time.monotonic()

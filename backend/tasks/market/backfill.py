@@ -724,9 +724,11 @@ def safe_recompute(
     res1 = recompute_universe(batch_size=int(batch_size), force=True)
     _append("recompute_indicators", res1)
 
+    from backend.config import settings as _cfg
+
     try:
         res2 = snapshot_last_n_days(
-            days=3000,
+            days=_cfg.RECOMPUTE_HISTORY_MAX_DAYS,
             since_date=since_date,
             batch_size=int(history_batch_size),
         )

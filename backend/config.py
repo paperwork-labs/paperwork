@@ -241,6 +241,10 @@ class Settings(BaseSettings):
     # Deep backfill target (years). One-time operation; nightly pipeline is delta-only.
     HISTORY_TARGET_YEARS: int = 10
 
+    # Maximum trading days for snapshot-history rebuild in safe_recompute.
+    # SPY has ~8,400 trading days since 1993; 10,000 gives headroom for growth.
+    RECOMPUTE_HISTORY_MAX_DAYS: int = 10000
+
     # Weinstein Stage thresholds (percent units)
     # - slope thresholds are % change of 30W SMA vs 5 weeks ago
     # - distance thresholds are % from 30W SMA
