@@ -121,7 +121,9 @@ export function useActiveTasks(enabled = true) {
       return body as ActiveTasksResponse;
     },
     enabled,
-    refetchInterval: 10_000,
+    refetchInterval: 30_000,
+    retry: false,
+    staleTime: 15_000,
   });
 }
 

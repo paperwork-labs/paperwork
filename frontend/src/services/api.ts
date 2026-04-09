@@ -756,7 +756,9 @@ export const pipelineApi = {
     return makeOptimizedRequest(() => api.get('/pipeline/ambient'));
   },
   getActiveTasks: async () => {
-    return makeOptimizedRequest(() => api.get('/pipeline/active-tasks'));
+    return makeOptimizedRequest(() =>
+      api.get('/pipeline/active-tasks', { _noRetry: true }),
+    );
   },
   stopAll: async () => {
     return makeOptimizedRequest(() => api.post('/pipeline/stop-all'));

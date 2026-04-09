@@ -219,6 +219,7 @@ class ActiveTaskInfo(BaseModel):
 class ActiveTasksResponse(BaseModel):
     tasks: List[ActiveTaskInfo]
     total: int
+    inspect_ok: bool = True
 
 
 class StopAllResponse(BaseModel):
@@ -234,11 +235,11 @@ def get_active_tasks(_user=Depends(get_admin_user)):
     from backend.tasks.celery_app import celery_app
 
     try:
-        inspector = celery_app.control.inspect(timeout=3.0)
+        inspector = celery_app.control.inspect(timeout=5.0)
         active: Optional[Dict[str, List[Dict[str, Any]]]] = inspector.active()
     except Exception as exc:
         logger.warning("Failed to inspect active tasks: %s", exc)
-        raise HTTPException(status_code=503, detail="Cannot reach Celery workers")
+        return ActiveTasksResponse(tasks=[], total=0, inspect_ok=False)
 
     if not active:
         return ActiveTasksResponse(tasks=[], total=0)

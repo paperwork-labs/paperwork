@@ -70,6 +70,7 @@ export interface ActiveTaskInfo {
 export interface ActiveTasksResponse {
   tasks: ActiveTaskInfo[];
   total: number;
+  inspect_ok?: boolean;
 }
 
 export interface StopAllResponse {

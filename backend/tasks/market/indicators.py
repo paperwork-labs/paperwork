@@ -148,7 +148,7 @@ def position_metadata() -> dict:
     time_limit=3700,
 )
 @task_run("admin_indicators_recompute_universe", lock_key=lambda **_: "recompute_universe")
-def recompute_universe(batch_size: int = 50) -> dict:
+def recompute_universe(batch_size: int = 50, force: bool = False) -> dict:
     """Recompute indicators for the tracked universe from local DB (orchestrator only)."""
     _set_task_status("admin_indicators_recompute_universe", "running")
     task_id = _celery_task_id_short()
@@ -335,20 +335,23 @@ def recompute_universe(batch_size: int = 50) -> dict:
         except Exception as e:
             logger.warning("spy_benchmark_fetch failed for %s: %s", benchmark_symbol, e)
 
-        fresh_cutoff = datetime.now(timezone.utc) - timedelta(hours=4)
         fresh_syms: Set[str] = set()
-        try:
-            fresh_syms = {
-                str(s).upper()
-                for (s,) in session.query(MarketSnapshot.symbol).filter(
-                    MarketSnapshot.analysis_type == "technical_snapshot",
-                    MarketSnapshot.analysis_timestamp >= fresh_cutoff,
-                )
-            }
-        except SoftTimeLimitExceeded:
-            raise
-        except Exception as e:
-            logger.warning("fresh_snapshot_query failed: %s", e)
+        if force:
+            logger.info("[%s] force=True — bypassing freshness check", task_id)
+        else:
+            fresh_cutoff = datetime.now(timezone.utc) - timedelta(hours=4)
+            try:
+                fresh_syms = {
+                    str(s).upper()
+                    for (s,) in session.query(MarketSnapshot.symbol).filter(
+                        MarketSnapshot.analysis_type == "technical_snapshot",
+                        MarketSnapshot.analysis_timestamp >= fresh_cutoff,
+                    )
+                }
+            except SoftTimeLimitExceeded:
+                raise
+            except Exception as e:
+                logger.warning("fresh_snapshot_query failed: %s", e)
         skipped_fresh = 0
 
         try:

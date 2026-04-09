@@ -721,7 +721,7 @@ def safe_recompute(
     def _append(name: str, result: dict) -> None:
         rollup["steps"].append({"name": name, "result": result})
 
-    res1 = recompute_universe(batch_size=int(batch_size))
+    res1 = recompute_universe(batch_size=int(batch_size), force=True)
     _append("recompute_indicators", res1)
 
     try:
