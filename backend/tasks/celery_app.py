@@ -125,3 +125,32 @@ celery_app.conf.update(
     enable_utc=True,
     beat_schedule=_build_beat_schedule(),
 )
+
+
+from celery.signals import worker_ready  # noqa: E402
+
+
+@worker_ready.connect
+def _warm_caches(sender, **kwargs):
+    """Pre-populate expensive Redis caches on worker start.
+
+    Only warms from MVs to avoid expensive raw-table fallback queries
+    that could delay worker readiness or hit statement_timeout.
+    """
+    try:
+        from backend.services.market.market_mv_service import market_mv_service
+        from backend.database import SessionLocal
+
+        db = SessionLocal()
+        try:
+            if not market_mv_service.any_mv_exists(db):
+                logger.info("Cache warmup skipped: no MVs available yet")
+                return
+            series = market_mv_service.get_breadth_series(db, days=120)
+            logger.info(
+                "Cache warmup: breadth_series (%d points)", len(series)
+            )
+        finally:
+            db.close()
+    except Exception as e:
+        logger.warning("Cache warmup failed (non-fatal): %s", e)

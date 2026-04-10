@@ -47,6 +47,7 @@ const AdminOperatorActions: React.FC<Props> = ({
   const [backfillingDailyPeriod, setBackfillingDailyPeriod] = React.useState(false);
   const [backfillingSnapshotHistory, setBackfillingSnapshotHistory] = React.useState(false);
   const [backfillingSinceDate, setBackfillingSinceDate] = React.useState(false);
+  const [safeRecomputingSinceDate, setSafeRecomputingSinceDate] = React.useState(false);
   const [backfillingPeriodFlow, setBackfillingPeriodFlow] = React.useState(false);
 
   const delayedRefresh = () => {
@@ -299,6 +300,23 @@ const AdminOperatorActions: React.FC<Props> = ({
     }
   };
 
+  const safeRecomputeSinceDate = async () => {
+    if (safeRecomputingSinceDate) return;
+    setSafeRecomputingSinceDate(true);
+    try {
+      await api.post(
+        `/market-data/admin/recompute/since-date?since_date=${encodeURIComponent(sinceDate)}&batch_size=50&history_batch_size=25`,
+      );
+      toast.success(`Queued DB-only indicator recompute + snapshot history since ${sinceDate}`);
+      delayedRefresh();
+      void refreshHealth();
+    } catch (err) {
+      handleError(err, 'Failed to queue safe recompute');
+    } finally {
+      setSafeRecomputingSinceDate(false);
+    }
+  };
+
   const benchmarkBad = sanityData?.benchmark && (sanityData.benchmark as Record<string, unknown>)?.ok === false;
 
   return (
@@ -404,6 +422,18 @@ const AdminOperatorActions: React.FC<Props> = ({
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
                       size="xs"
+                      variant="secondary"
+                      disabled={safeRecomputingSinceDate}
+                      onClick={() => void safeRecomputeSinceDate()}
+                      className="inline-flex gap-1.5"
+                    >
+                      {safeRecomputingSinceDate ? (
+                        <Loader2 className="size-3 shrink-0 animate-spin" aria-hidden />
+                      ) : null}
+                      Rebuild indicators + snapshot history (DB only, since date)
+                    </Button>
+                    <Button
+                      size="xs"
                       disabled={backfillingSinceDate}
                       onClick={() => void backfillSinceDate()}
                       className="inline-flex gap-1.5"
@@ -413,8 +443,12 @@ const AdminOperatorActions: React.FC<Props> = ({
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    1. Fetch OHLCV bars from provider → 2. Compute indicator series (SMA, RSI, MACD, Stage, RS...) → 3.
-                    Persist to MarketSnapshotHistory (immutable daily ledger)
+                    <span className="font-medium text-foreground">DB only:</span> recompute from Postgres OHLCV →{' '}
+                    <code className="text-[0.7rem]">market_snapshot</code> →{' '}
+                    <code className="text-[0.7rem]">market_snapshot_history</code>. Use when daily bars exist but the
+                    coverage strip shows low snapshot fill.{' '}
+                    <span className="font-medium text-foreground">Full flow:</span> Fetches OHLCV from the provider first
+                    (bandwidth).
                   </p>
                 </div>
               </div>

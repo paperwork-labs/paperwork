@@ -56,9 +56,9 @@ PIPELINE_DAG: Dict[str, StepDef] = {
     ),
     "daily_bars": StepDef(
         deps=("tracked_cache",),
-        task_path="backend.tasks.market.bulk_eod.bulk_daily_fill",
-        timeout_s=360,
-        display_name="Daily Bars (Bulk EOD)",
+        task_path="backend.tasks.market.backfill.daily_bars",
+        timeout_s=3600,
+        display_name="Daily Bars (Per-Symbol)",
     ),
     "indicators": StepDef(
         deps=("daily_bars",),
@@ -102,8 +102,14 @@ PIPELINE_DAG: Dict[str, StepDef] = {
         timeout_s=180,
         display_name="Coverage Health",
     ),
-    "audit": StepDef(
+    "mv_refresh": StepDef(
         deps=("indicators", "snapshot_history"),
+        task_path="backend.tasks.market.maintenance.refresh_market_mvs",
+        timeout_s=360,
+        display_name="MV Refresh",
+    ),
+    "audit": StepDef(
+        deps=("indicators", "snapshot_history", "mv_refresh"),
         task_path="backend.tasks.market.maintenance.audit_quality",
         timeout_s=360,
         display_name="Data Audit",
@@ -414,7 +420,7 @@ def list_recent_runs(limit: int = 20) -> List[Dict[str, Any]]:
 _STEP_TO_TASK_NAME: Dict[str, str] = {
     "constituents": "market_indices_constituents_refresh",
     "tracked_cache": "market_universe_tracked_refresh",
-    "daily_bars": "admin_bulk_daily_fill",
+    "daily_bars": "admin_backfill_daily",
     "indicators": "admin_indicators_recompute_universe",
     "regime": "compute_daily_regime",
     "scan_overlay": "scan_overlay",
@@ -422,6 +428,7 @@ _STEP_TO_TASK_NAME: Dict[str, str] = {
     "exit_cascade": "exit_cascade_evaluation",
     "strategy_eval": "strategy_evaluation",
     "health_check": "admin_coverage_refresh",
+    "mv_refresh": "admin_refresh_market_mvs",
     "audit": "admin_market_data_audit",
     "digest": "intelligence_daily_digest",
 }

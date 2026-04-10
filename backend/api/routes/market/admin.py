@@ -239,6 +239,12 @@ async def admin_backfill_daily_since_date(
 
     When *index* is provided, only that index's active constituents are backfilled.
     """
+    if not settings.ALLOW_DEEP_BACKFILL:
+        raise HTTPException(
+            status_code=403,
+            detail="Deep backfill is disabled (ALLOW_DEEP_BACKFILL=False). "
+                   "This setting protects against accidental FMP bandwidth exhaustion.",
+        )
     if not confirm_bandwidth:
         raise HTTPException(
             status_code=400,
@@ -264,6 +270,12 @@ async def admin_backfill_since_date(
     WARNING: Downloads full history from FMP (bypasses DB cache). Consumes
     significant API bandwidth. Set confirm_bandwidth=true to proceed.
     """
+    if not settings.ALLOW_DEEP_BACKFILL:
+        raise HTTPException(
+            status_code=403,
+            detail="Deep backfill is disabled (ALLOW_DEEP_BACKFILL=False). "
+                   "This setting protects against accidental FMP bandwidth exhaustion.",
+        )
     if not confirm_bandwidth:
         raise HTTPException(
             status_code=400,

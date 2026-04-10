@@ -102,7 +102,8 @@ Celery Beat runs catalog job **`admin_coverage_backfill`**, which dispatches **`
 3. **`recompute_universe`** (JobRun label `admin_indicators_recompute_universe`) — indicators from local bars  
 4. Daily regime computation, scan overlay, **`snapshot_last_n_days`** history (`admin_snapshots_history_backfill`), exit cascade, strategy evaluation  
 5. **`health_check`** (task name / label `admin_coverage_refresh`) — Redis coverage snapshot  
-6. Market audit quality + intelligence digest  
+6. **`admin_refresh_market_mvs`** (JobRun label `admin_refresh_market_mvs`) — refresh dashboard materialized views; runs after indicators and before the market audit  
+7. Market audit quality + intelligence digest  
 
 There are **no** separate catalog entries named `admin_recompute_universe` or `admin_record_daily`; those are steps inside `daily_bootstrap` unless you add explicit catalog jobs.
 
@@ -189,6 +190,26 @@ There are **no** separate catalog entries named `admin_recompute_universe` or `a
 3. Restart Redis if needed
 4. Pipeline continues to work with DB fallback, but slower
 
+### Materialized Views
+
+Three MVs pre-compute dashboard aggregations nightly:
+
+- `mv_breadth_daily` — % above SMA50/SMA200 per trading day
+- `mv_stage_distribution` — stage label counts per day
+- `mv_sector_performance` — sector averages from latest snapshots
+
+**Manual refresh** (if dashboard shows stale data):
+
+```sql
+REFRESH MATERIALIZED VIEW CONCURRENTLY mv_breadth_daily;
+REFRESH MATERIALIZED VIEW CONCURRENTLY mv_stage_distribution;
+REFRESH MATERIALIZED VIEW CONCURRENTLY mv_sector_performance;
+```
+
+Or trigger via Celery: the `refresh_market_mvs` task in `maintenance.py`.
+
+**If MVs don't exist** (pre-migration): the dashboard falls back to raw table queries automatically via `MarketMVService`.
+
 ---
 
 ## Invariants Checklist
@@ -274,15 +295,16 @@ docker logs -f celery-worker 2>&1 | grep -E 'recompute|snapshot_last_n'
 
 #### Production (Render)
 
-Option A — via Admin UI:
-1. Navigate to System Status > Operator Actions > Advanced > Backfill
-2. Set "Since date" to `1993-01-01`
-3. Click "Backfill Full Flow (since date)"
+Do **not** use **"Backfill Full Flow (since date)"** for this — that queues `full_historical`, which downloads OHLCV from FMP first. For snapshot-history gaps when daily bars already exist in Postgres, use **`safe_recompute`** only.
 
-Option B — via Render Shell:
+Option A — via Admin UI:
+1. Navigate to **System Status** → **Operator Actions** → **Advanced Controls** → **Backfill**
+2. Set **Since date** to `1993-01-01` (or your desired floor)
+3. Click **"Rebuild indicators + snapshot history (DB only, since date)"**
+
+Option B — via Render Shell (worker or API service; same Redis broker):
 ```bash
-# SSH into the backend service on Render
-render shell --service backend
+render shell --service axiomfolio-worker
 
 python -c "
 from backend.tasks.market.backfill import safe_recompute
@@ -291,23 +313,24 @@ print(f'Task ID: {result.id}')
 "
 ```
 
-Option C — via API:
+Option C — via API (no `confirm_bandwidth`; does not call FMP for bulk daily download):
 ```bash
-curl -X POST "https://api.axiomfolio.com/api/v1/market-data/admin/backfill/since-date?since_date=1993-01-01&confirm_bandwidth=true" \
+curl -X POST "https://api.axiomfolio.com/api/v1/market-data/admin/recompute/since-date?since_date=1993-01-01" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 ### What It Does
 
-1. `recompute_universe()` — recomputes all indicators for 2,500+ symbols
-2. `snapshot_last_n_days(since_date=...)` — builds `market_snapshot_history`
-   rows from the recomputed indicators for every trading day since the date
+1. `recompute_universe(force=True)` — refreshes `market_snapshot` from local `price_data`
+2. `snapshot_last_n_days(days=RECOMPUTE_HISTORY_MAX_DAYS, since_date=...)` — rebuilds `market_snapshot_history` from DB OHLCV
 3. `health_check()` — refreshes coverage metrics
+
+If **daily bars** are missing for symbols or dates, run **"Backfill Daily Coverage (Tracked)"**, **"Backfill Daily Bars (since)"** (with bandwidth confirm), or **"Backfill Full Flow (since date)"** first, then run **`safe_recompute`** again.
 
 ### Duration
 
 - Local: 30–90 minutes (depends on CPU and DB performance)
-- Production: 15–45 minutes (Render has faster I/O)
+- Production: often 30–120+ minutes for a full universe; the Celery task allows up to **6 hours** hard limit. A **Pro** worker (4 GB RAM) reduces OOM risk versus Standard (2 GB) during `snapshot_last_n_days`.
 
 ### Verification
 

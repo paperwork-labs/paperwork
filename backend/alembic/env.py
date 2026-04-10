@@ -1,8 +1,7 @@
 """Alembic Environment Configuration for AxiomFolio"""
 
 from logging.config import fileConfig
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import engine_from_config, pool, text
 from alembic import context
 import os
 import sys
@@ -79,6 +78,11 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        # Fail fast when another session holds DDL-heavy locks (e.g. Celery, long
+        # queries). Without this, API startup can hang until Render kills the
+        # instance; the log in main.py referred to these but they were not applied.
+        connection.execute(text("SET lock_timeout = '10s'"))
+        connection.execute(text("SET statement_timeout = '120s'"))
         context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():

@@ -61,6 +61,8 @@ Architectural decisions with rationale. Grouped by domain, newest first within e
 
 | ID | Date | Decision |
 |----|------|----------|
+| D74 | 2026-04-10 | **Statement timeout 30s on all DB connections** — Added `-c statement_timeout=30000` to SQLAlchemy connect_args to prevent runaway queries from blocking connection pool. Configurable via DB_STATEMENT_TIMEOUT_MS env var. Alternatives: per-query timeout (fragile), pg-level idle_in_transaction_session_timeout (complementary). Reversible: remove connect_args. |
+| D75 | 2026-04-10 | **Health check split: /health (fast) vs /health/full (DB)** — Render health probes now hit a lightweight /health endpoint with no DB queries. Full DB validation moved to /health/full for admin use. Eliminates health check timeouts that caused 502 cascades. Alternatives: cache health response (still risks first-request timeout). Reversible: merge endpoints back. |
 | D4 | 2026-03-23 | **Persona-based cursor rules** for domain-specific AI context |
 | D5 | 2026-03-23 | **Celery time limits per-task** — match job_catalog.py timeout_s |
 | D17 | 2026-03-23 | **Intelligence Brief system** — daily/weekly/monthly proactive delivery |
@@ -101,6 +103,7 @@ Architectural decisions with rationale. Grouped by domain, newest first within e
 
 | ID | Date | Decision |
 |----|------|----------|
+| D73 | 2026-04-10 | **Materialized Views for dashboard aggregations** — Pre-compute breadth (% above SMA50/200), stage distribution, and sector performance into PostgreSQL materialized views (mv_breadth_daily, mv_stage_distribution, mv_sector_performance). Refreshed nightly via CONCURRENTLY after indicator computation. Eliminates 7M-row aggregation queries from API hot path. Alternatives: query-time aggregation (current, causes 502s), summary tables (more maintenance). Reversible: DROP VIEW. |
 | D40 | 2026-03-27 | **Redis Streams for real-time events** — price:feed:alpaca, signals:evaluated, signals:output |
 | D41 | 2026-03-27 | **Async Redis in async contexts** — redis.asyncio for FastAPI routes and services |
 | D64 | 2026-04-02 | **iShares IWM ETF fallback for Russell 2000** — FMP/Finnhub lack R2K endpoint; parse CSV holdings from iShares; never cache empty constituent lists |

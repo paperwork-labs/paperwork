@@ -46,7 +46,9 @@ services:
   - type: worker
     name: axiomfolio-worker
     runtime: docker
-    plan: standard
+    # Starter (2 GB RAM) — sufficient for nightly delta pipeline;
+    # upgrade to Pro temporarily if running full snapshot_history rebuild
+    plan: starter
     dockerfilePath: ./Dockerfile.backend
     autoDeploy: true
     envVars:

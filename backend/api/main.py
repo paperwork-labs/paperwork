@@ -330,10 +330,22 @@ async def startup_event():
         logger.error(f"❌ Startup error: {e}")
 
 
-# Health check endpoint
+# Lightweight health check for Render probes (no DB, instant response)
 @app.get("/health")
 async def health_check():
-    """Health check endpoint for load balancers and monitoring."""
+    """Fast health check for load balancers. No DB queries."""
+    return {
+        "status": "healthy",
+        "version": "2.0.0",
+        "timestamp": datetime.now().isoformat(),
+        "api": "AxiomFolio V1",
+    }
+
+
+# Detailed health check with DB validation (admin use)
+@app.get("/health/full")
+async def health_check_full():
+    """Full health check with DB connectivity. Use /health for probes."""
     from backend.database import SessionLocal
     from sqlalchemy import text
 
@@ -344,18 +356,20 @@ async def health_check():
 
     try:
         db = SessionLocal()
-        result = db.execute(text("SELECT count(*) FROM information_schema.tables WHERE table_schema='public'"))
-        db_tables = result.scalar()
-
         try:
-            ver = db.execute(text("SELECT version_num FROM alembic_version LIMIT 1"))
-            row = ver.fetchone()
-            alembic_version = row[0] if row else "no-row"
-        except Exception:
-            alembic_version = "no-table"
+            result = db.execute(text("SELECT count(*) FROM information_schema.tables WHERE table_schema='public'"))
+            db_tables = result.scalar()
 
-        db_ok = True
-        db.close()
+            try:
+                ver = db.execute(text("SELECT version_num FROM alembic_version LIMIT 1"))
+                row = ver.fetchone()
+                alembic_version = row[0] if row else "no-row"
+            except Exception:
+                alembic_version = "no-table"
+
+            db_ok = True
+        finally:
+            db.close()
     except Exception as e:
         db_error = str(e)[:200]
 

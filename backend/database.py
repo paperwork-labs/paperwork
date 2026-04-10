@@ -48,6 +48,11 @@ if _PYTEST_RUNNING:
 APP_DATABASE_URL = DATABASE_URL
 
 # Create engine
+try:
+    _STATEMENT_TIMEOUT_MS = int(os.getenv("DB_STATEMENT_TIMEOUT_MS", "30000"))
+except (ValueError, TypeError):
+    _STATEMENT_TIMEOUT_MS = 30000
+
 engine = create_engine(
     DATABASE_URL,
     echo=os.getenv("DEBUG", "false").lower() == "true",
@@ -55,6 +60,9 @@ engine = create_engine(
     pool_recycle=300,
     pool_size=10,
     max_overflow=20,
+    connect_args={
+        "options": f"-c statement_timeout={_STATEMENT_TIMEOUT_MS}"
+    },
 )
 
 # Raw factory kept private; SessionLocal wrapper enforces test safety in pytest
@@ -140,9 +148,13 @@ def init_db():
 def check_db_health() -> bool:
     """Check if database is accessible."""
     try:
+        from sqlalchemy import text
+
         db = SessionLocal()
-        db.execute("SELECT 1")
-        db.close()
-        return True
+        try:
+            db.execute(text("SELECT 1"))
+            return True
+        finally:
+            db.close()
     except Exception:
         return False

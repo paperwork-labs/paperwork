@@ -111,6 +111,22 @@ def recover_jobs(stale_minutes: int = STALE_JOB_RUN_MINUTES) -> dict:
     soft_time_limit=300,
     time_limit=360,
 )
+@task_run("admin_refresh_market_mvs")
+def refresh_market_mvs() -> dict:
+    """Refresh market data materialized views (breadth, stage distribution, sector)."""
+    from backend.services.market.market_mv_service import market_mv_service
+
+    session = SessionLocal()
+    try:
+        return market_mv_service.refresh_all(session)
+    finally:
+        session.close()
+
+
+@shared_task(
+    soft_time_limit=300,
+    time_limit=360,
+)
 @task_run("admin_market_data_audit")
 def audit_quality(sample_limit: int = 25) -> dict:
     """Cache-warmer: calls AdminHealthService.compute_audit_metrics() to

@@ -273,57 +273,14 @@ class MarketDashboardService:
         ]
 
     def _build_breadth_series(self, db: Session, tracked: list[str]) -> list[dict[str, Any]]:
-        if not tracked:
-            return []
+        """Breadth over full technical_snapshot universe (MV → raw fallback).
 
-        cutoff = datetime.now(timezone.utc) - timedelta(days=120)
-        cutoff_date = cutoff.date()
-        stmt = (
-            select(
-                MarketSnapshotHistory.as_of_date,
-                func.count()
-                .filter(
-                    and_(
-                        MarketSnapshotHistory.sma_50.isnot(None),
-                        MarketSnapshotHistory.current_price > MarketSnapshotHistory.sma_50,
-                    )
-                )
-                .label("above_50"),
-                func.count()
-                .filter(
-                    and_(
-                        MarketSnapshotHistory.sma_200.isnot(None),
-                        MarketSnapshotHistory.current_price > MarketSnapshotHistory.sma_200,
-                    )
-                )
-                .label("above_200"),
-                func.count().label("total"),
-            )
-            .where(
-                MarketSnapshotHistory.analysis_type == "technical_snapshot",
-                MarketSnapshotHistory.symbol.in_(tracked),
-                MarketSnapshotHistory.as_of_date >= cutoff_date,
-            )
-            .group_by(MarketSnapshotHistory.as_of_date)
-            .order_by(MarketSnapshotHistory.as_of_date.asc())
-        )
-        rows = db.execute(stmt).all()
-        series: list[dict[str, Any]] = []
-        for row in rows:
-            as_of = row[0]
-            above_50 = int(row[1] or 0)
-            above_200 = int(row[2] or 0)
-            total = int(row[3] or 0)
-            dt_str = str(as_of)
-            series.append(
-                {
-                    "date": dt_str,
-                    "above_sma50_pct": round(above_50 / total * 100, 1) if total else 0,
-                    "above_sma200_pct": round(above_200 / total * 100, 1) if total else 0,
-                    "total": total,
-                }
-            )
-        return series
+        The ``tracked`` parameter is accepted for interface compatibility but
+        breadth is intentionally computed over all snapshot symbols so
+        MV and raw paths produce identical results.
+        """
+        from backend.services.market.market_mv_service import market_mv_service
+        return market_mv_service.get_breadth_series(db, days=120)
 
     def _build_rrg_sectors(self, rows: list[_SummaryRow]) -> list[dict[str, Any]]:
         row_by_symbol = {r.symbol: r for r in rows}

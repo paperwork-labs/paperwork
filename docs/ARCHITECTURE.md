@@ -323,6 +323,18 @@ Activity endpoint (/activity)
      OTHER_FEE, TAX_REFUND, INTEREST, TRANSFER, OTHER
 ```
 
+### Materialized Views
+
+Pre-computed aggregations refreshed nightly after indicator computation. Eliminates expensive aggregation queries on 7M+ row `market_snapshot_history` table.
+
+| View | Source | Content | Refresh |
+|------|--------|---------|---------|
+| `mv_breadth_daily` | `market_snapshot_history` | Daily % above SMA50/SMA200, total count | Nightly (CONCURRENTLY) |
+| `mv_stage_distribution` | `market_snapshot_history` | Daily stage label counts | Nightly (CONCURRENTLY) |
+| `mv_sector_performance` | `market_snapshot` | Sector avg perf_20d, avg RS Mansfield | Nightly (CONCURRENTLY) |
+
+Query path: Redis cache → MV → raw table fallback. Managed by `MarketMVService` in `backend/services/market/market_mv_service.py`.
+
 ## RBAC (Role-Based Access Control)
 
 - JWT includes `sub` (username) and `role` claim.

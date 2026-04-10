@@ -335,7 +335,6 @@ def daily_bootstrap(
         daily_bars,
         tracked_cache,
     )
-    from backend.tasks.market.bulk_eod import bulk_daily_fill
     from backend.tasks.market.history import snapshot_last_n_days
     from backend.tasks.market.indicators import recompute_universe
     from backend.tasks.market.regime import compute_daily
@@ -382,40 +381,13 @@ def daily_bootstrap(
 
     _t0 = _time.monotonic()
     try:
-        res3 = bulk_daily_fill()
-        if res3.get("status") in ("skipped", "error"):
-            logger.info(
-                "daily_bootstrap: bulk_daily_fill unavailable (%s), falling back to daily_bars",
-                res3.get("reason") or res3.get("error"),
-            )
-            res3 = daily_bars(days=_backfill_days)
-        else:
-            new_sym_count = (res2 or {}).get("new", 0)
-            if new_sym_count:
-                logger.info(
-                    "daily_bootstrap: %d new symbols detected — running daily_bars for deep history",
-                    new_sym_count,
-                )
-                try:
-                    res3_deep = daily_bars(days=_backfill_days)
-                    res3["deep_backfill"] = res3_deep
-                except SoftTimeLimitExceeded:
-                    raise
-                except Exception as exc_deep:
-                    logger.warning("daily_bootstrap: daily_bars deep pass failed (non-fatal): %s", exc_deep)
-                    res3["deep_backfill"] = {"status": "error", "error": str(exc_deep)}
+        res3 = daily_bars(days=_backfill_days)
     except SoftTimeLimitExceeded:
         logger.warning("Task %s hit soft time limit", "admin_coverage_backfill")
         raise
     except Exception as exc:
-        logger.warning("daily_bootstrap: bulk_daily_fill failed, falling back to daily_bars: %s", exc)
-        try:
-            res3 = daily_bars(days=_backfill_days)
-        except SoftTimeLimitExceeded:
-            raise
-        except Exception as exc2:
-            logger.warning("daily_bootstrap: daily_bars fallback also failed: %s", exc2)
-            res3 = {"status": "error", "error": str(exc2)}
+        logger.warning("daily_bootstrap: daily_bars failed: %s", exc)
+        res3 = {"status": "error", "error": str(exc)}
     _append("admin_backfill_daily", res3, _time.monotonic() - _t0)
 
     _t0 = _time.monotonic()
@@ -498,6 +470,18 @@ def daily_bootstrap(
         logger.warning("daily_bootstrap: health_check failed (non-fatal): %s", exc)
         res10 = {"status": "error", "error": str(exc)}
     _append("admin_coverage_refresh", res10, _time.monotonic() - _t0)
+
+    _t0 = _time.monotonic()
+    try:
+        from backend.tasks.market.maintenance import refresh_market_mvs as _refresh_mvs
+        res_mv = _refresh_mvs()
+    except SoftTimeLimitExceeded:
+        logger.warning("Task %s hit soft time limit", "admin_coverage_backfill")
+        raise
+    except Exception as exc:
+        logger.warning("MV refresh failed (non-fatal): %s", exc)
+        res_mv = {"status": "error", "error": str(exc)}
+    _append("admin_refresh_market_mvs", res_mv, _time.monotonic() - _t0)
 
     _t0 = _time.monotonic()
     try:
