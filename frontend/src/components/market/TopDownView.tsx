@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { marketDataApi } from '../../services/api';
 import { REGIME_HEX } from '../../constants/chart';
 import { useRegime } from '../../hooks/useRegime';
+import { useSnapshotTable } from '../../hooks/useSnapshotTable';
 import { useVolatility, type VolatilityDashboardData } from '../../hooks/useVolatility';
 import { useChartColors } from '../../hooks/useChartColors';
 import StatCard from '../shared/StatCard';
@@ -14,6 +15,7 @@ import { cn } from '@/lib/utils';
 import type { RegimeData } from './RegimeBanner';
 import { heatTextClass, semanticTextColorClass } from '@/lib/semantic-text-color';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const DATA_CELL = 'font-mono text-xs tracking-tight';
 
@@ -29,7 +31,6 @@ const fmtPct = (v: unknown): string => {
 const INDEX_SYMBOLS = ['SPY', 'RSP', 'MDY', 'DIA', 'IWM', 'QQQ'];
 
 interface TopDownViewProps {
-  snapshots: any[];
   dashboardPayload: any;
 }
 
@@ -47,7 +48,7 @@ function stageEtfBadgeClass(stage: string | undefined | null): string {
   return 'border-border bg-muted text-muted-foreground';
 }
 
-const TopDownView: React.FC<TopDownViewProps> = ({ snapshots, dashboardPayload }) => {
+const TopDownView: React.FC<TopDownViewProps> = ({ dashboardPayload }) => {
   const cc = useChartColors();
 
   const { data: regimeRaw } = useRegime();
@@ -64,13 +65,18 @@ const TopDownView: React.FC<TopDownViewProps> = ({ snapshots, dashboardPayload }
 
   const { data: volData } = useVolatility();
 
+  const { data: indexTableData, isPending: indexLoading } = useSnapshotTable({
+    symbols: INDEX_SYMBOLS.join(','),
+    limit: INDEX_SYMBOLS.length,
+  });
+
   const snapshotMap = React.useMemo(() => {
     const m = new Map<string, any>();
-    (snapshots || []).forEach((s: any) => {
+    (indexTableData?.rows || []).forEach((s: any) => {
       if (s?.symbol) m.set(s.symbol.toUpperCase(), s);
     });
     return m;
-  }, [snapshots]);
+  }, [indexTableData]);
 
   const regimeColor = regimeData?.regime_state
     ? REGIME_HEX[regimeData.regime_state] || '#64748B'
@@ -259,24 +265,32 @@ const TopDownView: React.FC<TopDownViewProps> = ({ snapshots, dashboardPayload }
               </tr>
             </thead>
             <tbody>
-              {indexRows.map(row => (
-                <tr
-                  key={row.symbol}
-                  className="border-b border-border/80 transition-colors last:border-0 hover:bg-[rgb(var(--bg-hover))]"
-                >
-                  <td className="px-2 py-2 font-semibold">{row.symbol}</td>
-                  <td className={cn('px-2 py-2 text-right', DATA_CELL)}>{row.price?.toFixed(2) ?? '—'}</td>
-                  <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(row.perf_1d))}>{fmtPct(row.perf_1d)}</td>
-                  <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(row.perf_5d))}>{fmtPct(row.perf_5d)}</td>
-                  <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(row.perf_20d))}>{fmtPct(row.perf_20d)}</td>
-                  <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(row.perf_252d))}>{fmtPct(row.perf_252d)}</td>
-                  <td className={cn(
-                    'px-2 py-2 text-right',
-                    DATA_CELL,
-                    (row.rsi ?? 50) > 70 ? semanticTextColorClass('red.500') : (row.rsi ?? 50) < 30 ? semanticTextColorClass('green.500') : undefined
-                  )}>{row.rsi?.toFixed(0) ?? '—'}</td>
-                </tr>
-              ))}
+              {indexLoading
+                ? Array.from({ length: INDEX_SYMBOLS.length }).map((_, i) => (
+                    <tr key={i} className="border-b border-border/80">
+                      {Array.from({ length: 7 }).map((_, j) => (
+                        <td key={j} className="px-2 py-2"><Skeleton className="h-4 w-full" /></td>
+                      ))}
+                    </tr>
+                  ))
+                : indexRows.map(row => (
+                    <tr
+                      key={row.symbol}
+                      className="border-b border-border/80 transition-colors last:border-0 hover:bg-[rgb(var(--bg-hover))]"
+                    >
+                      <td className="px-2 py-2 font-semibold">{row.symbol}</td>
+                      <td className={cn('px-2 py-2 text-right', DATA_CELL)}>{row.price?.toFixed(2) ?? '—'}</td>
+                      <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(row.perf_1d))}>{fmtPct(row.perf_1d)}</td>
+                      <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(row.perf_5d))}>{fmtPct(row.perf_5d)}</td>
+                      <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(row.perf_20d))}>{fmtPct(row.perf_20d)}</td>
+                      <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(row.perf_252d))}>{fmtPct(row.perf_252d)}</td>
+                      <td className={cn(
+                        'px-2 py-2 text-right',
+                        DATA_CELL,
+                        (row.rsi ?? 50) > 70 ? semanticTextColorClass('red.500') : (row.rsi ?? 50) < 30 ? semanticTextColorClass('green.500') : undefined
+                      )}>{row.rsi?.toFixed(0) ?? '—'}</td>
+                    </tr>
+                  ))}
             </tbody>
           </table>
         </div>

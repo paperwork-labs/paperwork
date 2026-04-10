@@ -330,19 +330,28 @@ async def get_snapshot_aggregates(
             func.count(),
             func.avg(MarketSnapshot.rs_mansfield_pct),
             func.avg(MarketSnapshot.perf_1d),
+            func.avg(MarketSnapshot.perf_20d),
+            func.sum(case((MarketSnapshot.stage_label.like("2%"), 1), else_=0)),
+            func.sum(case((MarketSnapshot.stage_label.like("4%"), 1), else_=0)),
         )
         .group_by(MarketSnapshot.sector)
         .all()
     )
-    sector_summary = [
-        {
+    sector_summary = []
+    for s, c, rs, p1d, p20d, s2, s4 in sector_rows:
+        s2_pct = round((s2 / c) * 100, 1) if c else 0.0
+        s4_pct = round((s4 / c) * 100, 1) if c else 0.0
+        health = "bullish" if s2 > s4 else ("bearish" if s4 > s2 else "neutral")
+        sector_summary.append({
             "sector": s or "Unknown",
             "count": c,
             "avg_rs": round(rs, 2) if rs else None,
-            "avg_perf_1d": round(p, 4) if p else None,
-        }
-        for s, c, rs, p in sector_rows
-    ]
+            "avg_perf_1d": round(p1d, 4) if p1d else None,
+            "avg_perf_20d": round(p20d, 4) if p20d else None,
+            "stage2_pct": s2_pct,
+            "stage4_pct": s4_pct,
+            "health": health,
+        })
 
     tier_rows = (
         base.with_entities(MarketSnapshot.scan_tier, func.count())

@@ -816,26 +816,7 @@ class MarketDashboardService:
 
         constituent_syms = sorted(str(s).upper() for s in tracked)
 
-        coverage_raw = self._safe_section(
-            "coverage",
-            lambda: coverage_analytics.build_coverage_response(
-                db,
-                fill_trading_days_window=50,
-                fill_lookback_days=120,
-            ),
-            None,
-        )
-        coverage_out: dict[str, Any] | None
-        if coverage_raw is None:
-            coverage_out = None
-        else:
-            coverage_out = {
-                "status": coverage_raw.get("status"),
-                "daily_pct": (((coverage_raw.get("daily") or {}).get("coverage") or {}).get("pct")),
-                "m5_pct": (((coverage_raw.get("m5") or {}).get("coverage") or {}).get("pct")),
-                "daily_stale": (((coverage_raw.get("daily") or {}).get("coverage") or {}).get("stale_count")),
-                "m5_stale": (((coverage_raw.get("m5") or {}).get("coverage") or {}).get("stale_count")),
-            }
+        coverage_out: dict[str, Any] | None = None
 
         return {
             "generated_at": datetime.now(timezone.utc).isoformat(),

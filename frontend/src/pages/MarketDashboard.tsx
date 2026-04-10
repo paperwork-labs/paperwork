@@ -1062,7 +1062,7 @@ const MarketDashboard: React.FC = () => {
                     console.error('ErrorBoundary [market-dashboard-top-down]:', error, info);
                   }}
                 >
-                  <TopDownView snapshots={[]} dashboardPayload={payload} />
+                  <TopDownView dashboardPayload={payload} />
                 </ErrorBoundary>
               )}
               {activeView === 'bottom-up' && (
@@ -1090,7 +1090,7 @@ const MarketDashboard: React.FC = () => {
                     console.error('ErrorBoundary [market-dashboard-sectors]:', error, info);
                   }}
                 >
-                  <SectorView snapshots={[]} dashboardPayload={payload} />
+                  <SectorView dashboardPayload={payload} />
                 </ErrorBoundary>
               )}
               {activeView === 'heatmap' && (

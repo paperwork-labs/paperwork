@@ -139,6 +139,10 @@ export interface SectorSummaryEntry {
   count: number;
   avg_rs: number | null;
   avg_perf_1d: number | null;
+  avg_perf_20d: number | null;
+  stage2_pct: number | null;
+  stage4_pct: number | null;
+  health: string | null;
 }
 
 export interface TierDistributionEntry {

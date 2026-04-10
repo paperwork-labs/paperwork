@@ -1,8 +1,11 @@
 import React from 'react';
+import { Loader2 } from 'lucide-react';
 import StageBadge from '../shared/StageBadge';
 import { SymbolLink } from './SymbolChartUI';
 import { heatTextClass, semanticTextColorClass } from '@/lib/semantic-text-color';
 import { useChartColors } from '../../hooks/useChartColors';
+import { useSnapshotTable } from '../../hooks/useSnapshotTable';
+import { useSnapshotAggregates } from '../../hooks/useSnapshotAggregates';
 import {
   ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip as RTooltip,
   ResponsiveContainer, ReferenceLine, ReferenceArea, Cell, CartesianGrid,
@@ -27,7 +30,6 @@ const fmtPct = (v: unknown): string => {
 };
 
 interface SectorViewProps {
-  snapshots: any[];
   dashboardPayload: any;
 }
 
@@ -45,36 +47,37 @@ function healthBadgeClass(health: string): string {
   return 'border-border bg-muted text-muted-foreground';
 }
 
-const SectorView: React.FC<SectorViewProps> = ({ snapshots, dashboardPayload }) => {
+const SectorView: React.FC<SectorViewProps> = ({ dashboardPayload }) => {
   const cc = useChartColors();
   const [selectedSector, setSelectedSector] = React.useState<string | null>(null);
 
-  const sectorMap = React.useMemo(() => {
-    const m = new Map<string, any[]>();
-    snapshots.forEach((s: any) => {
-      const sector = s.sector || 'Unknown';
-      if (!m.has(sector)) m.set(sector, []);
-      m.get(sector)!.push(s);
-    });
-    return m;
-  }, [snapshots]);
+  const { data: aggData } = useSnapshotAggregates({});
 
-  const sectorSummaries = React.useMemo(() =>
-    Array.from(sectorMap.entries()).map(([sector, stocks]) => {
-      const n = stocks.length;
-      const avgPerf1d = stocks.reduce((a: number, s: any) => a + (s.perf_1d || 0), 0) / n;
-      const avgPerf20d = stocks.reduce((a: number, s: any) => a + (s.perf_20d || 0), 0) / n;
-      const avgRS = stocks.reduce((a: number, s: any) => a + (s.rs_mansfield_pct || 0), 0) / n;
-      const stage2count = stocks.filter((s: any) => s.stage_label?.startsWith('2')).length;
-      const stage4count = stocks.filter((s: any) => s.stage_label?.startsWith('4')).length;
-      return {
-        sector, count: n, avgPerf1d, avgPerf20d, avgRS,
-        stage2pct: (stage2count / n) * 100,
-        stage4pct: (stage4count / n) * 100,
-        health: stage2count > stage4count ? 'bullish' : stage4count > stage2count ? 'bearish' : 'neutral',
-      };
-    }).sort((a, b) => b.avgRS - a.avgRS),
-    [sectorMap]);
+  const { data: sectorStocks, isPending: sectorStocksLoading } = useSnapshotTable(
+    {
+      sectors: selectedSector || undefined,
+      sort_by: 'rs_mansfield_pct',
+      sort_dir: 'desc',
+      limit: 50,
+    },
+    { enabled: Boolean(selectedSector) },
+  );
+
+  const sectorSummaries = React.useMemo(() => {
+    if (!aggData?.sector_summary) return [];
+    return aggData.sector_summary
+      .map((s) => ({
+        sector: s.sector,
+        count: s.count,
+        avgPerf1d: s.avg_perf_1d ?? 0,
+        avgPerf20d: s.avg_perf_20d ?? 0,
+        avgRS: s.avg_rs ?? 0,
+        stage2pct: s.stage2_pct ?? 0,
+        stage4pct: s.stage4_pct ?? 0,
+        health: s.health ?? 'neutral',
+      }))
+      .sort((a, b) => b.avgRS - a.avgRS);
+  }, [aggData]);
 
   const rrgData = React.useMemo(() =>
     (dashboardPayload?.rrg_sectors || []).map((s: any, i: number) => ({
@@ -82,10 +85,9 @@ const SectorView: React.FC<SectorViewProps> = ({ snapshots, dashboardPayload }) 
     })), [dashboardPayload]);
 
   const selectedStocks = React.useMemo(() => {
-    if (!selectedSector) return [];
-    return (sectorMap.get(selectedSector) || [])
-      .sort((a: any, b: any) => (b.rs_mansfield_pct || 0) - (a.rs_mansfield_pct || 0));
-  }, [selectedSector, sectorMap]);
+    if (!selectedSector || !sectorStocks?.rows) return [];
+    return sectorStocks.rows;
+  }, [selectedSector, sectorStocks]);
 
   const maxAbs = React.useMemo(() => {
     if (!rrgData.length) return 5;
@@ -185,10 +187,13 @@ const SectorView: React.FC<SectorViewProps> = ({ snapshots, dashboardPayload }) 
         </div>
       </div>
 
-      {selectedSector && selectedStocks.length > 0 && (
+      {selectedSector && (
         <div className="rounded-lg border border-border bg-card p-4">
           <div className="mb-3 flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold">{selectedSector} — {selectedStocks.length} stocks</p>
+            <p className="text-sm font-semibold">
+              {selectedSector}
+              {sectorStocksLoading ? '' : ` — ${selectedStocks.length} stocks`}
+            </p>
             <Badge
               variant="outline"
               className="cursor-pointer font-normal"
@@ -197,39 +202,48 @@ const SectorView: React.FC<SectorViewProps> = ({ snapshots, dashboardPayload }) 
               Close
             </Badge>
           </div>
-          <div className="max-h-[400px] overflow-auto rounded-md border border-border">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 z-[1] border-b border-border bg-card">
-                <tr>
-                  <th className="px-2 py-2 text-left font-medium">Ticker</th>
-                  <th className="px-2 py-2 text-right font-medium">Price</th>
-                  <th className="px-2 py-2 text-left font-medium">Stage</th>
-                  <th className="px-2 py-2 text-right font-medium">1D</th>
-                  <th className="px-2 py-2 text-right font-medium">20D</th>
-                  <th className="px-2 py-2 text-right font-medium">RS</th>
-                  <th className="px-2 py-2 text-right font-medium">Ext150%</th>
-                  <th className="px-2 py-2 text-right font-medium">ATR%</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selectedStocks.map((s: any) => (
-                  <tr
-                    key={s.symbol}
-                    className="border-b border-border/80 transition-colors last:border-0 hover:bg-[rgb(var(--bg-hover))]"
-                  >
-                    <td className="px-2 py-2"><SymbolLink symbol={s.symbol} /></td>
-                    <td className={cn('px-2 py-2 text-right', DATA_CELL)}>{s.current_price?.toFixed(2) ?? '—'}</td>
-                    <td className="px-2 py-2"><StageBadge stage={s.stage_label || '—'} /></td>
-                    <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(s.perf_1d))}>{fmtPct(s.perf_1d)}</td>
-                    <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(s.perf_20d))}>{fmtPct(s.perf_20d)}</td>
-                    <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(s.rs_mansfield_pct))}>{fmtPct(s.rs_mansfield_pct)}</td>
-                    <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(s.ext_pct))}>{fmtPct(s.ext_pct)}</td>
-                    <td className={cn('px-2 py-2 text-right', DATA_CELL)}>{s.atrp_14?.toFixed(1) ?? '—'}%</td>
+          {sectorStocksLoading ? (
+            <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+              <Loader2 className="size-5 shrink-0 animate-spin" aria-hidden />
+              <span>Loading…</span>
+            </div>
+          ) : selectedStocks.length > 0 ? (
+            <div className="max-h-[400px] overflow-auto rounded-md border border-border">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 z-[1] border-b border-border bg-card">
+                  <tr>
+                    <th className="px-2 py-2 text-left font-medium">Ticker</th>
+                    <th className="px-2 py-2 text-right font-medium">Price</th>
+                    <th className="px-2 py-2 text-left font-medium">Stage</th>
+                    <th className="px-2 py-2 text-right font-medium">1D</th>
+                    <th className="px-2 py-2 text-right font-medium">20D</th>
+                    <th className="px-2 py-2 text-right font-medium">RS</th>
+                    <th className="px-2 py-2 text-right font-medium">Ext150%</th>
+                    <th className="px-2 py-2 text-right font-medium">ATR%</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {selectedStocks.map((s: any) => (
+                    <tr
+                      key={s.symbol}
+                      className="border-b border-border/80 transition-colors last:border-0 hover:bg-[rgb(var(--bg-hover))]"
+                    >
+                      <td className="px-2 py-2"><SymbolLink symbol={s.symbol} /></td>
+                      <td className={cn('px-2 py-2 text-right', DATA_CELL)}>{s.current_price?.toFixed(2) ?? '—'}</td>
+                      <td className="px-2 py-2"><StageBadge stage={s.stage_label || '—'} /></td>
+                      <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(s.perf_1d))}>{fmtPct(s.perf_1d)}</td>
+                      <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(s.perf_20d))}>{fmtPct(s.perf_20d)}</td>
+                      <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(s.rs_mansfield_pct))}>{fmtPct(s.rs_mansfield_pct)}</td>
+                      <td className={cn('px-2 py-2 text-right', DATA_CELL, heatTextClass(s.ext_pct))}>{fmtPct(s.ext_pct)}</td>
+                      <td className={cn('px-2 py-2 text-right', DATA_CELL)}>{s.atrp_14?.toFixed(1) ?? '—'}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="py-8 text-center text-sm text-muted-foreground">No stocks in this sector.</p>
+          )}
         </div>
       )}
     </div>
