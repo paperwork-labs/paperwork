@@ -41,7 +41,8 @@ def upgrade() -> None:
             COUNT(*) AS total
         FROM market_snapshot_history
         WHERE analysis_type = 'technical_snapshot'
-        GROUP BY as_of_date::date;
+        GROUP BY as_of_date::date
+        WITH NO DATA;
     """)
     op.execute(
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_breadth_daily_dt "
@@ -56,7 +57,8 @@ def upgrade() -> None:
             COUNT(*) AS cnt
         FROM market_snapshot_history
         WHERE analysis_type = 'technical_snapshot'
-        GROUP BY as_of_date::date, stage_label;
+        GROUP BY as_of_date::date, stage_label
+        WITH NO DATA;
     """)
     op.execute(
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_stage_dist_dt_label "
@@ -73,7 +75,8 @@ def upgrade() -> None:
         FROM market_snapshot
         WHERE analysis_type = 'technical_snapshot'
           AND sector IS NOT NULL
-        GROUP BY sector;
+        GROUP BY sector
+        WITH NO DATA;
     """)
     op.execute(
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_sector_perf_sector "

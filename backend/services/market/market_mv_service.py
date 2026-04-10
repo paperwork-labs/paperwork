@@ -54,15 +54,26 @@ class MarketMVService:
         """Return True if at least one MV is present (for warmup gating)."""
         return any(self._mv_exists(db, mv) for mv in self.VIEWS)
 
+    @staticmethod
+    def _mv_has_data(db: Session, name: str) -> bool:
+        """Check if MV has been populated (has at least one row)."""
+        try:
+            sql = text(f"SELECT 1 FROM {name} LIMIT 1;")
+            row = db.execute(sql).first()
+            return row is not None
+        except Exception:
+            return False
+
     # ------------------------------------------------------------------
     # Refresh
     # ------------------------------------------------------------------
 
     def refresh_all(self, db: Session) -> Dict[str, Any]:
-        """Refresh all market MVs concurrently. Safe to call periodically.
+        """Refresh all market MVs. Safe to call periodically.
 
-        Uses autocommit isolation so ``REFRESH MATERIALIZED VIEW CONCURRENTLY``
-        runs outside a transaction block (Postgres requirement).
+        Uses autocommit isolation (Postgres requirement for MV refresh).
+        For empty MVs (created WITH NO DATA), uses non-concurrent refresh
+        since CONCURRENTLY requires at least one prior population.
         """
         refreshed: List[str] = []
         errors: List[str] = []
@@ -71,13 +82,20 @@ class MarketMVService:
             auto_conn = raw_conn.execution_options(isolation_level="AUTOCOMMIT")
             for mv in self.VIEWS:
                 try:
-                    if self._mv_exists(db, mv):
+                    if not self._mv_exists(db, mv):
+                        logger.info("MV %s does not exist, skipping refresh", mv)
+                        continue
+
+                    if self._mv_has_data(db, mv):
                         auto_conn.execute(
                             text(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {mv};")
                         )
-                        refreshed.append(mv)
                     else:
-                        logger.info("MV %s does not exist, skipping refresh", mv)
+                        logger.info("MV %s is empty, using non-concurrent refresh", mv)
+                        auto_conn.execute(
+                            text(f"REFRESH MATERIALIZED VIEW {mv};")
+                        )
+                    refreshed.append(mv)
                 except Exception as e:
                     logger.warning("Failed to refresh MV %s: %s", mv, e)
                     errors.append(f"{mv}: {e}")
