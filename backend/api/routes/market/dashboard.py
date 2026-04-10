@@ -57,7 +57,8 @@ def get_market_dashboard(
         result = dashboard.build_dashboard(db, universe=universe)
         try:
             serialized = json.dumps(result, default=str)
-            infra.redis_client.setex(cache_key, 300, serialized)
+            ttl = 300 if universe == "holdings" else 3600
+            infra.redis_client.setex(cache_key, ttl, serialized)
         except Exception as e:
             logger.warning("Failed to cache dashboard result: %s", e)
         return result

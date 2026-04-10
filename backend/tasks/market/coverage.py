@@ -485,6 +485,18 @@ def daily_bootstrap(
 
     _t0 = _time.monotonic()
     try:
+        from backend.tasks.market.maintenance import warm_dashboard_cache as _warm_dash
+        res_dash = _warm_dash()
+    except SoftTimeLimitExceeded:
+        logger.warning("Task %s hit soft time limit", "admin_coverage_backfill")
+        raise
+    except Exception as exc:
+        logger.warning("Dashboard cache warm failed (non-fatal): %s", exc)
+        res_dash = {"status": "error", "error": str(exc)}
+    _append("admin_warm_dashboard", res_dash, _time.monotonic() - _t0)
+
+    _t0 = _time.monotonic()
+    try:
         from backend.tasks.market.maintenance import audit_quality as _audit_quality
         res10b = _audit_quality()
     except SoftTimeLimitExceeded:

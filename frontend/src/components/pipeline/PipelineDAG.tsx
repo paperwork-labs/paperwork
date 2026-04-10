@@ -29,10 +29,10 @@ import { formatDateFriendly, formatDateTimeFriendly } from '@/utils/format';
 // ---------------------------------------------------------------------------
 // Vertical grid layout — 4 rows, top-to-bottom pipeline flow
 //
-// Row 0  Ingestion:   constituents → tracked_cache → daily_bars
+// Row 0  Ingestion:   constituents → tracked_cache → daily_bars → mv_refresh
 // Row 1  Compute:     [gap] regime  indicators  exit_cascade
 // Row 2  Downstream:  [gap] scan    strategy    snapshot_history
-// Row 3  Reporting:   digest  health  audit
+// Row 3  Reporting:   digest  health  audit  warm_dashboard
 // ---------------------------------------------------------------------------
 
 interface NodePos {
@@ -44,6 +44,7 @@ const NODE_POSITIONS: Record<string, NodePos> = {
   constituents:     { row: 0, col: 0 },
   tracked_cache:    { row: 0, col: 1 },
   daily_bars:       { row: 0, col: 2 },
+  mv_refresh:       { row: 0, col: 3 },
   regime:           { row: 1, col: 1 },
   indicators:       { row: 1, col: 2 },
   exit_cascade:     { row: 1, col: 3 },
@@ -53,6 +54,7 @@ const NODE_POSITIONS: Record<string, NodePos> = {
   digest:           { row: 3, col: 0 },
   health_check:     { row: 3, col: 1 },
   audit:            { row: 3, col: 2 },
+  warm_dashboard:   { row: 3, col: 3 },
 };
 
 const NODE_W = 160;

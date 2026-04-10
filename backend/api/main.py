@@ -325,6 +325,12 @@ def _sync_deferred_startup() -> None:
             _startup_conn.execute(_sa_text("SELECT pg_advisory_unlock(42)"))
         _startup_conn.close()
 
+    try:
+        from backend.tasks.market.maintenance import warm_dashboard_cache
+        warm_dashboard_cache()
+    except Exception as dash_e:
+        logger.warning("Dashboard cache warm failed (non-fatal): %s", dash_e)
+
     logger.info("Deferred startup complete")
 
 

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, TypeVar
 
 from sqlalchemy import and_, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 
 from backend.models.market_data import MarketSnapshot, MarketSnapshotHistory
 from backend.models.market_tracked_plan import MarketTrackedPlan
@@ -95,6 +95,28 @@ class MarketDashboardService:
 
         rows = (
             db.query(MarketSnapshot)
+            .options(load_only(
+                MarketSnapshot.symbol, MarketSnapshot.analysis_timestamp,
+                MarketSnapshot.analysis_type,
+                MarketSnapshot.stage_label, MarketSnapshot.previous_stage_label,
+                MarketSnapshot.current_stage_days, MarketSnapshot.current_price,
+                MarketSnapshot.perf_1d, MarketSnapshot.perf_5d,
+                MarketSnapshot.perf_20d, MarketSnapshot.perf_252d,
+                MarketSnapshot.rs_mansfield_pct,
+                MarketSnapshot.atr_14, MarketSnapshot.sma_21,
+                MarketSnapshot.sma_50, MarketSnapshot.sma_200,
+                MarketSnapshot.sector, MarketSnapshot.industry,
+                MarketSnapshot.atrx_sma_21, MarketSnapshot.atrx_sma_50,
+                MarketSnapshot.range_pos_52w, MarketSnapshot.rsi,
+                MarketSnapshot.pe_ttm, MarketSnapshot.eps_growth_yoy,
+                MarketSnapshot.revenue_growth_yoy, MarketSnapshot.next_earnings,
+                MarketSnapshot.scan_tier,
+                MarketSnapshot.action_label,
+                MarketSnapshot.td_buy_setup, MarketSnapshot.td_sell_setup,
+                MarketSnapshot.td_buy_countdown, MarketSnapshot.td_sell_countdown,
+                MarketSnapshot.td_perfect_buy, MarketSnapshot.td_perfect_sell,
+                MarketSnapshot.gaps_unfilled_up, MarketSnapshot.gaps_unfilled_down,
+            ))
             .filter(
                 MarketSnapshot.analysis_type == "technical_snapshot",
                 MarketSnapshot.symbol.in_(tracked),
@@ -112,6 +134,20 @@ class MarketDashboardService:
 
         history_rows = (
             db.query(MarketSnapshotHistory)
+            .options(load_only(
+                MarketSnapshotHistory.symbol, MarketSnapshotHistory.as_of_date,
+                MarketSnapshotHistory.analysis_type,
+                MarketSnapshotHistory.stage_label, MarketSnapshotHistory.previous_stage_label,
+                MarketSnapshotHistory.current_stage_days, MarketSnapshotHistory.current_price,
+                MarketSnapshotHistory.perf_1d, MarketSnapshotHistory.perf_5d,
+                MarketSnapshotHistory.perf_20d,
+                MarketSnapshotHistory.rs_mansfield_pct,
+                MarketSnapshotHistory.atr_14, MarketSnapshotHistory.sma_21,
+                MarketSnapshotHistory.sma_50, MarketSnapshotHistory.sma_200,
+                MarketSnapshotHistory.sector, MarketSnapshotHistory.industry,
+                MarketSnapshotHistory.atrx_sma_21, MarketSnapshotHistory.atrx_sma_50,
+                MarketSnapshotHistory.range_pos_52w, MarketSnapshotHistory.rsi,
+            ))
             .filter(
                 MarketSnapshotHistory.analysis_type == "technical_snapshot",
                 MarketSnapshotHistory.symbol.in_(list(latest_by_symbol.keys())),

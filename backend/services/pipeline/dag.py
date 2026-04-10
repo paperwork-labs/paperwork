@@ -108,6 +108,12 @@ PIPELINE_DAG: Dict[str, StepDef] = {
         timeout_s=360,
         display_name="MV Refresh",
     ),
+    "warm_dashboard": StepDef(
+        deps=("mv_refresh",),
+        task_path="backend.tasks.market.maintenance.warm_dashboard_cache",
+        timeout_s=120,
+        display_name="Dashboard Cache Warm",
+    ),
     "audit": StepDef(
         deps=("indicators", "snapshot_history", "mv_refresh"),
         task_path="backend.tasks.market.maintenance.audit_quality",
@@ -429,6 +435,7 @@ _STEP_TO_TASK_NAME: Dict[str, str] = {
     "strategy_eval": "strategy_evaluation",
     "health_check": "admin_coverage_refresh",
     "mv_refresh": "admin_refresh_market_mvs",
+    "warm_dashboard": "admin_warm_dashboard",
     "audit": "admin_market_data_audit",
     "digest": "intelligence_daily_digest",
 }

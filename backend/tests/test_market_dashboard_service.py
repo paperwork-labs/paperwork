@@ -25,6 +25,9 @@ class _FakeQuery:
     def distinct(self, *args, **kwargs):
         return self
 
+    def options(self, *args, **kwargs):
+        return self
+
     def all(self):
         return self._rows
 

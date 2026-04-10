@@ -123,6 +123,27 @@ def refresh_market_mvs() -> dict:
         session.close()
 
 
+def warm_dashboard_cache() -> dict:
+    """Pre-compute and cache the market dashboard payload so user requests are instant."""
+    import json as _json
+    from backend.services.market.market_dashboard_service import MarketDashboardService
+    from backend.services.market.market_data_service import infra
+
+    session = SessionLocal()
+    try:
+        svc = MarketDashboardService()
+        result = svc.build_dashboard(session, universe="all")
+        serialized = _json.dumps(result, default=str)
+        infra.redis_client.setex("dashboard:all", 3600, serialized)
+        logger.info("Dashboard cache warmed (%d bytes)", len(serialized))
+        return {"status": "ok", "size_bytes": len(serialized)}
+    except Exception as e:
+        logger.warning("Dashboard cache warm failed: %s", e)
+        return {"status": "error", "error": str(e)}
+    finally:
+        session.close()
+
+
 @shared_task(
     soft_time_limit=300,
     time_limit=360,

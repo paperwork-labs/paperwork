@@ -92,6 +92,7 @@ _STEP_TO_LEGACY_NAME: Dict[str, str] = {
     "strategy_eval": "strategy_evaluation",
     "health_check": "admin_coverage_refresh",
     "audit": "admin_market_data_audit",
+    "warm_dashboard": "admin_warm_dashboard",
     "digest": "intelligence_digest",
 }
 
