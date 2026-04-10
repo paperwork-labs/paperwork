@@ -3,6 +3,9 @@
 Verifies that when multiple workers start simultaneously, only the worker
 that acquires pg_try_advisory_lock(42) runs seed_schedules and admin
 creation. The other worker skips those side-effects.
+
+The lock logic lives in _sync_deferred_startup() which runs in a
+background thread after startup_event() completes.
 """
 
 import pytest
@@ -41,10 +44,8 @@ def _build_mock_conn(lock_acquired: bool):
 @patch("backend.api.main.settings")
 @patch("backend.api.main.SessionLocal")
 @patch("backend.api.main.engine")
-@patch("backend.api.main.validate_production_settings")
-def test_lock_acquired_runs_seed(mock_validate, mock_engine, mock_session_local, mock_settings):
+def test_lock_acquired_runs_seed(mock_engine, mock_session_local, mock_settings):
     """When advisory lock is acquired, seed_schedules and admin creation run."""
-    mock_settings.AUTO_MIGRATE_ON_STARTUP = False
     mock_settings.ADMIN_SEED_ENABLED = False
     mock_settings.SEED_ACCOUNTS_ON_STARTUP = False
     mock_settings.AUTO_WARM_ON_STARTUP = False
@@ -58,10 +59,9 @@ def test_lock_acquired_runs_seed(mock_validate, mock_engine, mock_session_local,
     mock_seed = MagicMock(return_value="seeded 5 schedules")
 
     with patch("backend.scripts.seed_schedules.seed", mock_seed):
-        import asyncio
-        from backend.api.main import startup_event
+        from backend.api.main import _sync_deferred_startup
 
-        asyncio.get_event_loop().run_until_complete(startup_event())
+        _sync_deferred_startup()
 
         mock_seed.assert_called_once_with(mock_db)
 
@@ -69,10 +69,8 @@ def test_lock_acquired_runs_seed(mock_validate, mock_engine, mock_session_local,
 @patch("backend.api.main.settings")
 @patch("backend.api.main.SessionLocal")
 @patch("backend.api.main.engine")
-@patch("backend.api.main.validate_production_settings")
-def test_lock_not_acquired_skips_seed(mock_validate, mock_engine, mock_session_local, mock_settings):
+def test_lock_not_acquired_skips_seed(mock_engine, mock_session_local, mock_settings):
     """When advisory lock is NOT acquired, seed is skipped entirely."""
-    mock_settings.AUTO_MIGRATE_ON_STARTUP = False
     mock_settings.ADMIN_SEED_ENABLED = False
     mock_settings.SEED_ACCOUNTS_ON_STARTUP = False
     mock_settings.AUTO_WARM_ON_STARTUP = False
@@ -83,10 +81,9 @@ def test_lock_not_acquired_skips_seed(mock_validate, mock_engine, mock_session_l
     mock_seed = MagicMock()
 
     with patch("backend.scripts.seed_schedules.seed", mock_seed):
-        import asyncio
-        from backend.api.main import startup_event
+        from backend.api.main import _sync_deferred_startup
 
-        asyncio.get_event_loop().run_until_complete(startup_event())
+        _sync_deferred_startup()
 
         mock_seed.assert_not_called()
 
@@ -94,10 +91,8 @@ def test_lock_not_acquired_skips_seed(mock_validate, mock_engine, mock_session_l
 @patch("backend.api.main.settings")
 @patch("backend.api.main.SessionLocal")
 @patch("backend.api.main.engine")
-@patch("backend.api.main.validate_production_settings")
-def test_lock_released_in_finally(mock_validate, mock_engine, mock_session_local, mock_settings):
+def test_lock_released_in_finally(mock_engine, mock_session_local, mock_settings):
     """Advisory lock is released and connection closed even if seed raises."""
-    mock_settings.AUTO_MIGRATE_ON_STARTUP = False
     mock_settings.ADMIN_SEED_ENABLED = False
     mock_settings.SEED_ACCOUNTS_ON_STARTUP = False
     mock_settings.AUTO_WARM_ON_STARTUP = False
@@ -124,10 +119,9 @@ def test_lock_released_in_finally(mock_validate, mock_engine, mock_session_local
     mock_session_local.return_value = mock_db
 
     with patch("backend.scripts.seed_schedules.seed", side_effect=RuntimeError("seed kaboom")):
-        import asyncio
-        from backend.api.main import startup_event
+        from backend.api.main import _sync_deferred_startup
 
-        asyncio.get_event_loop().run_until_complete(startup_event())
+        _sync_deferred_startup()
 
     assert len(unlock_called) == 1, "Advisory lock must be released in finally block"
     assert len(close_called) == 1, "Connection must be closed in finally block"
@@ -136,10 +130,8 @@ def test_lock_released_in_finally(mock_validate, mock_engine, mock_session_local
 @patch("backend.api.main.settings")
 @patch("backend.api.main.SessionLocal")
 @patch("backend.api.main.engine")
-@patch("backend.api.main.validate_production_settings")
-def test_lock_not_acquired_still_closes_connection(mock_validate, mock_engine, mock_session_local, mock_settings):
+def test_lock_not_acquired_still_closes_connection(mock_engine, mock_session_local, mock_settings):
     """Even when lock is not acquired, connection is closed."""
-    mock_settings.AUTO_MIGRATE_ON_STARTUP = False
     mock_settings.ADMIN_SEED_ENABLED = False
     mock_settings.SEED_ACCOUNTS_ON_STARTUP = False
     mock_settings.AUTO_WARM_ON_STARTUP = False
@@ -157,9 +149,8 @@ def test_lock_not_acquired_still_closes_connection(mock_validate, mock_engine, m
     conn.close = lambda: close_called.append(True)
     mock_engine.connect.return_value = conn
 
-    import asyncio
-    from backend.api.main import startup_event
+    from backend.api.main import _sync_deferred_startup
 
-    asyncio.get_event_loop().run_until_complete(startup_event())
+    _sync_deferred_startup()
 
     assert len(close_called) == 1, "Connection must be closed even when lock not acquired"

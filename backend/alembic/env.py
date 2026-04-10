@@ -82,7 +82,7 @@ def run_migrations_online() -> None:
         # queries). Without this, API startup can hang until Render kills the
         # instance; the log in main.py referred to these but they were not applied.
         connection.execute(text("SET lock_timeout = '10s'"))
-        connection.execute(text("SET statement_timeout = '120s'"))
+        connection.execute(text("SET statement_timeout = '30s'"))
         context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():

@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request, Depends
 from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+import asyncio
 import logging
 import logging.config
 from datetime import datetime, timezone
@@ -201,133 +202,161 @@ def _auto_warm_if_stale():
         db.close()
 
 
-# Create database tables
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database and services."""
+def _run_migrations() -> None:
+    """Run Alembic migrations synchronously. Aborts startup on failure."""
+    import os
+    from alembic import command as _alembic_command
+    from alembic.config import Config as _AlembicConfig
+
+    if not settings.AUTO_MIGRATE_ON_STARTUP:
+        logger.info("Alembic migrations skipped (AUTO_MIGRATE_ON_STARTUP=false)")
+        return
+
+    backend_dir = os.path.dirname(os.path.dirname(__file__))
+    alembic_ini_path = os.path.join(backend_dir, "alembic.ini")
+    cfg = _AlembicConfig(alembic_ini_path)
+    cfg.set_main_option("script_location", os.path.join(backend_dir, "alembic"))
+    logger.info("Starting Alembic migration (lock_timeout=10s, statement_timeout=30s)...")
+    _alembic_command.upgrade(cfg, "head")
+    logger.info("Alembic migrations applied (upgrade head)")
+
+
+def _sync_deferred_startup() -> None:
+    """Non-critical startup work that runs after /health is available.
+
+    Advisory-locked so multi-worker deploys don't race on seeding.
+    All failures are logged as warnings and never abort the process.
+    """
+    from sqlalchemy import text as _sa_text
+
+    _startup_conn = engine.connect()
+    _got_lock = False
     try:
-        validate_production_settings()
-        # Alembic migrations run at API startup when AUTO_MIGRATE_ON_STARTUP=true.
-        # Render Docker services use this approach (preDeployCommand lacks reliable env injection).
+        _got_lock = _startup_conn.execute(
+            _sa_text("SELECT pg_try_advisory_lock(42)")
+        ).scalar()
+
+        if not _got_lock:
+            logger.info("Startup lock held by another worker -- skipping seed/admin")
+            return
+
+        # Seed schedules from catalog
         try:
-            import os
-            from alembic import command as _alembic_command
-            from alembic.config import Config as _AlembicConfig
+            from backend.scripts.seed_schedules import seed
+            _db = SessionLocal()
+            try:
+                seed_result = seed(_db)
+                logger.info("Schedule seed: %s", seed_result)
+            finally:
+                _db.close()
+        except Exception as seed_e:
+            logger.warning("Schedule seed skipped/failed: %s", seed_e)
 
-            if settings.AUTO_MIGRATE_ON_STARTUP:
-                backend_dir = os.path.dirname(os.path.dirname(__file__))
-                alembic_ini_path = os.path.join(backend_dir, "alembic.ini")
-                cfg = _AlembicConfig(alembic_ini_path)
-                cfg.set_main_option("script_location", os.path.join(backend_dir, "alembic"))
-                logger.info("Starting Alembic migration (lock_timeout=10s, statement_timeout=120s)...")
-                _alembic_command.upgrade(cfg, "head")
-                logger.info("✅ Alembic migrations applied (upgrade head)")
-            else:
-                logger.info("Alembic migrations skipped (AUTO_MIGRATE_ON_STARTUP=false)")
-        except Exception as mig_e:
-            logger.error("Alembic migration FAILED -- refusing to start with stale schema: %s", mig_e, exc_info=True)
-            raise SystemExit(1)
-
-        # Guard non-migration startup side-effects with a Postgres advisory lock
-        # so that multi-worker deployments (--workers 2) don't race on seeding.
-        # Alembic handles its own DDL lock above; this protects seed + admin creation.
-        from sqlalchemy import text as _sa_text
-
-        _startup_conn = engine.connect()
-        _got_startup_lock = False
+        # Seed admin user if explicitly enabled
         try:
-            _got_startup_lock = _startup_conn.execute(
-                _sa_text("SELECT pg_try_advisory_lock(42)")
-            ).scalar()
-
-            if _got_startup_lock:
-                # Seed schedules from catalog
-                try:
-                    from backend.scripts.seed_schedules import seed
-                    _db = SessionLocal()
+            if settings.ADMIN_SEED_ENABLED:
+                admin_user = getattr(settings, "ADMIN_USERNAME", None)
+                admin_email = getattr(settings, "ADMIN_EMAIL", None)
+                admin_password = getattr(settings, "ADMIN_PASSWORD", None)
+                if admin_user and admin_email and admin_password:
+                    db = SessionLocal()
                     try:
-                        seed_result = seed(_db)
-                        logger.info("Schedule seed: %s", seed_result)
-                    finally:
-                        _db.close()
-                except Exception as seed_e:
-                    logger.warning("Schedule seed skipped/failed: %s", seed_e)
-
-                # Seed admin user if explicitly enabled
-                try:
-                    if settings.ADMIN_SEED_ENABLED:
-                        admin_user = getattr(settings, "ADMIN_USERNAME", None)
-                        admin_email = getattr(settings, "ADMIN_EMAIL", None)
-                        admin_password = getattr(settings, "ADMIN_PASSWORD", None)
-                        if admin_user and admin_email and admin_password:
-                            db = SessionLocal()
-                            existing = (
-                                db.query(User)
-                                .filter((User.username == admin_user) | (User.email == admin_email))
-                                .first()
+                        existing = (
+                            db.query(User)
+                            .filter((User.username == admin_user) | (User.email == admin_email))
+                            .first()
+                        )
+                        if not existing:
+                            u = User(
+                                username=admin_user,
+                                email=admin_email,
+                                password_hash=get_password_hash(admin_password),
+                                role=UserRole.OWNER,
+                                is_active=True,
+                                is_verified=True,
+                                is_approved=True,
                             )
-                            if not existing:
-                                u = User(
-                                    username=admin_user,
-                                    email=admin_email,
-                                    password_hash=get_password_hash(admin_password),
-                                    role=UserRole.OWNER,
-                                    is_active=True,
-                                    is_verified=True,
-                                    is_approved=True,
-                                )
-                                db.add(u)
-                                db.commit()
-                                logger.info("Seeded admin user '%s'", admin_user)
-                            db.close()
-                        else:
-                            logger.info("Admin seeding skipped (ADMIN_* not set)")
-                    else:
-                        logger.info("Admin seeding disabled (ADMIN_SEED_ENABLED=false)")
-                except Exception as se:
-                    logger.warning("Admin seeding skipped/failed: %s", se)
+                            db.add(u)
+                            db.commit()
+                            logger.info("Seeded admin user '%s'", admin_user)
+                    finally:
+                        db.close()
+                else:
+                    logger.info("Admin seeding skipped (ADMIN_* not set)")
             else:
-                logger.info("Startup lock held by another worker -- skipping seed/admin")
-        finally:
-            if _got_startup_lock:
-                _startup_conn.execute(_sa_text("SELECT pg_advisory_unlock(42)"))
-            _startup_conn.close()
+                logger.info("Admin seeding disabled (ADMIN_SEED_ENABLED=false)")
+        except Exception as se:
+            logger.warning("Admin seeding skipped/failed: %s", se)
 
-        logger.info("Scheduling: Celery Beat drives all schedules from job_catalog")
-        logger.info("AxiomFolio V1 API starting up...")
-        # Optional price bootstrap temporarily disabled until MarketDataService is stabilized
-        # Seed default user and broker accounts from .env for dev convenience
+        # Seed broker accounts
         try:
             if getattr(settings, "SEED_ACCOUNTS_ON_STARTUP", False):
                 seeding = account_config_service.seed_broker_accounts(user_id=1)
-                logger.info(f"🌱 Account seeding: {seeding}")
+                logger.info("Account seeding: %s", seeding)
             else:
-                logger.info("🌱 Account seeding disabled (SEED_ACCOUNTS_ON_STARTUP=false)")
+                logger.info("Account seeding disabled (SEED_ACCOUNTS_ON_STARTUP=false)")
         except Exception as se:
-            logger.warning(f"Account seeding skipped/failed: {se}")
+            logger.warning("Account seeding skipped/failed: %s", se)
 
-        # Instruments normalization pass (make instruments table pristine after migrations)
+        # Instruments normalization
         try:
             from backend.services.portfolio.ibkr_sync_service import portfolio_sync_service
             db = SessionLocal()
-            norm = portfolio_sync_service.normalize_instruments_from_activity(db)
-            db.commit()
-            db.close()
-            logger.info(f"🧹 Instrument normalization: {norm}")
+            try:
+                norm = portfolio_sync_service.normalize_instruments_from_activity(db)
+                db.commit()
+                logger.info("Instrument normalization: %s", norm)
+            finally:
+                db.close()
         except Exception as ne:
-            logger.warning(f"Instrument normalization skipped: {ne}")
+            logger.warning("Instrument normalization skipped: %s", ne)
 
         # Auto-warm: queue nightly pipeline if market data is stale
         if settings.AUTO_WARM_ON_STARTUP:
             try:
                 _auto_warm_if_stale()
             except Exception as warm_e:
-                logger.warning(f"Auto-warm skipped/failed: {warm_e}")
+                logger.warning("Auto-warm skipped/failed: %s", warm_e)
         else:
             logger.info("Auto-warm disabled (AUTO_WARM_ON_STARTUP=false)")
 
+    finally:
+        if _got_lock:
+            _startup_conn.execute(_sa_text("SELECT pg_advisory_unlock(42)"))
+        _startup_conn.close()
+
+    logger.info("Deferred startup complete")
+
+
+async def _deferred_startup() -> None:
+    """Run non-critical startup in a background thread."""
+    try:
+        await asyncio.to_thread(_sync_deferred_startup)
     except Exception as e:
-        logger.error(f"❌ Startup error: {e}")
+        logger.warning("Deferred startup error (non-fatal): %s", e)
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database and services.
+
+    Only migration runs synchronously (schema must be correct before
+    serving).  Everything else is deferred to a background task so
+    /health becomes available immediately.
+    """
+    validate_production_settings()
+
+    try:
+        _run_migrations()
+    except Exception as mig_e:
+        logger.error(
+            "Alembic migration FAILED -- refusing to start with stale schema: %s",
+            mig_e, exc_info=True,
+        )
+        raise SystemExit(1)
+
+    logger.info("AxiomFolio V1 API starting up...")
+    asyncio.create_task(_deferred_startup())
 
 
 # Lightweight health check for Render probes (no DB, instant response)
