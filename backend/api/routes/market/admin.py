@@ -211,10 +211,15 @@ async def admin_backfill_snapshot_history_last_n_days(
     request: Request,
     days: int = Query(200, ge=1, le=3000),
     since_date: str | None = Query(None, description="Optional YYYY-MM-DD"),
+    symbols: str | None = Query(None, description="Comma-separated symbols for targeted fill (e.g. 'QQQ,IWM,RSP')"),
     _admin: User = Depends(get_admin_user),
 ) -> Dict[str, Any]:
-    """Backfill MarketSnapshotHistory for the last N trading days."""
-    return enqueue_task(snapshot_last_n_days, days, since_date=since_date)
+    """Backfill MarketSnapshotHistory for the last N trading days.
+    
+    If symbols is provided, only those symbols are processed (much faster).
+    """
+    symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()] if symbols else None
+    return enqueue_task(snapshot_last_n_days, days, since_date=since_date, symbols=symbol_list)
 
 
 @router.post("/backfill/daily/since-date")

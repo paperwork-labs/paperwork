@@ -143,15 +143,23 @@ def snapshot_last_n_days(
     days: int = 200,
     batch_size: int = 25,
     since_date: Optional[str] = None,
+    symbols: Optional[List[str]] = None,
 ) -> dict:
     """Backfill `market_snapshot_history` for the last N trading days (SPY calendar) from local DB prices.
 
     This computes and stores indicators per day (ledger) so you can later view/backtest
     historical snapshots. `market_snapshot` remains the fast latest-view.
+
+    Args:
+        symbols: If provided, only process these symbols (for targeted fills).
+                 Otherwise process entire tracked universe.
     """
     session = SessionLocal()
     try:
-        ordered = _get_tracked_symbols_safe(session)
+        if symbols:
+            ordered = [s.upper() for s in symbols if s]
+        else:
+            ordered = _get_tracked_symbols_safe(session)
 
         # Trading-day calendar:
         # Prefer SPY dates as canonical, but fall back to any symbol with 1d bars in the DB.
