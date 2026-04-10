@@ -17,7 +17,6 @@ Create Date: 2026-04-10
 """
 
 from alembic import op
-from sqlalchemy import text
 
 revision = "0021"
 down_revision = "0020"
@@ -26,19 +25,10 @@ depends_on = None
 
 
 def upgrade() -> None:
-    conn = op.get_bind()
-    idx_exists = conn.execute(
-        text("SELECT 1 FROM pg_indexes WHERE indexname = 'idx_hist_type_date'")
-    ).first()
-    if not idx_exists:
-        auto_conn = conn.connect().execution_options(isolation_level="AUTOCOMMIT")
-        auto_conn.execute(
-            text(
-                "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_hist_type_date "
-                "ON market_snapshot_history (analysis_type, as_of_date);"
-            )
-        )
-        auto_conn.close()
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS idx_hist_type_date "
+        "ON market_snapshot_history (analysis_type, as_of_date);"
+    )
 
     op.execute("""
         CREATE MATERIALIZED VIEW IF NOT EXISTS mv_breadth_daily AS
