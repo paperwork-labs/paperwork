@@ -203,9 +203,12 @@ def _auto_warm_if_stale():
 
 
 def _run_migrations() -> None:
-    """Run Alembic migrations synchronously. Aborts startup on failure."""
+    """Run Alembic migrations synchronously. Aborts startup on failure.
+
+    Fast-path: if the DB is already at the script head revision, skip the
+    full Alembic upgrade machinery (saves ~5-6 seconds on remote Postgres).
+    """
     import os
-    from alembic import command as _alembic_command
     from alembic.config import Config as _AlembicConfig
 
     if not settings.AUTO_MIGRATE_ON_STARTUP:
@@ -216,6 +219,23 @@ def _run_migrations() -> None:
     alembic_ini_path = os.path.join(backend_dir, "alembic.ini")
     cfg = _AlembicConfig(alembic_ini_path)
     cfg.set_main_option("script_location", os.path.join(backend_dir, "alembic"))
+
+    try:
+        from sqlalchemy import text as _text
+        from alembic.script import ScriptDirectory
+        with engine.connect() as conn:
+            current = conn.execute(_text("SELECT version_num FROM alembic_version LIMIT 1")).scalar()
+        if current:
+            script = ScriptDirectory.from_config(cfg)
+            head = script.get_current_head()
+            if current == head:
+                logger.info("Alembic: already at head (%s), skipping upgrade", head)
+                return
+            logger.info("Alembic: DB at %s, head is %s -- running upgrade", current, head)
+    except Exception as e:
+        logger.info("Alembic fast-check skipped (%s), running full upgrade", e)
+
+    from alembic import command as _alembic_command
     logger.info("Starting Alembic migration (lock_timeout=10s, statement_timeout=30s)...")
     _alembic_command.upgrade(cfg, "head")
     logger.info("Alembic migrations applied (upgrade head)")
@@ -298,18 +318,19 @@ def _sync_deferred_startup() -> None:
         except Exception as se:
             logger.warning("Account seeding skipped/failed: %s", se)
 
-        # Instruments normalization
-        try:
-            from backend.services.portfolio.ibkr_sync_service import portfolio_sync_service
-            db = SessionLocal()
+        # Instruments normalization (gated behind account seeding flag)
+        if getattr(settings, "SEED_ACCOUNTS_ON_STARTUP", False):
             try:
-                norm = portfolio_sync_service.normalize_instruments_from_activity(db)
-                db.commit()
-                logger.info("Instrument normalization: %s", norm)
-            finally:
-                db.close()
-        except Exception as ne:
-            logger.warning("Instrument normalization skipped: %s", ne)
+                from backend.services.portfolio.ibkr_sync_service import portfolio_sync_service
+                db = SessionLocal()
+                try:
+                    norm = portfolio_sync_service.normalize_instruments_from_activity(db)
+                    db.commit()
+                    logger.info("Instrument normalization: %s", norm)
+                finally:
+                    db.close()
+            except Exception as ne:
+                logger.warning("Instrument normalization skipped: %s", ne)
 
         # Auto-warm: queue nightly pipeline if market data is stale
         if settings.AUTO_WARM_ON_STARTUP:
@@ -324,12 +345,6 @@ def _sync_deferred_startup() -> None:
         if _got_lock:
             _startup_conn.execute(_sa_text("SELECT pg_advisory_unlock(42)"))
         _startup_conn.close()
-
-    try:
-        from backend.tasks.market.maintenance import warm_dashboard_cache
-        warm_dashboard_cache()
-    except Exception as dash_e:
-        logger.warning("Dashboard cache warm failed (non-fatal): %s", dash_e)
 
     logger.info("Deferred startup complete")
 

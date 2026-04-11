@@ -11,13 +11,13 @@ import logging
 from typing import Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from backend.api.rate_limit import limiter
 from backend.database import get_db
 from backend.models.user import User
 from backend.services.market.market_data_service import infra
-from backend.services.market.market_dashboard_service import MarketDashboardService
 from backend.api.dependencies import get_market_data_viewer
 from backend.api.schemas.market import MarketDashboardResponse
 from backend.config import settings
@@ -39,32 +39,40 @@ def get_market_dashboard(
     viewer: User = Depends(get_market_data_viewer),
     universe: str = "all",
 ) -> Dict[str, Any]:
-    """Reader-friendly market dashboard summary for momentum workflows."""
+    """Reader-friendly market dashboard summary for momentum workflows.
+
+    Reads exclusively from Redis cache. On cache miss, triggers a Celery
+    worker task to build the dashboard and returns HTTP 202 so the web
+    process never runs the heavy build_dashboard() query.
+    """
     if universe not in ("all", "etf", "holdings"):
         universe = "all"
     if universe in ("holdings",) and viewer:
         cache_key = f"dashboard:{universe}:{viewer.id}"
     else:
         cache_key = f"dashboard:{universe}"
+
     try:
-        try:
-            cached = infra.redis_client.get(cache_key)
-            if cached:
-                return json.loads(cached)
-        except Exception:
-            cached = None
-        dashboard = MarketDashboardService()
-        result = dashboard.build_dashboard(db, universe=universe)
-        try:
-            serialized = json.dumps(result, default=str)
-            ttl = 300 if universe == "holdings" else 3600
-            infra.redis_client.setex(cache_key, ttl, serialized)
-        except Exception as e:
-            logger.warning("Failed to cache dashboard result: %s", e)
-        return result
+        cached = infra.redis_client.get(cache_key)
+        if cached:
+            return json.loads(cached)
+    except Exception:
+        pass
+
+    try:
+        from backend.tasks.market.maintenance import warm_dashboard_cache
+        warm_dashboard_cache.delay(universe)
+        logger.info("Dashboard cache miss (universe=%s) -- triggered async warm", universe)
     except Exception as e:
-        logger.exception("get_market_dashboard failed: %s", e)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.warning("Failed to trigger dashboard warm task: %s", e)
+
+    return JSONResponse(
+        status_code=202,
+        content={
+            "status": "warming",
+            "message": "Dashboard is being computed. Refresh in ~30 seconds.",
+        },
+    )
 
 
 @router.get("/volatility-dashboard")

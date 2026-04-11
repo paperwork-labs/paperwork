@@ -123,22 +123,32 @@ def refresh_market_mvs() -> dict:
         session.close()
 
 
-def warm_dashboard_cache() -> dict:
-    """Pre-compute and cache the market dashboard payload so user requests are instant."""
+@shared_task(
+    soft_time_limit=120,
+    time_limit=180,
+)
+@task_run("admin_warm_dashboard")
+def warm_dashboard_cache(universe: str = "all") -> dict:
+    """Pre-compute and cache the market dashboard payload so user requests are instant.
+
+    Runs in the Celery worker -- never in the web process.
+    """
     import json as _json
     from backend.services.market.market_dashboard_service import MarketDashboardService
     from backend.services.market.market_data_service import infra
 
+    cache_key = f"dashboard:{universe}"
     session = SessionLocal()
     try:
         svc = MarketDashboardService()
-        result = svc.build_dashboard(session, universe="all")
+        result = svc.build_dashboard(session, universe=universe)
         serialized = _json.dumps(result, default=str)
-        infra.redis_client.setex("dashboard:all", 3600, serialized)
-        logger.info("Dashboard cache warmed (%d bytes)", len(serialized))
-        return {"status": "ok", "size_bytes": len(serialized)}
+        ttl = 300 if universe == "holdings" else 3600
+        infra.redis_client.setex(cache_key, ttl, serialized)
+        logger.info("Dashboard cache warmed universe=%s (%d bytes)", universe, len(serialized))
+        return {"status": "ok", "universe": universe, "size_bytes": len(serialized)}
     except Exception as e:
-        logger.warning("Dashboard cache warm failed: %s", e)
+        logger.warning("Dashboard cache warm failed (universe=%s): %s", universe, e)
         return {"status": "error", "error": str(e)}
     finally:
         session.close()
