@@ -47,10 +47,7 @@ def get_market_dashboard(
     """
     if universe not in ("all", "etf", "holdings"):
         universe = "all"
-    if universe in ("holdings",) and viewer:
-        cache_key = f"dashboard:{universe}:{viewer.id}"
-    else:
-        cache_key = f"dashboard:{universe}"
+    cache_key = f"dashboard:{universe}"
 
     try:
         cached = infra.redis_client.get(cache_key)

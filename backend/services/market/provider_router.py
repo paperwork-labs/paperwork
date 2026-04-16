@@ -38,7 +38,8 @@ def _last_n_trading_sessions(n: int = 2) -> list:
         import exchange_calendars as xcals
 
         nyse = xcals.get_calendar("XNYS")
-        today = pd.Timestamp.now(tz="UTC").normalize()
+        # tz-naive: exchange_calendars sessions are naive UTC dates
+        today = pd.Timestamp.now(tz="UTC").normalize().tz_localize(None)
         schedule = nyse.sessions_in_range(today - pd.Timedelta(days=15), today)
         from zoneinfo import ZoneInfo
 
@@ -69,7 +70,7 @@ def _is_l2_fresh(latest_bar_date) -> bool:
             return bar_ts >= oldest_acceptable
     except Exception:
         logger.debug("Trading session check failed for L2 freshness, falling back to day count")
-    days_stale = (pd.Timestamp.now("UTC").normalize() - pd.Timestamp(latest_bar_date).normalize()).days
+    days_stale = (pd.Timestamp.now("UTC").normalize().tz_localize(None) - pd.Timestamp(latest_bar_date).normalize().tz_localize(None)).days
     return days_stale <= L2_FRESHNESS_MAX_DAYS
 
 

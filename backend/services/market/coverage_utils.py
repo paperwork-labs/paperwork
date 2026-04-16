@@ -19,7 +19,8 @@ def _expected_latest_trading_day():
         from zoneinfo import ZoneInfo
 
         nyse = xcals.get_calendar("XNYS")
-        today = pd.Timestamp.now(tz="UTC").normalize()
+        # tz-naive: exchange_calendars sessions are naive UTC dates
+        today = pd.Timestamp.now(tz="UTC").normalize().tz_localize(None)
         et_now = datetime.now(ZoneInfo("America/New_York"))
         schedule = nyse.sessions_in_range(today - pd.Timedelta(days=10), today)
         if et_now.hour < 16:

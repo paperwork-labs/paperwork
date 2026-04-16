@@ -134,6 +134,8 @@ type TDSignalItem = { symbol: string; signals: string[]; stage_label?: string; p
 type GapLeader = { symbol: string; gaps_up: number; gaps_down: number; total_gaps: number; stage_label?: string; sector?: string };
 
 type DashboardPayload = {
+  status?: string;
+  message?: string;
   tracked_count?: number;
   snapshot_count?: number;
   latest_snapshot_at?: string;
@@ -781,8 +783,14 @@ const MarketDashboard: React.FC = () => {
     queryKey: ['market-dashboard'],
     queryFn: async () => (await marketDataApi.getDashboard()) as DashboardPayload,
     staleTime: 60_000,
-    refetchInterval: 5 * 60_000,
+    refetchInterval: (query) => {
+      const d = query.state.data;
+      if (d?.status === 'warming') return 10_000;
+      return 5 * 60_000;
+    },
   });
+
+  const isWarming = payload?.status === 'warming';
   const [chartSymbol, setChartSymbol] = React.useState<string | null>(null);
   const openChart = React.useCallback((sym: string) => setChartSymbol(sym), []);
   const portfolioQuery = usePortfolioSymbols();
@@ -900,6 +908,19 @@ const MarketDashboard: React.FC = () => {
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" aria-hidden />
           Loading market dashboard…
+        </div>
+      </Page>
+    );
+  }
+
+  if (isWarming) {
+    return (
+      <Page>
+        <div className="flex flex-col items-center justify-center gap-3 py-16">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" aria-hidden />
+          <p className="text-sm text-muted-foreground">
+            Dashboard data is being computed. Auto-refreshing in a few seconds…
+          </p>
         </div>
       </Page>
     );

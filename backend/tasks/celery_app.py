@@ -127,7 +127,20 @@ celery_app.conf.update(
 )
 
 
-from celery.signals import worker_ready  # noqa: E402
+from celery.signals import worker_process_init, worker_ready  # noqa: E402
+
+
+@worker_process_init.connect
+def _dispose_engine_on_fork(**kwargs):
+    """Reset the SQLAlchemy connection pool after Celery forks a child process.
+
+    Without this, forked children inherit the parent's stale connections,
+    exhausting the QueuePool (pool_size=10 + max_overflow=20) because the
+    inherited slots appear occupied but are actually dead.
+    """
+    from backend.database import engine
+    engine.dispose()
+    logger.info("Disposed SQLAlchemy engine pool for new worker child")
 
 
 @worker_ready.connect
