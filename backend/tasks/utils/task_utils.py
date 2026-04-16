@@ -470,10 +470,17 @@ def _get_tracked_universe_from_db(session: Session) -> Set[str]:
 
 
 def _daily_backfill_concurrency() -> int:
-    """Effective daily backfill concurrency from ProviderPolicy."""
+    """Effective daily backfill concurrency from ProviderPolicy.
+
+    Each concurrent symbol fetch may hold a DB session (L2). Cap below the global
+    SQLAlchemy pool (pool_size=10 + max_overflow=20) so nightly backfill cannot
+    exhaust the QueuePool while the outer ``symbols()`` session and JobRun
+    sessions are also checked out.
+    """
     policy = settings.provider_policy
     max_conc = int(getattr(settings, "MARKET_BACKFILL_CONCURRENCY_MAX", 100))
-    return max(1, min(max_conc, policy.backfill_concurrency))
+    pool_safe = 20
+    return max(1, min(max_conc, policy.backfill_concurrency, pool_safe))
 
 
 def _persist_daily_fetch_results(

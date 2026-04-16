@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Optional
@@ -23,6 +24,9 @@ class MarketInfra:
     def __init__(self) -> None:
         self._redis_sync: Optional[redis.Redis] = None
         self._redis_async: Optional[aioredis.Redis] = None
+        # Async Redis must not be reused across closed asyncio loops (Celery tasks
+        # create a fresh loop per run_until_complete and then close it).
+        self._redis_async_loop: Optional[asyncio.AbstractEventLoop] = None
         self.cache_ttl_seconds: int = int(getattr(settings, "MARKET_DATA_CACHE_TTL", 300))
 
         self.finnhub_client = (
@@ -57,11 +61,27 @@ class MarketInfra:
         return self._redis_sync
 
     async def _get_redis(self) -> aioredis.Redis:
+        current_loop = asyncio.get_running_loop()
+        stale = self._redis_async is None
+        if not stale and self._redis_async_loop is not current_loop:
+            stale = True
+        if not stale and self._redis_async_loop is not None and self._redis_async_loop.is_closed():
+            stale = True
+
+        if stale and self._redis_async is not None:
+            try:
+                await self._redis_async.aclose()
+            except Exception as e:
+                logger.warning("Failed to close stale async Redis client: %s", e)
+            self._redis_async = None
+            self._redis_async_loop = None
+
         if self._redis_async is None:
             url = getattr(settings, "REDIS_URL", None)
             if not url:
                 raise RuntimeError("REDIS_URL is not configured")
             self._redis_async = aioredis.from_url(url)
+            self._redis_async_loop = current_loop
         return self._redis_async
 
     # ---------------------- Provider call tracking ----------------------
