@@ -21,6 +21,7 @@ from celery.exceptions import SoftTimeLimitExceeded
 from backend.database import SessionLocal
 from backend.models import Position
 from backend.models.market_data import MarketSnapshot
+from backend.models.position import PositionStatus
 from backend.services.market.market_data_service import coverage_analytics, infra
 from backend.tasks.utils.task_utils import _resolve_history_days, task_run
 
@@ -149,7 +150,7 @@ def _evaluate_exit_cascade_all() -> dict:
         positions = (
             session.query(Position)
             .filter(
-                Position.status == "open",
+                Position.status == PositionStatus.OPEN,
                 Position.quantity > 0,
             )
             .all()

@@ -308,6 +308,49 @@ CATALOG: List[JobTemplate] = [
         timeout_s=1800,
     ),
 
+    # ── Dashboard cache warming ────────────────────────────────────
+    # The /market-data/dashboard endpoint reads exclusively from Redis. On a cache
+    # miss it returns 202 ("warming") and triggers a Celery task. Without periodic
+    # warming the cache goes cold between nightly runs (especially after any worker
+    # restart), forcing every dashboard load to wait 30+ s for the first computation.
+    # 15-min refresh keeps every universe hot and absorbs worker recycles cleanly.
+    JobTemplate(
+        id="warm_dashboard_all",
+        display_name="Warm Dashboard Cache (all)",
+        group="market_data",
+        task="backend.tasks.market.maintenance.warm_dashboard_cache",
+        description="Refresh the 'all' dashboard cache key every 15 minutes",
+        default_cron="*/15 * * * *",
+        default_tz="UTC",
+        job_run_label="admin_warm_dashboard",
+        kwargs={"universe": "all"},
+        timeout_s=180,
+    ),
+    JobTemplate(
+        id="warm_dashboard_etf",
+        display_name="Warm Dashboard Cache (etf)",
+        group="market_data",
+        task="backend.tasks.market.maintenance.warm_dashboard_cache",
+        description="Refresh the 'etf' dashboard cache key every 15 minutes (offset by 5 min)",
+        default_cron="5-59/15 * * * *",
+        default_tz="UTC",
+        job_run_label="admin_warm_dashboard",
+        kwargs={"universe": "etf"},
+        timeout_s=180,
+    ),
+    JobTemplate(
+        id="warm_dashboard_holdings",
+        display_name="Warm Dashboard Cache (holdings)",
+        group="market_data",
+        task="backend.tasks.market.maintenance.warm_dashboard_cache",
+        description="Refresh the 'holdings' dashboard cache key every 15 minutes (offset by 10 min)",
+        default_cron="10-59/15 * * * *",
+        default_tz="UTC",
+        job_run_label="admin_warm_dashboard",
+        kwargs={"universe": "holdings"},
+        timeout_s=180,
+    ),
+
     # ── Auto-Ops ────────────────────────────────────────────────────
     JobTemplate(
         id="auto_ops_health_check",

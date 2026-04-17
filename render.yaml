@@ -46,9 +46,11 @@ services:
   - type: worker
     name: axiomfolio-worker
     runtime: docker
-    # Starter (2 GB RAM) — sufficient for nightly delta pipeline;
-    # upgrade to Pro temporarily if running full snapshot_history rebuild
-    plan: starter
+    # Standard (2 GB RAM) — required headroom for nightly indicator recompute over
+    # 2,500+ symbols + IBKR FlexQuery sync. Starter (512 MiB) was OOM-killed daily
+    # because peak usage sits at ~510 MiB with zero margin. Upgrade to Pro (4 GiB)
+    # only if a full snapshot_history rebuild is needed.
+    plan: standard
     dockerfilePath: ./Dockerfile.backend
     autoDeploy: true
     envVars:
@@ -75,7 +77,10 @@ services:
           type: keyvalue
           name: axiomfolio-redis
           property: connectionString
-    dockerCommand: celery -A backend.tasks.celery_app worker --beat -Q celery,account_sync,orders --loglevel=info --max-memory-per-child=750000 --concurrency=1
+    # --max-memory-per-child must stay below the container ceiling so Celery recycles
+    # the child before the kernel OOM-killer fires. 1,500,000 KiB ≈ 1.46 GiB on a
+    # 2 GiB Standard instance leaves ~550 MiB for beat + scheduler + overhead.
+    dockerCommand: celery -A backend.tasks.celery_app worker --beat -Q celery,account_sync,orders --loglevel=info --max-memory-per-child=1500000 --concurrency=1
 
   - type: web
     name: axiomfolio-frontend

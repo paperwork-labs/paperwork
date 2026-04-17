@@ -160,13 +160,13 @@ def get_portfolio_health_metrics(db: Session) -> Dict:
     Returns:
         Dict with drawdown, concentration risk, and other health metrics
     """
-    from backend.models.position import Position
+    from backend.models.position import Position, PositionStatus
 
     # Calculate drawdown
     drawdown = calculate_portfolio_drawdown(db)
 
     # Get position concentration
-    positions = db.query(Position).filter(Position.status == "open").all()
+    positions = db.query(Position).filter(Position.status == PositionStatus.OPEN).all()
     total_value = sum(float(p.market_value or 0) for p in positions)
 
     concentration = {}
