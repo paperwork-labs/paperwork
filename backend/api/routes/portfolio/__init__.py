@@ -22,6 +22,7 @@ from .dividends import router as dividends_router
 from .statements import router as statements_router
 from .live import router as live_router
 from .dashboard import router as dashboard_router
+from .tax_export import router as tax_export_router
 
 __all__ = [
     "core_router",
@@ -33,4 +34,5 @@ __all__ = [
     "statements_router",
     "live_router",
     "dashboard_router",
+    "tax_export_router",
 ]
