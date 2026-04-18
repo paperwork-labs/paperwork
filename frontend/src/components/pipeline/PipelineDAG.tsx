@@ -4,6 +4,7 @@ import {
   XCircle,
   Loader2,
   Clock,
+  History,
   SkipForward,
   RotateCcw,
 } from 'lucide-react';
@@ -22,6 +23,7 @@ import type {
   PipelineRunState,
   PipelineStepState,
   PipelineStepStatus,
+  PipelineVisualStatus,
 } from '@/types/pipeline';
 import type { AdminHealthResponse, ProviderMetrics } from '@/types/adminHealth';
 import { formatDateFriendly, formatDateTimeFriendly } from '@/utils/format';
@@ -80,13 +82,26 @@ const NODE_HEALTH_DIM: Record<string, keyof HealthDims> = {
   audit: 'audit',
 };
 
-function resolveVisualStatus(
+/** Anything older than this is rendered as ``stale`` instead of ``ok``/``error``. */
+export const STALE_AGE_MS = 12 * 60 * 60 * 1000;
+
+/** Exported for testing — true when the step's last event is older than `STALE_AGE_MS`. */
+export function isStaleByAge(state: PipelineStepState | undefined): boolean {
+  const lastEvent = state?.finished_at ?? state?.started_at;
+  if (!lastEvent) return false;
+  const t = Date.parse(lastEvent);
+  if (Number.isNaN(t)) return false;
+  return Date.now() - t > STALE_AGE_MS;
+}
+
+export function resolveVisualStatus(
   pipelineStatus: PipelineStepStatus,
   nodeName: string,
   dims: HealthDims | null | undefined,
   activeTasks?: ActiveTaskInfo[],
   ambientSteps?: Record<string, PipelineStepState>,
-): PipelineStepStatus {
+  state?: PipelineStepState,
+): PipelineVisualStatus {
   if (pipelineStatus === 'running') return 'running';
 
   if (activeTasks?.some((t) => t.dag_step === nodeName)) return 'running';
@@ -96,9 +111,21 @@ function resolveVisualStatus(
 
   if (pipelineStatus === 'skipped') return 'skipped';
 
-  if (pipelineStatus === 'error') return 'error';
+  // Stale-age override for terminal statuses.  An `error` node from
+  // 3 days ago should not render as a screaming red alarm — operators
+  // already know about it. Same for `ok` results that haven't been
+  // refreshed (likely the pipeline simply hasn't run today).
+  // The state we look at is the merged step state (real run + ambient
+  // fallback) when provided.
+  if (pipelineStatus === 'error') {
+    if (isStaleByAge(state) && isStaleByAge(ambientStep)) return 'stale';
+    return 'error';
+  }
 
-  if (pipelineStatus === 'ok') return 'ok';
+  if (pipelineStatus === 'ok') {
+    if (isStaleByAge(state) && isStaleByAge(ambientStep)) return 'stale';
+    return 'ok';
+  }
 
   // Health dimension overrides only apply to 'pending' nodes (ambient fill-in).
   // All real pipeline statuses are preserved above.
@@ -167,36 +194,40 @@ function nodeTopLeft(name: string): { x: number; y: number } {
 // Status styling
 // ---------------------------------------------------------------------------
 
-const STATUS_CLASSES: Record<PipelineStepStatus, string> = {
+const STATUS_CLASSES: Record<PipelineVisualStatus, string> = {
   ok: 'border-emerald-500/50 bg-emerald-500/5',
   running: 'border-primary bg-primary/10 animate-pulse',
   error: 'border-destructive bg-destructive/5',
   pending: 'border-border bg-muted/50',
   skipped: 'border-border bg-muted/30 border-dashed',
+  stale: 'border-border bg-muted/30',
 };
 
-const STATUS_ICON: Record<PipelineStepStatus, React.ElementType> = {
+const STATUS_ICON: Record<PipelineVisualStatus, React.ElementType> = {
   ok: CheckCircle2,
   running: Loader2,
   error: XCircle,
   pending: Clock,
   skipped: SkipForward,
+  stale: History,
 };
 
-const STATUS_ICON_CLASS: Record<PipelineStepStatus, string> = {
+const STATUS_ICON_CLASS: Record<PipelineVisualStatus, string> = {
   ok: 'text-emerald-500',
   running: 'text-primary animate-spin',
   error: 'text-destructive',
   pending: 'text-muted-foreground',
   skipped: 'text-muted-foreground',
+  stale: 'text-muted-foreground',
 };
 
-const EDGE_STROKE: Record<PipelineStepStatus, string> = {
+const EDGE_STROKE: Record<PipelineVisualStatus, string> = {
   ok: 'stroke-emerald-500/40',
   running: 'stroke-primary/50',
   error: 'stroke-destructive/30',
   pending: 'stroke-border',
   skipped: 'stroke-border',
+  stale: 'stroke-border',
 };
 
 function formatDuration(seconds: number | null): string {
@@ -214,7 +245,7 @@ function formatDuration(seconds: number | null): string {
 interface EdgeProps {
   fromName: string;
   toName: string;
-  status: PipelineStepStatus;
+  status: PipelineVisualStatus;
   highlighted: boolean;
   dimmed: boolean;
 }
@@ -285,7 +316,7 @@ interface NodeProps {
   name: string;
   displayName: string;
   state: PipelineStepState;
-  visualStatus: PipelineStepStatus;
+  visualStatus: PipelineVisualStatus;
   metric: string | null;
   isSelected: boolean;
   onSelect: (name: string) => void;
@@ -317,8 +348,15 @@ function Node({ name, displayName, state, visualStatus, metric, isSelected, onSe
               height: NODE_H,
             }}
             onClick={() => onSelect(name)}
-            aria-label={`${displayName}: ${state.status}`}
+            aria-label={
+              visualStatus === 'stale'
+                ? `${displayName}: stale, last updated more than 12 hours ago`
+                : `${displayName}: ${state.status}`
+            }
           >
+            {visualStatus === 'stale' && (
+              <span className="sr-only">Stale, last updated more than 12 hours ago</span>
+            )}
             <span className="w-full truncate text-[11px] font-medium leading-tight text-foreground">
               {displayName}
             </span>
@@ -736,7 +774,14 @@ export function PipelineDAG({ dag, run, loading, loadError, onRetryLoad, onRetry
                   key={edgeKey}
                   fromName={e.source}
                   toName={e.target}
-                  status={resolveVisualStatus((steps[e.target]?.status) ?? 'pending', e.target, healthDimensions, activeTasks, ambientSteps)}
+                  status={resolveVisualStatus(
+                    (steps[e.target]?.status) ?? 'pending',
+                    e.target,
+                    healthDimensions,
+                    activeTasks,
+                    ambientSteps,
+                    steps[e.target],
+                  )}
                   highlighted={connectedEdgeKeys.has(edgeKey)}
                   dimmed={selected != null && !connectedEdgeKeys.has(edgeKey)}
                 />
@@ -752,7 +797,14 @@ export function PipelineDAG({ dag, run, loading, loadError, onRetryLoad, onRetry
                 name={node.name}
                 displayName={node.display_name}
                 state={stepState}
-                visualStatus={resolveVisualStatus(stepState.status, node.name, healthDimensions, activeTasks, ambientSteps)}
+                visualStatus={resolveVisualStatus(
+                  stepState.status,
+                  node.name,
+                  healthDimensions,
+                  activeTasks,
+                  ambientSteps,
+                  stepState,
+                )}
                 metric={getNodeMetric(node.name, healthDimensions)}
                 isSelected={selected === node.name}
                 onSelect={setSelected}

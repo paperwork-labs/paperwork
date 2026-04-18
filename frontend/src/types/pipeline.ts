@@ -2,6 +2,15 @@
 
 export type PipelineStepStatus = "pending" | "running" | "ok" | "error" | "skipped";
 
+/**
+ * Frontend-only visual status. The backend never emits ``stale``; the
+ * DAG renderer derives it from ``PipelineStepStatus`` plus age of the
+ * underlying JobRun. A node renders as ``stale`` when its real status
+ * is ``error`` or ``ok`` but the last run finished/started more than
+ * 12h ago, so old events do not render as red alarms forever.
+ */
+export type PipelineVisualStatus = PipelineStepStatus | "stale";
+
 export interface PipelineStepState {
   status: PipelineStepStatus;
   started_at: string | null;
