@@ -83,6 +83,14 @@ def run_migrations_online() -> None:
         # instance; the log in main.py referred to these but they were not applied.
         connection.execute(text("SET lock_timeout = '10s'"))
         connection.execute(text("SET statement_timeout = '30s'"))
+        # SQLAlchemy 2.x autobegins on first execute(); commit that implicit
+        # transaction here so Alembic owns the next BEGIN. Without this commit,
+        # `context.begin_transaction()` sees an "external" transaction, returns
+        # `nullcontext()` without setting `self._transaction`, and any migration
+        # using `op.get_context().autocommit_block()` (e.g. CREATE INDEX
+        # CONCURRENTLY in 0022) trips an internal AssertionError. The SET
+        # statements are session-scoped and survive the COMMIT.
+        connection.commit()
         context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():

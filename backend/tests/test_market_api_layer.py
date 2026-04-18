@@ -286,9 +286,11 @@ def test_snapshot_aggregates_returns_distributions(monkeypatch):
 
     rows = [_make_snapshot(symbol="AAPL"), _make_snapshot(symbol="MSFT")]
 
+    # sector_summary GROUP BY now returns 7 columns (since 85d2554):
+    # (sector, count, avg_rs, avg_perf_1d, avg_perf_20d, stage2_count, stage4_count)
     agg_data = [
         _FakeGroupByResult([("2B", 2)]),
-        _FakeGroupByResult([("Technology", 2, 5.0, 0.01)]),
+        _FakeGroupByResult([("Technology", 2, 5.0, 0.01, 0.05, 2, 0)]),
         _FakeGroupByResult([("Breakout Standard", 2)]),
         _FakeGroupByResult([("BUY", 2)]),
     ]
@@ -618,9 +620,10 @@ def test_snapshot_aggregates_accepts_action_labels(monkeypatch):
 
     app.dependency_overrides[get_market_data_viewer] = _viewer_override
     rows = [_make_snapshot(symbol="AAPL")]
+    # sector tuple is 7 columns (sector, count, avg_rs, p1d, p20d, s2, s4)
     agg_data = [
         _FakeGroupByResult([("2B", 1)]),
-        _FakeGroupByResult([("Technology", 1, 5.0, 0.01)]),
+        _FakeGroupByResult([("Technology", 1, 5.0, 0.01, 0.04, 1, 0)]),
         _FakeGroupByResult([("Breakout Standard", 1)]),
         _FakeGroupByResult([("BUY", 1)]),
     ]
@@ -641,9 +644,10 @@ def test_snapshot_aggregates_accepts_preset_and_index(monkeypatch):
 
     app.dependency_overrides[get_market_data_viewer] = _viewer_override
     rows = [_make_snapshot(symbol="AAPL")]
+    # sector tuple is 7 columns (sector, count, avg_rs, p1d, p20d, s2, s4)
     agg_data = [
         _FakeGroupByResult([("2B", 1)]),
-        _FakeGroupByResult([("Technology", 1, 5.0, 0.01)]),
+        _FakeGroupByResult([("Technology", 1, 5.0, 0.01, 0.04, 1, 0)]),
         _FakeGroupByResult([("Breakout Standard", 1)]),
         _FakeGroupByResult([("BUY", 1)]),
     ]

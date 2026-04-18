@@ -238,10 +238,13 @@ def _snap(
     is_valid: bool = True,
     analysis_type: str = "technical_snapshot",
 ) -> MarketSnapshot:
+    now = datetime.now(timezone.utc)
     row = MarketSnapshot(
         symbol=symbol,
         analysis_type=analysis_type,
-        analysis_timestamp=datetime.now(timezone.utc),
+        analysis_timestamp=now,
+        as_of_timestamp=now,
+        expiry_timestamp=now + timedelta(hours=24),
         is_valid=is_valid,
         stage_label=stage_label,
         rs_mansfield_pct=rs,

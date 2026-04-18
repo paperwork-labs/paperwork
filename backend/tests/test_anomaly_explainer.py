@@ -58,6 +58,30 @@ def _good_payload(
     confidence: float = 0.8,
     steps: List[Dict[str, Any]] | None = None,
 ) -> str:
+    # Use ``is None`` (not ``or``) so callers can pass ``steps=[]`` and
+    # actually exercise the empty-steps -> fallback path. The previous
+    # ``steps or [...]`` form silently substituted defaults for empty lists,
+    # which masked the test on main and broke it once the test ran for
+    # real on PR #321.
+    if steps is None:
+        steps = [
+            {
+                "order": 1,
+                "description": "Inspect MarketSnapshotHistory for duplicates.",
+                "runbook_section": "MARKET_DATA_RUNBOOK.md#stage-monotonicity",
+                "proposed_task": None,
+                "requires_approval": False,
+                "rationale": "Read-only diagnostic.",
+            },
+            {
+                "order": 2,
+                "description": "Run the stage-quality repair admin action.",
+                "runbook_section": None,
+                "proposed_task": "tasks.admin.repair_stage_history",
+                "requires_approval": True,
+                "rationale": None,
+            },
+        ]
     return json.dumps(
         {
             "title": title,
@@ -65,25 +89,7 @@ def _good_payload(
             "root_cause_hypothesis": "Concurrent backfill overwrote a row.",
             "narrative": "Detail paragraph here.",
             "confidence": confidence,
-            "steps": steps
-            or [
-                {
-                    "order": 1,
-                    "description": "Inspect MarketSnapshotHistory for duplicates.",
-                    "runbook_section": "MARKET_DATA_RUNBOOK.md#stage-monotonicity",
-                    "proposed_task": None,
-                    "requires_approval": False,
-                    "rationale": "Read-only diagnostic.",
-                },
-                {
-                    "order": 2,
-                    "description": "Run the stage-quality repair admin action.",
-                    "runbook_section": None,
-                    "proposed_task": "tasks.admin.repair_stage_history",
-                    "requires_approval": True,
-                    "rationale": None,
-                },
-            ],
+            "steps": steps,
         }
     )
 

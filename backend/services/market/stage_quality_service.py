@@ -227,13 +227,24 @@ class StageQualityService:
     ) -> Dict[str, Any]:
         days = max(7, min(int(days), 3650))
         target_symbol = (symbol or "").strip().upper() or None
+        # None: full-universe DISTINCT path; set: repair only that symbol as a one-element list.
 
-        query = db.query(MarketSnapshotHistory.symbol).filter(
-            MarketSnapshotHistory.analysis_type == "technical_snapshot"
-        )
+        # When repairing a single symbol we don't need the universe scan —
+        # short-circuit to avoid a multi-second DISTINCT on a 600k-row
+        # table every time someone repairs one ticker.
         if target_symbol:
-            query = query.filter(MarketSnapshotHistory.symbol == target_symbol)
-        symbols = [s for (s,) in query.distinct().order_by(MarketSnapshotHistory.symbol.asc()).all()]
+            symbols = [target_symbol]
+        else:
+            # Index-only scan on (analysis_type, symbol) introduced in
+            # migration 0022; previously this was the query that R39
+            # killed with a 30s statement_timeout.
+            query = (
+                db.query(MarketSnapshotHistory.symbol)
+                .filter(MarketSnapshotHistory.analysis_type == "technical_snapshot")
+                .distinct()
+                .order_by(MarketSnapshotHistory.symbol.asc())
+            )
+            symbols = [s for (s,) in query.all()]
 
         touched_rows = 0
         touched_symbols = 0
