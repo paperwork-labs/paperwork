@@ -265,3 +265,16 @@ All task references must match `@shared_task(name="...")` exactly. Found 4 criti
 | R37 | API SIGSEGV (exit 139) ×6 — investigation closed | All 6 events occurred in one 5-hour window on 2026-04-10 during the deploy storm (7 PRs in one day). Zero SIGSEGVs since. Root cause: uvicorn graceful-shutdown race during rapid container churn (likely psycopg2/asyncio teardown). The pre-merge CI gate rule (commit 8a202e7, 2026-04-09) prevents the deploy-storm pattern. No code fix needed. |
 | R38 | Snapshot history coverage 1.7% on most days (43/2534 symbols) | `recompute_universe` was silently swallowing per-symbol exceptions for 2491 symbols. Phase 0 fix adds structured counters (`written`, `skipped_no_data`, `errors`) to the loop in `backend/tasks/market/indicators.py` plus a final assertion that `written + skipped + errors == tracked_total`. Coverage test fails the build if assertion violated. Tracked under `fix/v1-phase-0-stabilization`. |
 | R39 | 2820 monotonicity violations in `market_snapshot_history` + repair task killed by Postgres `statement_timeout` | `repair_stage_history_window` ran `SELECT DISTINCT symbol FROM market_snapshot_history` against a 7M+ row table with no covering index, exceeding the 30s statement timeout (D74). Phase 0 fix: Alembic migration `CREATE INDEX CONCURRENTLY ix_market_snapshot_history_symbol_btree`; rewrite query in `backend/services/market/stage_quality_service.py` to use `tracked_symbols_with_source` (already in cache). One-time bulk repair on the new heavy worker queue clears the 2820 violations. Tracked under `fix/v1-phase-0-stabilization`. |
+
+---
+
+## Strategic Direction (v1 sprint)
+
+Decisions D81–D90 live on the `feat/v1-master-plan` branch (PR #316, merged
+2026-04-18). The following decisions are added in subsequent v1-sprint PRs
+and chain off that base.
+
+| ID | Date | Decision |
+|----|------|----------|
+| D91 | 2026-04-18 | **Entitlement is the single source of truth for tier access.** `backend/services/billing/feature_catalog.py` is the only place that maps a feature key to a minimum tier. Backend (`require_feature` dependency) and frontend (`useEntitlement` + `<TierGate>`) both consume it so they cannot drift. Stripe webhooks are the only writers besides operator manual overrides. Past-due subscriptions get a 72h grace period; manual entitlements (founders, validator pseudonyms) cannot be overwritten by Stripe events. |
+| D92 | 2026-04-18 | **Tier-gating returns HTTP 402 (Payment Required), not 403.** This lets the frontend distinguish "you need to log in" from "you need to upgrade" without a string sniff on the error body, matching how Stripe-gated APIs across the industry signal paywalls. Routes mounted via `Depends(require_feature("..."))` always return a structured `{error: "tier_required", feature, current_tier, required_tier}` body. |

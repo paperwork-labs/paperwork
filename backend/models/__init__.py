@@ -15,6 +15,7 @@ Base = declarative_base()
 from .user import User, UserRole
 from .app_settings import AppSettings
 from .user_invite import UserInvite
+from .entitlement import Entitlement, EntitlementStatus, SubscriptionTier
 from .broker_account import BrokerAccount, BrokerType, AccountType, AccountStatus, SyncStatus
 
 # Instruments & Market Data
@@ -84,6 +85,9 @@ __all__ = [
     "UserRole",
     "AppSettings",
     "UserInvite",
+    "Entitlement",
+    "EntitlementStatus",
+    "SubscriptionTier",
     "BrokerAccount",
     "BrokerType",
     "AccountType",

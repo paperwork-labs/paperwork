@@ -51,6 +51,7 @@ from backend.api.routes.market import router as market_router
 # Webhooks
 from backend.api.routes.webhooks import router as webhooks_router
 from backend.api.routes.risk import router as risk_router
+from backend.api.routes.entitlements import router as entitlements_router
 from backend.api.routes.brain_tools import router as brain_tools_router
 from backend.api.routes.execution import router as execution_router
 from backend.api.routes.pipeline import router as pipeline_router
@@ -574,6 +575,14 @@ app.include_router(
     brain_tools_router,
     prefix="/api/v1/tools",
     tags=["Brain Tools"],
+)
+# Entitlements: tier-gating source of truth.
+# /catalog is intentionally not behind require_non_market_access because the
+# pricing page must render for users who don't have portfolio access.
+app.include_router(
+    entitlements_router,
+    prefix="/api/v1",
+    tags=["Entitlements"],
 )
 
 

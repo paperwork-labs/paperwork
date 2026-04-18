@@ -121,6 +121,43 @@ async def get_admin_user(current_user: User = Depends(get_current_user)) -> User
     return current_user
 
 
+def require_feature(feature_key: str):
+    """Dependency factory: caller must hold an entitlement that unlocks
+    ``feature_key`` (per ``backend/services/billing/feature_catalog.py``).
+
+    Raises 402 Payment Required (rather than 403 Forbidden) when the user
+    is authenticated but missing tier — that lets the frontend distinguish
+    "log in" from "upgrade" without a string sniff on the error body, and
+    is consistent with how Stripe-gated APIs across the industry signal
+    paywalls.
+    """
+    # Local import keeps backend/api/dependencies.py free of a hard import
+    # on the billing package at module load (the billing package imports
+    # the User model, which transitively imports app settings, etc.).
+    from backend.services.billing.entitlement_service import EntitlementService
+
+    async def check_feature(
+        user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
+    ) -> User:
+        decision = EntitlementService.check(db, user, feature_key)
+        if decision.allowed:
+            return user
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "error": "tier_required",
+                "feature": decision.feature.key,
+                "feature_title": decision.feature.title,
+                "current_tier": decision.current_tier.value,
+                "required_tier": decision.required_tier.value,
+                "message": decision.reason,
+            },
+        )
+
+    return check_feature
+
+
 def require_role(*allowed_roles: UserRole):
     """Dependency factory: current user must have one of the allowed roles."""
 
