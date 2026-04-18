@@ -156,6 +156,25 @@ class Settings(BaseSettings):
     # Email verification (Resend)
     RESEND_API_KEY: Optional[str] = None
 
+    # Stripe billing (test-mode keys in dev/staging, live in prod).
+    # All keys are optional; the webhook returns HTTP 402 if unconfigured.
+    STRIPE_API_KEY: Optional[str] = None
+    STRIPE_API_VERSION: Optional[str] = None  # e.g. "2024-06-20"
+    STRIPE_WEBHOOK_SECRET: Optional[str] = None
+    STRIPE_PUBLISHABLE_KEY: Optional[str] = None  # safe to ship to frontend
+    # Price ID -> tier mapping (one env var per tier+interval).
+    # See backend/services/billing/price_catalog.py for the full list.
+    STRIPE_PRICE_LITE_MONTHLY: Optional[str] = None
+    STRIPE_PRICE_LITE_ANNUAL: Optional[str] = None
+    STRIPE_PRICE_PRO_MONTHLY: Optional[str] = None
+    STRIPE_PRICE_PRO_ANNUAL: Optional[str] = None
+    STRIPE_PRICE_PRO_PLUS_MONTHLY: Optional[str] = None
+    STRIPE_PRICE_PRO_PLUS_ANNUAL: Optional[str] = None
+    STRIPE_PRICE_QUANT_DESK_MONTHLY: Optional[str] = None
+    STRIPE_PRICE_QUANT_DESK_ANNUAL: Optional[str] = None
+    STRIPE_PRICE_ENTERPRISE_MONTHLY: Optional[str] = None
+    STRIPE_PRICE_ENTERPRISE_ANNUAL: Optional[str] = None
+
     # Frontend origin for OAuth redirects (falls back to first CORS_ORIGINS entry)
     FRONTEND_ORIGIN: Optional[str] = None
 
