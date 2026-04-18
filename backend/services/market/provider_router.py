@@ -230,7 +230,15 @@ class ProviderRouter:
         max_delay_seconds: Optional[float] = None,
         **kwargs,
     ):
-        """Run a blocking provider call in a thread with bounded exponential backoff."""
+        """Run a blocking provider call in a thread with bounded exponential backoff.
+
+        Rate-limit handling: a 429 response gets the *full* retry budget with a
+        longer base delay (8s vs 0.8s) so that subsequent attempts let the
+        provider's rate-limit window reset. The previous behaviour capped
+        retries to 2 on the first 429, which made things strictly worse:
+        Yahoo Finance throttles persisted for >5 minutes and the call would
+        immediately give up.
+        """
         n = int(attempts or int(getattr(settings, "MARKET_BACKFILL_RETRY_ATTEMPTS", 6)))
         max_delay = float(
             max_delay_seconds
@@ -246,11 +254,18 @@ class ProviderRouter:
                 status = self._extract_http_status(exc)
                 is_rate_limited = status == 429 or "too many" in str(exc).lower()
                 is_transient = status in (429, 500, 502, 503, 504) or is_rate_limited
-                if is_rate_limited and i == 0:
-                    n = min(n, 2)
                 if i >= n - 1:
                     break
-                base = 0.8 if is_transient else 0.2
+                # Rate-limited: 8s base => 8, 16, 32, 60, 60, 60 (capped) — gives the
+                # provider's 60s rolling window time to reset.
+                # Other transient (5xx): 0.8s base.
+                # Non-transient: 0.2s base (small jitter, fast giveup).
+                if is_rate_limited:
+                    base = 8.0
+                elif is_transient:
+                    base = 0.8
+                else:
+                    base = 0.2
                 delay = min(max_delay, base * (2**i))
                 delay = delay * (0.75 + random.random() * 0.5)
                 await asyncio.sleep(delay)
@@ -266,7 +281,11 @@ class ProviderRouter:
         max_delay_seconds: Optional[float] = None,
         **kwargs,
     ):
-        """Sync helper for provider calls with bounded exponential backoff."""
+        """Sync helper for provider calls with bounded exponential backoff.
+
+        See :meth:`_call_blocking_with_retries` for the rate-limit handling
+        rationale; this is the synchronous mirror used from Celery tasks.
+        """
         n = int(attempts or int(getattr(settings, "MARKET_BACKFILL_RETRY_ATTEMPTS", 6)))
         max_delay = float(
             max_delay_seconds
@@ -282,11 +301,14 @@ class ProviderRouter:
                 status = self._extract_http_status(exc)
                 is_rate_limited = status == 429 or "too many" in str(exc).lower()
                 is_transient = status in (429, 500, 502, 503, 504) or is_rate_limited
-                if is_rate_limited and i == 0:
-                    n = min(n, 2)
                 if i >= n - 1:
                     break
-                base = 0.8 if is_transient else 0.2
+                if is_rate_limited:
+                    base = 8.0
+                elif is_transient:
+                    base = 0.8
+                else:
+                    base = 0.2
                 delay = min(max_delay, base * (2**i))
                 delay = delay * (0.75 + random.random() * 0.5)
                 time.sleep(delay)
