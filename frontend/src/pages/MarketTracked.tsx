@@ -16,7 +16,7 @@ import { STAGE_SUBTLE_BADGE, STAGE_SOLID_BADGE } from '@/lib/stageTailwind';
 import { usePortfolioSymbols } from '../hooks/usePortfolioSymbols';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { useSnapshotTable } from '../hooks/useSnapshotTable';
-import { useSnapshotAggregates } from '../hooks/useSnapshotAggregates';
+import { useSnapshotAggregates, formatAggregateCount } from '../hooks/useSnapshotAggregates';
 import api from '../services/api';
 import { formatDateTime, formatMoney } from '../utils/format';
 import { Badge } from '@/components/ui/badge';
@@ -465,7 +465,9 @@ const MarketTracked: React.FC = () => {
     return p;
   }, [tableParams]);
 
-  const { data: aggregates } = useSnapshotAggregates(aggregateParams);
+  const aggregatesQuery = useSnapshotAggregates(aggregateParams);
+  const aggregates = aggregatesQuery.data;
+  const aggregatesCountLabel = formatAggregateCount(aggregatesQuery);
 
   /* ─── Column visibility helper ─── */
 
@@ -831,30 +833,46 @@ const MarketTracked: React.FC = () => {
 
           {/* ── Metric strip ── */}
           <div className="mb-3 rounded-lg border border-border bg-card/60 px-3 py-2">
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 text-left"
-              onClick={toggleMetricStrip}
-              aria-expanded={!metricStripCollapsed}
-              aria-controls="metric-strip-content"
-            >
-              <ChevronDown
-                className={cn('size-4 text-muted-foreground transition-transform', metricStripCollapsed && '-rotate-90')}
-                aria-hidden
-              />
-              <span className="text-xs font-medium text-muted-foreground">
-                {aggregates?.total ?? 0} symbols
-              </span>
+            <div className="flex w-full items-center gap-2 text-left">
+              <button
+                type="button"
+                className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                onClick={toggleMetricStrip}
+                aria-expanded={!metricStripCollapsed}
+                aria-controls="metric-strip-content"
+              >
+                <ChevronDown
+                  className={cn('size-4 text-muted-foreground transition-transform', metricStripCollapsed && '-rotate-90')}
+                  aria-hidden
+                />
+                <span
+                  className="text-xs font-medium text-muted-foreground"
+                  aria-live="polite"
+                  aria-busy={aggregatesQuery.isLoading}
+                >
+                  {aggregatesCountLabel} symbols
+                </span>
+              </button>
+              {aggregatesQuery.isError && (
+                <button
+                  type="button"
+                  onClick={() => aggregatesQuery.refetch()}
+                  className="shrink-0 text-[10px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                  aria-label="Retry aggregate count"
+                >
+                  retry
+                </button>
+              )}
               {hasMetricFilters && (
                 <Button
                   type="button" size="xs" variant="ghost"
-                  className="ml-auto h-5 px-2 text-[11px]"
-                  onClick={(e) => { e.stopPropagation(); clearMetricFilters(); }}
+                  className="ml-auto h-5 shrink-0 px-2 text-[11px]"
+                  onClick={() => clearMetricFilters()}
                 >
                   Clear
                 </Button>
               )}
-            </button>
+            </div>
 
             {!metricStripCollapsed && (
               <div id="metric-strip-content" className="mt-2 space-y-2">

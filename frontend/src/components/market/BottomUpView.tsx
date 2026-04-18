@@ -5,7 +5,7 @@ import StageBar from '../shared/StageBar';
 import { SymbolLink } from './SymbolChartUI';
 import { ACTION_COLORS } from '../../constants/chart';
 import { useSnapshotTable } from '../../hooks/useSnapshotTable';
-import { useSnapshotAggregates } from '../../hooks/useSnapshotAggregates';
+import { useSnapshotAggregates, formatAggregateCount } from '../../hooks/useSnapshotAggregates';
 import { useDebounce } from '../../hooks/useDebounce';
 import { cn } from '@/lib/utils';
 import { heatTextClass, semanticTextColorClass } from '@/lib/semantic-text-color';
@@ -102,12 +102,14 @@ const BottomUpView: React.FC<BottomUpViewProps> = ({ filters }) => {
   const rows = tableData?.rows ?? [];
   const total = tableData?.total ?? 0;
 
-  const { data: aggregates } = useSnapshotAggregates({
+  const aggregatesQuery = useSnapshotAggregates({
     filter_stage: stageFilter || undefined,
     action_labels: actionFilter || undefined,
     sectors: filters?.sectors,
     regime_state: filters?.regime_state,
   });
+  const aggregates = aggregatesQuery.data;
+  const aggregatesCountLabel = formatAggregateCount(aggregatesQuery);
 
   const stageCounts = React.useMemo(() => {
     const counts: Record<string, number> = {};
@@ -157,7 +159,23 @@ const BottomUpView: React.FC<BottomUpViewProps> = ({ filters }) => {
       <div className="rounded-lg border border-border bg-card p-4">
         <div className="mb-2 flex items-center justify-between">
           <p className="text-sm font-semibold">Stage Distribution</p>
-          <p className="text-xs text-muted-foreground">{aggregates?.total ?? 0} symbols</p>
+          <p
+            className="text-xs text-muted-foreground"
+            aria-live="polite"
+            aria-busy={aggregatesQuery.isLoading}
+          >
+            {aggregatesCountLabel} symbols
+            {aggregatesQuery.isError && (
+              <button
+                type="button"
+                onClick={() => aggregatesQuery.refetch()}
+                className="ml-2 underline underline-offset-2 hover:text-foreground"
+                aria-label="Retry aggregate count"
+              >
+                retry
+              </button>
+            )}
+          </p>
         </div>
         <StageBar counts={stageCounts} onClick={(stage: string) => { setStageFilter(prev => prev === stage ? null : stage); setPage(1); }} activeStage={stageFilter} />
       </div>
