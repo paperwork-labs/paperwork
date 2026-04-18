@@ -42,9 +42,24 @@ You are the Staff Engineer for AxiomFolio, a quantitative portfolio intelligence
 ## Code Review Checklist
 
 Before any PR:
-1. No `except Exception: pass` — log or re-raise
-2. No hardcoded secrets or credentials
-3. Alembic migration if models changed
-4. Tests for new backend logic (pytest)
-5. Type-check passes (`npm run type-check`)
-6. No `any` types added without justification comment
+1. No `except Exception: pass` — log or re-raise (see `no-silent-fallback.mdc`)
+2. No silent zero / empty fallbacks that hide failures from observers (see `no-silent-fallback.mdc`)
+3. No hardcoded secrets or credentials
+4. Alembic migration if models changed
+5. Tests for new backend logic (pytest)
+6. Type-check passes (`npm run type-check`)
+7. No `any` types added without justification comment
+8. Frontend hooks distinguish loading / error / empty / data states explicitly
+9. Per-symbol loops emit structured counters (`written`, `skipped`, `errors`) and assert sum == total
+10. New tasks routed to correct queue (`heavy` for >5min jobs; see `market-data-platform.mdc`)
+11. New routes scoped to `current_user.id` — no `BRAIN_TOOLS_USER_ID=1`-style hardcoding (D88)
+12. Plan mode used if PR meets criteria in `plan-mode-first.mdc`
+13. Decision logged in `KNOWLEDGE.md` if architectural
+
+## Multi-tenancy enforcement
+
+Every new route, service, or background task must accept and respect `user_id`:
+- Routes: `current_user: User = Depends(get_current_user)`, then filter all queries by `user_id`
+- Services: accept `user_id: int` parameter, never globally scoped
+- Tasks: accept `user_id` in payload; derive from job context, not env var
+- Tests: include cross-tenant isolation test (User A cannot see User B's data)

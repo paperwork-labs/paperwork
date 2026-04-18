@@ -1,5 +1,20 @@
 # Product Requirements Document
 
+> **STRATEGIC UPDATE — 2026-04-09**: This PRD is **historically frozen** and reflects the v0 single-operator vision. The current product strategy, milestones, and scope live in [`docs/plans/MASTER_PLAN_2026.md`](plans/MASTER_PLAN_2026.md).
+>
+> Key shifts since this doc was written:
+> - **Multi-tenant SaaS** — was non-goal, now core. Six subscription tiers (Free / Lite / Pro / Pro+ / Quant Desk / Enterprise).
+> - **Native AgentBrain chat** — Pro+ hook, lives in-product (was non-goal).
+> - **Validator-curated picks pipeline** — Twisted Slice persona (hedge fund analyst) forwards emails → LLM polymorphic parser → validator queue → tier-gated publish.
+> - **Snowball-class portfolio viz** — free-tier hook for retail acquisition.
+> - **Multi-broker** — Plaid Investments + 5+ hand-rolled adapters (was IBKR/Schwab/TastyTrade only).
+> - **PWA mobile** — was non-goal, now v1 acceptance criterion.
+> - **Cross-product integration with [Paperwork Labs](https://github.com/paperwork-labs/paperwork)** — FileFree (taxes), Paperwork Brain (cross-domain AI). Not required, optional bundles.
+>
+> A full v2 PRD rewrite is scheduled for v1 launch week (2026-06-21). Until then, the master plan is the source of truth.
+
+---
+
 ## Vision
 
 AxiomFolio is a quantitative portfolio intelligence platform that implements the Oliver Kell / Weinstein Stage Analysis trading system. It combines multi-broker portfolio aggregation, systematic market intelligence, and rule-based strategy execution into a single platform.

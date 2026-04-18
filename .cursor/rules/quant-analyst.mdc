@@ -70,3 +70,41 @@ Full Position ($) = [Risk Budget ($) / (ATR%14 × Stop Multiplier)] × Regime Mu
 ```
 
 Then apply Stage Cap. Track cascade through exit events.
+
+## Validated Pick Math (v1)
+
+When converting a `ValidatedPick` to an `OrderIntent` via `SignalToOrder`:
+
+- **Position size** = `min(suggested_size_pct_of_equity * equity, ATR-based size, Stage Cap, PortfolioHeat remaining)`
+- **Stop loss** = max of: validator's stated stop, ATR-based stop (1.5×ATR14 below entry for longs), `Stage Cap` minimum
+- **Target** = validator's stated target if present; otherwise R:R ≥ 2.0 from stop
+- **Regime gate** = reject if current `RegimeState` not in pick's `allowed_regimes` (default: R1-R3 for longs, R4-R5 for shorts)
+- **Tax-aware exit** = on SELL via `TaxLossHarvester` lot selector (HIFO / specific-lot / wash-sale-aware)
+
+## Multi-Source Quorum (Phase 7b, World-Class)
+
+For critical fields (real-time price, volume, fundamentals snapshot), require quorum from N providers:
+- Fetch from M providers (M >= 3)
+- If majority agree (within 2σ), use median
+- If providers disagree, log `provider_disagreement` event + fall back to highest-priority provider + flag for human review
+- Never silently average disagreeing values — that masks the disagreement
+
+## Point-in-Time Reads (Phase 7d)
+
+See `point-in-time-data.mdc`. Backtests must read from immutable historical tables (`MarketSnapshotHistory`, `PriceData`, `MarketRegime`). Never from `MarketSnapshot` (latest only) or `Position` (mutable).
+
+## Backtest Authoring Standards (World-Class Phase 6)
+
+- **Walk-forward**: train on N-month rolling window, test on next M-month window, advance and repeat. Reports per-fold + aggregate.
+- **Monte Carlo**: bootstrap-resample trade returns 1000+ times to produce confidence intervals on CAGR / max DD / Sharpe.
+- **Event-driven**: replay tick-by-tick (or bar-by-bar) with realistic fill simulation (slippage model, latency, bid/ask).
+- **Regime-conditional reports**: break out performance by R1-R5; a strategy that wins overall but loses in R3 is a different system than one that wins in every regime.
+- **Backtest-to-live parity**: compare paper-shadow vs backtest expectation; flag drift > 1σ in `BacktestLiveParityReport`.
+
+## Hard Forbidden in Quant Code
+
+- `except Exception: pass` — always log + raise/return None
+- Hardcoded magic numbers — constants in `backend/services/market/constants.py` with citation to spec
+- `float` for monetary values — use `Decimal`
+- Future leak in backtest — every read must answer "would this have been knowable on date X?"
+- Silent indicator fallback to 0/None when input is invalid — return NaN and let downstream handle

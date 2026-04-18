@@ -1,5 +1,18 @@
 # Tasks — Sprint Plan
 
+> **CURRENT SPRINT — 2026-04-09 to 2026-04-16: v1 Week 1**
+>
+> The full strategic roadmap (v1 Launch 2026-06-21 + World-Class 2026-08-31) lives in [`docs/plans/MASTER_PLAN_2026.md`](plans/MASTER_PLAN_2026.md).
+>
+> Active PRs (parallel Background Agents):
+> - `fix/v1-phase-0-stabilization` — worker queue split, pipeline waiting state, tracked aggregates resilience, dashboard warming truth, DAG stale state, Yahoo backoff, IBKR watchdog gate, snapshot history coverage fix, monotonicity index migration, regime schedule
+> - `feat/v1-stripe-test-scaffolding` — User.tier enum, Entitlement model, Stripe client (test-mode), webhook receiver, TierGate decorator, feature catalog
+> - `feat/v1-candidate-generator` — Candidate model, CandidateGenerator service, daily Beat job, GET /candidates API, frontend Candidates page
+>
+> The phase tables below reflect v0 (single-operator) sprints and are retained for historical context. The master plan is the authoritative source for v1+ work.
+
+---
+
 Current execution plan organized by phase. One task per PR where possible.
 
 ## Status Legend

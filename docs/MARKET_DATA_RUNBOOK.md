@@ -10,8 +10,10 @@ Operational procedures for the market data pipeline. For architecture details, s
 - [Local Backfill (Dev Only)](#local-backfill-dev-only)
 - [Production Daily Operations](#production-daily-operations)
 - [Troubleshooting](#troubleshooting)
+- [Failure-Mode Playbook](#failure-mode-playbook)
 - [Invariants Checklist](#invariants-checklist)
 - [Emergency Procedures](#emergency-procedures)
+- [Two-Worker Operations (v1)](#two-worker-operations-v1)
 
 ---
 
@@ -212,6 +214,66 @@ Or trigger via Celery: the `refresh_market_mvs` task in `maintenance.py`.
 
 ---
 
+## Failure-Mode Playbook
+
+Diagnose by which dimension is red on `/api/v1/market-data/admin/health`.
+
+### `audit` red — provider/quality alarms
+
+**Symptoms**: `audit.composite_status = critical`; provider drift flagged.
+
+**Steps**:
+1. Open `/api/v1/market-data/admin/health` — note which provider is in drift and any provider-specific error details returned by the endpoint
+2. Inspect provider call counters in Redis under `provider:calls:{YYYY-MM-DD}` for the day in question. (`ProviderDriftReport` and a dedicated `provider_calls` audit table are **planned** as part of the World-Class drift detector; until then Redis + Render logs are the source of truth.)
+3. If single provider: `ProviderRouter` should auto-failover; verify by tailing worker logs for `ProviderRouter` failover entries
+4. If multiple providers diverge from each other: a market-wide event likely (vendor outage). Wait + watch
+5. If sustained >2h: open incident ticket; consider switching `MARKET_PROVIDER_POLICY` tier or pinning to single trusted provider
+
+### `regime` red — regime stale or wrong
+
+**Symptoms**: `regime.last_run > 36h ago`; or regime score differs wildly from VIX-implied.
+
+**Steps**:
+1. Confirm `compute_daily_regime` is scheduled in `job_catalog.py` with cron `'20 3 * * *'` (added Phase 0; was missing pre-fix)
+2. Check VIX/VVIX/VIX3M data freshness on `/market-data/regime` endpoint
+3. If breadth inputs (NH-NL, %above50D/200D) are zero, root cause is upstream OHLCV gap — fix that first
+4. Manual recompute: from System Status → Operator Actions → "Recompute Daily Regime"
+5. If still wrong: check `RegimeEngine.compute()` against `Stage_Analysis.docx` — half-up rounding (D52), 6-input scoring
+
+### `stage_quality` red — high unknown rate or monotonicity violations
+
+**Symptoms**: `stage_quality.unknown_rate > 5%` or `monotonicity_violations > 100`.
+
+**Steps**:
+1. **Unknown rate high**: usually means insufficient bars (>175 needed for SMA150 + slope + warmup, see D50). Check `tracked_symbols_with_source` for symbols with <175 bars; backfill OHLCV first
+2. **Monotonicity violations**: stage label changed by more than 1 sub-stage between adjacent days, indicating noisy classification. Run `repair_stage_history` on heavy worker queue. Pre-Phase-0 this would die at 30s statement timeout (R39); post-Phase-0 the index `ix_market_snapshot_history_symbol_btree` + query rewrite resolves
+3. Verify Wilder smoothing on ATR/ADX (D46) and bar guard 175 (D50) are applied
+
+### `picks_pipeline` red (v1) — picks ingestion or publish broken
+
+**Symptoms**: drafts stuck in `DRAFT` >24h; inbound webhook 4xx/5xx; LLM cost spiking.
+
+**Steps**:
+1. Check inbound webhook signature: `PICKS_INBOUND_SECRET` env var matches Postmark/Resend config
+2. Verify sender in `PICKS_TRUSTED_SENDERS` allowlist; reject silently if not (security)
+3. Check LLM gateway circuit breaker status (`/admin/llm-gateway/status`); if open, OpenAI is degraded — pause vision calls first (most expensive)
+4. Verify per-tier LLM budgets aren't exceeded (D87); degraded tier shows "feature unavailable this month" instead of failing
+5. Check validator queue UI — drafts may be stuck waiting for human approval; ping Twisted Slice if SLA missed
+6. Verify webhook to subscribers fires on `PUBLISHED` transition; check `notification_delivery_log` table
+
+### `snapshot_history` red — coverage gap
+
+**Symptoms**: `snapshot_fill_pct < 95%`.
+
+**Steps**:
+1. Check `recompute_universe` structured counters in last run (Phase 0 fix) — written/skipped/errors
+2. If `errors > 0`: inspect logs for the per-symbol exceptions; common cause is corrupted OHLCV or missing fundamentals
+3. If `skipped_no_data > 100`: OHLCV gap upstream; run "Backfill Daily Coverage (Tracked)"
+4. Diagnostic query: coverage for second-most-recent `as_of_date` — should be >98% for a healthy nightly
+5. If genuine gap: run `safe_recompute` with `since_date` set to gap start (no FMP cost)
+
+---
+
 ## Invariants Checklist
 
 Run this checklist before any release touching market data code:
@@ -345,3 +407,49 @@ GROUP BY as_of_date
 ORDER BY as_of_date
 LIMIT 10;
 ```
+
+---
+
+## Two-Worker Operations (v1)
+
+After Phase 0 stabilization (see [`docs/plans/MASTER_PLAN_2026.md`](plans/MASTER_PLAN_2026.md)), Celery runs as **two workers** on Render:
+
+| Service | Queue(s) | Concurrency | Max-mem-per-child | Purpose |
+|---------|----------|-------------|-------------------|---------|
+| `axiomfolio-worker` (`--beat`) | `celery`, `account_sync`, `orders` | 2 | 750000 KiB | Beat scheduler, dashboard warming, account sync, order processing, exit cascade evaluation |
+| `axiomfolio-worker-heavy` | `heavy` | 1 | 1500000 KiB | `repair_stage_history`, `fundamentals.fill_missing`, `snapshot_history.*`, `full_historical`, `prune_old_bars` |
+
+### Routing rules (`backend/tasks/celery_app.py`)
+
+> **Target state after Phase 0 PR #317 merges.** Until that PR ships, `celery_app.py` declares only `celery` / `account_sync` / `orders` and the `heavy` queue is **not yet defined**. Always consult the actual file in `backend/tasks/celery_app.py` for the authoritative routing list.
+
+```python
+task_routes = {
+    "backend.tasks.market.indicators.repair_stage_history": {"queue": "heavy"},
+    "backend.tasks.market.fundamentals.fill_missing": {"queue": "heavy"},
+    "backend.tasks.market.snapshots.snapshot_last_n_days": {"queue": "heavy"},
+    "backend.tasks.market.backfill.full_historical": {"queue": "heavy"},
+    "backend.tasks.market.maintenance.prune_old_bars": {"queue": "heavy"},
+    "backend.tasks.account_sync.*": {"queue": "account_sync"},
+    "backend.tasks.execution.*": {"queue": "orders"},
+}
+```
+
+### Verifying both workers are healthy
+
+```bash
+# In each worker shell:
+celery -A backend.tasks.celery_app inspect active_queues
+celery -A backend.tasks.celery_app inspect active
+celery -A backend.tasks.celery_app inspect stats
+```
+
+### When the heavy worker is busy
+
+Pipeline DAG surfaces `RunStatus.WAITING` (Phase 0 fix): the API does **not** error if a task can't start within 120s; it polls Celery `inspect()` and returns `waiting` with `current_task` + age until either the worker becomes reachable or 900s elapse. Frontend renders amber instead of red.
+
+### Memory tuning rationale
+
+- `--max-memory-per-child` is set to ~50% of the Render Standard 2 GiB ceiling so Celery recycles workers before kernel OOM (D76)
+- Fast worker at 750000 KiB allows two child processes to fit comfortably
+- Heavy worker at 1500000 KiB allows the indicator recompute over 2,500 symbols to complete in a single child without recycling mid-task

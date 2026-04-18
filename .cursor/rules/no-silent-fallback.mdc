@@ -1,0 +1,86 @@
+---
+description: Never silently coerce errors or empty data to zero / fallback values that look like success.
+alwaysApply: true
+---
+
+# No Silent Fallbacks
+
+Silent fallbacks make broken systems look healthy. They are the single most expensive class of bug in this codebase (R32, R34, R38).
+
+## Forbidden patterns
+
+```python
+# BAD: silent zero on error
+try:
+    result = compute_thing()
+except Exception:
+    result = 0  # NEVER. Log + raise or surface as error state.
+
+# BAD: empty dict masquerading as success
+data = {}
+try:
+    data = fetch_from_provider()
+except Exception:
+    pass  # NEVER. data={} is indistinguishable from "no records exist".
+return data
+```
+
+```typescript
+// BAD: nullish coalescing hides loading/error states
+{aggregates?.total ?? 0} symbols
+// User sees "0 symbols" forever if aggregates failed to load.
+
+// GOOD: separate loading / error / empty / data states
+{isLoading ? "Loading..." : isError ? "—" : `${aggregates.total} symbols`}
+```
+
+## Required patterns
+
+### Backend
+
+```python
+try:
+    result = compute_thing()
+except SpecificException as e:
+    logger.warning("compute_thing failed for %s: %s", context, e)
+    raise  # OR return None (typed Optional) — caller must handle
+```
+
+When a per-symbol loop swallows exceptions:
+
+```python
+written, skipped, errors = 0, 0, 0
+for symbol in symbols:
+    try:
+        do_work(symbol)
+        written += 1
+    except NoDataError:
+        skipped += 1
+    except Exception as e:
+        errors += 1
+        logger.warning("do_work failed for %s: %s", symbol, e)
+
+assert written + skipped + errors == len(symbols), "counter drift"
+logger.info("recompute: written=%d skipped=%d errors=%d", written, skipped, errors)
+```
+
+### Frontend
+
+Distinguish four states explicitly: `loading`, `error`, `empty`, `data`.
+
+```tsx
+if (query.isLoading) return <Skeleton />;
+if (query.isError) return <ErrorCard onRetry={query.refetch} />;
+if (!query.data?.items.length) return <EmptyState />;
+return <DataView items={query.data.items} />;
+```
+
+Never use `data?.field ?? 0` for user-facing counts; it makes "still loading" indistinguishable from "result is zero".
+
+## When a fallback IS legitimate
+
+- **Rate limiter unreachable**: fail-closed (skip provider, see D63), but log warning AND surface in `/admin/health`
+- **Optional field missing**: `display_name = full_name or username` is fine for UX
+- **Genuinely zero result**: `count = query.scalar() or 0` is fine when the query truly returns 0 rows
+
+The line: a fallback is OK if a downstream observer can still tell whether the system is healthy or degraded. If the fallback hides the degradation, it's forbidden.

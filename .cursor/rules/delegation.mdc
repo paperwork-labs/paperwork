@@ -52,6 +52,39 @@ Message 2: Task (shell): npm run type-check
 [wait]
 ```
 
+## Parallel Investigation Pattern
+
+When diagnosing a multi-system issue (e.g., "production looks broken in N ways"), launch parallel `explore` subagents — one per suspect system — in a single message. Synthesize results in Opus.
+
+```
+# Diagnosing prod incident: pipeline red + dashboard 0 symbols + DAG showing errors
+Task 1 (explore, "very thorough"): "What does /admin/health return? Map each red dimension to its source query and recent task runs."
+Task 2 (explore, "medium"): "Why is /market-data/snapshots/aggregates returning 0 symbols? Trace from frontend hook to backend filter."
+Task 3 (explore, "medium"): "What's the difference between RunStatus.error and RunStatus.stale in pipeline DAG? Why are stale steps shown as red?"
+
+Synthesize -> propose plan in plan mode -> dispatch fix PRs.
+```
+
+## Cloud Background Agents (sprint pattern)
+
+For multi-PR sprints (v1+World-Class scope), dispatch each PR end-to-end as a Cursor Cloud Background Agent. Founder reviews/merges from anywhere; Opus stays in-session for architecture, schema design, code review, decision logging.
+
+```
+# v1 Week 1 dispatch (one message, three Task calls)
+Task A (generalPurpose, background): "Open PR fix/v1-phase-0-stabilization. Scope: render.yaml worker split + celery routes + dag waiting state + tracked aggregates resilience + dashboard warming truth + DAG stale state + Yahoo backoff + IBKR watchdog gate + recompute coverage counters + monotonicity index migration. Acceptance: see master plan Phase 0."
+Task B (generalPurpose, background): "Open PR feat/v1-stripe-test-scaffolding. Scope: User.tier enum + Entitlement model + Alembic migration + Stripe client (test keys only) + webhook receiver + TierGate decorator + feature catalog. Acceptance: see master plan Phase 0.5."
+Task C (generalPurpose, background): "Open PR feat/v1-candidate-generator. Scope: Candidate model + CandidateGenerator service + daily Beat job + GET /candidates API + frontend Candidates page + test fixture. Acceptance: see master plan Phase 0.5."
+
+# Each agent runs autonomously: clone, branch, code, test, push, open PR, fix CI on review.
+# Opus pings founder only when PR is ready for merge review.
+```
+
+Background Agents do NOT touch:
+- Live broker credentials
+- Production Stripe keys (test mode only until founder authorizes go-live)
+- Real validator emails or PII
+- Any danger zone in `protected-regions.mdc` without explicit Opus approval
+
 ## Commit + PR Pattern
 
 Delegate the entire git workflow to a single shell subagent:

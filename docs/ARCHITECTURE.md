@@ -1,5 +1,7 @@
 # Architecture Overview
 
+> **2026-04-09 update**: This document reflects the v0 architecture. The current product strategy and v1+World-Class roadmap live in [`docs/plans/MASTER_PLAN_2026.md`](plans/MASTER_PLAN_2026.md). Sections marked **(v1 update)** below describe components shipping in the v1 milestone (target 2026-06-21). New sections at end: [Picks Pipeline (v1)](#picks-pipeline-v1), [Subscription Tiers (v1)](#subscription-tiers-v1), [Two-Worker Topology (v1)](#two-worker-topology-v1).
+
 ## Table of contents
 
 - [At a glance](#at-a-glance)
@@ -19,6 +21,9 @@
 - [Broker Data Strategy](#broker-data-strategy)
 - [Production Infrastructure](#production-infrastructure)
 - [Real-Time Trading Architecture](#real-time-trading-architecture)
+- [Picks Pipeline (v1)](#picks-pipeline-v1)
+- [Subscription Tiers (v1)](#subscription-tiers-v1)
+- [Two-Worker Topology (v1)](#two-worker-topology-v1)
 - [Known Gaps](#known-gaps)
 
 ---
@@ -510,6 +515,133 @@ Resets at 4 AM ET (configurable via `trading_day_timezone`, `trading_day_reset_h
 
 ---
 
+## Picks Pipeline (v1)
+
+The picks pipeline is the v1 differentiator. Validators (founder, Twisted Slice) submit market intelligence via email or PDF; LLM polymorphic parser extracts structured drafts; validator queue UI surfaces them for approve/edit/publish; tier-gated publish reaches subscribers.
+
+```mermaid
+flowchart LR
+    subgraph inbound [Inbound]
+        Email["Inbound email picks@axiomfolio.com"]
+        Upload["Direct PDF upload"]
+        Forward["Forwarded PDF attachment"]
+    end
+
+    subgraph parser [LLM Parser]
+        Detect["Schema detect (gpt-4o-mini)"]
+        Extract["Polymorphic extract (gpt-4o)"]
+        Vision["Chart captioning (gpt-4o vision)"]
+        Dedupe["Cross-email dedupe + signal linking"]
+    end
+
+    subgraph queue [Validator Queue]
+        Drafts["Draft pile (DRAFT)"]
+        Edit["Twisted Slice edits / approves"]
+        Reject["Reject"]
+    end
+
+    subgraph publish [Publish]
+        Approved[APPROVED]
+        Published["PUBLISHED to subscribers"]
+        Webhook["Webhook to subscribers + Brain"]
+    end
+
+    Email --> Detect
+    Upload --> Detect
+    Forward --> Vision --> Detect
+    Detect --> Extract --> Dedupe --> Drafts
+    Drafts --> Edit --> Approved --> Published --> Webhook
+    Drafts --> Reject
+```
+
+### Schema templates (polymorphic, LLM-selected)
+
+| Template | Example email |
+|----------|---------------|
+| `single_stock_bullets` | Per-symbol blocks with bullets (ticker + key levels + thesis) |
+| `single_stock_research_note` | Detailed paragraph from a research provider (e.g., Stock Pulse) |
+| `macro_recap_with_position_changes` | Hedge fund daily recap with timestamps + position deltas (e.g., Hedgeye) |
+| `daily_market_recap_narrative` | Multi-asset narrative with embedded charts and attributed quotes (e.g., ZeroHedge) |
+| `mixed` | Hybrid; runs multiple extractors and dedupes |
+
+### Key data models
+
+| Model | Purpose |
+|-------|---------|
+| `ValidatedPick` | Single-symbol actionable pick with action/conviction/levels/targets/thesis |
+| `MacroOutlook` | Asset-class or theme view (Gold/Oil/SPY/IWM, etc.) |
+| `SectorRanking` | Sector ranking update from validator |
+| `PositionChange` | Long→short, size up/down, etc. — high-signal extract from research recaps |
+| `RegimeCall` | Framework-level signals (Quad N, Trump put, cash is king) |
+| `FlowSignal` | Structured flow data attributed to a source (Goldman desk, etc.) |
+| `AttributedQuote` | Verbatim quotes with `source` field (for licensed redistribution) |
+
+### Source attribution
+
+Every published item carries:
+- `validator` — always `twisted_slice` or `founder` (publicly visible)
+- `original_author` — when forwarded (e.g., "Keith McCullough / Hedgeye"); shown as badge
+- `source_type` — `ORIGINAL_ANALYSIS` / `FORWARDED_RECAP` / `EDITED_FORWARD`
+- Trusted senders configured via `PICKS_TRUSTED_SENDERS` env var
+
+### Tier gating
+
+- **Free**: 24h-delayed picks, watchlist add only
+- **Lite**: real-time picks (no autotrade), email/SMS alerts
+- **Pro / Pro+**: + one-click execute (paper or live), + auto-execute via `SignalToOrder`
+
+---
+
+## Subscription Tiers (v1)
+
+Six tiers, Stripe-backed. See [`docs/plans/MASTER_PLAN_2026.md`](plans/MASTER_PLAN_2026.md) Phase 0.5 for scaffolding details.
+
+| Tier | Monthly | Picks | Autotrade | Brokers | Native chat | LLM budget |
+|------|---------|-------|-----------|---------|-------------|------------|
+| Free | $0 | 24h delayed | — | 1 | — | $0 |
+| Lite | $9 | Real-time | — | 3 | — | $0 |
+| Pro | $29 | Real-time | Paper + Live | 5 | — | $5 |
+| Pro+ | $79 | Real-time | + bracket + tax-aware | unlimited | Yes | $20 |
+| Quant Desk | $299 | + walk-forward + plugin SDK | + Trade Copy | unlimited | + custom prompts | unlimited |
+| Enterprise | custom | + white-label | + SSO + SLA | unlimited | + custom models | custom |
+
+Implementation: `User.tier` enum + `Entitlement` model + `TierGate` decorator + Stripe webhook receiver. Multi-tenancy hardening (per-user circuit breaker, per-tenant Redis namespaces, GDPR export/delete) is a v1 launch blocker (D88).
+
+---
+
+## Two-Worker Topology (v1)
+
+Phase 0 stabilization splits the single Celery worker into a fast queue worker + a heavy queue worker (D81 + master plan Phase 0).
+
+```mermaid
+flowchart TB
+    Beat["Celery Beat (in fast worker)"]
+
+    subgraph fast ["axiomfolio-worker (Standard plan, 750000 KiB max-mem-per-child)"]
+        FastQ1["Queue: celery (default)"]
+        FastQ2["Queue: account_sync"]
+        FastQ3["Queue: orders"]
+        FastConcurrency["--concurrency=2"]
+    end
+
+    subgraph heavy ["axiomfolio-worker-heavy (Standard plan, 1500000 KiB max-mem-per-child)"]
+        HeavyQ["Queue: heavy"]
+        HeavyConcurrency["--concurrency=1"]
+    end
+
+    Beat -->|schedules| FastQ1
+    Beat -->|schedules heavy jobs| HeavyQ
+
+    FastQ1 -.->|"daily_bootstrap orchestrator"| FastConcurrency
+    HeavyQ -.->|"repair_stage_history, fundamentals.fill_missing, snapshot_history.*, full_historical, prune_old_bars"| HeavyConcurrency
+```
+
+**Routing**: `backend/tasks/celery_app.py` `task_routes` maps task names to queues. Heavy queue receives all multi-hour CPU-bound or memory-bound jobs so they don't block the fast queue (which handles dashboard warming, exit cascade evaluation, account sync, order processing).
+
+**Why split**: Pre-split, a 4h `repair_stage_history` task on the single worker (`--concurrency=1`) blocked all other tasks; pipeline trigger API timed out at 120s waiting for the worker. Post-split: fast queue stays responsive while heavy work runs in parallel.
+
+---
+
 ## Known Gaps
 
 1. `dividends` table has 0 rows -- IBKR data ready but sync not yet triggered post-FlexQuery fix
@@ -517,3 +649,6 @@ Resets at 4 AM ET (configurable via `trading_day_timezone`, `trading_day_reset_h
 3. TastyTrade sync stuck (`RUNNING`) due to encryption token mismatch
 4. IBKR sync code needs refactor (2 x 2000+ line files with god functions)
 5. Paper trading mode not yet implemented (planned Phase 9)
+6. **(v1 fix)** `BRAIN_TOOLS_USER_ID=1` hardcoded — must scope per-tenant before billing launch (D88)
+7. **(v1 fix)** Global `CircuitBreaker` — must be per-user before multi-tenancy (D88, master plan Phase 8c)
+8. **(v1 fix)** No GDPR data export/delete endpoints — multi-tenancy requirement (D88)
