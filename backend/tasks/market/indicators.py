@@ -430,13 +430,24 @@ def recompute_universe(batch_size: int = 50, force: bool = False) -> dict:
                 f"Task hit soft time limit after processing {processed_ok} of {len(ordered)} symbols. "
                 "Remaining symbols were skipped."
             )
+        # Coverage accounting: per `no-silent-fallback.mdc`, the sum of all
+        # per-symbol outcome counters must equal the universe size. Any
+        # mismatch (e.g. a code path that forgets to increment a counter)
+        # surfaces here so we don't silently report partial coverage as
+        # success.
+        accounted = processed_ok + skipped_no_data + skipped_fresh + errors
+        skipped_unprocessed = max(0, total_syms - accounted)
+        coverage_consistent = (accounted + skipped_unprocessed) == total_syms
+
         res = {
             "status": "ok",
             "symbols": len(ordered),
             "processed_ok": processed_ok,
             "skipped_no_data": skipped_no_data,
             "skipped_fresh": skipped_fresh,
+            "skipped_unprocessed": skipped_unprocessed,
             "errors": errors,
+            "coverage_consistent": coverage_consistent,
             "error_samples": error_samples,
             "benchmark": {
                 "symbol": benchmark_symbol,
@@ -450,6 +461,28 @@ def recompute_universe(batch_size: int = 50, force: bool = False) -> dict:
                 "spy_freshness_refresh_persist_errors": spy_freshness_refresh_persist_errors,
             },
         }
+        if not coverage_consistent:
+            logger.error(
+                "[%s] recompute_universe counter drift: total=%d accounted=%d "
+                "(processed_ok=%d skipped_no_data=%d skipped_fresh=%d errors=%d skipped_unprocessed=%d)",
+                task_id,
+                total_syms,
+                accounted + skipped_unprocessed,
+                processed_ok,
+                skipped_no_data,
+                skipped_fresh,
+                errors,
+                skipped_unprocessed,
+            )
+            res["status"] = "warn"
+            warnings.append(
+                f"counter drift: accounted={accounted + skipped_unprocessed} expected={total_syms}"
+            )
+        if skipped_unprocessed > 0:
+            warnings.append(
+                f"{skipped_unprocessed} of {total_syms} symbols were not processed "
+                "(soft time limit or early exit)."
+            )
         if warnings:
             res["warnings"] = warnings
         if error_samples:
@@ -458,14 +491,17 @@ def recompute_universe(batch_size: int = 50, force: bool = False) -> dict:
             )
         elapsed = time.monotonic() - t0
         logger.info(
-            "[%s] recompute_universe completed in %.1fs (symbols=%d ok=%d skipped_nd=%d skipped_fresh=%d errors=%d)",
+            "[%s] recompute_universe completed in %.1fs "
+            "(symbols=%d ok=%d skipped_nd=%d skipped_fresh=%d skipped_unprocessed=%d errors=%d coverage_consistent=%s)",
             task_id,
             elapsed,
             total_syms,
             processed_ok,
             skipped_no_data,
             skipped_fresh,
+            skipped_unprocessed,
             errors,
+            coverage_consistent,
         )
         _set_task_status("admin_indicators_recompute_universe", "ok", res)
         return res
