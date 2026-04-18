@@ -101,6 +101,34 @@ CATALOG: List[JobTemplate] = [
         timeout_s=60,
     ),
     JobTemplate(
+        # The DAG bootstrap (`admin_coverage_backfill` at 01:00 UTC) does
+        # invoke regime computation as a step, but a standalone catalog
+        # entry is needed so that:
+        #   1. operators can trigger / inspect regime independently from
+        #      the Admin → Jobs panel,
+        #   2. a fresh `MarketRegime` row exists by the time intelligence
+        #      briefs and exit-cascade evaluation run later in the morning,
+        #   3. when the nightly DAG fails partway, regime still gets
+        #      computed at 03:20 UTC and the `regime` SystemStatus dim
+        #      stays green.
+        # Cron `'20 3 * * *'` is intentionally after `fundamentals_fill`
+        # (03:15 UTC) and before `sync_earnings_calendar` (03:30 UTC), so
+        # regime refresh does not overlap the heavy fundamentals run.
+        id="compute_daily_regime",
+        display_name="Daily Market Regime (R1-R5)",
+        group="market_data",
+        task="backend.tasks.market.regime.compute_daily",
+        description=(
+            "Compute the day's MarketRegime row (R1-R5) from VIX, breadth, and "
+            "advance/decline inputs. Idempotent (upsert on as_of_date). Acts as a "
+            "safety net so regime stays fresh even when the nightly DAG fails."
+        ),
+        default_cron="20 3 * * *",
+        default_tz="UTC",
+        job_run_label="compute_daily_regime",
+        timeout_s=180,
+    ),
+    JobTemplate(
         id="sync_earnings_calendar",
         display_name="Earnings Calendar Sync",
         group="market_data",
