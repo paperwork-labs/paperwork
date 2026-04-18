@@ -21,11 +21,17 @@ from backend.services.market import provider_router as pr_module
 
 
 class _FakeProviderRouter:
-    """Shim exposing only the retry helpers under test."""
+    """Shim exposing only the retry helpers under test.
+
+    ``_extract_http_status`` is decorated with ``@staticmethod`` on the real
+    router; copying it via attribute access unwraps the descriptor, so we
+    have to re-wrap it here. Otherwise Python rebinds it as a regular
+    method and passes ``self`` as the first arg, breaking the call.
+    """
 
     _call_blocking_with_retries = pr_module.ProviderRouter._call_blocking_with_retries
     _call_blocking_with_retries_sync = pr_module.ProviderRouter._call_blocking_with_retries_sync
-    _extract_http_status = pr_module.ProviderRouter._extract_http_status
+    _extract_http_status = staticmethod(pr_module.ProviderRouter._extract_http_status)
 
 
 class _RateLimitError(Exception):

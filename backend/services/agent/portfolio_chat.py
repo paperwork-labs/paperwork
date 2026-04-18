@@ -457,7 +457,7 @@ class PortfolioChat:
 
 
 def _summarize_portfolio(
-    db: Session, user_id: int, args: Dict[str, Any]
+    db: Session, user_id: int, arguments: Dict[str, Any]
 ) -> Dict[str, Any]:
     """Return a compact textual summary of the user's portfolio.
 
@@ -474,7 +474,7 @@ def _summarize_portfolio(
     }
 
 
-def _now_utc(db: Session, user_id: int, args: Dict[str, Any]) -> Dict[str, Any]:
+def _now_utc(db: Session, user_id: int, arguments: Dict[str, Any]) -> Dict[str, Any]:
     """Return the current UTC time. Useful smoke tool."""
     return {
         "summary": datetime.now(timezone.utc).isoformat(),

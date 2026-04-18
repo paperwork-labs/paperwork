@@ -128,8 +128,13 @@ def test_log_line_includes_coverage_consistency_flag(
     with caplog.at_level(logging.INFO):
         market_indicators_tasks.recompute_universe(batch_size=2, force=True)
 
+    # Use getMessage() so we apply LogRecord %-formatting; r.message is only
+    # set after a handler runs the formatter, which can be lossy depending on
+    # caplog's handler ordering.
     completion_logs = [
-        r.message for r in caplog.records if "recompute_universe completed" in r.message
+        r.getMessage()
+        for r in caplog.records
+        if "recompute_universe completed" in r.getMessage()
     ]
     assert completion_logs, "expected completion log line"
     last = completion_logs[-1]
