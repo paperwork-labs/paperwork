@@ -34,16 +34,36 @@ except ImportError as e:
     IMPORT_ERROR = str(e)
 
 
+def _in_ci() -> bool:
+    """True when running in a CI environment.
+
+    We only consult the ``CI`` environment variable (truthy: 1/true/yes,
+    case-insensitive). GitHub Actions sets ``CI=true`` by default; we do
+    not read ``GITHUB_ACTIONS``. Used as a hard-fail guard to prevent the
+    "broken migrations + silent skips = green CI" failure mode that hid a
+    4-tuple/7-tuple GROUP BY mismatch in test_market_api_layer.py for ~8
+    days (commits 85d2554 → e18e6a5).
+    """
+    return os.getenv("CI", "").lower() in ("1", "true", "yes")
+
+
 @pytest.fixture(scope="session")
 def test_db(request):
     """Create an isolated test database engine and metadata.
 
     Safety:
-    - Requires TEST_DATABASE_URL. If missing, skip DB tests.
+    - Requires TEST_DATABASE_URL. If missing, skip locally / fail loudly in CI.
     - Requires TEST_DATABASE_URL is unambiguously a test DB URL (postgres_test + *_test).
     - Extra paranoia: requires DATABASE_URL == TEST_DATABASE_URL so accidental engine usage stays isolated.
     """
     if not MODELS_AVAILABLE:
+        # In CI, missing models means the import path is broken — that's a
+        # hard failure, not a "silently skip everything" condition.
+        if _in_ci():
+            raise pytest.UsageError(
+                f"CI: backend.models import failed; refusing to run with skipped DB tests. "
+                f"Import error: {IMPORT_ERROR if not MODELS_AVAILABLE else ''}"
+            )
         pytest.skip(
             f"Models not available: {IMPORT_ERROR if not MODELS_AVAILABLE else ''}"
         )
@@ -56,6 +76,11 @@ def test_db(request):
 
     TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "")
     if not TEST_DATABASE_URL:
+        if _in_ci():
+            raise pytest.UsageError(
+                "CI: TEST_DATABASE_URL is unset. Refusing to silently skip DB tests "
+                "(this exact failure mode masked broken migrations for 8 days)."
+            )
         pytest.skip(
             "TEST_DATABASE_URL not set; skipping DB tests to protect development database"
         )
@@ -191,16 +216,35 @@ def sample_user():
     return User(username="testuser", email="test@example.com", full_name="Test User")
 
 
-@pytest.fixture(autouse=True)
-def _schema_guard(db_session):
-    """Skip DB tests if core tables are missing in the test database."""
+def _enforce_schema_or_fail(db_session) -> None:
+    """Pure-function variant of `_schema_guard` so tests can drive it
+    directly without standing up the full pytest fixture chain."""
     if db_session is None:
         return
     inspector = inspect(db_session.bind)
     required = ["users", "broker_accounts"]
     missing = [t for t in required if not inspector.has_table(t)]
-    if missing:
-        pytest.skip(f"Test DB not migrated; missing tables: {', '.join(missing)}")
+    if not missing:
+        return
+    msg = f"Test DB not migrated; missing tables: {', '.join(missing)}"
+    if _in_ci():
+        raise pytest.UsageError(
+            f"CI: {msg}. This usually means alembic upgrade failed or "
+            "ran partially. Refusing to silently skip the test suite."
+        )
+    pytest.skip(msg)
+
+
+@pytest.fixture(autouse=True)
+def _schema_guard(db_session):
+    """Skip DB tests if core tables are missing in the test database.
+
+    In CI we hard-fail instead of skipping. The "skip when tables missing"
+    path is the exact mechanism that hid a broken `op.autocommit_block()`
+    migration in PR #321 — alembic raised partway through, the schema was
+    incomplete, and ~500 tests silently skipped while CI reported green.
+    """
+    _enforce_schema_or_fail(db_session)
 
 
 def pytest_collection_modifyitems(items):
