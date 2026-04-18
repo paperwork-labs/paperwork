@@ -403,7 +403,11 @@ class AnomalyExplainer:
             runbook_excerpts=[chunk.reference() for chunk in chunks],
             generated_at=datetime.now(timezone.utc),
             model=self.provider.name,
-            is_fallback=is_fallback,
+            # Flip is_fallback if we had to substitute scripted steps even
+            # when the LLM call itself didn't fail -- the explanation is no
+            # longer fully LLM-grounded, so the UI should show the degraded
+            # badge.
+            is_fallback=is_fallback or used_scripted_fallback_steps,
         )
 
     def _fallback_steps(self, anomaly: Anomaly) -> List[RemediationStep]:

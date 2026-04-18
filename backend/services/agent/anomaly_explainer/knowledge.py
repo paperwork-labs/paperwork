@@ -62,10 +62,19 @@ class RunbookChunk:
 
 
 def _slugify_anchor(heading: str) -> str:
-    """Mimic GitHub's anchor generation closely enough for cross-linking."""
+    """Mimic GitHub's anchor generation closely enough for cross-linking.
+
+    GitHub's algorithm strips punctuation but does NOT collapse runs of
+    whitespace before converting to dashes -- "ASCII / Unicode #1" yields
+    ``ascii--unicode-1`` (double dash where the slash sat), not the
+    collapsed single-dash form. We preserve that behavior so cross-doc
+    anchor links keep working without manual normalization.
+    """
     slug = heading.lower().strip()
+    # Drop everything that isn't a word char, whitespace, or dash. We do
+    # NOT collapse the whitespace afterwards.
     slug = re.sub(r"[^\w\s-]", "", slug)
-    slug = re.sub(r"\s+", "-", slug)
+    slug = re.sub(r"[\t\n\r\f\v]", " ", slug).replace(" ", "-")
     slug = slug.strip("-")
     return slug or "section"
 
