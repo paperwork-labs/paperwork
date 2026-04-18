@@ -10,6 +10,7 @@ Architectural decisions with rationale. Grouped by domain, newest first within e
 |----|-------|--------|
 | D14 | Schwab `TRADE → BUY` mapping loses sell-side distinction | Open |
 | D15 | TastyTrade tax lots are synthetic (CALCULATED) — not for tax reporting | Accepted limitation |
+| D89 | Copilot reviewer cannot be auto-added | Repo admin must invite GitHub Copilot as a collaborator (or upgrade to a plan that ships the `@copilot` reviewer slug). Workflow `request-copilot-review.yml` runs but silently no-ops because `copilot-pull-request-reviewer` is not a collaborator on `sankalp404/axiomfolio` (HTTP 422 on `requested_reviewers`). |
 
 ---
 
@@ -118,6 +119,19 @@ Architectural decisions with rationale. Grouped by domain, newest first within e
 | D37 | 2026-03-27 | **Trading day resets at 4 AM ET** — configurable via trading_day_timezone/trading_day_reset_hour |
 | D38 | 2026-03-27 | **TradingView webhook secrets hashed** — SHA-256 hex, constant-time comparison |
 | D39 | 2026-03-27 | **Webhook orders start as PREVIEW** — OrderManager.submit() handles state transitions |
+
+### V1 Greenfield (Subscription Platform)
+
+| ID | Date | Decision |
+|----|------|----------|
+| D81 | 2026-04-09 | **Entitlement model is the single source of truth for feature access** (PR #326) — `entitlements` table keyed on `(user_id, feature)` with TierGate dependency injecting access checks at the route layer. FeatureCatalog enumerates every gated feature; tier mapping lives in code, not the DB, so changing a tier never requires a migration. Reversible. |
+| D82 | 2026-04-09 | **Stripe webhook processor decoupled from EntitlementService via SubscriptionStateSink Protocol** (PR #330) — Lets the webhook handler ship before the persistence layer is finalized; tests exercise the processor with a fake sink. The HTTP 402 response on signature failure (vs 401) signals "billing problem" distinctly to Stripe's retry loop. Reversible. |
+| D83 | 2026-04-09 | **Polymorphic email parser uses Preprocessor → LLMParser pipeline with pluggable provider** (PR #331) — Strips RFC822/HTML/PDF noise into a NormalizedEmail before the LLM ever sees it; LLM output is JSON-schema validated and per-record errors skip only the bad record. Provider is a Protocol; StubLLMParseProvider drives all tests. Reversible. |
+| D84 | 2026-04-09 | **AgentBrain (PortfolioChat) is distinct from AutoOps AgentBrain** (PR #329, #333) — PortfolioChat answers user questions about their own holdings; AutoOps explains operator anomalies. Same architecture (provider abstraction + tool/runbook grounding) but different prompts, audit trails, and risk profiles. They will share an LLMProvider Protocol but never share state. |
+| D85 | 2026-04-09 | **FileFree.ai tax-export schema is versioned and machine-readable** (PR #332) — `schema_version="1.0.0"` on every package; Pydantic `extra="forbid"` on lots/accounts/summary so silent drift fails loud; CSV column order is part of the contract. Bumping the version requires a KNOWLEDGE entry and a corresponding test update. |
+| D86 | 2026-04-09 | **Tax export filters out tax-advantaged accounts by default** (PR #332) — IRA / Roth / HSA accounts skipped unless `include_tax_advantaged=true` is explicit. Prevents accidental inclusion of non-taxable activity in a 1099-shaped export. Reversible per-call. |
+| D87 | 2026-04-09 | **AnomalyExplainer never raises in normal operation** (PR #333) — Every failure mode (provider error, malformed JSON, missing field, hallucinated task slug, > 12 steps) degrades to a per-category deterministic fallback runbook with `is_fallback=true` and `confidence=0.30`. AutoOps must never block because OpenAI is having a day. |
+| D88 | 2026-04-09 | **OpenAIChatProvider is sync (`requests`), not async** (PR #334) — AutoOps callers (Celery beat tasks, admin routes) are sync; spinning up an event loop just to call one POST is wrong. The async `AgentBrain._call_llm` stays for the chat/tool loop; this is a sibling for one-shot operator calls. JSON-object response_format is forced upstream so the explainer's schema gate is the second line of defence, not the first. |
 
 ### Data Pipeline
 

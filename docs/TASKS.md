@@ -232,6 +232,43 @@ Prepare AxiomFolio as tool provider for Paperwork Brain.
 
 ---
 
+## V1 Greenfield — Subscription Platform [IN PROGRESS]
+
+Target: credible v1 launch by 2026-06-21 (8 weeks). Each row is one PR; PRs land green and stack on each other where noted.
+
+### Open PRs awaiting review/merge (2026-04-09)
+
+| PR | Title | Status | Depends on | Notes |
+|----|-------|--------|------------|-------|
+| #326 | Entitlement model + TierGate + FeatureCatalog | CI green | main | Renumbered to alembic `0031` (off `0021`). Merge first — every other PR assumes this exists. |
+| #329 | AgentBrain v0 (PortfolioChat) | CI green | #326 | User-facing Pro+ chat over portfolio context. Provider abstraction in place; OpenAI wiring deferred. |
+| #330 | Stripe scaffolding (webhook + price catalog + sink) | CI green | #326 | Returns 402 on signature mismatch. SDK lazy-imported. Needs `STRIPE_PRICE_*` env vars before going live in prod. |
+| #331 | Polymorphic LLM email parser | CI green | main | Two-stage pipeline (Preprocessor → LLMParser). PDF support is lazy-imported `pypdf`. |
+| #332 | FileFree.ai tax-export scaffold | CI green | main | New `/api/v1/portfolio/tax/filefree/export?year=YYYY&format=json\|csv` + `/schema-version`. |
+| #333 | AnomalyExplainer with grounded runbook retrieval | CI green | main | Always-degrades-gracefully behaviour — fallback explanations have `is_fallback=true`. |
+| #334 | Sync OpenAI adapter for AnomalyExplainer | CI green | #333 | Wraps `requests` POST → forces `response_format=json_object`. Merge #333 first. |
+
+### Recommended merge order
+
+1. #326 (Entitlements) — foundation for the rest
+2. #329 (AgentBrain v0) — depends on entitlements
+3. #330 (Stripe) — depends on entitlements
+4. #331, #332 (Picks parser, FileFree exporter) — independent
+5. #333 (AnomalyExplainer) — independent of #326
+6. #334 (OpenAI adapter) — must follow #333
+
+### Decisions logged
+
+D81–D88 (see KNOWLEDGE.md) cover entitlements, Stripe sink decoupling, polymorphic parser, dual AgentBrains, FileFree schema versioning, tax-advantaged default-skip, AnomalyExplainer always-degrades, and sync-OpenAI rationale.
+
+### Known external blocker
+
+| ID | Issue | Owner |
+|----|-------|-------|
+| D89 | Copilot reviewer auto-add returns 422 on every PR (`copilot-pull-request-reviewer` not a collaborator). The workflow runs but no review is ever posted. | Repo admin (sankalp404) — invite Copilot as a collaborator on `sankalp404/axiomfolio` or move to a plan that ships `@copilot` reviewer. |
+
+---
+
 ## Future Phases (Post-Stabilization)
 
 | Phase | Focus | Status |
