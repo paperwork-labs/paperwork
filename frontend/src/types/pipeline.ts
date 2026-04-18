@@ -11,14 +11,40 @@ export interface PipelineStepState {
   counters: Record<string, unknown> | null;
 }
 
+/**
+ * ``waiting`` is computed-on-read by the backend when a run has been queued
+ * for >30s and at least one Celery worker is reachable AND busy with another
+ * task.  When ``waiting`` is set, ``current_task`` describes the longest-
+ * running task on any worker (the most likely thing blocking the run) and
+ * ``waiting_for_s`` is the run's age in seconds.  See backend
+ * ``_classify_stale_queued`` for the full truth table.
+ */
+export interface CurrentTaskInfo {
+  id: string | null;
+  name: string | null;
+  worker: string | null;
+  running_for_s: number | null;
+}
+
 export interface PipelineRunMeta {
   run_id: string;
-  status: "queued" | "running" | "ok" | "error" | "partial" | "unknown";
+  status:
+    | "queued"
+    | "running"
+    | "waiting"
+    | "ok"
+    | "error"
+    | "partial"
+    | "unknown";
   started_at: string | null;
   finished_at: string | null;
   triggered_by: string | null;
   updated_at?: string;
   error?: string | null;
+  /** Only set when ``status === "waiting"``. */
+  waiting_for_s?: number;
+  /** Only set when ``status === "waiting"``. */
+  current_task?: CurrentTaskInfo | null;
 }
 
 export interface PipelineRunState extends PipelineRunMeta {

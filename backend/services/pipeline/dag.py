@@ -25,7 +25,22 @@ logger = logging.getLogger(__name__)
 _RUN_TTL_S = 7 * 86400  # 7 days
 _RUNS_INDEX_KEY = "pipeline:runs"
 _RUNS_INDEX_MAX = 100
-_QUEUED_TIMEOUT_S = 120
+
+# Max age (seconds) a meta row may stay ``queued`` before _classify_stale_queued
+# escalates it to ``error`` when Celery inspect is falsy (None/empty) or every
+# worker reports no active tasks; younger queued runs may become ``waiting`` via
+# _WAITING_SURFACE_AFTER_S when workers are busy. Raised from 120s to 900s so
+# heavy-queue tasks do not spuriously trip the timeout (KNOWLEDGE D81 / R37).
+_QUEUED_TIMEOUT_S = 900
+
+# Once a run has been ``queued`` for this long, surface it as ``waiting``
+# (with the currently-running task name + age) instead of ``queued`` so
+# operators see "your job is behind X" instead of "queued forever".
+_WAITING_SURFACE_AFTER_S = 30
+
+# Inspect timeout when classifying a stale queued run.  Kept short because
+# this runs inline on every read of run state.
+_INSPECT_TIMEOUT_S = 1.5
 
 
 # ---------------------------------------------------------------------------
@@ -216,6 +231,17 @@ STEP_SKIPPED = "skipped"
 
 TERMINAL_STATUSES = frozenset({STEP_OK, STEP_ERROR, STEP_SKIPPED})
 
+# Run-level status (Redis ``meta.status``) constants.  Step statuses use
+# the ``STEP_*`` constants above; run statuses additionally include the
+# computed-on-read ``waiting`` and ``partial`` values.
+RUN_QUEUED = "queued"
+RUN_RUNNING = "running"
+RUN_WAITING = "waiting"
+RUN_OK = "ok"
+RUN_ERROR = "error"
+RUN_PARTIAL = "partial"
+RUN_UNKNOWN = "unknown"
+
 
 # ---------------------------------------------------------------------------
 # Redis state helpers
@@ -349,9 +375,47 @@ def all_deps_satisfied(
     return True
 
 
-def _expire_stale_queued(meta: Dict[str, Any]) -> Dict[str, Any]:
-    """If a run is still ``queued`` beyond the timeout, mark it as error at read time."""
-    if meta.get("status") != "queued":
+def _inspect_active_tasks() -> Optional[Dict[str, List[Dict[str, Any]]]]:
+    """Return Celery ``inspect().active()`` or None if no worker reachable.
+
+    Wrapped here so we can mock it cleanly in tests.
+    """
+    try:
+        # Lazy import — keeps `dag.py` importable from environments that
+        # don't have Celery configured (admin scripts, tests).
+        from backend.tasks.celery_app import celery_app
+        inspector = celery_app.control.inspect(timeout=_INSPECT_TIMEOUT_S)
+        return inspector.active()
+    except Exception as e:
+        # Missing broker / idle workers is expected during frequent polls.
+        if isinstance(e, (BrokenPipeError, ConnectionError, TimeoutError)):
+            logger.debug("Celery inspect unavailable: %s", e)
+        else:
+            logger.warning("Failed to inspect Celery workers: %s", e)
+        return None
+
+
+def _classify_stale_queued(meta: Dict[str, Any]) -> Dict[str, Any]:
+    """Reclassify a ``queued`` run based on Celery worker reachability.
+
+    Truth table (queued runs only — other statuses are returned untouched):
+
+    | Age                 | Workers reachable | Workers busy | Resulting status |
+    |---------------------|-------------------|--------------|------------------|
+    | <30s                | n/a               | n/a          | ``queued``       |
+    | 30s..900s           | yes               | yes          | ``waiting``      |
+    | 30s..900s           | yes               | no           | ``queued``       |
+    | 30s..900s           | no                | n/a          | ``queued``       |
+    | >900s               | yes               | yes          | ``waiting``      |
+    | >900s               | yes               | no           | ``queued``       |
+    | >900s               | no                | n/a          | ``error``        |
+
+    The ``waiting`` shape adds a ``current_task`` (longest-running active
+    task on any worker) and ``waiting_for_s`` (run age) so the UI can
+    show "your run is queued behind ``repair_stage_history`` (running for
+    173s)" instead of generic "queued".
+    """
+    if meta.get("status") != RUN_QUEUED:
         return meta
     started = meta.get("started_at")
     if not started:
@@ -360,9 +424,73 @@ def _expire_stale_queued(meta: Dict[str, Any]) -> Dict[str, Any]:
         age_s = time.time() - datetime.fromisoformat(started).timestamp()
     except Exception:
         return meta
+
+    if age_s < _WAITING_SURFACE_AFTER_S:
+        return meta
+
+    active = _inspect_active_tasks()
+
+    # No worker reachable. Within timeout, hold queued so transient
+    # broker glitches do not flap the row.  Past timeout, escalate.
+    if not active:
+        if age_s > _QUEUED_TIMEOUT_S:
+            return {
+                **meta,
+                "status": RUN_ERROR,
+                "error": "Queued but never started \u2014 worker may be down",
+            }
+        return meta
+
+    # Worker(s) reachable. If anything is running, surface the longest-
+    # running task so the operator knows what is blocking.
+    busiest: Optional[Dict[str, Any]] = None
+    busiest_age: float = 0.0
+    now = time.time()
+    for worker_name, tasks in active.items():
+        for t in tasks or ():
+            time_start = t.get("time_start")
+            try:
+                t_age = now - float(time_start) if time_start else 0.0
+            except (TypeError, ValueError):
+                t_age = 0.0
+            if busiest is None or t_age > busiest_age:
+                busiest = {
+                    "id": t.get("id"),
+                    "name": t.get("name"),
+                    "worker": worker_name,
+                    "running_for_s": round(t_age, 1),
+                }
+                busiest_age = t_age
+
+    if busiest is not None:
+        return {
+            **meta,
+            "status": RUN_WAITING,
+            "waiting_for_s": round(age_s, 1),
+            "current_task": busiest,
+            # Important: do NOT set ``error``.  ``waiting`` is healthy
+            # backpressure, not a failure.
+            "error": None,
+        }
+
+    # Workers reachable but idle and nothing running for our run.
+    # Within the timeout we keep ``queued`` (broker may just be slow);
+    # past it we escalate so the operator notices.
     if age_s > _QUEUED_TIMEOUT_S:
-        meta = {**meta, "status": STEP_ERROR, "error": "Queued but never started — worker may be down"}
+        return {
+            **meta,
+            "status": RUN_ERROR,
+            "error": (
+                "Queued but never started \u2014 workers idle, broker "
+                "may be misrouting (check task queue routes)"
+            ),
+        }
     return meta
+
+
+# Backward-compat alias for any external callers that imported the
+# private name.  Internal callers all use ``_classify_stale_queued``.
+_expire_stale_queued = _classify_stale_queued
 
 
 def get_run_state(
@@ -379,13 +507,13 @@ def get_run_state(
     try:
         meta_raw = r.get(_meta_key(run_id))
         if meta_raw:
-            result.update(_expire_stale_queued(json.loads(meta_raw)))
+            result.update(_classify_stale_queued(json.loads(meta_raw)))
         else:
-            result["status"] = "unknown"
+            result["status"] = RUN_UNKNOWN
             result["started_at"] = None
     except Exception as e:
         logger.warning("Failed to read pipeline meta for %s: %s", run_id, e)
-        result["status"] = "unknown"
+        result["status"] = RUN_UNKNOWN
         result["started_at"] = None
 
     for step_name in dag:
@@ -411,7 +539,7 @@ def list_recent_runs(limit: int = 20) -> List[Dict[str, Any]]:
         for raw in results:
             if raw:
                 try:
-                    runs.append(_expire_stale_queued(json.loads(raw)))
+                    runs.append(_classify_stale_queued(json.loads(raw)))
                 except Exception:
                     continue
     except Exception as e:

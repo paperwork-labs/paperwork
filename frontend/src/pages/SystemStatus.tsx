@@ -329,8 +329,12 @@ const SystemStatus: React.FC = () => {
   const [confirmStop, setConfirmStop] = useState(false);
   const [revokingTask, setRevokingTask] = useState<string | null>(null);
 
+  // ``waiting`` is healthy backpressure (worker is busy, will start soon),
+  // not a failure — keep polling fast and don't unpin the row.
   const runIsLive =
-    latestRun?.status === 'running' || latestRun?.status === 'queued';
+    latestRun?.status === 'running' ||
+    latestRun?.status === 'queued' ||
+    latestRun?.status === 'waiting';
   const { data: ambientState } = usePipelineAmbient();
 
   const mergedRun = React.useMemo(() => {
@@ -528,10 +532,28 @@ const SystemStatus: React.FC = () => {
               <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                 Pipeline
               </p>
-              {pipelineActive && (
+              {pipelineActive && latestRun?.status !== 'waiting' && (
                 <Badge variant="outline" className="border-primary/40 text-primary text-[10px] gap-1">
                   <Loader2 className="size-2.5 animate-spin" aria-hidden />
                   {latestRun?.status === 'queued' ? 'Queued' : 'Running'}
+                </Badge>
+              )}
+              {latestRun?.status === 'waiting' && (
+                <Badge
+                  variant="outline"
+                  className="gap-1 border-amber-500/40 text-amber-500 text-[10px]"
+                  title={
+                    latestRun.current_task?.name
+                      ? `Behind ${latestRun.current_task.name} (running for ${
+                          latestRun.current_task.running_for_s ?? '?'
+                        }s on ${latestRun.current_task.worker ?? 'worker'})`
+                      : `Queued for ${latestRun.waiting_for_s ?? '?'}s`
+                  }
+                >
+                  <Loader2 className="size-2.5 animate-spin" aria-hidden />
+                  {latestRun.current_task?.name
+                    ? `Waiting on ${latestRun.current_task.name}`
+                    : `Waiting (${Math.round(latestRun.waiting_for_s ?? 0)}s)`}
                 </Badge>
               )}
               {showingAmbient && (
