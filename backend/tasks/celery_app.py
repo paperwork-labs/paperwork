@@ -53,11 +53,36 @@ celery_app.conf.task_queues = (
     Queue("celery"),
     Queue("account_sync"),
     Queue("orders"),
+    Queue("heavy"),
 )
 
+# Routing policy:
+#   - Default `celery` queue: short-running tasks (<60s) handled by the fast worker.
+#   - `account_sync`: broker syncs, handled by the fast worker.
+#   - `orders`: order lifecycle + watchdogs, handled by the fast worker.
+#   - `heavy`: long-running market-data jobs (>5 min) handled exclusively
+#     by axiomfolio-worker-heavy. A single `repair_stage_history` previously
+#     blocked the only worker for an hour, starving dashboard warming and
+#     causing the "Queued but never started" failure mode.
+#
+# When adding a new task, route to `heavy` if its `time_limit > 300` OR if
+# it iterates over the full tracked universe (~2,500 symbols).
 celery_app.conf.task_routes = {
     "backend.tasks.portfolio.sync.*": {"queue": "account_sync"},
     "backend.tasks.portfolio.orders.*": {"queue": "orders"},
+    # Market-data heavy jobs (snapshot history backfills, indicator repair,
+    # multi-day OHLCV backfills, fundamentals fill, intraday backfill).
+    "backend.tasks.market.history.*": {"queue": "heavy"},
+    "backend.tasks.market.fundamentals.*": {"queue": "heavy"},
+    "backend.tasks.market.intraday.*": {"queue": "heavy"},
+    "backend.tasks.market.backfill.symbol": {"queue": "heavy"},
+    "backend.tasks.market.backfill.symbols": {"queue": "heavy"},
+    "backend.tasks.market.backfill.daily_bars": {"queue": "heavy"},
+    "backend.tasks.market.backfill.daily_since": {"queue": "heavy"},
+    "backend.tasks.market.backfill.full_historical": {"queue": "heavy"},
+    "backend.tasks.market.maintenance.*": {"queue": "heavy"},
+    # Reconciliation spot-check is also long-running.
+    "backend.tasks.market.reconciliation.spot_check": {"queue": "heavy"},
 }
 
 def _build_beat_schedule():
