@@ -94,8 +94,15 @@ def upgrade() -> None:
             "tier IN ('free','lite','pro','pro_plus','quant_desk','enterprise')",
             name="ck_entitlements_tier",
         ),
+        # ``manual`` is intentionally included: it covers internal grants
+        # (validator pseudonym holders, founding hedge-fund partner,
+        # employee comp accounts) that should not be overwritten by
+        # Stripe webhook drift. See backend/models/entitlement.py.
+        # Hotfix 0033 widens this constraint on environments that already
+        # ran 0031 with the narrower set; new envs get the right list
+        # directly here.
         sa.CheckConstraint(
-            "status IN ('active','trialing','past_due','canceled','incomplete')",
+            "status IN ('active','trialing','past_due','canceled','incomplete','manual')",
             name="ck_entitlements_status",
         ),
         # stripe_subscription_id is unique when set; partial unique below
