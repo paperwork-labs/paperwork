@@ -17,12 +17,13 @@ native enum types so adding a value never requires ALTER TYPE).
 REBASE NOTE
 -----------
 Originally numbered 0030/0021 when the picks branch was cut. After
-PR #326 (entitlements, 0031) merged ahead of this branch, this
-migration is renumbered to 0034 and chained off 0031 so the chain
-stays linear: 0021 -> 0031 -> 0033 (entitlements hotfix) -> 0034.
+PR #326 (entitlements, 0031) and PR #338 (entitlements hotfix, 0033)
+merged ahead of this branch, this migration is renumbered to 0034 and
+chained off 0033 so the chain stays linear:
+0021 -> 0031 -> 0033 -> 0034.
 
 Revision ID: 0034
-Revises: 0031
+Revises: 0033
 Create Date: 2026-04-18
 """
 
@@ -31,7 +32,7 @@ import sqlalchemy as sa
 
 
 revision = "0034"
-down_revision = "0031"
+down_revision = "0033"
 branch_labels = None
 depends_on = None
 
