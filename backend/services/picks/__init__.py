@@ -1,10 +1,15 @@
-"""Picks pipeline (email parser + candidate generator + validator).
+"""Picks pipeline services.
 
-Sub-packages:
+This package owns everything that turns raw signal sources (validator
+emails, X posts, system snapshots) into rows in the picks tables defined
+in ``backend.models.picks``.
 
-    email_parser   — Polymorphic LLM-based email parser (this PR).
-    generators     — Candidate generators (added in PR #328).
+Module layout::
 
-This module is intentionally minimal so it merges cleanly with PR #327
-(picks data models) and PR #328 (candidate generator framework).
+    candidate_generator.py   Base class + registry for system-generated picks.
+    generators/              One module per concrete generator (e.g.
+                             stage2a_rs_strong.py).
+    email_parser/            Polymorphic LLM-based email parser that
+                             normalizes inbox messages into structured
+                             pick payloads.
 """

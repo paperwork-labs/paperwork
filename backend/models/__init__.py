@@ -18,6 +18,24 @@ from .user_invite import UserInvite
 from .entitlement import Entitlement, EntitlementStatus, SubscriptionTier
 from .broker_account import BrokerAccount, BrokerType, AccountType, AccountStatus, SyncStatus
 
+# Picks pipeline (validator-curated buy/sell/trim/add)
+from .picks import (
+    Candidate,
+    CandidateStatus,
+    EmailInbox,
+    EmailParse,
+    EmailParseStatus,
+    EngagementType,
+    MacroOutlook,
+    PickAction,
+    PickEngagement,
+    PickStatus,
+    PositionChange,
+    SourceAttribution,
+    SourceType,
+    ValidatedPick,
+)
+
 # Instruments & Market Data
 from .instrument import Instrument, InstrumentType
 from .market_data import PriceData, MarketSnapshot, MarketSnapshotHistory, MarketRegime, JobRun, EarningsCalendarEvent
@@ -88,6 +106,20 @@ __all__ = [
     "Entitlement",
     "EntitlementStatus",
     "SubscriptionTier",
+    "Candidate",
+    "CandidateStatus",
+    "EmailInbox",
+    "EmailParse",
+    "EmailParseStatus",
+    "EngagementType",
+    "MacroOutlook",
+    "PickAction",
+    "PickEngagement",
+    "PickStatus",
+    "PositionChange",
+    "SourceAttribution",
+    "SourceType",
+    "ValidatedPick",
     "BrokerAccount",
     "BrokerType",
     "AccountType",

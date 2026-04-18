@@ -429,6 +429,21 @@ CATALOG: List[JobTemplate] = [
         job_run_label="admin_repair_stage_history",
         timeout_s=3600,
     ),
+    # ── Picks Pipeline ────────────────────────────────────────────────
+    JobTemplate(
+        id="generate_candidates",
+        display_name="Generate Trade Candidates",
+        group="picks",
+        task="backend.tasks.picks.generate_candidates",
+        description=(
+            "Run all registered candidate generators (Stage 2A + RS strong, etc.) "
+            "and persist results to the candidates table for validator review"
+        ),
+        default_cron="30 5 * * 1-5",  # 05:30 UTC weekdays (after nightly pipeline)
+        default_tz="UTC",
+        job_run_label="generate_candidates",
+        timeout_s=600,
+    ),
 ]
 
 # Alias for callers that expect JOB_CATALOG (e.g. task_run singleflight lookup).
