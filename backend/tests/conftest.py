@@ -34,17 +34,40 @@ except ImportError as e:
     IMPORT_ERROR = str(e)
 
 
+_CI_TRUTHY = ("1", "true", "yes", "on")
+
+
 def _in_ci() -> bool:
     """True when running in a CI environment.
 
-    We only consult the ``CI`` environment variable (truthy: 1/true/yes,
-    case-insensitive). GitHub Actions sets ``CI=true`` by default; we do
-    not read ``GITHUB_ACTIONS``. Used as a hard-fail guard to prevent the
-    "broken migrations + silent skips = green CI" failure mode that hid a
-    4-tuple/7-tuple GROUP BY mismatch in test_market_api_layer.py for ~8
-    days (commits 85d2554 → e18e6a5).
+    Belt-and-suspenders detection using **OR** semantics across ``CI``,
+    ``GITHUB_ACTIONS``, and ``GITHUB_RUN_ID``: if *any* of these signals
+    indicates CI, ``_in_ci()`` returns ``True``. GitHub Actions sets all three
+    on the runner, but only the values we forward in
+    ``infra/compose.test.yaml`` reach the test container. Reading more than
+    one signal protects against a future env-file change accidentally
+    re-introducing the failure mode this guard exists to prevent: broken
+    migrations producing silent skips and a green CI badge (the same hole
+    that hid a 4-tuple/7-tuple GROUP BY mismatch in test_market_api_layer.py
+    for ~8 days, commits 85d2554 -> e18e6a5; and that almost let PR #321's
+    ``op.autocommit_block()`` bug merge unnoticed).
+
+    ``CI=false`` (and other non-truthy ``CI`` values) only neutralizes the
+    ``CI`` variable itself; it does **not** disable ``GITHUB_ACTIONS`` or
+    ``GITHUB_RUN_ID`` when those are set. For local development, opt out by
+    ensuring none of these variables are set (clearing all signals).
     """
-    return os.getenv("CI", "").lower() in ("1", "true", "yes")
+    for name in ("CI", "GITHUB_ACTIONS", "GITHUB_RUN_ID"):
+        value = os.getenv(name, "").strip().lower()
+        if not value:
+            continue
+        if value in _CI_TRUTHY:
+            return True
+        # GITHUB_RUN_ID is always a numeric id when set; treat any non-empty
+        # value as "we are in CI". CI=false explicitly opts out.
+        if name == "GITHUB_RUN_ID":
+            return True
+    return False
 
 
 @pytest.fixture(scope="session")

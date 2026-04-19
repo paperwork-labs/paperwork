@@ -43,6 +43,14 @@ services:
         condition: service_healthy
     environment:
       - PYTHONPATH=/app
+      # Forward CI signals so backend/tests/conftest.py::_in_ci() can detect
+      # GitHub Actions and switch silent skip -> hard fail. Without this the
+      # outer runner sets CI=true but the value never reaches the container,
+      # which is the failure mode that hid broken migrations for 8 days
+      # (PR #321 retrospective). Empty defaults keep local `make test` quiet.
+      - CI=${CI:-}
+      - GITHUB_ACTIONS=${GITHUB_ACTIONS:-}
+      - GITHUB_RUN_ID=${GITHUB_RUN_ID:-}
     volumes:
       - ..:/app
       - /app/backend/__pycache__
