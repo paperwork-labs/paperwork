@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   Activity,
   Bell,
@@ -593,6 +593,14 @@ const DashboardLayout: React.FC = () => {
             <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4">
               <Outlet />
             </main>
+            <footer className="shrink-0 border-t border-border px-4 py-2.5 text-center">
+              <Link
+                to="/why-free"
+                className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              >
+                Why is this free?
+              </Link>
+            </footer>
             {isAdmin && <ChatBubble />}
           </ChatProvider>
         </div>

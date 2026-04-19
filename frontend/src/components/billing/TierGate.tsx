@@ -26,11 +26,12 @@
  */
 
 import React from 'react';
-import { Lock } from 'lucide-react';
+import { HelpCircle, Lock } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 import useEntitlement from '@/hooks/useEntitlement';
 import { TIER_LABEL, type SubscriptionTier } from '@/types/entitlement';
@@ -47,6 +48,8 @@ interface TierGateProps {
   loadingFallback?: React.ReactNode;
   /** Called when the user clicks the upgrade button on the default fallback. */
   onUpgradeClick?: (requiredTier: SubscriptionTier) => void;
+  /** Optional short explanation (e.g. pass-through costs) shown next to the upgrade CTA. */
+  costJustification?: string;
 }
 
 const TierGate: React.FC<TierGateProps> = ({
@@ -55,6 +58,7 @@ const TierGate: React.FC<TierGateProps> = ({
   fallback,
   loadingFallback = null,
   onUpgradeClick,
+  costJustification,
 }) => {
   const { can, requireTier, isLoading, isError } = useEntitlement();
 
@@ -82,6 +86,7 @@ const TierGate: React.FC<TierGateProps> = ({
       feature={feature}
       requiredTier={requireTier(feature)}
       onUpgradeClick={onUpgradeClick}
+      costJustification={costJustification}
     />
   );
 };
@@ -90,39 +95,55 @@ interface DefaultUpgradePromptProps {
   feature: string;
   requiredTier: SubscriptionTier | null;
   onUpgradeClick?: (requiredTier: SubscriptionTier) => void;
+  costJustification?: string;
 }
 
 const DefaultUpgradePrompt: React.FC<DefaultUpgradePromptProps> = ({
   feature,
   requiredTier,
   onUpgradeClick,
+  costJustification,
 }) => {
   const tierLabel = requiredTier ? TIER_LABEL[requiredTier] : 'a paid plan';
 
-  return (
-    <Card
-      className="border-dashed bg-muted/30"
-      data-testid={`tier-gate-locked-${feature}`}
-    >
-      <CardContent className="flex flex-col items-center gap-3 px-6 py-8 text-center">
-        <Lock className="size-6 text-muted-foreground" aria-hidden />
-        <Badge variant="outline" className="text-xs uppercase tracking-wide">
-          {tierLabel} feature
-        </Badge>
-        <p className="max-w-md text-sm text-muted-foreground">
-          This is a {tierLabel} feature. Upgrade your plan to unlock it.
-        </p>
-        {requiredTier ? (
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => onUpgradeClick?.(requiredTier)}
-          >
-            Upgrade to {TIER_LABEL[requiredTier]}
-          </Button>
+  const upgradeRow =
+    requiredTier !== null ? (
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <Button type="button" size="sm" onClick={() => onUpgradeClick?.(requiredTier)}>
+          Upgrade to {TIER_LABEL[requiredTier]}
+        </Button>
+        {costJustification ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex size-8 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="Why this plan has a price"
+              >
+                <HelpCircle className="size-4" aria-hidden />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs text-left text-xs leading-snug">{costJustification}</TooltipContent>
+          </Tooltip>
         ) : null}
-      </CardContent>
-    </Card>
+      </div>
+    ) : null;
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Card className="border-dashed bg-muted/30" data-testid={`tier-gate-locked-${feature}`}>
+        <CardContent className="flex flex-col items-center gap-3 px-6 py-8 text-center">
+          <Lock className="size-6 text-muted-foreground" aria-hidden />
+          <Badge variant="outline" className="text-xs uppercase tracking-wide">
+            {tierLabel} feature
+          </Badge>
+          <p className="max-w-md text-sm text-muted-foreground">
+            This is a {tierLabel} feature. Upgrade your plan to unlock it.
+          </p>
+          {upgradeRow}
+        </CardContent>
+      </Card>
+    </TooltipProvider>
   );
 };
 

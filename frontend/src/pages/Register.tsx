@@ -98,6 +98,11 @@ const Register: React.FC = () => {
           </p>
         </form>
       </AppCard>
+      <p className="mt-6 text-center text-sm text-white/80">
+        <Link to="/why-free" className="font-medium text-white underline-offset-4 hover:underline">
+          Why is this free?
+        </Link>
+      </p>
     </AuthLayout>
   );
 };

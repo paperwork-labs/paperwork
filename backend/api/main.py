@@ -53,6 +53,7 @@ from backend.api.routes.market import router as market_router
 from backend.api.routes.webhooks import router as webhooks_router
 from backend.api.routes.risk import router as risk_router
 from backend.api.routes.entitlements import router as entitlements_router
+from backend.api.routes.public.stats import router as public_stats_router
 from backend.api.routes.brain_tools import router as brain_tools_router
 from backend.api.routes.execution import router as execution_router
 from backend.api.routes.pipeline import router as pipeline_router
@@ -590,6 +591,10 @@ app.include_router(
     entitlements_router,
     prefix="/api/v1",
     tags=["Entitlements"],
+)
+app.include_router(
+    public_stats_router,
+    prefix="/api/v1/public",
 )
 
 
