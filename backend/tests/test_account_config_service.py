@@ -15,6 +15,7 @@ from unittest.mock import Mock, patch
 
 from backend.models import User, BrokerAccount
 from backend.models.broker_account import BrokerType, AccountType, SyncStatus, AccountCredentials
+from backend.models.narrative import PortfolioNarrative
 from backend.services.portfolio.account_config_service import AccountConfigService
 
 
@@ -275,6 +276,14 @@ class TestAccountConfigService:
 
     def test_integration_with_broker_account_model(self, account_service, db_session):
         """Test integration with BrokerAccount model and enums."""
+        # Isolate from other tests that register users (e.g. portfolio narrative API tests)
+        # so user id=1 remains the default seed user expected below.
+        db_session.query(PortfolioNarrative).delete()
+        db_session.query(AccountCredentials).delete()
+        db_session.query(BrokerAccount).delete()
+        db_session.query(User).delete()
+        db_session.flush()
+
         # Ensure user exists
         user = account_service.ensure_user_exists(db_session)
 

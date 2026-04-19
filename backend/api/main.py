@@ -58,6 +58,7 @@ from backend.api.routes.public.stats import router as public_stats_router
 from backend.api.routes.brain_tools import router as brain_tools_router
 from backend.api.routes.execution import router as execution_router
 from backend.api.routes.pipeline import router as pipeline_router
+from backend.api.routes.portfolio.narrative import router as portfolio_narrative
 from backend.api.dependencies import require_non_market_access
 
 # Model imports
@@ -512,6 +513,12 @@ app.include_router(
 )
 app.include_router(
     portfolio_tax_export,
+    prefix="/api/v1/portfolio",
+    tags=["Portfolio"],
+    dependencies=[Depends(require_non_market_access)],
+)
+app.include_router(
+    portfolio_narrative,
     prefix="/api/v1/portfolio",
     tags=["Portfolio"],
     dependencies=[Depends(require_non_market_access)],

@@ -32,6 +32,7 @@ celery_app = Celery(
         "backend.tasks.portfolio.sync",
         "backend.tasks.portfolio.reconciliation",
         "backend.tasks.portfolio.orders",
+        "backend.tasks.portfolio.daily_narrative",
         # Strategy
         "backend.tasks.strategy.tasks",
         "backend.tasks.strategy.exit_evaluation",

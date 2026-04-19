@@ -80,6 +80,9 @@ from .backtest import StrategyBacktest, BacktestStatus
 # Watchlist
 from .watchlist import Watchlist
 
+# Narrative
+from .narrative import PortfolioNarrative
+
 # Agent / Auto-Ops
 from .agent_action import AgentAction
 from .agent_message import AgentMessage, load_conversation_from_db, save_conversation_to_db
@@ -166,6 +169,7 @@ __all__ = [
     "OrderStatus",
     "ExecutionMetrics",
     "Watchlist",
+    "PortfolioNarrative",
     "AgentAction",
     "AgentMessage",
     "AutoOpsExplanation",

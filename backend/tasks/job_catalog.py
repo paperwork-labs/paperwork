@@ -64,6 +64,19 @@ CATALOG: List[JobTemplate] = [
         queue="account_sync",
         timeout_s=120,
     ),
+    JobTemplate(
+        id="daily_portfolio_narrative_fanout",
+        display_name="Daily Portfolio Narrative (Fanout)",
+        group="portfolio",
+        task="backend.tasks.portfolio.daily_narrative.fanout_daily_narratives",
+        description=(
+            "After US market close (weekdays): enqueue per-user AI daily portfolio narratives "
+            "for accounts with open stock positions"
+        ),
+        default_cron="0 21 * * 1-5",
+        default_tz="America/New_York",
+        timeout_s=600,
+    ),
     # ── Market Data ────────────────────────────────────────────────
     # THE nightly pipeline: constituents, tracked, bars, indicators, history, regime, coverage
     JobTemplate(
@@ -172,6 +185,20 @@ CATALOG: List[JobTemplate] = [
         default_tz="UTC",
         queue="orders",
         timeout_s=360,
+    ),
+    JobTemplate(
+        id="fanout-daily-portfolio-narratives",
+        display_name="Daily Portfolio Narratives (fanout)",
+        group="portfolio",
+        task="backend.tasks.portfolio.daily_narrative.fanout_daily_narratives",
+        description=(
+            "After US market close (weekdays), enqueue per-user AI narratives summarizing "
+            "movers, stage transitions, ex-dividends, vs SPY, and macro regime."
+        ),
+        default_cron="0 21 * * 1-5",
+        default_tz="America/New_York",
+        job_run_label="fanout_daily_narratives",
+        timeout_s=600,
     ),
     # ── Strategy ────────────────────────────────────────────────────
     JobTemplate(

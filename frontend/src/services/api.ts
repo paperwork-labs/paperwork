@@ -324,6 +324,16 @@ export interface PnlSummaryResponse {
   data?: PnlSummaryData;
 }
 
+/** GET /portfolio/narrative/latest and GET /portfolio/narrative?date= */
+export interface PortfolioNarrativePayload {
+  date: string;
+  text: string;
+  provider: string;
+  model?: string | null;
+  is_fallback: boolean;
+  generated_at: string;
+}
+
 export interface StatementsResponse {
   data?: { transactions?: unknown[] };
   transactions?: unknown[];
@@ -425,6 +435,16 @@ export const portfolioApi = {
 
   getInsights: async () => {
     return makeOptimizedRequest(() => api.get('/portfolio/insights'));
+  },
+
+  getNarrativeLatest: async (): Promise<PortfolioNarrativePayload> => {
+    return makeOptimizedRequest(() => api.get('/portfolio/narrative/latest'));
+  },
+
+  getNarrativeByDate: async (dateIso: string): Promise<PortfolioNarrativePayload> => {
+    return makeOptimizedRequest(() =>
+      api.get('/portfolio/narrative', { params: { date: dateIso } }),
+    );
   },
 
   getTaxSummary: async () => {

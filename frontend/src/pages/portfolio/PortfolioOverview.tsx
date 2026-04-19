@@ -39,6 +39,7 @@ import {
 } from '../../utils/portfolio';
 import { StatCardSkeleton } from '../../components/shared/Skeleton';
 import { CircuitBreakerBanner } from '../../components/shared/CircuitBreakerBanner';
+import { DailyNarrative } from '../../components/portfolio/DailyNarrative';
 import type { AccountData } from '../../hooks/useAccountFilter';
 import type { EnrichedPosition } from '../../types/portfolio';
 import { SECTOR_PALETTE } from '../../constants/chart';
@@ -184,6 +185,8 @@ const PortfolioOverview: React.FC = () => {
               </Button>
             }
           />
+
+          <DailyNarrative />
 
           {!liveQuery.isPending && !liveData.is_live && (
             <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">

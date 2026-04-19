@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import {
   portfolioApi,
   tasksApi,
@@ -10,6 +11,7 @@ import {
   unwrapResponse,
   unwrapResponseSingle,
   type PnlSummaryData,
+  type PortfolioNarrativePayload,
 } from '../services/api';
 import type { EnrichedPosition } from '../types/portfolio';
 import toast from 'react-hot-toast';
@@ -437,6 +439,24 @@ export const useRebalanceSuggestions = () => {
       return (r as any)?.data?.data ?? (r as any)?.data ?? {};
     },
     staleTime: 300_000,
+  });
+};
+
+export const usePortfolioNarrativeLatest = () => {
+  return useQuery({
+    queryKey: ['portfolio-narrative-latest'],
+    queryFn: async (): Promise<PortfolioNarrativePayload | null> => {
+      try {
+        return await portfolioApi.getNarrativeLatest();
+      } catch (err) {
+        if (isAxiosError(err) && err.response?.status === 404) {
+          return null;
+        }
+        throw err;
+      }
+    },
+    staleTime: 300_000,
+    retry: false,
   });
 };
 
