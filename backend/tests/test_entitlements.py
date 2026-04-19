@@ -122,6 +122,12 @@ class TestFeatureCatalog:
         assert not is_allowed(SubscriptionTier.PRO, "brain.native_chat")
         assert is_allowed(SubscriptionTier.PRO_PLUS, "brain.native_chat")
 
+    def test_picks_feed_full_requires_lite(self):
+        f = get_feature("picks.feed_full")
+        assert f.min_tier == SubscriptionTier.LITE
+        assert not is_allowed(SubscriptionTier.FREE, "picks.feed_full")
+        assert is_allowed(SubscriptionTier.LITE, "picks.feed_full")
+
 
 # =============================================================================
 # Entitlement model helpers — past_due grace period

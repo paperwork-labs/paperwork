@@ -41,7 +41,7 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Type
 
 from sqlalchemy.orm import Session
 
-from backend.models.picks import Candidate, CandidateStatus, PickAction
+from backend.models.picks import Candidate, CandidateQueueState, PickAction
 
 
 logger = logging.getLogger(__name__)
@@ -202,7 +202,7 @@ def persist_candidates(
             score=item.score,
             rationale_summary=item.rationale_summary,
             signals=item.signals or None,
-            status=CandidateStatus.PENDING_REVIEW,
+            status=CandidateQueueState.DRAFT,
         )
         db.add(row)
         counts["created"] += 1

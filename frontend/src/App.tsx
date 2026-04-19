@@ -45,6 +45,8 @@ const SettingsUsers = React.lazy(() => import('./pages/SettingsUsers'));
 const AdminAgent = React.lazy(() => import('./pages/AdminAgent'));
 const Terminal = React.lazy(() => import('./pages/Terminal'));
 const Scanner = React.lazy(() => import('./pages/Scanner'));
+const Picks = React.lazy(() => import('./pages/Picks'));
+const PicksValidator = React.lazy(() => import('./pages/admin/PicksValidator'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -89,6 +91,15 @@ function App() {
                         <Route path="market/education" element={<MarketEducation />} />
                         <Route path="market/intelligence" element={<MarketIntelligence />} />
                         <Route path="market/scanner" element={<Scanner />} />
+                        <Route path="picks" element={<Picks />} />
+                        <Route
+                          path="admin/picks"
+                          element={
+                            <RequireAdmin>
+                              <PicksValidator />
+                            </RequireAdmin>
+                          }
+                        />
                         <Route path="terminal" element={<Terminal />} />
 
                         {/* Legacy strategy URLs → /market/strategies* */}

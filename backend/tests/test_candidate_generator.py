@@ -18,7 +18,7 @@ from typing import List, Sequence
 import pytest
 
 from backend.models.market_data import MarketSnapshot
-from backend.models.picks import Candidate, CandidateStatus, PickAction
+from backend.models.picks import Candidate, CandidateQueueState, PickAction
 from backend.services.picks.candidate_generator import (
     CandidateGenerator,
     GeneratedCandidate,
@@ -112,7 +112,7 @@ class TestPersistCandidates:
             .all()
         )
         assert {r.symbol for r in rows} == {"NVDA", "MSFT"}
-        assert all(r.status == CandidateStatus.PENDING_REVIEW for r in rows)
+        assert all(r.status == CandidateQueueState.DRAFT for r in rows)
         assert all(r.action_suggestion == PickAction.BUY for r in rows)
 
     def test_idempotent_within_same_utc_day(self, db_session):

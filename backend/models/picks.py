@@ -105,11 +105,13 @@ class EmailParseStatus(str, Enum):
     PARTIAL = "partial"  # Some schemas matched, some did not
 
 
-class CandidateStatus(str, Enum):
-    PENDING_REVIEW = "pending_review"
-    PROMOTED = "promoted"  # Validator turned it into a ValidatedPick
+class CandidateQueueState(str, Enum):
+    """Validator queue lifecycle for a ``Candidate`` row."""
+
+    DRAFT = "draft"
+    APPROVED = "approved"
+    PUBLISHED = "published"
     REJECTED = "rejected"
-    EXPIRED = "expired"
 
 
 class EngagementType(str, Enum):
@@ -233,6 +235,11 @@ class EmailParse(Base):
 
     email = relationship("EmailInbox", back_populates="parses")
     picks = relationship("ValidatedPick", back_populates="source_parse")
+    sourced_candidates = relationship(
+        "Candidate",
+        back_populates="source_email_parse",
+        foreign_keys="Candidate.source_email_parse_id",
+    )
 
     __table_args__ = (
         UniqueConstraint(
@@ -280,14 +287,14 @@ class Candidate(Base):
     rationale_summary = Column(Text, nullable=True)
     status = Column(
         SQLEnum(
-            CandidateStatus,
-            values_callable=lambda x: [m.value for m in CandidateStatus],
+            CandidateQueueState,
+            values_callable=lambda x: [m.value for m in CandidateQueueState],
             native_enum=False,
             length=24,
             name="candidate_status",
         ),
         nullable=False,
-        server_default=CandidateStatus.PENDING_REVIEW.value,
+        server_default=CandidateQueueState.DRAFT.value,
         index=True,
     )
     promoted_to_pick_id = Column(
@@ -297,14 +304,61 @@ class Candidate(Base):
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
     decided_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    state_transitioned_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    state_transitioned_by = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    source_email_parse_id = Column(
+        Integer,
+        ForeignKey("email_parses.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    suggested_target = Column(Numeric(18, 6), nullable=True)
+    suggested_stop = Column(Numeric(18, 6), nullable=True)
+    published_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
 
     promoted_pick = relationship(
         "ValidatedPick", foreign_keys=[promoted_to_pick_id]
+    )
+    source_email_parse = relationship(
+        "EmailParse",
+        foreign_keys=[source_email_parse_id],
+        back_populates="sourced_candidates",
     )
 
     __table_args__ = (
         Index("ix_candidates_symbol_generated", "symbol", "generated_at"),
         Index("ix_candidates_status_score", "status", "score"),
+    )
+
+
+class PicksAuditLog(Base):
+    """Append-only audit of ``Candidate`` queue state transitions."""
+
+    __tablename__ = "picks_audit_log"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    candidate_id = Column(
+        Integer,
+        ForeignKey("candidates.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    from_state = Column(String(24), nullable=False)
+    to_state = Column(String(24), nullable=False)
+    actor_user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    reason = Column(Text, nullable=True)
+    created_at = Column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    candidate = relationship("Candidate", backref="audit_entries")
+
+    __table_args__ = (
+        Index("ix_picks_audit_log_candidate_created", "candidate_id", "created_at"),
     )
 
 

@@ -21,7 +21,7 @@ from .broker_account import BrokerAccount, BrokerType, AccountType, AccountStatu
 # Picks pipeline (validator-curated buy/sell/trim/add)
 from .picks import (
     Candidate,
-    CandidateStatus,
+    CandidateQueueState,
     EmailInbox,
     EmailParse,
     EmailParseStatus,
@@ -30,6 +30,7 @@ from .picks import (
     PickAction,
     PickEngagement,
     PickStatus,
+    PicksAuditLog,
     PositionChange,
     SourceAttribution,
     SourceType,
@@ -111,7 +112,8 @@ __all__ = [
     "EntitlementStatus",
     "SubscriptionTier",
     "Candidate",
-    "CandidateStatus",
+    "CandidateQueueState",
+    "PicksAuditLog",
     "EmailInbox",
     "EmailParse",
     "EmailParseStatus",

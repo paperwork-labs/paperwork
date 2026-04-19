@@ -102,6 +102,13 @@ _FEATURES: tuple[Feature, ...] = (
         category="picks",
     ),
     Feature(
+        key="picks.feed_full",
+        min_tier=SubscriptionTier.LITE,
+        title="Full picks feed",
+        description="See every published pick in real time (not preview-only).",
+        category="picks",
+    ),
+    Feature(
         key="picks.autotrade",
         min_tier=SubscriptionTier.PRO,
         title="One-click pick execution",

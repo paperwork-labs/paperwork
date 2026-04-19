@@ -21,7 +21,7 @@ from sqlalchemy.exc import IntegrityError
 
 from backend.models import (
     Candidate,
-    CandidateStatus,
+    CandidateQueueState,
     EmailInbox,
     EmailParse,
     EmailParseStatus,
@@ -115,6 +115,7 @@ class TestSchemaShape:
         "source_attributions",
         "macro_outlooks",
         "position_changes",
+        "picks_audit_log",
     }
 
     def test_all_tables_exist(self, db_session):
@@ -128,7 +129,22 @@ class TestSchemaShape:
         [
             ("email_inbox", {"id", "message_id", "sender", "received_at", "source_label"}),
             ("email_parses", {"id", "email_id", "schema_version", "parser_model", "status"}),
-            ("candidates", {"id", "symbol", "generator_name", "score", "status"}),
+            (
+                "candidates",
+                {
+                    "id",
+                    "symbol",
+                    "generator_name",
+                    "score",
+                    "status",
+                    "state_transitioned_at",
+                    "state_transitioned_by",
+                    "source_email_parse_id",
+                    "suggested_target",
+                    "suggested_stop",
+                    "published_at",
+                },
+            ),
             (
                 "validated_picks",
                 {
@@ -154,6 +170,18 @@ class TestSchemaShape:
             ),
             ("macro_outlooks", {"id", "validator_user_id", "thesis", "status"}),
             ("position_changes", {"id", "validator_user_id", "symbol", "action", "status"}),
+            (
+                "picks_audit_log",
+                {
+                    "id",
+                    "candidate_id",
+                    "from_state",
+                    "to_state",
+                    "actor_user_id",
+                    "reason",
+                    "created_at",
+                },
+            ),
         ],
     )
     def test_required_columns_present(self, db_session, table, required):
@@ -377,12 +405,12 @@ class TestProvenance:
         db_session.add(pick)
         db_session.flush()
         cand.promoted_to_pick_id = pick.id
-        cand.status = CandidateStatus.PROMOTED
+        cand.status = CandidateQueueState.PUBLISHED
         db_session.flush()
 
         db_session.refresh(cand)
         assert cand.promoted_pick is pick
-        assert cand.status == CandidateStatus.PROMOTED
+        assert cand.status == CandidateQueueState.PUBLISHED
 
     def test_source_attribution_links_to_pick_and_email(
         self, db_session, validator_user, email, email_parse

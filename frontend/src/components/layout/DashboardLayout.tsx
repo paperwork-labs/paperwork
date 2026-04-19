@@ -19,6 +19,7 @@ import {
   Target,
   Layers,
   ScanLine,
+  ClipboardList,
 } from 'lucide-react';
 import * as Dialog from "@radix-ui/react-dialog";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
@@ -101,6 +102,7 @@ function buildMarketItems() {
     { label: 'Strategies', icon: Target, path: '/market/strategies' },
     { label: 'Intelligence', icon: Brain, path: '/market/intelligence' },
     { label: 'Education', icon: BookOpen, path: '/market/education' },
+    { label: 'Picks', icon: ClipboardList, path: '/picks' },
     { label: 'Terminal', icon: Monitor, path: '/terminal' },
   ];
   return items;

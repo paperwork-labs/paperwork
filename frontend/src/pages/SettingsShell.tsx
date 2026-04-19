@@ -1,8 +1,8 @@
 import React from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { isPlatformAdminRole } from '../utils/userRole';
-import { Bell, Cpu, Sliders, User, Shield, Activity } from 'lucide-react';
+import { Bell, Cpu, Sliders, User, Shield, Activity, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -83,6 +83,22 @@ const SettingsShell: React.FC = () => {
                   <MenuLink to="/settings/admin/system">System Status</MenuLink>
                   <MenuLink to="/settings/admin/users">Users</MenuLink>
                   <MenuLink to="/settings/admin/agent">Agent</MenuLink>
+                  <Button
+                    asChild
+                    type="button"
+                    variant="ghost"
+                    className={cn(
+                      'h-9 w-full justify-start rounded-md border-l-2 border-transparent px-3 font-medium transition-colors',
+                      'text-muted-foreground hover:bg-muted/80 hover:text-foreground',
+                    )}
+                  >
+                    <Link to="/admin/picks" className="inline-flex w-full items-center justify-between gap-1 no-underline">
+                      <span>Picks validator</span>
+                      <span className="text-xs text-muted-foreground" aria-hidden>
+                        ↗
+                      </span>
+                    </Link>
+                  </Button>
                 </>
               )}
             </div>
@@ -98,6 +114,7 @@ const SettingsShell: React.FC = () => {
                 {iconNav('/settings/admin/system', 'System Status', <Activity className="size-4" />)}
                 {iconNav('/settings/admin/users', 'Users', <User className="size-4" />)}
                 {iconNav('/settings/admin/agent', 'Agent', <Cpu className="size-4" />)}
+                {iconNav('/admin/picks', 'Picks validator ↗', <ClipboardList className="size-4" />)}
               </>
             ) : null}
           </nav>
