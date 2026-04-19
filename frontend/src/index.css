@@ -1,12 +1,15 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
 @import "@fontsource-variable/inter";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
     --font-heading: var(--font-sans);
-    --font-sans: 'Inter Variable', sans-serif;
+    --font-sans: 'Geist Variable', 'Inter Variable', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'Geist Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -134,6 +137,42 @@
     --palette-stage-yellow: 214 158 46;
     --palette-stage-orange: 221 107 32;
     --palette-stage-red: 229 62 62;
+
+    /* Series palette — HSL-derived from a single base hue (220° emerald-blue),
+       rotated by ~40° per slot for perceptual separation. RGB triples for
+       rgb(var(--x) / a). Used by multi-series charts (sectors, holdings, etc.). */
+    --series-1: 37 99 235;    /* hsl(220 84% 53%) — base brand */
+    --series-2: 22 163 74;    /* hsl(140 76% 36%) — green */
+    --series-3: 217 119 6;    /* hsl(35 92% 44%)  — amber */
+    --series-4: 168 85 247;   /* hsl(265 92% 65%) — violet */
+    --series-5: 14 165 233;   /* hsl(199 89% 48%) — sky */
+    --series-6: 236 72 153;   /* hsl(330 81% 60%) — pink */
+    --series-7: 20 184 166;   /* hsl(173 80% 40%) — teal */
+    --series-8: 234 88 12;    /* hsl(20 91% 48%)  — orange */
+
+    /* Elevation scale — physically-modeled shadows. Light theme. */
+    --shadow-resting:  0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
+    --shadow-hover:    0 2px 4px 0 rgb(15 23 42 / 0.05), 0 4px 12px 0 rgb(15 23 42 / 0.08);
+    --shadow-active:   0 4px 8px 0 rgb(15 23 42 / 0.06), 0 12px 24px 0 rgb(15 23 42 / 0.10);
+    --shadow-floating: 0 12px 24px 0 rgb(15 23 42 / 0.10), 0 24px 48px 0 rgb(15 23 42 / 0.14);
+
+    /* Custom selection color — matches brand. */
+    --selection-bg: 37 99 235 / 0.18;
+    --selection-fg: 15 23 42;
+}
+
+/* Color-blind safe palette (Okabe-Ito 2008). Activated by
+   data-palette="cb" on <html> when the user opts in. The 8 colors are
+   distinguishable for all common forms of color-blindness. */
+:root[data-palette="cb"] {
+    --series-1: 0 114 178;    /* blue       */
+    --series-2: 213 94 0;     /* vermillion */
+    --series-3: 0 158 115;    /* bluish-green */
+    --series-4: 240 228 66;   /* yellow     */
+    --series-5: 86 180 233;   /* sky-blue   */
+    --series-6: 230 159 0;    /* orange     */
+    --series-7: 204 121 167;  /* reddish-purple */
+    --series-8: 0 0 0;        /* black      */
 }
 
 .dark {
@@ -221,16 +260,83 @@
     --palette-stage-yellow: 236 201 75;
     --palette-stage-orange: 237 137 54;
     --palette-stage-red: 252 129 129;
+
+    /* Series palette — dark theme variants (lifted ~12% lightness for legibility). */
+    --series-1: 96 165 250;   /* blue-400  */
+    --series-2: 74 222 128;   /* green-400 */
+    --series-3: 251 191 36;   /* amber-400 */
+    --series-4: 192 132 252;  /* violet-400 */
+    --series-5: 56 189 248;   /* sky-400   */
+    --series-6: 244 114 182;  /* pink-400  */
+    --series-7: 45 212 191;   /* teal-400  */
+    --series-8: 251 146 60;   /* orange-400 */
+
+    /* Elevation scale — dark theme uses subtler shadows + a 1px inset highlight
+       (applied at the component level via ChartGlassCard). */
+    --shadow-resting:  0 1px 2px 0 rgb(0 0 0 / 0.18), 0 1px 3px 0 rgb(0 0 0 / 0.24);
+    --shadow-hover:    0 2px 4px 0 rgb(0 0 0 / 0.22), 0 4px 12px 0 rgb(0 0 0 / 0.32);
+    --shadow-active:   0 4px 8px 0 rgb(0 0 0 / 0.28), 0 12px 24px 0 rgb(0 0 0 / 0.40);
+    --shadow-floating: 0 12px 24px 0 rgb(0 0 0 / 0.40), 0 24px 48px 0 rgb(0 0 0 / 0.56);
+
+    /* Custom selection color — matches brand (lighter for dark theme). */
+    --selection-bg: 96 165 250 / 0.28;
+    --selection-fg: 248 250 252;
+}
+
+.dark[data-palette="cb"], .dark :is([data-palette="cb"] *) {
+    /* Color-blind palette in dark mode — same hues, slightly higher luminance */
+    --series-1: 79 156 215;
+    --series-2: 245 130 49;
+    --series-3: 64 188 158;
+    --series-4: 245 233 95;
+    --series-5: 134 197 235;
+    --series-6: 240 174 38;
+    --series-7: 220 144 184;
+    --series-8: 224 224 224;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
     }
-  body {
-    @apply bg-background text-foreground;
-    }
   html {
     @apply font-sans;
+    /* Geist looks best with these features enabled. */
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+    }
+  body {
+    @apply bg-background text-foreground;
+    /* Grayscale antialiasing across both themes. We previously documented
+       "subpixel on light, grayscale on dark" but the implementation was
+       theme-agnostic; we keep the consistent grayscale rendering because it
+       matches Geist's design intent across modern displays and avoids the
+       slight rendering shift between light/dark mode toggles. */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    }
+  /* Brand-tinted text selection. Composed via rgb() so it
+     respects light/dark via the --selection-* tokens above. */
+  ::selection {
+    background-color: rgb(var(--selection-bg));
+    color: rgb(var(--selection-fg));
+    }
+  /* Numbers should always be tabular for vertical alignment in
+     financial tables and chart labels. Apply via .tabular-nums or
+     .font-mono utilities; this helper covers the common cases.
+     We MERGE with the html-level cv11/ss01/ss03 features instead of
+     overriding them so Geist's stylistic alternates remain active. */
+  .num, .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'cv11', 'ss01', 'ss03', 'tnum' on, 'lnum' on;
+    }
+  /* Respect users' motion preferences globally — every animated
+     primitive in the design system should re-check this if needed. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+      }
     }
 }

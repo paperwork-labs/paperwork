@@ -196,3 +196,101 @@ const SECTOR_PALETTE = [
 ] as const;
 
 export { SECTOR_PALETTE };
+
+/* ─── Series palette (HSL-derived, theme- and CB-aware) ─────────────────────
+ *
+ * The 8 series colors are defined in `index.css` as `--series-1` through
+ * `--series-8`. Components should resolve them at runtime via this helper so
+ * that:
+ *   - Light / dark mode swaps automatically (different luminance per theme).
+ *   - Color-blind users opting in via `[data-palette="cb"]` see the
+ *     Okabe-Ito 2008 palette (provably distinguishable for protan/deutan).
+ *   - Hex fallbacks render correctly during SSR or the brief moment before
+ *     CSS variables resolve (Recharts in particular reads colors eagerly).
+ *
+ * Use:
+ *   const colors = getSeriesPalette();              // theme-aware, 8 entries
+ *   const oneColor = seriesColor(idx);              // safe modulo, single color
+ */
+
+const SERIES_FALLBACK_LIGHT = [
+  '#2563EB', '#16A34A', '#D97706', '#A855F7',
+  '#0EA5E9', '#EC4899', '#14B8A6', '#EA580C',
+] as const;
+
+const SERIES_FALLBACK_DARK = [
+  '#60A5FA', '#4ADE80', '#FBBF24', '#C084FC',
+  '#38BDF8', '#F472B6', '#2DD4BF', '#FB923C',
+] as const;
+
+const SERIES_CB_LIGHT = [
+  '#0072B2', '#D55E00', '#009E73', '#F0E442',
+  '#56B4E9', '#E69F00', '#CC79A7', '#000000',
+] as const;
+
+const SERIES_CB_DARK = [
+  '#4F9CD7', '#F58231', '#40BC9E', '#F5E95F',
+  '#86C5EB', '#F0AE26', '#DC90B8', '#E0E0E0',
+] as const;
+
+export const SERIES_FALLBACK = SERIES_FALLBACK_LIGHT;
+
+export type PaletteVariant = 'default' | 'cb';
+
+interface PaletteContext {
+  isDark: boolean;
+  variant: PaletteVariant;
+}
+
+function detectPaletteContext(): PaletteContext {
+  if (typeof document === 'undefined') {
+    return { isDark: false, variant: 'default' };
+  }
+  const root = document.documentElement;
+  const isDark = root.classList.contains('dark');
+  const variant: PaletteVariant = root.getAttribute('data-palette') === 'cb' ? 'cb' : 'default';
+  return { isDark, variant };
+}
+
+function fallbackPalette({ isDark, variant }: PaletteContext): readonly string[] {
+  if (variant === 'cb') return isDark ? SERIES_CB_DARK : SERIES_CB_LIGHT;
+  return isDark ? SERIES_FALLBACK_DARK : SERIES_FALLBACK_LIGHT;
+}
+
+/**
+ * Returns the 8-entry series palette, theme- and CB-aware. Resolves the
+ * `--series-N` CSS variables when running in a browser; falls back to the
+ * matching hex constants during SSR or if the variable is unset (e.g., before
+ * the stylesheet has loaded).
+ */
+export function getSeriesPalette(): string[] {
+  const ctx = detectPaletteContext();
+  const fallbacks = fallbackPalette(ctx);
+
+  if (typeof document === 'undefined') {
+    return [...fallbacks];
+  }
+  const styles = getComputedStyle(document.documentElement);
+  return Array.from({ length: 8 }, (_, i) => {
+    const raw = styles.getPropertyValue(`--series-${i + 1}`).trim();
+    return raw ? `rgb(${raw.replace(/\s*\/.*$/, '')})` : fallbacks[i];
+  });
+}
+
+/**
+ * Returns a single series color for a given index (modulo 8). Useful when
+ * iterating over an unknown number of series and you want stable color
+ * assignment.
+ */
+export function seriesColor(index: number): string {
+  const palette = getSeriesPalette();
+  if (palette.length === 0) return SERIES_FALLBACK_LIGHT[0];
+  const i = ((index % palette.length) + palette.length) % palette.length;
+  return palette[i];
+}
+
+/**
+ * For SSR or pre-mount usage (e.g., Recharts default fills), use these static
+ * fallbacks. They match the light-theme default-palette CSS variables.
+ */
+export const SERIES_STATIC_FALLBACKS = SERIES_FALLBACK_LIGHT;
