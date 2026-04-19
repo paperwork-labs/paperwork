@@ -12,10 +12,12 @@ from .management import router as management_router
 from .management import _role_value
 from .scheduler import router as scheduler_router
 from .agent import router as agent_router
+from .autoops import router as autoops_router
 
 __all__ = [
     "management_router",
     "scheduler_router",
     "agent_router",
+    "autoops_router",
     "_role_value",
 ]

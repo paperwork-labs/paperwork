@@ -27,6 +27,7 @@ from .portfolio.tax_export import router as portfolio_tax_export
 from .admin.management import router as admin
 from .admin.scheduler import router as admin_scheduler
 from .admin.agent import router as admin_agent
+from .admin.autoops import router as admin_autoops
 
 # Re-export settings routes
 from .settings.app import router as app_settings
@@ -56,6 +57,7 @@ __all__ = [
     "admin",
     "admin_scheduler",
     "admin_agent",
+    "admin_autoops",
     # Settings
     "app_settings",
     "account_management",

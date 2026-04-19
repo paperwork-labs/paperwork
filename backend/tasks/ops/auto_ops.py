@@ -150,6 +150,35 @@ _HEALTH_ALERT_COOLDOWN_KEY = f"{REDIS_PREFIX}:health_alert_cooldown"
 _HEALTH_ALERT_COOLDOWN_S = 900  # 15 min
 
 
+def _dispatch_explanations(health: dict) -> None:
+    """Fan an ``explain_anomaly`` task out per non-green dimension.
+
+    Imported lazily so the auto_ops module stays importable in test
+    contexts that don't wire the explainer (e.g. rule-based unit tests).
+    """
+    from backend.services.agent.anomaly_explainer import (
+        anomaly_to_dict,
+        build_anomalies_from_health,
+    )
+    from backend.tasks.celery_app import celery_app
+
+    anomalies = build_anomalies_from_health(health, include_advisory=False)
+    if not anomalies:
+        return
+    for anomaly in anomalies:
+        try:
+            celery_app.send_task(
+                "backend.tasks.ops.explain_anomaly.explain_anomaly",
+                kwargs={"payload": anomaly_to_dict(anomaly)},
+            )
+        except Exception as exc:  # noqa: BLE001 - never block remediation
+            logger.warning(
+                "auto-ops: failed to enqueue explain_anomaly for %s: %s",
+                anomaly.id,
+                exc,
+            )
+
+
 def _fire_health_alert(health: dict) -> None:
     """Send a Brain webhook when composite health is RED (with cooldown)."""
     r = _redis()
@@ -204,6 +233,16 @@ def auto_remediate_health() -> dict:
 
     if composite == "red":
         _fire_health_alert(health)
+
+    # Fire-and-forget: build an Anomaly per non-green dimension and dispatch
+    # explain_anomaly so the admin UI has an LLM-grounded explanation ready
+    # the next time an operator opens AutoOps. Failures here MUST NOT block
+    # remediation -- the task's own rate limiter (recent_explanation_within)
+    # collapses flapping dimensions to one explanation per window.
+    try:
+        _dispatch_explanations(health)
+    except Exception as exc:  # noqa: BLE001 - never block remediation
+        logger.warning("auto-ops: failed to dispatch anomaly explanations: %s", exc)
 
     if settings.OPENAI_API_KEY:
         logger.info("auto-ops: using LLM agent (composite=%s)", composite)

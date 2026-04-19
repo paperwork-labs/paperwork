@@ -32,8 +32,25 @@ deliberately out of scope for this PR -- that path is a danger-zone
 adjacent file and gets a separate, smaller PR once this is reviewed.
 """
 
+from .anomaly_builder import (
+    anomaly_from_dict,
+    anomaly_to_dict,
+    build_anomalies_from_health,
+    build_anomaly_from_dimension,
+    deterministic_id,
+)
+from .factory import build_default_explainer, get_runbook
 from .knowledge import RunbookChunk, RunbookKnowledge, load_runbook_chunks
 from .openai_provider import OpenAIChatProvider
+from .persistence import (
+    DEFAULT_RATE_LIMIT_WINDOW,
+    count_recent,
+    explanation_row_to_payload,
+    latest_for_anomaly,
+    list_recent,
+    persist_explanation,
+    recent_explanation_within,
+)
 from .provider import LLMProvider, LLMProviderError, StubLLMProvider
 from .schemas import (
     SCHEMA_VERSION,
@@ -43,9 +60,10 @@ from .schemas import (
     Explanation,
     RemediationStep,
 )
-from .explainer import AnomalyExplainer
+from .explainer import AnomalyExplainer, explanation_to_dict
 
 __all__ = [
+    "DEFAULT_RATE_LIMIT_WINDOW",
     "SCHEMA_VERSION",
     "Anomaly",
     "AnomalyCategory",
@@ -59,5 +77,19 @@ __all__ = [
     "RunbookChunk",
     "RunbookKnowledge",
     "StubLLMProvider",
+    "anomaly_from_dict",
+    "anomaly_to_dict",
+    "build_anomalies_from_health",
+    "build_anomaly_from_dimension",
+    "build_default_explainer",
+    "count_recent",
+    "deterministic_id",
+    "explanation_row_to_payload",
+    "explanation_to_dict",
+    "get_runbook",
+    "latest_for_anomaly",
+    "list_recent",
     "load_runbook_chunks",
+    "persist_explanation",
+    "recent_explanation_within",
 ]

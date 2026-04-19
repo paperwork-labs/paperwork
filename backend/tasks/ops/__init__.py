@@ -10,11 +10,14 @@ Celery tasks for system operations:
 from .auto_ops import (
     auto_remediate_health,
 )
+from .explain_anomaly import explain_anomaly, explain_anomaly_sync
 from .ibkr_watchdog import (
     ping_ibkr_connection,
 )
 
 __all__ = [
     "auto_remediate_health",
+    "explain_anomaly",
+    "explain_anomaly_sync",
     "ping_ibkr_connection",
 ]

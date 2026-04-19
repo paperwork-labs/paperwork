@@ -40,6 +40,7 @@ celery_app = Celery(
         "backend.tasks.intelligence.tasks",
         # Operations
         "backend.tasks.ops.auto_ops",
+        "backend.tasks.ops.explain_anomaly",
         "backend.tasks.ops.ibkr_watchdog",
         # Nightly pipeline orchestrator (step-tracked 10-step run)
         "backend.tasks.pipeline.orchestrator",
