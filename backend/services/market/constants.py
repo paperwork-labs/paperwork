@@ -402,6 +402,7 @@ CURATED_MARKET_SYMBOLS = [
     "EWZ",
     "FUTY",
     "FXU",
+    "GDX",
     "GII",
     "GLD",
     "GREK",
@@ -426,12 +427,15 @@ CURATED_MARKET_SYMBOLS = [
     "RSPU",
     "SDP",
     "SHLD",
+    "SMH",
     # Use tradable semiconductor ETF proxy; SOX index symbol is not consistently
     # available across providers in our ingest stack.
     "SOXX",
     "SPSM",
     "SPY",
+    "TAN",
     "UPW",
+    "URA",
     "USO",
     "UTES",
     "VPU",
