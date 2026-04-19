@@ -259,13 +259,13 @@ Target: credible v1 launch by 2026-06-21 (8 weeks). Each row is one PR; PRs land
 
 ### Decisions logged
 
-D81–D88 (see KNOWLEDGE.md) cover entitlements, Stripe sink decoupling, polymorphic parser, dual AgentBrains, FileFree schema versioning, tax-advantaged default-skip, AnomalyExplainer always-degrades, and sync-OpenAI rationale.
+D95–D102 in `docs/KNOWLEDGE.md` (V1 Greenfield) cover entitlements, Stripe sink decoupling, polymorphic parser, dual AgentBrains, FileFree schema versioning, tax-advantaged default-skip, AnomalyExplainer always-degrades, and sync-OpenAI rationale.
 
 ### Known external blocker
 
 | ID | Issue | Owner |
 |----|-------|-------|
-| D89 | Copilot reviewer auto-add returns 422 on every PR (`copilot-pull-request-reviewer` not a collaborator). The workflow runs but no review is ever posted. | Repo admin (sankalp404) — invite Copilot as a collaborator on `sankalp404/axiomfolio` or move to a plan that ships `@copilot` reviewer. |
+| D56 | Copilot reviewer auto-add returns 422 on every PR (`copilot-pull-request-reviewer` not a collaborator). The workflow runs but no review is ever posted. | Repo admin (sankalp404) — invite Copilot as a collaborator on `sankalp404/axiomfolio` or move to a plan that ships `@copilot` reviewer. |
 
 ---
 
