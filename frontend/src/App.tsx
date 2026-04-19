@@ -11,6 +11,7 @@ import RequireAuth from './components/auth/RequireAuth';
 import RequireNonMarketAccess from './components/auth/RequireNonMarketAccess';
 import RequireAdmin from './components/auth/RequireAdmin';
 import AuthLogoutListener from './components/auth/AuthLogoutListener';
+import { AppCommandLayer } from './components/cmdk/AppCommandLayer';
 
 const DashboardLayout = React.lazy(() => import('./components/layout/DashboardLayout'));
 const PortfolioOverview = React.lazy(() => import('./pages/portfolio/PortfolioOverview'));
@@ -76,6 +77,7 @@ function App() {
             <ErrorBoundary>
               <Router>
                 <AuthLogoutListener />
+                <AppCommandLayer />
                 <Suspense fallback={<RouteFallback />}>
                   <Routes>
                       <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
