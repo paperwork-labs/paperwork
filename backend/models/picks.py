@@ -105,6 +105,15 @@ class EmailParseStatus(str, Enum):
     PARTIAL = "partial"  # Some schemas matched, some did not
 
 
+class IngestionStatus(str, Enum):
+    """Lifecycle for raw inbound email rows (``EmailInbox`` ingestion + parse)."""
+
+    RECEIVED = "RECEIVED"
+    PARSE_PENDING = "PARSE_PENDING"
+    PARSED = "PARSED"
+    PARSE_FAILED = "PARSE_FAILED"
+
+
 class CandidateQueueState(str, Enum):
     """Validator queue lifecycle for a ``Candidate`` row."""
 
@@ -175,6 +184,12 @@ class EmailInbox(Base):
     )
     attachments_meta = Column(JSON, nullable=True)
     raw_blob_url = Column(String(512), nullable=True)
+    raw_payload = Column(JSON, nullable=True)
+    ingestion_status = Column(
+        String(32),
+        nullable=False,
+        server_default="RECEIVED",
+    )
     ingested_at = Column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )

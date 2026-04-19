@@ -1,7 +1,9 @@
 import logging
 import os
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, List, Optional
+
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -175,6 +177,11 @@ class Settings(BaseSettings):
     STRIPE_PRICE_ENTERPRISE_MONTHLY: Optional[str] = None
     STRIPE_PRICE_ENTERPRISE_ANNUAL: Optional[str] = None
 
+    # Postmark inbound (picks newsletter forwarding)
+    POSTMARK_INBOUND_SECRET: Optional[str] = None
+    PICKS_INBOUND_ALLOWLIST: List[str] = Field(default_factory=list)
+    PICKS_INBOUND_REQUIRE_SIGNATURE: bool = True
+
     # Frontend origin for OAuth redirects (falls back to first CORS_ORIGINS entry)
     FRONTEND_ORIGIN: Optional[str] = None
 
@@ -277,6 +284,18 @@ class Settings(BaseSettings):
     # Source of truth should be runtime environment variables injected by Docker Compose
     # (`infra/env.dev` via Makefile). We keep optional env-file support only when explicitly
     # provided for non-Docker workflows (do not implicitly load a repo root `.env`).
+    @field_validator("PICKS_INBOUND_ALLOWLIST", mode="before")
+    @classmethod
+    def _parse_picks_inbound_allowlist(cls, v: Any) -> List[str]:
+        if v is None or v == "":
+            return []
+        if isinstance(v, list):
+            return [str(x).strip().lower() for x in v if str(x).strip()]
+        s = str(v).strip()
+        if not s:
+            return []
+        return [part.strip().lower() for part in s.split(",") if part.strip()]
+
     model_config = {
         "env_file": os.getenv("QM_ENV_FILE") or None,
         "case_sensitive": True,

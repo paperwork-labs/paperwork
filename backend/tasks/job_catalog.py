@@ -471,6 +471,20 @@ CATALOG: List[JobTemplate] = [
         job_run_label="generate_candidates",
         timeout_s=600,
     ),
+    JobTemplate(
+        id="parse_inbound_email",
+        display_name="Parse Inbound Newsletter (Postmark)",
+        group="picks",
+        task="backend.tasks.picks.parse_inbound_email",
+        description=(
+            "Event-driven: invoked when Postmark inbound webhook stores an EmailInbox row; "
+            "LLM parse implementation is scheduled separately"
+        ),
+        default_cron="0 0 1 1 *",  # not scheduled — triggered from webhook only
+        default_tz="UTC",
+        timeout_s=30,
+        enabled=False,
+    ),
 ]
 
 # Alias for callers that expect JOB_CATALOG (e.g. task_run singleflight lookup).

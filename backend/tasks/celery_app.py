@@ -46,6 +46,7 @@ celery_app = Celery(
         # Nightly pipeline orchestrator (step-tracked 10-step run)
         "backend.tasks.pipeline.orchestrator",
         "backend.tasks.picks.generate_candidates",
+        "backend.tasks.picks.parse_inbound",
     ],
 )
 

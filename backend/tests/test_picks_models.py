@@ -127,7 +127,18 @@ class TestSchemaShape:
     @pytest.mark.parametrize(
         "table,required",
         [
-            ("email_inbox", {"id", "message_id", "sender", "received_at", "source_label"}),
+            (
+                "email_inbox",
+                {
+                    "id",
+                    "message_id",
+                    "sender",
+                    "received_at",
+                    "source_label",
+                    "raw_payload",
+                    "ingestion_status",
+                },
+            ),
             ("email_parses", {"id", "email_id", "schema_version", "parser_model", "status"}),
             (
                 "candidates",
