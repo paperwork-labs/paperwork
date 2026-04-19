@@ -82,6 +82,9 @@ class User(Base):
     failed_login_attempts = Column(Integer, default=0)
     locked_until = Column(TIMESTAMP(timezone=True))
     refresh_token_family = Column(String(36), nullable=True)
+    # Immediately prior family + rotation time for benign multi-tab refresh races
+    previous_refresh_token_family = Column(String(36), nullable=True)
+    previous_refresh_token_rotated_at = Column(TIMESTAMP(timezone=True), nullable=True)
 
     # Preferences
     timezone = Column(String(50), default="UTC")

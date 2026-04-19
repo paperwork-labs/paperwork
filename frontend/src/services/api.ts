@@ -7,6 +7,7 @@ import axios, {
 } from 'axios';
 
 import { normalizeRegimeCurrentBody } from './regimeCurrentNormalize';
+import { performDistributedTokenRefresh } from './authRefreshCoordination';
 
 declare module 'axios' {
   interface AxiosRequestConfig<D = any> {
@@ -224,22 +225,29 @@ api.interceptors.response.use(
         orig._retry = true;
         isRefreshing = true;
         try {
-          const resp = await api.post('/auth/refresh', null, { withCredentials: true, _noRetry: true } as Record<string, unknown>);
-          const newToken = resp.data?.access_token;
-          if (newToken) {
-            localStorage.setItem('qm_token', newToken);
-            if (originalRequest.headers) {
-              (originalRequest.headers as Record<string, string>)['Authorization'] = `Bearer ${newToken}`;
+          const doRefresh = async () => {
+            const resp = await api.post(
+              '/auth/refresh',
+              null,
+              { withCredentials: true, _noRetry: true } as Record<string, unknown>,
+            );
+            const token = resp.data?.access_token;
+            if (!token) {
+              throw new Error('Refresh succeeded but no access_token returned');
             }
-            onRefreshed(newToken);
-            isRefreshing = false;
-            return api(originalRequest);
+            return token as string;
+          };
+          const newToken = await performDistributedTokenRefresh(doRefresh);
+          localStorage.setItem('qm_token', newToken);
+          if (originalRequest.headers) {
+            (originalRequest.headers as Record<string, string>)['Authorization'] = `Bearer ${newToken}`;
           }
-          const noTokenErr = new Error('Refresh succeeded but no access_token returned');
-          return finalizeAuthRefreshFailure(noTokenErr);
+          onRefreshed(newToken);
+          isRefreshing = false;
+          return api(originalRequest);
         } catch (refreshErr) {
           return finalizeAuthRefreshFailure(
-            refreshErr instanceof Error ? refreshErr : new Error('Refresh failed')
+            refreshErr instanceof Error ? refreshErr : new Error('Refresh failed'),
           );
         }
       }

@@ -84,7 +84,9 @@ const TopDownView: React.FC<TopDownViewProps> = ({ dashboardPayload }) => {
 
   const breadthAbove50 = dashboardPayload?.regime?.above_sma50_count ?? 0;
   const breadthAbove200 = dashboardPayload?.regime?.above_sma200_count ?? 0;
-  const total = dashboardPayload?.snapshot_count ?? 1;
+  const snapshotCount =
+    typeof dashboardPayload?.snapshot_count === 'number' ? dashboardPayload.snapshot_count : null;
+  const total = snapshotCount !== null && snapshotCount > 0 ? snapshotCount : null;
 
   const indexRows = React.useMemo(() =>
     INDEX_SYMBOLS.map(sym => {

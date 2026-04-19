@@ -34,6 +34,9 @@ from backend.api.dependencies import get_current_user
 
 logger = logging.getLogger(__name__)
 
+# Concurrent tabs may send the same refresh JWT just after rotation; accept prior family briefly.
+REFRESH_TOKEN_GRACE_SECONDS = 10
+
 security = HTTPBearer()
 pwd_context = CryptContext(schemes=["sha256_crypt", "bcrypt"], deprecated="auto")
 
@@ -160,8 +163,25 @@ def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
     return user
 
 
-def _issue_tokens(user: User, response: Optional[Response] = None) -> Dict[str, Any]:
-    """Issue access + refresh token pair. Sets refresh as httpOnly cookie if response given."""
+def _issue_tokens(
+    user: User,
+    response: Optional[Response] = None,
+    *,
+    rotation: bool = False,
+) -> Dict[str, Any]:
+    """Issue access + refresh token pair. Sets refresh as httpOnly cookie if response given.
+
+    When ``rotation`` is True (normal refresh rotation), the current DB family is copied to
+    ``previous_*`` before issuing a new family so concurrent requests with the stale JWT
+    can be accepted within ``REFRESH_TOKEN_GRACE_SECONDS``.
+    """
+    if rotation and user.refresh_token_family:
+        user.previous_refresh_token_family = user.refresh_token_family
+        user.previous_refresh_token_rotated_at = datetime.now(timezone.utc)
+    else:
+        user.previous_refresh_token_family = None
+        user.previous_refresh_token_rotated_at = None
+
     family = str(uuid.uuid4())
     user.refresh_token_family = family
 
@@ -381,6 +401,8 @@ async def google_callback(
     user.is_verified = True
 
     family = str(uuid.uuid4())
+    user.previous_refresh_token_family = None
+    user.previous_refresh_token_rotated_at = None
     user.refresh_token_family = family
     db.commit()
 
@@ -565,6 +587,8 @@ async def apple_callback(
     user.is_verified = True
 
     family = str(uuid.uuid4())
+    user.previous_refresh_token_family = None
+    user.previous_refresh_token_rotated_at = None
     user.refresh_token_family = family
     db.commit()
 
@@ -872,15 +896,50 @@ async def refresh_access_token(
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="User not found or inactive")
 
-    if user.refresh_token_family != family:
-        user.refresh_token_family = None
-        db.commit()
-        logger.warning("Refresh token family mismatch for user %s — possible token reuse", user.id)
-        raise HTTPException(status_code=401, detail="Token family revoked")
+    now = datetime.now(timezone.utc)
 
-    result = _issue_tokens(user, response)
+    if user.refresh_token_family == family:
+        result = _issue_tokens(user, response, rotation=True)
+        db.commit()
+        return result
+
+    grace_ok = (
+        user.previous_refresh_token_family == family
+        and user.previous_refresh_token_rotated_at is not None
+        and (now - user.previous_refresh_token_rotated_at).total_seconds() <= REFRESH_TOKEN_GRACE_SECONDS
+    )
+    if grace_ok:
+        # Benign concurrent-tab race: JWT still carries the pre-rotation family; do not rotate again.
+        access = create_access_token(
+            claims={"sub": user.username, "role": getattr(user.role, "value", None)},
+        )
+        refresh = create_refresh_token(
+            claims={"sub": user.username},
+            family=user.refresh_token_family,
+        )
+        if response:
+            response.set_cookie(
+                key="refresh_token",
+                value=refresh,
+                httponly=True,
+                secure=_is_secure_cookie(),
+                samesite="lax",
+                max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+                path="/api/v1/auth",
+            )
+        db.commit()
+        return {
+            "access_token": access,
+            "token_type": "bearer",
+            "role": getattr(user.role, "value", None),
+        }
+
+    user.refresh_token_family = None
+    user.previous_refresh_token_family = None
+    user.previous_refresh_token_rotated_at = None
     db.commit()
-    return result
+    logger.warning("Refresh token family mismatch for user %s — possible token reuse", user.id)
+    raise HTTPException(status_code=401, detail="Token family revoked")
 
 
 @router.post("/logout")
@@ -890,6 +949,8 @@ async def logout_user(
     db: Session = Depends(get_db),
 ):
     current_user.refresh_token_family = None
+    current_user.previous_refresh_token_family = None
+    current_user.previous_refresh_token_rotated_at = None
     db.commit()
     response.delete_cookie("refresh_token", path="/api/v1/auth")
     logger.info("User logged out: %s", current_user.username)
