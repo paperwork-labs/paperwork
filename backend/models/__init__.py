@@ -90,6 +90,7 @@ from .strategy import Strategy, StrategyExecution
 
 # Backtesting
 from .backtest import StrategyBacktest, BacktestStatus
+from .walk_forward_study import WalkForwardStudy, WalkForwardStatus
 
 # Watchlist
 from .watchlist import Watchlist
@@ -229,6 +230,8 @@ __all__ = [
     "SymbolHistory",
     "SymbolMaster",
     "SymbolStatus",
+    "WalkForwardStudy",
+    "WalkForwardStatus",
     "MCPToken",
     "AppliedCorporateAction",
     "CorporateAction",

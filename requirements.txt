@@ -66,6 +66,9 @@ resend>=2.0.0
 # Billing
 stripe==15.0.1
 
+# Backtest hyperparameter optimization
+optuna==4.8.0
+
 # OpenTelemetry — distributed tracing + metrics.
 # `*-api` and `*-sdk` track the same MAJOR.MINOR; instrumentation packages
 # follow a separate 0.x line tied to that release. Keep them lock-stepped.

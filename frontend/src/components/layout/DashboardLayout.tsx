@@ -106,6 +106,7 @@ function buildMarketItems() {
     { label: 'Strategies', icon: Target, path: '/market/strategies' },
     { label: 'Backtest', icon: Activity, path: '/backtest/monte-carlo' },
     { label: 'Intelligence', icon: Brain, path: '/market/intelligence' },
+    { label: 'Walk-Forward', icon: Activity, path: '/backtest/walk-forward' },
     { label: 'Education', icon: BookOpen, path: '/market/education' },
     { label: 'Picks', icon: ClipboardList, path: '/picks' },
     { label: 'Terminal', icon: Monitor, path: '/terminal' },

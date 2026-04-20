@@ -725,6 +725,10 @@ app.include_router(
     prefix="/api/v1/mcp",
     tags=["MCP"],
 )
+# Backtest analysis: walk-forward (tier: research.walk_forward_optimizer) and
+# Monte Carlo (research.monte_carlo) share ``/api/v1/backtest`` via the
+# aggregated router in ``backend.api.routes.backtest``.
+
 # Public pricing catalog: tier display data + features per tier.
 # No auth — the marketing /pricing page renders the exact same payload
 # logged-in users see in their upgrade prompts. Intentionally NOT behind

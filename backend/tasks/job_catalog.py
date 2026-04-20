@@ -508,6 +508,26 @@ CATALOG: List[JobTemplate] = [
         timeout_s=30,
         enabled=False,
     ),
+    JobTemplate(
+        id="walk_forward_optimizer_run",
+        display_name="Walk-Forward Optimizer Run",
+        group="research",
+        task="backend.tasks.backtest.walk_forward_runner.run_walk_forward_study",
+        description=(
+            "User-initiated Optuna hyperparameter study over rolling train/test "
+            "windows. Triggered from POST /api/v1/backtest/walk-forward/studies; "
+            "the cron entry is a no-op (enabled=False)."
+        ),
+        default_cron="0 0 1 1 *",  # event-driven only
+        default_tz="UTC",
+        queue="heavy",
+        timeout_s=3600,
+        # Per-row tasks: each WalkForwardStudy.id is its own work unit, so the
+        # global singleflight lock would incorrectly serialize unrelated user
+        # studies.
+        singleflight=False,
+        enabled=False,
+    ),
     # ── Corporate Actions ─────────────────────────────────────────────
     JobTemplate(
         id="daily_corporate_actions",

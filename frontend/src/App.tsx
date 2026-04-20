@@ -53,6 +53,7 @@ const Terminal = React.lazy(() => import('./pages/Terminal'));
 const Scanner = React.lazy(() => import('./pages/Scanner'));
 const Picks = React.lazy(() => import('./pages/Picks'));
 const PicksValidator = React.lazy(() => import('./pages/admin/PicksValidator'));
+const WalkForward = React.lazy(() => import('./pages/Backtest/WalkForward'));
 const BacktestMonteCarlo = React.lazy(() => import('./pages/Backtest/MonteCarlo'));
 const ConnectAccounts = React.lazy(() => import('./pages/ConnectAccounts'));
 const AccountsManagement = React.lazy(() => import('./pages/AccountsManagement'));
@@ -111,6 +112,7 @@ function App() {
                           }
                         />
                         <Route path="terminal" element={<Terminal />} />
+                        <Route path="backtest/walk-forward" element={<WalkForward />} />
 
                         {/* Legacy strategy URLs → /market/strategies* */}
                         <Route path="strategies" element={<Navigate to="/market/strategies" replace />} />

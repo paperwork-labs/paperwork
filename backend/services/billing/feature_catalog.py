@@ -182,6 +182,16 @@ _FEATURES: tuple[Feature, ...] = (
         category="research",
     ),
     Feature(
+        key="research.walk_forward_optimizer",
+        min_tier=SubscriptionTier.PRO,
+        title="Walk-forward optimizer",
+        description=(
+            "Optuna-driven hyperparameter search with rolling train/test "
+            "splits and per-regime attribution."
+        ),
+        category="research",
+    ),
+    Feature(
         key="research.jupyter_kit",
         min_tier=SubscriptionTier.QUANT_DESK,
         title="Jupyter research kit",

@@ -49,6 +49,8 @@ celery_app = Celery(
         "backend.tasks.pipeline.orchestrator",
         "backend.tasks.picks.generate_candidates",
         "backend.tasks.picks.parse_inbound",
+        # Backtest hyperparameter optimization (heavy queue)
+        "backend.tasks.backtest.walk_forward_runner",
         # Corporate actions (splits, dividends, mergers)
         "backend.tasks.corporate_actions.daily_apply",
     ],
@@ -91,6 +93,9 @@ celery_app.conf.task_routes = {
     "backend.tasks.market.maintenance.*": {"queue": "heavy"},
     # Reconciliation spot-check is also long-running.
     "backend.tasks.market.reconciliation.spot_check": {"queue": "heavy"},
+    # Walk-forward optimizer trials can run 30+ min each.
+    "backend.tasks.backtest.walk_forward_runner.*": {"queue": "heavy"},
+    "backtest.walk_forward_run": {"queue": "heavy"},
     # Corporate-action engine (full universe + per-user position rewrite).
     "backend.tasks.corporate_actions.*": {"queue": "heavy"},
 }

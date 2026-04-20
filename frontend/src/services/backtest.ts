@@ -1,24 +1,127 @@
 /**
- * Backtest analysis client (Monte Carlo, walk-forward, scenarios).
+ * Backtest analysis client: walk-forward optimizer and Monte Carlo /
+ * scenarios.
  *
- * Calls into ``/api/v1/backtest/...`` which are tier-gated to Pro+
- * (``research.monte_carlo``). All monetary values come back from the
- * backend as JSON strings to preserve ``Decimal`` precision; we keep
- * them as ``string`` here and only coerce to ``number`` at the chart
- * layer where Recharts needs floats.
+ * Walk-forward mirrors `backend/api/routes/backtest/walk_forward.py`; the
+ * hook layer (`useWalkForwardStudies`) wraps those calls in TanStack Query.
  *
- * Why string-typed numbers
- * ------------------------
- * The backend uses ``Decimal`` end-to-end and serializes to strings.
- * If we typed these as ``number`` here we'd silently lose precision
- * for very small (sub-cent) percentile values and would also lose the
- * ability to feed the same blob back into a future "save scenario"
- * mutation without round-tripping through float.
+ * Monte Carlo calls `/api/v1/backtest/monte-carlo` (tier: `research.monte_carlo`).
+ * Monetary values return as JSON strings to preserve Decimal precision; we
+ * coerce to number only at the chart layer where Recharts needs floats.
  */
+
 import api from './api';
 
 // ---------------------------------------------------------------------------
-// Types
+// Walk-forward
+// ---------------------------------------------------------------------------
+
+export type WalkForwardStatus = 'pending' | 'running' | 'completed' | 'failed';
+
+export type ParamSpec =
+  | { type: 'int'; low: number; high: number; step?: number }
+  | { type: 'float'; low: number; high: number; log?: boolean }
+  | { type: 'categorical'; choices: Array<string | number> };
+
+export type ParamSpace = Record<string, ParamSpec>;
+
+export type RegimeFilter = 'R1' | 'R2' | 'R3' | 'R4' | 'R5' | null;
+
+export interface CreateStudyPayload {
+  name: string;
+  strategy_class: string;
+  objective: string;
+  param_space: ParamSpace;
+  symbols: string[];
+  /** YYYY-MM-DD */
+  dataset_start: string;
+  /** YYYY-MM-DD */
+  dataset_end: string;
+  train_window_days: number;
+  test_window_days: number;
+  n_splits: number;
+  n_trials: number;
+  regime_filter: RegimeFilter;
+}
+
+export interface SplitResultPayload {
+  split_index: number;
+  train_start: string;
+  train_end: string;
+  test_start: string;
+  test_end: string;
+  train_score: number;
+  test_score: number;
+  trade_count: number;
+}
+
+export interface RegimeAttributionPayload {
+  [regime: string]: { score: number; trades: number; avg_return: number };
+}
+
+export interface StudySummary {
+  id: number;
+  name: string;
+  strategy_class: string;
+  objective: string;
+  status: WalkForwardStatus;
+  n_splits: number;
+  n_trials: number;
+  total_trials: number;
+  regime_filter: string | null;
+  best_score: number | null;
+  created_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+export interface StudyDetail extends StudySummary {
+  param_space: ParamSpace;
+  symbols: string[];
+  train_window_days: number;
+  test_window_days: number;
+  dataset_start: string | null;
+  dataset_end: string | null;
+  best_params: Record<string, unknown> | null;
+  per_split_results: SplitResultPayload[] | null;
+  regime_attribution: RegimeAttributionPayload | null;
+  error_message: string | null;
+}
+
+export interface StrategyOptions {
+  strategies: string[];
+  objectives: string[];
+  regimes: string[];
+}
+
+const WALK_FORWARD_BASE = '/backtest/walk-forward';
+
+export async function listStudies(limit = 50): Promise<StudySummary[]> {
+  const res = await api.get<StudySummary[]>(`${WALK_FORWARD_BASE}/studies`, {
+    params: { limit },
+  });
+  return res.data ?? [];
+}
+
+export async function getStudy(id: number): Promise<StudyDetail> {
+  const res = await api.get<StudyDetail>(`${WALK_FORWARD_BASE}/studies/${id}`);
+  return res.data;
+}
+
+export async function createStudy(
+  payload: CreateStudyPayload,
+): Promise<StudyDetail> {
+  const res = await api.post<StudyDetail>(`${WALK_FORWARD_BASE}/studies`, payload);
+  return res.data;
+}
+
+export async function listStrategyOptions(): Promise<StrategyOptions> {
+  const res = await api.get<StrategyOptions>(`${WALK_FORWARD_BASE}/strategies`);
+  return res.data;
+}
+
+// ---------------------------------------------------------------------------
+// Monte Carlo — types
 // ---------------------------------------------------------------------------
 
 /** A list of per-step Decimal-string equity values, one per trade. */
@@ -101,19 +204,14 @@ export interface MonteCarloRequest {
 }
 
 // ---------------------------------------------------------------------------
-// API
+// Monte Carlo — API
 // ---------------------------------------------------------------------------
 
 /**
  * POST /api/v1/backtest/monte-carlo
  *
- * Synchronous endpoint that returns either a single result or a map of
- * scenario results, depending on the request body. The backend caps
- * ``n_simulations`` at 100k so this stays comfortably under the
- * request-budget ceiling.
- *
- * Errors propagate as the original AxiosError -- callers should let
- * TanStack Query distinguish ``isError`` from ``isLoading`` per the
+ * Errors propagate as the original AxiosError — callers should let
+ * TanStack Query distinguish `isError` from `isLoading` per the
  * no-silent-fallback rule.
  */
 export async function runMonteCarlo(
@@ -127,16 +225,11 @@ export async function runMonteCarlo(
 }
 
 // ---------------------------------------------------------------------------
-// Helpers (UI-side, pure)
+// Monte Carlo — helpers (UI-side, pure)
 // ---------------------------------------------------------------------------
 
 /**
  * Coerce a Decimal-string from the API to a `number` for chart libs.
- *
- * We deliberately do NOT round here; let Recharts/format helpers decide
- * display precision. Returns `0` only for the literal string `"0"` or
- * empty. `null` / `undefined` throw so missing API fields cannot masquerade
- * as zero (no-silent-fallback).
  */
 export function decimalToNumber(value: string | undefined | null): number {
   if (value == null) {
@@ -150,13 +243,6 @@ export function decimalToNumber(value: string | undefined | null): number {
   return n;
 }
 
-/**
- * Build the row format Recharts expects for the equity-curve fan chart:
- * one row per trade-index with p5/p25/p50/p75/p95 numeric fields.
- *
- * We synthesize a ``trade`` index (1-based) since the backend curves
- * are indexed by trade position, not by date.
- */
 export interface EquityFanRow {
   trade: number;
   p5: number;
@@ -185,8 +271,7 @@ export function equityCurveToRows(
 }
 
 /**
- * Format a fraction-of-1 probability as a percentage string. The
- * backend always emits Decimals in the [0,1] range for these fields.
+ * Format a fraction-of-1 probability as a percentage string.
  */
 export function formatProbability(p: string, fractionDigits = 1): string {
   return `${(decimalToNumber(p) * 100).toFixed(fractionDigits)}%`;
