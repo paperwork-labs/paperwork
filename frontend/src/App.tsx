@@ -16,6 +16,7 @@ import { AppCommandLayer } from './components/cmdk/AppCommandLayer';
 const DashboardLayout = React.lazy(() => import('./components/layout/DashboardLayout'));
 const PortfolioOverview = React.lazy(() => import('./pages/portfolio/PortfolioOverview'));
 const PortfolioHoldings = React.lazy(() => import('./pages/portfolio/PortfolioHoldings'));
+const HoldingDetail = React.lazy(() => import('./pages/HoldingDetail'));
 const PortfolioOptions = React.lazy(() => import('./pages/portfolio/PortfolioOptions'));
 const PortfolioCategories = React.lazy(() => import('./pages/portfolio/PortfolioCategories'));
 const PortfolioTransactions = React.lazy(() => import('./pages/portfolio/PortfolioTransactions'));
@@ -114,6 +115,7 @@ function App() {
                         <Route element={<RequireNonMarketAccess section="portfolio" />}>
                           <Route path="portfolio" element={<PortfolioOverview />} />
                           <Route path="portfolio/holdings" element={<PortfolioHoldings />} />
+                          <Route path="holding/:symbol" element={<HoldingDetail />} />
                           <Route path="portfolio/options" element={<PortfolioOptions />} />
                           <Route path="portfolio/transactions" element={<PortfolioTransactions />} />
                           <Route path="portfolio/categories" element={<PortfolioCategories />} />

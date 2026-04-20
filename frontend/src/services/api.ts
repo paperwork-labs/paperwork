@@ -631,6 +631,28 @@ export const marketDataApi = {
   getSnapshot: async (symbol: string) => {
     return makeOptimizedRequest(() => api.get(`/market-data/snapshots/${encodeURIComponent(symbol)}`));
   },
+  /**
+   * GET /market-data/prices/{symbol}/indicators
+   *
+   * Returns calendar-aligned per-day indicator series produced by the
+   * server-side `compute_full_indicator_series()` (IRON LAW: indicator
+   * math lives in Python, never in JS). Caller passes the explicit
+   * `indicators` list — the backend only computes/returns the requested
+   * columns so we don't pay for series we won't render.
+   */
+  getIndicatorSeries: async (
+    symbol: string,
+    options: { period?: string; indicators?: string[]; limit?: number } = {},
+  ) => {
+    const qs = new URLSearchParams();
+    if (options.period) qs.set('period', options.period);
+    if (options.indicators?.length) qs.set('indicators', options.indicators.join(','));
+    if (options.limit) qs.set('limit', String(options.limit));
+    const q = qs.toString();
+    return makeOptimizedRequest(() =>
+      api.get(`/market-data/prices/${encodeURIComponent(symbol)}/indicators${q ? `?${q}` : ''}`),
+    );
+  },
   getVolatilityDashboard: async () => {
     return makeOptimizedRequest(() => api.get('/market-data/volatility-dashboard'));
   },

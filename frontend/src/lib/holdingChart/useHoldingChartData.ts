@@ -135,10 +135,18 @@ const PRICE_STALE_MS = 30_000;
 //     event while still keeping period switches snappy.
 const DIVIDEND_STALE_MS = 5 * 60_000;
 
-const BACKEND_PERIODS = ["1mo", "3mo", "6mo", "ytd", "1y", "5y", "max"] as const;
-type BackendPeriod = (typeof BACKEND_PERIODS)[number];
+export const BACKEND_PERIODS = [
+  "1mo",
+  "3mo",
+  "6mo",
+  "ytd",
+  "1y",
+  "5y",
+  "max",
+] as const;
+export type BackendPeriod = (typeof BACKEND_PERIODS)[number];
 
-function isBackendPeriod(p: HoldingChartPeriod): p is BackendPeriod {
+export function isBackendPeriod(p: HoldingChartPeriod): p is BackendPeriod {
   return (BACKEND_PERIODS as readonly string[]).includes(p);
 }
 

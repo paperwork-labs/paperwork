@@ -83,7 +83,14 @@ vi.mock("@/lib/holdingChart/useHoldingChartData", () => {
   };
 });
 
+vi.mock("@/lib/holdingChart/useHoldingIndicators", () => {
+  return {
+    useHoldingIndicators: vi.fn(),
+  };
+});
+
 import { useHoldingChartData } from "@/lib/holdingChart/useHoldingChartData";
+import { useHoldingIndicators } from "@/lib/holdingChart/useHoldingIndicators";
 import type {
   DividendBucket,
   TradeBucket,
@@ -91,6 +98,24 @@ import type {
 import { HoldingPriceChart } from "../HoldingPriceChart";
 
 const mockUseData = vi.mocked(useHoldingChartData);
+const mockUseIndicators = vi.mocked(useHoldingIndicators);
+
+function withIndicatorDefaults(
+  partial: Partial<ReturnType<typeof useHoldingIndicators>> = {},
+): ReturnType<typeof useHoldingIndicators> {
+  return {
+    series: {},
+    stageSegments: [],
+    rows: 0,
+    backfillRequested: false,
+    pricePending: false,
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn().mockResolvedValue(undefined),
+    ...partial,
+  };
+}
 
 function makeBars(n: number, base = 100) {
   return Array.from({ length: n }).map((_, i) => {
@@ -158,6 +183,8 @@ beforeEach(() => {
   seriesApplyOptionsByKind.Area.mockReset();
   seriesApplyOptionsByKind.Line.mockReset();
   mockUseData.mockReset();
+  mockUseIndicators.mockReset();
+  mockUseIndicators.mockReturnValue(withIndicatorDefaults());
 });
 
 describe("HoldingPriceChart", () => {
@@ -709,5 +736,275 @@ describe("HoldingPriceChart", () => {
     for (const label of labels) {
       expect(label).not.toContain("2026-01-05");
     }
+  });
+
+  // ────────────────────────── PR #4 additions ──────────────────────────
+
+  it("renders the AxiomFolio metric strip when showMetricStrip is true", async () => {
+    mockUseData.mockReturnValue(
+      withDefaults({
+        snapshot: {
+          sector: "Technology",
+          stage_label: "2B",
+          rsi: 64.2,
+          atrp_14: 2.4,
+          macd: 1.32,
+          adx: 28.6,
+          rs_mansfield_pct: 14.3,
+        },
+      }),
+    );
+    renderChart(
+      <HoldingPriceChart symbol="AAPL" height={400} showMetricStrip />,
+    );
+    await waitFor(() => expect(addSeriesMock).toHaveBeenCalled());
+    expect(screen.getByTestId("axiom-metric-strip")).toBeInTheDocument();
+    expect(screen.getByText("Stage")).toBeInTheDocument();
+    expect(screen.getByText("RSI")).toBeInTheDocument();
+    expect(screen.getByText("ATR%")).toBeInTheDocument();
+    expect(screen.getByText("MACD")).toBeInTheDocument();
+    expect(screen.getByText("ADX")).toBeInTheDocument();
+    expect(screen.getByText("RS Mansfield")).toBeInTheDocument();
+  });
+
+  it("does NOT render the metric strip when showMetricStrip is false", async () => {
+    mockUseData.mockReturnValue(withDefaults());
+    renderChart(
+      <HoldingPriceChart
+        symbol="AAPL"
+        height={400}
+        showMetricStrip={false}
+      />,
+    );
+    await waitFor(() => expect(addSeriesMock).toHaveBeenCalled());
+    expect(screen.queryByTestId("axiom-metric-strip")).toBeNull();
+  });
+
+  it("adds extra Line series for each enabled SMA overlay", async () => {
+    mockUseData.mockReturnValue(withDefaults());
+    mockUseIndicators.mockReturnValue(
+      withIndicatorDefaults({
+        series: {
+          sma_50: [{ time: "2026-01-01", value: 100 }],
+          sma_200: [{ time: "2026-01-01", value: 95 }],
+        },
+        rows: 1,
+      }),
+    );
+    renderChart(
+      <HoldingPriceChart
+        symbol="AAPL"
+        height={400}
+        overlays={["sma50", "sma200"]}
+      />,
+    );
+    // Line kinds: 1 benchmark + 2 overlays = 3.
+    await waitFor(() => {
+      const lineCount = addSeriesMock.mock.calls.filter(
+        (c) => c[0].__kind === "Line",
+      ).length;
+      expect(lineCount).toBeGreaterThanOrEqual(3);
+    });
+  });
+
+  it("adds two Line series for the Bollinger overlay (upper + lower)", async () => {
+    mockUseData.mockReturnValue(withDefaults());
+    mockUseIndicators.mockReturnValue(
+      withIndicatorDefaults({
+        series: {
+          bollinger_upper: [{ time: "2026-01-01", value: 105 }],
+          bollinger_lower: [{ time: "2026-01-01", value: 95 }],
+        },
+        rows: 1,
+      }),
+    );
+    renderChart(
+      <HoldingPriceChart
+        symbol="AAPL"
+        height={400}
+        overlays={["bollinger"]}
+      />,
+    );
+    await waitFor(() => {
+      // 1 benchmark + 2 bollinger lines = 3 Line series total.
+      const lineCount = addSeriesMock.mock.calls.filter(
+        (c) => c[0].__kind === "Line",
+      ).length;
+      expect(lineCount).toBeGreaterThanOrEqual(3);
+    });
+  });
+
+  it("removes overlay series when the overlay is toggled off", async () => {
+    mockUseData.mockReturnValue(withDefaults());
+    mockUseIndicators.mockReturnValue(
+      withIndicatorDefaults({
+        series: {
+          sma_50: [{ time: "2026-01-01", value: 100 }],
+        },
+        rows: 1,
+      }),
+    );
+    const { rerender } = renderChart(
+      <HoldingPriceChart
+        symbol="AAPL"
+        height={400}
+        overlays={["sma50"]}
+      />,
+    );
+    await waitFor(() => {
+      const lineCount = addSeriesMock.mock.calls.filter(
+        (c) => c[0].__kind === "Line",
+      ).length;
+      expect(lineCount).toBeGreaterThanOrEqual(2);
+    });
+    removeSeriesMock.mockClear();
+    mockUseIndicators.mockReturnValue(withIndicatorDefaults());
+    rerender(
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <HoldingPriceChart symbol="AAPL" height={400} overlays={[]} />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => expect(removeSeriesMock).toHaveBeenCalled());
+  });
+
+  it("renders the StageOverlay layer when showStageBands is true and segments are present", async () => {
+    // The overlay short-circuits to `null` when the chart container has
+    // zero width (no bands can be painted yet). JSDOM's ResizeObserver
+    // is a no-op stub, so we install a synchronous one that fires the
+    // first observation immediately with a realistic content rect.
+    const originalRO = globalThis.ResizeObserver;
+    class ImmediateRO {
+      private cb: ResizeObserverCallback;
+      constructor(cb: ResizeObserverCallback) {
+        this.cb = cb;
+      }
+      observe(target: Element): void {
+        this.cb(
+          [
+            {
+              target,
+              contentRect: { width: 800, height: 400 } as DOMRectReadOnly,
+            } as unknown as ResizeObserverEntry,
+          ],
+          this as unknown as ResizeObserver,
+        );
+      }
+      unobserve(): void {}
+      disconnect(): void {}
+    }
+    (globalThis as { ResizeObserver: typeof ResizeObserver }).ResizeObserver =
+      ImmediateRO as unknown as typeof ResizeObserver;
+    try {
+      // Return distinct x's for the segment's start vs end so the band
+      // has non-zero width (the overlay drops bands where right <= left).
+      let call = 0;
+      timeToCoordinateMock.mockImplementation(() => {
+        call += 1;
+        return call === 1 ? 100 : 400;
+      });
+      mockUseData.mockReturnValue(withDefaults());
+      mockUseIndicators.mockReturnValue(
+        withIndicatorDefaults({
+          stageSegments: [
+            { startTime: "2026-01-01", endTime: "2026-01-10", label: "2B" },
+          ],
+          rows: 10,
+        }),
+      );
+      renderChart(
+        <HoldingPriceChart symbol="AAPL" height={400} showStageBands />,
+      );
+      const overlay = await screen.findByTestId("stage-overlay");
+      expect(overlay).toBeInTheDocument();
+    } finally {
+      (globalThis as { ResizeObserver: typeof ResizeObserver }).ResizeObserver =
+        originalRO;
+    }
+  });
+
+  it("does NOT render the StageOverlay when showStageBands is false", async () => {
+    mockUseData.mockReturnValue(withDefaults());
+    mockUseIndicators.mockReturnValue(
+      withIndicatorDefaults({
+        stageSegments: [
+          { startTime: "2026-01-01", endTime: "2026-01-10", label: "2B" },
+        ],
+      }),
+    );
+    renderChart(
+      <HoldingPriceChart symbol="AAPL" height={400} showStageBands={false} />,
+    );
+    await waitFor(() => expect(addSeriesMock).toHaveBeenCalled());
+    expect(screen.queryByTestId("stage-overlay")).toBeNull();
+  });
+
+  it("renders the overlay control group with stage band toggle", async () => {
+    mockUseData.mockReturnValue(withDefaults());
+    renderChart();
+    await waitFor(() => expect(addSeriesMock).toHaveBeenCalled());
+    expect(screen.getByTestId("overlay-controls")).toBeInTheDocument();
+    expect(
+      screen.getByRole("switch", { name: /stage bands/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("calls onOverlaysChange when an overlay button is toggled", async () => {
+    mockUseData.mockReturnValue(withDefaults());
+    const onOverlaysChange = vi.fn();
+    renderChart(
+      <HoldingPriceChart
+        symbol="AAPL"
+        height={400}
+        overlays={[]}
+        onOverlaysChange={onOverlaysChange}
+      />,
+    );
+    await waitFor(() => expect(addSeriesMock).toHaveBeenCalled());
+    const sma50Button = screen.getByRole("button", { name: /^SMA 50$/i });
+    fireEvent.click(sma50Button);
+    expect(onOverlaysChange).toHaveBeenCalledWith(["sma50"]);
+  });
+
+  it("calls onShowStageBandsChange when the stage band switch is toggled", async () => {
+    mockUseData.mockReturnValue(withDefaults());
+    const onShowStageBandsChange = vi.fn();
+    renderChart(
+      <HoldingPriceChart
+        symbol="AAPL"
+        height={400}
+        showStageBands={false}
+        onShowStageBandsChange={onShowStageBandsChange}
+      />,
+    );
+    await waitFor(() => expect(addSeriesMock).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("switch", { name: /stage bands/i }));
+    expect(onShowStageBandsChange).toHaveBeenCalledWith(true);
+  });
+
+  it("re-skins active overlay series when the palette change event fires", async () => {
+    mockUseData.mockReturnValue(withDefaults());
+    mockUseIndicators.mockReturnValue(
+      withIndicatorDefaults({
+        series: {
+          sma_50: [{ time: "2026-01-01", value: 100 }],
+        },
+        rows: 1,
+      }),
+    );
+    renderChart(
+      <HoldingPriceChart
+        symbol="AAPL"
+        height={400}
+        overlays={["sma50"]}
+      />,
+    );
+    await waitFor(() => expect(addSeriesMock).toHaveBeenCalled());
+    seriesApplyOptionsByKind.Line.mockClear();
+    window.dispatchEvent(new Event("axiomfolio:color-palette-change"));
+    await waitFor(() => {
+      expect(seriesApplyOptionsByKind.Line).toHaveBeenCalled();
+    });
   });
 });

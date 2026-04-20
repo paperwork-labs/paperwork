@@ -49,9 +49,12 @@ import { seriesColor } from "@/constants/chart";
 import { DURATION, EASE } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
+import { AxiomMetricStrip, type MetricStripValues } from "./AxiomMetricStrip";
 import { ChartAnnouncer } from "./ChartA11y";
 import { ChartCrosshair, useCrosshairTracking } from "./ChartCrosshair";
 import { PriceChartSkeleton } from "./skeletons/PriceChartSkeleton";
+import { StageOverlay } from "./StageOverlay";
+import { BOLLINGER_HEX } from "@/constants/chart";
 import {
   resolveThemeColors,
   withAlpha,
@@ -60,10 +63,15 @@ import {
   useHoldingChartData,
   type HoldingChartPeriod,
 } from "@/lib/holdingChart/useHoldingChartData";
+import {
+  useHoldingIndicators,
+} from "@/lib/holdingChart/useHoldingIndicators";
 import type {
   DividendBucket,
   TradeBucket,
 } from "@/lib/holdingChart/tradeMarkers";
+import type { IndicatorKey } from "@/types/indicators";
+import type { OverlayId } from "@/hooks/useHoldingChartUrlState";
 
 /**
  * Pre-paired dividend bucket + container-relative x coordinate.
@@ -93,6 +101,18 @@ export interface HoldingPriceChartProps {
   className?: string;
   /** Fired whenever the user picks a new period (used for deeplinks in a later PR). */
   onPeriodChange?: (p: HoldingChartPeriod) => void;
+  /**
+   * Currently-enabled overlays. When omitted, the chart falls back to its
+   * own internal state so it remains usable as a stand-alone component
+   * (e.g. inside a story or the workspace mini view).
+   */
+  overlays?: OverlayId[];
+  onOverlaysChange?: (next: OverlayId[]) => void;
+  /** Render the translucent stage-color band behind the price series. */
+  showStageBands?: boolean;
+  onShowStageBandsChange?: (next: boolean) => void;
+  /** Render the AxiomFolio metric strip beneath the chart. Default true. */
+  showMetricStrip?: boolean;
 }
 
 const DEFAULT_HEIGHT = 460;
@@ -268,6 +288,90 @@ const DIVIDEND_DOT_COLOR = "#6366f1";
 const TOOLTIP_WIDTH_PX = 232;
 const TOOLTIP_TOP_OFFSET_PX = 8;
 
+/**
+ * One source of truth for translating user-facing overlay ids into the
+ * indicator columns the backend understands. Bollinger expands to two
+ * keys (upper + lower) which we render as paired LineSeries.
+ */
+const OVERLAY_TO_KEYS: Record<OverlayId, IndicatorKey[]> = {
+  sma50: ["sma_50"],
+  sma100: ["sma_100"],
+  sma150: ["sma_150"],
+  sma200: ["sma_200"],
+  ema21: ["ema_21"],
+  ema200: ["ema_200"],
+  bollinger: ["bollinger_upper", "bollinger_lower"],
+};
+
+const OVERLAY_LABELS: Record<OverlayId, string> = {
+  sma50: "SMA 50",
+  sma100: "SMA 100",
+  sma150: "SMA 150",
+  sma200: "SMA 200",
+  ema21: "EMA 21",
+  ema200: "EMA 200",
+  bollinger: "Bollinger",
+};
+
+/** Stable color slot per overlay so re-orders never re-color a series. */
+const OVERLAY_PALETTE_INDEX: Record<OverlayId, number> = {
+  sma50: 2,
+  sma100: 3,
+  sma150: 4,
+  sma200: 5,
+  ema21: 6,
+  ema200: 7,
+  bollinger: 0, // overridden — uses BOLLINGER_HEX explicitly
+};
+
+const ALL_OVERLAY_OPTIONS: ReadonlyArray<OverlayId> = [
+  "sma50",
+  "sma100",
+  "sma150",
+  "sma200",
+  "ema21",
+  "ema200",
+  "bollinger",
+];
+
+function readIsDark(): boolean {
+  if (typeof document === "undefined") return false;
+  return document.documentElement.classList.contains("dark");
+}
+
+function bollingerColor(isDark: boolean): string {
+  return isDark ? BOLLINGER_HEX[1] : BOLLINGER_HEX[0];
+}
+
+/**
+ * Pull the metric-strip values off the snapshot. The snapshot is a loose
+ * bag-of-fields from the backend, so we coerce defensively per cell —
+ * a missing column shows up as `null` and the strip renders an em-dash.
+ */
+function snapshotToMetrics(
+  snapshot: Record<string, unknown> | null,
+): MetricStripValues {
+  if (!snapshot) return {};
+  const num = (key: string): number | null => {
+    const v = snapshot[key];
+    if (v == null) return null;
+    const n = typeof v === "number" ? v : Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+  const str = (key: string): string | null => {
+    const v = snapshot[key];
+    return typeof v === "string" && v.length > 0 ? v : null;
+  };
+  return {
+    stageLabel: str("stage_label"),
+    rsi: num("rsi"),
+    atrPct: num("atrp_14") ?? num("atrp_30"),
+    macd: num("macd"),
+    adx: num("adx"),
+    rsMansfield: num("rs_mansfield_pct"),
+  };
+}
+
 export function HoldingPriceChart({
   symbol,
   accountId,
@@ -277,6 +381,11 @@ export function HoldingPriceChart({
   benchmarkOverride = null,
   className,
   onPeriodChange,
+  overlays: overlaysProp,
+  onOverlaysChange,
+  showStageBands: showStageBandsProp,
+  onShowStageBandsChange,
+  showMetricStrip = true,
 }: HoldingPriceChartProps) {
   // Track the initial period as INITIAL — re-renders when `initialPeriod`
   // changes mid-flight don't yank the user's selection out from under them.
@@ -287,6 +396,38 @@ export function HoldingPriceChart({
     if (initialPeriod) setPeriod(initialPeriod);
   }, [initialPeriod]);
 
+  // Overlay + stage-band state. The component supports both controlled
+  // and uncontrolled use so a story / smaller chart variant can render
+  // it without wiring a parent state container; the URL hook
+  // `useHoldingChartUrlState` is the canonical "controlled" parent.
+  const [overlaysInternal, setOverlaysInternal] = React.useState<OverlayId[]>(
+    overlaysProp ?? [],
+  );
+  const overlaysControlled = overlaysProp !== undefined;
+  const overlays = overlaysControlled ? overlaysProp : overlaysInternal;
+  const setOverlays = React.useCallback(
+    (next: OverlayId[]) => {
+      if (!overlaysControlled) setOverlaysInternal(next);
+      onOverlaysChange?.(next);
+    },
+    [overlaysControlled, onOverlaysChange],
+  );
+
+  const [stageBandsInternal, setStageBandsInternal] = React.useState<boolean>(
+    showStageBandsProp ?? false,
+  );
+  const stageBandsControlled = showStageBandsProp !== undefined;
+  const showStageBands = stageBandsControlled
+    ? (showStageBandsProp as boolean)
+    : stageBandsInternal;
+  const setShowStageBands = React.useCallback(
+    (next: boolean) => {
+      if (!stageBandsControlled) setStageBandsInternal(next);
+      onShowStageBandsChange?.(next);
+    },
+    [stageBandsControlled, onShowStageBandsChange],
+  );
+
   const data = useHoldingChartData({
     symbol,
     accountId,
@@ -295,6 +436,24 @@ export function HoldingPriceChart({
     // Skip the benchmark fetch entirely when the consumer has hidden
     // the overlay — keeps the network call in lock-step with the UI.
     fetchBenchmark: showBenchmark,
+  });
+
+  // Indicator series — only requested when the consumer has at least
+  // one overlay enabled or wants stage bands. Empty payload = no fetch
+  // (`useHoldingIndicators` short-circuits on indicators=[]).
+  const indicatorKeys = React.useMemo<IndicatorKey[]>(() => {
+    const out = new Set<IndicatorKey>();
+    for (const id of overlays) {
+      for (const key of OVERLAY_TO_KEYS[id] ?? []) out.add(key);
+    }
+    if (showStageBands) out.add("stage_label");
+    return Array.from(out);
+  }, [overlays, showStageBands]);
+
+  const indicators = useHoldingIndicators({
+    symbol,
+    period: data.effectivePeriod,
+    indicators: indicatorKeys,
   });
 
   const handlePeriodChange = React.useCallback(
@@ -322,6 +481,13 @@ export function HoldingPriceChart({
   const chartRef = React.useRef<IChartApi | null>(null);
   const primaryRef = React.useRef<ISeriesApi<"Area"> | null>(null);
   const benchmarkRef = React.useRef<ISeriesApi<"Line"> | null>(null);
+  // Map<overlayKey, seriesHandle>. Each overlay maps to one or two
+  // lightweight-charts LineSeries (Bollinger expands to upper + lower).
+  // We keep them in a Map so add/remove diffs are surgical: turning off
+  // SMA50 must NOT recreate SMA200's series (would visually flicker).
+  const overlaySeriesRef = React.useRef<Map<string, ISeriesApi<"Line">>>(
+    new Map(),
+  );
   const markersPrimitiveRef = React.useRef<ISeriesMarkersPluginApi<Time> | null>(
     null,
   );
@@ -399,6 +565,7 @@ export function HoldingPriceChart({
       chartRef.current = null;
       primaryRef.current = null;
       benchmarkRef.current = null;
+      overlaySeriesRef.current.clear();
       // The markers primitive is auto-disposed when the chart is removed,
       // but we still null the ref so the next mount can recreate cleanly
       // and so a stale handle can never leak into a later setMarkers call.
@@ -490,6 +657,71 @@ export function HoldingPriceChart({
     }
   }, [data.bars, data.benchmarkBars, showBenchmark]);
 
+  // ── Indicator overlay series ───────────────────────────────────────────
+  // Diff the requested overlay set against the current series map. The
+  // diff is keyed at the indicator-key level (one entry per IndicatorKey,
+  // not per OverlayId) so Bollinger's two child series can be toggled
+  // atomically with the rest. Recolor on every run so a palette toggle
+  // re-skins the lines without recreating them.
+  React.useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart || !primarySeriesReady) return;
+
+    const isDark = readIsDark();
+    const requested = new Set<string>();
+    for (const overlay of overlays) {
+      for (const key of OVERLAY_TO_KEYS[overlay] ?? []) requested.add(key);
+    }
+
+    // Tear down series the user no longer wants. Doing this BEFORE the
+    // add-pass avoids a momentary "everything visible" flash when the
+    // overlay set rotates (e.g. SMA50 → SMA200 in one click).
+    for (const [key, handle] of overlaySeriesRef.current.entries()) {
+      if (!requested.has(key)) {
+        chart.removeSeries(handle);
+        overlaySeriesRef.current.delete(key);
+      }
+    }
+
+    const colorForOverlay = (overlayId: OverlayId): string => {
+      if (overlayId === "bollinger") {
+        return withAlpha(bollingerColor(isDark), 0.7);
+      }
+      return seriesColor(OVERLAY_PALETTE_INDEX[overlayId] ?? 2);
+    };
+
+    for (const overlay of overlays) {
+      for (const key of OVERLAY_TO_KEYS[overlay] ?? []) {
+        const points = indicators.series[key] ?? [];
+        const lwData = points
+          .map((p) => {
+            const t = toUtcTimestamp(p.time);
+            if (t === null) return null;
+            return { time: t as Time, value: p.value };
+          })
+          .filter(
+            (v): v is { time: Time; value: number } => v !== null,
+          );
+
+        let series = overlaySeriesRef.current.get(key);
+        if (!series) {
+          series = chart.addSeries(LineSeries, {
+            color: colorForOverlay(overlay),
+            lineWidth: overlay === "bollinger" ? 1 : 2,
+            lineStyle: LineStyle.Solid,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false,
+          });
+          overlaySeriesRef.current.set(key, series);
+        } else {
+          series.applyOptions({ color: colorForOverlay(overlay) });
+        }
+        series.setData(lwData);
+      }
+    }
+  }, [indicators.series, overlays, primarySeriesReady]);
+
   // ── Theme + palette reactivity ────────────────────────────────────────
   // lightweight-charts paints to a canvas and never re-resolves CSS
   // variables on its own. We have to push fresh colors whenever:
@@ -523,6 +755,22 @@ export function HoldingPriceChart({
         crosshairMarkerBackgroundColor: primaryColor,
       });
       benchmarkRef.current?.applyOptions({ color: seriesColor(1) });
+      // Re-skin every active overlay too. Bollinger is keyed by the
+      // BOLLINGER token, the rest off the stable palette index.
+      const isDark = readIsDark();
+      for (const [key, handle] of overlaySeriesRef.current.entries()) {
+        const overlay: OverlayId | undefined = key.startsWith("bollinger")
+          ? "bollinger"
+          : (Object.keys(OVERLAY_TO_KEYS) as OverlayId[]).find((o) =>
+              OVERLAY_TO_KEYS[o].includes(key as IndicatorKey),
+            );
+        if (!overlay) continue;
+        const color =
+          overlay === "bollinger"
+            ? withAlpha(bollingerColor(isDark), 0.7)
+            : seriesColor(OVERLAY_PALETTE_INDEX[overlay] ?? 2);
+        handle.applyOptions({ color });
+      }
     };
 
     window.addEventListener(PALETTE_CHANGE_EVENT, applyTheme);
@@ -692,6 +940,58 @@ export function HoldingPriceChart({
       ? (data.snapshot.sector as string)
       : null;
 
+  // Stage band positioning needs to translate ISO dates → container px.
+  // We delegate to lightweight-charts' `timeToCoordinate`, which is the
+  // only place that knows the chart's current visible range. The closure
+  // is stable across renders (no React state captured) so the
+  // `StageOverlay` memo stays correct.
+  //
+  // We intentionally bind the function on every render: a chart instance
+  // created by the lightweight-charts wrapper outlives the closure but
+  // its visible range may have shifted, so re-binding keeps the stage
+  // band edges in lock-step with the price series after pan/zoom. The
+  // overlay's `themeTick` and the recompute trigger below force re-render
+  // whenever the time range or container width changes.
+  const [stageTick, setStageTick] = React.useState(0);
+  React.useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart || !primarySeriesReady || !showStageBands) return;
+    const ts = chart.timeScale();
+    let frame: number | null = null;
+    const bump = () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        frame = null;
+        setStageTick((t) => t + 1);
+      });
+    };
+    ts.subscribeVisibleTimeRangeChange(bump);
+    return () => {
+      ts.unsubscribeVisibleTimeRangeChange(bump);
+      if (frame !== null) cancelAnimationFrame(frame);
+    };
+  }, [primarySeriesReady, showStageBands]);
+
+  const stageTimeToX = React.useCallback(
+    (iso: string): number | null => {
+      // Reference stageTick so the callback identity changes on pan/zoom,
+      // forcing the downstream `StageOverlay` memo to recompute its bands.
+      void stageTick;
+      const chart = chartRef.current;
+      if (!chart) return null;
+      const t = toUtcTimestamp(iso);
+      if (t === null) return null;
+      const x = chart.timeScale().timeToCoordinate(t as Time);
+      return x !== null && Number.isFinite(x) ? (x as number) : null;
+    },
+    [stageTick, containerSize.width],
+  );
+
+  const metricValues = React.useMemo<MetricStripValues>(
+    () => snapshotToMetrics(data.snapshot),
+    [data.snapshot],
+  );
+
   // Crosshair → bar lookup. Single source of truth for both the SR
   // announcement and the rich tooltip; without this both consumers would
   // run the same fraction → binary-search dance independently and risk
@@ -810,6 +1110,13 @@ export function HoldingPriceChart({
         ) : null}
       </div>
 
+      <OverlayControls
+        overlays={overlays}
+        onOverlaysChange={setOverlays}
+        showStageBands={showStageBands}
+        onShowStageBandsChange={setShowStageBands}
+      />
+
       <div
         ref={containerRef}
         role="img"
@@ -842,6 +1149,15 @@ export function HoldingPriceChart({
           ) : null}
         </AnimatePresence>
 
+        {showStageBands ? (
+          <StageOverlay
+            segments={indicators.stageSegments}
+            timeToX={stageTimeToX}
+            width={containerSize.width}
+            height={height}
+          />
+        ) : null}
+
         <ChartCrosshair
           width={containerSize.width}
           height={height}
@@ -861,6 +1177,13 @@ export function HoldingPriceChart({
 
         <DividendDotRow visibleDividends={visibleDividends} />
       </div>
+
+      {showMetricStrip ? (
+        <AxiomMetricStrip
+          values={metricValues}
+          loading={data.isLoading}
+        />
+      ) : null}
 
       <ChartAnnouncer summary={announceText} />
     </ChartGlassCard>
@@ -1276,6 +1599,100 @@ function DividendDotRow({ visibleDividends }: DividendDotRowProps) {
           }}
         />
       ))}
+    </div>
+  );
+}
+
+/**
+ * `OverlayControls` — multi-select toggle group for the indicator
+ * overlay set plus a stage-band toggle. We render plain buttons (not a
+ * Radix ToggleGroup) because `@radix-ui/react-toggle-group` isn't in
+ * our dependency manifest yet — the role pattern below is the WAI-ARIA
+ * "toggle button" idiom (`aria-pressed`).
+ */
+interface OverlayControlsProps {
+  overlays: ReadonlyArray<OverlayId>;
+  onOverlaysChange: (next: OverlayId[]) => void;
+  showStageBands: boolean;
+  onShowStageBandsChange: (next: boolean) => void;
+}
+
+function OverlayControls({
+  overlays,
+  onOverlaysChange,
+  showStageBands,
+  onShowStageBandsChange,
+}: OverlayControlsProps) {
+  const enabled = React.useMemo(() => new Set(overlays), [overlays]);
+  const toggleOverlay = (id: OverlayId) => {
+    const next = new Set(enabled);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    onOverlaysChange(ALL_OVERLAY_OPTIONS.filter((o) => next.has(o)));
+  };
+  return (
+    <div
+      className="flex flex-wrap items-center gap-2"
+      data-testid="overlay-controls"
+    >
+      <span
+        className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+        id="overlay-controls-label"
+      >
+        Overlays
+      </span>
+      <div
+        role="group"
+        aria-labelledby="overlay-controls-label"
+        className="flex flex-wrap items-center gap-1"
+      >
+        {ALL_OVERLAY_OPTIONS.map((id) => {
+          const active = enabled.has(id);
+          return (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => toggleOverlay(id)}
+              className={cn(
+                "inline-flex items-center rounded-full border px-2.5 py-1",
+                "text-[11px] font-medium transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                active
+                  ? "border-foreground/30 bg-foreground/10 text-foreground"
+                  : "border-border/60 bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground",
+              )}
+            >
+              {OVERLAY_LABELS[id]}
+            </button>
+          );
+        })}
+      </div>
+      <div className="ml-auto flex items-center gap-2">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={showStageBands}
+          aria-label="Toggle stage bands"
+          onClick={() => onShowStageBandsChange(!showStageBands)}
+          className={cn(
+            "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            showStageBands ? "bg-foreground/80" : "bg-muted",
+          )}
+        >
+          <span
+            aria-hidden
+            className={cn(
+              "inline-block size-4 rounded-full bg-background shadow-sm transition-transform",
+              showStageBands ? "translate-x-4" : "translate-x-0.5",
+            )}
+          />
+        </button>
+        <span className="text-[11px] font-medium text-muted-foreground">
+          Stage bands
+        </span>
+      </div>
     </div>
   );
 }

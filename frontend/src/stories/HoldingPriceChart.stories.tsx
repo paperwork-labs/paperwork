@@ -335,6 +335,181 @@ export const Loading = () => (
   </StoryShell>
 );
 
+// ---------- PR #4: overlays + stage bands + metric strip ----------
+
+/**
+ * Build a synthetic indicator response that mirrors the
+ * `IndicatorSeriesResponse` shape returned by the backend
+ * `/market-data/prices/{symbol}/indicators` endpoint.
+ *
+ * `bars` must be the same array used to prime the price cache so the
+ * indicator dates align bar-for-bar (otherwise overlay lines render at
+ * times that don't exist on the chart).
+ */
+function makeIndicatorResponse(
+  symbol: string,
+  bars: ReturnType<typeof makeBars>,
+  columns: ReadonlyArray<string>,
+  options: { stageBands?: boolean } = {},
+) {
+  const dates = bars.map((b) => b.time);
+  const series: Record<string, Array<number | string | null>> = { dates };
+  for (const col of columns) {
+    series[col] = bars.map((b, i) => {
+      switch (col) {
+        case 'sma_50':
+          return b.close * 0.97 + Math.sin(i / 8) * 0.5;
+        case 'sma_150':
+          return b.close * 0.94;
+        case 'sma_200':
+          return b.close * 0.92;
+        case 'ema_21':
+          return b.close * 0.99 + Math.cos(i / 5) * 0.4;
+        case 'bollinger_upper':
+          return b.close + 4;
+        case 'bollinger_lower':
+          return b.close - 4;
+        default:
+          return b.close;
+      }
+    });
+  }
+  if (options.stageBands) {
+    series.stage_label = bars.map((_, i) => {
+      const segment = Math.floor(i / Math.max(1, Math.floor(bars.length / 4)));
+      return ['1B', '2A', '2B', '2C'][segment % 4] ?? '2B';
+    });
+  }
+  return {
+    symbol,
+    rows: dates.length,
+    backfill_requested: false,
+    price_data_pending: false,
+    series,
+  };
+}
+
+interface OverlayStoryProps {
+  initialOverlays?: Array<
+    'sma50' | 'sma100' | 'sma150' | 'sma200' | 'ema21' | 'ema200' | 'bollinger'
+  >;
+  initialStageBands?: boolean;
+  showMetricStrip?: boolean;
+}
+
+function OverlayStory({
+  initialOverlays = [],
+  initialStageBands = false,
+  showMetricStrip = true,
+}: OverlayStoryProps) {
+  const [client] = React.useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: Infinity,
+            retry: false,
+            refetchOnWindowFocus: false,
+          },
+        },
+      }),
+  );
+
+  const symbol = 'AAPL';
+  React.useEffect(() => {
+    const bars = makeBars(180, 150);
+    const benchBars = makeBars(180, 100);
+    primeCache(
+      client,
+      symbol,
+      bars,
+      'XLK',
+      benchBars,
+      {
+        sector: 'Technology',
+        instrument_type: 'EQUITY',
+        stage_label: '2B',
+        rsi: 64.2,
+        atrp_14: 2.4,
+        macd: 1.32,
+        adx: 28.6,
+        rs_mansfield_pct: 14.3,
+      },
+      [{ transaction_date: '2025-04-15T10:00:00Z', side: 'BUY' }],
+      [],
+    );
+
+    // Prime indicator queries for every superset of the overlays the
+    // story exposes, so toggling controls in the design tool feels
+    // instant and never shows a loading flash.
+    const allCols = [
+      'sma_50',
+      'sma_100',
+      'sma_150',
+      'sma_200',
+      'ema_21',
+      'ema_200',
+      'bollinger_upper',
+      'bollinger_lower',
+    ];
+    const seedKeys: Array<string[]> = [
+      [...allCols],
+      [...allCols, 'stage_label'],
+    ];
+    for (const cols of seedKeys) {
+      const sorted = [...cols].sort();
+      client.setQueryData(
+        ['holdingChart', 'indicators', symbol, '1y', sorted.join(',')],
+        makeIndicatorResponse(symbol, bars, cols, {
+          stageBands: cols.includes('stage_label'),
+        }),
+      );
+    }
+  }, [client]);
+
+  return (
+    <QueryClientProvider client={client}>
+      <div className="min-h-screen bg-background p-6 text-foreground">
+        <div className="mx-auto max-w-5xl">
+          <HoldingPriceChart
+            symbol={symbol}
+            initialPeriod="1y"
+            overlays={initialOverlays}
+            showStageBands={initialStageBands}
+            showMetricStrip={showMetricStrip}
+          />
+        </div>
+      </div>
+    </QueryClientProvider>
+  );
+}
+
+/** Overlay row: SMA 50/150/200 over the price line. */
+export const WithMovingAverages = () => (
+  <OverlayStory initialOverlays={['sma50', 'sma150', 'sma200']} />
+);
+
+/** Bollinger bands rendered as upper / lower lines with shaded fill. */
+export const WithBollingerBands = () => (
+  <OverlayStory initialOverlays={['bollinger']} />
+);
+
+/** Stage Analysis bands: translucent backdrop coloured by current stage. */
+export const WithStageBands = () => (
+  <OverlayStory initialStageBands />
+);
+
+/** Full flagship rendering: overlays + stage bands + metric strip. */
+export const WithEverything = () => (
+  <OverlayStory
+    initialOverlays={['sma50', 'sma200', 'bollinger']}
+    initialStageBands
+  />
+);
+
+/** Metric strip standalone (no overlays / bands) so the typography reads cleanly. */
+export const MetricStripOnly = () => <OverlayStory />;
+
 /** Error state: every query under `holdingChart/*` rejects. */
 export const ErrorStateStory = () => {
   const [client] = React.useState(() => {

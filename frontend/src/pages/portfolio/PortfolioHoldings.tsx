@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Loader2, RefreshCw } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Loader2, RefreshCw, TrendingUp } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { ChartContext, SymbolLink, ChartSlidePanel } from '../../components/market/SymbolChartUI';
 import SortableTable, { type Column, type FilterGroup } from '../../components/SortableTable';
@@ -178,8 +178,21 @@ const PortfolioHoldings: React.FC = () => {
         accessor: (p) => p.symbol,
         sortable: true,
         sortType: 'string',
-        render: (_, row) => <SymbolLink symbol={row.symbol} />,
-        width: '100px',
+        render: (_, row) => (
+          <span className="inline-flex items-center gap-1.5">
+            <SymbolLink symbol={row.symbol} />
+            <Link
+              to={`/holding/${encodeURIComponent(row.symbol)}`}
+              className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={`Open ${row.symbol} detail chart`}
+              title={`Open ${row.symbol} detail`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <TrendingUp className="size-3.5" aria-hidden />
+            </Link>
+          </span>
+        ),
+        width: '120px',
       },
       {
         key: 'account',
