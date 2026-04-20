@@ -31,6 +31,7 @@ const SettingsProfile = React.lazy(() => import('./pages/SettingsProfile'));
 const SettingsPreferences = React.lazy(() => import('./pages/SettingsPreferences'));
 const SettingsNotifications = React.lazy(() => import('./pages/SettingsNotifications'));
 const PortfolioWorkspace = React.lazy(() => import('./pages/PortfolioWorkspace'));
+const PortfolioAllocation = React.lazy(() => import('./pages/PortfolioAllocation'));
 const Login = React.lazy(() => import('./pages/Login'));
 const Register = React.lazy(() => import('./pages/Register'));
 const Onboarding = React.lazy(() => import('./pages/Onboarding'));
@@ -122,6 +123,7 @@ function App() {
                           <Route path="portfolio/tax" element={<PortfolioTaxCenter />} />
                           <Route path="portfolio/orders" element={<PortfolioOrders />} />
                           <Route path="portfolio/workspace" element={<PortfolioWorkspace />} />
+                          <Route path="portfolio/allocation" element={<PortfolioAllocation />} />
                         </Route>
 
                         {/* Strategy (under Market in nav, same access as market) */}

@@ -589,6 +589,19 @@ export const portfolioApi = {
     return makeOptimizedRequest(() => api.get('/portfolio/categories/rebalance-suggestions'));
   },
 
+  // Aggregator behind the `/portfolio/allocation` page (treemap + sunburst).
+  // Returns the user's open positions bucketed by sector / asset_class /
+  // account, with per-group totals + holdings. The route bubbles errors so
+  // the UI can render `loading | error | empty | data` distinctly (per
+  // `no-silent-fallback.mdc`).
+  getAllocation: async (groupBy: 'sector' | 'asset_class' | 'account' = 'sector') => {
+    const params = new URLSearchParams();
+    params.set('group_by', groupBy);
+    return makeOptimizedRequest(() =>
+      api.get(`/portfolio/allocation?${params.toString()}`),
+    );
+  },
+
   // Batch API calls for improved performance
   getBatchData: async (endpoints: string[]) => {
     try {

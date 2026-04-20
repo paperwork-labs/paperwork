@@ -20,6 +20,7 @@ import {
   Layers,
   ScanLine,
   ClipboardList,
+  Grid3x3,
 } from 'lucide-react';
 import * as Dialog from "@radix-ui/react-dialog";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
@@ -85,6 +86,7 @@ const portfolioItems = [
   { label: 'Tax Center', icon: Shield, path: '/portfolio/tax' },
   { label: 'Orders', icon: ShoppingBag, path: '/portfolio/orders' },
   { label: 'Workspace', icon: LayoutGrid, path: '/portfolio/workspace' },
+  { label: 'Allocation', icon: Grid3x3, path: '/portfolio/allocation' },
 ];
 
 function buildSettingsItems(_isAdmin: boolean) {
