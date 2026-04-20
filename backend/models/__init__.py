@@ -42,6 +42,18 @@ from .picks import (
 from .instrument import Instrument, InstrumentType
 from .market_data import PriceData, MarketSnapshot, MarketSnapshotHistory, MarketRegime, JobRun, EarningsCalendarEvent
 from .market_tracked_plan import MarketTrackedPlan
+
+# Symbol Master — single source of truth for symbol identity over time.
+# Global table (no user_id); see backend/services/symbols/ for callers.
+from .symbol_master import (
+    AliasSource,
+    AssetClass,
+    SymbolAlias,
+    SymbolChangeType,
+    SymbolHistory,
+    SymbolMaster,
+    SymbolStatus,
+)
 from .index_constituent import IndexConstituent
 from .historical_iv import HistoricalIV
 from .institutional_holding import InstitutionalHolding
@@ -189,4 +201,12 @@ __all__ = [
     "Priority",
     "StrategyBacktest",
     "BacktestStatus",
+    # Symbol master
+    "AliasSource",
+    "AssetClass",
+    "SymbolAlias",
+    "SymbolChangeType",
+    "SymbolHistory",
+    "SymbolMaster",
+    "SymbolStatus",
 ]

@@ -59,6 +59,7 @@ from backend.api.routes.risk import router as risk_router
 from backend.api.routes.entitlements import router as entitlements_router
 from backend.api.routes.public.stats import router as public_stats_router
 from backend.api.routes.brain_tools import router as brain_tools_router
+from backend.api.routes.symbols import router as symbols_router
 from backend.api.routes.execution import router as execution_router
 from backend.api.routes.pipeline import router as pipeline_router
 from backend.api.routes.portfolio.narrative import router as portfolio_narrative
@@ -618,6 +619,15 @@ app.include_router(
     brain_tools_router,
     prefix="/api/v1/tools",
     tags=["Brain Tools"],
+)
+# Symbol master: read-only resolution + audit endpoints. The master
+# table is global (no user_id) — auth still required so the catalog
+# can't be scraped anonymously, but no tenant filter is applied
+# because none would be meaningful here.
+app.include_router(
+    symbols_router,
+    prefix="/api/v1",
+    tags=["Symbols"],
 )
 # Entitlements: tier-gating source of truth.
 # /catalog is intentionally not behind require_non_market_access because the
