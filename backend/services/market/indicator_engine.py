@@ -17,6 +17,7 @@ from typing import Dict, Any, Optional, List
 import numpy as np
 import pandas as pd
 
+from backend.observability import traced
 from backend.services.market.atr_series import calculate_atr_series
 
 logger = logging.getLogger(__name__)
@@ -135,6 +136,10 @@ def _compute_td_sequential_series(
     return td_buy, td_sell, td_buy >= 9, td_sell >= 9
 
 
+@traced(
+    "compute_full_indicator_series",
+    attrs={"component": "market", "subsystem": "indicator_engine"},
+)
 def compute_full_indicator_series(
     ohlcv: pd.DataFrame,
     spy_df: pd.DataFrame | None = None,

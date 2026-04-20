@@ -22,6 +22,7 @@ from backend.database import SessionLocal
 from backend.models import Position
 from backend.models.market_data import MarketSnapshot
 from backend.models.position import PositionStatus
+from backend.observability import traced
 from backend.services.market.market_data_service import coverage_analytics, infra
 from backend.tasks.utils.task_utils import _resolve_history_days, task_run
 
@@ -29,6 +30,10 @@ logger = logging.getLogger(__name__)
 
 
 @task_run("scan_overlay")
+@traced(
+    "scan_overlay",
+    attrs={"component": "market", "subsystem": "scan_engine"},
+)
 def _run_scan_overlay() -> dict:
     """Run scan overlay engine: assign scan_tier + action_label to all snapshots."""
     session = SessionLocal()

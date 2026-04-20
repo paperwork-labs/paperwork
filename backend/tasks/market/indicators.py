@@ -16,6 +16,7 @@ from backend.config import settings
 from backend.database import SessionLocal
 from backend.models import Position, PriceData
 from backend.models.market_data import JobRun, MarketSnapshot, MarketSnapshotHistory
+from backend.observability import traced
 from backend.services.market.dataframe_utils import price_data_rows_to_dataframe
 from backend.services.market.market_data_service import (
     coverage_analytics,
@@ -148,6 +149,10 @@ def position_metadata() -> dict:
     time_limit=3700,
 )
 @task_run("admin_indicators_recompute_universe", lock_key=lambda **_: "recompute_universe")
+@traced(
+    "recompute_universe",
+    attrs={"component": "market", "subsystem": "indicators_task"},
+)
 def recompute_universe(batch_size: int = 50, force: bool = False) -> dict:
     """Recompute indicators for the tracked universe from local DB (orchestrator only).
 

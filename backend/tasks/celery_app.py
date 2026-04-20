@@ -172,6 +172,39 @@ def _dispose_engine_on_fork(**kwargs):
     logger.info("Disposed SQLAlchemy engine pool for new worker child")
 
 
+@worker_process_init.connect
+def _init_otel_on_fork(**kwargs):
+    """Install OpenTelemetry providers in each worker child process.
+
+    Auto-instrumentation patches must be re-applied after the prefork
+    because the parent process's instrumentation hooks do not survive
+    fork on every platform. ``init_tracing`` / ``init_metrics`` are
+    idempotent and degrade to no-op when no OTLP endpoint is configured,
+    so this is safe to call unconditionally.
+    """
+    import os
+
+    if os.getenv("AXIOMFOLIO_TESTING") == "1":
+        return
+    try:
+        from backend.observability import init_metrics, init_tracing
+
+        environment = "production" if not settings.DEBUG else "dev"
+        init_tracing(
+            service_name="axiomfolio-worker",
+            environment=environment,
+            fastapi_app=None,
+            instrument_fastapi=False,
+        )
+        init_metrics(service_name="axiomfolio-worker")
+    except Exception as exc:  # noqa: BLE001 — observability must never crash worker
+        logger.warning(
+            "OTel init in worker child failed (continuing without instrumentation): %s",
+            exc,
+            exc_info=True,
+        )
+
+
 @worker_ready.connect
 def _warm_caches(sender, **kwargs):
     """Pre-populate expensive Redis caches on worker start.

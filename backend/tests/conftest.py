@@ -2,9 +2,15 @@
 Test configuration for AxiomFolio backend tests.
 """
 
+import os
+
+# Set before importing application modules (e.g. backend.api.main) so
+# OpenTelemetry bootstrap and other test-only guards see test mode during
+# pytest collection, not only after session fixtures run.
+os.environ["AXIOMFOLIO_TESTING"] = "1"
+
 import pytest
 import sys
-import os
 import inspect as pyinspect
 
 from sqlalchemy import text

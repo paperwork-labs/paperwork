@@ -1,4 +1,3 @@
-import asyncio
 import uuid
 import pytest
 
@@ -30,10 +29,17 @@ def _ensure_account(session) -> BrokerAccount:
 
 
 def test_broker_sync_routes_to_schwab(monkeypatch, db_session):
+    # Global singleton may cache a real Schwab service from an earlier test.
+    broker_sync_service._broker_services.pop(BrokerType.SCHWAB, None)
+
     calls = {"count": 0}
 
     class DummyService:
-        async def sync_account_comprehensive(self, account_number, session):
+        # Sync return (same contract as unittest.Mock.return_value in
+        # test_broker_sync_service.py). An async def here fails under
+        # pytest-asyncio: broker_sync_service._run uses run_until_complete,
+        # which raises when an event loop is already running.
+        def sync_account_comprehensive(self, account_number, session):
             calls["count"] += 1
             return {"status": "success", "account_number": account_number}
 

@@ -7,6 +7,7 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import asyncio
+import os
 import logging
 import logging.config
 from datetime import datetime, timezone
@@ -92,6 +93,35 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+# OpenTelemetry: install tracer + meter providers and attach
+# auto-instrumentation to this app instance. When OTEL_EXPORTER_OTLP_ENDPOINT
+# is unset the SDK runs in no-op mode (spans created, none exported) so dev
+# runs don't need a collector. See backend/observability/tracing.py for
+# env-var configuration.
+#
+# Skip bootstrap during pytest (AXIOMFOLIO_TESTING): importing this module
+# would otherwise pin a global TracerProvider and patch httpx/SQLAlchemy
+# before observability tests install their own provider or before mocks run.
+if os.getenv("AXIOMFOLIO_TESTING") == "1":
+    pass
+else:
+    try:
+        from backend.observability import init_metrics, init_tracing
+
+        _otel_environment = "production" if not settings.DEBUG else "dev"
+        init_tracing(
+            service_name="axiomfolio-api",
+            environment=_otel_environment,
+            fastapi_app=app,
+        )
+        init_metrics(service_name="axiomfolio-api")
+    except Exception as _otel_exc:  # noqa: BLE001 — observability must never crash boot
+        logger.warning(
+            "OTel initialization failed (continuing without instrumentation): %s",
+            _otel_exc,
+            exc_info=True,
+        )
 
 
 def _method_order(method: str) -> int:

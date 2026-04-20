@@ -34,6 +34,8 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Iterable, List, Mapping, Optional, Tuple
 
+from backend.observability import traced
+
 from .llm_provider import LLMParseProvider, LLMRequest, LLMResponse
 from .preprocessor import NormalizedEmail
 from .schemas import PARSE_OUTPUT_SCHEMA, SYSTEM_PROMPT_DEFAULT
@@ -124,6 +126,10 @@ class PolymorphicEmailParser:
     # Entry point                                                        #
     # ------------------------------------------------------------------ #
 
+    @traced(
+        "picks_email_parser_parse",
+        attrs={"component": "picks", "subsystem": "email_parser"},
+    )
     def parse(self, email: NormalizedEmail) -> ParseResult:
         request_id = uuid.uuid4().hex[:16]
         started = time.monotonic()

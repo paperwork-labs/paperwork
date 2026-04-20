@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from backend.database import SessionLocal
 from backend.models.picks import EmailInbox, IngestionStatus
+from backend.observability import traced
 from backend.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,10 @@ logger = logging.getLogger(__name__)
     soft_time_limit=25,
     time_limit=30,
     queue="celery",
+)
+@traced(
+    "parse_inbound_email",
+    attrs={"component": "picks", "subsystem": "parser_task"},
 )
 def parse_inbound_email(email_inbox_id: int) -> Dict[str, Any]:
     """Load ``EmailInbox`` by id, mark parse pending, log stub; real parser later."""
