@@ -13,6 +13,13 @@ export interface HealthGridProps {
   dimensions: HealthDimensions | null;
   loading?: boolean;
   getHint?: (key: string, dim: DimensionValue) => string | null;
+  /**
+   * Optional per-row action slot (e.g. an "Explain" button). Rendered
+   * alongside the status badge of each non-advisory row only — advisory
+   * rows are informational and don't get actions to keep the visual
+   * hierarchy intact.
+   */
+  renderActions?: (key: string, dim: DimensionValue) => React.ReactNode;
   compact?: boolean;
   className?: string;
 }
@@ -77,12 +84,14 @@ function DimensionRow({
   hint,
   compact,
   advisory,
+  actions,
 }: {
   keyName: string;
   dim: DimensionValue;
   hint: string | null;
   compact: boolean;
   advisory?: boolean;
+  actions?: React.ReactNode;
 }) {
   return (
     <div
@@ -112,13 +121,16 @@ function DimensionRow({
             {formatKey(keyName)}
           </span>
         </div>
-        {advisory ? (
-          <span className="text-[10px] text-muted-foreground">
-            {dim.status.toUpperCase()}
-          </span>
-        ) : (
-          <StatusBadge status={dim.status} compact={compact} />
-        )}
+        <div className="flex items-center gap-1.5">
+          {advisory ? (
+            <span className="text-[10px] text-muted-foreground">
+              {dim.status.toUpperCase()}
+            </span>
+          ) : (
+            <StatusBadge status={dim.status} compact={compact} />
+          )}
+          {actions}
+        </div>
       </div>
       {hint && (
         <p className="mt-1 ml-4 text-[10px] text-muted-foreground">{hint}</p>
@@ -131,6 +143,7 @@ export function HealthGrid({
   dimensions,
   loading,
   getHint,
+  renderActions,
   compact = false,
   className,
 }: HealthGridProps) {
@@ -165,6 +178,7 @@ export function HealthGrid({
           dim={dim}
           hint={getHint?.(key, dim) ?? null}
           compact={compact}
+          actions={renderActions?.(key, dim)}
         />
       ))}
 

@@ -29,8 +29,13 @@ import { useUserPreferences } from '../hooks/useUserPreferences';
 import CoverageHealthStrip from '../components/coverage/CoverageHealthStrip';
 
 import AdminOperatorActions from '../components/admin/AdminOperatorActions';
+import {
+  AnomalyExplanationDrawer,
+  type AnomalyExplanationTrigger,
+} from '../components/admin/AnomalyExplanationDrawer';
 import { IncidentPanel } from '../components/admin/IncidentPanel';
 import { ProviderIntelligence } from '../components/admin/ProviderIntelligence';
+import { RecentExplanationsPanel } from '../components/admin/RecentExplanationsPanel';
 import { Timeline } from '../components/admin/Timeline';
 import { PipelineDAG } from '../components/pipeline/PipelineDAG';
 import { HealthGrid } from '../components/shared/HealthGrid';
@@ -313,6 +318,49 @@ const SystemStatus: React.FC = () => {
   const [autoFixStatus, setAutoFixStatus] = useState<AutoFixStatusResponse | null>(null);
   const [autoFixLoading, setAutoFixLoading] = useState(false);
 
+  // AutoOps explanation drawer — triggered from the per-dimension cards
+  // inside the Health Dimensions grid. The drawer itself fetches the
+  // explanation from `/api/v1/admin/agent/explain/dimension`, so this
+  // page stays free of explainer-specific data flow.
+  const [explainTrigger, setExplainTrigger] =
+    useState<AnomalyExplanationTrigger | null>(null);
+  const [explainOpen, setExplainOpen] = useState(false);
+
+  const handleExplainDimension = useCallback(
+    (key: string, dim: unknown) => {
+      setExplainTrigger({
+        mode: 'dimension',
+        dimension: key,
+        dimensionPayload: dim as Record<string, unknown>,
+      });
+      setExplainOpen(true);
+    },
+    [],
+  );
+
+  const renderDimensionActions = useCallback(
+    (key: string, dim: unknown) => {
+      const status = (dim as { status?: string }).status;
+      // The backend rejects healthy dimensions with a 400 ("nothing to
+      // explain") — only offer Explain for non-green statuses to match
+      // that contract and avoid useless round-trips.
+      if (status === 'green' || status === 'ok') return null;
+      return (
+        <Button
+          type="button"
+          size="xs"
+          variant="ghost"
+          className="h-6 px-2 text-[10px]"
+          onClick={() => handleExplainDimension(key, dim)}
+          aria-label={`Explain ${key}`}
+        >
+          Explain
+        </Button>
+      );
+    },
+    [handleExplainDimension],
+  );
+
   const [pinnedPipelineRunId, setPinnedPipelineRunId] = useState<string | null>(null);
   const [runsTurboUntil, setRunsTurboUntil] = useState<number | null>(null);
   const [m5Enabled, setM5Enabled] = useState<boolean | null>(null);
@@ -512,6 +560,9 @@ const SystemStatus: React.FC = () => {
 
   return (
     <div className="mx-auto flex max-w-[1040px] flex-col gap-5">
+      {/* 0. Recent AutoOps Explanations — admin-only, self-gates */}
+      <RecentExplanationsPanel />
+
       {/* 1. Status Banner */}
       <StatusBanner
         health={health}
@@ -766,6 +817,7 @@ const SystemStatus: React.FC = () => {
               dimensions={health?.dimensions ?? null}
               loading={loading}
               getHint={getDimensionHint}
+              renderActions={renderDimensionActions}
               compact
             />
           </CardContent>
@@ -827,6 +879,16 @@ const SystemStatus: React.FC = () => {
           </ErrorBoundary>
         </CollapsibleContent>
       </Collapsible>
+
+      {/* AutoOps Explanation Drawer — controlled, admin-gated by the
+          drawer itself. Mounted once at the page level so it can be
+          opened from either the per-dimension Explain button above or
+          the Recent Explanations panel at the top. */}
+      <AnomalyExplanationDrawer
+        open={explainOpen}
+        onOpenChange={setExplainOpen}
+        trigger={explainTrigger}
+      />
     </div>
   );
 };
