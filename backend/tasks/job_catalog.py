@@ -65,6 +65,22 @@ CATALOG: List[JobTemplate] = [
         timeout_s=120,
     ),
     JobTemplate(
+        id="oauth-token-refresh",
+        display_name="OAuth Broker Token Refresh",
+        group="portfolio",
+        task="backend.tasks.portfolio.oauth_token_refresh.refresh_expiring_tokens",
+        description=(
+            "Refresh OAuth broker access tokens for connections expiring within "
+            "the next 60 minutes. Permanent provider failures mark the "
+            "connection REFRESH_FAILED so the user is prompted to re-authorize."
+        ),
+        default_cron="*/30 * * * *",
+        default_tz="UTC",
+        timeout_s=300,
+        retries=0,
+        queue="account_sync",
+    ),
+    JobTemplate(
         id="daily_portfolio_narrative_fanout",
         display_name="Daily Portfolio Narrative (Fanout)",
         group="portfolio",

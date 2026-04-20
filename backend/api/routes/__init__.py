@@ -44,6 +44,7 @@ from .strategies import router as strategies
 from .activity import router as activity
 from .aggregator import router as aggregator
 from .watchlist import router as watchlist
+from .oauth import router as oauth
 
 __all__ = [
     # Portfolio
@@ -76,4 +77,5 @@ __all__ = [
     "activity",
     "aggregator",
     "watchlist",
+    "oauth",
 ]

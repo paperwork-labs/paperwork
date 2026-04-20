@@ -17,6 +17,11 @@ from .app_settings import AppSettings
 from .user_invite import UserInvite
 from .entitlement import Entitlement, EntitlementStatus, SubscriptionTier
 from .broker_account import BrokerAccount, BrokerType, AccountType, AccountStatus, SyncStatus
+from .broker_oauth_connection import (
+    BrokerOAuthConnection,
+    OAuthBrokerType,
+    OAuthConnectionStatus,
+)
 
 # Picks pipeline (validator-curated buy/sell/trim/add)
 from .picks import (
@@ -177,6 +182,9 @@ __all__ = [
     "AccountType",
     "AccountStatus",
     "SyncStatus",
+    "BrokerOAuthConnection",
+    "OAuthBrokerType",
+    "OAuthConnectionStatus",
     "Instrument",
     "InstrumentType",
     "PriceData",

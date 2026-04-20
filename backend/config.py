@@ -118,6 +118,19 @@ class Settings(BaseSettings):
     ALPACA_API_SECRET: Optional[str] = None
     ALPACA_TRADING_MODE: str = "paper"  # paper | live
 
+    # E*TRADE OAuth 1.0a (sandbox-first; live keys require formal app approval)
+    # Used by backend.services.oauth.etrade.ETradeSandboxAdapter. The sandbox
+    # base URL is fixed; only the consumer key/secret + callback URL vary.
+    ETRADE_SANDBOX_KEY: Optional[str] = None
+    ETRADE_SANDBOX_SECRET: Optional[str] = None
+    # Registered OAuth redirect URI at the provider (must match request_token).
+    # When set, /oauth/{etrade}/initiate rejects callback_url values that differ.
+    ETRADE_OAUTH_CALLBACK_URL: Optional[str] = None
+    # Comma-separated absolute callback URLs allowed for /oauth/*/initiate.
+    # When non-empty, client callback_url must match one entry exactly.
+    OAUTH_ALLOWED_CALLBACK_URLS: Optional[str] = None
+    ETRADE_OAUTH_REQUEST_TIMEOUT_S: float = 15.0
+
     # Schwab (optional) - comma-separated account numbers for seeding
     SCHWAB_ACCOUNTS: Optional[str] = None
     SCHWAB_CLIENT_ID: Optional[str] = None
@@ -141,6 +154,12 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     ENCRYPTION_KEY: Optional[str] = None
+    # OAuth broker token encryption (separate key + retired keys for rotation).
+    # Falls back to ENCRYPTION_KEY / SECRET_KEY at the encryption-service layer
+    # so dev environments work out-of-the-box; production should set this
+    # explicitly so OAuth credential rotation is independent of the app key.
+    OAUTH_TOKEN_ENCRYPTION_KEY: Optional[str] = None
+    OAUTH_TOKEN_ENCRYPTION_KEYS_RETIRED: Optional[str] = None  # comma-separated
     ENABLE_TRADING: bool = False
     ALLOW_LIVE_ORDERS: bool = False
     ENABLE_AUTO_TRADING: bool = False

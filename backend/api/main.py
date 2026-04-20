@@ -54,6 +54,7 @@ from backend.api.routes import (
     activity,
     aggregator,
     watchlist,
+    oauth,
 )
 # Market data (from market/ package)
 from backend.api.routes.market import router as market_router
@@ -638,6 +639,12 @@ app.include_router(
     watchlist,
     prefix="/api/v1",
     tags=["Watchlist"],
+    dependencies=[Depends(require_non_market_access)],
+)
+app.include_router(
+    oauth,
+    prefix="/api/v1/oauth",
+    tags=["OAuth Brokers"],
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(
