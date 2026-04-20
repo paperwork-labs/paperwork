@@ -20,6 +20,7 @@ from .portfolio.statements import router as portfolio_statements
 from .portfolio.options import router as portfolio_options
 from .portfolio.categories import router as portfolio_categories
 from .portfolio.dividends import router as portfolio_dividends
+from .portfolio.income import router as portfolio_income
 from .portfolio.orders import router as portfolio_orders
 from .portfolio.tax_export import router as portfolio_tax_export
 from .portfolio.allocation import router as portfolio_allocation
@@ -52,6 +53,7 @@ __all__ = [
     "portfolio_options",
     "portfolio_categories",
     "portfolio_dividends",
+    "portfolio_income",
     "portfolio_orders",
     "portfolio_tax_export",
     "portfolio_allocation",

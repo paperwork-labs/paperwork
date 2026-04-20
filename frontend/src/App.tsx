@@ -33,6 +33,7 @@ const SettingsPreferences = React.lazy(() => import('./pages/SettingsPreferences
 const SettingsNotifications = React.lazy(() => import('./pages/SettingsNotifications'));
 const PortfolioWorkspace = React.lazy(() => import('./pages/PortfolioWorkspace'));
 const PortfolioAllocation = React.lazy(() => import('./pages/PortfolioAllocation'));
+const PortfolioIncome = React.lazy(() => import('./pages/PortfolioIncome'));
 const Login = React.lazy(() => import('./pages/Login'));
 const Register = React.lazy(() => import('./pages/Register'));
 const Onboarding = React.lazy(() => import('./pages/Onboarding'));
@@ -130,6 +131,7 @@ function App() {
                           <Route path="portfolio/orders" element={<PortfolioOrders />} />
                           <Route path="portfolio/workspace" element={<PortfolioWorkspace />} />
                           <Route path="portfolio/allocation" element={<PortfolioAllocation />} />
+                          <Route path="portfolio/income" element={<PortfolioIncome />} />
                           <Route path="portfolio/import" element={<PortfolioImport />} />
                           {/* Connect hub (3h): unified broker connection UX. Routes
                               live under the same access gate as other portfolio

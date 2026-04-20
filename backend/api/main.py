@@ -33,6 +33,7 @@ from backend.api.routes import (
     portfolio_options,
     portfolio_categories,
     portfolio_dividends,
+    portfolio_income,
     portfolio_orders,
     portfolio_tax_export,
     portfolio_allocation,
@@ -481,6 +482,12 @@ app.include_router(
 )
 app.include_router(
     portfolio_dividends,
+    prefix="/api/v1/portfolio",
+    tags=["Portfolio"],
+    dependencies=[Depends(require_non_market_access)],
+)
+app.include_router(
+    portfolio_income,
     prefix="/api/v1/portfolio",
     tags=["Portfolio"],
     dependencies=[Depends(require_non_market_access)],

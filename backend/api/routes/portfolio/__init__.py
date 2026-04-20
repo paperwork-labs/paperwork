@@ -19,6 +19,7 @@ from .categories import router as categories_router
 from .options import router as options_router
 from .orders import router as orders_router
 from .dividends import router as dividends_router
+from .income import router as income_router
 from .statements import router as statements_router
 from .live import router as live_router
 from .dashboard import router as dashboard_router
@@ -31,6 +32,7 @@ __all__ = [
     "options_router",
     "orders_router",
     "dividends_router",
+    "income_router",
     "statements_router",
     "live_router",
     "dashboard_router",

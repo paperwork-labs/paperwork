@@ -532,6 +532,22 @@ export const portfolioApi = {
     }
   },
 
+  // Income calendar — Snowball-style 12-month grid backed by
+  // `/portfolio/income/calendar`. We deliberately let errors propagate
+  // here (no silent empty fallback) so the calendar can render its
+  // explicit error state with retry, per `no-silent-fallback.mdc`.
+  getIncomeCalendar: async (
+    mode: 'past' | 'projection' = 'past',
+    months: number = 12,
+  ) => {
+    const params = new URLSearchParams();
+    params.set('mode', mode);
+    params.set('months', String(months));
+    return makeOptimizedRequest(() =>
+      api.get(`/portfolio/income/calendar?${params.toString()}`),
+    );
+  },
+
   getBalances: async (accountId?: number) => {
     const q = accountId ? `?account_id=${accountId}` : '';
     return makeOptimizedRequest(() => api.get(`/portfolio/balances${q}`));
