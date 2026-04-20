@@ -1,4 +1,14 @@
 import '@testing-library/jest-dom/vitest';
+import { afterEach } from 'vitest';
+import { cleanup } from '@testing-library/react';
+
+// React Testing Library only auto-cleans when Vitest runs with `globals: true`,
+// which we intentionally avoid. Register an explicit afterEach so each test
+// starts with an empty DOM and tests can share data-testid values without
+// colliding across cases.
+afterEach(() => {
+  cleanup();
+});
 
 // happy-dom / jsdom: cmdk measures list height via ResizeObserver.
 if (typeof globalThis.ResizeObserver === 'undefined') {
