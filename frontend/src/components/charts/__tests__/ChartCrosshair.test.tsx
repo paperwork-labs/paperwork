@@ -105,12 +105,18 @@ describe("ChartCrosshair", () => {
         announceText="AAPL closed at $192.34"
       />,
     );
-    // Live region lives inside <foreignObject> which jsdom doesn't surface
-    // via role queries — assert via class + content directly.
-    const live = container.querySelector(".sr-only-live");
-    expect(live).not.toBeNull();
-    expect(live?.textContent).toContain("$192.34");
-    expect(live?.getAttribute("aria-live")).toBe("polite");
+    // Live region is now rendered as a SIBLING of the SVG (not inside
+    // <foreignObject>) so it survives the SVG's `aria-hidden` attribute
+    // and is reliably announced by AT. It should be queryable via role
+    // since it's a regular HTML element now.
+    const liveByRole = container.querySelector('[role="status"]');
+    expect(liveByRole).not.toBeNull();
+    expect(liveByRole?.textContent).toContain("$192.34");
+    expect(liveByRole?.getAttribute("aria-live")).toBe("polite");
+    expect(liveByRole?.classList.contains("sr-only-live")).toBe(true);
+    // And it must NOT be a descendant of an aria-hidden subtree.
+    const hiddenAncestor = liveByRole?.closest('[aria-hidden="true"]');
+    expect(hiddenAncestor).toBeNull();
   });
 });
 

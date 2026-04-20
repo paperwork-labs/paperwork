@@ -110,36 +110,25 @@ describe("bucketTradesByDay", () => {
 });
 
 describe("bucketDividendsByDay", () => {
-  it("filters to symbol case-insensitively", () => {
-    const rows: DividendRow[] = [
-      { symbol: "aapl", ex_date: "2025-08-15", dividend_per_share: 0.24, shares_held: 100, total_dividend: 24 },
-      { symbol: "MSFT", ex_date: "2025-08-15", dividend_per_share: 0.75, shares_held: 50, total_dividend: 37.5 },
-    ];
-    const buckets = bucketDividendsByDay(rows, "AAPL");
-    expect(buckets).toHaveLength(1);
-    expect(buckets[0].perShare).toBeCloseTo(0.24, 5);
-    expect(buckets[0].totalAmount).toBeCloseTo(24, 5);
-  });
+  // Rows are assumed to be pre-filtered to one symbol by the backend
+  // (see backend/api/routes/portfolio/dividends.py). The bucket helper
+  // is now a pure aggregator — it does NOT filter by symbol itself
+  // because doing so would mask backend bugs.
 
   it("sums total_dividend across multiple lots same ex-date", () => {
     const rows: DividendRow[] = [
       { symbol: "AAPL", ex_date: "2025-08-15", dividend_per_share: 0.24, shares_held: 100, total_dividend: 24, account_id: "acct-1" },
       { symbol: "AAPL", ex_date: "2025-08-15", dividend_per_share: 0.24, shares_held: 50, total_dividend: 12, account_id: "acct-2" },
     ];
-    const buckets = bucketDividendsByDay(rows, "AAPL");
+    const buckets = bucketDividendsByDay(rows);
     expect(buckets).toHaveLength(1);
     expect(buckets[0].totalAmount).toBeCloseTo(36, 5);
     expect(buckets[0].rowCount).toBe(2);
-    // Weighted per-share is the same since both lots paid the same per-share rate.
     expect(buckets[0].perShare).toBeCloseTo(0.24, 5);
   });
 
-  it("returns empty when symbol is whitespace", () => {
-    const rows: DividendRow[] = [
-      { symbol: "AAPL", ex_date: "2025-08-15", dividend_per_share: 0.24 },
-    ];
-    expect(bucketDividendsByDay(rows, "")).toEqual([]);
-    expect(bucketDividendsByDay(rows, "   ")).toEqual([]);
+  it("returns empty for empty input", () => {
+    expect(bucketDividendsByDay([])).toEqual([]);
   });
 
   it("skips rows with unparseable ex_date", () => {
@@ -148,7 +137,7 @@ describe("bucketDividendsByDay", () => {
       { symbol: "AAPL", ex_date: "nope", dividend_per_share: 0.24, shares_held: 100, total_dividend: 24 },
       { symbol: "AAPL", ex_date: "2025-09-01", dividend_per_share: 0.30, shares_held: 100, total_dividend: 30 },
     ];
-    const buckets = bucketDividendsByDay(rows, "AAPL");
+    const buckets = bucketDividendsByDay(rows);
     expect(buckets).toHaveLength(1);
     expect(buckets[0].dayKey).toBe("2025-09-01");
   });
@@ -157,7 +146,7 @@ describe("bucketDividendsByDay", () => {
     const rows: DividendRow[] = [
       { symbol: "AAPL", ex_date: "2025-09-01", dividend_per_share: 0.24, shares_held: 100, total_dividend: 24, currency: "USD" },
     ];
-    expect(bucketDividendsByDay(rows, "AAPL")[0].currency).toBe("USD");
+    expect(bucketDividendsByDay(rows)[0].currency).toBe("USD");
   });
 
   it("falls back to a simple per-share average when shares_held is missing", () => {
@@ -165,7 +154,7 @@ describe("bucketDividendsByDay", () => {
       { symbol: "AAPL", ex_date: "2025-09-01", dividend_per_share: 0.20 },
       { symbol: "AAPL", ex_date: "2025-09-01", dividend_per_share: 0.30 },
     ];
-    const buckets = bucketDividendsByDay(rows, "AAPL");
+    const buckets = bucketDividendsByDay(rows);
     expect(buckets[0].perShare).toBeCloseTo(0.25, 5);
   });
 
@@ -175,7 +164,7 @@ describe("bucketDividendsByDay", () => {
       { symbol: "AAPL", ex_date: "2025-03-01", dividend_per_share: 0.24, shares_held: 1, total_dividend: 0.24 },
       { symbol: "AAPL", ex_date: "2025-06-01", dividend_per_share: 0.24, shares_held: 1, total_dividend: 0.24 },
     ];
-    const buckets = bucketDividendsByDay(rows, "AAPL");
+    const buckets = bucketDividendsByDay(rows);
     expect(buckets.map((b) => b.dayKey)).toEqual([
       "2025-03-01",
       "2025-06-01",

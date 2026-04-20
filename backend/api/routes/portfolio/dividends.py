@@ -26,11 +26,27 @@ async def get_dividends(
     account_id: str | None = Query(
         None, description="Filter by account number (e.g., U19491234)"
     ),
+    symbol: str | None = Query(
+        None,
+        max_length=20,
+        description=(
+            "Filter rows to a single ticker (case-insensitive). When set, the "
+            "endpoint returns only dividends paid on that symbol; this is the "
+            "shape consumed by the per-holding chart's dividend dot overlay "
+            "so the chart hook does not need to download the entire account "
+            "payload just to filter client-side."
+        ),
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Return dividend rows within the last `days` days for the authenticated user.
-    The frontend calls `/portfolio/dividends?days=365` so we support that query param.
+
+    Filters are composable and applied at the SQL layer (no Python-side
+    post-filter): caller can scope to a specific brokerage account
+    (`account_id`) and/or a single ticker (`symbol`). Both are optional;
+    when omitted the response covers every dividend across every account
+    the authenticated user owns.
     """
     try:
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
@@ -43,6 +59,11 @@ async def get_dividends(
         )
         if account_id:
             base = base.filter(BrokerAccount.account_number == account_id)
+        if symbol:
+            # Symbols are stored upper-cased at ingest (see flexquery + tasty
+            # normalizers) — match upper-cased and trim whitespace so the
+            # caller can be sloppy with casing without missing rows.
+            base = base.filter(Dividend.symbol == symbol.strip().upper())
         divs = base.all()
 
         results: List[Dict[str, Any]] = []

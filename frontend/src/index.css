@@ -345,11 +345,16 @@
      <button>/<a>/<input>/<select>/<textarea>/[role="button"] and elements
      with [tabindex]. We use `:where()` so this rule has zero specificity
      weight and never fights component-level focus styles. `--ring` is an
-     oklch token so opacity is composed via color-mix(). */
+     oklch token so opacity is composed via color-mix().
+
+     We deliberately do NOT set `border-radius` here: hardcoding it would
+     visually deform a focused element whose own corner radius differs
+     (e.g. pill buttons, square inputs). The outline naturally hugs the
+     element's existing rounding; component-level overrides set their own
+     ring radius via the design tokens (`--radius-sm` … `--radius-2xl`). */
   :where(button, [role="button"], a, input, select, textarea, [tabindex]):focus-visible {
     outline: 2px solid color-mix(in oklch, var(--ring) 70%, transparent);
     outline-offset: 2px;
-    border-radius: 6px;
   }
   /* Screen-reader-only live region utility. Mirrors Tailwind's `sr-only`
      but stays available even when an isolated component doesn't pull

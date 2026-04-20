@@ -497,9 +497,26 @@ export const portfolioApi = {
     }
   },
 
-  // Enhanced dividends with fallback
-  getDividends: async (accountId?: string, days: number = 365) => {
-    const url = accountId ? `/portfolio/dividends?days=${days}&account_id=${encodeURIComponent(accountId)}` : `/portfolio/dividends?days=${days}`;
+  // Enhanced dividends with fallback.
+  //
+  // `symbol` is optional and pushed down to the backend (which now applies
+  // it as a SQL-level filter; see `backend/api/routes/portfolio/
+  // dividends.py`). Caller passes it when they only need one ticker (e.g.
+  // the per-holding chart's dividend overlay) so the response is ~1 row
+  // per quarter instead of N×M rows the consumer would have to throw
+  // away client-side.
+  getDividends: async (accountId?: string, days: number = 365, symbol?: string) => {
+    const params = new URLSearchParams();
+    params.set('days', String(days));
+    if (accountId) params.set('account_id', accountId);
+    // Trim FIRST so an all-whitespace string normalizes to "" and is dropped;
+    // sending `symbol=` would silently disable the SQL filter at the backend
+    // (Python truthiness on `""`) and return the full account payload — which
+    // is exactly the discard-on-the-client trap this endpoint shape exists to
+    // prevent.
+    const trimmedSymbol = symbol?.trim();
+    if (trimmedSymbol) params.set('symbol', trimmedSymbol.toUpperCase());
+    const url = `/portfolio/dividends?${params.toString()}`;
     try {
       return await makeOptimizedRequest(() => api.get(url));
     } catch (error) {

@@ -40,8 +40,9 @@ function makeBars(n: number, base = 100) {
 
 /**
  * Match the dividends API: an array of `{ symbol, ex_date, ... }`. The
- * hook filters client-side by symbol so the story can prime as many or
- * as few rows as it likes.
+ * backend filters by `symbol` at the SQL layer (see backend route) and
+ * the hook keys its cache per-symbol, so this story primes a single
+ * cache slot scoped to the holding's symbol.
  */
 type DividendSeed = {
   symbol: string;
@@ -85,13 +86,12 @@ function primeCache(
       { symbol: benchmarkSymbol, bars: benchmarkBars },
     );
   }
-  // Dividends key is account-wide (the API has no `symbol` filter and
-  // the cache slot is shared across holdings — see the queryKey comment
-  // in `useHoldingChartData.ts`). `1y` → `periodToDividendDays('1y')`
-  // → 365; mirror that here so the cache priming actually satisfies
-  // the hook's `useQuery`.
+  // Dividends key is per-symbol (backend filters at the SQL layer; see
+  // queryKey comment in `useHoldingChartData.ts`). `1y` →
+  // `periodToDividendDays('1y')` → 365; mirror that here so the cache
+  // priming actually satisfies the hook's `useQuery`.
   client.setQueryData(
-    ["holdingChart", "dividends", null, 365],
+    ["holdingChart", "dividends", null, 365, symbol],
     { dividends },
   );
 }

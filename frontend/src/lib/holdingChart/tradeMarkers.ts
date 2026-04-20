@@ -4,7 +4,10 @@
  *
  *   - `bucketTradesByDay`   — group trade rows by UTC day so the same-day
  *                             cluster shows as one marker (not five).
- *   - `bucketDividendsByDay`— filter to symbol, group by ex-date, sum amounts.
+ *   - `bucketDividendsByDay`— group rows by ex-date, sum amounts. Rows
+ *                             are assumed pre-filtered to one symbol by
+ *                             the caller (the backend does this at the
+ *                             SQL layer for the dividends endpoint).
  *   - `buildTradeMarkers`   — render-ready `lightweight-charts` marker
  *                             payloads (arrow up / arrow down / circle).
  *   - `periodToDividendDays`— map our chart period strings to a `days`
@@ -213,17 +216,17 @@ export function bucketTradesByDay(
 }
 
 /**
- * Filter dividends to a symbol (case-insensitive), then group by ex-date.
- * Rows without a parseable ex-date are skipped — there is no sensible
- * x-axis position for them.
+ * Group dividend rows by ex-date and sum amounts.
+ *
+ * Rows are assumed to already be filtered to a single symbol by the
+ * caller — the dividends endpoint accepts a `symbol` query param and
+ * filters at the SQL layer, so a defensive client-side pass would only
+ * mask backend bugs. Rows without a parseable ex-date are skipped
+ * (there is no sensible x-axis position for them).
  */
 export function bucketDividendsByDay(
   rows: ReadonlyArray<DividendRow>,
-  symbol: string,
 ): DividendBucket[] {
-  const target = symbol.trim().toUpperCase();
-  if (!target) return [];
-
   // Per-day per-share aggregates accumulated alongside the buckets so we
   // do this in ONE PASS over `rows`. The previous version walked `rows`
   // again for every bucket — O(rows * buckets) — which is harmless at
@@ -244,8 +247,6 @@ export function bucketDividendsByDay(
   const perShareAcc = new Map<string, PerShareAcc>();
 
   for (const row of rows) {
-    const sym = (row.symbol ?? "").trim().toUpperCase();
-    if (sym !== target) continue;
     const dk = dayKeyOf(row.ex_date);
     if (!dk) continue;
 

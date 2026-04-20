@@ -369,7 +369,11 @@ describe("useHoldingChartData", () => {
     expect(ids).toContain("2025-10-15:sell");
   });
 
-  it("filters dividends to the holding symbol and buckets them", async () => {
+  it("forwards symbol to the dividends API and buckets the response", async () => {
+    // The backend now applies the symbol filter at the SQL layer (see
+    // backend/api/routes/portfolio/dividends.py). The hook just passes
+    // the symbol through and buckets whatever rows come back — no
+    // client-side discard pass to mask backend bugs.
     mockSnapshot.mockResolvedValueOnce({
       symbol: "AAPL",
       snapshot: { sector: "Technology" },
@@ -381,7 +385,6 @@ describe("useHoldingChartData", () => {
       data: {
         dividends: [
           { symbol: "AAPL", ex_date: "2025-08-15", dividend_per_share: 0.24, shares_held: 100, total_dividend: 24 },
-          { symbol: "MSFT", ex_date: "2025-08-15", dividend_per_share: 0.75, shares_held: 50, total_dividend: 37.5 },
           { symbol: "AAPL", ex_date: "2025-11-15", dividend_per_share: 0.25, shares_held: 100, total_dividend: 25 },
         ],
       },
@@ -394,6 +397,8 @@ describe("useHoldingChartData", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
+    // Symbol is forwarded to the API as the third argument.
+    expect(mockDividends).toHaveBeenCalledWith(undefined, 365, "AAPL");
     expect(result.current.dividends).toHaveLength(2);
     expect(result.current.dividends.map((d) => d.dayKey)).toEqual([
       "2025-08-15",
@@ -402,7 +407,7 @@ describe("useHoldingChartData", () => {
     expect(result.current.dividends[0].totalAmount).toBeCloseTo(24, 5);
   });
 
-  it("uses period-derived `days` when calling the dividends API", async () => {
+  it("uses period-derived `days` and forwards symbol when calling the dividends API", async () => {
     mockSnapshot.mockResolvedValueOnce({
       symbol: "AAPL",
       snapshot: { sector: "Technology" },
@@ -422,7 +427,7 @@ describe("useHoldingChartData", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(mockDividends).toHaveBeenCalledWith(undefined, 1825);
+    expect(mockDividends).toHaveBeenCalledWith(undefined, 1825, "AAPL");
   });
 
   it("skips the dividends fetch when fetchDividends is false", async () => {
@@ -486,23 +491,21 @@ describe("useHoldingChartData", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    // Dividends key is account-wide (no `symbol`) — see the queryKey
-    // comment in `useHoldingChartData.ts`. The test now reflects the
-    // correct shape `[..., accountId, dividendDays]`.
-    const dividendsKey = ["holdingChart", "dividends", null, 365];
+    // The dividends key is now per-symbol (the backend filters by SQL).
+    // Shape: ["holdingChart", "dividends", accountId, days, symbol].
+    const dividendsKey = ["holdingChart", "dividends", null, 365, "AAPL"];
     expect(client.getQueryState(dividendsKey)).toBeDefined();
 
     await result.current.refetch();
     expect(client.getQueryState(dividendsKey)?.isInvalidated).toBe(true);
   });
 
-  it("two hooks for different symbols (same account+period) share ONE dividends fetch", async () => {
-    // Regression for Copilot review comment B: the dividends queryKey
-    // used to include `symbol`, which fragmented the cache and forced a
-    // fresh API call per holding even though the underlying endpoint is
-    // account-wide. With `symbol` removed from the key, two holdings
-    // sharing account+period must share the cached payload — the
-    // dividends API is hit ONCE total, not once per symbol.
+  it("fragments the dividends cache PER SYMBOL (one fetch per holding)", async () => {
+    // Backend now filters dividends by `symbol` at the SQL layer, so the
+    // cache MUST be fragmented per symbol — sharing a slot would bleed
+    // AAPL's payload into MSFT's chart. This test pins down the
+    // post-fix contract: two holdings under the same account+period
+    // produce TWO independent fetches, each scoped to its symbol.
     mockSnapshot.mockResolvedValue({
       symbol: "AAPL",
       snapshot: { sector: "Technology" },
@@ -510,13 +513,23 @@ describe("useHoldingChartData", () => {
     mockActivity.mockResolvedValue({ activity: [] });
     mockHistory.mockImplementation(async (sym: string) => priceResponse(sym, 5));
     mockDividends.mockReset();
-    mockDividends.mockResolvedValue({
-      data: {
-        dividends: [
-          { symbol: "AAPL", ex_date: "2025-08-15", dividend_per_share: 0.24, shares_held: 100, total_dividend: 24 },
-          { symbol: "MSFT", ex_date: "2025-08-15", dividend_per_share: 0.75, shares_held: 50, total_dividend: 37.5 },
-        ],
-      },
+    mockDividends.mockImplementation(async (_acct, _days, sym) => {
+      if (sym === "AAPL") {
+        return {
+          data: {
+            dividends: [
+              { symbol: "AAPL", ex_date: "2025-08-15", dividend_per_share: 0.24, shares_held: 100, total_dividend: 24 },
+            ],
+          },
+        };
+      }
+      return {
+        data: {
+          dividends: [
+            { symbol: "MSFT", ex_date: "2025-08-15", dividend_per_share: 0.75, shares_held: 50, total_dividend: 37.5 },
+          ],
+        },
+      };
     });
 
     const client = makeTrackingClient();
@@ -543,13 +556,22 @@ describe("useHoldingChartData", () => {
       expect(result.current.msft.isLoading).toBe(false);
     });
 
-    // The shared cache slot exists exactly once, with no `symbol`.
-    expect(client.getQueryState(["holdingChart", "dividends", null, 365])).toBeDefined();
+    // Per-symbol cache slots exist independently — and a wildcard for
+    // either symbol must NOT collide with the other.
+    expect(
+      client.getQueryState(["holdingChart", "dividends", null, 365, "AAPL"]),
+    ).toBeDefined();
+    expect(
+      client.getQueryState(["holdingChart", "dividends", null, 365, "MSFT"]),
+    ).toBeDefined();
 
-    // ONE network call total, even though TWO holdings consumed the data.
-    expect(mockDividends).toHaveBeenCalledTimes(1);
+    // TWO calls — one per symbol — because the backend filter scopes
+    // each response to a single ticker.
+    expect(mockDividends).toHaveBeenCalledTimes(2);
+    expect(mockDividends).toHaveBeenCalledWith(undefined, 365, "AAPL");
+    expect(mockDividends).toHaveBeenCalledWith(undefined, 365, "MSFT");
 
-    // Each consumer still sees its own symbol filtered correctly.
+    // Each consumer renders its own dividend rows — no cross-bleed.
     expect(result.current.aapl.dividends.map((d) => d.dayKey)).toEqual([
       "2025-08-15",
     ]);

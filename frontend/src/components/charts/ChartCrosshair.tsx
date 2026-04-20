@@ -115,56 +115,67 @@ export function ChartCrosshair({
   const hasY = y !== null && Number.isFinite(y);
 
   return (
-    <motion.svg
-      role="presentation"
-      aria-hidden
-      className={cn("pointer-events-none absolute left-0 top-0", className)}
-      width={width}
-      height={height}
-      viewBox={`0 0 ${width} ${height}`}
-      initial={reducedMotion ? false : { opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={
-        reducedMotion ? { duration: 0 } : { duration: DURATION.fast }
-      }
-    >
-      {showVertical && hasX && (
-        <line
-          x1={x as number}
-          x2={x as number}
-          y1={0}
-          y2={height}
-          stroke={stroke}
-          strokeWidth={1}
-          strokeDasharray={strokeDasharray}
-          shapeRendering="crispEdges"
-        />
-      )}
-      {showHorizontal && hasY && (
-        <line
-          x1={0}
-          x2={width}
-          y1={y as number}
-          y2={y as number}
-          stroke={stroke}
-          strokeWidth={1}
-          strokeDasharray={strokeDasharray}
-          shapeRendering="crispEdges"
-        />
-      )}
+    <>
+      <motion.svg
+        role="presentation"
+        aria-hidden
+        className={cn("pointer-events-none absolute left-0 top-0", className)}
+        width={width}
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        initial={reducedMotion ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={
+          reducedMotion ? { duration: 0 } : { duration: DURATION.fast }
+        }
+      >
+        {showVertical && hasX && (
+          <line
+            x1={x as number}
+            x2={x as number}
+            y1={0}
+            y2={height}
+            stroke={stroke}
+            strokeWidth={1}
+            strokeDasharray={strokeDasharray}
+            shapeRendering="crispEdges"
+          />
+        )}
+        {showHorizontal && hasY && (
+          <line
+            x1={0}
+            x2={width}
+            y1={y as number}
+            y2={y as number}
+            stroke={stroke}
+            strokeWidth={1}
+            strokeDasharray={strokeDasharray}
+            shapeRendering="crispEdges"
+          />
+        )}
+      </motion.svg>
+      {/*
+        Live region rendered as a SIBLING of the SVG, not inside it.
+        - The SVG is `aria-hidden` (it's purely decorative); a live region
+          INSIDE an aria-hidden subtree is not announced by AT.
+        - `<foreignObject>` is also fragile / inconsistently supported by
+          screen readers, so we render an HTML element directly.
+        - `ChartAnnouncer` is the canonical primitive for chart-wide
+          announcements; this fallback exists so a stand-alone crosshair
+          (e.g. in a story) can still announce hover state without
+          forcing the consumer to wire a separate announcer.
+      */}
       {announceText ? (
-        <foreignObject x={0} y={0} width={1} height={1}>
-          <span
-            className="sr-only-live"
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
-          >
-            {announceText}
-          </span>
-        </foreignObject>
+        <span
+          className="sr-only-live"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {announceText}
+        </span>
       ) : null}
-    </motion.svg>
+    </>
   );
 }
 

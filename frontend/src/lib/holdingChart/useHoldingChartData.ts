@@ -122,17 +122,16 @@ export interface HoldingChartData {
 const SNAPSHOT_STALE_MS = 5 * 60_000;
 const ACTIVITY_STALE_MS = 60_000;
 const PRICE_STALE_MS = 30_000;
-// Dividends API is cross-symbol (no `symbol` filter): one fetch covers
-// every holding in the account for the requested window. 5 minutes is a
+// Dividends are now scoped per-symbol at the backend (the endpoint
+// accepts an optional `symbol` filter applied at the SQL layer; see
+// `backend/api/routes/portfolio/dividends.py`). 5 minutes is a
 // deliberate compromise between two pulls:
-//   - Long enough that flipping period or hovering between holdings does
-//     not re-thrash the network — every consumer in this account/window
-//     shares the same cache slot (see the queryKey below, which omits
-//     `symbol` for exactly this reason).
+//   - Long enough that flipping period stays snappy without re-thrashing
+//     the network for the same (account, symbol, window) tuple.
 //   - Not so long that a freshly-paid dividend takes hours to surface.
 //     Dividends only post once a quarter per symbol, so 5 minutes is
 //     comfortably under the human-noticeable threshold for a quarterly
-//     event while still keeping period switches snappy.
+//     event.
 const DIVIDEND_STALE_MS = 5 * 60_000;
 
 export const BACKEND_PERIODS = [
@@ -322,28 +321,37 @@ export function useHoldingChartData(
     staleTime: PRICE_STALE_MS,
   });
 
-  // Dividends API does NOT take a `symbol` filter — it returns every
-  // dividend across the account in the requested window, and we filter
-  // client-side in the `dividends` memo below. The queryKey therefore
-  // intentionally OMITS `symbol`: keying on it would fragment the cache
-  // (every holding in the same account+period would refetch the same
-  // payload independently), defeating the entire reason this endpoint
-  // is shared. Two `useHoldingChartData` hooks for AAPL and MSFT under
-  // the same account+period MUST hit the cache, not the network, the
-  // second time around.
+  // Dividends are filtered to `symbol` at the backend (SQL `WHERE
+  // dividends.symbol = :symbol`). The query key MUST include `symbol`
+  // because the response is now per-symbol; sharing a cache slot
+  // across symbols would bleed AAPL's dividends into MSFT's chart.
+  // The narrower payload is the right trade-off: a per-holding fetch
+  // returns ~1 row/quarter instead of N×M rows, and the chart never
+  // discards data on the client.
   const dividendDays = React.useMemo(
     () => periodToDividendDays(effectivePeriod),
     [effectivePeriod],
   );
   const dividendsEnabled = enabledForSymbol && fetchDividends;
+  // Normalize once so the React Query cache key and the backend request
+  // can never disagree on casing/whitespace. Without this, a caller that
+  // passed `aapl` and another that passed `AAPL` would create two cache
+  // entries pointing at the same backend response and invalidation would
+  // silently miss one of them.
+  const normalizedSymbol = React.useMemo(
+    () => symbol?.trim().toUpperCase() || undefined,
+    [symbol],
+  );
   const dividendsQuery = useQuery({
     queryKey: [
       "holdingChart",
       "dividends",
       accountId ?? null,
       dividendDays,
+      normalizedSymbol ?? null,
     ],
-    queryFn: () => portfolioApi.getDividends(accountId, dividendDays),
+    queryFn: () =>
+      portfolioApi.getDividends(accountId, dividendDays, normalizedSymbol),
     enabled: dividendsEnabled,
     staleTime: DIVIDEND_STALE_MS,
   });
@@ -365,14 +373,16 @@ export function useHoldingChartData(
     [trades],
   );
 
-  // Dividend buckets, filtered client-side to the holding's symbol.
-  // Always returns `[]` (never undefined) so consumer rendering stays
-  // simple — `fetchDividends={false}` short-circuits to `[]` too.
+  // Dividend buckets. Rows come pre-filtered to `symbol` from the
+  // backend (no client-side discard pass), so we just bucket them by
+  // ex-date. Always returns `[]` (never undefined) so consumer
+  // rendering stays simple — `fetchDividends={false}` short-circuits
+  // to `[]` too.
   const dividends = React.useMemo<DividendBucket[]>(() => {
     if (!dividendsEnabled) return [];
     const rows = extractDividendRows(dividendsQuery.data);
-    return bucketDividendsByDay(rows, symbol);
-  }, [dividendsEnabled, dividendsQuery.data, symbol]);
+    return bucketDividendsByDay(rows);
+  }, [dividendsEnabled, dividendsQuery.data]);
   const benchmarkBars = React.useMemo<BenchmarkBar[]>(() => {
     if (!benchmarkEnabled) return [];
     const raw = asBars(benchmarkQuery.data);
@@ -427,18 +437,15 @@ export function useHoldingChartData(
       benchmarkEnabled ? benchmarkQuery.refetch() : Promise.resolve(),
       dividendsEnabled ? dividendsQuery.refetch() : Promise.resolve(),
     ]);
-    // Bust ALL holdingChart cache entries this hook would consume:
-    //   - Anything mentioning the primary symbol or its resolved benchmark.
-    //   - ALL dividends entries (`["holdingChart", "dividends", ...]`)
-    //     because the dividends key intentionally omits `symbol` — the
-    //     payload is account-wide and shared across holdings, so a
-    //     refresh for AAPL must also bust the same cache slot MSFT is
-    //     reading from.
+    // Bust holdingChart cache entries this hook would consume.
+    // Now that dividends are keyed per-symbol (the backend filters by
+    // SQL), the symbol-match path covers them too — we no longer have
+    // to nuke account-wide dividend cache slots that other holdings
+    // depend on.
     queryClient.invalidateQueries({
       predicate: (query) => {
         const key = query.queryKey;
         if (!Array.isArray(key) || key[0] !== "holdingChart") return false;
-        if (key[1] === "dividends") return true;
         return key.some((k) => k === symbol || k === benchmarkSymbol);
       },
     });
