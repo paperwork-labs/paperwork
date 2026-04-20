@@ -2,6 +2,8 @@ name: CI
 
 "on":
   pull_request:
+    branches:
+      - main
   workflow_dispatch:
   push:
     branches:
@@ -12,8 +14,62 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      backend: ${{ steps.decide.outputs.backend }}
+      frontend: ${{ steps.decide.outputs.frontend }}
+    steps:
+      - name: Checkout
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      # Path-filter is only meaningful for pull_request events. For push (main)
+      # and workflow_dispatch we always want both jobs to run, since:
+      #  - main pushes are the gate for auto-merge of agent PRs and must
+      #    re-validate the full matrix even on docs-only commits.
+      #  - workflow_dispatch is used for manual reruns and should be exhaustive.
+      - name: Run path filter (pull_request only)
+        id: filter
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'infra/**'
+              - 'Dockerfile.backend'
+              - 'docker-compose.test.yml'
+              - 'infra/compose.test.yaml'
+              - 'requirements*.txt'
+              - 'pyproject.toml'
+              - 'alembic.ini'
+              - 'backend/alembic.ini'
+              - 'Makefile'
+              - '.github/workflows/ci.yml'
+            frontend:
+              - 'frontend/**'
+              - '.github/workflows/ci.yml'
+
+      - name: Decide which jobs need real work
+        id: decide
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "backend=${{ steps.filter.outputs.backend }}" >> "$GITHUB_OUTPUT"
+            echo "frontend=${{ steps.filter.outputs.frontend }}" >> "$GITHUB_OUTPUT"
+          else
+            # push to main / workflow_dispatch -> always run both
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            echo "frontend=true" >> "$GITHUB_OUTPUT"
+          fi
+
   backend-tests:
     name: Backend (pytest in docker)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -57,8 +113,20 @@ jobs:
         run: |
           make test-down
 
+  backend-tests-skipped:
+    name: Backend (pytest in docker)
+    needs: changes
+    if: needs.changes.outputs.backend != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: No backend changes
+        run: echo "No backend changes; skipping real tests."
+
   frontend-checks:
     name: Frontend (lint/typecheck/test)
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -87,3 +155,13 @@ jobs:
       - name: Unit tests
         working-directory: frontend
         run: npm run test
+
+  frontend-checks-skipped:
+    name: Frontend (lint/typecheck/test)
+    needs: changes
+    if: needs.changes.outputs.frontend != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: No frontend changes
+        run: echo "No frontend changes; skipping real checks."

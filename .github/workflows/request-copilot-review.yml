@@ -4,10 +4,16 @@
 
 name: Request Copilot review
 
+concurrency:
+  group: request-copilot-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 "on":
   pull_request:
     branches: [main]
-    types: [opened, reopened, ready_for_review]
+    # Non-draft PRs created as ready: `opened`. Draft -> ready: `ready_for_review`.
+    # Concurrency dedupes if both could apply to the same PR.
+    types: [opened, ready_for_review]
 
 permissions:
   contents: read
