@@ -12,6 +12,11 @@ const removeMock = vi.fn();
 const fitContentMock = vi.fn();
 const applyOptionsMock = vi.fn();
 const createChartMock = vi.fn();
+const createSeriesMarkersMock = vi.fn();
+const setMarkersMock = vi.fn();
+const subscribeVisibleTimeRangeChangeMock = vi.fn();
+const unsubscribeVisibleTimeRangeChangeMock = vi.fn();
+const timeToCoordinateMock = vi.fn<(time: unknown) => number | null>(() => null);
 // Track the series-instance applyOptions calls per kind so theme-reactivity
 // tests can assert that BOTH the primary AreaSeries and (if present) the
 // benchmark LineSeries get re-skinned on a palette change event.
@@ -44,11 +49,29 @@ vi.mock("lightweight-charts", () => {
           return stubSeries(def.__kind);
         },
         removeSeries: removeSeriesMock,
-        timeScale: () => ({ fitContent: fitContentMock }),
+        timeScale: () => ({
+          fitContent: fitContentMock,
+          subscribeVisibleTimeRangeChange:
+            subscribeVisibleTimeRangeChangeMock,
+          unsubscribeVisibleTimeRangeChange:
+            unsubscribeVisibleTimeRangeChangeMock,
+          timeToCoordinate: timeToCoordinateMock,
+        }),
         applyOptions: applyOptionsMock,
         remove: removeMock,
       };
       return chart;
+    },
+    createSeriesMarkers: (
+      series: unknown,
+      markers: ReadonlyArray<unknown>,
+    ) => {
+      createSeriesMarkersMock(series, markers);
+      return {
+        setMarkers: setMarkersMock,
+        markers: () => markers,
+        detach: () => undefined,
+      };
     },
   };
 });
@@ -61,6 +84,10 @@ vi.mock("@/lib/holdingChart/useHoldingChartData", () => {
 });
 
 import { useHoldingChartData } from "@/lib/holdingChart/useHoldingChartData";
+import type {
+  DividendBucket,
+  TradeBucket,
+} from "@/lib/holdingChart/tradeMarkers";
 import { HoldingPriceChart } from "../HoldingPriceChart";
 
 const mockUseData = vi.mocked(useHoldingChartData);
@@ -89,6 +116,9 @@ function withDefaults(partial: Partial<ReturnType<typeof useHoldingChartData>> =
     benchmarkLabel: "vs XLK",
     benchmarkTooltip: "Technology Select Sector SPDR",
     snapshot: { sector: "Technology" },
+    trades: [],
+    tradeMarkers: [],
+    dividends: [],
     earliestBuyDate: "2025-09-01",
     effectivePeriod: "1y",
     effectiveStart: null,
@@ -119,6 +149,12 @@ beforeEach(() => {
   fitContentMock.mockReset();
   applyOptionsMock.mockReset();
   createChartMock.mockReset();
+  createSeriesMarkersMock.mockReset();
+  setMarkersMock.mockReset();
+  subscribeVisibleTimeRangeChangeMock.mockReset();
+  unsubscribeVisibleTimeRangeChangeMock.mockReset();
+  timeToCoordinateMock.mockReset();
+  timeToCoordinateMock.mockImplementation(() => null);
   seriesApplyOptionsByKind.Area.mockReset();
   seriesApplyOptionsByKind.Line.mockReset();
   mockUseData.mockReset();
@@ -345,5 +381,333 @@ describe("HoldingPriceChart", () => {
 
     await waitFor(() => expect(applyOptionsMock).toHaveBeenCalled());
     document.documentElement.classList.remove("dark");
+  });
+
+  it("attaches markers via createSeriesMarkers when tradeMarkers is non-empty", async () => {
+    const tradeMarkers = [
+      {
+        time: 1735689600 as unknown as number,
+        position: "belowBar" as const,
+        shape: "arrowUp" as const,
+        color: "#10b981",
+        id: "2026-01-01:buy",
+      },
+    ];
+    mockUseData.mockReturnValue(
+      withDefaults({
+        tradeMarkers: tradeMarkers as ReturnType<
+          typeof useHoldingChartData
+        >["tradeMarkers"],
+      }),
+    );
+    renderChart();
+    await waitFor(() => expect(createSeriesMarkersMock).toHaveBeenCalled());
+    const [, markersArg] = createSeriesMarkersMock.mock.calls[0] ?? [];
+    expect(Array.isArray(markersArg)).toBe(true);
+    expect((markersArg as unknown[]).length).toBe(1);
+  });
+
+  it("calls setMarkers (not createSeriesMarkers again) when markers update", async () => {
+    const initialMarkers = [
+      {
+        time: 1735689600,
+        position: "belowBar" as const,
+        shape: "arrowUp" as const,
+        color: "#10b981",
+        id: "a",
+      },
+    ];
+    mockUseData.mockReturnValue(
+      withDefaults({
+        tradeMarkers: initialMarkers as ReturnType<
+          typeof useHoldingChartData
+        >["tradeMarkers"],
+      }),
+    );
+    const { rerender } = renderChart();
+    await waitFor(() => expect(createSeriesMarkersMock).toHaveBeenCalledTimes(1));
+
+    const updatedMarkers = [
+      ...initialMarkers,
+      {
+        time: 1735776000,
+        position: "aboveBar" as const,
+        shape: "arrowDown" as const,
+        color: "#ef4444",
+        id: "b",
+      },
+    ];
+    mockUseData.mockReturnValue(
+      withDefaults({
+        tradeMarkers: updatedMarkers as ReturnType<
+          typeof useHoldingChartData
+        >["tradeMarkers"],
+      }),
+    );
+    rerender(
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <HoldingPriceChart symbol="AAPL" height={400} />
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => expect(setMarkersMock).toHaveBeenCalled());
+    // The plugin must be reused — never recreated on every data change.
+    expect(createSeriesMarkersMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does NOT render the rich tooltip when the crosshair is off-chart", () => {
+    mockUseData.mockReturnValue(withDefaults());
+    renderChart();
+    expect(screen.queryByTestId("holding-chart-tooltip")).toBeNull();
+  });
+
+  it("renders the rich tooltip with date + OHLC when crosshair is on-chart", async () => {
+    // The chart's tooltip is only painted when the container has a
+    // non-zero width AND the pointer is inside its bounding rect. In
+    // JSDOM neither is true by default — ResizeObserver is a no-op
+    // stub and getBoundingClientRect() returns a zero-area rect — so
+    // we patch both for the duration of the test.
+    const originalRO = globalThis.ResizeObserver;
+    class ImmediateRO {
+      private cb: ResizeObserverCallback;
+      constructor(cb: ResizeObserverCallback) {
+        this.cb = cb;
+      }
+      observe(target: Element): void {
+        this.cb(
+          [
+            {
+              target,
+              contentRect: { width: 800, height: 400 } as DOMRectReadOnly,
+            } as unknown as ResizeObserverEntry,
+          ],
+          this as unknown as ResizeObserver,
+        );
+      }
+      unobserve(): void {}
+      disconnect(): void {}
+    }
+    (globalThis as { ResizeObserver: typeof ResizeObserver }).ResizeObserver =
+      ImmediateRO as unknown as typeof ResizeObserver;
+    try {
+      mockUseData.mockReturnValue(withDefaults());
+      renderChart();
+      await waitFor(() => expect(addSeriesMock).toHaveBeenCalled());
+      const chartContainer = screen.getByRole("img", { name: /AAPL latest close/i });
+      chartContainer.getBoundingClientRect = () =>
+        ({
+          left: 0,
+          top: 0,
+          right: 800,
+          bottom: 400,
+          width: 800,
+          height: 400,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        }) as DOMRect;
+      fireEvent.mouseMove(chartContainer, { clientX: 400, clientY: 200 });
+      const tooltip = await screen.findByTestId("holding-chart-tooltip");
+      expect(tooltip.textContent).toMatch(/O/);
+      expect(tooltip.textContent).toMatch(/C/);
+    } finally {
+      (globalThis as { ResizeObserver: typeof ResizeObserver }).ResizeObserver =
+        originalRO;
+    }
+  });
+
+  it("shows trade details inside the tooltip when hovering a trade day", async () => {
+    const originalRO = globalThis.ResizeObserver;
+    class ImmediateRO {
+      private cb: ResizeObserverCallback;
+      constructor(cb: ResizeObserverCallback) {
+        this.cb = cb;
+      }
+      observe(target: Element): void {
+        this.cb(
+          [
+            {
+              target,
+              contentRect: { width: 800, height: 400 } as DOMRectReadOnly,
+            } as unknown as ResizeObserverEntry,
+          ],
+          this as unknown as ResizeObserver,
+        );
+      }
+      unobserve(): void {}
+      disconnect(): void {}
+    }
+    (globalThis as { ResizeObserver: typeof ResizeObserver }).ResizeObserver =
+      ImmediateRO as unknown as typeof ResizeObserver;
+    try {
+      const bars = makeBars(20);
+      const tradeDay = bars[10].time;
+      const tradeBucket: TradeBucket = {
+        dayKey: tradeDay,
+        time: (Date.parse(tradeDay) / 1000) as unknown as TradeBucket["time"],
+        buys: [
+          { transaction_date: tradeDay, side: "BUY", quantity: 10, price: 105 },
+        ],
+        sells: [],
+        totalShares: 10,
+        weightedAvgPrice: 105,
+      };
+      mockUseData.mockReturnValue(
+        withDefaults({
+          bars,
+          trades: [tradeBucket],
+          tradeMarkers: [
+            {
+              time: tradeBucket.time,
+              position: "belowBar",
+              shape: "arrowUp",
+              color: "#10b981",
+              id: `${tradeDay}:buy`,
+            } as ReturnType<typeof useHoldingChartData>["tradeMarkers"][number],
+          ],
+        }),
+      );
+      renderChart();
+      const chartContainer = screen.getByRole("img", { name: /AAPL latest close/i });
+      chartContainer.getBoundingClientRect = () =>
+        ({
+          left: 0,
+          top: 0,
+          right: 800,
+          bottom: 400,
+          width: 800,
+          height: 400,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        }) as DOMRect;
+      // Hover roughly at index 10 of 20 bars → ~50% of width.
+      fireEvent.mouseMove(chartContainer, { clientX: 400, clientY: 200 });
+      const tooltip = await screen.findByTestId("holding-chart-tooltip");
+      expect(tooltip.textContent ?? "").toMatch(/You bought/);
+      expect(tooltip.textContent ?? "").toMatch(/10/);
+    } finally {
+      (globalThis as { ResizeObserver: typeof ResizeObserver }).ResizeObserver =
+        originalRO;
+    }
+  });
+
+  it("renders dividend dots only when timeToCoordinate yields finite values", async () => {
+    timeToCoordinateMock.mockImplementation(() => 250);
+    const dividend: DividendBucket = {
+      dayKey: "2026-01-15",
+      time: 1736899200 as unknown as DividendBucket["time"],
+      exDate: "2026-01-15",
+      perShare: 0.24,
+      totalAmount: 4.8,
+      rowCount: 1,
+      currency: "USD",
+    };
+    mockUseData.mockReturnValue(
+      withDefaults({ dividends: [dividend] }),
+    );
+    renderChart();
+    // The row only mounts after the primary series flips ready and the
+    // effect runs; wait for it and assert one dot.
+    const row = await screen.findByTestId("dividend-dot-row");
+    const dots = row.querySelectorAll("[role=listitem]");
+    expect(dots.length).toBe(1);
+    expect(dots[0].getAttribute("aria-label")).toMatch(/Dividend/);
+    expect(dots[0].getAttribute("aria-label")).toMatch(/2026-01-15/);
+  });
+
+  it("renders no dividend row when there are no dividends", async () => {
+    mockUseData.mockReturnValue(withDefaults({ dividends: [] }));
+    renderChart();
+    await waitFor(() => expect(addSeriesMock).toHaveBeenCalled());
+    expect(screen.queryByTestId("dividend-dot-row")).toBeNull();
+  });
+
+  it("subscribes to visible time range changes when dividends are present", async () => {
+    timeToCoordinateMock.mockImplementation(() => 250);
+    const dividend: DividendBucket = {
+      dayKey: "2026-01-15",
+      time: 1736899200 as unknown as DividendBucket["time"],
+      exDate: "2026-01-15",
+      perShare: 0.24,
+      totalAmount: 4.8,
+      rowCount: 1,
+      currency: "USD",
+    };
+    mockUseData.mockReturnValue(withDefaults({ dividends: [dividend] }));
+    renderChart();
+    await waitFor(() =>
+      expect(subscribeVisibleTimeRangeChangeMock).toHaveBeenCalled(),
+    );
+  });
+
+  it("preserves bucket↔coordinate pairing when the first dividend is off-screen", async () => {
+    // Regression for Copilot review comments F + G. The previous
+    // implementation maintained two parallel arrays — `xs[]` and the
+    // unfiltered `dividends[]` — and paired them by index in the
+    // renderer. When a dividend was off-screen its X was skipped from
+    // `xs`, but its bucket was NOT skipped from `dividends`, so every
+    // subsequent dot ended up rendered with the WRONG aria-label
+    // (shifted by one). Now that visible buckets and coordinates are
+    // paired at filter time as `VisibleDividend[]`, this drift is
+    // unrepresentable. The test pins it down: three dividends, the
+    // first off-screen, the surviving two dots must carry labels for
+    // the SECOND and THIRD buckets — never the first.
+    const off: DividendBucket = {
+      dayKey: "2026-01-05",
+      time: 1736035200 as unknown as DividendBucket["time"],
+      exDate: "2026-01-05",
+      perShare: 0.10,
+      totalAmount: 1,
+      rowCount: 1,
+      currency: "USD",
+    };
+    const onA: DividendBucket = {
+      dayKey: "2026-02-10",
+      time: 1739145600 as unknown as DividendBucket["time"],
+      exDate: "2026-02-10",
+      perShare: 0.24,
+      totalAmount: 4.8,
+      rowCount: 1,
+      currency: "USD",
+    };
+    const onB: DividendBucket = {
+      dayKey: "2026-03-15",
+      time: 1742000000 as unknown as DividendBucket["time"],
+      exDate: "2026-03-15",
+      perShare: 0.30,
+      totalAmount: 6,
+      rowCount: 1,
+      currency: "USD",
+    };
+
+    // The first call returns `null` (off-screen), the next two return
+    // finite x coordinates. Iteration in the effect is stable in
+    // bucket order, so call #1 corresponds to `off`, call #2 to `onA`,
+    // call #3 to `onB`.
+    timeToCoordinateMock
+      .mockImplementationOnce(() => null)
+      .mockImplementationOnce(() => 250)
+      .mockImplementationOnce(() => 500);
+
+    mockUseData.mockReturnValue(
+      withDefaults({ dividends: [off, onA, onB] }),
+    );
+    renderChart();
+
+    const row = await screen.findByTestId("dividend-dot-row");
+    const dots = row.querySelectorAll("[role=listitem]");
+    expect(dots.length).toBe(2);
+
+    const labels = Array.from(dots).map((d) => d.getAttribute("aria-label") ?? "");
+    expect(labels[0]).toContain("2026-02-10");
+    expect(labels[1]).toContain("2026-03-15");
+    // The off-screen bucket's exDate must NOT leak onto either visible
+    // dot — that was the literal symptom of the parallel-array bug.
+    for (const label of labels) {
+      expect(label).not.toContain("2026-01-05");
+    }
   });
 });

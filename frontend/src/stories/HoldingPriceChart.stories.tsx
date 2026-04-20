@@ -38,6 +38,34 @@ function makeBars(n: number, base = 100) {
   });
 }
 
+/**
+ * Match the dividends API: an array of `{ symbol, ex_date, ... }`. The
+ * hook filters client-side by symbol so the story can prime as many or
+ * as few rows as it likes.
+ */
+type DividendSeed = {
+  symbol: string;
+  ex_date: string;
+  pay_date?: string;
+  dividend_per_share: number;
+  shares_held: number;
+  total_dividend: number;
+  currency?: string;
+};
+
+/**
+ * Match the activity API: rows like `{ transaction_date, side, quantity,
+ * price, symbol }`. Only the fields used by the bucketing transform are
+ * required; extra fields are ignored.
+ */
+type TradeSeed = {
+  transaction_date: string;
+  side: string;
+  quantity?: number;
+  price?: number;
+  symbol?: string;
+};
+
 function primeCache(
   client: QueryClient,
   symbol: string,
@@ -45,7 +73,8 @@ function primeCache(
   benchmarkSymbol: string | null,
   benchmarkBars: ReturnType<typeof makeBars>,
   snapshot: Record<string, unknown> | null,
-  activity: Array<{ transaction_date: string; side: string }>,
+  activity: Array<TradeSeed>,
+  dividends: Array<DividendSeed> = [],
 ) {
   client.setQueryData(["holdingChart", "snapshot", symbol], { snapshot });
   client.setQueryData(["holdingChart", "activity", symbol, null], { activity });
@@ -56,6 +85,15 @@ function primeCache(
       { symbol: benchmarkSymbol, bars: benchmarkBars },
     );
   }
+  // Dividends key is account-wide (the API has no `symbol` filter and
+  // the cache slot is shared across holdings — see the queryKey comment
+  // in `useHoldingChartData.ts`). `1y` → `periodToDividendDays('1y')`
+  // → 365; mirror that here so the cache priming actually satisfies
+  // the hook's `useQuery`.
+  client.setQueryData(
+    ["holdingChart", "dividends", null, 365],
+    { dividends },
+  );
 }
 
 function StoryShell({ children }: { children: React.ReactNode }) {
@@ -85,13 +123,15 @@ function PrimeAndRender({
   benchmarkSymbol,
   snapshot,
   activity,
+  dividends,
   initialPeriod,
   showBenchmark = true,
 }: {
   symbol: string;
   benchmarkSymbol: string | null;
   snapshot: Record<string, unknown> | null;
-  activity?: Array<{ transaction_date: string; side: string }>;
+  activity?: Array<TradeSeed>;
+  dividends?: Array<DividendSeed>;
   initialPeriod?: "1y" | "3mo" | "since" | "max";
   showBenchmark?: boolean;
 }) {
@@ -118,8 +158,9 @@ function PrimeAndRender({
       benchmarkBars,
       snapshot,
       activity ?? [],
+      dividends ?? [],
     );
-  }, [client, symbol, benchmarkSymbol, snapshot, activity]);
+  }, [client, symbol, benchmarkSymbol, snapshot, activity, dividends]);
   return (
     <QueryClientProvider client={client}>
       <div className="min-h-screen bg-background p-6 text-foreground">
@@ -135,6 +176,55 @@ function PrimeAndRender({
   );
 }
 
+/**
+ * Helper: produce N synthetic trade rows on dates spread across the last
+ * `daysBack` days so the markers land on visible bars regardless of when
+ * the story is rendered. We alternate buy / sell so the mixed-day branch
+ * also gets exercised in the design tool.
+ */
+function makeTrades(
+  symbol: string,
+  daysBack: number,
+  pattern: ReadonlyArray<{ side: "BUY" | "SELL"; qty: number; price: number }>,
+): TradeSeed[] {
+  const today = Date.now();
+  const day = 86_400_000;
+  return pattern.map((p, i) => ({
+    transaction_date: new Date(
+      today - (daysBack - i * Math.floor(daysBack / pattern.length)) * day,
+    ).toISOString(),
+    side: p.side,
+    quantity: p.qty,
+    price: p.price,
+    symbol,
+  }));
+}
+
+/**
+ * Helper: produce N synthetic dividend rows on quarter-spaced ex-dates.
+ * Mirrors the real cadence well enough that the dot row shows ~4
+ * dividends across a 1-year window.
+ */
+function makeDividends(
+  symbol: string,
+  daysBack: number,
+  count = 4,
+): DividendSeed[] {
+  const today = Date.now();
+  const day = 86_400_000;
+  return Array.from({ length: count }).map((_, i) => {
+    const offset = Math.round((daysBack / (count + 1)) * (i + 1));
+    return {
+      symbol,
+      ex_date: new Date(today - offset * day).toISOString(),
+      dividend_per_share: 0.24,
+      shares_held: 100,
+      total_dividend: 24,
+      currency: "USD",
+    };
+  });
+}
+
 /** Default flagship view: AAPL with sector benchmark XLK and a "Since I bought" anchor. */
 export const Default = () => (
   <PrimeAndRender
@@ -143,6 +233,63 @@ export const Default = () => (
     snapshot={{ sector: "Technology", instrument_type: "EQUITY" }}
     activity={[{ transaction_date: "2025-09-01T10:00:00Z", side: "BUY" }]}
     initialPeriod="since"
+  />
+);
+
+/**
+ * Trade markers only: mix of buys and sells across the period so each
+ * marker shape (arrow up / arrow down / circle for mixed days) renders
+ * in the gallery view. No dividends.
+ */
+export const WithTrades = () => (
+  <PrimeAndRender
+    symbol="AAPL"
+    benchmarkSymbol="XLK"
+    snapshot={{ sector: "Technology", instrument_type: "EQUITY" }}
+    activity={makeTrades("AAPL", 360, [
+      { side: "BUY", qty: 100, price: 150 },
+      { side: "BUY", qty: 50, price: 162 },
+      { side: "SELL", qty: 30, price: 178 },
+      { side: "BUY", qty: 25, price: 165 },
+      { side: "SELL", qty: 25, price: 188 },
+    ])}
+    initialPeriod="1y"
+  />
+);
+
+/**
+ * Dividend dots only: a year of quarterly dividend events show as the
+ * indigo dot row at the bottom of the chart. Hover over each dot to see
+ * the per-share / total in the rich tooltip.
+ */
+export const WithDividends = () => (
+  <PrimeAndRender
+    symbol="MSFT"
+    benchmarkSymbol="XLK"
+    snapshot={{ sector: "Technology", instrument_type: "EQUITY" }}
+    activity={[]}
+    dividends={makeDividends("MSFT", 360, 4)}
+    initialPeriod="1y"
+  />
+);
+
+/**
+ * The full flagship rendering: trade markers on the price line AND
+ * dividend dots underneath, with the rich crosshair tooltip surfacing
+ * all three (price, trades, dividends) on the hovered day.
+ */
+export const WithBoth = () => (
+  <PrimeAndRender
+    symbol="AAPL"
+    benchmarkSymbol="XLK"
+    snapshot={{ sector: "Technology", instrument_type: "EQUITY" }}
+    activity={makeTrades("AAPL", 360, [
+      { side: "BUY", qty: 100, price: 150 },
+      { side: "BUY", qty: 50, price: 162 },
+      { side: "SELL", qty: 30, price: 178 },
+    ])}
+    dividends={makeDividends("AAPL", 360, 4)}
+    initialPeriod="1y"
   />
 );
 

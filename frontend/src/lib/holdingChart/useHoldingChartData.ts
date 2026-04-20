@@ -20,7 +20,12 @@
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { activityApi, marketDataApi, unwrapResponse } from "@/services/api";
+import {
+  activityApi,
+  marketDataApi,
+  portfolioApi,
+  unwrapResponse,
+} from "@/services/api";
 
 import {
   describeBenchmark,
@@ -32,6 +37,17 @@ import {
   periodCoveringDate,
   type ActivityRowLite,
 } from "./sinceIBoughtRange";
+import {
+  bucketDividendsByDay,
+  bucketTradesByDay,
+  buildTradeMarkers,
+  periodToDividendDays,
+  type DividendBucket,
+  type DividendRow,
+  type SeriesMarker,
+  type TradeBucket,
+  type TradeRow,
+} from "./tradeMarkers";
 
 export type HoldingChartPeriod =
   | "1mo"
@@ -70,6 +86,12 @@ export interface UseHoldingChartDataOptions {
    * what the user can actually see.
    */
   fetchBenchmark?: boolean;
+  /**
+   * Skip the dividends fetch entirely. Defaults to true. Useful for
+   * stories / smaller chart variants that don't render the dividend
+   * dot overlay and so don't need to pay the network round-trip.
+   */
+  fetchDividends?: boolean;
 }
 
 export interface HoldingChartData {
@@ -80,6 +102,12 @@ export interface HoldingChartData {
   benchmarkLabel: string;
   benchmarkTooltip: string;
   snapshot: Record<string, unknown> | null;
+  /** Activity rows bucketed by UTC day (one bucket per trade day). */
+  trades: TradeBucket[];
+  /** Render-ready marker payloads for `createSeriesMarkers`. */
+  tradeMarkers: SeriesMarker[];
+  /** Dividend rows filtered to symbol and bucketed by ex-date. */
+  dividends: DividendBucket[];
   earliestBuyDate: string | null;
   /** Resolved 'since' → concrete backend period (used for refetch keys). */
   effectivePeriod: Exclude<HoldingChartPeriod, "since">;
@@ -94,6 +122,18 @@ export interface HoldingChartData {
 const SNAPSHOT_STALE_MS = 5 * 60_000;
 const ACTIVITY_STALE_MS = 60_000;
 const PRICE_STALE_MS = 30_000;
+// Dividends API is cross-symbol (no `symbol` filter): one fetch covers
+// every holding in the account for the requested window. 5 minutes is a
+// deliberate compromise between two pulls:
+//   - Long enough that flipping period or hovering between holdings does
+//     not re-thrash the network — every consumer in this account/window
+//     shares the same cache slot (see the queryKey below, which omits
+//     `symbol` for exactly this reason).
+//   - Not so long that a freshly-paid dividend takes hours to surface.
+//     Dividends only post once a quarter per symbol, so 5 minutes is
+//     comfortably under the human-noticeable threshold for a quarterly
+//     event while still keeping period switches snappy.
+const DIVIDEND_STALE_MS = 5 * 60_000;
 
 const BACKEND_PERIODS = ["1mo", "3mo", "6mo", "ytd", "1y", "5y", "max"] as const;
 type BackendPeriod = (typeof BACKEND_PERIODS)[number];
@@ -129,6 +169,13 @@ function extractSnapshot(raw: unknown): Record<string, unknown> | null {
 function extractActivityRows(raw: unknown): ActivityRowLite[] {
   if (!raw) return [];
   const rows = unwrapResponse<ActivityRowLite>(raw, "activity");
+  return Array.isArray(rows) ? rows : [];
+}
+
+/** Same envelope tolerance as `extractActivityRows`, scoped to dividends. */
+function extractDividendRows(raw: unknown): DividendRow[] {
+  if (!raw) return [];
+  const rows = unwrapResponse<DividendRow>(raw, "dividends");
   return Array.isArray(rows) ? rows : [];
 }
 
@@ -189,6 +236,7 @@ export function useHoldingChartData(
     benchmarkOverride,
     enabled = true,
     fetchBenchmark = true,
+    fetchDividends = true,
   } = opts;
   const queryClient = useQueryClient();
 
@@ -266,10 +314,57 @@ export function useHoldingChartData(
     staleTime: PRICE_STALE_MS,
   });
 
+  // Dividends API does NOT take a `symbol` filter — it returns every
+  // dividend across the account in the requested window, and we filter
+  // client-side in the `dividends` memo below. The queryKey therefore
+  // intentionally OMITS `symbol`: keying on it would fragment the cache
+  // (every holding in the same account+period would refetch the same
+  // payload independently), defeating the entire reason this endpoint
+  // is shared. Two `useHoldingChartData` hooks for AAPL and MSFT under
+  // the same account+period MUST hit the cache, not the network, the
+  // second time around.
+  const dividendDays = React.useMemo(
+    () => periodToDividendDays(effectivePeriod),
+    [effectivePeriod],
+  );
+  const dividendsEnabled = enabledForSymbol && fetchDividends;
+  const dividendsQuery = useQuery({
+    queryKey: [
+      "holdingChart",
+      "dividends",
+      accountId ?? null,
+      dividendDays,
+    ],
+    queryFn: () => portfolioApi.getDividends(accountId, dividendDays),
+    enabled: dividendsEnabled,
+    staleTime: DIVIDEND_STALE_MS,
+  });
+
   const bars = React.useMemo(
     () => clampToStart(asBars(priceQuery.data), effectiveStart),
     [priceQuery.data, effectiveStart],
   );
+
+  // Trade buckets + render-ready markers. We feed the same activity rows
+  // that drive the "Since I bought" anchor through the marker pipeline so
+  // the chart and the period selector stay perfectly in sync.
+  const trades = React.useMemo<TradeBucket[]>(
+    () => bucketTradesByDay(activityRows as TradeRow[]),
+    [activityRows],
+  );
+  const tradeMarkers = React.useMemo<SeriesMarker[]>(
+    () => buildTradeMarkers(trades),
+    [trades],
+  );
+
+  // Dividend buckets, filtered client-side to the holding's symbol.
+  // Always returns `[]` (never undefined) so consumer rendering stays
+  // simple — `fetchDividends={false}` short-circuits to `[]` too.
+  const dividends = React.useMemo<DividendBucket[]>(() => {
+    if (!dividendsEnabled) return [];
+    const rows = extractDividendRows(dividendsQuery.data);
+    return bucketDividendsByDay(rows, symbol);
+  }, [dividendsEnabled, dividendsQuery.data, symbol]);
   const benchmarkBars = React.useMemo<BenchmarkBar[]>(() => {
     if (!benchmarkEnabled) return [];
     const raw = asBars(benchmarkQuery.data);
@@ -290,6 +385,12 @@ export function useHoldingChartData(
   // First-class error surface: any failed query bubbles up. We intentionally
   // do NOT silently fall back to partial data — if the snapshot 500s but the
   // bars succeed, the user sees an error state. (See no-silent-fallback.)
+  //
+  // Dividends are deliberately NOT part of `isError` — they're a secondary
+  // overlay and a missing dividend feed should not blow away the chart.
+  // The portfolioApi shim already returns an empty list on backend failure,
+  // so a true error here is rare; we still log it via React Query devtools
+  // but don't propagate it to the chart's error gate.
   const isError =
     snapshotQuery.isError ||
     activityQuery.isError ||
@@ -316,16 +417,20 @@ export function useHoldingChartData(
       activityQuery.refetch(),
       priceQuery.refetch(),
       benchmarkEnabled ? benchmarkQuery.refetch() : Promise.resolve(),
+      dividendsEnabled ? dividendsQuery.refetch() : Promise.resolve(),
     ]);
-    // Bust ALL holdingChart cache entries that mention this symbol or
-    // its resolved benchmark. The previous version used
-    // `queryKey: ["holdingChart", symbol]` which never matched (every
-    // real key starts with `["holdingChart", "<kind>", symbol, …]`),
-    // so cached upstream consumers never picked up the refresh.
+    // Bust ALL holdingChart cache entries this hook would consume:
+    //   - Anything mentioning the primary symbol or its resolved benchmark.
+    //   - ALL dividends entries (`["holdingChart", "dividends", ...]`)
+    //     because the dividends key intentionally omits `symbol` — the
+    //     payload is account-wide and shared across holdings, so a
+    //     refresh for AAPL must also bust the same cache slot MSFT is
+    //     reading from.
     queryClient.invalidateQueries({
       predicate: (query) => {
         const key = query.queryKey;
         if (!Array.isArray(key) || key[0] !== "holdingChart") return false;
+        if (key[1] === "dividends") return true;
         return key.some((k) => k === symbol || k === benchmarkSymbol);
       },
     });
@@ -334,6 +439,8 @@ export function useHoldingChartData(
     benchmarkEnabled,
     benchmarkQuery,
     benchmarkSymbol,
+    dividendsEnabled,
+    dividendsQuery,
     priceQuery,
     queryClient,
     snapshotQuery,
@@ -348,6 +455,9 @@ export function useHoldingChartData(
     benchmarkLabel: benchmarkEnabled ? descriptor.label : "",
     benchmarkTooltip: benchmarkEnabled ? descriptor.tooltip : "",
     snapshot,
+    trades,
+    tradeMarkers,
+    dividends,
     earliestBuyDate: earliest,
     effectivePeriod,
     effectiveStart,

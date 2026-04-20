@@ -12,6 +12,9 @@ vi.mock("@/services/api", () => {
     activityApi: {
       getActivity: vi.fn(),
     },
+    portfolioApi: {
+      getDividends: vi.fn(),
+    },
     unwrapResponse: <T,>(raw: unknown, key: string): T[] => {
       const r = raw as Record<string, any> | undefined;
       return (r?.data?.data?.[key] ?? r?.data?.[key] ?? r?.[key] ?? []) as T[];
@@ -19,7 +22,7 @@ vi.mock("@/services/api", () => {
   };
 });
 
-import { activityApi, marketDataApi } from "@/services/api";
+import { activityApi, marketDataApi, portfolioApi } from "@/services/api";
 import { useHoldingChartData } from "../useHoldingChartData";
 
 function makeTrackingClient() {
@@ -41,6 +44,7 @@ function wrapperWithClient(client: QueryClient) {
 const mockHistory = vi.mocked(marketDataApi.getHistory);
 const mockSnapshot = vi.mocked(marketDataApi.getSnapshot);
 const mockActivity = vi.mocked(activityApi.getActivity);
+const mockDividends = vi.mocked(portfolioApi.getDividends);
 
 function makeWrapper() {
   const client = new QueryClient({
@@ -79,6 +83,10 @@ beforeEach(() => {
   mockHistory.mockReset();
   mockSnapshot.mockReset();
   mockActivity.mockReset();
+  mockDividends.mockReset();
+  // Default: dividends API returns an empty list. Per-test overrides
+  // populate it where the assertion cares.
+  mockDividends.mockResolvedValue({ data: { dividends: [] } });
 });
 
 afterEach(() => {
@@ -256,6 +264,7 @@ describe("useHoldingChartData", () => {
     expect(mockSnapshot).not.toHaveBeenCalled();
     expect(mockActivity).not.toHaveBeenCalled();
     expect(mockHistory).not.toHaveBeenCalled();
+    expect(mockDividends).not.toHaveBeenCalled();
   });
 
   it("skips the benchmark fetch when fetchBenchmark is false", async () => {
@@ -325,6 +334,230 @@ describe("useHoldingChartData", () => {
     expect(client.getQueryState(symbolKey)?.isInvalidated).toBe(true);
     expect(client.getQueryState(priceKey)?.isInvalidated).toBe(true);
     expect(client.getQueryState(benchKey)?.isInvalidated).toBe(true);
+  });
+
+  it("populates `trades` and `tradeMarkers` from the activity rows", async () => {
+    mockSnapshot.mockResolvedValueOnce({
+      symbol: "AAPL",
+      snapshot: { sector: "Technology" },
+    });
+    mockActivity.mockResolvedValueOnce({
+      activity: [
+        { transaction_date: "2025-09-01T14:30:00Z", side: "BUY", quantity: 10, price: 150 },
+        { transaction_date: "2025-09-01T15:00:00Z", side: "BUY", quantity: 5, price: 151 },
+        { transaction_date: "2025-10-15T16:00:00Z", side: "SELL", quantity: 3, price: 165 },
+      ],
+    });
+    mockHistory.mockImplementation(async (sym: string) => priceResponse(sym, 5));
+
+    const { result } = renderHook(
+      () => useHoldingChartData({ symbol: "AAPL", period: "1y", fetchBenchmark: false, fetchDividends: false }),
+      { wrapper: makeWrapper() },
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.trades).toHaveLength(2);
+    const sep = result.current.trades.find((t) => t.dayKey === "2025-09-01");
+    expect(sep?.buys).toHaveLength(2);
+    expect(sep?.sells).toHaveLength(0);
+    expect(sep?.totalShares).toBe(15);
+    // Two markers (one per day) — sep day is buy-only, oct day is sell-only.
+    expect(result.current.tradeMarkers).toHaveLength(2);
+    const ids = result.current.tradeMarkers.map((m) => m.id);
+    expect(ids).toContain("2025-09-01:buy");
+    expect(ids).toContain("2025-10-15:sell");
+  });
+
+  it("filters dividends to the holding symbol and buckets them", async () => {
+    mockSnapshot.mockResolvedValueOnce({
+      symbol: "AAPL",
+      snapshot: { sector: "Technology" },
+    });
+    mockActivity.mockResolvedValueOnce({ activity: [] });
+    mockHistory.mockImplementation(async (sym: string) => priceResponse(sym, 5));
+    mockDividends.mockReset();
+    mockDividends.mockResolvedValueOnce({
+      data: {
+        dividends: [
+          { symbol: "AAPL", ex_date: "2025-08-15", dividend_per_share: 0.24, shares_held: 100, total_dividend: 24 },
+          { symbol: "MSFT", ex_date: "2025-08-15", dividend_per_share: 0.75, shares_held: 50, total_dividend: 37.5 },
+          { symbol: "AAPL", ex_date: "2025-11-15", dividend_per_share: 0.25, shares_held: 100, total_dividend: 25 },
+        ],
+      },
+    });
+
+    const { result } = renderHook(
+      () => useHoldingChartData({ symbol: "AAPL", period: "1y", fetchBenchmark: false }),
+      { wrapper: makeWrapper() },
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.dividends).toHaveLength(2);
+    expect(result.current.dividends.map((d) => d.dayKey)).toEqual([
+      "2025-08-15",
+      "2025-11-15",
+    ]);
+    expect(result.current.dividends[0].totalAmount).toBeCloseTo(24, 5);
+  });
+
+  it("uses period-derived `days` when calling the dividends API", async () => {
+    mockSnapshot.mockResolvedValueOnce({
+      symbol: "AAPL",
+      snapshot: { sector: "Technology" },
+    });
+    mockActivity.mockResolvedValueOnce({ activity: [] });
+    mockHistory.mockImplementation(async (sym: string) => priceResponse(sym, 5));
+
+    const { result } = renderHook(
+      () =>
+        useHoldingChartData({
+          symbol: "AAPL",
+          period: "5y",
+          fetchBenchmark: false,
+        }),
+      { wrapper: makeWrapper() },
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(mockDividends).toHaveBeenCalledWith(undefined, 1825);
+  });
+
+  it("skips the dividends fetch when fetchDividends is false", async () => {
+    mockSnapshot.mockResolvedValueOnce({
+      symbol: "AAPL",
+      snapshot: { sector: "Technology" },
+    });
+    mockActivity.mockResolvedValueOnce({ activity: [] });
+    mockHistory.mockImplementation(async (sym: string) => priceResponse(sym, 5));
+
+    const { result } = renderHook(
+      () =>
+        useHoldingChartData({
+          symbol: "AAPL",
+          period: "1y",
+          fetchBenchmark: false,
+          fetchDividends: false,
+        }),
+      { wrapper: makeWrapper() },
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(mockDividends).not.toHaveBeenCalled();
+    expect(result.current.dividends).toEqual([]);
+  });
+
+  it("does not flip into error state when dividends fail (overlay is secondary)", async () => {
+    mockSnapshot.mockResolvedValueOnce({
+      symbol: "AAPL",
+      snapshot: { sector: "Technology" },
+    });
+    mockActivity.mockResolvedValueOnce({ activity: [] });
+    mockHistory.mockImplementation(async (sym: string) => priceResponse(sym, 5));
+    mockDividends.mockReset();
+    mockDividends.mockRejectedValueOnce(new Error("dividends down"));
+
+    const { result } = renderHook(
+      () => useHoldingChartData({ symbol: "AAPL", period: "1y", fetchBenchmark: false }),
+      { wrapper: makeWrapper() },
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.isError).toBe(false);
+    expect(result.current.dividends).toEqual([]);
+  });
+
+  it("invalidates the dividends cache key on refetch", async () => {
+    mockSnapshot.mockResolvedValueOnce({
+      symbol: "AAPL",
+      snapshot: { sector: "Technology" },
+    });
+    mockActivity.mockResolvedValueOnce({ activity: [] });
+    mockHistory.mockImplementation(async (sym: string) => priceResponse(sym, 5));
+
+    const client = makeTrackingClient();
+    const { result } = renderHook(
+      () => useHoldingChartData({ symbol: "AAPL", period: "1y", fetchBenchmark: false }),
+      { wrapper: wrapperWithClient(client) },
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // Dividends key is account-wide (no `symbol`) — see the queryKey
+    // comment in `useHoldingChartData.ts`. The test now reflects the
+    // correct shape `[..., accountId, dividendDays]`.
+    const dividendsKey = ["holdingChart", "dividends", null, 365];
+    expect(client.getQueryState(dividendsKey)).toBeDefined();
+
+    await result.current.refetch();
+    expect(client.getQueryState(dividendsKey)?.isInvalidated).toBe(true);
+  });
+
+  it("two hooks for different symbols (same account+period) share ONE dividends fetch", async () => {
+    // Regression for Copilot review comment B: the dividends queryKey
+    // used to include `symbol`, which fragmented the cache and forced a
+    // fresh API call per holding even though the underlying endpoint is
+    // account-wide. With `symbol` removed from the key, two holdings
+    // sharing account+period must share the cached payload — the
+    // dividends API is hit ONCE total, not once per symbol.
+    mockSnapshot.mockResolvedValue({
+      symbol: "AAPL",
+      snapshot: { sector: "Technology" },
+    });
+    mockActivity.mockResolvedValue({ activity: [] });
+    mockHistory.mockImplementation(async (sym: string) => priceResponse(sym, 5));
+    mockDividends.mockReset();
+    mockDividends.mockResolvedValue({
+      data: {
+        dividends: [
+          { symbol: "AAPL", ex_date: "2025-08-15", dividend_per_share: 0.24, shares_held: 100, total_dividend: 24 },
+          { symbol: "MSFT", ex_date: "2025-08-15", dividend_per_share: 0.75, shares_held: 50, total_dividend: 37.5 },
+        ],
+      },
+    });
+
+    const client = makeTrackingClient();
+    function BothHooks() {
+      const aapl = useHoldingChartData({
+        symbol: "AAPL",
+        period: "1y",
+        fetchBenchmark: false,
+      });
+      const msft = useHoldingChartData({
+        symbol: "MSFT",
+        period: "1y",
+        fetchBenchmark: false,
+      });
+      return { aapl, msft };
+    }
+
+    const { result } = renderHook(() => BothHooks(), {
+      wrapper: wrapperWithClient(client),
+    });
+
+    await waitFor(() => {
+      expect(result.current.aapl.isLoading).toBe(false);
+      expect(result.current.msft.isLoading).toBe(false);
+    });
+
+    // The shared cache slot exists exactly once, with no `symbol`.
+    expect(client.getQueryState(["holdingChart", "dividends", null, 365])).toBeDefined();
+
+    // ONE network call total, even though TWO holdings consumed the data.
+    expect(mockDividends).toHaveBeenCalledTimes(1);
+
+    // Each consumer still sees its own symbol filtered correctly.
+    expect(result.current.aapl.dividends.map((d) => d.dayKey)).toEqual([
+      "2025-08-15",
+    ]);
+    expect(result.current.aapl.dividends[0].totalAmount).toBeCloseTo(24, 5);
+    expect(result.current.msft.dividends.map((d) => d.dayKey)).toEqual([
+      "2025-08-15",
+    ]);
+    expect(result.current.msft.dividends[0].totalAmount).toBeCloseTo(37.5, 5);
   });
 
   it("returns an empty bar list when the backend hands back a non-array shape", async () => {

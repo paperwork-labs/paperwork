@@ -9,25 +9,22 @@
  *
  * Lazy-tolerant of mixed shapes:
  *   - Some endpoints expose `transaction_date`, others expose `date`.
- *   - Sides come through as 'BUY' / 'SELL' or single-letter 'B' / 'S'.
+ *   - Sides come through as 'BUY' / 'SELL' / 'B' / 'S' / 'BOUGHT' /
+ *     'SOLD' (case-insensitive — see `sideTokens.ts` for the full
+ *     accepted set; that module is the single source of truth shared
+ *     with the marker pipeline).
  *   - Future-dated rows (rare, mostly bad data) are ignored so we never
  *     pick a buy date AFTER today.
  */
+import { isBuySide } from "./sideTokens";
 
 export interface ActivityRowLite {
   /** ISO 8601 timestamp from the unified activity endpoint. */
   transaction_date?: string;
   /** Some legacy endpoints emit `date` instead. */
   date?: string;
-  /** 'BUY' | 'SELL' | 'B' | 'S' (case-insensitive). */
+  /** 'BUY' | 'SELL' | 'B' | 'S' | 'BOUGHT' | 'SOLD' (case-insensitive). */
   side?: string;
-}
-
-const BUY_TOKENS = new Set(["BUY", "B", "BOUGHT"]);
-
-function isBuySide(side: string | undefined): boolean {
-  if (!side) return false;
-  return BUY_TOKENS.has(side.trim().toUpperCase());
 }
 
 /**
