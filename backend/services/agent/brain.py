@@ -188,10 +188,27 @@ Autonomy level: {autonomy_level}
 class AgentBrain:
     """LLM-powered agent brain for intelligent operations."""
     
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, user_id: Optional[int] = None):
+        """Construct an agent scoped to a tenant.
+
+        ``user_id`` MUST be passed for all per-user tools (portfolio
+        summary, position details, activity). For pure ops/diagnostic
+        callers that don't query user data, ``None`` is accepted but
+        any per-user tool will raise rather than silently fall back to
+        ``user_id=1`` (the old prod-corruption hazard, D88).
+        """
         self.db = db
+        self.user_id = user_id
         self.session_id = str(uuid.uuid4())[:8]
         self._conversation: List[Dict[str, Any]] = []
+
+    def _require_user_id(self, tool_name: str) -> int:
+        if self.user_id is None:
+            raise RuntimeError(
+                f"AgentBrain.{tool_name} requires user_id; "
+                "construct AgentBrain(db, user_id=...) for per-tenant calls."
+            )
+        return int(self.user_id)
         self._last_openai_error: Optional[str] = None
     
     async def analyze_and_act(
@@ -920,9 +937,8 @@ class AgentBrain:
             from backend.models import Position, BrokerAccount
             
             svc = PortfolioAnalyticsService()
-            
-            # Get admin user (user_id=1)
-            user_id = 1
+
+            user_id = self._require_user_id("_tool_get_portfolio_summary")
             
             # Get risk metrics
             risk_metrics = svc.compute_risk_metrics(self.db, user_id)
@@ -971,7 +987,7 @@ class AgentBrain:
             from backend.models import Position, MarketSnapshot
             
             symbol_upper = symbol.upper()
-            user_id = 1
+            user_id = self._require_user_id("_tool_get_position_details")
             
             # Get position
             position = self.db.query(Position).filter(
@@ -1035,8 +1051,8 @@ class AgentBrain:
         try:
             from backend.models import Trade
             from sqlalchemy import desc
-            
-            user_id = 1
+
+            user_id = self._require_user_id("_tool_get_activity")
             
             query = self.db.query(Trade).filter(
                 Trade.user_id == user_id

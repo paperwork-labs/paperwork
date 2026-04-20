@@ -2,7 +2,10 @@
 Brain-compatible HTTP tool endpoints (machine-to-machine).
 
 Auth: header X-Brain-Api-Key matching settings.BRAIN_API_KEY.
-Portfolio and orders use settings.BRAIN_TOOLS_USER_ID (default 1).
+Tenant scoping: header X-Axiom-User-Id selects the target user.
+``settings.BRAIN_TOOLS_USER_ID`` is a deprecated last-resort fallback
+when the caller omits the header (logged at WARNING so we can drive
+the deprecation campaign).
 """
 
 from __future__ import annotations
@@ -11,7 +14,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -35,7 +38,41 @@ logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(verify_brain_api_key)])
 
 
+def brain_user_id_dep(
+    x_axiom_user_id: Optional[str] = Header(None, alias="X-Axiom-User-Id"),
+) -> int:
+    """Resolve the M2M caller's target user.
+
+    Order:
+      1. Explicit ``X-Axiom-User-Id`` header (preferred, scoped per tenant).
+      2. Fallback to ``settings.BRAIN_TOOLS_USER_ID`` (deprecated; logs a
+         WARNING for every use so we can drive the deprecation campaign).
+    """
+    if x_axiom_user_id:
+        try:
+            return int(x_axiom_user_id)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid X-Axiom-User-Id header: {exc}",
+            )
+    logger.warning(
+        "brain_tools: M2M call without X-Axiom-User-Id; "
+        "falling back to BRAIN_TOOLS_USER_ID=%s (deprecated)",
+        settings.BRAIN_TOOLS_USER_ID,
+    )
+    return int(settings.BRAIN_TOOLS_USER_ID)
+
+
 def _brain_user_id() -> int:
+    """Legacy helper preserved for paths that haven't migrated to the
+    dependency yet. Always logs a WARNING so we can find every caller.
+    """
+    logger.warning(
+        "brain_tools._brain_user_id() invoked without dependency injection; "
+        "use Depends(brain_user_id_dep) instead. user_id=%s",
+        settings.BRAIN_TOOLS_USER_ID,
+    )
     return int(settings.BRAIN_TOOLS_USER_ID)
 
 
@@ -60,9 +97,9 @@ def _latest_technical_snapshot(db: Session, symbol: str) -> Optional[MarketSnaps
 @router.get("/portfolio")
 async def tools_portfolio(
     db: Session = Depends(get_db),
+    uid: int = Depends(brain_user_id_dep),
 ) -> Dict[str, Any]:
     """Portfolio summary: P&L, exposure, risk and sector attribution."""
-    uid = _brain_user_id()
     pos_models = db.query(Position).filter(Position.user_id == uid).all()
     positions: List[Dict[str, Any]] = []
     long_notional = 0.0
@@ -269,9 +306,9 @@ class PreviewTradeBody(BaseModel):
 async def tools_preview_trade(
     body: PreviewTradeBody,
     db: Session = Depends(get_db),
+    uid: int = Depends(brain_user_id_dep),
 ) -> Dict[str, Any]:
     """Create a PREVIEW order (broker what-if + persisted row)."""
-    uid = _brain_user_id()
     try:
         req = OrderRequest.from_user_input(
             symbol=body.symbol.strip(),
@@ -300,14 +337,14 @@ class ExecuteTradeBody(BaseModel):
 async def tools_execute_trade(
     body: ExecuteTradeBody,
     db: Session = Depends(get_db),
+    uid: int = Depends(brain_user_id_dep),
 ) -> Dict[str, Any]:
     """Submit a preview order via OrderManager, or queue for approval when configured."""
-    uid = _brain_user_id()
     user = db.query(User).filter(User.id == uid).first()
     if user is None:
         raise HTTPException(
             status_code=400,
-            detail=f"User id {uid} (BRAIN_TOOLS_USER_ID) not found",
+            detail=f"User id {uid} not found",
         )
 
     order = (
@@ -344,14 +381,14 @@ class ApproveTradeBody(BaseModel):
 async def tools_approve_trade(
     body: ApproveTradeBody,
     db: Session = Depends(get_db),
+    uid: int = Depends(brain_user_id_dep),
 ) -> Dict[str, Any]:
     """Approve a pending order (owner only); returns to PREVIEW for execute-trade."""
-    uid = _brain_user_id()
     approver = db.query(User).filter(User.id == uid).first()
     if approver is None:
         raise HTTPException(
             status_code=400,
-            detail=f"User id {uid} (BRAIN_TOOLS_USER_ID) not found",
+            detail=f"User id {uid} not found",
         )
     order = (
         db.query(Order)
@@ -375,14 +412,14 @@ class RejectTradeBody(BaseModel):
 async def tools_reject_trade(
     body: RejectTradeBody,
     db: Session = Depends(get_db),
+    uid: int = Depends(brain_user_id_dep),
 ) -> Dict[str, Any]:
     """Reject a pending or preview order."""
-    uid = _brain_user_id()
     rejector = db.query(User).filter(User.id == uid).first()
     if rejector is None:
         raise HTTPException(
             status_code=400,
-            detail=f"User id {uid} (BRAIN_TOOLS_USER_ID) not found",
+            detail=f"User id {uid} not found",
         )
     order = (
         db.query(Order)
@@ -513,8 +550,8 @@ async def tools_run_task(
 @router.get("/pending-approvals")
 async def tools_pending_approvals(
     db: Session = Depends(get_db),
+    uid: int = Depends(brain_user_id_dep),
 ) -> Dict[str, Any]:
     """List orders currently awaiting approval with timeout info."""
-    uid = _brain_user_id()
     pending = ApprovalService.list_pending(db, uid)
     return {"count": len(pending), "orders": pending}

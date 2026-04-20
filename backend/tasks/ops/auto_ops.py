@@ -123,12 +123,18 @@ REMEDIATION_MAP = {
 
 
 async def _run_llm_agent(health: dict) -> dict:
-    """Run the LLM-powered agent brain."""
+    """Run the LLM-powered agent brain.
+
+    The auto-ops sweep is platform-wide (not user-scoped); it inspects
+    cross-tenant infra health. We pass ``user_id=None`` so any per-user
+    tool invocation explicitly raises rather than silently using
+    ``user_id=1`` (D88 hazard).
+    """
     from backend.services.agent.brain import AgentBrain
-    
+
     session = SessionLocal()
     try:
-        brain = AgentBrain(db=session)
+        brain = AgentBrain(db=session, user_id=None)
         result = await brain.analyze_and_act(health)
         return result
     finally:

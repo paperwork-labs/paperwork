@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { isPlatformAdminRole } from '../utils/userRole';
-import { Bell, Cpu, KeyRound, Sliders, User, Shield, Activity, ClipboardList } from 'lucide-react';
+import { Bell, Cpu, KeyRound, Sliders, User, Shield, Activity, ClipboardList, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -76,6 +76,7 @@ const SettingsShell: React.FC = () => {
               <MenuLink to="/settings/connections">Connections</MenuLink>
               <MenuLink to="/settings/mcp">MCP Tokens</MenuLink>
               <MenuLink to="/settings/notifications">Notifications</MenuLink>
+              <MenuLink to="/settings/data-privacy">Data privacy</MenuLink>
               {isPlatformAdminRole(user?.role) && (
                 <>
                   <p className="mt-4 px-2 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
@@ -111,6 +112,7 @@ const SettingsShell: React.FC = () => {
             {iconNav('/settings/connections', 'Connections', <Shield className="size-4" />)}
             {iconNav('/settings/mcp', 'MCP Tokens', <KeyRound className="size-4" />)}
             {iconNav('/settings/notifications', 'Notifications', <Bell className="size-4" />)}
+            {iconNav('/settings/data-privacy', 'Data privacy', <Lock className="size-4" />)}
             {isPlatformAdminRole(user?.role) ? (
               <>
                 {iconNav('/settings/admin/system', 'System Status', <Activity className="size-4" />)}

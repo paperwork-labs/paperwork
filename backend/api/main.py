@@ -69,6 +69,11 @@ from backend.api.routes.execution import router as execution_router
 from backend.api.routes.pipeline import router as pipeline_router
 from backend.api.routes.backtest import router as backtest_router
 from backend.api.routes.portfolio.narrative import router as portfolio_narrative
+from backend.api.middleware.rate_limit import TenantRateLimitMiddleware
+from backend.api.routes.multitenant import (
+    admin_costs_router,
+    gdpr_router,
+)
 from backend.api.routes.portfolio.connection_options import (
     router as portfolio_connection_options,
 )
@@ -164,6 +169,11 @@ app.openapi = custom_openapi
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
+
+# Per-tenant rate limit (token-bucket, Redis-backed, fail-CLOSED).
+# Sits in front of SlowAPI so a per-tenant 429 wins over the global IP
+# default. Allowlists health/auth/webhooks (see middleware module).
+app.add_middleware(TenantRateLimitMiddleware)
 
 # GZip responses (>1KB)
 from starlette.middleware.gzip import GZipMiddleware
@@ -742,6 +752,17 @@ app.include_router(
     backtest_router,
     prefix="/api/v1/backtest",
     tags=["Backtest"],
+    dependencies=[Depends(require_non_market_access)],
+)
+
+# GDPR data-subject rights (per-tenant, scoped to current_user).
+app.include_router(
+    gdpr_router,
+    dependencies=[Depends(require_non_market_access)],
+)
+# Admin: per-tenant cost rollup view.
+app.include_router(
+    admin_costs_router,
     dependencies=[Depends(require_non_market_access)],
 )
 

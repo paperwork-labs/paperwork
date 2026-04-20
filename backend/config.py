@@ -65,7 +65,23 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = None
     # Service-to-service key for Brain tool HTTP routes (header X-Brain-Api-Key)
     BRAIN_API_KEY: Optional[str] = None
-    BRAIN_TOOLS_USER_ID: int = 1  # Portfolio / order context for those routes
+    # DEPRECATED. Used as a last-resort fallback ONLY when no
+    # X-Axiom-User-Id header was supplied AND the caller authenticated
+    # with the global Brain API key. New M2M callers MUST set
+    # ``X-Axiom-User-Id`` so we can scope downstream calls to the
+    # correct tenant. See backend/api/middleware/rate_limit.py.
+    BRAIN_TOOLS_USER_ID: int = 1
+    # GDPR / data-subject-rights configuration
+    GDPR_EXPORT_LOCAL_DIR: str = "/tmp/axiomfolio-gdpr-exports"
+    GDPR_EXPORT_TTL_DAYS: int = 7
+    GDPR_DELETE_CONFIRM_TTL_HOURS: int = 24
+    S3_GDPR_BUCKET: Optional[str] = None
+    S3_GDPR_REGION: Optional[str] = None
+    S3_GDPR_ENDPOINT_URL: Optional[str] = None
+    S3_GDPR_ACCESS_KEY_ID: Optional[str] = None
+    S3_GDPR_SECRET_ACCESS_KEY: Optional[str] = None
+    # Per-tenant rate limit middleware kill switch (default ON in prod).
+    TENANT_RATE_LIMIT_ENABLED: bool = True
     BRAIN_WEBHOOK_URL: Optional[str] = None
     BRAIN_WEBHOOK_SECRET: Optional[str] = None
     # Agent autonomy level: "full" (auto-execute all), "safe" (auto-execute safe only), "ask" (always ask)

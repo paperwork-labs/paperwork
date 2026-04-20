@@ -329,7 +329,7 @@ async def approve_action(
         from backend.tasks.celery_app import celery_app
 
         if action.action_type in INLINE_ONLY_AGENT_TOOLS:
-            brain = AgentBrain(db=db)
+            brain = AgentBrain(db=db, user_id=current_user.id)
             payload = action.payload if isinstance(action.payload, dict) else {}
             result = await brain._execute_safe_tool(action.action_type, payload)
             action.status = "completed"
@@ -376,6 +376,8 @@ async def trigger_agent_run(
     from backend.services.market.admin_health_service import AdminHealthService
     from backend.services.agent.brain import AgentBrain
     from backend.config import settings
+
+    current_user = _admin
     
     if not settings.OPENAI_API_KEY:
         raise HTTPException(
@@ -386,7 +388,7 @@ async def trigger_agent_run(
     health_svc = AdminHealthService()
     health = health_svc.get_composite_health(db)
     
-    brain = AgentBrain(db=db)
+    brain = AgentBrain(db=db, user_id=current_user.id)
     result = await brain.analyze_and_act(health, context=context)
     
     return AgentRunResponse(
@@ -446,8 +448,8 @@ async def agent_chat(
             status_code=503,
             detail="LLM agent not configured (OPENAI_API_KEY missing)"
         )
-    
-    brain = AgentBrain(db=db)
+
+    brain = AgentBrain(db=db, user_id=_admin.id)
 
     if chat_body.session_id:
         load_outcome = brain._load_conversation(chat_body.session_id)

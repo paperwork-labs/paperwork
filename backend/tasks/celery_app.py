@@ -49,6 +49,9 @@ celery_app = Celery(
         "backend.tasks.pipeline.orchestrator",
         "backend.tasks.picks.generate_candidates",
         "backend.tasks.picks.parse_inbound",
+        # Multi-tenant hardening (GDPR + cost rollup)
+        "backend.tasks.multitenant.gdpr",
+        "backend.tasks.multitenant.cost_rollup",
         # Backtest hyperparameter optimization (heavy queue)
         "backend.tasks.backtest.walk_forward_runner",
         # Corporate actions (splits, dividends, mergers)
@@ -93,6 +96,11 @@ celery_app.conf.task_routes = {
     "backend.tasks.market.maintenance.*": {"queue": "heavy"},
     # Reconciliation spot-check is also long-running.
     "backend.tasks.market.reconciliation.spot_check": {"queue": "heavy"},
+    # GDPR data export & delete: long-running per-user jobs that walk
+    # every user-scoped table. Route to heavy so they don't starve the
+    # regular API/celery worker. Cost rollup is fast (default queue).
+    "backend.tasks.multitenant.gdpr.*": {"queue": "heavy"},
+    "backend.tasks.multitenant.cost_rollup.*": {"queue": "celery"},
     # Walk-forward optimizer trials can run 30+ min each.
     "backend.tasks.backtest.walk_forward_runner.*": {"queue": "heavy"},
     "backtest.walk_forward_run": {"queue": "heavy"},
