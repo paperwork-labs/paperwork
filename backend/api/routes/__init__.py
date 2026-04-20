@@ -30,6 +30,7 @@ from .admin.management import router as admin
 from .admin.scheduler import router as admin_scheduler
 from .admin.agent import router as admin_agent
 from .admin.autoops import router as admin_autoops
+from .admin.data_quality import router as admin_data_quality
 
 # Re-export settings routes
 from .settings.app import router as app_settings
@@ -62,6 +63,7 @@ __all__ = [
     "admin_scheduler",
     "admin_agent",
     "admin_autoops",
+    "admin_data_quality",
     # Settings
     "app_settings",
     "account_management",

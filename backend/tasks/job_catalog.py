@@ -258,6 +258,29 @@ CATALOG: List[JobTemplate] = [
         kwargs={"stale_minutes": 120},
         timeout_s=180,
     ),
+    JobTemplate(
+        id="data_quality_quorum_sweep",
+        display_name="Cross-Provider Quorum Sweep",
+        group="maintenance",
+        task="backend.tasks.data_quality.scheduled_quorum_check.run",
+        description=(
+            "Sample ~5% of recent MarketSnapshot writes and cross-validate "
+            "the LAST_PRICE field across configured market data providers. "
+            "Logs QUORUM_REACHED / DISAGREEMENT / INSUFFICIENT_PROVIDERS rows "
+            "to provider_quorum_log so the admin Data Quality dashboard can "
+            "surface drift before it poisons indicators."
+        ),
+        default_cron="20 13-21 * * 1-5",  # hourly during US market hours
+        default_tz="UTC",
+        job_run_label="data_quality_quorum_sweep",
+        kwargs={
+            "sample_pct": 0.05,
+            "max_sample": 50,
+            "lookback_minutes": 60,
+        },
+        timeout_s=600,
+        queue="celery",
+    ),
 
     # ── Intelligence Briefs ──
 
