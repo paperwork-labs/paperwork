@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
 import hotToast from 'react-hot-toast';
 import { ChartContext, ChartSlidePanel } from '../../components/market/SymbolChartUI';
 import SortableTable, { type Column } from '../../components/SortableTable';
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { semanticTextColorClass } from '@/lib/semantic-text-color';
+import { ExplanationDrawer } from '@/components/trades/ExplanationDrawer';
 
 import type { Order } from '../../types/orders';
 
@@ -37,6 +38,7 @@ const PortfolioOrders: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [chartSymbol, setChartSymbol] = useState<string | null>(null);
   const [cancellingOrderId, setCancellingOrderId] = useState<number | null>(null);
+  const [explainOrderId, setExplainOrderId] = useState<number | null>(null);
   const openChart = useCallback((sym: string) => setChartSymbol(sym), []);
 
   const ordersQuery = useQuery<OrderRow[]>({
@@ -276,6 +278,25 @@ const PortfolioOrders: React.FC = () => {
               </Button>
             );
           }
+          if (o.status === 'filled' || o.status === 'partially_filled') {
+            return (
+              <Button
+                type="button"
+                size="xs"
+                variant="ghost"
+                className="h-7 text-muted-foreground hover:text-foreground"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setExplainOrderId(o.id);
+                }}
+                aria-label="Explain why this trade was placed"
+                title="Explain why this trade was placed"
+              >
+                <Sparkles className="size-3 shrink-0" aria-hidden />
+                <span className="ml-1 text-[11px]">Why?</span>
+              </Button>
+            );
+          }
           if (o.error_message) {
             return (
               <span
@@ -334,6 +355,14 @@ const PortfolioOrders: React.FC = () => {
       </ChartContext.Provider>
 
       <ChartSlidePanel symbol={chartSymbol} onClose={() => setChartSymbol(null)} />
+
+      <ExplanationDrawer
+        orderId={explainOrderId}
+        open={explainOrderId != null}
+        onOpenChange={(open) => {
+          if (!open) setExplainOrderId(null);
+        }}
+      />
     </div>
   );
 };

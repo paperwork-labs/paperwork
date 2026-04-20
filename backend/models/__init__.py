@@ -107,6 +107,7 @@ from .narrative import PortfolioNarrative
 from .agent_action import AgentAction
 from .agent_message import AgentMessage, load_conversation_from_db, save_conversation_to_db
 from .auto_ops_explanation import AutoOpsExplanation
+from .trade_decision_explanation import TradeDecisionExplanation
 
 # Multi-tenant hardening (rate limits, GDPR jobs, cost rollup, incidents)
 from .multitenant import (
@@ -229,6 +230,7 @@ __all__ = [
     "AgentAction",
     "AgentMessage",
     "AutoOpsExplanation",
+    "TradeDecisionExplanation",
     "load_conversation_from_db",
     "save_conversation_to_db",
     "Notification",

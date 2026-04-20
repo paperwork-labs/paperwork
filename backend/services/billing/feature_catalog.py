@@ -144,6 +144,16 @@ _FEATURES: tuple[Feature, ...] = (
         description="Auto-generated RCA when a red status persists.",
         category="brain",
     ),
+    Feature(
+        key="brain.trade_decision_explainer",
+        min_tier=SubscriptionTier.PRO_PLUS,
+        title="Trade decision explainer",
+        description=(
+            "For every executed order, see a structured explanation of why "
+            "it was taken (trigger, rationale, risk context, outcome)."
+        ),
+        category="brain",
+    ),
     # ---- Execution & brokers (execution) -----------------------------------
     Feature(
         key="execution.single_broker",

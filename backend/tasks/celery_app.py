@@ -44,6 +44,7 @@ celery_app = Celery(
         "backend.tasks.ops.auto_ops",
         "backend.tasks.ops.explain_anomaly",
         "backend.tasks.ops.ibkr_watchdog",
+        "backend.tasks.agent.explain_recent_trades",
         # Data quality (cross-provider quorum + drift sweeps)
         "backend.tasks.data_quality.scheduled_quorum_check",
         # Nightly pipeline orchestrator (step-tracked 10-step run)

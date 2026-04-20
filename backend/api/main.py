@@ -65,6 +65,7 @@ from backend.api.routes.entitlements import router as entitlements_router
 from backend.api.routes.public.stats import router as public_stats_router
 from backend.api.routes.pricing import router as pricing_router
 from backend.api.routes.brain_tools import router as brain_tools_router
+from backend.api.routes.agent_trade_decision import router as agent_trade_decision_router
 from backend.api.routes.symbols import router as symbols_router
 from backend.api.routes.execution import router as execution_router
 from backend.api.routes.pipeline import router as pipeline_router
@@ -710,6 +711,11 @@ app.include_router(
     brain_tools_router,
     prefix="/api/v1/tools",
     tags=["Brain Tools"],
+)
+app.include_router(
+    agent_trade_decision_router,
+    prefix="/api/v1/agent",
+    tags=["Agent — Trade Decisions"],
 )
 # Symbol master: read-only resolution + audit endpoints. The master
 # table is global (no user_id) — auth still required so the catalog

@@ -524,6 +524,23 @@ CATALOG: List[JobTemplate] = [
         timeout_s=30,
         enabled=False,
     ),
+    # ── Trade Decision Explainer ──────────────────────────────────────
+    JobTemplate(
+        id="explain_recent_trades",
+        display_name="Explain Recent Trades (24h backfill)",
+        group="intelligence",
+        task="backend.tasks.agent.explain_recent_trades.explain_recent_trades",
+        description=(
+            "Daily: walk every executed order from the past 24h and "
+            "generate a TradeDecisionExplanation if one does not exist. "
+            "Idempotent — orders that already have a row are skipped."
+        ),
+        default_cron="30 4 * * *",
+        default_tz="UTC",
+        job_run_label="explain_recent_trades",
+        kwargs={"lookback_hours": 24},
+        timeout_s=900,
+    ),
     JobTemplate(
         id="walk_forward_optimizer_run",
         display_name="Walk-Forward Optimizer Run",
