@@ -1116,6 +1116,31 @@ export const aggregatorApi = {
   ibkrFlexDisconnect: async () => makeOptimizedRequest(() => api.post('/aggregator/ibkr/disconnect')),
 };
 
+// MCP (Model Context Protocol) tokens — per-user bearer credentials for read-only AI agent access.
+export interface MCPTokenSummary {
+  id: number;
+  name: string;
+  created_at: string;
+  expires_at: string;
+  last_used_at: string | null;
+  revoked_at: string | null;
+  is_active: boolean;
+}
+
+export interface MCPTokenCreateResponse extends MCPTokenSummary {
+  /** Plaintext token. Returned exactly once at creation; cannot be retrieved later. */
+  token: string;
+}
+
+export const mcpApi = {
+  list: async (): Promise<MCPTokenSummary[]> =>
+    makeOptimizedRequest<MCPTokenSummary[]>(() => api.get('/mcp/tokens')),
+  create: async (payload: { name: string; expires_in_days?: number }): Promise<MCPTokenCreateResponse> =>
+    makeOptimizedRequest<MCPTokenCreateResponse>(() => api.post('/mcp/tokens', payload)),
+  revoke: async (tokenId: number): Promise<void> =>
+    makeOptimizedRequest(() => api.delete(`/mcp/tokens/${tokenId}`)),
+};
+
 // ---------------------------------------------------------------------------
 // Connect hub
 // ---------------------------------------------------------------------------

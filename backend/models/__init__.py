@@ -102,6 +102,9 @@ from .agent_action import AgentAction
 from .agent_message import AgentMessage, load_conversation_from_db, save_conversation_to_db
 from .auto_ops_explanation import AutoOpsExplanation
 
+# MCP (Model Context Protocol) bearer tokens for read-only AI agent access
+from .mcp_token import MCPToken
+
 # Corporate Actions (splits, dividends, mergers)
 from .corporate_action import (
     AppliedCorporateAction,
@@ -226,6 +229,7 @@ __all__ = [
     "SymbolHistory",
     "SymbolMaster",
     "SymbolStatus",
+    "MCPToken",
     "AppliedCorporateAction",
     "CorporateAction",
     "CorporateActionSource",

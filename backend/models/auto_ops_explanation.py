@@ -35,6 +35,7 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
+    ForeignKey,
     Index,
     Integer,
     JSON,
@@ -53,6 +54,10 @@ class AutoOpsExplanation(Base):
     __tablename__ = "auto_ops_explanations"
 
     id = Column(Integer, primary_key=True, index=True)
+
+    # Nullable: system / Celery persist rows with no tenant; MCP tools scope
+    # to ``user_id == authenticated user`` and must not surface other users.
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     schema_version = Column(String(16), nullable=False)
     anomaly_id = Column(String(128), nullable=False, index=True)

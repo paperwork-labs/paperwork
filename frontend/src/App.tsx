@@ -31,6 +31,7 @@ const SettingsConnections = React.lazy(() => import('./pages/SettingsConnections
 const SettingsProfile = React.lazy(() => import('./pages/SettingsProfile'));
 const SettingsPreferences = React.lazy(() => import('./pages/SettingsPreferences'));
 const SettingsNotifications = React.lazy(() => import('./pages/SettingsNotifications'));
+const SettingsMCP = React.lazy(() => import('./pages/SettingsMCP'));
 const PortfolioWorkspace = React.lazy(() => import('./pages/PortfolioWorkspace'));
 const PortfolioAllocation = React.lazy(() => import('./pages/PortfolioAllocation'));
 const PortfolioIncome = React.lazy(() => import('./pages/PortfolioIncome'));
@@ -165,6 +166,7 @@ function App() {
                           <Route path="preferences" element={<SettingsPreferences />} />
                           <Route path="notifications" element={<SettingsNotifications />} />
                           <Route path="connections" element={<SettingsConnections />} />
+                          <Route path="mcp" element={<SettingsMCP />} />
                           <Route element={<RequireAdmin />}>
                             <Route path="admin/system" element={<SystemStatus />} />
                             <Route path="admin/users" element={<SettingsUsers />} />

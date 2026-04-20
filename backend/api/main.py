@@ -73,6 +73,7 @@ from backend.api.routes.portfolio.connection_options import (
     router as portfolio_connection_options,
 )
 from backend.api.routes.notify import router as notify_router
+from backend.api.routes.mcp import router as mcp_router
 from backend.api.dependencies import require_non_market_access
 
 # Model imports
@@ -713,6 +714,16 @@ app.include_router(
 app.include_router(
     public_stats_router,
     prefix="/api/v1/public",
+)
+# MCP (Model Context Protocol): per-user bearer-token gateway for read-only
+# AI agent access. Token CRUD is JWT-authed via the route handlers; the
+# /jsonrpc transport is bearer-authed. Not behind require_non_market_access
+# because token management must remain available even for users on tiers
+# without market data access.
+app.include_router(
+    mcp_router,
+    prefix="/api/v1/mcp",
+    tags=["MCP"],
 )
 # Public pricing catalog: tier display data + features per tier.
 # No auth — the marketing /pricing page renders the exact same payload

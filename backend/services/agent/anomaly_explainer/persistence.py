@@ -50,6 +50,7 @@ def persist_explanation(
     *,
     anomaly_category: str,
     anomaly_severity: Optional[str] = None,
+    user_id: Optional[int] = None,
 ) -> AutoOpsExplanation:
     """Insert one :class:`Explanation` and return the stored row.
 
@@ -83,6 +84,7 @@ def persist_explanation(
         model=explanation.model[:64],
         payload_json=payload,
         generated_at=explanation.generated_at,
+        user_id=user_id,
     )
     db.add(row)
     db.flush()

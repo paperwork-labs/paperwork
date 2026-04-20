@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { isPlatformAdminRole } from '../utils/userRole';
-import { Bell, Cpu, Sliders, User, Shield, Activity, ClipboardList } from 'lucide-react';
+import { Bell, Cpu, KeyRound, Sliders, User, Shield, Activity, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -74,6 +74,7 @@ const SettingsShell: React.FC = () => {
               <MenuLink to="/settings/profile">Profile</MenuLink>
               <MenuLink to="/settings/preferences">Preferences</MenuLink>
               <MenuLink to="/settings/connections">Connections</MenuLink>
+              <MenuLink to="/settings/mcp">MCP Tokens</MenuLink>
               <MenuLink to="/settings/notifications">Notifications</MenuLink>
               {isPlatformAdminRole(user?.role) && (
                 <>
@@ -108,6 +109,7 @@ const SettingsShell: React.FC = () => {
             {iconNav('/settings/profile', 'Profile', <User className="size-4" />)}
             {iconNav('/settings/preferences', 'Preferences', <Sliders className="size-4" />)}
             {iconNav('/settings/connections', 'Connections', <Shield className="size-4" />)}
+            {iconNav('/settings/mcp', 'MCP Tokens', <KeyRound className="size-4" />)}
             {iconNav('/settings/notifications', 'Notifications', <Bell className="size-4" />)}
             {isPlatformAdminRole(user?.role) ? (
               <>
