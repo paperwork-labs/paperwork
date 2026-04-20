@@ -8,6 +8,9 @@
 # Infra env files (real secrets / machine-specific values)
 infra/env.dev
 infra/env.test
+infra/env.prod
+infra/.env.prod
+infra/.env
 
 # Local env exports / scratch copies (never commit secrets)
 env.txt
@@ -191,6 +194,7 @@ market_data/
 *.tmp
 
 # Local DB dumps
+other_assets/
 other_assets/axiomfolio.dump
 
 # Cache
