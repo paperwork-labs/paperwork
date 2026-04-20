@@ -44,6 +44,7 @@ const MarketEducation = React.lazy(() => import('./pages/MarketEducation'));
 const MarketIntelligence = React.lazy(() => import('./pages/MarketIntelligence'));
 const Invite = React.lazy(() => import('./pages/Invite'));
 const WhyFree = React.lazy(() => import('./pages/WhyFree'));
+const Pricing = React.lazy(() => import('./pages/Pricing'));
 const SettingsUsers = React.lazy(() => import('./pages/SettingsUsers'));
 const AdminAgent = React.lazy(() => import('./pages/AdminAgent'));
 const Terminal = React.lazy(() => import('./pages/Terminal'));
@@ -176,6 +177,7 @@ function App() {
                       <Route path="/login" element={<Login />} />
                       <Route path="/register" element={<Register />} />
                       <Route path="/why-free" element={<WhyFree />} />
+                      <Route path="/pricing" element={<Pricing />} />
                       <Route path="/auth/callback" element={<AuthCallback />} />
                       <Route path="/invite/:token" element={<Invite />} />
                     </Routes>

@@ -58,6 +58,7 @@ from backend.api.routes.webhooks import router as webhooks_router
 from backend.api.routes.risk import router as risk_router
 from backend.api.routes.entitlements import router as entitlements_router
 from backend.api.routes.public.stats import router as public_stats_router
+from backend.api.routes.pricing import router as pricing_router
 from backend.api.routes.brain_tools import router as brain_tools_router
 from backend.api.routes.symbols import router as symbols_router
 from backend.api.routes.execution import router as execution_router
@@ -661,6 +662,15 @@ app.include_router(
 app.include_router(
     public_stats_router,
     prefix="/api/v1/public",
+)
+# Public pricing catalog: tier display data + features per tier.
+# No auth — the marketing /pricing page renders the exact same payload
+# logged-in users see in their upgrade prompts. Intentionally NOT behind
+# require_non_market_access (logged-out visitors must reach this).
+app.include_router(
+    pricing_router,
+    prefix="/api/v1/pricing",
+    tags=["Pricing"],
 )
 app.include_router(
     backtest_router,
