@@ -45,6 +45,7 @@ from backend.api.routes import (
     admin_scheduler,
     admin_agent,
     admin_autoops,
+    admin_corporate_actions,
     admin_data_quality,
     # Settings (from settings/ folder)
     account_management,
@@ -650,6 +651,12 @@ app.include_router(
     admin_autoops,
     prefix="/api/v1/admin",
     tags=["Agent"],
+    dependencies=[Depends(require_non_market_access)],
+)
+app.include_router(
+    admin_corporate_actions,
+    prefix="/api/v1/admin",
+    tags=["Corporate Actions"],
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(

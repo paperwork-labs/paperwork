@@ -102,6 +102,15 @@ from .agent_action import AgentAction
 from .agent_message import AgentMessage, load_conversation_from_db, save_conversation_to_db
 from .auto_ops_explanation import AutoOpsExplanation
 
+# Corporate Actions (splits, dividends, mergers)
+from .corporate_action import (
+    AppliedCorporateAction,
+    CorporateAction,
+    CorporateActionSource,
+    CorporateActionStatus,
+    CorporateActionType,
+)
+
 # Data Quality (multi-source quorum + per-provider drift)
 from .provider_quorum import (
     ProviderDriftAlert,
@@ -217,6 +226,11 @@ __all__ = [
     "SymbolHistory",
     "SymbolMaster",
     "SymbolStatus",
+    "AppliedCorporateAction",
+    "CorporateAction",
+    "CorporateActionSource",
+    "CorporateActionStatus",
+    "CorporateActionType",
     "ProviderDriftAlert",
     "ProviderQuorumLog",
     "QuorumAction",

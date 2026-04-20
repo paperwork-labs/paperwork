@@ -508,6 +508,25 @@ CATALOG: List[JobTemplate] = [
         timeout_s=30,
         enabled=False,
     ),
+    # ── Corporate Actions ─────────────────────────────────────────────
+    JobTemplate(
+        id="daily_corporate_actions",
+        display_name="Daily Corporate Actions Sync + Apply",
+        group="market_data",
+        task="backend.tasks.corporate_actions.daily_apply.daily_corporate_actions",
+        description=(
+            "Fetch new corporate actions (splits, dividends) from FMP for the "
+            "tracked universe and apply every PENDING action whose ex_date "
+            "has passed. Adjusts user positions, tax lots, and (when "
+            "FEATURE_BACK_ADJUST_OHLCV=1) historical OHLCV. Idempotent."
+        ),
+        default_cron="0 4 * * *",  # 04:00 UTC daily (after nightly pipeline)
+        default_tz="UTC",
+        job_run_label="daily_corporate_actions",
+        kwargs={"fetch_lookback_days": 7},
+        timeout_s=1800,
+        queue="heavy",
+    ),
 ]
 
 # Alias for callers that expect JOB_CATALOG (e.g. task_run singleflight lookup).

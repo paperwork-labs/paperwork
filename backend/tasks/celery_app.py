@@ -49,6 +49,8 @@ celery_app = Celery(
         "backend.tasks.pipeline.orchestrator",
         "backend.tasks.picks.generate_candidates",
         "backend.tasks.picks.parse_inbound",
+        # Corporate actions (splits, dividends, mergers)
+        "backend.tasks.corporate_actions.daily_apply",
     ],
 )
 
@@ -89,6 +91,8 @@ celery_app.conf.task_routes = {
     "backend.tasks.market.maintenance.*": {"queue": "heavy"},
     # Reconciliation spot-check is also long-running.
     "backend.tasks.market.reconciliation.spot_check": {"queue": "heavy"},
+    # Corporate-action engine (full universe + per-user position rewrite).
+    "backend.tasks.corporate_actions.*": {"queue": "heavy"},
 }
 
 def _build_beat_schedule():
