@@ -62,6 +62,7 @@ from backend.api.routes.brain_tools import router as brain_tools_router
 from backend.api.routes.symbols import router as symbols_router
 from backend.api.routes.execution import router as execution_router
 from backend.api.routes.pipeline import router as pipeline_router
+from backend.api.routes.backtest import router as backtest_router
 from backend.api.routes.portfolio.narrative import router as portfolio_narrative
 from backend.api.routes.portfolio.connection_options import (
     router as portfolio_connection_options,
@@ -660,6 +661,12 @@ app.include_router(
 app.include_router(
     public_stats_router,
     prefix="/api/v1/public",
+)
+app.include_router(
+    backtest_router,
+    prefix="/api/v1/backtest",
+    tags=["Backtest"],
+    dependencies=[Depends(require_non_market_access)],
 )
 
 

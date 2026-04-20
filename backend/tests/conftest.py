@@ -91,6 +91,17 @@ def test_db(request):
             f"Models not available: {IMPORT_ERROR if not MODELS_AVAILABLE else ''}"
         )
 
+    # Pure unit sessions (every test marked ``no_db``) never touch Postgres.
+    try:
+        session_items = list(request.session.items)
+    except Exception:
+        session_items = []
+    if session_items and all(
+        item.get_closest_marker("no_db") is not None for item in session_items
+    ):
+        yield None
+        return
+
     import os
     from sqlalchemy import create_engine
     from backend.database import DATABASE_URL as APP_DATABASE_URL

@@ -195,6 +195,16 @@ _FEATURES: tuple[Feature, ...] = (
         description="Bring your own symbol list / sector classification.",
         category="research",
     ),
+    Feature(
+        key="research.monte_carlo",
+        min_tier=SubscriptionTier.PRO_PLUS,
+        title="Monte Carlo simulator",
+        description=(
+            "Bootstrap-resample backtest trade returns to estimate "
+            "confidence intervals on equity curve, drawdown, and Sharpe."
+        ),
+        category="research",
+    ),
     # ---- Ops & enterprise (ops) --------------------------------------------
     Feature(
         key="ops.audit_export",
