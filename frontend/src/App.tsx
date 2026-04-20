@@ -12,6 +12,7 @@ import RequireNonMarketAccess from './components/auth/RequireNonMarketAccess';
 import RequireAdmin from './components/auth/RequireAdmin';
 import AuthLogoutListener from './components/auth/AuthLogoutListener';
 import { AppCommandLayer } from './components/cmdk/AppCommandLayer';
+import { InstallPrompt } from './components/pwa/InstallPrompt';
 
 const DashboardLayout = React.lazy(() => import('./components/layout/DashboardLayout'));
 const PortfolioOverview = React.lazy(() => import('./pages/portfolio/PortfolioOverview'));
@@ -176,6 +177,7 @@ function App() {
                       },
                     }}
                   />
+                  <InstallPrompt />
                 </Router>
               </ErrorBoundary>
             </AccountProvider>
