@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="80" viewBox="0 0 360 80">
+  <rect width="360" height="80" fill="none"/>
+  <path d="M32 20 L48 40 L36 40 L52 60 L28 44 L28 20 Z" fill="#e11d2e"/>
+  <text x="70" y="54" font-family="Inter, Arial, Helvetica, sans-serif" font-size="28" font-weight="700" fill="#111">
+    Interactive Brokers
+  </text>
+</svg>
+
+

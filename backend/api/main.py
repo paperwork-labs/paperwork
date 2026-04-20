@@ -63,6 +63,10 @@ from backend.api.routes.symbols import router as symbols_router
 from backend.api.routes.execution import router as execution_router
 from backend.api.routes.pipeline import router as pipeline_router
 from backend.api.routes.portfolio.narrative import router as portfolio_narrative
+from backend.api.routes.portfolio.connection_options import (
+    router as portfolio_connection_options,
+)
+from backend.api.routes.notify import router as notify_router
 from backend.api.dependencies import require_non_market_access
 
 # Model imports
@@ -528,9 +532,25 @@ app.include_router(
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(
+    portfolio_connection_options,
+    prefix="/api/v1/portfolio",
+    tags=["Portfolio"],
+    dependencies=[Depends(require_non_market_access)],
+)
+app.include_router(
     portfolio_allocation,
     prefix="/api/v1/portfolio",
     tags=["Portfolio"],
+    dependencies=[Depends(require_non_market_access)],
+)
+# Notify-me waitlist: tiny POST endpoint backing the "Notify me" CTAs on
+# coming-soon broker cards. Authentication required; no payload persistence
+# in this PR (logged at WARNING level (operator pulls from logs); email
+# delivery deferred to future PR; see route docstring).
+app.include_router(
+    notify_router,
+    prefix="/api/v1/notify",
+    tags=["Notify"],
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(

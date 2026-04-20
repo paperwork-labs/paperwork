@@ -1099,3 +1099,43 @@ export const aggregatorApi = {
     ),
   ibkrFlexDisconnect: async () => makeOptimizedRequest(() => api.post('/aggregator/ibkr/disconnect')),
 };
+
+// ---------------------------------------------------------------------------
+// Connect hub
+// ---------------------------------------------------------------------------
+
+export type ConnectionBrokerCategory = 'stocks' | 'crypto' | 'retirement';
+export type ConnectionMethod = 'oauth' | 'import';
+export type ConnectionStatus = 'available' | 'coming_v1_1' | 'coming_v1_2_lite';
+
+export interface ConnectionBrokerUserState {
+  connected: boolean;
+  account_count: number;
+  last_synced_at: string | null;
+}
+
+export interface ConnectionBrokerOption {
+  slug: string;
+  name: string;
+  description: string;
+  logo_url: string;
+  category: ConnectionBrokerCategory;
+  method: ConnectionMethod;
+  status: ConnectionStatus;
+  user_state: ConnectionBrokerUserState;
+}
+
+export interface ConnectionOptionsResponse {
+  brokers: ConnectionBrokerOption[];
+}
+
+export const connectHubApi = {
+  options: async (): Promise<ConnectionOptionsResponse> =>
+    makeOptimizedRequest<ConnectionOptionsResponse>(() =>
+      api.get('/portfolio/connection-options'),
+    ),
+  notifyBrokerLaunch: async (payload: { broker_slug: string; email: string }) =>
+    makeOptimizedRequest<{ queued: boolean; persisted: boolean }>(() =>
+      api.post('/notify/broker-launch', payload),
+    ),
+};

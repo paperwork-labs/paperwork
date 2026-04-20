@@ -50,6 +50,9 @@ const Terminal = React.lazy(() => import('./pages/Terminal'));
 const Scanner = React.lazy(() => import('./pages/Scanner'));
 const Picks = React.lazy(() => import('./pages/Picks'));
 const PicksValidator = React.lazy(() => import('./pages/admin/PicksValidator'));
+const ConnectAccounts = React.lazy(() => import('./pages/ConnectAccounts'));
+const AccountsManagement = React.lazy(() => import('./pages/AccountsManagement'));
+const PortfolioImport = React.lazy(() => import('./pages/PortfolioImport'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -125,6 +128,12 @@ function App() {
                           <Route path="portfolio/orders" element={<PortfolioOrders />} />
                           <Route path="portfolio/workspace" element={<PortfolioWorkspace />} />
                           <Route path="portfolio/allocation" element={<PortfolioAllocation />} />
+                          <Route path="portfolio/import" element={<PortfolioImport />} />
+                          {/* Connect hub (3h): unified broker connection UX. Routes
+                              live under the same access gate as other portfolio
+                              pages because the underlying API requires it. */}
+                          <Route path="connect" element={<ConnectAccounts />} />
+                          <Route path="accounts/manage" element={<AccountsManagement />} />
                         </Route>
 
                         {/* Strategy (under Market in nav, same access as market) */}
