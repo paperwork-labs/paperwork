@@ -8,6 +8,22 @@ from backend.models import PriceData, MarketSnapshot
 from backend.models.market_data import MarketSnapshotHistory
 
 
+@pytest.fixture(autouse=True)
+def _stub_fundamentals_provider(monkeypatch):
+    """Prevent any real yfinance / FMP HTTP calls.
+
+    Snapshot builder calls `self._fundamentals.get_fundamentals_info(...)` directly
+    on its bound FundamentalsService instance — patching `quote.get_fundamentals_info`
+    in individual tests does not block that path, so CI was hitting yfinance and
+    failing intermittently with HTTP 429. Patch the actual instance method here.
+    """
+    monkeypatch.setattr(
+        snapshot_builder._fundamentals,
+        "get_fundamentals_info",
+        lambda *a, **kw: {},
+    )
+
+
 def _make_df(dates: list[datetime], close: float = 100.0) -> pd.DataFrame:
     data = []
     for i, d in enumerate(dates):
