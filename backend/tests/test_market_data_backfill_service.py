@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 from datetime import datetime, timedelta, timezone
 
 from backend.services.market.market_data_service import price_bars, quote, snapshot_builder
@@ -138,6 +139,7 @@ def test_compute_snapshot_from_db_populates_v2_indicators(db_session, monkeypatc
     assert isinstance(snap.get("stage_label"), str)
 
 
+@pytest.mark.timeout(60)
 def test_compute_snapshot_from_db_advances_stage_days_from_latest_history(db_session, monkeypatch):
     sym = "TESTSTAGE"
     bm = "SPY"
