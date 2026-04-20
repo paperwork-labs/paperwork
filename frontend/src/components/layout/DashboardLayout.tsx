@@ -39,11 +39,11 @@ import { ChatBubble } from '@/components/chat/ChatBubble';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  Dialog as UiDialog,
-  DialogContent as UiDialogContent,
-  DialogFooter as UiDialogFooter,
-  DialogTitle as UiDialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal as UiDialog,
+  ResponsiveModalContent as UiDialogContent,
+  ResponsiveModalFooter as UiDialogFooter,
+  ResponsiveModalTitle as UiDialogTitle,
+} from '@/components/ui/responsive-modal';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 

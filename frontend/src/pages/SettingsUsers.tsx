@@ -10,12 +10,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal as Dialog,
+  ResponsiveModalContent as DialogContent,
+  ResponsiveModalFooter as DialogFooter,
+  ResponsiveModalHeader as DialogHeader,
+  ResponsiveModalTitle as DialogTitle,
+} from '@/components/ui/responsive-modal';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 

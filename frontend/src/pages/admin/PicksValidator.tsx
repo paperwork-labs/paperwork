@@ -10,12 +10,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal as Dialog,
+  ResponsiveModalContent as DialogContent,
+  ResponsiveModalFooter as DialogFooter,
+  ResponsiveModalHeader as DialogHeader,
+  ResponsiveModalTitle as DialogTitle,
+} from '@/components/ui/responsive-modal';
 import EmptyState from '@/components/ui/EmptyState';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

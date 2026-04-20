@@ -32,13 +32,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal as Dialog,
+  ResponsiveModalContent as DialogContent,
+  ResponsiveModalDescription as DialogDescription,
+  ResponsiveModalFooter as DialogFooter,
+  ResponsiveModalHeader as DialogHeader,
+  ResponsiveModalTitle as DialogTitle,
+} from '@/components/ui/responsive-modal';
 import FormField from '@/components/ui/FormField';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';

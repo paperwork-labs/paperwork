@@ -19,13 +19,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal as Dialog,
+  ResponsiveModalContent as DialogContent,
+  ResponsiveModalDescription as DialogDescription,
+  ResponsiveModalFooter as DialogFooter,
+  ResponsiveModalHeader as DialogHeader,
+  ResponsiveModalTitle as DialogTitle,
+} from '@/components/ui/responsive-modal';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import AppCard from '../components/ui/AppCard';
