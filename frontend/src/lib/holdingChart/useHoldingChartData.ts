@@ -1,0 +1,359 @@
+/**
+ * `useHoldingChartData` — composes the four queries the flagship holding
+ * chart needs into a single ergonomic hook.
+ *
+ * Why a custom hook (vs four `useQuery` calls in the component):
+ *   - Smart benchmark resolution depends on the snapshot result.
+ *   - "Since I bought" requires the activity result to derive the period.
+ *   - The benchmark series MUST share the resolved period to overlay
+ *     cleanly — wiring those dependencies inline would make the chart
+ *     component a tangle of conditional hooks.
+ *   - Keeping it here makes it testable in isolation (no DOM, no
+ *     lightweight-charts), and lets us re-use the same data shape for
+ *     export / share-card / OG-image flows in later PRs.
+ *
+ * Caching strategy:
+ *   - Snapshot: 5 min stale (sector / instrument_type rarely change).
+ *   - Activity: 1 min stale (user may have just transacted).
+ *   - Price history: 30 s stale (matches our market-data refresh cadence).
+ */
+import * as React from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+import { activityApi, marketDataApi, unwrapResponse } from "@/services/api";
+
+import {
+  describeBenchmark,
+  resolveBenchmarkSymbol,
+  type SnapshotLite,
+} from "./benchmarkResolver";
+import {
+  earliestBuyDate,
+  periodCoveringDate,
+  type ActivityRowLite,
+} from "./sinceIBoughtRange";
+
+export type HoldingChartPeriod =
+  | "1mo"
+  | "3mo"
+  | "6mo"
+  | "ytd"
+  | "1y"
+  | "5y"
+  | "max"
+  | "since";
+
+export interface PriceBar {
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume?: number;
+}
+
+export interface BenchmarkBar {
+  time: string;
+  close: number;
+}
+
+export interface UseHoldingChartDataOptions {
+  symbol: string;
+  accountId?: string;
+  period: HoldingChartPeriod;
+  benchmarkOverride?: string | null;
+  enabled?: boolean;
+  /**
+   * Skip the benchmark price fetch when false. Defaults to true. The
+   * consumer typically derives this from the same `showBenchmark` prop
+   * that controls the legend / overlay so the network request matches
+   * what the user can actually see.
+   */
+  fetchBenchmark?: boolean;
+}
+
+export interface HoldingChartData {
+  symbol: string;
+  bars: PriceBar[];
+  benchmarkBars: BenchmarkBar[];
+  benchmarkSymbol: string;
+  benchmarkLabel: string;
+  benchmarkTooltip: string;
+  snapshot: Record<string, unknown> | null;
+  earliestBuyDate: string | null;
+  /** Resolved 'since' → concrete backend period (used for refetch keys). */
+  effectivePeriod: Exclude<HoldingChartPeriod, "since">;
+  /** Visual-axis start in YYYY-MM-DD. Null when the consumer didn't ask for "since". */
+  effectiveStart: string | null;
+  isLoading: boolean;
+  isError: boolean;
+  error: unknown;
+  refetch: () => Promise<void>;
+}
+
+const SNAPSHOT_STALE_MS = 5 * 60_000;
+const ACTIVITY_STALE_MS = 60_000;
+const PRICE_STALE_MS = 30_000;
+
+const BACKEND_PERIODS = ["1mo", "3mo", "6mo", "ytd", "1y", "5y", "max"] as const;
+type BackendPeriod = (typeof BACKEND_PERIODS)[number];
+
+function isBackendPeriod(p: HoldingChartPeriod): p is BackendPeriod {
+  return (BACKEND_PERIODS as readonly string[]).includes(p);
+}
+
+/**
+ * Pulls the snapshot object off the backend response. The market-data
+ * snapshot endpoint has been wrapped twice during its evolution:
+ *   - axios envelope: `response.data.snapshot`
+ *   - status envelope: `response.data.data.snapshot`
+ *   - flat: `response.snapshot`
+ * Tolerate all three so consumers don't fight schema drift.
+ */
+function extractSnapshot(raw: unknown): Record<string, unknown> | null {
+  if (raw == null || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const fromEnvelope = (r.data as { data?: { snapshot?: unknown }; snapshot?: unknown } | undefined);
+  const candidate =
+    fromEnvelope?.data?.snapshot ??
+    fromEnvelope?.snapshot ??
+    r.snapshot ??
+    null;
+  return (candidate && typeof candidate === "object" ? (candidate as Record<string, unknown>) : null);
+}
+
+/**
+ * Pulls the activity rows off the backend response — see `extractSnapshot`
+ * for the envelope rationale.
+ */
+function extractActivityRows(raw: unknown): ActivityRowLite[] {
+  if (!raw) return [];
+  const rows = unwrapResponse<ActivityRowLite>(raw, "activity");
+  return Array.isArray(rows) ? rows : [];
+}
+
+function snapshotLite(s: Record<string, unknown> | null): SnapshotLite | null {
+  if (!s) return null;
+  return {
+    sector: typeof s.sector === "string" ? s.sector : null,
+    industry: typeof s.industry === "string" ? s.industry : null,
+    instrument_type:
+      typeof s.instrument_type === "string" ? s.instrument_type : null,
+  };
+}
+
+function asBars(raw: unknown): PriceBar[] {
+  // `unwrapResponse` is a typed cast and will happily hand back whatever
+  // shape the backend produced. If a future API drift changes `bars` to
+  // an object or null, the subsequent `.filter()` would throw. Guard
+  // explicitly so the chart degrades to "empty" rather than crashing.
+  const bars = unwrapResponse<PriceBar>(raw, "bars");
+  if (!Array.isArray(bars)) return [];
+  // Defensive: only surface rows with a numeric close; the chart cannot
+  // render holes mid-series without producing visual artifacts.
+  return bars.filter(
+    (b) => typeof b?.close === "number" && Number.isFinite(b.close),
+  );
+}
+
+function clampToStart(bars: PriceBar[], startIso: string | null): PriceBar[] {
+  if (!startIso) return bars;
+  const cutoff = Date.parse(`${startIso}T00:00:00Z`);
+  if (!Number.isFinite(cutoff)) return bars;
+  return bars.filter((b) => {
+    const t = Date.parse(b.time);
+    return Number.isFinite(t) ? t >= cutoff : true;
+  });
+}
+
+function clampBenchmarks(
+  bars: BenchmarkBar[],
+  startIso: string | null,
+): BenchmarkBar[] {
+  if (!startIso) return bars;
+  const cutoff = Date.parse(`${startIso}T00:00:00Z`);
+  if (!Number.isFinite(cutoff)) return bars;
+  return bars.filter((b) => {
+    const t = Date.parse(b.time);
+    return Number.isFinite(t) ? t >= cutoff : true;
+  });
+}
+
+export function useHoldingChartData(
+  opts: UseHoldingChartDataOptions,
+): HoldingChartData {
+  const {
+    symbol,
+    accountId,
+    period,
+    benchmarkOverride,
+    enabled = true,
+    fetchBenchmark = true,
+  } = opts;
+  const queryClient = useQueryClient();
+
+  const enabledForSymbol = enabled && Boolean(symbol);
+
+  const snapshotQuery = useQuery({
+    queryKey: ["holdingChart", "snapshot", symbol],
+    queryFn: () => marketDataApi.getSnapshot(symbol),
+    enabled: enabledForSymbol,
+    staleTime: SNAPSHOT_STALE_MS,
+  });
+
+  const activityQuery = useQuery({
+    queryKey: ["holdingChart", "activity", symbol, accountId ?? null],
+    queryFn: () => activityApi.getActivity({ symbol, accountId, limit: 500 }),
+    enabled: enabledForSymbol,
+    staleTime: ACTIVITY_STALE_MS,
+  });
+
+  const snapshot = React.useMemo(
+    () => extractSnapshot(snapshotQuery.data),
+    [snapshotQuery.data],
+  );
+  const activityRows = React.useMemo(
+    () => extractActivityRows(activityQuery.data),
+    [activityQuery.data],
+  );
+  const earliest = React.useMemo(
+    () => earliestBuyDate(activityRows),
+    [activityRows],
+  );
+
+  const benchmarkSymbol = React.useMemo(
+    () => resolveBenchmarkSymbol(symbol, snapshotLite(snapshot), benchmarkOverride),
+    [symbol, snapshot, benchmarkOverride],
+  );
+
+  // Benchmark === primary symbol means the comparison would be tautological
+  // (e.g. SPY vs SPY). Suppress the secondary fetch and signal upstream by
+  // returning an empty `benchmarkBars` array.
+  const sameSymbolAsBenchmark =
+    symbol.trim().toUpperCase() === benchmarkSymbol.trim().toUpperCase();
+
+  const effectivePeriod: BackendPeriod = React.useMemo(() => {
+    if (isBackendPeriod(period)) return period;
+    // 'since' resolution: prefer the smallest period that covers the
+    // earliest buy. If there's no buy data yet (genuinely brand-new
+    // holding, or sync still warming) fall back to '1y' so the chart
+    // still tells a useful story.
+    if (earliest) return periodCoveringDate(earliest);
+    return "1y";
+  }, [period, earliest]);
+
+  const effectiveStart = period === "since" ? earliest : null;
+
+  const priceQuery = useQuery({
+    queryKey: ["holdingChart", "price", symbol, effectivePeriod],
+    queryFn: () => marketDataApi.getHistory(symbol, effectivePeriod, "1d"),
+    enabled: enabledForSymbol,
+    staleTime: PRICE_STALE_MS,
+  });
+
+  // Skip the benchmark fetch when:
+  //   - `fetchBenchmark` is false (consumer hid the overlay → no point
+  //     paying the network round-trip), OR
+  //   - the resolved benchmark equals the primary symbol (SPY-vs-SPY
+  //     would be tautological).
+  const benchmarkEnabled =
+    enabledForSymbol && fetchBenchmark && !sameSymbolAsBenchmark;
+
+  const benchmarkQuery = useQuery({
+    queryKey: ["holdingChart", "benchmarkPrice", benchmarkSymbol, effectivePeriod],
+    queryFn: () => marketDataApi.getHistory(benchmarkSymbol, effectivePeriod, "1d"),
+    enabled: benchmarkEnabled,
+    staleTime: PRICE_STALE_MS,
+  });
+
+  const bars = React.useMemo(
+    () => clampToStart(asBars(priceQuery.data), effectiveStart),
+    [priceQuery.data, effectiveStart],
+  );
+  const benchmarkBars = React.useMemo<BenchmarkBar[]>(() => {
+    if (!benchmarkEnabled) return [];
+    const raw = asBars(benchmarkQuery.data);
+    const trimmed = clampBenchmarks(
+      raw.map((b) => ({ time: b.time, close: b.close })),
+      effectiveStart,
+    );
+    return trimmed;
+  }, [benchmarkQuery.data, effectiveStart, benchmarkEnabled]);
+
+  const isLoading =
+    enabledForSymbol &&
+    (snapshotQuery.isLoading ||
+      activityQuery.isLoading ||
+      priceQuery.isLoading ||
+      (benchmarkEnabled && benchmarkQuery.isLoading));
+
+  // First-class error surface: any failed query bubbles up. We intentionally
+  // do NOT silently fall back to partial data — if the snapshot 500s but the
+  // bars succeed, the user sees an error state. (See no-silent-fallback.)
+  const isError =
+    snapshotQuery.isError ||
+    activityQuery.isError ||
+    priceQuery.isError ||
+    (benchmarkEnabled && benchmarkQuery.isError);
+
+  const error =
+    snapshotQuery.error ??
+    activityQuery.error ??
+    priceQuery.error ??
+    (benchmarkEnabled ? benchmarkQuery.error : null) ??
+    null;
+
+  const descriptor = React.useMemo(
+    () => describeBenchmark(benchmarkSymbol),
+    [benchmarkSymbol],
+  );
+
+  const refetch = React.useCallback(async () => {
+    // Refetch in parallel; we don't care about ordering and React Query
+    // will dedupe in-flight requests if any are already pending.
+    await Promise.all([
+      snapshotQuery.refetch(),
+      activityQuery.refetch(),
+      priceQuery.refetch(),
+      benchmarkEnabled ? benchmarkQuery.refetch() : Promise.resolve(),
+    ]);
+    // Bust ALL holdingChart cache entries that mention this symbol or
+    // its resolved benchmark. The previous version used
+    // `queryKey: ["holdingChart", symbol]` which never matched (every
+    // real key starts with `["holdingChart", "<kind>", symbol, …]`),
+    // so cached upstream consumers never picked up the refresh.
+    queryClient.invalidateQueries({
+      predicate: (query) => {
+        const key = query.queryKey;
+        if (!Array.isArray(key) || key[0] !== "holdingChart") return false;
+        return key.some((k) => k === symbol || k === benchmarkSymbol);
+      },
+    });
+  }, [
+    activityQuery,
+    benchmarkEnabled,
+    benchmarkQuery,
+    benchmarkSymbol,
+    priceQuery,
+    queryClient,
+    snapshotQuery,
+    symbol,
+  ]);
+
+  return {
+    symbol,
+    bars,
+    benchmarkBars,
+    benchmarkSymbol: benchmarkEnabled ? benchmarkSymbol : "",
+    benchmarkLabel: benchmarkEnabled ? descriptor.label : "",
+    benchmarkTooltip: benchmarkEnabled ? descriptor.tooltip : "",
+    snapshot,
+    earliestBuyDate: earliest,
+    effectivePeriod,
+    effectiveStart,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  };
+}
