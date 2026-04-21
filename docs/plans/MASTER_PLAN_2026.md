@@ -230,8 +230,9 @@ gantt
 | X (Twitter) curated feed | Twisted Slice's allowlist of accounts; ingest via API; sentiment scoring; mention count per symbol |
 | Market sentiment overlay | VIX, AAII bull/bear, Fear/Greed, news sentiment composite; rendered as banner on dashboard |
 | Mobile-first card mode | Toggle on tables; renders rows as stacked cards on `max-md` breakpoint |
+| **Discipline-Bounded Trajectory widget** | Per-account dashboard tile rendering: starting equity → discipline anchors (unleveraged + with-leverage tiers per D119) → current % to anchor → projected year-end with current trajectory; visually distinguishes the three tiers (unleveraged $1.95M-$2.5M, leveraged $2.5M-$3.0M, speculative $3.0M-$3.5M) and shades anything beyond as "outside discipline". Reads from `account_balances.total_equity_usd` time series + per-account `account_risk_profile` (G27). For founder joint book, anchors hardcode-default to D119 numbers; for other users anchors compute from their starting equity × (50% / 100% / 200% return ranges). Tile is glanceable: one number prominent (current equity), one ratio (% to anchor), one trend arrow (on track / behind / ahead). No projections beyond the anchor — the discipline ceiling is the ceiling, by design. |
 
-**PRs**: `feat/v1-snowball-equity-curve`, `feat/v1-snowball-allocation`, `feat/v1-snowball-income`, `feat/v1-sentiment-overlay`, `feat/v1-x-curated-feed`, `feat/v1-mobile-card-mode`.
+**PRs**: `feat/v1-snowball-equity-curve`, `feat/v1-snowball-allocation`, `feat/v1-snowball-income`, `feat/v1-sentiment-overlay`, `feat/v1-x-curated-feed`, `feat/v1-mobile-card-mode`, `feat/v1-discipline-trajectory-widget`.
 
 ### Phase 3 — Execution (Weeks 4-6)
 

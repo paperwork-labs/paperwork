@@ -580,7 +580,12 @@ async def delete_broker_account(
 async def get_account_sync_status(
     account_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
-    """Return current sync status for an account from DB."""
+    """Return current sync status for an account from DB.
+
+    Includes the most recent ``AccountSync``'s G22 completeness payload so the
+    UI can render which Flex sections were missing, per-section row counts,
+    and any structured warnings from the last sync.
+    """
     account = (
         db.query(BrokerAccount)
         .filter(BrokerAccount.id == account_id, BrokerAccount.user_id == current_user.id)
@@ -588,6 +593,28 @@ async def get_account_sync_status(
     )
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
+
+    latest_sync = (
+        db.query(AccountSync)
+        .filter(AccountSync.account_id == account_id)
+        .order_by(AccountSync.started_at.desc())
+        .first()
+    )
+
+    last_sync_completeness: Optional[Dict[str, Any]] = None
+    if latest_sync:
+        last_sync_completeness = {
+            "sync_id": latest_sync.id,
+            "started_at": latest_sync.started_at,
+            "completed_at": latest_sync.completed_at,
+            "status": latest_sync.status.value if latest_sync.status else None,
+            "expected_sections": latest_sync.expected_sections or [],
+            "received_sections": latest_sync.received_sections or [],
+            "missing_sections": latest_sync.missing_sections or [],
+            "section_row_counts": latest_sync.section_row_counts or {},
+            "warnings": latest_sync.warnings or [],
+        }
+
     return {
         "account_id": account.id,
         "account_number": account.account_number,
@@ -596,6 +623,7 @@ async def get_account_sync_status(
         "last_sync_attempt": account.last_sync_attempt,
         "last_successful_sync": account.last_successful_sync,
         "sync_error_message": account.sync_error_message,
+        "last_sync_completeness": last_sync_completeness,
     }
 
 

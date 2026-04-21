@@ -37,6 +37,10 @@ from .sync_positions import (
     sync_tax_lots,
 )
 from .sync_transactions import sync_cash_transactions, sync_trades
+from .sync_validator import (
+    SyncCompletenessStatus,
+    validate_completeness,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -142,23 +146,43 @@ class IBKRSyncService:
             # Step 11 – enrich Greeks
             results["greeks_enrichment"] = await sync_option_greeks_from_gateway(db, broker_account)
 
+            # G22 — Sync completeness validation (no-silent-success).
+            # Runs after every sync_* step has had its chance, so we can also
+            # detect "section was present in XML but the writer errored".
+            completeness = validate_completeness(report_xml, results)
+            results["completeness"] = completeness.to_dict()
+
             # Single commit for the entire pipeline
             db.commit()
 
             self._refresh_activity_views(db)
 
-            if self._total_synced(results) == 0:
+            if completeness.status == SyncCompletenessStatus.ERROR:
                 error_msg = (
-                    "FlexQuery report returned no data. "
-                    "Verify your FlexQuery includes: Open Positions, Trades, "
-                    "Cash Transactions, and Account Information sections. "
-                    "Also confirm your Flex Web Service token has not expired."
+                    "FlexQuery report incomplete: "
+                    + "; ".join(
+                        w["message"] for w in completeness.warnings
+                        if w.get("level") == "error"
+                    )
                 )
                 logger.error("%s (account %s)", error_msg, account_number)
                 return {"status": "error", "error": error_msg, **results}
 
             results["summary"] = self._compute_summary(db, broker_account)
-            logger.info("Comprehensive sync completed successfully")
+
+            if completeness.status == SyncCompletenessStatus.PARTIAL:
+                results["status"] = "partial"
+                logger.warning(
+                    "Comprehensive sync PARTIAL for %s: %d required section(s) missing, "
+                    "%d total warning(s) (missing_required=%s)",
+                    account_number,
+                    len(completeness.missing_required),
+                    len(completeness.warnings),
+                    completeness.missing_required,
+                )
+            else:
+                results["status"] = "success"
+                logger.info("Comprehensive sync completed successfully for %s", account_number)
             return results
 
         except Exception as exc:

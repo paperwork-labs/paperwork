@@ -87,7 +87,14 @@ def sync_account_task(account_id: int, sync_type: str = "comprehensive") -> dict
         completed_at = datetime.now(timezone.utc)
         duration_seconds = int((completed_at - started_at).total_seconds())
 
-        is_error = isinstance(result, dict) and result.get("status") == "error"
+        result_status = (
+            result.get("status") if isinstance(result, dict) else None
+        )
+        is_error = result_status == "error"
+        is_partial = result_status == "partial"
+        completeness = (
+            result.get("completeness", {}) if isinstance(result, dict) else {}
+        )
 
         if sync_record:
             sync_record.completed_at = completed_at
@@ -95,31 +102,68 @@ def sync_account_task(account_id: int, sync_type: str = "comprehensive") -> dict
             if is_error:
                 sync_record.status = SyncStatus.ERROR
                 sync_record.error_message = str(result.get("error", "Unknown error"))[:500]
+            elif is_partial:
+                sync_record.status = SyncStatus.PARTIAL
+                # G22 — derive the message from completeness warnings, not just
+                # ``missing_required``: PARTIAL can be caused either by missing
+                # sections OR by a pipeline writer errored on a present section
+                # (``pipeline_step_errored``), in which case ``missing_required``
+                # is empty and a message built from it would render misleadingly
+                # as ``[]``.
+                from backend.services.portfolio.broker_sync_service import (
+                    _build_partial_sync_message,
+                )
+
+                sync_record.error_message = _build_partial_sync_message(completeness)
             else:
                 sync_record.status = SyncStatus.SUCCESS
                 sync_record.error_message = None
-                if isinstance(result, dict):
-                    sync_record.positions_synced = _extract_count(result, "positions")
-                    sync_record.transactions_synced = (
-                        _extract_count(result, "cash_transactions")
-                        or _extract_count(result, "transactions")
-                    )
-                    dr_start = result.get("data_range_start")
-                    dr_end = result.get("data_range_end")
-                    if dr_start:
-                        try:
-                            sync_record.data_range_start = datetime.strptime(str(dr_start), "%Y%m%d")
-                        except (ValueError, TypeError):
-                            pass
-                    if dr_end:
-                        try:
-                            sync_record.data_range_end = datetime.strptime(str(dr_end), "%Y%m%d")
-                        except (ValueError, TypeError):
-                            pass
+
+            # G22 — persist completeness fields regardless of status, so the
+            # UI can render the same per-section breakdown for error / partial /
+            # success outcomes (a clean success has empty warnings; a partial
+            # surfaces exactly which sections are missing).
+            if completeness:
+                sync_record.warnings = completeness.get("warnings", [])
+                sync_record.expected_sections = completeness.get("expected_sections", [])
+                sync_record.received_sections = completeness.get("received_sections", [])
+                sync_record.missing_sections = (
+                    list(completeness.get("missing_required", []))
+                    + list(completeness.get("missing_optional", []))
+                )
+                sync_record.section_row_counts = completeness.get(
+                    "section_row_counts", {}
+                )
+
+            if not is_error and isinstance(result, dict):
+                sync_record.positions_synced = _extract_count(result, "positions")
+                sync_record.transactions_synced = (
+                    _extract_count(result, "cash_transactions")
+                    or _extract_count(result, "transactions")
+                )
+                dr_start = result.get("data_range_start")
+                dr_end = result.get("data_range_end")
+                if dr_start:
+                    try:
+                        sync_record.data_range_start = datetime.strptime(str(dr_start), "%Y%m%d")
+                    except (ValueError, TypeError):
+                        pass
+                if dr_end:
+                    try:
+                        sync_record.data_range_end = datetime.strptime(str(dr_end), "%Y%m%d")
+                    except (ValueError, TypeError):
+                        pass
             session.commit()
 
         if is_error:
             logger.warning("Sync returned error for account %s: %s", account_id, result.get("error"))
+        elif is_partial:
+            logger.warning(
+                "Sync returned PARTIAL for account %s: missing_required=%s, warnings=%d",
+                account_id,
+                completeness.get("missing_required", []),
+                len(completeness.get("warnings", [])),
+            )
 
         return (
             result

@@ -7,6 +7,7 @@ Handles broker account tracking; examples in docs use placeholders, not real IDs
 """
 
 from sqlalchemy import (
+    JSON,
     Column,
     Integer,
     String,
@@ -294,6 +295,16 @@ class AccountSync(Base):
     data_range_start = Column(DateTime)  # Date range synced
     data_range_end = Column(DateTime)
     sync_trigger = Column(String(50))  # "manual", "scheduled", "api_call"
+
+    # G22 — Sync completeness validation (no-silent-success).
+    # See backend/services/portfolio/ibkr/sync_validator.CompletenessReport.
+    # Server-side defaults match an empty/clean report so legacy rows from
+    # before migration 0053 stay valid.
+    warnings = Column(JSON, nullable=False, server_default="[]")
+    expected_sections = Column(JSON, nullable=False, server_default="[]")
+    received_sections = Column(JSON, nullable=False, server_default="[]")
+    missing_sections = Column(JSON, nullable=False, server_default="[]")
+    section_row_counts = Column(JSON, nullable=False, server_default="{}")
 
     # Relationships
     account = relationship("BrokerAccount")

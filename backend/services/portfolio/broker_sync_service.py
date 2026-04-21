@@ -33,6 +33,48 @@ def _import_alpaca_service():
     return AlpacaSyncService()
 
 
+def _build_partial_sync_message(completeness: Dict) -> str:
+    """Build a user-facing message for SyncStatus.PARTIAL (G22).
+
+    The validator can return PARTIAL for two distinct reasons:
+      1. Required sections missing from the broker report (``missing_required``).
+      2. A pipeline writer errored on a section that *was* present
+         (``pipeline_step_errored`` warning code, with ``missing_required`` empty).
+
+    Reading only ``missing_required`` would render an empty ``[]`` in case (2),
+    silently hiding the real cause. We instead derive the message from the
+    structured ``warnings`` list so both failure modes surface accurately.
+    Truncated to 500 chars to fit ``BrokerAccount.sync_error_message``.
+    """
+    completeness = completeness or {}
+    missing = list(completeness.get("missing_required", []))
+    warnings = completeness.get("warnings", []) or []
+    errored_sections = sorted(
+        {
+            w.get("section")
+            for w in warnings
+            if isinstance(w, dict) and w.get("code") == "pipeline_step_errored"
+        }
+        - {None}
+    )
+
+    parts = []
+    if missing:
+        parts.append(f"missing required broker report sections {missing}")
+    if errored_sections:
+        parts.append(f"pipeline writer errored on {errored_sections}")
+
+    if parts:
+        return (
+            f"Partial sync: {'; '.join(parts)}. See sync history for full warnings."
+        )[:500]
+
+    return (
+        "Partial sync: pipeline reported degraded completeness; see sync history "
+        "for details."
+    )[:500]
+
+
 class BrokerSyncService:
     """
     Universal broker sync service that coordinates between broker-specific services.
@@ -227,11 +269,37 @@ class BrokerSyncService:
 
             result = await maybe_coro if inspect.isawaitable(maybe_coro) else maybe_coro
 
-            broker_account.last_successful_sync = datetime.now(timezone.utc)
+            # G22 — honour completeness status from the pipeline.
+            # Previously this always set SUCCESS regardless of pipeline outcome,
+            # producing the "BrokerAccount=success but AccountSync=error" split
+            # state that hid partial syncs. Now we map the result.status verbatim:
+            #   "error"   -> SyncStatus.ERROR (no last_successful_sync update)
+            #   "partial" -> SyncStatus.PARTIAL (last_successful_sync NOT bumped —
+            #                staleness checks must continue to surface degradation;
+            #                bumping the success timestamp on a degraded sync would
+            #                mask ongoing completeness problems from health monitors)
+            #   else      -> SyncStatus.SUCCESS
             from backend.models.broker_account import SyncStatus
 
-            broker_account.sync_status = SyncStatus.SUCCESS
-            broker_account.sync_error_message = None
+            result_status = result.get("status") if isinstance(result, dict) else None
+
+            if result_status == "error":
+                broker_account.sync_status = SyncStatus.ERROR
+                broker_account.sync_error_message = str(
+                    result.get("error", "Unknown error")
+                )[:500]
+            elif result_status == "partial":
+                broker_account.sync_status = SyncStatus.PARTIAL
+                completeness = (
+                    result.get("completeness", {}) if isinstance(result, dict) else {}
+                )
+                broker_account.sync_error_message = _build_partial_sync_message(
+                    completeness
+                )
+            else:
+                broker_account.last_successful_sync = datetime.now(timezone.utc)
+                broker_account.sync_status = SyncStatus.SUCCESS
+                broker_account.sync_error_message = None
             session.commit()
             return result
 

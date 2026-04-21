@@ -670,16 +670,39 @@ const SettingsConnections: React.FC = () => {
                                 <option value="HSA">HSA</option>
                                 <option value="TRUST">Trust</option>
                               </select>
-                              {a.sync_status && (String(a.sync_status).toLowerCase() === 'error' || String(a.sync_status).toLowerCase() === 'failed') && a.sync_error_message ? (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Badge variant="outline" className="cursor-default border-destructive/40 text-destructive">{a.sync_status}</Badge>
-                                  </TooltipTrigger>
-                                  <TooltipContent className="max-w-xs text-background">{a.sync_error_message}</TooltipContent>
-                                </Tooltip>
-                              ) : (
-                                a.sync_status ? <Badge variant="outline" className="font-normal">{a.sync_status}</Badge> : null
-                              )}
+                              {(() => {
+                                const status = String(a.sync_status || '').toLowerCase();
+                                if (!a.sync_status) return null;
+                                if ((status === 'error' || status === 'failed') && a.sync_error_message) {
+                                  return (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Badge variant="outline" className="cursor-default border-destructive/40 text-destructive">{a.sync_status}</Badge>
+                                      </TooltipTrigger>
+                                      <TooltipContent className="max-w-xs text-background">{a.sync_error_message}</TooltipContent>
+                                    </Tooltip>
+                                  );
+                                }
+                                if (status === 'partial' && a.sync_error_message) {
+                                  // G22 — partial sync: required broker-report sections missing.
+                                  // Yellow (warning) styling so it's clearly distinguishable from
+                                  // both healthy success and hard error states.
+                                  return (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Badge
+                                          variant="outline"
+                                          className="cursor-default border-yellow-500/50 text-yellow-700 dark:text-yellow-400"
+                                        >
+                                          partial
+                                        </Badge>
+                                      </TooltipTrigger>
+                                      <TooltipContent className="max-w-xs text-background">{a.sync_error_message}</TooltipContent>
+                                    </Tooltip>
+                                  );
+                                }
+                                return <Badge variant="outline" className="font-normal">{a.sync_status}</Badge>;
+                              })()}
                             </div>
                           </div>
                           <div className="mb-2 flex flex-row items-center justify-between">
