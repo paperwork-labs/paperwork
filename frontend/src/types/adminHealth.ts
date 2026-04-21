@@ -4,7 +4,7 @@ type DimStatus = 'green' | 'yellow' | 'red' | 'ok' | 'warning' | 'error';
 
 interface BaseDimension {
   status: DimStatus;
-  category: 'market' | 'broker';
+  category: 'market' | 'broker' | 'infra';
   advisory?: boolean;
   error?: string;
 }
@@ -89,6 +89,68 @@ export interface IbkrGatewayDimension extends BaseDimension {
   note?: string;
 }
 
+/**
+ * G28 deploy-health guardrail (D120).
+ *
+ * Emitted by `AdminHealthService._build_deploys_dimension` — one summary
+ * row per monitored Render service plus rollup counters. The dedicated
+ * `/api/v1/admin/deploys/health` endpoint returns the same service
+ * summaries plus a raw event tail for the timeline UI.
+ */
+export interface DeployServiceSummary {
+  service_id: string;
+  service_slug: string;
+  service_type: string;
+  status: 'green' | 'yellow' | 'red';
+  reason: string;
+  last_status: string | null;
+  last_deploy_sha: string | null;
+  last_deploy_at: string | null;
+  last_live_sha: string | null;
+  last_live_at: string | null;
+  consecutive_failures: number;
+  failures_24h: number;
+  deploys_24h: number;
+  in_flight: boolean;
+}
+
+export interface DeployEvent {
+  id: number;
+  service_id: string;
+  service_slug: string;
+  service_type: string;
+  deploy_id: string;
+  status: string;
+  trigger: string | null;
+  commit_sha: string | null;
+  commit_message: string | null;
+  render_created_at: string;
+  render_finished_at: string | null;
+  duration_seconds: number | null;
+  is_poll_error: boolean;
+  poll_error_message: string | null;
+  polled_at: string;
+}
+
+export interface DeploysDimension extends BaseDimension {
+  services: DeployServiceSummary[];
+  services_configured: number;
+  consecutive_failures_max: number;
+  failures_24h_total: number;
+  reason: string;
+}
+
+export interface DeployHealthDetailResponse {
+  status: 'green' | 'yellow' | 'red';
+  reason: string;
+  services: DeployServiceSummary[];
+  services_configured: number;
+  consecutive_failures_max: number;
+  failures_24h_total: number;
+  events: DeployEvent[];
+  checked_at: string;
+}
+
 export interface DataAccuracyDimension extends BaseDimension {
   mismatch_count: number;
   bars_checked: number;
@@ -159,6 +221,7 @@ export interface AdminHealthResponse {
     portfolio_sync: PortfolioSyncDimension;
     ibkr_gateway: IbkrGatewayDimension;
     data_accuracy: DataAccuracyDimension;
+    deploys?: DeploysDimension;
   };
   task_runs: Record<string, TaskRunEntry | null>;
   thresholds: Record<string, number>;

@@ -6,6 +6,7 @@ import type { AdminHealthResponse } from '../../types/adminHealth';
 import { REGIME_HEX } from '../../constants/chart';
 import { formatDate } from '../../utils/format';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
+import DeployHealthCard from './DeployHealthCard';
 
 interface Props {
   health: AdminHealthResponse | null;
@@ -223,6 +224,8 @@ const AdminDomainCards: React.FC<Props> = ({ health }) => {
           </p>
         </div>
       </Card>
+
+      <DeployHealthCard />
 
       {health.provider_metrics?.providers && Object.keys(health.provider_metrics.providers).length > 0 && (
         <Card className="gap-0 py-0 shadow-xs ring-1 ring-border lg:col-span-2">

@@ -458,6 +458,24 @@ CATALOG: List[JobTemplate] = [
         timeout_s=180,
     ),
 
+    # ── Deploy Health (G28) ─────────────────────────────────────────
+    JobTemplate(
+        id="deploy_health_poll",
+        display_name="Deploy Health Poll (Render)",
+        group="maintenance",
+        task="backend.tasks.deploys.poll_deploy_health.poll_deploy_health",
+        description=(
+            "Poll Render deploy status for the services listed in "
+            "DEPLOY_HEALTH_SERVICE_IDS every 5 minutes and persist events "
+            "to deploy_health_events. Surfaces consecutive build_failed "
+            "streaks that would otherwise go silent (D120)."
+        ),
+        default_cron="*/5 * * * *",
+        default_tz="UTC",
+        job_run_label="deploy_health_poll",
+        timeout_s=90,
+    ),
+
     # ── Deep Backfill ────────────────────────────────────────────────
     JobTemplate(
         id="full_historical_backfill",

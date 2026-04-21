@@ -242,6 +242,16 @@ class Settings(BaseSettings):
     RENDER_SYNC_ON_STARTUP: bool = False
     RENDER_REPO_URL: str = "https://github.com/sankalp404/axiomfolio.git"
 
+    # Deploy-health guardrail (G28, D120). Comma-separated Render service ids
+    # polled every 5 minutes by :mod:`backend.tasks.deploys.poll_deploy_health`.
+    # Leave empty in dev / CI — the poll task is a no-op when unset.
+    # Prod default monitors the web service + both workers + the static site:
+    #   srv-d64mkqi4d50c73eite20  -> axiomfolio-api
+    #   srv-d64mkqi4d50c73eite10  -> axiomfolio-worker
+    #   srv-d7hpo2v7f7vs738o9p80  -> axiomfolio-worker-heavy
+    #   srv-d64mkhi4d50c73eit7ng  -> axiomfolio-frontend
+    DEPLOY_HEALTH_SERVICE_IDS: str = ""
+
     # Admin seeding (development convenience)
     ADMIN_USERNAME: Optional[str] = None
     ADMIN_EMAIL: Optional[str] = None

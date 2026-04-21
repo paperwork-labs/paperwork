@@ -44,6 +44,10 @@ HEALTH_THRESHOLDS: Dict[str, float] = {
 
 MARKET_DIMS = {"coverage", "stage_quality", "jobs", "audit", "regime", "fundamentals", "data_accuracy"}
 BROKER_DIMS = {"portfolio_sync", "ibkr_gateway"}
+# G28: deploys dim is infra-level — not part of the market/broker split.
+# It still counts toward composite; a red deploy dim must surface regardless
+# of market_only_mode (a stuck API deploy breaks everything).
+INFRA_DIMS = {"deploys"}
 
 _COMPOSITE_HEALTH_CACHE_KEY = "admin:composite_health"
 _COMPOSITE_HEALTH_TTL_S = 60
@@ -124,6 +128,7 @@ class AdminHealthService:
         portfolio_sync = self._build_portfolio_sync_dimension(db)
         ibkr_gateway = self._build_ibkr_gateway_dimension()
         data_accuracy = self._build_data_accuracy_dimension()
+        deploys = self._build_deploys_dimension(db)
         task_runs = self._build_task_runs()
 
         market_only = True
@@ -143,16 +148,29 @@ class AdminHealthService:
             "data_accuracy": data_accuracy,
             "portfolio_sync": portfolio_sync,
             "ibkr_gateway": ibkr_gateway,
+            "deploys": deploys,
         }
 
         for name in dims:
-            dims[name]["category"] = "market" if name in MARKET_DIMS else "broker"
+            if name in MARKET_DIMS:
+                dims[name]["category"] = "market"
+            elif name in INFRA_DIMS:
+                dims[name]["category"] = "infra"
+            else:
+                dims[name]["category"] = "broker"
 
         if market_only:
             for name in BROKER_DIMS:
                 dims[name]["advisory"] = True
 
-        scored_dims = dims if not market_only else {k: v for k, v in dims.items() if k in MARKET_DIMS}
+        # Composite scoring: always include market + infra dims; broker dims
+        # are excluded in market_only_mode. Deploys must never be advisory —
+        # a stuck build pipeline breaks market AND broker syncs alike.
+        scored_dims = (
+            dims
+            if not market_only
+            else {k: v for k, v in dims.items() if k in MARKET_DIMS or k in INFRA_DIMS}
+        )
         failures = [name for name, dim in scored_dims.items() if not _composite_dimension_ok(dim.get("status"))]
 
         if not failures:
@@ -750,6 +768,33 @@ class AdminHealthService:
         except Exception as exc:
             logger.warning("ibkr_gateway dimension failed: %s", exc)
             return {"status": "yellow", "error": str(exc), "note": "IBKR client not available"}
+
+    def _build_deploys_dimension(self, db: Session) -> Dict[str, Any]:
+        """Build the deploys dimension payload (G28, D120).
+
+        Reads ``DEPLOY_HEALTH_SERVICE_IDS`` from settings (comma-separated
+        Render service ids) and aggregates :class:`DeployHealthEvent`
+        rows via :func:`summarize_composite`.
+
+        Never raises — the composite aggregator must remain resilient even
+        if the deploys model / migration is not yet applied.
+        """
+        try:
+            from backend.services.deploys.poll_service import summarize_composite
+            from backend.services.deploys.service_resolver import resolve_services
+
+            services = resolve_services()
+            payload = summarize_composite(db, services)
+            return payload
+        except Exception as exc:
+            logger.warning("deploys dimension failed: %s", exc)
+            return {
+                "status": "yellow",
+                "reason": f"deploy-health telemetry unavailable: {exc}",
+                "services": [],
+                "consecutive_failures_max": 0,
+                "failures_24h_total": 0,
+            }
 
     def _build_task_runs(self) -> Dict[str, Any]:
         out: Dict[str, Any] = {}

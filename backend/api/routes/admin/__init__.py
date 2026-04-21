@@ -14,6 +14,7 @@ from .scheduler import router as scheduler_router
 from .agent import router as agent_router
 from .autoops import router as autoops_router
 from .corporate_actions import router as corporate_actions_router
+from .deploy_health import router as deploy_health_router
 
 __all__ = [
     "management_router",
@@ -21,5 +22,6 @@ __all__ = [
     "agent_router",
     "autoops_router",
     "corporate_actions_router",
+    "deploy_health_router",
     "_role_value",
 ]

@@ -7,7 +7,7 @@ import type { AdminHealthResponse } from '@/types/adminHealth';
 
 type HealthDimensions = AdminHealthResponse['dimensions'];
 type DimensionKey = keyof HealthDimensions;
-type DimensionValue = HealthDimensions[DimensionKey];
+type DimensionValue = NonNullable<HealthDimensions[DimensionKey]>;
 
 export interface HealthGridProps {
   dimensions: HealthDimensions | null;
@@ -165,7 +165,9 @@ export function HealthGrid({
     );
   }
 
-  const entries = Object.entries(dimensions) as [DimensionKey, DimensionValue][];
+  const entries = (
+    Object.entries(dimensions) as [DimensionKey, DimensionValue | undefined][]
+  ).filter((entry): entry is [DimensionKey, DimensionValue] => Boolean(entry[1]));
   const mainDimensions = entries.filter(([, dim]) => !dim.advisory);
   const advisoryDimensions = entries.filter(([, dim]) => dim.advisory);
 

@@ -109,6 +109,9 @@ from .agent_message import AgentMessage, load_conversation_from_db, save_convers
 from .auto_ops_explanation import AutoOpsExplanation
 from .trade_decision_explanation import TradeDecisionExplanation
 
+# Deploy health guardrail (G28, D120)
+from .deploy_health_event import DeployHealthEvent
+
 # Multi-tenant hardening (rate limits, GDPR jobs, cost rollup, incidents)
 from .multitenant import (
     GDPRDeleteJob,
@@ -231,6 +234,7 @@ __all__ = [
     "AgentMessage",
     "AutoOpsExplanation",
     "TradeDecisionExplanation",
+    "DeployHealthEvent",
     "load_conversation_from_db",
     "save_conversation_to_db",
     "Notification",

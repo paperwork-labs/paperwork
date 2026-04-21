@@ -47,6 +47,7 @@ from backend.api.routes import (
     admin_autoops,
     admin_corporate_actions,
     admin_data_quality,
+    admin_deploy_health,
     # Settings (from settings/ folder)
     account_management,
     app_settings,
@@ -682,6 +683,12 @@ app.include_router(
     admin_data_quality,
     prefix="/api/v1/admin",
     tags=["Admin Data Quality"],
+    dependencies=[Depends(require_non_market_access)],
+)
+app.include_router(
+    admin_deploy_health,
+    prefix="/api/v1",
+    tags=["Admin Deploy Health"],
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(
