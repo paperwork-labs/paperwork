@@ -1,7 +1,7 @@
 """Broker execution abstraction layer.
 
 Provides a unified interface for order execution across multiple brokerages
-(IBKR, Alpaca, TastyTrade, Schwab) with pre-trade risk gating and order
+(IBKR, TastyTrade, Schwab) with pre-trade risk gating and order
 lifecycle management.
 """
 

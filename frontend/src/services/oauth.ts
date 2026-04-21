@@ -14,8 +14,9 @@ export type OAuthBroker =
   | 'fidelity'
   | 'tastytrade'
   | 'ibkr'
-  | 'alpaca'
-  | 'robinhood';
+  | 'robinhood'
+  | 'tradier'
+  | 'coinbase';
 
 export type OAuthConnectionStatus =
   | 'PENDING'

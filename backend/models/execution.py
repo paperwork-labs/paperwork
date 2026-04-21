@@ -22,7 +22,7 @@ class ExecutionMetrics(Base):
 
     # Order details
     symbol: Mapped[str] = mapped_column(String(20))
-    broker: Mapped[str] = mapped_column(String(20))  # ibkr, schwab, alpaca
+    broker: Mapped[str] = mapped_column(String(20))  # ibkr, schwab, tastytrade
     side: Mapped[str] = mapped_column(String(10))  # buy, sell
 
     # Pricing

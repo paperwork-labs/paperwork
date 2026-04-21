@@ -343,24 +343,6 @@ def _fetch_broker_positions(account, db: Session) -> Optional[List[Dict]]:
             logger.debug("IBKR position fetch uses FlexQuery sync data")
             return None  # Rely on FlexQuery-synced data in positions table
 
-        elif account.broker == BrokerType.ALPACA:
-            from backend.services.execution.alpaca_executor import AlpacaExecutor
-            
-            executor = AlpacaExecutor()
-            loop = asyncio.new_event_loop()
-            try:
-                raw = loop.run_until_complete(executor.get_positions())
-                for p in raw:
-                    positions.append({
-                        "symbol": p.symbol,
-                        "quantity": float(p.qty),
-                        "cost_basis": float(p.avg_entry_price) * float(p.qty),
-                        "market_value": float(p.market_value),
-                    })
-            finally:
-                loop.close()
-            return positions
-
         elif account.broker == BrokerType.SCHWAB:
             # Schwab positions synced via OAuth API
             logger.debug("Schwab reconciliation not yet implemented")

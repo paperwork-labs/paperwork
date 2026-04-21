@@ -228,7 +228,6 @@ Routers are mounted from `backend/api/main.py`. Portfolio routes sit under `port
 | `market/coverage_service.py` | Coverage pipeline |
 | `market/snapshot_service.py` | Snapshot persistence |
 | `market/provider_service.py` | Multi-provider OHLCV fetch |
-| `market/price_feed.py` | Alpaca WebSocket → Redis Streams |
 | `market/multi_timeframe.py` | Multi-timeframe stage confirmation (1H/4H/1D/1W) |
 | `market/regime_inputs.py` | VIX, breadth, NH-NL data feeds |
 | `engine/signal_engine.py` | Real-time strategy evaluation via Redis Streams |
@@ -458,18 +457,15 @@ flowchart TB
 ```mermaid
 flowchart LR
     subgraph inputs ["Real-Time Inputs"]
-        Alpaca["Alpaca WebSocket"]
         TV["TradingView Webhook"]
     end
 
     subgraph streams ["Redis Streams"]
-        PriceFeed["price:feed:alpaca"]
         SignalsEval["signals:evaluated"]
         SignalsOut["signals:output"]
     end
 
     subgraph engine ["Trading Engine"]
-        PFS["PriceFeedService"]
         SE["SignalEngine"]
         OM["OrderManager"]
     end
@@ -479,14 +475,13 @@ flowchart LR
         PTV["PreTradeValidator"]
     end
 
-    subgraph exec ["Execution"]
+    subgraph execLayer ["Execution"]
         BR["BrokerRouter"]
         Brain["Brain Webhook"]
     end
 
-    Alpaca --> PFS --> PriceFeed
     TV --> OM
-    PriceFeed --> SE --> SignalsEval
+    SE --> SignalsEval
     SE --> SignalsOut --> OM
     OM --> CB --> PTV --> BR
     OM --> Brain
@@ -496,7 +491,6 @@ flowchart LR
 
 | Component | File | Purpose |
 |-----------|------|---------|
-| PriceFeedService | `backend/services/market/price_feed.py` | Alpaca WebSocket → Redis Streams |
 | SignalEngine | `backend/services/engine/signal_engine.py` | Consumes prices, evaluates strategies, emits signals |
 | CircuitBreaker | `backend/services/risk/circuit_breaker.py` | 3-tier daily loss limits (2%/3%/5%) |
 | PreTradeValidator | `backend/services/risk/pre_trade_validator.py` | Position sizing, concentration checks |

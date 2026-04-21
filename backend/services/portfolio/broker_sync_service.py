@@ -28,12 +28,6 @@ def _import_schwab_service():
     return SchwabSyncService()
 
 
-def _import_alpaca_service():
-    """Lazy import for Alpaca to avoid circular dependencies."""
-    from backend.services.portfolio.alpaca_sync_service import AlpacaSyncService
-    return AlpacaSyncService()
-
-
 def _build_partial_sync_message(completeness: Dict) -> str:
     """Build a user-facing message for SyncStatus.PARTIAL (G22).
 
@@ -92,7 +86,7 @@ class BrokerSyncService:
         self._broker_services = {}
 
     def get_available_brokers(self):
-        return [BrokerType.IBKR, BrokerType.TASTYTRADE, BrokerType.SCHWAB, BrokerType.ALPACA]
+        return [BrokerType.IBKR, BrokerType.TASTYTRADE, BrokerType.SCHWAB]
 
     def _get_broker_service(self, broker_type):
         from backend.models.broker_account import BrokerType
@@ -109,7 +103,6 @@ class BrokerSyncService:
             BrokerType.IBKR: lambda: IBKRSyncService(),
             BrokerType.TASTYTRADE: lambda: TastyTradeSyncService(),
             BrokerType.SCHWAB: _import_schwab_service,
-            BrokerType.ALPACA: _import_alpaca_service,
         }
 
         factory = factories.get(broker_type)

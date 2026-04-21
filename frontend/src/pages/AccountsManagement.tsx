@@ -55,7 +55,6 @@ const BROKER_DISPLAY: Record<string, string> = {
   tastytrade: "Tastytrade",
   fidelity: "Fidelity",
   robinhood: "Robinhood",
-  alpaca: "Alpaca",
 };
 
 function brokerLabel(broker: string): string {

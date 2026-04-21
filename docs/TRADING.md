@@ -128,9 +128,8 @@ The project depends on [`ib_insync`](https://github.com/erdewit/ib_insync) for a
 | IBKR | Full | Yes | Production |
 | TastyTrade | Not implemented | No | Read-only |
 | Schwab | Stub only | No | Read-only |
-| Alpaca | Not implemented | No | Planned |
 
-Only IBKR supports order execution today. TastyTrade and Schwab integrations are limited to account/position reads. Alpaca has no implementation yet.
+Only IBKR supports order execution today. TastyTrade and Schwab integrations are limited to account/position reads. Alpaca was dropped (D128); autotrading runs through OrderManager / RiskGate / BrokerRouter against the OAuth-connected brokers above.
 
 ## Strategy-to-Trade Pipeline
 

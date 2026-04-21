@@ -10,7 +10,7 @@ export type OrderStatus =
   | 'rejected'
   | 'error';
 export type OrderSource = 'manual' | 'strategy' | 'rebalance';
-export type BrokerType = 'ibkr' | 'alpaca' | 'tastytrade' | 'schwab';
+export type BrokerType = 'ibkr' | 'tastytrade' | 'schwab';
 
 export interface Order {
   id: number;

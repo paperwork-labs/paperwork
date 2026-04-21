@@ -1,6 +1,6 @@
 """Abstract Broker Adapter — unified interface for all broker integrations.
 
-Every broker client (IBKR, Alpaca, etc.) must implement this ABC so that
+Every broker client (IBKR, Schwab, TastyTrade, etc.) must implement this ABC so that
 OrderManager and sync pipelines can interact with them uniformly.
 
 Typed records below (BrokerPosition, BrokerOrder, BrokerBalance, OrderRequest,

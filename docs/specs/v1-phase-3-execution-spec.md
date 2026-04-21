@@ -7,6 +7,8 @@
 **Predecessor**: `docs/plans/MASTER_PLAN_2026.md` Phase 3 (`p3a`, `p3b`, `p3c`)
 **Reference rules**: `.cursor/rules/protected-regions.mdc`, `.cursor/rules/portfolio-manager.mdc`, `.cursor/rules/risk-manager.mdc`, `.cursor/rules/capital-allocator.mdc`, `.cursor/rules/microstructure.mdc`
 
+> **Note (D128, 2026-04-21)**: Alpaca was dropped from the broker roster (see `docs/KNOWLEDGE.md` D128). References to `alpaca_executor.py`, `AlpacaExecutor`, and Alpaca bracket-order semantics elsewhere in this document are historical; the roadmap targets IBKR, Schwab, TastyTrade, plus Phase 1 additions E*TRADE / Tradier / Coinbase.
+
 This document is a precise engineering plan for the founder-supervised execution session. It cites real existing code, defines new code by signature, names every test fixture, and prescribes a merge order that minimizes coupling risk. It does NOT modify any code; that happens during the supervised session.
 
 ---

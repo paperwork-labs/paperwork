@@ -237,7 +237,7 @@ async def receive_tradingview_alert(
         quantity=adjusted_quantity,
         limit_price=alert.limit_price,
         source="tradingview",
-        broker_type="alpaca",  # Default to Alpaca for TV alerts
+        broker_type="ibkr",  # Default to IBKR for TV alerts
         user_id=user.id,
         created_by=f"tradingview:{alert.strategy_name or 'alert'}",
         decision_price=alert.price,

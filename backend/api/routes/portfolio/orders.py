@@ -35,7 +35,7 @@ class OrderPreviewRequest(BaseModel):
     quantity: float
     limit_price: Optional[float] = None
     stop_price: Optional[float] = None
-    broker_type: str = Field(default="ibkr", description="Broker to use: ibkr, alpaca")
+    broker_type: str = Field(default="ibkr", description="Broker to use: ibkr, schwab, tastytrade")
 
 
 class OrderSubmitRequest(BaseModel):

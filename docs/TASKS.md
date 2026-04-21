@@ -75,7 +75,7 @@ Current execution plan organized by phase. One task per PR where possible.
 | 3.5.2 | Google OAuth + email verification | DONE | /auth/google/login + callback, find-or-create user, verification email via Resend |
 | 3.5.3 | Refresh token flow | DONE | 15-min access JWT + 7-day httpOnly refresh cookie + /auth/refresh + token family rotation |
 | 3.5.4 | Frontend auth updates | DONE | Google button on Login, AuthCallback page, 401 refresh interceptor in api.ts |
-| 3.5.5 | BrokerAdapter interface | DONE | ABC in broker_adapter.py, AlpacaAdapter stub |
+| 3.5.5 | BrokerAdapter interface | DONE | ABC in broker_adapter.py |
 | 3.5.6 | Multi-tenant enforcement | DONE | user_id scoping on OrderManager, portfolio, dashboard, options routes. IDOR fixes |
 | 3.5.7 | Silent exception cleanup | DONE | 34 except-pass blocks replaced with logger.warning in market_data_service + tasks |
 | 3.5.8 | MAX_SINGLE_POSITION_PCT | DONE | Wired from settings (default 15%) into RiskGate |
@@ -225,7 +225,7 @@ Prepare AxiomFolio as tool provider for Paperwork Brain.
 
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
-| N.1 | Alpaca broker adapter | DONE | AlpacaExecutor in backend/services/execution/alpaca_executor.py |
+| N.1 | Alpaca broker adapter | DROPPED | Removed in D128; autotrading runs via OrderManager -> RiskGate -> BrokerRouter against IBKR / Schwab / TastyTrade |
 | N.2 | Apple Sign-In | DONE | /auth/apple/login + callback |
 | N.3 | User onboarding flow | DONE | Onboarding.tsx with 5-step flow |
 | N.4 | Bloomberg terminal dashboard | DONE | Terminal.tsx at /terminal with 4-pane layout |

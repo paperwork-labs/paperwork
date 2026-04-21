@@ -113,11 +113,6 @@ class Settings(BaseSettings):
     IBKR_USERNAME: Optional[str] = None  # Gateway login username
     IBKR_PASSWORD: Optional[str] = None  # Gateway login password (use secrets manager in prod)
 
-    # Alpaca Configuration
-    ALPACA_API_KEY: Optional[str] = None
-    ALPACA_API_SECRET: Optional[str] = None
-    ALPACA_TRADING_MODE: str = "paper"  # paper | live
-
     # E*TRADE OAuth 1.0a (sandbox-first; live keys require formal app approval)
     # Used by backend.services.oauth.etrade.ETradeSandboxAdapter. The sandbox
     # base URL is fixed; only the consumer key/secret + callback URL vary.

@@ -40,7 +40,6 @@ For Pro+ entries, attach OCO (One-Cancels-Other) bracket on entry:
 
 Implementation depends on broker API:
 - IBKR: native bracket order via `Bracket` parent/child
-- Alpaca: native bracket via `order_class=bracket`
 - TastyTrade: stop + target as separate orders, manually manage cancellation
 - Schwab: similar to TastyTrade
 - Plaid (read-only): not applicable

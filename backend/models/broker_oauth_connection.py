@@ -32,8 +32,9 @@ class OAuthBrokerType(str, enum.Enum):
     FIDELITY = "fidelity"
     TASTYTRADE = "tastytrade"
     IBKR = "ibkr"
-    ALPACA = "alpaca"
     ROBINHOOD = "robinhood"
+    TRADIER = "tradier"
+    COINBASE = "coinbase"
 
 
 class OAuthConnectionStatus(str, enum.Enum):

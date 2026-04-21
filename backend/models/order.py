@@ -53,7 +53,6 @@ class OrderSource(enum.Enum):
 
 class BrokerType(enum.Enum):
     IBKR = "ibkr"
-    ALPACA = "alpaca"
     TASTYTRADE = "tastytrade"
     SCHWAB = "schwab"
 

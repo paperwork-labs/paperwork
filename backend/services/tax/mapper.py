@@ -60,7 +60,6 @@ _BROKER_TO_DEFAULT_QUALITY: Dict[str, DataQuality] = {
     "tastytrade": DataQuality.CALCULATED,
     "schwab": DataQuality.UNKNOWN,
     "fidelity": DataQuality.UNKNOWN,
-    "alpaca": DataQuality.UNKNOWN,
     "robinhood": DataQuality.UNKNOWN,
 }
 
@@ -69,7 +68,6 @@ _BROKER_TO_DEFAULT_SOURCE: Dict[str, str] = {
     "tastytrade": "tastytrade_calculated",
     "schwab": "schwab",
     "fidelity": "fidelity",
-    "alpaca": "alpaca",
     "robinhood": "robinhood",
 }
 
