@@ -25,6 +25,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _datetime_as_utc_aware(dt: datetime) -> datetime:
+    """Coerce to timezone-aware UTC so comparisons match ``datetime.now(timezone.utc)``."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 @router.get("/dashboard", response_model=Dict[str, Any])
 async def get_dashboard(
     days: int = Query(365, ge=1, le=3650),
@@ -575,14 +582,15 @@ async def get_dividend_summary(
         )
 
         one_year_ago_date = one_year_ago.date()
-        trailing_divs = [
-            d for d in divs
-            if d.pay_date and (
-                d.pay_date >= one_year_ago
-                if isinstance(d.pay_date, datetime)
-                else d.pay_date >= one_year_ago_date
-            )
-        ]
+        trailing_divs = []
+        for d in divs:
+            if not d.pay_date:
+                continue
+            if isinstance(d.pay_date, datetime):
+                if _datetime_as_utc_aware(d.pay_date) >= one_year_ago:
+                    trailing_divs.append(d)
+            elif d.pay_date >= one_year_ago_date:
+                trailing_divs.append(d)
         trailing_12m = sum(float(d.total_dividend or 0) for d in trailing_divs)
 
         by_sym: Dict[str, list] = {}
@@ -616,15 +624,23 @@ async def get_dividend_summary(
 
         upcoming: list = []
         for sym, ds in by_sym.items():
-            ex_dates = sorted(
-                [d.ex_date for d in ds if d.ex_date],
-                reverse=True,
-            )
+            ex_utc: List[datetime] = []
+            for d in ds:
+                if not d.ex_date:
+                    continue
+                ed = d.ex_date
+                if isinstance(ed, datetime):
+                    ex_utc.append(_datetime_as_utc_aware(ed))
+                elif isinstance(ed, date):
+                    ex_utc.append(
+                        datetime.combine(ed, datetime.min.time(), tzinfo=timezone.utc)
+                    )
+            ex_dates = sorted(ex_utc, reverse=True)
             if len(ex_dates) >= 2:
                 gap = (ex_dates[0] - ex_dates[1]).days
                 est_next = ex_dates[0] + timedelta(days=gap)
                 now_date = now.date()
-                est_next_date = est_next.date() if isinstance(est_next, datetime) else est_next
+                est_next_date = est_next.date()
                 if est_next_date >= now_date and (est_next_date - now_date).days <= 60:
                     per_share = [float(d.dividend_per_share or 0) for d in ds if d.dividend_per_share]
                     upcoming.append({

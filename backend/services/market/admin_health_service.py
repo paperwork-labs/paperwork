@@ -23,6 +23,14 @@ from backend.services.market.market_data_service import coverage_analytics, infr
 
 logger = logging.getLogger(__name__)
 
+
+def _datetime_as_utc_aware(dt: datetime) -> datetime:
+    """Coerce to timezone-aware UTC for comparisons against ``datetime.now(timezone.utc)``."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 # ---------------------------------------------------------------------------
 # Thresholds -- tune here, not scattered across code
 # ---------------------------------------------------------------------------
@@ -711,8 +719,10 @@ class AdminHealthService:
                 }
 
             stale = [
-                a for a in accounts
-                if not a.last_successful_sync or a.last_successful_sync < cutoff
+                a
+                for a in accounts
+                if not a.last_successful_sync
+                or _datetime_as_utc_aware(a.last_successful_sync) < cutoff
             ]
             account_type_warnings: list[dict[str, Any]] = []
             for account in accounts:
