@@ -4,7 +4,30 @@
 **Created**: 2026-04-09
 **Owner**: Staff Engineer (Opus orchestrator)
 **Reviewed**: see `docs/KNOWLEDGE.md` D81-D90 for decision rationale.
-**Companion**: [GAPS_2026Q2.md](GAPS_2026Q2.md) — production gaps discovered 2026-04-20 (G1–G27, dual-mode return-maximization platform per D116 + IBKR sync correctness per D117 + founder-replay-corpus discipline per D118 + discipline-bounded year-end target $2.0M–$2.5M for the founder joint book per D119). G14–G19 form the Active/Conviction discipline layer; G20 adds the HNW tax-deferral surface; G21 turns the founder portfolio into the canonical acceptance test; G22–G25 close the broker-sync correctness gap (silent partial-success guard, historical XML backfill, account-type-aware strategy routing, multi-account auto-discovery) so every downstream engine actually receives correct data; G26 anchors the "inability to close when winning" founder-self-identified pain as the explicit G15 acceptance criterion. G27 (per-account risk profile) ships in Phase 1 after G24/G25 land — lets users tune position-sizing dial-settings within the discipline (Conservative / Balanced / Aggressive / Speculative) but never disable RiskGate, RegimeGate, ExitCascade, or the Kill Switch; founder IRA defaults Aggressive (no tax friction → can run faster within discipline), Joint Taxable defaults Balanced. The G7 (PickQualityScorer) + G9 (Options Chain Surface) + G10 (Trade Card UX) trio remains the visible product surface that turns AxiomFolio from "shows you 156 stocks" into "renders 1–3 ranked Trade Cards with the order pre-staged". Resolve in parallel with phases below; sync-correctness gaps (G22 + G23 Path A + G24 + G25) are bundled in `feat/ibkr-multi-account-historical-import` PR (Phase 0).
+**Companion**: [GAPS_2026Q2.md](GAPS_2026Q2.md) — production gaps discovered 2026-04-20.
+
+- Scope: G1–G27, dual-mode return-maximization platform per D116, IBKR sync correctness
+  per D117, founder-replay-corpus discipline per D118, and discipline-bounded year-end
+  target $2.0M–$2.5M for the founder joint book per D119.
+- G14–G19 form the Active/Conviction discipline layer.
+- G20 adds the HNW tax-deferral surface.
+- G21 turns the founder portfolio into the canonical acceptance test.
+- G22–G25 close the broker-sync correctness gap (silent partial-success guard,
+  historical XML backfill, account-type-aware strategy routing, multi-account
+  auto-discovery) so every downstream engine actually receives correct data.
+- G26 anchors the "inability to close when winning" founder-self-identified pain as
+  the explicit G15 acceptance criterion.
+- G27 (per-account risk profile) ships in Phase 1 after G24/G25 land. It lets users
+  tune position-sizing dial-settings within the discipline (Conservative / Balanced /
+  Aggressive / Speculative) but never disable RiskGate, RegimeGate, ExitCascade, or
+  the Kill Switch. Founder IRA defaults Aggressive (no tax friction → can run faster
+  within discipline); Joint Taxable defaults Balanced.
+- The G7 (PickQualityScorer) + G9 (Options Chain Surface) + G10 (Trade Card UX) trio
+  remains the visible product surface that turns AxiomFolio from "shows you 156
+  stocks" into "renders 1–3 ranked Trade Cards with the order pre-staged".
+- Resolve in parallel with phases below; sync-correctness gaps (G22 + G23 Path A +
+  G24 + G25) are bundled in `feat/ibkr-multi-account-historical-import` PR
+  (Phase 0).
 
 ---
 
