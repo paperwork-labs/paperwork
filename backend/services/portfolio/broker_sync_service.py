@@ -9,6 +9,7 @@ from any supported broker, while keeping the core models broker-neutral.
 
 import logging
 import asyncio
+import json
 from typing import Dict
 from datetime import datetime, timezone
 
@@ -188,7 +189,18 @@ class BrokerSyncService:
             from backend.models.broker_account import SyncStatus
 
             broker_account.sync_status = SyncStatus.SUCCESS
-            broker_account.sync_error_message = None
+            account_type_warnings = (
+                result.get("account_type_warnings", [])
+                if isinstance(result, dict)
+                else []
+            )
+            if account_type_warnings:
+                broker_account.sync_error_message = (
+                    "ACCOUNT_TYPE_WARNING "
+                    + json.dumps(account_type_warnings[:3], separators=(",", ":"))
+                )[:500]
+            else:
+                broker_account.sync_error_message = None
             session.commit()
 
             return result
@@ -299,7 +311,18 @@ class BrokerSyncService:
             else:
                 broker_account.last_successful_sync = datetime.now(timezone.utc)
                 broker_account.sync_status = SyncStatus.SUCCESS
-                broker_account.sync_error_message = None
+                account_type_warnings = (
+                    result.get("account_type_warnings", [])
+                    if isinstance(result, dict)
+                    else []
+                )
+                if account_type_warnings:
+                    broker_account.sync_error_message = (
+                        "ACCOUNT_TYPE_WARNING "
+                        + json.dumps(account_type_warnings[:3], separators=(",", ":"))
+                    )[:500]
+                else:
+                    broker_account.sync_error_message = None
             session.commit()
             return result
 

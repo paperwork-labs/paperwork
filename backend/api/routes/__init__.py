@@ -37,6 +37,7 @@ from .admin.deploy_health import router as admin_deploy_health
 # Re-export settings routes
 from .settings.app import router as app_settings
 from .settings.account import router as account_management
+from .settings.historical_import import router as historical_import
 from .settings.notifications import router as notifications
 
 # Root-level routes (not yet organized)
@@ -72,6 +73,7 @@ __all__ = [
     # Settings
     "app_settings",
     "account_management",
+    "historical_import",
     "notifications",
     # Root-level
     "auth",

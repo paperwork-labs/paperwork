@@ -62,6 +62,11 @@ from .symbol_master import (
 from .index_constituent import IndexConstituent
 from .historical_iv import HistoricalIV
 from .institutional_holding import InstitutionalHolding
+from .historical_import_run import (
+    HistoricalImportRun,
+    HistoricalImportSource,
+    HistoricalImportStatus,
+)
 
 # Trading & Positions
 from .position import Position, PositionType, PositionStatus
@@ -201,6 +206,9 @@ __all__ = [
     "IndexConstituent",
     "HistoricalIV",
     "InstitutionalHolding",
+    "HistoricalImportRun",
+    "HistoricalImportSource",
+    "HistoricalImportStatus",
     "Position",
     "PositionType",
     "PositionStatus",

@@ -38,6 +38,8 @@ def seed(db_session=None) -> dict[str, int]:
         updated = 0
         skipped_customized = 0
         for tmpl in CATALOG:
+            if not tmpl.enabled:
+                continue
             if tmpl.id not in existing:
                 row = CronSchedule(
                     id=tmpl.id,

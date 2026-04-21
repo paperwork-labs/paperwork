@@ -58,6 +58,12 @@ class _StubResult:
         return None
 
 
+class _StubRateLimitRow:
+    def __init__(self, per_minute: int, burst: int):
+        self.bucket_size_per_minute = per_minute
+        self.burst_capacity = burst
+
+
 def test_first_call_allowed_with_default_bucket(limiter):
     db = _StubDB()
     result = limiter.check(db, user_id=42, endpoint="/api/v1/things")
@@ -125,3 +131,22 @@ def test_anonymous_caller_buckets_globally(limiter):
     db = _StubDB()
     result = limiter.check(db, user_id=None, endpoint="/api/v1/anon")
     assert result.decision == RateLimitDecision.ALLOWED
+
+
+def test_resolve_bucket_uses_endpoint_override(limiter):
+    class _DB(_StubDB):
+        def execute(self, *args, **kwargs):
+            class _R:
+                def scalar_one_or_none(self_inner):
+                    return _StubRateLimitRow(per_minute=3, burst=3)
+
+            return _R()
+
+    db = _DB()
+    result = limiter.check(
+        db,
+        user_id=99,
+        endpoint="/api/v1/accounts/:id/historical-import",
+    )
+    assert result.bucket_per_minute == 3
+    assert result.burst_capacity == 3

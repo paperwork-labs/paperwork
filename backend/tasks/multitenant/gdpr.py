@@ -7,10 +7,16 @@ import logging
 from celery import shared_task
 
 from backend.database import SessionLocal
-from backend.services.gdpr.delete_service import GDPRDeleteService
+from backend.services.gdpr.delete_service import (
+    GDPR_DELETE_CASCADE_TABLES as _GDPR_DELETE_CASCADE_TABLES,
+    GDPRDeleteService,
+)
 from backend.services.gdpr.export_service import GDPRExportService
 
 logger = logging.getLogger(__name__)
+# Re-export the canonical registry so worker-side callers/tests can reference one source.
+GDPR_DELETE_CASCADE_TABLES = _GDPR_DELETE_CASCADE_TABLES
+__all__ = ("run_export", "run_delete", "GDPR_DELETE_CASCADE_TABLES")
 
 
 # Both tasks set explicit time limits per the iron law in

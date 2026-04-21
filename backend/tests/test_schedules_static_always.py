@@ -12,6 +12,7 @@ from backend.models.market_data import CronSchedule
 from backend.tasks.job_catalog import CATALOG
 
 client = TestClient(app, raise_server_exceptions=False)
+ENABLED_TEMPLATE_IDS = {tmpl.id for tmpl in CATALOG if tmpl.enabled}
 
 
 # ---------------------------------------------------------------------------
@@ -25,7 +26,7 @@ def test_seed_script_inserts_catalog_entries(db_session):
     from backend.scripts.seed_schedules import seed
 
     result = seed(db_session)
-    assert result["seeded"] == len(CATALOG)
+    assert result["seeded"] == len(ENABLED_TEMPLATE_IDS)
     assert result["updated"] == 0
     assert result["skipped_customized"] == 0
 
@@ -33,7 +34,22 @@ def test_seed_script_inserts_catalog_entries(db_session):
     result2 = seed(db_session)
     assert result2["seeded"] == 0
     assert result2["updated"] == 0
-    assert result2["unchanged"] == len(CATALOG)
+    assert result2["unchanged"] == len(ENABLED_TEMPLATE_IDS)
+
+
+def test_seed_skips_disabled_templates(db_session):
+    if db_session is None:
+        pytest.skip("No test DB")
+    from backend.scripts.seed_schedules import seed
+
+    seed(db_session)
+    disabled_template_ids = {tmpl.id for tmpl in CATALOG if not tmpl.enabled}
+    rows = (
+        db_session.query(CronSchedule.id)
+        .filter(CronSchedule.id.in_(disabled_template_ids))
+        .all()
+    )
+    assert rows == []
 
 
 def test_seed_creates_correct_fields(db_session):
@@ -432,7 +448,7 @@ def test_auto_seed_on_empty_table(db_session):
             resp = client.get("/api/v1/admin/schedules")
         assert resp.status_code == 200
         schedules = resp.json()["schedules"]
-        assert len(schedules) >= len(CATALOG)
+        assert len(schedules) >= len(ENABLED_TEMPLATE_IDS)
     finally:
         app.dependency_overrides.pop(get_admin_user, None)
         app.dependency_overrides.pop(get_db, None)

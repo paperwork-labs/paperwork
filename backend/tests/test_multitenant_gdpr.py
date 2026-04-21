@@ -24,8 +24,13 @@ from backend.models.multitenant import (
     IncidentRow,
 )
 from backend.models.user import User
-from backend.services.gdpr.delete_service import GDPRDeleteService
+from backend.services.gdpr.delete_service import (
+    GDPR_DELETE_CASCADE_TABLES,
+    GDPRDeleteService,
+)
 from backend.services.gdpr.export_service import GDPRExportService
+from backend.services.gdpr.delete_service import _user_scoped_tables
+from backend.tasks.multitenant.gdpr import GDPR_DELETE_CASCADE_TABLES as TASK_GDPR_DELETE_CASCADE_TABLES
 
 
 # ---------------------------------------------------------------------------
@@ -246,3 +251,12 @@ def test_delete_failure_writes_incident_row(db_session, monkeypatch):
         .all()
     )
     assert len(incidents) == 1
+
+
+def test_gdpr_user_scoped_tables_include_historical_import_runs():
+    table_names = {t.name for t in _user_scoped_tables()}
+    assert "historical_import_runs" in table_names
+
+
+def test_gdpr_delete_registry_shared_between_service_and_task_module():
+    assert TASK_GDPR_DELETE_CASCADE_TABLES == GDPR_DELETE_CASCADE_TABLES

@@ -91,6 +91,7 @@ class BrokerAccount(Base):
     account_number = Column(String(50), nullable=False, index=True)  # e.g., "U19491234"
     account_name = Column(String(100))  # Human-readable name
     account_type = Column(SQLEnum(AccountType), nullable=False)
+    auto_discovered = Column(Boolean, nullable=False, default=False)
 
     # Status
     status = Column(

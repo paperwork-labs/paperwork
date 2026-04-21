@@ -34,6 +34,7 @@ celery_app = Celery(
         "backend.tasks.portfolio.orders",
         "backend.tasks.portfolio.daily_narrative",
         "backend.tasks.portfolio.oauth_token_refresh",
+        "backend.tasks.portfolio.historical_import",
         # Strategy
         "backend.tasks.strategy.tasks",
         "backend.tasks.strategy.exit_evaluation",
@@ -87,6 +88,7 @@ celery_app.conf.task_queues = (
 celery_app.conf.task_routes = {
     "backend.tasks.portfolio.sync.*": {"queue": "account_sync"},
     "backend.tasks.portfolio.orders.*": {"queue": "orders"},
+    "backend.tasks.portfolio.historical_import.*": {"queue": "heavy"},
     # Market-data heavy jobs (snapshot history backfills, indicator repair,
     # multi-day OHLCV backfills, fundamentals fill, intraday backfill).
     "backend.tasks.market.history.*": {"queue": "heavy"},

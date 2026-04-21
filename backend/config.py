@@ -173,6 +173,7 @@ class Settings(BaseSettings):
 
     # Risk management
     MAX_SINGLE_POSITION_PCT: float = 0.15
+    ENABLE_ACCOUNT_AWARE_RISK: bool = False
 
     # Trade approval settings (Tier 3 / human-in-the-loop)
     TRADE_APPROVAL_MODE: str = "all"  # all | threshold | analyst_only | none

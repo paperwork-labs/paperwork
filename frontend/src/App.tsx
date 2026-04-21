@@ -1,7 +1,16 @@
-import React, { Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
+import React, { Suspense, useEffect } from 'react';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  useNavigate,
+  useParams,
+} from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
+import hotToast from 'react-hot-toast';
 import { AccountProvider } from './context/AccountContext';
 import { AuthProvider } from './context/AuthContext';
 import { ColorModeProvider } from './theme/colorMode';
@@ -28,13 +37,13 @@ const StrategiesManager = React.lazy(() => import('./pages/StrategiesManager'));
 const StrategyDetail = React.lazy(() => import('./pages/StrategyDetail'));
 const SettingsShell = React.lazy(() => import('./pages/SettingsShell'));
 const SettingsConnections = React.lazy(() => import('./pages/SettingsConnections'));
+const HistoricalImportWizard = React.lazy(() => import('./pages/settings/HistoricalImportWizard'));
 const SettingsProfile = React.lazy(() => import('./pages/SettingsProfile'));
 const SettingsPreferences = React.lazy(() => import('./pages/SettingsPreferences'));
 const SettingsNotifications = React.lazy(() => import('./pages/SettingsNotifications'));
 const SettingsDataPrivacy = React.lazy(() => import('./pages/SettingsDataPrivacy'));
 const SettingsMCP = React.lazy(() => import('./pages/SettingsMCP'));
 const PortfolioWorkspace = React.lazy(() => import('./pages/PortfolioWorkspace'));
-const PortfolioAllocation = React.lazy(() => import('./pages/PortfolioAllocation'));
 const PortfolioIncome = React.lazy(() => import('./pages/PortfolioIncome'));
 const Login = React.lazy(() => import('./pages/Login'));
 const Register = React.lazy(() => import('./pages/Register'));
@@ -50,7 +59,6 @@ const WhyFree = React.lazy(() => import('./pages/WhyFree'));
 const Pricing = React.lazy(() => import('./pages/Pricing'));
 const SettingsUsers = React.lazy(() => import('./pages/SettingsUsers'));
 const AdminAgent = React.lazy(() => import('./pages/AdminAgent'));
-const Terminal = React.lazy(() => import('./pages/Terminal'));
 const Scanner = React.lazy(() => import('./pages/Scanner'));
 const Picks = React.lazy(() => import('./pages/Picks'));
 const PicksValidator = React.lazy(() => import('./pages/admin/PicksValidator'));
@@ -77,9 +85,49 @@ const RouteFallback: React.FC = () => (
 function LegacyStrategyDetailRedirect() {
   const { strategyId } = useParams<{ strategyId: string }>();
   if (!strategyId) {
-    return <Navigate to="/market/strategies" replace />;
+    return <Navigate to="/lab/strategies" replace />;
   }
-  return <Navigate to={`/market/strategies/${strategyId}`} replace />;
+  return <Navigate to={`/lab/strategies/${strategyId}`} replace />;
+}
+
+function PreserveRedirect({ toPath }: { toPath: string }) {
+  const location = useLocation();
+  return (
+    <Navigate
+      to={{
+        pathname: toPath,
+        search: location.search,
+        hash: location.hash,
+      }}
+      replace
+    />
+  );
+}
+
+function PortfolioAllocationRedirect() {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  params.set('tab', 'allocation');
+  const search = params.toString();
+  return (
+    <Navigate
+      to={{
+        pathname: '/portfolio',
+        search: search ? `?${search}` : '',
+        hash: location.hash,
+      }}
+      replace
+    />
+  );
+}
+
+function TerminalRedirect() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    hotToast('Terminal replaced by Cmd+K (try it now)');
+    navigate('/', { replace: true });
+  }, [navigate]);
+  return null;
 }
 
 function App() {
@@ -96,14 +144,36 @@ function App() {
                   <Routes>
                       <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
                       <Route path="/" element={<RequireAuth><DashboardLayout /></RequireAuth>}>
+                        {/* Home */}
+                        <Route index element={<Navigate to="/market" replace />} />
+
                         {/* Market */}
-                        <Route index element={<MarketDashboard />} />
-                        <Route path="market/dashboard" element={<MarketDashboard />} />
+                        <Route path="market" element={<MarketDashboard />} />
+                        <Route path="market/dashboard" element={<PreserveRedirect toPath="/market" />} />
                         <Route path="market/tracked" element={<MarketTracked />} />
-                        <Route path="market/education" element={<MarketEducation />} />
-                        <Route path="market/intelligence" element={<MarketIntelligence />} />
                         <Route path="market/scanner" element={<Scanner />} />
-                        <Route path="picks" element={<Picks />} />
+                        <Route path="market/workspace" element={<PortfolioWorkspace />} />
+                        <Route path="market/strategies" element={<PreserveRedirect toPath="/lab/strategies" />} />
+                        <Route path="market/intelligence" element={<PreserveRedirect toPath="/lab/intelligence" />} />
+                        <Route path="market/education" element={<PreserveRedirect toPath="/learn/education" />} />
+
+                        {/* Learn */}
+                        <Route path="learn/education" element={<MarketEducation />} />
+
+                        <Route path="signals/picks" element={<Picks />} />
+                        <Route path="picks" element={<PreserveRedirect toPath="/signals/picks" />} />
+
+                        {/* Lab */}
+                        <Route path="lab" element={<Navigate to="/lab/strategies" replace />} />
+                        <Route path="lab/strategies" element={<Strategies />} />
+                        <Route path="lab/strategies/manage" element={<StrategiesManager />} />
+                        <Route path="lab/strategies/:strategyId" element={<StrategyDetail />} />
+                        <Route path="lab/intelligence" element={<MarketIntelligence />} />
+                        <Route path="lab/walk-forward" element={<WalkForward />} />
+                        <Route path="lab/monte-carlo" element={<BacktestMonteCarlo />} />
+                        <Route path="backtest/walk-forward" element={<PreserveRedirect toPath="/lab/walk-forward" />} />
+                        <Route path="backtest/monte-carlo" element={<PreserveRedirect toPath="/lab/monte-carlo" />} />
+
                         <Route
                           path="admin/picks"
                           element={
@@ -112,15 +182,14 @@ function App() {
                             </RequireAdmin>
                           }
                         />
-                        <Route path="terminal" element={<Terminal />} />
-                        <Route path="backtest/walk-forward" element={<WalkForward />} />
+                        <Route path="terminal" element={<TerminalRedirect />} />
 
-                        {/* Legacy strategy URLs → /market/strategies* */}
-                        <Route path="strategies" element={<Navigate to="/market/strategies" replace />} />
+                        {/* Legacy strategy URLs */}
+                        <Route path="strategies" element={<Navigate to="/lab/strategies" replace />} />
                         <Route path="strategies/:strategyId" element={<LegacyStrategyDetailRedirect />} />
                         <Route
                           path="strategies-manager"
-                          element={<Navigate to="/market/strategies/manage" replace />}
+                          element={<Navigate to="/lab/strategies/manage" replace />}
                         />
 
                         {/* Portfolio section */}
@@ -133,8 +202,8 @@ function App() {
                           <Route path="portfolio/categories" element={<PortfolioCategories />} />
                           <Route path="portfolio/tax" element={<PortfolioTaxCenter />} />
                           <Route path="portfolio/orders" element={<PortfolioOrders />} />
-                          <Route path="portfolio/workspace" element={<PortfolioWorkspace />} />
-                          <Route path="portfolio/allocation" element={<PortfolioAllocation />} />
+                          <Route path="portfolio/workspace" element={<PreserveRedirect toPath="/market/workspace" />} />
+                          <Route path="portfolio/allocation" element={<PortfolioAllocationRedirect />} />
                           <Route path="portfolio/income" element={<PortfolioIncome />} />
                           <Route path="portfolio/import" element={<PortfolioImport />} />
                           {/* Connect hub (3h): unified broker connection UX. Routes
@@ -143,14 +212,6 @@ function App() {
                           <Route path="connect" element={<ConnectAccounts />} />
                           <Route path="accounts/manage" element={<AccountsManagement />} />
                         </Route>
-
-                        {/* Strategy (under Market in nav, same access as market) */}
-                        <Route path="market/strategies" element={<Strategies />} />
-                        <Route path="market/strategies/manage" element={<StrategiesManager />} />
-                        <Route path="market/strategies/:strategyId" element={<StrategyDetail />} />
-
-                        {/* Backtest analysis (Pro+ research kit) */}
-                        <Route path="backtest/monte-carlo" element={<BacktestMonteCarlo />} />
 
                         {/* Legacy /admin/agent → canonical /settings/admin/agent */}
                         <Route
@@ -169,6 +230,7 @@ function App() {
                           <Route path="preferences" element={<SettingsPreferences />} />
                           <Route path="notifications" element={<SettingsNotifications />} />
                           <Route path="connections" element={<SettingsConnections />} />
+                          <Route path="historical-import" element={<HistoricalImportWizard />} />
                           <Route path="data-privacy" element={<SettingsDataPrivacy />} />
                           <Route path="mcp" element={<SettingsMCP />} />
                           <Route element={<RequireAdmin />}>

@@ -81,6 +81,21 @@ CATALOG: List[JobTemplate] = [
         queue="account_sync",
     ),
     JobTemplate(
+        id="historical-import-backfill",
+        display_name="Historical Portfolio Import Backfill",
+        group="portfolio",
+        task="backend.tasks.portfolio.historical_import.run_historical_import",
+        description=(
+            "User-initiated IBKR historical backfill from Flex XML/CSV. "
+            "Event-driven only (no schedule)."
+        ),
+        default_cron="0 0 1 1 *",
+        default_tz="UTC",
+        timeout_s=3600,
+        queue="heavy",
+        enabled=False,
+    ),
+    JobTemplate(
         id="daily_portfolio_narrative_fanout",
         display_name="Daily Portfolio Narrative (Fanout)",
         group="portfolio",

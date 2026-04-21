@@ -18,6 +18,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 
 from backend.config import settings as app_settings
+from backend.models.broker_account import BrokerAccount
 from backend.models.market_data import MarketSnapshot
 from backend.services.execution.broker_base import OrderRequest
 from backend.services.market.regime_engine import (
@@ -28,6 +29,7 @@ from backend.services.market.regime_engine import (
     REGIME_R5,
     REGIME_RULES,
 )
+from backend.services.strategy.account_strategy import get_strategy_profile
 
 logger = logging.getLogger(__name__)
 
@@ -166,6 +168,8 @@ class RiskGate:
                 )
 
         if db and price_estimate > 0 and risk_budget and risk_budget > 0:
+            if app_settings.ENABLE_ACCOUNT_AWARE_RISK:
+                self._load_account_strategy_profile(db, req)
             sizing_warning = self._check_stage_regime_sizing(
                 db, req, price_estimate, risk_budget
             )
@@ -233,6 +237,19 @@ class RiskGate:
             )
 
         return None
+
+    @staticmethod
+    def _load_account_strategy_profile(db: Session, req: OrderRequest) -> None:
+        """Read-only hook for G24 feature-flag rollout (no behavior changes yet)."""
+        account_id = getattr(req, "account_id", None)
+        if account_id is None:
+            return
+        if not isinstance(account_id, str) or not account_id.isdigit():
+            return
+        account = db.query(BrokerAccount).filter(BrokerAccount.id == int(account_id)).first()
+        if account is None:
+            return
+        get_strategy_profile(account)
 
     def estimate_price(
         self,

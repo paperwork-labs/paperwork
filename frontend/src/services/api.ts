@@ -274,6 +274,23 @@ api.interceptors.response.use(
         }
       }
     }
+    if (error.response?.status === 402) {
+      const detailRaw = (error.response.data as { detail?: unknown } | undefined)?.detail;
+      const message =
+        typeof detailRaw === 'string'
+          ? detailRaw
+          : typeof detailRaw === 'object' && detailRaw !== null && 'message' in detailRaw
+            ? String((detailRaw as { message?: unknown }).message ?? 'This feature requires an upgrade.')
+            : String(detailRaw ?? 'This feature requires an upgrade.');
+      window.dispatchEvent(
+        new CustomEvent('billing:upgrade-required', {
+          detail: {
+            message,
+            path: originalRequest?.url ?? null,
+          },
+        }),
+      );
+    }
 
     return Promise.reject(error);
   }
@@ -1092,6 +1109,16 @@ export const accountsApi = {
     accountId: number,
     payload: { broker: string; credentials: Record<string, string>; account_number?: string }
   ) => makeOptimizedRequest(() => api.patch(`/accounts/${accountId}/credentials`, payload)),
+  startHistoricalImport: async (
+    accountId: number,
+    payload: { date_from: string; date_to: string; xml_content?: string }
+  ) => makeOptimizedRequest(() => api.post(`/accounts/${accountId}/historical-import`, payload)),
+  startHistoricalImportCsv: async (
+    accountId: number,
+    payload: { csv_content: string }
+  ) => makeOptimizedRequest(() => api.post(`/accounts/${accountId}/historical-import-csv`, payload)),
+  getHistoricalImportRun: async (accountId: number, runId: number) =>
+    makeOptimizedRequest(() => api.get(`/accounts/${accountId}/historical-import/${runId}`)),
   remove: async (accountId: number) => makeOptimizedRequest(() => api.delete(`/accounts/${accountId}`)),
 };
 
@@ -1135,7 +1162,11 @@ export interface MCPTokenCreateResponse extends MCPTokenSummary {
 export const mcpApi = {
   list: async (): Promise<MCPTokenSummary[]> =>
     makeOptimizedRequest<MCPTokenSummary[]>(() => api.get('/mcp/tokens')),
-  create: async (payload: { name: string; expires_in_days?: number }): Promise<MCPTokenCreateResponse> =>
+  create: async (payload: {
+    name: string;
+    expires_in_days?: number;
+    pii_tax_lot_consent?: boolean;
+  }): Promise<MCPTokenCreateResponse> =>
     makeOptimizedRequest<MCPTokenCreateResponse>(() => api.post('/mcp/tokens', payload)),
   revoke: async (tokenId: number): Promise<void> =>
     makeOptimizedRequest(() => api.delete(`/mcp/tokens/${tokenId}`)),

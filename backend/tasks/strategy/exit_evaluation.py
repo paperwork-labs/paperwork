@@ -23,6 +23,7 @@ from backend.services.execution.exit_cascade import (
     CascadeResult,
 )
 from backend.services.market.regime_engine import get_current_and_previous_regime
+from backend.services.strategy.exit_cascade_planner import build_exit_planner_context
 
 logger = logging.getLogger(__name__)
 
@@ -142,6 +143,7 @@ def _create_exit_signal(
     position: Position,
     cascade_result: CascadeResult,
     snapshot: MarketSnapshot,
+    planner_context: dict,
 ) -> Optional[Signal]:
     """Create a Signal record for the exit recommendation."""
     from backend.models.strategy import StrategyRun, Strategy, RunStatus
@@ -216,6 +218,7 @@ def _create_exit_signal(
             "exit_tier": cascade_result.final_tier,
             "exit_action": cascade_result.final_action.value,
             "exit_reason": cascade_result.final_reason,
+            "planner_context": planner_context,
             "all_signals": [
                 {"tier": s.tier, "action": s.action.value, "reason": s.reason, "urgency": s.urgency}
                 for s in cascade_result.signals
@@ -342,6 +345,9 @@ def evaluate_exits_task() -> dict:
             
             # Run exit cascade
             result = evaluate_exit_cascade(ctx)
+            planner_context = {}
+            if position.account is not None:
+                planner_context = build_exit_planner_context(position.account)
             evaluated += 1
             
             # Only act on non-HOLD results
@@ -355,7 +361,13 @@ def evaluate_exits_task() -> dict:
                 })
                 
                 # Create exit signal
-                signal = _create_exit_signal(db, position, result, snapshot)
+                signal = _create_exit_signal(
+                    db,
+                    position,
+                    result,
+                    snapshot,
+                    planner_context,
+                )
                 if signal:
                     signals_created += 1
                 

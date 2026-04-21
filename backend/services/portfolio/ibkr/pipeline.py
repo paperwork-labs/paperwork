@@ -7,18 +7,20 @@ delegates to focused sync modules while preserving the single-commit-at-end patt
 import logging
 import xml.etree.ElementTree as ET
 from datetime import datetime
-from typing import Dict
+from typing import Dict, List
 
 from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session
 
 from backend.database import SessionLocal
 from backend.models import BrokerAccount, TaxLot
+from backend.models.broker_account import AccountType
 from backend.models.instrument import Instrument
 from backend.models.position import Position
 from backend.models.transfer import Transfer
 from backend.models.transaction import Transaction as TxModel
 from backend.services.clients.ibkr_flexquery_client import IBKRFlexQueryClient
+from backend.services.portfolio.account_type_resolver import resolve_account_type
 from backend.services.portfolio.account_credentials_service import (
     CredentialsNotFoundError,
     account_credentials_service,
@@ -89,6 +91,23 @@ class IBKRSyncService:
                 return {"status": "error", "error": "FlexQuery report not available — token or query ID may be invalid."}
 
             self._log_xml_sections(report_xml, account_number)
+            account_discovery = self._discover_accounts_from_report(
+                db, broker_account, report_xml
+            )
+            if account_discovery["created"]:
+                logger.info(
+                    "IBKR account auto-discovery created %d accounts for user=%s",
+                    len(account_discovery["created"]),
+                    broker_account.user_id,
+                )
+            if account_discovery["warnings"]:
+                logger.warning(
+                    "IBKR account-type resolver emitted %d warning(s): %s",
+                    len(account_discovery["warnings"]),
+                    account_discovery["warnings"],
+                )
+            results["account_discovery"] = account_discovery
+            results["account_type_warnings"] = account_discovery["warnings"]
             date_range = self._extract_date_range(report_xml)
             if date_range:
                 results["data_range_start"] = date_range[0]
@@ -264,6 +283,74 @@ class IBKRSyncService:
         except ET.ParseError:
             pass
         return None
+
+    @staticmethod
+    def _discover_accounts_from_report(
+        db: Session, seed_account: BrokerAccount, report_xml: str
+    ) -> Dict[str, List]:
+        """Create/update IBKR accounts discovered across all FlexStatement blocks."""
+        created: List[str] = []
+        updated: List[str] = []
+        warnings: List[dict] = []
+        try:
+            root = ET.fromstring(report_xml)
+        except ET.ParseError as exc:
+            logger.warning("Skipping account auto-discovery: invalid XML: %s", exc)
+            return {"created": created, "updated": updated, "warnings": warnings}
+
+        for stmt in root.iter("FlexStatement"):
+            account_number = (stmt.get("accountId") or "").strip()
+            if not account_number:
+                continue
+
+            account_info = stmt.find("AccountInformation/AccountInformation")
+            ibkr_account_type = None
+            if account_info is not None:
+                ibkr_account_type = account_info.get("accountType")
+
+            existing = (
+                db.query(BrokerAccount)
+                .filter(
+                    BrokerAccount.user_id == seed_account.user_id,
+                    BrokerAccount.broker == seed_account.broker,
+                    BrokerAccount.account_number == account_number,
+                )
+                .first()
+            )
+
+            resolved = resolve_account_type(
+                broker=seed_account.broker,
+                account_number=account_number,
+                ibkr_account_type_label=ibkr_account_type,
+                oauth_account_type_label=None,
+                fallback=AccountType.TAXABLE,
+            )
+            if resolved.warning:
+                warnings.append(resolved.warning)
+
+            if existing is None:
+                auto_name = f"IBKR {account_number}"
+                db.add(
+                    BrokerAccount(
+                        user_id=seed_account.user_id,
+                        broker=seed_account.broker,
+                        account_number=account_number,
+                        account_name=auto_name,
+                        account_type=resolved.account_type,
+                        auto_discovered=True,
+                        is_enabled=False,
+                        api_credentials_stored=False,
+                    )
+                )
+                created.append(account_number)
+                continue
+
+            # Never overwrite manual account_type overrides.
+            if existing.auto_discovered and existing.account_type != resolved.account_type:
+                existing.account_type = resolved.account_type
+                updated.append(account_number)
+
+        return {"created": created, "updated": updated, "warnings": warnings}
 
     @staticmethod
     def _log_xml_sections(report_xml: str, account_number: str) -> None:

@@ -714,12 +714,28 @@ class AdminHealthService:
                 a for a in accounts
                 if not a.last_successful_sync or a.last_successful_sync < cutoff
             ]
+            account_type_warnings: list[dict[str, Any]] = []
+            for account in accounts:
+                msg = (account.sync_error_message or "").strip()
+                if not msg.startswith("ACCOUNT_TYPE_WARNING "):
+                    continue
+                raw_json = msg.replace("ACCOUNT_TYPE_WARNING ", "", 1).strip()
+                try:
+                    parsed = json.loads(raw_json)
+                except Exception:
+                    continue
+                if isinstance(parsed, list):
+                    account_type_warnings.extend(
+                        item for item in parsed if isinstance(item, dict)
+                    )
 
+            status = "red" if stale else ("yellow" if account_type_warnings else "green")
             return {
-                "status": "green" if not stale else "red",
+                "status": status,
                 "total_accounts": len(accounts),
                 "stale_accounts": len(stale),
                 "stale_list": [a.account_number for a in stale[:5]],
+                "account_type_warnings": account_type_warnings,
             }
         except Exception as exc:
             logger.exception("portfolio_sync dimension failed: %s", exc)

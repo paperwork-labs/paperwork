@@ -31,6 +31,7 @@ describe('SettingsShell', () => {
     expect(screen.getByRole('button', { name: /Preferences/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Notifications/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Connections/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Historical import/i })).toBeInTheDocument();
   });
 });
 

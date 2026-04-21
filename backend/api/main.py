@@ -51,6 +51,7 @@ from backend.api.routes import (
     # Settings (from settings/ folder)
     account_management,
     app_settings,
+    historical_import,
     # Root-level
     activity,
     aggregator,
@@ -623,6 +624,9 @@ app.include_router(
 app.include_router(strategies, prefix="/api/v1/strategies", tags=["Strategies"])
 app.include_router(
     account_management, dependencies=[Depends(require_non_market_access)]
+)
+app.include_router(
+    historical_import, dependencies=[Depends(require_non_market_access)]
 )
 app.include_router(app_settings, prefix="/api/v1", tags=["App Settings"])
 app.include_router(market_router, prefix="/api/v1/market-data", tags=["Market Data & Technicals"])

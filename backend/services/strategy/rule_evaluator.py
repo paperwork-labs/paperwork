@@ -5,6 +5,9 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+from backend.models.broker_account import BrokerAccount
+from backend.services.strategy.account_strategy import get_strategy_profile
+
 logger = logging.getLogger(__name__)
 
 
@@ -125,6 +128,21 @@ class RuleEvalResult:
 
 class RuleEvaluator:
     """Evaluate a ConditionGroup against a context dict (snapshot + position data)."""
+
+    @staticmethod
+    def with_account_profile(context: Dict[str, Any], account: BrokerAccount) -> Dict[str, Any]:
+        """Attach account-aware strategy profile to evaluator context (G24)."""
+        profile = get_strategy_profile(account)
+        out = dict(context)
+        out["account_strategy_profile"] = {
+            "allow_wash_sale": profile.allow_wash_sale,
+            "tax_lot_method": profile.tax_lot_method,
+            "max_gain_holding_days_for_ltcg": profile.max_gain_holding_days_for_ltcg,
+            "margin_available": profile.margin_available,
+            "options_level": profile.options_level,
+            "short_allowed": profile.short_allowed,
+        }
+        return out
 
     def evaluate(self, group: ConditionGroup, context: Dict[str, Any]) -> RuleEvalResult:
         results: List[RuleEvalResult] = []

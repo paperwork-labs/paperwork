@@ -37,6 +37,11 @@ from backend.models.user import User
 
 logger = logging.getLogger(__name__)
 
+# User-scoped tables that must always be included in GDPR delete cascades.
+GDPR_DELETE_CASCADE_TABLES: tuple[str, ...] = (
+    "historical_import_runs",
+)
+
 
 # Tables whose ``user_id`` column is a metadata pointer rather than
 # personal data ownership; deleting them would break other tenants.
@@ -51,6 +56,13 @@ _SHARED_TABLES: frozenset[str] = frozenset(
     }
 )
 
+# Explicit registry for newly added user-scoped tables. These are still
+# discovered dynamically through Base.metadata, but the set acts as a
+# fail-loud checklist for GDPR coverage regressions.
+_EXPLICIT_USER_SCOPED_TABLES: frozenset[str] = frozenset(
+    GDPR_DELETE_CASCADE_TABLES
+)
+
 
 def _hash_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
@@ -58,6 +70,7 @@ def _hash_token(token: str) -> str:
 
 def _user_scoped_tables() -> List:
     out = []
+    seen: set[str] = set()
     for table in Base.metadata.sorted_tables:
         if "user_id" not in table.c:
             continue
@@ -70,6 +83,12 @@ def _user_scoped_tables() -> List:
         if table.name == "users":
             continue
         out.append(table)
+        seen.add(table.name)
+    missing = sorted(_EXPLICIT_USER_SCOPED_TABLES - seen)
+    if missing:
+        raise RuntimeError(
+            f"GDPR delete table registry mismatch; missing metadata for: {missing}"
+        )
     # Reverse so we delete leaves before parents (sorted_tables is
     # parent-first for FK ordering on insert).
     return list(reversed(out))
