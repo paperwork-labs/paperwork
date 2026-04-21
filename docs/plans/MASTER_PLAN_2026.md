@@ -15,6 +15,14 @@
 - G22–G25 close the broker-sync correctness gap (silent partial-success guard,
   historical XML backfill, account-type-aware strategy routing, multi-account
   auto-discovery) so every downstream engine actually receives correct data.
+  G22 is merged to `main` but its live-in-prod status depends on the G28 deploy-
+  health guardrail landing first.
+- G28 closes the deploy-pipeline silent-failure class of bug (D120) plus the
+  validator-specific PARTIAL messaging improvement that prevents
+  evidence-free diagnosis claims (D121). Both are retrospective fixes for
+  the 2026-04-20 session where `main` was green for 8+ hours while prod
+  silently stayed 7+ commits behind; ships in Phase 0 alongside the sync-
+  correctness bundle.
 - G26 anchors the "inability to close when winning" founder-self-identified pain as
   the explicit G15 acceptance criterion.
 - G27 (per-account risk profile) ships in Phase 1 after G24/G25 land. It lets users
@@ -27,7 +35,9 @@
   stocks" into "renders 1–3 ranked Trade Cards with the order pre-staged".
 - Resolve in parallel with phases below; sync-correctness gaps (G22 + G23 Path A +
   G24 + G25) are bundled in `feat/ibkr-multi-account-historical-import` PR
-  (Phase 0).
+  (Phase 0). G28 (deploy-health + validator-specific messaging) ships as an
+  independent small PR in Phase 0, blocks nothing but prevents recurrence of
+  the 2026-04-20 silent-prod-drift incident.
 
 ---
 
