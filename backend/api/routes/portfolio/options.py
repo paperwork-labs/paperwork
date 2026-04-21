@@ -22,12 +22,33 @@ async def get_option_accounts(
     user: User = Depends(get_portfolio_user),
     db: Session = Depends(get_db),
 ):
-    """Return list of the user's broker accounts that currently hold or allow options."""
-    try:
+    """Return list of the user's broker accounts that currently hold or allow options.
 
+    An account is considered an "options account" if either:
+      * it is flagged ``options_enabled`` (trading authorization has been
+        explicitly recorded), OR
+      * it currently holds at least one open option position.
+
+    This dual criterion avoids hiding accounts whose sync path did not set
+    ``options_enabled`` (Schwab, IBKR, Tastytrade all omit the flag during
+    their option sync). Without this, users see "no options accounts"
+    despite having synced option rows on disk.
+    """
+    try:
+        from sqlalchemy import exists, or_
+
+        has_open_options = (
+            exists()
+            .where(Option.account_id == BrokerAccount.id)
+            .where(Option.open_quantity > 0)
+        )
         accounts = (
             db.query(BrokerAccount)
-            .filter(BrokerAccount.user_id == user.id, BrokerAccount.options_enabled)
+            .filter(
+                BrokerAccount.user_id == user.id,
+                BrokerAccount.is_enabled == True,  # noqa: E712
+                or_(BrokerAccount.options_enabled.is_(True), has_open_options),
+            )
             .all()
         )
 

@@ -613,8 +613,11 @@ async def sync_option_positions(
                 skipped_count += 1
                 continue
 
-        db.flush()
         total_synced = synced_count + exercises_count
+        if total_synced > 0 and not broker_account.options_enabled:
+            broker_account.options_enabled = True
+
+        db.flush()
         logger.info(
             "Options: %d current + %d exercises = %d total, %d skipped",
             synced_count, exercises_count, total_synced, skipped_count,

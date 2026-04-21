@@ -153,6 +153,7 @@ class TastyTradeSyncService:
         db.query(Option).filter_by(account_id=ba.id).delete()
 
         count = 0
+        options_added = 0
         seen_option_keys = set()
         for pos in data:
             try:
@@ -177,6 +178,7 @@ class TastyTradeSyncService:
                         seen_option_keys.add(key)
                         db.add(Option(**kwargs))
                         count += 1
+                        options_added += 1
                 else:
                     kwargs = self._equity_position_kwargs(pos, ba)
                     if kwargs:
@@ -185,6 +187,9 @@ class TastyTradeSyncService:
             except Exception as exc:
                 logger.warning("Skipping TastyTrade position %s: %s", pos.get("symbol", "?"), exc)
                 continue
+
+        if options_added > 0 and not ba.options_enabled:
+            ba.options_enabled = True
 
         db.flush()
         return {"positions": count}

@@ -376,6 +376,10 @@ class SchwabSyncService:
                     data_source="SCHWAB_API",
                 ))
                 created += 1
+
+        if (created + updated) > 0 and not account.options_enabled:
+            account.options_enabled = True
+
         session.flush()
         return {"options_created": created, "options_updated": updated}
 

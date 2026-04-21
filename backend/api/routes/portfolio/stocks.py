@@ -338,18 +338,36 @@ def get_realized_gains(
     db: Session = Depends(get_db),
     user: User = Depends(get_portfolio_user),
 ):
-    """Aggregate realized gains from CLOSED_LOT trade records by symbol and year."""
+    """Aggregate realized gains from CLOSED_LOT trade records by symbol and year.
+
+    Memory-safe: when ``year`` is not provided the endpoint defaults to the
+    trailing three tax years (current + prior two). Only the columns used
+    for aggregation are loaded (no eager ORM hydration of the full Trade
+    row), which keeps the working set bounded even for accounts with long
+    histories.
+    """
+    from datetime import datetime as _dt
     try:
         acct_ids = _user_account_ids(db, user.id)
         if not acct_ids:
             return {"status": "success", "data": {"realized_gains": [], "summary_by_year": []}}
 
-        q = db.query(Trade).filter(
+        q = db.query(
+            Trade.symbol,
+            Trade.execution_time,
+            Trade.realized_pnl,
+            Trade.total_value,
+            Trade.quantity,
+            Trade.trade_metadata,
+        ).filter(
             Trade.account_id.in_(acct_ids),
             Trade.status == "CLOSED_LOT",
         )
         if year:
             q = q.filter(extract("year", Trade.execution_time) == year)
+        else:
+            current_year = _dt.utcnow().year
+            q = q.filter(extract("year", Trade.execution_time) >= current_year - 2)
         if account_id:
             resolved = (
                 db.query(BrokerAccount.id)
@@ -359,24 +377,37 @@ def get_realized_gains(
             if resolved:
                 q = q.filter(Trade.account_id == resolved)
 
-        lots = q.all()
+        MAX_ROWS = 20000
+        rows = q.limit(MAX_ROWS + 1).all()
+        truncated = len(rows) > MAX_ROWS
+        if truncated:
+            logger.warning(
+                "realized-gains: truncating to %d rows for user=%s year=%s; consider narrowing year filter",
+                MAX_ROWS, user.id, year,
+            )
+            rows = rows[:MAX_ROWS]
 
         by_sym_year: Dict[tuple, list] = {}
-        for lot in lots:
-            meta = lot.trade_metadata or {}
-            yr = lot.execution_time.year if lot.execution_time else 0
-            key = (lot.symbol, yr)
-            by_sym_year.setdefault(key, []).append((lot, meta))
+        for sym, ex_time, realized_pnl, total_value, qty, meta in rows:
+            meta = meta or {}
+            yr = ex_time.year if ex_time else 0
+            key = (sym, yr)
+            by_sym_year.setdefault(key, []).append({
+                "realized_pnl": realized_pnl,
+                "total_value": total_value,
+                "quantity": qty,
+                "meta": meta,
+            })
 
         realized_gains = []
         for (sym, yr), items in sorted(by_sym_year.items(), key=lambda x: (-x[0][1], x[0][0])):
-            total_pnl = sum(float(lot.realized_pnl or 0) for lot, _ in items)
-            total_cost = sum(float(m.get("cost_basis", 0)) for _, m in items)
-            total_proceeds = sum(float(lot.total_value or 0) for lot, _ in items)
-            total_qty = sum(float(lot.quantity or 0) for lot, _ in items)
+            total_pnl = sum(float(it["realized_pnl"] or 0) for it in items)
+            total_cost = sum(float((it["meta"] or {}).get("cost_basis", 0)) for it in items)
+            total_proceeds = sum(float(it["total_value"] or 0) for it in items)
+            total_qty = sum(float(it["quantity"] or 0) for it in items)
 
-            lt_items = [m for _, m in items if m.get("is_long_term")]
-            st_items = [m for _, m in items if not m.get("is_long_term")]
+            lt_items = [it["meta"] for it in items if (it["meta"] or {}).get("is_long_term")]
+            st_items = [it["meta"] for it in items if not (it["meta"] or {}).get("is_long_term")]
 
             realized_gains.append({
                 "symbol": sym,

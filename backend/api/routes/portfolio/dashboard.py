@@ -574,23 +574,21 @@ async def get_dividend_summary(
 
         now = datetime.now(timezone.utc)
         one_year_ago = now - timedelta(days=365)
+        one_year_ago_date = one_year_ago.date()
 
-        divs = (
+        # Push date filter to SQL. pay_date is DateTime (nullable); Postgres
+        # coerces both naive and aware values for comparison against the
+        # naive boundary. The explicit isnot(None) guard is also enforced in
+        # Python below (defence in depth for SQLite tests).
+        trailing_divs = (
             db.query(Dividend)
-            .filter(Dividend.account_id.in_(acct_ids))
+            .filter(
+                Dividend.account_id.in_(acct_ids),
+                Dividend.pay_date.isnot(None),
+                Dividend.pay_date >= one_year_ago.replace(tzinfo=None),
+            )
             .all()
         )
-
-        one_year_ago_date = one_year_ago.date()
-        trailing_divs = []
-        for d in divs:
-            if not d.pay_date:
-                continue
-            if isinstance(d.pay_date, datetime):
-                if _datetime_as_utc_aware(d.pay_date) >= one_year_ago:
-                    trailing_divs.append(d)
-            elif d.pay_date >= one_year_ago_date:
-                trailing_divs.append(d)
         trailing_12m = sum(float(d.total_dividend or 0) for d in trailing_divs)
 
         by_sym: Dict[str, list] = {}
@@ -609,9 +607,11 @@ async def get_dividend_summary(
             key=lambda x: -x["annual_income"],
         )[:5]
 
-        total_mv = sum(
-            float(p.market_value or 0)
-            for p in db.query(Position).filter(Position.account_id.in_(acct_ids)).all()
+        total_mv = float(
+            db.query(func.coalesce(func.sum(Position.market_value), 0))
+            .filter(Position.account_id.in_(acct_ids))
+            .scalar()
+            or 0
         )
         fwd_yield = round((trailing_12m / total_mv * 100) if total_mv > 0 else 0, 2)
 
