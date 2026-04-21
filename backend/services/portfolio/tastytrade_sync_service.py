@@ -28,6 +28,7 @@ from backend.services.portfolio.account_credentials_service import (
     account_credentials_service,
     CredentialsNotFoundError,
 )
+from backend.services.portfolio.closing_lot_matcher import reconcile_closing_lots
 from backend.models.position import PositionType
 from backend.models.transaction import TransactionType
 from backend.models.account_balance import AccountBalanceType
@@ -103,6 +104,25 @@ class TastyTradeSyncService:
         counts.update(await self._sync_transactions(db, broker_account))
         counts.update(await self._sync_dividends(db, broker_account))
         counts.update(await self._sync_account_balances(db, broker_account))
+
+        # Reconcile synthetic CLOSED_LOT trades so Tax Center / realized-gains
+        # endpoints reflect TastyTrade activity (TT only emits FILLED rows).
+        try:
+            match_result = reconcile_closing_lots(db, broker_account)
+            counts["closed_lots_created"] = match_result.created
+            counts["closed_lots_updated"] = match_result.updated
+            if match_result.unmatched_quantity > 0:
+                logger.warning(
+                    "TastyTrade sync: account %s had %s unmatched sell-shares "
+                    "during closing-lot reconciliation",
+                    broker_account.id, match_result.unmatched_quantity,
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "TastyTrade sync: closing-lot reconciliation failed for account %s: %s",
+                broker_account.id, exc,
+            )
+            counts["closed_lots_error"] = str(exc)
 
         db.commit()
 

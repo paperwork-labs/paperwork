@@ -18,6 +18,7 @@ from backend.services.portfolio.account_credentials_service import (
     account_credentials_service,
     CredentialsNotFoundError,
 )
+from backend.services.portfolio.closing_lot_matcher import reconcile_closing_lots
 from backend.models.options import Option
 
 logger = logging.getLogger(__name__)
@@ -177,6 +178,29 @@ class SchwabSyncService:
         session.flush()
 
         self._enrich_positions_from_snapshots(account, session)
+
+        # Reconcile synthetic CLOSED_LOT trades from FILLED executions so the
+        # Tax Center and /stocks/realized return correct data. Schwab's API
+        # does not emit closed-lot records (unlike IBKR FlexQuery), so we
+        # derive them ourselves. Idempotent, safe to run every sync.
+        try:
+            match_result = reconcile_closing_lots(session, account)
+            results["closed_lots_created"] = match_result.created
+            results["closed_lots_updated"] = match_result.updated
+            if match_result.unmatched_quantity > 0:
+                logger.warning(
+                    "Schwab sync: account %s had %s unmatched sell-shares "
+                    "during closing-lot reconciliation (first warning: %s)",
+                    account.id,
+                    match_result.unmatched_quantity,
+                    match_result.warnings[0] if match_result.warnings else "n/a",
+                )
+        except Exception as exc:  # noqa: BLE001 — log + continue; sync is still successful
+            logger.warning(
+                "Schwab sync: closing-lot reconciliation failed for account %s: %s",
+                account.id, exc,
+            )
+            results["closed_lots_error"] = str(exc)
 
         total_items = sum(v for v in results.values() if isinstance(v, int))
         if total_items == 0 and self._client.connected:
