@@ -38,8 +38,9 @@ const FAQ_ENTRIES: ReadonlyArray<FaqEntry> = [
       <>
         Because most "free" portfolio apps cost you $10–20/month to look
         at your own data, and we don't want to be that. Snowball-class
-        visualization, three-broker OAuth (Schwab, IBKR, Tastytrade),
-        CSV import for any other broker, real-time prices, public
+        visualization, direct OAuth to Schwab, IBKR, and Tastytrade
+        today (E*TRADE, Tradier, and Coinbase on the v1 parity track),
+        CSV import for every other broker, real-time prices, public
         sharing — all free, forever. The full reasoning lives on{' '}
         <Link
           to="/why-free"
@@ -57,13 +58,14 @@ const FAQ_ENTRIES: ReadonlyArray<FaqEntry> = [
     answer: (
       <>
         Two ways. First: most competitors hide what their pricing pays
-        for. We tell you per tier — "Lite covers SnapTrade's $2/user/mo
-        cost, zero markup", "Pro covers OpenAI tokens for unlimited
-        chat", and so on. Second: those apps depend on aggregators
-        (Plaid, Yodlee) that charge them per connected account every
-        month, so they have to charge you to read your own portfolio. We
-        chose CSV + direct OAuth for the free tier so we never have a
-        per-user cost we'd need to recover from you.
+        for. We tell you per tier — "Lite covers the retail-broker
+        aggregator's $2/user/mo cost, zero markup", "Pro covers OpenAI
+        tokens for unlimited chat", and so on. Second: those apps
+        depend on aggregators (Plaid, Yodlee) that charge them per
+        connected account every month, so they have to charge you to
+        read your own portfolio. We chose CSV + direct OAuth for the
+        free tier so we never have a per-user cost we'd need to recover
+        from you.
       </>
     ),
   },
@@ -85,15 +87,17 @@ const FAQ_ENTRIES: ReadonlyArray<FaqEntry> = [
     ),
   },
   {
-    question: "Why isn't there a SnapTrade option on the free tier?",
+    question: "Why aren't retail-broker one-click connections on free?",
     answer: (
       <>
-        SnapTrade charges us about $2 per connected user per month for
-        one-click broker connections to Robinhood, Webull, Public, M1,
-        and SoFi. The math doesn't work on free — at 10,000 free users
-        that's $20K/month of pure cost before we earn a dollar. Lite
-        ($20/mo) covers that pass-through, and we take zero markup on
-        the SnapTrade line.
+        One-click aggregator connections to Robinhood, Webull, Public,
+        M1, and SoFi cost us about $2 per connected user per month. The
+        math doesn't work on free — at 10,000 free users that's $20K/mo
+        of pure cost before we earn a dollar. Lite ($20/mo) covers that
+        pass-through with zero markup, which is exactly why the tier
+        exists. Brokers with direct OAuth (Schwab, IBKR, Tastytrade, and
+        soon E*TRADE, Tradier, Coinbase) stay free forever — we don't
+        pay a per-connection fee for those, so you don't either.
       </>
     ),
   },
@@ -112,8 +116,9 @@ const FAQ_ENTRIES: ReadonlyArray<FaqEntry> = [
     answer: (
       <>
         Your data stays. You drop to the Free tier and keep the flagship
-        charts, CSV import, and three-broker OAuth (Schwab, IBKR,
-        Tastytrade) forever. No "cancel and lose your portfolio" trap.
+        charts, CSV import, and direct OAuth (Schwab, IBKR, Tastytrade
+        today, and every other direct-OAuth broker we add in v1)
+        forever. No "cancel and lose your portfolio" trap.
       </>
     ),
   },

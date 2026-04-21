@@ -117,9 +117,11 @@ _TIERS: Tuple[TierDisplay, ...] = (
         monthly_price_usd=Decimal("20"),
         annual_price_usd=Decimal("192"),
         covers_copy=(
-            "Covers our SnapTrade per-user cost (~$2/mo) for one-click "
-            "Robinhood, Webull, Public, M1, and SoFi connections. Zero "
-            "markup on the SnapTrade line."
+            "Covers our retail-broker aggregator per-user cost (~$2/mo) "
+            "for one-click Robinhood, Webull, Public, M1, and SoFi "
+            "connections. Zero markup on the aggregator line. Direct "
+            "OAuth brokers (Schwab, IBKR, Tastytrade — E*TRADE, Tradier, "
+            "Coinbase next) stay free forever."
         ),
         cta_label="Upgrade",
         is_contact_sales=False,

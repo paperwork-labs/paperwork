@@ -122,7 +122,7 @@ const PublicStatsStrip: React.FC<{ className?: string }> = ({ className }) => {
     >
       <StatBlock label="Portfolios tracked" value={portfolios_tracked} animate />
       <StatBlock label="Charts rendered (24h)" value={charts_rendered_24h} animate />
-      <StatBlock label="Brokers supported" value={brokers_supported} animate />
+      <StatBlock label="Brokers you can connect or import from" value={brokers_supported} animate />
     </div>
   );
 };

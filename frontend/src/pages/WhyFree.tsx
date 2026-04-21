@@ -11,7 +11,8 @@ const freeForeverItems = [
   'The flagship holding chart (with stages, RS, ATR — every overlay)',
   'Portfolio equity curve + drawdown',
   'Allocation treemap, income calendar, sentiment overlay',
-  'Connect Schwab, IBKR, Tastytrade via OAuth (and E*TRADE/Tradier/Coinbase when v1.1 ships)',
+  'Direct OAuth to Schwab, IBKR, and Tastytrade — live today, free forever',
+  'E*TRADE, Tradier, and Coinbase direct OAuth — shipping on the v1 broker-parity track, also free',
   'Import any other broker via beautiful CSV (Fidelity, Vanguard, Robinhood, M1, SoFi, Public, Webull, JPMorgan, Merrill, Wells, Wealthfront, Betterment)',
   'Email-statement parsing (forward your monthly statement → we parse it)',
   'Public portfolio sharing with rich social previews',
@@ -133,7 +134,7 @@ const WhyFree: React.FC = () => {
                   </tr>
                   <tr className="border-b border-border">
                     <td className="px-4 py-3 font-medium text-foreground">Direct OAuth where available</td>
-                    <td className="px-4 py-3">Schwab, IBKR, Tastytrade</td>
+                    <td className="px-4 py-3">Schwab, IBKR, Tastytrade today — E*TRADE, Tradier, Coinbase next</td>
                     <td className="px-4 py-3">Varies by vendor</td>
                   </tr>
                   <tr>
@@ -152,12 +153,12 @@ const WhyFree: React.FC = () => {
               <article>
                 <h3 className="text-lg font-semibold">Lite ($20/mo)</h3>
                 <p className="mt-3 text-sm text-muted-foreground sm:text-base">
-                  One-click connections to Robinhood, Webull, Public, M1, SoFi via SnapTrade. SnapTrade charges us
-                  about $2/user/month — your subscription covers that and our compute. We take zero markup on the
-                  SnapTrade line.
+                  One-click aggregator connections to retail brokers that don&apos;t offer direct OAuth (Robinhood,
+                  Webull, Public, M1, SoFi). The aggregator charges us roughly $2/user/month — your subscription
+                  covers that and our compute. Zero markup on the aggregator line.
                 </p>
                 <p className="mt-3 rounded-lg border border-border bg-background/80 px-3 py-2 text-xs text-muted-foreground sm:text-sm">
-                  Your $20 covers the SnapTrade pass-through plus infrastructure — not a hidden skim.
+                  Your $20 covers the aggregator pass-through plus infrastructure — not a hidden skim.
                 </p>
               </article>
               <article>
