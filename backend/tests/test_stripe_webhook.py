@@ -109,8 +109,6 @@ class _StubStripeModule:
 def catalog() -> PriceCatalog:
     return PriceCatalog.from_env(
         {
-            "STRIPE_PRICE_LITE_MONTHLY": "price_lite_m",
-            "STRIPE_PRICE_LITE_ANNUAL": "",
             "STRIPE_PRICE_PRO_MONTHLY": "price_pro_m",
             "STRIPE_PRICE_PRO_ANNUAL": "price_pro_y",
             "STRIPE_PRICE_PRO_PLUS_MONTHLY": "price_proplus_m",
@@ -151,8 +149,8 @@ def processor(catalog, stub_stripe) -> tuple[StripeWebhookProcessor, _RecordingS
 
 class TestPriceCatalog:
     def test_from_env_skips_blank_values(self, catalog):
-        assert len(catalog) == 5  # only the non-empty entries
-        assert "price_lite_m" in catalog
+        assert len(catalog) == 4  # only the non-empty entries
+        assert "price_pro_m" in catalog
         assert "" not in catalog
 
     def test_resolve_returns_correct_tier_and_interval(self, catalog):
@@ -173,8 +171,6 @@ class TestPriceCatalog:
             "STRIPE_PRICE_PRO_PLUS_MONTHLY": "price_shared",
         }
         for spec in (
-            "STRIPE_PRICE_LITE_MONTHLY",
-            "STRIPE_PRICE_LITE_ANNUAL",
             "STRIPE_PRICE_PRO_ANNUAL",
             "STRIPE_PRICE_PRO_PLUS_ANNUAL",
             "STRIPE_PRICE_QUANT_DESK_MONTHLY",
@@ -492,12 +488,12 @@ class TestSubscriptionEvents:
         proc, sink, _ = processor
         event = _make_subscription_event("evt_s5", "customer.subscription.updated")
         event["data"]["object"]["items"]["data"] = [
-            {"price": {"id": "price_lite_m"}},
             {"price": {"id": "price_pro_m"}},
+            {"price": {"id": "price_proplus_m"}},
         ]
         result = proc.handle(event)
         assert result.acted
-        assert sink.applied[0].tier == TierSlug.PRO
+        assert sink.applied[0].tier == TierSlug.PRO_PLUS
 
     def test_cancel_at_period_end_flag_propagates(self, processor):
         proc, sink, _ = processor
@@ -574,8 +570,8 @@ class TestSinkFailure:
 
 class TestHelpers:
     def test_max_tier_picks_higher_rank(self):
-        assert _max_tier(None, TierSlug.LITE) == TierSlug.LITE
-        assert _max_tier(TierSlug.LITE, TierSlug.PRO) == TierSlug.PRO
+        assert _max_tier(None, TierSlug.PRO) == TierSlug.PRO
+        assert _max_tier(TierSlug.FREE, TierSlug.PRO) == TierSlug.PRO
         assert _max_tier(TierSlug.PRO_PLUS, TierSlug.PRO) == TierSlug.PRO_PLUS
         assert _max_tier(TierSlug.ENTERPRISE, TierSlug.QUANT_DESK) == TierSlug.ENTERPRISE
 

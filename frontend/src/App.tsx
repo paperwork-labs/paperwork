@@ -22,6 +22,7 @@ import RequireAdmin from './components/auth/RequireAdmin';
 import AuthLogoutListener from './components/auth/AuthLogoutListener';
 import { AppCommandLayer } from './components/cmdk/AppCommandLayer';
 import { InstallPrompt } from './components/pwa/InstallPrompt';
+import useUpgradePrompt from './hooks/useUpgradePrompt';
 
 const DashboardLayout = React.lazy(() => import('./components/layout/DashboardLayout'));
 const PortfolioOverview = React.lazy(() => import('./pages/portfolio/PortfolioOverview'));
@@ -43,6 +44,7 @@ const SettingsPreferences = React.lazy(() => import('./pages/SettingsPreferences
 const SettingsNotifications = React.lazy(() => import('./pages/SettingsNotifications'));
 const SettingsDataPrivacy = React.lazy(() => import('./pages/SettingsDataPrivacy'));
 const SettingsMCP = React.lazy(() => import('./pages/SettingsMCP'));
+const SettingsAIKeys = React.lazy(() => import('./pages/SettingsAIKeys'));
 const PortfolioWorkspace = React.lazy(() => import('./pages/PortfolioWorkspace'));
 const PortfolioIncome = React.lazy(() => import('./pages/PortfolioIncome'));
 const Login = React.lazy(() => import('./pages/Login'));
@@ -121,6 +123,16 @@ function PortfolioAllocationRedirect() {
   );
 }
 
+/**
+ * Mount ``useUpgradePrompt`` at the Router level so the 402 interceptor
+ * in ``services/api.ts`` (which dispatches ``billing:upgrade-required``)
+ * always surfaces a toast, regardless of which page the user is on.
+ */
+function BillingUpgradeListener() {
+  useUpgradePrompt();
+  return null;
+}
+
 function TerminalRedirect() {
   const navigate = useNavigate();
   useEffect(() => {
@@ -139,6 +151,7 @@ function App() {
             <ErrorBoundary>
               <Router>
                 <AuthLogoutListener />
+                <BillingUpgradeListener />
                 <AppCommandLayer />
                 <Suspense fallback={<RouteFallback />}>
                   <Routes>
@@ -233,6 +246,7 @@ function App() {
                           <Route path="historical-import" element={<HistoricalImportWizard />} />
                           <Route path="data-privacy" element={<SettingsDataPrivacy />} />
                           <Route path="mcp" element={<SettingsMCP />} />
+                          <Route path="ai-keys" element={<SettingsAIKeys />} />
                           <Route element={<RequireAdmin />}>
                             <Route path="admin/system" element={<SystemStatus />} />
                             <Route path="admin/users" element={<SettingsUsers />} />

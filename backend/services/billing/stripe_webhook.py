@@ -632,7 +632,6 @@ class _SkipEvent(Exception):
 
 _TIER_RANK = {
     TierSlug.FREE: 0,
-    TierSlug.LITE: 10,
     TierSlug.PRO: 20,
     TierSlug.PRO_PLUS: 30,
     TierSlug.QUANT_DESK: 40,

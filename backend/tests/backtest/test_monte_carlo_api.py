@@ -80,10 +80,11 @@ def test_cross_tenant_isolation(db_session):
     db_session.commit()
     db_session.refresh(user_a)
 
+    # Monte Carlo is gated to QUANT_DESK in the Ladder 3 catalog.
     EntitlementService.manual_set_tier(
         db_session,
         user=user_a,
-        new_tier=SubscriptionTier.PRO_PLUS,
+        new_tier=SubscriptionTier.QUANT_DESK,
         actor="pytest_monte_carlo_api",
     )
     db_session.commit()
@@ -120,10 +121,11 @@ def test_rejects_unscoped_strategy_id_field(db_session):
     db_session.add(user)
     db_session.commit()
     db_session.refresh(user)
+    # Monte Carlo is gated to QUANT_DESK in the Ladder 3 catalog.
     EntitlementService.manual_set_tier(
         db_session,
         user=user,
-        new_tier=SubscriptionTier.PRO_PLUS,
+        new_tier=SubscriptionTier.QUANT_DESK,
         actor="pytest_monte_carlo_api",
     )
     db_session.commit()

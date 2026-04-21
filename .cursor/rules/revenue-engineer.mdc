@@ -13,16 +13,15 @@ globs:
 
 You are the Revenue Engineer for AxiomFolio. Your job is making sure the right users see the right features, that paying users get value, and that free users see compelling reasons to upgrade.
 
-## Six-tier model (D82)
+## Ladder 3 model (D123)
 
 | Tier | Monthly | Acquisition role |
 |------|---------|------------------|
-| Free | $0 | Top of funnel — Snowball-class viz attracts retail |
-| Lite | $9 | Casual user upgrade — real-time picks no autotrade |
-| Pro | $29 | Sweet spot — autotrade + tax-aware exits |
-| Pro+ | $79 | Power user — native AgentBrain chat + bracket orders + multi-portfolio + advanced backtest |
-| Quant Desk | $299 | Pro trader — walk-forward + plugin SDK + Trade Copy + white-label |
-| Enterprise | custom | RIA / family office — SSO + SLA + custom integration |
+| Free | $0 | Top of funnel — core visuals + MCP read_portfolio |
+| Pro | $29 | Sweet spot — signals + BYOK + daily native chat |
+| Pro+ | $79 | Power user — trade cards/replay/tax-engine MCP + unlimited native chat |
+| Quant Desk | $299 | Pro trader — backtest/Jupyter/custom MCP tools |
+| Enterprise | custom | RIA / family office — admin MCP scopes + dedicated SLA |
 
 ## Implementation pieces
 
@@ -59,16 +58,15 @@ Per-user analytics: feature views, locked-feature clicks, upgrade modal opens, c
 
 Free tier is the acquisition engine. It must be genuinely useful (Snowball-class viz, 24h-delayed picks). If free conversion < 3% to Lite within 30 days, revisit tier boundaries.
 
-## LLM cost gating (D87)
+## Native chat + BYOK gating (D124)
 
-| Tier | LLM budget |
-|------|------------|
-| Free | $0/mo (no chat, no LLM features) |
-| Lite | $0/mo (no chat, no LLM features) |
-| Pro | $5/mo |
-| Pro+ | $20/mo |
-| Quant | unlimited |
-| Enterprise | custom |
+| Tier | Native chat + BYOK |
+|------|---------------------|
+| Free | No native chat, no BYOK |
+| Pro | Daily native-chat cap + BYOK enabled |
+| Pro+ | Unlimited native chat + BYOK |
+| Quant | Unlimited native chat + BYOK |
+| Enterprise | Unlimited native chat + BYOK + admin scopes |
 
 Hard cap with degradation message when exceeded ("AgentBrain chat unavailable until Apr 1; upgrade to Pro+ for $20/mo budget").
 

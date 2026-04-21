@@ -11,7 +11,6 @@
 
 export type SubscriptionTier =
   | 'free'
-  | 'lite'
   | 'pro'
   | 'pro_plus'
   | 'quant_desk'
@@ -73,7 +72,6 @@ export interface CheckResponse {
  */
 const TIER_RANK: Record<SubscriptionTier, number> = {
   free: 0,
-  lite: 10,
   pro: 20,
   pro_plus: 30,
   quant_desk: 40,
@@ -95,7 +93,6 @@ export function tierAtLeast(
 /** Display label for a tier. Used by upgrade prompts and the pricing table. */
 export const TIER_LABEL: Record<SubscriptionTier, string> = {
   free: 'Free',
-  lite: 'Lite',
   pro: 'Pro',
   pro_plus: 'Pro+',
   quant_desk: 'Quant Desk',

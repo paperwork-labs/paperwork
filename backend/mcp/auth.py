@@ -25,8 +25,11 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
+from backend.models.entitlement import SubscriptionTier
 from backend.models.mcp_token import MCPToken
 from backend.models.user import User
+from backend.services.billing.entitlement_service import EntitlementService
+from backend.services.billing.tier_catalog import mcp_daily_call_limit, mcp_scopes_for_tier
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +45,9 @@ class MCPAuthContext:
 
     user: User
     token: MCPToken
+    tier: SubscriptionTier
+    allowed_scopes: frozenset[str]
+    daily_limit: Optional[int]
 
 
 def hash_token(plaintext: str) -> str:
@@ -142,6 +148,11 @@ def get_mcp_context(
     """FastAPI dependency: resolve the bearer header into an MCP context."""
     raw = credentials.credentials if credentials else None
     user, token = authenticate_mcp_token(raw or "", db)
+    tier = EntitlementService.effective_tier(db, user)
+    allowed_scopes = set(mcp_scopes_for_tier(tier))
+    if token.pii_consent_at is None:
+        allowed_scopes.discard("mcp.read_tax_engine")
+    daily_limit = mcp_daily_call_limit(tier)
 
     # Best-effort last_used_at update. Never fail the request on a
     # commit error here — observability is nice-to-have, auth already
@@ -155,7 +166,13 @@ def get_mcp_context(
         )
         db.rollback()
 
-    return MCPAuthContext(user=user, token=token)
+    return MCPAuthContext(
+        user=user,
+        token=token,
+        tier=tier,
+        allowed_scopes=frozenset(allowed_scopes),
+        daily_limit=daily_limit,
+    )
 
 
 def generate_token() -> Tuple[str, str]:

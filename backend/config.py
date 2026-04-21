@@ -197,8 +197,6 @@ class Settings(BaseSettings):
     STRIPE_PUBLISHABLE_KEY: Optional[str] = None  # safe to ship to frontend
     # Price ID -> tier mapping (one env var per tier+interval).
     # See backend/services/billing/price_catalog.py for the full list.
-    STRIPE_PRICE_LITE_MONTHLY: Optional[str] = None
-    STRIPE_PRICE_LITE_ANNUAL: Optional[str] = None
     STRIPE_PRICE_PRO_MONTHLY: Optional[str] = None
     STRIPE_PRICE_PRO_ANNUAL: Optional[str] = None
     STRIPE_PRICE_PRO_PLUS_MONTHLY: Optional[str] = None

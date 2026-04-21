@@ -3,21 +3,16 @@ Entitlement & Subscription Tier Models
 ======================================
 
 Single source of truth for what each user is allowed to do based on their
-subscription tier. The product has six tiers:
+subscription tier. Ladder 3 uses five tiers:
 
     free        — anonymous-quality market data, watchlist, manual research
-    lite        — cached indicators, more watchlist slots, basic alerts
-    pro         — real-time pipeline, picks (read), single-broker autotrade,
-                  Snowball-class viz
-    pro_plus    — native AgentBrain chat (LLM), multi-broker, validator picks
-                  with rationale, advanced alerts
-    quant_desk  — Jupyter research kit, backtest API, multi-tenant org seats,
-                  custom universe, paper-shadow / live-shadow
-    enterprise  — SSO, custom brokers, dedicated cluster, SLA, audit log
-                  export
+    pro         — signals and BYOK entry tier
+    pro_plus    — deeper strategy surfaces + unlimited native chat
+    quant_desk  — backtest/Jupyter/custom MCP tools
+    enterprise  — SSO, admin scopes, dedicated SLA
 
 Tiers are a *strict* monotonic ladder. A user with `pro_plus` automatically
-satisfies any requirement of `pro`, `lite`, or `free`. Comparisons go through
+satisfies any requirement of `pro` or `free`. Comparisons go through
 `SubscriptionTier.rank()` rather than string equality so adding a tier in
 the middle does not break existing checks.
 
@@ -60,14 +55,13 @@ from . import Base
 
 
 class SubscriptionTier(str, Enum):
-    """Six-tier ladder. Stored as lowercase strings; compare via `rank()`.
+    """Five-tier ladder. Stored as lowercase strings; compare via `rank()`.
 
     Ranks are spaced (10, 20, ...) so a future tier (e.g. ``team`` between
     ``pro_plus`` and ``quant_desk``) can be added without renumbering.
     """
 
     FREE = "free"
-    LITE = "lite"
     PRO = "pro"
     PRO_PLUS = "pro_plus"
     QUANT_DESK = "quant_desk"
@@ -111,7 +105,6 @@ class SubscriptionTier(str, Enum):
 
 _TIER_RANK: dict[str, int] = {
     SubscriptionTier.FREE.value: 0,
-    SubscriptionTier.LITE.value: 10,
     SubscriptionTier.PRO.value: 20,
     SubscriptionTier.PRO_PLUS.value: 30,
     SubscriptionTier.QUANT_DESK.value: 40,

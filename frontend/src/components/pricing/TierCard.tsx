@@ -19,17 +19,16 @@
  */
 
 import * as React from 'react';
-import { Check, Sparkles } from 'lucide-react';
+import { Check } from 'lucide-react';
 
-import { ChartGlassCard } from '@/components/ui/ChartGlassCard';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { PricingTier } from '@/types/pricing';
-
-import { computeAnnualDiscount, formatPrice } from '@/components/pricing/format';
+import { formatPrice } from '@/components/pricing/format';
 
 interface TierCardProps {
   tier: PricingTier;
+  variant?: 'featured' | 'compact' | 'enterprise';
   /** True when this tier matches the signed-in user's effective tier. */
   isCurrent?: boolean;
   /** True when this tier should visually pop as the recommended pick. */
@@ -46,6 +45,7 @@ interface TierCardProps {
 
 export const TierCard: React.FC<TierCardProps> = ({
   tier,
+  variant = 'compact',
   isCurrent = false,
   isHighlighted = false,
   ctaDisabled = false,
@@ -55,50 +55,28 @@ export const TierCard: React.FC<TierCardProps> = ({
 }) => {
   const monthlyDisplay = tier.monthly_price_usd
     ? formatPrice(tier.monthly_price_usd, currency)
-    : null;
-  const annualDiscountPct =
-    tier.monthly_price_usd && tier.annual_price_usd
-      ? computeAnnualDiscount(
-          tier.monthly_price_usd,
-          tier.annual_price_usd,
-        )
-      : null;
-
-  // The "current plan" state takes precedence over highlighting —
-  // there is no "upgrade" button when you already have the plan.
+    : 'Custom';
   const ctaLabel = isCurrent ? 'Your plan' : tier.cta_label;
   const ctaVariant: React.ComponentProps<typeof Button>['variant'] =
     isCurrent ? 'outline' : isHighlighted ? 'default' : 'secondary';
+  const compactFeatures = variant === 'compact' ? tier.new_features : tier.features;
 
   return (
-    <ChartGlassCard
-      as="article"
-      level={isHighlighted ? 'hover' : 'resting'}
-      padding="lg"
-      glass={isHighlighted}
-      ariaLabel={`${tier.name} plan`}
+    <article
       className={cn(
-        'h-full justify-between gap-6',
-        isHighlighted && 'ring-primary/30 dark:ring-primary/40',
-        isCurrent && 'ring-primary/40 dark:ring-primary/50',
+        'rounded-2xl border border-border bg-card p-6',
+        variant === 'featured' && 'border-primary/40 shadow-lg',
+        variant === 'enterprise' && 'bg-muted/30',
       )}
-      data-tier={tier.tier}
-      data-current={isCurrent || undefined}
-      data-highlighted={isHighlighted || undefined}
     >
       <header className="flex flex-col gap-3">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center justify-between gap-3">
           <h3 className="font-heading text-xl font-semibold tracking-tight">
             {tier.name}
           </h3>
-          {isHighlighted && !isCurrent ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-primary">
-              <Sparkles aria-hidden className="size-3" />
-              Recommended
-            </span>
-          ) : null}
+          {variant === 'featured' ? <span className="text-xs text-primary">Featured</span> : null}
           {isCurrent ? (
-            <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-primary">
+            <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
               Current plan
             </span>
           ) : null}
@@ -106,35 +84,13 @@ export const TierCard: React.FC<TierCardProps> = ({
         <p className="text-sm text-muted-foreground">{tier.tagline}</p>
       </header>
 
-      <div className="flex flex-col gap-3">
+      <div className="mt-2 flex flex-col gap-3">
         <div className="flex items-baseline gap-1">
-          {monthlyDisplay ? (
-            <>
-              <span className="font-heading text-4xl font-semibold tracking-tight tabular-nums">
-                {monthlyDisplay}
-              </span>
-              <span className="text-sm text-muted-foreground">/mo</span>
-            </>
-          ) : (
-            <span className="font-heading text-3xl font-semibold tracking-tight">
-              Custom
-            </span>
-          )}
+          <span className="font-heading text-4xl font-semibold tracking-tight tabular-nums">
+            {monthlyDisplay}
+          </span>
+          {tier.monthly_price_usd ? <span className="text-sm text-muted-foreground">/mo</span> : null}
         </div>
-        {annualDiscountPct !== null ? (
-          <p className="text-xs text-muted-foreground">
-            <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 font-medium text-emerald-600 dark:text-emerald-400">
-              Save {annualDiscountPct}%
-            </span>
-            <span className="ml-2">
-              with annual billing (
-              {tier.annual_price_usd
-                ? formatPrice(tier.annual_price_usd, currency)
-                : ''}
-              /yr)
-            </span>
-          </p>
-        ) : null}
         <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs leading-relaxed text-muted-foreground sm:text-sm">
           {tier.covers_copy}
         </p>
@@ -159,16 +115,14 @@ export const TierCard: React.FC<TierCardProps> = ({
         ) : null}
       </div>
 
-      <ul className="flex flex-col gap-2.5 border-t border-border pt-5 text-sm">
-        {tier.features.length === 0 ? (
+      <ul className="mt-4 flex flex-col gap-2.5 border-t border-border pt-5 text-sm">
+        {compactFeatures.length === 0 ? (
           <li className="text-xs text-muted-foreground">
             Everything in this plan is rolling out soon.
           </li>
         ) : (
-          tier.features.map((feature) => {
-            const isNew = tier.new_features.some(
-              (f) => f.key === feature.key,
-            );
+          compactFeatures.map((feature) => {
+            const isNew = tier.new_features.some((f) => f.key === feature.key);
             return (
               <li
                 key={feature.key}
@@ -179,9 +133,7 @@ export const TierCard: React.FC<TierCardProps> = ({
                   aria-hidden
                   className={cn(
                     'mt-0.5 size-4 shrink-0',
-                    isNew
-                      ? 'text-primary'
-                      : 'text-emerald-600 dark:text-emerald-400',
+                    isNew ? 'text-primary' : 'text-emerald-600 dark:text-emerald-400',
                   )}
                 />
                 <span>
@@ -197,7 +149,7 @@ export const TierCard: React.FC<TierCardProps> = ({
           })
         )}
       </ul>
-    </ChartGlassCard>
+    </article>
   );
 };
 

@@ -22,407 +22,128 @@
 import * as React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
 
 import api from '@/services/api';
-import { useAuthOptional } from '@/context/AuthContext';
-import useEntitlement from '@/hooks/useEntitlement';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
 import { TierCard } from '@/components/pricing/TierCard';
+import { ComparisonTable } from '@/components/pricing/ComparisonTable';
 import { PricingFAQ } from '@/components/pricing/PricingFAQ';
-import type {
-  PricingCatalogResponse,
-  PricingTier,
-} from '@/types/pricing';
-import type { SubscriptionTier } from '@/types/entitlement';
-import { tierRank } from '@/types/entitlement';
+import type { PricingCatalogResponse, PricingTier } from '@/types/pricing';
 
-const HEADLINE = 'Gorgeous charts. Forever free.';
-const SUBHEAD =
-  "Pay only when you want broker connections we don't yet build for free, AI chat, autotrade, or backtests. We never markup third-party costs — your subscription covers them at cost.";
-
-/** Tier we visually highlight as "recommended" when the visitor is on Free. */
-const HIGHLIGHTED_TIER: SubscriptionTier = 'pro';
-
-/**
- * Note shown under disabled paid CTAs while checkout-session creation
- * is still being wired (intentionally honest — no fake spinner, no fake
- * "Coming soon" without context).
- */
-const CHECKOUT_PENDING_NOTE =
-  'Self-serve checkout is rolling out shortly. Email founders@axiomfolio.com to upgrade today.';
+// Contact-sales mailto target for Enterprise / other high-touch tiers.
+// Kept here (not in the catalog payload) so the public pricing API
+// doesn't need to leak an exact inbox as part of its wire format.
+const CONTACT_SALES_EMAIL = 'hello@axiomfolio.com';
 
 const Pricing: React.FC = () => {
-  const auth = useAuthOptional();
-  const isAuthenticated = Boolean(auth?.token);
+  const navigate = useNavigate();
 
-  const {
-    tier: currentTier,
-    isLoading: entitlementLoading,
-    isError: entitlementError,
-  } = useEntitlement();
-
-  const catalogQuery = useQuery<PricingCatalogResponse | null>({
+  const catalogQuery = useQuery<PricingCatalogResponse>({
     queryKey: ['pricing', 'catalog'],
     queryFn: async () => {
-      const res = await api.get<PricingCatalogResponse>(
-        '/pricing/catalog',
-      );
-      return res?.data ?? null;
+      const res = await api.get<PricingCatalogResponse>('/pricing/catalog');
+      return res.data;
     },
-    staleTime: 1000 * 60 * 5,
-    refetchOnWindowFocus: false,
-    retry: 2,
   });
+
+  /**
+   * Decide what happens when a ``TierCard`` CTA is clicked.
+   *
+   * - ``is_contact_sales`` tiers open a mailto.
+   * - Tiers with an explicit ``cta_route`` (e.g. Free → ``/register``)
+   *   route the visitor there.
+   * - Everything else falls back to ``/register?upgrade=<tier>`` so
+   *   unauthenticated visitors land on sign-up with an upgrade hint
+   *   the follow-up checkout route will honour. This keeps all buttons
+   *   active instead of being silent no-ops (per Copilot review on PR
+   *   #388).
+   */
+  const handleCtaClick = React.useCallback(
+    (tier: PricingTier) => {
+      if (tier.is_contact_sales) {
+        const subject = encodeURIComponent(`Interested in ${tier.name}`);
+        window.location.href =
+          `mailto:${CONTACT_SALES_EMAIL}?subject=${subject}`;
+        return;
+      }
+      if (tier.cta_route) {
+        navigate(tier.cta_route);
+        return;
+      }
+      navigate(`/register?upgrade=${encodeURIComponent(tier.tier)}`);
+    },
+    [navigate],
+  );
+
+  const renderBody = () => {
+    if (catalogQuery.isLoading) return <p className="text-muted-foreground">Loading pricing...</p>;
+    if (catalogQuery.isError) return <p className="text-destructive">Could not load pricing catalog.</p>;
+    if (!catalogQuery.data?.tiers.length) return <p className="text-muted-foreground">No tiers configured.</p>;
+
+    const tiers = catalogQuery.data.tiers;
+    const featured = tiers.find((t) => t.tier === 'pro') ?? tiers[0];
+    const compact = tiers.filter((t) => t.tier !== featured.tier && t.tier !== 'enterprise');
+    const enterprise = tiers.find((t) => t.tier === 'enterprise');
+
+    return (
+      <div className="space-y-8">
+        <section>
+          <h2 className="mb-4 text-xl font-semibold">Featured</h2>
+          <TierCard
+            tier={featured}
+            variant="featured"
+            currency={catalogQuery.data.currency}
+            onCtaClick={() => handleCtaClick(featured)}
+          />
+        </section>
+        <section>
+          <h2 className="mb-4 text-xl font-semibold">Plans</h2>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {compact.map((tier) => (
+              <TierCard
+                key={tier.tier}
+                tier={tier}
+                variant="compact"
+                currency={catalogQuery.data.currency}
+                onCtaClick={() => handleCtaClick(tier)}
+              />
+            ))}
+          </div>
+        </section>
+        {enterprise ? (
+          <section>
+            <h2 className="mb-4 text-xl font-semibold">Enterprise</h2>
+            <TierCard
+              tier={enterprise}
+              variant="enterprise"
+              currency={catalogQuery.data.currency}
+              onCtaClick={() => handleCtaClick(enterprise)}
+            />
+          </section>
+        ) : null}
+        <ComparisonTable catalog={catalogQuery.data} />
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border bg-card/60 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-          <Link
-            to="/"
-            className="font-heading text-lg font-semibold tracking-tight"
-          >
-            AxiomFolio
-          </Link>
-          <nav aria-label="Primary" className="flex items-center gap-4 text-sm">
-            <Link
-              to="/why-free"
-              className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-            >
-              Why free
-            </Link>
-            <Link
-              to="/login"
-              className="font-medium text-primary underline-offset-4 hover:underline"
-            >
-              Sign in
-            </Link>
-            <Link
-              to="/register"
-              className="font-medium text-primary underline-offset-4 hover:underline"
-            >
-              Register
-            </Link>
-          </nav>
-        </div>
-      </header>
-
-      <main>
-        <PricingHero />
-
-        <section
-          aria-labelledby="pricing-tiers-heading"
-          className="mx-auto w-full max-w-7xl px-4 pb-16 sm:px-6 sm:pb-24"
-        >
-          <h2 id="pricing-tiers-heading" className="sr-only">
-            Subscription tiers
-          </h2>
-
-          {catalogQuery.isLoading ? (
-            <PricingTiersSkeleton />
-          ) : catalogQuery.isError || !catalogQuery.data ? (
-            <PricingErrorState
-              onRetry={() => {
-                void catalogQuery.refetch();
-              }}
-            />
-          ) : (
-            <PricingTiersGrid
-              catalog={catalogQuery.data}
-              currentTier={isAuthenticated ? currentTier : null}
-              entitlementLoading={
-                isAuthenticated ? entitlementLoading : false
-              }
-              entitlementError={
-                isAuthenticated ? entitlementError : false
-              }
-              isAuthenticated={isAuthenticated}
-            />
-          )}
-        </section>
-
-        <section className="border-t border-border bg-muted/20 py-16 sm:py-20">
-          <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-            <PricingFAQ />
+      <main className="mx-auto max-w-6xl space-y-8 px-4 py-12 sm:px-6">
+        <header className="space-y-3 text-center">
+          <h1 className="font-heading text-4xl font-semibold tracking-tight">Ladder 3 pricing</h1>
+          <p className="text-muted-foreground">
+            Free forever for core visuals. Upgrade when you need BYOK, advanced MCP scopes, and research tooling.
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <Button asChild><Link to="/register">Get started</Link></Button>
+            <Button asChild variant="outline"><Link to="/why-free">Why free</Link></Button>
           </div>
-        </section>
-
-        <PricingFooter />
+        </header>
+        {renderBody()}
+        <PricingFAQ />
       </main>
     </div>
   );
 };
-
-// ---------------------------------------------------------------------------
-// Hero
-// ---------------------------------------------------------------------------
-
-const PricingHero: React.FC = () => (
-  <section className="mx-auto w-full max-w-4xl px-4 pb-12 pt-16 text-center sm:px-6 sm:pb-16 sm:pt-20">
-    <p className="inline-flex items-center justify-center gap-1.5 rounded-full border border-border bg-card/70 px-3 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-      <Sparkles aria-hidden className="size-3" />
-      Pricing
-    </p>
-    <h1 className="mt-6 font-heading text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl">
-      {HEADLINE}
-    </h1>
-    <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-      {SUBHEAD}
-    </p>
-    <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-      <Button asChild size="lg">
-        <Link to="/register">
-          Get started free
-          <ArrowRight aria-hidden className="size-4" />
-        </Link>
-      </Button>
-      <Button asChild variant="outline" size="lg">
-        <Link to="/why-free">
-          <ShieldCheck aria-hidden className="size-4" />
-          Why we're free
-        </Link>
-      </Button>
-    </div>
-  </section>
-);
-
-// ---------------------------------------------------------------------------
-// Tier grid (responsive)
-// ---------------------------------------------------------------------------
-
-interface PricingTiersGridProps {
-  catalog: PricingCatalogResponse;
-  /** Effective tier for an authenticated visitor; `null` for logged-out. */
-  currentTier: SubscriptionTier | null;
-  entitlementLoading: boolean;
-  entitlementError: boolean;
-  isAuthenticated: boolean;
-}
-
-const PricingTiersGrid: React.FC<PricingTiersGridProps> = ({
-  catalog,
-  currentTier,
-  entitlementLoading,
-  entitlementError,
-  isAuthenticated,
-}) => {
-  // While we know the visitor is authenticated but their entitlement
-  // hasn't loaded yet, swap the tier cards for skeletons rather than
-  // rendering CTAs that might briefly say "Upgrade" on the user's own
-  // current plan.
-  if (entitlementLoading) {
-    return <PricingTiersSkeleton />;
-  }
-
-  return (
-    <>
-      {entitlementError ? (
-        <p className="mb-6 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-center text-sm text-destructive">
-          We couldn't load your current plan. Tier-specific buttons are
-          unavailable until you reload, but the pricing details below
-          are accurate.
-        </p>
-      ) : null}
-
-      <div
-        className={cn(
-          'grid gap-4',
-          // 6 tiers don't fit comfortably side-by-side at most widths.
-          // Stack on small, 2-up on md, 3-up on lg, 6-up on 2xl.
-          'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6',
-        )}
-      >
-        {catalog.tiers.map((tier) => (
-          <TierCardWithCheckout
-            key={tier.tier}
-            tier={tier}
-            currentTier={currentTier}
-            isAuthenticated={isAuthenticated}
-            currency={catalog.currency}
-          />
-        ))}
-      </div>
-    </>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// Per-tier CTA wiring
-// ---------------------------------------------------------------------------
-
-interface TierCardWithCheckoutProps {
-  tier: PricingTier;
-  currentTier: SubscriptionTier | null;
-  isAuthenticated: boolean;
-  currency: string;
-}
-
-const TierCardWithCheckout: React.FC<TierCardWithCheckoutProps> = ({
-  tier,
-  currentTier,
-  isAuthenticated,
-  currency,
-}) => {
-  const navigate = useNavigate();
-  const isCurrent = currentTier === tier.tier;
-
-  // Highlight a single recommended tier ONLY for visitors who aren't
-  // signed in yet (or who are still on Free). Once a user has actually
-  // upgraded, the highlight would just be visual noise.
-  const isHighlighted =
-    tier.tier === HIGHLIGHTED_TIER &&
-    (!isAuthenticated || tierRank(currentTier) <= tierRank('free'));
-
-  const handleClick = React.useCallback(() => {
-    if (isCurrent) return;
-
-    // Free tier (or any tier with an explicit public route) routes to
-    // that destination — no auth or checkout machinery involved.
-    if (tier.cta_route) {
-      navigate(tier.cta_route);
-      return;
-    }
-
-    // Enterprise: contact sales.
-    if (tier.is_contact_sales) {
-      window.location.assign(
-        `mailto:founders@axiomfolio.com?subject=${encodeURIComponent(
-          `AxiomFolio Enterprise inquiry — ${tier.name}`,
-        )}`,
-      );
-      return;
-    }
-
-    // Paid self-serve tier: route unauthenticated visitors to the
-    // signup flow with the intended tier carried in the URL so the
-    // post-signup experience can pick checkout up where we left off.
-    if (!isAuthenticated) {
-      navigate(`/register?upgrade=${encodeURIComponent(tier.tier)}`);
-      return;
-    }
-
-    // Authenticated paid CTA falls through to the disabled state with
-    // the explanatory note (`ctaDisabled` below). Intentional: there
-    // is no checkout-session route in this PR (see file header).
-  }, [isCurrent, tier, isAuthenticated, navigate]);
-
-  // Determine whether to disable the CTA + show the checkout-pending
-  // note.
-  const isPaidSelfServe = !tier.is_contact_sales && !tier.cta_route;
-  const ctaDisabled = isAuthenticated && isPaidSelfServe && !isCurrent;
-  const ctaNote = ctaDisabled ? CHECKOUT_PENDING_NOTE : undefined;
-
-  return (
-    <TierCard
-      tier={tier}
-      isCurrent={isCurrent}
-      isHighlighted={isHighlighted}
-      ctaDisabled={ctaDisabled}
-      ctaNote={ctaNote}
-      onCtaClick={handleClick}
-      currency={currency}
-    />
-  );
-};
-
-// ---------------------------------------------------------------------------
-// Loading + error states
-// ---------------------------------------------------------------------------
-
-const PricingTiersSkeleton: React.FC = () => (
-  <div
-    aria-busy="true"
-    aria-label="Loading pricing tiers"
-    className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6"
-  >
-    {Array.from({ length: 6 }).map((_, i) => (
-      <div
-        key={i}
-        className="flex h-[480px] flex-col gap-4 rounded-2xl border border-border bg-card/40 p-6"
-      >
-        <Skeleton className="h-6 w-1/3" />
-        <Skeleton className="h-4 w-2/3" />
-        <Skeleton className="mt-2 h-10 w-1/2" />
-        <Skeleton className="h-12 w-full" />
-        <Skeleton className="mt-2 h-10 w-full" />
-        <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
-          {Array.from({ length: 5 }).map((__, k) => (
-            <Skeleton key={k} className="h-3 w-full" />
-          ))}
-        </div>
-      </div>
-    ))}
-  </div>
-);
-
-interface PricingErrorStateProps {
-  onRetry: () => void;
-}
-
-const PricingErrorState: React.FC<PricingErrorStateProps> = ({
-  onRetry,
-}) => (
-  <div
-    role="alert"
-    className="mx-auto flex max-w-md flex-col items-center gap-4 rounded-2xl border border-border bg-card/60 p-8 text-center"
-  >
-    <h2 className="font-heading text-lg font-semibold">
-      We couldn't load pricing right now.
-    </h2>
-    <p className="text-sm text-muted-foreground">
-      Reload the page or come back in a moment. The catalog is served
-      directly from the same source the in-app upgrade prompts use, so
-      this is almost always a transient network issue.
-    </p>
-    <Button type="button" onClick={onRetry}>
-      Try again
-    </Button>
-  </div>
-);
-
-// ---------------------------------------------------------------------------
-// Footer
-// ---------------------------------------------------------------------------
-
-const PricingFooter: React.FC = () => (
-  <footer className="border-t border-border bg-card/40">
-    <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 px-4 py-8 text-xs text-muted-foreground sm:flex-row sm:items-center sm:px-6">
-      <p>
-        Built so we can stay free. No ads. No data sale. Ever. Read the
-        full reasoning on{' '}
-        <Link
-          to="/why-free"
-          className="font-medium text-primary underline-offset-4 hover:underline"
-        >
-          /why-free
-        </Link>
-        .
-      </p>
-      <div className="flex items-center gap-4">
-        <Link
-          to="/why-free"
-          className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-        >
-          Why free
-        </Link>
-        <Link
-          to="/login"
-          className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-        >
-          Sign in
-        </Link>
-        <Link
-          to="/register"
-          className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-        >
-          Register
-        </Link>
-      </div>
-    </div>
-  </footer>
-);
 
 export default Pricing;

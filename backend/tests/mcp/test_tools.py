@@ -29,11 +29,34 @@ from backend.models.broker_account import (
     BrokerAccount,
     BrokerType,
 )
+from backend.models.entitlement import (
+    Entitlement,
+    EntitlementStatus,
+    SubscriptionTier,
+)
 from backend.models.mcp_token import MCPToken
 from backend.models.position import Position, PositionStatus, PositionType
 from backend.models.trade import Trade
 from backend.models.transaction import Dividend
 from backend.models.user import User, UserRole
+
+
+def _grant_tier(db_session, user: User, tier: SubscriptionTier) -> None:
+    """Grant ``user`` an active entitlement at ``tier``.
+
+    Used by MCP tests to exercise scope-gated tools. Without this, users
+    default to FREE via auto-creation in ``EntitlementService.get_or_create``
+    and only see portfolio-scope tools.
+    """
+    db_session.add(
+        Entitlement(
+            user_id=user.id,
+            tier=tier,
+            status=EntitlementStatus.ACTIVE,
+            metadata_json={"source": "test_fixture"},
+        )
+    )
+    db_session.flush()
 
 
 # ----------------------------------------------------------------------
@@ -317,6 +340,10 @@ class TestBearerAuth:
 
 class TestJSONRPCContract:
     def test_tools_list_returns_catalog(self, client, two_users, db_session):
+        # Grant ENTERPRISE so every scope is allowed; asserts the full
+        # catalog is reachable for a maximally-entitled user. Per-tier
+        # gating behavior is covered by test_tools_list_free_tier_only_portfolio.
+        _grant_tier(db_session, two_users["user_a"], SubscriptionTier.ENTERPRISE)
         token = _mint_token(db_session, two_users["user_a"])
         r = client.post(
             "/api/v1/mcp/jsonrpc",
@@ -336,6 +363,25 @@ class TestJSONRPCContract:
             "get_recent_explanations",
             "get_pick_history",
         } <= names
+
+    def test_tools_list_free_tier_only_portfolio(self, client, two_users, db_session):
+        """FREE tier must only see portfolio-scoped tools (tier gate)."""
+        token = _mint_token(db_session, two_users["user_a"])
+        r = client.post(
+            "/api/v1/mcp/jsonrpc",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"jsonrpc": "2.0", "id": 17, "method": "tools/list"},
+        )
+        assert r.status_code == 200
+        names = {t["name"] for t in r.json()["result"]["tools"]}
+        # FREE grants mcp.read_portfolio only.
+        assert "get_holdings" in names
+        assert "get_recent_trades" in names
+        assert "get_dividend_summary" in names
+        # Signals / trade_cards / replay must be hidden.
+        assert "get_stage_summary" not in names
+        assert "get_recent_explanations" not in names
+        assert "get_pick_history" not in names
 
     def test_unknown_method_returns_minus_32601(self, client, two_users, db_session):
         token = _mint_token(db_session, two_users["user_a"])

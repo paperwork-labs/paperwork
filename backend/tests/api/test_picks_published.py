@@ -65,10 +65,10 @@ def free_user(db_session):
 
 
 @pytest.fixture
-def lite_user(db_session):
+def pro_user(db_session):
     u = User(
-        email="picklite@example.com",
-        username="picklite",
+        email="pickpro@example.com",
+        username="pickpro",
         password_hash="x",
         role=UserRole.ANALYST,
         is_active=True,
@@ -81,7 +81,7 @@ def lite_user(db_session):
     EntitlementService.manual_set_tier(
         db_session,
         user=u,
-        new_tier=SubscriptionTier.LITE,
+        new_tier=SubscriptionTier.PRO,
         actor="pytest",
         note="picks feed test",
     )
@@ -125,11 +125,11 @@ def test_free_user_preview_flag(client, db_session, free_user):
         _restore()
 
 
-def test_lite_user_full_feed(client, db_session, lite_user):
+def test_pro_user_full_feed(client, db_session, pro_user):
     _published(db_session, symbol="X", generator="g1")
     _published(db_session, symbol="Y", generator="g2")
     _override_db(db_session)
-    _override_user(lite_user)
+    _override_user(pro_user)
     try:
         r = client.get("/api/v1/picks/published")
         assert r.status_code == 200

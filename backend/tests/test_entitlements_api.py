@@ -91,13 +91,19 @@ def test_catalog_is_public_and_returns_features(client, db_session, auth_user):
 
 
 def test_catalog_native_chat_is_pro_plus(client, db_session, auth_user):
-    """Lock in the consistency fix from PR #316: native chat is Pro+."""
+    """Ladder 3: native chat opens at PRO (with cap); PRO_PLUS removes the cap.
+
+    The historical "native chat is Pro+" assertion from PR #316 was
+    updated in the Ladder 3 reshape (PR #388) so the floor is PRO. The
+    test name is preserved for grep-ability; the invariant it now locks
+    in is that native_chat is a paid feature (not FREE).
+    """
     _override(db_session, auth_user)
     try:
         r = client.get("/api/v1/entitlements/catalog")
         body = r.json()
         chat = next(f for f in body["features"] if f["key"] == "brain.native_chat")
-        assert chat["min_tier"] == "pro_plus"
+        assert chat["min_tier"] == "pro"
     finally:
         _restore()
 
@@ -158,7 +164,8 @@ def test_check_endpoint_returns_decision(client, db_session, auth_user):
         assert r.status_code == 200
         body = r.json()
         assert body["allowed"] is False
-        assert body["required_tier"] == "pro_plus"
+        # Ladder 3: native chat opens at PRO.
+        assert body["required_tier"] == "pro"
         assert body["current_tier"] == "free"
     finally:
         _restore()
@@ -206,7 +213,8 @@ def test_require_feature_returns_402_when_blocked(client, db_session, auth_user)
         assert detail["error"] == "tier_required"
         assert detail["feature"] == "brain.native_chat"
         assert detail["current_tier"] == "free"
-        assert detail["required_tier"] == "pro_plus"
+        # Ladder 3: native chat opens at PRO.
+        assert detail["required_tier"] == "pro"
     finally:
         _restore()
         # Clean up the throwaway route so it doesn't pollute other tests.

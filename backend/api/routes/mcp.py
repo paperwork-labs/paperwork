@@ -66,6 +66,13 @@ class MCPTokenCreate(BaseModel):
             "the default 365-day lifetime."
         ),
     )
+    pii_tax_lot_consent: bool = Field(
+        default=False,
+        description=(
+            "Explicit consent to expose tax-lot data over MCP "
+            "(realized gains/losses and wash-sale history)."
+        ),
+    )
 
     @field_validator("name")
     @classmethod
@@ -86,6 +93,7 @@ class MCPTokenSummary(BaseModel):
     last_used_at: Optional[datetime]
     revoked_at: Optional[datetime]
     is_active: bool
+    pii_consent_at: Optional[datetime]
 
 
 class MCPTokenCreateResponse(MCPTokenSummary):
@@ -115,6 +123,7 @@ def _serialize_summary(row: MCPToken) -> MCPTokenSummary:
         last_used_at=row.last_used_at,
         revoked_at=row.revoked_at,
         is_active=row.is_active(),
+        pii_consent_at=row.pii_consent_at,
     )
 
 
@@ -160,6 +169,9 @@ async def create_token(
         name=payload.name,
         token_hash=token_hash,
         expires_at=expires_at,
+        pii_consent_at=(
+            datetime.now(timezone.utc) if payload.pii_tax_lot_consent else None
+        ),
     )
     db.add(row)
     try:
@@ -235,5 +247,11 @@ async def mcp_jsonrpc(
     auth: MCPAuthContext = Depends(get_mcp_context),
 ) -> Dict[str, Any]:
     """Bearer-authed JSON-RPC 2.0 endpoint for ``tools/list`` and ``tools/call``."""
-    response = _mcp_server.handle(payload, db=db, user_id=auth.user.id)
+    response = _mcp_server.handle(
+        payload,
+        db=db,
+        user_id=auth.user.id,
+        allowed_scopes=auth.allowed_scopes,
+        daily_limit=auth.daily_limit,
+    )
     return response

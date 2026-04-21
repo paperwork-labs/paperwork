@@ -80,6 +80,9 @@ class TierDisplay:
     cta_label: str
     is_contact_sales: bool
     cta_route: Optional[str]
+    mcp_tool_scope: tuple[str, ...]
+    native_chat_daily_limit: Optional[int]
+    byok_enabled: bool
 
 
 # -----------------------------------------------------------------------------
@@ -109,60 +112,56 @@ _TIERS: Tuple[TierDisplay, ...] = (
         cta_label="Get started",
         is_contact_sales=False,
         cta_route="/register",
-    ),
-    TierDisplay(
-        tier=SubscriptionTier.LITE,
-        name="Lite",
-        tagline="One-click brokers without the markup.",
-        monthly_price_usd=Decimal("20"),
-        annual_price_usd=Decimal("192"),
-        covers_copy=(
-            "Covers our retail-broker aggregator per-user cost (~$2/mo) "
-            "for one-click Robinhood, Webull, Public, M1, and SoFi "
-            "connections. Zero markup on the aggregator line. Direct "
-            "OAuth brokers (Schwab, IBKR, Tastytrade — E*TRADE, Tradier, "
-            "Coinbase next) stay free forever."
-        ),
-        cta_label="Upgrade",
-        is_contact_sales=False,
-        cta_route=None,
+        mcp_tool_scope=("mcp.read_portfolio",),
+        native_chat_daily_limit=0,
+        byok_enabled=False,
     ),
     TierDisplay(
         tier=SubscriptionTier.PRO,
         name="Pro",
-        tagline="The portfolio that talks back.",
-        monthly_price_usd=Decimal("50"),
-        annual_price_usd=Decimal("480"),
+        tagline="Signals and BYOK for active traders.",
+        monthly_price_usd=Decimal("29"),
+        annual_price_usd=Decimal("290"),
         covers_copy=(
-            "Covers OpenAI tokens for unlimited AI chat that explains "
-            "your portfolio. Real model usage, not vanity features."
+            "Covers core compute and sync with native chat (20/day). "
+            "Bring your own OpenAI/Anthropic key for heavier use."
         ),
         cta_label="Upgrade",
         is_contact_sales=False,
         cta_route=None,
+        mcp_tool_scope=("mcp.read_portfolio", "mcp.read_signals"),
+        native_chat_daily_limit=20,
+        byok_enabled=True,
     ),
     TierDisplay(
         tier=SubscriptionTier.PRO_PLUS,
         name="Pro+",
-        tagline="Autotrade, multi-broker, tax-aware exits.",
-        monthly_price_usd=Decimal("150"),
-        annual_price_usd=Decimal("1440"),
+        tagline="Trade cards, replay, tax engine, unlimited chat.",
+        monthly_price_usd=Decimal("79"),
+        annual_price_usd=Decimal("790"),
         covers_copy=(
-            "Covers walk-forward backtest compute (~$0.40 per run, "
-            "unlimited) plus multi-broker aggregation and tax-aware "
-            "exits. Serious execution and capacity, not a logo on a "
-            "slide deck."
+            "Adds deeper MCP strategy tools and unlimited native AgentBrain "
+            "for high-frequency workflows."
         ),
         cta_label="Upgrade",
         is_contact_sales=False,
         cta_route=None,
+        mcp_tool_scope=(
+            "mcp.read_portfolio",
+            "mcp.read_signals",
+            "mcp.read_trade_cards",
+            "mcp.read_replay",
+            "mcp.read_tax_engine",
+        ),
+        native_chat_daily_limit=None,
+        byok_enabled=True,
     ),
     TierDisplay(
         tier=SubscriptionTier.QUANT_DESK,
         name="Quant Desk",
         tagline="Research kit, custom universes, plugin SDK.",
         monthly_price_usd=Decimal("299"),
-        annual_price_usd=Decimal("2868"),
+        annual_price_usd=Decimal("2990"),
         covers_copy=(
             "Covers Jupyter compute, point-in-time history reads, and "
             "the backtest API. The same infra a small fund pays five "
@@ -171,6 +170,18 @@ _TIERS: Tuple[TierDisplay, ...] = (
         cta_label="Upgrade",
         is_contact_sales=False,
         cta_route=None,
+        mcp_tool_scope=(
+            "mcp.read_portfolio",
+            "mcp.read_signals",
+            "mcp.read_trade_cards",
+            "mcp.read_replay",
+            "mcp.read_tax_engine",
+            "mcp.read_backtest",
+            "mcp.read_jupyter",
+            "mcp.custom_tools",
+        ),
+        native_chat_daily_limit=None,
+        byok_enabled=True,
     ),
     TierDisplay(
         tier=SubscriptionTier.ENTERPRISE,
@@ -186,6 +197,19 @@ _TIERS: Tuple[TierDisplay, ...] = (
         cta_label="Contact sales",
         is_contact_sales=True,
         cta_route=None,
+        mcp_tool_scope=(
+            "mcp.read_portfolio",
+            "mcp.read_signals",
+            "mcp.read_trade_cards",
+            "mcp.read_replay",
+            "mcp.read_tax_engine",
+            "mcp.read_backtest",
+            "mcp.read_jupyter",
+            "mcp.custom_tools",
+            "mcp.admin_scopes",
+        ),
+        native_chat_daily_limit=None,
+        byok_enabled=True,
     ),
 )
 
@@ -218,6 +242,26 @@ _validate_tier_coverage()
 def all_tiers() -> Tuple[TierDisplay, ...]:
     """Return every tier in display order (Free → Enterprise)."""
     return _TIERS
+
+
+def mcp_scopes_for_tier(tier: SubscriptionTier) -> tuple[str, ...]:
+    """Return MCP scopes granted at the effective tier."""
+    for row in _TIERS:
+        if row.tier == tier:
+            return row.mcp_tool_scope
+    return ()
+
+
+def mcp_daily_call_limit(tier: SubscriptionTier) -> Optional[int]:
+    """Daily MCP call caps by tier. None means unlimited."""
+    limits = {
+        SubscriptionTier.FREE: 100,
+        SubscriptionTier.PRO: 1000,
+        SubscriptionTier.PRO_PLUS: 10_000,
+        SubscriptionTier.QUANT_DESK: None,
+        SubscriptionTier.ENTERPRISE: None,
+    }
+    return limits.get(tier, 100)
 
 
 def features_for_tier(tier: SubscriptionTier) -> Tuple[Feature, ...]:

@@ -90,10 +90,12 @@ const SettingsMCP: React.FC = () => {
   });
 
   const [name, setName] = React.useState('');
+  const [piiConsent, setPiiConsent] = React.useState(false);
   const [created, setCreated] = React.useState<MCPTokenCreateResponse | null>(null);
 
   const createMutation = useMutation({
-    mutationFn: (payload: { name: string }) => mcpApi.create(payload),
+    mutationFn: (payload: { name: string; pii_tax_lot_consent: boolean }) =>
+      mcpApi.create(payload),
     onSuccess: (data) => {
       setCreated(data);
       setName('');
@@ -118,7 +120,10 @@ const SettingsMCP: React.FC = () => {
       hotToast.error('Token name is required');
       return;
     }
-    createMutation.mutate({ name: trimmed });
+    createMutation.mutate({
+      name: trimmed,
+      pii_tax_lot_consent: piiConsent,
+    });
   };
 
   const handleCopy = async (value: string) => {
@@ -245,6 +250,14 @@ const SettingsMCP: React.FC = () => {
                     disabled={createMutation.isPending}
                   />
                 </div>
+                <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={piiConsent}
+                    onChange={(e) => setPiiConsent(e.target.checked)}
+                  />
+                  Allow tax-lot MCP scope (PII)
+                </label>
                 <Button
                   type="submit"
                   disabled={createMutation.isPending || !name.trim()}

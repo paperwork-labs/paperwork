@@ -47,7 +47,8 @@ class Feature:
         title: short user-facing label (used by upgrade prompts).
         description: one-line user-facing description.
         category: logical grouping for the pricing UI (``data``, ``picks``,
-            ``brain``, ``execution``, ``ops``, ``research``).
+            ``brain``, ``execution``, ``ops``, ``research``, ``mcp``,
+            ``strategy``).
     """
 
     key: str
@@ -74,14 +75,14 @@ _FEATURES: tuple[Feature, ...] = (
     ),
     Feature(
         key="data.realtime_pipeline",
-        min_tier=SubscriptionTier.PRO,
+        min_tier=SubscriptionTier.FREE,
         title="Real-time pipeline",
         description="Live recompute when prices update intraday.",
         category="data",
     ),
     Feature(
         key="data.snowball_viz",
-        min_tier=SubscriptionTier.PRO,
+        min_tier=SubscriptionTier.FREE,
         title="Snowball-class visualization",
         description="Sector heatmaps, return attribution, dividend timeline.",
         category="data",
@@ -103,7 +104,7 @@ _FEATURES: tuple[Feature, ...] = (
     ),
     Feature(
         key="picks.feed_full",
-        min_tier=SubscriptionTier.LITE,
+        min_tier=SubscriptionTier.PRO,
         title="Full picks feed",
         description="See every published pick in real time (not preview-only).",
         category="picks",
@@ -125,7 +126,7 @@ _FEATURES: tuple[Feature, ...] = (
     # ---- Native AgentBrain chat (brain) ------------------------------------
     Feature(
         key="brain.native_chat",
-        min_tier=SubscriptionTier.PRO_PLUS,
+        min_tier=SubscriptionTier.PRO,
         title="Native AgentBrain chat",
         description="Ask the in-app brain about your portfolio and the market.",
         category="brain",
@@ -193,7 +194,7 @@ _FEATURES: tuple[Feature, ...] = (
     ),
     Feature(
         key="research.walk_forward_optimizer",
-        min_tier=SubscriptionTier.PRO,
+        min_tier=SubscriptionTier.QUANT_DESK,
         title="Walk-forward optimizer",
         description=(
             "Optuna-driven hyperparameter search with rolling train/test "
@@ -217,7 +218,7 @@ _FEATURES: tuple[Feature, ...] = (
     ),
     Feature(
         key="research.monte_carlo",
-        min_tier=SubscriptionTier.PRO_PLUS,
+        min_tier=SubscriptionTier.QUANT_DESK,
         title="Monte Carlo simulator",
         description=(
             "Bootstrap-resample backtest trade returns to estimate "
@@ -246,6 +247,113 @@ _FEATURES: tuple[Feature, ...] = (
         title="Dedicated cluster",
         description="Isolated infra with custom SLA.",
         category="ops",
+    ),
+    # ---- MCP scopes (mcp) ---------------------------------------------------
+    Feature(
+        key="mcp.read_portfolio",
+        min_tier=SubscriptionTier.FREE,
+        title="MCP portfolio tools",
+        description="Read holdings/trades/dividends and portfolio context over MCP.",
+        category="mcp",
+    ),
+    Feature(
+        key="mcp.read_signals",
+        min_tier=SubscriptionTier.PRO,
+        title="MCP signals tools",
+        description="Read position-health and peak-signal MCP surfaces.",
+        category="mcp",
+    ),
+    Feature(
+        key="mcp.read_trade_cards",
+        min_tier=SubscriptionTier.PRO_PLUS,
+        title="MCP trade-card tools",
+        description="Trade-card composition and rationale helpers.",
+        category="mcp",
+    ),
+    Feature(
+        key="mcp.read_replay",
+        min_tier=SubscriptionTier.PRO_PLUS,
+        title="MCP replay tools",
+        description="Replay and post-trade diagnostics over MCP.",
+        category="mcp",
+    ),
+    Feature(
+        key="mcp.read_tax_engine",
+        min_tier=SubscriptionTier.PRO_PLUS,
+        title="MCP tax engine",
+        description="Tax-lot and tax-aware exit MCP tooling.",
+        category="mcp",
+    ),
+    Feature(
+        key="mcp.read_backtest",
+        min_tier=SubscriptionTier.QUANT_DESK,
+        title="MCP backtest tools",
+        description="Backtest retrieval and diagnostics over MCP.",
+        category="mcp",
+    ),
+    Feature(
+        key="mcp.read_jupyter",
+        min_tier=SubscriptionTier.QUANT_DESK,
+        title="MCP jupyter tools",
+        description="Notebook and research-surface MCP access.",
+        category="mcp",
+    ),
+    Feature(
+        key="mcp.custom_tools",
+        min_tier=SubscriptionTier.QUANT_DESK,
+        title="MCP custom tools",
+        description="Custom tool registration for quant workflows.",
+        category="mcp",
+    ),
+    Feature(
+        key="mcp.admin_scopes",
+        min_tier=SubscriptionTier.ENTERPRISE,
+        title="MCP admin scopes",
+        description="Enterprise-only admin MCP surfaces.",
+        category="mcp",
+    ),
+    Feature(
+        key="mcp.byok_enabled",
+        min_tier=SubscriptionTier.PRO,
+        title="BYOK enabled",
+        description="Bring your own OpenAI/Anthropic API key.",
+        category="mcp",
+    ),
+    # ---- Strategy scopes (strategy) ----------------------------------------
+    Feature(
+        key="strategy.position_health_audit",
+        min_tier=SubscriptionTier.PRO,
+        title="Position health audit",
+        description="Signals health scoring and remediation prompts.",
+        category="strategy",
+    ),
+    Feature(
+        key="strategy.peak_signal",
+        min_tier=SubscriptionTier.PRO,
+        title="Peak signal",
+        description="Peak signal analytics and alerts.",
+        category="strategy",
+    ),
+    Feature(
+        key="strategy.tax_aware_exit",
+        min_tier=SubscriptionTier.PRO_PLUS,
+        title="Tax-aware exit",
+        description="Tax-aware lot selection and exit planning.",
+        category="strategy",
+    ),
+    Feature(
+        key="strategy.margin_risk",
+        min_tier=SubscriptionTier.PRO_PLUS,
+        title="Margin risk",
+        description="Margin risk and liquidation exposure surfaces.",
+        category="strategy",
+    ),
+    Feature(
+        key="strategy.hnw_tax_deferral",
+        min_tier=SubscriptionTier.PRO_PLUS,
+        title="HNW tax deferral",
+        description="High-net-worth tax deferral strategy surfaces.",
+        category="strategy",
     ),
 )
 
@@ -279,7 +387,7 @@ def all_features() -> tuple[Feature, ...]:
 def is_allowed(tier: SubscriptionTier, feature_key: str) -> bool:
     """Return True if a user at ``tier`` can access ``feature_key``.
 
-    A pro_plus user satisfies any pro/lite/free requirement, etc. (see
+    A pro_plus user satisfies any pro/free requirement, etc. (see
     ``SubscriptionTier.rank``).
     """
     feature = get_feature(feature_key)

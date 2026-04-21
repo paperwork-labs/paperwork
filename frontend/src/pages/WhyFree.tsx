@@ -1,11 +1,14 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Check, X } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 
 import PublicStatsStrip from '@/components/transparency/PublicStatsStrip';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import api from '@/services/api';
+import type { PricingCatalogResponse } from '@/types/pricing';
 
 const freeForeverItems = [
   'The flagship holding chart (with stages, RS, ATR — every overlay)',
@@ -39,6 +42,16 @@ const Section: React.FC<{ id?: string; className?: string; children: React.React
 );
 
 const WhyFree: React.FC = () => {
+  const catalogQuery = useQuery<PricingCatalogResponse>({
+    queryKey: ['pricing', 'catalog'],
+    queryFn: async () => {
+      const res = await api.get<PricingCatalogResponse>('/pricing/catalog');
+      return res.data;
+    },
+  });
+  const freeTier = catalogQuery.data?.tiers.find((tier) => tier.tier === 'free');
+  const freeForeverItems = freeTier?.features ?? [];
+
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-background text-foreground">
@@ -63,18 +76,23 @@ const WhyFree: React.FC = () => {
               AxiomFolio is free because we want it to be.
             </h1>
             <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
-              Most portfolio apps cost $10–20/month to look at your own data. Here&apos;s why we don&apos;t charge for
+              Most portfolio apps charge a monthly fee to look at your own data. Here&apos;s why we don&apos;t charge for
               that.
             </p>
           </Section>
 
           <Section className="border-t border-border bg-muted/20">
             <h2 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">What&apos;s free, forever</h2>
+            {catalogQuery.isLoading ? <p className="mt-8 text-sm text-muted-foreground">Loading free tier catalog...</p> : null}
+            {catalogQuery.isError ? <p className="mt-8 text-sm text-destructive">Could not load free tier catalog.</p> : null}
+            {!catalogQuery.isLoading && !catalogQuery.isError && freeForeverItems.length === 0 ? (
+              <p className="mt-8 text-sm text-muted-foreground">No free-tier features configured.</p>
+            ) : null}
             <ul className="mt-8 flex flex-col gap-4">
-              {freeForeverItems.map((item) => (
-                <li key={item} className="flex gap-3 text-sm sm:text-base">
+              {freeForeverItems.map((feature) => (
+                <li key={feature.key} className="flex gap-3 text-sm sm:text-base">
                   <Check className="mt-0.5 size-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
-                  <span>{item}</span>
+                  <span>{feature.title}</span>
                 </li>
               ))}
             </ul>
@@ -86,7 +104,7 @@ const WhyFree: React.FC = () => {
             </h2>
             <div className="mt-8 flex flex-col gap-5 text-sm leading-relaxed text-muted-foreground sm:text-base">
               <p>
-                Plaid charges portfolio aggregators roughly $1–3 per connected account per month. Source:{' '}
+                Plaid charges portfolio aggregators per connected account per month. Source:{' '}
                 <a
                   href="https://plaid.com/docs/account/billing"
                   className="font-medium text-primary underline-offset-4 hover:underline"
@@ -98,11 +116,11 @@ const WhyFree: React.FC = () => {
                 .
               </p>
               <p>
-                At 10,000 users with two accounts each, that&apos;s $40,000/month of pure cost — before we earn a
+                At 10,000 users with two accounts each, that&apos;s substantial monthly cost before we earn a
                 dollar.
               </p>
               <p>
-                That&apos;s why aggregator-based competitors charge you $5–15/month to look at your own portfolio.
+                That&apos;s why aggregator-based competitors charge a subscription to look at your own portfolio.
                 They&apos;re paying Plaid out of your subscription.
               </p>
               <p>
@@ -124,8 +142,8 @@ const WhyFree: React.FC = () => {
                 <tbody className="text-muted-foreground">
                   <tr className="border-b border-border">
                     <td className="px-4 py-3 font-medium text-foreground">Cost to you (core portfolio view)</td>
-                    <td className="px-4 py-3">$0</td>
-                    <td className="px-4 py-3">Often $5–15/mo</td>
+                    <td className="px-4 py-3">No subscription fee</td>
+                    <td className="px-4 py-3">Typically paid subscription</td>
                   </tr>
                   <tr className="border-b border-border">
                     <td className="px-4 py-3 font-medium text-foreground">Fidelity / Vanguard / big banks</td>
@@ -147,42 +165,6 @@ const WhyFree: React.FC = () => {
             </div>
           </Section>
 
-          <Section className="border-t border-border bg-muted/20">
-            <h2 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">When we&apos;ll charge</h2>
-            <div className="mt-10 flex flex-col gap-10">
-              <article>
-                <h3 className="text-lg font-semibold">Lite ($20/mo)</h3>
-                <p className="mt-3 text-sm text-muted-foreground sm:text-base">
-                  One-click aggregator connections to retail brokers that don&apos;t offer direct OAuth (Robinhood,
-                  Webull, Public, M1, SoFi). The aggregator charges us roughly $2/user/month — your subscription
-                  covers that and our compute. Zero markup on the aggregator line.
-                </p>
-                <p className="mt-3 rounded-lg border border-border bg-background/80 px-3 py-2 text-xs text-muted-foreground sm:text-sm">
-                  Your $20 covers the aggregator pass-through plus infrastructure — not a hidden skim.
-                </p>
-              </article>
-              <article>
-                <h3 className="text-lg font-semibold">Pro ($50/mo)</h3>
-                <p className="mt-3 text-sm text-muted-foreground sm:text-base">
-                  AI portfolio chat (OpenAI tokens cost real money — about $0.40 per session). Walk-forward backtests
-                  (compute-intensive). Multi-portfolio.
-                </p>
-                <p className="mt-3 rounded-lg border border-border bg-background/80 px-3 py-2 text-xs text-muted-foreground sm:text-sm">
-                  Your $50 covers model usage and heavy compute — not vanity features.
-                </p>
-              </article>
-              <article>
-                <h3 className="text-lg font-semibold">Pro+ ($150/mo)</h3>
-                <p className="mt-3 text-sm text-muted-foreground sm:text-base">
-                  Autotrade, advanced execution, options chain analytics, dedicated infra.
-                </p>
-                <p className="mt-3 rounded-lg border border-border bg-background/80 px-3 py-2 text-xs text-muted-foreground sm:text-sm">
-                  Your $150 covers serious execution and capacity — not a logo on a slide deck.
-                </p>
-              </article>
-            </div>
-          </Section>
-
           <Section>
             <h2 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
               What we&apos;ll never do
@@ -195,25 +177,6 @@ const WhyFree: React.FC = () => {
                 </li>
               ))}
             </ul>
-          </Section>
-
-          <Section className="border-t border-border bg-muted/20">
-            <h2 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Built by a solo founder</h2>
-            <div className="mt-8 flex flex-col gap-6 sm:flex-row sm:items-start">
-              <div
-                className="flex size-14 shrink-0 items-center justify-center rounded-full border border-border bg-primary text-lg font-semibold text-primary-foreground"
-                aria-hidden
-              >
-                AF
-              </div>
-              <div className="flex flex-col gap-4 text-sm leading-relaxed text-muted-foreground sm:text-base">
-                <p>
-                  AxiomFolio is built by one person who got tired of paying Personal Capital $19.99/month to look at
-                  their own portfolio.
-                </p>
-                <p>No VCs. No growth team. No data-sale revenue. Just a product I wanted to exist.</p>
-              </div>
-            </div>
           </Section>
 
           <Section>
@@ -238,7 +201,7 @@ const WhyFree: React.FC = () => {
                 <TooltipTrigger asChild>
                   <span tabIndex={0} role="button" aria-disabled="true">
                     <Button type="button" variant="secondary" disabled>
-                      $5
+                      Small
                     </Button>
                   </span>
                 </TooltipTrigger>
@@ -248,7 +211,7 @@ const WhyFree: React.FC = () => {
                 <TooltipTrigger asChild>
                   <span tabIndex={0} role="button" aria-disabled="true">
                     <Button type="button" variant="secondary" disabled>
-                      $20
+                      Medium
                     </Button>
                   </span>
                 </TooltipTrigger>

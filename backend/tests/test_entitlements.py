@@ -71,7 +71,7 @@ class TestSubscriptionTierRank:
         assert SubscriptionTier.PRO_PLUS > SubscriptionTier.PRO
         assert SubscriptionTier.PRO < SubscriptionTier.QUANT_DESK
         assert SubscriptionTier.ENTERPRISE >= SubscriptionTier.QUANT_DESK
-        assert SubscriptionTier.FREE <= SubscriptionTier.LITE
+        assert SubscriptionTier.FREE <= SubscriptionTier.PRO
 
 
 # =============================================================================
@@ -83,7 +83,9 @@ class TestFeatureCatalog:
     def test_get_known_feature(self):
         f = get_feature("brain.native_chat")
         assert f.key == "brain.native_chat"
-        assert f.min_tier == SubscriptionTier.PRO_PLUS
+        # Ladder 3: native chat opens at PRO (with daily cap); PRO_PLUS
+        # removes the cap. See tier_catalog._TIERS and feature_catalog.
+        assert f.min_tier == SubscriptionTier.PRO
 
     def test_unknown_feature_raises_keyerror(self):
         with pytest.raises(KeyError, match="Unknown feature key"):
@@ -99,17 +101,13 @@ class TestFeatureCatalog:
 
     def test_categories_are_finite(self):
         # We hard-code the allowed categories so a typo gets caught here.
-        allowed = {"data", "picks", "brain", "execution", "research", "ops"}
+        allowed = {"data", "picks", "brain", "execution", "research", "ops", "mcp", "strategy"}
         for f in all_features():
             assert f.category in allowed, f"Feature {f.key} has unknown category"
 
-    def test_native_chat_is_pro_plus_not_pro(self):
-        # Per the consistency fix in PR #316, native chat is Pro+ everywhere.
+    def test_native_chat_is_pro(self):
         f = get_feature("brain.native_chat")
-        assert f.min_tier == SubscriptionTier.PRO_PLUS, (
-            "native_chat must remain a Pro+ feature; if you change this, "
-            "update MASTER_PLAN_2026.md and revenue-engineer.mdc too."
-        )
+        assert f.min_tier == SubscriptionTier.PRO
 
     def test_is_allowed_satisfies_higher_tier(self):
         assert is_allowed(SubscriptionTier.PRO_PLUS, "data.cached_indicators")
@@ -119,14 +117,13 @@ class TestFeatureCatalog:
 
     def test_is_allowed_blocks_lower_tier(self):
         assert not is_allowed(SubscriptionTier.FREE, "brain.native_chat")
-        assert not is_allowed(SubscriptionTier.PRO, "brain.native_chat")
-        assert is_allowed(SubscriptionTier.PRO_PLUS, "brain.native_chat")
+        assert is_allowed(SubscriptionTier.PRO, "brain.native_chat")
 
-    def test_picks_feed_full_requires_lite(self):
+    def test_picks_feed_full_requires_pro(self):
         f = get_feature("picks.feed_full")
-        assert f.min_tier == SubscriptionTier.LITE
+        assert f.min_tier == SubscriptionTier.PRO
         assert not is_allowed(SubscriptionTier.FREE, "picks.feed_full")
-        assert is_allowed(SubscriptionTier.LITE, "picks.feed_full")
+        assert is_allowed(SubscriptionTier.PRO, "picks.feed_full")
 
 
 # =============================================================================
@@ -233,7 +230,8 @@ class TestEntitlementService:
         user = _create_user(db_session, "ent_free_chat")
         decision = EntitlementService.check(db_session, user, "brain.native_chat")
         assert decision.allowed is False
-        assert decision.required_tier == SubscriptionTier.PRO_PLUS
+        # Ladder 3: PRO is the floor for native chat; PRO_PLUS removes the cap.
+        assert decision.required_tier == SubscriptionTier.PRO
         assert decision.current_tier == SubscriptionTier.FREE
         assert "Requires" in decision.reason
 
@@ -287,7 +285,7 @@ class TestEntitlementService:
         ent = EntitlementService.apply_subscription_state(
             db_session,
             user=user,
-            tier=SubscriptionTier.LITE,  # would be a downgrade
+            tier=SubscriptionTier.FREE,  # would be a downgrade
             status=EntitlementStatus.ACTIVE,
             stripe_customer_id="cus_test",
             stripe_subscription_id="sub_test",
@@ -343,7 +341,7 @@ class TestEntitlementService:
                 db_session,
                 user=user,
                 new_tier=(
-                    SubscriptionTier.PRO if i % 2 == 0 else SubscriptionTier.LITE
+                    SubscriptionTier.PRO if i % 2 == 0 else SubscriptionTier.FREE
                 ),
                 actor="test",
                 note=f"cycle {i}",

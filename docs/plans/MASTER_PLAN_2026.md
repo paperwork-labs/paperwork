@@ -445,11 +445,11 @@ This plan supersedes:
 
 ## Sprint Marker
 
-**Current sprint**: v1 Week 1 (Apr 9-16, 2026)
+**Current sprint**: sync-correctness-pricing-nav (Apr 21, 2026)
 
 **Active PRs** (Background Agent dispatch):
 - `fix/v1-phase-0-stabilization` — Agent A
-- `feat/v1-stripe-test-scaffolding` — Agent B
-- `feat/v1-candidate-generator` — Agent C
+- `feat/v1-phase-0-pricing-ladder3-byok` — Agent B
+- `feat/v1-phase-0-pricing-nav` — Agent C
 
 **Next up after Week 1 merges**: Phase 1 picks pipeline (email parser + validator queue) and Phase 2 Snowball parity start in parallel.

@@ -95,6 +95,11 @@ class User(Base):
 
     # External Integrations (SHA-256 hex digest of TradingView webhook secret)
     tv_webhook_secret = Column(String(64), unique=True, nullable=True, index=True)
+    # Fernet-encrypted BYOK payload. Fernet output is ~1.33x the plaintext
+    # + 57 bytes of framing, so even a 2048-char plaintext (the API
+    # accepts up to that) produces ~2800+ chars of ciphertext. Use Text
+    # so we never silently truncate a valid user-supplied key.
+    llm_provider_key_encrypted = Column(Text, nullable=True)
 
     # Audit
     created_at = Column(

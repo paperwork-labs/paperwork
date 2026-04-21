@@ -12,8 +12,6 @@ the entitlements API.
 
 Env vars consumed (all optional; missing entries simply don't resolve):
 
-    STRIPE_PRICE_LITE_MONTHLY
-    STRIPE_PRICE_LITE_ANNUAL
     STRIPE_PRICE_PRO_MONTHLY
     STRIPE_PRICE_PRO_ANNUAL
     STRIPE_PRICE_PRO_PLUS_MONTHLY
@@ -42,7 +40,6 @@ logger = logging.getLogger(__name__)
 # ``EntitlementService.apply_subscription_state``, which accepts the slug.
 class TierSlug(str, Enum):
     FREE = "free"
-    LITE = "lite"
     PRO = "pro"
     PRO_PLUS = "pro_plus"
     QUANT_DESK = "quant_desk"
@@ -65,8 +62,6 @@ class PriceEntry:
 
 # (env_var_name, tier, interval)
 _CATALOG_SPEC: Tuple[Tuple[str, TierSlug, BillingInterval], ...] = (
-    ("STRIPE_PRICE_LITE_MONTHLY", TierSlug.LITE, BillingInterval.MONTHLY),
-    ("STRIPE_PRICE_LITE_ANNUAL", TierSlug.LITE, BillingInterval.ANNUAL),
     ("STRIPE_PRICE_PRO_MONTHLY", TierSlug.PRO, BillingInterval.MONTHLY),
     ("STRIPE_PRICE_PRO_ANNUAL", TierSlug.PRO, BillingInterval.ANNUAL),
     ("STRIPE_PRICE_PRO_PLUS_MONTHLY", TierSlug.PRO_PLUS, BillingInterval.MONTHLY),

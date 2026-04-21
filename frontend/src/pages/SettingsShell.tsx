@@ -74,6 +74,7 @@ const SettingsShell: React.FC = () => {
               <MenuLink to="/settings/profile">Profile</MenuLink>
               <MenuLink to="/settings/preferences">Preferences</MenuLink>
               <MenuLink to="/settings/connections">Connections</MenuLink>
+              <MenuLink to="/settings/ai-keys">AI Keys</MenuLink>
               <MenuLink to="/settings/historical-import">Historical import</MenuLink>
               <MenuLink to="/settings/mcp">MCP Tokens</MenuLink>
               <MenuLink to="/settings/notifications">Notifications</MenuLink>
@@ -111,6 +112,7 @@ const SettingsShell: React.FC = () => {
             {iconNav('/settings/profile', 'Profile', <User className="size-4" />)}
             {iconNav('/settings/preferences', 'Preferences', <Sliders className="size-4" />)}
             {iconNav('/settings/connections', 'Connections', <Shield className="size-4" />)}
+            {iconNav('/settings/ai-keys', 'AI Keys', <KeyRound className="size-4" />)}
             {iconNav('/settings/historical-import', 'Historical import', <Database className="size-4" />)}
             {iconNav('/settings/mcp', 'MCP Tokens', <KeyRound className="size-4" />)}
             {iconNav('/settings/notifications', 'Notifications', <Bell className="size-4" />)}

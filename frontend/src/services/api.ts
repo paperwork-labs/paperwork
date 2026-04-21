@@ -1172,6 +1172,21 @@ export const mcpApi = {
     makeOptimizedRequest(() => api.delete(`/mcp/tokens/${tokenId}`)),
 };
 
+export interface AIKeyStatusResponse {
+  provider: 'openai' | 'anthropic' | null;
+  has_key: boolean;
+}
+
+export const aiKeysApi = {
+  status: async (): Promise<AIKeyStatusResponse> =>
+    makeOptimizedRequest<AIKeyStatusResponse>(() => api.get('/settings/ai-keys')),
+  upsert: async (payload: {
+    provider: 'openai' | 'anthropic';
+    api_key: string;
+  }): Promise<AIKeyStatusResponse> =>
+    makeOptimizedRequest<AIKeyStatusResponse>(() => api.put('/settings/ai-keys', payload)),
+};
+
 // ---------------------------------------------------------------------------
 // Connect hub
 // ---------------------------------------------------------------------------

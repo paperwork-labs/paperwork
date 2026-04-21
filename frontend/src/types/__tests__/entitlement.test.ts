@@ -16,7 +16,6 @@ describe('tierRank', () => {
   it('orders tiers strictly ascending', () => {
     const order: SubscriptionTier[] = [
       'free',
-      'lite',
       'pro',
       'pro_plus',
       'quant_desk',
@@ -29,7 +28,6 @@ describe('tierRank', () => {
 
   it('matches the backend rank spacing of 10', () => {
     expect(tierRank('free')).toBe(0);
-    expect(tierRank('lite')).toBe(10);
     expect(tierRank('pro')).toBe(20);
     expect(tierRank('pro_plus')).toBe(30);
     expect(tierRank('quant_desk')).toBe(40);
@@ -56,7 +54,6 @@ describe('TIER_LABEL', () => {
   it('has a label for every tier', () => {
     const tiers: SubscriptionTier[] = [
       'free',
-      'lite',
       'pro',
       'pro_plus',
       'quant_desk',

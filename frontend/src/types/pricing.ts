@@ -13,7 +13,15 @@ export interface PricingFeature {
   key: string;
   title: string;
   description: string;
-  category: 'data' | 'picks' | 'brain' | 'execution' | 'research' | 'ops';
+  category:
+    | 'data'
+    | 'picks'
+    | 'brain'
+    | 'execution'
+    | 'research'
+    | 'ops'
+    | 'mcp'
+    | 'strategy';
   /** The minimum tier that includes this feature. */
   min_tier: SubscriptionTier;
 }

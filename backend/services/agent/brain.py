@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import uuid
+from urllib.parse import urlparse
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -20,6 +21,10 @@ from sqlalchemy.orm import Session
 
 from backend.config import settings
 from backend.models.agent_action import AgentAction
+from backend.models.entitlement import SubscriptionTier
+from backend.models.user import User
+from backend.services.billing.entitlement_service import EntitlementService
+from backend.services.security.credential_vault import credential_vault
 from .taxonomy import RiskLevel, classify_action_risk, can_auto_execute
 from .tools import get_tools_for_openai, INLINE_ONLY_AGENT_TOOLS, TOOL_TO_CELERY_TASK
 
@@ -31,6 +36,11 @@ AGENT_CONVERSATION_MAX_JSON_BYTES = 400_000
 
 OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
 MODEL = "gpt-4o-mini"
+BYOK_ALLOWED_HOSTS = frozenset({"api.openai.com", "api.anthropic.com"})
+BYOK_PROVIDER_URLS: Dict[str, str] = {
+    "openai": "https://api.openai.com/v1/chat/completions",
+    "anthropic": "https://api.anthropic.com/v1/messages",
+}
 
 
 def _resolve_backend_codebase_dir() -> Optional[str]:
@@ -201,6 +211,7 @@ class AgentBrain:
         self.user_id = user_id
         self.session_id = str(uuid.uuid4())[:8]
         self._conversation: List[Dict[str, Any]] = []
+        self._last_openai_error: Optional[str] = None
 
     def _require_user_id(self, tool_name: str) -> int:
         if self.user_id is None:
@@ -209,7 +220,42 @@ class AgentBrain:
                 "construct AgentBrain(db, user_id=...) for per-tenant calls."
             )
         return int(self.user_id)
-        self._last_openai_error: Optional[str] = None
+
+    def _resolve_llm_target(self) -> Tuple[str, str]:
+        """Resolve provider URL + API key, preferring paid-tier BYOK."""
+        default_key = settings.OPENAI_API_KEY
+        if not default_key or self.user_id is None:
+            return OPENAI_API_URL, default_key or ""
+        user = (
+            self.db.query(User)
+            .filter(User.id == int(self.user_id))
+            .one_or_none()
+        )
+        if user is None:
+            return OPENAI_API_URL, default_key
+        tier = EntitlementService.effective_tier(self.db, user)
+        if (
+            SubscriptionTier.rank(tier) < SubscriptionTier.rank(SubscriptionTier.PRO)
+            or not user.llm_provider_key_encrypted
+        ):
+            return OPENAI_API_URL, default_key
+        try:
+            payload = credential_vault.decrypt_dict(user.llm_provider_key_encrypted)
+            provider = str(payload.get("provider") or "").strip().lower()
+            api_key = str(payload.get("api_key") or "").strip()
+            provider_url = BYOK_PROVIDER_URLS.get(provider)
+            if not provider_url or not api_key:
+                return OPENAI_API_URL, default_key
+            if provider != "openai":
+                # Anthropic BYOK storage is supported; wire transport in follow-up.
+                return OPENAI_API_URL, default_key
+            host = (urlparse(provider_url).hostname or "").lower()
+            if host not in BYOK_ALLOWED_HOSTS:
+                raise ValueError(f"provider host not allow-listed: {host}")
+            return provider_url, api_key
+        except Exception as e:
+            logger.warning("BYOK key resolution failed for user_id=%s: %s", self.user_id, e)
+            return OPENAI_API_URL, default_key
     
     async def analyze_and_act(
         self,
@@ -429,8 +475,9 @@ class AgentBrain:
     async def _call_llm(self, tool_choice: str = "auto") -> Optional[Dict[str, Any]]:
         """Call the OpenAI API."""
         self._last_openai_error = None
+        target_url, target_key = self._resolve_llm_target()
         headers = {
-            "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
+            "Authorization": f"Bearer {target_key}",
             "Content-Type": "application/json",
         }
         
@@ -447,7 +494,7 @@ class AgentBrain:
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(
-                    OPENAI_API_URL,
+                    target_url,
                     headers=headers,
                     json=payload,
                     timeout=aiohttp.ClientTimeout(total=120),
