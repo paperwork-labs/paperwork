@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import type { UTCTimestamp } from 'lightweight-charts';
 import { Link } from 'react-router-dom';
 import { Loader2, RefreshCw, TriangleAlert } from 'lucide-react';
 import { ChartContext, ChartSlidePanel } from '../../../components/market/SymbolChartUI';
@@ -6,14 +8,14 @@ import StatCard from '../../../components/shared/StatCard';
 import StageBar from '../../../components/shared/StageBar';
 import PnlText from '../../../components/shared/PnlText';
 import { PageHeader } from '../../../components/ui/Page';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { semanticTextColorClass } from '@/lib/semantic-text-color';
 import { useAccountFilter } from '../../../hooks/useAccountFilter';
-import { DashboardResponse } from '../../../services/api';
+import { DashboardResponse, marketDataApi } from '../../../services/api';
 import {
   usePortfolioOverview,
   usePositions,
@@ -22,6 +24,7 @@ import {
   useAccountBalances,
   useLiveSummary,
   usePnlSummary,
+  usePortfolioPerformanceHistory,
 } from '../../../hooks/usePortfolio';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
 import { formatMoney } from '../../../utils/format';
@@ -52,6 +55,16 @@ import {
   Legend,
   Tooltip,
 } from 'recharts';
+import {
+  PortfolioEquityChart,
+  type PortfolioEquityChartPoint,
+} from '@/components/charts/PortfolioEquityChart';
+import { DrawdownUnderwater } from '@/components/charts/DrawdownUnderwater';
+import {
+  buildAlignedEquityPoints,
+  buildSpyCloseMap,
+  pickHistoryPeriodKey,
+} from '@/lib/portfolioEquitySeries';
 
 const OverviewTab: React.FC = () => {
   const [chartSymbol, setChartSymbol] = useState<string | null>(null);
@@ -96,6 +109,92 @@ const OverviewTab: React.FC = () => {
     filterState.selectedAccount === 'all' ? undefined : filterState.selectedAccount,
   );
   const pnlSummary = pnlSummaryQuery.data;
+
+  const [equityValueMode, setEquityValueMode] = useState<'usd' | 'pct'>('usd');
+  const performanceAccountId =
+    filterState.selectedAccount === 'all' ? undefined : filterState.selectedAccount;
+  const performanceHistoryQuery = usePortfolioPerformanceHistory({ accountId: performanceAccountId });
+
+  const historyRange = useMemo(() => {
+    const d = performanceHistoryQuery.data;
+    if (!d?.length) return null;
+    const sorted = [...d]
+      .map((p) => ({ t: String(p.date).slice(0, 10) }))
+      .filter((x) => x.t.length >= 10)
+      .sort((a, b) => a.t.localeCompare(b.t));
+    if (!sorted.length) return null;
+    const f = Date.parse(sorted[0].t);
+    const l = Date.parse(sorted[sorted.length - 1].t);
+    if (!Number.isFinite(f) || !Number.isFinite(l)) return null;
+    return { firstMs: f, lastMs: l, period: pickHistoryPeriodKey(f, l) };
+  }, [performanceHistoryQuery.data]);
+
+  const spyHistoryQuery = useQuery({
+    queryKey: ['spyHistoryPortfolioHero', historyRange?.period],
+    queryFn: async () => marketDataApi.getHistory('SPY', historyRange?.period ?? '1y', '1d'),
+    enabled: Boolean(
+      historyRange &&
+        !performanceHistoryQuery.isPending &&
+        !performanceHistoryQuery.isError &&
+        (performanceHistoryQuery.data?.length ?? 0) > 0,
+    ),
+    staleTime: 60_000,
+  });
+
+  const spyBars = useMemo(() => {
+    const r = spyHistoryQuery.data;
+    if (r == null) return [] as Array<{ time?: string; date?: string; close: number }>;
+    const raw = (r as { bars?: unknown; data?: unknown }).bars ?? (r as { data?: unknown }).data;
+    if (!Array.isArray(raw)) return [];
+    return raw as Array<{ time?: string; date?: string; close: number }>;
+  }, [spyHistoryQuery.data]);
+
+  const spyMap = useMemo(() => buildSpyCloseMap(spyBars), [spyBars]);
+
+  const equityChartPack = useMemo(() => {
+    const d = performanceHistoryQuery.data;
+    if (!d?.length) {
+      return {
+        points: [] as PortfolioEquityChartPoint[],
+        hasBenchmark: false,
+      };
+    }
+    if (spyHistoryQuery.isError || spyHistoryQuery.isPending || spyBars.length === 0) {
+      const { points } = buildAlignedEquityPoints(d, new Map(), equityValueMode);
+      return {
+        hasBenchmark: false,
+        points: points.map((p) => ({
+          time: p.timeUtc as UTCTimestamp,
+          equity: p.equity,
+          benchmark: null,
+        })),
+      };
+    }
+    const { points, hasBenchmark: hb } = buildAlignedEquityPoints(d, spyMap, equityValueMode);
+    return {
+      hasBenchmark: hb,
+      points: points.map((p) => ({
+        time: p.timeUtc as UTCTimestamp,
+        equity: p.equity,
+        benchmark: p.benchmark,
+      })),
+    };
+  }, [
+    performanceHistoryQuery.data,
+    spyMap,
+    equityValueMode,
+    spyHistoryQuery.isError,
+    spyHistoryQuery.isPending,
+    spyBars.length,
+  ]);
+
+  const refetchPerformanceBlock = () => {
+    void performanceHistoryQuery.refetch();
+    void spyHistoryQuery.refetch();
+  };
+
+  const performanceError =
+    performanceHistoryQuery.error instanceof Error ? performanceHistoryQuery.error : null;
 
   const summary = (dashboard?.data?.summary ?? dashboard?.summary ?? dashboard) as
     | import('../../../services/api').DashboardSummary
@@ -160,10 +259,44 @@ const OverviewTab: React.FC = () => {
           ) : null}
 
           {(overview.isPending || positionsQuery.isPending) && (
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              {[1, 2, 3, 4].map((i) => (
-                <StatCardSkeleton key={i} />
-              ))}
+            <div className="flex flex-col gap-4">
+              <div className="order-1 md:order-2">
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <StatCardSkeleton key={i} />
+                  ))}
+                </div>
+              </div>
+              <div className="order-2 md:order-1">
+                <Card className="gap-0 border border-border shadow-none ring-0">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Your portfolio over time</CardTitle>
+                    <CardDescription>
+                      All accounts combined unless a single account is filtered.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2 pt-0">
+                    <PortfolioEquityChart
+                      isPending={performanceHistoryQuery.isPending}
+                      isError={performanceHistoryQuery.isError}
+                      error={performanceError}
+                      onRetry={refetchPerformanceBlock}
+                      data={performanceHistoryQuery.data}
+                      chartPoints={equityChartPack.points}
+                      hasBenchmark={equityChartPack.hasBenchmark}
+                      valueMode={equityValueMode}
+                      onValueModeChange={setEquityValueMode}
+                    />
+                    <DrawdownUnderwater
+                      isPending={performanceHistoryQuery.isPending}
+                      isError={performanceHistoryQuery.isError}
+                      error={performanceError}
+                      onRetry={refetchPerformanceBlock}
+                      data={performanceHistoryQuery.data}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           )}
           {!(overview.isPending || positionsQuery.isPending) && (overview.error || positionsQuery.error) ? (
@@ -205,7 +338,9 @@ const OverviewTab: React.FC = () => {
             const kpiValue = nlvTotal > 0 ? nlvTotal : filteredTotal;
             return (
               <>
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-col gap-4">
+                  <div className="order-1 md:order-2">
+                    <div className="flex flex-wrap gap-3">
                   <StatCard
                     label="Total Value"
                     value={formatMoney(kpiValue, currency, { maximumFractionDigits: 0 })}
@@ -245,6 +380,38 @@ const OverviewTab: React.FC = () => {
                     />
                   )}
                   <StatCard label="Positions" value={pos.length} />
+                    </div>
+                  </div>
+                  <div className="order-2 md:order-1">
+                    <Card className="gap-0 border border-border shadow-none ring-0">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base">Your portfolio over time</CardTitle>
+                        <CardDescription>
+                          All accounts combined unless a single account is filtered.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-2 pt-0">
+                        <PortfolioEquityChart
+                          isPending={performanceHistoryQuery.isPending}
+                          isError={performanceHistoryQuery.isError}
+                          error={performanceError}
+                          onRetry={refetchPerformanceBlock}
+                          data={performanceHistoryQuery.data}
+                          chartPoints={equityChartPack.points}
+                          hasBenchmark={equityChartPack.hasBenchmark}
+                          valueMode={equityValueMode}
+                          onValueModeChange={setEquityValueMode}
+                        />
+                        <DrawdownUnderwater
+                          isPending={performanceHistoryQuery.isPending}
+                          isError={performanceHistoryQuery.isError}
+                          error={performanceError}
+                          onRetry={refetchPerformanceBlock}
+                          data={performanceHistoryQuery.data}
+                        />
+                      </CardContent>
+                    </Card>
+                  </div>
                 </div>
 
                 {insights &&

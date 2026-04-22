@@ -128,6 +128,8 @@
     --chart-axis: 15 23 42 / 0.35;
     --chart-refLine: 15 23 42 / 0.15;
     --chart-warning: 217 119 6;
+    /* Portfolio equity hero line + area (canvas resolves via --chart-equity) */
+    --chart-equity: 37 99 235;
 
     --glow-accent: 34 197 94 / 0;
     --glow-amber: 245 158 11 / 0;
@@ -259,6 +261,8 @@
     --chart-axis: 255 255 255 / 0.4;
     --chart-refLine: 255 255 255 / 0.15;
     --chart-warning: 251 191 36;
+    /* Portfolio equity hero — lifted blue for dark canvas legibility */
+    --chart-equity: 96 165 250;
 
     --glow-accent: 34 197 94 / 0.12;
     --glow-amber: 245 158 11 / 0.1;

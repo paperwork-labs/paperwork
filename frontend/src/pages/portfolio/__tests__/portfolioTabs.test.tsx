@@ -133,6 +133,13 @@ function setOverviewDefaultMocks() {
     refetch: vi.fn(),
   } as any);
   mockUsePortfolio.usePnlSummary.mockReturnValue({ data: undefined, isPending: false, isError: false, refetch: vi.fn() } as any);
+  mockUsePortfolio.usePortfolioPerformanceHistory.mockReturnValue({
+    isPending: true,
+    isError: false,
+    data: undefined,
+    error: null,
+    refetch: vi.fn(),
+  } as any);
 }
 
 describe('OverviewTab', () => {
