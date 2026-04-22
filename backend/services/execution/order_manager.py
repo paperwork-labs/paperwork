@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional, Union
 
-from sqlalchemy import func
+from sqlalchemy import Integer, cast, func, null, select, union_all
 from sqlalchemy.orm import Session
 
 from backend.models.broker_account import BrokerAccount
@@ -453,56 +453,196 @@ class OrderManager:
         user_id: int,
         status: Optional[str] = None,
         symbol: Optional[str] = None,
-        limit: int = 50,
+        limit: int = 100,
+        offset: int = 0,
+        include_broker_fills: bool = True,
+        list_source: Union[Literal["all", "app", "broker"], str] = "all",
     ) -> List[Dict[str, Any]]:
+        """Return a merged list of in-app :class:`Order` rows and broker-synced
+        :class:`Trade` rows, sorted by most recent activity.
+
+        ``list_source`` controls which table(s) are considered: ``"app"`` (orders only),
+        ``"broker"`` (ledger trades only), or ``"all"`` (union). When
+        ``include_broker_fills`` is False, ``"all"`` is treated as ``"app"``.
+
+        ``limit`` / ``offset`` are applied in SQL (single union subquery for ``all``;
+        one query per table for ``app`` or ``broker``), not in Python.
+        """
         cap = max(0, int(limit or 0))
+        off = max(0, int(offset or 0))
         if cap == 0:
             return []
 
-        fetch_n = cap * 2
+        src = (list_source or "all").strip().lower()
+        if src not in ("all", "app", "broker"):
+            src = "all"
+        if not include_broker_fills and src == "all":
+            src = "app"
+
         order_sort = func.coalesce(
             Order.filled_at, Order.submitted_at, Order.created_at
         )
-        q = db.query(Order).filter(Order.user_id == user_id)
-        if status:
-            q = q.filter(Order.status == status)
-        if symbol:
-            q = q.filter(Order.symbol == symbol.upper())
-        q = q.order_by(order_sort.desc().nullslast()).limit(fetch_n)
-        order_rows: List[Dict[str, Any]] = []
-        for o in q:
-            d = _order_to_dict(o)
-            d["_sort_ts"] = _order_list_sort_ts(o)
-            order_rows.append(d)
-
         trade_sort = func.coalesce(
             Trade.execution_time, Trade.order_time, Trade.created_at
         )
-        tq = (
+
+        st_param = status.strip() if status else None
+        sym_param = symbol.upper() if symbol else None
+
+        if src == "app":
+            sel_app = select(
+                Order.id.label("order_id"),
+                order_sort.label("sort_ts"),
+            ).select_from(Order).where(Order.user_id == user_id)
+            if st_param is not None:
+                sel_app = sel_app.where(Order.status == st_param)
+            if sym_param is not None:
+                sel_app = sel_app.where(Order.symbol == sym_param)
+            res = (
+                db.execute(
+                    sel_app.order_by(order_sort.desc().nulls_last())
+                    .offset(off)
+                    .limit(cap)
+                )
+                .mappings()
+                .all()
+            )
+            oids = [r["order_id"] for r in res]
+            return self._list_orders_hydrate_app(db, user_id, oids)
+
+        if src == "broker":
+            sel_br = select(Trade.id.label("trade_id"), trade_sort.label("sort_ts")).select_from(
+                Trade
+            ).join(
+                BrokerAccount, Trade.account_id == BrokerAccount.id
+            ).where(
+                BrokerAccount.user_id == user_id,
+                BrokerAccount.is_enabled.is_(True),  # noqa: E712
+            )
+            if st_param is not None:
+                sel_br = sel_br.where(Trade.status.ilike(st_param))
+            if sym_param is not None:
+                sel_br = sel_br.where(Trade.symbol == sym_param)
+            res = (
+                db.execute(
+                    sel_br.order_by(trade_sort.desc().nulls_last()).offset(off).limit(cap)
+                )
+                .mappings()
+                .all()
+            )
+            tids = [r["trade_id"] for r in res]
+            return self._list_orders_hydrate_broker(db, user_id, tids)
+
+        # all: SQL union + single ORDER BY / LIMIT / OFFSET, then batch hydrate
+        sel_o = select(
+            Order.id.label("order_id"),
+            cast(null(), type_=Integer).label("trade_id"),
+            order_sort.label("sort_ts"),
+        ).select_from(Order).where(Order.user_id == user_id)
+        if st_param is not None:
+            sel_o = sel_o.where(Order.status == st_param)
+        if sym_param is not None:
+            sel_o = sel_o.where(Order.symbol == sym_param)
+
+        sel_t = select(
+            cast(null(), type_=Integer).label("order_id"),
+            Trade.id.label("trade_id"),
+            trade_sort.label("sort_ts"),
+        ).select_from(Trade).join(
+            BrokerAccount, Trade.account_id == BrokerAccount.id
+        ).where(
+            BrokerAccount.user_id == user_id,
+            BrokerAccount.is_enabled.is_(True),  # noqa: E712
+        )
+        if st_param is not None:
+            sel_t = sel_t.where(Trade.status.ilike(st_param))
+        if sym_param is not None:
+            sel_t = sel_t.where(Trade.symbol == sym_param)
+
+        union_subq = union_all(sel_o, sel_t).subquery("order_trade_union")
+        page_q = select(union_subq).order_by(
+            union_subq.c.sort_ts.desc().nulls_last()
+        )
+        if off:
+            page_q = page_q.offset(off)
+        page_q = page_q.limit(cap)
+        res = db.execute(page_q).mappings().all()
+
+        oids = [r["order_id"] for r in res if r["order_id"] is not None]
+        tids = [r["trade_id"] for r in res if r["trade_id"] is not None]
+        by_oid = {
+            o.id: o
+            for o in db.query(Order)
+            .filter(Order.id.in_(oids))
+            .all()
+        } if oids else {}
+        if tids:
+            trade_pairs = (
+                db.query(Trade, BrokerAccount)
+                .join(BrokerAccount, Trade.account_id == BrokerAccount.id)
+                .filter(Trade.id.in_(tids))
+                .all()
+            )
+        else:
+            trade_pairs = []
+        by_tid = {t.id: (t, acct) for t, acct in trade_pairs}
+
+        out: List[Dict[str, Any]] = []
+        for row in res:
+            oid, tid = row["order_id"], row["trade_id"]
+            if oid is not None and oid in by_oid:
+                o = by_oid[oid]
+                d = _order_to_dict(o)
+                d["provenance"] = "app"
+            elif tid is not None and tid in by_tid:
+                t, acct = by_tid[tid]
+                d = _trade_to_ledger_dict(t, acct, user_id)
+                d["provenance"] = "broker_sync"
+            else:
+                # Should not happen if ORM and union stay consistent
+                continue
+            out.append(d)
+        return out
+
+    def _list_orders_hydrate_app(
+        self, db: Session, user_id: int, oids: List[int]
+    ) -> List[Dict[str, Any]]:
+        if not oids:
+            return []
+        rows = db.query(Order).filter(Order.id.in_(oids)).all()
+        by_id = {o.id: o for o in rows}
+        out: List[Dict[str, Any]] = []
+        for oid in oids:
+            o = by_id.get(oid)
+            if o is None:
+                continue
+            d = _order_to_dict(o)
+            d["provenance"] = "app"
+            out.append(d)
+        return out
+
+    def _list_orders_hydrate_broker(
+        self, db: Session, user_id: int, tids: List[int]
+    ) -> List[Dict[str, Any]]:
+        if not tids:
+            return []
+        trade_pairs = (
             db.query(Trade, BrokerAccount)
             .join(BrokerAccount, Trade.account_id == BrokerAccount.id)
-            .filter(BrokerAccount.user_id == user_id)
+            .filter(Trade.id.in_(tids), BrokerAccount.user_id == user_id)
+            .all()
         )
-        if status:
-            st = status.strip()
-            tq = tq.filter(Trade.status.ilike(st))
-        if symbol:
-            tq = tq.filter(Trade.symbol == symbol.upper())
-        tq = tq.order_by(trade_sort.desc().nullslast()).limit(fetch_n)
-        trade_rows: List[Dict[str, Any]] = []
-        for t, acct in tq:
+        by_id = {t.id: (t, acct) for t, acct in trade_pairs}
+        out: List[Dict[str, Any]] = []
+        for tid in tids:
+            pair = by_id.get(tid)
+            if not pair:
+                continue
+            t, acct = pair
             d = _trade_to_ledger_dict(t, acct, user_id)
-            d["_sort_ts"] = _trade_list_sort_ts(t)
-            trade_rows.append(d)
-
-        combined = sorted(
-            order_rows + trade_rows,
-            key=lambda row: row["_sort_ts"],
-            reverse=True,
-        )[:cap]
-        for d in combined:
-            d.pop("_sort_ts", None)
-        return combined
+            d["provenance"] = "broker_sync"
+            out.append(d)
+        return out
 
     def get_order(
         self,
@@ -552,26 +692,7 @@ def _order_to_dict(order: Order) -> Dict[str, Any]:
         "cancelled_at": order.cancelled_at.isoformat() if order.cancelled_at else None,
         "created_at": order.created_at.isoformat() if order.created_at else None,
         "created_by": order.created_by,
-        "ledger": "order",
     }
-
-
-def _order_list_sort_ts(order: Order) -> datetime:
-    for attr in (order.filled_at, order.submitted_at, order.created_at):
-        if attr is not None:
-            if attr.tzinfo is None:
-                return attr.replace(tzinfo=timezone.utc)
-            return attr.astimezone(timezone.utc)
-    return datetime.min.replace(tzinfo=timezone.utc)
-
-
-def _trade_list_sort_ts(t: Trade) -> datetime:
-    for attr in (t.execution_time, t.order_time, t.created_at):
-        if attr is not None:
-            if attr.tzinfo is None:
-                return attr.replace(tzinfo=timezone.utc)
-            return attr.astimezone(timezone.utc)
-    return datetime.min.replace(tzinfo=timezone.utc)
 
 
 def _trade_to_ledger_dict(
@@ -625,5 +746,4 @@ def _trade_to_ledger_dict(
         "cancelled_at": None,
         "created_at": t.created_at.isoformat() if t.created_at else None,
         "created_by": None,
-        "ledger": "trade",
     }

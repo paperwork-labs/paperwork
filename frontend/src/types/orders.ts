@@ -11,6 +11,8 @@ export type OrderStatus =
   | 'error';
 export type OrderSource = 'manual' | 'strategy' | 'rebalance';
 export type BrokerType = 'ibkr' | 'tastytrade' | 'schwab';
+/** Distinguishes in-app order rows from broker-ledger fill rows in list responses. */
+export type OrderProvenance = 'app' | 'broker_sync';
 
 export interface Order {
   id: number;
@@ -29,6 +31,8 @@ export interface Order {
   signal_id: number | null;
   position_id: number | null;
   user_id: number | null;
+  /** Present on ``GET /portfolio/orders`` list items; not set on single-order fetches. */
+  provenance?: OrderProvenance;
   source: OrderSource;
   broker_type: BrokerType;
   estimated_commission: number | null;

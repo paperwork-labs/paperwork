@@ -6,7 +6,7 @@ import { ChartContext, ChartSlidePanel } from '../../components/market/SymbolCha
 import SortableTable, { type Column } from '../../components/SortableTable';
 import PageHeader from '../../components/ui/PageHeader';
 import { formatMoney, formatDateTimeFriendly } from '../../utils/format';
-import api, { handleApiError } from '../../services/api';
+import api, { handleApiError } from '@/services/api';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,7 @@ import type { Order } from '../../types/orders';
 type OrderRow = Order;
 
 type StatusFilter = 'all' | 'active' | 'filled' | 'cancelled';
+type ListSourceFilter = 'all' | 'app' | 'broker';
 
 const ACTIVE_STATUSES = new Set(['preview', 'pending_submit', 'submitted', 'partially_filled']);
 
@@ -36,16 +37,27 @@ const PortfolioOrders: React.FC = () => {
   const queryClient = useQueryClient();
   const { timezone } = useUserPreferences();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [listSource, setListSource] = useState<ListSourceFilter>('all');
   const [chartSymbol, setChartSymbol] = useState<string | null>(null);
   const [cancellingOrderId, setCancellingOrderId] = useState<number | null>(null);
   const [explainOrderId, setExplainOrderId] = useState<number | null>(null);
   const openChart = useCallback((sym: string) => setChartSymbol(sym), []);
 
   const ordersQuery = useQuery<OrderRow[]>({
-    queryKey: ['allOrders'],
+    queryKey: ['allOrders', listSource],
     queryFn: async () => {
-      const res = await api.get('/portfolio/orders', { params: { limit: 200 } });
-      return res.data?.data ?? res.data ?? [];
+      const res = await api.get('/portfolio/orders', {
+        params: { limit: 200, source: listSource },
+      });
+      const body = res.data;
+      if (body == null || typeof body !== 'object' || !('data' in body)) {
+        throw new Error('Unexpected response from /portfolio/orders');
+      }
+      const rows = (body as { data: OrderRow[] }).data;
+      if (!Array.isArray(rows)) {
+        throw new Error('Unexpected response from /portfolio/orders');
+      }
+      return rows;
     },
     staleTime: 10000,
     refetchInterval: (query) => {
@@ -54,18 +66,19 @@ const PortfolioOrders: React.FC = () => {
       return active ? 5000 : false;
     },
   });
-  const allOrders = ordersQuery.data ?? [];
+  const allOrders = ordersQuery.data;
 
   const filtered = useMemo(() => {
+    const base = allOrders ?? [];
     switch (statusFilter) {
       case 'active':
-        return allOrders.filter((o) => ACTIVE_STATUSES.has(o.status));
+        return base.filter((o) => ACTIVE_STATUSES.has(o.status));
       case 'filled':
-        return allOrders.filter((o) => o.status === 'filled');
+        return base.filter((o) => o.status === 'filled');
       case 'cancelled':
-        return allOrders.filter((o) => ['cancelled', 'rejected', 'error'].includes(o.status));
+        return base.filter((o) => ['cancelled', 'rejected', 'error'].includes(o.status));
       default:
-        return allOrders;
+        return base;
     }
   }, [allOrders, statusFilter]);
 
@@ -76,7 +89,6 @@ const PortfolioOrders: React.FC = () => {
         await api.delete(`/portfolio/orders/${orderId}`);
         queryClient.invalidateQueries({ queryKey: ['allOrders'] });
       } catch (e: unknown) {
-        console.error('Cancel order failed', { orderId, error: e });
         hotToast.error(`Could not cancel order: ${handleApiError(e)}`);
       } finally {
         setCancellingOrderId(null);
@@ -87,6 +99,29 @@ const PortfolioOrders: React.FC = () => {
 
   const columns: Column<OrderRow>[] = useMemo(
     () => [
+      {
+        key: 'provenance',
+        header: 'From',
+        accessor: (o) => o.provenance ?? 'app',
+        sortable: true,
+        render: (_v, o) => {
+          const isApp = o.provenance !== 'broker_sync';
+          return (
+            <Badge
+              variant="outline"
+              className={cn(
+                'h-5 min-w-0 text-[10px] font-medium',
+                isApp
+                  ? 'border-sky-500/40 bg-sky-500/10 text-sky-900 dark:text-sky-100'
+                  : 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-100',
+              )}
+            >
+              {isApp ? 'Placed' : 'Broker'}
+            </Badge>
+          );
+        },
+        width: '78px',
+      },
       {
         key: 'symbol',
         header: 'Symbol',
@@ -252,6 +287,9 @@ const PortfolioOrders: React.FC = () => {
         accessor: () => '',
         sortable: false,
         render: (_v, o) => {
+          if (o.provenance === 'broker_sync' || o.id < 0) {
+            return null;
+          }
           if (ACTIVE_STATUSES.has(o.status) && o.status !== 'preview') {
             const isCancelling = cancellingOrderId === o.id;
             return (
@@ -315,13 +353,62 @@ const PortfolioOrders: React.FC = () => {
     [openChart, timezone, handleCancel, cancellingOrderId],
   );
 
-  const activeCount = allOrders.filter((o) => ACTIVE_STATUSES.has(o.status)).length;
+  const listLength = (allOrders ?? []).length;
+  const activeCount = (allOrders ?? []).filter((o) => ACTIVE_STATUSES.has(o.status)).length;
+
+  if (ordersQuery.isPending) {
+    return (
+      <div className="p-4">
+        <PageHeader title="Orders" subtitle="Trade order history and active order management" />
+        <div
+          className="mt-8 flex min-h-[200px] items-center justify-center text-sm text-muted-foreground"
+          data-testid="orders-loading"
+        >
+          Loading…
+        </div>
+      </div>
+    );
+  }
+
+  if (ordersQuery.isError) {
+    return (
+      <div className="p-4">
+        <PageHeader title="Orders" subtitle="Trade order history and active order management" />
+        <div className="mt-6 rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+          Could not load orders.{' '}
+          <Button type="button" size="xs" variant="outline" onClick={() => void ordersQuery.refetch()}>
+            Try again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4">
       <PageHeader title="Orders" subtitle="Trade order history and active order management" />
 
       <div className="mb-4 mt-4 flex flex-wrap items-center gap-2">
+        {(
+          [
+            { key: 'all', label: 'All' },
+            { key: 'app', label: 'Placed' },
+            { key: 'broker', label: 'Broker' },
+          ] as const
+        ).map(({ key, label }) => (
+          <Button
+            key={key}
+            size="xs"
+            variant={listSource === key ? 'default' : 'outline'}
+            onClick={() => setListSource(key)}
+            aria-pressed={listSource === key}
+          >
+            {label}
+          </Button>
+        ))}
+        <span className="text-muted-foreground" aria-hidden>
+          |
+        </span>
         {(['all', 'active', 'filled', 'cancelled'] as StatusFilter[]).map((f) => (
           <Button
             key={f}
@@ -330,14 +417,18 @@ const PortfolioOrders: React.FC = () => {
             onClick={() => setStatusFilter(f)}
           >
             {f === 'all'
-              ? `All (${allOrders.length})`
+              ? `All rows (${listLength})`
               : f === 'active'
                 ? `Active (${activeCount})`
                 : f.charAt(0).toUpperCase() + f.slice(1)}
           </Button>
         ))}
         <div className="min-w-2 flex-1" />
-        <Button size="xs" variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: ['allOrders'] })}>
+        <Button
+          size="xs"
+          variant="outline"
+          onClick={() => queryClient.invalidateQueries({ queryKey: ['allOrders'] })}
+        >
           Refresh
         </Button>
       </div>
@@ -350,7 +441,7 @@ const PortfolioOrders: React.FC = () => {
           defaultSortOrder="desc"
           size="sm"
           maxHeight="calc(100vh - 240px)"
-          emptyMessage="No orders found."
+          emptyMessage="No orders yet."
         />
       </ChartContext.Provider>
 

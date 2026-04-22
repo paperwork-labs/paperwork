@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -126,13 +126,27 @@ async def submit_order(
 def list_orders(
     status: Optional[str] = None,
     symbol: Optional[str] = None,
-    limit: int = 50,
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0, le=100_000),
+    source: str = Query(
+        "all",
+        description="Which rows to return: in-app orders (app), broker-synced trades (broker), or both (all).",
+    ),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """List orders for the current user."""
+    """List in-app orders and/or broker-ledger trades for the current user."""
+    src = (source or "all").strip().lower()
+    if src not in ("all", "app", "broker"):
+        src = "all"
     orders = _order_manager.list_orders(
-        db=db, user_id=user.id, status=status, symbol=symbol, limit=limit,
+        db=db,
+        user_id=user.id,
+        status=status,
+        symbol=symbol,
+        limit=limit,
+        offset=offset,
+        list_source=src,
     )
     return {"data": orders}
 
