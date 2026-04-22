@@ -6,9 +6,11 @@ import asyncio
 import logging
 from datetime import datetime, date, timezone
 from decimal import Decimal
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
+from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from backend.models.broker_account import BrokerAccount
 from backend.models.position import Position, PositionType, PositionStatus
@@ -20,7 +22,10 @@ from backend.services.portfolio.account_credentials_service import (
     account_credentials_service,
     CredentialsNotFoundError,
 )
-from backend.services.portfolio.closing_lot_matcher import reconcile_closing_lots
+from backend.services.portfolio.closing_lot_matcher import (
+    MatchResult,
+    reconcile_closing_lots,
+)
 from backend.models.options import Option
 from backend.config import settings
 
@@ -66,6 +71,32 @@ SCHWAB_TYPE_MAP = {
 }
 
 _TRADE_TYPES = {"TRADE", "RECEIVE_AND_DELIVER"}
+
+
+def _schwab_filled_is_opening_and_metadata(
+    t: dict, side: str
+) -> Tuple[bool, Optional[Dict[str, Any]]]:
+    """Derive ``is_opening`` and option ``trade_metadata`` for a filled Schwab leg.
+
+    Schwab's Trader API provides ``positionEffect`` (OPENING/CLOSING) on transfer
+    items. When present, it must drive ``is_opening`` so short options and
+    covers match :func:`~backend.services.portfolio.closing_lot_matcher.reconcile_closing_lots`.
+    When absent, we fall back to the equity-style heuristic (BUY opens, SELL closes),
+    which is correct for long options only.
+    """
+    sym = (t.get("symbol") or "").upper()
+    asset_type = (t.get("instrument_asset_type") or "").upper()
+    is_option = asset_type in ("OPTION", "EQUITY_OPTION")
+    if not is_option and (len(sym) > 15 or " " in sym):
+        is_option = True
+    pe = (t.get("position_effect") or "").upper()
+    if pe in ("OPENING", "CLOSING"):
+        is_opening = pe == "OPENING"
+    else:
+        is_opening = side == "BUY"
+    if not is_option:
+        return is_opening, None
+    return is_opening, {"asset_category": "OPT", "multiplier": 100}
 
 
 class SchwabSyncService:
@@ -209,11 +240,28 @@ class SchwabSyncService:
         # constraint drift), ``begin_nested()`` rolls back just the savepoint so
         # the outer transaction stays clean and the positions/options/transactions
         # already written earlier in the sync still commit downstream.
+        # Pytest ``db_session`` already uses a savepoint; an extra ``begin_nested``
+        # can raise ``InvalidRequestError`` (often on context exit). If
+        # ``reconcile_closing_lots`` already returned, a second run would only
+        # hit idempotent update paths and skew counters — only fall back when
+        # the matcher has not run yet.
         try:
-            with session.begin_nested():
-                match_result = reconcile_closing_lots(session, account)
+            match_result: MatchResult | None = None
+            try:
+                with session.begin_nested():
+                    match_result = reconcile_closing_lots(session, account)
+            except InvalidRequestError as nested_exc:
+                err = str(nested_exc).lower()
+                if "closed transaction" in err and "context manager" in err:
+                    if match_result is None:
+                        match_result = reconcile_closing_lots(session, account)
+                else:
+                    raise
+            assert match_result is not None
             results["closed_lots_created"] = match_result.created
             results["closed_lots_updated"] = match_result.updated
+            results["option_tax_lots_created"] = match_result.option_lots_created
+            results["option_tax_lots_updated"] = match_result.option_lots_updated
             if match_result.unmatched_quantity > 0:
                 logger.warning(
                     "Schwab sync: account %s had %s unmatched sell-shares "
@@ -551,6 +599,10 @@ class SchwabSyncService:
 
             if action in _TRADE_TYPES and sym:
                 side = "BUY" if qty > 0 else "SELL"
+                is_opening, opt_meta = _schwab_filled_is_opening_and_metadata(
+                    {**t, "symbol": sym},
+                    side,
+                )
                 existing_trade = (
                     session.query(Trade)
                     .filter(Trade.account_id == account.id, Trade.execution_id == ext_id)
@@ -568,10 +620,20 @@ class SchwabSyncService:
                         execution_id=ext_id,
                         execution_time=txn_date,
                         status="FILLED",
-                        is_opening=side == "BUY",
+                        is_opening=is_opening,
                         is_paper_trade=False,
+                        trade_metadata=opt_meta,
                     ))
                     trade_count += 1
+                else:
+                    pe = (t.get("position_effect") or "").upper()
+                    if pe in ("OPENING", "CLOSING") and existing_trade.is_opening != is_opening:
+                        existing_trade.is_opening = is_opening
+                    if opt_meta:
+                        merged = {**(existing_trade.trade_metadata or {}), **opt_meta}
+                        if merged != (existing_trade.trade_metadata or {}):
+                            existing_trade.trade_metadata = merged
+                            flag_modified(existing_trade, "trade_metadata")
 
             if txn_type == TransactionType.DIVIDEND and sym:
                 existing_div = (

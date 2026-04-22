@@ -375,6 +375,7 @@ class SchwabClient:
             qty = 0.0
             price = 0.0
             transfer_cost_basis = None
+            item: Dict[str, Any] = {}
             if transfer_items and isinstance(transfer_items, list):
                 item = transfer_items[0] if transfer_items else {}
                 inst = item.get("instrument") or {}
@@ -384,6 +385,9 @@ class SchwabClient:
             if not inst:
                 inst = t.get("instrument") or {}
             symbol = (inst.get("symbol") or t.get("symbol") or "").upper()
+            pe_raw = item.get("positionEffect") or item.get("position_effect") or ""
+            position_effect = str(pe_raw).upper()
+            inst_asset = (inst.get("assetType") or inst.get("type") or "").upper()
             results.append({
                 "id": str(t.get("activityId") or t.get("transactionId") or t.get("id") or ""),
                 "account_number": account_number,
@@ -400,6 +404,8 @@ class SchwabClient:
                 "order_id": t.get("orderId"),
                 "date": t.get("tradeDate") or t.get("settlementDate") or t.get("transactionDate") or t.get("date"),
                 "description": t.get("description") or "",
+                "instrument_asset_type": inst_asset,
+                "position_effect": position_effect,
             })
         return results
 

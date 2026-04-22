@@ -120,6 +120,8 @@ class MatchResult:
     account_id: int
     created: int = 0
     updated: int = 0
+    option_lots_created: int = 0
+    option_lots_updated: int = 0
     skipped: int = 0
     errors: int = 0
     unmatched_quantity: Decimal = Decimal("0")
@@ -288,11 +290,14 @@ def reconcile_closing_lots(
 
     db.flush()
     logger.info(
-        "closing-lot-matcher: account_id=%s created=%d updated=%d skipped=%d "
+        "closing-lot-matcher: account_id=%s created=%d updated=%d "
+        "option_lots_created=%d option_lots_updated=%d skipped=%d "
         "errors=%d unmatched=%s warnings=%d",
         broker_account.id,
         result.created,
         result.updated,
+        result.option_lots_created,
+        result.option_lots_updated,
         result.skipped,
         result.errors,
         result.unmatched_quantity,
@@ -354,6 +359,7 @@ def _persist_option_tax_slice(
         existing.holding_class = holding
         existing.closing_trade_id = closing_trade_id
         result.updated += 1
+        result.option_lots_updated += 1
         return
 
     row = OptionTaxLot(
@@ -379,6 +385,7 @@ def _persist_option_tax_slice(
     db.add(row)
     existing_option_lots[key] = row
     result.created += 1
+    result.option_lots_created += 1
 
 
 def _apply_option_trade(
