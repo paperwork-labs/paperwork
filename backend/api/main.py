@@ -72,6 +72,7 @@ from backend.api.routes.brain_tools import router as brain_tools_router
 from backend.api.routes.agent_trade_decision import router as agent_trade_decision_router
 from backend.api.routes.symbols import router as symbols_router
 from backend.api.routes.execution import router as execution_router
+from backend.api.routes.exits import router as exits_router
 from backend.api.routes.pipeline import router as pipeline_router
 from backend.api.routes.backtest import router as backtest_router
 from backend.api.routes.options import router as options_chain_router
@@ -628,6 +629,12 @@ app.include_router(
     execution_router,
     prefix="/api/v1",
     tags=["Execution"],
+    dependencies=[Depends(require_non_market_access)],
+)
+app.include_router(
+    exits_router,
+    prefix="/api/v1",
+    tags=["Exits"],
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(strategies, prefix="/api/v1/strategies", tags=["Strategies"])
