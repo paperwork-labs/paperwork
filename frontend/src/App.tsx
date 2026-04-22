@@ -62,7 +62,11 @@ const Pricing = React.lazy(() => import('./pages/Pricing'));
 const SettingsUsers = React.lazy(() => import('./pages/SettingsUsers'));
 const AdminAgent = React.lazy(() => import('./pages/AdminAgent'));
 const Scanner = React.lazy(() => import('./pages/Scanner'));
-const Picks = React.lazy(() => import('./pages/Picks'));
+const SignalsHub = React.lazy(() => import('./pages/signals'));
+const SignalsCandidates = React.lazy(() => import('./pages/signals/Candidates'));
+const SignalsRegime = React.lazy(() => import('./pages/signals/Regime'));
+const SignalsStageScan = React.lazy(() => import('./pages/signals/StageScan'));
+const Picks = React.lazy(() => import('./pages/signals/Picks'));
 const PicksValidator = React.lazy(() => import('./pages/admin/PicksValidator'));
 const WalkForward = React.lazy(() => import('./pages/Backtest/WalkForward'));
 const BacktestMonteCarlo = React.lazy(() => import('./pages/Backtest/MonteCarlo'));
@@ -176,6 +180,15 @@ function App() {
                         {/* Learn */}
                         <Route path="learn/education" element={<MarketEducation />} />
 
+                        {/* Signals */}
+                        <Route path="signals" element={<SignalsHub />} />
+                        <Route path="signals/candidates" element={<SignalsCandidates />} />
+                        <Route path="signals/regime" element={<SignalsRegime />} />
+                        <Route path="signals/stage-scan" element={<SignalsStageScan />} />
+                        <Route
+                          path="signals/scan"
+                          element={<Navigate to="/signals/stage-scan" replace />}
+                        />
                         <Route path="signals/picks" element={<Picks />} />
                         <Route path="picks" element={<PreserveRedirect toPath="/signals/picks" />} />
 
