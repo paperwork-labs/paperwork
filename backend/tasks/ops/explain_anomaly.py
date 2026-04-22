@@ -20,8 +20,10 @@ Idempotency:
 
 * :func:`recent_explanation_within` short-circuits the LLM call when an
   explanation for the same anomaly id already exists inside the rate
-  limit window. The window matches the AutoOps cadence so a flapping
-  dimension only burns one LLM call per visit.
+  limit window (default 1h). A per-dimension cap also limits new rows
+  to three per UTC day. OpenAI 429s retry a few times; if still
+  rate-limited, this task returns ``skipped`` instead of a fallback
+  path so the worker does not look like a hard failure to Celery.
 """
 
 from __future__ import annotations
@@ -30,20 +32,42 @@ import logging
 from typing import Any, Dict, Mapping
 
 from celery import shared_task
+from sqlalchemy.orm import Session
 
 from backend.database import SessionLocal
 from backend.services.agent.anomaly_explainer import (
     AnomalyExplainer,
     anomaly_from_dict,
     build_default_explainer,
+    DAILY_EXPLANATION_CAP_PER_KEY,
+    explanation_count_today_for_key,
     explanation_row_to_payload,
     explanation_to_dict,
+    latest_for_anomaly,
+    latest_for_dimension_key,
+    LLMProviderRateLimitedError,
     persist_explanation,
     recent_explanation_within,
 )
 from backend.tasks.utils.task_utils import task_run
 
 logger = logging.getLogger(__name__)
+
+
+def _reuse_latest_or_skip(
+    db: Session,
+    anomaly_id: str,
+    skip: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Prefer any persisted explanation for this id or dimension key; else ``skip``."""
+    row = latest_for_anomaly(db, anomaly_id)
+    if row is None:
+        row = latest_for_dimension_key(db, anomaly_id)
+    if row is not None:
+        out = explanation_row_to_payload(row)
+        out["reused"] = True
+        return out
+    return skip
 
 
 def _run_explainer(
@@ -67,7 +91,36 @@ def _run_explainer(
             out["reused"] = True
             return out
 
-        explanation = explainer.explain(anomaly)
+        n_today = explanation_count_today_for_key(db, anomaly.id)
+        if n_today >= DAILY_EXPLANATION_CAP_PER_KEY:
+            return _reuse_latest_or_skip(
+                db,
+                anomaly.id,
+                {
+                    "skipped": True,
+                    "reason": "daily_explanation_cap",
+                    "anomaly_id": anomaly.id,
+                    "count_today": n_today,
+                },
+            )
+
+        try:
+            explanation = explainer.explain(anomaly)
+        except LLMProviderRateLimitedError as exc:
+            logger.warning(
+                "explain_anomaly: skipped after openai 429 budget for %s: %s",
+                anomaly.id,
+                exc,
+            )
+            return _reuse_latest_or_skip(
+                db,
+                anomaly.id,
+                {
+                    "skipped": True,
+                    "reason": "openai_rate_limited",
+                    "anomaly_id": anomaly.id,
+                },
+            )
         row = persist_explanation(
             db,
             explanation,

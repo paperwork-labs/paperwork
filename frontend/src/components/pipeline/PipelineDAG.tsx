@@ -40,6 +40,8 @@ import { formatDateFriendly, formatDateTimeFriendly } from '@/utils/format';
 interface NodePos {
   col: number;
   row: number;
+  /** Optional vertical nudge (px) when labels/edges read as stacked. */
+  yAdjust?: number;
 }
 
 const NODE_POSITIONS: Record<string, NodePos> = {
@@ -47,11 +49,11 @@ const NODE_POSITIONS: Record<string, NodePos> = {
   tracked_cache:    { row: 0, col: 1 },
   daily_bars:       { row: 0, col: 2 },
   mv_refresh:       { row: 0, col: 3 },
-  regime:           { row: 1, col: 1 },
-  indicators:       { row: 1, col: 2 },
+  regime:           { row: 1, col: 1, yAdjust: -60 },
+  indicators:       { row: 1, col: 2, yAdjust: 60 },
   exit_cascade:     { row: 1, col: 3 },
-  scan_overlay:     { row: 2, col: 1 },
-  strategy_eval:    { row: 2, col: 2 },
+  scan_overlay:     { row: 2, col: 1, yAdjust: 60 },
+  strategy_eval:    { row: 2, col: 2, yAdjust: -60 },
   snapshot_history: { row: 2, col: 3 },
   digest:           { row: 3, col: 0 },
   health_check:     { row: 3, col: 1 },
@@ -176,17 +178,19 @@ function getNodeMetric(name: string, dims: HealthDims | null | undefined): strin
 
 function nodeCenter(name: string): { x: number; y: number } {
   const pos = NODE_POSITIONS[name] ?? { col: 0, row: 0 };
+  const yAdj = pos.yAdjust ?? 0;
   return {
     x: PAD + pos.col * (NODE_W + COL_GAP) + NODE_W / 2,
-    y: PAD + pos.row * (NODE_H + ROW_GAP) + NODE_H / 2,
+    y: PAD + pos.row * (NODE_H + ROW_GAP) + yAdj + NODE_H / 2,
   };
 }
 
 function nodeTopLeft(name: string): { x: number; y: number } {
   const pos = NODE_POSITIONS[name] ?? { col: 0, row: 0 };
+  const yAdj = pos.yAdjust ?? 0;
   return {
     x: PAD + pos.col * (NODE_W + COL_GAP),
-    y: PAD + pos.row * (NODE_H + ROW_GAP),
+    y: PAD + pos.row * (NODE_H + ROW_GAP) + yAdj,
   };
 }
 

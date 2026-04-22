@@ -575,8 +575,11 @@ CATALOG: List[JobTemplate] = [
         display_name="Repair Stage History Monotonicity",
         group="maintenance",
         task="backend.tasks.market.indicators.repair_stage_history",
-        description="Walk MarketSnapshotHistory and fix current_stage_days monotonicity violations",
-        default_cron="0 4 * * 0",
+        description=(
+            "Nightly: walk MarketSnapshotHistory and fix current_stage_days "
+            "monotonicity violations (stage quality recompute)"
+        ),
+        default_cron="0 4 * * *",
         default_tz="UTC",
         job_run_label="admin_repair_stage_history",
         timeout_s=3600,

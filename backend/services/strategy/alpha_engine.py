@@ -5,6 +5,8 @@ Defines and combines alpha factors for quantitative stock selection.
 from __future__ import annotations
 
 import logging
+import math
+import statistics
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
@@ -344,12 +346,17 @@ class AlphaEngine:
             
             if not values:
                 continue
-            
-            import statistics
-            
-            mean = statistics.mean(values)
-            std = statistics.stdev(values) if len(values) > 1 else 1.0
-            
+
+            if factor.name == "stage_quality":
+                sorted_v = sorted(values, reverse=True)
+                k = max(1, math.ceil(0.30 * len(sorted_v)))
+                ref_values = sorted_v[:k]
+            else:
+                ref_values = values
+
+            mean = statistics.mean(ref_values)
+            std = statistics.stdev(ref_values) if len(ref_values) > 1 else 1.0
+
             stats[factor.name] = {
                 "mean": mean,
                 "std": max(std, 0.001),  # Avoid division by zero
@@ -357,7 +364,7 @@ class AlphaEngine:
                 "max": max(values),
                 "values": sorted(values),
             }
-        
+
         return stats
     
     def _compute_z_score(

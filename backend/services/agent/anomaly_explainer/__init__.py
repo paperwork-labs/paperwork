@@ -43,15 +43,26 @@ from .factory import build_default_explainer, get_runbook
 from .knowledge import RunbookChunk, RunbookKnowledge, load_runbook_chunks
 from .openai_provider import OpenAIChatProvider
 from .persistence import (
+    DAILY_EXPLANATION_CAP_PER_KEY,
     DEFAULT_RATE_LIMIT_WINDOW,
+    MAX_RATE_LIMIT_WINDOW,
+    MIN_RATE_LIMIT_WINDOW,
+    clamp_rate_limit_window,
     count_recent,
+    explanation_count_today_for_key,
     explanation_row_to_payload,
     latest_for_anomaly,
+    latest_for_dimension_key,
     list_recent,
     persist_explanation,
     recent_explanation_within,
 )
-from .provider import LLMProvider, LLMProviderError, StubLLMProvider
+from .provider import (
+    LLMProvider,
+    LLMProviderError,
+    LLMProviderRateLimitedError,
+    StubLLMProvider,
+)
 from .schemas import (
     SCHEMA_VERSION,
     Anomaly,
@@ -63,7 +74,12 @@ from .schemas import (
 from .explainer import AnomalyExplainer, explanation_to_dict
 
 __all__ = [
+    "DAILY_EXPLANATION_CAP_PER_KEY",
     "DEFAULT_RATE_LIMIT_WINDOW",
+    "MAX_RATE_LIMIT_WINDOW",
+    "MIN_RATE_LIMIT_WINDOW",
+    "clamp_rate_limit_window",
+    "explanation_count_today_for_key",
     "SCHEMA_VERSION",
     "Anomaly",
     "AnomalyCategory",
@@ -72,6 +88,7 @@ __all__ = [
     "Explanation",
     "LLMProvider",
     "LLMProviderError",
+    "LLMProviderRateLimitedError",
     "OpenAIChatProvider",
     "RemediationStep",
     "RunbookChunk",
@@ -88,6 +105,7 @@ __all__ = [
     "explanation_to_dict",
     "get_runbook",
     "latest_for_anomaly",
+    "latest_for_dimension_key",
     "list_recent",
     "load_runbook_chunks",
     "persist_explanation",

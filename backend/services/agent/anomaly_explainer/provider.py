@@ -30,6 +30,15 @@ class LLMProviderError(RuntimeError):
     """
 
 
+class LLMProviderRateLimitedError(LLMProviderError):
+    """OpenAI (or other API) still returning 429 after the retry budget.
+
+    Callers that must avoid burning fallbacks (e.g. cost caps) can catch
+    this and skip a single request instead of treating it as generic LLM
+    failure.
+    """
+
+
 @runtime_checkable
 class LLMProvider(Protocol):
     """One-shot text completion contract.

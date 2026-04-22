@@ -31,7 +31,7 @@ from .knowledge import (
     query_text_for_anomaly,
 )
 from .prompts import OUTPUT_JSON_SCHEMA, SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
-from .provider import LLMProvider, LLMProviderError
+from .provider import LLMProvider, LLMProviderError, LLMProviderRateLimitedError
 from .schemas import (
     SCHEMA_VERSION,
     Anomaly,
@@ -270,6 +270,8 @@ class AnomalyExplainer:
             raw = self._call_llm(anomaly, chunks)
             payload = self._parse_and_validate(raw)
             return self._build_explanation(anomaly, payload, chunks, is_fallback=False)
+        except LLMProviderRateLimitedError:
+            raise
         except LLMProviderError as e:
             logger.warning(
                 "anomaly_explainer: provider %s failed for %s: %s",

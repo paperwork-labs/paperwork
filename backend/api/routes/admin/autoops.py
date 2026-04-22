@@ -56,6 +56,22 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/agent", tags=["agent"])
 
 
+def _explanation_out_from_sync_result(result: Dict[str, Any]) -> AutoOpsExplanationOut:
+    """Build response model; map skip dicts to HTTP errors for interactive callers."""
+    if result.get("skipped"):
+        reason = result.get("reason")
+        if reason == "openai_rate_limited":
+            raise HTTPException(
+                status_code=429,
+                detail="OpenAI rate limited; no cached explanation for this anomaly.",
+            )
+        raise HTTPException(
+            status_code=409,
+            detail="Daily explanation cap reached; no cached explanation for this anomaly.",
+        )
+    return AutoOpsExplanationOut(**{k: v for k, v in result.items() if k != "reused"})
+
+
 class AutoOpsExplanationOut(BaseModel):
     """Wire shape for one persisted AutoOpsExplanation row."""
 
@@ -196,7 +212,7 @@ def explain_now(
     except Exception:  # noqa: BLE001 - scrubbed 500; full traceback in logs
         logger.exception("autoops explain failed anomaly_id=%s", body.id)
         raise HTTPException(status_code=500, detail="explain failed")
-    return AutoOpsExplanationOut(**{k: v for k, v in result.items() if k != "reused"})
+    return _explanation_out_from_sync_result(result)
 
 
 @router.post("/explain/dimension", response_model=AutoOpsExplanationOut)
@@ -226,7 +242,7 @@ def explain_dimension(
     except Exception:  # noqa: BLE001 - scrubbed 500; full traceback in logs
         logger.exception("autoops explain failed dimension=%s", body.dimension)
         raise HTTPException(status_code=500, detail="explain failed")
-    return AutoOpsExplanationOut(**{k: v for k, v in result.items() if k != "reused"})
+    return _explanation_out_from_sync_result(result)
 
 
 __all__ = ["router"]

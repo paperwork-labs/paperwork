@@ -15,10 +15,11 @@ Why a separate, sync adapter instead of reusing ``AgentBrain._call_llm``?
 
 Failure mode contract:
 
-* Any HTTP error, timeout, missing API key, or non-OK status raises
-  :class:`LLMProviderError`. The explainer catches that single exception
-  type and falls back to its deterministic runbook -- AutoOps never
-  blocks because OpenAI is having a day.
+* Most HTTP errors, timeouts, missing API key, or non-OK statuses raise
+  :class:`LLMProviderError`. After max 429 retries, raises
+  :class:`LLMProviderRateLimitedError` so callers can skip without treating
+  the task as a generic LLM failure. The explainer catches both and falls
+  back to its deterministic runbook where appropriate.
 
 JSON output mode:
 
@@ -30,6 +31,7 @@ JSON output mode:
 from __future__ import annotations
 
 import os
+import time
 from typing import Any, Dict, Optional
 
 try:
@@ -37,11 +39,13 @@ try:
 except ImportError:  # pragma: no cover -- requests is pinned, but be defensive
     requests = None  # type: ignore[assignment]
 
-from .provider import LLMProviderError
+from .provider import LLMProviderError, LLMProviderRateLimitedError
 
 DEFAULT_MODEL = "gpt-4o-mini"
 OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
 DEFAULT_TIMEOUT_SECONDS = 60
+# Transient 429s: bounded retries with backoff; see LLMProviderRateLimitedError.
+_MAX_429_ATTEMPTS = 4
 
 
 class OpenAIChatProvider:
@@ -113,25 +117,47 @@ class OpenAIChatProvider:
             "response_format": {"type": "json_object"},
         }
 
-        try:
-            session = self._session or requests
-            resp = session.post(
-                self._api_url,
-                headers=headers,
-                json=payload,
-                timeout=self._timeout,
-            )
-        except Exception as e:  # network / DNS / SSL / requests adapter
-            raise LLMProviderError(f"openai network error: {e}") from e
+        session = self._session or requests
+        resp: Any = None
+        for attempt in range(_MAX_429_ATTEMPTS):
+            try:
+                resp = session.post(
+                    self._api_url,
+                    headers=headers,
+                    json=payload,
+                    timeout=self._timeout,
+                )
+            except Exception as e:  # network / DNS / SSL / requests adapter
+                raise LLMProviderError(f"openai network error: {e}") from e
 
-        status = getattr(resp, "status_code", None)
-        if status != 200:
+            status = getattr(resp, "status_code", None)
+            if status == 200:
+                break
+            if status == 429 and attempt < _MAX_429_ATTEMPTS - 1:
+                retry_s = 1
+                try:
+                    ra = resp.headers.get("Retry-After")
+                    if ra is not None:
+                        retry_s = int(ra)
+                except (TypeError, ValueError):
+                    retry_s = 1
+                # Cap backoff so explain_anomaly (soft_time_limit=30) can finish
+                # without Celery killing the task while sleeping on large Retry-After.
+                time.sleep(max(1, min(8, retry_s)))
+                continue
+            if status == 429:
+                raise LLMProviderRateLimitedError(
+                    "openai rate limited after max retries (429)"
+                )
             body = ""
             try:
                 body = resp.text[:500]
             except Exception:  # noqa: BLE001
                 body = ""
             raise LLMProviderError(f"openai http {status}: {body}")
+
+        if resp is None or getattr(resp, "status_code", None) != 200:
+            raise LLMProviderError("openai: unexpected end of request loop")
 
         try:
             data = resp.json()

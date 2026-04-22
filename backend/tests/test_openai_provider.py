@@ -27,6 +27,9 @@ from backend.services.agent.anomaly_explainer import (
     AnomalySeverity,
     LLMProviderError,
 )
+from backend.services.agent.anomaly_explainer.provider import (
+    LLMProviderRateLimitedError,
+)
 from backend.services.agent.anomaly_explainer.openai_provider import (
     DEFAULT_MODEL,
     OPENAI_API_URL,
@@ -41,11 +44,13 @@ from backend.services.agent.anomaly_explainer.openai_provider import (
 
 class _FakeResponse:
     def __init__(self, status_code: int, payload: Optional[Dict[str, Any]] = None,
-                 text: str = "", json_raises: bool = False) -> None:
+                 text: str = "", json_raises: bool = False,
+                 headers: Optional[Dict[str, str]] = None) -> None:
         self.status_code = status_code
         self._payload = payload
         self.text = text or json.dumps(payload or {})
         self._json_raises = json_raises
+        self.headers = headers or {}
 
     def json(self) -> Dict[str, Any]:
         if self._json_raises:
@@ -153,7 +158,7 @@ class TestCompleteJsonHappyPath:
 
 
 # ---------------------------------------------------------------------------
-# complete_json: failure modes -> all raise LLMProviderError
+# complete_json: failure modes -> LLMProviderError (429 exhaustion -> rate limited)
 # ---------------------------------------------------------------------------
 
 
@@ -165,9 +170,19 @@ class TestCompleteJsonErrors:
             p.complete_json("s", "u")
 
     def test_non_200_raises_with_body(self):
+        sess = _FakeSession(_FakeResponse(403, text="forbidden"))
+        p = OpenAIChatProvider(api_key="x", session=sess)
+        with pytest.raises(LLMProviderError, match="http 403"):
+            p.complete_json("s", "u")
+
+    def test_429_exhausts_retries_raises_rate_limited(self, monkeypatch):
+        monkeypatch.setattr(
+            "backend.services.agent.anomaly_explainer.openai_provider.time.sleep",
+            lambda _s: None,
+        )
         sess = _FakeSession(_FakeResponse(429, text="rate limited"))
         p = OpenAIChatProvider(api_key="x", session=sess)
-        with pytest.raises(LLMProviderError, match="http 429"):
+        with pytest.raises(LLMProviderRateLimitedError, match="max retries"):
             p.complete_json("s", "u")
 
     def test_500_raises(self):

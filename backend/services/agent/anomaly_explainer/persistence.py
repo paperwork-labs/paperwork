@@ -33,10 +33,27 @@ from .schemas import Explanation
 logger = logging.getLogger(__name__)
 
 # Default rate-limit window for ``recent_explanation_within`` lookups.
-# 10 minutes matches the AutoOps health check cadence; if a dimension
-# fails twice inside one window we reuse the previous explanation rather
-# than burning another LLM call on the exact same evidence.
-DEFAULT_RATE_LIMIT_WINDOW = timedelta(minutes=10)
+# One hour: aligns with a longer de-dupe window so repeated AutoOps
+# health checks in the same hour reuse one explanation and reduce spend.
+DEFAULT_RATE_LIMIT_WINDOW = timedelta(hours=1)
+
+# Max AutoOps LLM rows per health dimension (anomaly_id prefix) per UTC day
+# after the rate-window short-circuit. Prevents a flapping runbook from
+# burning 3+ fresh rows for the same dimension in 24h.
+DAILY_EXPLANATION_CAP_PER_KEY = 3
+
+# Guardrails for ``recent_explanation_within(..., window=...)`` overrides.
+MIN_RATE_LIMIT_WINDOW = timedelta(minutes=1)
+MAX_RATE_LIMIT_WINDOW = timedelta(hours=24)
+
+
+def clamp_rate_limit_window(window: timedelta) -> timedelta:
+    """Keep ad-hoc rate-limit windows within a safe, finite range."""
+    if window < MIN_RATE_LIMIT_WINDOW:
+        return MIN_RATE_LIMIT_WINDOW
+    if window > MAX_RATE_LIMIT_WINDOW:
+        return MAX_RATE_LIMIT_WINDOW
+    return window
 
 
 def _confidence_to_decimal(value: Decimal) -> Decimal:
@@ -114,6 +131,64 @@ def latest_for_anomaly(
     )
 
 
+def latest_for_dimension_key(
+    db: Session,
+    anomaly_id: str,
+) -> Optional[AutoOpsExplanation]:
+    """Most recent row for any anomaly id sharing this dimension key prefix.
+
+    Uses the same ``prefix:%`` grouping as :func:`explanation_count_today_for_key`
+    so daily-cap / 429 skip paths can reuse a sibling explanation when the
+    current id has no row yet.
+    """
+    prefix, _, rest = anomaly_id.partition(":")
+    if not rest:
+        return None
+    pattern = f"{prefix}:%"
+    return (
+        db.query(AutoOpsExplanation)
+        .filter(AutoOpsExplanation.anomaly_id.like(pattern))
+        .order_by(desc(AutoOpsExplanation.generated_at))
+        .limit(1)
+        .first()
+    )
+
+
+def explanation_count_today_for_key(
+    db: Session,
+    anomaly_id: str,
+    *,
+    now: Optional[datetime] = None,
+) -> int:
+    """Count persisted explanations in the current UTC day for this key.
+
+    The key is the ``dimension`` segment of
+    ``{dimension}:{status}:{day}:{hash}`` ids from
+    :func:`anomaly_builder.deterministic_id`, i.e. the prefix before the
+    first ``:``. Caps apply per dimension+day, not per full anomaly_id.
+    """
+    now = now or datetime.now(timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    else:
+        now = now.astimezone(timezone.utc)
+    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    prefix, _, rest = anomaly_id.partition(":")
+    if not rest:
+        return 0
+    pattern = f"{prefix}:%"
+    n = int(
+        db.query(func.count(AutoOpsExplanation.id))
+        .filter(
+            AutoOpsExplanation.anomaly_id.like(pattern),
+            AutoOpsExplanation.generated_at >= start,
+        )
+        .scalar()
+        or 0
+    )
+    return n
+
+
 def recent_explanation_within(
     db: Session,
     anomaly_id: str,
@@ -127,6 +202,7 @@ def recent_explanation_within(
     flapping dimension fires multiple anomalies in a short window.
     """
     now = now or datetime.now(timezone.utc)
+    window = clamp_rate_limit_window(window)
     cutoff = now - window
     return (
         db.query(AutoOpsExplanation)
@@ -208,10 +284,16 @@ def explanation_row_to_payload(row: AutoOpsExplanation) -> dict:
 
 
 __all__ = [
+    "DAILY_EXPLANATION_CAP_PER_KEY",
     "DEFAULT_RATE_LIMIT_WINDOW",
+    "MAX_RATE_LIMIT_WINDOW",
+    "MIN_RATE_LIMIT_WINDOW",
+    "clamp_rate_limit_window",
+    "explanation_count_today_for_key",
     "count_recent",
     "explanation_row_to_payload",
     "latest_for_anomaly",
+    "latest_for_dimension_key",
     "list_recent",
     "persist_explanation",
     "recent_explanation_within",
