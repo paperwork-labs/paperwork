@@ -115,7 +115,11 @@ const AdminDomainCards: React.FC<Props> = ({ health }) => {
           </p>
           <p className="text-xs text-muted-foreground">Invalid rows: {stage_quality.invalid_count ?? 0}</p>
           <p className="text-xs text-muted-foreground">
-            Monotonicity issues: {stage_quality.monotonicity_issues ?? 0}
+            Stage-day counter drift:{' '}
+            {stage_quality.stage_days_drift_count ?? stage_quality.monotonicity_issues ?? 0}
+            {typeof stage_quality.stage_days_drift_pct === 'number'
+              ? ` (${stage_quality.stage_days_drift_pct.toFixed(2)}%)`
+              : ''}
           </p>
           <p className="text-xs text-muted-foreground">Stale stage rows: {stage_quality.stale_stage_count ?? 0}</p>
         </div>

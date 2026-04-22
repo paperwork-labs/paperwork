@@ -149,6 +149,7 @@ class StageQualityService:
         )
 
         monotonicity_issues = 0
+        history_rows_checked = 0
         by_symbol: Dict[str, List[tuple[datetime, Any, Any]]] = {}
         for symbol, as_of_date, stage_label, current_days in recent_rows:
             by_symbol.setdefault(str(symbol or "").upper(), []).append(
@@ -163,6 +164,7 @@ class StageQualityService:
                 norm = normalize_stage_label(stage_label)
                 if norm is None:
                     continue
+                history_rows_checked += 1
                 try:
                     cur_days = int(current_days) if current_days is not None else 0
                 except Exception:
@@ -210,6 +212,7 @@ class StageQualityService:
             "invalid_current_days_count": invalid_current_days_count,
             "invalid_previous_link_count": invalid_previous_link_count,
             "monotonicity_issues": monotonicity_issues,
+            "stage_history_rows_checked": history_rows_checked,
             "stale_stage_count": stale_stage_count,
             "stage_counts": {
                 k: int(stage_counter.get(k, 0))

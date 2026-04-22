@@ -494,7 +494,16 @@ function getHealthDetail(name: string, dims: HealthDims | null | undefined, pm?:
       pairs.push(['Total symbols', dims.stage_quality.total_symbols.toLocaleString()]);
       pairs.push(['Unknown rate', `${(dims.stage_quality.unknown_rate * 100).toFixed(1)}%`]);
       if (dims.stage_quality.invalid_count > 0) pairs.push(['Invalid', String(dims.stage_quality.invalid_count)]);
-      if (dims.stage_quality.monotonicity_issues > 0) pairs.push(['Monotonicity', String(dims.stage_quality.monotonicity_issues)]);
+      {
+        const driftCount = dims.stage_quality.stage_days_drift_count ?? dims.stage_quality.monotonicity_issues ?? 0;
+        const driftPctRaw = dims.stage_quality.stage_days_drift_pct;
+        if (driftCount > 0) {
+          const label = typeof driftPctRaw === 'number'
+            ? `${driftCount} (${driftPctRaw.toFixed(2)}%)`
+            : String(driftCount);
+          pairs.push(['Stage-day drift', label]);
+        }
+      }
       if (dims.stage_quality.stale_stage_count > 0) pairs.push(['Stale stages', String(dims.stage_quality.stale_stage_count)]);
       const sc = dims.stage_quality.stage_counts;
       if (sc && Object.keys(sc).length > 0) {
@@ -898,7 +907,15 @@ export function PipelineDAG({ dag, run, loading, loadError, onRetryLoad, onRetry
         if (cov.stale_daily > 0) msgs.push(`${cov.stale_daily} symbols missing latest bars`);
         const sq = healthDimensions.stage_quality;
         if (sq.unknown_rate > 0.01) msgs.push(`${(sq.unknown_rate * 100).toFixed(1)}% unknown stages`);
-        if (sq.monotonicity_issues > 0) msgs.push(`${sq.monotonicity_issues} monotonicity issues`);
+        {
+          const sqDriftPct = sq.stage_days_drift_pct;
+          const sqDriftCount = sq.stage_days_drift_count ?? sq.monotonicity_issues ?? 0;
+          if (typeof sqDriftPct === 'number' && sqDriftPct > 2) {
+            msgs.push(`${sqDriftPct.toFixed(2)}% stage-day drift`);
+          } else if (typeof sqDriftPct !== 'number' && sqDriftCount > 0) {
+            msgs.push(`${sqDriftCount} stage-day drift`);
+          }
+        }
         const jobs = healthDimensions.jobs;
         if (jobs.error_count > 0) msgs.push(`${jobs.error_count} failed jobs (${jobs.window_hours ?? 24}h)`);
         if (msgs.length === 0) return (

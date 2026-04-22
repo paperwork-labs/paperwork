@@ -70,41 +70,60 @@ const RUNBOOK: Record<string, RunbookEntry> = {
       `Daily fill >= ${t.coverage_daily_pct_min ?? 95}%, stale daily rows <= ${t.coverage_stale_daily_max ?? 0}`,
   },
   stage_quality: {
-    what: 'Stage analysis has too many unknowns, invalid rows, or monotonicity violations in stage duration counters.',
+    what: 'Stage analysis has too many unknown labels, invalid rows, or drift in the current_stage_days counter relative to history.',
     steps: [
       'Ensure daily bars are backfilled — stages cannot compute without OHLCV data.',
       'Recompute indicators to recalculate stage labels for the full universe.',
-      'Repair stage history to fix stage duration counters (current_stage_days) across history.',
+      'Repair stage history to fix current_stage_days counters across recent history.',
       'Check Agent Activity above for failed compute or backfill tasks.',
     ],
     contextualSteps: (dim) => {
       const steps: string[] = [];
       const unknownRate = Number(dim.unknown_rate ?? 0);
-      const monotonicity = Number(dim.monotonicity_issues ?? 0);
+      const driftCount = Number(dim.stage_days_drift_count ?? dim.monotonicity_issues ?? 0);
+      const driftPctRaw = dim.stage_days_drift_pct;
+      const driftPct = typeof driftPctRaw === 'number' ? driftPctRaw : null;
       const invalidCount = Number(dim.invalid_count ?? 0);
+      const warnUnknown = 0.35;
+      const warnDriftPct = 2.0;
 
-      if (unknownRate > 0.35) {
+      if (unknownRate > warnUnknown) {
         steps.push('Too many UNKNOWN stages — daily bars are likely missing. Backfill daily coverage first, then recompute indicators.');
       }
-      if (monotonicity > 0) {
-        steps.push('Stage day-counter gaps detected — repair stage history to recompute current_stage_days across the last 120 days.');
+      if (driftPct !== null && driftPct > warnDriftPct) {
+        steps.push(`Stage day-counter gaps detected (${driftPct.toFixed(2)}% drift) — repair stage history to recompute current_stage_days across the last 120 days.`);
+      } else if (driftPct === null && driftCount > 0) {
+        steps.push('Stage day-counter gaps detected (denominator unknown) — run the stage-quality recompute task and re-check.');
       }
       if (invalidCount > 0) {
         steps.push('Invalid stage rows found — check Agent Activity for failed tasks, then recompute indicators.');
       }
-      if (unknownRate <= 0.35 && monotonicity === 0 && invalidCount === 0) {
+      if (unknownRate <= warnUnknown && (driftPct === null || driftPct <= warnDriftPct) && invalidCount === 0) {
         steps.push('All stage sub-checks are passing. If this dimension is still red, check Agent Activity for ongoing issues.');
       }
       return steps;
     },
-    threshold: (t) =>
-      `Unknown rate <= ${((t.stage_unknown_rate_max ?? 0.35) * 100).toFixed(0)}%, invalid rows <= ${t.stage_invalid_max ?? 0}, monotonicity issues <= ${t.stage_monotonicity_max ?? 0}`,
-    metricSummary: (dim) => [
-      { label: 'Unknown rate', value: `${((Number(dim.unknown_rate ?? 0)) * 100).toFixed(2)}%`, ok: Number(dim.unknown_rate ?? 0) <= 0.35 },
-      { label: 'Invalid rows', value: String(dim.invalid_count ?? 0), ok: Number(dim.invalid_count ?? 0) === 0 },
-      { label: 'Monotonicity', value: String(dim.monotonicity_issues ?? 0), ok: Number(dim.monotonicity_issues ?? 0) === 0 },
-      { label: 'Stale stages', value: String(dim.stale_stage_count ?? 0), ok: Number(dim.stale_stage_count ?? 0) === 0 },
-    ],
+    threshold: (t) => {
+      const unknownCrit = ((t.stage_unknown_rate_crit ?? 0.60) * 100).toFixed(0);
+      const unknownWarn = ((t.stage_unknown_rate_max ?? 0.35) * 100).toFixed(0);
+      const driftCrit = (t.stage_days_drift_pct_crit ?? 10).toFixed(1);
+      const driftWarn = (t.stage_days_drift_pct_warn ?? 2).toFixed(1);
+      return `Invalid rows <= ${t.stage_invalid_max ?? 0}; unknowns warn > ${unknownWarn}%, crit > ${unknownCrit}%; stage-day drift warn > ${driftWarn}%, crit > ${driftCrit}%`;
+    },
+    metricSummary: (dim) => {
+      const driftCount = Number(dim.stage_days_drift_count ?? dim.monotonicity_issues ?? 0);
+      const driftPctRaw = dim.stage_days_drift_pct;
+      const driftPctLabel =
+        typeof driftPctRaw === 'number' ? `${driftPctRaw.toFixed(2)}%` : 'n/a';
+      const driftOk =
+        typeof driftPctRaw === 'number' ? driftPctRaw <= 2.0 : driftCount === 0;
+      return [
+        { label: 'Unknown rate', value: `${((Number(dim.unknown_rate ?? 0)) * 100).toFixed(2)}%`, ok: Number(dim.unknown_rate ?? 0) <= 0.35 },
+        { label: 'Invalid rows', value: String(dim.invalid_count ?? 0), ok: Number(dim.invalid_count ?? 0) === 0 },
+        { label: 'Stage-day drift', value: `${driftCount} (${driftPctLabel})`, ok: driftOk },
+        { label: 'Stale stages', value: String(dim.stale_stage_count ?? 0), ok: Number(dim.stale_stage_count ?? 0) === 0 },
+      ];
+    },
   },
   jobs: {
     what: 'One or more background jobs have failed in the lookback window.',

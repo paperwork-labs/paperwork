@@ -401,7 +401,17 @@ class AgentBrain:
                         idx_parts.append(f"{k}={'?' if count is None else count}")
                     parts.append(f"    indices: {', '.join(idx_parts)}")
             elif dim_name == "stage_quality":
-                parts.append(f"    unknown_rate={dim_data.get('unknown_rate')}  invalid={dim_data.get('invalid_count')}  monotonicity={dim_data.get('monotonicity_issues')}")
+                drift_pct = dim_data.get("stage_days_drift_pct")
+                drift_pct_str = (
+                    f"{drift_pct:.2f}%" if isinstance(drift_pct, (int, float)) else "n/a"
+                )
+                parts.append(
+                    f"    unknown_rate={dim_data.get('unknown_rate')}  "
+                    f"invalid={dim_data.get('invalid_count')}  "
+                    f"stage_day_drift="
+                    f"{dim_data.get('stage_days_drift_count', dim_data.get('monotonicity_issues'))} "
+                    f"({drift_pct_str})"
+                )
             elif dim_name == "audit":
                 parts.append(f"    daily_fill={dim_data.get('daily_fill_pct')}%  snapshot_fill={dim_data.get('snapshot_fill_pct')}%")
                 depth = dim_data.get("history_depth_years")

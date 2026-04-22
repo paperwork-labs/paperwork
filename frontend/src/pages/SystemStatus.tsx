@@ -272,9 +272,30 @@ const getDimensionHint = (key: string, dim: unknown): string | null => {
     case 'coverage':
       if (isHealthy) return `${Number(d.daily_pct ?? 0).toFixed(0)}% daily · ${Number(d.tracked_count ?? 0).toLocaleString()} tracked`;
       return `${d.stale_daily} stale symbol${d.stale_daily !== 1 ? 's' : ''} — agent retries hourly`;
-    case 'stage_quality':
-      if (isHealthy) return `${Number(d.total_symbols ?? 0).toLocaleString()} symbols · ${(Number(d.unknown_rate ?? 0) * 100).toFixed(0)}% unknown`;
-      return `${d.invalid_count} invalid, ${d.monotonicity_issues} monotonicity — recomputed nightly`;
+    case 'stage_quality': {
+      const invalid = Number(d.invalid_count ?? 0);
+      const driftCount = Number(d.stage_days_drift_count ?? d.monotonicity_issues ?? 0);
+      const driftPctRaw = d.stage_days_drift_pct;
+      const hasDriftPct = typeof driftPctRaw === 'number';
+      const driftPctLabel = hasDriftPct ? `${Number(driftPctRaw).toFixed(2)}%` : '—';
+      const rowsChecked = Number(d.stage_history_rows_checked ?? 0);
+      if (isHealthy) {
+        const total = Number(d.total_symbols ?? 0).toLocaleString();
+        const unknown = (Number(d.unknown_rate ?? 0) * 100).toFixed(0);
+        const driftSuffix = driftCount > 0
+          ? ` · ${driftCount.toLocaleString()} day-counter drift${hasDriftPct ? ` (${driftPctLabel})` : ''}`
+          : '';
+        return `${total} symbols · ${unknown}% unknown${driftSuffix} · recomputed nightly`;
+      }
+      const parts: string[] = [`${invalid.toLocaleString()} invalid`];
+      if (rowsChecked > 0) {
+        parts.push(`${driftCount.toLocaleString()} stage-day drift (${driftPctLabel})`);
+      } else {
+        parts.push(`${driftCount.toLocaleString()} stage-day drift`);
+      }
+      parts.push('recomputed nightly');
+      return parts.join(' · ');
+    }
     case 'audit':
       if (isHealthy) return `${Number(d.daily_fill_pct ?? 0).toFixed(0)}% daily · ${Number(d.snapshot_fill_pct ?? 0).toFixed(0)}% snapshot`;
       return 'Fill below threshold — backfill scheduled';

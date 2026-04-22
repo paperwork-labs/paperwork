@@ -230,6 +230,7 @@ def test_stage_green():
         "unknown_rate": 0.1,
         "invalid_stage_count": 0,
         "monotonicity_issues": 0,
+        "stage_history_rows_checked": 60_000,
         "stale_stage_count": 0,
         "total_symbols": 500,
         "stage_counts": {"2A": 100, "4": 50},
@@ -237,21 +238,131 @@ def test_stage_green():
     dim = svc._build_stage_dimension(db)
     assert dim["status"] == "green"
     assert dim["unknown_rate"] == 0.1
+    assert dim["stage_days_drift_pct"] == 0.0
+    assert dim["stage_days_drift_count"] == 0
+    assert dim["monotonicity_issues"] == 0  # legacy alias
 
 
-def test_stage_red_when_high_unknown():
+def test_stage_green_with_tiny_drift():
+    """~0.9% drift across a 2.5k-symbol × 120-day universe is healthy."""
     svc = _mock_service()
     db = MagicMock()
     svc._svc.stage_quality_summary.return_value = {
-        "unknown_rate": 0.5,
+        "unknown_rate": 0.05,
+        "invalid_stage_count": 0,
+        "monotonicity_issues": 2834,
+        "stage_history_rows_checked": 305_280,  # ~2544 * 120
+        "stale_stage_count": 0,
+        "total_symbols": 2544,
+        "stage_counts": {"2A": 500},
+    }
+    dim = svc._build_stage_dimension(db)
+    assert dim["status"] == "green"
+    assert dim["stage_days_drift_pct"] == 0.928
+    assert dim["monotonicity_issues"] == 2834
+
+
+def test_stage_yellow_when_drift_between_warn_and_crit():
+    """Drift between warn (2%) and crit (10%) thresholds -> warning."""
+    svc = _mock_service()
+    db = MagicMock()
+    svc._svc.stage_quality_summary.return_value = {
+        "unknown_rate": 0.1,
+        "invalid_stage_count": 0,
+        "monotonicity_issues": 1_500,  # ~5% of 30_000
+        "stage_history_rows_checked": 30_000,
+        "stale_stage_count": 0,
+        "total_symbols": 250,
+        "stage_counts": {},
+    }
+    dim = svc._build_stage_dimension(db)
+    assert dim["status"] == "yellow"
+    assert dim["stage_days_drift_pct"] == 5.0
+
+
+def test_stage_yellow_when_unknown_rate_between_warn_and_crit():
+    svc = _mock_service()
+    db = MagicMock()
+    svc._svc.stage_quality_summary.return_value = {
+        "unknown_rate": 0.45,  # above 0.35 warn, below 0.60 crit
         "invalid_stage_count": 0,
         "monotonicity_issues": 0,
+        "stage_history_rows_checked": 60_000,
+        "stale_stage_count": 0,
+        "total_symbols": 500,
+        "stage_counts": {},
+    }
+    dim = svc._build_stage_dimension(db)
+    assert dim["status"] == "yellow"
+
+
+def test_stage_red_when_invalid_rows_present():
+    svc = _mock_service()
+    db = MagicMock()
+    svc._svc.stage_quality_summary.return_value = {
+        "unknown_rate": 0.1,
+        "invalid_stage_count": 3,
+        "monotonicity_issues": 0,
+        "stage_history_rows_checked": 60_000,
         "stale_stage_count": 0,
         "total_symbols": 500,
         "stage_counts": {},
     }
     dim = svc._build_stage_dimension(db)
     assert dim["status"] == "red"
+    assert "invalid" in dim["reason"]
+
+
+def test_stage_red_when_drift_above_crit():
+    svc = _mock_service()
+    db = MagicMock()
+    svc._svc.stage_quality_summary.return_value = {
+        "unknown_rate": 0.1,
+        "invalid_stage_count": 0,
+        "monotonicity_issues": 5_000,  # ~16.6% of 30_000
+        "stage_history_rows_checked": 30_000,
+        "stale_stage_count": 0,
+        "total_symbols": 250,
+        "stage_counts": {},
+    }
+    dim = svc._build_stage_dimension(db)
+    assert dim["status"] == "red"
+    assert "drift" in dim["reason"]
+
+
+def test_stage_red_when_unknown_rate_above_crit():
+    svc = _mock_service()
+    db = MagicMock()
+    svc._svc.stage_quality_summary.return_value = {
+        "unknown_rate": 0.75,  # above 0.60 crit
+        "invalid_stage_count": 0,
+        "monotonicity_issues": 0,
+        "stage_history_rows_checked": 60_000,
+        "stale_stage_count": 0,
+        "total_symbols": 500,
+        "stage_counts": {},
+    }
+    dim = svc._build_stage_dimension(db)
+    assert dim["status"] == "red"
+
+
+def test_stage_red_when_drift_denominator_missing():
+    """No silent fallback: if drift count > 0 but denominator missing, flag it."""
+    svc = _mock_service()
+    db = MagicMock()
+    svc._svc.stage_quality_summary.return_value = {
+        "unknown_rate": 0.05,
+        "invalid_stage_count": 0,
+        "monotonicity_issues": 100,
+        "stage_history_rows_checked": 0,  # missing
+        "stale_stage_count": 0,
+        "total_symbols": 500,
+        "stage_counts": {},
+    }
+    dim = svc._build_stage_dimension(db)
+    assert dim["status"] == "red"
+    assert "unavailable" in dim["reason"].lower()
+    assert dim["stage_days_drift_pct"] is None
 
 
 def test_audit_green():

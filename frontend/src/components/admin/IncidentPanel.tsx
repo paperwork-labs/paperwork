@@ -59,8 +59,19 @@ function getDimensionReason(key: string, dim: Record<string, unknown>): string {
   switch (key) {
     case 'coverage':
       return `${dim.stale_daily ?? 0} stale symbols — auto-ops retries automatically`;
-    case 'stage_quality':
-      return `${Number(dim.unknown_rate ?? 0) > 0.35 ? 'High unknown rate' : ''}${Number(dim.invalid_count ?? 0) > 0 ? `, ${dim.invalid_count} invalid` : ''}${Number(dim.monotonicity_issues ?? 0) > 0 ? `, ${dim.monotonicity_issues} monotonicity issues` : ''}`.replace(/^, /, '') || 'Quality below threshold';
+    case 'stage_quality': {
+      const parts: string[] = [];
+      if (Number(dim.unknown_rate ?? 0) > 0.35) parts.push('High unknown rate');
+      if (Number(dim.invalid_count ?? 0) > 0) parts.push(`${dim.invalid_count} invalid`);
+      const driftPctRaw = dim.stage_days_drift_pct;
+      const driftCount = Number(dim.stage_days_drift_count ?? dim.monotonicity_issues ?? 0);
+      if (typeof driftPctRaw === 'number' && driftPctRaw > 2) {
+        parts.push(`${driftPctRaw.toFixed(2)}% stage-day drift`);
+      } else if (driftCount > 0 && typeof driftPctRaw !== 'number') {
+        parts.push(`${driftCount} stage-day drift`);
+      }
+      return parts.join(', ') || 'Quality below threshold';
+    }
     case 'jobs':
       return `${dim.error_count ?? 0} failures in the last ${dim.window_hours ?? 24}h`;
     case 'regime':

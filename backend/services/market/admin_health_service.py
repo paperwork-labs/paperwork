@@ -39,9 +39,18 @@ def _datetime_as_utc_aware(dt: datetime) -> datetime:
 HEALTH_THRESHOLDS: Dict[str, float] = {
     "coverage_daily_pct_min": 95.0,
     "coverage_stale_daily_max": 25,
-    "stage_unknown_rate_max": 0.35,
-    "stage_invalid_max": 0,
-    "stage_monotonicity_max": 15,
+    # Stage-quality thresholds. Historical note: we used to have a single
+    # absolute-count cap `stage_monotonicity_max: 15`, which is
+    # scale-dependent (violations grow linearly with universe size × history
+    # window) and caused the dim to be pinned to "Critical" forever against
+    # a ~2500-symbol × 120-day universe. The counter is now evaluated as a
+    # *drift percentage* of history rows checked, with separate warn/crit
+    # thresholds. See docs/handoffs/STAGE_QUALITY_DIAGNOSIS_2026Q2.md.
+    "stage_unknown_rate_max": 0.35,       # warn if unknowns exceed this
+    "stage_unknown_rate_crit": 0.60,      # critical if unknowns exceed this
+    "stage_invalid_max": 0,               # any invalid row == critical
+    "stage_days_drift_pct_warn": 2.0,     # warn if drift_pct above this
+    "stage_days_drift_pct_crit": 10.0,    # critical if drift_pct above this
     "jobs_success_rate_min": 0.90,
     "jobs_lookback_hours": 24,
     "audit_daily_fill_pct_min": 95.0,
@@ -407,23 +416,86 @@ class AdminHealthService:
             return {"status": "red", "error": str(exc)}
 
     def _build_stage_dimension(self, db: Session) -> Dict[str, Any]:
+        """Evaluate the stage-quality dimension with scale-aware thresholds.
+
+        Returns a three-state status:
+          - ``green``  — healthy (no invalid rows, unknowns within tolerance,
+            day-counter drift below the warn threshold).
+          - ``yellow`` — degraded but operational (elevated unknowns or
+            day-counter drift above warn but below crit).
+          - ``red``    — critical: any invalid rows, or unknowns/drift above
+            their critical thresholds, or the service failed entirely.
+
+        Per ``no-silent-fallback.mdc``: if the history-rows counter is
+        missing (older service versions) or zero, we do NOT silently flip to
+        green — we mark status ``red`` with ``reason='unknown'`` so ops can
+        see the gap rather than a misleading "Healthy" badge.
+        """
         try:
             data = stage_quality.stage_quality_summary(db, lookback_days=120)
             unknown_rate = float(data.get("unknown_rate") or 0)
             invalid_count = int(data.get("invalid_stage_count") or 0)
-            monotonicity = int(data.get("monotonicity_issues") or 0)
-            ok = (
-                unknown_rate <= HEALTH_THRESHOLDS["stage_unknown_rate_max"]
-                and invalid_count <= HEALTH_THRESHOLDS["stage_invalid_max"]
-                and monotonicity <= HEALTH_THRESHOLDS["stage_monotonicity_max"]
-            )
+            stage_days_drift_count = int(data.get("monotonicity_issues") or 0)
+            rows_checked = int(data.get("stage_history_rows_checked") or 0)
+            total_symbols = int(data.get("total_symbols") or 0)
+
+            # Drift percentage: fraction of row-pairs with stage_days
+            # discontinuities. Absent data reported as None, not 0 —
+            # downstream decision branches on that explicitly.
+            drift_pct: Optional[float]
+            if rows_checked > 0:
+                drift_pct = round(
+                    100.0 * stage_days_drift_count / rows_checked, 3
+                )
+            else:
+                drift_pct = None
+
+            warn_unknown = HEALTH_THRESHOLDS["stage_unknown_rate_max"]
+            crit_unknown = HEALTH_THRESHOLDS["stage_unknown_rate_crit"]
+            warn_drift = HEALTH_THRESHOLDS["stage_days_drift_pct_warn"]
+            crit_drift = HEALTH_THRESHOLDS["stage_days_drift_pct_crit"]
+            max_invalid = HEALTH_THRESHOLDS["stage_invalid_max"]
+
+            # Unknown state: counters say there's data (total_symbols>0)
+            # but the drift denominator is missing. Surface as red/unknown
+            # rather than falsely passing.
+            if total_symbols > 0 and rows_checked == 0 and stage_days_drift_count > 0:
+                status = "red"
+                reason = "stage_history_rows_checked unavailable; cannot evaluate drift"
+            elif invalid_count > max_invalid:
+                status = "red"
+                reason = f"{invalid_count} invalid stage rows"
+            elif unknown_rate > crit_unknown:
+                status = "red"
+                reason = f"{unknown_rate * 100:.1f}% unknown rate"
+            elif drift_pct is not None and drift_pct > crit_drift:
+                status = "red"
+                reason = f"{drift_pct:.2f}% stage-day drift"
+            elif unknown_rate > warn_unknown:
+                status = "yellow"
+                reason = f"{unknown_rate * 100:.1f}% unknown rate"
+            elif drift_pct is not None and drift_pct > warn_drift:
+                status = "yellow"
+                reason = f"{drift_pct:.2f}% stage-day drift"
+            else:
+                status = "green"
+                reason = "ok"
+
             return {
-                "status": _dim_status(ok),
+                "status": status,
+                "reason": reason,
                 "unknown_rate": round(unknown_rate, 4),
                 "invalid_count": invalid_count,
-                "monotonicity_issues": monotonicity,
+                # Back-compat: `monotonicity_issues` is the legacy field
+                # name consumed by the frontend, runbook, and anomaly
+                # builder. Kept in parallel with the clearer
+                # `stage_days_drift_count` to avoid a coordinated rename.
+                "monotonicity_issues": stage_days_drift_count,
+                "stage_days_drift_count": stage_days_drift_count,
+                "stage_days_drift_pct": drift_pct,
+                "stage_history_rows_checked": rows_checked,
                 "stale_stage_count": int(data.get("stale_stage_count") or 0),
-                "total_symbols": int(data.get("total_symbols") or 0),
+                "total_symbols": total_symbols,
                 "stage_counts": data.get("stage_counts", {}),
             }
         except Exception as exc:

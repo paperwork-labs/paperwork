@@ -24,7 +24,17 @@ export interface CoverageDimension extends BaseDimension {
 export interface StageQualityDimension extends BaseDimension {
   unknown_rate: number;
   invalid_count: number;
+  /**
+   * Legacy name for stage-day counter drift. Kept for back-compat — the
+   * backend now also emits ``stage_days_drift_count`` with the same value
+   * plus ``stage_days_drift_pct`` scaled against the history-rows
+   * denominator. Prefer the *_drift_* fields for new UI code.
+   */
   monotonicity_issues: number;
+  stage_days_drift_count?: number;
+  stage_days_drift_pct?: number | null;
+  stage_history_rows_checked?: number;
+  reason?: string;
   stale_stage_count: number;
   total_symbols: number;
   stage_counts: Record<string, number>;
