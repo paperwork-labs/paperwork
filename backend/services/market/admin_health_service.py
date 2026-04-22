@@ -200,7 +200,29 @@ class AdminHealthService:
             "thresholds": dict(HEALTH_THRESHOLDS),
             "checked_at": datetime.now(timezone.utc).isoformat(),
             "provider_metrics": self._build_provider_metrics() or None,
+            "byok_anomaly": self._build_byok_anomaly(),
         }
+
+    def _build_byok_anomaly(self) -> Dict[str, Any]:
+        """BYOK fallback counter snapshot.
+
+        Reports separately from the composite so a BYOK hiccup is
+        visible to ops (satisfies ``no-silent-fallback.mdc``) without
+        being able to flip the platform composite red — BYOK is a
+        per-user concern, not an infra-wide one.
+        """
+        try:
+            from backend.services.agent.byok_anomaly import snapshot as _byok_snapshot
+
+            return _byok_snapshot()
+        except Exception as e:
+            logger.warning("byok_anomaly snapshot failed: %s", e)
+            return {
+                "total": 0,
+                "by_reason": {},
+                "last_at": None,
+                "available": False,
+            }
 
     def check_pre_market_readiness(self, db: Session) -> Dict[str, Any]:
         """Check if the system is ready for the next trading session.

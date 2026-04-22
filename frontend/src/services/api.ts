@@ -1231,6 +1231,8 @@ export const aiKeysApi = {
     api_key: string;
   }): Promise<AIKeyStatusResponse> =>
     makeOptimizedRequest<AIKeyStatusResponse>(() => api.put('/settings/ai-keys', payload)),
+  remove: async (): Promise<AIKeyStatusResponse> =>
+    makeOptimizedRequest<AIKeyStatusResponse>(() => api.delete('/settings/ai-keys')),
 };
 
 // ---------------------------------------------------------------------------

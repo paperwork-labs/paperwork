@@ -94,9 +94,9 @@ const FAQ_ENTRIES: ReadonlyArray<FaqEntry> = [
     answer: (
       <>
         One-click aggregator connections to Robinhood, Webull, Public,
-        M1, and SoFi cost us about $2 per connected user per month. The
-        math doesn't work on free — at 10,000 free users that's $20K/mo
-        of pure cost before we earn a dollar. Pro ($29/mo) covers that
+        M1, and SoFi cost us a per-connected-user fee every month. The
+        math doesn't work on free — at scale that becomes a five-figure
+        monthly cost before we earn a dollar. Pro covers that
         pass-through with zero markup. Brokers with direct integrations
         (Schwab + Tastytrade + Tradier via OAuth, IBKR via FlexQuery +
         IB Gateway, E*TRADE via OAuth sandbox today, and soon Coinbase
@@ -132,9 +132,9 @@ const FAQ_ENTRIES: ReadonlyArray<FaqEntry> = [
     question: 'How is annual billing different from monthly?',
     answer: (
       <>
-        Annual billing on Lite, Pro, Pro+, and Quant Desk gives you
-        about 20% off the monthly rate. Same features, billed once a
-        year. If you want to switch between monthly and annual billing,
+        Annual billing on Pro, Pro+, and Quant Desk gives you about
+        20% off the monthly rate. Same features, billed once a year.
+        If you want to switch between monthly and annual billing,
         contact support and we&apos;ll help you make the change.
       </>
     ),

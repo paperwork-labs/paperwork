@@ -118,4 +118,24 @@ async def put_ai_key(
     current_user.llm_provider_key_encrypted = encrypted
     db.add(current_user)
     db.commit()
+    logger.info(
+        "BYOK key stored for user_id=%s provider=%s",
+        current_user.id,
+        payload.provider,
+    )
     return AIKeyStatusResponse(provider=payload.provider, has_key=True)
+
+
+@router.delete("/settings/ai-keys", response_model=AIKeyStatusResponse)
+async def delete_ai_key(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AIKeyStatusResponse:
+    # No tier check: a user who downgrades from PRO should still be able
+    # to scrub their key. Returning the cleared status is intentional so
+    # the frontend can render the empty state without a follow-up fetch.
+    current_user.llm_provider_key_encrypted = None
+    db.add(current_user)
+    db.commit()
+    logger.info("BYOK key removed for user_id=%s", current_user.id)
+    return AIKeyStatusResponse(provider=None, has_key=False)

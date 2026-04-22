@@ -87,8 +87,8 @@ function WhyNotOAuth({ brokerName }: { brokerName: string }) {
         <p className="font-medium text-foreground">No API for retail</p>
         <p className="text-muted-foreground">
           {brokerName} doesn&apos;t expose an API to retail customers. Two options:
-          import your CSV/statement here for free, or our $20/mo Lite tier offers
-          one-click via SnapTrade — we don&apos;t mark it up.
+          import your CSV/statement here for free, or a paid tier&apos;s one-click
+          via SnapTrade pass-through — we don&apos;t mark it up.
         </p>
         <Link
           to="/why-free"

@@ -23,6 +23,7 @@ from backend.config import settings
 from backend.models.agent_action import AgentAction
 from backend.models.entitlement import SubscriptionTier
 from backend.models.user import User
+from backend.services.agent.byok_anomaly import record_fallback as _record_byok_fallback
 from backend.services.billing.entitlement_service import EntitlementService
 from backend.services.security.credential_vault import credential_vault
 from .taxonomy import RiskLevel, classify_action_risk, can_auto_execute
@@ -244,17 +245,32 @@ class AgentBrain:
             provider = str(payload.get("provider") or "").strip().lower()
             api_key = str(payload.get("api_key") or "").strip()
             provider_url = BYOK_PROVIDER_URLS.get(provider)
-            if not provider_url or not api_key:
+            if not provider_url:
+                _record_byok_fallback(
+                    self.user_id, "provider_not_allowed", provider=provider
+                )
+                return OPENAI_API_URL, default_key
+            if not api_key:
+                _record_byok_fallback(
+                    self.user_id, "empty_api_key", provider=provider
+                )
                 return OPENAI_API_URL, default_key
             if provider != "openai":
                 # Anthropic BYOK storage is supported; wire transport in follow-up.
+                _record_byok_fallback(
+                    self.user_id, "anthropic_transport_pending", provider=provider
+                )
                 return OPENAI_API_URL, default_key
             host = (urlparse(provider_url).hostname or "").lower()
             if host not in BYOK_ALLOWED_HOSTS:
+                _record_byok_fallback(
+                    self.user_id, "host_not_allowlisted", provider=provider
+                )
                 raise ValueError(f"provider host not allow-listed: {host}")
             return provider_url, api_key
         except Exception as e:
             logger.warning("BYOK key resolution failed for user_id=%s: %s", self.user_id, e)
+            _record_byok_fallback(self.user_id, "decrypt_failed")
             return OPENAI_API_URL, default_key
     
     async def analyze_and_act(
