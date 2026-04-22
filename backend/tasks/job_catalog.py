@@ -737,6 +737,25 @@ CATALOG: List[JobTemplate] = [
         queue="celery",
         enabled=False,
     ),
+    # ── Shadow (paper) autotrading ──────────────────────────────
+    # Refreshes simulated P&L for every open ``ShadowOrder`` row using the
+    # latest ``MarketSnapshot.current_price`` for its symbol. Never calls a
+    # broker. See D137 and ``backend/services/execution/shadow_mark_to_market.py``.
+    JobTemplate(
+        id="shadow-mtm-refresh",
+        display_name="Shadow MtM refresh",
+        group="maintenance",
+        task="backend.services.execution.shadow_mark_to_market.run",
+        description=(
+            "Mark-to-market simulated P&L for open shadow (paper) orders "
+            "using latest MarketSnapshot prices. No broker calls."
+        ),
+        default_cron="*/15 * * * *",
+        default_tz="UTC",
+        job_run_label="shadow_mtm_refresh",
+        timeout_s=300,
+        queue="celery",
+    ),
 ]
 
 # Alias for callers that expect JOB_CATALOG (e.g. task_run singleflight lookup).

@@ -75,6 +75,7 @@ from .position import Position, PositionType, PositionStatus, Sleeve
 from .conviction_pick import ConvictionPick
 from .trade import Trade, TradeSignal
 from .order import Order, OrderSide, OrderType, OrderStatus
+from .shadow_order import ShadowOrder, ShadowOrderStatus
 from .execution import ExecutionMetrics
 
 # Portfolio Management
@@ -242,6 +243,8 @@ __all__ = [
     "OrderSide",
     "OrderType",
     "OrderStatus",
+    "ShadowOrder",
+    "ShadowOrderStatus",
     "ExecutionMetrics",
     "Watchlist",
     "PortfolioNarrative",

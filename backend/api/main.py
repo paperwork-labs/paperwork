@@ -77,6 +77,7 @@ from backend.api.routes.exits import router as exits_router
 from backend.api.routes.pipeline import router as pipeline_router
 from backend.api.routes.backtest import router as backtest_router
 from backend.api.routes.options import router as options_chain_router
+from backend.api.routes.shadow_trades import router as shadow_trades_router
 from backend.api.routes.portfolio.narrative import router as portfolio_narrative
 from backend.api.middleware.rate_limit import TenantRateLimitMiddleware
 from backend.api.routes.multitenant import (
@@ -674,6 +675,12 @@ app.include_router(
 app.include_router(
     options_chain_router,
     prefix="/api/v1",
+    dependencies=[Depends(require_non_market_access)],
+)
+app.include_router(
+    shadow_trades_router,
+    prefix="/api/v1",
+    tags=["Shadow Trades"],
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(

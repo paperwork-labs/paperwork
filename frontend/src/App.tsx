@@ -69,6 +69,7 @@ const SignalsRegime = React.lazy(() => import('./pages/signals/Regime'));
 const SignalsStageScan = React.lazy(() => import('./pages/signals/StageScan'));
 const Picks = React.lazy(() => import('./pages/signals/Picks'));
 const TradeCardsToday = React.lazy(() => import('./pages/TradeCardsToday'));
+const ShadowTrades = React.lazy(() => import('./pages/ShadowTrades'));
 const PicksValidator = React.lazy(() => import('./pages/admin/PicksValidator'));
 const WalkForward = React.lazy(() => import('./pages/Backtest/WalkForward'));
 const BacktestMonteCarlo = React.lazy(() => import('./pages/Backtest/MonteCarlo'));
@@ -206,6 +207,7 @@ function App() {
                         <Route path="signals/picks" element={<Picks />} />
                         <Route path="picks" element={<PreserveRedirect toPath="/signals/picks" />} />
                         <Route path="trade-cards/today" element={<TradeCardsToday />} />
+                        <Route path="shadow-trades" element={<ShadowTrades />} />
 
                         {/* Lab */}
                         <Route path="lab" element={<Navigate to="/lab/strategies" replace />} />

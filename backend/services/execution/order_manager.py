@@ -194,7 +194,7 @@ class OrderManager:
                 return {"error": "Order submission already in progress"}
         except Exception as e:
             logger.warning("Redis lock failed for order %s, proceeding with DB check: %s", order_id, e)
-        
+
         order = (
             db.query(Order)
             .filter(Order.id == order_id, Order.user_id == user_id)
@@ -204,6 +204,11 @@ class OrderManager:
             return {"error": "Order not found"}
         if order.status != OrderStatus.PREVIEW.value:
             return {"error": f"Order is in '{order.status}' state, cannot submit"}
+
+        from backend.config import settings as _shadow_settings
+        if _shadow_settings.SHADOW_TRADING_MODE:
+            from backend.services.execution.shadow_order_recorder import ShadowOrderRecorder
+            return ShadowOrderRecorder(session=db).record(order_id=order_id, user_id=user_id)
 
         # ========================================
         # PRE-TRADE VALIDATION (Circuit Breaker + Risk Checks)

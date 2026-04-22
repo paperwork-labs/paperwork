@@ -65,6 +65,8 @@ celery_app = Celery(
         "backend.tasks.backtest.walk_forward_runner",
         # Corporate actions (splits, dividends, mergers)
         "backend.tasks.corporate_actions.daily_apply",
+        # Shadow (paper) orders — mark-to-market refresh (15m beat; see job_catalog)
+        "backend.services.execution.shadow_mark_to_market",
         # Deploy-health guardrail (G28) — poll Render deploy state every 5 min
         "backend.tasks.deploys.poll_deploy_health",
     ],

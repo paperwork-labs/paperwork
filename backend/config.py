@@ -175,6 +175,11 @@ class Settings(BaseSettings):
     ENABLE_TRADING: bool = False
     ALLOW_LIVE_ORDERS: bool = False
     ENABLE_AUTO_TRADING: bool = False
+    # Shadow (paper) autotrading safety default. When True (default), every
+    # order arriving at OrderManager.submit is diverted to ShadowOrderRecorder
+    # so no broker call is made. Flip to False only after explicit admin
+    # sign-off to enable real broker execution. See D137.
+    SHADOW_TRADING_MODE: bool = True
     SEED_ACCOUNTS_ON_STARTUP: bool = False
     AUTO_MIGRATE_ON_STARTUP: bool = False
     AUTO_WARM_ON_STARTUP: bool = False

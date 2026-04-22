@@ -1,6 +1,6 @@
 # Knowledge — Decision Log
 
-Architectural decisions with rationale. Grouped by domain; within each decision table, rows are sorted by decision ID. Decision IDs are globally unique through **D136** (V1 Greenfield implementation rows **D95–D102** were renumbered from a duplicate D81–D88 block that collided with Strategic Direction **D81–D88**). Decision IDs are append-only — never reused. Resolved issues use R-prefixed IDs.
+Architectural decisions with rationale. Grouped by domain; within each decision table, rows are sorted by decision ID. Decision IDs are globally unique through **D137** (V1 Greenfield implementation rows **D95–D102** were renumbered from a duplicate D81–D88 block that collided with Strategic Direction **D81–D88**). Decision IDs are append-only — never reused. Resolved issues use R-prefixed IDs.
 
 ---
 
@@ -49,6 +49,7 @@ Architectural decisions with rationale. Grouped by domain; within each decision 
 | D6 | 2026-03-23 | **Single order path**: OrderManager → RiskGate → BrokerRouter (OrderService merged) |
 | D16 | 2026-03-23 | **No alternative execution paths** — all orders through OrderManager |
 | D18 | 2026-03-23 | **IBKR is primary execution broker** — Schwab/TastyTrade read-only for now |
+| D137 | 2026-04-21 | **Shadow (paper) autotrading default-ON** — `SHADOW_TRADING_MODE` defaults to `True` in `backend/config.py`; when set, `OrderManager.submit` diverts to `ShadowOrderRecorder.record` (no broker call) and persists an intent row in `shadow_orders`. A 15-min Celery task (`backend.services.execution.shadow_mark_to_market.run`) refreshes simulated P&L from `MarketSnapshot.current_price`. Live trading is opt-out, not opt-in: an admin must flip `SHADOW_TRADING_MODE=False` after sign-off. Rollback = re-set the flag back to `True`; table + service are fully additive. See Decision Details below. |
 
 ### Frontend & UX
 
@@ -199,6 +200,18 @@ Companion changes: added DELETE `/settings/ai-keys` so a user who downgrades fro
 **Alternatives considered:** (1) Write each fallback to a dedicated DB table — rejected: operational noise with no billing or auth implication; 7-day Redis TTL is sufficient for ops triage. (2) Fold BYOK anomalies into the composite score — rejected: one user's bad paste should never page the team. (3) Leave the fallbacks silent and just log — rejected: violates `no-silent-fallback.mdc` and makes "BYOK degraded for everyone" invisible until someone notices the bill.
 
 **Reversible?** Yes. `byok_anomaly.py` is a best-effort observability side-channel — removing it only loses visibility, not correctness. The DELETE `/settings/ai-keys` route is additive and safe to revert. No migration and no schema change in this PR.
+
+### D137 [2026-04-21] Shadow (paper) autotrading default-ON safety
+
+**Decision:** Introduce `SHADOW_TRADING_MODE: bool = True` in `backend/config.py` as the system-wide default for order execution. When the flag is `True`, the single authorized additive branch in `OrderManager.submit` (after the Redis submit lock and a `PREVIEW` status check) diverts into `ShadowOrderRecorder.record(order_id, user_id)` — the broker router is never reached. The recorder persists the intent, the current `RiskGate` verdict, and an estimated fill price into the new `shadow_orders` table. A separate 15-minute Celery beat job (`backend.services.execution.shadow_mark_to_market.run`) walks every open shadow order and updates `simulated_pnl` / `last_mark_price` using the latest `MarketSnapshot.current_price` for the symbol. A user-scoped UI surface (`GET/POST /api/v1/shadow-trades`, `frontend/src/pages/ShadowTrades.tsx`) lists intents with loading / error / empty / data states and renders a deliberately disabled "Promote to live" control.
+
+**Rationale:** The live execution path (D6, D16, D53) is protected-region code, and the Stage_Analysis-backed risk gate + regime gate + expectancy measurement (Principles #10 and #14 in `docs/TRADING_PRINCIPLES.md`) must first be validated on a paper ledger before any real capital is routed. Default-ON shadow mode enforces the opt-out discipline: a fresh clone, a new worker, or a rollback that clears env overrides all land in the safe state. The recorder stores the RiskGate verdict even when the gate would have denied (status = `would_deny_by_risk_gate`), so we keep a complete ledger for expectancy/regret analysis instead of silently dropping denied intents (see `.cursor/rules/no-silent-fallback.mdc`). All monetary amounts are `Decimal` (Iron Law) and every route / service / task is scoped to `user_id` (multi-tenancy).
+
+**Alternatives considered:** (1) Default-OFF with an opt-in toggle — rejected: a forgotten feature flag on a new deployment would route straight to a broker; opt-OUT is the only safe default for capital. (2) A feature flag inside `RiskGate` or `BrokerRouter` — rejected: both are Danger Zone and expanding their blast radius violates `.cursor/rules/protected-regions.mdc`. The authorized surface is exactly one config default and one flag-gated `if` in `OrderManager.submit` (enforced by `backend/tests/test_shadow_order_recorder.py::test_order_manager_flag_gate_exists_exactly_once`). (3) Recording in-memory only — rejected: an observer cannot audit an in-memory ledger, and any restart would erase the paper-trading expectancy evidence needed before live go-live.
+
+**How to flip to live (admin-only):** set `SHADOW_TRADING_MODE=false` in the production environment (Render env var / secret) after an explicit admin sign-off event is logged. The flag has no UI toggle on purpose — enabling real money must be a deliberate infra-level action. The disabled "Promote to live" button on `/shadow-trades` intentionally does nothing and shows a "Live trading disabled — contact admin" tooltip so operators know the in-app path is not an escape hatch.
+
+**Reversible?** Yes. **Rollback to safe mode (undo a live-enable action):** set `SHADOW_TRADING_MODE=True`. **Rollback this feature entirely (restore legacy broker routing):** set `SHADOW_TRADING_MODE=False`. The `shadow_orders` table, Celery job entry, routes, and frontend page are additive; migration `0069` has a working `downgrade()` that drops the table; migration `0070` adds a partial unique index on `source_order_id` for idempotency. The Celery catalog entry is appended, not inserted, so no existing entries move.
 
 ### D134 [2026-04-21] Per-account risk profile as an additive layer
 

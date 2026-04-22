@@ -151,11 +151,25 @@ class TestOrderManagerPreview:
 
 
 class TestOrderManagerSubmit:
-    """OrderManager.submit() behavior."""
+    """OrderManager.submit() behavior.
+
+    These tests exercise the live submit path. D137 flipped
+    ``SHADOW_TRADING_MODE`` default-on, so we explicitly turn it off here via
+    ``monkeypatch`` — otherwise ``OrderManager.submit`` short-circuits into
+    ``ShadowOrderRecorder`` before any of these branches run.
+    """
 
     @pytest.fixture
     def manager(self):
         return OrderManager()
+
+    @pytest.fixture(autouse=True)
+    def _disable_shadow_mode(self, monkeypatch):
+        from backend.config import settings as app_settings
+
+        monkeypatch.setattr(
+            app_settings, "SHADOW_TRADING_MODE", False, raising=False
+        )
 
     @pytest.mark.asyncio
     async def test_submit_rejects_non_preview_order(self, manager):
