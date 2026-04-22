@@ -22,6 +22,7 @@ from backend.api.rate_limit import limiter
 # Route imports - organized by domain
 from backend.api.routes.admin import picks as admin_picks_routes
 from backend.api.routes.picks import router as picks_public_router
+from backend.api.routes.trade_cards import router as trade_cards_router
 from backend.api.routes import (
     # Auth
     auth,
@@ -732,6 +733,12 @@ app.include_router(
     picks_public_router,
     prefix="/api/v1/picks",
     tags=["Picks"],
+    dependencies=[Depends(require_non_market_access)],
+)
+app.include_router(
+    trade_cards_router,
+    prefix="/api/v1/trade-cards",
+    tags=["Trade Cards"],
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(

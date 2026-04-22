@@ -114,6 +114,7 @@ function buildMarketItems() {
     { label: 'Regime', icon: Gauge, path: '/signals/regime' },
     { label: 'Stage Scan', icon: Compass, path: '/signals/stage-scan' },
     { label: 'Picks', icon: ClipboardList, path: '/signals/picks' },
+    { label: 'Today\'s Cards', icon: ClipboardList, path: '/trade-cards/today' },
   ];
   return items;
 }
