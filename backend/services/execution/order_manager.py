@@ -457,6 +457,7 @@ class OrderManager:
         offset: int = 0,
         include_broker_fills: bool = True,
         list_source: Union[Literal["all", "app", "broker"], str] = "all",
+        account_id: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """Return a merged list of in-app :class:`Order` rows and broker-synced
         :class:`Trade` rows, sorted by most recent activity.
@@ -464,6 +465,11 @@ class OrderManager:
         ``list_source`` controls which table(s) are considered: ``"app"`` (orders only),
         ``"broker"`` (ledger trades only), or ``"all"`` (union). When
         ``include_broker_fills`` is False, ``"all"`` is treated as ``"app"``.
+
+        ``account_id`` optionally restricts rows to a single :class:`BrokerAccount`
+        (``broker_accounts.id``) belonging to ``user_id``. :class:`Order` rows match
+        via string ``Order.account_id`` (internal account id as string); :class:`Trade`
+        rows match ``Trade.account_id`` FK.
 
         ``limit`` / ``offset`` are applied in SQL (single union subquery for ``all``;
         one query per table for ``app`` or ``broker``), not in Python.
@@ -478,6 +484,22 @@ class OrderManager:
             src = "all"
         if not include_broker_fills and src == "all":
             src = "app"
+
+        order_account_id_str: Optional[str] = None
+        scoped_broker_account_id: Optional[int] = None
+        if account_id is not None:
+            ba_scoped = (
+                db.query(BrokerAccount)
+                .filter(
+                    BrokerAccount.id == account_id,
+                    BrokerAccount.user_id == user_id,
+                )
+                .first()
+            )
+            if ba_scoped is None:
+                return []
+            scoped_broker_account_id = int(ba_scoped.id)
+            order_account_id_str = str(scoped_broker_account_id)
 
         order_sort = func.coalesce(
             Order.filled_at, Order.submitted_at, Order.created_at
@@ -494,6 +516,8 @@ class OrderManager:
                 Order.id.label("order_id"),
                 order_sort.label("sort_ts"),
             ).select_from(Order).where(Order.user_id == user_id)
+            if order_account_id_str is not None:
+                sel_app = sel_app.where(Order.account_id == order_account_id_str)
             if st_param is not None:
                 sel_app = sel_app.where(Order.status == st_param)
             if sym_param is not None:
@@ -519,6 +543,8 @@ class OrderManager:
                 BrokerAccount.user_id == user_id,
                 BrokerAccount.is_enabled.is_(True),  # noqa: E712
             )
+            if scoped_broker_account_id is not None:
+                sel_br = sel_br.where(Trade.account_id == scoped_broker_account_id)
             if st_param is not None:
                 sel_br = sel_br.where(Trade.status.ilike(st_param))
             if sym_param is not None:
@@ -539,6 +565,8 @@ class OrderManager:
             cast(null(), type_=Integer).label("trade_id"),
             order_sort.label("sort_ts"),
         ).select_from(Order).where(Order.user_id == user_id)
+        if order_account_id_str is not None:
+            sel_o = sel_o.where(Order.account_id == order_account_id_str)
         if st_param is not None:
             sel_o = sel_o.where(Order.status == st_param)
         if sym_param is not None:
@@ -554,6 +582,8 @@ class OrderManager:
             BrokerAccount.user_id == user_id,
             BrokerAccount.is_enabled.is_(True),  # noqa: E712
         )
+        if scoped_broker_account_id is not None:
+            sel_t = sel_t.where(Trade.account_id == scoped_broker_account_id)
         if st_param is not None:
             sel_t = sel_t.where(Trade.status.ilike(st_param))
         if sym_param is not None:
@@ -712,6 +742,7 @@ def _trade_to_ledger_dict(
     st_lower = st.lower()
     q = float(t.quantity or 0)
     px = float(t.price) if t.price is not None else 0.0
+    _activity_ts = t.execution_time or t.order_time or t.created_at
     return {
         "id": -int(t.id),  # synthetic: negative ids are broker-ledger; no collision with live orders
         "symbol": t.symbol,
@@ -744,6 +775,6 @@ def _trade_to_ledger_dict(
         "submitted_at": t.order_time.isoformat() if t.order_time else None,
         "filled_at": t.execution_time.isoformat() if t.execution_time else None,
         "cancelled_at": None,
-        "created_at": t.created_at.isoformat() if t.created_at else None,
+        "created_at": _activity_ts.isoformat() if _activity_ts else None,
         "created_by": None,
     }

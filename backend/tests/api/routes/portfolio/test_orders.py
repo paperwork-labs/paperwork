@@ -81,3 +81,10 @@ class TestListOrdersRoute:
         kw = mock_mgr.list_orders.call_args.kwargs
         assert kw["limit"] == 25
         assert kw["offset"] == 10
+
+    @patch(ORDER_MGR_PATH)
+    def test_list_passes_account_id(self, mock_mgr, client):
+        mock_mgr.list_orders.return_value = []
+        resp = client.get("/portfolio/orders?account_id=42")
+        assert resp.status_code == 200
+        assert mock_mgr.list_orders.call_args.kwargs.get("account_id") == 42

@@ -132,6 +132,10 @@ def list_orders(
         "all",
         description="Which rows to return: in-app orders (app), broker-synced trades (broker), or both (all).",
     ),
+    account_id: Optional[int] = Query(
+        None,
+        description="Optional broker_accounts.id: restrict rows to that linked account.",
+    ),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -147,6 +151,7 @@ def list_orders(
         limit=limit,
         offset=offset,
         list_source=src,
+        account_id=account_id,
     )
     return {"data": orders}
 

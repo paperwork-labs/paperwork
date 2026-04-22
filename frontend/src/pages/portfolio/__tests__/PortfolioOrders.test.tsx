@@ -16,6 +16,17 @@ vi.mock('@/hooks/useUserPreferences', () => ({
   useUserPreferences: () => ({ currency: 'USD', timezone: 'America/New_York' }),
 }));
 
+vi.mock('@/context/AccountContext', () => ({
+  useAccountContext: () => ({
+    selected: 'all' as const,
+    accounts: [],
+    loading: false,
+    error: null,
+    setSelected: () => {},
+    refetch: () => {},
+  }),
+}));
+
 describe('PortfolioOrders', () => {
   beforeEach(() => {
     getMock.mockReset();

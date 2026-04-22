@@ -15,6 +15,7 @@ import { semanticTextColorClass } from '@/lib/semantic-text-color';
 import { ExplanationDrawer } from '@/components/trades/ExplanationDrawer';
 
 import type { Order } from '../../types/orders';
+import { useAccountContext } from '@/context/AccountContext';
 
 type OrderRow = Order;
 
@@ -36,6 +37,7 @@ function statusBadgeClass(s: string): string {
 const PortfolioOrders: React.FC = () => {
   const queryClient = useQueryClient();
   const { timezone } = useUserPreferences();
+  const { selected, accounts } = useAccountContext();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [listSource, setListSource] = useState<ListSourceFilter>('all');
   const [chartSymbol, setChartSymbol] = useState<string | null>(null);
@@ -43,11 +45,24 @@ const PortfolioOrders: React.FC = () => {
   const [explainOrderId, setExplainOrderId] = useState<number | null>(null);
   const openChart = useCallback((sym: string) => setChartSymbol(sym), []);
 
+  const resolvedBrokerAccountId = useMemo(() => {
+    if (selected === 'all' || selected === 'taxable' || selected === 'ira') {
+      return undefined;
+    }
+    const byNumber = accounts.find((a) => a.account_number === selected);
+    if (byNumber) return byNumber.id;
+    return accounts.find((a) => String(a.id) === selected)?.id;
+  }, [selected, accounts]);
+
   const ordersQuery = useQuery<OrderRow[]>({
-    queryKey: ['allOrders', listSource],
+    queryKey: ['allOrders', listSource, resolvedBrokerAccountId],
     queryFn: async () => {
       const res = await api.get('/portfolio/orders', {
-        params: { limit: 200, source: listSource },
+        params: {
+          limit: 200,
+          source: listSource,
+          ...(resolvedBrokerAccountId != null ? { account_id: resolvedBrokerAccountId } : {}),
+        },
       });
       const body = res.data;
       if (body == null || typeof body !== 'object' || !('data' in body)) {
@@ -360,6 +375,7 @@ const PortfolioOrders: React.FC = () => {
     return (
       <div className="p-4">
         <PageHeader title="Orders" subtitle="Trade order history and active order management" />
+        <p className="mt-1 text-xs text-muted-foreground">Sorted by most recent activity</p>
         <div
           className="mt-8 flex min-h-[200px] items-center justify-center text-sm text-muted-foreground"
           data-testid="orders-loading"
@@ -374,6 +390,7 @@ const PortfolioOrders: React.FC = () => {
     return (
       <div className="p-4">
         <PageHeader title="Orders" subtitle="Trade order history and active order management" />
+        <p className="mt-1 text-xs text-muted-foreground">Sorted by most recent activity</p>
         <div className="mt-6 rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
           Could not load orders.{' '}
           <Button type="button" size="xs" variant="outline" onClick={() => void ordersQuery.refetch()}>
@@ -387,6 +404,7 @@ const PortfolioOrders: React.FC = () => {
   return (
     <div className="p-4">
       <PageHeader title="Orders" subtitle="Trade order history and active order management" />
+      <p className="mt-1 text-xs text-muted-foreground">Sorted by most recent activity</p>
 
       <div className="mb-4 mt-4 flex flex-wrap items-center gap-2">
         {(

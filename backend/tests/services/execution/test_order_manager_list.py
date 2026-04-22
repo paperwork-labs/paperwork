@@ -12,7 +12,7 @@ from backend.models.broker_account import AccountStatus, AccountType, BrokerAcco
 from backend.models.order import Order
 from backend.models.trade import Trade
 from backend.models.user import User, UserRole
-from backend.services.execution.order_manager import OrderManager
+from backend.services.execution.order_manager import OrderManager, _trade_to_ledger_dict
 
 
 def _make_user(db_session, *, prefix: str = "u") -> User:
@@ -357,3 +357,125 @@ def test_disabled_broker_account_excludes_trades(db_session):
     mgr = OrderManager()
     rows = mgr.list_orders(db_session, user.id, limit=10, list_source="all")
     assert rows == []
+
+
+@pytest.mark.usefixtures("db_session")
+def test_list_orders_uses_execution_time_as_created_at_on_broker_ledger_row(db_session):
+    """Broker Trade rows: API ``created_at`` is activity time, not row insert time."""
+    if db_session is None:
+        pytest.skip("database not configured")
+
+    user = _make_user(db_session)
+    acct = _make_account(db_session, user)
+    exec_t = datetime(2026, 3, 11, 16, 0, 0, tzinfo=timezone.utc)
+    ingest_t = datetime(2026, 4, 22, 12, 0, 0, tzinfo=timezone.utc)
+    t = Trade(
+        account_id=acct.id,
+        symbol="RDDT",
+        side="BUY",
+        quantity=Decimal("1"),
+        price=Decimal("50"),
+        status="FILLED",
+        order_type="MARKET",
+        execution_id=f"ex-rddt-{uuid.uuid4().hex[:8]}",
+        execution_time=exec_t,
+    )
+    t.created_at = ingest_t
+    db_session.add(t)
+    db_session.flush()
+
+    d = _trade_to_ledger_dict(t, acct, user.id)
+    assert d["created_at"] == exec_t.isoformat()
+    assert d["created_at"] != ingest_t.isoformat()
+
+
+@pytest.mark.usefixtures("db_session")
+def test_list_orders_filters_by_account_id_for_orders_and_trades(db_session):
+    if db_session is None:
+        pytest.skip("database not configured")
+
+    user = _make_user(db_session, prefix="acctfilt")
+    acct_a = _make_account(db_session, user)
+    acct_b = _make_account(db_session, user)
+    other_user = _make_user(db_session, prefix="other")
+    acct_other = _make_account(db_session, other_user)
+    now = datetime.now(timezone.utc)
+
+    db_session.add(
+        Trade(
+            account_id=acct_a.id,
+            symbol="ON_A",
+            side="BUY",
+            quantity=Decimal("1"),
+            price=Decimal("5"),
+            status="FILLED",
+            order_type="MARKET",
+            execution_id=f"ex-a-{uuid.uuid4().hex[:8]}",
+            execution_time=now,
+        )
+    )
+    db_session.add(
+        Trade(
+            account_id=acct_b.id,
+            symbol="ON_B",
+            side="BUY",
+            quantity=Decimal("1"),
+            price=Decimal("5"),
+            status="FILLED",
+            order_type="MARKET",
+            execution_id=f"ex-b-{uuid.uuid4().hex[:8]}",
+            execution_time=now,
+        )
+    )
+    db_session.add(
+        Order(
+            symbol="O_A",
+            side="buy",
+            order_type="market",
+            status="filled",
+            quantity=1.0,
+            filled_quantity=1.0,
+            filled_avg_price=10.0,
+            broker_type="schwab",
+            source="manual",
+            user_id=user.id,
+            account_id=str(acct_a.id),
+            filled_at=now,
+        )
+    )
+    db_session.add(
+        Order(
+            symbol="O_B",
+            side="buy",
+            order_type="market",
+            status="filled",
+            quantity=1.0,
+            filled_quantity=1.0,
+            filled_avg_price=10.0,
+            broker_type="schwab",
+            source="manual",
+            user_id=user.id,
+            account_id=str(acct_b.id),
+            filled_at=now,
+        )
+    )
+    db_session.flush()
+
+    mgr = OrderManager()
+    only_a = mgr.list_orders(
+        db_session, user.id, limit=20, list_source="all", account_id=acct_a.id
+    )
+    syms = {r["symbol"] for r in only_a}
+    assert syms == {"ON_A", "O_A"}
+
+    only_b = mgr.list_orders(
+        db_session, user.id, limit=20, list_source="all", account_id=acct_b.id
+    )
+    assert {r["symbol"] for r in only_b} == {"ON_B", "O_B"}
+
+    assert (
+        mgr.list_orders(
+            db_session, user.id, limit=20, list_source="all", account_id=acct_other.id
+        )
+        == []
+    )
