@@ -555,6 +555,16 @@ async def root():
 
 # Include route modules - TEMPORARY: Only core routes for FlexQuery sync stabilization
 app.include_router(auth, prefix="/api/v1/auth", tags=["Authentication"])
+# portfolio_dashboard MUST come before `portfolio` (core): its literal routes like
+# `/performance/history` would otherwise be shadowed by `portfolio`'s wildcard
+# `/performance/{account_id}`, producing a 404 masquerading as 500 for the
+# Performance tab. FastAPI matches the first registered route wins.
+app.include_router(
+    portfolio_dashboard,
+    prefix="/api/v1/portfolio",
+    tags=["Portfolio"],
+    dependencies=[Depends(require_non_market_access)],
+)
 app.include_router(
     portfolio,
     prefix="/api/v1/portfolio",
@@ -575,12 +585,6 @@ app.include_router(
 )
 app.include_router(
     portfolio_income,
-    prefix="/api/v1/portfolio",
-    tags=["Portfolio"],
-    dependencies=[Depends(require_non_market_access)],
-)
-app.include_router(
-    portfolio_dashboard,
     prefix="/api/v1/portfolio",
     tags=["Portfolio"],
     dependencies=[Depends(require_non_market_access)],

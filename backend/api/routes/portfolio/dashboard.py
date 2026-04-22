@@ -223,13 +223,29 @@ async def get_performance_history(
             query = query.filter(func.extract("year", PortfolioSnapshot.snapshot_date) == now.year)
         elif delta:
             since = now - delta
-            query = query.filter(PortfolioSnapshot.snapshot_date >= since)
+            # snapshot_date is naive UTC (DateTime without timezone). Comparing it to an
+            # offset-aware bound can raise in the ORM/driver (same pattern as dividends/summary).
+            since_naive = since.replace(tzinfo=None)
+            query = query.filter(PortfolioSnapshot.snapshot_date >= since_naive)
 
         rows = query.all()
-        series = [
-            {"date": row.date.isoformat() if hasattr(row.date, "isoformat") else str(row.date), "total_value": float(row.total_value)}
-            for row in rows
-        ]
+        series = []
+        for row in rows:
+            tv = row.total_value
+            if tv is None:
+                logger.warning(
+                    "performance/history: null aggregate total_value for user_id=%s period=%s date=%s",
+                    user.id,
+                    period,
+                    row.date,
+                )
+                continue
+            series.append(
+                {
+                    "date": row.date.isoformat() if hasattr(row.date, "isoformat") else str(row.date),
+                    "total_value": float(tv),
+                }
+            )
 
         return {
             "status": "success",
@@ -242,7 +258,13 @@ async def get_performance_history(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"performance/history error: {e}")
+        logger.warning(
+            "performance/history failed for user_id=%s period=%s: %s",
+            user.id,
+            period,
+            e,
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 

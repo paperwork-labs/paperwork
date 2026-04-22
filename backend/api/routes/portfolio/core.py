@@ -651,8 +651,21 @@ async def get_performance_metrics(
             "timestamp": datetime.now().isoformat(),
         }
 
+    except HTTPException:
+        # Preserve intended 404/403/etc. instead of masking as 500 (would
+        # surface bodies like `{"detail": "404: Account not found"}` with
+        # status 500 — the failure mode that hid the /performance/history
+        # route-shadow bug).
+        raise
     except Exception as e:
-        logger.error(f"❌ Performance metrics error: {e}")
+        logger.warning(
+            "performance metrics failed for user_id=%s account_id=%s period=%s: %s",
+            user.id,
+            account_id,
+            period,
+            e,
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
