@@ -41,6 +41,12 @@ vi.mock('@/hooks/usePortfolio', () => ({
   useAccountBalances: () => mockedBalances,
 }));
 
+// TopBarAccountSelector reads currency from this hook; the real
+// implementation reaches into AuthContext which the test stubs out below.
+vi.mock('@/hooks/useUserPreferences', () => ({
+  useUserPreferences: () => ({ currency: 'USD' }),
+}));
+
 let mockedAccountContext = {
   accounts: [] as Array<{ account_number: string; account_name?: string }>,
   loading: false,

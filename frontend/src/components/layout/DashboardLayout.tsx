@@ -36,7 +36,7 @@ import AppDivider from '../ui/AppDivider';
 import AppLogo from '../ui/AppLogo';
 import useAdminHealth from '../../hooks/useAdminHealth';
 import { useAccountBalances } from '@/hooks/usePortfolio';
-import { CompactAccountSelector as AccountSelector } from '../shared/CompactAccountSelector';
+import TopBarAccountSelector from './TopBarAccountSelector';
 import { ChatProvider } from '@/components/chat/ChatProvider';
 import { ChatBubble } from '@/components/chat/ChatBubble';
 import { openCommandPalette } from '@/components/cmdk/openCommandPalette';
@@ -169,7 +169,7 @@ const NavItem: React.FC<NavItemProps> = ({
 const DashboardLayout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { accounts, loading: accountsLoading, selected, setSelected } = useAccountContext();
+  const { accounts } = useAccountContext();
   const { user, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
     try {
@@ -450,13 +450,7 @@ const DashboardLayout: React.FC = () => {
                 </Tooltip>
               ) : null}
               {portfolioNavVisible && accounts.length > 0 ? (
-                <AccountSelector
-                  value={selected}
-                  onChange={setSelected}
-                  disabled={accountsLoading}
-                  accounts={accounts}
-                  width={isDesktop ? '200px' : '180px'}
-                />
+                <TopBarAccountSelector compact={!isDesktop} />
               ) : null}
               <Button
                 type="button"
