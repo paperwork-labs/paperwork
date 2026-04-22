@@ -81,6 +81,7 @@ from backend.api.routes.backtest import router as backtest_router
 from backend.api.routes.options import router as options_chain_router
 from backend.api.routes.shadow_trades import router as shadow_trades_router
 from backend.api.routes.portfolio.narrative import router as portfolio_narrative
+from backend.api.middleware.rss_observability import RssObservabilityMiddleware
 from backend.api.middleware.rate_limit import TenantRateLimitMiddleware
 from backend.api.routes.multitenant import (
     admin_costs_router,
@@ -181,6 +182,9 @@ app.openapi = custom_openapi
 # Rate limiting (default limit applies to all routes; see settings.RATE_LIMIT_DEFAULT)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+# Innermost: runs closest to route handlers, after CORS / gzip / rate-limit in the
+# stack — records per-request peak RSS (ru_maxrss) when enabled.
+app.add_middleware(RssObservabilityMiddleware)
 app.add_middleware(SlowAPIMiddleware)
 
 # Per-tenant rate limit (token-bucket, Redis-backed, fail-CLOSED).

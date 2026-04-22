@@ -19,6 +19,11 @@ from sqlalchemy import distinct, func
 from sqlalchemy.orm import Session
 
 from backend.config import settings
+
+# Not cached: refreshed every /admin/health read (per-request RSS is fast to read)
+_RSS_OBSERVABILITY_KEYS = frozenset(
+    {"top_rss_endpoints", "worker_request_count_last_hour", "rss_observability"}
+)
 from backend.services.market.market_data_service import coverage_analytics, infra, stage_quality
 
 logger = logging.getLogger(__name__)
@@ -106,23 +111,57 @@ class AdminHealthService:
 
     def get_composite_health(self, db: Session) -> Dict[str, Any]:
         r = infra.redis_client
+        payload: Optional[Dict[str, Any]] = None
         try:
             raw = r.get(_COMPOSITE_HEALTH_CACHE_KEY)
             if raw:
-                return json.loads(raw.decode() if isinstance(raw, (bytes, bytearray)) else raw)
+                payload = json.loads(raw.decode() if isinstance(raw, (bytes, bytearray)) else raw)
         except Exception as e:
             logger.warning("composite health cache read failed: %s", e)
 
-        payload = self._compute_composite_health(db)
-        try:
-            r.setex(
-                _COMPOSITE_HEALTH_CACHE_KEY,
-                _COMPOSITE_HEALTH_TTL_S,
-                json.dumps(payload),
-            )
-        except Exception as e:
-            logger.warning("composite health cache write failed: %s", e)
+        if payload is None:
+            payload = self._compute_composite_health(db)
+            try:
+                cache_body = {k: v for k, v in payload.items() if k not in _RSS_OBSERVABILITY_KEYS}
+                r.setex(
+                    _COMPOSITE_HEALTH_CACHE_KEY,
+                    _COMPOSITE_HEALTH_TTL_S,
+                    json.dumps(cache_body),
+                )
+            except Exception as e:
+                logger.warning("composite health cache write failed: %s", e)
+
+        self._merge_rss_observability_fields(payload, r)
         return payload
+
+    def _merge_rss_observability_fields(self, payload: Dict[str, Any], r: Any) -> None:
+        """Add ``top_rss_endpoints`` + counts; never from composite cache (always fresh from Redis)."""
+        if not settings.ENABLE_RSS_OBSERVABILITY:
+            payload["top_rss_endpoints"] = []
+            payload["worker_request_count_last_hour"] = 0
+            payload["rss_observability"] = {
+                "available": False,
+                "disabled": True,
+            }
+            return
+        try:
+            from backend.services.observability.rss_store import get_rss_health_payload
+
+            block = get_rss_health_payload(r)
+        except Exception as e:
+            logger.warning("rss observability: health merge failed: %s", e, exc_info=True)
+            block = {
+                "top_rss_endpoints": [],
+                "worker_request_count_last_hour": 0,
+                "rss_observability": {
+                    "available": False,
+                    "reason": "error",
+                },
+            }
+        payload["top_rss_endpoints"] = block.get("top_rss_endpoints", [])
+        payload["worker_request_count_last_hour"] = int(block.get("worker_request_count_last_hour", 0) or 0)
+        ro = block.get("rss_observability", {})
+        payload["rss_observability"] = ro
 
     def _compute_composite_health(self, db: Session) -> Dict[str, Any]:
         from backend.services.core.app_settings_service import get_or_create_app_settings

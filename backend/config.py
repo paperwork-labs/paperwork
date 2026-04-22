@@ -3,7 +3,7 @@ import os
 from dataclasses import dataclass
 from typing import Any, List, Optional
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -82,6 +82,9 @@ class Settings(BaseSettings):
     S3_GDPR_SECRET_ACCESS_KEY: Optional[str] = None
     # Per-tenant rate limit middleware kill switch (default ON in prod).
     TENANT_RATE_LIMIT_ENABLED: bool = True
+    # Per-request process max-RSS (ru_maxrss) logging to Redis; default off under pytest
+    # unless ENABLE_RSS_OBSERVABILITY is set explicitly. See D138.
+    ENABLE_RSS_OBSERVABILITY: bool = True
     BRAIN_WEBHOOK_URL: Optional[str] = None
     BRAIN_WEBHOOK_SECRET: Optional[str] = None
     # Agent autonomy level: "full" (auto-execute all), "safe" (auto-execute safe only), "ask" (always ask)
@@ -352,6 +355,12 @@ class Settings(BaseSettings):
     # Source of truth should be runtime environment variables injected by Docker Compose
     # (`infra/env.dev` via Makefile). We keep optional env-file support only when explicitly
     # provided for non-Docker workflows (do not implicitly load a repo root `.env`).
+    @model_validator(mode="after")
+    def _rss_observability_default_in_tests(self) -> "Settings":
+        if os.getenv("AXIOMFOLIO_TESTING") == "1" and "ENABLE_RSS_OBSERVABILITY" not in os.environ:
+            object.__setattr__(self, "ENABLE_RSS_OBSERVABILITY", False)
+        return self
+
     @field_validator("PICKS_INBOUND_ALLOWLIST", mode="before")
     @classmethod
     def _parse_picks_inbound_allowlist(cls, v: Any) -> List[str]:

@@ -21,6 +21,7 @@
 - [Scheduling](#scheduling)
 - [Broker Data Strategy](#broker-data-strategy)
 - [Production Infrastructure](#production-infrastructure)
+- [Observability](#observability)
 - [Real-Time Trading Architecture](#real-time-trading-architecture)
 - [Picks Pipeline (v1)](#picks-pipeline-v1)
 - [Subscription Tiers (v1)](#subscription-tiers-v1)
@@ -539,6 +540,10 @@ flowchart TB
 | Schwab OAuth | Cloudflare Tunnel → local backend | Cloudflare → Render → backend |
 | TLS | Self-signed / HTTP | Cloudflare Full (strict) + Render cert |
 | Docker Compose | `infra/compose.dev.yaml` | Render `render.yaml` |
+
+## Observability
+
+Besides OpenTelemetry (traces + metrics when an OTLP endpoint is set), the API records **per-request process peak resident set (RSS) growth** when `ENABLE_RSS_OBSERVABILITY` is true. Each finished request can push a small JSON sample and a per-endpoint (method + path template) peak to Redis under `apiv1:obs:rss:*` (UTC hour buckets, 72h TTL). If Redis is unreachable, recording fails open: the request still completes, a warning is logged, and a module-level degradation counter is incremented. Operators see the last hour’s **top 10 endpoints by p99 delta RSS (KiB)**, a **request count**, and a small `rss_observability` block on `GET /api/v1/market-data/admin/health` (the composite health payload; RSS fields are not stored in the composite health cache, so each fetch reflects current Redis). For ad hoc inspection over several hours, run `python -m backend.scripts.rss_top --hours 6` (requires `REDIS_URL`). Decision log: D138 in `docs/KNOWLEDGE.md`.
 
 ## Real-Time Trading Architecture
 
