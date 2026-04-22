@@ -41,11 +41,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import SchwabLogo from '../assets/logos/schwab.svg';
 import TastytradeLogo from '../assets/logos/tastytrade.svg';
 import IbkrLogo from '../assets/logos/interactive-brokers.svg';
+import EtradeLogo from '../assets/logos/etrade.svg';
 import IBGatewayLogo from '../assets/logos/ib-gateway.svg';
 import TradingViewLogo from '../assets/logos/tradingview.svg';
 import FmpLogo from '../assets/logos/fmp.svg';
 import { formatDateTime, formatDate } from '../utils/format';
 import { useUserPreferences } from '../hooks/useUserPreferences';
+import { oauthApi } from '../services/oauth';
 
 const selectSm =
   'h-8 w-[120px] shrink-0 rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30';
@@ -72,9 +74,13 @@ const SettingsConnections: React.FC = () => {
   // Wizard
   const [wizardOpen, setWizardOpen] = useState(false);
   const [step, setStep] = useState<number>(1);
-  const [broker, setBroker] = useState<'SCHWAB' | 'TASTYTRADE' | 'IBKR' | ''>('');
+  const [broker, setBroker] = useState<'SCHWAB' | 'TASTYTRADE' | 'IBKR' | 'ETRADE' | ''>('');
   const [schwabForm, setSchwabForm] = useState({ account_number: '', account_name: '' });
   const [ibkrForm, setIbkrForm] = useState({ flex_token: '', query_id: '', account_number: '' });
+  // E*TRADE OAuth 1.0a uses an out-of-band verifier code: the user authorizes
+  // on E*TRADE's site, E*TRADE displays a ~5-char code, the user pastes it
+  // back here. ``state`` is the Redis-stored CSRF token from /initiate.
+  const [etradeForm, setEtradeForm] = useState({ state: '', verifier: '', account_name: '' });
   const [busy, setBusy] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -109,6 +115,7 @@ const SettingsConnections: React.FC = () => {
     if (key === 'IBKR') return 'Interactive Brokers';
     if (key === 'SCHWAB') return 'Charles Schwab';
     if (key === 'TASTYTRADE') return 'Tastytrade';
+    if (key === 'ETRADE') return 'E*TRADE';
     return b;
   };
 
@@ -187,6 +194,16 @@ const SettingsConnections: React.FC = () => {
     } else if (schwabStatus === 'error') {
       const reason = params.get('reason') || 'unknown';
       toast({ title: 'Schwab linking failed', description: reason.replace(/_/g, ' '), status: 'error' });
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    // E*TRADE sandbox does not redirect back with a code — the user pastes a
+    // verifier in the wizard — but we still honor ``?etrade=linked`` in case a
+    // future live-OAuth flow uses a redirect URI.
+    const etradeStatus = params.get('etrade');
+    if (etradeStatus === 'linked') {
+      toast({ title: 'E*TRADE account linked successfully', status: 'success' });
+      loadAccounts();
+      loadSyncHistory();
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
@@ -307,7 +324,33 @@ const SettingsConnections: React.FC = () => {
     setTtForm({ client_id: '', client_secret: '', refresh_token: '' });
     setSchwabForm({ account_number: '', account_name: '' });
     setIbkrForm({ flex_token: '', query_id: '', account_number: '' });
+    setEtradeForm({ state: '', verifier: '', account_name: '' });
     setWizardOpen(true);
+  };
+
+  // E*TRADE OAuth 1.0a: step 1 — call /initiate, open authorize_url in a new
+  // tab so the user gets the 5-char verifier. We keep ``state`` in local
+  // component state; the backend keeps the corresponding request-token secret
+  // in Redis until the user posts back the verifier.
+  const handleEtradeAuthorize = async () => {
+    try {
+      setBusy(true);
+      const callbackUrl = `${window.location.origin}/settings/connections?etrade=linked`;
+      const res = await oauthApi.initiate('etrade_sandbox', callbackUrl);
+      if (!res?.authorize_url || !res?.state) {
+        throw new Error('E*TRADE did not return an authorization URL');
+      }
+      setEtradeForm((prev) => ({ ...prev, state: res.state }));
+      window.open(res.authorize_url, '_blank', 'noopener,noreferrer');
+      toast({
+        title: 'Authorize in the new tab, then paste the verifier code',
+        status: 'info',
+      });
+    } catch (e) {
+      toast({ title: 'E*TRADE authorize failed', description: handleApiError(e), status: 'error' });
+    } finally {
+      setBusy(false);
+    }
   };
 
   const submitWizard = async () => {
@@ -353,6 +396,33 @@ const SettingsConnections: React.FC = () => {
           setTt(prev => ({ ...prev ?? { connected: false, available: true }, last_error: ttResult.error || undefined, job_error: ttResult.error || undefined }));
           throw new Error(ttResult.error || 'Login failed');
         }
+      } else if (broker === 'ETRADE') {
+        // OAuth 1.0a two-phase wizard: ``state`` is populated by
+        // handleEtradeAuthorize; the verifier is the 5-char code E*TRADE
+        // displays after authorization. Callback persists the OAuth tokens;
+        // we then create a placeholder BrokerAccount so the sync service's
+        // _resolve_or_discover step can fill in the real accountIdKey.
+        if (!etradeForm.state) throw new Error('Click Authorize first to open E*TRADE');
+        if (!etradeForm.verifier.trim()) throw new Error('Paste the verifier code from E*TRADE');
+        await oauthApi.callback('etrade_sandbox', etradeForm.state, etradeForm.verifier.trim());
+        try {
+          await accountsApi.add({
+            broker: 'ETRADE',
+            account_number: 'ETRADE_OAUTH',
+            account_name: etradeForm.account_name.trim() || 'E*TRADE (sandbox)',
+            account_type: 'TAXABLE',
+          });
+        } catch (e) {
+          // If a placeholder already exists the API returns a 400; ignore so
+          // the user can re-authorize without deleting the account first.
+          const msg = handleApiError(e).toLowerCase();
+          if (!msg.includes('exists') && !msg.includes('duplicate')) {
+            throw e;
+          }
+        }
+        toast({ title: 'E*TRADE connected', status: 'success' });
+        await loadAccounts();
+        await loadSyncHistory();
       } else if (broker === 'IBKR') {
         if (!ibkrForm.flex_token || !ibkrForm.query_id) throw new Error('Enter Flex Token and Query ID');
         const res: any = await aggregatorApi.ibkrFlexConnect({
@@ -569,6 +639,7 @@ const SettingsConnections: React.FC = () => {
                 { key: 'IBKR', name: 'Interactive Brokers', logo: IbkrLogo, connected: accounts.some(a => String(a.broker).toUpperCase() === 'IBKR') },
                 { key: 'SCHWAB', name: 'Charles Schwab', logo: SchwabLogo, connected: accounts.some(a => String(a.broker).toUpperCase() === 'SCHWAB') },
                 { key: 'TASTYTRADE', name: 'Tastytrade', logo: TastytradeLogo, connected: accounts.some(a => String(a.broker).toUpperCase() === 'TASTYTRADE') },
+                { key: 'ETRADE', name: 'E*TRADE', logo: EtradeLogo, connected: accounts.some(a => String(a.broker).toUpperCase() === 'ETRADE') },
               ];
               return brokerConfigs.map(bc => {
                 const brokerAccounts = accounts.filter(a => String(a.broker).toUpperCase() === bc.key);
@@ -1210,10 +1281,11 @@ const SettingsConnections: React.FC = () => {
             {step === 1 && (
               <div className="flex flex-col gap-4 items-stretch">
                 <div className="text-muted-foreground">Choose a broker to connect</div>
-                <div className="grid grid-cols-3 gap-6">
+                <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
                   <LogoTile label="Charles Schwab" srcs={[SchwabLogo]} selected={broker === 'SCHWAB'} onClick={() => { setBroker('SCHWAB'); setStep(2); }} wide />
                   <LogoTile label="Tastytrade" srcs={[TastytradeLogo]} selected={broker === 'TASTYTRADE'} onClick={() => { setBroker('TASTYTRADE'); setStep(2); }} wide />
                   <LogoTile label="Interactive Brokers" srcs={[IbkrLogo]} selected={broker === 'IBKR'} onClick={() => { setBroker('IBKR'); setStep(2); }} wide />
+                  <LogoTile label="E*TRADE" srcs={[EtradeLogo]} selected={broker === 'ETRADE'} onClick={() => { setBroker('ETRADE'); setStep(2); }} wide />
                 </div>
                 <div className="text-sm text-muted-foreground">More brokers coming soon (Fidelity, Robinhood, Public)</div>
               </div>
@@ -1268,12 +1340,65 @@ const SettingsConnections: React.FC = () => {
                 </div>
               </div>
             )}
+            {step === 2 && broker === 'ETRADE' && (
+              <div className="flex flex-col gap-3 items-stretch">
+                <div className="font-semibold">E*TRADE Sandbox (OAuth 1.0a)</div>
+                <div className="text-xs text-muted-foreground">
+                  Sandbox is the only E*TRADE tier supported in v1. Live OAuth (production keys, no sandbox-only routes) is tracked for a later phase.
+                </div>
+                <Input
+                  placeholder="Account Name (optional)"
+                  value={etradeForm.account_name}
+                  onChange={(e) => setEtradeForm({ ...etradeForm, account_name: e.target.value })}
+                />
+                {!etradeForm.state ? (
+                  <div className="flex flex-col gap-2">
+                    <Button type="button" variant="outline" disabled={busy} onClick={() => void handleEtradeAuthorize()}>
+                      {busy ? <Loader2 className="mr-1 size-3.5 animate-spin" aria-hidden /> : <ExternalLink className="mr-1.5 size-3.5" aria-hidden />}
+                      Authorize on E*TRADE
+                    </Button>
+                    <div className="text-xs text-muted-foreground">
+                      A new tab opens E*TRADE's sandbox authorization page. After approving, E*TRADE shows a short verifier code — come back here and paste it below.
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <Input
+                      placeholder="Verifier code (e.g. ABCDE)"
+                      value={etradeForm.verifier}
+                      onChange={(e) => setEtradeForm({ ...etradeForm, verifier: e.target.value })}
+                      onKeyDown={(e) => { if (e.key === 'Enter') submitWizard(); }}
+                      autoFocus
+                    />
+                    <div className="flex flex-row items-center gap-2">
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="ghost"
+                        onClick={() => setEtradeForm({ state: '', verifier: '', account_name: etradeForm.account_name })}
+                      >
+                        Start over
+                      </Button>
+                      <div className="text-xs text-muted-foreground">
+                        Request tokens expire 5 minutes after authorize; click Start over if you waited too long.
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter>
-            {step === 2 && (
+            {step === 2 && broker !== 'ETRADE' && (
               <Button type="button" disabled={busy} onClick={() => void submitWizard()}>
                 {busy ? <Loader2 className="mr-1 size-3.5 animate-spin" aria-hidden /> : null}
                 Connect
+              </Button>
+            )}
+            {step === 2 && broker === 'ETRADE' && etradeForm.state && (
+              <Button type="button" disabled={busy || !etradeForm.verifier.trim()} onClick={() => void submitWizard()}>
+                {busy ? <Loader2 className="mr-1 size-3.5 animate-spin" aria-hidden /> : null}
+                Finish connection
               </Button>
             )}
           </DialogFooter>

@@ -28,6 +28,17 @@ def _import_schwab_service():
     return SchwabSyncService()
 
 
+def _import_etrade_service():
+    """Lazy import for E*TRADE bronze sync service.
+
+    The bronze package pulls in ``requests`` at import time for its HMAC-
+    signed client; deferring keeps ``BrokerSyncService`` importable from
+    test harnesses that stub broker I/O.
+    """
+    from backend.services.bronze.etrade import ETradeSyncService
+    return ETradeSyncService()
+
+
 def _build_partial_sync_message(completeness: Dict) -> str:
     """Build a user-facing message for SyncStatus.PARTIAL (G22).
 
@@ -86,7 +97,12 @@ class BrokerSyncService:
         self._broker_services = {}
 
     def get_available_brokers(self):
-        return [BrokerType.IBKR, BrokerType.TASTYTRADE, BrokerType.SCHWAB]
+        return [
+            BrokerType.IBKR,
+            BrokerType.TASTYTRADE,
+            BrokerType.SCHWAB,
+            BrokerType.ETRADE,
+        ]
 
     def _get_broker_service(self, broker_type):
         from backend.models.broker_account import BrokerType
@@ -103,6 +119,7 @@ class BrokerSyncService:
             BrokerType.IBKR: lambda: IBKRSyncService(),
             BrokerType.TASTYTRADE: lambda: TastyTradeSyncService(),
             BrokerType.SCHWAB: _import_schwab_service,
+            BrokerType.ETRADE: _import_etrade_service,
         }
 
         factory = factories.get(broker_type)
@@ -171,9 +188,19 @@ class BrokerSyncService:
                 raise ValueError(
                     f"Unsupported broker service implementation for: {broker_account.broker}"
                 )
+            # Multi-tenancy: pass user_id to services that accept it so
+            # the downstream query is scoped to one tenant
+            # (account_number is not globally unique). Older adapters
+            # (Schwab/TT/IBKR) silently ignore the kwarg today — remediation
+            # tracked as a follow-up in ``broker_parity_medallion_v1``.
+            import inspect as _inspect
+            _sig = _inspect.signature(service.sync_account_comprehensive)
+            _kwargs: Dict[str, object] = {}
+            if "user_id" in _sig.parameters:
+                _kwargs["user_id"] = broker_account.user_id
             result = _run(
                 service.sync_account_comprehensive(
-                    broker_account.account_number, session
+                    broker_account.account_number, session, **_kwargs
                 )
             )
 
@@ -267,8 +294,15 @@ class BrokerSyncService:
                     f"Unsupported broker service implementation for: {broker_account.broker}"
                 )
 
+            # See note in sync_account(): scope to user_id for services
+            # that accept it (E*TRADE today; other brokers to follow).
+            import inspect as _inspect_async
+            _sig_async = _inspect_async.signature(service.sync_account_comprehensive)
+            _kwargs_async: Dict[str, object] = {}
+            if "user_id" in _sig_async.parameters:
+                _kwargs_async["user_id"] = broker_account.user_id
             maybe_coro = service.sync_account_comprehensive(
-                broker_account.account_number, session
+                broker_account.account_number, session, **_kwargs_async
             )
             import inspect
 

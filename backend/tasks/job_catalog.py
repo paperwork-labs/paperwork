@@ -53,6 +53,26 @@ CATALOG: List[JobTemplate] = [
         default_tz="UTC",
         queue="account_sync",
     ),
+    # Phase 1 / PR D2: E*TRADE sandbox direct-OAuth sync. Scheduled 15 min
+    # after Schwab so the account_sync worker isn't pinned by two fan-outs at
+    # once. ``timeout_s`` matches the task's ``time_limit`` (iron-law; see
+    # engineering.mdc). Sandbox tokens expire at midnight US/Eastern, so the
+    # oauth_token_refresh task (runs every 30 min) keeps tokens alive before
+    # this fan-out fires.
+    JobTemplate(
+        id="etrade-daily-sync",
+        display_name="E*TRADE Daily Sync",
+        group="portfolio",
+        task="backend.tasks.account_sync.sync_all_etrade_accounts",
+        description=(
+            "Sync all enabled E*TRADE accounts (positions, options, "
+            "transactions, balances) via the sandbox OAuth 1.0a data API."
+        ),
+        default_cron="45 2 * * *",
+        default_tz="UTC",
+        queue="account_sync",
+        timeout_s=960,
+    ),
     JobTemplate(
         id="recover-stale-syncs",
         display_name="Recover Stale Syncs",

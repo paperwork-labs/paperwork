@@ -35,6 +35,10 @@ celery_app = Celery(
         "backend.tasks.portfolio.daily_narrative",
         "backend.tasks.portfolio.oauth_token_refresh",
         "backend.tasks.portfolio.historical_import",
+        # Per-broker fan-outs for Phase 1 direct-OAuth brokers. New modules
+        # rather than appending to portfolio.sync so each broker PR in Phase 1
+        # (D2 E*TRADE, D3 Fidelity, D4 Tradier) stays self-contained.
+        "backend.tasks.portfolio.etrade_sync",
         # Strategy
         "backend.tasks.strategy.tasks",
         "backend.tasks.strategy.exit_evaluation",

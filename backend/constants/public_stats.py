@@ -33,10 +33,10 @@ DIRECT_OAUTH_BROKERS_LIVE: Tuple[str, ...] = (
     "schwab",
     "ibkr",
     "tastytrade",
+    "etrade",
 )
 
 DIRECT_OAUTH_BROKERS_PLANNED: Tuple[str, ...] = (
-    "etrade",
     "tradier",
     "coinbase",
 )

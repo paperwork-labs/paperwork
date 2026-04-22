@@ -298,12 +298,63 @@ Defined in `frontend/src/App.tsx` (lazy-loaded page components under `frontend/s
 Trigger (manual or Celery Beat–scheduled)
   -> Celery sync_account_task
     -> BrokerSyncService.sync_account_async()
-      -> IBKRSyncService / TastyTradeSyncService / SchwabSyncService
+      -> IBKRSyncService / TastyTradeSyncService / SchwabSyncService / ETradeSyncService
         -> FlexQuery XML fetch + parse (IBKR)
           -> positions, tax_lots, trades, transactions, dividends, transfers, balances, options
+        -> Bronze adapters (E*TRADE today, Fidelity / Tradier upcoming — see "Bronze layer" below)
         -> db.commit() (single transaction)
     -> AccountSync record updated
 ```
+
+### Bronze layer (`backend/services/bronze/<broker>/`)
+
+The **bronze layer** is the raw-broker-ingestion tier of the medallion
+architecture (bronze → silver → gold). Each broker adapter owns a small
+package under `backend/services/bronze/`:
+
+```
+backend/services/bronze/
+  __init__.py
+  etrade/              # first bronze adapter (PR D2)
+    __init__.py
+    client.py          # thin v1 data-API wrapper (.json suffix) — reuses
+                       # ETradeSandboxAdapter._signed_request for HMAC-SHA1
+    sync_service.py    # ETradeSyncService — same shape as SchwabSyncService
+```
+
+Contract (all bronze adapters must follow — pinned by D130):
+
+- **Entry point**: `sync_account_comprehensive(account_number: str, session: Session) -> dict`.
+- **Credentials**: loaded from `BrokerOAuthConnection` filtered by `user_id`
+  (and both environment ids where applicable, e.g. `etrade` / `etrade_sandbox`),
+  decrypted via `backend.services.oauth.encryption.decrypt`. For OAuth 1.0a
+  brokers, `refresh_token_encrypted` stores the access-token *secret*.
+- **Sessions**: caller passes a `Session` in; the service never creates a
+  session and never commits. `session.flush()` is used to materialize ids
+  between related inserts (e.g. `Position` → `Transaction` → `Trade`).
+- **Per-row isolation**: every inner loop exposes structured counters
+  `written / skipped / errors` and asserts `written + skipped + errors == total`
+  (no silent drops — see `.cursor/rules/no-silent-fallback.mdc`).
+- **Idempotency**: `external_id` on `Transaction` + `execution_id` on `Trade`
+  + `(account_id, symbol)` on `Position` make re-syncs additive, not duplicative.
+- **Error classification**: the client raises `ETradeAPIError(permanent=bool)`;
+  the sync service translates permanent errors to `{"status": "error",
+  "permanent": True}` (caller surfaces as reauth) and lets transient errors
+  propagate so Celery can retry them.
+- **HMAC signing is never duplicated**. For OAuth 1.0a brokers the client
+  calls the OAuth adapter's internal `_signed_request` helper directly; this
+  is the single sanctioned second caller and the pattern downstream brokers
+  (Tradier, Fidelity) are expected to follow verbatim.
+- **Capability flags**: if any option row is seen during sync,
+  `BrokerAccount.options_enabled` is flipped `True` so downstream UI routes
+  the account to the options workspace without a separate enable step.
+
+Fan-out task: one module per broker under `backend/tasks/portfolio/` (e.g.
+`etrade_sync.sync_all_etrade_accounts`) — kept separate from the umbrella
+`backend.tasks.account_sync` namespace so each Phase 1 broker PR stays
+self-contained. Each task declares explicit `time_limit` / `soft_time_limit`
+matching `JobTemplate.timeout_s` in `backend/tasks/job_catalog.py`
+(iron-law; see `engineering.mdc`).
 
 ### Market Data Pipeline
 
