@@ -7,10 +7,27 @@ import SettingsConnections from '../../pages/SettingsConnections';
 import { renderWithProviders } from '../../test/render';
 
 vi.mock('../../services/api', () => {
+  const healthPayload = {
+    connected: 0,
+    total: 6,
+    last_sync_at: null as string | null,
+    by_broker: ['ibkr', 'schwab', 'tastytrade', 'etrade', 'tradier', 'coinbase'].map((broker) => ({
+      broker,
+      status: 'disconnected' as const,
+      last_sync_at: null as string | null,
+      error_message: null as string | null,
+    })),
+  };
   return {
     __esModule: true,
     default: {
-      get: vi.fn().mockResolvedValue({ data: { data: {} } }),
+      get: vi.fn().mockImplementation((url: string) => {
+        const u = String(url);
+        if (u.includes('connections/health')) return Promise.resolve({ data: healthPayload });
+        if (u.includes('oauth/connections')) return Promise.resolve({ data: { connections: [] } });
+        if (u.includes('gateway-status')) return Promise.resolve({ data: { data: { connected: false, available: true } } });
+        return Promise.resolve({ data: { data: {} } });
+      }),
       post: vi.fn().mockResolvedValue({ data: {} }),
       patch: vi.fn().mockResolvedValue({ data: {} }),
     },

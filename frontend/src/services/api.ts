@@ -1120,6 +1120,8 @@ export const accountsApi = {
   getHistoricalImportRun: async (accountId: number, runId: number) =>
     makeOptimizedRequest(() => api.get(`/accounts/${accountId}/historical-import/${runId}`)),
   remove: async (accountId: number) => makeOptimizedRequest(() => api.delete(`/accounts/${accountId}`)),
+  /** Fan-out sync for all enabled accounts (queues per-account Celery tasks). */
+  syncAll: async () => makeOptimizedRequest(() => api.post('/accounts/sync-all')),
 };
 
 // Aggregator API

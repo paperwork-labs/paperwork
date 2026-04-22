@@ -58,6 +58,7 @@ from backend.api.routes import (
     watchlist,
     oauth,
 )
+from backend.api.routes import connections as connections_routes
 # Market data (from market/ package)
 from backend.api.routes.market import router as market_router
 # Webhooks
@@ -651,6 +652,12 @@ app.include_router(
     oauth,
     prefix="/api/v1/oauth",
     tags=["OAuth Brokers"],
+    dependencies=[Depends(require_non_market_access)],
+)
+app.include_router(
+    connections_routes.router,
+    prefix="/api/v1/connections",
+    tags=["Connections"],
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(

@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Activity,
   ArrowLeft,
@@ -47,9 +48,23 @@ import CoinbaseLogo from '../assets/logos/coinbase.svg';
 import IBGatewayLogo from '../assets/logos/ib-gateway.svg';
 import TradingViewLogo from '../assets/logos/tradingview.svg';
 import FmpLogo from '../assets/logos/fmp.svg';
-import { formatDateTime, formatDate } from '../utils/format';
+import { formatDateTime, formatRelativeTime } from '../utils/format';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { oauthApi } from '../services/oauth';
+import { connectionsApi } from '../services/connectionsHealth';
+import { BrokerPickerGrid } from '../components/connections/BrokerPickerGrid';
+import { HealthCard } from '../components/connections/HealthCard';
+import { FirstRunHero } from '../components/connections/FirstRunHero';
+import {
+  ConnectionDetailSheet,
+  type DetailAccountRow,
+} from '../components/connections/ConnectionDetailSheet';
+import {
+  LIVE_BROKER_TILES,
+  type BrokerSlug,
+  type BrokerTileDefinition,
+  type WizardBrokerKey,
+} from '../components/connections/brokerCatalog';
 
 const selectSm =
   'h-8 w-[120px] shrink-0 rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30';
@@ -62,6 +77,8 @@ const SettingsConnections: React.FC = () => {
     if (args.status === 'error') return hotToast.error(msg);
     return hotToast(msg);
   };
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { refetch: refetchGlobalAccounts } = useAccountContext();
   const { timezone } = useUserPreferences();
@@ -112,6 +129,21 @@ const SettingsConnections: React.FC = () => {
   const [editNameId, setEditNameId] = useState<number | null>(null);
   const [editNameValue, setEditNameValue] = useState('');
   const [showSetupBanner, setShowSetupBanner] = useState(false);
+  const [pickerEngaged, setPickerEngaged] = useState(false);
+  const [detailWizardBroker, setDetailWizardBroker] = useState<WizardBrokerKey | null>(null);
+  const [oauthBusy, setOauthBusy] = useState(false);
+
+  const connectionsHealthQuery = useQuery({
+    queryKey: ['connectionsHealth'],
+    queryFn: connectionsApi.getHealth,
+    staleTime: 20_000,
+  });
+
+  const oauthListQuery = useQuery({
+    queryKey: ['oauthConnections'],
+    queryFn: () => oauthApi.listConnections(),
+    staleTime: 20_000,
+  });
 
   const openEditModal = (a: any) => {
     setEditAccount(a);
@@ -137,6 +169,44 @@ const SettingsConnections: React.FC = () => {
     if (key === 'COINBASE') return 'Coinbase';
     return b;
   };
+
+  const hasAccountsBySlug = useMemo(() => {
+    const m: Record<BrokerSlug, boolean> = {
+      ibkr: false,
+      schwab: false,
+      tastytrade: false,
+      etrade: false,
+      tradier: false,
+      coinbase: false,
+    };
+    for (const t of LIVE_BROKER_TILES) {
+      m[t.slug] = accounts.some((a) => {
+        const b = String(a.broker).toUpperCase();
+        if (t.slug === 'tradier') return b === 'TRADIER' || b === 'TRADIER_SANDBOX';
+        return b === t.wizardBroker;
+      });
+    }
+    return m;
+  }, [accounts]);
+
+  const relativeLastSyncBySlug = useMemo(() => {
+    const out: Record<BrokerSlug, string | null> = {
+      ibkr: null,
+      schwab: null,
+      tastytrade: null,
+      etrade: null,
+      tradier: null,
+      coinbase: null,
+    };
+    const rows = connectionsHealthQuery.data?.by_broker ?? [];
+    for (const row of rows) {
+      const slug = row.broker as BrokerSlug;
+      if (slug in out) {
+        out[slug] = row.last_sync_at ? formatRelativeTime(row.last_sync_at) : null;
+      }
+    }
+    return out;
+  }, [connectionsHealthQuery.data]);
 
   const LogoTile: React.FC<{ label: string; srcs: string[]; selected: boolean; onClick: () => void; wide?: boolean }> =
     ({ label, srcs, onClick, wide, selected: _selected }) => {
@@ -166,9 +236,11 @@ const SettingsConnections: React.FC = () => {
 
   const loadAccounts = async () => {
     try {
-      const res: any = await accountsApi.list();
-      setAccounts(res || []);
+      const res: unknown = await accountsApi.list();
+      setAccounts((Array.isArray(res) ? res : []) as any[]);
       refetchGlobalAccounts();
+      await queryClient.invalidateQueries({ queryKey: ['connectionsHealth'] });
+      await queryClient.invalidateQueries({ queryKey: ['oauthConnections'] });
     } catch (e) {
       toast({ title: 'Load accounts failed', description: handleApiError(e), status: 'error' });
     }
@@ -358,6 +430,8 @@ const SettingsConnections: React.FC = () => {
     const refresh = () => {
       void loadAccounts();
       void loadSyncHistory();
+      void queryClient.invalidateQueries({ queryKey: ['connectionsHealth'] });
+      void queryClient.invalidateQueries({ queryKey: ['oauthConnections'] });
     };
     const ch = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('axf-oauth') : null;
     const onBc = (ev: MessageEvent) => {
@@ -406,18 +480,33 @@ const SettingsConnections: React.FC = () => {
   };
 
   const handleConnectSchwab = async (id: number) => {
+    const popup = window.open('about:blank', '_blank', 'noopener,noreferrer');
     try {
       if (cfg && !cfg.schwabConfigured) {
+        try {
+          popup?.close();
+        } catch {
+          /* noop */
+        }
         toast({ title: 'Schwab OAuth not configured', description: 'Ask admin to set client_id, secret, and redirect URI on the server.', status: 'warning' });
         return;
       }
       const res: any = await aggregatorApi.schwabLink(id, false);
       const url = res?.url;
       if (url) {
-        window.open(url, '_blank', 'noopener,noreferrer');
+        if (popup && !popup.closed) {
+          popup.location.href = url;
+        } else {
+          window.open(url, '_blank', 'noopener,noreferrer');
+        }
         toast({ title: 'Complete Schwab connect in the new tab', status: 'info' });
       }
     } catch (e) {
+      try {
+        popup?.close();
+      } catch {
+        /* noop */
+      }
       toast({ title: 'Link failed', description: handleApiError(e), status: 'error' });
     }
   };
@@ -625,20 +714,30 @@ const SettingsConnections: React.FC = () => {
     try {
       setBusy(true);
       if (broker === 'SCHWAB') {
-        // Create placeholder Schwab account then open OAuth link
-        const added: any = await accountsApi.add({
-          broker: 'SCHWAB',
-          account_number: (schwabForm.account_number || 'SCHWAB_OAUTH').trim(),
-          account_name: schwabForm.account_name.trim() || undefined,
-          account_type: 'TAXABLE'
-        });
-        const newId = added?.id || (await (async () => { await loadAccounts(); const a = accounts.find(x => String(x.account_number).includes(schwabForm.account_number || 'SCHWAB_OAUTH') && String(x.broker).toLowerCase() === 'schwab'); return a?.id; })());
-        if (!newId) throw new Error('Failed to create Schwab account');
-        const res: any = await aggregatorApi.schwabLink(newId, false);
-        const url = res?.url;
-        if (!url) throw new Error('Authorization URL not returned');
-        window.open(url, '_blank', 'noopener,noreferrer');
-        toast({ title: 'Complete Schwab connect in the new tab', status: 'info' });
+        const popup = window.open('about:blank', '_blank', 'noopener,noreferrer');
+        try {
+          // Create placeholder Schwab account then open OAuth link
+          const added: any = await accountsApi.add({
+            broker: 'SCHWAB',
+            account_number: (schwabForm.account_number || 'SCHWAB_OAUTH').trim(),
+            account_name: schwabForm.account_name.trim() || undefined,
+            account_type: 'TAXABLE'
+          });
+          const newId = added?.id || (await (async () => { await loadAccounts(); const a = accounts.find(x => String(x.account_number).includes(schwabForm.account_number || 'SCHWAB_OAUTH') && String(x.broker).toLowerCase() === 'schwab'); return a?.id; })());
+          if (!newId) throw new Error('Failed to create Schwab account');
+          const res: any = await aggregatorApi.schwabLink(newId, false);
+          const url = res?.url;
+          if (!url) throw new Error('Authorization URL not returned');
+          if (popup && !popup.closed) {
+            popup.location.href = url;
+          } else {
+            window.open(url, '_blank', 'noopener,noreferrer');
+          }
+          toast({ title: 'Complete Schwab connect in the new tab', status: 'info' });
+        } catch (e) {
+          try { popup?.close(); } catch { /* noop */ }
+          throw e;
+        }
       } else if (broker === 'TASTYTRADE') {
         // Use form already shown on page? Keep wizard support as well
         if (!ttForm.client_id || !ttForm.client_secret || !ttForm.refresh_token) throw new Error('Enter Tastytrade Client ID, Client Secret, and Refresh Token');
@@ -809,7 +908,6 @@ const SettingsConnections: React.FC = () => {
   });
 
   /* ---------- TradingView preferences ---------- */
-  const queryClient = useQueryClient();
   const tvPrefs = (user as any)?.ui_preferences ?? {};
   const [tvInterval, setTvInterval] = useState(tvPrefs.tv_default_interval || 'D');
   const [tvStudies, setTvStudies] = useState<string>(tvPrefs.tv_default_studies || 'EMA,RSI,MACD,Volume');
@@ -822,6 +920,84 @@ const SettingsConnections: React.FC = () => {
     },
     onError: (err: unknown) => { hotToast.error(`Save failed: ${handleApiError(err)}`); },
   });
+
+  const syncAllMutation = useMutation({
+    mutationFn: () => accountsApi.syncAll(),
+    onSuccess: () => {
+      hotToast.success('Sync queued for all enabled accounts');
+      void loadAccounts();
+      void loadSyncHistory();
+      void queryClient.invalidateQueries({ queryKey: ['connectionsHealth'] });
+    },
+    onError: (err: unknown) => {
+      hotToast.error(`Sync failed: ${handleApiError(err)}`);
+    },
+  });
+
+  const openWizardForBroker = (wb: WizardBrokerKey) => {
+    setBroker(wb);
+    setStep(2);
+    setWizardOpen(true);
+    setPickerEngaged(true);
+  };
+
+  const onTileConnect = (def: BrokerTileDefinition) => {
+    setPickerEngaged(true);
+    openWizardForBroker(def.wizardBroker);
+  };
+
+  const onTileReconnect = (def: BrokerTileDefinition) => {
+    setPickerEngaged(true);
+    const wb = def.wizardBroker;
+    if (wb === 'COINBASE') {
+      void handleCoinbaseAuthorize();
+      return;
+    }
+    if (wb === 'SCHWAB') {
+      const schwab = accounts.find((a) => String(a.broker).toUpperCase() === 'SCHWAB');
+      if (schwab) void handleConnectSchwab(schwab.id);
+      else openWizardForBroker('SCHWAB');
+      return;
+    }
+    openWizardForBroker(wb);
+  };
+
+  const onTileManage = (def: BrokerTileDefinition) => {
+    setDetailWizardBroker(def.wizardBroker);
+  };
+
+  const showFirstRun =
+    connectionsHealthQuery.isSuccess &&
+    connectionsHealthQuery.data !== undefined &&
+    connectionsHealthQuery.data.connected === 0;
+
+  const showHealthStrip =
+    connectionsHealthQuery.isSuccess &&
+    connectionsHealthQuery.data !== undefined &&
+    connectionsHealthQuery.data.connected > 0;
+
+  const detailAccounts: DetailAccountRow[] = useMemo(() => {
+    if (!detailWizardBroker) return [];
+    return accounts
+      .filter((a) => {
+        const b = String(a.broker).toUpperCase();
+        if (detailWizardBroker === 'TRADIER') return b === 'TRADIER' || b === 'TRADIER_SANDBOX';
+        return b === detailWizardBroker;
+      })
+      .map((a) => ({
+        id: a.id as number,
+        broker: String(a.broker),
+        account_number: String(a.account_number),
+        account_name: a.account_name as string | null | undefined,
+        account_type: a.account_type as string | undefined,
+        is_enabled: a.is_enabled as boolean | undefined,
+        sync_status: a.sync_status as string | null | undefined,
+        sync_error_message: a.sync_error_message as string | null | undefined,
+        last_successful_sync: a.last_successful_sync as string | null | undefined,
+        total_value: a.total_value != null ? String(a.total_value) : undefined,
+        cash_balance: a.cash_balance != null ? String(a.cash_balance) : undefined,
+      }));
+  }, [accounts, detailWizardBroker]);
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -887,7 +1063,7 @@ const SettingsConnections: React.FC = () => {
                 ))}
               </div>
               <div className="flex flex-row items-center gap-2">
-                <Button type="button" size="sm" onClick={() => { setShowSetupBanner(false); window.location.href = '/portfolio'; }}>
+                <Button type="button" size="sm" onClick={() => { setShowSetupBanner(false); navigate('/portfolio'); }}>
                   Go to Portfolio
                 </Button>
                 <Button type="button" size="sm" variant="ghost" onClick={() => setShowSetupBanner(false)}>
@@ -908,6 +1084,35 @@ const SettingsConnections: React.FC = () => {
             </div>
           </div>
 
+          {connectionsHealthQuery.isError ? (
+            <Alert variant="destructive">
+              <AlertTitle>Could not load connection health</AlertTitle>
+              <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <span>{handleApiError(connectionsHealthQuery.error)}</span>
+                <Button type="button" size="sm" variant="outline" onClick={() => void connectionsHealthQuery.refetch()}>
+                  Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
+          {connectionsHealthQuery.isLoading ? (
+            <div className="flex flex-row items-center gap-2 text-sm text-muted-foreground" role="status">
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+              Loading connection status...
+            </div>
+          ) : null}
+
+          {showFirstRun ? <FirstRunHero onEngage={() => setPickerEngaged(true)} /> : null}
+
+          {showHealthStrip && connectionsHealthQuery.data ? (
+            <HealthCard
+              health={connectionsHealthQuery.data}
+              onRunSync={() => syncAllMutation.mutate()}
+              syncPending={syncAllMutation.isPending}
+            />
+          ) : null}
+
           {(tt?.last_error || tt?.job_error) && (
             <Alert variant="destructive">
               <AlertTitle>Tastytrade connection error</AlertTitle>
@@ -915,198 +1120,67 @@ const SettingsConnections: React.FC = () => {
             </Alert>
           )}
 
-          {/* Card-per-broker layout */}
-          <div className={cn("grid gap-4", accounts.length > 0 ? "grid-cols-1" : "grid-cols-1 md:grid-cols-3")}>
-            {(() => {
-              const brokerConfigs: { key: string; name: string; logo: string; connected: boolean }[] = [
-                { key: 'IBKR', name: 'Interactive Brokers', logo: IbkrLogo, connected: accounts.some(a => String(a.broker).toUpperCase() === 'IBKR') },
-                { key: 'SCHWAB', name: 'Charles Schwab', logo: SchwabLogo, connected: accounts.some(a => String(a.broker).toUpperCase() === 'SCHWAB') },
-                { key: 'TASTYTRADE', name: 'Tastytrade', logo: TastytradeLogo, connected: accounts.some(a => String(a.broker).toUpperCase() === 'TASTYTRADE') },
-                { key: 'ETRADE', name: 'E*TRADE', logo: EtradeLogo, connected: accounts.some(a => String(a.broker).toUpperCase() === 'ETRADE') },
-                { key: 'TRADIER', name: 'Tradier', logo: TradierLogo, connected: accounts.some((a) => { const b = String(a.broker).toUpperCase(); return b === 'TRADIER' || b === 'TRADIER_SANDBOX'; }) },
-                { key: 'COINBASE', name: 'Coinbase', logo: CoinbaseLogo, connected: accounts.some(a => String(a.broker).toUpperCase() === 'COINBASE') },
-              ];
-              return brokerConfigs.map(bc => {
-                const brokerAccounts = accounts.filter(a => String(a.broker).toUpperCase() === bc.key);
-                const hasAccounts = brokerAccounts.length > 0;
-                const brokerSyncs = syncHistory.filter((s: any) => {
-                  const matchAcct = brokerAccounts.find(a => a.id === s.account_id || a.account_number === s.account_number);
-                  return !!matchAcct;
-                });
-                const lastSync = brokerSyncs.length > 0 ? brokerSyncs[0] : null;
+          {connectionsHealthQuery.isSuccess && connectionsHealthQuery.data ? (
+            <BrokerPickerGrid
+              byBroker={connectionsHealthQuery.data.by_broker}
+              hasAccountsBySlug={hasAccountsBySlug}
+              relativeLastSyncBySlug={relativeLastSyncBySlug}
+              dimmed={showFirstRun && !pickerEngaged}
+              onConnect={onTileConnect}
+              onReconnect={onTileReconnect}
+              onManage={onTileManage}
+              schwabConfigured={cfg?.schwabConfigured}
+            />
+          ) : null}
 
-                return (
-                  <AppCard
-                    key={bc.key}
-                    className={cn(
-                      'border-l-[3px] transition-opacity',
-                      hasAccounts ? 'border-l-emerald-500 opacity-100' : 'border-l-transparent opacity-85 hover:opacity-100',
-                    )}
-                  >
-                    <div className="flex flex-col gap-3 items-stretch">
-                      <div className="flex flex-row items-center justify-between">
-                        <div className="flex flex-row items-center gap-3">
-                          <img src={bc.logo} alt={bc.name} className="size-9 rounded-lg bg-muted/60 object-contain p-0.5" />
-                          <div>
-                            <div className="text-sm font-semibold">{bc.name}</div>
-                            {lastSync && (
-                              <div className="text-xs text-muted-foreground">
-                                Synced {formatDateTime(lastSync.started_at, timezone)}
-                                {lastSync.status === 'ERROR' ? ' — failed' : ''}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex flex-row items-center gap-2">
-                          <div className={cn("size-2 rounded-full", hasAccounts ? "bg-emerald-500" : "bg-muted-foreground/50")} />
-                          <div className={cn("text-xs font-medium", hasAccounts ? "text-foreground" : "text-muted-foreground")}>
-                            {hasAccounts ? `${brokerAccounts.length} account${brokerAccounts.length > 1 ? 's' : ''}` : 'Not connected'}
-                          </div>
-                        </div>
-                      </div>
+          {detailWizardBroker ? (
+            <ConnectionDetailSheet
+              open={detailWizardBroker != null}
+              onOpenChange={(open) => {
+                if (!open) setDetailWizardBroker(null);
+              }}
+              wizardBroker={detailWizardBroker}
+              accounts={detailAccounts}
+              oauthConnections={oauthListQuery.data?.connections ?? []}
+              timezone={timezone}
+              syncingId={syncingId}
+              busy={oauthBusy}
+              schwabConfigured={cfg?.schwabConfigured}
+              onSync={(accountId) => void handleSync(accountId)}
+              onDeleteAccount={(accountId) => {
+                setDeleteId(accountId);
+                onDeleteOpen();
+              }}
+              onConnectSchwab={(accountId) => void handleConnectSchwab(accountId)}
+              onEditCredentials={(account) => {
+                const full = accounts.find((x) => x.id === account.id);
+                if (full) openEditModal(full);
+              }}
+              onUpdateAccountType={async (accountId, accountType) => {
+                await accountsApi.updateAccount(accountId, { account_type: accountType });
+                await loadAccounts();
+              }}
+              onToggleTrack={async (accountId, next) => {
+                await accountsApi.updateAccount(accountId, { is_enabled: next });
+                await loadAccounts();
+                toast({ title: next ? 'Tracking in portfolio' : 'Removed from portfolio', status: 'success' });
+              }}
+              onRevokeOAuth={async (connectionId) => {
+                setOauthBusy(true);
+                try {
+                  await oauthApi.revoke(connectionId);
+                  hotToast.success('OAuth connection disconnected');
+                  await loadAccounts();
+                } catch (error) {
+                  hotToast.error('Failed to disconnect. Please try again.');
+                  throw error;
+                } finally {
+                  setOauthBusy(false);
+                }
+              }}
+            />
+          ) : null}
 
-                      {!hasAccounts && (
-                        <div className="rounded-md border border-dashed border-border p-4 text-center">
-                          <Button type="button" size="sm" variant="outline" onClick={() => { setBroker(bc.key as any); setStep(2); setWizardOpen(true); }}>
-                            + Connect {bc.name}
-                          </Button>
-                        </div>
-                      )}
-
-                      {brokerAccounts.map((a: any) => (
-                        <div key={a.id} className={cn("rounded-md border border-border bg-muted/40 p-3", !a.is_enabled && "opacity-60")}>
-                          <div className="mb-2 flex flex-row items-center justify-between">
-                            <div className="flex flex-row items-center gap-2">
-                              {editNameId === a.id ? (
-                                <div className="flex flex-row items-center gap-1">
-                                  <Input
-                                    className="h-8 w-[140px] text-xs"
-                                    value={editNameValue}
-                                    onChange={(e) => setEditNameValue(e.target.value)}
-                                    placeholder="Account name"
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') { accountsApi.updateAccount(a.id, { account_name: editNameValue.trim() || undefined }).then(() => { setEditNameId(null); loadAccounts(); toast({ title: 'Name updated', status: 'success' }); }).catch((err) => toast({ title: 'Update failed', status: 'error', description: handleApiError(err) })); }
-                                      else if (e.key === 'Escape') setEditNameId(null);
-                                    }}
-                                  />
-                                  <Button type="button" size="icon-xs" aria-label="Save" onClick={async () => { try { await accountsApi.updateAccount(a.id, { account_name: editNameValue.trim() || undefined }); setEditNameId(null); await loadAccounts(); toast({ title: 'Name updated', status: 'success' }); } catch (err) { toast({ title: 'Update failed', status: 'error', description: handleApiError(err) }); } }}><Check className="size-3" aria-hidden /></Button>
-                                  <Button type="button" size="icon-xs" variant="ghost" aria-label="Cancel" onClick={() => setEditNameId(null)}><X className="size-3" aria-hidden /></Button>
-                                </div>
-                              ) : (
-                                <div className="flex flex-row items-center gap-1">
-                                  <div>
-                                    <div className="text-sm font-medium">{a.account_name || a.account_number}</div>
-                                    {a.account_number && String(a.account_number) !== String(a.account_name || '') && (
-                                      <div className="text-xs text-muted-foreground">{a.account_number}</div>
-                                    )}
-                                    {a.data_range_start && a.data_range_end && (
-                                      <div className="text-xs text-muted-foreground">Data: {formatDate(a.data_range_start, timezone)} – {formatDate(a.data_range_end, timezone)}</div>
-                                    )}
-                                  </div>
-                                  <Button type="button" size="icon-xs" variant="ghost" aria-label="Edit name" onClick={() => { setEditNameId(a.id); setEditNameValue(a.account_name || a.account_number || ''); }}><PencilLine className="size-3.5" aria-hidden /></Button>
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex flex-row items-center gap-2">
-                              <select
-                                className={selectSm}
-                                value={(a.account_type || 'taxable').toUpperCase()}
-                                onChange={async (e) => {
-                                  try {
-                                    await accountsApi.updateAccount(a.id, { account_type: e.target.value });
-                                    await loadAccounts();
-                                  } catch (err) {
-                                    toast({ title: 'Update failed', status: 'error', description: handleApiError(err) });
-                                  }
-                                }}
-                              >
-                                <option value="TAXABLE">Taxable</option>
-                                <option value="IRA">IRA</option>
-                                <option value="ROTH_IRA">Roth IRA</option>
-                                <option value="HSA">HSA</option>
-                                <option value="TRUST">Trust</option>
-                              </select>
-                              {(() => {
-                                const status = String(a.sync_status || '').toLowerCase();
-                                if (!a.sync_status) return null;
-                                if ((status === 'error' || status === 'failed') && a.sync_error_message) {
-                                  return (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Badge variant="outline" className="cursor-default border-destructive/40 text-destructive">{a.sync_status}</Badge>
-                                      </TooltipTrigger>
-                                      <TooltipContent className="max-w-xs text-background">{a.sync_error_message}</TooltipContent>
-                                    </Tooltip>
-                                  );
-                                }
-                                if (status === 'partial' && a.sync_error_message) {
-                                  // G22 — partial sync: required broker-report sections missing.
-                                  // Yellow (warning) styling so it's clearly distinguishable from
-                                  // both healthy success and hard error states.
-                                  return (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Badge
-                                          variant="outline"
-                                          className="cursor-default border-yellow-500/50 text-yellow-700 dark:text-yellow-400"
-                                        >
-                                          partial
-                                        </Badge>
-                                      </TooltipTrigger>
-                                      <TooltipContent className="max-w-xs text-background">{a.sync_error_message}</TooltipContent>
-                                    </Tooltip>
-                                  );
-                                }
-                                return <Badge variant="outline" className="font-normal">{a.sync_status}</Badge>;
-                              })()}
-                            </div>
-                          </div>
-                          <div className="mb-2 flex flex-row items-center justify-between">
-                            <div className="flex flex-row items-center gap-2">
-                              <Checkbox
-                                checked={!!a.is_enabled}
-                                onCheckedChange={async (v) => {
-                                  const next = v === true;
-                                  try {
-                                    await accountsApi.updateAccount(a.id, { is_enabled: next });
-                                    await loadAccounts();
-                                    toast({ title: next ? 'Tracking in portfolio' : 'Removed from portfolio', status: 'success' });
-                                  } catch (err) {
-                                    toast({ title: 'Update failed', status: 'error', description: handleApiError(err) });
-                                  }
-                                }}
-                              />
-                              <div className={cn("text-xs font-medium", a.is_enabled ? "text-foreground" : "text-muted-foreground")}>
-                                {a.is_enabled ? 'Track in Portfolio' : 'Not tracked'}
-                              </div>
-                            </div>
-                          </div>
-                          {String(a.sync_error_message || '').toLowerCase().includes('encrypt') || String(a.sync_error_message || '').toLowerCase().includes('credential') ? (
-                            <div className="mb-2 text-xs text-destructive">Credentials invalid — please re-add this account.</div>
-                          ) : null}
-                          <div className="flex flex-row flex-wrap items-center gap-2">
-                            {String(a.broker || '').toLowerCase() === 'schwab' && (
-                              <Button type="button" size="xs" variant="outline" onClick={() => void handleConnectSchwab(a.id)} disabled={cfg ? !cfg.schwabConfigured : false}>
-                                Link Schwab <ExternalLink className="ml-1.5 inline size-3.5" aria-hidden />
-                              </Button>
-                            )}
-                            {(String(a.broker || '').toLowerCase() === 'tastytrade' || String(a.broker || '').toLowerCase() === 'ibkr') && (
-                              <Button type="button" size="icon-xs" variant="outline" aria-label="Edit credentials" onClick={() => openEditModal(a)}><Pencil className="size-3.5" aria-hidden /></Button>
-                            )}
-                            <Button type="button" size="xs" disabled={syncingId === a.id} onClick={() => void handleSync(a.id)}>
-                              {syncingId === a.id ? <Loader2 className="mr-1 size-3 animate-spin" aria-hidden /> : null}
-                              Sync
-                            </Button>
-                            <Button type="button" size="icon-xs" variant="ghost" aria-label="Delete account" onClick={() => { setDeleteId(a.id); onDeleteOpen(); }}><Trash2 className="size-3.5" aria-hidden /></Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </AppCard>
-                );
-              });
-            })()}
-          </div>
           {syncHistory.length > 0 && (
             <div>
               <details>
@@ -1559,7 +1633,9 @@ const SettingsConnections: React.FC = () => {
                   <ArrowLeft className="size-4" aria-hidden />
                 </Button>
               )}
-              <DialogTitle>New Brokerage Connection</DialogTitle>
+              <DialogTitle>
+                {step === 2 && broker ? `Connect ${brokerDisplayName(broker)}` : 'New Brokerage Connection'}
+              </DialogTitle>
             </div>
           </DialogHeader>
           <div className="flex flex-col gap-4">
