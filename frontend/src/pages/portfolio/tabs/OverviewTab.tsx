@@ -1,48 +1,42 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Loader2, RefreshCw, TriangleAlert } from 'lucide-react';
-import { ChartContext, ChartSlidePanel } from '../../components/market/SymbolChartUI';
-import StatCard from '../../components/shared/StatCard';
-import StageBar from '../../components/shared/StageBar';
-import PnlText from '../../components/shared/PnlText';
-import { Page, PageHeader } from '../../components/ui/Page';
+import { ChartContext, ChartSlidePanel } from '../../../components/market/SymbolChartUI';
+import StatCard from '../../../components/shared/StatCard';
+import StageBar from '../../../components/shared/StageBar';
+import PnlText from '../../../components/shared/PnlText';
+import { PageHeader } from '../../../components/ui/Page';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { semanticTextColorClass } from '@/lib/semantic-text-color';
-import { useAccountFilter } from '../../hooks/useAccountFilter';
-import { DashboardResponse } from '../../services/api';
+import { useAccountFilter } from '../../../hooks/useAccountFilter';
+import { DashboardResponse } from '../../../services/api';
 import {
   usePortfolioOverview,
   usePositions,
   usePortfolioSync,
-  usePortfolioPerformanceHistory,
   usePortfolioInsights,
   useAccountBalances,
-  useMarginInterest,
-  useDividendSummary,
   useLiveSummary,
-  useRiskMetrics,
   usePnlSummary,
-} from '../../hooks/usePortfolio';
-import { useChartColors } from '../../hooks/useChartColors';
-import { useUserPreferences } from '../../hooks/useUserPreferences';
-import { formatMoney } from '../../utils/format';
+} from '../../../hooks/usePortfolio';
+import { useUserPreferences } from '../../../hooks/useUserPreferences';
+import { formatMoney } from '../../../utils/format';
 import {
   buildAccountsFromPositions,
   stageCountsFromPositions,
   sectorAllocationFromPositions,
   topMoversFromPositions,
   timeAgo,
-} from '../../utils/portfolio';
-import { StatCardSkeleton } from '../../components/shared/Skeleton';
-import { CircuitBreakerBanner } from '../../components/shared/CircuitBreakerBanner';
-import { DailyNarrative } from '../../components/portfolio/DailyNarrative';
-import type { AccountData } from '../../hooks/useAccountFilter';
-import type { EnrichedPosition } from '../../types/portfolio';
-import { SECTOR_PALETTE } from '../../constants/chart';
+} from '../../../utils/portfolio';
+import { StatCardSkeleton } from '../../../components/shared/Skeleton';
+import { DailyNarrative } from '../../../components/portfolio/DailyNarrative';
+import type { AccountData } from '../../../hooks/useAccountFilter';
+import type { EnrichedPosition } from '../../../types/portfolio';
+import { SECTOR_PALETTE } from '../../../constants/chart';
 import {
   PieChart,
   Pie,
@@ -50,99 +44,23 @@ import {
   ResponsiveContainer,
   Legend,
   Tooltip,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Line,
-  ComposedChart,
 } from 'recharts';
-import { marketDataApi } from '../../services/api';
 
-const PERIODS = [
-  { key: '30d', label: '30d' },
-  { key: '90d', label: '90d' },
-  { key: '1y', label: '1Y' },
-  { key: 'all', label: 'All' },
-] as const;
-
-const HISTORY_PERIOD_STORAGE_KEY = 'axiomfolio:portfolio:history-period';
-const HISTORY_PERIOD_KEYS: ReadonlySet<string> = new Set(PERIODS.map((p) => p.key));
-
-const readStoredHistoryPeriod = (): string => {
-  try {
-    const stored = window.localStorage.getItem(HISTORY_PERIOD_STORAGE_KEY);
-    if (stored && HISTORY_PERIOD_KEYS.has(stored)) return stored;
-  } catch {
-    // localStorage may be unavailable (SSR, private-mode Safari) — fall through to default.
-  }
-  return '1y';
-};
-
-const PortfolioOverview: React.FC = () => {
+const OverviewTab: React.FC = () => {
   const [chartSymbol, setChartSymbol] = useState<string | null>(null);
-  const [historyPeriod, setHistoryPeriodState] = useState<string>(() => readStoredHistoryPeriod());
-  const setHistoryPeriod = React.useCallback((next: string) => {
-    setHistoryPeriodState(next);
-    try {
-      window.localStorage.setItem(HISTORY_PERIOD_STORAGE_KEY, next);
-    } catch {
-      // localStorage write may fail (quota, private mode); UI still reflects in-memory state.
-    }
-  }, []);
-  const [showBenchmark, setShowBenchmark] = useState<boolean>(true);
   const { currency } = useUserPreferences();
-  const colors = useChartColors();
   const overview = usePortfolioOverview();
   const positionsQuery = usePositions();
   const syncMutation = usePortfolioSync();
-  const historyQuery = usePortfolioPerformanceHistory({ period: historyPeriod });
   const insightsQuery = usePortfolioInsights();
   const insights = insightsQuery.data;
   const balancesQuery = useAccountBalances();
-  const marginQuery = useMarginInterest();
-  const balances = (balancesQuery.data ?? []) as Array<Record<string, unknown>>;
-  const marginItems = (marginQuery.data ?? []) as Array<Record<string, unknown>>;
-  const dividendQuery = useDividendSummary();
-  const dividendData = dividendQuery.data ?? {};
+  const balances = balancesQuery.data;
   const liveQuery = useLiveSummary();
-  const liveData = liveQuery.data ?? {};
-  const riskQuery = useRiskMetrics();
-  const riskData = riskQuery.data ?? {};
-  const riskSubPending = riskQuery.isPending;
-  const riskSubError = riskQuery.isError;
-  const riskSubReady = !riskSubPending && !riskSubError && riskQuery.data != null;
-  const positions = (positionsQuery.data ?? []) as EnrichedPosition[];
+  const liveData = liveQuery.data;
+  const positionRows = (positionsQuery.data as EnrichedPosition[] | undefined) ?? [];
   const dashboard = overview.summary.data as DashboardResponse | undefined;
   const rawAccounts = overview.accountsData ?? [];
-  const historySeries = (historyQuery.data ?? []) as Array<{ date: string; total_value: number }>;
-
-  const [spyBars, setSpyBars] = React.useState<Array<{ time: string; close: number }>>([]);
-  React.useEffect(() => {
-    marketDataApi
-      .getHistory('SPY', historyPeriod === 'all' ? '5y' : historyPeriod, '1d')
-      .then((res: { bars?: unknown; data?: unknown }) => {
-        const bars = (res?.bars || res?.data || []) as Array<{ time?: string; date?: string; close: number }>;
-        setSpyBars(bars.map((b) => ({ time: (b.time || b.date || '').slice(0, 10), close: b.close })));
-      })
-      .catch(() => setSpyBars([]));
-  }, [historyPeriod]);
-
-  const equityCurveData = useMemo(() => {
-    if (!historySeries.length) return [];
-    const spyMap = new Map(spyBars.map((b) => [b.time, b.close]));
-    const firstPortfolioValue = historySeries[0].total_value || 1;
-    let firstSpyClose: number | null = null;
-    return historySeries.map((pt) => {
-      const dateKey = pt.date.slice(0, 10);
-      const spyClose = spyMap.get(dateKey);
-      if (spyClose && firstSpyClose === null) firstSpyClose = spyClose;
-      const portfolioPct = (pt.total_value / firstPortfolioValue - 1) * 100;
-      const spyPct =
-        spyClose && firstSpyClose ? (spyClose / firstSpyClose - 1) * 100 : undefined;
-      return { date: dateKey, total_value: pt.total_value, portfolio_pct: portfolioPct, spy_pct: spyPct };
-    });
-  }, [historySeries, spyBars]);
 
   const accounts: AccountData[] = useMemo(
     () =>
@@ -164,12 +82,12 @@ const PortfolioOverview: React.FC = () => {
             last_successful_sync: a.last_successful_sync,
           }),
         ),
-        positions,
+        positionRows,
       ),
-    [rawAccounts, positions],
+    [rawAccounts, positionRows],
   );
 
-  const filterState = useAccountFilter(positions as import('../../hooks/useAccountFilter').FilterableItem[], accounts);
+  const filterState = useAccountFilter(positionRows as import('../../../hooks/useAccountFilter').FilterableItem[], accounts);
   const filteredPositions = filterState.filteredData as EnrichedPosition[];
 
   const pnlSummaryQuery = usePnlSummary(
@@ -178,7 +96,7 @@ const PortfolioOverview: React.FC = () => {
   const pnlSummary = pnlSummaryQuery.data;
 
   const summary = (dashboard?.data?.summary ?? dashboard?.summary ?? dashboard) as
-    | import('../../services/api').DashboardSummary
+    | import('../../../services/api').DashboardSummary
     | undefined;
   const dayChange = Number(summary?.day_change ?? 0);
   const dayChangePct = Number(summary?.day_change_pct ?? 0);
@@ -187,32 +105,24 @@ const PortfolioOverview: React.FC = () => {
 
   return (
     <ChartContext.Provider value={openChart}>
-      <Page>
         <div className="flex flex-col gap-4">
-          <PageHeader
-            title="Portfolio Overview"
-            subtitle="KPIs, allocation, stage distribution, and account summary"
-            rightContent={
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => syncMutation.mutate()}
-                disabled={syncMutation.isPending}
-                className="gap-2"
-              >
-                {syncMutation.isPending ? (
-                  <Loader2 className="size-4 animate-spin" aria-hidden />
-                ) : (
-                  <RefreshCw className="size-4" aria-hidden />
-                )}
-                Sync
-              </Button>
-            }
-          />
-
           <DailyNarrative />
 
-          {!liveQuery.isPending && !liveData.is_live && (
+          {insightsQuery.isError ? (
+            <p className={cn('text-sm', semanticTextColorClass('status.danger'))} role="alert">
+              Failed to load portfolio insights.
+            </p>
+          ) : null}
+
+          {liveQuery.isPending ? (
+            <p className="text-sm text-muted-foreground">Checking live data status…</p>
+          ) : liveQuery.isError ? (
+            <Alert variant="destructive">
+              <TriangleAlert className="size-4" aria-hidden />
+              <AlertTitle className="text-sm">Could not load live status</AlertTitle>
+              <AlertDescription className="text-sm">Try again after refreshing portfolio data.</AlertDescription>
+            </Alert>
+          ) : liveData && !liveData.is_live ? (
             <Alert className="border-[rgb(var(--status-warning)/0.4)] bg-[rgb(var(--status-warning)/0.1)] text-[rgb(var(--status-warning)/1)]">
               <TriangleAlert className="size-4" aria-hidden />
               <AlertTitle className="text-sm">Live data disconnected</AlertTitle>
@@ -223,9 +133,7 @@ const PortfolioOverview: React.FC = () => {
                 </Link>
               </AlertDescription>
             </Alert>
-          )}
-
-          <CircuitBreakerBanner />
+          ) : null}
 
           {(overview.isPending || positionsQuery.isPending) && (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -252,10 +160,11 @@ const PortfolioOverview: React.FC = () => {
             }, 0);
             const filteredPnl = pos.reduce((s, p) => s + Number(p.unrealized_pnl ?? 0), 0);
             const filteredPnlPct = filteredTotal ? (filteredPnl / filteredTotal) * 100 : 0;
+            const balanceRows = (balancesQuery.isError ? [] : (balances ?? [])) as Array<Record<string, unknown>>;
             const filteredBalances =
               filterState.selectedAccount === 'all'
-                ? balances
-                : balances.filter((b) => {
+                ? balanceRows
+                : balanceRows.filter((b: Record<string, unknown>) => {
                     const raw = rawAccounts.find((a: { id?: number }) => a.id === b.account_id);
                     return (
                       raw &&
@@ -263,7 +172,10 @@ const PortfolioOverview: React.FC = () => {
                         String((raw as { id?: unknown }).id) === filterState.selectedAccount)
                     );
                   });
-            const nlvTotal = filteredBalances.reduce((s, b) => s + Number(b.net_liquidation ?? 0), 0);
+            const nlvTotal = filteredBalances.reduce(
+              (s: number, b: Record<string, unknown>) => s + Number(b.net_liquidation ?? 0),
+              0,
+            );
             const kpiValue = nlvTotal > 0 ? nlvTotal : filteredTotal;
             return (
               <>
@@ -442,112 +354,6 @@ const PortfolioOverview: React.FC = () => {
                     </Button>
                   </div>
                 )}
-
-                <Card className="gap-0 border border-border shadow-none ring-0">
-                  <CardContent className="py-4">
-                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <span className="text-sm font-semibold text-muted-foreground">
-                          {showBenchmark ? 'Performance vs SPY' : 'Value over time'}
-                        </span>
-                        <Button
-                          size="xs"
-                          variant={showBenchmark ? 'default' : 'outline'}
-                          onClick={() => setShowBenchmark((v) => !v)}
-                        >
-                          vs SPY
-                        </Button>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {PERIODS.map((p) => (
-                          <Button
-                            key={p.key}
-                            size="xs"
-                            variant={historyPeriod === p.key ? 'default' : 'outline'}
-                            onClick={() => setHistoryPeriod(p.key)}
-                          >
-                            {p.label}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                    {historyQuery.isPending ? (
-                      <p className="text-sm text-muted-foreground">Loading…</p>
-                    ) : equityCurveData.length > 0 ? (
-                      showBenchmark ? (
-                        <ResponsiveContainer width="100%" height={300}>
-                          <ComposedChart data={equityCurveData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
-                            <defs>
-                              <linearGradient id="portfolioPctGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor={colors.area1} stopOpacity={0.2} />
-                                <stop offset="100%" stopColor={colors.area1} stopOpacity={0.02} />
-                              </linearGradient>
-                            </defs>
-                            <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                            <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v.toFixed(0)}%`} />
-                              <Tooltip
-                                formatter={(v, name) =>
-                                  [
-                                    `${Number(v ?? 0).toFixed(2)}%`,
-                                    name === 'portfolio_pct' ? 'Portfolio' : 'SPY',
-                                  ] as [React.ReactNode, string]
-                                }
-                                labelFormatter={(d) => String(d)}
-                              />
-                            <Area
-                              type="monotone"
-                              dataKey="portfolio_pct"
-                              stroke={colors.area1}
-                              fill="url(#portfolioPctGradient)"
-                              strokeWidth={2}
-                              name="portfolio_pct"
-                            />
-                            <Line
-                              type="monotone"
-                              dataKey="spy_pct"
-                              stroke={colors.area2}
-                              strokeWidth={1.5}
-                              strokeDasharray="4 3"
-                              dot={false}
-                              name="spy_pct"
-                            />
-                          </ComposedChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <ResponsiveContainer width="100%" height={300}>
-                          <AreaChart data={equityCurveData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
-                            <defs>
-                              <linearGradient id="portfolioValueGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor={colors.area1} stopOpacity={0.25} />
-                                <stop offset="100%" stopColor={colors.area1} stopOpacity={0.02} />
-                              </linearGradient>
-                            </defs>
-                            <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                            <YAxis
-                              tick={{ fontSize: 10 }}
-                              tickFormatter={(v) => formatMoney(v, currency, { maximumFractionDigits: 0 })}
-                            />
-                              <Tooltip
-                                formatter={(v) => formatMoney(Number(v ?? 0), currency) as React.ReactNode}
-                                labelFormatter={(d) => String(d)}
-                              />
-                            <Area
-                              type="monotone"
-                              dataKey="total_value"
-                              stroke={colors.area1}
-                              fill="url(#portfolioValueGradient)"
-                              strokeWidth={1.5}
-                            />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      )
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        No performance history yet. Snapshots are recorded after sync.
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
 
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <Card className="gap-0 border border-border shadow-none ring-0">
@@ -750,234 +556,16 @@ const PortfolioOverview: React.FC = () => {
                     </CardContent>
                   </Card>
                 )}
-
-                {(dividendData.trailing_12m_income != null ||
-                  riskData.beta != null ||
-                  marginItems.length > 0) && (
-                  <details className="group">
-                    <summary className="cursor-pointer py-2 text-sm font-semibold text-muted-foreground">
-                      Dividends, Risk & Margin
-                    </summary>
-                    <div className="mt-2 flex flex-col gap-4">
-                      <p className="text-sm font-semibold text-muted-foreground">Dividend Income</p>
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-                        <StatCard
-                          label="Trailing 12M Income"
-                          value={formatMoney(dividendData.trailing_12m_income ?? 0, currency, {
-                            maximumFractionDigits: 0,
-                          })}
-                          color="status.success"
-                        />
-                        <StatCard
-                          label="Forward Yield"
-                          value={`${dividendData.estimated_forward_yield_pct ?? 0}%`}
-                        />
-                        <StatCard
-                          label="Top Payer"
-                          value={dividendData.top_payers?.[0]?.symbol ?? '-'}
-                          sub={
-                            dividendData.top_payers?.[0]
-                              ? formatMoney(dividendData.top_payers[0].annual_income, currency, {
-                                  maximumFractionDigits: 0,
-                                })
-                              : ''
-                          }
-                        />
-                        <StatCard
-                          label="Upcoming Ex-Date"
-                          value={dividendData.upcoming_ex_dates?.[0]?.symbol ?? 'None'}
-                          sub={dividendData.upcoming_ex_dates?.[0]?.est_ex_date ?? ''}
-                        />
-                      </div>
-
-                      <p className="text-sm font-semibold text-muted-foreground">Risk Profile</p>
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-5">
-                        <StatCard
-                          label="Beta"
-                          value={
-                            riskQuery.isPending
-                              ? '…'
-                              : riskData.beta != null
-                              ? Number(riskData.beta).toFixed(2)
-                              : '—'
-                          }
-                          sub={
-                            riskSubPending
-                              ? 'Loading…'
-                              : riskSubError
-                                ? '—'
-                                : riskData.beta_portfolio_regression != null
-                                  ? `vs ${riskData.benchmark_symbol ?? 'SPY'} (${
-                                      riskData.benchmark_overlap_days ?? 0
-                                    }d regression)`
-                                  : riskData.beta_weighted_snapshot != null
-                                    ? 'Weighted per-symbol snapshot'
-                                    : 'Insufficient coverage'
-                          }
-                        />
-                        <StatCard
-                          label="Volatility (Ann.)"
-                          value={
-                            riskQuery.isPending
-                              ? '…'
-                              : riskData.volatility != null
-                              ? `${Number(riskData.volatility).toFixed(1)}%`
-                              : '—'
-                          }
-                          sub={
-                            riskSubPending
-                              ? 'Loading…'
-                              : riskSubError
-                                ? '—'
-                                : riskData.volatility == null
-                                  ? 'Need ≥20 daily snapshots'
-                                  : undefined
-                          }
-                          color={
-                            riskData.volatility != null && Number(riskData.volatility) > 30
-                              ? 'status.danger'
-                              : undefined
-                          }
-                        />
-                        <StatCard
-                          label="Sharpe Ratio"
-                          value={
-                            riskQuery.isPending
-                              ? '…'
-                              : riskData.sharpe_ratio != null
-                              ? Number(riskData.sharpe_ratio).toFixed(2)
-                              : '—'
-                          }
-                          sub={
-                            riskSubPending
-                              ? 'Loading…'
-                              : riskSubError
-                                ? '—'
-                                : riskData.sharpe_ratio == null
-                                  ? 'Need ≥90d history'
-                                  : undefined
-                          }
-                        />
-                        <StatCard
-                          label="Top 5 Weight"
-                          value={riskSubPending ? '…' : `${riskData.top5_weight ?? 0}%`}
-                          sub={riskSubReady ? (riskData.concentration_label ?? '') : riskSubPending ? 'Loading…' : riskSubError ? '—' : ''}
-                        />
-                        <StatCard
-                          label="HHI"
-                          value={riskSubPending ? '…' : (riskData.hhi ?? 0)}
-                          sub={riskSubReady ? (riskData.concentration_label ?? '') : riskSubPending ? 'Loading…' : riskSubError ? '—' : ''}
-                        />
-                      </div>
-
-                      {marginItems.length > 0 && (
-                        <Card className="gap-0 border border-border shadow-none ring-0">
-                          <CardContent className="py-4">
-                            <p className="mb-3 text-sm font-semibold text-muted-foreground">Margin & Interest</p>
-                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-                              {marginItems.slice(0, 4).map((m) => (
-                                <div key={String(m.id)} className="rounded-md border border-border p-2">
-                                  <p className="text-xs text-muted-foreground">
-                                    {String(m.from_date)} – {String(m.to_date)}
-                                  </p>
-                                  <p className="text-sm font-bold">
-                                    {formatMoney(Number(m.interest_accrued ?? 0), currency)}
-                                  </p>
-                                  {m.interest_rate != null && (
-                                    <p className="text-xs text-muted-foreground">
-                                      Rate: {(Number(m.interest_rate) * 100).toFixed(2)}%
-                                    </p>
-                                  )}
-                                  {m.ending_balance != null && (
-                                    <p className="text-xs text-muted-foreground">
-                                      Balance:{' '}
-                                      {formatMoney(Number(m.ending_balance), currency, { maximumFractionDigits: 0 })}
-                                    </p>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
-                    </div>
-                  </details>
-                )}
-
-                {balances.some((b) => b.initial_margin_req != null) && (
-                  <div>
-                    <div className="mb-3 flex items-center gap-2">
-                      <span className="text-sm font-semibold text-muted-foreground">Account Health</span>
-                      {liveData.is_live && (
-                        <Badge className="h-5 bg-emerald-500/15 text-[10px] text-emerald-700 dark:text-emerald-300">
-                          Live
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-3">
-                      {balances.map((b) => {
-                        const marginUtil = Number(b.margin_utilization_pct ?? 0);
-                        const marginColor =
-                          marginUtil > 60
-                            ? 'status.danger'
-                            : marginUtil > 30
-                              ? 'yellow.400'
-                              : 'status.success';
-                        const netLiq =
-                          liveData.is_live && liveData.net_liquidation != null && balances.length === 1
-                            ? Number(liveData.net_liquidation)
-                            : Number(b.net_liquidation ?? 0);
-                        return (
-                          <React.Fragment key={String(b.account_id)}>
-                            <StatCard
-                              label={`Cash (${String(b.broker ?? '')})`}
-                              value={formatMoney(
-                                Number(b.cash_balance ?? b.total_cash_value ?? 0),
-                                currency,
-                                { maximumFractionDigits: 0 },
-                              )}
-                              sub={
-                                b.available_funds != null
-                                  ? `Avail ${formatMoney(b.available_funds as number, currency, { maximumFractionDigits: 0 })}`
-                                  : undefined
-                              }
-                            />
-                            <StatCard
-                              label="Net Liquidation"
-                              value={formatMoney(netLiq, currency, { maximumFractionDigits: 0 })}
-                            />
-                            <StatCard
-                              label="Buying Power"
-                              value={formatMoney(Number(b.buying_power ?? 0), currency, { maximumFractionDigits: 0 })}
-                            />
-                            {b.initial_margin_req != null && (
-                              <StatCard
-                                label="Margin Used"
-                                value={`${marginUtil.toFixed(1)}%`}
-                                color={marginColor}
-                                sub={`Init ${formatMoney(Number(b.initial_margin_req), currency, { maximumFractionDigits: 0 })}`}
-                              />
-                            )}
-                            {b.leverage != null && (
-                              <StatCard label="Leverage" value={`${Number(b.leverage).toFixed(2)}x`} />
-                            )}
-                            {b.cushion != null && (
-                              <StatCard label="Cushion" value={`${(Number(b.cushion) * 100).toFixed(1)}%`} />
-                            )}
-                          </React.Fragment>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
               </>
             );
           })()}
+          {balancesQuery.isError ? (
+            <p className={cn('text-sm', semanticTextColorClass('status.danger'))}>Failed to load account balances</p>
+          ) : null}
         </div>
-      </Page>
       <ChartSlidePanel symbol={chartSymbol} onClose={() => setChartSymbol(null)} />
     </ChartContext.Provider>
   );
 };
 
-export default PortfolioOverview;
+export default OverviewTab;

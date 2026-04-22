@@ -33,6 +33,7 @@ import {
 
 import AllocationTreemap from '@/components/portfolio/AllocationTreemap';
 import AllocationSunburst from '@/components/portfolio/AllocationSunburst';
+import { ConcentrationPanel } from '../ConcentrationPanel';
 
 type ViewMode = 'treemap' | 'sunburst';
 
@@ -55,7 +56,7 @@ function formatCurrency(value: number): string {
   });
 }
 
-export default function PortfolioAllocation() {
+export default function AllocationTab() {
   const [view, setView] = React.useState<ViewMode>('treemap');
   const [groupBy, setGroupBy] = React.useState<AllocationGroupBy>('sector');
   const [selected, setSelected] = React.useState<AllocationGroup | null>(null);
@@ -107,13 +108,8 @@ export default function PortfolioAllocation() {
   };
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-4 p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold text-foreground">Portfolio allocation</h1>
-        <p className="text-sm text-muted-foreground">
-          Interactive breakdown of your holdings by sector, asset class, or account.
-        </p>
-      </header>
+    <div className="flex max-w-6xl flex-col gap-4">
+      <ConcentrationPanel />
 
       <ChartGlassCard
         as="section"

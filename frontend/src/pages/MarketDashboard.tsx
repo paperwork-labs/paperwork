@@ -579,7 +579,7 @@ const RRGChart: React.FC<{ sectors: RRGSector[] }> = ({ sectors }) => {
               <Cell
                 key={i}
                 fill={SECTOR_PALETTE[i % SECTOR_PALETTE.length]}
-                stroke="var(--card)"
+                stroke={cc.border}
                 strokeWidth={1.5}
               />
             ))}

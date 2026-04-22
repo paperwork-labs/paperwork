@@ -25,7 +25,7 @@ import { InstallPrompt } from './components/pwa/InstallPrompt';
 import useUpgradePrompt from './hooks/useUpgradePrompt';
 
 const DashboardLayout = React.lazy(() => import('./components/layout/DashboardLayout'));
-const PortfolioOverview = React.lazy(() => import('./pages/portfolio/PortfolioOverview'));
+const PortfolioTabShell = React.lazy(() => import('./pages/portfolio/PortfolioTabShell'));
 const PortfolioHoldings = React.lazy(() => import('./pages/portfolio/PortfolioHoldings'));
 const HoldingDetail = React.lazy(() => import('./pages/HoldingDetail'));
 const PortfolioOptions = React.lazy(() => import('./pages/portfolio/PortfolioOptions'));
@@ -240,7 +240,7 @@ function App() {
 
                         {/* Portfolio section */}
                         <Route element={<RequireNonMarketAccess section="portfolio" />}>
-                          <Route path="portfolio" element={<PortfolioOverview />} />
+                          <Route path="portfolio" element={<PortfolioTabShell />} />
                           <Route path="portfolio/holdings" element={<PortfolioHoldings />} />
                           <Route path="holding/:symbol" element={<HoldingDetail />} />
                           <Route path="portfolio/options" element={<PortfolioOptions />} />

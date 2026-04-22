@@ -22,7 +22,6 @@ import {
   Target,
   Layers,
   ClipboardList,
-  Grid3x3,
   type LucideIcon,
 } from 'lucide-react';
 import * as Dialog from "@radix-ui/react-dialog";
@@ -80,7 +79,6 @@ const portfolioItems = [
   { label: 'Tax Center', icon: Shield, path: '/portfolio/tax' },
   { label: 'Orders', icon: ShoppingBag, path: '/portfolio/orders' },
   { label: 'Workspace', icon: LayoutGrid, path: '/portfolio/workspace' },
-  { label: 'Allocation', icon: Grid3x3, path: '/portfolio/allocation' },
   { label: 'Income', icon: CalendarDays, path: '/portfolio/income' },
 ];
 
