@@ -50,6 +50,7 @@ from backend.api.routes import (
     admin_corporate_actions,
     admin_data_quality,
     admin_deploy_health,
+    admin_jobs,
     # Settings (from settings/ folder)
     account_management,
     app_settings,
@@ -417,6 +418,30 @@ def _sync_deferred_startup() -> None:
         else:
             logger.info("Auto-warm disabled (AUTO_WARM_ON_STARTUP=false)")
 
+        # One-shot OptionTaxLot backfill (D140). Broker-agnostic — enqueues
+        # the Celery task that iterates every enabled broker account.
+        # Idempotent, but heavy, so this flag should be flipped off again
+        # after the backfill run completes on the first deploy.
+        if getattr(settings, "BACKFILL_OPTION_TAX_LOTS_ON_STARTUP", False):
+            try:
+                from backend.tasks.celery_app import celery_app as _celery
+                res = _celery.send_task(
+                    "backend.tasks.portfolio.reconciliation.backfill_option_tax_lots",
+                    kwargs={},
+                )
+                logger.info(
+                    "OptionTaxLot backfill enqueued on startup: task_id=%s",
+                    res.id,
+                )
+            except Exception as bf_e:
+                logger.warning(
+                    "OptionTaxLot startup backfill skipped/failed: %s", bf_e
+                )
+        else:
+            logger.info(
+                "OptionTaxLot backfill disabled (BACKFILL_OPTION_TAX_LOTS_ON_STARTUP=false)"
+            )
+
     finally:
         if _got_lock:
             _startup_conn.execute(_sa_text("SELECT pg_advisory_unlock(42)"))
@@ -717,6 +742,12 @@ app.include_router(
     admin_scheduler,
     prefix="/api/v1/admin",
     tags=["Admin"],
+    dependencies=[Depends(require_non_market_access)],
+)
+app.include_router(
+    admin_jobs,
+    prefix="/api/v1/admin",
+    tags=["Admin Jobs"],
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(

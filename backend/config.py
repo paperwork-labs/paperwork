@@ -187,6 +187,12 @@ class Settings(BaseSettings):
     AUTO_MIGRATE_ON_STARTUP: bool = False
     AUTO_WARM_ON_STARTUP: bool = False
     AUTO_WARM_STALE_MINUTES: int = 120
+    # One-shot backfill of OptionTaxLot rows from existing trade history on
+    # deploy. Off by default — flip to True for one deploy after the
+    # matcher wire-up landing (D140) so the Tax Center lights up without
+    # waiting for the next broker sync. Idempotent but heavy, so disable
+    # again after the backfill task completes.
+    BACKFILL_OPTION_TAX_LOTS_ON_STARTUP: bool = False
 
     # Pipeline DAG orchestrator (replaces monolithic daily_bootstrap)
     PIPELINE_DAG_ENABLED: bool = True

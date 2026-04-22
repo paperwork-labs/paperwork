@@ -9,15 +9,18 @@ Medallion layer: bronze. See docs/ARCHITECTURE.md and D127.
 import logging
 import xml.etree.ElementTree as ET
 from datetime import datetime
+from decimal import Decimal
 from typing import Dict, List
 
 from sqlalchemy import func as sa_func
+from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm import Session
 
 from backend.database import SessionLocal
-from backend.models import BrokerAccount, TaxLot
+from backend.models import BrokerAccount, TaxLot, Trade
 from backend.models.broker_account import AccountType
 from backend.models.instrument import Instrument
+from backend.models.option_tax_lot import OptionTaxLot
 from backend.models.position import Position
 from backend.models.transfer import Transfer
 from backend.models.transaction import Transaction as TxModel
@@ -26,6 +29,10 @@ from backend.services.portfolio.account_type_resolver import resolve_account_typ
 from backend.services.portfolio.account_credentials_service import (
     CredentialsNotFoundError,
     account_credentials_service,
+)
+from backend.services.portfolio.closing_lot_matcher import (
+    MatchResult,
+    reconcile_closing_lots,
 )
 
 from .helpers import serialize_for_json
@@ -166,6 +173,14 @@ class IBKRSyncService:
 
             # Step 11 – enrich Greeks
             results["greeks_enrichment"] = await sync_option_greeks_from_gateway(db, broker_account)
+
+            # Step 12 — Closing-lot reconciliation (equity CLOSED_LOT + option
+            # OptionTaxLot). FlexQuery already emits CLOSED_LOT rows for
+            # equities, but option tax lots live in ``option_tax_lots`` and
+            # are populated exclusively by the FIFO matcher. Running the
+            # matcher broker-agnostically means IBKR option closes now
+            # light up the Tax Center the same way Schwab/TT will. See D140.
+            _run_closing_lot_reconciliation(db, broker_account, results)
 
             # G22 — Sync completeness validation (no-silent-success).
             # Runs after every sync_* step has had its chance, so we can also
@@ -415,6 +430,134 @@ class IBKRSyncService:
             "return_pct": f"{return_pct:.2f}%",
             "sync_timestamp": datetime.now().isoformat(),
         }
+
+
+def _run_closing_lot_reconciliation(
+    db: Session, broker_account: BrokerAccount, results: Dict
+) -> None:
+    """Invoke the broker-agnostic FIFO matcher with Schwab-style savepoint handling.
+
+    IBKR's FlexQuery populates ``Trade.realized_pnl`` for option closes
+    directly. The matcher computes its own ``realized_pnl`` on each
+    ``OptionTaxLot`` from the opening cost basis. When both exist and
+    disagree by more than ``_PNL_DISCREPANCY_TOL`` for a given
+    ``closing_trade_id``, we log and count the discrepancy rather than
+    raising — per ``no-silent-fallback.mdc``: counter + log, not silent.
+
+    The Schwab equivalent uses ``begin_nested()`` so pytest's outer
+    savepoint doesn't collide. We replicate that pattern here.
+    """
+    try:
+        match_result: MatchResult | None = None
+        try:
+            with db.begin_nested():
+                match_result = reconcile_closing_lots(db, broker_account)
+        except InvalidRequestError as nested_exc:
+            err = str(nested_exc).lower()
+            if "closed transaction" in err and "context manager" in err:
+                if match_result is None:
+                    match_result = reconcile_closing_lots(db, broker_account)
+            else:
+                raise
+        assert match_result is not None
+
+        results["closed_lots_created"] = match_result.created
+        results["closed_lots_updated"] = match_result.updated
+        results["option_tax_lots_created"] = match_result.option_lots_created
+        results["option_tax_lots_updated"] = match_result.option_lots_updated
+        results["closed_lots_errors"] = match_result.errors
+        results["closed_lots_skipped"] = match_result.skipped
+        if match_result.unmatched_quantity > 0:
+            logger.warning(
+                "IBKR sync: account %s had %s unmatched contract/share quantity "
+                "during closing-lot reconciliation (first warning: %s)",
+                broker_account.id,
+                match_result.unmatched_quantity,
+                match_result.warnings[0] if match_result.warnings else "n/a",
+            )
+
+        discrepancies = _audit_option_pnl_discrepancies(db, broker_account)
+        results["option_pnl_discrepancies"] = discrepancies
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "reconcile_closing_lots failed for user=%s account=%s: %s",
+            broker_account.user_id,
+            broker_account.account_number,
+            exc,
+        )
+        results["closed_lots_error"] = str(exc)
+
+
+_PNL_DISCREPANCY_TOL = Decimal("0.01")
+
+
+def _audit_option_pnl_discrepancies(
+    db: Session, broker_account: BrokerAccount
+) -> int:
+    """Per-closing-trade audit: matcher OptionTaxLot.realized_pnl vs broker realized_pnl.
+
+    Returns the number of closing trades where our FIFO matcher's summed
+    ``realized_pnl`` differs from the broker-reported ``Trade.realized_pnl``
+    by more than ``_PNL_DISCREPANCY_TOL``. Logged individually at WARN level
+    so a prod scrape can reconcile (R34-style). Does not raise; does not
+    mutate the matcher output — broker value is the source of truth when
+    provided but we surface drift for investigation.
+    """
+    try:
+        rows = (
+            db.query(
+                OptionTaxLot.closing_trade_id,
+                sa_func.coalesce(sa_func.sum(OptionTaxLot.realized_pnl), 0),
+            )
+            .filter(
+                OptionTaxLot.broker_account_id == broker_account.id,
+                OptionTaxLot.closing_trade_id.isnot(None),
+                OptionTaxLot.realized_pnl.isnot(None),
+            )
+            .group_by(OptionTaxLot.closing_trade_id)
+            .all()
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("option-pnl-audit: aggregate query failed: %s", exc)
+        return 0
+
+    if not rows:
+        return 0
+
+    trade_ids = [r[0] for r in rows]
+    broker_pnl_by_id: Dict[int, Decimal] = {
+        tid: Decimal(str(pnl or 0))
+        for tid, pnl in db.query(Trade.id, Trade.realized_pnl)
+        .filter(Trade.id.in_(trade_ids), Trade.realized_pnl.isnot(None))
+        .all()
+    }
+
+    discrepancies = 0
+    for closing_trade_id, matcher_pnl in rows:
+        broker_pnl = broker_pnl_by_id.get(closing_trade_id)
+        if broker_pnl is None:
+            continue
+        drift = abs(Decimal(str(matcher_pnl)) - broker_pnl)
+        if drift > _PNL_DISCREPANCY_TOL:
+            discrepancies += 1
+            logger.warning(
+                "option-pnl-audit: account_id=%s closing_trade_id=%s "
+                "broker_pnl=%s matcher_pnl=%s drift=%s",
+                broker_account.id,
+                closing_trade_id,
+                broker_pnl,
+                matcher_pnl,
+                drift,
+            )
+    if discrepancies:
+        logger.warning(
+            "option-pnl-audit: account_id=%s %d/%d closing trades drifted > %s",
+            broker_account.id,
+            discrepancies,
+            len(rows),
+            _PNL_DISCREPANCY_TOL,
+        )
+    return discrepancies
 
 
 # Global instance — import path: backend.services.portfolio.ibkr.pipeline

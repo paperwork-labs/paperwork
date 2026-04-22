@@ -34,6 +34,7 @@ from .admin.autoops import router as admin_autoops
 from .admin.corporate_actions import router as admin_corporate_actions
 from .admin.data_quality import router as admin_data_quality
 from .admin.deploy_health import router as admin_deploy_health
+from .admin.jobs import router as admin_jobs
 
 # Re-export settings routes
 from .settings.app import router as app_settings
@@ -72,6 +73,7 @@ __all__ = [
     "admin_corporate_actions",
     "admin_data_quality",
     "admin_deploy_health",
+    "admin_jobs",
     # Settings
     "app_settings",
     "account_management",

@@ -469,57 +469,138 @@ def monitor_portfolio_drawdown(
     soft_time_limit=3300,
     time_limit=3600,
 )
-def backfill_option_tax_lots(self, user_id: int) -> Dict[str, Any]:
-    """Replay FIFO closing-lot matcher (equity CLOSED_LOT + option OptionTaxLot) per account."""
+def backfill_option_tax_lots(
+    self, user_id: Optional[int] = None
+) -> Dict[str, Any]:
+    """Replay FIFO closing-lot matcher across all enabled accounts.
+
+    Produces ``OptionTaxLot`` rows (and equity ``CLOSED_LOT`` trades) from
+    existing ``trades`` history without requiring a fresh broker sync.
+    This lights up the Tax Center UI for users whose broker sync ran
+    before the matcher was wired (D140, R##-ish).
+
+    Broker-agnostic (``broker-agnostic.mdc``): iterates every enabled
+    broker_account — never filters on broker. When ``user_id`` is None,
+    runs across all users. Per-account ``try/except`` isolates failures
+    so one bad account does not poison the batch; failures are counted
+    and logged, never silently swallowed.
+
+    Idempotent: the matcher upserts via
+    ``(opening_trade_id, closing_trade_id)`` uniqueness on OptionTaxLot
+    and via synthetic ``S:{hash}:{idx}`` execution ids on equity
+    CLOSED_LOT trades, so repeated runs converge on the same state.
+    """
     from backend.database import SessionLocal
     from backend.models.broker_account import BrokerAccount
     from backend.services.portfolio.closing_lot_matcher import reconcile_closing_lots
 
     list_db = SessionLocal()
     try:
-        account_ids = [
-            aid
-            for (aid,) in list_db.query(BrokerAccount.id)
-            .filter(
-                BrokerAccount.user_id == user_id,
-                BrokerAccount.is_enabled == True,
-            )
-            .all()
-        ]
+        q = list_db.query(BrokerAccount.id).filter(
+            BrokerAccount.is_enabled == True,  # noqa: E712
+        )
+        if user_id is not None:
+            q = q.filter(BrokerAccount.user_id == user_id)
+        account_ids = [aid for (aid,) in q.all()]
     finally:
         list_db.close()
 
     details: List[Dict[str, Any]] = []
+    processed = 0
+    failed = 0
+    total_option_created = 0
+    total_option_updated = 0
+    total_closed_lots_created = 0
+    total_closed_lots_updated = 0
+    total_errors = 0
+    total_skipped = 0
+
     for account_id in account_ids:
         account_db = SessionLocal()
         try:
-            acct = account_db.query(BrokerAccount).filter(BrokerAccount.id == account_id).one()
+            acct = (
+                account_db.query(BrokerAccount)
+                .filter(BrokerAccount.id == account_id)
+                .one_or_none()
+            )
+            if acct is None:
+                logger.warning(
+                    "backfill_option_tax_lots: account_id=%s vanished mid-run",
+                    account_id,
+                )
+                failed += 1
+                details.append({"account_id": account_id, "error": "not_found"})
+                continue
+
             res = reconcile_closing_lots(account_db, acct)
+            account_db.commit()
+            processed += 1
+            total_option_created += res.option_lots_created
+            total_option_updated += res.option_lots_updated
+            total_closed_lots_created += res.created - res.option_lots_created
+            total_closed_lots_updated += res.updated - res.option_lots_updated
+            total_errors += res.errors
+            total_skipped += res.skipped
             details.append(
                 {
                     "account_id": acct.id,
-                    "created": res.created,
-                    "updated": res.updated,
+                    "user_id": acct.user_id,
+                    "broker": acct.broker.value if acct.broker else None,
+                    "closed_lots_created": res.created - res.option_lots_created,
+                    "closed_lots_updated": res.updated - res.option_lots_updated,
+                    "option_lots_created": res.option_lots_created,
+                    "option_lots_updated": res.option_lots_updated,
                     "skipped": res.skipped,
                     "errors": res.errors,
                     "unmatched_quantity": str(res.unmatched_quantity),
                 }
             )
-            account_db.commit()
-        except Exception:
+        except Exception as exc:  # noqa: BLE001 — isolate per-account failure
             account_db.rollback()
-            logger.exception(
-                "backfill_option_tax_lots failed for user_id=%s account_id=%s",
+            failed += 1
+            logger.warning(
+                "backfill_option_tax_lots failed for user_id=%s account_id=%s: %s",
                 user_id,
                 account_id,
+                exc,
             )
-            raise
+            details.append({"account_id": account_id, "error": str(exc)})
         finally:
             account_db.close()
+
+    total = processed + failed
+    assert total == len(account_ids), (
+        f"backfill_option_tax_lots: counter drift "
+        f"(processed={processed} failed={failed} total={len(account_ids)})"
+    )
+
+    logger.info(
+        "backfill_option_tax_lots: user_id=%s accounts=%d processed=%d failed=%d "
+        "option_lots_created=%d option_lots_updated=%d "
+        "closed_lots_created=%d closed_lots_updated=%d skipped=%d errors=%d",
+        user_id,
+        len(account_ids),
+        processed,
+        failed,
+        total_option_created,
+        total_option_updated,
+        total_closed_lots_created,
+        total_closed_lots_updated,
+        total_skipped,
+        total_errors,
+    )
 
     return {
         "status": "ok",
         "user_id": user_id,
-        "accounts_processed": len(account_ids),
+        "accounts_total": len(account_ids),
+        "accounts_processed": processed,
+        "accounts_failed": failed,
+        "option_lots_created": total_option_created,
+        "option_lots_updated": total_option_updated,
+        "closed_lots_created": total_closed_lots_created,
+        "closed_lots_updated": total_closed_lots_updated,
+        "skipped": total_skipped,
+        "errors": total_errors,
         "details": details,
     }
