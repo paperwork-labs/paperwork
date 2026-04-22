@@ -471,7 +471,7 @@ async def get_portfolio_analytics(
         )
 
         analytics = await portfolio_analytics_service.get_portfolio_analytics(
-            account_id
+            account_id, user_id=user.id, db=db
         )
 
         return {

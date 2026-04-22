@@ -88,6 +88,9 @@ const PortfolioOverview: React.FC = () => {
   const liveData = liveQuery.data ?? {};
   const riskQuery = useRiskMetrics();
   const riskData = riskQuery.data ?? {};
+  const riskSubPending = riskQuery.isPending;
+  const riskSubError = riskQuery.isError;
+  const riskSubReady = !riskSubPending && !riskSubError && riskQuery.data != null;
   const positions = (positionsQuery.data ?? []) as EnrichedPosition[];
   const dashboard = overview.summary.data as DashboardResponse | undefined;
   const rawAccounts = overview.accountsData ?? [];
@@ -768,19 +771,82 @@ const PortfolioOverview: React.FC = () => {
 
                       <p className="text-sm font-semibold text-muted-foreground">Risk Profile</p>
                       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-5">
-                        <StatCard label="Beta" value={riskData.beta ?? 1.0} />
+                        <StatCard
+                          label="Beta"
+                          value={
+                            riskQuery.isPending
+                              ? '…'
+                              : riskData.beta != null
+                              ? Number(riskData.beta).toFixed(2)
+                              : '—'
+                          }
+                          sub={
+                            riskSubPending
+                              ? 'Loading…'
+                              : riskSubError
+                                ? '—'
+                                : riskData.beta_portfolio_regression != null
+                                  ? `vs ${riskData.benchmark_symbol ?? 'SPY'} (${
+                                      riskData.benchmark_overlap_days ?? 0
+                                    }d regression)`
+                                  : riskData.beta_weighted_snapshot != null
+                                    ? 'Weighted per-symbol snapshot'
+                                    : 'Insufficient coverage'
+                          }
+                        />
                         <StatCard
                           label="Volatility (Ann.)"
-                          value={`${riskData.volatility ?? 0}%`}
-                          color={Number(riskData.volatility) > 30 ? 'status.danger' : undefined}
+                          value={
+                            riskQuery.isPending
+                              ? '…'
+                              : riskData.volatility != null
+                              ? `${Number(riskData.volatility).toFixed(1)}%`
+                              : '—'
+                          }
+                          sub={
+                            riskSubPending
+                              ? 'Loading…'
+                              : riskSubError
+                                ? '—'
+                                : riskData.volatility == null
+                                  ? 'Need ≥20 daily snapshots'
+                                  : undefined
+                          }
+                          color={
+                            riskData.volatility != null && Number(riskData.volatility) > 30
+                              ? 'status.danger'
+                              : undefined
+                          }
                         />
-                        <StatCard label="Sharpe Ratio" value={riskData.sharpe_ratio ?? 0} />
+                        <StatCard
+                          label="Sharpe Ratio"
+                          value={
+                            riskQuery.isPending
+                              ? '…'
+                              : riskData.sharpe_ratio != null
+                              ? Number(riskData.sharpe_ratio).toFixed(2)
+                              : '—'
+                          }
+                          sub={
+                            riskSubPending
+                              ? 'Loading…'
+                              : riskSubError
+                                ? '—'
+                                : riskData.sharpe_ratio == null
+                                  ? 'Need ≥90d history'
+                                  : undefined
+                          }
+                        />
                         <StatCard
                           label="Top 5 Weight"
-                          value={`${riskData.top5_weight ?? 0}%`}
-                          sub={riskData.concentration_label ?? ''}
+                          value={riskSubPending ? '…' : `${riskData.top5_weight ?? 0}%`}
+                          sub={riskSubReady ? (riskData.concentration_label ?? '') : riskSubPending ? 'Loading…' : riskSubError ? '—' : ''}
                         />
-                        <StatCard label="HHI" value={riskData.hhi ?? 0} sub={riskData.concentration_label ?? ''} />
+                        <StatCard
+                          label="HHI"
+                          value={riskSubPending ? '…' : (riskData.hhi ?? 0)}
+                          sub={riskSubReady ? (riskData.concentration_label ?? '') : riskSubPending ? 'Loading…' : riskSubError ? '—' : ''}
+                        />
                       </div>
 
                       {marginItems.length > 0 && (

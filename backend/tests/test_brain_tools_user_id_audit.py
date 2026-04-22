@@ -56,6 +56,14 @@ _ALLOWLIST: tuple[tuple[str, str], ...] = (
     # the fix — they reference the literal but never assign it.
     ("backend/services/agent/brain.py", "``user_id=1`` (the old prod-corruption hazard, D88)"),
     ("backend/tasks/ops/auto_ops.py", "``user_id=1`` (D88 hazard)"),
+    (
+        "backend/services/portfolio/portfolio_analytics_service.py",
+        "``user_id=1`` defaults) — D88.",
+    ),
+    (
+        "backend/services/portfolio/portfolio_analytics_service.py",
+        "D88 — no ``user_id=1`` defaults",
+    ),
 )
 
 

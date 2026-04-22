@@ -633,6 +633,24 @@ CATALOG: List[JobTemplate] = [
         singleflight=False,
         enabled=False,
     ),
+    # ── Benchmark History (portfolio regression beta) ─────────
+    JobTemplate(
+        id="spy-history-daily",
+        display_name="SPY Benchmark History Backfill",
+        group="market_data",
+        task="backend.tasks.market.benchmark_history.backfill_spy_history",
+        description=(
+            "Ensure daily MarketSnapshotHistory rows exist for SPY (fallback "
+            "^GSPC) so PortfolioAnalyticsService can compute a real "
+            "portfolio-vs-benchmark regression beta. No-op fast path when "
+            "today's row already exists."
+        ),
+        default_cron="10 22 * * 1-5",  # 22:10 UTC weekdays (after US close)
+        default_tz="UTC",
+        job_run_label="market_benchmark_spy_history_backfill",
+        queue="market",
+        timeout_s=300,
+    ),
     # ── Corporate Actions ─────────────────────────────────────────────
     JobTemplate(
         id="daily_corporate_actions",
