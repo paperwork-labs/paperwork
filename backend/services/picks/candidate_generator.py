@@ -52,6 +52,7 @@ from backend.services.gold.pick_quality_scorer import (
     pick_quality_to_payload,
 )
 from backend.services.market.regime_engine import get_current_regime
+from backend.services.signals.external_aggregator import external_context_bonus_points_map
 
 logger = logging.getLogger(__name__)
 
@@ -242,6 +243,7 @@ def persist_candidates(
         if (i.symbol or "").strip()
     ]
     by_symbol = _bulk_latest_snapshots(db, symbols_for_quality)
+    bonus_by_sym = external_context_bonus_points_map(db, symbols_for_quality)
     enriched: List[Tuple[GeneratedCandidate, Optional[PickQualityScore]]] = []
     for item in items_list:
         symbol = (item.symbol or "").upper().strip()
@@ -255,6 +257,7 @@ def persist_candidates(
             regime_row=regime,
             snapshot_row=by_symbol.get(symbol),
             fetch_snapshot=False,
+            external_context_bonus=bonus_by_sym.get(symbol),
         )
         if outcome == "scored":
             counts["quality_scored"] += 1

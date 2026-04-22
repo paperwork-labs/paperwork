@@ -58,6 +58,7 @@ celery_app = Celery(
         "backend.tasks.pipeline.orchestrator",
         "backend.tasks.picks.generate_candidates",
         "backend.tasks.picks.parse_inbound",
+        "backend.tasks.picks.external_signals",
         # Multi-tenant hardening (GDPR + cost rollup)
         "backend.tasks.multitenant.gdpr",
         "backend.tasks.multitenant.cost_rollup",

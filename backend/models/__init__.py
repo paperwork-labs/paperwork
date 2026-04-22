@@ -144,6 +144,9 @@ from .corporate_action import (
     CorporateActionType,
 )
 
+# Auxiliary external signals (Finviz/Zacks scaffolds; not primary strategy inputs)
+from .external_signal import ExternalSignal
+
 # Data Quality (multi-source quorum + per-provider drift)
 from .provider_quorum import (
     ProviderDriftAlert,
@@ -293,4 +296,5 @@ __all__ = [
     "ProviderQuorumLog",
     "QuorumAction",
     "QuorumStatus",
+    "ExternalSignal",
 ]

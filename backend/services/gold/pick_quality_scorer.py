@@ -14,6 +14,7 @@ from typing import Any, Dict, Optional
 from sqlalchemy.orm import Session
 
 from backend.models.market_data import MarketRegime, MarketSnapshot
+from backend.services.signals.external_aggregator import external_context_bonus_points
 from backend.services.gold.pick_scorer_config import (
     BASE_STAGE_LABELS,
     DIST_STAGE_LABELS,
@@ -104,10 +105,12 @@ class PickQualityScorer:
         user_id: int,
         *,
         regime_row: Optional[MarketRegime] = None,
+        external_context_bonus: Optional[Decimal] = None,
     ) -> PickQualityScore:
         """Score using a pre-fetched snapshot row (or ``None`` if missing).
 
         ``db`` is used when ``regime_row`` is None (see ``get_current_regime``).
+        If ``external_context_bonus`` is set, it is used instead of a per-call DB lookup.
         """
         sym = (symbol or "").upper().strip()
         now = datetime.now(timezone.utc)
@@ -140,7 +143,11 @@ class PickQualityScorer:
         for c in components.values():
             weighted_sum += c.weighted_score
 
-        pre_clip = weighted_sum * mult
+        if external_context_bonus is not None:
+            ext_bonus = external_context_bonus
+        else:
+            ext_bonus = external_context_bonus_points(db, sym)
+        pre_clip = weighted_sum * mult + ext_bonus
         total = _clip_score(pre_clip)
 
         return PickQualityScore(
@@ -160,6 +167,7 @@ class PickQualityScorer:
         regime_row: Optional[MarketRegime] = None,
         snapshot_row: Optional[MarketSnapshot] = None,
         fetch_snapshot: bool = True,
+        external_context_bonus: Optional[Decimal] = None,
     ) -> tuple[PickQualityScore, str]:
         """Returns (score, outcome) where outcome is scored|skipped|errored."""
         sym = (symbol or "").upper().strip()
@@ -172,7 +180,14 @@ class PickQualityScorer:
                 )
             else:
                 row = snapshot_row
-            pq = self.score_from_row(db, row, sym, user_id, regime_row=regime_row)
+            pq = self.score_from_row(
+                db,
+                row,
+                sym,
+                user_id,
+                regime_row=regime_row,
+                external_context_bonus=external_context_bonus,
+            )
             if row is None:
                 return pq, "skipped"
             return pq, "scored"

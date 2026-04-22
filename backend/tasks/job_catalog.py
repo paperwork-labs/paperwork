@@ -613,6 +613,23 @@ CATALOG: List[JobTemplate] = [
         timeout_s=30,
         enabled=False,
     ),
+    JobTemplate(
+        id="aggregate_external_signals",
+        display_name="Aggregate External Signals (Finviz/Zacks aux.)",
+        group="picks",
+        task="backend.tasks.picks.aggregate_external_signals",
+        description=(
+            "Stubbed daily fetch/upsert for auxiliary external signals. "
+            "No-op at runtime when ENABLE_EXTERNAL_SIGNALS is false; "
+            "real provider integrations are follow-up work."
+        ),
+        default_cron="30 5 * * *",  # 05:30 UTC daily
+        default_tz="UTC",
+        job_run_label="aggregate_external_signals",
+        queue="celery",
+        timeout_s=900,
+        enabled=False,
+    ),
     # ── Trade Decision Explainer ──────────────────────────────────────
     JobTemplate(
         id="explain_recent_trades",

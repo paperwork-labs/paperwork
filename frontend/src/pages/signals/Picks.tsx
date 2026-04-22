@@ -10,6 +10,11 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { actionChipClass } from '@/lib/picks';
 import { cn } from '@/lib/utils';
+import {
+  ExternalSignalsChip,
+  isExternalSignalsViteEnabled,
+  type ExternalSignalItem,
+} from '@/components/signals/ExternalSignalsChip';
 
 interface PublishedPick {
   id: number;
@@ -27,6 +32,10 @@ interface PublishedResponse {
   is_preview: boolean;
 }
 
+interface ExternalSignalsBatchResponse {
+  by_symbol: Record<string, ExternalSignalItem[]>;
+}
+
 function truncate(s: string, max: number): string {
   if (s.length <= max) return s;
   return `${s.slice(0, max)}…`;
@@ -39,6 +48,28 @@ const Picks: React.FC = () => {
     queryKey: ['picks-published'],
     queryFn: async () => {
       const res = await api.get<PublishedResponse>('/picks/published?limit=50');
+      return res.data;
+    },
+  });
+
+  const batchSymbolsKey = React.useMemo(() => {
+    if (!q.data?.items.length) {
+      return '';
+    }
+    const keys = [
+      ...new Set(q.data.items.map((i) => (i.ticker || '').trim().toUpperCase()).filter(Boolean)),
+    ];
+    keys.sort();
+    return keys.join(',');
+  }, [q.data?.items]);
+
+  const externalBatch = useQuery<ExternalSignalsBatchResponse>({
+    queryKey: ['signals-external-batch', batchSymbolsKey, 7],
+    enabled:
+      isExternalSignalsViteEnabled && Boolean(batchSymbolsKey.length) && !q.isLoading && !q.isError,
+    queryFn: async () => {
+      const params = new URLSearchParams({ days: '7', symbols: batchSymbolsKey });
+      const res = await api.get<ExternalSignalsBatchResponse>(`/signals/external/batch?${params.toString()}`);
       return res.data;
     },
   });
@@ -126,6 +157,20 @@ const Picks: React.FC = () => {
                           ? ` · ${new Date(row.published_at).toLocaleString()}`
                           : null}
                       </p>
+                      <ExternalSignalsChip
+                        symbol={row.ticker}
+                        parentBatch={
+                          isExternalSignalsViteEnabled
+                            ? {
+                                parentLoading: externalBatch.isLoading,
+                                parentError: externalBatch.isError,
+                                items:
+                                  externalBatch.data?.by_symbol[(row.ticker || '').trim().toUpperCase()] ?? [],
+                                onRefetch: () => void externalBatch.refetch(),
+                              }
+                            : undefined
+                        }
+                      />
                     </div>
                     <Badge className={cn('uppercase', actionChipClass(row.action))}>
                       {row.action}

@@ -188,6 +188,9 @@ class Settings(BaseSettings):
     # Pipeline DAG orchestrator (replaces monolithic daily_bootstrap)
     PIPELINE_DAG_ENABLED: bool = True
 
+    # Finviz/Zacks-style auxiliary signals (scaffold; default off — no user-visible change)
+    ENABLE_EXTERNAL_SIGNALS: bool = False
+
     # Risk management
     MAX_SINGLE_POSITION_PCT: float = 0.15
     ENABLE_ACCOUNT_AWARE_RISK: bool = False

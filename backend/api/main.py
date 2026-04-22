@@ -73,6 +73,7 @@ from backend.api.routes.pricing import router as pricing_router
 from backend.api.routes.brain_tools import router as brain_tools_router
 from backend.api.routes.agent_trade_decision import router as agent_trade_decision_router
 from backend.api.routes.symbols import router as symbols_router
+from backend.api.routes.signals import router as signals_router
 from backend.api.routes.execution import router as execution_router
 from backend.api.routes.exits import router as exits_router
 from backend.api.routes.pipeline import router as pipeline_router
@@ -791,6 +792,12 @@ app.include_router(
     symbols_router,
     prefix="/api/v1",
     tags=["Symbols"],
+)
+# Auxiliary Finviz/Zacks-style context (symbol-level; not tenant-scoped rows).
+app.include_router(
+    signals_router,
+    prefix="/api/v1",
+    tags=["Signals"],
 )
 # Entitlements: tier-gating source of truth.
 # /catalog is intentionally not behind require_non_market_access because the
