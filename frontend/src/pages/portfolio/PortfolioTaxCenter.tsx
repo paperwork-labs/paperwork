@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import PageHeader from '../../components/ui/PageHeader';
 import { portfolioApi } from '../../services/api';
 import { usePortfolioInsights, useRealizedGains } from '../../hooks/usePortfolio';
+import { OpenOptionsSection } from '../../components/portfolio/OpenOptionsSection';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
 import { formatMoney, formatDateFriendly } from '../../utils/format';
 import { TableSkeleton } from '../../components/shared/Skeleton';
@@ -212,6 +213,8 @@ const PortfolioTaxCenter: React.FC = () => {
           Realized Gains
         </Button>
       </div>
+
+      <OpenOptionsSection />
 
       {activeTab === 'realized' && (
         <div className="flex flex-col gap-4">

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
-import {
+import api, {
   portfolioApi,
   tasksApi,
   handleApiError,
@@ -360,6 +360,42 @@ export const useRealizedGains = (year?: number, accountId?: string) => {
       return (r as any)?.data?.data ?? (r as any)?.data ?? {};
     },
     staleTime: 300_000,
+  });
+};
+
+export interface OpenOptionsTaxItem {
+  id: number;
+  symbol: string;
+  option_type: string;
+  open_quantity: number;
+  multiplier: string;
+  cost_basis: string | null;
+  mark: string | null;
+  unrealized_pnl: string | null;
+  unrealized_pnl_pct: string | null;
+  days_to_expiry: number | null;
+  tax_holding_class: 'short_term' | 'long_term' | null;
+  opened_at: string | null;
+}
+
+export interface OpenOptionsTaxSummaryData {
+  items: OpenOptionsTaxItem[];
+  total_unrealized_pnl: string | null;
+  counts: { longs: number; shorts: number };
+}
+
+export const useOpenOptionsTaxSummary = () => {
+  return useQuery({
+    queryKey: ['portfolio-open-options-tax-summary'],
+    queryFn: async (): Promise<OpenOptionsTaxSummaryData> => {
+      const r = await api.get<{ status: string; data: OpenOptionsTaxSummaryData }>('/portfolio/options/tax-summary');
+      const body = r.data;
+      if (body?.status !== 'success' || body.data == null) {
+        throw new Error('Unexpected open options tax summary response');
+      }
+      return body.data;
+    },
+    staleTime: 60_000,
   });
 };
 

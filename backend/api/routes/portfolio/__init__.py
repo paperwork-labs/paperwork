@@ -24,6 +24,7 @@ from .statements import router as statements_router
 from .live import router as live_router
 from .dashboard import router as dashboard_router
 from .tax_export import router as tax_export_router
+from .options_tax import router as options_tax_router
 
 __all__ = [
     "core_router",
@@ -37,4 +38,5 @@ __all__ = [
     "live_router",
     "dashboard_router",
     "tax_export_router",
+    "options_tax_router",
 ]
