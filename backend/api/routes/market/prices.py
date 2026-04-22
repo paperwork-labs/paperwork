@@ -19,11 +19,12 @@ from backend.models.user import User
 from backend.models.market_data import MarketSnapshot, MarketSnapshotHistory, PriceData
 from backend.services.billing.entitlement_service import EntitlementService
 from backend.services.market.indicator_engine import (
+    compute_rs_mansfield,
     detect_kell_patterns,
     detect_volume_events,
 )
 from backend.services.market.market_data_service import provider_router, quote
-from backend.api.dependencies import get_market_data_viewer
+from backend.api.dependencies import get_market_data_viewer, require_feature
 from backend.api.schemas.market import CurrentPriceResponse, PriceHistoryResponse
 
 logger = logging.getLogger(__name__)
@@ -139,6 +140,84 @@ async def get_history(
         raise
     except Exception as e:
         logger.exception("get_history failed for %s: %s", symbol, e)
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+def _close_series_oldest_first(df: Optional[pd.DataFrame]) -> pd.Series:
+    """Extract Close as a float series with normalized daily index (oldest first)."""
+    if df is None or df.empty or "Close" not in df.columns:
+        return pd.Series(dtype=float)
+    dfo = df.sort_index(ascending=True)
+    s = pd.to_numeric(dfo["Close"], errors="coerce")
+    idx = pd.to_datetime(s.index)
+    if isinstance(idx, pd.DatetimeIndex) and idx.tz is not None:
+        idx = idx.tz_convert("UTC").tz_localize(None)
+    s.index = idx.normalize()
+    return s
+
+
+@router.get("/{symbol}/rs-mansfield")
+async def get_rs_mansfield_series(
+    symbol: str,
+    benchmark: str = Query("SPY", min_length=1, max_length=12),
+    period: str = Query("1y"),
+    ma_window: int = Query(252, ge=10, le=400),
+    _viewer: User = Depends(require_feature("chart.rs_ribbon")),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Daily RS Mansfield % vs ``benchmark`` (live OHLCV), Pro tier or higher."""
+    sym_u = symbol.strip().upper()
+    bm_u = benchmark.strip().upper()
+    try:
+        tup_sym = await provider_router.get_historical_data(
+            symbol=sym_u,
+            period=period,
+            interval="1d",
+            max_bars=None,
+            db=db,
+            return_provider=True,
+        )
+        tup_bm = await provider_router.get_historical_data(
+            symbol=bm_u,
+            period=period,
+            interval="1d",
+            max_bars=None,
+            db=db,
+            return_provider=True,
+        )
+        df_sym = tup_sym[0] if isinstance(tup_sym, tuple) else tup_sym
+        df_bm = tup_bm[0] if isinstance(tup_bm, tuple) else tup_bm
+        if df_sym is None or df_sym.empty:
+            raise HTTPException(status_code=404, detail=f"No historical data for {sym_u}")
+        if df_bm is None or df_bm.empty:
+            raise HTTPException(status_code=404, detail=f"No historical data for benchmark {bm_u}")
+
+        sym_close = _close_series_oldest_first(df_sym)
+        bench_close = _close_series_oldest_first(df_bm)
+        bench_aligned = bench_close.reindex(sym_close.index, method="ffill")
+        series = compute_rs_mansfield(sym_close, bench_aligned, ma_window)
+
+        data: List[Dict[str, Any]] = []
+        for idx, val in series.items():
+            if val is None or (isinstance(val, float) and (val != val or not np.isfinite(val))):
+                continue
+            data.append(
+                {
+                    "date": pd.Timestamp(idx).strftime("%Y-%m-%d"),
+                    "value": float(val),
+                }
+            )
+
+        return {
+            "symbol": sym_u,
+            "benchmark": bm_u,
+            "ma_window": ma_window,
+            "data": data,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("get_rs_mansfield_series failed for %s vs %s: %s", sym_u, bm_u, e)
         raise HTTPException(status_code=500, detail="Internal server error")
 
 

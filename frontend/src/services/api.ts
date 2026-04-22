@@ -739,6 +739,20 @@ export const marketDataApi = {
       api.get(`/market-data/prices/${encodeURIComponent(symbol)}/indicators${q ? `?${q}` : ''}`),
     );
   },
+  /** GET /market-data/prices/{symbol}/rs-mansfield — Pro tier; 402 if below tier. */
+  getRSMansfieldSeries: async (
+    symbol: string,
+    options: { period?: string; benchmark?: string; ma_window?: number } = {},
+  ) => {
+    const qs = new URLSearchParams();
+    if (options.period) qs.set('period', options.period);
+    if (options.benchmark) qs.set('benchmark', options.benchmark);
+    if (options.ma_window != null) qs.set('ma_window', String(options.ma_window));
+    const q = qs.toString();
+    return makeOptimizedRequest(() =>
+      api.get(`/market-data/prices/${encodeURIComponent(symbol)}/rs-mansfield${q ? `?${q}` : ''}`),
+    );
+  },
   getVolatilityDashboard: async () => {
     return makeOptimizedRequest(() => api.get('/market-data/volatility-dashboard'));
   },

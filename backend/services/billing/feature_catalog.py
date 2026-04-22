@@ -108,6 +108,13 @@ _FEATURES: tuple[Feature, ...] = (
         description="Full hover explanations for EBC, KRC, and PPB pattern badges on charts.",
         category="data",
     ),
+    Feature(
+        key="chart.rs_ribbon",
+        min_tier=SubscriptionTier.PRO,
+        title="RS Mansfield ribbon",
+        description="Relative strength vs a benchmark over time on workspace charts.",
+        category="data",
+    ),
     # ---- Picks & validator (picks) -----------------------------------------
     Feature(
         key="picks.read",

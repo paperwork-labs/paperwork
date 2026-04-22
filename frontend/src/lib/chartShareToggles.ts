@@ -8,6 +8,7 @@ const KEYS: (keyof IndicatorToggles)[] = [
   "emas",
   "stage",
   "supportResistance",
+  "rsMansfieldRibbon",
 ];
 
 /**
@@ -34,6 +35,7 @@ export function indicatorTogglesFromShareList(
     emas: false,
     stage: false,
     supportResistance: false,
+    rsMansfieldRibbon: false,
   };
   for (const k of allowed) {
     out[k] = true;

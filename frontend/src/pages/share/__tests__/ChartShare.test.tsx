@@ -26,6 +26,7 @@ vi.mock("@/components/charts/SymbolChartWithMarkers", () => ({
     emas: true,
     stage: true,
     supportResistance: true,
+    rsMansfieldRibbon: true,
   }),
 }));
 

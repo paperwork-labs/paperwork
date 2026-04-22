@@ -940,3 +940,38 @@ def detect_kell_patterns(ohlcv: pd.DataFrame, stage_series: pd.Series) -> pd.Dat
                     break
 
     return pd.DataFrame({"pattern": pat, "confidence": conf}, index=ohlcv.index)
+
+
+def compute_rs_mansfield(
+    symbol_close: pd.Series,
+    benchmark_close: pd.Series,
+    ma_window: int = 252,
+) -> pd.Series:
+    """Mansfield-style relative strength versus a benchmark (percent vs RS moving average).
+
+    For each aligned session:
+        RS = (symbol_close / benchmark_close) * 100
+        RS_ma = rolling mean of RS over ``ma_window`` sessions
+        Mansfield% = (RS / RS_ma - 1) * 100
+
+    Args:
+        symbol_close: Session closes (e.g. daily), indexed by time.
+        benchmark_close: Benchmark closes on the same index (caller should
+            ``reindex(..., method='ffill')`` to the symbol's calendar).
+        ma_window: Rolling window for the RS baseline. Default **252** matches
+            :mod:`backend.services.market.stage_classifier` / ``MarketSnapshot``
+            (approximately 52 trading weeks).
+
+    Returns:
+        Mansfield percentage series aligned to ``symbol_close``; NaN where
+        inputs are missing or warmup is insufficient.
+    """
+    if symbol_close is None or benchmark_close is None:
+        return pd.Series(dtype=float)
+    sym = pd.to_numeric(symbol_close, errors="coerce")
+    bench = pd.to_numeric(benchmark_close, errors="coerce")
+    if sym.empty:
+        return pd.Series(dtype=float)
+    rs = (sym / bench.replace(0, np.nan)) * 100.0
+    rs_ma = rs.rolling(ma_window, min_periods=ma_window).mean()
+    return ((rs / rs_ma - 1.0) * 100.0).replace([np.inf, -np.inf], np.nan)

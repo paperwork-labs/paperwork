@@ -66,6 +66,8 @@ export interface IndicatorToggles {
   emas: boolean;
   stage: boolean;
   supportResistance: boolean;
+  /** RS Mansfield ribbon under the workspace chart (Pro; server series). */
+  rsMansfieldRibbon: boolean;
 }
 
 const STORAGE_KEY = 'qm.chartIndicators';
@@ -83,7 +85,15 @@ export function storeIndicators(t: IndicatorToggles) {
 }
 
 export function defaultIndicators(): IndicatorToggles {
-  return { trendLines: true, gaps: true, tdSequential: true, emas: true, stage: true, supportResistance: true };
+  return {
+    trendLines: true,
+    gaps: true,
+    tdSequential: true,
+    emas: true,
+    stage: true,
+    supportResistance: true,
+    rsMansfieldRibbon: true,
+  };
 }
 
 interface MACDData {

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Lock, MinusCircle, Pencil, RefreshCw, Search, Trash2, Unlock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,13 +12,20 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '../components/ui/PageHeader';
 import SymbolChartWithMarkers, { getStoredIndicators, storeIndicators } from '../components/charts/SymbolChartWithMarkers';
 import type { IndicatorToggles, ChartEvent, ChartEventType } from '../components/charts/SymbolChartWithMarkers';
+import { RSMansfieldRibbon } from '../components/charts/RSMansfieldRibbon';
 import { buildTradeSegmentsFromActivity } from '../components/charts/TradeSegments';
 import { OliverKellLegend } from '../components/charts/OliverKellBadges';
 import TradingViewChart from '../components/charts/TradingViewChart';
+import TierGate from '@/components/billing/TierGate';
 import api, { marketDataApi, portfolioApi, unwrapResponse } from '../services/api';
 import { usePositions, useActivity, useClosedPositions } from '../hooks/usePortfolio';
 import useEntitlement from '../hooks/useEntitlement';
-import { FEATURE_CHART_TRADE_ANNOTATIONS, FEATURE_CHART_TRADE_RATIONALE } from '@/constants/features';
+import { useRSMansfield } from '../hooks/useRSMansfield';
+import {
+  FEATURE_CHART_RS_RIBBON,
+  FEATURE_CHART_TRADE_ANNOTATIONS,
+  FEATURE_CHART_TRADE_RATIONALE,
+} from '@/constants/features';
 import type { KellPatternItem, VolumeEventItem } from '../types/indicators';
 import { useAccountContext } from '../context/AccountContext';
 import { useUserPreferences } from '../hooks/useUserPreferences';
@@ -354,6 +362,18 @@ const PortfolioWorkspace: React.FC = () => {
   const ent = useEntitlement();
   const canChartAnn = ent.can(FEATURE_CHART_TRADE_ANNOTATIONS);
   const canKellRationale = ent.can(FEATURE_CHART_TRADE_RATIONALE);
+  const canRsRibbon = ent.can(FEATURE_CHART_RS_RIBBON);
+
+  const rsMansfieldQuery = useRSMansfield(selectedSymbol, {
+    period,
+    benchmark: 'SPY',
+    enabled:
+      Boolean(selectedSymbol) &&
+      !showAdvanced &&
+      canRsRibbon &&
+      !ent.isLoading &&
+      indicators.rsMansfieldRibbon,
+  });
 
   const tradeSegmentsForSymbol = useMemo(
     () => (selectedSymbol ? buildTradeSegmentsFromActivity(symbolActivity, selectedSymbol) : []),
@@ -775,6 +795,16 @@ const PortfolioWorkspace: React.FC = () => {
                   <Button type="button" size="xs" variant={indicators.emas ? 'default' : 'outline'} onClick={() => toggleIndicator('emas')}>EMAs</Button>
                   <Button type="button" size="xs" variant={indicators.stage ? 'default' : 'outline'} onClick={() => toggleIndicator('stage')}>Stage</Button>
                   <Button type="button" size="xs" variant={indicators.supportResistance ? 'default' : 'outline'} onClick={() => toggleIndicator('supportResistance')}>S/R</Button>
+                  <TierGate feature={FEATURE_CHART_RS_RIBBON} fallback={null}>
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant={indicators.rsMansfieldRibbon ? 'default' : 'outline'}
+                      onClick={() => toggleIndicator('rsMansfieldRibbon')}
+                    >
+                      Show RS Mansfield (52w)
+                    </Button>
+                  </TierGate>
                 </div>
               )}
               {lockedDaySec ? (
@@ -849,6 +879,32 @@ const PortfolioWorkspace: React.FC = () => {
                     tradeSegments={canChartAnn ? tradeSegmentsForSymbol : []}
                     proPlusRationale={canKellRationale}
                   />
+                    <TierGate
+                      feature={FEATURE_CHART_RS_RIBBON}
+                      fallback={
+                        <div className="border-t border-border px-4 py-3">
+                          <p className="text-sm text-muted-foreground">
+                            Upgrade to Pro to see relative-strength structure
+                          </p>
+                          <Button asChild className="mt-2" size="sm" variant="outline">
+                            <Link to="/pricing">View plans</Link>
+                          </Button>
+                        </div>
+                      }
+                    >
+                      {indicators.rsMansfieldRibbon ? (
+                        <div className="border-t border-border pt-2">
+                          <RSMansfieldRibbon
+                            isPending={rsMansfieldQuery.isPending}
+                            isError={rsMansfieldQuery.isError}
+                            error={rsMansfieldQuery.error instanceof Error ? rsMansfieldQuery.error : null}
+                            onRetry={() => void rsMansfieldQuery.refetch()}
+                            points={rsMansfieldQuery.points}
+                            benchmark="SPY"
+                          />
+                        </div>
+                      ) : null}
+                    </TierGate>
                   </>
                 )
               ) : <div style={{ height: chartHeight }} />}
