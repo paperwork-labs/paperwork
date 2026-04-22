@@ -5,23 +5,35 @@ The public ``/api/v1/public/stats`` endpoint and marketing pages
 constants so they stay in sync with the code reality.
 
 Single source of truth for broker counts:
-    * ``DIRECT_OAUTH_BROKERS_LIVE``: brokers we can connect via OAuth today
-      (i.e. ``BrokerType`` members backed by a concrete sync service).
+    * ``DIRECT_CONNECT_BROKERS_LIVE``: brokers we connect to directly
+      today (i.e. ``BrokerType`` members backed by a concrete sync
+      service). Note that "direct" here is deliberately broader than
+      "OAuth" — IBKR uses FlexQuery + Gateway rather than OAuth, and
+      Schwab / TastyTrade use OAuth. The marketing claim we make is
+      "direct connection/integration", not "OAuth", because that is
+      what the code actually does. See docs/KNOWLEDGE.md D131.
     * ``DIRECT_OAUTH_BROKERS_PLANNED``: Phase 1 additions from the
-      broker-parity plan (E*TRADE / Tradier / Coinbase) — listed here
-      so the marketing claim "expanding OAuth" is code-grounded and
-      shrinks to zero when each PR ships.
+      broker-parity plan still in flight. All remaining planned
+      additions are OAuth-based, so the narrower label is accurate
+      here. As each one ships it is promoted into
+      ``DIRECT_CONNECT_BROKERS_LIVE`` and removed from this tuple so
+      the marketing claim "expanding OAuth" is code-grounded and
+      shrinks to zero when the track is done.
     * ``IMPORT_CATALOG_BROKERS_COUNT``: count of brokers available via
       CSV / email-statement import (from ``broker_catalog.py``). The
       catalog itself remains the authority for names and metadata; we
       only expose the count here to avoid a heavy cross-module import.
     * ``BROKERS_SUPPORTED``: the single integer rendered in the public
-      stats strip. It is intentionally the sum of LIVE direct OAuth +
+      stats strip. It is intentionally the sum of LIVE direct connect +
       the import-catalog, so a user reading the marketing page can
       connect (or at least land data from) that many brokers today.
 
-See docs/KNOWLEDGE.md D129 for the direct-OAuth-only expansion policy
-(no Plaid in v1).
+Backwards-compatibility alias ``DIRECT_OAUTH_BROKERS_LIVE`` is kept as a
+deprecated name pointing at the same tuple so callers pinned to the old
+import don't break mid-flight. Prefer ``DIRECT_CONNECT_BROKERS_LIVE``.
+
+See docs/KNOWLEDGE.md D129 for the direct-connect-only expansion policy
+(no Plaid in v1), and D131 for the OAuth→direct-connect rename.
 """
 
 from __future__ import annotations
@@ -29,18 +41,25 @@ from __future__ import annotations
 from typing import Tuple
 
 
-DIRECT_OAUTH_BROKERS_LIVE: Tuple[str, ...] = (
-    "schwab",
-    "ibkr",
-    "tastytrade",
-    "etrade",
+DIRECT_CONNECT_BROKERS_LIVE: Tuple[str, ...] = (
+    "schwab",      # OAuth 2.0
+    "ibkr",        # FlexQuery + IB Gateway (not OAuth — see D131)
+    "tastytrade",  # OAuth 2.0
+    "etrade",      # OAuth 1.0a sandbox (PR D2 / #395 — sandbox only in v1)
 )
 
+# Deprecated alias. Kept so existing imports
+# (``from backend.constants.public_stats import DIRECT_OAUTH_BROKERS_LIVE``)
+# don't break during the rename. Remove once external callers migrate.
+DIRECT_OAUTH_BROKERS_LIVE: Tuple[str, ...] = DIRECT_CONNECT_BROKERS_LIVE
+
 DIRECT_OAUTH_BROKERS_PLANNED: Tuple[str, ...] = (
-    "tradier",
-    "coinbase",
+    "tradier",   # OAuth 2.0 (Phase 1 / PR D3)
+    "coinbase",  # OAuth 2.0 (Phase 1 / PR D4 — crypto)
 )
 
 IMPORT_CATALOG_BROKERS_COUNT: int = 14
 
-BROKERS_SUPPORTED: int = len(DIRECT_OAUTH_BROKERS_LIVE) + IMPORT_CATALOG_BROKERS_COUNT
+BROKERS_SUPPORTED: int = (
+    len(DIRECT_CONNECT_BROKERS_LIVE) + IMPORT_CATALOG_BROKERS_COUNT
+)

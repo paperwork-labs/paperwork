@@ -333,6 +333,13 @@ const SettingsConnections: React.FC = () => {
   // component state; the backend keeps the corresponding request-token secret
   // in Redis until the user posts back the verifier.
   const handleEtradeAuthorize = async () => {
+    // Popup blocker guard (Copilot review on PR #395): most browsers
+    // treat ``window.open`` calls that run AFTER an ``await`` as
+    // non-user-initiated and silently block them, which breaks the
+    // E*TRADE authorize step. Open a blank tab synchronously while we
+    // are still inside the click handler's user-gesture window, then
+    // point it at the real authorize URL once the backend responds.
+    const popup = window.open('about:blank', '_blank', 'noopener,noreferrer');
     try {
       setBusy(true);
       const callbackUrl = `${window.location.origin}/settings/connections?etrade=linked`;
@@ -341,12 +348,22 @@ const SettingsConnections: React.FC = () => {
         throw new Error('E*TRADE did not return an authorization URL');
       }
       setEtradeForm((prev) => ({ ...prev, state: res.state }));
-      window.open(res.authorize_url, '_blank', 'noopener,noreferrer');
+      if (popup && !popup.closed) {
+        popup.location.href = res.authorize_url;
+      } else {
+        // Popup was blocked by the browser — fall back to an in-page
+        // redirect-style open. The user can also copy the URL from
+        // the toast if the second attempt is also blocked.
+        window.open(res.authorize_url, '_blank', 'noopener,noreferrer');
+      }
       toast({
         title: 'Authorize in the new tab, then paste the verifier code',
         status: 'info',
       });
     } catch (e) {
+      // Close the blank popup we pre-opened so the user isn't left
+      // staring at an empty "about:blank" tab.
+      try { popup?.close(); } catch { /* noop */ }
       toast({ title: 'E*TRADE authorize failed', description: handleApiError(e), status: 'error' });
     } finally {
       setBusy(false);

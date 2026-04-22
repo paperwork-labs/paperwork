@@ -395,6 +395,83 @@ def test_sync_scopes_to_user_id_kwarg(db_session) -> None:
     assert user_b_positions == 0
 
 
+def test_sync_fetches_portfolio_once_for_positions_and_options(db_session) -> None:
+    """Regression (PR #395 Copilot follow-up): ``_sync_positions`` and
+    ``_sync_options`` share one E*TRADE ``/portfolio`` payload; calling
+    ``get_portfolio`` twice doubled latency and rate-limit pressure per
+    account sync.
+    """
+    payload = _default_payload()
+    user = _make_user(db_session, "etrade_portfolio_once")
+    account = _make_etrade_account(db_session, user)
+    _make_oauth_connection(db_session, user)
+
+    fake = FakeETradeClient(
+        accounts=payload["accounts"],
+        portfolio=payload["portfolio"],
+        transactions=payload["transactions"],
+        balance=payload["balance"],
+    )
+    service = ETradeSyncService(client=fake)
+    result = service.sync_account_comprehensive(
+        account_number=account.account_number, session=db_session
+    )
+    assert result["status"] == "success"
+
+    portfolio_calls = [c for c in fake.calls if c.startswith("get_portfolio:")]
+    assert len(portfolio_calls) == 1, (
+        f"Expected exactly one /portfolio fetch per sync; observed "
+        f"{portfolio_calls}"
+    )
+
+
+def test_sync_skips_cleanly_on_placeholder_collision(db_session) -> None:
+    """Regression (PR #395 Copilot follow-up): when a placeholder
+    ``ETRADE_OAUTH`` row collides with a real account the same user
+    already owns, ``sync_account_comprehensive`` must return a
+    ``status='skipped'`` (not the generic ``status='error'``/
+    please-re-link message) and disable the placeholder.
+    """
+    from backend.models.broker_account import BrokerAccount
+
+    user = _make_user(db_session, "etrade_collision_user")
+    real = _make_etrade_account(
+        db_session, user, account_number="REAL_ACCT_123"
+    )
+    placeholder = _make_etrade_account(
+        db_session, user, account_number="ETRADE_OAUTH"
+    )
+    _make_oauth_connection(db_session, user)
+
+    payload = _default_payload()
+    payload["accounts"] = [{
+        "accountId": "REAL_ACCT_123",
+        "accountIdKey": "keyABC",
+        "accountStatus": "ACTIVE",
+    }]
+    fake = FakeETradeClient(
+        accounts=payload["accounts"],
+        portfolio=payload["portfolio"],
+        transactions=payload["transactions"],
+        balance=payload["balance"],
+    )
+    service = ETradeSyncService(client=fake)
+    result = service.sync_account_comprehensive(
+        account_number="ETRADE_OAUTH", session=db_session, user_id=user.id
+    )
+    assert result["status"] == "skipped"
+    assert "placeholder" in result["error"].lower()
+    assert result["permanent"] is False
+
+    # Placeholder is disabled; real account untouched.
+    db_session.refresh(placeholder)
+    db_session.refresh(real)
+    refreshed_placeholder: BrokerAccount = placeholder
+    refreshed_real: BrokerAccount = real
+    assert refreshed_placeholder.is_enabled is False
+    assert refreshed_real.is_enabled is True
+
+
 def test_sync_returns_error_on_permanent_api_failure(db_session) -> None:
     from backend.services.bronze.etrade.client import ETradeAPIError
 

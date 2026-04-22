@@ -49,10 +49,16 @@ from backend.services.oauth.encryption import (
 logger = logging.getLogger(__name__)
 
 
-# ``etrade`` (live) and ``etrade_sandbox`` (pre-approval) share the same data
-# schema — we accept either broker id on the connection row so switching
-# between environments is a settings flip, not a sync-service change.
-_ETRADE_BROKER_IDS: Tuple[str, ...] = ("etrade", "etrade_sandbox")
+# Sandbox-only in v1. ``ETradeBronzeClient`` unconditionally constructs an
+# ``ETradeSandboxAdapter`` (sandbox base URL + sandbox consumer keys), so
+# accepting ``"etrade"`` (live) on the connection row would call the
+# sandbox API with a live access token and silently fetch wrong / 401
+# data. Restrict to ``"etrade_sandbox"`` until the live adapter ships;
+# promoting to live is an explicit code change + a matching broker-id
+# flip, which is the whole point of this guardrail. See docs/KNOWLEDGE.md
+# D130 — "Fidelity (PR D3) and Tradier (PR D4) follow this same
+# (narrow) pattern".
+_ETRADE_BROKER_IDS: Tuple[str, ...] = ("etrade_sandbox",)
 
 
 # Mapping from E*TRADE's ``transactionType`` values to our canonical
@@ -225,9 +231,16 @@ class ETradeSyncService:
             access_token_secret=access_token_secret,
         )
 
+    # Sentinel reason codes returned alongside ``None`` from
+    # :meth:`_resolve_or_discover`. Kept as module-level-ish string
+    # constants so both the resolver and the caller share one vocabulary
+    # instead of embedding remediation copy in two places.
+    _RESOLVE_REASON_NO_ACCOUNTS = "no_accounts"
+    _RESOLVE_REASON_PLACEHOLDER_COLLISION = "placeholder_collision"
+
     def _resolve_or_discover(
         self, account: BrokerAccount, session: Session
-    ) -> Optional[str]:
+    ) -> Tuple[Optional[str], Optional[str]]:
         """Map the local ``account_number`` to E*TRADE's ``accountIdKey``.
 
         The API routes balance/portfolio/transactions off an opaque
@@ -239,8 +252,19 @@ class ETradeSyncService:
         we pick the first live account and repoint ``account.account_number``
         to the real ``accountId`` (matching the Schwab placeholder flow).
 
-        Returns the ``accountIdKey`` or ``None`` if the token sees no
-        accounts (surfaced by the caller as a hard sync failure).
+        Returns ``(account_id_key, reason)``:
+
+        * On success: ``(<key>, None)``.
+        * On ``/v1/accounts/list`` returning zero rows:
+          ``(None, _RESOLVE_REASON_NO_ACCOUNTS)`` — the token is alive but
+          the user has closed/removed all accounts, or the connection
+          grant was never account-scoped. User-actionable: re-link.
+        * On a placeholder colliding with a real account already owned by
+          the same user: ``(None, _RESOLVE_REASON_PLACEHOLDER_COLLISION)`` —
+          the placeholder is disabled here and the real account will be
+          picked up on the next Beat fan-out. Not user-actionable; the
+          caller should surface "skipped, duplicate placeholder" rather
+          than "please re-link".
         """
 
         assert self._client is not None  # _connect sets this
@@ -251,7 +275,7 @@ class ETradeSyncService:
                 "etrade sync: account %s (user %s) — /v1/accounts/list returned 0 accounts",
                 account.id, account.user_id,
             )
-            return None
+            return None, self._RESOLVE_REASON_NO_ACCOUNTS
 
         target = (account.account_number or "").strip()
         placeholder = (
@@ -313,7 +337,7 @@ class ETradeSyncService:
                             "etrade sync: failed to disable placeholder %d: %s",
                             account.id, exc,
                         )
-                    return None
+                    return None, self._RESOLVE_REASON_PLACEHOLDER_COLLISION
                 logger.info(
                     "etrade sync: auto-correcting account %d for user %d: "
                     "'%s' -> '%s'",
@@ -323,7 +347,12 @@ class ETradeSyncService:
                 session.flush()
 
         key = str(match.get("accountIdKey") or "").strip()
-        return key or None
+        if not key:
+            # Matched a row but its accountIdKey is empty — that's the
+            # same "token is alive but this account is not usable" shape
+            # as no_accounts; surface it the same way.
+            return None, self._RESOLVE_REASON_NO_ACCOUNTS
+        return key, None
 
     # ------------------------------------------------------------------
     # Public entry point
@@ -369,8 +398,24 @@ class ETradeSyncService:
         account: BrokerAccount = matches[0]
 
         self._connect(account, session)
-        account_id_key = self._resolve_or_discover(account, session)
+        account_id_key, reason = self._resolve_or_discover(account, session)
         if not account_id_key:
+            if reason == self._RESOLVE_REASON_PLACEHOLDER_COLLISION:
+                # Placeholder disabled inside the resolver; don't push the
+                # user through the generic "please re-link" remediation —
+                # the real account is fine and the next Beat fan-out will
+                # sync it.
+                return {
+                    "status": "skipped",
+                    "error": (
+                        "E*TRADE placeholder account collided with an existing "
+                        "real account for the same user; placeholder disabled. "
+                        "The real account will sync on the next run."
+                    ),
+                    "permanent": False,
+                }
+            # Default / no_accounts path: token is alive but saw zero
+            # usable accounts. User-actionable.
             return {
                 "status": "error",
                 "error": (
@@ -382,8 +427,20 @@ class ETradeSyncService:
         results: Dict[str, Any] = {"status": "success"}
 
         try:
-            results.update(self._sync_positions(account, account_id_key, session))
-            results.update(self._sync_options(account, account_id_key, session))
+            # Fetch the portfolio once — E*TRADE's ``/portfolio`` is the
+            # source for BOTH stock positions and options positions (they
+            # are distinguished only by ``Product.securityType``). Calling
+            # ``get_portfolio`` separately from ``_sync_positions`` and
+            # ``_sync_options`` doubles latency per account and gets us
+            # twice as close to the per-token rate limit for no benefit.
+            assert self._client is not None
+            portfolio_raw = self._client.get_portfolio(account_id_key)
+            results.update(
+                self._sync_positions(account, portfolio_raw, session)
+            )
+            results.update(
+                self._sync_options(account, portfolio_raw, session)
+            )
             results.update(self._sync_transactions(account, account_id_key, session))
             results.update(self._sync_balances(account, account_id_key, session))
         except ETradeAPIError as exc:
@@ -413,12 +470,15 @@ class ETradeSyncService:
     def _sync_positions(
         self,
         account: BrokerAccount,
-        account_id_key: str,
+        raw: List[Dict[str, Any]],
         session: Session,
     ) -> Dict[str, Any]:
-        assert self._client is not None
-        raw = self._client.get_portfolio(account_id_key)
+        """Write stock positions from a pre-fetched ``/portfolio`` payload.
 
+        The caller (``sync_account_comprehensive``) owns the
+        ``get_portfolio`` call so it can be shared with ``_sync_options``;
+        this method is now pure-write. See PR #395 Copilot follow-up.
+        """
         written = 0
         skipped = 0
         errors = 0
@@ -524,11 +584,12 @@ class ETradeSyncService:
     def _sync_options(
         self,
         account: BrokerAccount,
-        account_id_key: str,
+        raw: List[Dict[str, Any]],
         session: Session,
     ) -> Dict[str, Any]:
-        assert self._client is not None
-        raw = self._client.get_portfolio(account_id_key)
+        """Write options positions from the same pre-fetched ``/portfolio``
+        payload that ``_sync_positions`` consumed (see PR #395 Copilot
+        follow-up)."""
         options = [
             p
             for p in raw

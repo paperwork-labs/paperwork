@@ -10,18 +10,13 @@ import { cn } from '@/lib/utils';
 import api from '@/services/api';
 import type { PricingCatalogResponse } from '@/types/pricing';
 
-const freeForeverItems = [
-  'The flagship holding chart (with stages, RS, ATR — every overlay)',
-  'Portfolio equity curve + drawdown',
-  'Allocation treemap, income calendar, sentiment overlay',
-  'Direct OAuth to Schwab, IBKR, and Tastytrade — live today, free forever',
-  'E*TRADE, Tradier, and Coinbase direct OAuth — shipping on the v1 broker-parity track, also free',
-  'Import any other broker via beautiful CSV (Fidelity, Vanguard, Robinhood, M1, SoFi, Public, Webull, JPMorgan, Merrill, Wells, Wealthfront, Betterment)',
-  'Email-statement parsing (forward your monthly statement → we parse it)',
-  'Public portfolio sharing with rich social previews',
-  'Daily AI narrative ("today: AAPL ex-div, NVDA flipped Stage 2A → 3A")',
-  'Real-time prices (most apps charge $10/mo for this)',
-];
+// Note: there is no hard-coded ``freeForeverItems`` fallback here on
+// purpose. The free-tier feature list is owned by the Ladder-3 tier
+// catalog on the backend (``backend/services/billing/tier_catalog.py``)
+// and returned by ``/pricing/catalog``. Hard-coding it in two places
+// invites drift (Copilot flagged this shadow in PR #397); the page
+// renders loading/error/empty states explicitly per
+// ``no-silent-fallback.mdc``.
 
 const neverItems = [
   'Sell your data, ever',
@@ -151,8 +146,8 @@ const WhyFree: React.FC = () => {
                     <td className="px-4 py-3">Plaid-linked where supported; gaps otherwise</td>
                   </tr>
                   <tr className="border-b border-border">
-                    <td className="px-4 py-3 font-medium text-foreground">Direct OAuth where available</td>
-                    <td className="px-4 py-3">Schwab, IBKR, Tastytrade today — E*TRADE, Tradier, Coinbase next</td>
+                    <td className="px-4 py-3 font-medium text-foreground">Direct broker connections</td>
+                    <td className="px-4 py-3">Schwab + Tastytrade (OAuth), IBKR (FlexQuery + Gateway), E*TRADE (OAuth sandbox) today — Tradier, Coinbase (OAuth) next</td>
                     <td className="px-4 py-3">Varies by vendor</td>
                   </tr>
                   <tr>

@@ -14,7 +14,9 @@ for one file per broker fan-out so that Phase 1 PR D3 (Fidelity) and D4
 ``sync.py`` module. Existing Schwab / IBKR fan-outs stay in ``sync.py`` —
 we're not doing a big-bang rename (KNOWLEDGE.md D127).
 
-Timing contract:
+Timing contract (Copilot review on PR #395 flagged a doc/code mismatch —
+the authoritative values live here and in ``job_catalog.py``; PR
+descriptions must quote these, not the other way around):
 
 * ``time_limit=960`` and ``soft_time_limit=900`` match
   :data:`backend.tasks.portfolio.sync.sync_account_task` hard/soft limits;
@@ -22,9 +24,9 @@ Timing contract:
   declare explicit limits to satisfy the engineering rule ("all Celery
   tasks must set explicit time_limit and soft_time_limit").
 * Beat entry (``etrade-daily-sync`` in :data:`backend.tasks.job_catalog.CATALOG`)
-  declares ``timeout_s=960`` and runs at 02:45 UTC daily, staggered after
-  the IBKR (02:15) and Schwab (02:30) fan-outs so worker pressure spreads
-  evenly.
+  declares ``timeout_s=960`` (iron-law: Beat ``timeout_s`` == task
+  ``time_limit``) and runs at 02:45 UTC daily, staggered after the IBKR
+  (02:15) and Schwab (02:30) fan-outs so worker pressure spreads evenly.
 """
 
 from __future__ import annotations
