@@ -1,23 +1,51 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { AxiosError, type AxiosResponse } from 'axios';
 import { cleanup, screen, waitFor } from '@/test/testing-library';
 
 import { renderWithProviders } from '@/test/render';
 import Home from '../Home';
 
-const { apiGetMock, getCurrentRegimeMock, getDashboardMock, getStocksMock, useAccountBalancesMock } =
-  vi.hoisted(() => ({
-    apiGetMock: vi.fn(),
-    getCurrentRegimeMock: vi.fn(),
-    getDashboardMock: vi.fn(),
-    getStocksMock: vi.fn(),
-    useAccountBalancesMock: vi.fn(),
-  }));
+/*
+ * J4 Home reboot — tests the composed page renders each section without
+ * 4xx/5xx in the happy path and surfaces the "Connect a broker" CTA when no
+ * broker has been linked. Fine-grained behavior is covered by unit tests:
+ *   - utils/greeting.test.ts
+ *   - hooks/__tests__/useHomeAttention.test.ts
+ * Plus component-level rendering is exercised by the Ladle stories.
+ */
+
+const {
+  getCurrentRegimeMock,
+  getDashboardMock,
+  useAccountBalancesMock,
+  usePositionsMock,
+  useDividendSummaryMock,
+  usePnlSummaryMock,
+  usePortfolioPerformanceHistoryMock,
+  usePortfolioInsightsMock,
+  useRiskMetricsMock,
+} = vi.hoisted(() => ({
+  getCurrentRegimeMock: vi.fn(),
+  getDashboardMock: vi.fn(),
+  useAccountBalancesMock: vi.fn(),
+  usePositionsMock: vi.fn(),
+  useDividendSummaryMock: vi.fn(),
+  usePnlSummaryMock: vi.fn(),
+  usePortfolioPerformanceHistoryMock: vi.fn(),
+  usePortfolioInsightsMock: vi.fn(),
+  useRiskMetricsMock: vi.fn(),
+}));
 
 const { mockAuthValue } = vi.hoisted(() => ({
   mockAuthValue: {
-    user: { id: 1, username: 'alice', email: 'a@b.com', full_name: 'Alice', is_active: true },
+    user: {
+      id: 1,
+      username: 'alice',
+      email: 'a@b.com',
+      full_name: 'Alice Liddell',
+      is_active: true,
+      currency_preference: 'USD',
+    },
     token: 'tok',
     ready: true,
     login: vi.fn(),
@@ -35,15 +63,27 @@ vi.mock('@/context/AuthContext', () => ({
 vi.mock('@/hooks/usePortfolio', () => ({
   __esModule: true,
   useAccountBalances: () => useAccountBalancesMock(),
+  usePositions: () => usePositionsMock(),
+  useDividendSummary: () => useDividendSummaryMock(),
+  usePnlSummary: () => usePnlSummaryMock(),
+  usePortfolioPerformanceHistory: () => usePortfolioPerformanceHistoryMock(),
+  usePortfolioInsights: () => usePortfolioInsightsMock(),
+  useRiskMetrics: () => useRiskMetricsMock(),
 }));
 
 vi.mock('@/services/api', () => ({
   __esModule: true,
-  default: { get: apiGetMock },
+  default: { get: vi.fn() },
   marketDataApi: { getCurrentRegime: getCurrentRegimeMock },
   portfolioApi: {
     getDashboard: getDashboardMock,
-    getStocks: getStocksMock,
+    getStocks: vi.fn(),
+    getPnlSummary: vi.fn(),
+    getBalances: vi.fn(),
+    getPerformanceHistory: vi.fn(),
+    getDividendSummary: vi.fn(),
+    getInsights: vi.fn(),
+    getRiskMetrics: vi.fn(),
   },
   unwrapResponse: <T = unknown>(response: unknown, key: string): T[] => {
     const r = response as Record<string, unknown> | undefined;
@@ -54,62 +94,81 @@ vi.mock('@/services/api', () => ({
   },
 }));
 
-function makeAxios404(): AxiosError {
-  const err = new AxiosError('Not Found');
-  err.response = { status: 404, data: {}, headers: {}, statusText: 'Not Found', config: {} as never } as AxiosResponse;
-  return err;
+interface QueryShape {
+  data: unknown;
+  isPending?: boolean;
+  isError?: boolean;
+  isSuccess?: boolean;
+  error?: unknown;
 }
 
-function mockBalancesOk(rows: unknown[]) {
-  useAccountBalancesMock.mockReturnValue({
-    data: rows,
+function queryOk<T>(data: T): QueryShape {
+  return {
+    data,
     isPending: false,
     isError: false,
     isSuccess: true,
     error: null,
-    refetch: vi.fn(),
-  });
+  };
 }
 
-describe('Home page', () => {
+function queryLoading(): QueryShape {
+  return { data: undefined, isPending: true, isError: false, isSuccess: false, error: null };
+}
+
+function queryErr(err: unknown): QueryShape {
+  return { data: undefined, isPending: false, isError: true, isSuccess: false, error: err };
+}
+
+function attachRefetch(q: QueryShape): QueryShape & { refetch: () => void } {
+  return { ...q, refetch: vi.fn() };
+}
+
+function primeBrokersOk(rows: unknown[]) {
+  useAccountBalancesMock.mockReturnValue(attachRefetch(queryOk(rows)));
+}
+
+describe('Home page (J4)', () => {
   beforeEach(() => {
     cleanup();
-    apiGetMock.mockReset();
     getCurrentRegimeMock.mockReset();
     getDashboardMock.mockReset();
-    getStocksMock.mockReset();
     useAccountBalancesMock.mockReset();
-    mockBalancesOk([{ account_id: 1, broker: 'IBKR', cash_balance: 5_000 }]);
-  });
+    usePositionsMock.mockReset();
+    useDividendSummaryMock.mockReset();
+    usePnlSummaryMock.mockReset();
+    usePortfolioPerformanceHistoryMock.mockReset();
+    usePortfolioInsightsMock.mockReset();
+    useRiskMetricsMock.mockReset();
 
-  afterEach(() => {
-    cleanup();
-  });
+    primeBrokersOk([{ account_id: 1, broker: 'IBKR', cash_balance: 5_000 }]);
+    usePositionsMock.mockReturnValue(attachRefetch(queryOk([])));
+    useDividendSummaryMock.mockReturnValue(attachRefetch(queryOk({})));
+    usePnlSummaryMock.mockReturnValue(
+      attachRefetch(
+        queryOk({
+          unrealized_pnl: 0,
+          realized_pnl: 0,
+          total_dividends: 0,
+          total_fees: 0,
+          total_return: 0,
+        }),
+      ),
+    );
+    usePortfolioPerformanceHistoryMock.mockReturnValue(attachRefetch(queryOk([])));
+    usePortfolioInsightsMock.mockReturnValue(attachRefetch(queryOk(null)));
+    useRiskMetricsMock.mockReturnValue(attachRefetch(queryOk({})));
 
-  it('renders regime score, trade cards, and portfolio snapshot when all data resolves', async () => {
     getCurrentRegimeMock.mockResolvedValue({
       regime_state: 'R1',
       composite_score: 2.3,
       as_of_date: '2026-04-21',
-      regime_multiplier: 1.0,
-      max_equity_exposure_pct: 100,
-    });
-    apiGetMock.mockResolvedValue({
-      data: {
-        items: [
-          { id: 1, symbol: 'AAPL', action: 'buy', score: 8.4, stage_label: '2A', thesis: 'Breakout' },
-          { id: 2, symbol: 'NVDA', action: 'buy', score: 7.9, stage_label: '2B' },
-          { id: 3, symbol: 'MSFT', action: 'watch', score: 6.5, stage_label: '2A' },
-          { id: 4, symbol: 'GOOG', action: 'watch', score: 5.1, stage_label: '2A' },
-        ],
-      },
     });
     getDashboardMock.mockResolvedValue({
       data: {
         total_value: 125_000,
         day_change: 1_250,
         day_change_pct: 1.02,
-        holdings_count: 7,
         summary: {
           total_market_value: 125_000,
           day_change: 1_250,
@@ -118,9 +177,16 @@ describe('Home page', () => {
         },
       },
     });
-    getStocksMock.mockResolvedValue({
-      data: {
-        stocks: [
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('renders hero + nerve center + your book + quiet footer in the happy path', async () => {
+    usePositionsMock.mockReturnValue(
+      attachRefetch(
+        queryOk([
           {
             id: 1,
             symbol: 'AAPL',
@@ -133,122 +199,70 @@ describe('Home page', () => {
             average_cost: 180,
             unrealized_pnl: 200,
             unrealized_pnl_pct: 11.1,
+            stage_label: '2A',
           },
-        ],
-      },
+        ]),
+      ),
+    );
+
+    renderWithProviders(<Home />);
+
+    expect(await screen.findByText('Total NAV')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getAllByText('$125,000').length).toBeGreaterThan(0);
     });
+
+    expect(screen.getByText(/Alice/)).toBeInTheDocument();
+    expect(screen.getAllByText('Nerve center').length).toBeGreaterThan(0);
+    expect(screen.getByText(/Everything's steady/i)).toBeInTheDocument();
+
+    expect(screen.getAllByText('Your book').length).toBeGreaterThan(0);
+    const aaplMatches = await screen.findAllByText('AAPL');
+    expect(aaplMatches.length).toBeGreaterThan(0);
+
+    expect(screen.getByText('YTD Income')).toBeInTheDocument();
+    expect(screen.getByText('YTD Realized')).toBeInTheDocument();
+    expect(screen.getByText('Portfolio Heat')).toBeInTheDocument();
+    expect(screen.getByText('Concentration Top-5')).toBeInTheDocument();
+  });
+
+  it('surfaces "Connect a broker" CTA in the hero when no brokers are present', async () => {
+    primeBrokersOk([]);
 
     renderWithProviders(<Home />);
 
     await waitFor(() => {
-      expect(screen.getByText('R1')).toBeInTheDocument();
+      expect(screen.getByText('Connect a broker to see your book')).toBeInTheDocument();
     });
-    expect(screen.getByTestId('home-regime-score')).toHaveTextContent('2.3');
-
-    expect(await screen.findByText('AAPL', { selector: 'span' })).toBeInTheDocument();
-    expect(screen.getByText('NVDA')).toBeInTheDocument();
-    expect(screen.getByText('MSFT')).toBeInTheDocument();
-    // Only top 3 trade-card tiles rendered (4th suppressed).
-    expect(screen.queryByText('GOOG')).not.toBeInTheDocument();
-
-    expect(screen.getByText('Total NAV')).toBeInTheDocument();
-    expect(screen.getByText('$125,000')).toBeInTheDocument();
-    expect(screen.getByText('Day P&L')).toBeInTheDocument();
-    expect(screen.getByText('$1,250')).toBeInTheDocument();
-    expect(screen.getByText('Open positions')).toBeInTheDocument();
-    expect(screen.getByText('7')).toBeInTheDocument();
-    expect(screen.getByText('Cash')).toBeInTheDocument();
-    expect(screen.getByText('$5,000')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /connect a broker/i }).length).toBeGreaterThan(0);
   });
 
-  it('shows empty state for trade cards when the endpoint returns 404', async () => {
-    getCurrentRegimeMock.mockResolvedValue({
-      regime_state: 'R3',
-      composite_score: 3.1,
-      as_of_date: '2026-04-21',
-    });
-    apiGetMock.mockRejectedValue(makeAxios404());
-    getDashboardMock.mockResolvedValue({
-      data: { total_value: 0, summary: { total_market_value: 0, positions_count: 0 } },
-    });
-    mockBalancesOk([]);
-    getStocksMock.mockResolvedValue({ data: { stocks: [] } });
+  it('shows an error card in the hero when the balances query fails', async () => {
+    useAccountBalancesMock.mockReturnValue(attachRefetch(queryErr(new Error('balances 500'))));
 
     renderWithProviders(<Home />);
 
     await waitFor(() => {
-      expect(screen.getByText('No cards yet today')).toBeInTheDocument();
+      expect(screen.getAllByText(/Couldn't load accounts/i).length).toBeGreaterThan(0);
     });
-    expect(
-      screen.getByText(/Trade cards arrive here when candidates score/i),
-    ).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /try again/i }).length).toBeGreaterThan(0);
   });
 
-  it('shows an error card for the portfolio snapshot when balances fail even if the dashboard succeeds', async () => {
-    getCurrentRegimeMock.mockResolvedValue({
-      regime_state: 'R1',
-      composite_score: 2.0,
-      as_of_date: '2026-04-21',
-    });
-    apiGetMock.mockResolvedValue({ data: { items: [] } });
-    getDashboardMock.mockResolvedValue({
-      data: { total_value: 100, summary: { total_market_value: 100, positions_count: 1 } },
-    });
-    useAccountBalancesMock.mockReturnValue({
-      data: undefined,
-      isPending: false,
-      isError: true,
-      isSuccess: false,
-      error: new Error('balances 500'),
-      refetch: vi.fn(),
-    });
-    getStocksMock.mockResolvedValue({ data: { stocks: [] } });
-
-    renderWithProviders(<Home />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Couldn't load accounts")).toBeInTheDocument();
-    });
-    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
-  });
-
-  it('shows an error card for the regime section when the regime query fails', async () => {
-    getCurrentRegimeMock.mockRejectedValue(new Error('network down'));
-    apiGetMock.mockResolvedValue({ data: { items: [] } });
-    getDashboardMock.mockResolvedValue({ data: { summary: {} } });
-    mockBalancesOk([]);
-    getStocksMock.mockResolvedValue({ data: { stocks: [] } });
-
-    renderWithProviders(<Home />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Couldn't load market regime")).toBeInTheDocument();
-    });
-    // Error card renders a retry button — not blank "0".
-    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
-  });
-
-  it('shows loading skeletons for every section before any query resolves', () => {
+  it('shows loading skeletons before any query resolves', () => {
+    useAccountBalancesMock.mockReturnValue(attachRefetch(queryLoading()));
+    usePositionsMock.mockReturnValue(attachRefetch(queryLoading()));
+    useDividendSummaryMock.mockReturnValue(attachRefetch(queryLoading()));
+    usePnlSummaryMock.mockReturnValue(attachRefetch(queryLoading()));
+    usePortfolioPerformanceHistoryMock.mockReturnValue(attachRefetch(queryLoading()));
+    usePortfolioInsightsMock.mockReturnValue(attachRefetch(queryLoading()));
+    useRiskMetricsMock.mockReturnValue(attachRefetch(queryLoading()));
     getCurrentRegimeMock.mockReturnValue(new Promise(() => {}));
-    apiGetMock.mockReturnValue(new Promise(() => {}));
     getDashboardMock.mockReturnValue(new Promise(() => {}));
-    getStocksMock.mockReturnValue(new Promise(() => {}));
-    useAccountBalancesMock.mockReturnValue({
-      data: undefined,
-      isPending: true,
-      isError: false,
-      isSuccess: false,
-      error: null,
-      refetch: vi.fn(),
-    });
 
     const { container } = renderWithProviders(<Home />);
 
-    expect(screen.getByText('Market regime')).toBeInTheDocument();
-    expect(screen.getByText("Today's trade cards")).toBeInTheDocument();
-    expect(screen.getByText('Portfolio snapshot')).toBeInTheDocument();
-    expect(screen.getByText('Open positions vs plan')).toBeInTheDocument();
-
+    expect(screen.getByText('Nerve center')).toBeInTheDocument();
+    expect(screen.getByText('Your book')).toBeInTheDocument();
     const skeletons = container.querySelectorAll('[data-slot="skeleton"]');
     expect(skeletons.length).toBeGreaterThan(0);
   });
