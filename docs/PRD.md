@@ -6,7 +6,7 @@
 > - **Multi-tenant SaaS** — was non-goal, now core. Five subscription tiers (Free / Pro / Pro+ / Quant Desk / Enterprise).
 > - **Native AgentBrain chat** — Pro+ hook, lives in-product (was non-goal).
 > - **Validator-curated picks pipeline** — Twisted Slice persona (hedge fund analyst) forwards emails → LLM polymorphic parser → validator queue → tier-gated publish.
-> - **Snowball-class portfolio viz** — free-tier hook for retail acquisition.
+> - **Beautiful portfolio charts** — free-tier hook for retail acquisition (equity curve, drawdown, sector heatmaps, income calendar).
 > - **Multi-broker** — Plaid Investments + 5+ hand-rolled adapters (was IBKR/Schwab/TastyTrade only).
 > - **PWA mobile** — was non-goal, now v1 acceptance criterion.
 > - **Cross-product integration with [Paperwork Labs](https://github.com/paperwork-labs/paperwork)** — FileFree (taxes), Paperwork Brain (cross-domain AI). Not required, optional bundles.

@@ -73,7 +73,7 @@
 
 | Milestone | Date | Definition |
 |-----------|------|------------|
-| **v1 Launch** | **2026-06-21** (10 weeks) | Paying users on Free / Pro / Pro+. Validated Picks live (founder + Twisted Slice). Native AgentBrain chat. Snowball-class viz. TRIM/ADD/rebalance. Tax-aware exits. Email parser. PWA mobile. |
+| **v1 Launch** | **2026-06-21** (10 weeks) | Paying users on Free / Pro / Pro+. Validated Picks live (founder + Twisted Slice). Native AgentBrain chat. Beautiful portfolio charts. TRIM/ADD/rebalance. Tax-aware exits. Email parser. PWA mobile. |
 | **World-Class Complete** | **2026-08-31** (20 weeks) | + 8 brokers via Plaid + hand-rolled. + Walk-forward + Monte Carlo + event-driven backtester. + Symbol master + multi-source quorum. + OpenTelemetry + SLOs + chaos engineering. + Trade Copy + AI Portfolio Optimizer. + Quant Desk tier with white-label. |
 
 ### Year 2 backlog (post-Aug 31)

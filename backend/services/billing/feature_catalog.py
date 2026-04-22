@@ -83,8 +83,8 @@ _FEATURES: tuple[Feature, ...] = (
     Feature(
         key="data.snowball_viz",
         min_tier=SubscriptionTier.FREE,
-        title="Snowball-class visualization",
-        description="Sector heatmaps, return attribution, dividend timeline.",
+        title="Beautiful portfolio charts",
+        description="Equity curves, drawdown, sector heatmaps, return attribution, dividend timeline.",
         category="data",
     ),
     Feature(

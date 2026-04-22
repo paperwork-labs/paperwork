@@ -37,8 +37,8 @@ const FAQ_ENTRIES: ReadonlyArray<FaqEntry> = [
     answer: (
       <>
         Because most "free" portfolio apps still charge a monthly fee to look
-        at your own data, and we don't want to be that. Snowball-class
-        visualization, direct connections to Schwab, IBKR, Tastytrade,
+        at your own data, and we don't want to be that. Beautiful portfolio
+        charts, direct connections to Schwab, IBKR, Tastytrade,
         E*TRADE, Tradier, and Coinbase today (Schwab + Tastytrade + Tradier
         + Coinbase via OAuth, IBKR via FlexQuery + IB Gateway, E*TRADE via
         OAuth sandbox),
