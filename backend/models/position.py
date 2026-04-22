@@ -47,6 +47,20 @@ class PositionStatus(enum.Enum):
     EXPIRED = "expired"  # Options/futures expired
 
 
+class Sleeve(str, enum.Enum):
+    """Management-style tag for a position.
+
+    ``active``     — short-dated / swing / actively managed. Trade card uses
+                     short-term exit ladders and regime gates.
+    ``conviction`` — multi-year hold. Trade card uses peak signal + tax-aware
+                     exit framing; health auditor is more tolerant of
+                     drawdowns measured in months, not days.
+    """
+
+    ACTIVE = "active"
+    CONVICTION = "conviction"
+
+
 # =============================================================================
 # POSITION MODELS
 # =============================================================================
@@ -116,6 +130,11 @@ class Position(Base):
     industry = Column(String(100))  # Industry classification
     market_cap = Column(DECIMAL(20, 2))  # Market capitalization
 
+    # Sleeve tag (see Sleeve enum). Nullable with default "active" so legacy
+    # rows stay queryable without a one-shot backfill. Sleeve is set manually
+    # by the user via PATCH /positions/{id}/sleeve; never flipped automatically.
+    sleeve = Column(String(32), nullable=True, default=Sleeve.ACTIVE.value)
+
     # Last update info
     price_updated_at = Column(DateTime)  # When price was last updated
     position_updated_at = Column(DateTime)  # When position was last changed
@@ -146,6 +165,7 @@ class Position(Base):
         Index("idx_positions_status", "status"),
         Index("idx_positions_type", "position_type"),
         Index("idx_positions_updated_at", "updated_at"),
+        Index("idx_positions_user_sleeve", "user_id", "sleeve"),
     )
 
     @property

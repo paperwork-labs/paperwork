@@ -71,7 +71,8 @@ from .historical_import_run import (
 )
 
 # Trading & Positions
-from .position import Position, PositionType, PositionStatus
+from .position import Position, PositionType, PositionStatus, Sleeve
+from .conviction_pick import ConvictionPick
 from .trade import Trade, TradeSignal
 from .order import Order, OrderSide, OrderType, OrderStatus
 from .execution import ExecutionMetrics
@@ -215,6 +216,8 @@ __all__ = [
     "Position",
     "PositionType",
     "PositionStatus",
+    "Sleeve",
+    "ConvictionPick",
     "TaxLot",
     "TaxLotMethod",
     "TaxLotSource",

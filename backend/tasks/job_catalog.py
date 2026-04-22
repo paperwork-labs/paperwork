@@ -665,6 +665,29 @@ CATALOG: List[JobTemplate] = [
         queue="market",
         timeout_s=300,
     ),
+    # ── Conviction Picks (multi-year horizon) ─────────────────────────
+    # Nightly job that ranks the market universe for conviction-sleeve
+    # candidates and writes a per-user batch to ``conviction_picks``.
+    # Scheduled after ``admin_coverage_backfill`` (01:00 UTC) and
+    # ``fundamentals_fill`` (03:15 UTC) so the generator reads the
+    # freshest technical + fundamentals state. ``timeout_s`` matches
+    # ``time_limit`` on ``generate_conviction_picks``.
+    JobTemplate(
+        id="generate_conviction_picks",
+        display_name="Generate Conviction Picks",
+        group="picks",
+        task="backend.tasks.market.conviction.generate_conviction_picks",
+        description=(
+            "Rank the tracked universe for multi-year conviction-sleeve "
+            "picks (stage 2 posture, sustained RS, earnings trajectory, "
+            "valuation proxy) and persist a per-user ranked batch to the "
+            "conviction_picks table."
+        ),
+        default_cron="45 3 * * *",  # 03:45 UTC nightly
+        default_tz="UTC",
+        job_run_label="generate_conviction_picks",
+        timeout_s=900,
+    ),
     # ── Corporate Actions ─────────────────────────────────────────────
     JobTemplate(
         id="daily_corporate_actions",

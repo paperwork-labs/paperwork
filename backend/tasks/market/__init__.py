@@ -14,6 +14,7 @@ from backend.tasks.market.backfill import (
     symbols,
     tracked_cache,
 )
+from backend.tasks.market.conviction import generate_conviction_picks
 from backend.tasks.market.coverage import (
     daily_bootstrap,
     health_check,
@@ -72,6 +73,7 @@ __all__ = [
     "compute_rank",
     "enrich_index",
     "fill_missing",
+    "generate_conviction_picks",
     "health_check",
     "prune_old_bars",
     "record_daily",

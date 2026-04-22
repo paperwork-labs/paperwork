@@ -1,7 +1,11 @@
-"""
-Medallion layer: gold. See docs/ARCHITECTURE.md and D127.
-"""
+"""Medallion layer: gold. See docs/ARCHITECTURE.md and D127."""
 
+from backend.services.gold.conviction_pick_generator import (
+    ConvictionCandidate,
+    ConvictionPickGenerator,
+    ConvictionThresholds,
+    GenerationReport,
+)
 from backend.services.gold.peak_signal_engine import (
     PeakSignal,
     PeakSignalEngine,
@@ -44,7 +48,11 @@ __all__ = [
     "ContractRecommendation",
     "ContractStatus",
     "ContractType",
+    "ConvictionCandidate",
+    "ConvictionPickGenerator",
+    "ConvictionThresholds",
     "ExitLot",
+    "GenerationReport",
     "LimitPriceTier",
     "LimitTier",
     "OptionsChainSurface",

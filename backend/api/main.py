@@ -86,6 +86,7 @@ from backend.api.routes.multitenant import (
 from backend.api.routes.portfolio.connection_options import (
     router as portfolio_connection_options,
 )
+from backend.api.routes.positions import router as positions_router
 from backend.api.routes.notify import router as notify_router
 from backend.api.routes.mcp import router as mcp_router
 from backend.api.dependencies import require_non_market_access
@@ -602,6 +603,12 @@ app.include_router(
     portfolio_allocation,
     prefix="/api/v1/portfolio",
     tags=["Portfolio"],
+    dependencies=[Depends(require_non_market_access)],
+)
+app.include_router(
+    positions_router,
+    prefix="/api/v1",
+    tags=["Positions"],
     dependencies=[Depends(require_non_market_access)],
 )
 # Notify-me waitlist: tiny POST endpoint backing the "Notify me" CTAs on
