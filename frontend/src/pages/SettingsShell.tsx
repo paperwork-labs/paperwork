@@ -46,12 +46,17 @@ const SettingsShell: React.FC = () => {
           <TooltipTrigger asChild>
             <Button
               type="button"
-              size="icon"
               variant={isActive ? 'default' : 'ghost'}
-              className={cn(isActive && 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground')}
+              className={cn(
+                'h-auto w-full flex-col items-center justify-center gap-1 rounded-md px-1 py-2 text-[10px] font-medium',
+                isActive
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
               aria-label={label}
             >
-              {icon}
+              <span aria-hidden>{icon}</span>
+              <span className="max-w-full truncate leading-tight">{label}</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent side="right" className="text-background">
@@ -108,7 +113,7 @@ const SettingsShell: React.FC = () => {
             </div>
           </nav>
         ) : (
-          <nav className="flex w-14 shrink-0 flex-col gap-2" aria-label="Settings">
+          <nav className="flex w-20 shrink-0 flex-col gap-1" aria-label="Settings">
             {iconNav('/settings/profile', 'Profile', <User className="size-4" />)}
             {iconNav('/settings/preferences', 'Preferences', <Sliders className="size-4" />)}
             {iconNav('/settings/connections', 'Connections', <Shield className="size-4" />)}

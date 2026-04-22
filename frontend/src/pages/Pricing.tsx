@@ -133,7 +133,7 @@ const Pricing: React.FC = () => {
       <MarketingHeader />
       <main className="mx-auto max-w-6xl space-y-8 px-4 py-12 sm:px-6">
         <header className="space-y-3 text-center">
-          <h1 className="font-heading text-4xl font-semibold tracking-tight">Ladder 3 pricing</h1>
+          <h1 className="font-heading text-4xl font-semibold tracking-tight">Simple, honest pricing</h1>
           <p className="text-muted-foreground">
             Free forever for core visuals. Upgrade when you need BYOK, advanced MCP scopes, and research tooling.
           </p>

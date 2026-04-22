@@ -1,14 +1,24 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useMemo, useState } from 'react';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { useAuth } from '../context/AuthContext';
 import AuthLayout from '../components/layout/AuthLayout';
+import PasswordStrengthMeter from '../components/auth/PasswordStrengthMeter';
 import AppCard from '../components/ui/AppCard';
 import FormField from '../components/ui/FormField';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+
+const TIER_LABELS: Record<string, string> = {
+  free: 'Free',
+  core: 'Core',
+  pro: 'Pro',
+  premium: 'Premium',
+  elite: 'Elite',
+  enterprise: 'Enterprise',
+};
 
 const Register: React.FC = () => {
   const { register } = useAuth();
@@ -19,6 +29,14 @@ const Register: React.FC = () => {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const upgradeTierLabel = useMemo(() => {
+    const raw = new URLSearchParams(location.search).get('upgrade');
+    if (!raw) return null;
+    const key = raw.trim().toLowerCase();
+    return TIER_LABELS[key] ?? null;
+  }, [location.search]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +62,12 @@ const Register: React.FC = () => {
         <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
           <div>
             <h2 className="text-xl font-semibold tracking-tight text-card-foreground">Create account</h2>
+            {upgradeTierLabel ? (
+              <p className="mt-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-foreground">
+                You&apos;re upgrading to <span className="font-semibold">{upgradeTierLabel}</span>. Create your
+                account first — we&apos;ll hand you off to checkout next.
+              </p>
+            ) : null}
             <p className="mt-1 text-sm text-muted-foreground">
               One minute setup. You can connect brokerages after. New accounts may need administrator approval before
               you can sign in.
@@ -83,9 +107,10 @@ const Register: React.FC = () => {
                 aria-label={showPw ? 'Hide password' : 'Show password'}
                 onClick={() => setShowPw(!showPw)}
               >
-                {showPw ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                {showPw ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
               </Button>
             </div>
+            <PasswordStrengthMeter password={password} />
           </FormField>
           <Button type="submit" disabled={loading} className="h-11 rounded-lg" variant="default">
             {loading ? 'Creating account…' : 'Register'}

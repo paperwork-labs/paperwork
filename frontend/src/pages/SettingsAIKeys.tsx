@@ -66,16 +66,30 @@ const SettingsAIKeys: React.FC = () => {
             >
               Save key
             </Button>
-            <p className="text-xs text-muted-foreground">
-              Status:{' '}
-              {statusQuery.isLoading
-                ? 'Loading...'
-                : statusQuery.isError
-                  ? 'Unavailable'
+            {statusQuery.isError ? (
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span>Status: </span>
+                <span className="text-[rgb(var(--status-danger)/1)]">Could not check key status</span>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  onClick={() => void statusQuery.refetch()}
+                  disabled={statusQuery.isFetching}
+                >
+                  {statusQuery.isFetching ? 'Retrying…' : 'Retry'}
+                </Button>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Status:{' '}
+                {statusQuery.isLoading
+                  ? 'Loading...'
                   : statusQuery.data?.has_key
                     ? `Saved (${statusQuery.data.provider ?? 'unknown'})`
                     : 'Not configured'}
-            </p>
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -929,8 +929,25 @@ const MarketDashboard: React.FC = () => {
   if (error) {
     return (
       <Page>
-        <h1 className="mb-2 font-heading text-2xl font-semibold tracking-tight">Market Dashboard</h1>
-        <p className="text-sm text-destructive">{error?.message || 'Failed to load market dashboard'}</p>
+        <h1 className="mb-4 font-heading text-2xl font-semibold tracking-tight">Market Dashboard</h1>
+        <Card className="max-w-xl border-destructive/40">
+          <CardContent className="flex flex-col gap-3 p-6">
+            <p className="font-heading text-lg font-semibold text-foreground">Something went wrong</p>
+            <p className="text-sm text-muted-foreground">
+              We couldn&apos;t load the market dashboard. This is usually a transient network or backend hiccup.
+            </p>
+            {error?.message ? (
+              <p className="rounded border border-border bg-muted/30 px-2 py-1 font-mono text-xs text-muted-foreground">
+                {error.message}
+              </p>
+            ) : null}
+            <div>
+              <Button type="button" size="sm" onClick={() => void refetch()}>
+                Retry
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </Page>
     );
   }
@@ -947,15 +964,19 @@ const MarketDashboard: React.FC = () => {
   const trackedCount = payload?.tracked_count || 0;
 
   const { count: snapshotCount, above50, above200, upCount, downCount, stageCounts } = effectiveStats;
-  const pctAbove50 = snapshotCount > 0 ? ((above50 / snapshotCount) * 100).toFixed(0) : '0';
-  const pctAbove200 = snapshotCount > 0 ? ((above200 / snapshotCount) * 100).toFixed(0) : '0';
-  const advDecRatio = downCount > 0 ? (upCount / downCount).toFixed(2) : upCount > 0 ? '∞' : '0';
+  const regimeReady = Boolean(payload?.regime) && snapshotCount > 0;
+  const pctAbove50 = regimeReady ? `${((above50 / snapshotCount) * 100).toFixed(0)}%` : '—';
+  const pctAbove200 = regimeReady ? `${((above200 / snapshotCount) * 100).toFixed(0)}%` : '—';
+  const advDecRatio = regimeReady
+    ? (downCount > 0 ? (upCount / downCount).toFixed(2) : upCount > 0 ? '∞' : '0')
+    : '—';
+  const pulseStatsSub = regimeReady
+    ? { fifty: `${above50} / ${snapshotCount}`, twoHundred: `${above200} / ${snapshotCount}`, adv: `${upCount} up · ${downCount} down` }
+    : { fifty: 'Waiting for regime data', twoHundred: 'Waiting for regime data', adv: 'Waiting for regime data' };
   const advDecColor = (() => {
     const r = downCount > 0 ? upCount / downCount : upCount > 0 ? 2 : 1;
-    if (r > 1.2) return 'green.500';
-    if (r > 1) return 'green.400';
-    if (r < 0.8) return 'red.500';
-    if (r < 1) return 'red.400';
+    if (r > 1) return 'status.success';
+    if (r < 1) return 'status.danger';
     return undefined;
   })();
 
@@ -1148,9 +1169,9 @@ const MarketDashboard: React.FC = () => {
           <Collapsible.Root open={!collapsed.has('pulse')}>
             <Collapsible.Content>
               <div className="mb-3 flex flex-wrap gap-2">
-                <StatCard label="% Above 50DMA" value={`${pctAbove50}%`} sub={`${above50} / ${snapshotCount}`} />
-                <StatCard label="% Above 200DMA" value={`${pctAbove200}%`} sub={`${above200} / ${snapshotCount}`} />
-                <StatCard label="Advance / Decline" value={advDecRatio} sub={`${upCount} up · ${downCount} down`} color={advDecColor} />
+                <StatCard label="% Above 50DMA" value={pctAbove50} sub={pulseStatsSub.fifty} />
+                <StatCard label="% Above 200DMA" value={pctAbove200} sub={pulseStatsSub.twoHundred} />
+                <StatCard label="Advance / Decline" value={advDecRatio} sub={pulseStatsSub.adv} color={regimeReady ? advDecColor : undefined} />
               </div>
               <StageBar counts={stageCounts} total={snapshotCount} />
               <div className="mt-3">
@@ -1187,7 +1208,7 @@ const MarketDashboard: React.FC = () => {
               : p === 'green'
                 ? 'text-[rgb(var(--status-success)/1)]'
                 : p === 'yellow'
-                  ? 'text-amber-600 dark:text-amber-400'
+                  ? 'text-[rgb(var(--status-warning)/1)]'
                   : 'text-destructive';
           const stageBadgeClass = (p: typeof stageConfig[number]['palette']) =>
             p === 'gray'
@@ -1195,7 +1216,7 @@ const MarketDashboard: React.FC = () => {
               : p === 'green'
                 ? 'border-transparent bg-[rgb(var(--status-success)/0.12)] text-[rgb(var(--status-success)/1)]'
                 : p === 'yellow'
-                  ? 'border-transparent bg-amber-500/15 text-amber-800 dark:text-amber-200'
+                  ? 'border-transparent bg-[rgb(var(--status-warning)/0.12)] text-[rgb(var(--status-warning)/1)]'
                   : 'border-transparent bg-destructive/10 text-destructive';
           return (
             <div>

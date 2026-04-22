@@ -407,6 +407,7 @@ const PortfolioOptions: React.FC = () => {
           {activeTab === 'chain' && (
             <OptionChainTab
               gwConnected={gwConnected}
+              gwLoading={gatewayQuery.isPending}
               chainSymbol={chainSymbol}
               setChainSymbol={setChainSymbol}
               underlyingOptions={uniqueUnderlyings}
@@ -942,11 +943,12 @@ const PositionRow: React.FC<{ pos: OptionPos; currency: string; gwConnected: boo
 /* ------------------------------------------------------------------ */
 const OptionChainTab: React.FC<{
   gwConnected: boolean;
+  gwLoading: boolean;
   chainSymbol: string;
   setChainSymbol: (s: string) => void;
   underlyingOptions: string[];
   positions: OptionPos[];
-}> = ({ gwConnected, chainSymbol, setChainSymbol, underlyingOptions, positions }) => {
+}> = ({ gwConnected, gwLoading, chainSymbol, setChainSymbol, underlyingOptions, positions }) => {
   const [selectedExp, setSelectedExp] = useState<string | null>(null);
 
   const chainQuery = useQuery({
@@ -993,6 +995,19 @@ const OptionChainTab: React.FC<{
     const match = positions.find(p => p.underlying_symbol === chainSymbol && p.underlying_price);
     return Number(match?.underlying_price ?? 0);
   }, [positions, chainSymbol]);
+
+  if (gwLoading) {
+    return (
+      <Card className="gap-0 py-0">
+        <CardContent className="py-8">
+          <div className="flex flex-col items-center gap-3 text-center text-muted-foreground">
+            <Loader2 className="size-6 animate-spin" aria-hidden />
+            <p className="text-sm">Checking IB Gateway connection…</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!gwConnected) {
     return (

@@ -4,6 +4,7 @@ import hotToast from 'react-hot-toast';
 import { authApi, handleApiError } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useColorMode } from '../theme/colorMode';
+import { IANA_TIMEZONES } from '../constants/timezones';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -37,12 +38,15 @@ const SettingsPreferences: React.FC = () => {
     };
   }, []);
 
-  const timezones = React.useMemo<string[]>(() => {
+  const timezones = React.useMemo<ReadonlyArray<string>>(() => {
     try {
-      const tzs = (Intl as any)?.supportedValuesOf?.('timeZone');
-      if (Array.isArray(tzs) && tzs.length) return tzs;
-    } catch { /* ignore */ }
-    return ['UTC', 'America/New_York', 'America/Chicago', 'America/Los_Angeles', 'Europe/London'];
+      const runtime = (Intl as unknown as { supportedValuesOf?: (key: string) => string[] })
+        .supportedValuesOf?.('timeZone');
+      if (Array.isArray(runtime) && runtime.length) return runtime;
+    } catch {
+      // Intl.supportedValuesOf unavailable (older browser); fall through to bundled list.
+    }
+    return IANA_TIMEZONES;
   }, []);
 
   React.useEffect(() => {

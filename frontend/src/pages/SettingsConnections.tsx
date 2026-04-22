@@ -209,16 +209,19 @@ const SettingsConnections: React.FC = () => {
   }, [connectionsHealthQuery.data]);
 
   const LogoTile: React.FC<{ label: string; srcs: string[]; selected: boolean; onClick: () => void; wide?: boolean }> =
-    ({ label, srcs, onClick, wide, selected: _selected }) => {
+    ({ label, srcs, onClick, wide, selected }) => {
       const [idx, setIdx] = React.useState(0);
       const src = srcs[Math.min(idx, srcs.length - 1)];
       return (
         <button
           type="button"
           aria-label={label}
+          aria-pressed={selected}
           onClick={onClick}
           className={cn(
-            'flex cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-1 transition-transform hover:scale-[1.03] active:scale-[0.98]',
+            'flex cursor-pointer items-center justify-center rounded-md bg-transparent p-1 transition-transform hover:scale-[1.03] active:scale-[0.98]',
+            'border border-transparent',
+            selected && 'border-primary bg-primary/5 ring-2 ring-primary/40',
             wide ? 'min-h-11 min-w-[150px]' : 'min-h-[60px] min-w-[60px]',
           )}
         >
@@ -1015,7 +1018,7 @@ const SettingsConnections: React.FC = () => {
         <div className="flex flex-col gap-6 items-stretch">
 
           {showSetupBanner && accounts.filter(a => String(a.broker).toUpperCase() === 'SCHWAB').length > 0 && (
-            <div className="rounded-xl border-2 border-emerald-500 bg-muted/40 p-4">
+            <div className="rounded-xl border-2 border-[rgb(var(--status-success))] bg-muted/40 p-4">
               <div className="mb-2 text-base font-bold">
                 {accounts.filter(a => String(a.broker).toUpperCase() === 'SCHWAB').length} Schwab account{accounts.filter(a => String(a.broker).toUpperCase() === 'SCHWAB').length > 1 ? 's' : ''} connected
               </div>
@@ -1209,7 +1212,7 @@ const SettingsConnections: React.FC = () => {
                               className={cn(
                                 'font-normal',
                                 s.status === 'SUCCESS'
-                                  ? 'border-emerald-500/40 text-emerald-800 dark:text-emerald-200'
+                                  ? 'border-[rgb(var(--status-success)/0.4)] text-[rgb(var(--status-success)/1)]'
                                   : s.status === 'ERROR'
                                     ? 'border-destructive/40 text-destructive'
                                     : 'border-blue-500/40 text-blue-800 dark:text-blue-200',
@@ -1260,7 +1263,7 @@ const SettingsConnections: React.FC = () => {
                 className={cn(
                   'text-xs font-normal',
                   gwData?.connected
-                    ? 'border-emerald-500/40 text-emerald-800 dark:text-emerald-200'
+                    ? 'border-[rgb(var(--status-success)/0.4)] text-[rgb(var(--status-success)/1)]'
                     : 'text-muted-foreground',
                 )}
               >
@@ -1274,7 +1277,7 @@ const SettingsConnections: React.FC = () => {
           <AppCard
             className={cn(
               'border-l-[3px]',
-              gwData?.connected ? 'border-l-emerald-500' : 'border-l-transparent',
+              gwData?.connected ? 'border-l-[rgb(var(--status-success))]' : 'border-l-transparent',
             )}
           >
             <div className="flex flex-col gap-3 items-stretch">
@@ -1282,7 +1285,7 @@ const SettingsConnections: React.FC = () => {
                 <img src={IBGatewayLogo} alt="IB Gateway" className="size-7 rounded-md" />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-row items-center gap-2">
-                    <div className={cn("size-2 rounded-full", gwData?.connected ? "bg-emerald-500" : "bg-muted-foreground/50")} />
+                    <div className={cn("size-2 rounded-full", gwData?.connected ? "bg-[rgb(var(--status-success))]" : "bg-muted-foreground/50")} />
                     <div className="text-sm font-medium">{gwData?.connected ? 'Connected' : gwData?.available === false ? 'Unavailable' : 'Disconnected'}</div>
                     {gwData?.connected && gwData?.last_connected && (
                       <div className="text-xs text-muted-foreground">since {formatDateTime(gwData.last_connected, timezone)}</div>
@@ -1378,13 +1381,13 @@ const SettingsConnections: React.FC = () => {
             <div className="mb-1 flex flex-row items-center gap-3">
               <div className="rounded-md bg-muted/60 p-1.5"><BarChart2 className="size-[18px]" aria-hidden /></div>
               <div className="text-lg font-bold">TradingView</div>
-              <Badge variant="outline" className="border-emerald-500/40 text-xs font-normal text-emerald-800 dark:text-emerald-200">Active</Badge>
+              <Badge variant="outline" className="border-[rgb(var(--status-success)/0.4)] text-xs font-normal text-[rgb(var(--status-success)/1)]">Active</Badge>
             </div>
             <div className="mb-3 pl-[42px] text-sm text-muted-foreground">
               Charting preferences for the embedded TradingView widget. Charts appear in Market Dashboard and Portfolio Workspace.
             </div>
           </div>
-          <AppCard className="border-l-[3px] border-l-emerald-500">
+          <AppCard className="border-l-[3px] border-l-[rgb(var(--status-success))]">
             <div className="flex flex-col gap-4 items-stretch">
               <div className="mb-1 flex flex-row items-center gap-3">
                 <img src={TradingViewLogo} alt="TradingView" className="size-7 rounded-md" />

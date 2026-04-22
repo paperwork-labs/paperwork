@@ -1,13 +1,14 @@
 import React from 'react';
 
+import { BRAND_DOT, BRAND_PETAL } from '@/constants/brand';
+
 interface AppLogoProps {
   /** Size of the brand mark in px. */
   size?: number;
 }
 
-/** Fixed brand-mark colors — theme-independent for consistent identity. */
-const PETAL = '#3274F0';
-const DOT = '#F59E0B';
+const PETAL = BRAND_PETAL;
+const DOT = BRAND_DOT;
 
 /**
  * The AxiomFolio brand mark — the four-point star with amber center.

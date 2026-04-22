@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, Download, Search } from 'lucide-react';
+import { ChevronDown, ChevronRight, Download, Loader2, Search } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import PageHeader from '../../components/ui/PageHeader';
 import { portfolioApi } from '../../services/api';
@@ -95,6 +95,7 @@ const PortfolioTaxCenter: React.FC = () => {
   const realizedQuery = useRealizedGains();
   const realizedGains: RealizedGainRow[] = realizedQuery.data?.realized_gains ?? [];
   const yearSummaries: YearSummary[] = realizedQuery.data?.summary_by_year ?? [];
+  const realizedReady = !realizedQuery.isPending && !realizedQuery.isError;
 
   const gainsByYear = useMemo(() => {
     const m = new Map<number, RealizedGainRow[]>();
@@ -210,7 +211,28 @@ const PortfolioTaxCenter: React.FC = () => {
 
       {activeTab === 'realized' && (
         <div className="flex flex-col gap-4">
-          {yearSummaries.length > 0 && (
+          {realizedQuery.isPending && (
+            <Card className="gap-0 border border-border shadow-none ring-0">
+              <CardContent className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+                Loading realized gains…
+              </CardContent>
+            </Card>
+          )}
+          {realizedQuery.isError && (
+            <Card className="gap-0 border border-destructive/40 shadow-none ring-0">
+              <CardContent className="flex flex-col gap-3 py-6 text-sm">
+                <span className="font-semibold text-foreground">Could not load realized gains</span>
+                <span className="text-muted-foreground">This is usually a transient error. Try again in a moment.</span>
+                <div>
+                  <Button type="button" size="sm" onClick={() => void realizedQuery.refetch()}>
+                    Retry
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {realizedReady && yearSummaries.length > 0 && (
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               {yearSummaries.slice(0, 1).map((s) => (
                 <React.Fragment key={s.year}>
@@ -242,7 +264,7 @@ const PortfolioTaxCenter: React.FC = () => {
             </div>
           )}
 
-          {yearSummaries.map((ys) => {
+          {realizedReady && yearSummaries.map((ys) => {
             const yearRows = gainsByYear.get(ys.year) || [];
             const isOpen = openYears.has(ys.year);
             return (
@@ -365,7 +387,7 @@ const PortfolioTaxCenter: React.FC = () => {
             );
           })}
 
-          {realizedGains.length === 0 && !realizedQuery.isPending && (
+          {realizedReady && realizedGains.length === 0 && (
             <Card className="gap-0 border border-border shadow-none ring-0">
               <CardContent className="py-6 text-center text-sm text-muted-foreground">
                 No realized gains data. Sell trades from IBKR FlexQuery will appear here after sync.

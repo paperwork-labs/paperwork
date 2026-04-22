@@ -1,7 +1,11 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { screen, fireEvent, waitFor } from '@/test/testing-library';
-import { renderWithProviders } from '../../test/render';
+import { ColorModeProvider } from '../../theme/colorMode';
+import { createTestQueryClient, renderWithProviders } from '../../test/render';
 import SettingsProfile from '../SettingsProfile';
 import * as apiModule from '../../services/api';
 
@@ -10,17 +14,21 @@ const changePassword = vi.spyOn(apiModule.authApi as any, 'changePassword').mock
 
 const refreshMe = vi.fn().mockResolvedValue(undefined);
 
+const defaultUser = {
+  id: 1,
+  username: 'tester',
+  email: 'tester@example.com',
+  full_name: 'Test User',
+  is_active: true,
+  has_password: true,
+};
+
+let mockUser: typeof defaultUser | null = defaultUser;
+
 vi.mock('../../context/AuthContext', () => {
   return {
     useAuth: () => ({
-      user: {
-        id: 1,
-        username: 'tester',
-        email: 'tester@example.com',
-        full_name: 'Test User',
-        is_active: true,
-        has_password: true,
-      },
+      user: mockUser,
       refreshMe,
       appSettings: { market_only_mode: true },
       appSettingsReady: true,
@@ -31,6 +39,7 @@ vi.mock('../../context/AuthContext', () => {
 
 describe('SettingsProfile', () => {
   beforeEach(() => {
+    mockUser = defaultUser;
     updateMe.mockClear();
     changePassword.mockClear();
     refreshMe.mockClear();
@@ -77,6 +86,29 @@ describe('SettingsProfile', () => {
       current_password: 'OldPassw0rd!',
       new_password: 'NewPassw0rd!',
     });
+  });
+
+  it('does not show email-change current password field when user hydrates after mount', () => {
+    const queryClient = createTestQueryClient();
+    const wrap = (ui: React.ReactElement) => (
+      <QueryClientProvider client={queryClient}>
+        <ColorModeProvider>
+          <MemoryRouter>
+            {ui}
+          </MemoryRouter>
+        </ColorModeProvider>
+      </QueryClientProvider>
+    );
+
+    mockUser = null;
+    const { rerender } = render(wrap(<SettingsProfile />));
+    expect(screen.queryByLabelText('Current password for email change')).not.toBeInTheDocument();
+
+    mockUser = { ...defaultUser };
+    rerender(wrap(<SettingsProfile />));
+
+    expect(screen.queryByLabelText('Current password for email change')).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText('name@domain.com')).toHaveValue('tester@example.com');
   });
 });
 

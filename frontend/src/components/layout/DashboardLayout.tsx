@@ -70,15 +70,13 @@ function useMediaQueryMinWidth(query: string): boolean {
   return matches;
 }
 
-function toTitleCase(s: string): string {
-  if (!s?.trim()) return s;
-  return s.trim().replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-}
-
 function displayName(user: { full_name?: string | null; username?: string } | null): string {
+  // Display the stored name verbatim (trim-only). Global title-casing mangled
+  // legitimate names like "McDonald" -> "Mcdonald" and "de la Rosa" ->
+  // "De La Rosa". Respect whatever the user typed in Settings > Profile.
   if (!user) return 'Guest';
   const raw = (user.full_name?.trim() || user.username?.trim() || 'Guest').trim();
-  return raw ? toTitleCase(raw) : 'Guest';
+  return raw || 'Guest';
 }
 
 const portfolioItems = [

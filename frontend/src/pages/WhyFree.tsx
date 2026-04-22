@@ -5,8 +5,6 @@ import { useQuery } from '@tanstack/react-query';
 import { MarketingFooter } from '@/components/layout/MarketingFooter';
 import { MarketingHeader } from '@/components/layout/MarketingHeader';
 import PublicStatsStrip from '@/components/transparency/PublicStatsStrip';
-import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import api from '@/services/api';
 import type { PricingCatalogResponse } from '@/types/pricing';
@@ -19,6 +17,11 @@ import type { PricingCatalogResponse } from '@/types/pricing';
 // renders loading/error/empty states explicitly per
 // ``no-silent-fallback.mdc``.
 
+// ``neverItems`` intentionally stays hard-coded. These are founder
+// commitments — not a tier feature list — and the pricing catalog is
+// not the right source of truth for them. A change here is a
+// deliberate content update reviewed as part of the PR, not a
+// configuration knob in the backend.
 const neverItems = [
   'Sell your data, ever',
   'Show ads',
@@ -32,7 +35,7 @@ const Section: React.FC<{ id?: string; className?: string; children: React.React
   className,
   children,
 }) => (
-  <section id={id} className={cn('mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-20', className)}>
+  <section id={id} className={cn('mx-auto max-w-4xl px-4 py-16 sm:px-6 sm:py-20', className)}>
     {children}
   </section>
 );
@@ -49,12 +52,11 @@ const WhyFree: React.FC = () => {
   const freeForeverItems = freeTier?.features ?? [];
 
   return (
-    <TooltipProvider>
       <div className="min-h-screen bg-background text-foreground">
         <MarketingHeader />
 
         <main>
-          <Section className="max-w-4xl pt-12 pb-8 sm:pt-16 sm:pb-12">
+          <Section className="pt-12 pb-8 sm:pt-16 sm:pb-12">
             <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Transparency</p>
             <h1 className="mt-3 font-heading text-4xl font-semibold tracking-tight sm:text-5xl">
               AxiomFolio is free because we want it to be.
@@ -175,48 +177,16 @@ const WhyFree: React.FC = () => {
           </Section>
 
           <Section className="border-t border-border pb-24">
-            <h2 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Tip jar</h2>
-            <p className="mt-3 max-w-xl text-sm text-muted-foreground sm:text-base">
-              If this saved you a Personal Capital subscription, consider a coffee.
+            <h2 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Like it? Tell a friend.</h2>
+            <p className="mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
+              Tips will open once our Stripe Checkout integration lands. Until then, the single best thing you can do
+              is share AxiomFolio with another investor who&apos;s paying a subscription just to look at their own
+              holdings.
             </p>
-            {/* TODO: Wire Stripe Checkout session URLs when tip / donation products exist in Stripe. */}
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span tabIndex={0} role="button" aria-disabled="true">
-                    <Button type="button" variant="secondary" disabled>
-                      Small
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>Coming soon</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span tabIndex={0} role="button" aria-disabled="true">
-                    <Button type="button" variant="secondary" disabled>
-                      Medium
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>Coming soon</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span tabIndex={0} role="button" aria-disabled="true">
-                    <Button type="button" variant="outline" disabled>
-                      Custom
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>Coming soon</TooltipContent>
-              </Tooltip>
-            </div>
           </Section>
         </main>
         <MarketingFooter />
       </div>
-    </TooltipProvider>
   );
 };
 

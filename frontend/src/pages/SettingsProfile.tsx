@@ -24,9 +24,9 @@ const SettingsProfile: React.FC = () => {
   const [showPw, setShowPw] = React.useState(false);
   const [showNewPw, setShowNewPw] = React.useState(false);
 
-  React.useEffect(() => {
-    setFullName(user?.full_name || '');
-    setEmail(user?.email || '');
+  React.useLayoutEffect(() => {
+    setFullName(user?.full_name ?? '');
+    setEmail(user?.email ?? '');
   }, [user?.full_name, user?.email]);
 
   const saveProfile = async () => {
@@ -119,10 +119,10 @@ const SettingsProfile: React.FC = () => {
                     placeholder="name@domain.com"
                   />
                 </div>
-                {user?.has_password ? (
+                {user?.has_password && email !== (user?.email || '') ? (
                   <div className={cn(fieldWrap, 'md:min-w-[320px]')}>
                     <Label htmlFor="profile-email-pw" className="mb-1.5 block text-muted-foreground">
-                      Current password (required to change email)
+                      Current password
                     </Label>
                     <div className="relative">
                       <Input
@@ -142,9 +142,12 @@ const SettingsProfile: React.FC = () => {
                         aria-label={showPw ? 'Hide password' : 'Show password'}
                         onClick={() => setShowPw(!showPw)}
                       >
-                        {showPw ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                        {showPw ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
                       </Button>
                     </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Changing email requires your current password.
+                    </p>
                   </div>
                 ) : null}
               </div>

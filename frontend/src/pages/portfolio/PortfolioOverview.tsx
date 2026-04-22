@@ -66,9 +66,30 @@ const PERIODS = [
   { key: 'all', label: 'All' },
 ] as const;
 
+const HISTORY_PERIOD_STORAGE_KEY = 'axiomfolio:portfolio:history-period';
+const HISTORY_PERIOD_KEYS: ReadonlySet<string> = new Set(PERIODS.map((p) => p.key));
+
+const readStoredHistoryPeriod = (): string => {
+  try {
+    const stored = window.localStorage.getItem(HISTORY_PERIOD_STORAGE_KEY);
+    if (stored && HISTORY_PERIOD_KEYS.has(stored)) return stored;
+  } catch {
+    // localStorage may be unavailable (SSR, private-mode Safari) — fall through to default.
+  }
+  return '1y';
+};
+
 const PortfolioOverview: React.FC = () => {
   const [chartSymbol, setChartSymbol] = useState<string | null>(null);
-  const [historyPeriod, setHistoryPeriod] = useState<string>('1y');
+  const [historyPeriod, setHistoryPeriodState] = useState<string>(() => readStoredHistoryPeriod());
+  const setHistoryPeriod = React.useCallback((next: string) => {
+    setHistoryPeriodState(next);
+    try {
+      window.localStorage.setItem(HISTORY_PERIOD_STORAGE_KEY, next);
+    } catch {
+      // localStorage write may fail (quota, private mode); UI still reflects in-memory state.
+    }
+  }, []);
   const [showBenchmark, setShowBenchmark] = useState<boolean>(true);
   const { currency } = useUserPreferences();
   const colors = useChartColors();
@@ -192,7 +213,7 @@ const PortfolioOverview: React.FC = () => {
           <DailyNarrative />
 
           {!liveQuery.isPending && !liveData.is_live && (
-            <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+            <Alert className="border-[rgb(var(--status-warning)/0.4)] bg-[rgb(var(--status-warning)/0.1)] text-[rgb(var(--status-warning)/1)]">
               <TriangleAlert className="size-4" aria-hidden />
               <AlertTitle className="text-sm">Live data disconnected</AlertTitle>
               <AlertDescription className="text-sm">
@@ -390,10 +411,10 @@ const PortfolioOverview: React.FC = () => {
                         const ageHours = ageMs / (1000 * 60 * 60);
                         const dotClass =
                           ageHours < 1
-                            ? 'bg-green-500'
+                            ? 'bg-[rgb(var(--status-success))]'
                             : ageHours < 24
-                              ? 'bg-amber-400'
-                              : 'bg-red-400';
+                              ? 'bg-[rgb(var(--status-warning))]'
+                              : 'bg-[rgb(var(--status-danger))]';
                         return (
                           <div key={a.id} className="flex items-center gap-1">
                             <span className={cn('size-1.5 shrink-0 rounded-full', dotClass)} aria-hidden />

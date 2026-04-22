@@ -116,8 +116,10 @@ describe('MarketDashboard', () => {
     );
     const titles = await screen.findAllByText('Market Dashboard');
     expect(titles.length).toBeGreaterThanOrEqual(1);
-    // Overview uses API snapshot_count when universe has no constituent list (empty dashboard).
-    expect(screen.getAllByText('0 / 0').length).toBeGreaterThanOrEqual(2);
+    // When the dashboard has zero tracked symbols we now distinguish
+    // "waiting for data" from "zero result" rather than showing the
+    // ambiguous "0 / 0" (see MD-02 in the UX audit).
+    expect(screen.getAllByText('Waiting for regime data').length).toBeGreaterThanOrEqual(2);
   });
 
   it('marks repeated symbols across matrix columns', async () => {
