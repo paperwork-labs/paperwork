@@ -32,16 +32,17 @@ import { formatDateFriendly, formatDateTimeFriendly } from '@/utils/format';
 // Vertical grid layout — 4 rows, top-to-bottom pipeline flow
 //
 // Row 0  Ingestion:   constituents → tracked_cache → daily_bars → mv_refresh
-// Row 1  Compute:     [gap] regime  indicators  exit_cascade
-// Row 2  Downstream:  [gap] scan    strategy    snapshot_history
-// Row 3  Reporting:   digest  health  audit  warm_dashboard
+// Row 1  Compute:     [gap]          regime          indicators        exit_cascade
+// Row 2  Downstream:  [gap]          scan_overlay    strategy_eval     snapshot_history
+// Row 3  Reporting:   digest         health_check    audit             warm_dashboard
+//
+// Pure grid — no per-node y-offsets. Row spacing is generous enough that edges
+// read cleanly without overlapping neighbours.
 // ---------------------------------------------------------------------------
 
 interface NodePos {
   col: number;
   row: number;
-  /** Optional vertical nudge (px) when labels/edges read as stacked. */
-  yAdjust?: number;
 }
 
 const NODE_POSITIONS: Record<string, NodePos> = {
@@ -49,11 +50,11 @@ const NODE_POSITIONS: Record<string, NodePos> = {
   tracked_cache:    { row: 0, col: 1 },
   daily_bars:       { row: 0, col: 2 },
   mv_refresh:       { row: 0, col: 3 },
-  regime:           { row: 1, col: 1, yAdjust: -60 },
-  indicators:       { row: 1, col: 2, yAdjust: 60 },
+  regime:           { row: 1, col: 1 },
+  indicators:       { row: 1, col: 2 },
   exit_cascade:     { row: 1, col: 3 },
-  scan_overlay:     { row: 2, col: 1, yAdjust: 60 },
-  strategy_eval:    { row: 2, col: 2, yAdjust: -60 },
+  scan_overlay:     { row: 2, col: 1 },
+  strategy_eval:    { row: 2, col: 2 },
   snapshot_history: { row: 2, col: 3 },
   digest:           { row: 3, col: 0 },
   health_check:     { row: 3, col: 1 },
@@ -63,9 +64,9 @@ const NODE_POSITIONS: Record<string, NodePos> = {
 
 const NODE_W = 160;
 const NODE_H = 64;
-const COL_GAP = 36;
-const ROW_GAP = 40;
-const PAD = 12;
+const COL_GAP = 44;
+const ROW_GAP = 56;
+const PAD = 16;
 
 // ---------------------------------------------------------------------------
 // Health dimension mapping — connects DAG nodes to health data
@@ -178,19 +179,17 @@ function getNodeMetric(name: string, dims: HealthDims | null | undefined): strin
 
 function nodeCenter(name: string): { x: number; y: number } {
   const pos = NODE_POSITIONS[name] ?? { col: 0, row: 0 };
-  const yAdj = pos.yAdjust ?? 0;
   return {
     x: PAD + pos.col * (NODE_W + COL_GAP) + NODE_W / 2,
-    y: PAD + pos.row * (NODE_H + ROW_GAP) + yAdj + NODE_H / 2,
+    y: PAD + pos.row * (NODE_H + ROW_GAP) + NODE_H / 2,
   };
 }
 
 function nodeTopLeft(name: string): { x: number; y: number } {
   const pos = NODE_POSITIONS[name] ?? { col: 0, row: 0 };
-  const yAdj = pos.yAdjust ?? 0;
   return {
     x: PAD + pos.col * (NODE_W + COL_GAP),
-    y: PAD + pos.row * (NODE_H + ROW_GAP) + yAdj,
+    y: PAD + pos.row * (NODE_H + ROW_GAP),
   };
 }
 
