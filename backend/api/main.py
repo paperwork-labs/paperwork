@@ -72,6 +72,7 @@ from backend.api.routes.account_risk_profile import router as account_risk_profi
 from backend.api.routes.entitlements import router as entitlements_router
 from backend.api.routes.public.stats import router as public_stats_router
 from backend.api.routes.pricing import router as pricing_router
+from backend.api.routes.share.chart_og import router as share_chart_router
 from backend.api.routes.brain_tools import router as brain_tools_router
 from backend.api.routes.agent_trade_decision import router as agent_trade_decision_router
 from backend.api.routes.symbols import router as symbols_router
@@ -852,6 +853,12 @@ app.include_router(
 app.include_router(
     public_stats_router,
     prefix="/api/v1/public",
+)
+# Chart share: signed public links (POST auth; GET token-gated, no user JWT).
+app.include_router(
+    share_chart_router,
+    prefix="/api/v1/share",
+    tags=["Share"],
 )
 # MCP (Model Context Protocol): per-user bearer-token gateway for read-only
 # AI agent access. Token CRUD is JWT-authed via the route handlers; the

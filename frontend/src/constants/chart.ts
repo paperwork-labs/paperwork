@@ -104,6 +104,9 @@ export const MACD_HEX = {
 
 export const BOLLINGER_HEX: [string, string] = ['#4F46E580', '#818CF880'];
 
+/** Dividend markers on the holding price chart (dot row) — [light, dark] pair. */
+export const DIVIDEND_MARK_HEX: [string, string] = ['#6366F1', '#A5B4FC'];
+
 /* ─── Heat scale (momentum, RS, performance %) ─── */
 
 export const HEAT_SCALE: { min: number; class: string; hex: string }[] = [

@@ -395,9 +395,15 @@ describe("HoldingPriceChart", () => {
     // aria-live region must show the SAME copy so screen-reader users
     // hear "no data" instead of a misleading "AAPL chart loading."
     // Two nodes (one visible, one in the live region) carry the text.
-    expect(screen.getAllByText("No price data yet for AAPL.").length).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText(
+        /No daily bars here yet for AAPL/i,
+      ).length,
+    ).toBeGreaterThanOrEqual(1);
     const announcer = screen.getByTestId("chart-announcer");
-    expect(announcer).toHaveTextContent("No price data yet for AAPL.");
+    expect(announcer).toHaveTextContent(
+      /No daily prices for AAPL in this range/,
+    );
     expect(announcer.textContent ?? "").not.toContain("chart loading");
   });
 

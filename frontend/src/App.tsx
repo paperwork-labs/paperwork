@@ -80,6 +80,7 @@ const NotFound = React.lazy(() => import('./pages/NotFound'));
 const ForgotPassword = React.lazy(() => import('./pages/auth/ForgotPassword'));
 const ResetPassword = React.lazy(() => import('./pages/auth/ResetPassword'));
 const Home = React.lazy(() => import('./pages/Home'));
+const ChartShare = React.lazy(() => import('./pages/share/ChartShare'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -300,6 +301,7 @@ function App() {
                       <Route path="/auth/forgot-password" element={<ForgotPassword />} />
                       <Route path="/auth/reset-password" element={<ResetPassword />} />
                       <Route path="/invite/:token" element={<Invite />} />
+                      <Route path="/share/c/:token" element={<ChartShare />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </Suspense>

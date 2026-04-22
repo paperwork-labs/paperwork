@@ -16,6 +16,7 @@ import {
   type SeriesType,
   type UTCTimestamp,
 } from 'lightweight-charts';
+
 import { useColorMode } from '../../theme/colorMode';
 import type { ChartColors } from '../../hooks/useChartColors';
 import {
@@ -27,12 +28,23 @@ import {
   computeWeinsteinStage,
 } from '../../utils/indicators';
 import type { OHLCBar, TrendLine, SRLevel, GapZone, TDLabel, EMAResult, StageInfo } from '../../utils/indicators';
-import { STAGE_COLORS, RSI_HEX, MACD_HEX, BOLLINGER_HEX } from '../../constants/chart';
+import { useChartColors } from '../../hooks/useChartColors';
+import { STAGE_COLORS, RSI_HEX, MACD_HEX, BOLLINGER_HEX, TD_HEX } from '../../constants/chart';
 import { cssVarToCanvasColor } from '../../lib/chartColors';
 import type { KellPatternItem, VolumeEventItem } from '@/types/indicators';
 import { buildKellByDayMap, buildKellPatternMarkers, KELL_RATIONALE } from '@/components/charts/OliverKellBadges';
 import { buildVolumeClimaxMarkers } from '@/components/charts/VolumeClimaxMarkers';
 import { applyTradeSegmentOverlays, type ChartTradeSegment } from '@/components/charts/TradeSegments';
+
+const READ_ONLY_CHART = {
+  handleScale: { mouseWheel: false, pinch: false, axisPressedMouseMove: false },
+  handleScroll: {
+    mouseWheel: false,
+    pressedMouseMove: false,
+    horzTouchDrag: false,
+    vertTouchDrag: false,
+  },
+} as const;
 
 type Bar = { time: string; open: number; high: number; low: number; close: number; volume?: number };
 
@@ -70,7 +82,7 @@ export function storeIndicators(t: IndicatorToggles) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(t));
 }
 
-function defaultIndicators(): IndicatorToggles {
+export function defaultIndicators(): IndicatorToggles {
   return { trendLines: true, gaps: true, tdSequential: true, emas: true, stage: true, supportResistance: true };
 }
 
@@ -106,6 +118,8 @@ interface Props {
   showMACD?: boolean;
   showBollinger?: boolean;
   priceLinesExtra?: Array<{ price: number; color: string; title: string; lineStyle?: number }>;
+  /** When true, disable zoom/scroll and click-to-pin; for public share pages. */
+  readOnly?: boolean;
   /** Null = still loading annotations; undefined = not requested. */
   volumeEvents?: VolumeEventItem[] | null;
   kellPatterns?: KellPatternItem[] | null;
@@ -137,7 +151,7 @@ function eventColor(type: ChartEventType, c: ChartColors): string {
   switch (type) {
     case 'BUY': return c.success;
     case 'SELL': return c.danger;
-    case 'DIVIDEND': return '#059669';
+    case 'DIVIDEND': return c.success;
     case 'TRANSFER': return c.brand500;
     case 'FEE': return c.warning;
     case 'INTEREST': return c.brand700;
@@ -165,21 +179,9 @@ function pickEventDayColor(evts: ChartEvent[], c: ChartColors): string {
   if (types.has('SELL') || types.has('ORDER_FILLED')) return c.danger;
   if (types.has('ORDER_PENDING')) return c.warning;
   if (types.has('BUY')) return c.success;
-  if (types.has('DIVIDEND')) return '#059669';
+  if (types.has('DIVIDEND')) return c.success;
   return c.muted;
 }
-
-const FALLBACK_COLORS: ChartColors = {
-  danger: '#F87171', success: '#4ADE80', neutral: '#60A5FA',
-  area1: '#34D399', area2: '#60A5FA',
-  grid: 'rgba(255,255,255,0.08)', axis: 'rgba(255,255,255,0.45)',
-  refLine: 'rgba(255,255,255,0.2)',
-  muted: '#94A3B8', subtle: '#64748B', border: '#334155',
-  brand500: '#818CF8', brand400: '#A5B4FC', brand700: '#4F46E5',
-  warning: '#FBBF24',
-  tooltipBg: '#1E293B',
-  tooltipBorder: 'rgba(255,255,255,0.12)',
-};
 
 const SymbolChartWithMarkers: React.FC<Props> = ({
   height = 520,
@@ -202,6 +204,7 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
   showMACD = false,
   showBollinger = false,
   priceLinesExtra,
+  readOnly = false,
   volumeEvents,
   kellPatterns,
   tradeSegments = [],
@@ -218,7 +221,8 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
   onClickRef.current = onClickDaySec;
   const { colorMode } = useColorMode();
   const isDark = colorMode === 'dark';
-  const c = colors ?? FALLBACK_COLORS;
+  const themeColors = useChartColors();
+  const c = colors ?? themeColors;
   const kellByDayRef = useRef<Map<number, KellPatternItem>>(new Map());
   kellByDayRef.current = buildKellByDayMap(kellPatterns ?? []);
 
@@ -280,8 +284,12 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
     }
     if (!ref.current) return undefined;
 
-    const bg = isDark ? getCssColor('bg.canvas', '#0F172A') : '#FFFFFF';
-    const text = isDark ? getCssColor('fg.default', '#E5E7EB') : '#111827';
+    const bg = isDark
+      ? getCssColor('bg.canvas', 'rgb(2 6 23)')
+      : getCssColor('bg.canvas', 'rgb(248 250 252)');
+    const text = isDark
+      ? getCssColor('fg.default', 'rgb(229 231 235)')
+      : getCssColor('fg.default', 'rgb(17 24 39)');
 
     ref.current.innerHTML = '';
     const chart: IChartApi = createChart(ref.current, {
@@ -291,6 +299,7 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
       grid: { vertLines: { color: c.grid }, horzLines: { color: c.grid } },
       timeScale: { rightOffset: 8, barSpacing: 6, fixLeftEdge: false, lockVisibleTimeRangeOnResize: false },
       crosshair: { mode: 1 },
+      ...(readOnly ? READ_ONLY_CHART : {}),
     });
 
     let mainSeries: ISeriesApi<SeriesType>;
@@ -457,7 +466,7 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
           return {
             time: asUTC(time),
             position: pos as 'aboveBar' | 'belowBar',
-            color: isDividendOnly ? '#059669' : pickEventDayColor(evts, c),
+            color: isDividendOnly ? c.success : pickEventDayColor(evts, c),
             shape: shape as 'circle' | 'arrowUp' | 'arrowDown' | 'square',
             size: isDividendOnly ? 1.5 : (showLine ? 1 : 0.5),
             text,
@@ -570,7 +579,7 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
       const rsiPane = chart.addPane();
       rsiPane.setStretchFactor(0.15);
       const rsiSeries = rsiPane.addSeries(LineSeries, {
-        color: '#7C3AED',
+        color: TD_HEX.perfect[cIdx],
         lineWidth: 1,
         priceLineVisible: false,
         lastValueVisible: false,
@@ -611,13 +620,13 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
       }
       if (macdData.macd?.length) {
         const macdLine = macdPane.addSeries(LineSeries, {
-          color: '#3B82F6', lineWidth: 1, priceLineVisible: false, lastValueVisible: false,
+          color: c.neutral, lineWidth: 1, priceLineVisible: false, lastValueVisible: false,
         });
         macdLine.setData(macdData.macd.map(d => ({ time: toDaySec(d.time), value: d.value })));
       }
       if (macdData.signal?.length) {
         const signalLine = macdPane.addSeries(LineSeries, {
-          color: '#F97316', lineWidth: 1, priceLineVisible: false, lastValueVisible: false,
+          color: c.warning, lineWidth: 1, priceLineVisible: false, lastValueVisible: false,
         });
         signalLine.setData(macdData.signal.map(d => ({ time: toDaySec(d.time), value: d.value })));
       }
@@ -666,7 +675,11 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
       mainSeries.applyOptions({ crosshairMarkerBackgroundColor: color, crosshairMarkerRadius: radius });
     };
 
-    chart.subscribeCrosshairMove((p: any) => {
+    chart.subscribeCrosshairMove((p: {
+      time?: unknown;
+      point?: { x: number; y: number };
+      seriesData?: Map<unknown, unknown>;
+    }) => {
       const t = p?.time ?? null;
       onHoverRef.current?.(typeof t === 'number' ? t : null);
 
@@ -692,7 +705,9 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
       const kell = typeof t === 'number' ? kellByDayRef.current.get(t) : undefined;
 
       if ((dayEvts && dayEvts.length > 0) || kell) {
-        const barData = p.seriesData?.get(mainSeries);
+        const barData = p.seriesData?.get(mainSeries) as
+          | { value?: number; close?: number }
+          | undefined;
         const price = barData?.value ?? barData?.close ?? 0;
         const rawY = mainSeries.priceToCoordinate(price);
         const y = (rawY != null && rawY > 0) ? rawY : p.point.y;
@@ -738,10 +753,12 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
         tooltip.style.display = 'none';
       }
     });
-    chart.subscribeClick((p: any) => {
-      const t = p?.time ?? null;
-      onClickRef.current?.(typeof t === 'number' ? t : null);
-    });
+    if (!readOnly) {
+      chart.subscribeClick((p: { time?: unknown }) => {
+        const t = p?.time ?? null;
+        onClickRef.current?.(typeof t === 'number' ? t : null);
+      });
+    }
 
     return () => {
       try { chart?.remove?.(); } catch { /* ignore */ }
@@ -752,6 +769,7 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
     zoomYears, isDark, ohlcBars, trendLines, gapZones, tdLabels,
     ema8, ema21, ema200, srLevels, ind, c,
     showRSI, rsiData, showMACD, macdData, showBollinger, bollingerData, priceLinesExtra,
+    readOnly,
     volumeEvents, kellPatterns, tradeSegments, proPlusRationale,
   ]);
 
@@ -764,7 +782,9 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
         aria-live="polite"
       >
         <p className="text-center text-sm text-muted-foreground">
-          No price history available{symbol ? ` for ${symbol}` : ''}.
+          No OHLCV history here yet{symbol ? ` for ${symbol}` : ''} — the feed may still be
+          warming, or the symbol may be delisted. Open the workspace to confirm your broker sync
+          and provider coverage.
         </p>
       </div>
     );
@@ -815,15 +835,15 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
           display: 'none',
           padding: '8px 12px',
           borderRadius: '8px',
-          background: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-          border: `1px solid ${c.border}`,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          background: c.tooltipBg,
+          border: `1px solid ${c.tooltipBorder}`,
+          boxShadow: '0 4px 12px var(--ring)',
           pointerEvents: 'none' as const,
           zIndex: 20,
           minWidth: '120px',
           maxWidth: '220px',
           backdropFilter: 'blur(8px)',
-          color: isDark ? '#E5E7EB' : '#111827',
+          color: 'var(--foreground)',
         }}
       />
     </div>

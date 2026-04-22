@@ -13,6 +13,8 @@ slowapi==0.1.9
 python-json-logger==4.1.0
 
 # Data & Utils
+# Chart share OG (Open Graph) PNG cards — 1200x630 social previews (C1 / #360)
+Pillow==10.4.0
 pandas==3.0.2
 numpy==2.4.4
 requests==2.33.1

@@ -22,7 +22,7 @@ import * as React from 'react';
 
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
 import { RichTooltip } from '@/components/ui/RichTooltip';
-import { STAGE_HEX, heatColorHex } from '@/constants/chart';
+import { STAGE_HEX, heatColorHex, SIGNAL_HEX } from '@/constants/chart';
 import { cn } from '@/lib/utils';
 
 import { MetricStripSkeleton } from './skeletons/MetricStripSkeleton';
@@ -89,21 +89,24 @@ function pickStageColor(label: string, isDark: boolean): string | undefined {
  * strip reads coherently with the rest of the dashboard.
  */
 function rsiColor(rsi: number, isDark: boolean): string {
-  if (rsi >= 70) return isDark ? '#F87171' : '#DC2626';
-  if (rsi <= 30) return isDark ? '#4ADE80' : '#16A34A';
-  return isDark ? '#A0AEC0' : '#718096';
+  const i = isDark ? 1 : 0;
+  if (rsi >= 70) return SIGNAL_HEX.bearish[i];
+  if (rsi <= 30) return SIGNAL_HEX.bullish[i];
+  return SIGNAL_HEX.neutral[i];
 }
 
 /** ADX > 25 = trending; < 20 = no trend. Highlight the strong-trend band. */
 function adxColor(adx: number, isDark: boolean): string {
-  if (adx >= 25) return isDark ? '#FBBF24' : '#D97706';
-  return isDark ? '#A0AEC0' : '#718096';
+  const i = isDark ? 1 : 0;
+  if (adx >= 25) return SIGNAL_HEX.warning[i];
+  return SIGNAL_HEX.neutral[i];
 }
 
 function macdColor(value: number, isDark: boolean): string {
-  if (value > 0) return isDark ? '#4ADE80' : '#16A34A';
-  if (value < 0) return isDark ? '#F87171' : '#DC2626';
-  return isDark ? '#A0AEC0' : '#718096';
+  const i = isDark ? 1 : 0;
+  if (value > 0) return SIGNAL_HEX.bullish[i];
+  if (value < 0) return SIGNAL_HEX.bearish[i];
+  return SIGNAL_HEX.neutral[i];
 }
 
 function buildCards(values: MetricStripValues, isDark: boolean): MetricCard[] {

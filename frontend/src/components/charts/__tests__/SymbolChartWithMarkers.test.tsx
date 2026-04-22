@@ -59,7 +59,9 @@ describe('SymbolChartWithMarkers', () => {
         symbol="GOOGL"
       />,
     );
-    expect(screen.getByRole('status')).toHaveTextContent(/No price history available for GOOGL/);
+    expect(screen.getByRole('status')).toHaveTextContent(
+      /No OHLCV history here yet for GOOGL/,
+    );
     expect(createChartMock).not.toHaveBeenCalled();
   });
 

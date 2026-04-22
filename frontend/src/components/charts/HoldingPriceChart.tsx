@@ -45,7 +45,7 @@ import {
   type SegmentedPeriodOption,
 } from "@/components/ui/SegmentedPeriodSelector";
 import { Skeleton } from "@/components/ui/skeleton";
-import { seriesColor } from "@/constants/chart";
+import { DIVIDEND_MARK_HEX, seriesColor } from "@/constants/chart";
 import { DURATION, EASE } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
@@ -278,12 +278,10 @@ function formatVolume(v: number | undefined): string | null {
   return `${Math.round(v)} shares`;
 }
 
-/**
- * Dividend dot color — visual-language indigo (#6366f1) at 60% opacity.
- * Hard-coded for the same reason marker glyph colors are: this is a
- * canvas / overlay primitive, not a theme token.
- */
-const DIVIDEND_DOT_COLOR = "#6366f1";
+function readIsDarkFromDoc(): boolean {
+  if (typeof document === "undefined") return false;
+  return document.documentElement.classList.contains("dark");
+}
 
 const TOOLTIP_WIDTH_PX = 232;
 const TOOLTIP_TOP_OFFSET_PX = 8;
@@ -1026,7 +1024,7 @@ export function HoldingPriceChart({
     // yet for {symbol}." copy or screen-reader users get a misleading
     // "loading" message even though the visible UI says "no data".
     if (data.bars.length === 0) {
-      return `No price data yet for ${symbol}.`;
+      return `No daily prices for ${symbol} in this range — either the history has not landed from your broker yet, or this period predates the feed.`;
     }
     if (!lastBar || !Number.isFinite(lastClose)) {
       return `${symbol} chart loading.`;
@@ -1069,7 +1067,7 @@ export function HoldingPriceChart({
         <HeaderRow symbol={symbol} sector={sector} />
         <ErrorState
           title="Couldn't load chart"
-          description="Try again or check your network connection."
+          description="We could not reach the market history service. Check your connection, or wait a minute if the API is busy, then retry."
           retry={() => {
             void data.refetch();
           }}
@@ -1138,7 +1136,8 @@ export function HoldingPriceChart({
             className="flex h-full items-center justify-center text-sm text-muted-foreground"
             data-testid="holding-chart-empty"
           >
-            No price data yet for {symbol}.
+            No daily bars here yet for {symbol}. If you just connected an account, wait for the
+            next portfolio sync (often 15–30 minutes) or pick a longer lookback.
           </div>
         ) : null}
 
@@ -1348,6 +1347,9 @@ function CrosshairTooltip({
   crosshairX,
 }: CrosshairTooltipProps) {
   const reduced = useReducedMotion();
+  const dividendAccent = readIsDarkFromDoc()
+    ? DIVIDEND_MARK_HEX[1]
+    : DIVIDEND_MARK_HEX[0];
 
   if (
     crosshairX === null ||
@@ -1497,7 +1499,7 @@ function CrosshairTooltip({
       {dividendBucket ? (
         <div
           className="mt-2 border-t border-border/40 pt-2 text-[11px]"
-          style={{ color: DIVIDEND_DOT_COLOR }}
+          style={{ color: dividendAccent }}
         >
           Dividend{" "}
           <span className="font-medium tabular-nums">
@@ -1567,6 +1569,9 @@ const DIVIDEND_DOT_SIZE_PX = 6;
  */
 function DividendDotRow({ visibleDividends }: DividendDotRowProps) {
   const reduced = useReducedMotion();
+  const dotBase = readIsDarkFromDoc()
+    ? DIVIDEND_MARK_HEX[1]
+    : DIVIDEND_MARK_HEX[0];
   if (visibleDividends.length === 0) return null;
 
   return (
@@ -1595,7 +1600,7 @@ function DividendDotRow({ visibleDividends }: DividendDotRowProps) {
             bottom: (DIVIDEND_ROW_HEIGHT_PX - DIVIDEND_DOT_SIZE_PX) / 2,
             width: DIVIDEND_DOT_SIZE_PX,
             height: DIVIDEND_DOT_SIZE_PX,
-            backgroundColor: withAlpha(DIVIDEND_DOT_COLOR, 0.6),
+            backgroundColor: withAlpha(dotBase, 0.6),
           }}
         />
       ))}

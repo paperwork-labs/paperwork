@@ -21,7 +21,7 @@ import type { StageSegment } from '@/lib/holdingChart/useHoldingIndicators';
 
 const PALETTE_CHANGE_EVENT = 'axiomfolio:color-palette-change';
 
-const FALLBACK_HEX: [string, string] = ['#A0AEC0', '#CBD5E0'];
+const FALLBACK_HEX: [string, string] = STAGE_HEX['1A'];
 
 export interface StageOverlayProps {
   /** Contiguous stage runs sourced from `useHoldingIndicators`. */
