@@ -1,6 +1,6 @@
 """Dashboard endpoint that merges summary, positions, dividends for front-end /portfolio/dashboard."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, or_
 from datetime import date, datetime, timedelta, timezone
@@ -18,6 +18,7 @@ from backend.models.account_balance import AccountBalance
 from backend.models.margin_interest import MarginInterest
 from backend.models.options import Option
 from backend.api.dependencies import get_portfolio_user
+from backend.api.middleware.response_cache import redis_response_cache
 from backend.services.portfolio.portfolio_analytics_service import portfolio_analytics_service
 
 logger = logging.getLogger(__name__)
@@ -33,7 +34,9 @@ def _datetime_as_utc_aware(dt: datetime) -> datetime:
 
 
 @router.get("/dashboard", response_model=Dict[str, Any])
+@redis_response_cache(ttl_seconds=30)
 async def get_dashboard(
+    request: Request,
     days: int = Query(365, ge=1, le=3650),
     user: User = Depends(get_portfolio_user),
     db: Session = Depends(get_db),
@@ -176,7 +179,9 @@ def _parse_period(period: str) -> Optional[timedelta]:
 
 
 @router.get("/performance/history", response_model=Dict[str, Any])
+@redis_response_cache(ttl_seconds=30)
 async def get_performance_history(
+    request: Request,
     account_id: Optional[str] = Query(None, description="Filter by account number"),
     period: str = Query("1y", description="30d, 90d, 1y, all"),
     user: User = Depends(get_portfolio_user),

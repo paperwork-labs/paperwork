@@ -253,23 +253,27 @@ api.interceptors.response.use(
       }
     }
 
-    const orig = originalRequest as typeof originalRequest & { _noRetry?: boolean; _retry?: boolean; _retryCount?: number };
-    if ((error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK') && originalRequest && !orig._noRetry) {
-      if (!orig._retry) {
-        orig._retry = true;
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        return api(originalRequest);
-      }
-    }
-
-    if (error.response && [500, 502, 503, 504].includes(error.response.status) && originalRequest) {
+    const orig = originalRequest as typeof originalRequest & {
+      _noRetry?: boolean;
+      _gatewayRetryCount?: number;
+    };
+    const status = error.response?.status;
+    const transientStatus =
+      status === 502 || status === 503 || status === 504;
+    const transientAbort = error.code === 'ECONNABORTED';
+    if (
+      originalRequest &&
+      !orig._noRetry &&
+      (transientStatus || transientAbort)
+    ) {
       const method = (originalRequest.method || 'get').toLowerCase();
       const isIdempotent = ['get', 'head', 'options'].includes(method);
-      if (isIdempotent && !orig._noRetry) {
-        const retryCount = orig._retryCount || 0;
-        if (retryCount < 3) {
-          orig._retryCount = retryCount + 1;
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+      if (isIdempotent) {
+        const retryCount = orig._gatewayRetryCount ?? 0;
+        if (retryCount < 2) {
+          orig._gatewayRetryCount = retryCount + 1;
+          const delayMs = retryCount === 0 ? 250 : 500;
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
           return api(originalRequest);
         }
       }
@@ -350,6 +354,17 @@ export interface PortfolioNarrativePayload {
   is_fallback: boolean;
   generated_at: string;
 }
+
+/** GET /portfolio/narrative/latest when the narrative is not ready or the fetch timed out. */
+export interface PortfolioNarrativePendingPayload {
+  narrative: null;
+  status: 'pending';
+  generated_at: null;
+}
+
+export type PortfolioNarrativeLatestResponse =
+  | PortfolioNarrativePayload
+  | PortfolioNarrativePendingPayload;
 
 export interface StatementsResponse {
   data?: { transactions?: unknown[] };
@@ -454,7 +469,7 @@ export const portfolioApi = {
     return makeOptimizedRequest(() => api.get('/portfolio/insights'));
   },
 
-  getNarrativeLatest: async (): Promise<PortfolioNarrativePayload> => {
+  getNarrativeLatest: async (): Promise<PortfolioNarrativeLatestResponse> => {
     return makeOptimizedRequest(() => api.get('/portfolio/narrative/latest'));
   },
 

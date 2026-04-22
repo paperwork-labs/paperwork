@@ -52,8 +52,21 @@ def auth_user(db_session):
     return user
 
 
+class _NarrativeTestSession:
+    """Same-thread SessionLocal() substitute so asyncio.to_thread keeps using the test session."""
+
+    def __init__(self, s):
+        self._s = s
+
+    def __getattr__(self, name):
+        return getattr(self._s, name)
+
+    def close(self) -> None:
+        return None
+
+
 @pytest.fixture(autouse=True)
-def _wire_overrides(db_session, auth_user):
+def _wire_overrides(db_session, auth_user, monkeypatch: pytest.MonkeyPatch):
     """Pin get_db to the test session and short-circuit the user dep."""
 
     if db_session is None:
@@ -69,6 +82,14 @@ def _wire_overrides(db_session, auth_user):
     app.dependency_overrides[get_db] = _get_db
     app.dependency_overrides[get_current_user] = _get_user
     app.dependency_overrides[get_portfolio_user] = _get_user
+
+    from backend.api.routes.portfolio import narrative as narrative_mod
+
+    monkeypatch.setattr(
+        narrative_mod,
+        "SessionLocal",
+        lambda: _NarrativeTestSession(db_session),
+    )
     try:
         yield
     finally:
@@ -77,11 +98,15 @@ def _wire_overrides(db_session, auth_user):
         app.dependency_overrides.pop(get_portfolio_user, None)
 
 
-def test_narrative_latest_404_when_missing(client: TestClient, db_session, auth_user):
+def test_narrative_latest_pending_when_missing(client: TestClient, db_session, auth_user):
     if db_session is None:
         pytest.skip("database not configured")
     res = client.get("/api/v1/portfolio/narrative/latest")
-    assert res.status_code == 404
+    assert res.status_code == 200
+    body = res.json()
+    assert body["narrative"] is None
+    assert body["status"] == "pending"
+    assert body["generated_at"] is None
 
 
 def test_narrative_latest_returns_row(client: TestClient, db_session, auth_user):
@@ -106,6 +131,30 @@ def test_narrative_latest_returns_row(client: TestClient, db_session, auth_user)
     assert body["text"] == "Hello **world**"
     assert body["provider"] == "stub"
     assert body["is_fallback"] is False
+
+
+def test_narrative_latest_timeout_returns_pending(
+    client: TestClient, db_session, auth_user, monkeypatch: pytest.MonkeyPatch
+):
+    if db_session is None:
+        pytest.skip("database not configured")
+
+    import time
+
+    from backend.api.routes.portfolio import narrative as narrative_mod
+
+    def _slow_fetch(_user_id: int):
+        time.sleep(0.15)
+        return None
+
+    monkeypatch.setattr(narrative_mod, "_FETCH_LATEST_TIMEOUT_S", 0.01)
+    monkeypatch.setattr(narrative_mod, "_fetch_latest_row_in_thread", _slow_fetch)
+
+    res = client.get("/api/v1/portfolio/narrative/latest")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["narrative"] is None
+    assert body["status"] == "pending"
 
 
 def test_narrative_by_date_404(client: TestClient, db_session, auth_user):

@@ -1,5 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { isAxiosError } from 'axios';
 import api, {
   portfolioApi,
   tasksApi,
@@ -12,6 +11,7 @@ import api, {
   unwrapResponseSingle,
   type PnlSummaryData,
   type PortfolioNarrativePayload,
+  type PortfolioNarrativePendingPayload,
 } from '../services/api';
 import type { EnrichedPosition } from '../types/portfolio';
 import toast from 'react-hot-toast';
@@ -482,14 +482,16 @@ export const usePortfolioNarrativeLatest = () => {
   return useQuery({
     queryKey: ['portfolio-narrative-latest'],
     queryFn: async (): Promise<PortfolioNarrativePayload | null> => {
-      try {
-        return await portfolioApi.getNarrativeLatest();
-      } catch (err) {
-        if (isAxiosError(err) && err.response?.status === 404) {
-          return null;
-        }
-        throw err;
+      const raw = await portfolioApi.getNarrativeLatest();
+      if (
+        raw &&
+        typeof raw === 'object' &&
+        'status' in raw &&
+        (raw as PortfolioNarrativePendingPayload).status === 'pending'
+      ) {
+        return null;
       }
+      return raw as PortfolioNarrativePayload;
     },
     staleTime: 300_000,
     retry: false,

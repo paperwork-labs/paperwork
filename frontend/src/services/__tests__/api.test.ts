@@ -5,9 +5,10 @@
  * GETs receive independent data objects when cloning succeeds.
  */
 import type { AxiosResponse } from 'axios';
-import { describe, it, expect } from 'vitest';
+import { AxiosError, AxiosHeaders } from 'axios';
+import { describe, it, expect, afterEach } from 'vitest';
 
-import { cloneDedupedGetResponse } from '../api';
+import api, { cloneDedupedGetResponse } from '../api';
 
 function makeResponse<T>(data: T): AxiosResponse<T> {
   return {
@@ -61,6 +62,74 @@ describe('cloneDedupedGetResponse', () => {
 
     expect(out.data).toBe(data);
     expect(out.status).toBe(200);
+  });
+});
+
+describe('transient gateway retry', () => {
+  const origAdapter = api.defaults.adapter;
+
+  afterEach(() => {
+    api.defaults.adapter = origAdapter;
+  });
+
+  it('502 once then 200 resolves after retry', async () => {
+    let n = 0;
+    api.defaults.adapter = async (config) => {
+      n += 1;
+      const headers = new AxiosHeaders();
+      if (n === 1) {
+        const err = new AxiosError(
+          'Request failed with status code 502',
+          'ERR_BAD_RESPONSE',
+          config,
+          undefined,
+          {
+            data: {},
+            status: 502,
+            statusText: 'Bad Gateway',
+            headers,
+            config,
+          },
+        );
+        return Promise.reject(err);
+      }
+      return {
+        data: { ok: true },
+        status: 200,
+        statusText: 'OK',
+        headers,
+        config,
+      };
+    };
+    const r = await api.get('/transient-retry-test');
+    expect(r.data).toEqual({ ok: true });
+    expect(n).toBe(2);
+  });
+
+  it('502 three times rejects after two retries', async () => {
+    let n = 0;
+    api.defaults.adapter = async (config) => {
+      n += 1;
+      const headers = new AxiosHeaders();
+      const err = new AxiosError(
+        'Request failed with status code 502',
+        'ERR_BAD_RESPONSE',
+        config,
+        undefined,
+        {
+          data: {},
+          status: 502,
+          statusText: 'Bad Gateway',
+          headers,
+          config,
+        },
+      );
+      return Promise.reject(err);
+    };
+    await expect(api.get('/transient-retry-fail')).rejects.toMatchObject({
+      response: { status: 502 },
+    });
+    expect(n).toBe(3);
   });
 });
 

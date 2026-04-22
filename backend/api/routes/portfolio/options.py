@@ -1,6 +1,6 @@
 """Portfolio options endpoints (moved from options.py)."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from datetime import datetime, date, timezone
 from typing import List, Dict, Any, Optional
@@ -8,6 +8,7 @@ import logging
 
 from backend.database import get_db
 from backend.api.dependencies import get_admin_user, get_portfolio_user
+from backend.api.middleware.response_cache import redis_response_cache
 from backend.models import BrokerAccount, Option
 from backend.models.broker_account import BrokerType
 from backend.models.user import User
@@ -18,7 +19,9 @@ router = APIRouter()
 
 
 @router.get("/accounts", response_model=Dict[str, Any])
+@redis_response_cache(ttl_seconds=30)
 async def get_option_accounts(
+    request: Request,
     user: User = Depends(get_portfolio_user),
     db: Session = Depends(get_db),
 ):
@@ -77,7 +80,9 @@ async def get_option_accounts(
 
 
 @router.get("/unified/portfolio")
+@redis_response_cache(ttl_seconds=30)
 async def get_unified_options_portfolio(
+    request: Request,
     account_id: Optional[str] = Query(
         None, description="Filter by account number (e.g., IBKR_ACCOUNT)"
     ),

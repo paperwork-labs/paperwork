@@ -846,37 +846,40 @@ app.include_router(
 )
 
 
-# Global error handler — inject CORS headers so browsers can read error bodies
-# instead of masking them as opaque "Network Error" / CORS violations.
-def _cors_headers_for_origin(origin: str | None) -> dict[str, str]:
-    allowed = {
+# Global error handler — inject CORS headers on unhandled errors so browsers
+# surface JSON instead of masking ALB/worker failures as "CORS blocked".
+@app.exception_handler(Exception)
+async def cors_safe_exception_handler(request: Request, exc: Exception):
+    logger.error(
+        "unhandled_exception path=%s error=%s",
+        request.url.path,
+        exc,
+        exc_info=True,
+    )
+    origin = request.headers.get("origin") or ""
+    allowed = [
         o.strip()
         for o in (settings.CORS_ORIGINS or "").split(",")
         if o.strip()
-    }
-    if origin and origin in allowed:
-        return {
-            "access-control-allow-origin": origin,
-            "access-control-allow-credentials": "true",
-            "vary": "Origin",
+    ]
+    allow_origin = origin if origin in allowed else ""
+    cors_headers = (
+        {
+            "Access-Control-Allow-Origin": allow_origin,
+            "Access-Control-Allow-Credentials": "true",
+            "Vary": "Origin",
         }
-    return {"vary": "Origin"}
-
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc):
-    """Global exception handler for better error responses."""
-    logger.exception("❌ Global exception")
-
-    headers = _cors_headers_for_origin(request.headers.get("origin"))
-    body: dict = {
-        "error": "Internal server error",
-        "timestamp": datetime.now().isoformat(),
-    }
-    if settings.DEBUG:
-        body["message"] = str(exc)
-
-    return JSONResponse(status_code=500, content=body, headers=headers)
+        if allow_origin
+        else {}
+    )
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "internal_server_error",
+            "path": str(request.url.path),
+        },
+        headers=cors_headers,
+    )
 
 
 if __name__ == "__main__":

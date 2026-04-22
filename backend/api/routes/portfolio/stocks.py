@@ -1,6 +1,6 @@
 """Portfolio stocks endpoints for frontend (renamed from holdings)."""
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func, extract
 from sqlalchemy.orm import Session
@@ -10,6 +10,7 @@ import io
 import logging
 
 from backend.api.dependencies import get_current_user, get_portfolio_user
+from backend.api.middleware.response_cache import redis_response_cache
 from backend.database import get_db
 from backend.models.position import Position
 from backend.models import BrokerAccount
@@ -102,7 +103,9 @@ def _market_cap_label(market_cap: Optional[float]) -> Optional[str]:
 
 
 @router.get("/stocks", response_model=Dict[str, Any])
+@redis_response_cache(ttl_seconds=30)
 async def get_stocks(
+    request: Request,
     account_id: str | None = Query(
         None, description="Filter by account number (e.g., IBKR_ACCOUNT)"
     ),

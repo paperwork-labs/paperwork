@@ -202,6 +202,7 @@ class AdminHealthService:
             "provider_metrics": self._build_provider_metrics() or None,
             "byok_anomaly": self._build_byok_anomaly(),
             "reconcile_anomaly": self._build_reconcile_anomaly(),
+            "hot_path_cache": self._build_hot_path_cache_metrics(),
         }
 
     def _build_byok_anomaly(self) -> Dict[str, Any]:
@@ -244,6 +245,40 @@ class AdminHealthService:
         except Exception as e:
             logger.warning("reconcile_anomaly snapshot failed: %s", e)
             return {"total": 0, "available": False}
+
+    def _build_hot_path_cache_metrics(self) -> Dict[str, Any]:
+        """Portfolio response-cache bypass + narrative timeout counters (Redis)."""
+        from backend.api.middleware.response_cache import REDIS_BYPASS_COUNTER_KEY
+        from backend.services.market.market_data_service import infra
+
+        try:
+            r = getattr(infra, "redis_client", None)
+            if r is None:
+                return {
+                    "resp_cache_redis_bypass_total": 0,
+                    "narrative_timeout_total": 0,
+                    "available": False,
+                }
+
+            def _int_key(key: str) -> int:
+                raw = r.get(key)
+                if raw is None:
+                    return 0
+                s = raw.decode() if isinstance(raw, (bytes, bytearray)) else str(raw)
+                return int(s)
+
+            return {
+                "resp_cache_redis_bypass_total": _int_key(REDIS_BYPASS_COUNTER_KEY),
+                "narrative_timeout_total": _int_key("narrative_timeout_total"),
+                "available": True,
+            }
+        except Exception as e:
+            logger.warning("hot_path_cache metrics snapshot failed: %s", e)
+            return {
+                "resp_cache_redis_bypass_total": 0,
+                "narrative_timeout_total": 0,
+                "available": False,
+            }
 
     def check_pre_market_readiness(self, db: Session) -> Dict[str, Any]:
         """Check if the system is ready for the next trading session.
