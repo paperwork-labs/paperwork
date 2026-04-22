@@ -84,6 +84,14 @@
     --sidebar-border: oklch(0.92 0.004 286.32);
     --sidebar-ring: oklch(0.705 0.015 286.067);
 
+    /* OAuth sign-in buttons: fixed vendor colors (Google/Apple brand guidelines), not theme semantics */
+    --oauth-google-red: #ea4335;
+    --oauth-google-blue: #4285f4;
+    --oauth-google-yellow: #fbbc05;
+    --oauth-google-green: #34a853;
+    --oauth-apple-bg: #000000;
+    --oauth-apple-bg-hover: #1a1a1a;
+
     /* AxiomFolio semantic tokens (from theme/system.ts Chakra semanticTokens) */
     --bg-canvas: 248 250 252;
     --bg-panel: 255 255 255;

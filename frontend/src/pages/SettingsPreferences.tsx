@@ -25,6 +25,7 @@ const SettingsPreferences: React.FC = () => {
   const [timezone, setTimezone] = React.useState<string>(user?.timezone || 'America/Los_Angeles');
   const [currency, setCurrency] = React.useState<string>((user?.currency_preference || 'USD').toUpperCase());
   const [saveStatus, setSaveStatus] = React.useState<SaveStatus>('idle');
+  const [debouncePending, setDebouncePending] = React.useState(false);
   const saveTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const mountedRef = React.useRef(true);
@@ -118,9 +119,13 @@ const SettingsPreferences: React.FC = () => {
     setCurrency(next);
     clearTimeout(debounceRef.current);
     if (next.length === 3) {
+      setDebouncePending(true);
       debounceRef.current = setTimeout(() => {
+        setDebouncePending(false);
         void persist({ currency_preference: next });
       }, 600);
+    } else {
+      setDebouncePending(false);
     }
   };
 
@@ -136,6 +141,10 @@ const SettingsPreferences: React.FC = () => {
     ) : saveStatus === 'error' ? (
       <Badge variant="destructive" className="shrink-0 font-normal">
         Error
+      </Badge>
+    ) : debouncePending ? (
+      <Badge variant="secondary" className="shrink-0 font-normal text-muted-foreground">
+        Pending…
       </Badge>
     ) : null;
 

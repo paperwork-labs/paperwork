@@ -189,6 +189,10 @@ const PortfolioTaxCenter: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 p-6">
       <PageHeader title="Tax Center" subtitle="Tax lot analysis, harvesting candidates, and estimated tax impact" />
+      <p className="text-xs text-muted-foreground">
+        Estimated tax uses the short- and long-term rates labeled on each card (U.S. federal assumptions for those
+        percentages). This is not tax advice. State and local taxes are not included.
+      </p>
 
       <div className="flex gap-2">
         <Button

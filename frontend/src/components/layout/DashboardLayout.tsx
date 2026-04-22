@@ -3,7 +3,6 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   Activity,
   BarChart2,
-  Bell,
   BookOpen,
   Brain,
   CalendarDays,
@@ -29,7 +28,6 @@ import {
 import * as Dialog from "@radix-ui/react-dialog";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 
-import { portfolioApi } from '../../services/api';
 import { useAccountContext } from '../../context/AccountContext';
 import { useAuth } from '../../context/AuthContext';
 import { isPlatformAdminRole } from '../../utils/userRole';
@@ -41,12 +39,6 @@ import { ChatProvider } from '@/components/chat/ChatProvider';
 import { ChatBubble } from '@/components/chat/ChatBubble';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  ResponsiveModal as UiDialog,
-  ResponsiveModalContent as UiDialogContent,
-  ResponsiveModalFooter as UiDialogFooter,
-  ResponsiveModalTitle as UiDialogTitle,
-} from '@/components/ui/responsive-modal';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
@@ -92,11 +84,8 @@ const portfolioItems = [
   { label: 'Income', icon: CalendarDays, path: '/portfolio/income' },
 ];
 
-function buildSettingsItems(_isAdmin: boolean) {
-  const items: { label: string; icon: typeof Settings; path: string }[] = [
-    { label: 'Settings', icon: Settings, path: '/settings' },
-  ];
-  return items;
+function buildSettingsItems(): { label: string; icon: typeof Settings; path: string }[] {
+  return [{ label: 'Settings', icon: Settings, path: '/settings' }];
 }
 
 function buildMarketItems() {
@@ -185,25 +174,6 @@ const DashboardLayout: React.FC = () => {
   });
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const isDesktop = useMediaQueryMinWidth(MD_UP);
-  const [, setTotals] = useState<{ value: number; dayPnL: number; positions: number }>({
-    value: 0,
-    dayPnL: 0,
-    positions: 0,
-  });
-  const [, setHeaderStats] = useState<{ label: string; sublabel: string }>({
-    label: 'Combined Portfolio',
-    sublabel: '',
-  });
-  type NotificationItem = {
-    id: string;
-    title: string;
-    summary: string;
-    details: string;
-    createdAt: string;
-  };
-  const notifications: NotificationItem[] = [];
-  const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
-
   const cmdKLabel = useMemo(() => {
     if (typeof navigator === 'undefined') return 'Ctrl+K';
     return /Mac|iPhone|iPad|iPod/.test(navigator.userAgent) ? '⌘K' : 'Ctrl+K';
@@ -226,7 +196,7 @@ const DashboardLayout: React.FC = () => {
   const isAdmin = isPlatformAdminRole(user?.role);
   const portfolioEnabled = isAdmin || (!marketOnly && Boolean(appSettings?.portfolio_enabled));
   const marketItems = useMemo(() => buildMarketItems(), []);
-  const settingsNavItems = useMemo(() => buildSettingsItems(isAdmin), [isAdmin]);
+  const settingsNavItems = useMemo(() => buildSettingsItems(), []);
 
   const { health: adminHealth, loading: healthLoading } = useAdminHealth();
   const healthStatus = adminHealth?.composite_status ?? 'red';
@@ -256,50 +226,6 @@ const DashboardLayout: React.FC = () => {
   }, [location.hash, location.pathname, location.search]);
 
   const sidebarWidthClass = isSidebarOpen ? 'w-64' : 'w-16';
-  const defaultTotals = { value: 0, dayPnL: 0, positions: 0 };
-  const defaultHeaderStats = { label: 'Combined Portfolio', sublabel: '' };
-
-  useEffect(() => {
-    const formatCurrency = (amount: number) =>
-      new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(
-        amount || 0
-      );
-    const formatSignedCurrency = (amount: number) => {
-      const f = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        maximumFractionDigits: 0,
-      }).format(Math.abs(amount || 0));
-      return `${(amount || 0) >= 0 ? '+' : '-'}${f}`;
-    };
-    const load = async () => {
-      if (!appSettingsReady || !portfolioEnabled) {
-        setTotals(defaultTotals);
-        setHeaderStats(defaultHeaderStats);
-        return;
-      }
-      try {
-        const res = await portfolioApi.getLive();
-        const data = res?.data ?? res;
-        const accountsLive = Object.values(data?.accounts ?? {}) as Array<{
-          account_summary?: { net_liquidation?: number; day_change?: number };
-          all_positions?: unknown[];
-        }>;
-        const value = accountsLive.reduce((sum, a) => sum + (a.account_summary?.net_liquidation ?? 0), 0);
-        const dayPnL = accountsLive.reduce((sum, a) => sum + (a.account_summary?.day_change ?? 0), 0);
-        const positions = accountsLive.reduce((sum, a) => sum + (a.all_positions?.length ?? 0), 0);
-        setTotals({ value, dayPnL, positions });
-        setHeaderStats({
-          label: 'Combined Portfolio',
-          sublabel: `${formatCurrency(value)} • ${formatSignedCurrency(dayPnL)}`,
-        });
-      } catch {
-        setTotals(defaultTotals);
-        setHeaderStats(defaultHeaderStats);
-      }
-    };
-    void load();
-  }, [appSettingsReady, portfolioEnabled]);
 
   const isPathActive = useCallback(
     (itemPath: string) => {
@@ -391,16 +317,23 @@ const DashboardLayout: React.FC = () => {
           </Link>
         ) : null}
         {opts.showMenuToggle ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Menu"
-            className={cn('shrink-0 text-foreground', opts.showLabel && 'ml-auto')}
-            onClick={() => setIsSidebarOpen((v) => !v)}
-          >
-            <Menu className="size-5" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Expand or collapse sidebar"
+                className={cn('shrink-0 text-foreground', opts.showLabel && 'ml-auto')}
+                onClick={() => setIsSidebarOpen((v) => !v)}
+              >
+                <Menu className="size-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              {opts.showLabel ? 'Collapse sidebar' : 'Expand sidebar'}
+            </TooltipContent>
+          </Tooltip>
         ) : null}
       </div>
       {opts.showLabel ? <AppDivider /> : null}
@@ -435,7 +368,9 @@ const DashboardLayout: React.FC = () => {
                 onPointerDownOutside={() => setIsMobileNavOpen(false)}
                 onEscapeKeyDown={() => setIsMobileNavOpen(false)}
               >
-                <Dialog.Title className="sr-only">Main navigation</Dialog.Title>
+                <Dialog.Title className="border-b border-border px-4 py-3 font-heading text-base font-semibold text-foreground">
+                  Main navigation
+                </Dialog.Title>
                 <Dialog.Description className="sr-only">
                   Application sections and links
                 </Dialog.Description>
@@ -462,16 +397,23 @@ const DashboardLayout: React.FC = () => {
                 </Link>
               ) : null}
               {!isDesktop ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Menu"
-                  className="relative z-[2] text-foreground"
-                  onClick={() => setIsMobileNavOpen(true)}
-                >
-                  <Menu className="size-5" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Open navigation menu"
+                      className="relative z-[2] text-foreground"
+                      onClick={() => setIsMobileNavOpen(true)}
+                    >
+                      <Menu className="size-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    Open menu
+                  </TooltipContent>
+                </Tooltip>
               ) : null}
               {portfolioEnabled && accounts.length > 0 ? (
                 <AccountSelector
@@ -523,68 +465,6 @@ const DashboardLayout: React.FC = () => {
                   </TooltipContent>
                 </Tooltip>
               ) : null}
-
-              <DropdownMenu.Root>
-                <DropdownMenu.Trigger asChild>
-                  <Button type="button" variant="ghost" size="icon" aria-label="Notifications" className="relative text-foreground">
-                    <Bell className="size-5" />
-                    {notifications.length > 0 ? (
-                      <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-[rgb(var(--status-danger))]" />
-                    ) : null}
-                  </Button>
-                </DropdownMenu.Trigger>
-                <DropdownMenu.Portal>
-                  <DropdownMenu.Content
-                    align="end"
-                    sideOffset={8}
-                    className={cn(
-                      'z-50 max-h-[min(24rem,70vh)] min-w-[min(calc(100vw-2rem),340px)] overflow-y-auto rounded-md border border-border bg-popover p-2 text-popover-foreground shadow-md',
-                      'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2'
-                    )}
-                  >
-                    <div className="flex items-center justify-between px-2 py-1">
-                      <span className="text-sm font-semibold">Notifications</span>
-                      <span className="text-xs text-muted-foreground">{notifications.length}</span>
-                    </div>
-                    <AppDivider />
-                    {notifications.length ? (
-                      notifications.slice(0, 6).map((n) => (
-                        <DropdownMenu.Item
-                          key={n.id}
-                          className={cn(
-                            'flex cursor-default flex-col gap-0 rounded-sm px-2 py-2 text-left text-sm outline-none',
-                            'focus:bg-accent focus:text-accent-foreground'
-                          )}
-                          onSelect={() => setSelectedNotification(n)}
-                        >
-                          <div className="flex w-full items-start justify-between gap-2">
-                            <span className="line-clamp-1 font-semibold">{n.title}</span>
-                            <span className="shrink-0 text-xs text-muted-foreground">{n.createdAt}</span>
-                          </div>
-                          <span className="line-clamp-1 text-xs text-muted-foreground">{n.summary}</span>
-                        </DropdownMenu.Item>
-                      ))
-                    ) : (
-                      <div className="px-2 py-3">
-                        <p className="text-sm text-muted-foreground">No notifications yet.</p>
-                        <p className="mt-1 text-xs text-muted-foreground/80">
-                          We will show account/system alerts here as they arrive.
-                        </p>
-                      </div>
-                    )}
-                    <AppDivider />
-                    <DropdownMenu.Item
-                      className={cn(
-                        'cursor-default rounded-sm px-2 py-2 text-sm outline-none',
-                        'focus:bg-accent focus:text-accent-foreground'
-                      )}
-                      onSelect={() => navigate('/settings/notifications')}
-                    >
-                      Open Notification Center
-                    </DropdownMenu.Item>
-                  </DropdownMenu.Content>
-                </DropdownMenu.Portal>
-              </DropdownMenu.Root>
 
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger asChild>
@@ -672,38 +552,6 @@ const DashboardLayout: React.FC = () => {
             {isAdmin && <ChatBubble />}
           </ChatProvider>
         </div>
-
-        <UiDialog
-          open={Boolean(selectedNotification)}
-          onOpenChange={(open) => {
-            if (!open) setSelectedNotification(null);
-          }}
-        >
-          <UiDialogContent showCloseButton={false} className="max-w-[520px]">
-            <UiDialogTitle className="font-heading text-lg font-semibold">
-              {selectedNotification?.title || 'Notification'}
-            </UiDialogTitle>
-            <div className="flex flex-col gap-3">
-              <p className="text-sm text-muted-foreground">{selectedNotification?.summary || ''}</p>
-              <AppDivider />
-              <p className="text-sm">{selectedNotification?.details || ''}</p>
-            </div>
-            <UiDialogFooter className="mt-4 sm:justify-end">
-              <Button type="button" variant="ghost" onClick={() => setSelectedNotification(null)}>
-                Close
-              </Button>
-              <Button
-                type="button"
-                onClick={() => {
-                  setSelectedNotification(null);
-                  navigate('/settings/notifications');
-                }}
-              >
-                Open Notification Center
-              </Button>
-            </UiDialogFooter>
-          </UiDialogContent>
-        </UiDialog>
       </div>
     </TooltipProvider>
   );

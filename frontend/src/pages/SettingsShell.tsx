@@ -103,10 +103,7 @@ const SettingsShell: React.FC = () => {
                     )}
                   >
                     <Link to="/admin/picks" className="inline-flex w-full items-center justify-between gap-1 no-underline">
-                      <span>Picks validator</span>
-                      <span className="text-xs text-muted-foreground" aria-hidden>
-                        ↗
-                      </span>
+                      Picks validator
                     </Link>
                   </Button>
                 </>
@@ -129,7 +126,7 @@ const SettingsShell: React.FC = () => {
                 {iconNav('/settings/admin/system', 'System Status', <Activity className="size-4" />)}
                 {iconNav('/settings/admin/users', 'Users', <User className="size-4" />)}
                 {iconNav('/settings/admin/agent', 'Agent', <Cpu className="size-4" />)}
-                {iconNav('/admin/picks', 'Picks validator ↗', <ClipboardList className="size-4" />)}
+                {iconNav('/admin/picks', 'Picks validator', <ClipboardList className="size-4" />)}
               </>
             ) : null}
           </nav>

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 const SettingsProfile: React.FC = () => {
@@ -80,6 +81,7 @@ const SettingsProfile: React.FC = () => {
   const fieldWrap = 'min-w-0 flex-1 basis-full md:basis-0';
 
   return (
+    <TooltipProvider delayDuration={200}>
     <div className="w-full">
       <div className="mx-auto w-full max-w-[960px]">
         <PageHeader title="Profile" subtitle="Update your personal info and security settings." />
@@ -92,7 +94,16 @@ const SettingsProfile: React.FC = () => {
                   <Label htmlFor="profile-username" className="mb-1.5 block text-muted-foreground">
                     Username
                   </Label>
-                  <Input id="profile-username" value={user?.username || ''} disabled />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="w-full">
+                        <Input id="profile-username" value={user?.username || ''} disabled />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-[260px] text-xs">
+                      Usernames are set at signup. Contact support if you need to change yours.
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
                 <div className={cn(fieldWrap, 'md:min-w-[280px]')}>
                   <Label htmlFor="profile-fullname" className="mb-1.5 block text-muted-foreground">
@@ -237,6 +248,7 @@ const SettingsProfile: React.FC = () => {
         </div>
       </div>
     </div>
+    </TooltipProvider>
   );
 };
 

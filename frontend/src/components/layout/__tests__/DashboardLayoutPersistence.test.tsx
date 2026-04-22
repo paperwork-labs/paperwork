@@ -79,7 +79,7 @@ describe('DashboardLayout sidebar persistence', () => {
     // In collapsed desktop mode, brand moves to header-left.
     expect(screen.getAllByText('AxiomFolio').length).toBeGreaterThan(0);
 
-    await user.click(screen.getByRole('button', { name: /menu/i }));
+    await user.click(screen.getByRole('button', { name: /expand or collapse sidebar/i }));
 
     expect(localStorage.getItem('qm.ui.sidebar_open')).toBe('1');
   });

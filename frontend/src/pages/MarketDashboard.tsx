@@ -13,6 +13,8 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
+import { useAuthOptional } from '@/context/AuthContext';
+import { isPlatformAdminRole } from '@/utils/userRole';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -43,6 +45,7 @@ import { useSnapshotAggregates } from '../hooks/useSnapshotAggregates';
 import { useSnapshotTable as useSnapshotTableHook } from '../hooks/useSnapshotTable';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import QuadStatusBar from '../components/market/QuadStatusBar';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const TopDownView = React.lazy(() => import('../components/market/TopDownView'));
 const BottomUpView = React.lazy(() => import('../components/market/BottomUpView'));
@@ -573,7 +576,12 @@ const RRGChart: React.FC<{ sectors: RRGSector[] }> = ({ sectors }) => {
           <RTooltip content={<RRGCustomTooltip />} cursor={false} />
           <Scatter data={data}>
             {data.map((entry, i) => (
-              <Cell key={i} fill={SECTOR_PALETTE[i % SECTOR_PALETTE.length]} stroke="white" strokeWidth={1.5} />
+              <Cell
+                key={i}
+                fill={SECTOR_PALETTE[i % SECTOR_PALETTE.length]}
+                stroke="var(--card)"
+                strokeWidth={1.5}
+              />
             ))}
           </Scatter>
           </ScatterChart>
@@ -797,6 +805,8 @@ const MarketDashboard: React.FC = () => {
   const portfolioSymbols = portfolioQuery.data ?? {};
   const { collapsed, toggle } = useSectionCollapse();
   const { health: healthData } = useAdminHealth();
+  const auth = useAuthOptional();
+  const isAdminUser = isPlatformAdminRole(auth?.user?.role);
 
   const [activeView, setActiveView] = React.useState<DashboardView>(() => {
     try {
@@ -919,7 +929,8 @@ const MarketDashboard: React.FC = () => {
         <div className="flex flex-col items-center justify-center gap-3 py-16">
           <Loader2 className="size-6 animate-spin text-muted-foreground" aria-hidden />
           <p className="text-sm text-muted-foreground">
-            Dashboard data is being computed. Auto-refreshing in a few seconds…
+            Dashboard data is being computed. Auto-refreshing in a few seconds; while warming, we check every 10
+            seconds.
           </p>
         </div>
       </Page>
@@ -991,6 +1002,7 @@ const MarketDashboard: React.FC = () => {
   };
 
   return (
+    <TooltipProvider delayDuration={200}>
     <PortfolioSymbolsContext.Provider value={portfolioSymbols}>
     <ChartContext.Provider value={openChart}>
     <Page>
@@ -1043,30 +1055,52 @@ const MarketDashboard: React.FC = () => {
                 </div>
               )}
               <div className="flex items-center gap-1">
-                <span
-                  className={cn(
-                    'text-xs',
-                    snapshotAge != null && snapshotAge > 30
-                      ? 'text-[rgb(var(--status-warning)/1)]'
-                      : 'text-muted-foreground',
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span
+                      className={cn(
+                        'cursor-default text-xs',
+                        snapshotAge != null && snapshotAge > 30
+                          ? 'text-[rgb(var(--status-warning)/1)]'
+                          : 'text-muted-foreground',
+                      )}
+                    >
+                      {snapshotAge != null ? `${snapshotAge}m ago` : ''}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-[280px] text-xs">
+                    Snapshot time shows when market aggregates last ran. Times over 30 minutes are highlighted as
+                    potentially stale. Use refresh to pull the latest data.
+                  </TooltipContent>
+                </Tooltip>
+                {isAdminUser &&
+                  healthData?.dimensions?.data_accuracy &&
+                  healthData.dimensions.data_accuracy.mismatch_count > 0 && (
+                    <Badge
+                      variant="outline"
+                      className="h-5 text-[10px] border border-[rgb(var(--status-warning)/0.35)] bg-[rgb(var(--status-warning)/0.12)] text-foreground"
+                    >
+                      {healthData.dimensions.data_accuracy.mismatch_count} data warnings
+                    </Badge>
                   )}
-                >
-                  {snapshotAge != null ? `${snapshotAge}m ago` : ''}
-                </span>
-                {healthData?.dimensions?.data_accuracy && healthData.dimensions.data_accuracy.mismatch_count > 0 && (
-                  <Badge variant="outline" className="h-5 text-[10px] bg-amber-500/15 text-amber-800 dark:text-amber-200">
-                    {healthData.dimensions.data_accuracy.mismatch_count} data warnings
-                  </Badge>
-                )}
-                <Button
-                  type="button"
-                  size="icon-xs"
-                  variant="ghost"
-                  aria-label="Refresh dashboard"
-                  onClick={() => { void refetch(); }}
-                >
-                  <RefreshCw className="size-3.5" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      size="icon-xs"
+                      variant="ghost"
+                      aria-label="Refresh dashboard"
+                      onClick={() => {
+                        void refetch();
+                      }}
+                    >
+                      <RefreshCw className="size-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    Reload market dashboard data now
+                  </TooltipContent>
+                </Tooltip>
               </div>
             </div>
           </div>
@@ -1732,6 +1766,7 @@ const MarketDashboard: React.FC = () => {
     </Page>
     </ChartContext.Provider>
     </PortfolioSymbolsContext.Provider>
+    </TooltipProvider>
   );
 };
 

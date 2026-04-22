@@ -96,8 +96,21 @@ const RouteFallback: React.FC = () => (
 
 function LegacyStrategyDetailRedirect() {
   const { strategyId } = useParams<{ strategyId: string }>();
+  const navigate = useNavigate();
+  const handledRef = React.useRef(false);
+  React.useEffect(() => {
+    if (strategyId) return;
+    if (handledRef.current) return;
+    handledRef.current = true;
+    hotToast('Strategy not found - opening the strategy list');
+    navigate('/lab/strategies', { replace: true });
+  }, [strategyId, navigate]);
   if (!strategyId) {
-    return <Navigate to="/lab/strategies" replace />;
+    return (
+      <div className="flex min-h-[30vh] items-center justify-center text-sm text-muted-foreground">
+        Redirecting…
+      </div>
+    );
   }
   return <Navigate to={`/lab/strategies/${strategyId}`} replace />;
 }
@@ -146,7 +159,6 @@ function BillingUpgradeListener() {
 function TerminalRedirect() {
   const navigate = useNavigate();
   useEffect(() => {
-    hotToast('Terminal replaced by Cmd+K (try it now)');
     navigate('/', { replace: true });
   }, [navigate]);
   return null;

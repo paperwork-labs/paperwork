@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import api from '@/services/api';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 type PublicStats = {
@@ -44,6 +45,19 @@ function useAnimatedInt(target: number, { enabled = true } = {}): number {
   return value;
 }
 
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReduced(mq.matches);
+    const onChange = () => setReduced(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return reduced;
+}
+
 const StatBlock: React.FC<{
   label: string;
   value: number;
@@ -61,6 +75,7 @@ const StatBlock: React.FC<{
 };
 
 const PublicStatsStrip: React.FC<{ className?: string }> = ({ className }) => {
+  const prefersReducedMotion = usePrefersReducedMotion();
   const query = useQuery({
     queryKey: ['public', 'stats'],
     queryFn: fetchPublicStats,
@@ -95,13 +110,15 @@ const PublicStatsStrip: React.FC<{ className?: string }> = ({ className }) => {
         data-testid="public-stats-strip-error"
       >
         Live stats are temporarily unavailable.
-        <button
+        <Button
           type="button"
-          className="mt-2 block w-full text-center text-sm font-medium underline-offset-4 hover:underline"
-          onClick={() => query.refetch()}
+          variant="ghost"
+          size="sm"
+          className="mt-2 w-full"
+          onClick={() => void query.refetch()}
         >
           Retry
-        </button>
+        </Button>
       </div>
     );
   }
@@ -120,9 +137,13 @@ const PublicStatsStrip: React.FC<{ className?: string }> = ({ className }) => {
       )}
       data-testid="public-stats-strip"
     >
-      <StatBlock label="Portfolios tracked" value={portfolios_tracked} animate />
-      <StatBlock label="Charts rendered (24h)" value={charts_rendered_24h} animate />
-      <StatBlock label="Brokers you can connect or import from" value={brokers_supported} animate />
+      <StatBlock label="Portfolios tracked" value={portfolios_tracked} animate={!prefersReducedMotion} />
+      <StatBlock label="Charts rendered (24h)" value={charts_rendered_24h} animate={!prefersReducedMotion} />
+      <StatBlock
+        label="Brokers you can connect or import from"
+        value={brokers_supported}
+        animate={!prefersReducedMotion}
+      />
     </div>
   );
 };
