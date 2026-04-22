@@ -6,7 +6,7 @@ import logging
 import re
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Dict
+from typing import Any, Dict
 
 from sqlalchemy.orm import Session
 
@@ -510,6 +510,7 @@ async def sync_option_positions(
             else await fc.get_option_positions(account_number)
         )
 
+        dropped_unparseable = 0
         if not option_positions_data:
             try:
                 from backend.services.clients.ibkr_client import ibkr_client as _ib
@@ -525,6 +526,7 @@ async def sync_option_positions(
                         continue
                     parsed = _parse_occ_symbol(p.get("symbol", ""))
                     if not parsed:
+                        dropped_unparseable += 1
                         logger.warning(
                             "Skipping live option position with unparseable symbol: %s",
                             p.get("symbol", ""),
@@ -553,13 +555,39 @@ async def sync_option_positions(
             else await fc.get_historical_option_exercises(account_number)
         )
 
+        option_incoming = len(option_positions_data) + len(option_exercises_data)
         db.query(Option).filter_by(account_id=broker_account.id).delete()
 
         synced_count = 0
         skipped_count = 0
         exercises_count = 0
+        dropped_no_underlying = 0
+        dropped_no_expiry = 0
+
+        def _opt_row_preview(od: Dict[str, Any]) -> Dict[str, Any]:
+            return {k: od.get(k) for k in ("symbol", "underlying_symbol", "expiry_date", "strike_price", "open_quantity")}
 
         for option_data in option_positions_data:
+            if not option_data.get("underlying_symbol"):
+                dropped_no_underlying += 1
+                logger.warning(
+                    "IBKR sync: dropping option row for account %s: reason=%s keys=%s raw=%s",
+                    broker_account.id,
+                    "no_underlying",
+                    list(option_data.keys()),
+                    _opt_row_preview(option_data),
+                )
+                continue
+            if not option_data.get("expiry_date"):
+                dropped_no_expiry += 1
+                logger.warning(
+                    "IBKR sync: dropping option row for account %s: reason=%s keys=%s raw=%s",
+                    broker_account.id,
+                    "no_expiry",
+                    list(option_data.keys()),
+                    _opt_row_preview(option_data),
+                )
+                continue
             try:
                 db.add(Option(
                     user_id=broker_account.user_id,
@@ -622,12 +650,30 @@ async def sync_option_positions(
             "Options: %d current + %d exercises = %d total, %d skipped",
             synced_count, exercises_count, total_synced, skipped_count,
         )
-        return {
+        out: Dict[str, Any] = {
             "synced": total_synced,
             "current_positions": synced_count,
             "historical_exercises": exercises_count,
             "skipped": skipped_count,
+            "options_dropped_unparseable": dropped_unparseable,
+            "options_dropped_no_underlying": dropped_no_underlying,
+            "options_dropped_no_expiry": dropped_no_expiry,
+            "options_dropped_write_error": skipped_count,
         }
+        if option_incoming > 0 and total_synced == 0:
+            logger.error(
+                "IBKR sync: account %s had %d option/exercise rows from API but wrote 0 to DB. "
+                "unparseable=%d d_no_und=%d d_no_exp=%d d_write=%d. "
+                "This is a silent-fallback violation.",
+                broker_account.id,
+                option_incoming,
+                dropped_unparseable,
+                dropped_no_underlying,
+                dropped_no_expiry,
+                skipped_count,
+            )
+            out["options_silent_drop"] = True
+        return out
     except Exception as exc:
         logger.error("Error syncing option positions: %s", exc)
         return {"error": str(exc)}

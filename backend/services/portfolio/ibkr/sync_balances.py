@@ -2,7 +2,8 @@
 
 import logging
 from datetime import datetime
-from typing import Dict
+from decimal import Decimal
+from typing import Any, Dict
 
 from sqlalchemy.orm import Session
 
@@ -45,7 +46,7 @@ async def sync_account_balances(
     account_number: str,
     report_xml: str | None,
     fc: IBKRFlexQueryClient,
-) -> Dict:
+) -> Dict[str, Any]:
     """Sync account balances from FlexQuery AccountInformation section."""
     try:
         logger.info("Syncing account balances for %s", account_number)
@@ -113,6 +114,12 @@ async def sync_account_balances(
                         account_code=balance_data.get("account_code", ""),
                     ))
                     synced_count += 1
+                nlv = balance_data.get("net_liquidation")
+                if nlv is not None:
+                    broker_account.total_value = Decimal(str(nlv))
+                cb = balance_data.get("cash_balance")
+                if cb is not None:
+                    broker_account.cash_balance = Decimal(str(cb))
             except Exception as exc:
                 logger.error("Error processing account balance: %s", exc)
                 continue

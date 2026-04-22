@@ -7,11 +7,12 @@ persists to AxiomFolio broker-agnostic tables.
 from __future__ import annotations
 
 import logging
-from typing import Dict
+from datetime import datetime as dt
+from decimal import Decimal
+import re
+from typing import Any, Dict, Tuple
 
 from sqlalchemy.orm import Session
-from datetime import datetime as dt
-import re
 from backend.services.clients.tastytrade_client import TastyTradeClient
 from backend.models import (
     BrokerAccount,
@@ -35,6 +36,20 @@ from backend.models.account_balance import AccountBalanceType
 
 logger = logging.getLogger(__name__)
 
+# Broker-neutral keys for option-row drop logs (TastyTrade vs Schwab naming).
+_OPTION_ROW_DROP_PREVIEW_KEYS = (
+    "symbol",
+    "option_symbol",
+    "underlying_symbol",
+    "expiration",
+    "expiration_date",
+    "strike",
+    "strike_price",
+    "put_call",
+    "option_type",
+    "quantity",
+)
+
 
 class TastyTradeSyncService:
     """High-level orchestrator for Tastytrade data → DB."""
@@ -48,9 +63,9 @@ class TastyTradeSyncService:
 
     async def sync_account(
         self, db: Session, broker_account: BrokerAccount
-    ) -> Dict[str, int]:
+    ) -> Dict[str, Any]:
         """Sync ALL objects for the given broker account. Returns row counts."""
-        counts: Dict[str, int] = {}
+        counts: Dict[str, Any] = {}
 
         # Per-user credentials: use AccountCredentialsService for decryption
         try:
@@ -145,7 +160,7 @@ class TastyTradeSyncService:
 
     async def sync_account_comprehensive(
         self, account_number: str, db_session=None
-    ) -> Dict[str, int]:
+    ) -> Dict[str, Any]:
         """Adapter to align with broker-agnostic sync interface used by BrokerSyncService."""
         db = db_session or self._get_db_session()
         try:
@@ -175,13 +190,17 @@ class TastyTradeSyncService:
     # Internal helpers (1 per table)
     # ------------------------------------------------------------------
 
-    async def _sync_positions(self, db: Session, ba: BrokerAccount) -> Dict[str, int]:
+    async def _sync_positions(self, db: Session, ba: BrokerAccount) -> Dict[str, Any]:
         data = await self.client.get_current_positions(ba.account_number)
         db.query(Position).filter_by(account_id=ba.id).delete()
         db.query(Option).filter_by(account_id=ba.id).delete()
 
         count = 0
         options_added = 0
+        raw_option_rows = 0
+        dropped_no_underlying = 0
+        dropped_no_expiry = 0
+        dropped_parse_error = 0
         seen_option_keys = set()
         for pos in data:
             try:
@@ -191,7 +210,8 @@ class TastyTradeSyncService:
 
                 instr_type = (pos.get("instrument_type") or "").lower()
                 if "option" in instr_type:
-                    kwargs = self._option_position_kwargs(pos, ba)
+                    raw_option_rows += 1
+                    kwargs, drop_reason = self._option_position_kwargs(pos, ba)
                     if kwargs:
                         # dedupe by (account_id, underlying, strike, expiry, type)
                         key = (
@@ -207,6 +227,22 @@ class TastyTradeSyncService:
                         db.add(Option(**kwargs))
                         count += 1
                         options_added += 1
+                    else:
+                        if drop_reason == "no_underlying":
+                            dropped_no_underlying += 1
+                        elif drop_reason == "no_expiry":
+                            dropped_no_expiry += 1
+                        elif drop_reason == "zero_qty":
+                            continue
+                        else:
+                            dropped_parse_error += 1
+                        logger.warning(
+                            "TastyTrade sync: dropping option row for account %s: reason=%s keys=%s raw=%s",
+                            ba.id,
+                            drop_reason,
+                            list(pos.keys()),
+                            {k: pos.get(k) for k in _OPTION_ROW_DROP_PREVIEW_KEYS},
+                        )
                 else:
                     kwargs = self._equity_position_kwargs(pos, ba)
                     if kwargs:
@@ -220,7 +256,23 @@ class TastyTradeSyncService:
             ba.options_enabled = True
 
         db.flush()
-        return {"positions": count}
+        out: Dict[str, Any] = {
+            "positions": count,
+            "options_dropped_no_underlying": dropped_no_underlying,
+            "options_dropped_no_expiry": dropped_no_expiry,
+            "options_dropped_parse_error": dropped_parse_error,
+        }
+        dropped_total = dropped_no_underlying + dropped_no_expiry + dropped_parse_error
+        if raw_option_rows > 0 and options_added == 0:
+            logger.error(
+                "TastyTrade sync: account %s had %d option rows from API but wrote 0 to DB. Dropped=%d. "
+                "This is a silent-fallback violation.",
+                ba.id,
+                raw_option_rows,
+                dropped_total,
+            )
+            out["options_silent_drop"] = True
+        return out
 
     async def _sync_tax_lots(self, db: Session, ba: BrokerAccount) -> Dict[str, int]:
         """Generate tax lots from synced positions (one lot per position).
@@ -340,17 +392,23 @@ class TastyTradeSyncService:
         bal = await self.client.get_account_balances(ba.account_number)
         if not bal:
             return {"account_balances": 0}
+        nlv = bal.get("net_liquidating_value")
+        cash = bal.get("cash_balance")
+        if nlv is not None:
+            ba.total_value = Decimal(str(nlv))
+        if cash is not None:
+            ba.cash_balance = Decimal(str(cash))
         db.query(AccountBalance).filter_by(broker_account_id=ba.id).delete()
         # Map fields to our model
         mapped = dict(
             user_id=ba.user_id,
             broker_account_id=ba.id,
             balance_type=AccountBalanceType.REALTIME,
-            cash_balance=bal.get("cash_balance"),
-            net_liquidation=bal.get("net_liquidating_value"),
+            cash_balance=cash,
+            net_liquidation=nlv,
             gross_position_value=(bal.get("long_margin_value", 0) or 0)
             + (bal.get("short_margin_value", 0) or 0),
-            buying_power=bal.get("net_liquidating_value"),
+            buying_power=nlv,
             data_source="TASTYTRADE",
         )
         db.add(AccountBalance(**mapped))
@@ -492,10 +550,11 @@ class TastyTradeSyncService:
             dividend_type="ORDINARY",
         )
 
-    def _option_position_kwargs(self, p: Dict, ba: BrokerAccount) -> Dict:
+    def _option_position_kwargs(self, p: Dict, ba: BrokerAccount) -> Tuple[Dict[str, Any], str]:
+        """Return (kwargs, drop_reason) — drop_reason empty string on success."""
         quantity = int(abs(float(p.get("quantity", 0) or 0)))
         if quantity == 0:
-            return {}
+            return {}, "zero_qty"
         # Try read directly from payload
         symbol = p.get("symbol") or ""
         underlying_symbol = p.get("underlying_symbol")
@@ -534,7 +593,11 @@ class TastyTradeSyncService:
 
         # Required fields guard
         if strike_price is None or exp_date is None or not option_type:
-            return {}
+            if not underlying_symbol:
+                return {}, "no_underlying"
+            if exp_date is None:
+                return {}, "no_expiry"
+            return {}, "parse_error"
 
         avg_cost = p.get("average_open_price") or 0
         mark_val = p.get("mark_value") or 0
@@ -544,22 +607,25 @@ class TastyTradeSyncService:
             (float(mark_val) - float(total_cost)) if (mark_val is not None) else None
         )
 
-        return dict(
-            user_id=ba.user_id,
-            account_id=ba.id,
-            symbol=symbol,
-            underlying_symbol=underlying_symbol,
-            strike_price=float(strike_price),
-            expiry_date=exp_date,
-            option_type=option_type,
-            multiplier=mult,
-            open_quantity=quantity,
-            current_price=p.get("mark"),
-            unrealized_pnl=unrealized,
-            delta=p.get("delta"),
-            gamma=p.get("gamma"),
-            theta=p.get("theta"),
-            vega=p.get("vega"),
-            currency="USD",
-            data_source="TASTYTRADE",
+        return (
+            dict(
+                user_id=ba.user_id,
+                account_id=ba.id,
+                symbol=symbol,
+                underlying_symbol=underlying_symbol,
+                strike_price=float(strike_price),
+                expiry_date=exp_date,
+                option_type=option_type,
+                multiplier=mult,
+                open_quantity=quantity,
+                current_price=p.get("mark"),
+                unrealized_pnl=unrealized,
+                delta=p.get("delta"),
+                gamma=p.get("gamma"),
+                theta=p.get("theta"),
+                vega=p.get("vega"),
+                currency="USD",
+                data_source="TASTYTRADE",
+            ),
+            "",
         )

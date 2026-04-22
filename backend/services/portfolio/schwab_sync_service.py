@@ -6,7 +6,7 @@ import asyncio
 import logging
 from datetime import datetime, date, timezone
 from decimal import Decimal
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from sqlalchemy.orm import Session
 
@@ -388,17 +388,50 @@ class SchwabSyncService:
         raw = await self._client.get_options_positions(account_number=account.account_number)
         created = 0
         updated = 0
+        dropped_no_underlying = 0
+        dropped_no_expiry = 0
+        dropped_parse_error = 0
+
+        def _row_preview(option_row: Dict[str, Any]) -> Dict[str, Any]:
+            return {k: option_row.get(k) for k in ("symbol", "option_symbol", "expiration", "strike", "quantity")}
+
         for o in raw:
             underlying = (o.get("symbol") or "").upper()
             strike = float(o.get("strike", 0))
             put_call = (o.get("put_call") or "CALL").upper()
             expiry_str = o.get("expiration") or ""
             qty = int(o.get("quantity", 0))
-            if not underlying or not expiry_str:
+            if not underlying:
+                dropped_no_underlying += 1
+                logger.warning(
+                    "Schwab sync: dropping option row for account %s: reason=%s keys=%s raw=%s",
+                    account.id,
+                    "no_underlying",
+                    list(o.keys()),
+                    _row_preview(o),
+                )
+                continue
+            if not expiry_str:
+                dropped_no_expiry += 1
+                logger.warning(
+                    "Schwab sync: dropping option row for account %s: reason=%s keys=%s raw=%s",
+                    account.id,
+                    "no_expiry",
+                    list(o.keys()),
+                    _row_preview(o),
+                )
                 continue
 
-            expiry_date = _parse_date(expiry_str).date() if expiry_str else None
+            expiry_date = _parse_schwab_expiry_to_date(expiry_str)
             if not expiry_date:
+                dropped_parse_error += 1
+                logger.warning(
+                    "Schwab sync: dropping option row for account %s: reason=%s keys=%s raw=%s",
+                    account.id,
+                    "expiry_parse_error",
+                    list(o.keys()),
+                    _row_preview(o),
+                )
                 continue
 
             existing = (
@@ -437,7 +470,24 @@ class SchwabSyncService:
             account.options_enabled = True
 
         session.flush()
-        return {"options_created": created, "options_updated": updated}
+        dropped_total = dropped_no_underlying + dropped_no_expiry + dropped_parse_error
+        out: Dict[str, Any] = {
+            "options_created": created,
+            "options_updated": updated,
+            "options_dropped_no_underlying": dropped_no_underlying,
+            "options_dropped_no_expiry": dropped_no_expiry,
+            "options_dropped_parse_error": dropped_parse_error,
+        }
+        if len(raw) > 0 and created == 0 and updated == 0:
+            logger.error(
+                "Schwab sync: account %s had %d options from API but wrote 0 to DB. Dropped=%d. "
+                "This is a silent-fallback violation.",
+                account.id,
+                len(raw),
+                dropped_total,
+            )
+            out["options_silent_drop"] = True
+        return out
 
     async def _sync_transactions(self, account: BrokerAccount, session: Session) -> Dict:
         """Sync transactions from Schwab API and split into transactions, trades, and dividends."""
@@ -602,12 +652,19 @@ class SchwabSyncService:
         if not bal:
             return {"balances_synced": 0}
 
+        nlv = bal.get("net_liquidating_value")
+        cash = bal.get("cash_balance")
+        if nlv is not None:
+            account.total_value = Decimal(str(nlv))
+        if cash is not None:
+            account.cash_balance = Decimal(str(cash))
+
         new_bal = AccountBalance(
             user_id=account.user_id,
             broker_account_id=account.id,
             balance_date=datetime.now(timezone.utc),
-            cash_balance=bal.get("cash_balance"),
-            net_liquidation=bal.get("net_liquidating_value"),
+            cash_balance=cash,
+            net_liquidation=nlv,
             buying_power=bal.get("equity_buying_power"),
             available_funds=bal.get("available_funds"),
             equity=bal.get("equity"),
@@ -619,6 +676,26 @@ class SchwabSyncService:
         session.add(new_bal)
         session.flush()
         return {"balances_synced": 1}
+
+
+def _parse_schwab_expiry_to_date(val: str) -> Optional[date]:
+    """Parse Schwab / OCC expiry strings without defaulting to 'now' on failure."""
+    if not val or not str(val).strip():
+        return None
+    s = str(val).strip()
+    if isinstance(s, str) and "T" in s:
+        try:
+            return datetime.fromisoformat(s.replace("Z", "+00:00")).date()
+        except (ValueError, TypeError):
+            pass
+    try:
+        return datetime.fromisoformat(s[:10]).date()
+    except (ValueError, TypeError):
+        pass
+    try:
+        return datetime.strptime(s[:10], "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        return None
 
 
 def _parse_date(val: Any) -> datetime:

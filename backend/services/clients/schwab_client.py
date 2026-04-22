@@ -7,7 +7,7 @@ Uses OAuth tokens from the aggregator callback flow. Returns empty results when 
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import aiohttp
@@ -19,6 +19,27 @@ logger = logging.getLogger(__name__)
 
 BASE_URL = "https://api.schwabapi.com/trader/v1"
 DEFAULT_TIMEOUT = aiohttp.ClientTimeout(total=30)
+
+
+def _option_expiry_iso_from_occ_symbol(occ: str) -> str:
+    """Last-resort: Schwab-style OCC like ``SOUN  260717C00009000`` — YYMMDD at indices 6–11.
+
+    Returns ISO date ``YYYY-MM-DD`` or "" if the symbol does not look like a standard OCC.
+    """
+    s = (occ or "").strip()
+    if len(s) < 12:
+        return ""
+    yymmdd = s[6:12]
+    if not yymmdd.isdigit() or len(yymmdd) != 6:
+        return ""
+    yy = int(yymmdd[0:2])
+    mm = int(yymmdd[2:4])
+    dd = int(yymmdd[4:6])
+    year = 2000 + yy if yy < 90 else 1900 + yy
+    try:
+        return date(year, mm, dd).isoformat()
+    except ValueError:
+        return ""
 
 
 def _is_schwab_oauth_configured() -> bool:
@@ -453,15 +474,25 @@ class SchwabClient:
             symbol = (inst.get("underlyingSymbol") or inst.get("symbol") or "").upper()
             option_symbol = (inst.get("symbol") or "").upper()
             qty = float(p.get("longQuantity") or 0) - float(p.get("shortQuantity") or 0)
+            expiration = (
+                inst.get("optionExpirationDate")
+                or inst.get("expirationDate")
+                or inst.get("expiry")
+                or ""
+            )
+            if not expiration:
+                expiration = _option_expiry_iso_from_occ_symbol(option_symbol) or ""
             results.append({
                 "symbol": symbol,
                 "option_symbol": option_symbol,
                 "quantity": qty,
                 "strike": float(inst.get("strikePrice") or 0),
-                "expiration": inst.get("expirationDate") or inst.get("expiry") or "",
+                "expiration": expiration,
                 "put_call": (inst.get("putCall") or inst.get("optionType") or "").upper(),
                 "average_cost": float(p.get("averageCost", 0) or 0),
                 "market_value": float(p.get("marketValue", 0) or 0),
+                "net_change": p.get("netChange") if p.get("netChange") is not None else p.get("currentDayProfitLoss"),
+                "average_price": p.get("averagePrice") if p.get("averagePrice") is not None else inst.get("averagePrice"),
             })
         logger.info("Schwab API: get_options_positions returned %d option positions", len(results))
         return results
