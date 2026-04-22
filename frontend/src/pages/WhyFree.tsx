@@ -147,7 +147,7 @@ const WhyFree: React.FC = () => {
                   </tr>
                   <tr className="border-b border-border">
                     <td className="px-4 py-3 font-medium text-foreground">Direct broker connections</td>
-                    <td className="px-4 py-3">Schwab + Tastytrade (OAuth), IBKR (FlexQuery + Gateway), E*TRADE (OAuth sandbox) today — Tradier, Coinbase (OAuth) next</td>
+                    <td className="px-4 py-3">Schwab + Tastytrade + Tradier (OAuth), IBKR (FlexQuery + Gateway), E*TRADE (OAuth sandbox) today — Coinbase (OAuth) next</td>
                     <td className="px-4 py-3">Varies by vendor</td>
                   </tr>
                   <tr>

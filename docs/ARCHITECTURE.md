@@ -301,7 +301,7 @@ Trigger (manual or Celery Beat–scheduled)
       -> IBKRSyncService / TastyTradeSyncService / SchwabSyncService / ETradeSyncService
         -> FlexQuery XML fetch + parse (IBKR)
           -> positions, tax_lots, trades, transactions, dividends, transfers, balances, options
-        -> Bronze adapters (E*TRADE today, Fidelity / Tradier upcoming — see "Bronze layer" below)
+        -> Bronze adapters (E*TRADE + Tradier today, Fidelity upcoming — see "Bronze layer" below)
         -> db.commit() (single transaction)
     -> AccountSync record updated
 ```
@@ -315,11 +315,15 @@ package under `backend/services/bronze/`:
 ```
 backend/services/bronze/
   __init__.py
-  etrade/              # first bronze adapter (PR D2)
+  etrade/              # first bronze adapter
     __init__.py
     client.py          # thin v1 data-API wrapper (.json suffix) — reuses
                        # ETradeSandboxAdapter._signed_request for HMAC-SHA1
     sync_service.py    # ETradeSyncService — same shape as SchwabSyncService
+  tradier/             # second bronze adapter
+    __init__.py
+    client.py          # thin /v1/{user,accounts} wrapper; OAuth 2.0 bearer
+    sync_service.py    # TradierSyncService (live + sandbox ids)
 ```
 
 Contract (all bronze adapters must follow — pinned by D130):
@@ -350,9 +354,9 @@ Contract (all bronze adapters must follow — pinned by D130):
   the account to the options workspace without a separate enable step.
 
 Fan-out task: one module per broker under `backend/tasks/portfolio/` (e.g.
-`etrade_sync.sync_all_etrade_accounts`) — kept separate from the umbrella
-`backend.tasks.account_sync` namespace so each Phase 1 broker PR stays
-self-contained. Each task declares explicit `time_limit` / `soft_time_limit`
+`etrade_sync.sync_all_etrade_accounts`, `tradier_sync.sync_all_tradier_accounts`) — kept separate from the umbrella
+`backend.tasks.account_sync` namespace so per-broker fan-out modules stay
+small. Each task declares explicit `time_limit` / `soft_time_limit`
 matching `JobTemplate.timeout_s` in `backend/tasks/job_catalog.py`
 (iron-law; see `engineering.mdc`).
 

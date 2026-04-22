@@ -34,6 +34,7 @@ class OAuthBrokerType(str, enum.Enum):
     IBKR = "ibkr"
     ROBINHOOD = "robinhood"
     TRADIER = "tradier"
+    TRADIER_SANDBOX = "tradier_sandbox"
     COINBASE = "coinbase"
 
 

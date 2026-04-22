@@ -37,11 +37,15 @@ class BrokerType(enum.Enum):
     SCHWAB = "schwab"
     FIDELITY = "fidelity"
     ROBINHOOD = "robinhood"
-    # E*TRADE is OAuth 1.0a sandbox-only in v1 (Phase 1 / PR D2). The Python
-    # enum value ``etrade`` maps to the Postgres enum member ``ETRADE`` —
-    # SQLAlchemy ``Column(Enum(PyEnum))`` stores the member *name*, not the
-    # lowercase value, so migration 0060 adds ``'ETRADE'`` to ``brokertype``.
+    # E*TRADE is OAuth 1.0a in sandbox. ``etrade`` / ``ETRADE`` in Postgres
+    # ``brokertype`` — see migration 0060.
     ETRADE = "etrade"
+    # Live Tradier: OAuth slug ``tradier``; ``brokertype`` value (migration 0061).
+    TRADIER = "tradier"
+    # Sandbox Tradier: OAuth slug ``tradier_sandbox``; must align with
+    # ``BrokerOAuthConnection.broker`` so sync picks the matching token
+    # (``TRADIER_SANDBOX`` in ``brokertype`` from migration 0062).
+    TRADIER_SANDBOX = "tradier_sandbox"
     # Allow tests to persist unknown brokers without schema errors
     UNKNOWN_BROKER = "unknown_broker"
 

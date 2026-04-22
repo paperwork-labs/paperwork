@@ -12,10 +12,8 @@ Single source of truth for broker counts:
       Schwab / TastyTrade use OAuth. The marketing claim we make is
       "direct connection/integration", not "OAuth", because that is
       what the code actually does. See docs/KNOWLEDGE.md D131.
-    * ``DIRECT_OAUTH_BROKERS_PLANNED``: Phase 1 additions from the
-      broker-parity plan still in flight. All remaining planned
-      additions are OAuth-based, so the narrower label is accurate
-      here. As each one ships it is promoted into
+    * ``DIRECT_OAUTH_BROKERS_PLANNED``: OAuth-only brokers not yet in
+      ``DIRECT_CONNECT_BROKERS_LIVE``. As each one ships it is promoted into
       ``DIRECT_CONNECT_BROKERS_LIVE`` and removed from this tuple so
       the marketing claim "expanding OAuth" is code-grounded and
       shrinks to zero when the track is done.
@@ -45,7 +43,8 @@ DIRECT_CONNECT_BROKERS_LIVE: Tuple[str, ...] = (
     "schwab",      # OAuth 2.0
     "ibkr",        # FlexQuery + IB Gateway (not OAuth — see D131)
     "tastytrade",  # OAuth 2.0
-    "etrade",      # OAuth 1.0a sandbox (PR D2 / #395 — sandbox only in v1)
+    "etrade",      # OAuth 1.0a (sandbox in v1)
+    "tradier",     # OAuth 2.0 (live + sandbox tokens)
 )
 
 # Deprecated alias. Kept so existing imports
@@ -54,8 +53,7 @@ DIRECT_CONNECT_BROKERS_LIVE: Tuple[str, ...] = (
 DIRECT_OAUTH_BROKERS_LIVE: Tuple[str, ...] = DIRECT_CONNECT_BROKERS_LIVE
 
 DIRECT_OAUTH_BROKERS_PLANNED: Tuple[str, ...] = (
-    "tradier",   # OAuth 2.0 (Phase 1 / PR D3)
-    "coinbase",  # OAuth 2.0 (Phase 1 / PR D4 — crypto)
+    "coinbase",  # OAuth 2.0 (crypto) — not yet connected in app
 )
 
 IMPORT_CATALOG_BROKERS_COUNT: int = 14

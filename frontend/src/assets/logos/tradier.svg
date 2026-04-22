@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Tradier">
+  <title>Tradier</title>
+  <rect width="64" height="64" rx="10" fill="#0068FF"/>
+  <text
+    x="50%"
+    y="58%"
+    text-anchor="middle"
+    dominant-baseline="middle"
+    font-family="Helvetica, Arial, sans-serif"
+    font-weight="800"
+    font-size="22"
+    fill="#ffffff"
+    letter-spacing="-1">T</text>
+  <text
+    x="50%"
+    y="82%"
+    text-anchor="middle"
+    dominant-baseline="middle"
+    font-family="Helvetica, Arial, sans-serif"
+    font-weight="700"
+    font-size="9"
+    fill="#ffffff"
+    letter-spacing="0.5">TRADIER</text>
+</svg>

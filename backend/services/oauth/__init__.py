@@ -18,10 +18,13 @@ from .base import (
     OAuthTokens,
 )
 from .etrade import ETradeSandboxAdapter
+from .tradier import TradierOAuth2Adapter, TradierSandboxOAuth2Adapter
 
 
 _REGISTRY: Dict[str, Type[OAuthBrokerAdapter]] = {
     ETradeSandboxAdapter.broker_id: ETradeSandboxAdapter,
+    TradierOAuth2Adapter.broker_id: TradierOAuth2Adapter,
+    TradierSandboxOAuth2Adapter.broker_id: TradierSandboxOAuth2Adapter,
 }
 
 

@@ -53,7 +53,7 @@ CATALOG: List[JobTemplate] = [
         default_tz="UTC",
         queue="account_sync",
     ),
-    # Phase 1 / PR D2: E*TRADE sandbox direct-OAuth sync. Scheduled 15 min
+    # E*TRADE sandbox direct-OAuth sync. Scheduled 15 min
     # after Schwab so the account_sync worker isn't pinned by two fan-outs at
     # once. ``timeout_s`` matches the task's ``time_limit`` (iron-law; see
     # engineering.mdc). Sandbox tokens expire at midnight US/Eastern, so the
@@ -71,6 +71,25 @@ CATALOG: List[JobTemplate] = [
         default_cron="45 2 * * *",
         default_tz="UTC",
         queue="account_sync",
+        timeout_s=960,
+    ),
+    JobTemplate(
+        id="tradier-daily-sync",
+        display_name="Tradier Daily Sync",
+        group="portfolio",
+        task="backend.tasks.account_sync.sync_all_tradier_accounts",
+        description=(
+            "Sync all enabled Tradier accounts (positions, options, "
+            "transactions, trades, dividends, balances) via the Tradier "
+            "v1 OAuth 2.0 data API (live + sandbox)."
+        ),
+        # 03:00 UTC — staggered 15 min after E*TRADE's 02:45 fan-out so
+        # worker pressure spreads evenly across the 02:xx–03:xx window.
+        default_cron="0 3 * * *",
+        default_tz="UTC",
+        queue="account_sync",
+        # Iron law: timeout_s must match ``sync_all_tradier_accounts``
+        # ``time_limit`` in ``backend/tasks/portfolio/tradier_sync.py``.
         timeout_s=960,
     ),
     JobTemplate(

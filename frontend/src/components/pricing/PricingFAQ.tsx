@@ -39,9 +39,9 @@ const FAQ_ENTRIES: ReadonlyArray<FaqEntry> = [
         Because most "free" portfolio apps still charge a monthly fee to look
         at your own data, and we don't want to be that. Snowball-class
         visualization, direct connections to Schwab, IBKR, Tastytrade,
-        and E*TRADE today (Schwab + Tastytrade via OAuth, IBKR via
-        FlexQuery + IB Gateway, E*TRADE via OAuth sandbox; Tradier and
-        Coinbase OAuth on the v1 parity track),
+        E*TRADE, and Tradier today (Schwab + Tastytrade + Tradier via
+        OAuth, IBKR via FlexQuery + IB Gateway, E*TRADE via OAuth
+        sandbox; Coinbase OAuth planned),
         CSV import for every other broker, real-time prices, public
         sharing — all free, forever. The full reasoning lives on{' '}
         <Link
@@ -98,8 +98,8 @@ const FAQ_ENTRIES: ReadonlyArray<FaqEntry> = [
         math doesn't work on free — at 10,000 free users that's $20K/mo
         of pure cost before we earn a dollar. Pro ($29/mo) covers that
         pass-through with zero markup. Brokers with direct integrations
-        (Schwab + Tastytrade via OAuth, IBKR via FlexQuery + IB Gateway,
-        E*TRADE via OAuth sandbox today, and soon Tradier + Coinbase
+        (Schwab + Tastytrade + Tradier via OAuth, IBKR via FlexQuery +
+        IB Gateway, E*TRADE via OAuth sandbox today, and soon Coinbase
         via OAuth) stay free forever — we don't pay a per-connection
         fee for
         those, so you don't either.
@@ -122,9 +122,9 @@ const FAQ_ENTRIES: ReadonlyArray<FaqEntry> = [
       <>
         Your data stays. You drop to the Free tier and keep the flagship
         charts, CSV import, and direct broker connections (Schwab +
-        Tastytrade OAuth, IBKR FlexQuery + IB Gateway, E*TRADE OAuth
-        sandbox today, and every additional direct-OAuth broker we add
-        in v1) forever. No "cancel and lose your portfolio" trap.
+        Tastytrade + Tradier OAuth, IBKR FlexQuery + IB Gateway,
+        E*TRADE OAuth sandbox today, and every additional direct-OAuth
+        broker we add in v1) forever. No "cancel and lose your portfolio" trap.
       </>
     ),
   },

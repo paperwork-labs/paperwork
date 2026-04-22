@@ -42,6 +42,7 @@ import SchwabLogo from '../assets/logos/schwab.svg';
 import TastytradeLogo from '../assets/logos/tastytrade.svg';
 import IbkrLogo from '../assets/logos/interactive-brokers.svg';
 import EtradeLogo from '../assets/logos/etrade.svg';
+import TradierLogo from '../assets/logos/tradier.svg';
 import IBGatewayLogo from '../assets/logos/ib-gateway.svg';
 import TradingViewLogo from '../assets/logos/tradingview.svg';
 import FmpLogo from '../assets/logos/fmp.svg';
@@ -74,13 +75,23 @@ const SettingsConnections: React.FC = () => {
   // Wizard
   const [wizardOpen, setWizardOpen] = useState(false);
   const [step, setStep] = useState<number>(1);
-  const [broker, setBroker] = useState<'SCHWAB' | 'TASTYTRADE' | 'IBKR' | 'ETRADE' | ''>('');
+  const [broker, setBroker] = useState<'SCHWAB' | 'TASTYTRADE' | 'IBKR' | 'ETRADE' | 'TRADIER' | ''>('');
   const [schwabForm, setSchwabForm] = useState({ account_number: '', account_name: '' });
   const [ibkrForm, setIbkrForm] = useState({ flex_token: '', query_id: '', account_number: '' });
   // E*TRADE OAuth 1.0a uses an out-of-band verifier code: the user authorizes
   // on E*TRADE's site, E*TRADE displays a ~5-char code, the user pastes it
   // back here. ``state`` is the Redis-stored CSRF token from /initiate.
   const [etradeForm, setEtradeForm] = useState({ state: '', verifier: '', account_name: '' });
+  // Tradier OAuth 2.0 (authorization code): the user approves on
+  // api.tradier.com, then the browser returns to
+  // ``/settings/connections?tradier=linked&env=<sandbox|live>&code=...&state=...``.
+  // That same tab runs the useEffect below to exchange the code. No
+  // verifier paste (unlike E*TRADE OAuth 1.0a in this wizard).
+  const [tradierForm, setTradierForm] = useState({
+    env: 'sandbox' as 'sandbox' | 'live',
+    state: '',
+    account_name: '',
+  });
   const [busy, setBusy] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -116,6 +127,8 @@ const SettingsConnections: React.FC = () => {
     if (key === 'SCHWAB') return 'Charles Schwab';
     if (key === 'TASTYTRADE') return 'Tastytrade';
     if (key === 'ETRADE') return 'E*TRADE';
+    if (key === 'TRADIER') return 'Tradier';
+    if (key === 'TRADIER_SANDBOX') return 'Tradier (sandbox)';
     return b;
   };
 
@@ -206,6 +219,106 @@ const SettingsConnections: React.FC = () => {
       loadSyncHistory();
       window.history.replaceState({}, '', window.location.pathname);
     }
+    // Tradier: redirect back with ``?tradier=linked&env=...&code=...&state=...``.
+    const tradierStatus = params.get('tradier');
+    const tradierCode = params.get('code');
+    const tradierState = params.get('state');
+    const tradierEnv = (params.get('env') || 'sandbox') as 'sandbox' | 'live';
+    if (tradierStatus === 'linked' && tradierCode && tradierState) {
+      const brokerId = tradierEnv === 'live' ? 'tradier' : 'tradier_sandbox';
+      (async () => {
+        const notifyOtherTabs = () => {
+          const msg = { broker: 'tradier' as const, env: tradierEnv, status: 'ok' as const };
+          if (typeof BroadcastChannel !== 'undefined') {
+            const bc = new BroadcastChannel('axf-oauth');
+            bc.postMessage(msg);
+            bc.close();
+          }
+          try {
+            localStorage.setItem('axf-oauth-ping', JSON.stringify({ ...msg, ts: Date.now() }));
+          } catch { /* private mode / blocked */ }
+        };
+        const defaultName = `Tradier (${tradierEnv})`;
+        const brokerEnum = tradierEnv === 'live' ? 'TRADIER' as const : 'TRADIER_SANDBOX' as const;
+        let placeAccountName = defaultName;
+        try {
+          const p = sessionStorage.getItem('axf-tradier-pending');
+          if (p) {
+            const o = JSON.parse(p) as { account_name?: string };
+            if (o?.account_name?.trim()) placeAccountName = o.account_name.trim();
+          }
+        } catch { /* invalid JSON */ }
+        try {
+          sessionStorage.removeItem('axf-tradier-pending');
+        } catch { /* */ }
+        try {
+          await oauthApi.callback(brokerId, tradierState, tradierCode);
+          try {
+            await accountsApi.add({
+              broker: brokerEnum,
+              account_number: 'TRADIER_OAUTH',
+              account_name: placeAccountName || defaultName,
+              account_type: 'TAXABLE',
+            });
+          } catch (e) {
+            // Placeholder already exists — fine, sync will auto-correct.
+            const msg = handleApiError(e).toLowerCase();
+            if (!msg.includes('exists') && !msg.includes('duplicate')) throw e;
+          }
+          toast({ title: 'Tradier connected', status: 'success' });
+          await loadAccounts();
+          await loadSyncHistory();
+          notifyOtherTabs();
+        } catch (e) {
+          toast({
+            title: 'Tradier callback failed',
+            description: handleApiError(e),
+            status: 'error',
+          });
+        } finally {
+          window.history.replaceState({}, '', window.location.pathname);
+          try {
+            window.close();
+          } catch { /* not a script-opened window */ }
+        }
+      })();
+    }
+  }, []);
+
+  // Tradier popup uses ``noopener`` (so ``window.opener`` is null). The
+  // callback tab notifies the main Settings tab via ``BroadcastChannel`` and
+  // a ``localStorage`` ping (``storage`` event fallback for older Safari).
+  // Legacy: still listen for same-origin ``tradier-linked`` postMessage.
+  useEffect(() => {
+    const refresh = () => {
+      void loadAccounts();
+      void loadSyncHistory();
+    };
+    const ch = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('axf-oauth') : null;
+    const onBc = (ev: MessageEvent) => {
+      const d = ev.data as { broker?: string; status?: string } | null;
+      if (d && d.broker === 'tradier' && d.status === 'ok') refresh();
+    };
+    ch?.addEventListener('message', onBc);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== 'axf-oauth-ping' || !e.newValue) return;
+      try {
+        const d = JSON.parse(e.newValue) as { broker?: string; status?: string };
+        if (d && d.broker === 'tradier' && d.status === 'ok') refresh();
+      } catch { /* */ }
+    };
+    window.addEventListener('storage', onStorage);
+    const onMessage = (ev: MessageEvent) => {
+      if (ev.origin !== window.location.origin) return;
+      if (ev.data && (ev.data as { type?: string }).type === 'tradier-linked') refresh();
+    };
+    window.addEventListener('message', onMessage);
+    return () => {
+      ch?.removeEventListener('message', onBc);
+      ch?.close();
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('message', onMessage);
+    };
   }, []);
 
   const handleAdd = async () => {
@@ -370,6 +483,44 @@ const SettingsConnections: React.FC = () => {
     }
   };
 
+  // Same popup pre-open pattern as E*TRADE. Tradier returns with
+  // ``?tradier=linked&code=...`` (see page-load useEffect) — no verifier paste.
+  const handleTradierAuthorize = async (env: 'sandbox' | 'live') => {
+    const popup = window.open('about:blank', '_blank', 'noopener,noreferrer');
+    try {
+      setBusy(true);
+      setTradierForm((prev) => ({ ...prev, env }));
+      const brokerId = env === 'live' ? 'tradier' : 'tradier_sandbox';
+      const callbackUrl =
+        `${window.location.origin}/settings/connections?tradier=linked&env=${env}`;
+      try {
+        sessionStorage.setItem(
+          'axf-tradier-pending',
+          JSON.stringify({ account_name: tradierForm.account_name.trim() })
+        );
+      } catch { /* */ }
+      const res = await oauthApi.initiate(brokerId, callbackUrl);
+      if (!res?.authorize_url || !res?.state) {
+        throw new Error('Tradier did not return an authorization URL');
+      }
+      setTradierForm((prev) => ({ ...prev, state: res.state }));
+      if (popup && !popup.closed) {
+        popup.location.href = res.authorize_url;
+      } else {
+        window.open(res.authorize_url, '_blank', 'noopener,noreferrer');
+      }
+      toast({
+        title: 'Authorize in the new tab — we\u2019ll finish automatically when Tradier redirects back',
+        status: 'info',
+      });
+    } catch (e) {
+      try { popup?.close(); } catch { /* noop */ }
+      toast({ title: 'Tradier authorize failed', description: handleApiError(e), status: 'error' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const submitWizard = async () => {
     try {
       setBusy(true);
@@ -440,6 +591,16 @@ const SettingsConnections: React.FC = () => {
         toast({ title: 'E*TRADE connected', status: 'success' });
         await loadAccounts();
         await loadSyncHistory();
+      } else if (broker === 'TRADIER') {
+        // OAuth 2.0 authorization code: work happens in
+        // ``handleTradierAuthorize`` (initiate) + the page-load
+        // useEffect (callback). The wizard's Submit button simply
+        // dismisses once the state variable is populated, so we surface
+        // a clear error if the user clicks Done without authorizing.
+        if (!tradierForm.state) {
+          throw new Error('Click Authorize first to complete Tradier OAuth');
+        }
+        toast({ title: 'Tradier connection in progress', status: 'info' });
       } else if (broker === 'IBKR') {
         if (!ibkrForm.flex_token || !ibkrForm.query_id) throw new Error('Enter Flex Token and Query ID');
         const res: any = await aggregatorApi.ibkrFlexConnect({
@@ -657,6 +818,7 @@ const SettingsConnections: React.FC = () => {
                 { key: 'SCHWAB', name: 'Charles Schwab', logo: SchwabLogo, connected: accounts.some(a => String(a.broker).toUpperCase() === 'SCHWAB') },
                 { key: 'TASTYTRADE', name: 'Tastytrade', logo: TastytradeLogo, connected: accounts.some(a => String(a.broker).toUpperCase() === 'TASTYTRADE') },
                 { key: 'ETRADE', name: 'E*TRADE', logo: EtradeLogo, connected: accounts.some(a => String(a.broker).toUpperCase() === 'ETRADE') },
+                { key: 'TRADIER', name: 'Tradier', logo: TradierLogo, connected: accounts.some((a) => { const b = String(a.broker).toUpperCase(); return b === 'TRADIER' || b === 'TRADIER_SANDBOX'; }) },
               ];
               return brokerConfigs.map(bc => {
                 const brokerAccounts = accounts.filter(a => String(a.broker).toUpperCase() === bc.key);
@@ -1303,6 +1465,7 @@ const SettingsConnections: React.FC = () => {
                   <LogoTile label="Tastytrade" srcs={[TastytradeLogo]} selected={broker === 'TASTYTRADE'} onClick={() => { setBroker('TASTYTRADE'); setStep(2); }} wide />
                   <LogoTile label="Interactive Brokers" srcs={[IbkrLogo]} selected={broker === 'IBKR'} onClick={() => { setBroker('IBKR'); setStep(2); }} wide />
                   <LogoTile label="E*TRADE" srcs={[EtradeLogo]} selected={broker === 'ETRADE'} onClick={() => { setBroker('ETRADE'); setStep(2); }} wide />
+                  <LogoTile label="Tradier" srcs={[TradierLogo]} selected={broker === 'TRADIER'} onClick={() => { setBroker('TRADIER'); setStep(2); }} wide />
                 </div>
                 <div className="text-sm text-muted-foreground">More brokers coming soon (Fidelity, Robinhood, Public)</div>
               </div>
@@ -1357,6 +1520,75 @@ const SettingsConnections: React.FC = () => {
                 </div>
               </div>
             )}
+            {step === 2 && broker === 'TRADIER' && (
+              <div className="flex flex-col gap-3 items-stretch">
+                <div className="font-semibold">Tradier (OAuth 2.0)</div>
+                <div className="text-xs text-muted-foreground">
+                  Tradier supports both sandbox and live brokerage accounts. Sandbox is
+                  recommended for first-time connections; you can add a live connection
+                  later without removing the sandbox link.
+                </div>
+                <div className="flex flex-row gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={tradierForm.env === 'sandbox' ? 'default' : 'outline'}
+                    onClick={() => setTradierForm({ ...tradierForm, env: 'sandbox' })}
+                  >
+                    Sandbox
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={tradierForm.env === 'live' ? 'default' : 'outline'}
+                    onClick={() => setTradierForm({ ...tradierForm, env: 'live' })}
+                  >
+                    Live
+                  </Button>
+                </div>
+                <Input
+                  placeholder="Account Name (optional)"
+                  value={tradierForm.account_name}
+                  onChange={(e) => setTradierForm({ ...tradierForm, account_name: e.target.value })}
+                />
+                {!tradierForm.state ? (
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => void handleTradierAuthorize(tradierForm.env)}
+                    >
+                      {busy ? <Loader2 className="mr-1 size-3.5 animate-spin" aria-hidden /> : <ExternalLink className="mr-1.5 size-3.5" aria-hidden />}
+                      Authorize on Tradier ({tradierForm.env})
+                    </Button>
+                    <div className="text-xs text-muted-foreground">
+                      A new tab opens Tradier's authorization page. After approving,
+                      Tradier will redirect that tab back here and we'll finish the
+                      exchange automatically &mdash; no verifier to paste.
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <div className="text-xs text-muted-foreground">
+                      Waiting for Tradier to redirect back with the authorization code.
+                      If nothing happens within a minute, the popup may have been
+                      closed &mdash; click Start over.
+                    </div>
+                    <div className="flex flex-row items-center gap-2">
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="ghost"
+                        onClick={() => setTradierForm({ env: tradierForm.env, state: '', account_name: tradierForm.account_name })}
+                      >
+                        Start over
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             {step === 2 && broker === 'ETRADE' && (
               <div className="flex flex-col gap-3 items-stretch">
                 <div className="font-semibold">E*TRADE Sandbox (OAuth 1.0a)</div>
@@ -1406,7 +1638,7 @@ const SettingsConnections: React.FC = () => {
             )}
           </div>
           <DialogFooter>
-            {step === 2 && broker !== 'ETRADE' && (
+            {step === 2 && broker !== 'ETRADE' && broker !== 'TRADIER' && (
               <Button type="button" disabled={busy} onClick={() => void submitWizard()}>
                 {busy ? <Loader2 className="mr-1 size-3.5 animate-spin" aria-hidden /> : null}
                 Connect
@@ -1416,6 +1648,11 @@ const SettingsConnections: React.FC = () => {
               <Button type="button" disabled={busy || !etradeForm.verifier.trim()} onClick={() => void submitWizard()}>
                 {busy ? <Loader2 className="mr-1 size-3.5 animate-spin" aria-hidden /> : null}
                 Finish connection
+              </Button>
+            )}
+            {step === 2 && broker === 'TRADIER' && (
+              <Button type="button" variant="ghost" onClick={() => setWizardOpen(false)}>
+                Close
               </Button>
             )}
           </DialogFooter>

@@ -39,6 +39,16 @@ def _import_etrade_service():
     return ETradeSyncService()
 
 
+def _import_tradier_service():
+    """Lazy import for the Tradier bronze sync service.
+
+    Same rationale as :func:`_import_etrade_service` — the bronze client
+    imports ``requests`` eagerly; keep the dispatcher light to import.
+    """
+    from backend.services.bronze.tradier import TradierSyncService
+    return TradierSyncService()
+
+
 def _build_partial_sync_message(completeness: Dict) -> str:
     """Build a user-facing message for SyncStatus.PARTIAL (G22).
 
@@ -102,6 +112,8 @@ class BrokerSyncService:
             BrokerType.TASTYTRADE,
             BrokerType.SCHWAB,
             BrokerType.ETRADE,
+            BrokerType.TRADIER,
+            BrokerType.TRADIER_SANDBOX,
         ]
 
     def _get_broker_service(self, broker_type):
@@ -120,6 +132,8 @@ class BrokerSyncService:
             BrokerType.TASTYTRADE: lambda: TastyTradeSyncService(),
             BrokerType.SCHWAB: _import_schwab_service,
             BrokerType.ETRADE: _import_etrade_service,
+            BrokerType.TRADIER: _import_tradier_service,
+            BrokerType.TRADIER_SANDBOX: _import_tradier_service,
         }
 
         factory = factories.get(broker_type)
@@ -191,8 +205,8 @@ class BrokerSyncService:
             # Multi-tenancy: pass user_id to services that accept it so
             # the downstream query is scoped to one tenant
             # (account_number is not globally unique). Older adapters
-            # (Schwab/TT/IBKR) silently ignore the kwarg today — remediation
-            # tracked as a follow-up in ``broker_parity_medallion_v1``.
+            # (Schwab/TT/IBKR) silently ignore the kwarg today — tighten when
+            # each adapter is next touched.
             import inspect as _inspect
             _sig = _inspect.signature(service.sync_account_comprehensive)
             _kwargs: Dict[str, object] = {}

@@ -126,6 +126,17 @@ class Settings(BaseSettings):
     OAUTH_ALLOWED_CALLBACK_URLS: Optional[str] = None
     ETRADE_OAUTH_REQUEST_TIMEOUT_S: float = 15.0
 
+    # Tradier OAuth 2.0 — live and sandbox credential pairs.
+    # Used by backend.services.oauth.tradier.{TradierOAuth2Adapter,
+    # TradierSandboxOAuth2Adapter}. Sandbox base URL is fixed; only the
+    # client id/secret + callback URL vary.
+    TRADIER_CLIENT_ID: Optional[str] = None
+    TRADIER_CLIENT_SECRET: Optional[str] = None
+    TRADIER_SANDBOX_CLIENT_ID: Optional[str] = None
+    TRADIER_SANDBOX_CLIENT_SECRET: Optional[str] = None
+    TRADIER_OAUTH_CALLBACK_URL: Optional[str] = None
+    TRADIER_OAUTH_REQUEST_TIMEOUT_S: float = 15.0
+
     # Schwab (optional) - comma-separated account numbers for seeding
     SCHWAB_ACCOUNTS: Optional[str] = None
     SCHWAB_CLIENT_ID: Optional[str] = None
