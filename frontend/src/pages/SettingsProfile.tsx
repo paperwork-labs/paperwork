@@ -96,9 +96,17 @@ const SettingsProfile: React.FC = () => {
                   </Label>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="w-full">
-                        <Input id="profile-username" value={user?.username || ''} disabled />
-                      </div>
+                      <span
+                        aria-label="Username"
+                        className={cn(
+                          'block w-full rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                        )}
+                        data-testid="profile-username-focus-target"
+                        role="group"
+                        tabIndex={0}
+                      >
+                        <Input id="profile-username" value={user?.username || ''} disabled className="w-full" />
+                      </span>
                     </TooltipTrigger>
                     <TooltipContent side="right" className="max-w-[260px] text-xs">
                       Usernames are set at signup. Contact support if you need to change yours.

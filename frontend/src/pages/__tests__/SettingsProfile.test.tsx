@@ -1,6 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { screen, fireEvent, waitFor } from '@/test/testing-library';
@@ -86,6 +87,27 @@ describe('SettingsProfile', () => {
       current_password: 'OldPassw0rd!',
       new_password: 'NewPassw0rd!',
     });
+  });
+
+  it('username tooltip wrapper is keyboard-focusable and exposes tooltip content', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<SettingsProfile />);
+
+    const fullName = screen.getByPlaceholderText('Your name');
+    fullName.focus();
+    await user.tab({ shift: true });
+
+    const wrap = screen.getByTestId('profile-username-focus-target');
+    expect(wrap.tagName.toLowerCase()).toBe('span');
+    expect(wrap).toHaveAttribute('role', 'group');
+    expect(wrap).toHaveAttribute('aria-label', 'Username');
+    expect(wrap).toHaveFocus();
+
+    const tooltipLines = await screen.findAllByText(
+      'Usernames are set at signup. Contact support if you need to change yours.',
+    );
+    expect(tooltipLines.length).toBeGreaterThan(0);
+    expect(tooltipLines[0]).toBeInTheDocument();
   });
 
   it('does not show email-change current password field when user hydrates after mount', () => {
