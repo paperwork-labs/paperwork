@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime
+from decimal import Decimal
 
 from backend.database import get_db
 from backend.models import BrokerAccount, BrokerType, AccountType, AccountStatus, SyncStatus
@@ -23,13 +24,13 @@ from backend.models.broker_account import AccountSync, AccountCredentials
 from backend.services.security.credential_vault import credential_vault
 from backend.models.position import Position
 from backend.models.tax_lot import TaxLot
-from backend.services.portfolio.broker_sync_service import broker_sync_service
 from backend.tasks.celery_app import celery_app
 from celery.result import AsyncResult
 from fastapi import Query
 from typing import Dict, Any
 from backend.api.dependencies import get_current_user
 from backend.models.user import User
+from backend.services.execution.runner_state_service import compute_runner_state
 import logging
 
 logger = logging.getLogger(__name__)
@@ -530,7 +531,7 @@ async def sync_all_accounts(
 
         accounts = (
             db.query(BrokerAccount)
-            .filter(BrokerAccount.user_id == current_user.id, BrokerAccount.is_enabled == True)
+            .filter(BrokerAccount.user_id == current_user.id, BrokerAccount.is_enabled)
             .all()
         )
         task_ids: Dict[str, str] = {}
@@ -715,6 +716,17 @@ async def refresh_prices(
                 p.market_value = market_value
                 p.unrealized_pnl = unrealized
                 p.unrealized_pnl_pct = unrealized_pct
+                if getattr(p, "runner_since", None) is None:
+                    ts = compute_runner_state(p, Decimal(str(price)))
+                    if ts is not None:
+                        p.runner_since = ts
+                        logger.info(
+                            "position %s became runner at %s (unrealized_gain_pct=%s, initial_risk_pct=%s)",
+                            p.id,
+                            ts,
+                            p.unrealized_pnl_pct,
+                            getattr(p, "initial_risk_pct", None),
+                        )
                 updated_positions += 1
             except Exception:
                 continue
@@ -785,7 +797,7 @@ async def flexquery_diagnostic(
         db.query(BrokerAccount)
         .filter(
             BrokerAccount.broker == BrokerType.IBKR,
-            BrokerAccount.is_enabled == True,
+            BrokerAccount.is_enabled,
             BrokerAccount.user_id == current_user.id,
         )
         .all()

@@ -138,6 +138,8 @@ class Position(Base):
     # Last update info
     price_updated_at = Column(DateTime)  # When price was last updated
     position_updated_at = Column(DateTime)  # When position was last changed
+    # Set when a long has covered at least 1R (unrealized P&L % >= initial_risk %); never auto-cleared
+    runner_since = Column(DateTime, nullable=True)
 
     # Data source
     last_sync_id = Column(Integer, ForeignKey("account_syncs.id"))

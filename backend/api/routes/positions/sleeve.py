@@ -123,6 +123,7 @@ def _serialize_position(pos: Position) -> Dict[str, Any]:
             if pos.unrealized_pnl_pct is not None
             else None
         ),
+        "runner_since": pos.runner_since.isoformat() if pos.runner_since else None,
         "sleeve": pos.sleeve or Sleeve.ACTIVE.value,
     }
 

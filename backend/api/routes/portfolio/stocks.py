@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, text, extract, case, literal_column
+from sqlalchemy import func, extract
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
 import csv
@@ -119,7 +119,7 @@ async def get_stocks(
             .join(BrokerAccount, Position.account_id == BrokerAccount.id)
             .filter(
                 Position.user_id == current_user.id,
-                BrokerAccount.is_enabled == True,
+                BrokerAccount.is_enabled,
                 Position.instrument_type == "STOCK",
                 Position.quantity != 0,
             )
@@ -149,6 +149,7 @@ async def get_stocks(
                 "average_cost": float(p.average_cost) if p.average_cost else None,
                 "unrealized_pnl": float(p.unrealized_pnl or 0),
                 "unrealized_pnl_pct": float(p.unrealized_pnl_pct or 0),
+                "runner_since": p.runner_since.isoformat() if p.runner_since else None,
                 "day_pnl": float(p.day_pnl or 0),
                 "day_pnl_pct": float(p.day_pnl_pct or 0),
                 "sector": sector,
@@ -326,7 +327,7 @@ def _user_account_ids(db: Session, user_id: int) -> List[int]:
         a.id
         for a in db.query(BrokerAccount.id).filter(
             BrokerAccount.user_id == user_id,
-            BrokerAccount.is_enabled == True,
+            BrokerAccount.is_enabled,
         ).all()
     ]
 
