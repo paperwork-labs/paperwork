@@ -3,6 +3,7 @@ import { Loader2, RefreshCw } from 'lucide-react';
 import { Page, PageHeader } from '@/components/ui/Page';
 import { Button } from '@/components/ui/button';
 import { TabbedPageShell } from '@/components/layout/TabbedPageShell';
+import SentimentBanner from '@/components/regime/SentimentBanner';
 import { usePortfolioSync } from '@/hooks/usePortfolio';
 
 const OverviewTab = React.lazy(() => import('./tabs/OverviewTab'));
@@ -45,6 +46,8 @@ export default function PortfolioTabShell() {
             </Button>
           }
         />
+
+        <SentimentBanner />
 
         <TabbedPageShell tabs={PORTFOLIO_TABS} defaultTab="overview" />
       </div>

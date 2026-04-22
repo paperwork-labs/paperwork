@@ -746,6 +746,9 @@ export const marketDataApi = {
     const raw = await makeOptimizedRequest(() => api.get('/market-data/regime/current'));
     return normalizeRegimeCurrentBody(raw);
   },
+  getSentimentComposite: async (): Promise<Record<string, unknown>> => {
+    return makeOptimizedRequest(() => api.get('/market-data/sentiment/composite'));
+  },
   getRegimeHistory: async (days: number = 90) => {
     return makeOptimizedRequest(() => api.get(`/market-data/regime/history?days=${days}`));
   },

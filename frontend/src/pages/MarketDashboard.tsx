@@ -28,6 +28,7 @@ import { usePortfolioSymbols } from '../hooks/usePortfolioSymbols';
 import StageBar from '../components/shared/StageBar';
 import StageBadge from '../components/shared/StageBadge';
 import RegimeBanner from '../components/market/RegimeBanner';
+import SentimentBanner from '../components/regime/SentimentBanner';
 import { useChartColors } from '../hooks/useChartColors';
 import { SECTOR_PALETTE } from '../constants/chart';
 import { ETF_SYMBOL_SET } from '../constants/etf';
@@ -915,9 +916,12 @@ const MarketDashboard: React.FC = () => {
   if (loading) {
     return (
       <Page>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" aria-hidden />
-          Loading market dashboard…
+        <div className="flex flex-col gap-4">
+          <SentimentBanner />
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" aria-hidden />
+            Loading market dashboard…
+          </div>
         </div>
       </Page>
     );
@@ -926,12 +930,15 @@ const MarketDashboard: React.FC = () => {
   if (isWarming) {
     return (
       <Page>
-        <div className="flex flex-col items-center justify-center gap-3 py-16">
-          <Loader2 className="size-6 animate-spin text-muted-foreground" aria-hidden />
-          <p className="text-sm text-muted-foreground">
-            Dashboard data is being computed. Auto-refreshing in a few seconds; while warming, we check every 10
-            seconds.
-          </p>
+        <div className="flex flex-col gap-4">
+          <SentimentBanner />
+          <div className="flex flex-col items-center justify-center gap-3 py-16">
+            <Loader2 className="size-6 animate-spin text-muted-foreground" aria-hidden />
+            <p className="text-sm text-muted-foreground">
+              Dashboard data is being computed. Auto-refreshing in a few seconds; while warming, we check every 10
+              seconds.
+            </p>
+          </div>
         </div>
       </Page>
     );
@@ -940,25 +947,28 @@ const MarketDashboard: React.FC = () => {
   if (error) {
     return (
       <Page>
-        <h1 className="mb-4 font-heading text-2xl font-semibold tracking-tight">Market Dashboard</h1>
-        <Card className="max-w-xl border-destructive/40">
-          <CardContent className="flex flex-col gap-3 p-6">
-            <p className="font-heading text-lg font-semibold text-foreground">Something went wrong</p>
-            <p className="text-sm text-muted-foreground">
-              We couldn&apos;t load the market dashboard. This is usually a transient network or backend hiccup.
-            </p>
-            {error?.message ? (
-              <p className="rounded border border-border bg-muted/30 px-2 py-1 font-mono text-xs text-muted-foreground">
-                {error.message}
+        <div className="flex flex-col gap-4">
+          <SentimentBanner />
+          <h1 className="font-heading text-2xl font-semibold tracking-tight">Market Dashboard</h1>
+          <Card className="max-w-xl border-destructive/40">
+            <CardContent className="flex flex-col gap-3 p-6">
+              <p className="font-heading text-lg font-semibold text-foreground">Something went wrong</p>
+              <p className="text-sm text-muted-foreground">
+                We couldn&apos;t load the market dashboard. This is usually a transient network or backend hiccup.
               </p>
-            ) : null}
-            <div>
-              <Button type="button" size="sm" onClick={() => void refetch()}>
-                Retry
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              {error?.message ? (
+                <p className="rounded border border-border bg-muted/30 px-2 py-1 font-mono text-xs text-muted-foreground">
+                  {error.message}
+                </p>
+              ) : null}
+              <div>
+                <Button type="button" size="sm" onClick={() => void refetch()}>
+                  Retry
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </Page>
     );
   }
@@ -1007,6 +1017,7 @@ const MarketDashboard: React.FC = () => {
     <ChartContext.Provider value={openChart}>
     <Page>
       <div className="flex flex-col gap-4">
+        <SentimentBanner />
         <div>
           <div className="mb-1 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:gap-3">

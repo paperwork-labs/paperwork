@@ -146,6 +146,13 @@
     --palette-stage-orange: 221 107 32;
     --palette-stage-red: 229 62 62;
 
+    /* Market regime banner tints (RGB triples for rgb(var(--x) / opacity); matches REGIME_HEX) */
+    --regime-tint-r1: 34 197 94;
+    --regime-tint-r2: 134 239 172;
+    --regime-tint-r3: 234 179 8;
+    --regime-tint-r4: 249 115 22;
+    --regime-tint-r5: 220 38 38;
+
     /* Series palette — HSL-derived from a single base hue (220° emerald-blue),
        rotated by ~40° per slot for perceptual separation. RGB triples for
        rgb(var(--x) / a). Used by multi-series charts (sectors, holdings, etc.). */
@@ -268,6 +275,12 @@
     --palette-stage-yellow: 236 201 75;
     --palette-stage-orange: 237 137 54;
     --palette-stage-red: 252 129 129;
+
+    --regime-tint-r1: 52 211 153;
+    --regime-tint-r2: 134 239 172;
+    --regime-tint-r3: 250 204 21;
+    --regime-tint-r4: 251 146 60;
+    --regime-tint-r5: 248 113 113;
 
     /* Series palette — dark theme variants (lifted ~12% lightness for legibility). */
     --series-1: 96 165 250;   /* blue-400  */
