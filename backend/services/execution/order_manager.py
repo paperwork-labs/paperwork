@@ -12,9 +12,12 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from backend.models.broker_account import BrokerAccount
 from backend.models.order import Order, OrderStatus
+from backend.models.trade import Trade
 from backend.services.execution.broker_base import OrderRequest, OrderResult, PreviewResult
 from backend.services.execution.broker_router import broker_router
 from backend.services.execution.risk_gate import RiskGate, RiskViolation
@@ -452,12 +455,54 @@ class OrderManager:
         symbol: Optional[str] = None,
         limit: int = 50,
     ) -> List[Dict[str, Any]]:
-        q = db.query(Order).filter(Order.user_id == user_id).order_by(Order.created_at.desc())
+        cap = max(0, int(limit or 0))
+        if cap == 0:
+            return []
+
+        fetch_n = cap * 2
+        order_sort = func.coalesce(
+            Order.filled_at, Order.submitted_at, Order.created_at
+        )
+        q = db.query(Order).filter(Order.user_id == user_id)
         if status:
             q = q.filter(Order.status == status)
         if symbol:
             q = q.filter(Order.symbol == symbol.upper())
-        return [_order_to_dict(o) for o in q.limit(limit).all()]
+        q = q.order_by(order_sort.desc().nullslast()).limit(fetch_n)
+        order_rows: List[Dict[str, Any]] = []
+        for o in q:
+            d = _order_to_dict(o)
+            d["_sort_ts"] = _order_list_sort_ts(o)
+            order_rows.append(d)
+
+        trade_sort = func.coalesce(
+            Trade.execution_time, Trade.order_time, Trade.created_at
+        )
+        tq = (
+            db.query(Trade, BrokerAccount)
+            .join(BrokerAccount, Trade.account_id == BrokerAccount.id)
+            .filter(BrokerAccount.user_id == user_id)
+        )
+        if status:
+            st = status.strip()
+            tq = tq.filter(Trade.status.ilike(st))
+        if symbol:
+            tq = tq.filter(Trade.symbol == symbol.upper())
+        tq = tq.order_by(trade_sort.desc().nullslast()).limit(fetch_n)
+        trade_rows: List[Dict[str, Any]] = []
+        for t, acct in tq:
+            d = _trade_to_ledger_dict(t, acct, user_id)
+            d["_sort_ts"] = _trade_list_sort_ts(t)
+            trade_rows.append(d)
+
+        combined = sorted(
+            order_rows + trade_rows,
+            key=lambda row: row["_sort_ts"],
+            reverse=True,
+        )[:cap]
+        for d in combined:
+            d.pop("_sort_ts", None)
+        return combined
 
     def get_order(
         self,
@@ -507,4 +552,78 @@ def _order_to_dict(order: Order) -> Dict[str, Any]:
         "cancelled_at": order.cancelled_at.isoformat() if order.cancelled_at else None,
         "created_at": order.created_at.isoformat() if order.created_at else None,
         "created_by": order.created_by,
+        "ledger": "order",
+    }
+
+
+def _order_list_sort_ts(order: Order) -> datetime:
+    for attr in (order.filled_at, order.submitted_at, order.created_at):
+        if attr is not None:
+            if attr.tzinfo is None:
+                return attr.replace(tzinfo=timezone.utc)
+            return attr.astimezone(timezone.utc)
+    return datetime.min.replace(tzinfo=timezone.utc)
+
+
+def _trade_list_sort_ts(t: Trade) -> datetime:
+    for attr in (t.execution_time, t.order_time, t.created_at):
+        if attr is not None:
+            if attr.tzinfo is None:
+                return attr.replace(tzinfo=timezone.utc)
+            return attr.astimezone(timezone.utc)
+    return datetime.min.replace(tzinfo=timezone.utc)
+
+
+def _trade_to_ledger_dict(
+    t: Trade, acct: Optional[BrokerAccount], user_id: int
+) -> Dict[str, Any]:
+    """Shape broker-ledger Trade rows to match the orders API schema for list views.
+
+    When ``list_orders`` has already joined ``BrokerAccount``, pass that row; otherwise
+    ``acct`` may be None (falls back to raw ``account_id`` in the API-shaped dict).
+    """
+    acct_id_str: Optional[str] = (
+        str(acct.account_number)
+        if acct is not None and acct.account_number is not None
+        else str(t.account_id)
+    )
+    st = (t.status or "FILLED").strip() or "FILLED"
+    st_lower = st.lower()
+    q = float(t.quantity or 0)
+    px = float(t.price) if t.price is not None else 0.0
+    return {
+        "id": -int(t.id),  # synthetic: negative ids are broker-ledger; no collision with live orders
+        "symbol": t.symbol,
+        "side": (t.side or "buy").lower(),
+        "order_type": (t.order_type or "market").lower(),
+        "status": st_lower,
+        "quantity": q,
+        "limit_price": None,
+        "stop_price": None,
+        "filled_quantity": q,
+        "filled_avg_price": px,
+        "account_id": acct_id_str,
+        "broker_order_id": t.order_id,
+        "strategy_id": None,
+        "signal_id": t.signal_id,
+        "position_id": None,
+        "user_id": user_id,
+        "source": "manual",
+        "broker_type": (acct.broker.value if acct and acct.broker is not None else "schwab"),
+        "estimated_commission": float(t.commission) if t.commission is not None else None,
+        "estimated_margin_impact": None,
+        "preview_data": None,
+        "error_message": None,
+        "decision_price": None,
+        "slippage_pct": None,
+        "slippage_dollars": None,
+        "fill_latency_ms": None,
+        "vwap_at_fill": None,
+        "spread_at_order": None,
+        "submitted_at": t.order_time.isoformat() if t.order_time else None,
+        "filled_at": t.execution_time.isoformat() if t.execution_time else None,
+        "cancelled_at": None,
+        "created_at": t.created_at.isoformat() if t.created_at else None,
+        "created_by": None,
+        "ledger": "trade",
     }

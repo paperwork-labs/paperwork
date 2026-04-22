@@ -6,7 +6,7 @@ import asyncio
 import logging
 from datetime import datetime, date, timezone
 from decimal import Decimal
-from typing import Dict, Any, List
+from typing import Any, Dict
 
 from sqlalchemy.orm import Session
 
@@ -22,8 +22,28 @@ from backend.services.portfolio.account_credentials_service import (
 )
 from backend.services.portfolio.closing_lot_matcher import reconcile_closing_lots
 from backend.models.options import Option
+from backend.config import settings
 
 logger = logging.getLogger(__name__)
+
+# Redis observability: closing-lot reconciliation failure count. ``incr`` then
+# ``expire`` on every failure sets a 7-day TTL from that event (fixed window per
+# failure, not a single TTL from the first failure only).
+RECONCILE_ANOMALY_KEY = "reconcile:anomaly:total"
+_RECONCILE_ANOMALY_TTL_S = 60 * 60 * 24 * 7
+
+
+def _record_reconcile_closing_lots_anomaly() -> None:
+    try:
+        from backend.services.market.market_data_service import infra
+
+        r = getattr(infra, "redis_client", None)
+        if r is None:
+            return
+        r.incr(RECONCILE_ANOMALY_KEY)
+        r.expire(RECONCILE_ANOMALY_KEY, _RECONCILE_ANOMALY_TTL_S)
+    except Exception as e:  # pragma: no cover - best-effort
+        logger.warning("reconcile_anomaly: redis increment failed: %s", e)
 
 SCHWAB_TYPE_MAP = {
     "TRADE": TransactionType.BUY,
@@ -202,12 +222,17 @@ class SchwabSyncService:
                     match_result.unmatched_quantity,
                     match_result.warnings[0] if match_result.warnings else "n/a",
                 )
-        except Exception as exc:  # noqa: BLE001 — log + continue; sync is still successful
+        except Exception as exc:  # noqa: BLE001
+            _record_reconcile_closing_lots_anomaly()
             logger.warning(
-                "Schwab sync: closing-lot reconciliation failed for account %s: %s",
-                account.id, exc,
+                "reconcile_closing_lots failed for user=%s account=%s: %s",
+                account.user_id,
+                account.account_number,
+                exc,
             )
             results["closed_lots_error"] = str(exc)
+            if str(settings.ENVIRONMENT or "").lower() == "development":
+                raise
 
         total_items = sum(v for v in results.values() if isinstance(v, int))
         if total_items == 0 and self._client.connected:
@@ -438,7 +463,6 @@ class SchwabSyncService:
             txn_date_str = t.get("date") or t.get("transactionDate")
             txn_date = _parse_date(txn_date_str) if txn_date_str else datetime.now(timezone.utc)
             sub_account = t.get("sub_account", "")
-            activity_type = t.get("activity_type", "")
 
             desc_parts = [t.get("description") or ""]
             if sub_account:

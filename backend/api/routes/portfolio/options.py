@@ -40,7 +40,7 @@ async def get_option_accounts(
         has_open_options = (
             exists()
             .where(Option.account_id == BrokerAccount.id)
-            .where(Option.open_quantity > 0)
+            .where(Option.open_quantity != 0)
         )
         accounts = (
             db.query(BrokerAccount)
@@ -58,7 +58,7 @@ async def get_option_accounts(
                 db.query(Option)
                 .filter(
                     Option.account_id == acc.id,
-                    Option.open_quantity > 0,
+                    Option.open_quantity != 0,
                 )
                 .count()
             )
@@ -87,11 +87,11 @@ async def get_unified_options_portfolio(
     """Return unified options positions with optional account filtering, shaped for the frontend."""
     try:
 
-        # base query: open positions only
+        # base query: any non-zero position (long or short)
         query = (
             db.query(Option)
             .join(BrokerAccount, Option.account_id == BrokerAccount.id)
-            .filter(Option.user_id == user.id, Option.open_quantity > 0)
+            .filter(Option.user_id == user.id, Option.open_quantity != 0)
         )
         if account_id:
             query = query.filter(BrokerAccount.account_number == account_id)
@@ -448,7 +448,14 @@ async def gateway_connect(
     gw_client_id: int | None = None
     try:
         from backend.services.portfolio.account_credentials_service import account_credentials_service
-        ibkr_accounts = db.query(BrokerAccount).filter(BrokerAccount.broker == BrokerType.IBKR, BrokerAccount.is_enabled == True).all()
+        ibkr_accounts = (
+            db.query(BrokerAccount)
+            .filter(
+                BrokerAccount.broker == BrokerType.IBKR,
+                BrokerAccount.is_enabled.is_(True),
+            )
+            .all()
+        )
         for acct in ibkr_accounts:
             gw = account_credentials_service.get_ibkr_gateway_credentials(acct.id, db)
             if gw:

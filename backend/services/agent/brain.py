@@ -266,7 +266,7 @@ class AgentBrain:
                 _record_byok_fallback(
                     self.user_id, "host_not_allowlisted", provider=provider
                 )
-                raise ValueError(f"provider host not allow-listed: {host}")
+                return OPENAI_API_URL, default_key
             return provider_url, api_key
         except Exception as e:
             logger.warning("BYOK key resolution failed for user_id=%s: %s", self.user_id, e)
@@ -546,7 +546,6 @@ class AgentBrain:
 
         # Try to create audit record, but don't block on failure
         action: Optional[AgentAction] = None
-        audit_ok = False
         try:
             action = AgentAction(
                 action_type=tool_name,
@@ -559,7 +558,6 @@ class AgentBrain:
             )
             self.db.add(action)
             self.db.flush()
-            audit_ok = True
         except Exception as db_err:
             logger.warning(
                 "Audit record failed for tool %s (proceeding anyway): %s",
@@ -1217,7 +1215,7 @@ class AgentBrain:
             
             constituents = self.db.query(IndexConstituent).filter(
                 IndexConstituent.index_name == index_upper,
-                IndexConstituent.is_active == True,
+                IndexConstituent.is_active.is_(True),
             ).order_by(IndexConstituent.symbol).all()
             
             symbols = [c.symbol for c in constituents]
@@ -2465,7 +2463,7 @@ class AgentBrain:
             resistance_levels = sorted([h for h in swing_highs if h > latest_close])[:3]
             
             # Find nearest support levels (swing lows below current price)
-            support_levels = sorted([l for l in swing_lows if l < latest_close], reverse=True)[:3]
+            support_levels = sorted([lvl for lvl in swing_lows if lvl < latest_close], reverse=True)[:3]
 
             # Volume-weighted price clusters (group prices into buckets)
             price_range = max(highs) - min(lows)

@@ -201,6 +201,7 @@ class AdminHealthService:
             "checked_at": datetime.now(timezone.utc).isoformat(),
             "provider_metrics": self._build_provider_metrics() or None,
             "byok_anomaly": self._build_byok_anomaly(),
+            "reconcile_anomaly": self._build_reconcile_anomaly(),
         }
 
     def _build_byok_anomaly(self) -> Dict[str, Any]:
@@ -223,6 +224,26 @@ class AdminHealthService:
                 "last_at": None,
                 "available": False,
             }
+
+    def _build_reconcile_anomaly(self) -> Dict[str, Any]:
+        """Schwab (and similar) closing-lot reconciliation failure counter (Redis)."""
+        from backend.services.market.market_data_service import infra
+        from backend.services.portfolio.schwab_sync_service import (
+            RECONCILE_ANOMALY_KEY,
+        )
+
+        try:
+            r = getattr(infra, "redis_client", None)
+            if r is None:
+                return {"total": 0, "available": False}
+            raw = r.get(RECONCILE_ANOMALY_KEY)
+            if raw is None:
+                return {"total": 0, "available": True}
+            s = raw.decode() if isinstance(raw, (bytes, bytearray)) else str(raw)
+            return {"total": int(s), "available": True}
+        except Exception as e:
+            logger.warning("reconcile_anomaly snapshot failed: %s", e)
+            return {"total": 0, "available": False}
 
     def check_pre_market_readiness(self, db: Session) -> Dict[str, Any]:
         """Check if the system is ready for the next trading session.

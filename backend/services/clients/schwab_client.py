@@ -313,7 +313,8 @@ class SchwabClient:
     ) -> List[Dict[str, Any]]:
         """
         GET /accounts/{accountHash}/transactions with start_date/end_date.
-        Schwab limits to 60 days; we use min(days, 60) for the request.
+        Schwab supports up to 540 days of history; we clamp to 540. Callers
+        may pass 0 (or a non-positive value) to mean 365 days of history.
         Returns empty list when not configured.
         """
         if not self.connected or not self._access_token:
@@ -324,8 +325,8 @@ class SchwabClient:
         if not account_hash:
             return []
 
-        # Schwab API typically limits transactions to 60 days
-        effective_days = min(days, 60)
+        eff = 365 if days is None or int(days) <= 0 else int(days)
+        effective_days = min(eff, 540)
         end = datetime.now(timezone.utc)
         start = end - timedelta(days=effective_days)
         params = {
@@ -352,7 +353,6 @@ class SchwabClient:
             inst = {}
             qty = 0.0
             price = 0.0
-            commission = 0.0
             transfer_cost_basis = None
             if transfer_items and isinstance(transfer_items, list):
                 item = transfer_items[0] if transfer_items else {}
