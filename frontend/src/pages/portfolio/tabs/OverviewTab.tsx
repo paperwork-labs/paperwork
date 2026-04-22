@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { UTCTimestamp } from 'lightweight-charts';
 import { Link } from 'react-router-dom';
-import { Loader2, RefreshCw, TriangleAlert } from 'lucide-react';
+import { TriangleAlert } from 'lucide-react';
 import { ChartContext, ChartSlidePanel } from '../../../components/market/SymbolChartUI';
 import StatCard from '../../../components/shared/StatCard';
 import StageBar from '../../../components/shared/StageBar';
@@ -19,7 +19,6 @@ import { DashboardResponse, marketDataApi } from '../../../services/api';
 import {
   usePortfolioOverview,
   usePositions,
-  usePortfolioSync,
   usePortfolioInsights,
   useAccountBalances,
   useLiveSummary,
@@ -31,7 +30,6 @@ import { formatMoney } from '../../../utils/format';
 import {
   buildAccountsFromPositions,
   brokerAccountRowKey,
-  brokerAccountStableReactKey,
   normalizeBrokerAccountsForPositions,
   stageCountsFromPositions,
   sectorAllocationFromPositions,
@@ -41,6 +39,7 @@ import {
 import type { RawBrokerAccountInput } from '../../../utils/portfolio';
 import { StatCardSkeleton } from '../../../components/shared/Skeleton';
 import { DailyNarrative } from '../../../components/portfolio/DailyNarrative';
+import { SyncStatusStrip } from '@/components/portfolio/SyncStatusStrip';
 import DisciplineTrajectoryTile from '../../../components/portfolio/DisciplineTrajectoryTile';
 import DisciplineTrajectoryMultiAccount from '../../../components/portfolio/DisciplineTrajectoryMultiAccount';
 import TierGate from '../../../components/billing/TierGate';
@@ -71,7 +70,6 @@ const OverviewTab: React.FC = () => {
   const { currency } = useUserPreferences();
   const overview = usePortfolioOverview();
   const positionsQuery = usePositions();
-  const syncMutation = usePortfolioSync();
   const insightsQuery = usePortfolioInsights();
   const insights = insightsQuery.data;
   const balancesQuery = useAccountBalances();
@@ -502,47 +500,7 @@ const OverviewTab: React.FC = () => {
                     </div>
                   )}
 
-                {sanitizedBrokerRows.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-4 rounded-md bg-muted/50 px-3 py-2">
-                    {sanitizedBrokerRows.map((a) => {
-                        const syncTime = a.last_successful_sync ? new Date(a.last_successful_sync) : null;
-                        const ageMs = syncTime ? Date.now() - syncTime.getTime() : Infinity;
-                        const ageHours = ageMs / (1000 * 60 * 60);
-                        const dotClass =
-                          ageHours < 1
-                            ? 'bg-[rgb(var(--status-success))]'
-                            : ageHours < 24
-                              ? 'bg-[rgb(var(--status-warning))]'
-                              : 'bg-[rgb(var(--status-danger))]';
-                        return (
-                          <div
-                            key={brokerAccountStableReactKey(a.broker, a.account_number, a.id)}
-                            className="flex items-center gap-1"
-                          >
-                            <span className={cn('size-1.5 shrink-0 rounded-full', dotClass)} aria-hidden />
-                            <span className="text-xs text-muted-foreground">
-                              {(a.broker || '').toUpperCase()} ···{(a.account_number || '').slice(-4)} ·{' '}
-                              {syncTime ? timeAgo(a.last_successful_sync) : 'Never'}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      className="ml-auto gap-1"
-                      onClick={() => syncMutation.mutate()}
-                      disabled={syncMutation.isPending}
-                    >
-                      {syncMutation.isPending ? (
-                        <Loader2 className="size-2.5 animate-spin" aria-hidden />
-                      ) : (
-                        <RefreshCw className="size-2.5" aria-hidden />
-                      )}
-                      Sync
-                    </Button>
-                  </div>
-                )}
+                <SyncStatusStrip className="mb-4" showSyncButton={false} />
 
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <Card className="gap-0 border border-border shadow-none ring-0">
