@@ -147,6 +147,8 @@ class TestSchemaShape:
                     "symbol",
                     "generator_name",
                     "score",
+                    "pick_quality_score",
+                    "pick_quality_breakdown",
                     "status",
                     "state_transitioned_at",
                     "state_transitioned_by",

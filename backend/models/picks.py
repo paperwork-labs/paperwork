@@ -288,6 +288,8 @@ class Candidate(Base):
     generator_name = Column(String(64), nullable=False, index=True)
     generator_version = Column(String(32), nullable=False)
     score = Column(Numeric(10, 4), nullable=True)
+    pick_quality_score = Column(Numeric(5, 2), nullable=True)
+    pick_quality_breakdown = Column(JSON, nullable=True)
     action_suggestion = Column(
         SQLEnum(
             PickAction,

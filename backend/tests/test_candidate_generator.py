@@ -16,13 +16,13 @@ from decimal import Decimal
 from typing import List, Sequence
 
 import pytest
+from sqlalchemy import event
 
-from backend.models.market_data import MarketSnapshot
+from backend.models.market_data import MarketRegime, MarketSnapshot
 from backend.models.picks import Candidate, CandidateQueueState, PickAction
 from backend.services.picks.candidate_generator import (
     CandidateGenerator,
     GeneratedCandidate,
-    GeneratorRunReport,
     persist_candidates,
     registered_generators,
     run_all_generators,
@@ -31,6 +31,51 @@ from backend.services.picks.generators.stage2a_rs_strong import (
     Stage2ARsStrongGenerator,
     Stage2AThresholds,
 )
+
+
+def _seed_regime(db_session, *, code: str = "R1") -> None:
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    db_session.add(
+        MarketRegime(
+            as_of_date=now,
+            regime_state=code,
+            composite_score=1.5,
+        )
+    )
+    db_session.flush()
+
+
+def _snap_for_pick_quality(
+    db_session,
+    *,
+    symbol: str,
+    stage_label: str = "2A",
+    rs: float = 85.0,
+) -> None:
+    now = datetime.now(timezone.utc)
+    price = 125.50
+    vol = 500_000.0
+    db_session.add(
+        MarketSnapshot(
+            symbol=symbol,
+            analysis_type="technical_snapshot",
+            analysis_timestamp=now,
+            as_of_timestamp=now,
+            expiry_timestamp=now + timedelta(hours=24),
+            is_valid=True,
+            stage_label=stage_label,
+            rs_mansfield_pct=rs,
+            ext_pct=2.0,
+            range_pos_52w=0.75,
+            current_price=price,
+            high_52w=130.0,
+            atr_14=2.5,
+            volume_avg_20d=vol,
+            td_buy_setup=8,
+            td_sell_setup=0,
+        )
+    )
+    db_session.flush()
 
 
 # ---------------------------------------------------------------------------
@@ -87,6 +132,9 @@ class _TestGen(CandidateGenerator):
 
 class TestPersistCandidates:
     def test_creates_new_rows(self, db_session):
+        _seed_regime(db_session)
+        _snap_for_pick_quality(db_session, symbol="NVDA")
+        _snap_for_pick_quality(db_session, symbol="MSFT")
         gen = _TestGen(
             [
                 GeneratedCandidate(
@@ -104,7 +152,12 @@ class TestPersistCandidates:
             ]
         )
         counts = persist_candidates(db_session, gen, gen.generate(db_session))
-        assert counts == {"created": 2, "skipped_duplicate": 0, "invalid": 0}
+        assert counts["created"] == 2
+        assert counts["skipped_duplicate"] == 0
+        assert counts["invalid"] == 0
+        assert counts["quality_scored"] == 2
+        assert counts["quality_skipped"] == 0
+        assert counts["quality_errored"] == 0
 
         rows = (
             db_session.query(Candidate)
@@ -114,8 +167,11 @@ class TestPersistCandidates:
         assert {r.symbol for r in rows} == {"NVDA", "MSFT"}
         assert all(r.status == CandidateQueueState.DRAFT for r in rows)
         assert all(r.action_suggestion == PickAction.BUY for r in rows)
+        assert all(r.pick_quality_score is not None for r in rows)
 
     def test_idempotent_within_same_utc_day(self, db_session):
+        _seed_regime(db_session)
+        _snap_for_pick_quality(db_session, symbol="AAPL")
         gen = _TestGen(
             [
                 GeneratedCandidate(
@@ -127,7 +183,10 @@ class TestPersistCandidates:
         )
         persist_candidates(db_session, gen, gen.generate(db_session))
         counts = persist_candidates(db_session, gen, gen.generate(db_session))
-        assert counts == {"created": 0, "skipped_duplicate": 1, "invalid": 0}
+        assert counts["created"] == 0
+        assert counts["skipped_duplicate"] == 1
+        assert counts["invalid"] == 0
+        assert counts["quality_scored"] == 1
 
         rows = (
             db_session.query(Candidate)
@@ -140,6 +199,7 @@ class TestPersistCandidates:
         assert len(rows) == 1
 
     def test_empty_symbol_is_invalid(self, db_session):
+        _seed_regime(db_session)
         gen = _TestGen(
             [
                 GeneratedCandidate(
@@ -153,9 +213,14 @@ class TestPersistCandidates:
             ]
         )
         counts = persist_candidates(db_session, gen, gen.generate(db_session))
-        assert counts == {"created": 0, "skipped_duplicate": 0, "invalid": 2}
+        assert counts["created"] == 0
+        assert counts["skipped_duplicate"] == 0
+        assert counts["invalid"] == 2
+        assert counts["quality_scored"] == 0
 
     def test_uppercases_symbol(self, db_session):
+        _seed_regime(db_session)
+        _snap_for_pick_quality(db_session, symbol="TSLA")
         gen = _TestGen(
             [
                 GeneratedCandidate(
@@ -171,6 +236,41 @@ class TestPersistCandidates:
             .one()
         )
         assert row.symbol == "TSLA"
+
+    def test_persist_uses_single_market_snapshot_select(self, db_session):
+        _seed_regime(db_session)
+        for sym in ("AAA", "BBB", "CCC", "DDD", "EEE"):
+            _snap_for_pick_quality(db_session, symbol=sym)
+
+        snapshot_selects: List[str] = []
+
+        def _count(
+            conn: object,
+            cursor: object,
+            statement: object,
+            parameters: object,
+            context: object,
+            executemany: object,
+        ) -> tuple[object, object]:
+            sql = str(statement).lower()
+            if "market_snapshot" in sql and "select" in sql:
+                snapshot_selects.append(sql)
+            return statement, parameters
+
+        bind = db_session.get_bind()
+        event.listen(bind, "before_cursor_execute", _count, retval=True)
+        try:
+            gen = _TestGen(
+                [
+                    GeneratedCandidate(symbol=s, action_suggestion=PickAction.BUY)
+                    for s in ("AAA", "BBB", "CCC", "DDD", "EEE")
+                ]
+            )
+            persist_candidates(db_session, gen, gen.generate(db_session))
+        finally:
+            event.remove(bind, "before_cursor_execute", _count)
+
+        assert len(snapshot_selects) == 1, snapshot_selects
 
     def test_subclass_without_name_cannot_be_used(self, db_session):
         # Build a generator object directly without going through
@@ -206,6 +306,8 @@ class _OkGen(CandidateGenerator):
 
 class TestRunAllGenerators:
     def test_failure_in_one_does_not_block_others(self, db_session):
+        _seed_regime(db_session)
+        _snap_for_pick_quality(db_session, symbol="ONE")
         reports = run_all_generators(
             db_session, only=("test_raising", "test_ok")
         )
@@ -216,6 +318,8 @@ class TestRunAllGenerators:
         assert by_name["test_ok"].created == 1
 
     def test_only_filter_runs_subset(self, db_session):
+        _seed_regime(db_session)
+        _snap_for_pick_quality(db_session, symbol="ONE")
         reports = run_all_generators(db_session, only=("test_ok",))
         names = {r.generator for r in reports}
         assert names == {"test_ok"}
