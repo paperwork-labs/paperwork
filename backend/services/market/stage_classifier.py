@@ -8,6 +8,8 @@ Functions:
     compute_weinstein_stage_from_daily  — daily OHLCV → latest stage dict
     compute_weinstein_stage_series_from_daily — daily OHLCV → stage series DF
     weekly_from_daily             — weekly resample helper
+
+Medallion layer: silver. See docs/ARCHITECTURE.md and D127.
 """
 from __future__ import annotations
 

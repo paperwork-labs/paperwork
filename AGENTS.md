@@ -64,6 +64,8 @@ These paths match `.cursor/rules/protected-regions.mdc`. Get explicit approval b
 2. **Intelligence** — Market data pipeline: OHLCV → indicators → MarketSnapshot (latest) + MarketSnapshotHistory (daily ledger). Stage Analysis with SMA150 anchor, 10 sub-stages, Market Regime Engine.
 3. **Strategy** — Rule evaluator, backtester, signal generator, order engine with risk gates and exit cascade.
 
+**Medallion layers (D127):** `backend/services/` is described in three layers: bronze (raw broker and market ingestion), silver (indicators, regime, stage, enriched portfolio analytics), and gold (strategies, candidates, picks, and other signal flows consumed by the app). New code should live under `backend/services/<layer>/` from the first commit. See the [Medallion Architecture](docs/ARCHITECTURE.md#medallion-architecture) section in `docs/ARCHITECTURE.md` and decision **D127** in `docs/KNOWLEDGE.md` (not repeated here).
+
 ## Trading North Star
 
 14 non-negotiable principles. See [TRADING_PRINCIPLES.md](docs/TRADING_PRINCIPLES.md).

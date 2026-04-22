@@ -1,3 +1,5 @@
+"""Medallion layer: bronze. See docs/ARCHITECTURE.md and D127.
+"""
 from __future__ import annotations
 
 import asyncio

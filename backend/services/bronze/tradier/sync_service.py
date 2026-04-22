@@ -33,6 +33,8 @@ into ``Trade`` rows so the closing-lot matcher (silver layer) can
 attribute sells to open lots; ``_sync_dividends`` mirrors ``dividend``
 events into ``Dividend`` rows. All three scan the same raw list — we
 fetch it once.
+
+Medallion layer: bronze. See docs/ARCHITECTURE.md and D127.
 """
 
 from __future__ import annotations

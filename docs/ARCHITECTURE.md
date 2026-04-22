@@ -6,6 +6,7 @@
 
 - [At a glance](#at-a-glance)
 - [Three Pillars](#three-pillars)
+- [Medallion Architecture](#medallion-architecture)
 - [Brain Integration](#brain-integration)
   - [HTTP tool endpoints](#http-tool-endpoints)
   - [Outbound webhooks](#outbound-webhooks)
@@ -73,6 +74,40 @@ flowchart LR
 - **Portfolio (read-only)**: Broker sync -> positions, trades, options, snapshots. Smart categories with drag-and-drop reordering. Frontend consumes via REST; IB Gateway provides live overlay.
 - **Intelligence (brain)**: Market data pipeline -> indicators (Weinstein stage, RS Mansfield, TD Sequential, RSI, ATR, etc.) -> MarketSnapshot -> MarketSnapshotHistory (immutable daily ledger). Rule engine evaluates condition trees against snapshot + position context.
 - **Strategy (execution)**: Strategy definition -> Rule evaluator -> signals -> Order engine -> Risk gate -> Broker router (paper or live) -> Reconciler.
+
+## Medallion Architecture
+
+**Decision:** D127 (`docs/KNOWLEDGE.md`).
+
+AxiomFolio uses **bronze / silver / gold** as the naming convention for how data and logic are layered in `backend/services/`. The names match common data-mesh "medallion" language: raw at the base, refined in the middle, and consumer-oriented at the top.
+
+| Layer | Role |
+|-------|------|
+| **Bronze** | Raw broker and market-data ingestion. Provider-shaped payloads, HTTP or file pulls, broker APIs. Produces or updates durable rows (positions, prices, tax lots) without applying AxiomFolio indicator or stage semantics. |
+| **Silver** | Enriched, analysis-grade state: indicators, Stage Analysis, Market Regime, and portfolio-level analytics that combine positions with market snapshots. Assumes bronze inputs exist. |
+| **Gold** | User- and app-facing strategy and signal surfaces: rules, backtests, candidate and pick generation, scoring—outputs meant for decisions, queues, and APIs on top of silver state. |
+
+**Dependency boundaries**
+
+- **Bronze must not** import or call into silver or gold (no `indicator_engine`, `rule_evaluator`, etc.).
+- **Silver may** depend on bronze outputs (e.g. DB rows written by sync) and shared utilities; it **must not** depend on gold (strategies, picks orchestration, signal generators that assume product workflows).
+- **Gold may** depend on silver and bronze (typically through services and models, not by bypassing the intelligence pipeline for indicator truth).
+
+Vocabulary is *directional*: higher layers read lower layers' data; lower layers are not "aware" of product features above them.
+
+A few existing sync call sites import shared portfolio helpers (for example lot reconciliation) that are tagged silver in D127. Treat that as **technical debt to unwind** (orchestrate from the task layer, or split a tiny bronze-only helper) — **new bronze modules must not** add further upward imports into analysis code.
+
+**Current module placement (grandfathered paths)**
+
+These paths are not all physically under `backend/services/bronze/`, `silver/`, and `gold/` yet. The table records *layer by convention* until a move PR. New modules must be created under `backend/services/<layer>/` from day one (for example `backend/services/silver/technicals/`, `backend/services/gold/trade_cards/`). Existing modules are tagged at module level in code (see D127).
+
+| Layer | Purpose | Current locations (representative) |
+|-------|---------|----------------------------------|
+| Bronze | Raw broker and market ingestion | `backend/services/bronze/<broker>/` (E\*TRADE, Tradier, …), `backend/services/portfolio/ibkr/`, `backend/services/portfolio/*_sync_service.py` (Schwab, TastyTrade, etc.), `backend/services/market/providers/` (FMP, yfinance, …) |
+| Silver | Indicators, regime, stage, enriched portfolio math | `backend/services/market/indicator_engine.py`, `stage_classifier.py`, `regime_engine.py`, `backend/services/portfolio/portfolio_analytics_service.py`, `closing_lot_matcher.py` |
+| Gold | Strategies, candidates, picks, app-facing signal flows | `backend/services/strategy/`, `backend/services/picks/` (including `candidate_generator.py`), future `scoring/`, `trade_cards/` |
+
+Broker-specific **bronze adapter contracts** for packages under `backend/services/bronze/` (entry points, counters, OAuth usage) are in [Data Pipelines](#data-pipelines) under the **Bronze layer** heading.
 
 ## Brain Integration
 

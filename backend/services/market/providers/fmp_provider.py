@@ -4,6 +4,8 @@ FMP (Financial Modeling Prep) Provider Implementation
 
 Market data provider using Financial Modeling Prep API.
 Requires API key, has generous free tier (250 calls/day).
+
+Medallion layer: bronze. See docs/ARCHITECTURE.md and D127.
 """
 
 import logging

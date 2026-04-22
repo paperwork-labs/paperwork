@@ -15,6 +15,8 @@ Mirrors the shape of :class:`backend.services.portfolio.schwab_sync_service.Schw
 All queries filter by ``user_id`` — the cross-tenant-isolation test in
 ``backend/tests/services/bronze/etrade/test_sync_service_isolation.py``
 pins the invariant.
+
+Medallion layer: bronze. See docs/ARCHITECTURE.md and D127.
 """
 
 from __future__ import annotations

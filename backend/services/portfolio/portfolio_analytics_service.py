@@ -11,6 +11,8 @@ Silver-layer portfolio risk metrics:
   field, never a synthetic "1.0". See ``.cursor/rules/no-silent-fallback.mdc``.
 - Multi-tenancy: every method requires ``user_id`` positionally (no
   ``user_id=1`` defaults) — D88.
+
+Medallion layer: silver. See docs/ARCHITECTURE.md and D127.
 """
 
 import logging

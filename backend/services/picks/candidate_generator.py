@@ -28,6 +28,8 @@ Per ``engineering.mdc``:
 * Sessions are passed in by the caller; nothing here opens connections.
 * ``Decimal`` is used for any score that flows into rationale; no
   ``float`` in scoring.
+
+Medallion layer: gold. See docs/ARCHITECTURE.md and D127.
 """
 
 from __future__ import annotations

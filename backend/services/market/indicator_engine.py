@@ -7,6 +7,8 @@ IRON LAW: All indicator computation must go through compute_full_indicator_serie
 IRON LAW: SMA150 is the primary stage anchor per Stage Analysis spec.
 
 Stage classification is in stage_classifier.py (10 sub-stages: 1A/1B, 2A/2B/2C, 3A/3B, 4A/4B/4C).
+
+Medallion layer: silver. See docs/ARCHITECTURE.md and D127.
 """
 
 from __future__ import annotations

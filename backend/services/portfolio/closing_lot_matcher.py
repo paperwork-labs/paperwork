@@ -45,6 +45,8 @@ Non-goals in v1
 Returns a ``MatchResult`` with per-account counters so callers emit the
 ``written / skipped / errors`` log line that the no-silent-fallback rule
 requires. The matcher itself never silently swallows exceptions.
+
+Medallion layer: silver. See docs/ARCHITECTURE.md and D127.
 """
 
 from __future__ import annotations

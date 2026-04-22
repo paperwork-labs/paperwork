@@ -4,6 +4,8 @@ yfinance Provider Implementation
 
 Free market data provider using Yahoo Finance via yfinance library.
 No API key required, but has rate limits.
+
+Medallion layer: bronze. See docs/ARCHITECTURE.md and D127.
 """
 
 import logging

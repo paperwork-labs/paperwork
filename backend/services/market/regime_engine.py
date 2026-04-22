@@ -4,6 +4,8 @@ The Regime Engine is the outermost gate for all downstream modules.
 6 daily inputs → individual scores (1–5) → composite → R1–R5.
 
 Regime is computed BEFORE all other pipeline steps (Step 0 of nightly pipeline).
+
+Medallion layer: silver. See docs/ARCHITECTURE.md and D127.
 """
 from __future__ import annotations
 
