@@ -60,7 +60,7 @@ const OverviewTab: React.FC = () => {
   const liveData = liveQuery.data;
   const positionRows = (positionsQuery.data as EnrichedPosition[] | undefined) ?? [];
   const dashboard = overview.summary.data as DashboardResponse | undefined;
-  const rawAccounts = overview.accountsData ?? [];
+  const rawAccounts = Array.isArray(overview.accountsData) ? overview.accountsData : [];
 
   const accounts: AccountData[] = useMemo(
     () =>
@@ -74,12 +74,12 @@ const OverviewTab: React.FC = () => {
             account_type?: string;
             last_successful_sync?: string | null;
           }) => ({
-            id: a.id,
+            id: a.id ?? 0,
             account_number: a.account_number ?? String(a.id),
             broker: a.broker ?? 'Unknown',
             account_name: a.account_name,
             account_type: a.account_type,
-            last_successful_sync: a.last_successful_sync,
+            last_successful_sync: a.last_successful_sync ?? undefined,
           }),
         ),
         positionRows,
@@ -160,7 +160,9 @@ const OverviewTab: React.FC = () => {
             }, 0);
             const filteredPnl = pos.reduce((s, p) => s + Number(p.unrealized_pnl ?? 0), 0);
             const filteredPnlPct = filteredTotal ? (filteredPnl / filteredTotal) * 100 : 0;
-            const balanceRows = (balancesQuery.isError ? [] : (balances ?? [])) as Array<Record<string, unknown>>;
+            const balanceRows = (balancesQuery.isError ? [] : (Array.isArray(balances) ? balances : [])) as Array<
+              Record<string, unknown>
+            >;
             const filteredBalances =
               filterState.selectedAccount === 'all'
                 ? balanceRows
@@ -238,7 +240,7 @@ const OverviewTab: React.FC = () => {
                             <p className="text-xs text-muted-foreground">No candidates</p>
                           ) : (
                             <div className="flex flex-col gap-1">
-                              {insights.harvest_candidates.slice(0, 5).map((c) => (
+                              {(insights.harvest_candidates ?? []).slice(0, 5).map((c) => (
                                 <div key={c.symbol} className="flex justify-between gap-2">
                                   <span className="font-mono text-xs">{c.symbol}</span>
                                   <span className={cn('text-xs', semanticTextColorClass('status.danger'))}>
@@ -266,7 +268,7 @@ const OverviewTab: React.FC = () => {
                             <p className="text-xs text-muted-foreground">None near 365-day threshold</p>
                           ) : (
                             <div className="flex flex-col gap-1">
-                              {insights.approaching_lt.slice(0, 5).map((p) => (
+                              {(insights.approaching_lt ?? []).slice(0, 5).map((p) => (
                                 <div key={p.symbol} className="flex justify-between gap-2">
                                   <span className="font-mono text-xs">{p.symbol}</span>
                                   <span className={cn('text-xs', semanticTextColorClass('yellow.400'))}>
@@ -294,7 +296,7 @@ const OverviewTab: React.FC = () => {
                             <p className="text-xs text-muted-foreground">Well-diversified</p>
                           ) : (
                             <div className="flex flex-col gap-1">
-                              {insights.concentration_warnings.slice(0, 5).map((w) => (
+                              {(insights.concentration_warnings ?? []).slice(0, 5).map((w) => (
                                 <div key={w.symbol} className="flex justify-between gap-2">
                                   <span className="font-mono text-xs">{w.symbol}</span>
                                   <span className={cn('text-xs', semanticTextColorClass('orange.500'))}>
@@ -417,7 +419,7 @@ const OverviewTab: React.FC = () => {
                               (a: { account_number?: string; id?: unknown }) =>
                                 (a.account_number ?? String(a.id)) === acc.account_id,
                             );
-                            const bal = balances.find((b: { account_id?: number }) => b.account_id === raw?.id);
+                            const bal = balanceRows.find((b: { account_id?: number }) => b.account_id === raw?.id);
                             const nlv = Number(bal?.net_liquidation ?? 0);
                             const displayValue = nlv > 0 ? nlv : acc.total_value;
                             const isSelected = filterState.selectedAccount === acc.account_id;
@@ -560,7 +562,15 @@ const OverviewTab: React.FC = () => {
             );
           })()}
           {balancesQuery.isError ? (
-            <p className={cn('text-sm', semanticTextColorClass('status.danger'))}>Failed to load account balances</p>
+            <div
+              className="flex flex-col items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-4"
+              role="alert"
+            >
+              <p className={cn('text-sm', semanticTextColorClass('status.danger'))}>Failed to load account balances</p>
+              <Button type="button" size="sm" variant="outline" onClick={() => balancesQuery.refetch()}>
+                Retry
+              </Button>
+            </div>
           ) : null}
         </div>
       <ChartSlidePanel symbol={chartSymbol} onClose={() => setChartSymbol(null)} />

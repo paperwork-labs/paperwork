@@ -85,7 +85,7 @@ const PerformanceTab: React.FC = () => {
     const firstPortfolioValue = historySeries[0].total_value || 1;
     let firstSpyClose: number | null = null;
     return historySeries.map((pt) => {
-      const dateKey = pt.date.slice(0, 10);
+      const dateKey = String(pt.date ?? '').slice(0, 10);
       const spyClose = spyMap.get(dateKey);
       if (spyClose && firstSpyClose === null) firstSpyClose = spyClose;
       const portfolioPct = (pt.total_value / firstPortfolioValue - 1) * 100;
@@ -100,9 +100,12 @@ const PerformanceTab: React.FC = () => {
   }
   if (historyQuery.isError) {
     return (
-      <p className={cn('text-sm', semanticTextColorClass('status.danger'))} role="alert">
-        Failed to load performance history.
-      </p>
+      <div className="flex flex-col items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-4" role="alert">
+        <p className={cn('text-sm', semanticTextColorClass('status.danger'))}>Failed to load performance history.</p>
+        <Button size="sm" variant="outline" onClick={() => historyQuery.refetch()}>
+          Retry
+        </Button>
+      </div>
     );
   }
 
@@ -137,70 +140,75 @@ const PerformanceTab: React.FC = () => {
           </p>
         ) : null}
         {equityCurveData.length > 0 ? (
-          showBenchmark ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <ComposedChart data={equityCurveData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
-                <defs>
-                  <linearGradient id="portfolioPctGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={colors.area1} stopOpacity={0.2} />
-                    <stop offset="100%" stopColor={colors.area1} stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v.toFixed(0)}%`} />
-                <Tooltip
-                  formatter={(v, name) =>
-                    [`${Number(v ?? 0).toFixed(2)}%`, name === 'portfolio_pct' ? 'Portfolio' : 'SPY'] as [
-                      React.ReactNode,
-                      string,
-                    ]
-                  }
-                  labelFormatter={(d) => String(d)}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="portfolio_pct"
-                  stroke={colors.area1}
-                  fill="url(#portfolioPctGradient)"
-                  strokeWidth={2}
-                  name="portfolio_pct"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="spy_pct"
-                  stroke={colors.area2}
-                  strokeWidth={1.5}
-                  strokeDasharray="4 3"
-                  dot={false}
-                  name="spy_pct"
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
-          ) : (
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={equityCurveData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
-                <defs>
-                  <linearGradient id="portfolioValueGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={colors.area1} stopOpacity={0.25} />
-                    <stop offset="100%" stopColor={colors.area1} stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatMoney(v, currency, { maximumFractionDigits: 0 })} />
-                <Tooltip
-                  formatter={(v) => formatMoney(Number(v ?? 0), currency) as React.ReactNode}
-                  labelFormatter={(d) => String(d)}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="total_value"
-                  stroke={colors.area1}
-                  fill="url(#portfolioValueGradient)"
-                  strokeWidth={1.5}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          )
+          <div className="h-[300px] w-full min-w-0" aria-label="Performance chart" role="img">
+            {showBenchmark ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={equityCurveData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+                  <defs>
+                    <linearGradient id="portfolioPctGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={colors.area1} stopOpacity={0.2} />
+                      <stop offset="100%" stopColor={colors.area1} stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v.toFixed(0)}%`} />
+                  <Tooltip
+                    formatter={(v, name) =>
+                      [`${Number(v ?? 0).toFixed(2)}%`, name === 'portfolio_pct' ? 'Portfolio' : 'SPY'] as [
+                        React.ReactNode,
+                        string,
+                      ]
+                    }
+                    labelFormatter={(d) => String(d)}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="portfolio_pct"
+                    stroke={colors.area1}
+                    fill="url(#portfolioPctGradient)"
+                    strokeWidth={2}
+                    name="portfolio_pct"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="spy_pct"
+                    stroke={colors.area2}
+                    strokeWidth={1.5}
+                    strokeDasharray="4 3"
+                    dot={false}
+                    name="spy_pct"
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={equityCurveData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+                  <defs>
+                    <linearGradient id="portfolioValueGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={colors.area1} stopOpacity={0.25} />
+                      <stop offset="100%" stopColor={colors.area1} stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                  <YAxis
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v) => formatMoney(v, currency, { maximumFractionDigits: 0 })}
+                  />
+                  <Tooltip
+                    formatter={(v) => formatMoney(Number(v ?? 0), currency) as React.ReactNode}
+                    labelFormatter={(d) => String(d)}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="total_value"
+                    stroke={colors.area1}
+                    fill="url(#portfolioValueGradient)"
+                    strokeWidth={1.5}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground">No performance history yet. Snapshots are recorded after sync.</p>
         )}

@@ -64,7 +64,7 @@ export default function AllocationTab() {
   const query = usePortfolioAllocation(groupBy);
 
   const renderBody = () => {
-    if (query.isLoading) {
+    if (query.isPending) {
       return <TreemapSkeleton height={420} label="portfolio allocation" />;
     }
     if (query.isError) {
@@ -81,7 +81,7 @@ export default function AllocationTab() {
       );
     }
     const data = query.data;
-    if (!data || data.groups.length === 0) {
+    if (!data || !Array.isArray(data.groups) || data.groups.length === 0) {
       return (
         <div className="flex h-[420px] flex-col items-center justify-center gap-3 rounded-lg border border-border/40 bg-card/40 text-center">
           <p className="text-sm text-muted-foreground">
