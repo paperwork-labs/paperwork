@@ -60,6 +60,7 @@ from .symbol_master import (
     SymbolStatus,
 )
 from .index_constituent import IndexConstituent
+from .market.options_chain_snapshot import OptionsChainSnapshot
 from .historical_iv import HistoricalIV
 from .institutional_holding import InstitutionalHolding
 from .historical_import_run import (
@@ -225,6 +226,7 @@ __all__ = [
     "Dividend",
     "Option",
     "OptionType",
+    "OptionsChainSnapshot",
     "PortfolioHistory",
     "PortfolioSnapshot",
     "Category",

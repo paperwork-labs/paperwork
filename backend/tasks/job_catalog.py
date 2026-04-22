@@ -684,6 +684,36 @@ CATALOG: List[JobTemplate] = [
         timeout_s=1800,
         queue="heavy",
     ),
+    # ── Options chain (gold surface) ────────────────────────────
+    JobTemplate(
+        id="options-chain-refresh-symbol",
+        display_name="Options chain refresh (symbol)",
+        group="market_data",
+        task="backend.tasks.market.options_chain.refresh_options_chain_for_symbol",
+        description="Refresh one symbol's options surface snapshot.",
+        default_cron="0 0 1 1 *",
+        default_tz="UTC",
+        job_run_label="options_chain_symbol",
+        timeout_s=60,
+        queue="celery",
+        enabled=False,
+    ),
+    JobTemplate(
+        id="options-chain-refresh-universe",
+        display_name="Options chain refresh (tracked universe fan-out)",
+        group="market_data",
+        task=(
+            "backend.tasks.market.options_chain."
+            "refresh_options_chains_for_tracked_universe"
+        ),
+        description="Enqueue one per-symbol options chain task (tracked).",
+        default_cron="0 0 1 1 *",
+        default_tz="UTC",
+        job_run_label="options_chain_universe",
+        timeout_s=600,
+        queue="celery",
+        enabled=False,
+    ),
 ]
 
 # Alias for callers that expect JOB_CATALOG (e.g. task_run singleflight lookup).

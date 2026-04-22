@@ -73,6 +73,7 @@ from backend.api.routes.symbols import router as symbols_router
 from backend.api.routes.execution import router as execution_router
 from backend.api.routes.pipeline import router as pipeline_router
 from backend.api.routes.backtest import router as backtest_router
+from backend.api.routes.options import router as options_chain_router
 from backend.api.routes.portfolio.narrative import router as portfolio_narrative
 from backend.api.middleware.rate_limit import TenantRateLimitMiddleware
 from backend.api.routes.multitenant import (
@@ -646,6 +647,11 @@ app.include_router(
     watchlist,
     prefix="/api/v1",
     tags=["Watchlist"],
+    dependencies=[Depends(require_non_market_access)],
+)
+app.include_router(
+    options_chain_router,
+    prefix="/api/v1",
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(
