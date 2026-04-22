@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import datetime as _pydt
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 import pandas as pd
@@ -10,7 +11,11 @@ from sqlalchemy.orm import Session
 from backend.config import settings
 from backend.database import SessionLocal
 from backend.models import MarketSnapshot
-from backend.models.market_data import PriceData, MarketSnapshotHistory
+from backend.models.market_data import (
+    EarningsCalendarEvent,
+    PriceData,
+    MarketSnapshotHistory,
+)
 from backend.models.index_constituent import IndexConstituent
 from backend.services.market.indicator_engine import (
     calculate_performance_windows,
@@ -30,7 +35,7 @@ from backend.services.market.dataframe_utils import (
 )
 from backend.services.market.constants import FUNDAMENTAL_FIELDS
 from backend.services.market.stage_utils import compute_stage_run_lengths
-from backend.services.market.stage_quality_service import normalize_stage_label, VALID_STAGE_LABELS
+from backend.services.market.stage_quality_service import normalize_stage_label
 from backend.services.market.snapshot_history_writer import upsert_snapshot_history_row
 from backend.services.market.fundamentals_service import needs_fundamentals
 
@@ -40,6 +45,61 @@ if TYPE_CHECKING:
     from backend.services.market.fundamentals_service import FundamentalsService
 
 logger = logging.getLogger(__name__)
+
+
+def _earnings_utc_for_report_date(
+    report_date: _pydt.date,
+    time_of_day: Optional[str],
+) -> datetime:
+    """Map ``report_date`` + optional ``time_of_day`` to a UTC ``datetime``.
+
+    - ``bmo`` / ``BMO``: 13:30 UTC (09:30 ET market open)
+    - ``amc`` / ``AMC``: 21:00 UTC (17:00 ET market close)
+    - Otherwise: end of UTC day so same-day rows stay future-dated for filters.
+    """
+    tod = (time_of_day or "").strip().lower()
+    if tod == "bmo":
+        return datetime.combine(
+            report_date, time(13, 30), tzinfo=timezone.utc
+        )
+    if tod == "amc":
+        return datetime.combine(
+            report_date, time(21, 0), tzinfo=timezone.utc
+        )
+    return datetime.combine(
+        report_date, time(23, 59, 59), tzinfo=timezone.utc
+    )
+
+
+def next_earnings_utc_from_calendar(db: Session, symbol: str) -> Optional[datetime]:
+    """Earliest ``earnings_calendar.report_date`` on or after today (UTC), as a UTC time.
+
+    Event time uses ``time_of_day`` (``bmo``/``amc``) or end-of-UTC-day so a
+    same-day ``report_date`` is not materialized as midnight in the past.
+
+    Returns ``None`` when the calendar has no future row for the symbol.
+    """
+    sym = (symbol or "").upper()
+    if not sym:
+        return None
+    today = datetime.now(timezone.utc).date()
+    row = (
+        db.query(
+            EarningsCalendarEvent.report_date,
+            EarningsCalendarEvent.time_of_day,
+        )
+        .filter(
+            EarningsCalendarEvent.symbol == sym,
+            EarningsCalendarEvent.report_date >= today,
+        )
+        .order_by(EarningsCalendarEvent.report_date.asc())
+        .first()
+    )
+    if row is None or row[0] is None:
+        return None
+    d, tod = row[0], row[1]
+    return _earnings_utc_for_report_date(d, tod)
+
 
 _STAGE_SNAPSHOT_FIELDS = (
     "stage_label", "stage_slope_pct", "stage_dist_pct",
@@ -187,6 +247,9 @@ class SnapshotBuilder:
             "atr_dist_ema8": atr_dist(ema_8),
             "atr_dist_ema21": atr_dist(ema_21),
             "atr_dist_ema200": atr_dist(ema_200 or sma_200),
+            # From ``compute_full_indicator_series`` (20d rolling volume mean; vol_ratio uses it)
+            "volume_avg_20d": indicators.get("volume_avg_20d"),
+            "vol_ratio": indicators.get("vol_ratio"),
         }
 
         try:
@@ -454,6 +517,7 @@ class SnapshotBuilder:
         as_of_dt: datetime | None = None,
         skip_fundamentals: bool = False,
         benchmark_df=None,
+        recompute_metrics: dict[str, int] | None = None,
     ) -> Dict[str, Any]:
         """Compute a snapshot purely from local PriceData (and enrich it)."""
         limit_bars = int(getattr(settings, "SNAPSHOT_DAILY_BARS_LIMIT", 400))
@@ -638,6 +702,31 @@ class SnapshotBuilder:
                         snapshot[k] = info.get(k)
             except Exception as e:
                 logger.warning("fundamentals_fetch failed for %s: %s", symbol, e)
+
+        # ``earnings_calendar`` is authoritative for next_earnings (overrides FMP / stale copy).
+        try:
+            cal_ne: Optional[datetime] = next_earnings_utc_from_calendar(db, symbol)
+            snapshot["next_earnings"] = cal_ne
+            if recompute_metrics is not None:
+                if cal_ne is not None:
+                    recompute_metrics["earnings_written"] = (
+                        recompute_metrics.get("earnings_written", 0) + 1
+                    )
+                else:
+                    recompute_metrics["earnings_missing"] = (
+                        recompute_metrics.get("earnings_missing", 0) + 1
+                    )
+        except Exception as e:
+            logger.warning(
+                "next_earnings_calendar_lookup failed for %s: %s: %s",
+                symbol,
+                type(e).__name__,
+                e,
+            )
+            if recompute_metrics is not None:
+                recompute_metrics["earnings_lookup_errors"] = (
+                    recompute_metrics.get("earnings_lookup_errors", 0) + 1
+                )
         return snapshot
 
     async def compute_snapshot_from_providers(self, symbol: str) -> Dict[str, Any]:

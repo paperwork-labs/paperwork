@@ -255,6 +255,9 @@ def recompute_universe(batch_size: int = 50, force: bool = False) -> dict:
         skipped_no_data = 0
         errors = 0
         error_samples: List[dict] = []
+        earnings_written = 0
+        earnings_missing = 0
+        earnings_lookup_errors = 0
 
         latest_daily_dt = (
             session.query(func.max(PriceData.date))
@@ -372,15 +375,26 @@ def recompute_universe(batch_size: int = 50, force: bool = False) -> dict:
                         skipped_fresh += 1
                         continue
                     try:
+                        recompute_earn: dict[str, int] = {}
                         snap = snapshot_builder.compute_snapshot_from_db(
                             session,
                             sym,
                             skip_fundamentals=True,
                             benchmark_df=spy_df,
+                            recompute_metrics=recompute_earn,
                         )
                         if not snap:
                             skipped_no_data += 1
                             continue
+                        earnings_written += int(
+                            recompute_earn.get("earnings_written", 0) or 0
+                        )
+                        earnings_missing += int(
+                            recompute_earn.get("earnings_missing", 0) or 0
+                        )
+                        earnings_lookup_errors += int(
+                            recompute_earn.get("earnings_lookup_errors", 0) or 0
+                        )
                         snapshot_builder.persist_snapshot(
                             session,
                             sym,
@@ -454,6 +468,9 @@ def recompute_universe(batch_size: int = 50, force: bool = False) -> dict:
             "errors": errors,
             "coverage_consistent": coverage_consistent,
             "error_samples": error_samples,
+            "earnings_written": earnings_written,
+            "earnings_missing": earnings_missing,
+            "earnings_lookup_errors": earnings_lookup_errors,
             "benchmark": {
                 "symbol": benchmark_symbol,
                 "required_bars": required_bars,

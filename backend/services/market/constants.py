@@ -464,6 +464,15 @@ CURATED_MARKET_SYMBOLS = [
     "IEF",
     "HYG",
     "ARKK",
+    # High-attention retail / fintech / meme-adjacent names (tracked coverage;
+    # run ``market_universe_tracked_refresh`` + ``admin_indicators_recompute_universe`` after adds).
+    "RDDT",
+    "SOFI",
+    "HOOD",
+    "PLTR",
+    "COIN",
+    "MSTR",
+    "TSLA",
     # Broad market / core benchmark ETFs
     "QQQ",
     "VTI",

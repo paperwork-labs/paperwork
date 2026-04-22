@@ -47,6 +47,13 @@ def _run_scan_overlay() -> dict:
 
         regime = get_current_regime(session)
         regime_state = regime.regime_state if regime else "R3"
+        regime_state_to_store = (
+            regime.regime_state
+            if regime and getattr(regime, "regime_state", None)
+            else None
+        )
+        regime_state_written = 0
+        regime_state_missing = 0
 
         snapshots = (
             session.query(MarketSnapshot)
@@ -107,6 +114,11 @@ def _run_scan_overlay() -> dict:
                     })
                 snap.scan_tier = tier
                 snap.action_label = label
+                if regime_state_to_store is not None:
+                    snap.regime_state = regime_state_to_store
+                    regime_state_written += 1
+                else:
+                    regime_state_missing += 1
                 updated += 1
             except SoftTimeLimitExceeded:
                 raise
@@ -129,7 +141,22 @@ def _run_scan_overlay() -> dict:
                 },
             )
 
-        return {"status": "ok", "updated": updated, "total": len(snapshots), "new_alerts": len(new_candidates)}
+        if regime_state_to_store is None and snapshots:
+            logger.warning(
+                "scan_overlay: market_regime missing or empty; denormalized regime_state not written "
+                "(%d snapshots, regime_state_missing=%d)",
+                len(snapshots),
+                regime_state_missing,
+            )
+
+        return {
+            "status": "ok",
+            "updated": updated,
+            "total": len(snapshots),
+            "new_alerts": len(new_candidates),
+            "regime_state_written": regime_state_written,
+            "regime_state_missing": regime_state_missing,
+        }
     except Exception:
         session.rollback()
         raise
