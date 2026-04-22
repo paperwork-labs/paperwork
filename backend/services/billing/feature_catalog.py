@@ -94,6 +94,20 @@ _FEATURES: tuple[Feature, ...] = (
         description="As-of reads against MarketSnapshotHistory ledger.",
         category="data",
     ),
+    Feature(
+        key="chart.trade_annotations",
+        min_tier=SubscriptionTier.PRO,
+        title="Chart trade annotations",
+        description="Trade segments, volume climax/dry-up markers, and Oliver Kell pattern icons on your charts.",
+        category="data",
+    ),
+    Feature(
+        key="chart.trade_rationale",
+        min_tier=SubscriptionTier.PRO_PLUS,
+        title="Kell pattern rationale",
+        description="Full hover explanations for EBC, KRC, and PPB pattern badges on charts.",
+        category="data",
+    ),
     # ---- Picks & validator (picks) -----------------------------------------
     Feature(
         key="picks.read",

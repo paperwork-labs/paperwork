@@ -10,6 +10,17 @@
  * treat each cell as `number | string | null` and coerce defensively.
  */
 
+export interface VolumeEventItem {
+  date: string;
+  type: 'climax' | 'dry_up';
+}
+
+export interface KellPatternItem {
+  date: string;
+  pattern: 'EBC' | 'KRC' | 'PPB';
+  confidence: number;
+}
+
 export interface IndicatorSeriesResponse {
   symbol: string;
   rows: number;
@@ -19,6 +30,9 @@ export interface IndicatorSeriesResponse {
     string,
     Array<number | string | null>
   >;
+  /** Present only for tiers that have `chart.trade_annotations` (and only when the backend could compute). */
+  volume_events?: VolumeEventItem[];
+  kell_patterns?: KellPatternItem[];
 }
 
 /**

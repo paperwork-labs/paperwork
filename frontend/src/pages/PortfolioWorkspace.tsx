@@ -11,9 +11,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '../components/ui/PageHeader';
 import SymbolChartWithMarkers, { getStoredIndicators, storeIndicators } from '../components/charts/SymbolChartWithMarkers';
 import type { IndicatorToggles, ChartEvent, ChartEventType } from '../components/charts/SymbolChartWithMarkers';
+import { buildTradeSegmentsFromActivity } from '../components/charts/TradeSegments';
+import { OliverKellLegend } from '../components/charts/OliverKellBadges';
 import TradingViewChart from '../components/charts/TradingViewChart';
 import api, { marketDataApi, portfolioApi, unwrapResponse } from '../services/api';
 import { usePositions, useActivity, useClosedPositions } from '../hooks/usePortfolio';
+import useEntitlement from '../hooks/useEntitlement';
+import { FEATURE_CHART_TRADE_ANNOTATIONS, FEATURE_CHART_TRADE_RATIONALE } from '@/constants/features';
+import type { KellPatternItem, VolumeEventItem } from '../types/indicators';
 import { useAccountContext } from '../context/AccountContext';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { useChartColors } from '../hooks/useChartColors';
@@ -345,6 +350,35 @@ const PortfolioWorkspace: React.FC = () => {
     const wavg = entries.reduce((s: number, e: { cost: number; sh: number }) => s + e.cost * e.sh, 0) / totSh;
     return Number.isFinite(wavg) ? wavg : undefined;
   }, [lots]);
+
+  const ent = useEntitlement();
+  const canChartAnn = ent.can(FEATURE_CHART_TRADE_ANNOTATIONS);
+  const canKellRationale = ent.can(FEATURE_CHART_TRADE_RATIONALE);
+
+  const tradeSegmentsForSymbol = useMemo(
+    () => (selectedSymbol ? buildTradeSegmentsFromActivity(symbolActivity, selectedSymbol) : []),
+    [symbolActivity, selectedSymbol],
+  );
+
+  const chartAnnQuery = useQuery({
+    queryKey: ['workspaceChartAnn', selectedSymbol, period],
+    queryFn: async (): Promise<{
+      volume_events: VolumeEventItem[];
+      kell_patterns: KellPatternItem[];
+    }> => {
+      if (!selectedSymbol) {
+        return { volume_events: [], kell_patterns: [] };
+      }
+      const res = await marketDataApi.getIndicatorSeries(selectedSymbol, { period });
+      const top = (res as { data?: unknown } | null)?.data ?? res;
+      const raw = (top && typeof top === 'object' ? top : {}) as Record<string, unknown>;
+      const volume_events = Array.isArray(raw.volume_events) ? (raw.volume_events as VolumeEventItem[]) : [];
+      const kell_patterns = Array.isArray(raw.kell_patterns) ? (raw.kell_patterns as KellPatternItem[]) : [];
+      return { volume_events, kell_patterns };
+    },
+    enabled: Boolean(selectedSymbol) && canChartAnn && !ent.isLoading,
+    staleTime: 60_000,
+  });
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ['portfolioStocks'] });
@@ -777,7 +811,25 @@ const PortfolioWorkspace: React.FC = () => {
                     </Button>
                   </div>
                 ) : (
-                  <SymbolChartWithMarkers
+                  <>
+                    {!ent.isLoading && !ent.isError && !canChartAnn && (
+                      <p className="px-4 pb-2 text-xs text-muted-foreground">
+                        Upgrade to Pro to see your trades annotated.
+                      </p>
+                    )}
+                    {canChartAnn && !showAdvanced && (
+                      <div className="flex flex-wrap items-center gap-2 px-4 pb-2">
+                        <span className="text-xs text-muted-foreground">Kell</span>
+                        <OliverKellLegend />
+                        {chartAnnQuery.isError && (
+                          <span className="text-xs text-destructive">Pattern data unavailable</span>
+                        )}
+                        {chartAnnQuery.isLoading && (
+                          <span className="text-xs text-muted-foreground">Loading pattern markers…</span>
+                        )}
+                      </div>
+                    )}
+                    <SymbolChartWithMarkers
                     height={chartHeight}
                     bars={bars}
                     symbol={selectedSymbol ?? undefined}
@@ -792,7 +844,12 @@ const PortfolioWorkspace: React.FC = () => {
                     indicators={indicators}
                     colors={chartColors}
                     priceLinesExtra={enabledEvents.has('ORDER_PENDING') ? priceLinesExtra : undefined}
+                    volumeEvents={canChartAnn ? (chartAnnQuery.isLoading ? null : (chartAnnQuery.data?.volume_events ?? [])) : null}
+                    kellPatterns={canChartAnn ? (chartAnnQuery.isLoading ? null : (chartAnnQuery.data?.kell_patterns ?? [])) : null}
+                    tradeSegments={canChartAnn ? tradeSegmentsForSymbol : []}
+                    proPlusRationale={canKellRationale}
                   />
+                  </>
                 )
               ) : <div style={{ height: chartHeight }} />}
             </CardContent>

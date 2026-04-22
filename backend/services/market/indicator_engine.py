@@ -771,3 +771,172 @@ def compute_trendline_counts(
     out["trend_up_count"] = up
     out["trend_down_count"] = down
     return out
+
+
+def detect_volume_events(ohlcv: pd.DataFrame, lookback: int = 20) -> pd.DataFrame:
+    """Classify each bar for climax volume and dry-up (liquidity) conditions.
+
+    Rules (conservative; tune under Stage_Analysis / Oliver Kell methodology):
+    - *climax*: volume >= 1.5 * lookback average volume **and**
+      |close - open| / ATR(20) >= 1.5 (wide-bodied bar vs volatility).
+    - *dry_up*: volume <= 0.5 * lookback average volume.
+    If both could apply, *climax* wins.
+
+    Args:
+        ohlcv: DataFrame, **oldest first**, must include Open, High, Low, Close, Volume.
+        lookback: Rolling window for volume average (and ATR period).
+
+    Returns:
+        DataFrame indexed like ``ohlcv`` with a single column ``volume_event`` whose
+        values are ``"climax"``, ``"dry_up"``, or ``None`` (Python ``None``, not NaN).
+    """
+    empty_idx = ohlcv.index if ohlcv is not None and len(ohlcv.index) else pd.Index([])
+    out = pd.DataFrame(index=empty_idx)
+    out["volume_event"] = None
+    if ohlcv is None or ohlcv.empty:
+        return out
+    need = {"Open", "Close", "Volume"}
+    if not need.issubset(set(ohlcv.columns)):
+        return out
+    if not set(["High", "Low"]).issubset(set(ohlcv.columns)):
+        return out
+
+    vol = pd.to_numeric(ohlcv["Volume"], errors="coerce")
+    o = pd.to_numeric(ohlcv["Open"], errors="coerce")
+    c = pd.to_numeric(ohlcv["Close"], errors="coerce")
+    vol_avg = vol.rolling(lookback, min_periods=lookback).mean()
+    atr = calculate_atr_series(ohlcv, lookback)
+    body = (c - o).abs()
+    with np.errstate(divide="ignore", invalid="ignore"):
+        rel = body / atr.replace(0, np.nan)
+
+    climax = (
+        (vol >= 1.5 * vol_avg)
+        & (rel >= 1.5)
+        & vol_avg.notna()
+        & atr.notna()
+    )
+    dry = (vol <= 0.5 * vol_avg) & vol_avg.notna() & (vol > 0)
+
+    ev = np.full(len(ohlcv), None, dtype=object)
+    for i in range(len(ohlcv.index)):
+        if bool(climax.iloc[i]):
+            ev[i] = "climax"
+        elif bool(dry.iloc[i]):
+            ev[i] = "dry_up"
+    out = pd.DataFrame({"volume_event": ev}, index=ohlcv.index)
+    return out
+
+
+def _norm_stage(v: Any) -> Optional[str]:
+    if v is None or (isinstance(v, float) and np.isnan(v)):
+        return None
+    s = str(v).strip().upper()
+    return s or None
+
+
+def detect_kell_patterns(ohlcv: pd.DataFrame, stage_series: pd.Series) -> pd.DataFrame:
+    """Detect Oliver Kell style pattern labels (chart signal layer, not a trade entry system).
+
+    Uses explicit conservative rules inspired by Stage Analysis and common Kell lexicon
+    (EBC = exhaustion + reclaim, KRC = kicker / gap continuation, PPB = pullback to
+    support in a Stage 2 base).  # TODO(methodology): calibrate to Stage_Analysis.docx
+    and live cohort feedback; thresholds are intentionally strict to avoid over-tagging.
+
+    Args:
+        ohlcv: Daily bars, **oldest first**, with Open, High, Low, Close, Volume.
+        stage_series: One row per bar, same index as ``ohlcv`` (e.g. ``stage_label`` from
+            snapshot history). Missing values are allowed.
+
+    Returns:
+        DataFrame with columns ``pattern`` (``"EBC"``, ``"KRC"``, ``"PPB"`` or ``None``)
+        and ``confidence`` (0.0-1.0, ``NaN`` when no pattern).
+    """
+    n = len(ohlcv.index) if ohlcv is not None else 0
+    pat: list[Optional[str]] = [None] * n
+    conf = np.full(n, np.nan, dtype=float)
+    if ohlcv is None or ohlcv.empty:
+        return pd.DataFrame({"pattern": pat, "confidence": conf}, index=ohlcv.index if ohlcv is not None else [])
+
+    need = {"Open", "High", "Low", "Close", "Volume"}
+    if not need.issubset(set(ohlcv.columns)):
+        return pd.DataFrame({"pattern": pat, "confidence": conf}, index=ohlcv.index)
+
+    st = (
+        stage_series.reindex(ohlcv.index)
+        if stage_series is not None and len(stage_series) > 0
+        else pd.Series(index=ohlcv.index, dtype=object)
+    )
+
+    c = pd.to_numeric(ohlcv["Close"], errors="coerce")
+    o = pd.to_numeric(ohlcv["Open"], errors="coerce")
+    h = pd.to_numeric(ohlcv["High"], errors="coerce")
+    l = pd.to_numeric(ohlcv["Low"], errors="coerce")
+    v = pd.to_numeric(ohlcv["Volume"], errors="coerce")
+    vol_avg = v.rolling(20, min_periods=20).mean()
+    atr = calculate_atr_series(ohlcv, 20)
+    body = (c - o).abs()
+    with np.errstate(divide="ignore", invalid="ignore"):
+        rel_body = body / atr.replace(0, np.nan)
+    sma20 = c.rolling(20, min_periods=20).mean()
+
+    h_prev = h.shift(1)
+
+    for i in range(n):
+        if i < 1:
+            continue
+        if pat[i] is not None:
+            continue
+        st_i = _norm_stage(st.iloc[i] if i < len(st) else None)
+        st_prev = _norm_stage(st.iloc[i - 1] if (i - 1) < len(st) else None)
+        if not (np.isfinite(c.iloc[i]) and np.isfinite(o.iloc[i]) and np.isfinite(h_prev.iloc[i])):
+            continue
+
+        # KRC before PPB: gap-up + volume continuation can also touch a MA band on the same bar.
+        if (
+            float(o.iloc[i]) > float(h_prev.iloc[i])
+            and c.iloc[i] > o.iloc[i]
+            and v.iloc[i] >= 1.2 * vol_avg.iloc[i]
+            and np.isfinite(vol_avg.iloc[i])
+            and st_i in ("2A", "2B", "2C", "1A", "1B")
+        ):
+            cscore = 0.65
+            if st_i in ("2A", "2B", "2C"):
+                cscore += 0.1
+            if v.iloc[i] >= 1.5 * vol_avg.iloc[i]:
+                cscore += 0.1
+            pat[i] = "KRC"
+            conf[i] = min(0.92, cscore)
+            continue
+
+        # PPB: Stage 2 early, pullback to ~SMA20, bullish close.  # TODO(methodology)
+        st_ok_ppb = st_i in ("2A", "2B") or st_i in ("2C",)  # 2C allowed but lower confidence
+        if st_ok_ppb and np.isfinite(sma20.iloc[i]) and i >= 1:
+            sm = float(sma20.iloc[i])
+            if sm > 0 and np.isfinite(l.iloc[i]) and l.iloc[i] <= sm * 1.01 and l.iloc[i] >= sm * 0.99:
+                if c.iloc[i] > o.iloc[i] and c.iloc[i] >= c.iloc[i - 1]:
+                    base = 0.55 if st_i in ("2A", "2B") else 0.5
+                    pat[i] = "PPB"
+                    conf[i] = min(0.85, base + 0.1 * min(1.0, rel_body.iloc[i] if np.isfinite(rel_body.iloc[i]) else 0))
+                    continue
+
+        # EBC: wide bearish climax bar, then reclaim the midpoint within 1-2 sessions.
+        if i + 1 >= n:
+            continue
+        selling_climax = (
+            c.iloc[i] < o.iloc[i]
+            and rel_body.iloc[i] >= 1.5
+            and v.iloc[i] >= 1.5 * vol_avg.iloc[i]
+            and np.isfinite(vol_avg.iloc[i])
+        )
+        if selling_climax:
+            mid = float((h.iloc[i] + l.iloc[i]) / 2.0)
+            for j in (i + 1, i + 2):
+                if j >= n:
+                    break
+                if c.iloc[j] > mid and c.iloc[j] > o.iloc[j]:
+                    pat[j] = "EBC"
+                    conf[j] = min(0.88, 0.62 + 0.1 * (1.0 if st_prev in ("3A", "3B", "4A", "4B", "4C") else 0.0))
+                    break
+
+    return pd.DataFrame({"pattern": pat, "confidence": conf}, index=ohlcv.index)

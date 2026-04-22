@@ -6,15 +6,22 @@ Endpoints for current prices, historical data, and indicator series.
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
 
+import numpy as np
+import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.models.user import User
 from backend.models.market_data import MarketSnapshot, MarketSnapshotHistory, PriceData
+from backend.services.billing.entitlement_service import EntitlementService
+from backend.services.market.indicator_engine import (
+    detect_kell_patterns,
+    detect_volume_events,
+)
 from backend.services.market.market_data_service import provider_router, quote
 from backend.api.dependencies import get_market_data_viewer
 from backend.api.schemas.market import CurrentPriceResponse, PriceHistoryResponse
@@ -242,10 +249,136 @@ async def get_indicator_series(
                         val = None
                     series[col].append(val)
 
-    return {
+    out: Dict[str, Any] = {
         "symbol": sym,
         "rows": len(dates),
         "backfill_requested": backfill_requested,
         "price_data_pending": price_data_pending,
         "series": {"dates": dates, **series},
     }
+
+    # Optional chart annotations (Pro; chart.trade_rationale is Pro+ and enforced client-side
+    # for full Kell hover copy). Omitted when the caller is below chart.trade_annotations
+    # so we never leak gated markers to unauthenticated or Free users.
+    ent_dec = EntitlementService.check(db, _viewer, "chart.trade_annotations")
+    if not ent_dec.allowed:
+        return out
+
+    p_rows = (
+        db.query(PriceData)
+        .filter(
+            PriceData.symbol == sym,
+            PriceData.interval == "1d",
+            PriceData.date >= start_date,
+        )
+        .order_by(PriceData.date.asc())
+        .all()
+    )
+    if len(p_rows) < 25:
+        out["volume_events"] = []
+        out["kell_patterns"] = []
+        return out
+
+    def _as_norm_ts(d: datetime) -> pd.Timestamp:
+        if d.tzinfo is not None:
+            return pd.Timestamp(d).tz_convert("UTC").tz_localize(None).normalize()
+        return pd.Timestamp(d).normalize()
+
+    ohlc_records: list[dict[str, Any]] = []
+    for pr in p_rows:
+        ohlc_records.append(
+            {
+                "ts": _as_norm_ts(pr.date) if pr.date is not None else None,
+                "open": pr.open_price,
+                "high": pr.high_price,
+                "low": pr.low_price,
+                "close": pr.close_price,
+                "vol": pr.volume,
+            }
+        )
+    ohlc_records = [r for r in ohlc_records if r["ts"] is not None and r["close"] is not None]
+    if not ohlc_records:
+        out["volume_events"] = []
+        out["kell_patterns"] = []
+        return out
+
+    ohlcv = pd.DataFrame(ohlc_records)
+    ohlcv = ohlcv.rename(
+        columns={
+            "ts": "index",
+            "open": "Open",
+            "high": "High",
+            "low": "Low",
+            "close": "Close",
+            "vol": "Volume",
+        }
+    )
+    ohlcv = ohlcv.set_index("index").sort_index()
+    ohlcv["Open"] = pd.to_numeric(ohlcv["Open"], errors="coerce")
+    ohlcv["High"] = pd.to_numeric(ohlcv["High"], errors="coerce")
+    ohlcv["Low"] = pd.to_numeric(ohlcv["Low"], errors="coerce")
+    ohlcv["Close"] = pd.to_numeric(ohlcv["Close"], errors="coerce")
+    ohlcv["Volume"] = pd.to_numeric(ohlcv["Volume"], errors="coerce")
+    ohlcv = ohlcv.dropna(subset=["Open", "High", "Low", "Close", "Volume"], how="any")
+
+    stage_by_date: dict[date, Any] = {}
+    for hrow in rows:
+        d = hrow.as_of_date
+        if d is None:
+            continue
+        if isinstance(d, datetime):
+            dk = d.astimezone(timezone.utc).date() if d.tzinfo is not None else d.date()
+        elif isinstance(d, date):
+            dk = d
+        else:
+            try:
+                dk = pd.Timestamp(d).date()
+            except Exception:
+                continue
+        sl = getattr(hrow, "stage_label", None)
+        if sl is not None and str(sl).strip():
+            stage_by_date[dk] = sl
+
+    def _dkey_for_ts(ts: pd.Timestamp) -> date:
+        return ts.date() if hasattr(ts, "date") else pd.Timestamp(ts).date()
+
+    st_vals: list[Optional[str]] = []
+    for t in ohlcv.index:
+        st_vals.append(stage_by_date.get(_dkey_for_ts(t), None))
+    stage_series = pd.Series(st_vals, index=ohlcv.index, dtype=object)
+
+    try:
+        ve_df = detect_volume_events(ohlcv, lookback=20)
+        kp_df = detect_kell_patterns(ohlcv, stage_series)
+    except Exception as e:
+        logger.warning("chart annotation detection failed for %s: %s", sym, e)
+        out["volume_events"] = []
+        out["kell_patterns"] = []
+        return out
+
+    volume_events: List[Dict[str, str]] = []
+    for ts, r in ve_df.iterrows():
+        ev = r.get("volume_event")
+        if ev in ("climax", "dry_up"):
+            volume_events.append(
+                {"date": pd.Timestamp(ts).strftime("%Y-%m-%d"), "type": str(ev)}
+            )
+
+    kell_patterns: List[Dict[str, Any]] = []
+    for ts, r in kp_df.iterrows():
+        pat = r.get("pattern")
+        cval = r.get("confidence")
+        if pat in ("EBC", "KRC", "PPB") and cval is not None and np.isfinite(
+            float(cval)
+        ):
+            kell_patterns.append(
+                {
+                    "date": pd.Timestamp(ts).strftime("%Y-%m-%d"),
+                    "pattern": str(pat),
+                    "confidence": float(cval),
+                }
+            )
+
+    out["volume_events"] = volume_events
+    out["kell_patterns"] = kell_patterns
+    return out

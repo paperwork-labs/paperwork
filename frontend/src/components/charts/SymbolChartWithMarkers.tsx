@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -29,6 +29,10 @@ import {
 import type { OHLCBar, TrendLine, SRLevel, GapZone, TDLabel, EMAResult, StageInfo } from '../../utils/indicators';
 import { STAGE_COLORS, RSI_HEX, MACD_HEX, BOLLINGER_HEX } from '../../constants/chart';
 import { cssVarToCanvasColor } from '../../lib/chartColors';
+import type { KellPatternItem, VolumeEventItem } from '@/types/indicators';
+import { buildKellByDayMap, buildKellPatternMarkers, KELL_RATIONALE } from '@/components/charts/OliverKellBadges';
+import { buildVolumeClimaxMarkers } from '@/components/charts/VolumeClimaxMarkers';
+import { applyTradeSegmentOverlays, type ChartTradeSegment } from '@/components/charts/TradeSegments';
 
 type Bar = { time: string; open: number; high: number; low: number; close: number; volume?: number };
 
@@ -102,6 +106,12 @@ interface Props {
   showMACD?: boolean;
   showBollinger?: boolean;
   priceLinesExtra?: Array<{ price: number; color: string; title: string; lineStyle?: number }>;
+  /** Null = still loading annotations; undefined = not requested. */
+  volumeEvents?: VolumeEventItem[] | null;
+  kellPatterns?: KellPatternItem[] | null;
+  tradeSegments?: ChartTradeSegment[];
+  /** Pro+ unlocks full Kell rationale in the crosshair tooltip. */
+  proPlusRationale?: boolean;
 }
 
 const getCssColor = (token: string, fallback: string) =>
@@ -192,6 +202,10 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
   showMACD = false,
   showBollinger = false,
   priceLinesExtra,
+  volumeEvents,
+  kellPatterns,
+  tradeSegments = [],
+  proPlusRationale = false,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -205,6 +219,8 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
   const { colorMode } = useColorMode();
   const isDark = colorMode === 'dark';
   const c = colors ?? FALLBACK_COLORS;
+  const kellByDayRef = useRef<Map<number, KellPatternItem>>(new Map());
+  kellByDayRef.current = buildKellByDayMap(kellPatterns ?? []);
 
   if (symbol !== prevSymbol.current || zoomYears !== prevZoom.current) {
     userHasZoomed.current = false;
@@ -415,9 +431,9 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
       }
     }
 
-    if (showEvents && eventMap.size > 0) {
-      const ORDER_TYPES: Set<ChartEventType> = new Set(['ORDER_PENDING', 'ORDER_FILLED', 'ORDER_CANCELLED']);
-      const markers = Array.from(eventMap.entries())
+    const ORDER_TYPES: Set<ChartEventType> = new Set(['ORDER_PENDING', 'ORDER_FILLED', 'ORDER_CANCELLED']);
+    const eventMarkers = showEvents && eventMap.size > 0
+      ? Array.from(eventMap.entries())
         .sort((a, b) => a[0] - b[0])
         .map(([time, evts]) => {
           const types = new Set(evts.map(e => e.type));
@@ -446,8 +462,15 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
             size: isDividendOnly ? 1.5 : (showLine ? 1 : 0.5),
             text,
           };
-        });
-      createSeriesMarkers(mainSeries, markers);
+        })
+      : [];
+    const volK = volumeEvents != null ? buildVolumeClimaxMarkers(volumeEvents, isDark) : [];
+    const kellM = kellPatterns != null ? buildKellPatternMarkers(kellPatterns, c) : [];
+    const mergedMainMarkers = [...eventMarkers, ...volK, ...kellM].sort(
+      (a, b) => (a.time as number) - (b.time as number),
+    );
+    if (mergedMainMarkers.length > 0) {
+      createSeriesMarkers(mainSeries, mergedMainMarkers);
     }
 
     // TD Sequential labels on hidden helper series
@@ -536,6 +559,10 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
           title: pl.title,
         });
       }
+    }
+
+    if (tradeSegments.length > 0) {
+      applyTradeSegmentOverlays(chart, tradeSegments, c);
     }
 
     // RSI sub-pane
@@ -662,7 +689,9 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
         applyMarkerIfChanged(dotClr, dotR);
       }
 
-      if (dayEvts && dayEvts.length > 0) {
+      const kell = typeof t === 'number' ? kellByDayRef.current.get(t) : undefined;
+
+      if ((dayEvts && dayEvts.length > 0) || kell) {
         const barData = p.seriesData?.get(mainSeries);
         const price = barData?.value ?? barData?.close ?? 0;
         const rawY = mainSeries.priceToCoordinate(price);
@@ -670,21 +699,38 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
 
         if (y != null && ref.current) {
           const chartW = ref.current.clientWidth;
-          const tipW = 200;
+          const tipW = 240;
           const left = p.point.x + 24 + tipW > chartW ? p.point.x - tipW - 12 : p.point.x + 24;
           tooltip.style.left = `${left}px`;
           tooltip.style.top = `${Math.max(10, y - 30)}px`;
           tooltip.style.display = 'block';
+          tooltip.style.maxWidth = proPlusRationale ? '280px' : '220px';
 
           const fmtD = new Date(t * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
           let html = `<div style="font-size:11px;opacity:0.6">${fmtD}</div>`;
           html += `<div style="font-size:13px;font-weight:600;margin:2px 0">$${Number(price).toFixed(2)}</div>`;
-          for (const ev of dayEvts) {
-            const ec = eventColor(ev.type, c);
-            html += `<div style="display:flex;align-items:center;gap:5px;margin-top:3px">`;
-            html += `<span style="width:7px;height:7px;border-radius:50%;background:${ec};flex-shrink:0"></span>`;
-            html += `<span style="font-size:11px">${ev.label}</span>`;
-            html += `</div>`;
+          if (dayEvts && dayEvts.length > 0) {
+            for (const ev of dayEvts) {
+              const ec = eventColor(ev.type, c);
+              html += `<div style="display:flex;align-items:center;gap:5px;margin-top:3px">`;
+              html += `<span style="width:7px;height:7px;border-radius:50%;background:${ec};flex-shrink:0"></span>`;
+              html += `<span style="font-size:11px">${ev.label}</span>`;
+              html += `</div>`;
+            }
+          }
+          if (kell && (kell.pattern === 'EBC' || kell.pattern === 'KRC' || kell.pattern === 'PPB')) {
+            const kr = KELL_RATIONALE[kell.pattern];
+            if (proPlusRationale) {
+              html += `<div style="margin-top:6px;border-top:1px solid ${c.border};padding-top:6px;font-size:11px;line-height:1.35">`;
+              html += `<div style="font-weight:600;margin-bottom:4px">${kr.title}</div>`;
+              html += `<div style="opacity:0.9"><b>Context</b> ${kr.context}</div>`;
+              html += `<div style="margin-top:3px;opacity:0.9"><b>Trigger</b> ${kr.trigger}</div>`;
+              html += `<div style="margin-top:3px;opacity:0.9"><b>Stop</b> ${kr.stop}</div>`;
+              html += `<div style="margin-top:4px;opacity:0.75">Confidence: ${(kell.confidence * 100).toFixed(0)}%</div>`;
+              html += `</div>`;
+            } else {
+              html += `<div style="margin-top:4px;font-size:11px;font-weight:600">Pattern: ${kell.pattern}</div>`;
+            }
           }
           tooltip.innerHTML = html;
         }
@@ -706,6 +752,7 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
     zoomYears, isDark, ohlcBars, trendLines, gapZones, tdLabels,
     ema8, ema21, ema200, srLevels, ind, c,
     showRSI, rsiData, showMACD, macdData, showBollinger, bollingerData, priceLinesExtra,
+    volumeEvents, kellPatterns, tradeSegments, proPlusRationale,
   ]);
 
   if (bars.length === 0) {
