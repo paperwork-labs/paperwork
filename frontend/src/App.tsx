@@ -72,6 +72,7 @@ const PortfolioImport = React.lazy(() => import('./pages/PortfolioImport'));
 const NotFound = React.lazy(() => import('./pages/NotFound'));
 const ForgotPassword = React.lazy(() => import('./pages/auth/ForgotPassword'));
 const ResetPassword = React.lazy(() => import('./pages/auth/ResetPassword'));
+const Home = React.lazy(() => import('./pages/Home'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -160,8 +161,7 @@ function App() {
                   <Routes>
                       <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
                       <Route path="/" element={<RequireAuth><DashboardLayout /></RequireAuth>}>
-                        {/* Home */}
-                        <Route index element={<Navigate to="/market" replace />} />
+                        <Route index element={<Home />} />
 
                         {/* Market */}
                         <Route path="market" element={<MarketDashboard />} />
