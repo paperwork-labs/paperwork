@@ -258,7 +258,11 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
   );
 
   useEffect(() => {
-    if (!ref.current) return;
+    if (!ohlcBars.length) {
+      if (ref.current) ref.current.innerHTML = '';
+      return undefined;
+    }
+    if (!ref.current) return undefined;
 
     const bg = isDark ? getCssColor('bg.canvas', '#0F172A') : '#FFFFFF';
     const text = isDark ? getCssColor('fg.default', '#E5E7EB') : '#111827';
@@ -703,6 +707,21 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
     ema8, ema21, ema200, srLevels, ind, c,
     showRSI, rsiData, showMACD, macdData, showBollinger, bollingerData, priceLinesExtra,
   ]);
+
+  if (bars.length === 0) {
+    return (
+      <div
+        className="flex items-center justify-center px-4"
+        style={{ minHeight: height }}
+        role="status"
+        aria-live="polite"
+      >
+        <p className="text-center text-sm text-muted-foreground">
+          No price history available{symbol ? ` for ${symbol}` : ''}.
+        </p>
+      </div>
+    );
+  }
 
   const stagePalette = STAGE_COLORS[stageInfo?.stage ?? ''] ?? 'gray';
   const stageBadgeClass = STAGE_SUBTLE_BADGE[stagePalette] ?? STAGE_SUBTLE_BADGE.gray;
