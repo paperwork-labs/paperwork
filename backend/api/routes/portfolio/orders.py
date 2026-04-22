@@ -9,6 +9,8 @@ Mutation routes (preview, submit, cancel) require OWNER or ANALYST role.
 """
 
 from __future__ import annotations
+
+import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -21,6 +23,13 @@ from backend.models.user import User, UserRole
 from backend.services.execution.order_manager import OrderManager
 from backend.services.execution.broker_base import OrderRequest
 from backend.services.execution.risk_gate import RiskViolation
+from backend.services.risk.account_risk_profile import (
+    AccountNotFoundError,
+    get_effective_limits,
+)
+from backend.services.risk.firm_caps import FirmCapsUnavailable
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/portfolio/orders", tags=["orders"])
 
@@ -36,6 +45,13 @@ class OrderPreviewRequest(BaseModel):
     limit_price: Optional[float] = None
     stop_price: Optional[float] = None
     broker_type: str = Field(default="ibkr", description="Broker to use: ibkr, schwab, tastytrade")
+    account_id: Optional[int] = Field(
+        default=None,
+        description=(
+            "Optional internal broker_accounts.id for advisory per-account "
+            "risk-profile display. Enforcement remains in RiskGate."
+        ),
+    )
 
 
 class OrderSubmitRequest(BaseModel):
@@ -68,6 +84,25 @@ async def preview_order(
         raise HTTPException(status_code=422, detail=str(exc))
     if result.get("error"):
         raise HTTPException(status_code=400, detail=result["error"])
+
+    # Advisory: show per-account effective risk limits alongside the preview.
+    # Enforcement stays in RiskGate (Danger Zone); this is display only.
+    if req.account_id is not None:
+        try:
+            effective = get_effective_limits(
+                db=db, user_id=user.id, account_id=req.account_id
+            )
+            result["risk_profile_advisory"] = effective.as_dict()
+        except AccountNotFoundError:
+            result["risk_profile_advisory"] = None
+        except FirmCapsUnavailable as exc:
+            logger.warning(
+                "order-preview: firm caps unavailable for user_id=%s account_id=%s: %s",
+                user.id,
+                req.account_id,
+                exc,
+            )
+            result["risk_profile_advisory"] = None
     return {"data": result}
 
 

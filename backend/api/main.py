@@ -64,6 +64,7 @@ from backend.api.routes.market import router as market_router
 # Webhooks
 from backend.api.routes.webhooks import router as webhooks_router
 from backend.api.routes.risk import router as risk_router
+from backend.api.routes.account_risk_profile import router as account_risk_profile_router
 from backend.api.routes.entitlements import router as entitlements_router
 from backend.api.routes.public.stats import router as public_stats_router
 from backend.api.routes.pricing import router as pricing_router
@@ -613,6 +614,12 @@ app.include_router(
 )
 app.include_router(
     risk_router,
+    prefix="/api/v1",
+    tags=["Risk"],
+    dependencies=[Depends(require_non_market_access)],
+)
+app.include_router(
+    account_risk_profile_router,
     prefix="/api/v1",
     tags=["Risk"],
     dependencies=[Depends(require_non_market_access)],

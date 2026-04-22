@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { isPlatformAdminRole } from '../utils/userRole';
-import { Bell, Cpu, KeyRound, Sliders, User, Shield, Activity, ClipboardList, Lock, Database } from 'lucide-react';
+import { Bell, Cpu, KeyRound, Sliders, User, Shield, Activity, ClipboardList, Lock, Database, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -79,6 +79,7 @@ const SettingsShell: React.FC = () => {
               <MenuLink to="/settings/profile">Profile</MenuLink>
               <MenuLink to="/settings/preferences">Preferences</MenuLink>
               <MenuLink to="/settings/connections">Connections</MenuLink>
+              <MenuLink to="/settings/account-risk">Account risk</MenuLink>
               <MenuLink to="/settings/ai-keys">AI Keys</MenuLink>
               <MenuLink to="/settings/historical-import">Historical import</MenuLink>
               <MenuLink to="/settings/mcp">MCP Tokens</MenuLink>
@@ -117,6 +118,7 @@ const SettingsShell: React.FC = () => {
             {iconNav('/settings/profile', 'Profile', <User className="size-4" />)}
             {iconNav('/settings/preferences', 'Preferences', <Sliders className="size-4" />)}
             {iconNav('/settings/connections', 'Connections', <Shield className="size-4" />)}
+            {iconNav('/settings/account-risk', 'Account risk', <ShieldAlert className="size-4" />)}
             {iconNav('/settings/ai-keys', 'AI Keys', <KeyRound className="size-4" />)}
             {iconNav('/settings/historical-import', 'Historical import', <Database className="size-4" />)}
             {iconNav('/settings/mcp', 'MCP Tokens', <KeyRound className="size-4" />)}

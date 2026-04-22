@@ -185,6 +185,16 @@ Implementation decisions that shipped in PRs #326–#334 were previously logged 
 
 ## Decision Details
 
+### D134 [2026-04-21] Per-account risk profile as an additive layer
+
+**Decision:** Introduce `BrokerAccountRiskProfile` — a per-account, user-editable set of risk caps — as a strictly additive layer on top of the firm-level caps in `backend/config.py` and the always-on enforcement inside `backend/services/execution/risk_gate.py`. The effective limit surfaced to any caller is `min(firm_cap, per_account_cap)` (see `backend/services/risk/account_risk_profile.py`). Attempts to persist an override that is looser than the firm cap are rejected with HTTP 400; values stricter than or equal to the firm cap are honoured. `RiskGate` itself is not modified by this change — it remains the single enforcement path (D6, D16, D53).
+
+**Rationale:** The founder wants per-account dial settings (e.g. tighter caps on a taxable joint account vs an IRA) without risking accidental loosening of the firm-level discipline that protects capital (D2 regime gate, D108 command palette not relevant here). `min()` composition is the simplest invariant that preserves the "firm is always the ceiling" property no matter how users edit their row, and the service logs a WARNING whenever a persisted override exceeds the firm cap so a downstream observer can still detect degradation (see `.cursor/rules/no-silent-fallback.mdc`). All percent math is `Decimal` to match the Iron Laws.
+
+**Alternatives considered:** (1) Add per-account caps directly into `RiskGate` — rejected: `risk_gate.py` is a Danger Zone and changing its inputs expands its blast radius; an additive configuration layer is cheaper and reversible. (2) Replace firm caps with per-account caps entirely — rejected: users would be able to loosen the system-wide discipline, which is the exact outcome this feature must prevent. (3) Allow the UI to write any value but clamp at render time — rejected: persisting a "wish" value that the system silently ignores is a footgun and violates the no-silent-fallback rule.
+
+**Reversible?** Yes. The table is additive (migration 0068 creates it; `downgrade()` drops it). No existing rows or code paths depend on the new table being present. Callers of `RiskGate` still read the firm caps from `config.py`; the per-account service is opt-in.
+
 ### D127 [2026-04-22] Medallion architecture naming commitment
 
 **Decision:** Formalize bronze/silver/gold layering for `backend/services/`. Bronze = raw ingestion; silver = enrichment + indicators + regime and related portfolio math; gold = analytics / signals / strategies / picks and similar app-facing flows. New modules go in `backend/services/<layer>/` from creation. Existing modules are grandfathered via module-level docstring tags until a dedicated relocation pass.

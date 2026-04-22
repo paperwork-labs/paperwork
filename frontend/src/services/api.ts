@@ -1124,6 +1124,50 @@ export const accountsApi = {
   syncAll: async () => makeOptimizedRequest(() => api.post('/accounts/sync-all')),
 };
 
+// Per-account risk profile (additive layer over firm caps; see G27).
+// Effective limit = min(firm_cap, per_account_cap); the firm cap is always
+// the ceiling. PUTs that try to loosen firm caps return HTTP 400.
+export interface RiskProfileLimits {
+  max_position_pct: string;
+  max_stage_2c_pct: string;
+  max_options_pct: string;
+  max_daily_loss_pct: string;
+  hard_stop_pct: string;
+}
+
+export interface RiskProfileResponse {
+  account_id: number;
+  firm: RiskProfileLimits;
+  per_account: Partial<Record<keyof RiskProfileLimits, string | null>>;
+  effective: RiskProfileLimits;
+}
+
+export interface RiskProfilePayload {
+  max_position_pct?: string | null;
+  max_stage_2c_pct?: string | null;
+  max_options_pct?: string | null;
+  max_daily_loss_pct?: string | null;
+  hard_stop_pct?: string | null;
+}
+
+export const accountRiskProfileApi = {
+  get: async (accountId: number): Promise<RiskProfileResponse> => {
+    const res = await makeOptimizedRequest<{ data: RiskProfileResponse }>(() =>
+      api.get(`/accounts/${accountId}/risk-profile`),
+    );
+    return res.data;
+  },
+  update: async (
+    accountId: number,
+    payload: RiskProfilePayload,
+  ): Promise<RiskProfileResponse> => {
+    const res = await makeOptimizedRequest<{ data: RiskProfileResponse }>(() =>
+      api.put(`/accounts/${accountId}/risk-profile`, payload),
+    );
+    return res.data;
+  },
+};
+
 // Aggregator API
 export const aggregatorApi = {
   brokers: async () => makeOptimizedRequest(() => api.post('/aggregator/brokers')),

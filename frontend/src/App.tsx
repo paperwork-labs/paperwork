@@ -45,6 +45,7 @@ const SettingsNotifications = React.lazy(() => import('./pages/SettingsNotificat
 const SettingsDataPrivacy = React.lazy(() => import('./pages/SettingsDataPrivacy'));
 const SettingsMCP = React.lazy(() => import('./pages/SettingsMCP'));
 const SettingsAIKeys = React.lazy(() => import('./pages/SettingsAIKeys'));
+const SettingsAccountRisk = React.lazy(() => import('./pages/SettingsAccountRisk'));
 const PortfolioWorkspace = React.lazy(() => import('./pages/PortfolioWorkspace'));
 const PortfolioIncome = React.lazy(() => import('./pages/PortfolioIncome'));
 const Login = React.lazy(() => import('./pages/Login'));
@@ -263,6 +264,7 @@ function App() {
                           <Route path="data-privacy" element={<SettingsDataPrivacy />} />
                           <Route path="mcp" element={<SettingsMCP />} />
                           <Route path="ai-keys" element={<SettingsAIKeys />} />
+                          <Route path="account-risk" element={<SettingsAccountRisk />} />
                           <Route element={<RequireAdmin />}>
                             <Route path="admin/system" element={<SystemStatus />} />
                             <Route path="admin/users" element={<SettingsUsers />} />

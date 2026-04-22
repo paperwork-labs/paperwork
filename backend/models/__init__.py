@@ -17,6 +17,7 @@ from .app_settings import AppSettings
 from .user_invite import UserInvite
 from .entitlement import Entitlement, EntitlementStatus, SubscriptionTier
 from .broker_account import BrokerAccount, BrokerType, AccountType, AccountStatus, SyncStatus
+from .account_risk_profile import BrokerAccountRiskProfile
 from .broker_oauth_connection import (
     BrokerOAuthConnection,
     OAuthBrokerType,
@@ -192,6 +193,7 @@ __all__ = [
     "AccountType",
     "AccountStatus",
     "SyncStatus",
+    "BrokerAccountRiskProfile",
     "BrokerOAuthConnection",
     "OAuthBrokerType",
     "OAuthConnectionStatus",
