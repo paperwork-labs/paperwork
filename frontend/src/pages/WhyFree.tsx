@@ -1,8 +1,9 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { Check, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
+import { MarketingFooter } from '@/components/layout/MarketingFooter';
+import { MarketingHeader } from '@/components/layout/MarketingHeader';
 import PublicStatsStrip from '@/components/transparency/PublicStatsStrip';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -50,19 +51,7 @@ const WhyFree: React.FC = () => {
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-background text-foreground">
-        <header className="border-b border-border bg-card/60 backdrop-blur">
-          <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6">
-            <span className="font-heading text-lg font-semibold tracking-tight">AxiomFolio</span>
-            <div className="flex items-center gap-4 text-sm">
-              <Link to="/login" className="font-medium text-primary underline-offset-4 hover:underline">
-                Sign in
-              </Link>
-              <Link to="/register" className="font-medium text-primary underline-offset-4 hover:underline">
-                Register
-              </Link>
-            </div>
-          </div>
-        </header>
+        <MarketingHeader />
 
         <main>
           <Section className="max-w-4xl pt-12 pb-8 sm:pt-16 sm:pb-12">
@@ -225,6 +214,7 @@ const WhyFree: React.FC = () => {
             </div>
           </Section>
         </main>
+        <MarketingFooter />
       </div>
     </TooltipProvider>
   );

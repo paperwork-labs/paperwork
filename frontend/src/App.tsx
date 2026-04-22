@@ -69,6 +69,9 @@ const BacktestMonteCarlo = React.lazy(() => import('./pages/Backtest/MonteCarlo'
 const ConnectAccounts = React.lazy(() => import('./pages/ConnectAccounts'));
 const AccountsManagement = React.lazy(() => import('./pages/AccountsManagement'));
 const PortfolioImport = React.lazy(() => import('./pages/PortfolioImport'));
+const NotFound = React.lazy(() => import('./pages/NotFound'));
+const ForgotPassword = React.lazy(() => import('./pages/auth/ForgotPassword'));
+const ResetPassword = React.lazy(() => import('./pages/auth/ResetPassword'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -263,7 +266,10 @@ function App() {
                       <Route path="/why-free" element={<WhyFree />} />
                       <Route path="/pricing" element={<Pricing />} />
                       <Route path="/auth/callback" element={<AuthCallback />} />
+                      <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+                      <Route path="/auth/reset-password" element={<ResetPassword />} />
                       <Route path="/invite/:token" element={<Invite />} />
+                      <Route path="*" element={<NotFound />} />
                     </Routes>
                   </Suspense>
                   <Toaster

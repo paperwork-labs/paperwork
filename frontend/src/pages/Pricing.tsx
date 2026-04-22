@@ -23,6 +23,8 @@ import * as React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
+import { MarketingFooter } from '@/components/layout/MarketingFooter';
+import { MarketingHeader } from '@/components/layout/MarketingHeader';
 import api from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { TierCard } from '@/components/pricing/TierCard';
@@ -128,6 +130,7 @@ const Pricing: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <MarketingHeader />
       <main className="mx-auto max-w-6xl space-y-8 px-4 py-12 sm:px-6">
         <header className="space-y-3 text-center">
           <h1 className="font-heading text-4xl font-semibold tracking-tight">Ladder 3 pricing</h1>
@@ -142,6 +145,7 @@ const Pricing: React.FC = () => {
         {renderBody()}
         <PricingFAQ />
       </main>
+      <MarketingFooter />
     </div>
   );
 };

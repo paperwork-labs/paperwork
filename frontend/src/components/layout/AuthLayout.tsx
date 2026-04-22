@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import AppLogo from '../ui/AppLogo';
 
@@ -30,10 +31,17 @@ export default function AuthLayout({ children, className, style, ...props }: Pro
         }}
       />
       <div className="relative w-full max-w-[420px] md:max-w-[440px]">
-        <div className="mb-6 flex items-center justify-center gap-3.5">
+        <Link
+          to="/"
+          aria-label="AxiomFolio home"
+          className={cn(
+            'mb-6 flex items-center justify-center gap-3.5 rounded-md',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[rgb(var(--auth-gradient-bg))]'
+          )}
+        >
           <AppLogo size={72} />
           <span className="text-xl font-semibold tracking-tight text-white">AxiomFolio</span>
-        </div>
+        </Link>
         {children}
       </div>
     </div>

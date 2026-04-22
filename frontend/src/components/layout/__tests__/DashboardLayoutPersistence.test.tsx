@@ -142,9 +142,9 @@ describe('DashboardLayout sidebar persistence', () => {
       ready: true,
     };
     const { container } = renderWithProviders(<DashboardLayout />, {
-      route: '/market/strategies/strat-1',
+      route: '/lab/strategies/strat-1',
     });
-    const strategies = container.querySelector('[data-nav-path="/market/strategies"]');
+    const strategies = container.querySelector('[data-nav-path="/lab/strategies"]');
     expect(strategies?.getAttribute('data-active')).toBe('true');
   });
 });

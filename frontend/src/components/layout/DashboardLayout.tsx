@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   Activity,
+  BarChart2,
   Bell,
   BookOpen,
   Brain,
@@ -11,7 +12,6 @@ import {
   LayoutGrid,
   List,
   Menu,
-  Monitor,
   PieChart,
   Settings,
   Shield,
@@ -22,6 +22,7 @@ import {
   ScanLine,
   ClipboardList,
   Grid3x3,
+  type LucideIcon,
 } from 'lucide-react';
 import * as Dialog from "@radix-ui/react-dialog";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
@@ -99,25 +100,25 @@ function buildSettingsItems(_isAdmin: boolean) {
 }
 
 function buildMarketItems() {
-  type Item = { label: string; icon: typeof Home; path: string };
+  type Item = { label: string; icon: LucideIcon; path: string };
   const items: Item[] = [
-    { label: 'Dashboard', icon: Home, path: '/' },
+    { label: 'Home', icon: Home, path: '/' },
+    { label: 'Markets', icon: BarChart2, path: '/market' },
     { label: 'Tracked', icon: List, path: '/market/tracked' },
-    { label: 'Strategies', icon: Target, path: '/market/strategies' },
-    { label: 'Backtest', icon: Activity, path: '/backtest/monte-carlo' },
-    { label: 'Intelligence', icon: Brain, path: '/market/intelligence' },
-    { label: 'Walk-Forward', icon: Activity, path: '/backtest/walk-forward' },
-    { label: 'Education', icon: BookOpen, path: '/market/education' },
-    { label: 'Picks', icon: ClipboardList, path: '/picks' },
-    { label: 'Terminal', icon: Monitor, path: '/terminal' },
+    { label: 'Strategies', icon: Target, path: '/lab/strategies' },
+    { label: 'Backtest', icon: Activity, path: '/lab/monte-carlo' },
+    { label: 'Intelligence', icon: Brain, path: '/lab/intelligence' },
+    { label: 'Walk-Forward', icon: Activity, path: '/lab/walk-forward' },
+    { label: 'Education', icon: BookOpen, path: '/learn/education' },
+    { label: 'Picks', icon: ClipboardList, path: '/signals/picks' },
   ];
   return items;
 }
 
-type MarketNavItem = { label: string; icon: typeof Home; path: string };
+type MarketNavItem = { label: string; icon: LucideIcon; path: string };
 
 interface NavItemProps {
-  icon: React.ElementType<{ className?: string; size?: number }>;
+  icon: LucideIcon;
   label: string;
   path: string;
   isActive: boolean;
@@ -198,6 +199,25 @@ const DashboardLayout: React.FC = () => {
   };
   const notifications: NotificationItem[] = [];
   const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
+
+  const cmdKLabel = useMemo(() => {
+    if (typeof navigator === 'undefined') return 'Ctrl+K';
+    return /Mac|iPhone|iPad|iPod/.test(navigator.userAgent) ? '⌘K' : 'Ctrl+K';
+  }, []);
+
+  const openCommandPalette = useCallback(() => {
+    const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'k',
+        code: 'KeyK',
+        metaKey: isMac,
+        ctrlKey: !isMac,
+        bubbles: true,
+        cancelable: true,
+      })
+    );
+  }, []);
   const marketOnly = appSettingsReady ? Boolean(appSettings?.market_only_mode) : true;
   const isAdmin = isPlatformAdminRole(user?.role);
   const portfolioEnabled = isAdmin || (!marketOnly && Boolean(appSettings?.portfolio_enabled));
@@ -281,7 +301,10 @@ const DashboardLayout: React.FC = () => {
     (itemPath: string) => {
       const currentPath = location.pathname || '/';
       if (itemPath === '/') {
-        return currentPath === '/' || currentPath === '/market/dashboard';
+        return currentPath === '/';
+      }
+      if (itemPath === '/market') {
+        return currentPath === '/market' || currentPath.startsWith('/market/');
       }
       if (itemPath === '/portfolio') {
         return currentPath === '/portfolio';
@@ -351,10 +374,17 @@ const DashboardLayout: React.FC = () => {
         )}
       >
         {opts.showLabel ? (
-          <div className="flex items-center gap-2.5">
+          <Link
+            to="/"
+            aria-label="AxiomFolio home"
+            className={cn(
+              'flex items-center gap-2.5 rounded-md',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar'
+            )}
+          >
             <AppLogo size={52} />
             <span className="text-base font-semibold tracking-tight text-foreground">AxiomFolio</span>
-          </div>
+          </Link>
         ) : null}
         {opts.showMenuToggle ? (
           <Button
@@ -415,10 +445,17 @@ const DashboardLayout: React.FC = () => {
           <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-[rgb(var(--bg-header))] px-6">
             <div className="flex items-center gap-4">
               {isDesktop && !isSidebarOpen ? (
-                <div className="flex items-center gap-2.5">
+                <Link
+                  to="/"
+                  aria-label="AxiomFolio home"
+                  className={cn(
+                    'flex items-center gap-2.5 rounded-md',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-[rgb(var(--bg-header))]'
+                  )}
+                >
                   <AppLogo size={36} />
                   <span className="text-base font-semibold tracking-tight text-foreground">AxiomFolio</span>
-                </div>
+                </Link>
               ) : null}
               {!isDesktop ? (
                 <Button
@@ -441,6 +478,19 @@ const DashboardLayout: React.FC = () => {
                   width={isDesktop ? '200px' : '180px'}
                 />
               ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="hidden h-8 gap-1.5 px-2.5 font-sans text-xs sm:inline-flex"
+                aria-label="Toggle command palette"
+                onClick={openCommandPalette}
+              >
+                <span className="text-muted-foreground">Search</span>
+                <kbd className="pointer-events-none inline-flex min-h-5 items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-foreground">
+                  {cmdKLabel}
+                </kbd>
+              </Button>
             </div>
 
             <div className="flex items-center gap-4">
@@ -566,6 +616,12 @@ const DashboardLayout: React.FC = () => {
                       onSelect={() => navigate('/settings/preferences')}
                     >
                       Preferences
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Item
+                      className="cursor-default rounded-sm px-2 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground"
+                      onSelect={() => navigate('/pricing')}
+                    >
+                      Pricing
                     </DropdownMenu.Item>
                     <DropdownMenu.Item
                       className="cursor-default rounded-sm px-2 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground"
