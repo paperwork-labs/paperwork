@@ -25,6 +25,7 @@ from .portfolio.orders import router as portfolio_orders
 from .portfolio.tax_export import router as portfolio_tax_export
 from .portfolio.options_tax import router as portfolio_options_tax
 from .portfolio.allocation import router as portfolio_allocation
+from .portfolio.discipline_trajectory import router as portfolio_discipline_trajectory
 
 # Re-export admin routes
 from .admin.management import router as admin
@@ -65,6 +66,7 @@ __all__ = [
     "portfolio_tax_export",
     "portfolio_options_tax",
     "portfolio_allocation",
+    "portfolio_discipline_trajectory",
     # Admin
     "admin",
     "admin_scheduler",

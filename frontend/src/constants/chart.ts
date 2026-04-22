@@ -197,6 +197,32 @@ const SECTOR_PALETTE = [
 
 export { SECTOR_PALETTE };
 
+/* ─── Discipline-bounded trajectory (portfolio overview C7) ───────────────
+ *
+ * Tailwind / semantic tokens only — consumed by `DisciplineTrajectoryTile`.
+ * Maps to D119 tier shading: unleveraged → primary, leveraged → warning,
+ * speculative → elevated risk (destructive tint), beyond → muted.
+ */
+
+export const TRAJECTORY_BANDS = {
+  unleveraged: {
+    bandClass: 'bg-primary/15 border-primary/30',
+    label: 'Unleveraged',
+  },
+  leveraged: {
+    bandClass: 'bg-[rgb(var(--status-warning)/0.12)] border-[rgb(var(--status-warning)/0.35)]',
+    label: 'Leveraged',
+  },
+  speculative: {
+    bandClass: 'bg-destructive/10 border-destructive/30',
+    label: 'Speculative',
+  },
+  beyond: {
+    bandClass: 'bg-muted/50 border-border/80',
+    label: 'Beyond discipline',
+  },
+} as const;
+
 /* ─── Series palette (HSL-derived, theme- and CB-aware) ─────────────────────
  *
  * The 8 series colors are defined in `index.css` as `--series-1` through

@@ -38,6 +38,9 @@ import {
 import type { RawBrokerAccountInput } from '../../../utils/portfolio';
 import { StatCardSkeleton } from '../../../components/shared/Skeleton';
 import { DailyNarrative } from '../../../components/portfolio/DailyNarrative';
+import DisciplineTrajectoryTile from '../../../components/portfolio/DisciplineTrajectoryTile';
+import DisciplineTrajectoryMultiAccount from '../../../components/portfolio/DisciplineTrajectoryMultiAccount';
+import TierGate from '../../../components/billing/TierGate';
 import type { AccountData } from '../../../hooks/useAccountFilter';
 import type { EnrichedPosition } from '../../../types/portfolio';
 import { SECTOR_PALETTE } from '../../../constants/chart';
@@ -79,6 +82,16 @@ const OverviewTab: React.FC = () => {
   const filterState = useAccountFilter(positionRows as import('../../../hooks/useAccountFilter').FilterableItem[], accounts);
   const filteredPositions = filterState.filteredData as EnrichedPosition[];
 
+  const trajectoryDbAccountId = useMemo((): number | undefined => {
+    if (filterState.selectedAccount === 'all') return undefined;
+    const raw = sanitizedBrokerRows.find(
+      (a) =>
+        a.account_number === filterState.selectedAccount ||
+        String(a.id) === filterState.selectedAccount,
+    );
+    return typeof raw?.id === 'number' ? raw.id : undefined;
+  }, [filterState.selectedAccount, sanitizedBrokerRows]);
+
   const pnlSummaryQuery = usePnlSummary(
     filterState.selectedAccount === 'all' ? undefined : filterState.selectedAccount,
   );
@@ -96,6 +109,28 @@ const OverviewTab: React.FC = () => {
     <ChartContext.Provider value={openChart}>
         <div className="flex flex-col gap-4">
           <DailyNarrative />
+
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <DisciplineTrajectoryTile accountId={trajectoryDbAccountId} />
+            <TierGate
+              feature="execution.multi_broker"
+              fallback={
+                <Card className="border-dashed border-border bg-muted/20 shadow-none ring-0">
+                  <CardContent className="flex flex-col gap-2 py-4">
+                    <p className="text-sm font-semibold text-muted-foreground">Consolidated trajectory</p>
+                    <p className="text-sm text-muted-foreground">
+                      Upgrade to Pro+ to consolidate across accounts.
+                    </p>
+                    <Button asChild size="sm" variant="outline" className="w-fit">
+                      <Link to="/pricing">View plans</Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              }
+            >
+              <DisciplineTrajectoryMultiAccount />
+            </TierGate>
+          </div>
 
           {insightsQuery.isError ? (
             <p className={cn('text-sm', semanticTextColorClass('status.danger'))} role="alert">

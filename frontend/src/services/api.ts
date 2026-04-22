@@ -650,6 +650,14 @@ export const portfolioApi = {
     );
   },
 
+  getDisciplineTrajectory: async (params?: { accountId?: number; aggregate?: boolean }) => {
+    const q = new URLSearchParams();
+    if (params?.accountId != null) q.set('account_id', String(params.accountId));
+    if (params?.aggregate) q.set('aggregate', 'true');
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return makeOptimizedRequest(() => api.get(`/portfolio/discipline-trajectory${qs}`));
+  },
+
   // Batch API calls for improved performance
   getBatchData: async (endpoints: string[]) => {
     try {

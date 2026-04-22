@@ -40,6 +40,7 @@ from backend.api.routes import (
     portfolio_tax_export,
     portfolio_options_tax,
     portfolio_allocation,
+    portfolio_discipline_trajectory,
     # Strategy
     strategies,
     # Admin (from admin/ folder)
@@ -639,6 +640,12 @@ app.include_router(
 )
 app.include_router(
     portfolio_allocation,
+    prefix="/api/v1/portfolio",
+    tags=["Portfolio"],
+    dependencies=[Depends(require_non_market_access)],
+)
+app.include_router(
+    portfolio_discipline_trajectory,
     prefix="/api/v1/portfolio",
     tags=["Portfolio"],
     dependencies=[Depends(require_non_market_access)],
