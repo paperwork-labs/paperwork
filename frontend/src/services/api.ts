@@ -1256,7 +1256,7 @@ export const aiKeysApi = {
 
 export type ConnectionBrokerCategory = 'stocks' | 'crypto' | 'retirement';
 export type ConnectionMethod = 'oauth' | 'import';
-export type ConnectionStatus = 'available' | 'coming_v1_1' | 'coming_v1_2_lite';
+export type ConnectionStatus = 'available' | 'coming_v1_1' | 'coming_v1_2_snaptrade';
 
 export interface ConnectionBrokerUserState {
   connected: boolean;

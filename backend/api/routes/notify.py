@@ -86,8 +86,8 @@ async def notify_me_broker_launch(
             detail=f"Unknown broker slug: {payload.broker_slug}",
         )
     if entry.status != "coming_v1_1":
-        # Live brokers should hit OAuth directly, Lite-tier brokers go to
-        # /pricing. There's no sensible Notify-me flow for either.
+        # Live brokers should hit OAuth directly. v1.2 SnapTrade (pricing) rows
+        # are not notify-me; there's no sensible Notify-me flow for those either.
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(

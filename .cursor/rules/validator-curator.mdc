@@ -64,9 +64,8 @@ Every published item carries:
 | Tier | What they see |
 |------|---------------|
 | Free | Picks 24h after publish; watchlist add only |
-| Lite | Real-time picks; email/SMS alerts; no autotrade |
-| Pro | Real-time picks; one-click execute (paper or live) |
-| Pro+ | + auto-execute via `SignalToOrder`; bracket orders; tax-aware exits |
+| Pro | Real-time picks; email/SMS alerts; one-click execute (paper or live); autotrade per `feature_catalog` |
+| Pro+ | + `SignalToOrder` auto-execute where enabled; bracket orders; tax-aware exits; native chat |
 | Quant Desk | + Trade Copy (mirror Twisted Slice's published picks automatically) |
 
 ## Costs

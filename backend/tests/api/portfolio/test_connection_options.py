@@ -140,7 +140,7 @@ def test_returns_full_catalog_shape(
 
     valid_categories = {"stocks", "crypto", "retirement"}
     valid_methods = {"oauth", "import"}
-    valid_statuses = {"available", "coming_v1_1", "coming_v1_2_lite"}
+    valid_statuses = {"available", "coming_v1_1", "coming_v1_2_snaptrade"}
 
     for broker in brokers:
         for field in (

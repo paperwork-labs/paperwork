@@ -112,10 +112,10 @@ const Picks: React.FC = () => {
               <CardHeader className="flex flex-row items-start gap-3 pb-2">
                 <Sparkles className="mt-0.5 size-5 text-primary" aria-hidden />
                 <div className="space-y-1">
-                  <p className="font-medium text-foreground">Upgrade to Lite to see all picks</p>
+                  <p className="font-medium text-foreground">Upgrade to Pro to see all picks</p>
                   <p className="text-sm text-muted-foreground">
                     You are viewing a preview: at most one latest published pick per source.
-                    Upgrade to Lite for the full feed in real time.
+                    Upgrade to Pro for the full feed in real time.
                   </p>
                   <Button type="button" asChild size="sm" className="mt-2 w-fit">
                     <Link to="/pricing">See plans</Link>

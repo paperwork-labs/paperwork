@@ -58,7 +58,7 @@
 
 ### Product shape
 
-- **Standalone product** with own subscription tiers (Free / Lite / Pro / Pro+ / Quant Desk / Enterprise).
+- **Standalone product** with own subscription tiers (Free / Pro / Pro+ / Quant Desk / Enterprise).
 - **Native AgentBrain chat panel** for Pro+ — not a separate app, lives in-product.
 - **Cross-sells into Paperwork ecosystem** (FileFree for taxes, Paperwork Brain for cross-domain conversational AI). Bundles available, not required.
 
@@ -67,13 +67,13 @@
 - **Self (founder)** — power user, runs everything, validates edge cases.
 - **Twisted Slice** — hedge fund validator persona. Forwards analyst notes / writes original picks. Pseudonym in all user-facing artifacts. Inbound validator sender(s) configured server-side via the `PICKS_TRUSTED_SENDERS` env var; real identifiers never live in code, docs, or version control.
 - **Pro retail trader** — wants picks + auto-executed entries with stops, doesn't have time to sit at terminal.
-- **Lite retail user** — Snowball replacement, free portfolio viz, gateway drug to Pro tier.
+- **Free-tier retail user** — Snowball replacement, free portfolio viz, gateway to Pro.
 
 ### Two milestones
 
 | Milestone | Date | Definition |
 |-----------|------|------------|
-| **v1 Launch** | **2026-06-21** (10 weeks) | Paying users on Free / Lite / Pro / Pro+. Validated Picks live (founder + Twisted Slice). Native AgentBrain chat. Snowball-class viz. TRIM/ADD/rebalance. Tax-aware exits. Email parser. PWA mobile. |
+| **v1 Launch** | **2026-06-21** (10 weeks) | Paying users on Free / Pro / Pro+. Validated Picks live (founder + Twisted Slice). Native AgentBrain chat. Snowball-class viz. TRIM/ADD/rebalance. Tax-aware exits. Email parser. PWA mobile. |
 | **World-Class Complete** | **2026-08-31** (20 weeks) | + 8 brokers via Plaid + hand-rolled. + Walk-forward + Monte Carlo + event-driven backtester. + Symbol master + multi-source quorum. + OpenTelemetry + SLOs + chaos engineering. + Trade Copy + AI Portfolio Optimizer. + Quant Desk tier with white-label. |
 
 ### Year 2 backlog (post-Aug 31)
@@ -207,7 +207,7 @@ gantt
 
 | Todo | File(s) | Acceptance |
 |------|---------|------------|
-| `User.tier` enum | [backend/models/user.py](../../backend/models/user.py) + Alembic | Enum: `FREE`, `LITE`, `PRO`, `PRO_PLUS`, `QUANT_DESK`, `ENTERPRISE`; default `FREE`; backfill existing user to `PRO_PLUS` |
+| `User.tier` enum | [backend/models/user.py](../../backend/models/user.py) + Alembic | Enum: `FREE`, `PRO`, `PRO_PLUS`, `QUANT_DESK`, `ENTERPRISE`; default `FREE`; backfill existing user to `PRO_PLUS` |
 | `Entitlement` model | new model + Alembic | `user_id`, `feature_key`, `value` (jsonb), `granted_via` (`tier`/`override`/`bundle`), `expires_at` |
 | Stripe client wrapper | new `backend/services/billing/stripe_client.py` | Test-mode keys only; idempotency keys; webhook signature verification |
 | Webhook receiver | new `backend/api/routes/billing/webhooks.py` | `customer.subscription.created/updated/deleted`, `invoice.payment_succeeded/failed`; updates `User.tier` + `Entitlement` rows |
@@ -224,7 +224,7 @@ gantt
 | `CandidateGenerator` service | new `backend/services/picks/candidate_generator.py` | Reads `MarketSnapshot` + composite scores from `scan_engine` + current `Regime`; produces top-N per tier per regime per day; deterministic given inputs (testable) |
 | Daily Beat job | [backend/tasks/job_catalog.py](../../backend/tasks/job_catalog.py) | `generate_candidates` runs daily at 03:30 UTC after indicator recompute + regime; idempotent re-run safe |
 | `GET /candidates` API | new `backend/api/routes/picks/candidates.py` | Tier-gated (`@require_tier`); returns latest candidates for caller's tier; pagination; filters by regime/sector |
-| Frontend Candidates page | new `frontend/src/pages/Candidates.tsx` | Reads `GET /candidates`; renders ranked list with reason chips; tier-locked rows show "Upgrade to Pro" CTA for Free/Lite |
+| Frontend Candidates page | new `frontend/src/pages/Candidates.tsx` | Reads `GET /candidates`; renders ranked list with reason chips; tier-locked rows show "Upgrade to Pro" CTA for Free |
 | Test fixture | new `backend/tests/test_candidate_generator.py` | Given canned MarketSnapshot + R3 regime, produces expected top-10 picks per tier |
 
 **PR**: `feat/v1-candidate-generator` — Background Agent C.
@@ -243,7 +243,7 @@ gantt
 | Cross-email signal linking | Vector similarity + symbolic level matching; surfaces "this email reinforces email X from Y days ago" |
 | Validator queue UI | `/picks/queue` for OWNER + ANALYST roles; tabs for picks / macro / mixed; bulk-approve + per-item edit |
 | Approval state machine | `DRAFT` → `APPROVED` → `PUBLISHED` (or `REJECTED`); webhook to subscribers on `PUBLISHED` |
-| Publish to subscribers | Tier-gated read; Free sees 24h-delayed; Lite sees real-time picks (no autotrade); Pro sees real-time + autotrade option |
+| Publish to subscribers | Tier-gated read; Free sees 24h-delayed; Pro sees real-time picks and autotrade per `feature_catalog` (former mid-tier is folded into Pro; see D123) |
 | Test fixtures | All 4 example emails (AAOI/CIEN, Hedgeye, STT, ZeroHedge) round-trip into expected schemas with >85% field accuracy |
 
 **PRs (sequential)**: `feat/v1-picks-inbound`, `feat/v1-picks-parser`, `feat/v1-picks-validator-queue`, `feat/v1-picks-publish-gating`.
@@ -399,7 +399,7 @@ gantt
 ### Cost Management
 
 - LLM call cost tracking per user per feature (Langfuse)
-- Per-tier LLM budget caps (Free: 0, Lite: 0, Pro: $5/mo, Pro+: $20/mo, Quant: unlimited)
+- Per-tier LLM budget caps (Free: 0, Pro: $5/mo, Pro+: $20/mo, Quant: unlimited)
 - Provider call cost tracking (FMP, Massive when added, etc.) per user
 - Daily cost summary email to founder
 

@@ -18,7 +18,7 @@ Per D100/D101b: connection hub is the v1 connectivity UX. The catalog
 explicitly distinguishes (a) brokers we already integrate via OAuth,
 (b) brokers gated behind CSV/statement import (the ~50% of US retail
 behind brokers that refuse to expose APIs), (c) brokers queued for v1.1
-OAuth, and (d) brokers gated behind v1.2 SnapTrade (Lite tier).
+OAuth, and (d) brokers gated behind v1.2 SnapTrade (Pro).
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ from pydantic import BaseModel, Field
 
 BrokerCategory = Literal["stocks", "crypto", "retirement"]
 ConnectionMethod = Literal["oauth", "import"]
-BrokerStatus = Literal["available", "coming_v1_1", "coming_v1_2_lite"]
+BrokerStatus = Literal["available", "coming_v1_1", "coming_v1_2_snaptrade"]
 
 
 class BrokerCatalogEntry(BaseModel):
@@ -129,7 +129,7 @@ _CATALOG: List[BrokerCatalogEntry] = [
     BrokerCatalogEntry(
         slug="robinhood",
         name="Robinhood",
-        description="Import via CSV. One-click via Lite tier ships in v1.2.",
+        description="Import via CSV. One-click via Pro (SnapTrade) ships in v1.2.",
         logo_url="/broker-logos/robinhood.svg",
         category="stocks",
         method="import",
@@ -169,7 +169,7 @@ _CATALOG: List[BrokerCatalogEntry] = [
     BrokerCatalogEntry(
         slug="webull",
         name="Webull",
-        description="Import via CSV. One-click via Lite tier ships in v1.2.",
+        description="Import via CSV. One-click via Pro (SnapTrade) ships in v1.2.",
         logo_url="/broker-logos/webull.svg",
         category="stocks",
         method="import",
@@ -178,7 +178,7 @@ _CATALOG: List[BrokerCatalogEntry] = [
     BrokerCatalogEntry(
         slug="m1_finance",
         name="M1 Finance",
-        description="Import via CSV. One-click via Lite tier ships in v1.2.",
+        description="Import via CSV. One-click via Pro (SnapTrade) ships in v1.2.",
         logo_url="/broker-logos/m1_finance.svg",
         category="stocks",
         method="import",
@@ -187,7 +187,7 @@ _CATALOG: List[BrokerCatalogEntry] = [
     BrokerCatalogEntry(
         slug="sofi",
         name="SoFi Invest",
-        description="Import via CSV. One-click via Lite tier ships in v1.2.",
+        description="Import via CSV. One-click via Pro (SnapTrade) ships in v1.2.",
         logo_url="/broker-logos/sofi.svg",
         category="stocks",
         method="import",
@@ -196,7 +196,7 @@ _CATALOG: List[BrokerCatalogEntry] = [
     BrokerCatalogEntry(
         slug="public",
         name="Public",
-        description="Import via CSV. One-click via Lite tier ships in v1.2.",
+        description="Import via CSV. One-click via Pro (SnapTrade) ships in v1.2.",
         logo_url="/broker-logos/public.svg",
         category="stocks",
         method="import",
@@ -277,51 +277,51 @@ _CATALOG: List[BrokerCatalogEntry] = [
         method="oauth",
         status="coming_v1_1",
     ),
-    # ---- v1.2 SnapTrade (Lite tier) ----
+    # ---- v1.2 SnapTrade (Pro) ----
     BrokerCatalogEntry(
         slug="robinhood_snaptrade",
         name="Robinhood (one-click)",
-        description="One-click via SnapTrade. Available on Lite tier in v1.2.",
+        description="One-click via SnapTrade. Available on Pro in v1.2.",
         logo_url="/broker-logos/robinhood.svg",
         category="stocks",
         method="oauth",
-        status="coming_v1_2_lite",
+        status="coming_v1_2_snaptrade",
     ),
     BrokerCatalogEntry(
         slug="webull_snaptrade",
         name="Webull (one-click)",
-        description="One-click via SnapTrade. Available on Lite tier in v1.2.",
+        description="One-click via SnapTrade. Available on Pro in v1.2.",
         logo_url="/broker-logos/webull.svg",
         category="stocks",
         method="oauth",
-        status="coming_v1_2_lite",
+        status="coming_v1_2_snaptrade",
     ),
     BrokerCatalogEntry(
         slug="public_snaptrade",
         name="Public (one-click)",
-        description="One-click via SnapTrade. Available on Lite tier in v1.2.",
+        description="One-click via SnapTrade. Available on Pro in v1.2.",
         logo_url="/broker-logos/public.svg",
         category="stocks",
         method="oauth",
-        status="coming_v1_2_lite",
+        status="coming_v1_2_snaptrade",
     ),
     BrokerCatalogEntry(
         slug="m1_snaptrade",
         name="M1 Finance (one-click)",
-        description="One-click via SnapTrade. Available on Lite tier in v1.2.",
+        description="One-click via SnapTrade. Available on Pro in v1.2.",
         logo_url="/broker-logos/m1_finance.svg",
         category="stocks",
         method="oauth",
-        status="coming_v1_2_lite",
+        status="coming_v1_2_snaptrade",
     ),
     BrokerCatalogEntry(
         slug="sofi_snaptrade",
         name="SoFi Invest (one-click)",
-        description="One-click via SnapTrade. Available on Lite tier in v1.2.",
+        description="One-click via SnapTrade. Available on Pro in v1.2.",
         logo_url="/broker-logos/sofi.svg",
         category="stocks",
         method="oauth",
-        status="coming_v1_2_lite",
+        status="coming_v1_2_snaptrade",
     ),
 ]
 

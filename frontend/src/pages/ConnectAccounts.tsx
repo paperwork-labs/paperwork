@@ -7,7 +7,7 @@
  *   - oauth + available    → green "Connect" → existing OAuth flow
  *   - import + available   → "Import" → /portfolio/import?broker=<slug>
  *   - oauth + coming_v1_1  → "Notify me" → captures email
- *   - oauth + coming_v1_2_lite → "Available on Lite" → /pricing
+ *   - oauth + coming_v1_2_snaptrade → "Available on Pro" → /pricing
  *
  * The grid is filterable via two `<SegmentedPeriodSelector>` controls
  * (category + connection method). Loading uses skeletons; error and
@@ -56,7 +56,7 @@ function passesCategory(b: ConnectionBrokerOption, f: CategoryFilter): boolean {
 function passesMethod(b: ConnectionBrokerOption, f: MethodFilter): boolean {
   if (f === "all") return true;
   if (f === "coming") {
-    return b.status === "coming_v1_1" || b.status === "coming_v1_2_lite";
+    return b.status === "coming_v1_1" || b.status === "coming_v1_2_snaptrade";
   }
   // oauth / import filters intentionally show ONLY available brokers so
   // the "Coming" tab is the single home for not-yet-shipped integrations.
@@ -137,7 +137,7 @@ export default function ConnectAccounts() {
     navigate("/accounts/manage");
   }, [navigate]);
 
-  const handleLitePricing = React.useCallback(() => {
+  const handleSnaptradePricing = React.useCallback(() => {
     navigate("/pricing");
   }, [navigate]);
 
@@ -231,7 +231,7 @@ export default function ConnectAccounts() {
               onImport={handleImport}
               onNotifyMe={handleNotifyMe}
               onManage={handleManage}
-              onLitePricing={handleLitePricing}
+              onSnaptradePricing={handleSnaptradePricing}
             />
           ))}
         </div>

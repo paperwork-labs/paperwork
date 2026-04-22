@@ -3,7 +3,7 @@
 > **STRATEGIC UPDATE — 2026-04-09**: This PRD is **historically frozen** and reflects the v0 single-operator vision. The current product strategy, milestones, and scope live in [`docs/plans/MASTER_PLAN_2026.md`](plans/MASTER_PLAN_2026.md).
 >
 > Key shifts since this doc was written:
-> - **Multi-tenant SaaS** — was non-goal, now core. Six subscription tiers (Free / Lite / Pro / Pro+ / Quant Desk / Enterprise).
+> - **Multi-tenant SaaS** — was non-goal, now core. Five subscription tiers (Free / Pro / Pro+ / Quant Desk / Enterprise).
 > - **Native AgentBrain chat** — Pro+ hook, lives in-product (was non-goal).
 > - **Validator-curated picks pipeline** — Twisted Slice persona (hedge fund analyst) forwards emails → LLM polymorphic parser → validator queue → tier-gated publish.
 > - **Snowball-class portfolio viz** — free-tier hook for retail acquisition.

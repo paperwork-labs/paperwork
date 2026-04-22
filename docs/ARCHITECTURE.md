@@ -676,19 +676,18 @@ Every published item carries:
 ### Tier gating
 
 - **Free**: 24h-delayed picks, watchlist add only
-- **Lite**: real-time picks (no autotrade), email/SMS alerts
-- **Pro / Pro+**: + one-click execute (paper or live), + auto-execute via `SignalToOrder`
+- **Pro**: real-time picks, native AgentBrain chat (policy/caps per billing), one-click execute (paper or live) per `feature_catalog` (`picks.*`, `brain.native_chat`, `execution.single_broker`)
+- **Pro+**: + full pick rationale, tax-aware exits, multi-broker aggregation, and advanced execution per `feature_catalog`
 
 ---
 
 ## Subscription Tiers (v1)
 
-Six tiers, Stripe-backed. See [`docs/plans/MASTER_PLAN_2026.md`](plans/MASTER_PLAN_2026.md) Phase 0.5 for scaffolding details.
+Five tiers, Stripe-backed. See [`docs/plans/MASTER_PLAN_2026.md`](plans/MASTER_PLAN_2026.md) Phase 0.5 for scaffolding details.
 
 | Tier | Monthly | Picks | Autotrade | Brokers | Native chat | LLM budget |
 |------|---------|-------|-----------|---------|-------------|------------|
 | Free | $0 | 24h delayed | — | 1 | — | $0 |
-| Lite | $9 | Real-time | — | 3 | — | $0 |
 | Pro | $29 | Real-time | Paper + Live | 5 | — | $5 |
 | Pro+ | $79 | Real-time | + bracket + tax-aware | unlimited | Yes | $20 |
 | Quant Desk | $299 | + walk-forward + plugin SDK | + Trade Copy | unlimited | + custom prompts | unlimited |

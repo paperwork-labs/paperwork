@@ -31,7 +31,7 @@ interface BrokerCardProps {
   onImport: (broker: ConnectionBrokerOption) => void;
   onNotifyMe: (broker: ConnectionBrokerOption) => void;
   onManage: (broker: ConnectionBrokerOption) => void;
-  onLitePricing: (broker: ConnectionBrokerOption) => void;
+  onSnaptradePricing: (broker: ConnectionBrokerOption) => void;
 }
 
 function formatLastSync(iso: string | null): string {
@@ -107,7 +107,7 @@ function CTASlot({
   onImport,
   onNotifyMe,
   onManage,
-  onLitePricing,
+  onSnaptradePricing,
 }: BrokerCardProps) {
   const { method, status, user_state } = broker;
 
@@ -171,16 +171,16 @@ function CTASlot({
     );
   }
 
-  if (status === "coming_v1_2_lite") {
+  if (status === "coming_v1_2_snaptrade") {
     return (
       <Button
         type="button"
         variant="ghost"
         size="sm"
-        onClick={() => onLitePricing(broker)}
-        aria-label={`${broker.name} available on Lite tier — view pricing`}
+        onClick={() => onSnaptradePricing(broker)}
+        aria-label={`${broker.name} available on Pro — view pricing`}
       >
-        Available on Lite
+        Available on Pro
         <ChevronRight aria-hidden />
       </Button>
     );
@@ -236,9 +236,9 @@ export function BrokerCard(props: BrokerCardProps) {
             {!broker.user_state.connected && isImport ? (
               <WhyNotOAuth brokerName={broker.name} />
             ) : null}
-            {!broker.user_state.connected && broker.status === "coming_v1_2_lite" ? (
+            {!broker.user_state.connected && broker.status === "coming_v1_2_snaptrade" ? (
               <Badge variant="outline" className="text-[10px]">
-                v1.2 · Lite tier
+                v1.2 · Pro
               </Badge>
             ) : null}
             {!broker.user_state.connected && broker.status === "coming_v1_1" ? (

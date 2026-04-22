@@ -372,5 +372,5 @@ All task references must match `@shared_task(name="...")` exactly. Found 4 criti
 ## New Decisions
 
 - **D122 (2026-04-21): Moat-aligned three-axis BYOK-aware pricing.** We price by MCP tool depth first (moat), native chat second (convenience), and BYOK availability third (margin lever) so LLM commodity spend is decoupled from product value.
-- **D123 (2026-04-21): Ladder 3 supersedes D82.** `LITE` is removed and collapsed into `PRO`, with migration-side grandfather metadata for former Lite subscribers.
+- **D123 (2026-04-21): Ladder 3 supersedes D82.** The former mid retail tier is removed and collapsed into `PRO`, with migration-side grandfather metadata for affected accounts.
 - **D124 (2026-04-21): D87 LLM-budget framing is superseded.** Entitlements are now anchored to tool depth and MCP scope, not an internal token-wallet budget narrative.

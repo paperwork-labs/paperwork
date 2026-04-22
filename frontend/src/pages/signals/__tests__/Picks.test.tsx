@@ -136,7 +136,7 @@ describe('signals/Picks', () => {
     scenarioRef.mode = 'preview';
     renderWithProviders(<Picks />);
     await waitFor(() => {
-      expect(screen.getByText(/Upgrade to Lite to see all picks/i)).toBeInTheDocument();
+      expect(screen.getByText(/Upgrade to Pro to see all picks/i)).toBeInTheDocument();
     });
     expect(screen.getByRole('link', { name: /see plans/i })).toHaveAttribute(
       'href',
@@ -144,11 +144,11 @@ describe('signals/Picks', () => {
     );
   });
 
-  it('shows full list without preview banner for lite response', async () => {
+  it('shows full list without preview banner for full-feed response', async () => {
     scenarioRef.mode = 'full';
     renderWithProviders(<Picks />);
     await waitFor(() => {
-      expect(screen.queryByText(/Upgrade to Lite to see all picks/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Upgrade to Pro to see all picks/i)).not.toBeInTheDocument();
     });
     expect(await screen.findByText('ZZZ')).toBeInTheDocument();
     expect(screen.getByText('QQQ')).toBeInTheDocument();

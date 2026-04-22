@@ -426,7 +426,6 @@ class SignalToOrder:
     # tier defaults: % of equity per pick
     TIER_DEFAULTS = {
         "free": Decimal("0"),
-        "lite": Decimal("0"),
         "pro": Decimal("0.02"),       # 2%
         "pro_plus": Decimal("0.05"),  # 5%
         "quant_desk": None,           # per-pick override required
